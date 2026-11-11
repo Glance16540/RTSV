@@ -802,6 +802,27 @@ export class Game {
     }
   }
 
+  /** Send units into a Town Center or Watch Tower. They are safe inside and add to its arrow fire. */
+  cmdShelter(owner: number, ids: number[], buildingId: number): number {
+    const b = this.entities.get(buildingId);
+    if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || !b.def.shelter) return 0;
+    let room = b.def.shelter - b.sheltered.length;
+    let n = 0;
+    for (const u of this.ownUnits(ids, owner)) {
+      if (u.def.cls === 'siege' || u.def.cls === 'beast' || u.def.cls === 'cavalry') continue; // too big to fit
+      if (room-- <= 0) break;
+      this.setOrder(u, { t: 'shelter', id: b.id, then: this.job(u) });
+      n++;
+    }
+    if (!n) this.msg(owner, room < 0 ? 'No room inside.' : 'These units cannot go inside.');
+    return n;
+  }
+
+  cmdRelease(owner: number, buildingId: number): void {
+    const b = this.entities.get(buildingId);
+    if (b && b.kind === 'building' && b.owner === owner) this.release(b);
+  }
+
   /** Let everyone sheltering in a building back out. */
   private release(b: Building): void {
     for (const id of b.sheltered) {

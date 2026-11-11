@@ -119,9 +119,10 @@ export function generateMap(seed: number, size = 96): MapSpec {
       } else if (putPair(type, x, y)) count--;
     }
   };
-  scatter('gold', 4, 22);
-  scatter('stone', 3, 22);
-  scatter('berries', 3, 18);
+  const area = (N * N) / (96 * 96); // more land, more to fight over
+  scatter('gold', Math.round(4 * area), 22);
+  scatter('stone', Math.round(3 * area), 22);
+  scatter('berries', Math.round(3 * area), 18);
 
   // Forests.
   for (let y = 1; y < N - 1; y++)
@@ -170,11 +171,11 @@ export function generateMap(seed: number, size = 96): MapSpec {
     const ang = rng() * Math.PI * 2;
     done = herd('deer', s0.x + Math.cos(ang) * 12, s0.y + Math.sin(ang) * 12, 4) >= 3;
   }
-  for (let k = 0, tries = 0; k < 3 && tries < 60; tries++) {
+  for (let k = 0, tries = 0; k < Math.round(3 * area) && tries < 90; tries++) {
     const x = 6 + rng() * (N - 12), y = 6 + rng() * (N - 12);
     if (startDist(x, y) > 20 && herd('deer', x, y, 3) > 0) k++;
   }
-  for (let k = 0, tries = 0; k < 2 && tries < 60; tries++) {
+  for (let k = 0, tries = 0; k < Math.round(2 * area) && tries < 90; tries++) {
     const x = 6 + rng() * (N - 12), y = 6 + rng() * (N - 12);
     if (startDist(x, y) > 27 && herd('wolf', x, y, 2 + Math.floor(rng() * 2)) > 0) k++;
   }

@@ -30,6 +30,10 @@ export class AIController {
   private mixI = 0;
   private attackT = 0;
   private rebalanceT = 0;
+  /** Cells of the planned wall around the base, and how far along it construction has got. */
+  private ring: { cx: number; cy: number }[] | null = null;
+  private ringI = 0;
+  private wallT = 0;
   /** Seconds before the first attack may launch. */
   firstAttack = 420;
   /** Multiplier on how large an army the AI wants. */
@@ -81,8 +85,10 @@ export class AIController {
     const building = mine.filter((b) => !b.complete);
     const builders = new Set<number>();
     for (const v of villagers) if (v.order?.t === 'build') builders.add(v.order.id);
+    // One villager works its way along a stretch of wall; do not send one per segment.
+    const walling = villagers.some((v) => v.order?.t === 'build' && (g.entities.get(v.order.id) as Building | undefined)?.def.wall);
     for (const b of building) {
-      if (!builders.has(b.id)) {
+      if (!builders.has(b.id) && !(b.def.wall && walling)) {
         const v = this.pickBuilder(villagers, b.x, b.y);
         if (v) g.cmdTarget(pid, [v.id], b.id);
       }
@@ -90,7 +96,7 @@ export class AIController {
 
     // Houses: keep population headroom, and fill them with couples.
     const housesBuilding = building.filter((b) => b.type === 'house').length;
-    if (p.popCap - p.pop < 5 && p.popCap < 150 && housesBuilding < (p.age > 0 ? 2 : 1)) this.build('house', home, villagers, 5, 13);
+    if (p.popCap - p.pop < 5 && p.popCap < 150 && housesBuilding < (p.age > 0 ? 2 : 1)) this.build('house', home, villagers, 5, 12);
     const enough = villagers.length >= VILLAGER_TARGET[p.age];
     for (const h of mine) {
       if (h.type !== 'house' || !h.complete) continue;
@@ -104,10 +110,16 @@ export class AIController {
       for (const step of BUILD_ORDER) {
         if (step.age > p.age || villagers.length < step.villagers || count(step.type) >= step.count) continue;
         if (saving && step.type !== 'barracks') continue;
-        if (g.canAfford(p, BUILDINGS[step.type].cost)) this.build(step.type, home, villagers, 7, 18);
+        if (g.canAfford(p, BUILDINGS[step.type].cost)) this.build(step.type, home, villagers, 7, 13);
         break;
       }
     }
+
+    // Give up on wall segments nobody can get to (deep in trees, behind water) so the wall keeps going.
+    const stalled = building.filter((b) => b.def.wall);
+    this.wallT = stalled.length ? this.wallT + 1 : 0;
+    if (this.wallT > 45) { g.cmdDelete(pid, stalled.map((b) => b.id)); this.wallT = 0; }
+    if (!saving && !underAttack) this.buildWalls(home, villagers, stalled.length > 0);
 
     this.assignWorkers(villagers, mine, home);
 
@@ -194,11 +206,34 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {
     Object.assign(this, s);
+  }
+
+  /** From the Bronze Age, spend spare wood on a palisade around the base, with a gate every few segments. */
+  private buildWalls(home: Building, villagers: Unit[], busy: boolean): void {
+    const g = this.game, p = g.players[this.pid];
+    if (this.level < 1 || p.age < 1 || busy || p.res.wood < 260) return;
+    if (!this.ring) {
+      const R = 16, x0 = Math.floor(home.x), y0 = Math.floor(home.y);
+      this.ring = [];
+      for (let i = -R; i < R; i++) this.ring.push({ cx: x0 + i, cy: y0 - R });
+      for (let i = -R; i < R; i++) this.ring.push({ cx: x0 + R, cy: y0 + i });
+      for (let i = R; i > -R; i--) this.ring.push({ cx: x0 + i, cy: y0 + R });
+      for (let i = R; i > -R; i--) this.ring.push({ cx: x0 - R, cy: y0 + i });
+    }
+    if (this.ringI >= this.ring.length) return;
+    const stretch = this.ring.slice(this.ringI, this.ringI + 8);
+    const builder = this.pickBuilder(villagers, stretch[0].cx, stretch[0].cy);
+    if (!builder) return;
+    this.ringI += 8;
+    const gate = stretch[4];
+    g.cmdPlaceLine(this.pid, 'palisade', stretch.filter((c) => c !== gate), [builder.id]);
+    // Where a gate cannot stand (a tree, the map edge) the gap simply stays open.
+    if (gate && g.canPlace('gate', gate.cx, gate.cy)) g.cmdPlace(this.pid, 'gate', gate.cx, gate.cy, []);
   }
 
   private route(from: Unit, to: Entity): { partial: boolean } {

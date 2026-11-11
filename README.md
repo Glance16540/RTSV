@@ -51,6 +51,11 @@ Towers, safe from harm and adding to the arrow fire. Ring the all-clear and they
 **Walls and gates.** Drag out lines of Palisade (Stone Age) or Stone Wall (Bronze Age). Walls
 block everyone; a Gate lets only your own units through, so enemies have to break in.
 
+**Garrison.** Alt+right-click a Town Center or Watch Tower to send foot units inside; each one
+speeds up its arrow fire. On Normal and Hard the AI walls its base with a palisade and gates.
+
+**Map size.** Small, Medium or Large, chosen on the start screen.
+
 **Saving.** The 💾 button stores the game in your browser, and it autosaves every two minutes.
 *Continue saved game* on the start screen picks it up again.
 
@@ -64,6 +69,7 @@ difficulty levels that plays by the same rules.
 | --- | --- |
 | Left-click / drag | Select (double-click selects all of a type on screen) |
 | Right-click | Move, gather, build, repair, attack, move into a house, set rally point |
+| Alt + right-click | Send units inside a Town Center or Watch Tower |
 | Arrow keys / screen edge | Scroll |
 | Mouse wheel / middle-drag | Zoom / pan |
 | `Q W E R T` `A S D F G` `Z X C V B` | Command card buttons, by position |

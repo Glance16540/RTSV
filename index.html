@@ -54,6 +54,7 @@
             <table>
               <tr><td>Left-click / drag</td><td>Select (double-click: all of a type)</td></tr>
               <tr><td>Right-click</td><td>Move, gather, build, attack, move in, set rally point</td></tr>
+              <tr><td>Alt + right-click</td><td>Send units inside a Town Center or Watch Tower</td></tr>
               <tr><td>Arrow keys / screen edge</td><td>Scroll the map</td></tr>
               <tr><td>Mouse wheel / middle-drag</td><td>Zoom / pan</td></tr>
               <tr><td>Q W E R T · A S D F G · Z X C V B</td><td>Command buttons</td></tr>
@@ -64,6 +65,13 @@
             </table>
           </div>
         </div>
+        <label class="mapsize">Map size
+          <select id="map-size">
+            <option value="72">Small</option>
+            <option value="96">Medium</option>
+            <option value="128">Large</option>
+          </select>
+        </label>
         <div class="levels">
           <button data-level="0" class="new">Easy</button>
           <button data-level="1" class="new" id="start-btn">Normal</button>

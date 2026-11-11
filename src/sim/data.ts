@@ -303,7 +303,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   tower: B({
     id: 'tower', name: 'Watch Tower', icon: '🗼',
-    desc: 'Defensive tower that fires at enemies. Shelters four villagers when the town bell rings.',
+    desc: 'Defensive tower that fires at enemies. Holds four units (Alt+right-click, or the town bell), each speeding up its fire.',
     cost: { wood: 40, stone: 110 }, time: 26, age: 1, hp: 700, size: 2, pop: 0, sight: 10,
     trains: [], techs: [], atk: 9, range: 8, cooldown: 1.8, shelter: 4,
   }),

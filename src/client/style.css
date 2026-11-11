@@ -160,6 +160,10 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 .sheet button:hover { filter: brightness(1.1); }
 .sheet button.secondary { margin-top: 12px; padding: 7px 22px; font-size: 15px; background: none; color: var(--gold); border-color: var(--edge); }
 .started #continue-btn { display: none; }
+.mapsize { display: block; margin-top: 18px; color: var(--muted); }
+.mapsize select { margin-left: 8px; padding: 4px 8px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; }
+.started .mapsize { display: none; }
+.sheet .levels button { margin-top: 12px; }
 .levels { display: flex; justify-content: center; gap: 12px; }
 .levels .resume, .started .levels .new { display: none; }
 .started .levels .resume { display: inline-block; }

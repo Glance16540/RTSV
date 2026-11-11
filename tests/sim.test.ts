@@ -24,8 +24,9 @@ const spot = (g: Game, type: string, owner: number) => {
 
 describe('map', () => {
   it('always connects both bases by land', () => {
-    for (let seed = 1; seed <= 25; seed++) {
-      const m = generateMap(seed);
+    for (let seed = 1; seed <= 36; seed++) {
+      const m = generateMap(seed, [96, 72, 128][seed % 3]);
+      expect(m.animals.length).toBeGreaterThan(6);
       const blocked = new Uint8Array(m.size * m.size);
       m.terrain.forEach((t, i) => { if (t === T_WATER) blocked[i] = 1; });
       for (const n of m.nodes) {
@@ -311,6 +312,25 @@ describe('walls and gates', () => {
     g.cmdDelete(1, g.buildings.filter((b) => b.owner === 1 && !b.def.wall).map((b) => b.id));
     run(g, 2);
     expect(g.winner).toBe(0);
+  });
+});
+
+describe('garrison', () => {
+  it('units sent into a tower are safe, speed up its fire and come back out', () => {
+    const g = new Game(7, setups);
+    const tower = g.spawnBuilding('tower', 0, 47, 47, true);
+    const archers = [0, 1, 2, 3, 4].map((i) => g.spawnUnit('bowman', 0, 46 + i, 50.5));
+    const rider = g.spawnUnit('rider', 0, 46, 51.5);
+    expect(g.cmdShelter(0, [...archers, rider].map((u) => u.id), tower.id)).toBe(4); // room for four, no horses
+    run(g, 8);
+    expect(tower.sheltered.length).toBe(4);
+    const foe = g.spawnUnit('swordsman', 1, 48, 52);
+    run(g, 3);
+    expect(foe.hp).toBeLessThan(foe.maxHp);
+    expect(archers.filter((a) => a.inside).every((a) => a.hp === a.maxHp)).toBe(true);
+    g.cmdRelease(0, tower.id);
+    expect(tower.sheltered.length).toBe(0);
+    expect(archers.every((a) => !a.inside)).toBe(true);
   });
 });
 

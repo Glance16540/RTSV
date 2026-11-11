@@ -107,7 +107,7 @@ export class Input {
     if (e.button === 2) {
       if (app.placing || app.attackMode || app.casting) { app.select(app.sel); return; }
       const p = app.r.groundAt(e.clientX, e.clientY);
-      if (p) this.commandAt(p.x, p.y, this.pick(e.clientX, e.clientY), e.shiftKey);
+      if (p) this.commandAt(p.x, p.y, this.pick(e.clientX, e.clientY), e.altKey || e.ctrlKey);
       return;
     }
     if (e.button !== 0) return;
@@ -205,14 +205,17 @@ export class Input {
   }
 
   /** Right-click order at a world position (also used by the minimap). */
-  commandAt(x: number, y: number, target: Entity | null, _shift: boolean): void {
+  commandAt(x: number, y: number, target: Entity | null, garrison: boolean): void {
     const { game, pid, sel, r } = this.app;
     const ents = sel.map((id) => game.entities.get(id)).filter((e): e is Entity => !!e && e.owner === pid);
     if (!ents.length) return;
     const units = ents.filter((e): e is Unit => e.kind === 'unit').map((u) => u.id);
     sfx.play('order');
     if (units.length) {
-      if (target && !units.includes(target.id)) {
+      if (garrison && target && target.kind === 'building' && target.owner === pid && target.def.shelter) {
+        game.cmdShelter(pid, units, target.id);
+        r.ping(target.x, target.y, 0xffe27a);
+      } else if (target && !units.includes(target.id)) {
         game.cmdTarget(pid, units, target.id);
         r.ping(target.x, target.y, target.owner >= 0 && target.owner !== pid ? 0xff5a4a : 0xffe27a);
       } else {

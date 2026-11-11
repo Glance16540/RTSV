@@ -86,7 +86,7 @@ export class Hud {
     let dragging = false;
     this.mini.addEventListener('pointerdown', (e) => {
       const p = mm(e);
-      if (e.button === 2) this.app.input.commandAt(p.x, p.y, null, e.shiftKey);
+      if (e.button === 2) this.app.input.commandAt(p.x, p.y, null, false);
       else { dragging = true; this.mini.setPointerCapture(e.pointerId); this.app.r.cx = p.x; this.app.r.cy = p.y; this.app.r.clampCamera(); }
       e.preventDefault();
     });
@@ -230,6 +230,12 @@ export class Hud {
         act: () => { game.cmdBell(pid, !p.bell); sfx.play('alert'); },
       });
     }
+    if (b.def.shelter && same.some((s) => s.sheltered.length)) {
+      out.push({
+        id: 'release', icon: ico('release', '🚪'), name: 'Send everyone out', desc: 'Units inside come back out.',
+        act: () => { for (const s of same) game.cmdRelease(pid, s.id); },
+      });
+    }
     if (b.type === 'house') {
       out.push({
         id: 'couple', icon: ico('couple', '💞'), name: 'Find a couple',
@@ -345,7 +351,7 @@ export class Hud {
       if (b.type === 'towncenter') {
         body += `<div class="${b.morale ? 'good' : 'hint'}">🏠 Houses nearby: ${b.morale}/${MORALE_MAX_HOUSES} — defenders take ${Math.round(b.morale * MORALE_PER_HOUSE * 100)}% less damage</div>`;
       }
-      if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Sheltering ${b.sheltered.length}/${b.def.shelter} villagers</div>`;
+      if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Inside: ${b.sheltered.length}/${b.def.shelter} — Alt+right-click to send units in</div>`;
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
     return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;

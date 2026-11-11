@@ -151,10 +151,15 @@ loadAssets().then(() => {
   if (saved) {
     try { game = Game.restore(saved.game); } catch { saved = null; }
   }
+  const size = [72, 96, 128].includes(Number(params.get('size'))) ? Number(params.get('size')) : 96;
   game ??= new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
-  ]);
+  ], size);
+  // The map is generated before the menu appears, so a different size means a fresh page.
+  const sizeSel = document.getElementById('map-size') as HTMLSelectElement;
+  sizeSel.value = String(game.size);
+  sizeSel.addEventListener('change', () => { location.search = `?size=${sizeSel.value}`; });
   const app = new App(game);
   if (saved) {
     app.ai[0].load(saved.ai);
