@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RTSV — Hearth &amp; Empire</title>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <canvas id="overlay"></canvas>
+
+    <div id="hud">
+      <div id="top">
+        <div id="res"></div>
+        <div id="age"></div>
+        <div id="top-right">
+          <button id="idle" title="Select next idle villager (. or Tab)"></button>
+          <span id="clock"></span>
+          <button id="speed" title="Game speed"></button>
+          <button id="pause" title="Pause (P)"></button>
+          <button id="help" title="Controls">?</button>
+        </div>
+      </div>
+      <div id="toasts"></div>
+      <div id="tip" class="hidden"></div>
+      <div id="bottom">
+        <div id="minimap-wrap"><canvas id="minimap" width="192" height="192"></canvas></div>
+        <div id="info"></div>
+        <div id="card"></div>
+      </div>
+    </div>
+
+    <div id="start" class="screen">
+      <div class="sheet">
+        <h1>Hearth &amp; Empire</h1>
+        <p class="lead">Raise a village from the Stone Age to the Middle Ages — one family at a time.</p>
+        <div class="cols">
+          <div>
+            <h3>Families</h3>
+            <p>Villagers are men ♂ and women ♀. Train them at the Town Center, or build a <b>House</b> and move one of each in
+              (right-click the house, or use <i>Find a couple</i>). Housed couples raise new villagers on their own, for half the food.</p>
+            <h3>Morale &amp; heroes</h3>
+            <p>Houses near your Town Center harden its defenders. From the Bronze Age a <b>Warlord</b> inspires nearby troops.</p>
+            <h3>Goal</h3>
+            <p>Advance through four ages and destroy every building of the Red Tribe.</p>
+          </div>
+          <div>
+            <h3>Controls</h3>
+            <table>
+              <tr><td>Left-click / drag</td><td>Select (double-click: all of a type)</td></tr>
+              <tr><td>Right-click</td><td>Move, gather, build, attack, move in, set rally point</td></tr>
+              <tr><td>Arrow keys / screen edge</td><td>Scroll the map</td></tr>
+              <tr><td>Mouse wheel / middle-drag</td><td>Zoom / pan</td></tr>
+              <tr><td>Q W E R T · A S D F G · Z X C V B</td><td>Command buttons</td></tr>
+              <tr><td>H · . · Space</td><td>Town Center · idle villager · centre view</td></tr>
+              <tr><td>Ctrl+1–9 / 1–9</td><td>Set / recall control group</td></tr>
+              <tr><td>Shift-click when building</td><td>Place several</td></tr>
+              <tr><td>Del · Esc · P</td><td>Destroy · cancel · pause</td></tr>
+            </table>
+          </div>
+        </div>
+        <button id="start-btn">Start</button>
+      </div>
+    </div>
+
+    <div id="end" class="screen hidden">
+      <div class="sheet small">
+        <h1 id="end-title"></h1>
+        <p class="lead" id="end-text"></p>
+        <button id="again-btn">Play again</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/client/main.ts"></script>
+  </body>
+</html>

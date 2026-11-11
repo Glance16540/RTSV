@@ -1,0 +1,180 @@
+import { describe, expect, it } from 'vitest';
+import { AIController } from '../src/sim/ai';
+import { BIRTH_COST, BUILDINGS } from '../src/sim/data';
+import { Building, Game, Unit } from '../src/sim/game';
+import { connected, generateMap, T_WATER } from '../src/sim/map';
+
+const setups = [
+  { name: 'A', color: 0x3366ff, isAI: false },
+  { name: 'B', color: 0xff3333, isAI: true },
+];
+const run = (g: Game, seconds: number, each?: () => void) => {
+  for (let i = 0; i < seconds * 20; i++) { g.step(); if (each && i % 20 === 0) each(); }
+};
+const villagers = (g: Game, owner: number) => g.units.filter((u) => u.owner === owner && u.type === 'villager');
+/** Find a free spot for a building near the player's town center. */
+const spot = (g: Game, type: string, owner: number) => {
+  const tc = g.buildings.find((b) => b.owner === owner)!;
+  for (let r = 4; r < 20; r++)
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++)
+        if (g.canPlace(type, tc.cx + dx, tc.cy + dy)) return { cx: tc.cx + dx, cy: tc.cy + dy };
+  throw new Error('no spot');
+};
+
+describe('map', () => {
+  it('always connects both bases by land', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      const m = generateMap(seed);
+      const blocked = new Uint8Array(m.size * m.size);
+      m.terrain.forEach((t, i) => { if (t === T_WATER) blocked[i] = 1; });
+      for (const n of m.nodes) {
+        const s = n.type === 'gold' || n.type === 'stone' ? 2 : 1;
+        for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) blocked[(n.cy + y) * m.size + n.cx + x] = 1;
+      }
+      expect(connected(m.size, blocked, m.starts[0], m.starts[1]), `seed ${seed}`).toBe(true);
+    }
+  });
+});
+
+describe('economy', () => {
+  it('villagers gather each resource and deposit it', () => {
+    const g = new Game(3, setups);
+    const vs = villagers(g, 0);
+    const start = { ...g.players[0].res };
+    const types = ['tree', 'berries', 'gold', 'stone'];
+    vs.forEach((v, i) => {
+      const node = g.resources.filter((r) => r.type === types[i]).sort((a, b) => g.dist(v, a) - g.dist(v, b))[0];
+      g.cmdTarget(0, [v.id], node.id);
+    });
+    run(g, 120);
+    const res = g.players[0].res;
+    expect(res.wood).toBeGreaterThan(start.wood);
+    expect(res.food).toBeGreaterThan(start.food);
+    expect(res.gold).toBeGreaterThan(start.gold);
+    expect(res.stone).toBeGreaterThan(start.stone);
+  });
+
+  it('constructs buildings, farms them and raises the population cap', () => {
+    const g = new Game(3, setups);
+    const [a, b] = villagers(g, 0);
+    const cap = g.players[0].popCap;
+    const hs = spot(g, 'house', 0);
+    const house = g.cmdPlace(0, 'house', hs.cx, hs.cy, [a.id])!;
+    const fs = spot(g, 'farm', 0);
+    const farm = g.cmdPlace(0, 'farm', fs.cx, fs.cy, [b.id])!;
+    expect(g.players[0].res.wood).toBe(200 - 30 - 50);
+    run(g, 40);
+    expect(house.complete).toBe(true);
+    expect(g.players[0].popCap).toBe(cap + BUILDINGS.house.pop);
+    expect(farm.complete).toBe(true);
+    expect(farm.workerId).toBe(b.id);
+    const food = g.players[0].res.food;
+    run(g, 60);
+    expect(g.players[0].res.food).toBeGreaterThan(food);
+  });
+});
+
+describe('families', () => {
+  const housed = (g: Game): Building => {
+    const hs = spot(g, 'house', 0);
+    const house = g.cmdPlace(0, 'house', hs.cx, hs.cy, villagers(g, 0).map((v) => v.id))!;
+    run(g, 15);
+    expect(house.complete).toBe(true);
+    return house;
+  };
+
+  it('a man and a woman sharing a house raise new villagers', () => {
+    const g = new Game(5, setups);
+    const house = housed(g);
+    const man = villagers(g, 0).find((v) => v.gender === 'm')!;
+    const woman = villagers(g, 0).find((v) => v.gender === 'f')!;
+    g.cmdTarget(0, [man.id, woman.id], house.id);
+    run(g, 10);
+    expect(house.residents).toEqual({ m: man.id, f: woman.id });
+    expect(man.homeId).toBe(house.id);
+    const before = villagers(g, 0).length;
+    const food = g.players[0].res.food;
+    run(g, 45);
+    expect(villagers(g, 0).length).toBe(before + 1);
+    expect(g.players[0].res.food).toBe(food - BIRTH_COST);
+  });
+
+  it('a house needs both a man and a woman', () => {
+    const g = new Game(5, setups);
+    const house = housed(g);
+    const men = villagers(g, 0).filter((v) => v.gender === 'm');
+    g.cmdTarget(0, men.map((v) => v.id), house.id);
+    run(g, 60);
+    expect(house.residents.m).not.toBe(0);
+    expect(house.residents.f).toBe(0);
+    expect(villagers(g, 0).length).toBe(4);
+    // Losing a resident frees the slot again.
+    g.cmdDelete(0, [house.residents.m]);
+    run(g, 1);
+    expect(house.residents.m).toBe(0);
+  });
+
+  it('auto-assign finds a couple', () => {
+    const g = new Game(5, setups);
+    const house = housed(g);
+    expect(g.cmdAutoResidents(0, house.id)).toBe(2);
+    run(g, 10);
+    expect(house.residents.m && house.residents.f).toBeTruthy();
+  });
+});
+
+describe('ages and combat', () => {
+  it('advancing an age unlocks new units', () => {
+    const g = new Game(7, setups);
+    const p = g.players[0];
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    expect(g.cmdTrain(0, tc.id, 'warlord')).toBe(false);
+    Object.assign(p.res, { food: 2000, wood: 2000, gold: 2000, stone: 2000 });
+    expect(g.cmdAgeUp(0, tc.id)).toBe(true);
+    expect(g.cmdAgeUp(0, tc.id)).toBe(false);
+    run(g, 50);
+    expect(p.age).toBe(1);
+    expect(g.cmdTrain(0, tc.id, 'warlord')).toBe(true);
+    expect(g.cmdTrain(0, tc.id, 'warlord')).toBe(false); // hero limit
+  });
+
+  it('spearmen beat riders, and units kill each other', () => {
+    const g = new Game(7, setups);
+    const spears: Unit[] = [], riders: Unit[] = [];
+    for (let i = 0; i < 4; i++) {
+      spears.push(g.spawnUnit('spearman', 0, 46 + i, 48));
+      riders.push(g.spawnUnit('rider', 1, 46 + i, 51));
+    }
+    run(g, 60);
+    expect(riders.every((r) => r.dead)).toBe(true);
+    expect(spears.some((s) => !s.dead)).toBe(true);
+  });
+
+  it('destroying every enemy building wins the game', () => {
+    const g = new Game(7, setups);
+    g.cmdDelete(1, g.buildings.filter((b) => b.owner === 1).map((b) => b.id));
+    run(g, 2);
+    expect(g.winner).toBe(0);
+  });
+});
+
+describe('ai', () => {
+  it('two AIs develop, advance ages and fight without errors', () => {
+    const g = new Game(11, [{ ...setups[0], isAI: true }, setups[1]]);
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    const log: string[] = [];
+    let minute = 0;
+    run(g, 60 * 25, () => {
+      if (g.winner < 0) ais.forEach((a) => a.update());
+      if (g.time / 60 >= minute) {
+        log.push(`${minute}m ` + g.players.map((p) =>
+          `[age ${p.age} pop ${p.pop}/${p.popCap} v${villagers(g, p.id).length} f${p.res.food | 0} w${p.res.wood | 0} g${p.res.gold | 0} s${p.res.stone | 0} b${g.buildings.filter((b) => b.owner === p.id).length} idle${villagers(g, p.id).filter((v) => !v.order).length} couples${g.buildings.filter((b) => b.owner === p.id && b.residents.m && b.residents.f).length} army${g.units.filter((u) => u.owner === p.id && u.type !== 'villager').length}]`).join(' '));
+        minute++;
+      }
+    });
+    console.log(log.join('\n') + `\nwinner ${g.winner} at ${(g.time / 60).toFixed(1)}m`);
+    const best = Math.max(...g.players.map((p) => p.age));
+    expect(best).toBeGreaterThanOrEqual(2);
+  }, 120000);
+});
