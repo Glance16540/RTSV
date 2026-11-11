@@ -24,7 +24,8 @@ Add `?seed=123` to the URL to replay a specific map.
 **Families.** Villagers are men and women. Train them at the Town Center, or build a House and
 move one man and one woman in (right-click the house, or press *Find a couple*). A housed couple
 raises new villagers on their own for half the usual food. Each child takes a little longer than
-the last, children take up a parent's trade, and you can pause a family when the village is big enough.
+the last, and you can pause a family when the village is big enough. Newborns are children: small,
+fragile and unable to work until they grow up, when they take up a parent's trade.
 
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
@@ -35,11 +36,15 @@ technologies, and changes how your settlement looks.
 - *Counters:* spearmen beat cavalry and beasts, cavalry runs down archers and siege, archers wear
   down infantry, siege flattens buildings.
 
-**Unique units.** War Mammoth (tramples everything around its target), Shaman (heals), Warlord
-(hero aura), Catapult (splash damage, helpless up close).
+- *Prophets and calamities:* from the Iron Age, Prophets spend faith on Plague (sickens enemy
+  troops and spreads between them) and Earthquake (shatters buildings).
+
+**Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
+plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
 
 **Also:** fog of war, minimap, four resources, farms, storehouses, towers, blacksmith and temple
-research, control groups, rally points, and an AI opponent that plays by the same rules.
+research, control groups, rally points, synthesised sound, and an AI opponent with three
+difficulty levels that plays by the same rules.
 
 ## Controls
 
@@ -53,7 +58,7 @@ research, control groups, rally points, and an AI opponent that plays by the sam
 | `H` `.` `Space` | Town Center, next idle villager, centre on selection |
 | `Ctrl+1-9` / `1-9` | Set / recall control group |
 | `Shift`-click while placing | Place several buildings |
-| `Del` `Esc` `P` | Destroy selected, cancel, pause |
+| `Del` `Esc` `P` `M` | Destroy selected, cancel, pause, mute |
 
 ## Generated art
 

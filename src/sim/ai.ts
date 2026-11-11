@@ -1,6 +1,6 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
-import { AGES, BUILDINGS, ResType, TECHS, UNITS } from './data';
+import { ABILITIES, AGES, BUILDINGS, ResType, TECHS, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
 
 const VILLAGER_TARGET = [16, 26, 34, 40];
@@ -9,8 +9,8 @@ const ARMY_TARGET = [4, 10, 18, 26];
 const ARMY_MIX: string[][] = [
   ['clubman', 'clubman', 'slinger'],
   ['spearman', 'bowman', 'rider', 'bowman', 'spearman', 'mammoth', 'shaman'],
-  ['swordsman', 'bowman', 'rider', 'swordsman', 'catapult', 'mammoth', 'shaman'],
-  ['swordsman', 'crossbowman', 'knight', 'crossbowman', 'catapult', 'knight', 'shaman'],
+  ['swordsman', 'bowman', 'rider', 'prophet', 'swordsman', 'catapult', 'mammoth', 'shaman'],
+  ['swordsman', 'crossbowman', 'knight', 'prophet', 'crossbowman', 'catapult', 'knight', 'shaman'],
 ];
 const BUILD_ORDER: { type: string; age: number; villagers: number; count: number }[] = [
   { type: 'barracks', age: 0, villagers: 8, count: 1 },
@@ -31,8 +31,17 @@ export class AIController {
   private rebalanceT = 0;
   /** Seconds before the first attack may launch. */
   firstAttack = 420;
+  /** Multiplier on how large an army the AI wants. */
+  armyScale = 1;
 
   constructor(private game: Game, private pid: number) {}
+
+  /** 0 easy, 1 normal, 2 hard. */
+  setLevel(level: number): void {
+    this.firstAttack = [660, 420, 270][level];
+    this.armyScale = [0.65, 1, 1.3][level];
+    this.game.players[this.pid].mods.gather += [-0.2, 0, 0.2][level];
+  }
 
   /** Called once per simulated second. */
   update(): void {
@@ -43,7 +52,7 @@ export class AIController {
     const villagers: Unit[] = [], army: Unit[] = [];
     for (const u of g.units) {
       if (u.owner !== pid) continue;
-      if (u.type === 'villager') villagers.push(u);
+      if (u.type === 'villager') { if (u.growT <= 0) villagers.push(u); }
       else army.push(u);
     }
     const mine = g.buildings.filter((b) => b.owner === pid);
@@ -111,7 +120,9 @@ export class AIController {
 
     // ---- Military ----
     const fighters = army.filter((u) => u.def.atk > 0);
-    if ((!saving || underAttack) && army.length < ARMY_TARGET[p.age] + (underAttack ? 6 : 0)) {
+    const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale);
+    this.castCalamities(army);
+    if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0)) {
       const mix = ARMY_MIX[p.age];
       for (let k = 0; k < mix.length; k++) {
         const type = mix[(this.mixI + k) % mix.length];
@@ -119,6 +130,7 @@ export class AIController {
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
         if (type === 'shaman' && g.countUnits(pid, 'shaman') >= 2) continue;
+        if (type === 'prophet' && g.countUnits(pid, 'prophet') >= 1) continue;
         if (g.cmdTrain(pid, src.id, type)) { this.mixI = (this.mixI + k + 1) % mix.length; break; }
       }
       if (p.age >= 1 && tc && tc.complete && !saving && g.countUnits(pid, 'warlord') === 0 && g.canAfford(p, UNITS.warlord.cost)) {
@@ -131,7 +143,7 @@ export class AIController {
       if (idle.length) g.cmdMove(pid, idle.map((u) => u.id), p.lastAttacked!.x, p.lastAttacked!.y, true);
     }
 
-    const attackSize = Math.max(5, Math.floor(ARMY_TARGET[p.age] * 0.8));
+    const attackSize = Math.max(4, Math.floor(armyTarget * 0.8));
     if (this.state === 'build') {
       if (fighters.length >= attackSize && g.time > this.firstAttack && !underAttack) {
         this.state = 'attack';
@@ -153,6 +165,22 @@ export class AIController {
           const idle = army.filter((u) => !u.order);
           if (idle.length) g.cmdMove(pid, idle.map((u) => u.id), target.x, target.y, true);
         }
+      }
+    }
+  }
+
+  /** Prophets strike clumps of enemy troops with plague and enemy buildings with earthquakes. */
+  private castCalamities(army: Unit[]): void {
+    const g = this.game;
+    for (const u of army) {
+      if (!u.def.mana || u.order?.t === 'cast') continue;
+      if (u.mana >= ABILITIES.plague.cost) {
+        const near = g.units.filter((v) => v.owner !== this.pid && v.plagueT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
+        if (near.length >= 3) { g.cmdCast(this.pid, [u.id], 'plague', near[0].x, near[0].y); continue; }
+      }
+      if (u.mana >= ABILITIES.quake.cost) {
+        const b = g.buildings.find((v) => v.owner !== this.pid && Math.hypot(v.x - u.x, v.y - u.y) < 11);
+        if (b) g.cmdCast(this.pid, [u.id], 'quake', b.x, b.y);
       }
     }
   }
@@ -248,9 +276,9 @@ export class AIController {
     for (const v of idle) {
       const sorted = order.slice().sort((a, b) => deficit(b) - deficit(a));
       for (const res of sorted) {
-        let t = g.findResourceNear(home.x, home.y, res, pid, res === 'food' ? 18 : 34);
+        let t = g.findResourceNear(home.x, home.y, res, pid, res === 'food' ? 18 : res === 'wood' ? 40 : 64);
         if (!t && res === 'food') {
-          if (farmCount < 14 && farms.filter((f) => !f.complete).length < 2 && p.res.wood >= BUILDINGS.farm.cost.wood!) {
+          if (farmCount < want.food * total + 3 && farms.filter((f) => !f.complete).length < 3 && p.res.wood >= BUILDINGS.farm.cost.wood!) {
             const spot = this.findSpot('farm', home.x, home.y, 5, 14);
             if (spot && g.cmdPlace(pid, 'farm', spot.cx, spot.cy, [v.id])) { have.food++; farmCount++; break; }
           }
@@ -259,7 +287,7 @@ export class AIController {
         if (!t) continue;
         // Prefer the node closest to this villager among those near home.
         const near = g.findResourceNear(v.x, v.y, res, pid, 10);
-        if (near && Math.hypot(near.x - home.x, near.y - home.y) < 30) t = near;
+        if (near && Math.hypot(near.x - home.x, near.y - home.y) < 34) t = near;
         g.cmdTarget(pid, [v.id], t.id);
         have[res]++;
         // Long walks waste time: put a storehouse next to distant resources.

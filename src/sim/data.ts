@@ -81,6 +81,8 @@ export interface UnitDef {
   /** Max simultaneously alive per player. */
   limit?: number;
   projectile?: 'arrow' | 'stone' | 'boulder';
+  /** Maximum faith, spent on calamities (prophets). */
+  mana?: number;
 }
 
 const U = (d: UnitDef) => d;
@@ -155,9 +157,15 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   shaman: U({
     id: 'shaman', name: 'Shaman', icon: '🪄',
-    desc: 'Unique support unit. Heals wounded allies nearby. Cannot attack.',
+    desc: 'Unique support unit. Heals wounded allies nearby and cures plague. Cannot attack.',
     cost: { food: 40, gold: 60 }, time: 22, age: 1, hp: 40, atk: 0, armor: 0, range: 5, speed: 2.0,
     cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 5,
+  }),
+  prophet: U({
+    id: 'prophet', name: 'Prophet', icon: '🔮',
+    desc: 'Unique. Spends faith to call down calamities: Plague sickens enemy troops and spreads between them, Earthquake shatters buildings. Cannot attack.',
+    cost: { food: 100, gold: 150 }, time: 35, age: 2, hp: 50, atk: 0, armor: 0, range: 9, speed: 1.9,
+    cooldown: 1, sight: 10, pop: 2, cls: 'support', radius: 0.3, limit: 2, mana: 100,
   }),
   warlord: U({
     id: 'warlord', name: 'Warlord', icon: '👑',
@@ -243,9 +251,9 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   temple: B({
     id: 'temple', name: 'Temple', icon: '⛩️',
-    desc: 'Trains shamans and researches blessings for your families.',
+    desc: 'Trains shamans and prophets, and researches blessings for your families.',
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
-    trains: ['shaman'], techs: ['fertility', 'extendedfamily', 'herbalism'],
+    trains: ['shaman', 'prophet'], techs: ['fertility', 'extendedfamily', 'herbalism'],
   }),
   blacksmith: B({
     id: 'blacksmith', name: 'Blacksmith', icon: '⚒️',
@@ -343,9 +351,22 @@ export const TECHS: Record<string, TechDef> = {
   }),
 };
 
+export interface AbilityDef { id: string; name: string; icon: string; desc: string; cost: number; radius: number }
+export const ABILITIES: Record<string, AbilityDef> = {
+  plague: {
+    id: 'plague', name: 'Plague', icon: '☠️', cost: 60, radius: 3,
+    desc: 'Enemy units in the area sicken, lose health for 20 seconds and infect others standing close. Shamans cure it.',
+  },
+  quake: {
+    id: 'quake', name: 'Earthquake', icon: '🌋', cost: 100, radius: 4,
+    desc: 'The ground shakes for 5 seconds, heavily damaging enemy buildings in the area.',
+  },
+};
+
 // ---- Tunable constants ----
 export const POP_LIMIT = 150;
-export const BIRTH_TIME = 42; // seconds per child for a housed couple
+export const BIRTH_TIME = 32; // seconds until a housed couple has a child
+export const GROW_TIME = 25; // seconds before a child is old enough to work
 export const BIRTH_COST = 25; // food
 export const MORALE_RADIUS = 12; // tiles around a town center
 export const MORALE_PER_HOUSE = 0.05; // damage reduction per nearby house

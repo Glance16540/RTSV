@@ -1,13 +1,14 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import {
-  AGES, BIRTH_COST, BUILD_MENU, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType,
+  ABILITIES, AGES, BIRTH_COST, BUILD_MENU, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType,
   TECHS, UNITS, costText,
 } from '../sim/data';
 import { Building, Entity, GameEvent, Unit } from '../sim/game';
 import { T_DIRT, T_WATER } from '../sim/map';
 import { ico } from './assets';
 import type { App } from './main';
+import { sfx } from './sfx';
 
 export const SLOT_KEYS = 'QWERTASDFGZXCVB';
 
@@ -76,6 +77,7 @@ export class Hud {
     $('pause').addEventListener('pointerdown', () => this.app.togglePause());
     $('speed').addEventListener('pointerdown', () => this.app.cycleSpeed());
     $('help').addEventListener('pointerdown', () => $('start').classList.toggle('hidden'));
+    $('mute').addEventListener('pointerdown', () => this.toggleMute());
 
     const mm = (e: PointerEvent) => {
       const w = this.mini.clientWidth;
@@ -95,6 +97,11 @@ export class Hud {
     });
     this.mini.addEventListener('pointerup', () => { dragging = false; });
     this.mini.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  toggleMute(): void {
+    sfx.muted = !sfx.muted;
+    $('mute').textContent = sfx.muted ? '🔇' : '🔊';
   }
 
   toast(text: string, cls = ''): void {
@@ -117,7 +124,7 @@ export class Hud {
     } else if (ev.t === 'alert' && ev.player === pid) {
       this.toast('⚠️ You are under attack!', 'warn');
       this.alerts.push({ x: ev.x, y: ev.y, t: 0 });
-    } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child has grown up and joined your village.');
+    } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
     else if (ev.t === 'gameover') {
       const win = ev.winner === pid;
       $('end-title').textContent = win ? 'Victory' : 'Defeat';
@@ -154,14 +161,25 @@ export class Hud {
             id: 'b:' + type, icon: ico(type, d.icon), name: 'Build ' + d.name, desc: d.desc, cost: d.cost,
             locked: d.age > p.age ? `Requires the ${AGES[d.age].name}.` : undefined,
             active: this.app.placing === type,
-            act: () => { this.app.placing = type; this.app.attackMode = false; },
+            act: () => { this.app.select(this.app.sel); this.app.placing = type; },
           });
         }
       } else {
         out.push({
           id: 'atk', icon: ico('attackmove', '⚔️'), name: 'Attack-move', desc: 'Click a location: units march there and fight anything they meet on the way.',
-          active: this.app.attackMode, act: () => { this.app.attackMode = true; this.app.placing = null; },
+          active: this.app.attackMode, act: () => { this.app.select(this.app.sel); this.app.attackMode = true; },
         });
+        const prophets = units.filter((u) => u.def.mana);
+        if (prophets.length) {
+          const faith = Math.max(...prophets.map((u) => u.mana));
+          for (const a of Object.values(ABILITIES)) {
+            out.push({
+              id: 'c:' + a.id, icon: ico(a.id, a.icon), name: a.name, desc: `${a.desc}<br><span class="stat">Costs ${a.cost} faith.</span>`,
+              locked: faith < a.cost ? `Not enough faith (${Math.floor(faith)}/${a.cost}).` : undefined,
+              active: this.app.casting === a.id, act: () => { this.app.select(this.app.sel); this.app.casting = a.id; },
+            });
+          }
+        }
       }
       while (out.length < 14) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
       out.push({ id: 'stop', icon: ico('stop', '✋'), name: 'Stop', desc: 'Halt and forget current orders.', act: () => game.cmdStop(pid, ids) });
@@ -281,14 +299,17 @@ export class Hud {
       const mods = owner.mods;
       const mil = game.isMilitary(e);
       let extra = '';
-      if (e.type === 'villager' && mine) {
+      if (e.growT > 0) extra += `<div class="good">👶 Child — grows up in ${Math.ceil(e.growT)}s</div>`;
+      else if (e.type === 'villager' && mine) {
         extra += `<div>${e.homeId ? '🏠 Lives in a house' : '⛺ Homeless — right-click a house to move in'}</div>`;
         if (e.carryAmt > 0) extra += `<div>Carrying ${RI(e.carryType)} ${e.carryAmt}</div>`;
       }
+      if (d.mana) extra += `<div>Faith ${Math.floor(e.mana)} / ${d.mana}</div>${this.bar(e.mana / d.mana, 'faith')}`;
+      if (e.plagueT > 0) extra += '<div class="warn">☠️ Plagued — a Shaman can cure it</div>';
       const morale = game.moraleAt(e.owner, e.x, e.y);
       if (morale > 0) extra += `<div class="good">🏠 Home morale: takes ${Math.round(morale * 100)}% less damage</div>`;
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
-      const name = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
+      const name = (e.growT > 0 ? 'Child' : d.name) + (e.gender ? ` ${GENDER[e.gender]}` : '');
       return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>
         <div class="stat">⚔ ${d.atk + (mil ? mods.atk : 0)} · 🛡 ${d.armor + (mil ? mods.armor : 0)}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
@@ -378,7 +399,7 @@ export class Hud {
     const { game, pid } = this.app;
     const p = game.players[pid];
     let idle = 0;
-    for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order) idle++;
+    for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && u.growT <= 0) idle++;
     const tc = game.buildings.find((b) => b.owner === pid && b.queue[0]?.kind === 'age');
     const aging = tc ? ` → ${AGES[p.age + 1].name} ${Math.floor((tc.queue[0].t / tc.queue[0].time) * 100)}%` : '';
     const mins = Math.floor(game.time / 60), secs = Math.floor(game.time % 60);

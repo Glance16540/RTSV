@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AIController } from '../src/sim/ai';
-import { BIRTH_COST, BUILDINGS } from '../src/sim/data';
+import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
 
@@ -95,9 +95,23 @@ describe('families', () => {
     expect(man.homeId).toBe(house.id);
     const before = villagers(g, 0).length;
     const food = g.players[0].res.food;
-    run(g, 45);
+    // Put the mother to work so the child has a trade to learn.
+    const tree = g.resources.filter((r) => r.type === 'tree').sort((a, b) => g.dist(woman, a) - g.dist(woman, b))[0];
+    g.cmdTarget(0, [woman.id], tree.id);
+    g.cmdTarget(0, [man.id], tree.id);
+    run(g, BIRTH_TIME + 2);
     expect(villagers(g, 0).length).toBe(before + 1);
     expect(g.players[0].res.food).toBe(food - BIRTH_COST);
+    // The newborn is a child: weaker, and it cannot work until it grows up.
+    const child = villagers(g, 0).find((v) => v.growT > 0)!;
+    expect(child.maxHp).toBeLessThan(child.def.hp);
+    g.cmdTarget(0, [child.id], tree.id);
+    expect(child.order?.t).toBe('move');
+    g.cmdStop(0, [child.id]);
+    run(g, GROW_TIME);
+    expect(child.growT).toBe(0);
+    expect(child.maxHp).toBe(child.def.hp);
+    expect(child.order?.t).toBe('gather');
   });
 
   it('a house needs both a man and a woman', () => {
@@ -149,6 +163,37 @@ describe('ages and combat', () => {
     run(g, 60);
     expect(riders.every((r) => r.dead)).toBe(true);
     expect(spears.some((s) => !s.dead)).toBe(true);
+  });
+
+  it('plague spreads through enemy troops and shamans cure it', () => {
+    const g = new Game(7, setups);
+    const prophet = g.spawnUnit('prophet', 0, 40, 48);
+    prophet.mana = 100;
+    const victims = [0, 1, 2, 3].map((i) => g.spawnUnit('clubman', 1, 47 + i * 0.5, 48));
+    const far = g.spawnUnit('clubman', 1, 60, 60);
+    expect(g.cmdCast(0, [prophet.id], 'plague', 48, 48)).toBe(true);
+    run(g, 4);
+    expect(prophet.mana).toBeLessThan(50);
+    expect(victims.every((v) => v.plagueT > 0 && v.hp < v.maxHp)).toBe(true);
+    expect(far.plagueT).toBe(0);
+    expect(g.cmdCast(0, [prophet.id], 'plague', 48, 48)).toBe(false); // out of faith
+    const shaman = g.spawnUnit('shaman', 1, 48, 49);
+    g.cmdStop(1, victims.map((v) => v.id));
+    run(g, 12);
+    expect(victims.some((v) => !v.dead && v.plagueT === 0)).toBe(true);
+    expect(shaman.dead).toBe(false);
+  });
+
+  it('earthquakes damage enemy buildings only', () => {
+    const g = new Game(7, setups);
+    const enemyTc = g.buildings.find((b) => b.owner === 1)!;
+    const prophet = g.spawnUnit('prophet', 0, enemyTc.x - 8, enemyTc.y);
+    prophet.mana = 100;
+    const mine = g.spawnBuilding('house', 0, enemyTc.cx - 3, enemyTc.cy, true);
+    g.cmdCast(0, [prophet.id], 'quake', enemyTc.x, enemyTc.y);
+    run(g, 8);
+    expect(enemyTc.hp).toBeLessThan(enemyTc.maxHp - 250);
+    expect(mine.hp).toBe(mine.maxHp);
   });
 
   it('destroying every enemy building wins the game', () => {

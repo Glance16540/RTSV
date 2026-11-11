@@ -3,7 +3,9 @@
 import { BUILDINGS } from '../sim/data';
 import { Entity, Unit } from '../sim/game';
 import { SLOT_KEYS } from './hud';
+import { ABILITIES } from '../sim/data';
 import type { App } from './main';
+import { sfx } from './sfx';
 
 export class Input {
   private keys = new Set<string>();
@@ -101,7 +103,7 @@ export class Input {
     const app = this.app;
     if (e.button === 1) { this.pan = { x: e.clientX, y: e.clientY }; e.preventDefault(); return; }
     if (e.button === 2) {
-      if (app.placing || app.attackMode) { app.placing = null; app.attackMode = false; return; }
+      if (app.placing || app.attackMode || app.casting) { app.select(app.sel); return; }
       const p = app.r.groundAt(e.clientX, e.clientY);
       if (p) this.commandAt(p.x, p.y, this.pick(e.clientX, e.clientY), e.shiftKey);
       return;
@@ -111,13 +113,24 @@ export class Input {
       const c = this.placeCell(app.placing);
       if (c) {
         const built = app.game.cmdPlace(app.pid, app.placing, c.cx, c.cy, app.sel);
+        if (built) sfx.play('place');
         if (built && !e.shiftKey) app.placing = null;
       }
+      return;
+    }
+    if (app.casting) {
+      const p = app.r.groundAt(e.clientX, e.clientY);
+      if (p && app.game.cmdCast(app.pid, app.sel, app.casting, p.x, p.y)) {
+        app.r.ping(p.x, p.y, 0xb48cff);
+        sfx.play('order');
+      }
+      app.casting = null;
       return;
     }
     if (app.attackMode) {
       const p = app.r.groundAt(e.clientX, e.clientY);
       if (p) {
+        sfx.play('order');
         app.game.cmdMove(app.pid, app.sel, p.x, p.y, true);
         app.r.ping(p.x, p.y, 0xff5a4a);
       }
@@ -144,7 +157,7 @@ export class Input {
       // Prefer soldiers when a box holds both soldiers and villagers.
       const army = inBox.filter((u) => u.type !== 'villager');
       const pickd = army.length ? army : inBox;
-      if (pickd.length) app.select([...new Set([...add, ...pickd.map((u) => u.id)])]);
+      if (pickd.length) { app.select([...new Set([...add, ...pickd.map((u) => u.id)])]); sfx.play('select'); }
       return;
     }
     const hit = this.pick(e.clientX, e.clientY);
@@ -162,6 +175,7 @@ export class Input {
     } else if (e.shiftKey && hit.owner === app.pid) {
       app.select(add.includes(hit.id) ? add.filter((id) => id !== hit.id) : [...add, hit.id]);
     } else app.select([hit.id]);
+    if (hit.owner === app.pid) sfx.play('select');
     this.lastClick = { t: now, id: hit.id };
   }
 
@@ -171,6 +185,7 @@ export class Input {
     const ents = sel.map((id) => game.entities.get(id)).filter((e): e is Entity => !!e && e.owner === pid);
     if (!ents.length) return;
     const units = ents.filter((e): e is Unit => e.kind === 'unit').map((u) => u.id);
+    sfx.play('order');
     if (units.length) {
       if (target && !units.includes(target.id)) {
         game.cmdTarget(pid, units, target.id);
@@ -209,7 +224,7 @@ export class Input {
     if (slot >= 0 && !e.repeat) { app.hud.press(slot); return; }
     switch (k) {
       case 'Escape':
-        if (app.placing || app.attackMode) { app.placing = null; app.attackMode = false; }
+        if (app.placing || app.attackMode || app.casting) app.select(app.sel);
         else app.select([]);
         break;
       case 'Delete':
@@ -231,6 +246,9 @@ export class Input {
         break;
       case 'P':
         app.togglePause();
+        break;
+      case 'M':
+        app.hud.toggleMute();
         break;
     }
   }
@@ -257,7 +275,9 @@ export class Input {
       const c = this.placeCell(app.placing);
       if (c) r.setGhost(app.placing, c.cx, c.cy, app.game.canPlace(app.placing, c.cx, c.cy, true));
     } else r.setGhost(null);
-    r.canvas.style.cursor = app.placing ? 'copy' : app.attackMode ? 'crosshair' : 'default';
+    r.canvas.style.cursor = app.placing ? 'copy' : app.attackMode || app.casting ? 'crosshair' : 'default';
+    const cast = app.casting ? r.groundAt(this.mx, this.my) : null;
+    r.setAreaMarker(cast ? { x: cast.x, y: cast.y, r: ABILITIES[app.casting!].radius } : null);
   }
 
   /** 2D overlay: health bars, drag rectangle and floating icons. Call after the 3D frame. */
@@ -290,6 +310,12 @@ export class Input {
       const s = r.project(b.x, b.y, 1.9);
       ctx.globalAlpha = 0.55 + 0.45 * b.birthProgress;
       ctx.fillText(b.birthBlocked ? '💤' : '💗', s.x, s.y);
+    }
+    for (const u of game.units) {
+      if (u.plagueT <= 0 || !r.isVisible(u)) continue;
+      const s = r.project(u.x, u.y, 1.5);
+      ctx.globalAlpha = 0.9;
+      ctx.fillText('☠️', s.x, s.y);
     }
     ctx.font = '22px sans-serif';
     for (const f of r.floaters) {

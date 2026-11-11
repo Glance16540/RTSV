@@ -16,6 +16,7 @@
         <div id="top-right">
           <button id="idle" title="Select next idle villager (. or Tab)"></button>
           <span id="clock"></span>
+          <button id="mute" title="Sound on/off (M)">🔊</button>
           <button id="speed" title="Game speed"></button>
           <button id="pause" title="Pause (P)"></button>
           <button id="help" title="Controls">?</button>
@@ -41,6 +42,9 @@
               (right-click the house, or use <i>Find a couple</i>). Housed couples raise new villagers on their own, for half the food.</p>
             <h3>Morale &amp; heroes</h3>
             <p>Houses near your Town Center harden its defenders. From the Bronze Age a <b>Warlord</b> inspires nearby troops.</p>
+            <h3>Children &amp; calamities</h3>
+            <p>Newborns are children: they must grow up before they can work. In the Iron Age, <b>Prophets</b> spend faith to
+              unleash Plague and Earthquake.</p>
             <h3>Goal</h3>
             <p>Advance through four ages and destroy every building of the Red Tribe.</p>
           </div>
@@ -55,11 +59,16 @@
               <tr><td>H · . · Space</td><td>Town Center · idle villager · centre view</td></tr>
               <tr><td>Ctrl+1–9 / 1–9</td><td>Set / recall control group</td></tr>
               <tr><td>Shift-click when building</td><td>Place several</td></tr>
-              <tr><td>Del · Esc · P</td><td>Destroy · cancel · pause</td></tr>
+              <tr><td>Del · Esc · P · M</td><td>Destroy · cancel · pause · mute</td></tr>
             </table>
           </div>
         </div>
-        <button id="start-btn">Start</button>
+        <div class="levels">
+          <button data-level="0" class="new">Easy</button>
+          <button data-level="1" class="new" id="start-btn">Normal</button>
+          <button data-level="2" class="new">Hard</button>
+          <button data-level="1" class="resume">Resume</button>
+        </div>
       </div>
     </div>
 

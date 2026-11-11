@@ -43,6 +43,8 @@ export class Renderer {
   private ray = new THREE.Raycaster();
   private v3 = new THREE.Vector3();
   private clock = 0;
+  private shake = 0;
+  private area: THREE.Mesh;
 
   constructor(public canvas: HTMLCanvasElement, private game: Game) {
     this.gl = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -67,6 +69,12 @@ export class Renderer {
     this.buildTerrain();
     this.buildTrees();
     this.buildFog();
+
+    this.area = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 48), new THREE.MeshBasicMaterial({ color: 0xb48cff, transparent: true, opacity: 0.9, depthTest: false }));
+    this.area.rotation.x = -Math.PI / 2;
+    this.area.renderOrder = 60;
+    this.area.visible = false;
+    this.scene.add(this.area);
 
     this.rally = new THREE.Group();
     const pole = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 0.06), mat(0xf0f0f0));
@@ -207,6 +215,9 @@ export class Renderer {
   private placeCamera(): void {
     const h = Math.cos(PITCH) * this.dist;
     this.camera.position.set(this.cx + h * Math.sin(YAW), Math.sin(PITCH) * this.dist, this.cy + h * Math.cos(YAW));
+    const sh = this.shake > 0 ? Math.min(1, this.shake) * 0.12 : 0;
+    this.camera.position.x += Math.sin(this.clock * 61) * sh;
+    this.camera.position.y += Math.sin(this.clock * 47) * sh;
     this.camera.lookAt(this.cx, 0, this.cy);
     this.camera.updateMatrixWorld();
     const r = this.dist * 0.75;
@@ -271,6 +282,13 @@ export class Renderer {
       }
     } else if (ev.t === 'birth' && ev.player === this.game.humanId) {
       this.floaters.push({ x: ev.x, y: ev.y, text: '👶', t: 0 });
+    } else if (ev.t === 'grown' && ev.player === this.game.humanId) {
+      this.floaters.push({ x: ev.x, y: ev.y, text: '✨', t: 0 });
+    } else if (ev.t === 'quake') {
+      if (Math.hypot(ev.x - this.cx, ev.y - this.cy) < this.dist) this.shake = 5;
+      for (let i = 0; i < 5; i++) this.ping(ev.x + (Math.random() - 0.5) * 6, ev.y + (Math.random() - 0.5) * 6, 0xc8a070);
+    } else if (ev.t === 'plague') {
+      for (let i = 0; i < 4; i++) this.ping(ev.x + (Math.random() - 0.5) * 4, ev.y + (Math.random() - 0.5) * 4, 0x9ad04a);
     }
   }
 
@@ -281,6 +299,12 @@ export class Renderer {
     m.renderOrder = 50;
     this.scene.add(m);
     this.pings.push({ mesh: m, t: 0 });
+  }
+
+  /** Circle showing where a calamity will land. */
+  setAreaMarker(a: { x: number; y: number; r: number } | null): void {
+    this.area.visible = !!a;
+    if (a) { this.area.position.set(a.x, 0.06, a.y); this.area.scale.setScalar(a.r); }
   }
 
   setGhost(type: string | null, cx = 0, cy = 0, ok = true): void {
@@ -321,6 +345,7 @@ export class Renderer {
     let bob = 0;
     if (u.moving) { v.phase += dt * u.def.speed * 5; bob = Math.abs(Math.sin(v.phase)) * 0.06; }
     g.position.set(x, bob, y);
+    g.scale.setScalar(u.growT > 0 ? 0.62 : 1);
     let d = u.facing - g.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
@@ -375,6 +400,7 @@ export class Renderer {
   frame(alpha: number, dt: number, selection: number[]): void {
     const game = this.game;
     this.clock += dt;
+    if (this.shake > 0) this.shake -= dt;
     this.placeCamera();
     for (const u of game.units) this.syncUnit(u, alpha, dt);
     for (const b of game.buildings) this.syncBuilding(b);

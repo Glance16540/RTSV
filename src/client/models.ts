@@ -224,6 +224,17 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       g.userData.glow = ball(a, 0.07, 0x7dffb0, 0, 0.52, 0.12, 0x2faa66);
       break;
     }
+    case 'prophet': {
+      cyl(g, 0.1, 0.26, 0.64, 0x3c2a5a, 0, 0.32, 0, 10);
+      cyl(g, 0.21, 0.27, 0.14, color, 0, 0.08, 0, 10);
+      ball(g, 0.12, SKIN, 0, 0.76, 0);
+      cyl(g, 0.16, 0.14, 0.12, 0x3c2a5a, 0, 0.84, -0.02, 8);
+      box(g, 0.12, 0.2, 0.06, 0xe8e2d0, 0, 0.62, 0.11);
+      const a = arm(g);
+      cyl(a, 0.02, 0.02, 1.1, DARKWOOD, 0, 0.06, 0.12, 5);
+      ball(a, 0.09, 0xc9a4ff, 0, 0.66, 0.12, 0x6a3ad0);
+      break;
+    }
     case 'warlord': {
       const body = new THREE.Group();
       body.scale.setScalar(1.25);

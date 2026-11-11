@@ -1,7 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import {
-  AGES, BIRTH_COST, BIRTH_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
+  ABILITIES, AGES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
@@ -31,7 +31,8 @@ export type Order =
   | { t: 'attack'; id: number; then?: Order | null; auto?: boolean; ox?: number; oy?: number }
   | { t: 'gather'; id: number; res: ResType; phase: 'go' | 'return'; nx: number; ny: number; dropId: number; fails: number }
   | { t: 'build'; id: number; then?: Order | null }
-  | { t: 'movein'; id: number; then?: Order | null };
+  | { t: 'movein'; id: number; then?: Order | null }
+  | { t: 'cast'; ability: string; x: number; y: number; started?: boolean; tries?: number };
 
 export interface Unit extends Base {
   kind: 'unit';
@@ -58,6 +59,10 @@ export interface Unit extends Base {
   anchored: boolean; // working in place: not pushed by other units
   attackAnim: number; // counts down after each swing, for rendering
   healTarget: number;
+  growT: number; // seconds until a child becomes a working adult (0 for adults)
+  bornAt: number; // house a child was born in
+  plagueT: number; // seconds of plague remaining
+  mana: number;
 }
 
 export interface QueueItem {
@@ -143,7 +148,10 @@ export interface Player {
 
 export type GameEvent =
   | { t: 'msg'; player: number; text: string }
-  | { t: 'remove'; id: number }
+  | { t: 'remove'; id: number; unit: boolean; x: number; y: number }
+  | { t: 'grown'; player: number; x: number; y: number }
+  | { t: 'quake'; x: number; y: number }
+  | { t: 'plague'; x: number; y: number }
   | { t: 'birth'; player: number; x: number; y: number }
   | { t: 'age'; player: number }
   | { t: 'alert'; player: number; x: number; y: number }
@@ -164,6 +172,7 @@ export class Game {
   buildings: Building[] = [];
   resources: ResourceNode[] = [];
   projectiles: Projectile[] = [];
+  quakes: { x: number; y: number; r: number; t: number; owner: number }[] = [];
   events: GameEvent[] = [];
   time = 0;
   tick = 0;
@@ -237,7 +246,8 @@ export class Game {
       facing: 0, gender: type === 'villager' ? gender ?? (this.rng() < 0.5 ? 'm' : 'f') : null,
       order: null, path: null, pathI: 0, pathFor: 0, pathPartial: false, goalX: 0, goalY: 0, repathT: 0,
       cooldown: 0, scanT: this.rng() * 0.4, carryType: 'food', carryAmt: 0, gatherT: 0, homeId: 0,
-      moving: false, anchored: false, attackAnim: 0, healTarget: 0,
+      moving: false, anchored: false, attackAnim: 0, healTarget: 0, growT: 0, bornAt: 0, plagueT: 0,
+      mana: (def.mana ?? 0) / 2,
     };
     this.entities.set(u.id, u);
     this.units.push(u);
@@ -272,7 +282,7 @@ export class Game {
     if (e.dead) return;
     e.dead = true;
     this.entities.delete(e.id);
-    this.events.push({ t: 'remove', id: e.id });
+    this.events.push({ t: 'remove', id: e.id, unit: e.kind === 'unit', x: e.x, y: e.y });
     if (e.kind === 'unit') {
       this.units.splice(this.units.indexOf(e), 1);
       this.players[e.owner].pop -= e.def.pop;
@@ -484,7 +494,7 @@ export class Game {
     // A house only takes one man and one woman; do not march the whole selection inside.
     const slots = { m: false, f: false };
     for (const u of us) {
-      const villager = u.type === 'villager';
+      const villager = u.type === 'villager' && u.growT <= 0;
       if (t.kind === 'resource') {
         if (villager) this.orderGather(u, t);
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
@@ -534,7 +544,7 @@ export class Game {
     if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return null; }
     this.pay(p, def.cost);
     const b = this.spawnBuilding(type, owner, cx, cy, false);
-    for (const u of this.ownUnits(builderIds, owner)) if (u.type === 'villager') this.setOrder(u, { t: 'build', id: b.id, then: this.job(u) });
+    for (const u of this.ownUnits(builderIds, owner)) if (u.type === 'villager' && u.growT <= 0) this.setOrder(u, { t: 'build', id: b.id, then: this.job(u) });
     return b;
   }
 
@@ -629,7 +639,7 @@ export class Game {
       let best: Unit | null = null;
       let bestD = Infinity;
       for (const u of this.units) {
-        if (u.owner !== owner || u.type !== 'villager' || u.gender !== g) continue;
+        if (u.owner !== owner || u.type !== 'villager' || u.gender !== g || u.growT > 0) continue;
         if (u.order && u.order.t === 'movein') { if (u.order.id === h.id) coming = true; continue; }
         if (u.homeId) continue;
         const d = this.dist(u, h);
@@ -652,6 +662,17 @@ export class Game {
       h.residents[g] = 0;
     }
     h.birthProgress = 0;
+  }
+
+  /** Order prophets to call a calamity down on a point. The closest one with enough faith goes. */
+  cmdCast(owner: number, ids: number[], ability: string, x: number, y: number): boolean {
+    const a = ABILITIES[ability];
+    if (!a) return false;
+    const able = this.ownUnits(ids, owner).filter((u) => u.def.mana && u.mana >= a.cost)
+      .sort((p, q) => Math.hypot(p.x - x, p.y - y) - Math.hypot(q.x - x, q.y - y));
+    if (!able.length) { this.msg(owner, `Not enough faith for ${a.name}.`); return false; }
+    this.setOrder(able[0], { t: 'cast', ability, x, y });
+    return true;
   }
 
   cmdPauseBirths(owner: number, houseId: number, paused: boolean): void {
@@ -692,6 +713,17 @@ export class Game {
       if (b && !b.dead) this.updateBuilding(b);
     }
     this.updateProjectiles();
+    for (const q of this.quakes) {
+      q.t -= DT;
+      for (const b of this.buildings.slice()) {
+        const h = b.size / 2;
+        if (b.owner === q.owner || rectDist(q.x, q.y, b.x - h, b.y - h, b.x + h, b.y + h) > q.r) continue;
+        b.hp -= 60 * DT;
+        this.players[b.owner].lastAttacked = { x: b.x, y: b.y, t: this.time };
+        if (b.hp <= 0) this.kill(b);
+      }
+    }
+    if (this.quakes.length && this.quakes[0].t <= 0) this.quakes = this.quakes.filter((q) => q.t > 0);
 
     if (this.tick % 4 === 0) this.updateVision();
     if (this.tick % 20 === 0) {
@@ -847,6 +879,18 @@ export class Game {
     if (u.attackAnim > 0) u.attackAnim -= DT;
     if (u.def.heal) this.updateHealer(u);
     if (u.def.aura && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + 1.5 * DT); // heroes slowly regenerate
+    if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT);
+    if (u.growT > 0 && (u.growT -= DT) <= 0) this.comeOfAge(u);
+    if (u.plagueT > 0) {
+      u.plagueT -= DT;
+      u.hp -= 2.5 * DT;
+      if (u.hp <= 0) { this.kill(u); return; }
+      if ((this.tick + u.id) % 20 === 0) {
+        for (const v of this.unitsNear(u.x, u.y, 1.3, this.scratch)) {
+          if (v.owner === u.owner && v.plagueT <= 0 && this.rng() < 0.3 && Math.hypot(v.x - u.x, v.y - u.y) <= 1.3) v.plagueT = u.plagueT * 0.8;
+        }
+      }
+    }
 
     const o = u.order;
     if (!o) {
@@ -909,6 +953,28 @@ export class Game {
         this.updateGather(u, o);
         break;
 
+      case 'cast': {
+        const a = ABILITIES[o.ability];
+        if (Math.hypot(o.x - u.x, o.y - u.y) <= u.def.range) {
+          if (u.mana >= a.cost) {
+            u.mana -= a.cost;
+            u.attackAnim = 0.35;
+            u.facing = Math.atan2(o.x - u.x, o.y - u.y);
+            if (o.ability === 'plague') {
+              for (const v of this.unitsNear(o.x, o.y, a.radius, this.scratch)) {
+                if (v.owner !== u.owner && Math.hypot(v.x - o.x, v.y - o.y) <= a.radius) v.plagueT = 20;
+              }
+              this.events.push({ t: 'plague', x: o.x, y: o.y });
+            } else {
+              this.quakes.push({ x: o.x, y: o.y, r: a.radius, t: 5, owner: u.owner });
+              this.events.push({ t: 'quake', x: o.x, y: o.y });
+            }
+          }
+          this.setOrder(u, null);
+        } else if (this.walkTo(u, o)) this.setOrder(u, null);
+        break;
+      }
+
       case 'build': {
         const b = this.entities.get(o.id);
         if (!b || b.kind !== 'building' || b.dead || b.owner !== u.owner) { this.setOrder(u, o.then ?? null); break; }
@@ -959,6 +1025,30 @@ export class Game {
         } else if (r === 'fail') this.setOrder(u, o.then ?? null);
         break;
       }
+    }
+  }
+
+  /** A child grows up: it can now work, and takes up a parent's trade unless the house has a rally point. */
+  private comeOfAge(u: Unit): void {
+    u.growT = 0;
+    u.hp = (u.hp / u.maxHp) * u.def.hp;
+    u.maxHp = u.def.hp;
+    this.events.push({ t: 'grown', player: u.owner, x: u.x, y: u.y });
+    if (u.order) return;
+    const home = this.entities.get(u.bornAt);
+    if (!home || home.kind !== 'building') return;
+    if (home.hasRally) {
+      const t = this.entities.get(home.rallyId);
+      if (t && !t.dead) this.cmdTarget(u.owner, [u.id], t.id);
+      else this.cmdMove(u.owner, [u.id], home.rallyX, home.rallyY);
+      return;
+    }
+    const parents = [home.residents.m, home.residents.f].map((id) => this.entities.get(id));
+    if (this.rng() < 0.5) parents.reverse();
+    for (const par of parents) {
+      const job = par && par.kind === 'unit' ? this.job(par) : null;
+      const src = job && job.t === 'gather' ? this.entities.get(job.id) : null;
+      if (src && !(src.kind === 'building' && src.type === 'farm')) { this.cmdTarget(u.owner, [u.id], src.id); break; }
     }
   }
 
@@ -1041,9 +1131,9 @@ export class Game {
       let best: Unit | null = null;
       let worst = 1;
       for (const v of this.unitsNear(u.x, u.y, u.def.range, this.scratch)) {
-        if (v.owner !== u.owner || v === u || v.hp >= v.maxHp) continue;
+        if (v.owner !== u.owner || v === u || (v.hp >= v.maxHp && v.plagueT <= 0)) continue;
         if (Math.hypot(v.x - u.x, v.y - u.y) > u.def.range) continue;
-        const f = v.hp / v.maxHp;
+        const f = v.hp / v.maxHp - (v.plagueT > 0 ? 1 : 0);
         if (f < worst) { worst = f; best = v; }
       }
       if (!best && u.hp < u.maxHp) best = u;
@@ -1051,6 +1141,7 @@ export class Game {
       t = best ?? undefined;
     }
     if (t && t.kind === 'unit') {
+      t.plagueT = 0;
       t.hp = Math.min(t.maxHp, t.hp + u.def.heal! * this.players[u.owner].mods.heal * DT);
       if (t.hp >= t.maxHp) u.healTarget = 0;
     }
@@ -1235,16 +1326,10 @@ export class Game {
             b.birthBlocked = false;
             b.children++;
             const child = this.spawnFrom(b, 'villager');
-            if (!b.hasRally) {
-              // Children take up the trade of one of their parents.
-              const parents = [b.residents.m, b.residents.f].map((id) => this.entities.get(id) as Unit);
-              if (this.rng() < 0.5) parents.reverse();
-              for (const par of parents) {
-                const job = this.job(par);
-                const src = job && job.t === 'gather' ? this.entities.get(job.id) : null;
-                if (src && !(src.kind === 'building' && src.type === 'farm')) { this.cmdTarget(b.owner, [child.id], src.id); break; }
-              }
-            }
+            this.setOrder(child, null);
+            child.growT = GROW_TIME;
+            child.bornAt = b.id;
+            child.maxHp = child.hp = Math.round(child.def.hp * 0.4);
             this.events.push({ t: 'birth', player: b.owner, x: child.x, y: child.y });
           } else b.birthBlocked = true;
         }

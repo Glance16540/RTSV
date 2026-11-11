@@ -95,6 +95,7 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 .bar > div { height: 100%; background: var(--gold); }
 .bar.hp > div { background: #57d657; }
 .bar.love > div { background: #ff7ab8; }
+.bar.faith > div { background: #a98cff; }
 .queue { display: flex; gap: 4px; }
 .queue button, .multi button {
   width: 36px; height: 36px; font-size: 20px; padding: 0;
@@ -157,6 +158,10 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
   background: linear-gradient(#f0d48a, #c99a3c); border: 1px solid #f6e3ac; border-radius: 4px;
 }
 .sheet button:hover { filter: brightness(1.1); }
+.levels { display: flex; justify-content: center; gap: 12px; }
+.levels .resume, .started .levels .new { display: none; }
+.started .levels .resume { display: inline-block; }
+.levels button { padding: 10px 30px; }
 
 @media (max-width: 760px) {
   .sheet .cols { grid-template-columns: 1fr; }

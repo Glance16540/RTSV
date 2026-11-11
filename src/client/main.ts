@@ -1,9 +1,10 @@
 import { AIController } from '../sim/ai';
-import { DT, Game } from '../sim/game';
+import { DT, Game, GameEvent } from '../sim/game';
 import { artUrl, loadAssets } from './assets';
 import { Hud } from './hud';
 import { Input } from './input';
 import { Renderer } from './renderer';
+import { sfx } from './sfx';
 import './style.css';
 
 export class App {
@@ -16,6 +17,8 @@ export class App {
   sel: number[] = [];
   placing: string | null = null;
   attackMode = false;
+  /** Calamity waiting for a target click. */
+  casting: string | null = null;
   paused = true;
   speed = 1;
   private acc = 0;
@@ -38,6 +41,7 @@ export class App {
     this.sel = ids;
     this.placing = null;
     this.attackMode = false;
+    this.casting = null;
   }
 
   centerOnSelection(): void {
@@ -46,11 +50,28 @@ export class App {
   }
 
   nextIdle(): void {
-    const idle = this.game.units.filter((u) => u.owner === this.pid && u.type === 'villager' && !u.order);
+    const idle = this.game.units.filter((u) => u.owner === this.pid && u.type === 'villager' && !u.order && u.growT <= 0);
     if (!idle.length) return;
     const u = idle[this.idleI++ % idle.length];
     this.select([u.id]);
     this.centerOnSelection();
+  }
+
+  private onScreen(x: number, y: number): boolean {
+    const s = this.r.project(x, y);
+    return s.x > 0 && s.y > 0 && s.x < window.innerWidth && s.y < window.innerHeight;
+  }
+
+  private sound(ev: GameEvent): void {
+    const mine = 'player' in ev && ev.player === this.pid;
+    if (ev.t === 'age' && mine) sfx.play('age');
+    else if (ev.t === 'alert' && mine) sfx.play('alert');
+    else if (ev.t === 'birth' && mine) sfx.play('birth');
+    else if (ev.t === 'grown' && mine) sfx.play('grown');
+    else if (ev.t === 'msg' && mine) sfx.play(/^(Not|Cannot|You can only|Queue|Requires)/.test(ev.text) ? 'error' : 'done');
+    else if (ev.t === 'quake' && this.onScreen(ev.x, ev.y)) sfx.play('quake');
+    else if (ev.t === 'plague' && this.onScreen(ev.x, ev.y)) sfx.play('plague');
+    else if (ev.t === 'remove' && ev.unit && this.onScreen(ev.x, ev.y) && this.game.vis[Math.floor(ev.y) * this.game.size + Math.floor(ev.x)] === 2) sfx.play('death');
   }
 
   togglePause(): void {
@@ -78,6 +99,11 @@ export class App {
     for (const ev of game.events) {
       this.r.handle(ev);
       this.hud.handle(ev);
+      this.sound(ev);
+    }
+    // Weapon sounds for fights the player can see.
+    for (const u of game.units) {
+      if (u.attackAnim > 0.34 && u.order?.t === 'attack' && this.r.isVisible(u) && this.onScreen(u.x, u.y)) sfx.play(u.def.projectile ? 'shot' : 'hit');
     }
     game.events.length = 0;
     if (this.sel.some((id) => !game.entities.has(id))) this.sel = this.sel.filter((id) => game.entities.has(id));
@@ -97,10 +123,15 @@ loadAssets().then(() => {
   (window as unknown as { app: App }).app = app;
   const title = artUrl('title');
   if (title) document.getElementById('start')!.style.backgroundImage = `linear-gradient(rgba(6,6,8,0.55), rgba(6,6,8,0.8)), url(${title})`;
-  document.getElementById('start-btn')!.addEventListener('click', () => {
-    document.getElementById('start')!.classList.add('hidden');
-    document.getElementById('start-btn')!.textContent = 'Resume';
-    app.paused = false;
-  });
+  const startScreen = document.getElementById('start')!;
+  for (const btn of startScreen.querySelectorAll<HTMLButtonElement>('[data-level]')) {
+    btn.addEventListener('click', () => {
+      // The first click picks the difficulty; afterwards the same screen is just the help page.
+      if (!startScreen.classList.contains('started')) app.ai[0].setLevel(Number(btn.dataset.level));
+      startScreen.classList.add('hidden', 'started');
+      sfx.unlock();
+      app.paused = false;
+    });
+  }
 });
 document.getElementById('again-btn')!.addEventListener('click', () => location.reload());
