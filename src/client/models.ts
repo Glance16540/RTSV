@@ -1,7 +1,9 @@
 // Procedural low-poly models for units, buildings and resources.
 
 import * as THREE from 'three';
+import { BUILDINGS } from '../sim/data';
 import { Gender } from '../sim/game';
+import { generatedModel } from './assets';
 
 const mats = new Map<string, THREE.MeshLambertMaterial>();
 export function mat(color: number, emissive = 0): THREE.MeshLambertMaterial {
@@ -86,7 +88,19 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
   tail.rotation.x = -0.4;
 }
 
+const UNIT_HEIGHT: Record<string, number> = { rider: 1.45, knight: 1.5, mammoth: 1.9, catapult: 1.1, warlord: 1.2 };
+
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number): THREE.Group {
+  const key = type === 'villager' ? `villager_${gender}` : type;
+  const gen = generatedModel(key, 0, UNIT_HEIGHT[type] ?? 0.95, 'height');
+  if (gen) {
+    // Generated models are not tinted, so a coloured disc underfoot shows who owns the unit.
+    const disc = add(gen, geo('team', () => new THREE.CircleGeometry(1, 20)), color, 0, 0.03, 0, color);
+    disc.rotation.x = -Math.PI / 2;
+    disc.scale.setScalar(type === 'mammoth' ? 0.8 : type === 'villager' ? 0.3 : 0.42);
+    disc.castShadow = false;
+    return gen;
+  }
   const g = new THREE.Group();
   const hair = HAIR[seed % HAIR.length];
   switch (type) {
@@ -260,6 +274,16 @@ function flag(g: THREE.Object3D, color: number, x: number, y: number, z: number,
 }
 
 export function makeBuilding(type: string, color: number, age: number): THREE.Group {
+  const size = BUILDINGS[type].size;
+  const gen = generatedModel(type, age, size * 0.94, 'footprint');
+  if (gen) {
+    flag(gen, color, size / 2 - 0.15, 0, size / 2 - 0.15, 1.6);
+    if (type === 'house') {
+      gen.userData.resM = ball(gen, 0.14, 0x4aa3ff, -0.3, 1.9, 0, 0x2a6ac0);
+      gen.userData.resF = ball(gen, 0.14, 0xff7ab8, 0.3, 1.9, 0, 0xc04a80);
+    }
+    return gen;
+  }
   const g = new THREE.Group();
   const wall = WALL[age], rf = ROOF[age];
   switch (type) {

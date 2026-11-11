@@ -1,11 +1,12 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import {
-  AGES, BIRTH_COST, BUILD_MENU, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES,
+  AGES, BIRTH_COST, BUILD_MENU, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType,
   TECHS, UNITS, costText,
 } from '../sim/data';
 import { Building, Entity, GameEvent, Unit } from '../sim/game';
 import { T_DIRT, T_WATER } from '../sim/map';
+import { ico } from './assets';
 import type { App } from './main';
 
 export const SLOT_KEYS = 'QWERTASDFGZXCVB';
@@ -25,6 +26,9 @@ const $ = (id: string) => document.getElementById(id)!;
 const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const GENDER = { m: '♂', f: '♀' };
 const NODE_NAME: Record<string, string> = { tree: 'Tree', berries: 'Berry Bush', gold: 'Gold Mine', stone: 'Stone Quarry' };
+const RI = (r: ResType) => ico(r, RES_ICON[r]);
+const MAN = () => ico('villager_m', '👨‍🌾');
+const WOMAN = () => ico('villager_f', '👩‍🌾');
 const NODE_ICON: Record<string, string> = { tree: '🌲', berries: '🫐', gold: '🪙', stone: '🪨' };
 
 export class Hud {
@@ -147,7 +151,7 @@ export class Hud {
         for (const type of BUILD_MENU) {
           const d = BUILDINGS[type];
           out.push({
-            id: 'b:' + type, icon: d.icon, name: 'Build ' + d.name, desc: d.desc, cost: d.cost,
+            id: 'b:' + type, icon: ico(type, d.icon), name: 'Build ' + d.name, desc: d.desc, cost: d.cost,
             locked: d.age > p.age ? `Requires the ${AGES[d.age].name}.` : undefined,
             active: this.app.placing === type,
             act: () => { this.app.placing = type; this.app.attackMode = false; },
@@ -155,12 +159,12 @@ export class Hud {
         }
       } else {
         out.push({
-          id: 'atk', icon: '⚔️', name: 'Attack-move', desc: 'Click a location: units march there and fight anything they meet on the way.',
+          id: 'atk', icon: ico('attackmove', '⚔️'), name: 'Attack-move', desc: 'Click a location: units march there and fight anything they meet on the way.',
           active: this.app.attackMode, act: () => { this.app.attackMode = true; this.app.placing = null; },
         });
       }
       while (out.length < 14) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
-      out.push({ id: 'stop', icon: '✋', name: 'Stop', desc: 'Halt and forget current orders.', act: () => game.cmdStop(pid, ids) });
+      out.push({ id: 'stop', icon: ico('stop', '✋'), name: 'Stop', desc: 'Halt and forget current orders.', act: () => game.cmdStop(pid, ids) });
       return out;
     }
 
@@ -175,11 +179,11 @@ export class Hud {
       const d = UNITS[type];
       const locked = d.age > p.age ? `Requires the ${AGES[d.age].name}.` : undefined;
       if (type === 'villager') {
-        out.push({ id: 't:vm', icon: '👨‍🌾', name: 'Train Villager (man)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'm') });
-        out.push({ id: 't:vf', icon: '👩‍🌾', name: 'Train Villager (woman)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'f') });
+        out.push({ id: 't:vm', icon: MAN(), name: 'Train Villager (man)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'm') });
+        out.push({ id: 't:vf', icon: WOMAN(), name: 'Train Villager (woman)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'f') });
       } else {
         out.push({
-          id: 't:' + type, icon: d.icon, name: 'Train ' + d.name, cost: d.cost, locked,
+          id: 't:' + type, icon: ico(type, d.icon), name: 'Train ' + d.name, cost: d.cost, locked,
           desc: `${d.desc}<br><span class="stat">❤ ${d.hp} · ⚔ ${d.atk} · 🛡 ${d.armor}${d.range > 1 ? ` · range ${d.range}` : ''} · pop ${d.pop}</span>`,
           act: () => game.cmdTrain(pid, least().id, type),
         });
@@ -189,20 +193,20 @@ export class Hud {
       const t = TECHS[id];
       if (p.techs.has(id) || p.pending.has(id)) continue;
       const locked = t.age > p.age ? `Requires the ${AGES[t.age].name}.` : t.requires && !p.techs.has(t.requires) ? `Requires ${TECHS[t.requires].name}.` : undefined;
-      out.push({ id: 'r:' + id, icon: t.icon, name: 'Research ' + t.name, desc: t.desc, cost: t.cost, locked, act: () => game.cmdResearch(pid, b.id, id) });
+      out.push({ id: 'r:' + id, icon: ico(id, t.icon), name: 'Research ' + t.name, desc: t.desc, cost: t.cost, locked, act: () => game.cmdResearch(pid, b.id, id) });
     }
     if (b.type === 'towncenter' && p.age < AGES.length - 1) {
       const next = AGES[p.age + 1];
       while (out.length < 4) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
       out.push({
-        id: 'age' + p.age, icon: '⏫', name: `Advance to the ${next.name}`, cost: next.cost,
+        id: 'age' + p.age, icon: ico('ageup', '⏫'), name: `Advance to the ${next.name}`, cost: next.cost,
         desc: 'Unlocks new buildings, units and technologies, and gives your settlement a new look.',
         locked: p.agingUp ? 'Already advancing.' : undefined, act: () => game.cmdAgeUp(pid, b.id),
       });
     }
     if (b.type === 'house') {
       out.push({
-        id: 'couple', icon: '💞', name: 'Find a couple',
+        id: 'couple', icon: ico('couple', '💞'), name: 'Find a couple',
         desc: 'Call the nearest homeless man and woman to move in. You can also right-click a house with a villager selected.',
         act: () => {
           let n = 0;
@@ -212,11 +216,11 @@ export class Hud {
       });
       const paused = b.birthsPaused;
       out.push({
-        id: 'pause' + paused, icon: paused ? '🍼' : '⏸️', name: paused ? 'Resume raising children' : 'Stop raising children',
-        desc: `Each child costs ${RES_ICON.food}${BIRTH_COST}. Pause a family when your village is large enough.`,
+        id: 'pause' + paused, icon: paused ? ico('births_resume', '🍼') : ico('births_pause', '⏸️'), name: paused ? 'Resume raising children' : 'Stop raising children',
+        desc: `Each child costs ${RI('food')}${BIRTH_COST}. Pause a family when your village is large enough.`,
         act: () => { for (const h of same) game.cmdPauseBirths(pid, h.id, !paused); },
       });
-      out.push({ id: 'evict', icon: '🚪', name: 'Move residents out', desc: 'Both residents become homeless and can move elsewhere.', act: () => { for (const h of same) game.cmdEvict(pid, h.id); } });
+      out.push({ id: 'evict', icon: ico('evict', '🚪'), name: 'Move residents out', desc: 'Both residents become homeless and can move elsewhere.', act: () => { for (const h of same) game.cmdEvict(pid, h.id); } });
     }
     return out;
   }
@@ -227,7 +231,7 @@ export class Hud {
     if (!b || !b.id) { tip.classList.add('hidden'); return; }
     const p = this.app.game.players[this.app.pid];
     const cost = b.cost
-      ? RES_TYPES.filter((r) => b.cost![r]).map((r) => `<span class="${p.res[r] < b.cost![r]! ? 'poor' : ''}">${RES_ICON[r]}${b.cost![r]}</span>`).join(' ')
+      ? RES_TYPES.filter((r) => b.cost![r]).map((r) => `<span class="${p.res[r] < b.cost![r]! ? 'poor' : ''}">${RI(r)}${b.cost![r]}</span>`).join(' ')
       : '';
     tip.innerHTML = `<b>${b.name}</b> <kbd>${SLOT_KEYS[this.hoverBtn]}</kbd><div class="cost">${cost}</div><div>${b.desc}</div>${b.locked ? `<div class="locked">${b.locked}</div>` : ''}`;
     tip.classList.remove('hidden');
@@ -261,12 +265,12 @@ export class Hud {
       for (const e of ents) counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
       return '<div class="multi">' + [...counts].map(([type, n]) => {
         const d = UNITS[type] ?? BUILDINGS[type];
-        return `<button data-type="${type}" title="${d.name}"><span>${d.icon}</span><b>${n}</b></button>`;
+        return `<button data-type="${type}" title="${d.name}"><span>${ico(type, d.icon)}</span><b>${n}</b></button>`;
       }).join('') + '</div>';
     }
     const e = ents[0];
     if (e.kind === 'resource') {
-      return `<div class="head"><span class="icon">${NODE_ICON[e.type]}</span><div><b>${NODE_NAME[e.type]}</b><div>${RES_ICON[e.resType]} ${e.amount} remaining</div></div></div>`;
+      return `<div class="head"><span class="icon">${ico('node_' + e.type, NODE_ICON[e.type])}</span><div><b>${NODE_NAME[e.type]}</b><div>${RI(e.resType)} ${e.amount} remaining</div></div></div>`;
     }
     const owner = game.players[e.owner];
     const mine = e.owner === pid;
@@ -279,13 +283,13 @@ export class Hud {
       let extra = '';
       if (e.type === 'villager' && mine) {
         extra += `<div>${e.homeId ? '🏠 Lives in a house' : '⛺ Homeless — right-click a house to move in'}</div>`;
-        if (e.carryAmt > 0) extra += `<div>Carrying ${RES_ICON[e.carryType]} ${e.carryAmt}</div>`;
+        if (e.carryAmt > 0) extra += `<div>Carrying ${RI(e.carryType)} ${e.carryAmt}</div>`;
       }
       const morale = game.moraleAt(e.owner, e.x, e.y);
       if (morale > 0) extra += `<div class="good">🏠 Home morale: takes ${Math.round(morale * 100)}% less damage</div>`;
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
       const name = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
-      return `<div class="head"><span class="icon">${e.gender === 'f' ? '👩‍🌾' : e.gender === 'm' ? '👨‍🌾' : d.icon}</span><div><b>${name}</b>${tag}${hp}</div></div>
+      return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>
         <div class="stat">⚔ ${d.atk + (mil ? mods.atk : 0)} · 🛡 ${d.armor + (mil ? mods.armor : 0)}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
     const b = e;
@@ -294,7 +298,7 @@ export class Hud {
     else if (mine) {
       if (b.queue.length) {
         body += '<div class="queue">' + b.queue.map((q, i) => {
-          const icon = q.kind === 'unit' ? (q.gender === 'f' ? '👩‍🌾' : q.gender === 'm' ? '👨‍🌾' : UNITS[q.id].icon) : q.kind === 'tech' ? TECHS[q.id].icon : '⏫';
+          const icon = q.kind === 'unit' ? (q.gender === 'f' ? WOMAN() : q.gender === 'm' ? MAN() : ico(q.id, UNITS[q.id].icon)) : q.kind === 'tech' ? ico(q.id, TECHS[q.id].icon) : ico('ageup', '⏫');
           return `<button data-q="${i}" title="Click to cancel">${icon}</button>`;
         }).join('') + '</div>';
         const q = b.queue[0];
@@ -314,7 +318,7 @@ export class Hud {
       }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
-    return `<div class="head"><span class="icon">${b.def.icon}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;
+    return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;
   }
 
   // ---- Minimap ----
@@ -379,8 +383,8 @@ export class Hud {
     const aging = tc ? ` → ${AGES[p.age + 1].name} ${Math.floor((tc.queue[0].t / tc.queue[0].time) * 100)}%` : '';
     const mins = Math.floor(game.time / 60), secs = Math.floor(game.time % 60);
     const top = [
-      RES_TYPES.map((r) => `<span title="${r}">${RES_ICON[r]} ${Math.floor(p.res[r])}</span>`).join('') +
-        `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">👥 ${p.pop}/${p.popCap}</span>`,
+      RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
+        `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
       AGES[p.age].name + aging,
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,

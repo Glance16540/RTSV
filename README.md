@@ -55,6 +55,12 @@ research, control groups, rally points, and an AI opponent that plays by the sam
 | `Shift`-click while placing | Place several buildings |
 | `Del` `Esc` `P` | Destroy selected, cancel, pause |
 
+## Generated art
+
+The game runs with built-in procedural models and emoji icons. To replace them, drop icons,
+`.glb` models or title art into `public/assets/` — see [docs/ASSET_BRIEF.md](docs/ASSET_BRIEF.md)
+for filenames and a ready-made generation prompt.
+
 ## Code layout
 
 - `src/sim/` — the game simulation. No DOM or rendering, runs headless at 20 ticks per second.

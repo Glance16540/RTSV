@@ -1,5 +1,6 @@
 import { AIController } from '../sim/ai';
 import { DT, Game } from '../sim/game';
+import { artUrl, loadAssets } from './assets';
 import { Hud } from './hud';
 import { Input } from './input';
 import { Renderer } from './renderer';
@@ -91,12 +92,15 @@ export class App {
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
-const app = new App(seed);
-(window as unknown as { app: App }).app = app;
-
-document.getElementById('start-btn')!.addEventListener('click', () => {
-  document.getElementById('start')!.classList.add('hidden');
-  document.getElementById('start-btn')!.textContent = 'Resume';
-  app.paused = false;
+loadAssets().then(() => {
+  const app = new App(seed);
+  (window as unknown as { app: App }).app = app;
+  const title = artUrl('title');
+  if (title) document.getElementById('start')!.style.backgroundImage = `linear-gradient(rgba(6,6,8,0.55), rgba(6,6,8,0.8)), url(${title})`;
+  document.getElementById('start-btn')!.addEventListener('click', () => {
+    document.getElementById('start')!.classList.add('hidden');
+    document.getElementById('start-btn')!.textContent = 'Resume';
+    app.paused = false;
+  });
 });
 document.getElementById('again-btn')!.addEventListener('click', () => location.reload());

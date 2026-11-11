@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "assets": "node scripts/assets.mjs",
+    "predev": "node scripts/assets.mjs",
+    "prebuild": "node scripts/assets.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
