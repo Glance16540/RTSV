@@ -252,6 +252,7 @@ export class Renderer {
 
   isVisible(e: Entity): boolean {
     const g = this.game;
+    if (e.kind === 'unit' && e.inside) return false;
     if (e.owner === g.humanId) return true;
     if (e.kind === 'building') return e.seen;
     const v = g.vis[Math.floor(e.y) * g.size + Math.floor(e.x)];
@@ -415,7 +416,7 @@ export class Renderer {
       if (!e) continue;
       const m = this.ring(n++);
       m.visible = true;
-      const col = e.owner === game.humanId ? 0x8dff8a : e.owner < 0 ? 0xffe27a : 0xff6a5a;
+      const col = e.owner === game.humanId ? 0x8dff8a : e.owner < 0 || e.owner === game.wild ? 0xffe27a : 0xff6a5a;
       (m.material as THREE.MeshBasicMaterial).color.setHex(col);
       if (e.kind === 'unit') {
         const v = this.unitViews.get(id);

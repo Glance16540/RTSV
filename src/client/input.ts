@@ -150,7 +150,7 @@ export class Input {
       const x0 = Math.min(d.x0, e.clientX), x1 = Math.max(d.x0, e.clientX);
       const y0 = Math.min(d.y0, e.clientY), y1 = Math.max(d.y0, e.clientY);
       const inBox = game.units.filter((u) => {
-        if (u.owner !== app.pid) return false;
+        if (u.owner !== app.pid || u.inside) return false;
         const s = app.r.project(u.x, u.y, 0.4);
         return s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1;
       });

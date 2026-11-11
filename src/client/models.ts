@@ -122,6 +122,27 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       g.userData.carry = carry;
       break;
     }
+    case 'deer': {
+      const fur = 0xa8743e;
+      box(g, 0.24, 0.26, 0.6, fur, 0, 0.5, 0);
+      const neck = box(g, 0.12, 0.34, 0.14, fur, 0, 0.74, 0.3);
+      neck.rotation.x = 0.4;
+      box(g, 0.13, 0.13, 0.26, fur, 0, 0.9, 0.44);
+      for (const [x, z] of [[-0.08, 0.22], [0.08, 0.22], [-0.08, -0.22], [0.08, -0.22]]) box(g, 0.05, 0.4, 0.05, 0x7a5228, x, 0.2, z);
+      box(g, 0.08, 0.1, 0.06, 0xf0e8d8, 0, 0.56, -0.32);
+      if (seed % 2) for (const x of [-0.07, 0.07]) box(g, 0.03, 0.22, 0.03, 0xe8dcc0, x, 1.06, 0.36).rotation.z = x * 5;
+      break;
+    }
+    case 'wolf': {
+      const fur = 0x5c5c62;
+      box(g, 0.24, 0.24, 0.66, fur, 0, 0.4, 0);
+      box(g, 0.2, 0.2, 0.26, fur, 0, 0.52, 0.42);
+      box(g, 0.1, 0.1, 0.16, 0x3a3a40, 0, 0.48, 0.6);
+      for (const x of [-0.07, 0.07]) box(g, 0.05, 0.1, 0.04, 0x3a3a40, x, 0.66, 0.36);
+      for (const [x, z] of [[-0.08, 0.24], [0.08, 0.24], [-0.08, -0.24], [0.08, -0.24]]) box(g, 0.06, 0.3, 0.06, 0x4a4a50, x, 0.15, z);
+      box(g, 0.07, 0.07, 0.34, fur, 0, 0.44, -0.46).rotation.x = 0.5;
+      break;
+    }
     case 'clubman': {
       humanoid(g, 0x9a7a4e, 0x6b5236, hair);
       box(g, 0.32, 0.1, 0.2, color, 0, 0.42, 0);
@@ -437,7 +458,11 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
 export function makeResource(type: string, seed: number): THREE.Group {
   const g = new THREE.Group();
   const r = (k: number) => ((seed * 9301 + k * 49297) % 233280) / 233280;
-  if (type === 'berries') {
+  if (type === 'carcass') {
+    const body = box(g, 0.3, 0.2, 0.6, 0x9a6038, 0, 0.1, 0);
+    body.rotation.y = r(1) * 6;
+    box(g, 0.2, 0.06, 0.3, 0xb03a30, 0.05, 0.22, 0).rotation.y = r(1) * 6;
+  } else if (type === 'berries') {
     const b = ball(g, 0.36, 0x3e7a34, 0, 0.26, 0);
     b.scale.y = 0.75;
     for (let i = 0; i < 6; i++) {

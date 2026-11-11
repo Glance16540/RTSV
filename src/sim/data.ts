@@ -10,6 +10,7 @@ export type ArmorClass =
   | 'ranged'
   | 'cavalry'
   | 'beast'
+  | 'prey'
   | 'siege'
   | 'support'
   | 'hero'
@@ -81,6 +82,8 @@ export interface UnitDef {
   /** Max simultaneously alive per player. */
   limit?: number;
   projectile?: 'arrow' | 'stone' | 'boulder';
+  /** Harmless wild animal: never targeted automatically. */
+  docile?: boolean;
   /** Maximum faith, spent on calamities (prophets). */
   mana?: number;
 }
@@ -92,7 +95,17 @@ export const UNITS: Record<string, UnitDef> = {
     id: 'villager', name: 'Villager', icon: '🧑‍🌾',
     desc: 'Gathers resources and constructs buildings. A man and a woman sharing a house will raise new villagers.',
     cost: { food: 50 }, time: 16, age: 0, hp: 40, atk: 3, armor: 0, range: 0.5, speed: 2.1,
-    cooldown: 1.5, sight: 6, pop: 1, cls: 'villager', radius: 0.28,
+    cooldown: 1.5, sight: 6, pop: 1, cls: 'villager', radius: 0.28, bonus: { prey: 4 },
+  }),
+  deer: U({
+    id: 'deer', name: 'Deer', icon: '🦌', desc: 'Wild game. Send a villager to hunt it for food.',
+    cost: {}, time: 0, age: 0, hp: 20, atk: 0, armor: 0, range: 0.5, speed: 1.4, cooldown: 1, sight: 4, pop: 0,
+    cls: 'prey', radius: 0.32, docile: true,
+  }),
+  wolf: U({
+    id: 'wolf', name: 'Wolf', icon: '🐺', desc: 'Wild predator. Attacks anyone who strays too close.',
+    cost: {}, time: 0, age: 0, hp: 45, atk: 6, armor: 0, range: 0.5, speed: 2.7, cooldown: 1.3, sight: 5.5, pop: 0,
+    cls: 'beast', radius: 0.3,
   }),
   clubman: U({
     id: 'clubman', name: 'Clubman', icon: '🏏',
@@ -197,6 +210,8 @@ export interface BuildingDef {
   sight: number;
   trains: string[];
   techs: string[];
+  /** How many villagers can shelter inside when the town bell rings. */
+  shelter?: number;
   dropoff?: boolean;
   walkable?: boolean;
   atk?: number;
@@ -211,7 +226,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'towncenter', name: 'Town Center', icon: '🏛️',
     desc: 'Heart of your settlement. Trains villagers, advances ages and accepts all resources. Houses built nearby raise the morale of defenders.',
     cost: { wood: 300, stone: 200 }, time: 90, age: 1, hp: 2200, size: 4, pop: 10, sight: 10,
-    trains: ['villager', 'warlord'], techs: [], dropoff: true, atk: 7, range: 7, cooldown: 2,
+    trains: ['villager', 'warlord'], techs: [], dropoff: true, atk: 7, range: 7, cooldown: 2, shelter: 12,
   }),
   house: B({
     id: 'house', name: 'House', icon: '🏠',
@@ -269,9 +284,9 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   tower: B({
     id: 'tower', name: 'Watch Tower', icon: '🗼',
-    desc: 'Defensive tower that fires at enemies.',
+    desc: 'Defensive tower that fires at enemies. Shelters four villagers when the town bell rings.',
     cost: { wood: 40, stone: 110 }, time: 26, age: 1, hp: 700, size: 2, pop: 0, sight: 10,
-    trains: [], techs: [], atk: 9, range: 8, cooldown: 1.8,
+    trains: [], techs: [], atk: 9, range: 8, cooldown: 1.8, shelter: 4,
   }),
 };
 
@@ -372,9 +387,9 @@ export const MORALE_RADIUS = 12; // tiles around a town center
 export const MORALE_PER_HOUSE = 0.05; // damage reduction per nearby house
 export const MORALE_MAX_HOUSES = 5;
 
-export const RESOURCE_AMOUNT: Record<string, number> = { tree: 120, berries: 220, gold: 1000, stone: 800 };
-export const RESOURCE_KIND: Record<string, ResType> = { tree: 'wood', berries: 'food', gold: 'gold', stone: 'stone' };
-export const GATHER_RATE: Record<string, number> = { tree: 0.75, berries: 0.8, gold: 0.7, stone: 0.65, farm: 0.62 };
+export const RESOURCE_AMOUNT: Record<string, number> = { tree: 120, berries: 220, gold: 1000, stone: 800, carcass: 130 };
+export const RESOURCE_KIND: Record<string, ResType> = { tree: 'wood', berries: 'food', gold: 'gold', stone: 'stone', carcass: 'food' };
+export const GATHER_RATE: Record<string, number> = { tree: 0.75, berries: 0.8, gold: 0.7, stone: 0.65, farm: 0.62, carcass: 1.0 };
 
 export const RES_ICON: Record<ResType, string> = { food: '🍖', wood: '🪵', gold: '🪙', stone: '🪨' };
 

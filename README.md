@@ -42,6 +42,12 @@ technologies, and changes how your settlement looks.
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
 
+**Wildlife.** Deer graze near each base: send a villager to hunt one and it is carved up for
+food. Wolf packs roam the wilds and attack anyone who strays close.
+
+**Town bell.** Ring it at the Town Center and villagers run to shelter in Town Centers and Watch
+Towers, safe from harm and adding to the arrow fire. Ring the all-clear and they return to work.
+
 **Also:** fog of war, minimap, four resources, farms, storehouses, towers, blacksmith and temple
 research, control groups, rally points, synthesised sound, and an AI opponent with three
 difficulty levels that plays by the same rules.

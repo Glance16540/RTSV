@@ -223,3 +223,51 @@ describe('ai', () => {
     expect(best).toBeGreaterThanOrEqual(2);
   }, 120000);
 });
+
+describe('wildlife and shelter', () => {
+  it('villagers hunt deer and bring home the meat', () => {
+    const g = new Game(3, setups);
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    const deer = g.units.filter((u) => u.type === 'deer').sort((a, b) => Math.hypot(a.x - tc.x, a.y - tc.y) - Math.hypot(b.x - tc.x, b.y - tc.y))[0];
+    expect(Math.hypot(deer.x - tc.x, deer.y - tc.y)).toBeLessThan(18);
+    const hunter = villagers(g, 0)[0];
+    const food = g.players[0].res.food;
+    g.cmdTarget(0, [hunter.id], deer.id);
+    run(g, 90);
+    expect(deer.dead).toBe(true);
+    expect(hunter.dead).toBe(false);
+    expect(g.players[0].res.food).toBeGreaterThan(food);
+  });
+
+  it('soldiers ignore deer but wolves attack, and the wild never wins', () => {
+    const g = new Game(3, setups);
+    const wolf = g.units.find((u) => u.type === 'wolf')!;
+    const deer = g.units.find((u) => u.type === 'deer')!;
+    const guard = g.spawnUnit('clubman', 0, deer.x + 1, deer.y);
+    const bait = g.spawnUnit('villager', 0, wolf.x + 2, wolf.y, 'm');
+    run(g, 20);
+    expect(deer.dead).toBe(false);
+    expect(guard.order).toBe(null);
+    expect(bait.hp).toBeLessThan(bait.maxHp);
+    expect(g.winner).toBe(-1);
+  });
+
+  it('the town bell shelters villagers and the all-clear sends them back to work', () => {
+    const g = new Game(3, setups);
+    const vs = villagers(g, 0);
+    const tree = g.resources.filter((r) => r.type === 'tree').sort((a, b) => g.dist(vs[0], a) - g.dist(vs[0], b))[0];
+    g.cmdTarget(0, vs.map((v) => v.id), tree.id);
+    run(g, 5);
+    g.cmdBell(0, true);
+    run(g, 20);
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    expect(tc.sheltered.length).toBe(4);
+    expect(vs.every((v) => v.inside === tc.id)).toBe(true);
+    // Orders are ignored while inside.
+    g.cmdMove(0, vs.map((v) => v.id), 30, 30);
+    expect(vs[0].order).toBe(null);
+    g.cmdBell(0, false);
+    expect(tc.sheltered.length).toBe(0);
+    expect(vs.every((v) => !v.inside && v.order?.t === 'gather')).toBe(true);
+  });
+});

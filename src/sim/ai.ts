@@ -62,6 +62,11 @@ export class AIController {
     if (!home) return;
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
 
+    // Town bell: hide the villagers while raiders are in the village.
+    const raiders = underAttack ? g.units.filter((u) => u.owner !== pid && u.owner !== g.wild && u.def.atk > 3 && Math.hypot(u.x - home.x, u.y - home.y) < 13).length : 0;
+    if (!p.bell && raiders >= 3) g.cmdBell(pid, true);
+    else if (p.bell && (!p.lastAttacked || g.time - p.lastAttacked.t > 10)) g.cmdBell(pid, false);
+
     // ---- Economy ----
     const wantAge = p.age < AGES.length - 1 && !p.agingUp && villagers.length >= AGE_VILLAGERS[p.age] && count('barracks') > 0;
     const saving = wantAge && !underAttack;
@@ -175,7 +180,7 @@ export class AIController {
     for (const u of army) {
       if (!u.def.mana || u.order?.t === 'cast') continue;
       if (u.mana >= ABILITIES.plague.cost) {
-        const near = g.units.filter((v) => v.owner !== this.pid && v.plagueT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
+        const near = g.units.filter((v) => v.owner !== this.pid && v.owner !== g.wild && v.plagueT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
         if (near.length >= 3) { g.cmdCast(this.pid, [u.id], 'plague', near[0].x, near[0].y); continue; }
       }
       if (u.mana >= ABILITIES.quake.cost) {
@@ -201,7 +206,7 @@ export class AIController {
     let bestD = Infinity;
     for (const v of villagers) {
       const o = v.order;
-      if (o && (o.t === 'build' || o.t === 'movein')) continue;
+      if (v.inside || (o && (o.t === 'build' || o.t === 'movein' || o.t === 'shelter'))) continue;
       const d = Math.hypot(v.x - x, v.y - y) + (o ? (o.t === 'gather' && o.res === 'wood' ? 4 : 10) : 0);
       if (d < bestD) { bestD = d; best = v; }
     }
@@ -249,12 +254,14 @@ export class AIController {
     const order: ResType[] = ['food', 'wood', 'gold', 'stone'];
     const have: Record<ResType, number> = { food: 0, wood: 0, gold: 0, stone: 0 };
     const idle: Unit[] = [];
+    let hunters = 0;
     for (const v of villagers) {
       if (v.order?.t === 'gather') have[v.order.res]++;
-      else if (!v.order) idle.push(v);
+      else if (v.order?.t === 'attack') { have.food++; hunters++; }
+      else if (!v.order && !v.inside) idle.push(v);
     }
     // Lean away from whatever is already piling up and towards what is running out.
-    for (const r of order) want[r] *= p.res[r] < 250 ? 1.4 : p.res[r] > 1500 ? 0.25 : p.res[r] > 800 ? 0.6 : 1;
+    for (const r of order) want[r] *= p.res[r] < 100 ? 2.2 : p.res[r] < 250 ? 1.4 : p.res[r] > 1500 ? 0.25 : p.res[r] > 800 ? 0.6 : 1;
     const sum = want.food + want.wood + want.gold + want.stone;
     for (const r of order) want[r] /= sum;
     const total = Math.max(1, villagers.length);
@@ -278,6 +285,10 @@ export class AIController {
       for (const res of sorted) {
         let t = g.findResourceNear(home.x, home.y, res, pid, res === 'food' ? 18 : res === 'wood' ? 40 : 64);
         if (!t && res === 'food') {
+          // Hunt nearby deer with a couple of villagers, as long as they can actually be reached.
+          const deer = hunters < 3 ? g.units.find((u) => u.type === 'deer' && Math.hypot(u.x - home.x, u.y - home.y) < 18
+            && !g.pf.find(v.x, v.y, u.x, u.y, u.x, u.y, 1).partial) : undefined;
+          if (deer) { g.cmdTarget(pid, [v.id], deer.id); have.food++; hunters++; break; }
           if (farmCount < want.food * total + 3 && farms.filter((f) => !f.complete).length < 3 && p.res.wood >= BUILDINGS.farm.cost.wood!) {
             const spot = this.findSpot('farm', home.x, home.y, 5, 14);
             if (spot && g.cmdPlace(pid, 'farm', spot.cx, spot.cy, [v.id])) { have.food++; farmCount++; break; }

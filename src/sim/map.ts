@@ -4,13 +4,14 @@ export const T_GRASS = 0;
 export const T_WATER = 1;
 export const T_DIRT = 2;
 
-export type NodeType = 'tree' | 'berries' | 'gold' | 'stone';
+export type NodeType = 'tree' | 'berries' | 'gold' | 'stone' | 'carcass';
 
 export interface MapSpec {
   size: number;
   terrain: Uint8Array;
   starts: { x: number; y: number }[];
   nodes: { type: NodeType; cx: number; cy: number }[];
+  animals: { type: 'deer' | 'wolf'; x: number; y: number }[];
 }
 
 export function mulberry32(seed: number): () => number {
@@ -153,7 +154,32 @@ export function generateMap(seed: number, size = 96): MapSpec {
     }
   }
 
-  return { size: N, terrain, starts, nodes };
+  // Wildlife: deer near each base and out on the map, wolf packs in the wilds.
+  const animals: MapSpec['animals'] = [];
+  const herd = (type: 'deer' | 'wolf', x: number, y: number, count: number): number => {
+    let placed = 0;
+    for (let k = 0; k < count * 4 && placed < count; k++) {
+      const ax = x + (rng() - 0.5) * 4, ay = y + (rng() - 0.5) * 4;
+      if (!free(Math.floor(ax), Math.floor(ay)) || !free(Math.floor(N - ax), Math.floor(N - ay))) continue;
+      animals.push({ type, x: ax, y: ay }, { type, x: N - ax, y: N - ay });
+      placed++;
+    }
+    return placed;
+  };
+  for (let a = 0, done = false; a < 12 && !done; a++) {
+    const ang = rng() * Math.PI * 2;
+    done = herd('deer', s0.x + Math.cos(ang) * 12, s0.y + Math.sin(ang) * 12, 4) >= 3;
+  }
+  for (let k = 0, tries = 0; k < 3 && tries < 60; tries++) {
+    const x = 6 + rng() * (N - 12), y = 6 + rng() * (N - 12);
+    if (startDist(x, y) > 20 && herd('deer', x, y, 3) > 0) k++;
+  }
+  for (let k = 0, tries = 0; k < 2 && tries < 60; tries++) {
+    const x = 6 + rng() * (N - 12), y = 6 + rng() * (N - 12);
+    if (startDist(x, y) > 27 && herd('wolf', x, y, 2 + Math.floor(rng() * 2)) > 0) k++;
+  }
+
+  return { size: N, terrain, starts, nodes, animals };
 }
 
 export function connected(N: number, blocked: Uint8Array, a: { x: number; y: number }, b: { x: number; y: number }): boolean {

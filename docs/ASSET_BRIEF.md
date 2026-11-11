@@ -40,7 +40,8 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 > - Commands: `attackmove` (crossed swords), `stop` (raised hand), `ageup` (rising sun over
 >   ruins), `couple` (man and woman holding hands), `births_pause` (empty cradle),
 >   `births_resume` (cradle with baby), `evict` (open door), `plague` (green skull),
->   `quake` (cracked earth)
+>   `quake` (cracked earth), `bell` (bronze town bell), `bell_clear` (white dove), `deer`, `wolf`,
+>   `node_carcass` (haunch of meat)
 > - Technologies: `stonetools`, `bronzetools`, `wheelbarrow`, `fertility` (fertility
 >   idol), `extendedfamily` (large family), `herbalism` (herbs and mortar), `weapons1` (bronze
 >   sword), `weapons2` (iron sword), `weapons3` (steel sword), `armor1` (hide armor), `armor2`
@@ -56,7 +57,7 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 >   `tower`, `farm` (flat square crop field)
 > - Units (neutral standing pose): `villager_m`, `villager_f`, `clubman`, `slinger`,
 >   `spearman`, `swordsman`, `bowman`, `crossbowman`, `rider`, `knight`, `mammoth`, `shaman`,
->   `prophet`, `warlord`, `catapult`
+>   `prophet`, `warlord`, `catapult`, `deer`, `wolf`
 > - If generations remain, later-age building variants named `<building>_1` (Bronze: timber),
 >   `<building>_2` (Iron: stone and shingle), `<building>_3` (medieval: plaster and red tile),
 >   starting with `house` and `towncenter`.

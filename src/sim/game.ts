@@ -32,6 +32,7 @@ export type Order =
   | { t: 'gather'; id: number; res: ResType; phase: 'go' | 'return'; nx: number; ny: number; dropId: number; fails: number }
   | { t: 'build'; id: number; then?: Order | null }
   | { t: 'movein'; id: number; then?: Order | null }
+  | { t: 'shelter'; id: number; then?: Order | null }
   | { t: 'cast'; ability: string; x: number; y: number; started?: boolean; tries?: number };
 
 export interface Unit extends Base {
@@ -63,6 +64,10 @@ export interface Unit extends Base {
   bornAt: number; // house a child was born in
   plagueT: number; // seconds of plague remaining
   mana: number;
+  homeX: number; // where a wild animal lives
+  homeY: number;
+  inside: number; // building this unit is sheltering in
+  resume: Order | null; // job to return to after sheltering
 }
 
 export interface QueueItem {
@@ -96,6 +101,7 @@ export interface Building extends Base {
   cooldown: number;
   scanT: number;
   workerId: number;
+  sheltered: number[]; // villagers hiding inside
   morale: number; // town centers: number of houses nearby (capped)
   seen: boolean; // has the human player ever seen this building
 }
@@ -144,6 +150,9 @@ export interface Player {
   defeated: boolean;
   lastAttacked: { x: number; y: number; t: number } | null;
   alertT: number;
+  /** The wildlife "player": never wins, loses or builds. */
+  neutral: boolean;
+  bell: boolean;
 }
 
 export type GameEvent =
@@ -180,6 +189,8 @@ export class Game {
   /** Fog of war for the human player: 0 unexplored, 1 explored, 2 visible. */
   vis: Uint8Array;
   humanId = 0;
+  /** Player id that owns wild animals. */
+  wild = -1;
   rng: () => number;
   private nextId = 1;
   private hash: Unit[][] = [];
@@ -207,7 +218,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI,
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100,
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false,
       });
       this.heroes.push([]);
       this.tcs.push([]);
@@ -219,6 +230,15 @@ export class Game {
       this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
       this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
     });
+    this.wild = this.players.length;
+    this.players.push({
+      id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, res: { food: 0, wood: 0, gold: 0, stone: 0 },
+      age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
+      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false,
+    });
+    this.heroes.push([]);
+    this.tcs.push([]);
+    for (const a of this.spec.animals) this.spawnUnit(a.type, this.wild, a.x, a.y);
     this.upkeep();
     this.updateVision();
   }
@@ -235,7 +255,7 @@ export class Game {
     };
     this.entities.set(r.id, r);
     this.resources.push(r);
-    this.setCells(cx, cy, size, 1, true);
+    if (type !== 'carcass') this.setCells(cx, cy, size, 1, true); // a carcass can be walked over
     return r;
   }
 
@@ -247,7 +267,7 @@ export class Game {
       order: null, path: null, pathI: 0, pathFor: 0, pathPartial: false, goalX: 0, goalY: 0, repathT: 0,
       cooldown: 0, scanT: this.rng() * 0.4, carryType: 'food', carryAmt: 0, gatherT: 0, homeId: 0,
       moving: false, anchored: false, attackAnim: 0, healTarget: 0, growT: 0, bornAt: 0, plagueT: 0,
-      mana: (def.mana ?? 0) / 2,
+      mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
     };
     this.entities.set(u.id, u);
     this.units.push(u);
@@ -261,7 +281,7 @@ export class Game {
       id: this.nextId++, kind: 'building', type, def, owner, cx, cy, size: def.size,
       x: cx + def.size / 2, y: cy + def.size / 2, hp: complete ? def.hp : 1, maxHp: def.hp, dead: false,
       progress: complete ? 1 : 0, complete, queue: [], rallyX: 0, rallyY: 0, rallyId: 0, hasRally: false,
-      residents: { m: 0, f: 0 }, birthProgress: 0, birthBlocked: false, birthsPaused: false, children: 0, cooldown: 0, scanT: 0, workerId: 0,
+      residents: { m: 0, f: 0 }, birthProgress: 0, birthBlocked: false, birthsPaused: false, children: 0, cooldown: 0, scanT: 0, workerId: 0, sheltered: [],
       morale: 0, seen: owner === this.humanId,
     };
     this.entities.set(b.id, b);
@@ -286,6 +306,13 @@ export class Game {
     if (e.kind === 'unit') {
       this.units.splice(this.units.indexOf(e), 1);
       this.players[e.owner].pop -= e.def.pop;
+      const shelter = this.entities.get(e.inside);
+      if (shelter && shelter.kind === 'building') shelter.sheltered = shelter.sheltered.filter((id) => id !== e.id);
+      if (e.type === 'deer') {
+        // The hunters carve up what they killed.
+        const meat = this.addResource('carcass', Math.floor(e.x), Math.floor(e.y));
+        for (const u of this.units) if (u.type === 'villager' && u.order?.t === 'attack' && u.order.id === e.id) this.orderGather(u, meat);
+      }
       const home = this.entities.get(e.homeId);
       if (home && home.kind === 'building') {
         if (home.residents.m === e.id) home.residents.m = 0;
@@ -294,6 +321,7 @@ export class Game {
     } else if (e.kind === 'building') {
       this.buildings.splice(this.buildings.indexOf(e), 1);
       this.setCells(e.cx, e.cy, e.size, 0, true);
+      this.release(e);
       for (const id of [e.residents.m, e.residents.f]) {
         const r = this.entities.get(id);
         if (r && r.kind === 'unit') r.homeId = 0;
@@ -306,7 +334,7 @@ export class Game {
       this.upkeep();
     } else {
       this.resources.splice(this.resources.indexOf(e), 1);
-      this.setCells(e.cx, e.cy, e.size, 0, true);
+      if (e.type !== 'carcass') this.setCells(e.cx, e.cy, e.size, 0, true);
     }
   }
 
@@ -396,14 +424,14 @@ export class Game {
     let best: Entity | null = null;
     let bestD = Infinity;
     for (const v of this.unitsNear(x, y, radius, this.scratch)) {
-      if (v.owner === owner) continue;
+      if (v.owner === owner || v.def.docile) continue;
       const d = Math.hypot(v.x - x, v.y - y);
       if (d > radius || d < minRange) continue;
       // Prefer things that fight back over villagers.
       const score = d + (v.def.cls === 'villager' ? 3 : 0);
       if (score < bestD) { bestD = score; best = v; }
     }
-    if (best) return best;
+    if (best || owner === this.wild) return best;
     for (const b of this.buildings) {
       if (b.owner === owner) continue;
       const h = b.size / 2;
@@ -459,7 +487,7 @@ export class Game {
     const out: Unit[] = [];
     for (const id of ids) {
       const e = this.entities.get(id);
-      if (e && e.kind === 'unit' && e.owner === owner) out.push(e);
+      if (e && e.kind === 'unit' && e.owner === owner && !e.inside) out.push(e);
     }
     return out;
   }
@@ -526,7 +554,7 @@ export class Game {
     const o = u.order;
     if (!o) return null;
     if (o.t === 'gather') return o.id ? o : null;
-    if (o.t === 'build' || o.t === 'movein') return o.then ?? null;
+    if (o.t === 'build' || o.t === 'movein' || o.t === 'shelter') return o.then ?? null;
     return null;
   }
 
@@ -639,7 +667,7 @@ export class Game {
       let best: Unit | null = null;
       let bestD = Infinity;
       for (const u of this.units) {
-        if (u.owner !== owner || u.type !== 'villager' || u.gender !== g || u.growT > 0) continue;
+        if (u.owner !== owner || u.type !== 'villager' || u.gender !== g || u.growT > 0 || u.inside) continue;
         if (u.order && u.order.t === 'movein') { if (u.order.id === h.id) coming = true; continue; }
         if (u.homeId) continue;
         const d = this.dist(u, h);
@@ -675,6 +703,46 @@ export class Game {
     return true;
   }
 
+  /** Ring the town bell: villagers run for shelter. Ring it again and they go back to work. */
+  cmdBell(owner: number, on: boolean): void {
+    const p = this.players[owner];
+    p.bell = on;
+    const shelters = this.buildings.filter((b) => b.owner === owner && b.complete && b.def.shelter);
+    if (!on) {
+      for (const b of shelters) this.release(b);
+      for (const u of this.units) if (u.owner === owner && u.order?.t === 'shelter') this.setOrder(u, u.order.then ?? null);
+      return;
+    }
+    const room = new Map(shelters.map((b) => [b.id, b.def.shelter! - b.sheltered.length]));
+    for (const u of this.units) {
+      if (u.owner !== owner || u.type !== 'villager' || u.inside) continue;
+      let best: Building | null = null;
+      let bestD = 40;
+      for (const b of shelters) {
+        const d = this.dist(u, b);
+        if (room.get(b.id)! > 0 && d < bestD) { bestD = d; best = b; }
+      }
+      if (!best) continue;
+      room.set(best.id, room.get(best.id)! - 1);
+      this.setOrder(u, { t: 'shelter', id: best.id, then: this.job(u) });
+    }
+  }
+
+  /** Let everyone sheltering in a building back out. */
+  private release(b: Building): void {
+    for (const id of b.sheltered) {
+      const u = this.entities.get(id);
+      if (!u || u.kind !== 'unit') continue;
+      const s = this.exitSpot(b, b.x, b.y + b.size);
+      u.inside = 0;
+      u.x = u.px = s.x;
+      u.y = u.py = s.y;
+      this.setOrder(u, u.resume);
+      u.resume = null;
+    }
+    b.sheltered = [];
+  }
+
   cmdPauseBirths(owner: number, houseId: number, paused: boolean): void {
     const h = this.entities.get(houseId);
     if (h && h.kind === 'building' && h.owner === owner) h.birthsPaused = paused;
@@ -697,6 +765,7 @@ export class Game {
     for (const bucket of this.hash) bucket.length = 0;
     for (const h of this.heroes) h.length = 0;
     for (const u of this.units) {
+      if (u.inside) continue; // sheltered units cannot be seen, hit or bumped
       const hx = Math.min(this.hashN - 1, Math.max(0, Math.floor(u.x / HASH)));
       const hy = Math.min(this.hashN - 1, Math.max(0, Math.floor(u.y / HASH)));
       this.hash[hy * this.hashN + hx].push(u);
@@ -759,13 +828,13 @@ export class Game {
     const alive = new Set<number>();
     for (const b of this.buildings) alive.add(b.owner);
     for (const p of this.players) {
-      if (!p.defeated && !alive.has(p.id)) {
+      if (!p.defeated && !p.neutral && !alive.has(p.id)) {
         p.defeated = true;
         for (const u of this.units.filter((u) => u.owner === p.id)) this.kill(u);
       }
     }
-    const left = this.players.filter((p) => !p.defeated);
-    if (left.length === 1 && this.players.length > 1) {
+    const left = this.players.filter((p) => !p.defeated && !p.neutral);
+    if (left.length === 1 && this.players.length > 2) {
       this.winner = left[0].id;
       this.events.push({ t: 'gameover', winner: this.winner });
     }
@@ -873,6 +942,10 @@ export class Game {
   private updateUnit(u: Unit): void {
     u.px = u.x;
     u.py = u.y;
+    if (u.inside) {
+      if (u.growT > 0 && (u.growT -= DT) <= 0) this.comeOfAge(u);
+      return;
+    }
     u.moving = false;
     u.anchored = false;
     if (u.cooldown > 0) u.cooldown -= DT;
@@ -897,6 +970,16 @@ export class Game {
       if (this.blocked[Math.floor(u.y) * this.size + Math.floor(u.x)]) {
         const p = this.pf.nearestFree(u.x, u.y);
         this.setOrder(u, { t: 'move', x: p.x, y: p.y });
+        return;
+      }
+      if (u.def.docile) {
+        // Graze: amble around the home range.
+        u.scanT -= DT;
+        if (u.scanT <= 0) {
+          u.scanT = 4 + this.rng() * 8;
+          const a = this.rng() * 6.283, r = this.rng() * 4;
+          this.setOrder(u, { t: 'move', x: u.homeX + Math.cos(a) * r, y: u.homeY + Math.sin(a) * r });
+        }
         return;
       }
       if (u.def.atk > 0 && this.isMilitary(u)) {
@@ -952,6 +1035,21 @@ export class Game {
       case 'gather':
         this.updateGather(u, o);
         break;
+
+      case 'shelter': {
+        const b = this.entities.get(o.id);
+        if (!b || b.kind !== 'building' || b.dead || b.sheltered.length >= (b.def.shelter ?? 0)) { this.setOrder(u, o.then ?? null); break; }
+        const r = this.approach(u, b, REACH);
+        if (r === 'there') {
+          b.sheltered.push(u.id);
+          u.inside = b.id;
+          u.resume = o.then ?? null;
+          this.setOrder(u, null);
+          u.x = u.px = b.x;
+          u.y = u.py = b.y;
+        } else if (r === 'fail') this.setOrder(u, o.then ?? null);
+        break;
+      }
 
       case 'cast': {
         const a = ABILITIES[o.ability];
@@ -1034,7 +1132,7 @@ export class Game {
     u.hp = (u.hp / u.maxHp) * u.def.hp;
     u.maxHp = u.def.hp;
     this.events.push({ t: 'grown', player: u.owner, x: u.x, y: u.y });
-    if (u.order) return;
+    if (u.order || u.inside) return;
     const home = this.entities.get(u.bornAt);
     if (!home || home.kind !== 'building') return;
     if (home.hasRally) {
@@ -1151,7 +1249,7 @@ export class Game {
     const near: Unit[] = [];
     const N = this.size;
     for (const u of this.units) {
-      if (u.anchored) continue;
+      if (u.anchored || u.inside) continue;
       let px = 0, py = 0;
       for (const v of this.unitsNear(u.x, u.y, 1.5, near)) {
         if (v === u) continue;
@@ -1349,10 +1447,10 @@ export class Game {
         let bestD = range;
         for (const v of this.unitsNear(b.x, b.y, range, this.scratch)) {
           const d = Math.hypot(v.x - b.x, v.y - b.y);
-          if (v.owner !== b.owner && d < bestD) { bestD = d; best = v; }
+          if (v.owner !== b.owner && !v.def.docile && d < bestD) { bestD = d; best = v; }
         }
         if (best) {
-          b.cooldown = b.def.cooldown!;
+          b.cooldown = b.def.cooldown! / (1 + 0.3 * b.sheltered.length); // sheltered villagers help shoot
           this.projectiles.push({
             x: b.x, y: b.y, sx: b.x, sy: b.y, tx: best.x, ty: best.y, targetId: best.id, speed: 13, owner: b.owner,
             atk: b.def.atk + p.mods.towerAtk, aura: 1, cls: 'building', splash: 0, kind: 'arrow', done: false,

@@ -26,11 +26,11 @@ interface Btn {
 const $ = (id: string) => document.getElementById(id)!;
 const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const GENDER = { m: '♂', f: '♀' };
-const NODE_NAME: Record<string, string> = { tree: 'Tree', berries: 'Berry Bush', gold: 'Gold Mine', stone: 'Stone Quarry' };
+const NODE_NAME: Record<string, string> = { tree: 'Tree', berries: 'Berry Bush', gold: 'Gold Mine', stone: 'Stone Quarry', carcass: 'Deer Carcass' };
 const RI = (r: ResType) => ico(r, RES_ICON[r]);
 const MAN = () => ico('villager_m', '👨‍🌾');
 const WOMAN = () => ico('villager_f', '👩‍🌾');
-const NODE_ICON: Record<string, string> = { tree: '🌲', berries: '🫐', gold: '🪙', stone: '🪨' };
+const NODE_ICON: Record<string, string> = { tree: '🌲', berries: '🫐', gold: '🪙', stone: '🪨', carcass: '🍖' };
 
 export class Hud {
   private btns: Btn[] = [];
@@ -222,6 +222,14 @@ export class Hud {
         locked: p.agingUp ? 'Already advancing.' : undefined, act: () => game.cmdAgeUp(pid, b.id),
       });
     }
+    if (b.type === 'towncenter') {
+      out.push({
+        id: 'bell' + p.bell, icon: p.bell ? ico('bell_clear', '🕊️') : ico('bell', '🔔'), name: p.bell ? 'All clear' : 'Ring the town bell',
+        desc: p.bell ? 'Villagers leave their shelters and go back to work.'
+          : 'Villagers run to shelter in Town Centers and Watch Towers, where they cannot be hurt and help shoot arrows.',
+        act: () => { game.cmdBell(pid, !p.bell); sfx.play('alert'); },
+      });
+    }
     if (b.type === 'house') {
       out.push({
         id: 'couple', icon: ico('couple', '💞'), name: 'Find a couple',
@@ -337,6 +345,7 @@ export class Hud {
       if (b.type === 'towncenter') {
         body += `<div class="${b.morale ? 'good' : 'hint'}">🏠 Houses nearby: ${b.morale}/${MORALE_MAX_HOUSES} — defenders take ${Math.round(b.morale * MORALE_PER_HOUSE * 100)}% less damage</div>`;
       }
+      if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Sheltering ${b.sheltered.length}/${b.def.shelter} villagers</div>`;
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
     return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;
@@ -352,7 +361,7 @@ export class Hud {
       const t = game.terrain[i];
       set(i, t === T_WATER ? 0x2f6a9c : t === T_DIRT ? 0x8a8048 : 0x5c8a40);
     }
-    const NODE: Record<string, number> = { tree: 0x2c5a2a, berries: 0xd0507a, gold: 0xf2c230, stone: 0xb0b0b0 };
+    const NODE: Record<string, number> = { tree: 0x2c5a2a, berries: 0xd0507a, gold: 0xf2c230, stone: 0xb0b0b0, carcass: 0xd0507a };
     for (const n of game.resources)
       for (let y = 0; y < n.size; y++) for (let x = 0; x < n.size; x++) set((n.cy + y) * N + n.cx + x, NODE[n.type]);
     for (const b of game.buildings) {
@@ -399,7 +408,7 @@ export class Hud {
     const { game, pid } = this.app;
     const p = game.players[pid];
     let idle = 0;
-    for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && u.growT <= 0) idle++;
+    for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside) idle++;
     const tc = game.buildings.find((b) => b.owner === pid && b.queue[0]?.kind === 'age');
     const aging = tc ? ` → ${AGES[p.age + 1].name} ${Math.floor((tc.queue[0].t / tc.queue[0].time) * 100)}%` : '';
     const mins = Math.floor(game.time / 60), secs = Math.floor(game.time % 60);

@@ -50,7 +50,7 @@ export class App {
   }
 
   nextIdle(): void {
-    const idle = this.game.units.filter((u) => u.owner === this.pid && u.type === 'villager' && !u.order && u.growT <= 0);
+    const idle = this.game.units.filter((u) => u.owner === this.pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside);
     if (!idle.length) return;
     const u = idle[this.idleI++ % idle.length];
     this.select([u.id]);
