@@ -1,5 +1,5 @@
 import { AIController } from '../sim/ai';
-import { DT, Game, GameEvent } from '../sim/game';
+import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets } from './assets';
 import { Hud } from './hud';
 import { Input } from './input';
@@ -25,11 +25,10 @@ export class App {
   private last = 0;
   private idleI = 0;
 
-  constructor(seed: number) {
-    this.game = new Game(seed, [
-      { name: 'You', color: 0x2f7bff, isAI: false },
-      { name: 'Red Tribe', color: 0xe0452f, isAI: true },
-    ]);
+  private saveT = 0;
+
+  constructor(game: Game) {
+    this.game = game;
     this.ai.push(new AIController(this.game, 1));
     this.r = new Renderer(document.getElementById('game') as HTMLCanvasElement, this.game);
     this.hud = new Hud(this);
@@ -74,6 +73,20 @@ export class App {
     else if (ev.t === 'remove' && ev.unit && this.onScreen(ev.x, ev.y) && this.game.vis[Math.floor(ev.y) * this.game.size + Math.floor(ev.x)] === 2) sfx.play('death');
   }
 
+  /** Store the game in this browser. Returns false if the browser refused (e.g. storage full). */
+  save(announce = true): boolean {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        game: this.game.serialize(), ai: this.ai[0].save(), cam: { x: this.r.cx, y: this.r.cy, d: this.r.dist },
+      }));
+      if (announce) this.hud.toast('Game saved.');
+      return true;
+    } catch {
+      if (announce) this.hud.toast('Could not save in this browser.', 'warn');
+      return false;
+    }
+  }
+
   togglePause(): void {
     this.paused = !this.paused;
   }
@@ -95,6 +108,8 @@ export class App {
         this.acc -= DT;
       }
       if (this.acc > DT) this.acc = 0;
+      // Autosave every two minutes of play.
+      if ((this.saveT += dt) > 120) { this.saveT = 0; this.save(false); }
     }
     for (const ev of game.events) {
       this.r.handle(ev);
@@ -118,8 +133,39 @@ export class App {
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
+const SAVE_KEY = 'rtsv-save';
+interface Saved { game: string; ai: object; cam: { x: number; y: number; d: number } }
+
+function readSave(): Saved | null {
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null') as Saved | null;
+    return s && JSON.parse(s.game).v === SAVE_VERSION ? s : null;
+  } catch {
+    return null;
+  }
+}
+
 loadAssets().then(() => {
-  const app = new App(seed);
+  let saved = params.has('load') ? readSave() : null;
+  let game: Game | null = null;
+  if (saved) {
+    try { game = Game.restore(saved.game); } catch { saved = null; }
+  }
+  game ??= new Game(seed, [
+    { name: 'You', color: 0x2f7bff, isAI: false },
+    { name: 'Red Tribe', color: 0xe0452f, isAI: true },
+  ]);
+  const app = new App(game);
+  if (saved) {
+    app.ai[0].load(saved.ai);
+    app.r.cx = saved.cam.x; app.r.cy = saved.cam.y; app.r.dist = saved.cam.d;
+    document.getElementById('start')!.classList.add('started');
+  } else if (readSave()) {
+    const cont = document.getElementById('continue-btn')!;
+    cont.classList.remove('hidden');
+    cont.addEventListener('click', () => { location.search = '?load=1'; });
+  }
+  document.getElementById('save')!.addEventListener('pointerdown', () => app.save());
   (window as unknown as { app: App }).app = app;
   const title = artUrl('title');
   if (title) document.getElementById('start')!.style.backgroundImage = `linear-gradient(rgba(6,6,8,0.55), rgba(6,6,8,0.8)), url(${title})`;
@@ -134,4 +180,4 @@ loadAssets().then(() => {
     });
   }
 });
-document.getElementById('again-btn')!.addEventListener('click', () => location.reload());
+document.getElementById('again-btn')!.addEventListener('click', () => { location.href = location.pathname; });

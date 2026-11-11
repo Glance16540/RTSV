@@ -158,6 +158,8 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
   background: linear-gradient(#f0d48a, #c99a3c); border: 1px solid #f6e3ac; border-radius: 4px;
 }
 .sheet button:hover { filter: brightness(1.1); }
+.sheet button.secondary { margin-top: 12px; padding: 7px 22px; font-size: 15px; background: none; color: var(--gold); border-color: var(--edge); }
+.started #continue-btn { display: none; }
 .levels { display: flex; justify-content: center; gap: 12px; }
 .levels .resume, .started .levels .new { display: none; }
 .started .levels .resume { display: inline-block; }

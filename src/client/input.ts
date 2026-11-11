@@ -14,6 +14,8 @@ export class Input {
   private inside = false;
   private drag: { x0: number; y0: number; active: boolean } | null = null;
   private pan: { x: number; y: number } | null = null;
+  /** First cell of a wall being dragged out. */
+  private line: { cx: number; cy: number } | null = null;
   private overlay: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private lastClick = { t: 0, id: 0 };
@@ -111,6 +113,8 @@ export class Input {
     if (e.button !== 0) return;
     if (app.placing) {
       const c = this.placeCell(app.placing);
+      const def = BUILDINGS[app.placing];
+      if (c && def.wall && !def.gate) { this.line = c; return; }
       if (c) {
         const built = app.game.cmdPlace(app.pid, app.placing, c.cx, c.cy, app.sel);
         if (built) sfx.play('place');
@@ -140,8 +144,29 @@ export class Input {
     this.drag = { x0: e.clientX, y0: e.clientY, active: false };
   }
 
+  /** Cells from the start of a wall drag to the cursor, without diagonal gaps wider than a corner. */
+  private lineCells(): { cx: number; cy: number }[] {
+    const a = this.line, type = this.app.placing;
+    const b = a && type ? this.placeCell(type) : null;
+    if (!a || !b) return [];
+    const out: { cx: number; cy: number }[] = [];
+    const n = Math.max(Math.abs(b.cx - a.cx), Math.abs(b.cy - a.cy));
+    for (let i = 0; i <= n; i++) {
+      const t = n ? i / n : 0;
+      out.push({ cx: Math.round(a.cx + (b.cx - a.cx) * t), cy: Math.round(a.cy + (b.cy - a.cy) * t) });
+    }
+    return out;
+  }
+
   private up(e: PointerEvent): void {
     if (e.button === 1) this.pan = null;
+    if (e.button === 0 && this.line) {
+      const app = this.app;
+      if (app.placing && app.game.cmdPlaceLine(app.pid, app.placing, this.lineCells(), app.sel)) sfx.play('place');
+      this.line = null;
+      if (!e.shiftKey) app.placing = null;
+      return;
+    }
     if (e.button !== 0 || !this.drag) return;
     const app = this.app, game = app.game, d = this.drag;
     this.drag = null;
@@ -224,6 +249,7 @@ export class Input {
     if (slot >= 0 && !e.repeat) { app.hud.press(slot); return; }
     switch (k) {
       case 'Escape':
+        this.line = null;
         if (app.placing || app.attackMode || app.casting) app.select(app.sel);
         else app.select([]);
         break;
@@ -324,6 +350,14 @@ export class Input {
       ctx.fillText(f.text, s.x, s.y);
     }
     ctx.globalAlpha = 1;
+    if (this.line && this.app.placing) {
+      // Preview of the wall being dragged out.
+      for (const c of this.lineCells()) {
+        const s = r.project(c.cx + 0.5, c.cy + 0.5, 0.5);
+        ctx.fillStyle = game.canPlace(this.app.placing, c.cx, c.cy, true) ? 'rgba(125,255,138,0.85)' : 'rgba(255,90,74,0.85)';
+        ctx.fillRect(s.x - ppt * 0.22, s.y - ppt * 0.22, ppt * 0.44, ppt * 0.44);
+      }
+    }
     if (this.drag?.active) {
       ctx.strokeStyle = '#9dff9a';
       ctx.fillStyle = 'rgba(120,255,120,0.12)';

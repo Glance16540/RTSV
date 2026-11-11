@@ -441,6 +441,27 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
       box(g, 2.62, 0.1, 2.02, color, 0, 0.95, -0.3);
       break;
     }
+    case 'palisade': {
+      for (const [x, z] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) {
+        cyl(g, 0.24, 0.26, 1.0, age >= 1 ? DARKWOOD : WOOD, x, 0.5, z, 6);
+        cyl(g, 0, 0.24, 0.3, 0x9a7448, x, 1.15, z, 6);
+      }
+      box(g, 1.02, 0.1, 1.02, color, 0, 0.7, 0);
+      break;
+    }
+    case 'stonewall': {
+      box(g, 1.0, 1.2, 1.0, STONE, 0, 0.6, 0);
+      for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) box(g, 0.34, 0.26, 0.34, 0x8a877f, x, 1.33, z);
+      box(g, 1.02, 0.1, 1.02, color, 0, 1.0, 0);
+      break;
+    }
+    case 'gate': {
+      for (const [x, z] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) box(g, 0.2, 1.6, 0.2, age >= 1 ? STONE : DARKWOOD, x, 0.8, z);
+      box(g, 1.04, 0.24, 1.04, DARKWOOD, 0, 1.6, 0);
+      box(g, 1.06, 0.3, 0.5, color, 0, 1.3, 0);
+      box(g, 0.5, 0.3, 1.06, color, 0, 1.3, 0);
+      break;
+    }
     case 'tower': {
       const st = age >= 2 ? STONE : wall;
       box(g, 1.2, 2.4, 1.2, st, 0, 1.2, 0);

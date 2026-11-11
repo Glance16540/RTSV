@@ -5,10 +5,12 @@ import {
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
-import { generateMap, MapSpec, mulberry32, NodeType, T_WATER } from './map';
+import { generateMap, MapSpec, NodeType, T_WATER } from './map';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
+/** Bump when saved games from older builds can no longer be loaded. */
+export const SAVE_VERSION = 1;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -191,15 +193,22 @@ export class Game {
   humanId = 0;
   /** Player id that owns wild animals. */
   wild = -1;
-  rng: () => number;
+  /** Seeded generator whose state is saved with the game, so a loaded game plays out identically. */
+  rngState = 0;
+  rng = (): number => {
+    let t = (this.rngState = (this.rngState + 0x6d2b79f5) >>> 0);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
   private nextId = 1;
   private hash: Unit[][] = [];
   private hashN: number;
   private heroes: Unit[][] = [];
   private tcs: Building[][] = [];
 
-  constructor(seed: number, setups: PlayerSetup[], size = 96) {
-    this.rng = mulberry32(seed ^ 0x9e3779b9);
+  constructor(public seed: number, public setups: PlayerSetup[], size = 96) {
+    this.rngState = (seed ^ 0x9e3779b9) >>> 0;
     this.spec = generateMap(seed, size);
     this.size = size;
     this.terrain = this.spec.terrain;
@@ -286,14 +295,14 @@ export class Game {
     };
     this.entities.set(b.id, b);
     this.buildings.push(b);
-    this.setCells(cx, cy, def.size, 1, !def.walkable);
+    this.setCells(cx, cy, def.size, def.gate ? 2 + owner : 1, !def.walkable);
     return b;
   }
 
   private setCells(cx: number, cy: number, size: number, v: number, block: boolean): void {
     for (let y = cy; y < cy + size; y++)
       for (let x = cx; x < cx + size; x++) {
-        this.occupied[y * this.size + x] = v;
+        this.occupied[y * this.size + x] = v ? 1 : 0;
         if (block) this.blocked[y * this.size + x] = v;
       }
   }
@@ -437,7 +446,8 @@ export class Game {
       const h = b.size / 2;
       const d = rectDist(x, y, b.x - h, b.y - h, b.x + h, b.y + h);
       if (d > radius || d < minRange) continue;
-      const score = d + (b.def.atk ? 0 : 2);
+      // Walls are only worth attacking when nothing else is in reach.
+      const score = d + (b.def.atk ? 0 : b.def.wall ? 30 : 2);
       if (score < bestD) { bestD = score; best = b; }
     }
     return best;
@@ -574,6 +584,70 @@ export class Game {
     const b = this.spawnBuilding(type, owner, cx, cy, false);
     for (const u of this.ownUnits(builderIds, owner)) if (u.type === 'villager' && u.growT <= 0) this.setOrder(u, { t: 'build', id: b.id, then: this.job(u) });
     return b;
+  }
+
+  /** Place a run of wall segments, as many as can be afforded. Returns how many were placed. */
+  cmdPlaceLine(owner: number, type: string, cells: { cx: number; cy: number }[], builderIds: number[]): number {
+    const p = this.players[owner];
+    const def = BUILDINGS[type];
+    if (!def || def.age > p.age) return 0;
+    let first: Building | null = null;
+    let n = 0;
+    for (const c of cells) {
+      if (!this.canPlace(type, c.cx, c.cy, owner === this.humanId && !p.isAI)) continue;
+      if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); break; }
+      this.pay(p, def.cost);
+      first ??= this.spawnBuilding(type, owner, c.cx, c.cy, false);
+      if (n++) this.spawnBuilding(type, owner, c.cx, c.cy, false);
+    }
+    if (first) for (const u of this.ownUnits(builderIds, owner)) if (u.type === 'villager' && u.growT <= 0) this.setOrder(u, { t: 'build', id: first.id, then: this.job(u) });
+    return n;
+  }
+
+  // ------------------------------------------------------------------
+  // Save / load
+  // ------------------------------------------------------------------
+
+  serialize(): string {
+    return JSON.stringify({
+      v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, vis: Array.from(this.vis),
+      players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
+      units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
+    }, (k, v) => (k === 'def' ? undefined : v));
+  }
+
+  /** Rebuild a game from `serialize()` output. Throws if the save is from an incompatible version. */
+  static restore(json: string): Game {
+    const d = JSON.parse(json);
+    if (d.v !== SAVE_VERSION) throw new Error('Incompatible save');
+    const g = new Game(d.seed, d.setups, d.size); // regenerates the same terrain from the seed
+    g.entities.clear();
+    g.blocked.fill(0);
+    g.occupied.fill(0);
+    for (let i = 0; i < g.terrain.length; i++) if (g.terrain[i] === T_WATER) { g.blocked[i] = 1; g.occupied[i] = 1; }
+    g.resources = d.resources;
+    for (const r of g.resources) if (r.type !== 'carcass') g.setCells(r.cx, r.cy, r.size, 1, true);
+    g.buildings = d.buildings;
+    for (const b of g.buildings) {
+      b.def = BUILDINGS[b.type];
+      g.setCells(b.cx, b.cy, b.size, b.def.gate ? 2 + b.owner : 1, !b.def.walkable);
+    }
+    g.units = d.units;
+    for (const u of g.units) u.def = UNITS[u.type];
+    for (const e of [...g.resources, ...g.buildings, ...g.units]) g.entities.set(e.id, e);
+    g.players = d.players.map((p: Player & { techs: string[]; pending: string[] }) => ({ ...p, techs: new Set(p.techs), pending: new Set(p.pending) }));
+    g.projectiles = d.projectiles;
+    g.quakes = d.quakes;
+    g.time = d.time;
+    g.tick = d.tick;
+    g.winner = d.winner;
+    g.nextId = d.nextId;
+    g.rngState = d.rngState;
+    g.vis.set(d.vis);
+    g.events = [];
+    g.upkeep();
+    return g;
   }
 
   cmdTrain(owner: number, bid: number, type: string, gender?: Gender): boolean {
@@ -826,7 +900,7 @@ export class Game {
 
   private checkVictory(): void {
     const alive = new Set<number>();
-    for (const b of this.buildings) alive.add(b.owner);
+    for (const b of this.buildings) if (!b.def.wall) alive.add(b.owner);
     for (const p of this.players) {
       if (!p.defeated && !p.neutral && !alive.has(p.id)) {
         p.defeated = true;
@@ -876,7 +950,7 @@ export class Game {
     }
     // A building may have been placed across the path since it was computed.
     const N = this.size;
-    if (this.blocked[Math.floor(u.y) * N + Math.floor(u.x)] && !this.blocked[Math.floor(oy) * N + Math.floor(ox)]) {
+    if (this.pf.isBlocked(Math.floor(u.x), Math.floor(u.y)) && !this.pf.isBlocked(Math.floor(ox), Math.floor(oy))) {
       u.x = ox; u.y = oy;
       u.path = null;
       return 'blocked';
@@ -940,6 +1014,7 @@ export class Game {
   }
 
   private updateUnit(u: Unit): void {
+    this.pf.pass = 2 + u.owner; // gates open for their owner only
     u.px = u.x;
     u.py = u.y;
     if (u.inside) {
@@ -967,7 +1042,7 @@ export class Game {
 
     const o = u.order;
     if (!o) {
-      if (this.blocked[Math.floor(u.y) * this.size + Math.floor(u.x)]) {
+      if (this.pf.isBlocked(Math.floor(u.x), Math.floor(u.y))) {
         const p = this.pf.nearestFree(u.x, u.y);
         this.setOrder(u, { t: 'move', x: p.x, y: p.y });
         return;
@@ -1269,7 +1344,8 @@ export class Game {
       if (m > cap) { px = (px / m) * cap; py = (py / m) * cap; }
       const nx = u.x + px, ny = u.y + py;
       if (nx < 0.5 || ny < 0.5 || nx > N - 0.5 || ny > N - 0.5) continue;
-      if (this.blocked[Math.floor(ny) * N + Math.floor(nx)]) continue;
+      this.pf.pass = 2 + u.owner;
+      if (this.pf.isBlocked(Math.floor(nx), Math.floor(ny))) continue;
       u.x = nx;
       u.y = ny;
     }
@@ -1355,6 +1431,7 @@ export class Game {
 
   /** Free cell next to a building, closest to a desired point. */
   private exitSpot(b: Building, tx: number, ty: number): { x: number; y: number } {
+    this.pf.pass = 2 + b.owner;
     let best = { x: b.x, y: b.y + b.size / 2 + 0.5 };
     let bestD = Infinity;
     for (let y = b.cy - 1; y <= b.cy + b.size; y++)

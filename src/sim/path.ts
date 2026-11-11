@@ -21,6 +21,12 @@ export class Pathfinder {
   private version = 0;
   private heap: number[] = [];
 
+  /**
+   * Whose units are being routed. Cells hold 0 (open), 1 (solid) or 2 + owner id (a gate,
+   * open only to that owner).
+   */
+  pass = 0;
+
   constructor(public n: number, public blocked: Uint8Array) {
     const size = n * n;
     this.g = new Float32Array(size);
@@ -31,7 +37,9 @@ export class Pathfinder {
   }
 
   isBlocked(cx: number, cy: number): boolean {
-    return cx < 0 || cy < 0 || cx >= this.n || cy >= this.n || this.blocked[cy * this.n + cx] === 1;
+    if (cx < 0 || cy < 0 || cx >= this.n || cy >= this.n) return true;
+    const v = this.blocked[cy * this.n + cx];
+    return v !== 0 && v !== this.pass;
   }
 
   /** Nearest walkable cell to a point (spiral search). */
@@ -66,6 +74,8 @@ export class Pathfinder {
     const v = ++this.version;
     const { g, f, from, stamp, closed, heap, blocked } = this;
     heap.length = 0;
+    const pass = this.pass;
+    const solid = (c: number) => blocked[c] !== 0 && blocked[c] !== pass;
     const h = (c: number) => rectDist((c % n) + 0.5, ((c / n) | 0) + 0.5, x0, y0, x1, y1);
 
     g[start] = 0;
@@ -82,15 +92,15 @@ export class Pathfinder {
       closed[c] = v;
       const hc = f[c] - g[c];
       if (hc < bestH) { bestH = hc; best = c; }
-      if (hc <= reach && blocked[c] === 0) { goal = c; break; }
+      if (hc <= reach && !solid(c)) { goal = c; break; }
       const cx = c % n, cy = (c / n) | 0;
       for (let k = 0; k < 8; k++) {
         const dx = DIRS[k][0], dy = DIRS[k][1];
         const nx = cx + dx, ny = cy + dy;
         if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
         const ni = ny * n + nx;
-        if (blocked[ni] === 1 || closed[ni] === v) continue;
-        if (k >= 4 && (blocked[cy * n + nx] === 1 || blocked[ny * n + cx] === 1)) continue;
+        if (solid(ni) || closed[ni] === v) continue;
+        if (k >= 4 && (solid(cy * n + nx) || solid(ny * n + cx))) continue;
         const ng = g[c] + DIRS[k][2];
         if (stamp[ni] === v && ng >= g[ni]) continue;
         stamp[ni] = v;

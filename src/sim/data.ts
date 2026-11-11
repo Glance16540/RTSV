@@ -210,6 +210,10 @@ export interface BuildingDef {
   sight: number;
   trains: string[];
   techs: string[];
+  /** Wall segment or gate: placed in lines, ignored for victory. */
+  wall?: boolean;
+  /** Only the owner's units may walk through. */
+  gate?: boolean;
   /** How many villagers can shelter inside when the town bell rings. */
   shelter?: number;
   dropoff?: boolean;
@@ -282,6 +286,21 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 180, gold: 80 }, time: 34, age: 2, hp: 900, size: 3, pop: 0, sight: 6,
     trains: ['catapult'], techs: [],
   }),
+  palisade: B({
+    id: 'palisade', name: 'Palisade', icon: '🪵',
+    desc: 'Cheap wooden wall. Drag to build a line. Blocks everyone, so leave a gate.',
+    cost: { wood: 4 }, time: 4, age: 0, hp: 260, size: 1, pop: 0, sight: 2, trains: [], techs: [], wall: true,
+  }),
+  stonewall: B({
+    id: 'stonewall', name: 'Stone Wall', icon: '🧱',
+    desc: 'Strong wall. Drag to build a line. Blocks everyone, so leave a gate.',
+    cost: { stone: 6 }, time: 7, age: 1, hp: 1100, size: 1, pop: 0, sight: 2, trains: [], techs: [], wall: true,
+  }),
+  gate: B({
+    id: 'gate', name: 'Gate', icon: '🚪',
+    desc: 'A wall segment your own units can walk through. Enemies must break it down.',
+    cost: { wood: 30 }, time: 10, age: 0, hp: 600, size: 1, pop: 0, sight: 3, trains: [], techs: [], wall: true, gate: true,
+  }),
   tower: B({
     id: 'tower', name: 'Watch Tower', icon: '🗼',
     desc: 'Defensive tower that fires at enemies. Shelters four villagers when the town bell rings.',
@@ -294,7 +313,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
 export const BUILD_MENU = [
   'house', 'storehouse', 'farm', 'barracks', 'towncenter',
   'range', 'stable', 'temple', 'blacksmith', 'tower',
-  'workshop',
+  'workshop', 'palisade', 'gate', 'stonewall',
 ];
 
 export interface TechDef {

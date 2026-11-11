@@ -48,6 +48,12 @@ food. Wolf packs roam the wilds and attack anyone who strays close.
 **Town bell.** Ring it at the Town Center and villagers run to shelter in Town Centers and Watch
 Towers, safe from harm and adding to the arrow fire. Ring the all-clear and they return to work.
 
+**Walls and gates.** Drag out lines of Palisade (Stone Age) or Stone Wall (Bronze Age). Walls
+block everyone; a Gate lets only your own units through, so enemies have to break in.
+
+**Saving.** The 💾 button stores the game in your browser, and it autosaves every two minutes.
+*Continue saved game* on the start screen picks it up again.
+
 **Also:** fog of war, minimap, four resources, farms, storehouses, towers, blacksmith and temple
 research, control groups, rally points, synthesised sound, and an AI opponent with three
 difficulty levels that plays by the same rules.

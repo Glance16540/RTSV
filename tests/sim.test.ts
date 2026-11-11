@@ -271,3 +271,58 @@ describe('wildlife and shelter', () => {
     expect(vs.every((v) => !v.inside && v.order?.t === 'gather')).toBe(true);
   });
 });
+
+describe('walls and gates', () => {
+  /** Ring of wall around a point, with one gate. */
+  const fort = (g: Game, owner: number, x: number, y: number) => {
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++)
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === 2) g.spawnBuilding(dx === 0 && dy === 2 ? 'gate' : 'palisade', owner, x + dx, y + dy, true);
+  };
+
+  it('gates let only their owner through, and enemies break walls down', () => {
+    const g = new Game(7, setups);
+    fort(g, 0, 48, 48);
+    const friend = g.spawnUnit('villager', 0, 48.5, 54.5, 'm'); // a villager, so it will not run out to fight
+    const foe = g.spawnUnit('swordsman', 1, 50.5, 54.5);
+    const before = g.buildings.length;
+    g.cmdMove(0, [friend.id], 48.5, 48.5);
+    g.cmdMove(1, [foe.id], 48.5, 48.5, true);
+    run(g, 8);
+    expect(Math.hypot(friend.x - 48.5, friend.y - 48.5)).toBeLessThan(0.5);
+    expect(Math.max(Math.abs(foe.x - 48.5), Math.abs(foe.y - 48.5))).toBeGreaterThan(2);
+    g.cmdDelete(0, [friend.id]);
+    run(g, 120);
+    expect(g.buildings.length).toBeLessThan(before); // chewed through a segment
+  });
+
+  it('places a line of segments and stops when the wood runs out', () => {
+    const g = new Game(7, setups);
+    const cells = Array.from({ length: 60 }, (_, i) => ({ cx: 40 + i, cy: 48 })).filter((c) => g.canPlace('palisade', c.cx, c.cy));
+    // Player 1 is an AI, so it is not limited to explored ground.
+    const n = g.cmdPlaceLine(1, 'palisade', cells, villagers(g, 1).map((v) => v.id));
+    expect(n).toBe(Math.min(cells.length, 50)); // 200 wood at 4 each
+    expect(villagers(g, 1).every((v) => v.order?.t === 'build')).toBe(true);
+  });
+
+  it('a player with only walls left is defeated', () => {
+    const g = new Game(7, setups);
+    g.spawnBuilding('palisade', 1, 48, 48, true);
+    g.cmdDelete(1, g.buildings.filter((b) => b.owner === 1 && !b.def.wall).map((b) => b.id));
+    run(g, 2);
+    expect(g.winner).toBe(0);
+  });
+});
+
+describe('save and load', () => {
+  it('a restored game plays out exactly like the original', () => {
+    const g = new Game(11, [{ ...setups[0], isAI: true }, setups[1]]);
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    run(g, 60 * 6, () => ais.forEach((a) => a.update()));
+    const copy = Game.restore(g.serialize());
+    expect(copy.units.length).toBe(g.units.length);
+    for (let i = 0; i < 600; i++) { g.step(); copy.step(); }
+    expect(copy.serialize()).toBe(g.serialize());
+    expect(() => Game.restore(g.serialize().replace('"v":1', '"v":0'))).toThrow();
+  });
+});

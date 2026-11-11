@@ -25,6 +25,7 @@ const BUILD_ORDER: { type: string; age: number; villagers: number; count: number
 ];
 
 export class AIController {
+  level = 1;
   private state: 'build' | 'attack' = 'build';
   private mixI = 0;
   private attackT = 0;
@@ -38,6 +39,7 @@ export class AIController {
 
   /** 0 easy, 1 normal, 2 hard. */
   setLevel(level: number): void {
+    this.level = level;
     this.firstAttack = [660, 420, 270][level];
     this.armyScale = [0.65, 1, 1.3][level];
     this.game.players[this.pid].mods.gather += [-0.2, 0, 0.2][level];
@@ -190,11 +192,25 @@ export class AIController {
     }
   }
 
+  /** State to store in a saved game. */
+  save(): object {
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale };
+  }
+
+  load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {
+    Object.assign(this, s);
+  }
+
+  private route(from: Unit, to: Entity): { partial: boolean } {
+    this.game.pf.pass = 2 + this.pid;
+    return this.game.pf.find(from.x, from.y, to.x, to.y, to.x, to.y, 1);
+  }
+
   private pickTarget(home: Entity): Entity | null {
     let best: Entity | null = null;
     let bestD = Infinity;
     for (const b of this.game.buildings) {
-      if (b.owner === this.pid) continue;
+      if (b.owner === this.pid || b.def.wall) continue;
       const d = Math.hypot(b.x - home.x, b.y - home.y);
       if (d < bestD) { bestD = d; best = b; }
     }
@@ -287,7 +303,7 @@ export class AIController {
         if (!t && res === 'food') {
           // Hunt nearby deer with a couple of villagers, as long as they can actually be reached.
           const deer = hunters < 3 ? g.units.find((u) => u.type === 'deer' && Math.hypot(u.x - home.x, u.y - home.y) < 18
-            && !g.pf.find(v.x, v.y, u.x, u.y, u.x, u.y, 1).partial) : undefined;
+            && !this.route(v, u).partial) : undefined;
           if (deer) { g.cmdTarget(pid, [v.id], deer.id); have.food++; hunters++; break; }
           if (farmCount < want.food * total + 3 && farms.filter((f) => !f.complete).length < 3 && p.res.wood >= BUILDINGS.farm.cost.wood!) {
             const spot = this.findSpot('farm', home.x, home.y, 5, 14);
