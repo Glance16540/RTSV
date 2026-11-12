@@ -910,15 +910,76 @@ function workcamp(o: Look): THREE.Group {
 /** What the steppe builds instead of walls: a great tent for the purpose, and its trade set out in front of it. */
 function camp(o: Look, type: string): THREE.Group {
   const g = new THREE.Group(), tim = toon(TIMBER);
-  bx(g, 2.8, 0.03, 2.8, toon(0x9a8a64), 0, 0.015, 0).castShadow = false;
+  // Trodden ground round the tent: a rough round patch, not a square.
+  mesh(g, wobble(new THREE.CylinderGeometry(1.5, 1.55, 0.03, 14), 0.12, 5), toon(0x9a8a64), 0, 0.015, 0).castShadow = false;
   if (type === 'towncenter') {
-    // The khan's tent, raised on a platform, flanked by two lesser ones, with the standard before it.
-    mesh(g, new THREE.CylinderGeometry(1.25, 1.35, 0.16, 20), toon(PLANK, 'planks'), 0, 0.08, -0.3);
-    const up = new THREE.Group(); up.position.y = 0.16; g.add(up);
-    ger(up, o, 1.1, 0, -0.3);
-    ger(g, o, 0.5, -1.15, 0.75); ger(g, o, 0.5, 1.15, 0.75);
-    for (let i = 0; i < 2; i++) bx(g, 0.7 - i * 0.14, 0.08, 0.2, toon(PLANK, 'planks'), 0, 0.04 + i * 0.08, 1.05 - i * 0.18);
-    banner(g, o.team, -0.5, 0, 1.3, 1.7); banner(g, o.team, 0.5, 0, 1.3, 1.7);
+    // The khan's tent: twice the height of any other, on a stepped platform, its crown gilded, lesser tents at its
+    // shoulders and a row of horse-tail standards before the door.
+    const deck = toon(PLANK, 'planks'), gold = toon(0xf2c230, '', 0x6a5010);
+    mesh(g, new THREE.CylinderGeometry(1.62, 1.72, 0.18, 22), deck, 0, 0.09, -0.25);
+    mesh(g, new THREE.CylinderGeometry(1.46, 1.54, 0.18, 22), deck, 0, 0.27, -0.25);
+    const up = new THREE.Group(); up.position.y = 0.36; g.add(up);
+    ger(up, o, 1.3, 0, -0.25);
+    // A second, smaller roof over the crown, and a finial.
+    mesh(up, new THREE.CylinderGeometry(0.42, 0.42, 0.3, 14), toon(0xe9e2d0, 'plaster'), 0, 1.78, -0.25);
+    mesh(up, new THREE.TorusGeometry(0.43, 0.03, 5, 16).rotateX(Math.PI / 2), toon(o.team), 0, 1.92, -0.25);
+    mesh(up, new THREE.ConeGeometry(0.5, 0.42, 14), toon(o.roofColor, 'tiles'), 0, 2.14, -0.25);
+    mesh(up, new THREE.SphereGeometry(0.09, 10, 8), gold, 0, 2.42, -0.25);
+    cloth(up, o.team, 0.5, 0.7, 0, 0.72, 1.07);
+    ger(g, o, 0.48, -1.5, 0.7); ger(g, o, 0.48, 1.5, 0.7);
+    for (let i = 0; i < 3; i++) bx(g, 0.9 - i * 0.14, 0.12, 0.22, deck, 0, 0.06 + i * 0.12, 1.55 - i * 0.2);
+    for (const x of [-0.95, -0.6, 0.6, 0.95]) {
+      const tall = Math.abs(x) < 0.8 ? 2.1 : 1.7;
+      mesh(g, new THREE.CylinderGeometry(0.022, 0.03, tall, 6), toon(TIMBER), x, tall / 2, 1.7);
+      mesh(g, new THREE.ConeGeometry(0.1, 0.34, 8), toon(Math.abs(x) < 0.8 ? 0xf0ece0 : 0x2a2420), x, tall - 0.2, 1.7).rotation.x = Math.PI; // a horse-tail
+      mesh(g, new THREE.SphereGeometry(0.045, 8, 6), gold, x, tall + 0.03, 1.7);
+    }
+    return g;
+  }
+  if (type === 'temple') {
+    const gold = toon(o.leaning === 'holy' ? 0xffd860 : 0xe8c860, '', o.leaning === 'holy' ? 0x8a6a10 : 0);
+    if (o.leaning === 'low') {
+      // Left to fall in: the felt slumped over broken poles, the cairn scattered, weeds coming up.
+      const felt = toon(0xa8a090, 'plaster');
+      const slump = mesh(g, new THREE.CylinderGeometry(0.5, 1.0, 0.4, 14, 1, true), felt, -0.2, 0.2, -0.3);
+      slump.rotation.z = 0.12;
+      mesh(g, wobble(new THREE.ConeGeometry(0.62, 0.3, 12), 0.08, 3), felt, -0.05, 0.44, -0.2).rotation.x = 0.3;
+      for (const [x, z, r] of [[-0.9, 0.2, 0.5], [0.5, -0.9, -0.4], [0.3, 0.4, 0.9]]) { const pole = mesh(g, new THREE.CylinderGeometry(0.02, 0.025, 1.1, 5), toon(TIMBER), x, 0.4, z); pole.rotation.set(0.6, 0, r); }
+      for (const [x, z, sz] of [[0.9, 0.8, 0.12], [1.1, 0.6, 0.09], [0.75, 1.0, 0.08], [1.2, 0.95, 0.1]]) mesh(g, wobble(new THREE.DodecahedronGeometry(sz, 0), 0.02, 4), toon(0x8a8680, 'stone'), x, sz * 0.6, z);
+      for (const [x, z] of [[-1.0, 0.9], [0.1, 1.1], [-0.4, 0.8]]) mesh(g, new THREE.SphereGeometry(0.14, 6, 5), toon(0x5a7a3a), x, 0.1, z).castShadow = false;
+      return g;
+    }
+    ger(g, o, 0.95, -0.3, -0.35);
+    mesh(g, new THREE.SphereGeometry(0.1, 10, 8), gold, -0.3, 1.36, -0.35);
+    mesh(g, new THREE.ConeGeometry(0.05, 0.2, 6), gold, -0.3, 1.5, -0.35);
+    // The cairn: a heap of stones with a pole of blue cloths, and lines of prayer flags strung to it.
+    for (const [x, y, z, sz] of [[0.95, 0.1, 0.8, 0.2], [1.1, 0.09, 0.95, 0.16], [0.82, 0.08, 0.98, 0.15], [0.96, 0.28, 0.88, 0.15], [1.0, 0.42, 0.88, 0.1]]) mesh(g, wobble(new THREE.DodecahedronGeometry(sz, 0), 0.03, 4), toon(0xa8a49a, 'stone'), x, y, z);
+    mesh(g, new THREE.CylinderGeometry(0.018, 0.022, 1.3, 5), toon(TIMBER), 0.96, 0.85, 0.88);
+    for (let i = 0; i < 3; i++) bx(g, 0.2, 0.1, 0.012, toon(0x3a78c8), 1.06, 1.0 + i * 0.16, 0.88).castShadow = false;
+    const flags = o.leaning === 'holy' ? [0x3a78c8, 0xf0ece0, 0xc83a3a, 0x4a9a4a, 0xf0c030, 0x3a78c8, 0xf0ece0] : [0x3a78c8, 0xf0ece0, 0xc83a3a];
+    flags.forEach((c, i) => { const t = (i + 0.5) / flags.length; bx(g, 0.1, 0.12, 0.01, toon(c), 0.96 - t * 1.0, 1.42 - t * 0.5 - Math.sin(t * Math.PI) * 0.1, 0.88 - t * 0.9).castShadow = false; });
+    if (o.leaning === 'holy') for (const [x, z, c] of [[0.3, 1.0, 0xe8506a], [0.55, 1.1, 0xf0d040], [-0.9, 0.7, 0xffffff], [-0.7, 0.85, 0xe8506a]]) mesh(g, new THREE.SphereGeometry(0.07, 6, 5), toon(c), x, 0.08, z).castShadow = false;
+    banner(g, o.team, -1.2, 0, 0.9, 1.0);
+    return g;
+  }
+  if (type === 'tavern') {
+    // The drinking tent: its front rolled up, skins of fermented mare's milk on a rack, a fire and seats outside.
+    ger(g, o, 0.95, -0.3, -0.4);
+    const low = o.leaning === 'low', holy = o.leaning === 'holy';
+    for (const x of [0.6, 1.2]) bx(g, 0.04, 0.6, 0.04, tim, x, 0.3, 0.1);
+    bx(g, 0.7, 0.04, 0.04, tim, 0.9, 0.6, 0.1);
+    if (!holy) for (const x of [0.7, 0.9, 1.1]) mesh(g, new THREE.SphereGeometry(0.09, 8, 6), toon(0x8a5a3a), x, 0.46, 0.1).scale.set(0.8, 1.3, 0.6);
+    mesh(g, new THREE.CylinderGeometry(0.2, 0.24, 0.06, 10), toon(0x6a6660, 'stone'), 0.35, 0.03, 0.95);
+    if (!holy) mesh(g, new THREE.ConeGeometry(0.1, 0.28, 6), toon(0xff8a20, '', 0xcc4400), 0.35, 0.2, 0.95).castShadow = false;
+    for (const [x, z] of [[0.0, 1.15], [0.7, 1.2], [0.35, 0.55]]) mesh(g, new THREE.CylinderGeometry(0.1, 0.1, 0.14, 8).rotateZ(Math.PI / 2), tim, x, 0.08, z);
+    barrel(g, -0.9, 0.9, 0.8); if (!holy) barrel(g, -1.1, 0.55, 0.75);
+    if (low) {
+      // Dressed to draw a crowd: red lanterns round the eaves and bright pennants.
+      for (let i = 0; i < 7; i++) { const an = -0.2 + (i / 6) * Math.PI * 0.9; mesh(g, new THREE.SphereGeometry(0.07, 8, 6), toon(0xff3a30, '', 0xcc1a10), -0.3 + Math.sin(an) * 1.02, 0.6, -0.4 + Math.cos(an) * 1.02).castShadow = false; }
+      [0xe83a6a, 0xf0c030, 0xe83a6a, 0xf0c030].forEach((c, i) => { bx(g, 0.14, 0.2, 0.012, toon(c), 0.62 + i * 0.2, 0.74, 0.1).castShadow = false; });
+      barrel(g, 1.25, 0.9, 0.8); barrel(g, 1.0, 1.15, 0.7);
+    }
+    banner(g, o.team, 1.3, 0, -0.9, 1.1);
     return g;
   }
   ger(g, o, type === 'storehouse' ? 0.8 : 0.95, -0.3, -0.35);
@@ -966,7 +1027,7 @@ function camp(o: Look, type: string): THREE.Group {
 
 /** Built to their plot exactly, since they stand shoulder to shoulder or lie flat: not resized to fit. */
 /** What a steppe people keeps under felt rather than behind walls. */
-const CAMPED = new Set(['towncenter', 'storehouse', 'barracks', 'blacksmith', 'stable', 'range', 'workshop']);
+const CAMPED = new Set(['towncenter', 'temple', 'tavern', 'storehouse', 'barracks', 'blacksmith', 'stable', 'range', 'workshop']);
 const AS_BUILT = new Set(['gate', 'farm', 'palisade', 'stonewall']);
 const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, palisade, stonewall, workcamp, wonder, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
 /** A hand-shaped building, sized to fit `size` tiles, or null where there is none yet (or the old one is kept). */
