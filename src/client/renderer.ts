@@ -8,6 +8,7 @@ import { Job, makeBuilding, makeResource, makeStaff, makeUnit, mat, RES_COLOR, R
 import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
+import { Weather } from './weather';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, wobble } from './shapes';
 
@@ -73,6 +74,9 @@ export class Renderer {
   private chipMat = new THREE.MeshBasicMaterial({ color: 0x8a6238 });
   private rubble: Rubble[] = [];
   private roads!: Roads;
+  private weather!: Weather;
+  private sky!: THREE.HemisphereLight;
+  private tintC = new THREE.Color();
   private staffViews = new Map<number, { key: string; g: THREE.Group }>();
   private dust: Dust[] = [];
   /** Draws the ink edge around everything standing in the world. Off with ?outline=0. */
@@ -96,7 +100,8 @@ export class Renderer {
     this.gl.toneMapping = THREE.ACESFilmicToneMapping;
     this.gl.toneMappingExposure = 1.02;
     this.scene.fog = this.haze;
-    this.scene.add(new THREE.HemisphereLight(0xd6e6ff, 0x8a7858, 1.55));
+    this.sky = new THREE.HemisphereLight(0xd6e6ff, 0x8a7858, 1.55);
+    this.scene.add(this.sky);
     this.sun = new THREE.DirectionalLight(0xffe2b4, 3.0);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(4096, 4096);
@@ -112,6 +117,7 @@ export class Renderer {
     this.scenery = buildScenery(game.size, game.terrain, game.spec.height, game.climate);
     this.scene.add(this.scenery.group);
     this.roads = new Roads(game, this.scenery, this.scene);
+    this.weather = new Weather(this.scene, game.climate);
     this.buildTrees();
     this.buildFog();
 
@@ -257,8 +263,13 @@ export class Renderer {
     const r = this.dist * 0.72;
     this.sun.position.set(this.cx - 38, 44, this.cy + 20);
     // Haze thickens toward the far edge of the view, and thins out when the camera is close in.
-    this.haze.near = this.dist * 1.25;
-    this.haze.far = this.dist * 4.6;
+    // Weather draws the haze in, greys it, and takes the edge off the sun.
+    const w = this.weather.amount;
+    this.haze.near = this.dist * (1.25 - w * 0.75);
+    this.haze.far = this.dist * (4.6 - w * 2.5);
+    this.haze.color.set(0x9fb0c4).lerp(this.weather.tint(this.tintC), w);
+    this.sun.intensity = 3.0 * (1 - w * 0.6);
+    this.sky.intensity = 1.55 * (1 - w * 0.18);
     this.sun.target.position.set(this.cx, 0, this.cy);
     const sc = this.sun.shadow.camera;
     sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 160;
@@ -912,6 +923,7 @@ export class Renderer {
 
     this.stepRubble(dt);
     this.roads.update((b) => this.isVisible(b));
+    this.weather.update(dt, this.clock, this.cx, this.cy);
     if (this.ink) {
       // Only what is made of the drawn materials takes an outline; the ground, water, rings and fog never do.
       if (this.inked++ % 12 === 0) this.scene.traverse((o) => {

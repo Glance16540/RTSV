@@ -277,7 +277,39 @@ function hall(o: Look): THREE.Group {
   barrel(g, 1.25, 1.6); barrel(g, 1.6, 1.75, 0.85);
   return g;
 }
+/** A church let go to ruin: roof fallen in, tower broken off short, ivy on stained walls, the cross askew. */
+function ruin(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  const st = toon(0x9a9484, 'stone'), ivy = toon(0x4a6a34), beam = toon(TIMBER);
+  // The walls still stand, to different heights, with a gap torn in one side.
+  walls(g, 1.5, 1.35, 0.14, st, 0.3, 0, -1.28);
+  walls(g, 0.14, 1.45, 2.4, st, -0.38, 0, -0.1);
+  walls(g, 0.14, 1.0, 1.2, st, 0.98, 0, -0.7);
+  walls(g, 0.14, 0.5, 0.7, st, 0.98, 0, 0.5);
+  for (const z of [-0.95, -0.25]) { bx(g, 0.16, 1.1, 0.2, st, -0.5, 0.55, z + 0.36).rotation.z = 0.08; pane(g, 'arch', 0.3, 0.8, -0.46, 0.85, z, Math.PI / 2); }
+  bx(g, 0.16, 0.8, 0.2, st, 1.1, 0.4, -0.6).rotation.z = -0.08;
+  // Fallen roof timbers and a few slates lying where they dropped.
+  bx(g, 0.1, 0.1, 2.0, beam, 0.3, 0.75, -0.2).rotation.set(0.5, 0.3, 0);
+  bx(g, 0.1, 0.1, 1.6, beam, 0.1, 0.4, 0.1).rotation.set(-0.2, -0.6, 0.3);
+  bx(g, 0.1, 0.1, 1.2, beam, 0.6, 0.2, -0.7).rotation.set(0.1, 1.1, 0.1);
+  bx(g, 0.5, 0.05, 0.7, toon(o.roofColor, 'tiles'), 0.5, 0.12, 0.1).rotation.set(0.2, 0.4, 0.15);
+  for (const [x, z, s] of [[0.5, 0.2, 0.3], [0.8, -0.3, 0.22], [0.2, -0.6, 0.26], [1.3, 0.9, 0.2], [1.3, 0.3, 0.16], [-0.9, -0.6, 0.18]]) bx(g, s, s * 0.7, s, st, x, s * 0.35, z).rotation.y = x * 3;
+  // The tower, broken off above the door.
+  walls(g, 1.0, 1.5, 1.0, st, 0.3, 0, 1.45);
+  bx(g, 0.5, 0.55, 1.0, st, 0.05, 1.75, 1.45).rotation.z = 0.2;
+  bx(g, 0.3, 0.3, 0.5, st, 0.6, 1.62, 1.2).rotation.y = 0.5;
+  pane(g, 'door', 0.46, 0.8, 0.3, 0.42, 1.96).rotation.z = 0.12;
+  const gold = toon(0x7a6a3a);
+  bx(g, 0.06, 0.55, 0.06, gold, 0.5, 2.0, 1.45).rotation.z = -0.6;
+  bx(g, 0.3, 0.06, 0.06, gold, 0.58, 2.1, 1.45).rotation.z = -0.6;
+  // Ivy up the walls and weeds at their foot.
+  for (const [x, y, z, w, h, side] of [[0.3, 0.7, 1.97, 0.5, 1.0, 0], [-0.46, 0.6, 0.3, 0.6, 1.0, 1], [0.5, 0.5, -1.36, 0.8, 0.7, 0], [1.06, 0.4, -0.6, 0.5, 0.6, 1], [0.82, 0.9, 1.45, 0.5, 0.9, 1]]) bx(g, side ? 0.04 : w, h, side ? w : 0.04, ivy, x, y, z).castShadow = false;
+  for (const [x, z] of [[0.9, 1.2], [1.2, 0.2], [-0.9, -0.9], [-0.3, 2.1], [0.4, -0.2], [0.7, -1.0]]) mesh(g, wobble(new THREE.IcosahedronGeometry(0.17, 1), 0.3, x * 7), ivy, x, 0.12, z).castShadow = false;
+  for (const [x, z] of [[-1.0, 0.6], [-1.15, 0.0]]) bx(g, 0.16, 0.26, 0.05, toon(0x8a8478, 'stone'), x, 0.11, z).rotation.set(0.3, x * 2, 0.2);
+  return g;
+}
 function church(o: Look): THREE.Group {
+  if (o.leaning === 'low') return ruin(o);
   const g = new THREE.Group();
   const holy = o.leaning === 'holy';
   const st = toon(holy ? 0xfaf6ea : o.age >= 2 ? 0xdcd6c6 : 0xc0b498, 'stone'), slate = toon(o.roofColor, 'tiles'), gold = toon(holy ? 0xffd860 : 0xe8c860, '', holy ? 0x8a6a10 : 0x4a3a08);
@@ -544,12 +576,49 @@ function market(o: Look): THREE.Group {
   return g;
 }
 
-const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
+function farm(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  bx(g, 2.8, 0.06, 2.8, toon(0x6e4e2e), 0, 0.03, 0).castShadow = false;
+  // Ridged rows with a crop standing in them: green shoots, ripening to gold toward one end.
+  for (let i = 0; i < 6; i++) {
+    const z = -1.15 + i * 0.46;
+    mesh(g, new THREE.CylinderGeometry(0.12, 0.16, 2.6, 6).rotateZ(Math.PI / 2), toon(0x7a5632), 0, 0.07, z).castShadow = false;
+    for (let k = 0; k < 9; k++) {
+      const x = -1.2 + k * 0.3 + (i % 2) * 0.1, ripe = (k + i) % 4 === 0;
+      const s = mesh(g, new THREE.ConeGeometry(0.07, 0.3 + ((k * 7 + i * 3) % 5) * 0.03, 5), toon(ripe ? 0xd8b848 : i % 2 ? 0x8aa838 : 0x7a9a30), x, 0.28, z);
+      s.castShadow = false;
+    }
+  }
+  // A scarecrow in the owner's colour, a wicker fence along two sides, a basket.
+  mesh(g, new THREE.CylinderGeometry(0.025, 0.025, 0.9, 5), toon(TIMBER), 1.15, 0.45, 1.15);
+  bx(g, 0.6, 0.04, 0.04, toon(TIMBER), 1.15, 0.68, 1.15);
+  bx(g, 0.3, 0.3, 0.1, toon(o.team), 1.15, 0.58, 1.15);
+  mesh(g, new THREE.SphereGeometry(0.09, 8, 6), toon(0xd8c070, 'thatch'), 1.15, 0.88, 1.15);
+  mesh(g, new THREE.ConeGeometry(0.16, 0.12, 8), toon(0xb89a48, 'thatch'), 1.15, 0.99, 1.15);
+  fence(g, -1.38, -1.38, 1.38, -1.38); fence(g, -1.38, -1.38, -1.38, 1.0);
+  mesh(g, new THREE.CylinderGeometry(0.13, 0.1, 0.14, 9), toon(0xa8783e, 'thatch'), -1.1, 0.1, 1.2);
+  return g;
+}
+function gate(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  const stone = o.age >= 1, m = stone ? toon(0xb8b4aa, 'stone') : toon(0x8a6238, 'planks');
+  // Two piers, a lintel over them with a walk on top, and the doors standing open inward.
+  for (const x of [-0.39, 0.39]) { walls(g, 0.22, 1.7, 1.0, m, x, 0, 0); if (stone) for (const z of [-0.36, 0.36]) bx(g, 0.24, 0.2, 0.24, m, x, 1.8, z); else mesh(g, new THREE.ConeGeometry(0.14, 0.26, 6), m, x, 1.83, 0); }
+  bx(g, 1.0, 0.24, 1.0, stone ? m : toon(TIMBER, 'planks'), 0, 1.5, 0);
+  bx(g, 0.58, 0.12, 0.3, toon(o.team), 0, 1.3, 0);
+  for (const s of [-1, 1]) { const d = bx(g, 0.05, 1.2, 0.28, toon(0x6a4828, 'planks'), s * 0.26, 0.62, 0.3); d.rotation.y = s * 0.5; for (const y of [0.3, 0.95]) bx(g, 0.06, 0.05, 0.29, toon(0x2a2a2e), s * 0.26, y, 0.3).rotation.y = s * 0.5; }
+  return g;
+}
+
+/** Built to their plot exactly, since they stand shoulder to shoulder or lie flat: not resized to fit. */
+const AS_BUILT = new Set(['gate', 'farm']);
+const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
 /** A hand-shaped building, sized to fit `size` tiles, or null where there is none yet (or the old one is kept). */
 export function shapedBuilding(type: string, size: number, o: Look, seed: number): THREE.Group | null {
   const make = MAKERS[type];
-  if (!make || (type === 'temple' && o.leaning === 'low')) return null;
+  if (!make) return null;
   const inner = make(o, seed);
+  if (AS_BUILT.has(type)) return inner;
   inner.updateMatrixWorld(true);
   // Measured to the true corners: a roof set on the diagonal must not count as wider than it is.
   const box = new THREE.Box3().setFromObject(inner, true), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
