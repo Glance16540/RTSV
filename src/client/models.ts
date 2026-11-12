@@ -517,12 +517,13 @@ export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 
   return g;
 }
 
-export function makeUnit(type: string, color: number, gender: Gender | null, seed: number, job: Job = ''): THREE.Group {
+/** `wear` is how the town's standing shows in a village woman's dress: 0 as usual, 1 pious (covered, a scarf), 2 decadent (a laced bodice worn low), 3 more so. */
+export function makeUnit(type: string, color: number, gender: Gender | null, seed: number, job: Job = '', wear = 0): THREE.Group {
   made.clear();
   figure = true;
   const alias = MODEL_ALIAS[type];
   if (alias && !generatedModel(type, 0, 1, 'height')) {
-    const g = makeUnit(alias[0], color, gender, seed, job);
+    const g = makeUnit(alias[0], color, gender, seed, job, wear);
     const h = UNIT_HEIGHT[alias[0]] ?? 0.95;
     // A plume and a shoulder sash mark them out from the unit they are drawn from.
     const plume = add(g, geo('plume', () => new THREE.ConeGeometry(0.07, 0.26, 5)), alias[1], 0, h + 0.14, 0, 0x101010);
@@ -547,7 +548,10 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     case 'villager': {
       let a: THREE.Group;
       if (gender === 'f') {
-        woman(g, color, hair, job === 'farm' || job === 'forage' ? 2 : seed);
+        // Hair under a scarf for field work or in a pious town; let down or pinned up, never covered, in a decadent one.
+        const hairdo = wear >= 2 ? (seed % 3 === 2 ? seed + 1 : seed) : wear === 1 || job === 'farm' || job === 'forage' ? 2 : seed;
+        if (wear >= 2) woman(g, color, hair, hairdo, 0xf4eee0, new THREE.Color(color).multiplyScalar(0.45).getHex(), wear - 1);
+        else woman(g, color, hair, hairdo);
         a = arm(g, -0.02, color, 0.82);
         a.position.x = 0.15;
       } else {

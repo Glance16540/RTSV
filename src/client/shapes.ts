@@ -448,6 +448,30 @@ function church(o: Look): THREE.Group {
   banner(g, o.team, 1.3, 0, 1.9, 1.0);
   return g;
 }
+/**
+ * A village woman's clothes, left lying about a decadent town's tavern: a dress in her people's colour dropped in a
+ * heap, a white shift thrown over something, a dress hung up by its shoulders, shoes kicked off.
+ */
+function castOff(g: THREE.Object3D, o: Look, x: number, z: number, hangY: number, hangX: number, hangZ: number): void {
+  const dress = toon(o.team), linen = toon(0xf4eee0), sash = toon(0xe8e2d4);
+  // The heap: the skirt fallen in a ring, the bodice folded over it.
+  const heap = mesh(g, wobble(new THREE.TorusGeometry(0.15, 0.07, 6, 12).rotateX(Math.PI / 2), 0.03, 7), dress, x, 0.05, z);
+  heap.scale.y = 0.6;
+  mesh(g, wobble(new THREE.SphereGeometry(0.1, 8, 6), 0.02, 3), dress, x + 0.04, 0.09, z - 0.03).scale.y = 0.45;
+  mesh(g, new THREE.TorusGeometry(0.07, 0.012, 4, 10).rotateX(Math.PI / 2), sash, x + 0.16, 0.02, z + 0.12).castShadow = false;
+  // A shift, flung down beside it, and a pair of shoes.
+  const shift = mesh(g, wobble(new THREE.CircleGeometry(0.2, 10).rotateX(-Math.PI / 2), 0.03, 5), linen, x - 0.3, 0.03, z + 0.1);
+  shift.scale.set(1.3, 1, 0.7); shift.rotation.y = 0.6; shift.castShadow = false;
+  for (const [dx, ry] of [[0.3, 0.4], [0.42, -0.7]]) bx(g, 0.06, 0.04, 0.1, toon(0x2e2218), x + dx, 0.02, z - 0.16).rotation.y = ry;
+  // And one hung up where everyone can see it: bodice above, skirt below, swaying a little off true.
+  const hung = new THREE.Group();
+  hung.position.set(hangX, hangY, hangZ);
+  hung.rotation.z = 0.12;
+  mesh(hung, new THREE.CylinderGeometry(0.06, 0.09, 0.2, 8), dress, 0, -0.1, 0).scale.z = 0.35;
+  mesh(hung, new THREE.CylinderGeometry(0.09, 0.2, 0.36, 10), dress, 0, -0.38, 0).scale.z = 0.3;
+  mesh(hung, new THREE.TorusGeometry(0.088, 0.012, 4, 10).rotateX(Math.PI / 2), sash, 0, -0.2, 0).scale.z = 0.35;
+  g.add(hung);
+}
 function tavern(o: Look): THREE.Group {
   const g = new THREE.Group();
   const gaudy = o.leaning === 'low', sober = o.leaning === 'holy';
@@ -479,6 +503,7 @@ function tavern(o: Look): THREE.Group {
     for (const z of [1.28, 1.92]) bx(g, 0.8, 0.04, 0.14, toon(0x9a6a3e, 'planks'), -0.8, 0.2, z);
   }
   if (gaudy) {
+    castOff(g, o, -0.95, 2.0, 1.75, 0.95, 0.94);
     // Dressed to draw a crowd: red lanterns along the eaves, bright pennants, a great painted mug, more tables.
     for (const x of [-1.2, -0.6, 0, 0.6, 1.2]) { bx(g, 0.02, 0.2, 0.02, toon(TIMBER), x, 1.9, 0.98); mesh(g, new THREE.SphereGeometry(0.1, 10, 8), toon(0xff3a30, '', 0xcc1a10), x, 1.76, 0.98).castShadow = false; }
     for (const [x, c] of [[-1.0, 0xe83a6a], [-0.5, 0xf0c030], [0, 0xe83a6a], [0.5, 0xf0c030], [1.0, 0xe83a6a]]) { const p = bx(g, 0.2, 0.26, 0.03, toon(c, '', new THREE.Color(c).multiplyScalar(0.3).getHex()), x, 1.3, 0.93); p.rotation.z = Math.PI / 4; p.castShadow = false; }
@@ -974,6 +999,7 @@ function camp(o: Look, type: string): THREE.Group {
     for (const [x, z] of [[0.0, 1.15], [0.7, 1.2], [0.35, 0.55]]) mesh(g, new THREE.CylinderGeometry(0.1, 0.1, 0.14, 8).rotateZ(Math.PI / 2), tim, x, 0.08, z);
     barrel(g, -0.9, 0.9, 0.8); if (!holy) barrel(g, -1.1, 0.55, 0.75);
     if (low) {
+      castOff(g, o, -0.35, 1.2, 0.62, 1.0, 0.13);
       // Dressed to draw a crowd: red lanterns round the eaves and bright pennants.
       for (let i = 0; i < 7; i++) { const an = -0.2 + (i / 6) * Math.PI * 0.9; mesh(g, new THREE.SphereGeometry(0.07, 8, 6), toon(0xff3a30, '', 0xcc1a10), -0.3 + Math.sin(an) * 1.02, 0.6, -0.4 + Math.cos(an) * 1.02).castShadow = false; }
       [0xe83a6a, 0xf0c030, 0xe83a6a, 0xf0c030].forEach((c, i) => { bx(g, 0.14, 0.2, 0.012, toon(c), 0.62 + i * 0.2, 0.74, 0.1).castShadow = false; });
