@@ -225,7 +225,7 @@ loadAssets().then(() => {
   const myCiv = CIVS[params.get('civ') ?? ''] ? params.get('civ')! : CIV_IDS[0];
   const others = CIV_IDS.filter((c) => c !== myCiv);
   const civFor = (i: number) => (i === 0 ? myCiv : others[(i - 1 + seed) % others.length]);
-  // Sides: every tribe for itself, one rival fighting at your side, or all of them against you.
+  // Sides: every nation for itself, one rival fighting at your side, or all of them against you.
   const sides = rivals > 1 && ['ally', 'gang'].includes(params.get('teams') ?? '') ? params.get('teams')! : 'ffa';
   const team = (i: number) => (sides === 'ffa' ? i : i === 0 || (sides === 'ally' && i === 1) ? 0 : 1);
   const mission = mode === 'mission' ? missionById(params.get('mission')!)! : null;
@@ -238,7 +238,7 @@ loadAssets().then(() => {
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
-  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake');
+  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake');
 
   // The map is generated before the menu appears, so a different size means a fresh page.
   const sizeSel = el('map-size') as HTMLSelectElement;
@@ -255,7 +255,7 @@ loadAssets().then(() => {
   civSel.value = game.players[0].civ;
   const civ = CIVS[game.players[0].civ];
   el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b> and, from the ${AGES[UNITS[civ.unique2].age].name}, the <b>${UNITS[civ.unique2].name}</b>.` +
-    `<br><small>Rivals: ${game.players.filter((p) => p.isAI).map((p) => `${p.name} (${CIVS[p.civ].name})`).join(', ')}</small>`;
+    `<br><small>Rivals: ${game.players.filter((p) => p.isAI).map((p) => `${CIVS[p.civ].icon} ${p.name}`).join(', ')}</small>`;
   const regenerate = () => go(`?size=${sizeSel.value}&land=${landSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
   civSel.addEventListener('change', regenerate);
   teamSel.addEventListener('change', regenerate);

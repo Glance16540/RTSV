@@ -1,7 +1,7 @@
 # Hearth & Empire (RTSV)
 
 A browser real-time strategy game with a classic angled RTS camera. Raise a village from the
-Stone Age to the Gunpowder Age, one family at a time, and destroy the rival tribe.
+Stone Age to the Gunpowder Age, one family at a time, and destroy the rival nation.
 
 Built with TypeScript, Three.js and Vite. All art is procedural, so there are no assets to download.
 
@@ -30,16 +30,17 @@ fragile and unable to work until they grow up, when they take up a parent's trad
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
 
-**Six peoples.** Choose yours on the start screen; rivals take others.
+**Six nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
+pious or decadent: that is decided by how they are ruled, not by who they are.
 
 | People | Bonuses | Only they train |
 | --- | --- | --- |
-| Stonekin | Buildings +25% health, 25% faster building, towers shoot further | Shieldbearer: arrows do half damage; Trebuchet (Middle Ages): out-ranges every engine of its age |
-| Steppe Riders | Cavalry 15% cheaper and 10% faster | Lancer: a crushing first blow after a run-up; Horse Archer (Iron Age): shoots from the saddle |
-| Hearthfolk | Farms +25%, children 25% sooner, bigger houses | Hearthguard: fights harder near its own houses; Herbwife (Iron Age): quick, cheap healer |
-| Forgeborn | Research 30% faster and 15% cheaper, tougher siege | Fire Thrower: scorches a group and sets buildings alight; Organ Gun (Gunpowder Age): tears up packed infantry |
-| Dawn Court | Cheaper Shamans and Prophets, faster faith, stronger healing | Zealot: mends itself with every blow; Dawn Templar (Middle Ages): armoured horseman who does the same |
-| Wildborn | Game yields 50% more, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf; War Bear (Iron Age): strikes faster as it is wounded |
+| Romans | Buildings +25% health, 25% faster building, towers shoot further | Legionary: arrows do half damage; Trebuchet (Middle Ages): out-ranges every engine of its age |
+| Mongols | Cavalry 15% cheaper and 10% faster | Lancer: a crushing first blow after a run-up; Horse Archer (Iron Age): shoots from the saddle |
+| Franks | Farms +25%, children 25% sooner, bigger houses | Hearthguard: fights harder near its own houses; Herbwife (Iron Age): quick, cheap healer |
+| Chinese | Research 30% faster and 15% cheaper, tougher siege | Fire Lancer: scorches a group and sets buildings alight; Organ Gun (Gunpowder Age): tears up packed infantry |
+| Israelites | Cheaper priests, prophets and healers, faster faith, stronger healing | Zealot: mends itself with every blow; Temple Guard (Middle Ages): armoured horseman who does the same |
+| Norse | Game yields 50% more, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf; War Bear (Iron Age): strikes faster as it is wounded |
 
 **Generations.** Villagers grow old: after a long working life they slow down as elders and
 eventually die, so a village lasts only as long as its families keep raising children. A child of

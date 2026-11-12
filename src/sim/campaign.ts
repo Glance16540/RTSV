@@ -118,7 +118,7 @@ export interface Army {
   at: number;
   units: Record<string, number>; // companies by type
   hero: boolean; // the faction's Warlord marches with this army
-  marched?: boolean; // has already made its extra march this turn (Steppe Riders)
+  marched?: boolean; // has already made its extra march this turn (Mongols)
   vet: number; // battles won, up to MAX_VETERAN: +1 strength each
   moved: boolean;
 }
@@ -450,7 +450,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
   const civ = c.factions[a.owner].civ;
   if (t.owner === a.owner) {
     const other = armyAt(c, to);
-    // Steppe Riders cover ground: one march through friendly land does not end an army's turn.
+    // The Mongols cover ground: one march through friendly land does not end an army's turn.
     if (civ === 'steppe' && !a.marched) a.marched = true;
     else a.moved = true;
     if (other) {

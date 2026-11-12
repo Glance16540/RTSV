@@ -96,4 +96,4 @@ export const DILEMMAS: Dilemma[] = [
 ];
 
 /** Which way each people leans when left to decide for itself (chance of the pious answer). */
-export const LEANING: Record<string, number> = { stonekin: 0.6, steppe: 0.3, hearth: 0.75, forge: 0.25, dawn: 0.9, wild: 0.35 };
+export const LEANING: Record<string, number> = { stonekin: 0.5, steppe: 0.3, hearth: 0.7, forge: 0.45, dawn: 0.85, wild: 0.3 };

@@ -11,17 +11,17 @@ Lines run two to six seconds. A portrait named `leader_<people>.png` in
 This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 `npm run voice-script`.
 
-## Thane Brannoch Ironroot — Thane of the Stonekin
+## Consul Marcus Valerius Saxa — Consul of Rome
 
 **Direction:** Male, sixties. Deep, slow, gravelly. Never raises his voice; every word is laid like a foundation stone.
 
 | File | When | Line |
 | --- | --- | --- |
-| `stonekin_intro_1` | First meeting on the campaign map | I am Brannoch. My fathers built these halls, and their fathers before them. Mind where you tread. |
+| `stonekin_intro_1` | First meeting on the campaign map | I am Marcus Valerius. My fathers built these walls, and their fathers before them. Mind where you tread. |
 | `stonekin_intro_2` | First meeting on the campaign map | Stone remembers, stranger. Give it something good to remember you by. |
 | `stonekin_attack_1` | Marching on the player's land | I do not hurry to war. But I have arrived. |
 | `stonekin_attack_2` | Marching on the player's land | You built on ground that was not yours. I have come to correct it. |
-| `stonekin_defend_1` | The player marches on their land | You come against Stonekin walls? Bring more ladders. |
+| `stonekin_defend_1` | The player marches on their land | You come against Roman walls? Bring more ladders. |
 | `stonekin_defend_2` | The player marches on their land | Knock all you like. The door is thicker than your patience. |
 | `stonekin_win_1` | After beating the player in battle | That is what comes of haste. |
 | `stonekin_win_2` | After beating the player in battle | Go home and build something. It will do you more good. |
@@ -105,13 +105,13 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `steppe_p_ageup_1` | As the player's own leader: a new age is reached | Faster. Always faster. I approve. |
 | `steppe_p_ageup_2` | As the player's own leader: a new age is reached | A new age, and we are first into it. |
 
-## Mother Elowen Marsh — Hearthmother of the Hearthfolk
+## Lady Aldegund of the Marches — Lady of the Franks
 
 **Direction:** Female, fifties. Warm, unhurried, kind on the surface. The steel shows only when she is crossed.
 
 | File | When | Line |
 | --- | --- | --- |
-| `hearth_intro_1` | First meeting on the campaign map | Welcome, dear. I am Elowen. There is room at our fire for those who come in peace. |
+| `hearth_intro_1` | First meeting on the campaign map | Welcome, dear. I am Aldegund. There is room at our fire for those who come in peace. |
 | `hearth_intro_2` | First meeting on the campaign map | Sit, eat. And then tell me honestly what you want with my valley. |
 | `hearth_attack_1` | Marching on the player's land | I did not want this. But my children need the land, and you have it. |
 | `hearth_attack_2` | Marching on the player's land | Every one of these is somebody's son. See that you make it worth his while. |
@@ -152,13 +152,13 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `hearth_p_ageup_1` | As the player's own leader: a new age is reached | Look how far we have come from that first fire. |
 | `hearth_p_ageup_2` | As the player's own leader: a new age is reached | A better world for the little ones. Good. |
 
-## Master Vex Calder — First Artificer of the Forgeborn
+## Master Lu Wen — First Artificer of the Imperial Workshops
 
 **Direction:** Male, forties. Fast, precise, distracted. Sounds as though war is interrupting something more interesting.
 
 | File | When | Line |
 | --- | --- | --- |
-| `forge_intro_1` | First meeting on the campaign map | Calder. First Artificer. Yes, yes, a pleasure. Do not touch anything. |
+| `forge_intro_1` | First meeting on the campaign map | Lu Wen. First Artificer. Yes, yes, a pleasure. Do not touch anything. |
 | `forge_intro_2` | First meeting on the campaign map | Ah, neighbours. I had calculated you would arrive later. No matter. |
 | `forge_attack_1` | Marching on the player's land | I need your hills for the ore. Nothing personal. Stand clear of the engines. |
 | `forge_attack_2` | Marching on the player's land | This is a field test. You are the field. |
@@ -199,13 +199,13 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `forge_p_ageup_1` | As the player's own leader: a new age is reached | At last, proper tools. |
 | `forge_p_ageup_2` | As the player's own leader: a new age is reached | Progress. Throw out the old drawings. |
 
-## High Seer Amaris — Voice of the Dawn Court
+## Hadassah the Seer — Judge over Israel
 
 **Direction:** Female, ageless. Calm, soft, certain. Speaks of the future in the past tense.
 
 | File | When | Line |
 | --- | --- | --- |
-| `dawn_intro_1` | First meeting on the campaign map | I am Amaris. I have seen this meeting. You were taller in the vision. |
+| `dawn_intro_1` | First meeting on the campaign map | I am Hadassah. I have seen this meeting. You were taller in the vision. |
 | `dawn_intro_2` | First meeting on the campaign map | The dawn showed me your face long ago. It did not show me how this ends for you. |
 | `dawn_attack_1` | Marching on the player's land | It is written. I am only turning the page. |
 | `dawn_attack_2` | Marching on the player's land | Do not be afraid. This has already happened. |
@@ -246,7 +246,7 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `dawn_p_ageup_1` | As the player's own leader: a new age is reached | A new light rises on our people. |
 | `dawn_p_ageup_2` | As the player's own leader: a new age is reached | The age turns. We turn with it. |
 
-## Hroth Wolf-Father — First Hunter of the Wildborn
+## Jarl Hroth Wolf-Father — Jarl of the Northern Fjords
 
 **Direction:** Male, forties. Low, rough, close to a growl. Few words, long pauses. Laughs rarely and suddenly.
 

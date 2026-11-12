@@ -63,12 +63,12 @@ export interface Leader {
 
 export const LEADERS: Record<string, Leader> = {
   stonekin: {
-    civ: 'stonekin', name: 'Thane Brannoch Ironroot', title: 'Thane of the Stonekin', icon: '🧔',
+    civ: 'stonekin', name: 'Consul Marcus Valerius Saxa', title: 'Consul of Rome', icon: '🧔',
     voice: 'Male, sixties. Deep, slow, gravelly. Never raises his voice; every word is laid like a foundation stone.',
     lines: {
-      intro: ['I am Brannoch. My fathers built these halls, and their fathers before them. Mind where you tread.', 'Stone remembers, stranger. Give it something good to remember you by.'],
+      intro: ['I am Marcus Valerius. My fathers built these walls, and their fathers before them. Mind where you tread.', 'Stone remembers, stranger. Give it something good to remember you by.'],
       attack: ['I do not hurry to war. But I have arrived.', 'You built on ground that was not yours. I have come to correct it.'],
-      defend: ['You come against Stonekin walls? Bring more ladders.', 'Knock all you like. The door is thicker than your patience.'],
+      defend: ['You come against Roman walls? Bring more ladders.', 'Knock all you like. The door is thicker than your patience.'],
       win: ['That is what comes of haste.', 'Go home and build something. It will do you more good.'],
       lose: ['A wall has fallen. I have others.', 'Well struck. I will remember the place and the hour.'],
       eliminated: ['So the last stone is turned. Build well upon it. It was good stone.', 'My halls are yours. They will outlast you too.'],
@@ -115,10 +115,10 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   hearth: {
-    civ: 'hearth', name: 'Mother Elowen Marsh', title: 'Hearthmother of the Hearthfolk', icon: '👵',
+    civ: 'hearth', name: 'Lady Aldegund of the Marches', title: 'Lady of the Franks', icon: '👵',
     voice: 'Female, fifties. Warm, unhurried, kind on the surface. The steel shows only when she is crossed.',
     lines: {
-      intro: ['Welcome, dear. I am Elowen. There is room at our fire for those who come in peace.', 'Sit, eat. And then tell me honestly what you want with my valley.'],
+      intro: ['Welcome, dear. I am Aldegund. There is room at our fire for those who come in peace.', 'Sit, eat. And then tell me honestly what you want with my valley.'],
       attack: ['I did not want this. But my children need the land, and you have it.', 'Every one of these is somebody\'s son. See that you make it worth his while.'],
       defend: ['You would march on families at their supper? Then come and meet them.', 'Shame on you. And mind the step, it is the last thing you will see.'],
       win: ['Go home, dear. Somebody there is missing you.', 'I take no joy in it. I do take the field.'],
@@ -141,10 +141,10 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   forge: {
-    civ: 'forge', name: 'Master Vex Calder', title: 'First Artificer of the Forgeborn', icon: '🧑‍🔬',
+    civ: 'forge', name: 'Master Lu Wen', title: 'First Artificer of the Imperial Workshops', icon: '🧑‍🔬',
     voice: 'Male, forties. Fast, precise, distracted. Sounds as though war is interrupting something more interesting.',
     lines: {
-      intro: ['Calder. First Artificer. Yes, yes, a pleasure. Do not touch anything.', 'Ah, neighbours. I had calculated you would arrive later. No matter.'],
+      intro: ['Lu Wen. First Artificer. Yes, yes, a pleasure. Do not touch anything.', 'Ah, neighbours. I had calculated you would arrive later. No matter.'],
       attack: ['I need your hills for the ore. Nothing personal. Stand clear of the engines.', 'This is a field test. You are the field.'],
       defend: ['You brought swords? To this? How quaint.', 'Careful. Half of what you are walking on is flammable.'],
       win: ['As predicted. Within a margin of error.', 'Fascinating. Write down how long they lasted.'],
@@ -167,10 +167,10 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   dawn: {
-    civ: 'dawn', name: 'High Seer Amaris', title: 'Voice of the Dawn Court', icon: '🧙‍♀️',
+    civ: 'dawn', name: 'Hadassah the Seer', title: 'Judge over Israel', icon: '🧕',
     voice: 'Female, ageless. Calm, soft, certain. Speaks of the future in the past tense.',
     lines: {
-      intro: ['I am Amaris. I have seen this meeting. You were taller in the vision.', 'The dawn showed me your face long ago. It did not show me how this ends for you.'],
+      intro: ['I am Hadassah. I have seen this meeting. You were taller in the vision.', 'The dawn showed me your face long ago. It did not show me how this ends for you.'],
       attack: ['It is written. I am only turning the page.', 'Do not be afraid. This has already happened.'],
       defend: ['You come to put out the sun with spears. I pity you.', 'I watched you arrive in a dream. I watched you leave, too. Fewer.'],
       win: ['As it was shown.', 'Take comfort. You could not have done otherwise.'],
@@ -193,7 +193,7 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   wild: {
-    civ: 'wild', name: 'Hroth Wolf-Father', title: 'First Hunter of the Wildborn', icon: '🧔‍♂️',
+    civ: 'wild', name: 'Jarl Hroth Wolf-Father', title: 'Jarl of the Northern Fjords', icon: '🧔‍♂️',
     voice: 'Male, forties. Low, rough, close to a growl. Few words, long pauses. Laughs rarely and suddenly.',
     lines: {
       intro: ['Hroth. The wolves know me. They will know you, soon.', 'You smell of smoke and fences. This is not that kind of country.'],
