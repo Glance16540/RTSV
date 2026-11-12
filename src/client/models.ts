@@ -98,10 +98,29 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
 }
 
 const UNIT_HEIGHT: Record<string, number> = {
-  horsearcher: 1.45, templar: 1.5, warbear: 0.9, trebuchet: 1.6, organgun: 0.8, rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, wolfrider: 1.4, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
+  warchariot: 1.4, warelephant: 1.9, companion: 1.5, camelrider: 1.45, mameluke: 1.45, horsearcher: 1.45, templar: 1.5, warbear: 0.9, trebuchet: 1.6, organgun: 0.8, rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, wolfrider: 1.4, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
+};
+
+/** Units of the newer nations are drawn as an existing figure with a crest of their own colour. */
+const MODEL_ALIAS: Record<string, [string, number]> = {
+  khopesh: ['swordsman', 0xd8b46a], warchariot: ['chariot', 0xd8b46a], sapper: ['spearman', 0x8a6a4a], gateguard: ['shieldbearer', 0x3a8fa8],
+  immortal: ['swordsman', 0xb03a6a], warelephant: ['mammoth', 0xb03a6a], hoplite: ['shieldbearer', 0xc8a040], companion: ['knight', 0x4a78d8],
+  longbowman: ['bowman', 0x4a7a3a], billman: ['pikeman', 0xc83a3a], camelrider: ['rider', 0xd8c090], mameluke: ['horsearcher', 0x2f9a6a],
+  samurai: ['swordsman', 0x2a2a34], ashigaru: ['musketeer', 0x8a2a2a],
 };
 
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number): THREE.Group {
+  const alias = MODEL_ALIAS[type];
+  if (alias && !generatedModel(type, 0, 1, 'height')) {
+    const g = makeUnit(alias[0], color, gender, seed);
+    const h = UNIT_HEIGHT[alias[0]] ?? 0.95;
+    // A plume and a shoulder sash mark them out from the unit they are drawn from.
+    const plume = add(g, geo('plume', () => new THREE.ConeGeometry(0.07, 0.26, 5)), alias[1], 0, h + 0.14, 0, 0x101010);
+    plume.castShadow = false;
+    const sash = add(g, geo('sash', () => new THREE.BoxGeometry(0.36, 0.05, 0.22)), alias[1], 0, h * 0.62, 0);
+    sash.rotation.z = 0.5;
+    return g;
+  }
   const key = type === 'villager' ? `villager_${gender}` : type;
   const gen = generatedModel(key, 0, UNIT_HEIGHT[type] ?? 0.95, 'height');
   if (gen) {

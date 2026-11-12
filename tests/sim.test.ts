@@ -7,7 +7,7 @@ import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS, CIVS, UNITS } from '../src/sim/data';
-import { advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -707,7 +707,7 @@ describe('conquest campaign', () => {
         l.lines[ev].forEach((_, i) => keys.add(lineKey(l.civ, ev, i)));
       }
     }
-    expect(keys.size).toBe(240);
+    expect(keys.size).toBe(520);
     expect(keys.has('steppe_attack_2')).toBe(true);
     // In a campaign: the player attacks a rival, wins, and finally wipes them out.
     const c = newCampaign(7, 1);
@@ -741,7 +741,7 @@ describe('conquest campaign', () => {
   });
 
   it('spending, marching, and battles follow the rules', () => {
-    const c = newCampaign(7);
+    const c = newCampaign(7, 1, 1, 'steppe'); // a people with no discount on what is bought here
     const home = c.territories.find((t) => t.capital === 0)!;
     const army = armyAt(c, home.id)!;
     expect(income(c, 0)).toBe(6); // 2 + farmland 2 + capital 2
@@ -2170,5 +2170,67 @@ describe('children who live to grow up', () => {
     expect(holy.died / holy.born).toBeLessThan(0.08);
     expect(fallen.died / fallen.born).toBeGreaterThan(0.15);
     expect(holy.born).toBeGreaterThan(fallen.born); // and the faithful have more of them to begin with
+  });
+});
+
+describe('the thirteen nations', () => {
+  it('every nation is complete: bonuses, two units of its own with a place to train them, a leader with every line, and campaign rules', () => {
+    expect(CIV_IDS.length).toBe(13);
+    for (const id of CIV_IDS) {
+      const civ = CIVS[id];
+      expect(civ.bonuses.length).toBeGreaterThan(0);
+      for (const u of [civ.unique, civ.unique2]) {
+        expect(UNITS[u].civ).toBe(id);
+        expect(Object.values(BUILDINGS).some((b) => b.trains.includes(u))).toBe(true);
+      }
+      expect(LEADERS[id].civ).toBe(id);
+      for (const e of LEADER_EVENTS) expect(LEADERS[id].lines[e].length).toBe(2);
+      expect(CAMPAIGN_EDGE[id]).toBeTruthy();
+      expect(PERSONA[id]).toBeTruthy();
+      expect(CIV_COLOR[id]).toBeGreaterThan(0);
+      // And it can start a match and a campaign.
+      const g = new Game(3, [{ name: 'A', color: 1, isAI: false, civ: id }, { name: 'B', color: 2, isAI: true }]);
+      expect(g.players[0].civ).toBe(id);
+      expect(newCampaign(4, 2, 1, id).factions[0].civ).toBe(id);
+    }
+    expect(new Set(CIV_IDS.map((id) => CIVS[id].name)).size).toBe(13);
+    expect(new Set(CIV_IDS.map((id) => LEADERS[id].name)).size).toBe(13);
+  });
+
+  it('the new nations\' units and campaign rules do what they say', () => {
+    const g = new Game(5, [{ name: 'A', color: 1, isAI: false, civ: 'england' }, { name: 'B', color: 2, isAI: false, civ: 'greece' }]);
+    for (const p of g.players.slice(0, 2)) { p.age = 4; for (const r of ['food', 'wood', 'gold', 'stone'] as const) p.res[r] = 5000; }
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    const range = g.spawnBuilding('range', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) + 3, true);
+    expect(g.cmdTrain(0, range.id, 'longbowman')).toBe(true);
+    expect(g.cmdTrain(0, range.id, 'ashigaru')).toBe(false); // Japanese only
+    expect(UNITS.longbowman.range).toBeGreaterThan(UNITS.crossbowman.range);
+    expect(g.players[1].mods.armor).toBe(1); // Greek soldiers
+    // A billman beats a knight; a hoplite shrugs off arrows.
+    const bill = g.spawnUnit('billman', 0, 48, 48), knight = g.spawnUnit('knight', 1, 49, 48);
+    g.cmdTarget(0, [bill.id], knight.id); g.cmdTarget(1, [knight.id], bill.id);
+    run(g, 20);
+    expect(knight.dead).toBe(true);
+    expect(bill.dead).toBe(false);
+    expect(UNITS.hoplite.rangedResist).toBeGreaterThan(0);
+
+    const land = newCampaign(7).territories.find((t) => t.capital < 0 && !t.trait)!;
+    expect(siteCost(land, 'farm', 'egypt')).toBe(2);
+    expect(companyCost(land, 'infantry', 'greece')).toBe(1);
+    expect(companyCost(land, 'archers', 'england')).toBe(1);
+    expect(truceCost('arabs')).toBe(1);
+    expect(giftCost('arabs')).toBe(3);
+    const bab = newCampaign(7, 1, 1, 'babylon'), rome = newCampaign(7, 1, 1, 'stonekin');
+    expect(ageCost(bab, 0)).toBe(ageCost(rome, 0) - 3);
+    const per = newCampaign(7, 1, 1, 'persia');
+    const base = income(per, 0);
+    for (const t of per.territories.filter((x) => x.owner < 0).slice(0, 2)) { t.owner = 0; t.buildings = []; t.trait = ''; }
+    expect(income(per, 0)).toBe(base + 2 * 2 + 1); // two plain territories, and one more for holding three
+    const jp = newCampaign(7, 1, 1, 'japan');
+    const cap = jp.territories.find((t) => t.capital === 0)!;
+    jp.armies = jp.armies.filter((a) => a.at !== cap.id);
+    jp.factions[0].supplies = 20;
+    raise(jp, 0, cap.id, 'infantry');
+    expect(armyAt(jp, cap.id)!.vet).toBe(1);
   });
 });

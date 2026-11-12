@@ -56,6 +56,13 @@ export const CAMPAIGN_EDGE: Record<string, string> = {
   forge: 'Every building costs 1 less.',
   dawn: 'A new Warlord costs half, and attacks ignore the defender\'s home advantage.',
   wild: 'Local tribes fight them at 1 less, and taking their land brings 2 supplies of plunder.',
+  egypt: 'Farmland costs 2 instead of 4.',
+  babylon: 'Advancing an age costs 3 less.',
+  persia: 'One more supply each turn for every three territories held.',
+  greece: 'Infantry costs 1 instead of 2.',
+  england: 'Archers cost 1 instead of 2.',
+  arabs: 'A truce costs 1 instead of 3, and gifts cost 3 instead of 4.',
+  japan: 'New armies are raised as veterans of one battle.',
 };
 
 /** How each leader plays: caution in attack, taste for forts and farms, openness to peace, and greed. */
@@ -66,6 +73,13 @@ export const PERSONA: Record<string, { margin: number; fort: number; farm: numbe
   forge: { margin: 0, fort: 0.3, farm: 0.5, peace: 0.45, greed: 0.2 },
   dawn: { margin: 0, fort: 0.2, farm: 0.5, peace: 0.5, greed: 0.25 },
   wild: { margin: -1, fort: 0.05, farm: 0.3, peace: 0.2, greed: 0.4 },
+  egypt: { margin: 1, fort: 0.4, farm: 0.8, peace: 0.55, greed: 0.2 },
+  babylon: { margin: 1, fort: 0.6, farm: 0.5, peace: 0.5, greed: 0.3 },
+  persia: { margin: 0, fort: 0.2, farm: 0.5, peace: 0.6, greed: 0.35 },
+  greece: { margin: 0, fort: 0.3, farm: 0.4, peace: 0.5, greed: 0.15 },
+  england: { margin: 1, fort: 0.4, farm: 0.7, peace: 0.65, greed: 0.1 },
+  arabs: { margin: 0, fort: 0.2, farm: 0.4, peace: 0.7, greed: 0.25 },
+  japan: { margin: 0, fort: 0.4, farm: 0.6, peace: 0.4, greed: 0.15 },
 };
 export const TRUCE_COST = 3;
 export const TRUCE_TURNS = 6;
@@ -82,10 +96,11 @@ export const DOMINION_TURNS = 3;
 
 export function siteCost(t: Territory, site: string, civ = ''): number {
   if (site === 'fortress' && civ === 'stonekin') return 5;
+  if (site === 'farm' && civ === 'egypt') return 2;
   return Math.max(2, SITES[site].cost - (site === 'stable' && t.trait === 'horses' ? 2 : 0) - (civ === 'forge' ? 1 : 0));
 }
 export function companyCost(t: Territory, type: string, civ = ''): number {
-  return Math.max(1, COMPANIES[type].cost - (type === 'cavalry' && t.trait === 'horses' ? 1 : 0) - (type === 'cavalry' && civ === 'steppe' ? 1 : 0));
+  return Math.max(1, COMPANIES[type].cost - (type === 'cavalry' && t.trait === 'horses' ? 1 : 0) - (type === 'cavalry' && civ === 'steppe' ? 1 : 0) - ((type === 'infantry' && civ === 'greece') || (type === 'archers' && civ === 'england') ? 1 : 0));
 }
 export const heroCost = (civ: string): number => (civ === 'dawn' ? HERO_COST / 2 : HERO_COST);
 
@@ -298,14 +313,18 @@ export function reach(c: Campaign, tid: number): number[] {
   return [...t.adj, ...c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id)).map((x) => x.id)];
 }
 export const SEA_LANDING = 0.8;
+/** What the next age costs this people. */
+export const ageCost = (c: Campaign, f: number): number => Math.max(1, (AGE_COST[ageOf(c, f)] ?? Infinity) - (c.factions[f].civ === 'babylon' ? 3 : 0));
+export const truceCost = (civ: string): number => (civ === 'arabs' ? 1 : TRUCE_COST);
+export const giftCost = (civ: string): number => (civ === 'arabs' ? 3 : GIFT_COST);
 export const ageOf = (c: Campaign, f: number): number => (f < 0 ? 0 : c.factions[f].age ?? 0);
 const ageEdge = (c: Campaign, f: number): number => 1 + AGE_EDGE * ageOf(c, f);
-export const canAdvance = (c: Campaign, f: number): boolean => ageOf(c, f) < AGE_COST.length && c.factions[f].alive && c.factions[f].supplies >= AGE_COST[ageOf(c, f)];
+export const canAdvance = (c: Campaign, f: number): boolean => ageOf(c, f) < AGE_COST.length && c.factions[f].alive && c.factions[f].supplies >= ageCost(c, f);
 /** Bring a people into the next age: stronger armies everywhere, and battles begin in that age with its weapons. */
 export function advanceAge(c: Campaign, f: number): boolean {
   if (!canAdvance(c, f)) return false;
   const fac = c.factions[f];
-  fac.supplies -= AGE_COST[ageOf(c, f)];
+  fac.supplies -= ageCost(c, f);
   fac.age = ageOf(c, f) + 1;
   c.log.push(`${f === 0 ? 'Your people have' : `${fac.name} have`} entered the ${AGES[fac.age].name}.`);
   if (f === 0) advise(c, 'p_ageup');
@@ -329,8 +348,9 @@ export const armyStrength = (a: Army): number => strengthVs(a);
 
 export function income(c: Campaign, f: number): number {
   let n = 0;
-  for (const t of c.territories) if (t.owner === f) n += territoryIncome(t, c.factions[f].civ);
-  return n;
+  let held = 0;
+  for (const t of c.territories) if (t.owner === f) { n += territoryIncome(t, c.factions[f].civ); held++; }
+  return n + (c.factions[f].civ === 'persia' ? Math.floor(held / 3) : 0);
 }
 export function territoryIncome(t: Territory, civ = ''): number {
   const hearth = civ === 'hearth' ? 1 : 0;
@@ -405,7 +425,7 @@ export function raise(c: Campaign, f: number, tid: number, type: string): boolea
   c.factions[f].supplies -= companyCost(c.territories[tid], type, c.factions[f].civ);
   let a = armyAt(c, tid);
   if (!a) {
-    a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, vet: 0, moved: true }; // fresh troops march next turn
+    a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, vet: c.factions[f].civ === 'japan' ? 1 : 0, moved: true }; // fresh troops march next turn
     c.armies.push(a);
   }
   a.units[type] = (a.units[type] ?? 0) + 1;
@@ -506,7 +526,7 @@ export const homeEdge = (c: Campaign, attacker: number): number => (c.factions[a
  */
 export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
-  if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || c.factions[0].supplies < TRUCE_COST || c.phase !== 'player' || fac.refused === c.turn) return false;
+  if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || c.factions[0].supplies < truceCost(c.factions[0].civ) || c.phase !== 'player' || fac.refused === c.turn) return false;
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
   const willing = PERSONA[fac.civ].peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0);
   if (c.honor < 0 || rand(c) > willing) {
@@ -515,7 +535,7 @@ export function offerTruce(c: Campaign, f: number): boolean {
     c.log.push(`${fac.name} will not hear of a truce.`);
     return false;
   }
-  c.factions[0].supplies -= TRUCE_COST;
+  c.factions[0].supplies -= truceCost(c.factions[0].civ);
   c.truces.push({ with: f, until: c.turn + TRUCE_TURNS });
   say(c, f, 'truce');
   c.log.push(`A truce with ${fac.name} until turn ${c.turn + TRUCE_TURNS}.`);
@@ -553,15 +573,15 @@ export function offerAlliance(c: Campaign, f: number): boolean {
 /** Send a rival supplies. It earns goodwill, and an ally can spend them on troops. */
 export function canGift(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
-  return !!fac && fac.isAI && fac.alive && c.phase === 'player' && c.honor >= 0 && c.factions[0].supplies >= GIFT_COST && (c.ally === f || (fac.favor ?? 0) < MAX_FAVOR);
+  return !!fac && fac.isAI && fac.alive && c.phase === 'player' && c.honor >= 0 && c.factions[0].supplies >= giftCost(c.factions[0].civ) && (c.ally === f || (fac.favor ?? 0) < MAX_FAVOR);
 }
 export function sendGift(c: Campaign, f: number): boolean {
   if (!canGift(c, f)) return false;
   const fac = c.factions[f];
-  c.factions[0].supplies -= GIFT_COST;
+  c.factions[0].supplies -= giftCost(c.factions[0].civ);
   fac.supplies += GIFT_COST;
   fac.favor = Math.min(MAX_FAVOR, (fac.favor ?? 0) + 1);
-  c.log.push(`You sent ${fac.name} ${GIFT_COST} supplies.`);
+  c.log.push(`You sent ${fac.name} supplies.`);
   return true;
 }
 
@@ -773,7 +793,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     const own = c.territories.filter((t) => t.owner === f.id);
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     // A people with stores to spare moves with the times.
-    if (c.turn >= 5 && f.supplies >= (AGE_COST[ageOf(c, f.id)] ?? Infinity) + 8) advanceAge(c, f.id);
+    if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8) advanceAge(c, f.id);
     for (const t of own) {
       const border = t.adj.some((n) => c.territories[n].owner !== f.id);
       if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');

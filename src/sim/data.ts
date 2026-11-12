@@ -294,6 +294,90 @@ export const UNITS: Record<string, UnitDef> = {
     cost: { food: 130 }, time: 24, age: 2, hp: 230, atk: 14, armor: 1, range: 0.7, speed: 2.9,
     cooldown: 1.6, sight: 8, pop: 2, cls: 'beast', radius: 0.5, frenzy: true, bonus: { building: 1.3 },
   }),
+  khopesh: U({
+    id: 'khopesh', name: 'Khopesh Guard', icon: '🗡️', civ: 'egypt',
+    desc: 'Egyptians only. Palace infantry whose sickle-swords cut down other foot soldiers.',
+    cost: { food: 50, gold: 20 }, time: 15, age: 1, hp: 80, atk: 10, armor: 1, range: 0.5, speed: 2.3,
+    cooldown: 1.4, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, bonus: { infantry: 1.4 },
+  }),
+  warchariot: U({
+    id: 'warchariot', name: 'War Chariot', icon: '🛞', civ: 'egypt',
+    desc: 'Egyptians only. A heavy chariot: after a run-up its first blow lands with twice the force.',
+    cost: { food: 90, wood: 60 }, time: 24, age: 2, hp: 140, atk: 12, armor: 2, range: 0.7, speed: 3.3,
+    cooldown: 1.6, sight: 9, pop: 2, cls: 'cavalry', radius: 0.5, charge: 2,
+  }),
+  sapper: U({
+    id: 'sapper', name: 'Sapper', icon: '⛏️', civ: 'babylon',
+    desc: 'Babylonians only. Undermines walls and towers: weak in a fight, ruinous against buildings.',
+    cost: { food: 45, wood: 30 }, time: 15, age: 1, hp: 70, atk: 6, armor: 0, range: 0.5, speed: 2.3,
+    cooldown: 1.5, sight: 7, pop: 1, cls: 'infantry', radius: 0.3, bonus: { building: 3.5 },
+  }),
+  gateguard: U({
+    id: 'gateguard', name: 'Gate Guard', icon: '🚪', civ: 'babylon',
+    desc: 'Babylonians only. Heavy infantry of the city gates: shrugs off a third of all missiles and fights harder near its own houses.',
+    cost: { food: 70, gold: 35 }, time: 20, age: 2, hp: 130, atk: 10, armor: 2, range: 0.5, speed: 2.0,
+    cooldown: 1.5, sight: 8, pop: 1, cls: 'infantry', radius: 0.32, rangedResist: 0.35, homeBonus: 1.3,
+  }),
+  immortal: U({
+    id: 'immortal', name: 'Immortal', icon: '♾️', civ: 'persia',
+    desc: 'Persians only. The king\'s own guard: its ranks close up after every blow, mending its wounds as it fights.',
+    cost: { food: 65, gold: 30 }, time: 18, age: 2, hp: 105, atk: 11, armor: 2, range: 0.5, speed: 2.3,
+    cooldown: 1.4, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, drain: 3,
+  }),
+  warelephant: U({
+    id: 'warelephant', name: 'War Elephant', icon: '🐘', civ: 'persia',
+    desc: 'Persians only. Slow and enormous. Tramples everything around its target and tears down buildings.',
+    cost: { food: 180, gold: 90 }, time: 36, age: 3, hp: 420, atk: 22, armor: 2, range: 0.9, speed: 1.9,
+    cooldown: 2.0, sight: 8, pop: 3, cls: 'beast', radius: 0.7, splash: 1.2, bonus: { building: 1.5 },
+  }),
+  hoplite: U({
+    id: 'hoplite', name: 'Hoplite', icon: '🛡️', civ: 'greece',
+    desc: 'Greeks only. A wall of bronze shields and long spears: missiles do a third less, and cavalry breaks on it.',
+    cost: { food: 55, gold: 20 }, time: 16, age: 1, hp: 95, atk: 8, armor: 2, range: 0.6, speed: 2.0,
+    cooldown: 1.5, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, rangedResist: 0.35, bonus: { cavalry: 2 },
+  }),
+  companion: U({
+    id: 'companion', name: 'Companion Cavalry', icon: '🏇', civ: 'greece',
+    desc: 'Greeks only. Shock horsemen who ride in a wedge: a crushing first blow after a run-up.',
+    cost: { food: 95, gold: 60 }, time: 24, age: 2, hp: 135, atk: 12, armor: 2, range: 0.7, speed: 3.5,
+    cooldown: 1.5, sight: 9, pop: 2, cls: 'cavalry', radius: 0.45, charge: 2.2,
+  }),
+  longbowman: U({
+    id: 'longbowman', name: 'Longbowman', icon: '🏹', civ: 'england',
+    desc: 'English only. Out-ranges every other archer of his age.',
+    cost: { food: 45, wood: 45 }, time: 18, age: 2, hp: 50, atk: 9, armor: 0, range: 8.5, speed: 2.1,
+    cooldown: 1.8, sight: 10, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'arrow',
+  }),
+  billman: U({
+    id: 'billman', name: 'Billman', icon: '🪝', civ: 'england',
+    desc: 'English only. His hooked bill drags riders from the saddle: the bane of cavalry.',
+    cost: { food: 60, wood: 30 }, time: 17, age: 3, hp: 110, atk: 11, armor: 1, range: 0.7, speed: 2.2,
+    cooldown: 1.5, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, bonus: { cavalry: 3.5 },
+  }),
+  camelrider: U({
+    id: 'camelrider', name: 'Camel Rider', icon: '🐪', civ: 'arabs',
+    desc: 'Arabs only. Horses shy from camels: he rides down other cavalry.',
+    cost: { food: 70, gold: 25 }, time: 18, age: 1, hp: 110, atk: 8, armor: 1, range: 0.7, speed: 3.3,
+    cooldown: 1.5, sight: 9, pop: 1, cls: 'cavalry', radius: 0.42, bonus: { cavalry: 2.5 },
+  }),
+  mameluke: U({
+    id: 'mameluke', name: 'Mameluke', icon: '⚔️', civ: 'arabs',
+    desc: 'Arabs only. Elite horseman who strikes from a few paces off, and is deadly to other riders.',
+    cost: { food: 85, gold: 75 }, time: 24, age: 3, hp: 110, atk: 11, armor: 1, range: 3.5, speed: 3.4,
+    cooldown: 1.5, sight: 9, pop: 2, cls: 'cavalry', radius: 0.42, projectile: 'arrow', bonus: { cavalry: 1.6 },
+  }),
+  samurai: U({
+    id: 'samurai', name: 'Samurai', icon: '🎌', civ: 'japan',
+    desc: 'Japanese only. A swordsman of rare skill who strikes quickly and cuts down other foot soldiers.',
+    cost: { food: 70, gold: 40 }, time: 20, age: 2, hp: 110, atk: 13, armor: 2, range: 0.5, speed: 2.4,
+    cooldown: 1.2, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, bonus: { infantry: 1.4 },
+  }),
+  ashigaru: U({
+    id: 'ashigaru', name: 'Ashigaru Gunner', icon: '🔫', civ: 'japan',
+    desc: 'Japanese only. A cheap foot soldier with a matchlock: a slow, heavy shot.',
+    cost: { food: 50, gold: 35 }, time: 18, age: 4, hp: 55, atk: 20, armor: 0, range: 6.5, speed: 2.1,
+    cooldown: 2.6, sight: 9, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'shot',
+  }),
   lancer: U({
     id: 'lancer', name: 'Lancer', icon: '🏇', civ: 'steppe',
     desc: 'Mongols only. After a run-up of three tiles its first blow lands with two and a half times the force.',
@@ -508,19 +592,19 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'barracks', name: 'Barracks', icon: '🗡️',
     desc: 'Trains infantry.',
     cost: { wood: 120 }, time: 28, age: 0, hp: 1000, size: 3, pop: 0, sight: 6,
-    trains: ['clubman', 'hearthguard', 'shieldbearer', 'zealot', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
+    trains: ['clubman', 'hearthguard', 'shieldbearer', 'zealot', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
   }),
   range: B({
     id: 'range', name: 'Archery Range', icon: '🏹',
     desc: 'Trains archers.',
     cost: { wood: 140 }, time: 28, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['bowman', 'crossbowman', 'musketeer'], techs: ['up_crossbow', 'up_musket'],
+    trains: ['bowman', 'crossbowman', 'musketeer', 'longbowman', 'ashigaru'], techs: ['up_crossbow', 'up_musket'],
   }),
   stable: B({
     id: 'stable', name: 'Stable', icon: '🐴',
     desc: 'Trains cavalry and war beasts.',
     cost: { wood: 150 }, time: 30, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['rider', 'lancer', 'wolfrider', 'chariot', 'mammoth', 'knight', 'hussar', 'horsearcher', 'templar', 'warbear'], techs: ['up_knight'],
+    trains: ['rider', 'lancer', 'wolfrider', 'chariot', 'mammoth', 'knight', 'hussar', 'horsearcher', 'templar', 'warbear', 'warchariot', 'warelephant', 'companion', 'camelrider', 'mameluke'], techs: ['up_knight'],
   }),
   temple: B({
     id: 'temple', name: 'Church', icon: '⛪',
@@ -725,6 +809,41 @@ export const CIVS: Record<string, CivDef> = {
     bonuses: ['Research is 30% faster and 15% cheaper', 'Siege engines have 25% more health'],
     apply: (m) => { m.techTime = 0.7; m.techCost = 0.85; m.siegeHp = 1.25; },
   },
+  egypt: {
+    id: 'egypt', name: 'Egyptians', icon: '🔺', desc: 'A kingdom of the river, fed by its fields and famous for what it builds.', unique: 'khopesh', unique2: 'warchariot',
+    bonuses: ['Farms yield 20% more', 'Villagers build 15% faster'],
+    apply: (m) => { m.farm = 1.2; m.build = 1.15; },
+  },
+  babylon: {
+    id: 'babylon', name: 'Babylonians', icon: '🧱', desc: 'Lawgivers and star-readers behind great brick walls.', unique: 'sapper', unique2: 'gateguard',
+    bonuses: ['Research is 15% faster', 'Buildings have 15% more health'],
+    apply: (m) => { m.techTime = 0.85; m.buildingHp = 1.15; },
+  },
+  persia: {
+    id: 'persia', name: 'Persians', icon: '🦁', desc: 'An empire of many peoples, rich in goods and beasts of war.', unique: 'immortal', unique2: 'warelephant',
+    bonuses: ['Villagers carry 3 more', 'War beasts cost 20% less'],
+    apply: (m) => { m.carry += 3; m.beastCost = 0.8; },
+  },
+  greece: {
+    id: 'greece', name: 'Greeks', icon: '🏺', desc: 'Free cities of citizen-soldiers and thinkers.', unique: 'hoplite', unique2: 'companion',
+    bonuses: ['Research costs 20% less', 'Soldiers have 1 more armour'],
+    apply: (m) => { m.techCost = 0.8; m.armor += 1; },
+  },
+  england: {
+    id: 'england', name: 'English', icon: '🌹', desc: 'Yeoman farmers and bowmen of a green island.', unique: 'longbowman', unique2: 'billman',
+    bonuses: ['Farms yield 10% more', 'Towers and Town Centers hit harder'],
+    apply: (m) => { m.farm = 1.1; m.towerAtk += 3; },
+  },
+  arabs: {
+    id: 'arabs', name: 'Arabs', icon: '🌙', desc: 'Traders, scholars and riders of the desert.', unique: 'camelrider', unique2: 'mameluke',
+    bonuses: ['Cavalry moves 10% faster', 'Research costs 10% less'],
+    apply: (m) => { m.cavSpeed = 1.1; m.techCost = 0.9; },
+  },
+  japan: {
+    id: 'japan', name: 'Japanese', icon: '⛩️', desc: 'An island realm of disciplined warriors and careful craft.', unique: 'samurai', unique2: 'ashigaru',
+    bonuses: ['Soldiers have 1 more attack', 'Villagers gather 5% faster'],
+    apply: (m) => { m.atk += 1; m.gather *= 1.05; },
+  },
 };
 Object.assign(CIVS, {
   dawn: {
@@ -740,7 +859,7 @@ Object.assign(CIVS, {
 } satisfies Record<string, CivDef>);
 export const CIV_IDS = Object.keys(CIVS);
 /** Banner colour of each people on the campaign map and in battle. */
-export const CIV_COLOR: Record<string, number> = { stonekin: 0x6f8fb0, steppe: 0xe0452f, hearth: 0x3aa648, forge: 0xe0902a, dawn: 0xe0c020, wild: 0x8a5ad0 };
+export const CIV_COLOR: Record<string, number> = { stonekin: 0x6f8fb0, steppe: 0xe0452f, hearth: 0x3aa648, forge: 0xe0902a, dawn: 0xe0c020, wild: 0x8a5ad0, egypt: 0xd8b46a, babylon: 0x3a8fa8, persia: 0xb03a6a, greece: 0x4a78d8, england: 0xc83a3a, arabs: 0x2f9a6a, japan: 0xd8d8e8 };
 
 export interface AbilityDef { id: string; name: string; icon: string; desc: string; cost: number; radius: number }
 export const ABILITIES: Record<string, AbilityDef> = {

@@ -293,4 +293,333 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `wild_p_ageup_1` | As the player's own leader: a new age is reached | We grow. Good. Stay hungry anyway. |
 | `wild_p_ageup_2` | As the player's own leader: a new age is reached | New claws. Use them. |
 
-240 lines in all.
+## Pharaoh Khenemet — Lord of the Two Lands
+
+**Direction:** Male, fifties. Measured, resonant, utterly assured. Speaks as if everything he says will be carved somewhere.
+
+| File | When | Line |
+| --- | --- | --- |
+| `egypt_intro_1` | First meeting on the campaign map | I am Khenemet. The river rose for my fathers and it rises for me. What do you bring to it? |
+| `egypt_intro_2` | First meeting on the campaign map | A stranger. Come no nearer than the shade; we will speak from there. |
+| `egypt_attack_1` | Marching on the player's land | The river does not hurry, and it drowns whole towns. I have come as the river comes. |
+| `egypt_attack_2` | Marching on the player's land | You have lived well on my border. That is over. |
+| `egypt_defend_1` | The player marches on their land | You march on walls that were old when your people were herdsmen. |
+| `egypt_defend_2` | The player marches on their land | Come, then. The sand has room for you. |
+| `egypt_win_1` | After beating the player in battle | It is recorded. You will be the small figures at the bottom of the wall. |
+| `egypt_win_2` | After beating the player in battle | Go home. Tell them what the Two Lands are. |
+| `egypt_lose_1` | After losing a battle to the player | A bad year. The river gives those too. |
+| `egypt_lose_2` | After losing a battle to the player | You have won a field. I have a kingdom of them. |
+| `egypt_eliminated_1` | Their last territory falls | The stones will still say my name. Who will say yours? |
+| `egypt_eliminated_2` | Their last territory falls | So it ends. Seal the door behind me and do it properly. |
+| `egypt_battle_1` | A real-time battle against them begins | Chariots forward. Let them hear the wheels. |
+| `egypt_battle_2` | A real-time battle against them begins | Hold the line as the stones hold. Then break them. |
+| `egypt_ageup_1` | They advance to a new age | A new age. Have the masons begin. |
+| `egypt_ageup_2` | They advance to a new age | We have learned a thing. Write it down so that it is never lost. |
+| `egypt_wonder_1` | They complete a Wonder | Look at it. It will stand when this whole quarrel is forgotten. |
+| `egypt_wonder_2` | They complete a Wonder | That is what a people can do when they pull together on one rope. |
+| `egypt_truce_1` | They accept the player's offer of a truce | Peace. Let it be cut in stone, both copies. |
+| `egypt_truce_2` | They accept the player's offer of a truce | Agreed. The harvest wants every hand in any case. |
+| `egypt_refuse_1` | They turn down a truce | No. You have nothing I lack. |
+| `egypt_refuse_2` | They turn down a truce | I do not bargain with those I am about to outlast. |
+| `egypt_demand_1` | They demand tribute from the player | A tenth of your grain, as tribute. It is a small price for my patience. |
+| `egypt_demand_2` | They demand tribute from the player | Send gifts. It is the custom, and I am fond of custom. |
+| `egypt_betray_1` | The player breaks a truce with them | You swore it and broke it. Your name will be chiselled out wherever it stands. |
+| `egypt_betray_2` | The player breaks a truce with them | Oathbreaker. Even your own dead are ashamed. |
+| `egypt_ally_1` | They accept an alliance with the player | Then our houses stand together. It shall be written in both tongues. |
+| `egypt_ally_2` | They accept an alliance with the player | An alliance. I will have your likeness set beside mine. Slightly smaller. |
+| `egypt_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | Two crowns remain and there is one throne. You understand. |
+| `egypt_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | We were good neighbours. Now we must find out which of us history keeps. |
+| `egypt_p_start_1` | As the player's own leader: a campaign or match begins | Here. Mark the fields before the river marks them for us. |
+| `egypt_p_start_2` | As the player's own leader: a campaign or match begins | Good black earth. We begin as we always have: with the planting. |
+| `egypt_p_win_1` | As the player's own leader: a battle is won | It is done. Record it accurately. |
+| `egypt_p_win_2` | As the player's own leader: a battle is won | A victory. See that the fallen are buried as they deserve. |
+| `egypt_p_loss_1` | As the player's own leader: a battle is lost | We are thrown back. The river also falls, and returns. |
+| `egypt_p_loss_2` | As the player's own leader: a battle is lost | Gather the survivors. Count them by name, not by number. |
+| `egypt_p_alert_1` | As the player's own leader: the town is under attack | They are inside the fields. To arms, all of you. |
+| `egypt_p_alert_2` | As the player's own leader: the town is under attack | The kingdom is struck. Every man to the wall. |
+| `egypt_p_ageup_1` | As the player's own leader: a new age is reached | A new age of the kingdom. Let the builders rejoice. |
+| `egypt_p_ageup_2` | As the player's own leader: a new age is reached | We rise. Carefully, as one builds: level by level. |
+
+## King Nabu-Shar — King of Babylon, Keeper of the Law
+
+**Direction:** Male, sixties. Dry, exact, legal. Reads every sentence as though it were a clause; rarely amused, never hurried.
+
+| File | When | Line |
+| --- | --- | --- |
+| `babylon_intro_1` | First meeting on the campaign map | Nabu-Shar, king. State your name, your people and your business, in that order. |
+| `babylon_intro_2` | First meeting on the campaign map | You are new. The law here is written at the gate. Read it before you speak. |
+| `babylon_attack_1` | Marching on the player's land | You were given notice. This is the consequence set down for it. |
+| `babylon_attack_2` | Marching on the player's land | By the forty-first article I am entitled to your city. I have come to collect. |
+| `babylon_defend_1` | The player marches on their land | You bring an army to a city with seven walls. Did no one advise you? |
+| `babylon_defend_2` | The player marches on their land | The gate is shut. That is what gates are for. |
+| `babylon_win_1` | After beating the player in battle | Judgment for Babylon. There is no appeal. |
+| `babylon_win_2` | After beating the player in battle | It went as the figures said it would. It generally does. |
+| `babylon_lose_1` | After losing a battle to the player | An error in my reckoning. I shall find it. |
+| `babylon_lose_2` | After losing a battle to the player | Noted. The account between us is now open. |
+| `babylon_eliminated_1` | Their last territory falls | Then let it be written that the law outlived the king. |
+| `babylon_eliminated_2` | Their last territory falls | You have taken the city. You will find you cannot take what was learned in it. |
+| `babylon_battle_1` | A real-time battle against them begins | Sappers to the wall. Everyone else, as drilled. |
+| `babylon_battle_2` | A real-time battle against them begins | By the numbers. Begin. |
+| `babylon_ageup_1` | They advance to a new age | A new age. Amend the tablets accordingly. |
+| `babylon_ageup_2` | They advance to a new age | The astronomers said this year. They are seldom wrong. |
+| `babylon_wonder_1` | They complete a Wonder | Finished to the cubit. Let anyone measure it who doubts. |
+| `babylon_wonder_2` | They complete a Wonder | A wonder. And under budget, which is the greater one. |
+| `babylon_truce_1` | They accept the player's offer of a truce | Agreed. Two copies, sealed, one for each archive. |
+| `babylon_truce_2` | They accept the player's offer of a truce | A truce. The terms are clear and I expect them kept to the letter. |
+| `babylon_refuse_1` | They turn down a truce | Refused. Your terms are loosely drafted and so are you. |
+| `babylon_refuse_2` | They turn down a truce | No. I do not sign what I cannot enforce. |
+| `babylon_demand_1` | They demand tribute from the player | You owe tribute. I have the sum here; it is not negotiable. |
+| `babylon_demand_2` | They demand tribute from the player | A levy, payable at once. Interest runs from today. |
+| `babylon_betray_1` | The player breaks a truce with them | You set your seal to it and broke it. Under our law that is the worst of crimes. |
+| `babylon_betray_2` | The player breaks a truce with them | A broken oath. I shall see that every court from here to the sea hears of it. |
+| `babylon_ally_1` | They accept an alliance with the player | An alliance, then. I have drafted it fairly; you may check. |
+| `babylon_ally_2` | They accept an alliance with the player | Your enemies are entered in my ledger as mine. So it stands. |
+| `babylon_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | The treaty lapses by its own terms: only two parties remain. I regret the necessity. |
+| `babylon_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | We kept faith to the end of the clause. Now the matter is between us. |
+| `babylon_p_start_1` | As the player's own leader: a campaign or match begins | Survey the ground. We build nothing that has not been measured first. |
+| `babylon_p_start_2` | As the player's own leader: a campaign or match begins | Set down the first stone and the first law together. |
+| `babylon_p_win_1` | As the player's own leader: a battle is won | The verdict is ours. Enter it. |
+| `babylon_p_win_2` | As the player's own leader: a battle is won | Won, and by the plan. See that the men are paid what was promised. |
+| `babylon_p_loss_1` | As the player's own leader: a battle is lost | We have lost this hearing. There will be another. |
+| `babylon_p_loss_2` | As the player's own leader: a battle is lost | A reverse. Find out why, exactly why, and bring it to me. |
+| `babylon_p_alert_1` | As the player's own leader: the town is under attack | The city is breached. Every man to his post, as the roll assigns. |
+| `babylon_p_alert_2` | As the player's own leader: the town is under attack | Alarm. This is what the walls were paid for; man them. |
+| `babylon_p_ageup_1` | As the player's own leader: a new age is reached | A new age. Let the scribes begin the new tablets. |
+| `babylon_p_ageup_2` | As the player's own leader: a new age is reached | We advance. Keep the old records; we shall want them. |
+
+## Shahbanu Roshanak — Queen of Kings
+
+**Direction:** Female, forties. Gracious, warm, expansive; a perfect host. The threat is always in what she offers, never in her tone.
+
+| File | When | Line |
+| --- | --- | --- |
+| `persia_intro_1` | First meeting on the campaign map | I am Roshanak. Sit, be welcome. Half the world already eats at my table; there is room for you. |
+| `persia_intro_2` | First meeting on the campaign map | A new guest! Bring them water and shade, and then tell me who they are. |
+| `persia_attack_1` | Marching on the player's land | I asked so politely. Now I must come in person, and I do not travel light. |
+| `persia_attack_2` | Marching on the player's land | My armies are so many that I have never seen them all. You are about to. |
+| `persia_defend_1` | The player marches on their land | You come as an enemy to the house that would have fed you? How sad. |
+| `persia_defend_2` | The player marches on their land | Do come in. The elephants have been restless. |
+| `persia_win_1` | After beating the player in battle | There. Now we may talk as friends. I am so much easier to like in victory. |
+| `persia_win_2` | After beating the player in battle | Rise. I have no wish to humble you further; I have what I came for. |
+| `persia_lose_1` | After losing a battle to the player | Well fought. I do admire it. I shall send more next time. |
+| `persia_lose_2` | After losing a battle to the player | You have cost me a province. I have a great many. |
+| `persia_eliminated_1` | Their last territory falls | So the garden falls. Do water it; it was three hundred years in the growing. |
+| `persia_eliminated_2` | Their last territory falls | I leave you an empire. Be kinder to it than you were to me. |
+| `persia_battle_1` | A real-time battle against them begins | Immortals, forward. Let them count us if they can. |
+| `persia_battle_2` | A real-time battle against them begins | Loose the beasts, and follow them in. |
+| `persia_ageup_1` | They advance to a new age | A new age. Let every province have a share in it. |
+| `persia_ageup_2` | They advance to a new age | We grow wiser. Send word along the royal road. |
+| `persia_wonder_1` | They complete a Wonder | Is it not beautiful? Ten peoples built it, and each thinks it theirs. |
+| `persia_wonder_2` | They complete a Wonder | A wonder of the world. Come and see it; I insist. |
+| `persia_truce_1` | They accept the player's offer of a truce | Peace! I am so glad. Stay for the feast. |
+| `persia_truce_2` | They accept the player's offer of a truce | A truce, with gifts on both sides. That is how it should be done. |
+| `persia_refuse_1` | They turn down a truce | No, my dear. You ask for too much and offer too little. |
+| `persia_refuse_2` | They turn down a truce | I think not. But do ask again when you have less to lose. |
+| `persia_demand_1` | They demand tribute from the player | A small tribute, and you keep your crown. I am being very generous. |
+| `persia_demand_2` | They demand tribute from the player | Earth and water, and a little gold. Then we are friends. |
+| `persia_betray_1` | The player breaks a truce with them | You ate my bread and then drew a knife. No one will open a door to you again. |
+| `persia_betray_2` | The player breaks a truce with them | Treachery, at my own table. I shall remember, and I have a long memory and a long road. |
+| `persia_ally_1` | They accept an alliance with the player | Then you are of my house. Your enemies will find that out. |
+| `persia_ally_2` | They accept an alliance with the player | Allies. I shall send you an elephant; one should always send an elephant. |
+| `persia_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | All the other guests have gone home. It is only you and I, and one seat at the head. |
+| `persia_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | You were a good friend to me. I wish the world were wide enough for two of us. |
+| `persia_p_start_1` | As the player's own leader: a campaign or match begins | A fair country. Plant a garden first; the rest follows. |
+| `persia_p_start_2` | As the player's own leader: a campaign or match begins | Here we stay. Let every people who join us keep their own customs. |
+| `persia_p_win_1` | As the player's own leader: a battle is won | A victory. Be gracious in it, all of you. |
+| `persia_p_win_2` | As the player's own leader: a battle is won | They are beaten. Feed their wounded as you would our own. |
+| `persia_p_loss_1` | As the player's own leader: a battle is lost | We are beaten today. Send to the provinces; there are always more. |
+| `persia_p_loss_2` | As the player's own leader: a battle is lost | A loss. I do not care for it. See that it is not repeated. |
+| `persia_p_alert_1` | As the player's own leader: the town is under attack | The enemy is in the gardens. Guards! |
+| `persia_p_alert_2` | As the player's own leader: the town is under attack | We are attacked at home. Call up everyone. |
+| `persia_p_ageup_1` | As the player's own leader: a new age is reached | A new age for all my peoples. Proclaim it. |
+| `persia_p_ageup_2` | As the player's own leader: a new age is reached | We advance. I should like the roads improved to match. |
+
+## Strategos Kallias — General of the League
+
+**Direction:** Male, forties. Quick, argumentative, fond of his own wit. Cannot resist making a point even while losing.
+
+| File | When | Line |
+| --- | --- | --- |
+| `greece_intro_1` | First meeting on the campaign map | Kallias, elected general. Elected, mark you. And who chose you? |
+| `greece_intro_2` | First meeting on the campaign map | Ah, a stranger. Good. We had run out of people to argue with. |
+| `greece_attack_1` | Marching on the player's land | We debated this for three days. The vote was for war. Narrowly. |
+| `greece_attack_2` | Marching on the player's land | I come with ten thousand free men. That is a different thing from ten thousand soldiers. |
+| `greece_defend_1` | The player marches on their land | You attack a city where every man owns his own spear? Bold. |
+| `greece_defend_2` | The player marches on their land | Come up the pass, then. It is quite narrow. |
+| `greece_win_1` | After beating the player in battle | And that settles the argument. For today. |
+| `greece_win_2` | After beating the player in battle | You fought as you were told to. We fought because we chose to. There is your answer. |
+| `greece_lose_1` | After losing a battle to the player | A fair point, forcefully made. I concede it. |
+| `greece_lose_2` | After losing a battle to the player | Beaten. The assembly will have my head, or at least a long speech about it. |
+| `greece_eliminated_1` | Their last territory falls | Then the city falls. The ideas will not; they travel. |
+| `greece_eliminated_2` | Their last territory falls | You have conquered us. Wait until we start teaching your children. |
+| `greece_battle_1` | A real-time battle against them begins | Shields together. Nobody is a hero today; we are a wall. |
+| `greece_battle_2` | A real-time battle against them begins | Forward at the walk. Sing if you know the words. |
+| `greece_ageup_1` | They advance to a new age | A new age. I told them so; nobody listens until it happens. |
+| `greece_ageup_2` | They advance to a new age | Progress! Which some of us voted against, I remind you. |
+| `greece_wonder_1` | They complete a Wonder | Is it not well proportioned? We argued about the columns for a year. |
+| `greece_wonder_2` | They complete a Wonder | A wonder. Paid for by public subscription, and only slightly embezzled. |
+| `greece_truce_1` | They accept the player's offer of a truce | Peace. The assembly approves, by a show of hands. |
+| `greece_truce_2` | They accept the player's offer of a truce | A truce. Good. I have a harvest and a lawsuit to see to. |
+| `greece_refuse_1` | They turn down a truce | No. And I can give you nine reasons, in order. |
+| `greece_refuse_2` | They turn down a truce | The motion fails. So do you. |
+| `greece_demand_1` | They demand tribute from the player | A contribution to the common defence. You will find the sum reasonable. |
+| `greece_demand_2` | They demand tribute from the player | Tribute. We prefer to call it membership of the league. |
+| `greece_betray_1` | The player breaks a truce with them | You swore by all that is sacred and then did this. Even our comedians will not find it funny. |
+| `greece_betray_2` | The player breaks a truce with them | An oathbreaker. We have a word for that, and a rock to throw you from. |
+| `greece_ally_1` | They accept an alliance with the player | An alliance of free peoples. I shall try to keep the speeches short. |
+| `greece_ally_2` | They accept an alliance with the player | Then we stand together. Shield to shield, as it should be. |
+| `greece_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | Only two of us left. A league of two is merely a quarrel waiting. |
+| `greece_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | We were good allies. Let us settle the last question honourably. |
+| `greece_p_start_1` | As the player's own leader: a campaign or match begins | Lay out the marketplace first. A city is where men talk. |
+| `greece_p_start_2` | As the player's own leader: a campaign or match begins | Here. Good harbour, good hills. We could argue about it, but let us build. |
+| `greece_p_win_1` | As the player's own leader: a battle is won | Victory. I told you it would work. Some of you owe me an apology. |
+| `greece_p_win_2` | As the player's own leader: a battle is won | We won. Put up a modest monument. No, more modest than that. |
+| `greece_p_loss_1` | As the player's own leader: a battle is lost | We lost. I shall explain why at length. Later. |
+| `greece_p_loss_2` | As the player's own leader: a battle is lost | Beaten today. Free men recover from that faster than you would think. |
+| `greece_p_alert_1` | As the player's own leader: the town is under attack | They are at the walls. Every citizen, your spear, now. |
+| `greece_p_alert_2` | As the player's own leader: the town is under attack | The city is attacked. This is the part we cannot vote on. |
+| `greece_p_ageup_1` | As the player's own leader: a new age is reached | A new age of the city. Let us use it better than the last. |
+| `greece_p_ageup_2` | As the player's own leader: a new age is reached | We advance. Someone write it all down this time. |
+
+## Earl Godric of Wessex — Earl and Marshal of the Realm
+
+**Direction:** Male, fifties. Dry, understated, unhurried. Describes catastrophes as inconveniences and victories as "not bad".
+
+| File | When | Line |
+| --- | --- | --- |
+| `england_intro_1` | First meeting on the campaign map | Godric. Earl of this and that. You will forgive me if I do not get up; the weather. |
+| `england_intro_2` | First meeting on the campaign map | New neighbours. Well. I suppose we had better be civil about it. |
+| `england_attack_1` | Marching on the player's land | I am afraid it has come to blows. I did write. |
+| `england_attack_2` | Marching on the player's land | We have come over to settle the matter. It should not take long. |
+| `england_defend_1` | The player marches on their land | You have picked a wet week to invade. I should have waited. |
+| `england_defend_2` | The player marches on their land | Do mind the archers. They have had nothing to do all winter. |
+| `england_win_1` | After beating the player in battle | That went rather well. Not that one likes to say so. |
+| `england_win_2` | After beating the player in battle | Off you go, then. No hard feelings, I hope. |
+| `england_lose_1` | After losing a battle to the player | A setback. We have had worse, generally on the same day of the week. |
+| `england_lose_2` | After losing a battle to the player | Well. That was not our best. We shall look into it. |
+| `england_eliminated_1` | Their last territory falls | It seems we are finished. Somebody see to the dogs. |
+| `england_eliminated_2` | Their last territory falls | So that is that. You will find the place damp, and the people stubborn. |
+| `england_battle_1` | A real-time battle against them begins | Archers to the front. Loose when you can count their teeth. |
+| `england_battle_2` | A real-time battle against them begins | Steady. Nobody runs; it looks dreadful. |
+| `england_ageup_1` | They advance to a new age | A new age, they tell me. I shall believe it when the roads improve. |
+| `england_ageup_2` | They advance to a new age | Progress. I suppose we had better get on with it. |
+| `england_wonder_1` | They complete a Wonder | Quite a decent bit of building, if I say so myself. |
+| `england_wonder_2` | They complete a Wonder | A wonder. The masons are insufferable about it already. |
+| `england_truce_1` | They accept the player's offer of a truce | Peace it is. I never cared for the other thing. |
+| `england_truce_2` | They accept the player's offer of a truce | A truce. Splendid. I shall get the harvest in after all. |
+| `england_refuse_1` | They turn down a truce | I think not. Thank you all the same. |
+| `england_refuse_2` | They turn down a truce | No. One has to draw the line somewhere, and it is here. |
+| `england_demand_1` | They demand tribute from the player | There is the small matter of what you owe. I should settle it, in your place. |
+| `england_demand_2` | They demand tribute from the player | A levy. I dislike asking twice. |
+| `england_betray_1` | The player breaks a truce with them | You gave your word. Where I come from that still counts for something. |
+| `england_betray_2` | The player breaks a truce with them | Bad form. Very bad. We shall not forget it. |
+| `england_ally_1` | They accept an alliance with the player | Allies, then. I shall try to be worth having. |
+| `england_ally_2` | They accept an alliance with the player | Shoulder to shoulder. You will find we do not let people down. |
+| `england_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | It seems there are only the two of us. Awkward. |
+| `england_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | You have been a good friend. I am sorry it comes to this; I truly am. |
+| `england_p_start_1` | As the player's own leader: a campaign or match begins | This will do nicely. Hedge the fields and get the barley in. |
+| `england_p_start_2` | As the player's own leader: a campaign or match begins | A fair bit of country. Let us not spoil it. |
+| `england_p_win_1` | As the player's own leader: a battle is won | Carried the day. Well done, all of you. Quietly, now. |
+| `england_p_win_2` | As the player's own leader: a battle is won | A win. See that the men get something hot. |
+| `england_p_loss_1` | As the player's own leader: a battle is lost | We have had the worst of it. It happens. We shall be back. |
+| `england_p_loss_2` | As the player's own leader: a battle is lost | Lost. Nobody is to mope; there is work to do. |
+| `england_p_alert_1` | As the player's own leader: the town is under attack | They are in the village. Bows, everyone. Now, please. |
+| `england_p_alert_2` | As the player's own leader: the town is under attack | We are attacked. Bar the doors and string your bows. |
+| `england_p_ageup_1` | As the player's own leader: a new age is reached | A new age. Let us hope it is drier than the last. |
+| `england_p_ageup_2` | As the player's own leader: a new age is reached | We move with the times. Reluctantly, but we move. |
+
+## Emir Rashid ibn Tariq — Emir of the Caravan Cities
+
+**Direction:** Male, forties. Courteous, musical, patient: a merchant and a poet. Compliments you while he takes your measure.
+
+| File | When | Line |
+| --- | --- | --- |
+| `arabs_intro_1` | First meeting on the campaign map | Peace upon you. I am Rashid, son of Tariq. A guest has three days before I ask his business. |
+| `arabs_intro_2` | First meeting on the campaign map | A stranger on the road. Come, there is coffee, and then we shall see what kind of man you are. |
+| `arabs_attack_1` | Marching on the player's land | I offered trade and you chose otherwise. I am sorry for it. |
+| `arabs_attack_2` | Marching on the player's land | The desert teaches patience. Mine is finished. |
+| `arabs_defend_1` | The player marches on their land | You bring war to the well that watered you? That is a poor return. |
+| `arabs_defend_2` | The player marches on their land | Come, then. You will find the sand fights on our side. |
+| `arabs_win_1` | After beating the player in battle | It is finished. Let no one mock the beaten; tomorrow it may be us. |
+| `arabs_win_2` | After beating the player in battle | The matter is decided. Go home in safety. I ask only that you remember it. |
+| `arabs_lose_1` | After losing a battle to the player | You have the better of me today. Fortune is a wheel. |
+| `arabs_lose_2` | After losing a battle to the player | A loss. I have lost caravans before and still grown rich. |
+| `arabs_eliminated_1` | Their last territory falls | So my road ends here. Deal justly with my people; they are good people. |
+| `arabs_eliminated_2` | Their last territory falls | The wind covers every track in the end. Mine too. |
+| `arabs_battle_1` | A real-time battle against them begins | Riders, with me. Swift, and then swifter. |
+| `arabs_battle_2` | A real-time battle against them begins | Strike, wheel away, strike again. They cannot catch what they cannot reach. |
+| `arabs_ageup_1` | They advance to a new age | A new age. Knowledge is the one treasure that grows when it is spent. |
+| `arabs_ageup_2` | They advance to a new age | The scholars have done well. See that they are paid like generals. |
+| `arabs_wonder_1` | They complete a Wonder | A wonder, raised by hands from a dozen lands. Is that not the better victory? |
+| `arabs_wonder_2` | They complete a Wonder | They will come from the ends of the earth to see it. And to trade, I trust. |
+| `arabs_truce_1` | They accept the player's offer of a truce | Peace, then. It is the better bargain; it always was. |
+| `arabs_truce_2` | They accept the player's offer of a truce | A truce. Let the caravans run again. |
+| `arabs_refuse_1` | They turn down a truce | Forgive me, no. The price is wrong. |
+| `arabs_refuse_2` | They turn down a truce | I must decline. A wise man does not sell his sword cheaply. |
+| `arabs_demand_1` | They demand tribute from the player | A toll, for safe passage through my lands. It is customary. |
+| `arabs_demand_2` | They demand tribute from the player | There is a debt between us. I should prefer it paid in gold and not otherwise. |
+| `arabs_betray_1` | The player breaks a truce with them | You broke bread with me and then broke faith. Among us there is no deeper shame. |
+| `arabs_betray_2` | The player breaks a truce with them | An oath is a man's whole name. You have thrown yours in the dust. |
+| `arabs_ally_1` | They accept an alliance with the player | Then we are brothers on this road. My well is your well. |
+| `arabs_ally_2` | They accept an alliance with the player | An alliance. May it profit us both, and may we deserve it. |
+| `arabs_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | Only we two remain, my friend, and one cannot share a crown as one shares a meal. |
+| `arabs_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | You kept faith with me. I honour it, even now that we must be rivals. |
+| `arabs_p_start_1` | As the player's own leader: a campaign or match begins | Water, shade and a crossroads. A city needs nothing else. We stop here. |
+| `arabs_p_start_2` | As the player's own leader: a campaign or match begins | Dig the well first. Everything follows the water. |
+| `arabs_p_win_1` | As the player's own leader: a battle is won | A victory. Give thanks, and see to the wounded on both sides. |
+| `arabs_p_win_2` | As the player's own leader: a battle is won | We prevailed. Let no one grow proud on it. |
+| `arabs_p_loss_1` | As the player's own leader: a battle is lost | We are beaten. Gather the riders; the road is long and this is one day of it. |
+| `arabs_p_loss_2` | As the player's own leader: a battle is lost | A hard loss. Patience. Patience is half of wisdom. |
+| `arabs_p_alert_1` | As the player's own leader: the town is under attack | Raiders at the gates. To horse! |
+| `arabs_p_alert_2` | As the player's own leader: the town is under attack | The city is attacked. Every man who can ride or stand, to arms. |
+| `arabs_p_ageup_1` | As the player's own leader: a new age is reached | A new age opens. Let us be worthy of it. |
+| `arabs_p_ageup_2` | As the player's own leader: a new age is reached | We advance. Build schools as well as walls. |
+
+## Lord Akiyama Tadanobu — Lord of the Eastern Provinces
+
+**Direction:** Male, fifties. Formal, quiet, very still. Short sentences with long silences; courtesy that never bends.
+
+| File | When | Line |
+| --- | --- | --- |
+| `japan_intro_1` | First meeting on the campaign map | I am Akiyama Tadanobu. You stand on my border. State your purpose. |
+| `japan_intro_2` | First meeting on the campaign map | A visitor. You are received. Do not mistake courtesy for welcome. |
+| `japan_attack_1` | Marching on the player's land | I have given this thought. I am here. There is nothing more to say. |
+| `japan_attack_2` | Marching on the player's land | The blossom falls when it is time. It is time. |
+| `japan_defend_1` | The player marches on their land | You attack. Then you have chosen how this ends. |
+| `japan_defend_2` | The player marches on their land | My men have waited all their lives for this morning. |
+| `japan_win_1` | After beating the player in battle | It is over. You fought. That will be remembered. |
+| `japan_win_2` | After beating the player in battle | Withdraw. I do not pursue the beaten. |
+| `japan_lose_1` | After losing a battle to the player | I have failed today. The fault is mine alone. |
+| `japan_lose_2` | After losing a battle to the player | A defeat. I accept it. I do not accept that it is final. |
+| `japan_eliminated_1` | Their last territory falls | My house ends. See that the swords are returned to the shrine. |
+| `japan_eliminated_2` | Their last territory falls | So. I have nothing to regret but the result. |
+| `japan_battle_1` | A real-time battle against them begins | Draw. Advance. No one looks back. |
+| `japan_battle_2` | A real-time battle against them begins | One breath. Then all together. |
+| `japan_ageup_1` | They advance to a new age | A new age. We will master it as we mastered the last. |
+| `japan_ageup_2` | They advance to a new age | The craftsmen have done well. Tell them so; once is enough. |
+| `japan_wonder_1` | They complete a Wonder | It is complete. Nothing could be added. Nothing taken away. |
+| `japan_wonder_2` | They complete a Wonder | A work of many lifetimes, finished in mine. I am humbled. |
+| `japan_truce_1` | They accept the player's offer of a truce | Peace. My word is given. It is not given twice. |
+| `japan_truce_2` | They accept the player's offer of a truce | A truce. I shall keep it exactly. |
+| `japan_refuse_1` | They turn down a truce | No. |
+| `japan_refuse_2` | They turn down a truce | I decline. Do not ask again. |
+| `japan_demand_1` | They demand tribute from the player | You will send tribute. It is the proper order of things. |
+| `japan_demand_2` | They demand tribute from the player | A gift is expected. Its absence would be noticed. |
+| `japan_betray_1` | The player breaks a truce with them | You gave your word and broke it. There is no lower thing. |
+| `japan_betray_2` | The player breaks a truce with them | Dishonour. I will not speak your name again. Others will speak of what I did to you. |
+| `japan_ally_1` | They accept an alliance with the player | We are allied. Your enemy is mine. I do not say such things lightly. |
+| `japan_ally_2` | They accept an alliance with the player | Then it is settled. I shall stand where you need me. |
+| `japan_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | Two remain. It was always going to be so. |
+| `japan_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | You were a true ally. I shall meet you with respect, and without mercy. |
+| `japan_p_start_1` | As the player's own leader: a campaign or match begins | This ground is good. Build carefully. Waste nothing. |
+| `japan_p_start_2` | As the player's own leader: a campaign or match begins | Here. First the paddies, then the walls. |
+| `japan_p_win_1` | As the player's own leader: a battle is won | A victory. Bow to the fallen, theirs and ours. |
+| `japan_p_win_2` | As the player's own leader: a battle is won | It is done. Clean your blades. |
+| `japan_p_loss_1` | As the player's own leader: a battle is lost | We are beaten. We will train until we are not. |
+| `japan_p_loss_2` | As the player's own leader: a battle is lost | A loss. Remember how it felt. That is its use. |
+| `japan_p_alert_1` | As the player's own leader: the town is under attack | The enemy is within the province. Every man, now. |
+| `japan_p_alert_2` | As the player's own leader: the town is under attack | We are attacked. Hold. I am coming. |
+| `japan_p_ageup_1` | As the player's own leader: a new age is reached | A new age. Let our discipline keep pace with it. |
+| `japan_p_ageup_2` | As the player's own leader: a new age is reached | We advance. The old ways still apply. |
+
+520 lines in all.

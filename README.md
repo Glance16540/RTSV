@@ -30,7 +30,7 @@ fragile and unable to work until they grow up, when they take up a parent's trad
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
 
-**Six nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
+**Thirteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
 pious or decadent: that is decided by how they are ruled, not by who they are.
 
 | People | Bonuses | Only they train |
@@ -41,6 +41,13 @@ pious or decadent: that is decided by how they are ruled, not by who they are.
 | Chinese | Research 30% faster and 15% cheaper, tougher siege | Fire Lancer: scorches a group and sets buildings alight; Organ Gun (Gunpowder Age): tears up packed infantry |
 | Israelites | Cheaper priests, prophets and healers, faster faith, stronger healing | Zealot: mends itself with every blow; Temple Guard (Middle Ages): armoured horseman who does the same |
 | Norse | Game yields 50% more, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf; War Bear (Iron Age): strikes faster as it is wounded |
+| Egyptians | Farms +20%, 15% faster building | Khopesh Guard: cuts down infantry; War Chariot (Iron Age): a heavy charge |
+| Babylonians | Research 15% faster, buildings +15% health | Sapper: ruinous against buildings; Gate Guard (Iron Age): shrugs off missiles, fights harder at home |
+| Persians | Villagers carry 3 more, war beasts 20% cheaper | Immortal (Iron Age): mends as it fights; War Elephant (Middle Ages): tramples and tears down buildings |
+| Greeks | Research 20% cheaper, soldiers +1 armour | Hoplite: resists missiles and stops cavalry; Companion Cavalry (Iron Age): a crushing charge |
+| English | Farms +10%, towers hit harder | Longbowman (Iron Age): out-ranges other archers; Billman (Middle Ages): bane of cavalry |
+| Arabs | Cavalry 10% faster, research 10% cheaper | Camel Rider: rides down cavalry; Mameluke (Middle Ages): strikes from a few paces off |
+| Japanese | Soldiers +1 attack, villagers gather 5% faster | Samurai (Iron Age): quick, deadly to infantry; Ashigaru Gunner (Gunpowder Age): cheap matchlock |
 
 **Generations.** Villagers grow old: after a long working life they slow down as elders and
 eventually die, so a village lasts only as long as its families keep raising children. A child of
@@ -190,7 +197,7 @@ Each turn you collect supplies from the land you hold and spend them, then march
 neighbouring land.
 
 - **Leaders.** Each rival is led by a named leader who speaks when you first meet, when armies
-  march, when battles are won and lost, and when they fall. All 240 lines are written and shown
+  march, when battles are won and lost, and when they fall. All 520 lines are written and shown
   on screen; recordings dropped into `public/assets/voice/` are played automatically. See
   [docs/VOICE_SCRIPT.md](docs/VOICE_SCRIPT.md) for every line, its filename and voice direction.
 - **Three ways to fight.** A *field battle* is the two armies alone on open ground and is over in
