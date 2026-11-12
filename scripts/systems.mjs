@@ -118,7 +118,7 @@ export const AREAS = [
         gaps: [] },
       { name: 'Country and ground', status: 'rough', what: 'The kind of land a battle is fought over.',
         has: ['Four countries: green (woods, marsh, beaches), desert, steppe, the snowy north', 'Chosen in the skirmish menu, or the homeland of a people', 'Sand, snow, marsh and slopes slow a march; routes go round bad ground'],
-        gaps: ['The computer opponent takes no account of ground or roads', 'Desert and steppe have less wood and nobody has checked that they are fair', 'No palms or cacti in the desert', 'Missions are all green country'] },
+        gaps: ['The computer opponent keeps its buildings out of bogs, but builds across its own roads and does not otherwise plan around ground', 'Hard against Easy is fragile: a small change to where the computer builds flipped several results', 'Two computer opponents were run against each other in each country and both grew at a similar pace everywhere; that is four games per country, not a proof of fairness', 'No palms or cacti in the desert', 'Missions are all green country'] },
       { name: 'Computer opponent', status: 'rough', what: 'Rivals that build, fight and sail.',
         has: ['Builds a town, advances, attacks and defends', 'Builds a navy, raids by sea, lands armies', 'Staffs its Church and Tavern, hires mercenaries'],
         gaps: ['Never uses Slavers or Work Camps', 'A leader\'s temperament changes four things only: when it attacks, army size, walls, and church or tavern', 'Has never been played against by a person'] },
@@ -141,7 +141,7 @@ export const AREAS = [
     systems: [
       { name: '3D world', status: 'rough', what: 'The battlefield and its light.',
         has: ['Painted ground with soft shorelines, moving water, scattered grass and stones', 'Hills that rise and fall and mountain ranges with snow on the peaks', 'Low warm sunlight, soft shadows, haze and drifting cloud shadows', 'A drawn finish: banded shade with an ink outline, heavy on buildings and fine on people', 'Weather that comes and goes: rain, snowfall in the north, dust in the desert'],
-        gaps: ['Weather is seen only: rain does not slow anyone or spoil a harvest', 'No seasons, no thunder, no sound of rain', 'How fast it runs on a phone or in a big battle has not been measured'] },
+        gaps: ['Weather tells on fighting and movement (rain shortens bows and puts out fires, snow slows travel off the roads, dust cuts sight and bows) but not on harvests', 'The computer opponent does not plan around the weather', 'No seasons, no thunder, no sound of rain', 'How fast it runs on a phone or in a big battle has not been measured'] },
       { name: 'Buildings', status: 'rough', what: 'What a town is made of.',
         has: ['Every building shaped by hand, with a ruined church for a decadent town: pitched roofs with eaves, timber framing, tiles and thatch, stonework, round towers, props', 'Walls join up: each piece reaches toward its neighbours, corners and ends get a heavier post, gates turn to stand across the wall', 'Each nation keeps its own roofs (domes, pagodas, flat roofs, tents) and colours by age', 'Church and tavern drawn bright, plain, ruined or gaudy by the town\'s standing'],
         gaps: ['Walls have not been checked on sloping ground or beside towers', 'One wonder for every nation, differing only in its roof', 'Nations share one set of building shapes under their own roofs'] },

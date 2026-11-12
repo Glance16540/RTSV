@@ -968,7 +968,7 @@ export class Renderer {
 
     this.stepRubble(dt);
     this.roads.update((b) => this.isVisible(b));
-    this.weather.update(dt, this.clock, this.cx, this.cy);
+    this.weather.update(dt, this.clock, this.cx, this.cy, this.game);
     if (this.ink) {
       // Only what is made of the drawn materials takes an outline; the ground, water, rings and fog never do.
       if (this.inked++ % 12 === 0) this.scene.traverse((o) => {

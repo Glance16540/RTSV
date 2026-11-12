@@ -2468,4 +2468,43 @@ describe('roads, rough ground and the country', () => {
     expect(Game.restore(g.serialize()).climate).toBe('desert');
     expect(Array.from(Game.restore(g.serialize()).terrain)).toEqual(Array.from(g.terrain));
   });
+  it('weather comes to a country, tells on the fighting, and is kept across a save', () => {
+    // The plain maps the missions and tests use have no weather at all.
+    const plain = new Game(7, setups);
+    run(plain, 400);
+    expect(plain.weather).toBe('');
+    const kinds = { temperate: 'rain', steppe: 'rain', snow: 'snow', desert: 'dust' } as const;
+    for (const [climate, kind] of Object.entries(kinds)) {
+      const g = new Game(7, setups, 96, false, false, true, climate as 'snow');
+      expect(g.foul).toBe(''); // a match opens under a clear sky
+      let seen = '';
+      for (let i = 0; i < 20 * 400 && !seen; i++) { g.step(); seen = g.foul; }
+      expect(seen).toBe(kind);
+      // It passes again.
+      for (let i = 0; i < 20 * 300 && g.foul; i++) g.step();
+      expect(g.foul).toBe('');
+    }
+    // Rain: a bowman reaches a tile less and fires die sooner. Dust: no one sees as far. Snow: slower off the road.
+    const g = new Game(7, setups, 96, false, false, true, 'temperate');
+    const bow = g.spawnUnit('bowman', 0, 20, 20), sword = g.spawnUnit('swordsman', 0, 21, 20);
+    const reach = g.reachOf(bow), sight = g.sightOf(bow);
+    g.weather = 'rain'; g.weatherAmt = g.weatherWant = 1; g.weatherT = 1e6;
+    expect(g.reachOf(bow)).toBe(reach - 1);
+    expect(g.reachOf(sword)).toBe(sword.def.range);
+    const back = Game.restore(g.serialize());
+    expect(back.foul).toBe('rain');
+    expect(back.weatherAmt).toBe(1);
+    g.weather = 'dust';
+    expect(g.sightOf(bow)).toBe(sight - 2);
+    const walk = (snowing: boolean): number => {
+      const w = new Game(7, setups, 96, false, false, true, 'snow');
+      if (snowing) { w.weather = 'snow'; w.weatherAmt = w.weatherWant = 1; }
+      w.weatherT = 1e6;
+      const tc = w.buildings.find((b) => b.owner === 0)!, u = w.spawnUnit('swordsman', 0, tc.x + 4, tc.y + 4);
+      w.cmdMove(0, [u.id], tc.x + 14, tc.y + 4);
+      run(w, 3);
+      return Math.hypot(u.x - tc.x - 4, u.y - tc.y - 4);
+    };
+    expect(walk(true)).toBeLessThan(walk(false) * 0.95);
+  });
 });

@@ -82,7 +82,7 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 40 systems, 78 known gaps. Pick a status to see only those.</p>
+    <p>Every system in the game, how far along it is, and what it still lacks. 40 systems, 80 known gaps. Pick a status to see only those.</p>
     <div class="bar" role="img" aria-label="11 Working, 19 Working, rough, 7 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:19"></span><span class="thin" style="flex:7"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
       <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">40</span></button>
@@ -230,7 +230,7 @@ footer { color: var(--dim); font-size: 13px; }
   <header><h3>Country and ground</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">The kind of land a battle is fought over.</p>
   <ul class="has"><li>Four countries: green (woods, marsh, beaches), desert, steppe, the snowy north</li><li>Chosen in the skirmish menu, or the homeland of a people</li><li>Sand, snow, marsh and slopes slow a march; routes go round bad ground</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>The computer opponent takes no account of ground or roads</li><li>Desert and steppe have less wood and nobody has checked that they are fair</li><li>No palms or cacti in the desert</li><li>Missions are all green country</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The computer opponent keeps its buildings out of bogs, but builds across its own roads and does not otherwise plan around ground</li><li>Hard against Easy is fragile: a small change to where the computer builds flipped several results</li><li>Two computer opponents were run against each other in each country and both grew at a similar pace everywhere; that is four games per country, not a proof of fairness</li><li>No palms or cacti in the desert</li><li>Missions are all green country</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Computer opponent</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Rivals that build, fight and sail.</p>
@@ -261,7 +261,7 @@ footer { color: var(--dim); font-size: 13px; }
   <header><h3>3D world</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">The battlefield and its light.</p>
   <ul class="has"><li>Painted ground with soft shorelines, moving water, scattered grass and stones</li><li>Hills that rise and fall and mountain ranges with snow on the peaks</li><li>Low warm sunlight, soft shadows, haze and drifting cloud shadows</li><li>A drawn finish: banded shade with an ink outline, heavy on buildings and fine on people</li><li>Weather that comes and goes: rain, snowfall in the north, dust in the desert</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>Weather is seen only: rain does not slow anyone or spoil a harvest</li><li>No seasons, no thunder, no sound of rain</li><li>How fast it runs on a phone or in a big battle has not been measured</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Weather tells on fighting and movement (rain shortens bows and puts out fires, snow slows travel off the roads, dust cuts sight and bows) but not on harvests</li><li>The computer opponent does not plan around the weather</li><li>No seasons, no thunder, no sound of rain</li><li>How fast it runs on a phone or in a big battle has not been measured</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Buildings</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">What a town is made of.</p>
@@ -291,7 +291,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>101 tests, all passing</li></ul>
+  <ul class="has"><li>102 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>

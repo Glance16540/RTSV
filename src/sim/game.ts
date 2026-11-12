@@ -314,9 +314,18 @@ export class Game {
   /** Goes up whenever a road is laid or lifted, so whoever draws them knows to look again. */
   roadVersion = 0;
 
+  /** The weather now ('' is fair), how heavy it is (0 to 1), what it is building toward, and how long until it turns. */
+  weather: '' | 'rain' | 'snow' | 'dust' = '';
+  weatherAmt = 0;
+  weatherWant = 0;
+  weatherT = 0;
+  private wxSeed = 1;
+
   constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false, public climate: Climate = '') {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
     this.spec = generateMap(seed, size, setups.length, sea, relief, climate);
+    this.wxSeed = (seed * 2654435761 + 97) >>> 0;
+    this.weatherT = 70 + (this.wxSeed % 80);
     this.size = size;
     this.terrain = this.spec.terrain;
     this.blocked = new Uint8Array(size * size);
@@ -1001,7 +1010,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, roads: [...this.roadOf], vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -1012,6 +1021,7 @@ export class Game {
     const d = JSON.parse(json);
     if (d.v !== SAVE_VERSION) throw new Error('Incompatible save');
     const g = new Game(d.seed, d.setups, d.size, d.field, d.sea, !!d.relief, d.climate ?? ''); // regenerates the same terrain from the seed
+    if (d.wx) [g.weather, g.weatherAmt, g.weatherWant, g.weatherT, g.wxSeed] = d.wx;
     for (const cells of g.roadOf.values()) g.setRoad(cells, -1);
     g.roadOf = new Map(d.roads ?? []);
     for (const cells of g.roadOf.values()) g.setRoad(cells, 1);
@@ -1589,10 +1599,40 @@ export class Game {
   // Simulation step
   // ------------------------------------------------------------------
 
+  /**
+   * The weather turns on its own in a country that has any: rain over green country and steppe, snow in the
+   * north, dust in the desert. It builds, holds and passes, and while it is heavy it tells on the fighting.
+   */
+  private stepWeather(): void {
+    if (!this.climate || this.field) return;
+    if ((this.weatherT -= DT) <= 0) {
+      // Its own run of chances, so the weather never changes what else the seed decides.
+      const r = (): number => { this.wxSeed = (Math.imul(this.wxSeed, 1664525) + 1013904223) >>> 0; return this.wxSeed / 4294967296; };
+      if (this.weatherWant > 0) { this.weatherWant = 0; this.weatherT = 110 + r() * 160; }
+      else {
+        this.weather = this.climate === 'snow' ? 'snow' : this.climate === 'desert' ? 'dust' : 'rain';
+        this.weatherWant = 0.5 + r() * 0.5;
+        this.weatherT = 50 + r() * 60;
+        const what = this.weather === 'rain' ? '🌧️ Rain is coming in: arrows will fall short and fires will not last.' : this.weather === 'snow' ? '🌨️ Snow is coming down: off the roads, everyone moves slower.' : '🌪️ A dust storm is rising: no one will see far, and arrows will fall short.';
+        for (const p of this.players) if (!p.neutral) this.events.push({ t: 'msg', player: p.id, text: what });
+      }
+    }
+    const d = this.weatherWant - this.weatherAmt;
+    this.weatherAmt += Math.sign(d) * Math.min(Math.abs(d), DT / 9);
+    if (this.weatherAmt <= 0 && this.weatherWant === 0) this.weather = '';
+  }
+  /** The weather that is heavy enough to matter just now, or ''. */
+  get foul(): '' | 'rain' | 'snow' | 'dust' { return this.weatherAmt >= 0.4 ? this.weather : ''; }
+  /** How far a unit can strike: bows and guns lose a little reach in rain or blowing dust. */
+  reachOf(u: Unit): number { return u.def.range - (u.def.range >= 3 && !u.def.naval && (this.foul === 'rain' || this.foul === 'dust') ? 1 : 0); }
+  /** How far a unit can see: not far in a dust storm. */
+  sightOf(u: Unit): number { return this.foul === 'dust' ? Math.max(2, u.def.sight - 2) : u.def.sight; }
+
   step(): void {
     if (this.winner >= 0) return;
     this.tick++;
     this.time += DT;
+    this.stepWeather();
     this.pathBudget = 16;
 
     for (const bucket of this.hash) bucket.length = 0;
@@ -1725,7 +1765,7 @@ export class Game {
         }
     };
     // Allies share what they see.
-    for (const u of this.units) if (!this.hostile(u.owner, this.humanId)) stamp(u.x, u.y, u.def.sight);
+    for (const u of this.units) if (!this.hostile(u.owner, this.humanId)) stamp(u.x, u.y, this.sightOf(u));
     for (const b of this.buildings) if (!this.hostile(b.owner, this.humanId)) stamp(b.x, b.y, (b.complete ? b.def.sight : 2) + b.size / 2);
     for (const b of this.buildings) {
       if (!b.seen && vis[Math.floor(b.y) * N + Math.floor(b.x)] === 2) b.seen = true;
@@ -1738,7 +1778,7 @@ export class Game {
     if (!u.path) return 'done';
     let step = u.def.speed * (this.has(u, 'swift') ? 1.2 : 1) * (this.isElder(u) ? 0.85 : 1) * (u.def.cls === 'cavalry' ? this.players[u.owner].mods.cavSpeed : 1) * DT;
     // Roads speed a march; sand, snow, marsh and slopes slow it.
-    if (!u.def.naval) step /= this.moveCost[Math.min(this.size - 1, Math.max(0, Math.floor(u.y))) * this.size + Math.min(this.size - 1, Math.max(0, Math.floor(u.x)))];
+    if (!u.def.naval) { const at = Math.min(this.size - 1, Math.max(0, Math.floor(u.y))) * this.size + Math.min(this.size - 1, Math.max(0, Math.floor(u.x))); step /= this.moveCost[at] * (this.foul === 'snow' && !this.road[at] ? 1.18 : 1); }
     if (u.def.charge) u.chargeD += step;
     const ox = u.x, oy = u.y;
     while (step > 0 && u.pathI < u.path.length) {
@@ -1876,8 +1916,8 @@ export class Game {
           u.scanT = 0.4;
           // Units holding their ground only strike what is already within reach.
           const hold = u.stance === 'hold';
-          const e = this.findEnemy(u.owner, u.x, u.y, hold ? u.def.range + 1.2 : u.def.sight, u.def.minRange, u.def.siegeOnly, !u.def.naval && u.def.range < 1.5);
-          if (e && (!hold || this.dist(u, e) <= u.def.range + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
+          const e = this.findEnemy(u.owner, u.x, u.y, hold ? this.reachOf(u) + 1.2 : this.sightOf(u), u.def.minRange, u.def.siegeOnly, !u.def.naval && u.def.range < 1.5);
+          if (e && (!hold || this.dist(u, e) <= this.reachOf(u) + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
         }
       }
       return;
@@ -1924,7 +1964,7 @@ export class Game {
           break;
         }
         // Archers and engines on the high ground reach a little farther.
-        const r = this.approach(u, t, u.def.range + 0.3 + (u.def.range >= 3 && this.highGround(u.x, u.y, t) > 1 ? 1 : 0));
+        const r = this.approach(u, t, this.reachOf(u) + 0.3 + (u.def.range >= 3 && this.highGround(u.x, u.y, t) > 1 ? 1 : 0));
         if (r === 'there') {
           u.anchored = true;
           u.facing = Math.atan2(t.x - u.x, t.y - u.y);
@@ -2406,7 +2446,7 @@ export class Game {
 
   private updateBuilding(b: Building): void {
     if (b.burnT > 0) {
-      b.burnT -= DT;
+      b.burnT -= this.foul === 'rain' ? DT * 2.5 : DT; // rain puts fires out
       b.hp -= 5 * DT;
       if (b.hp <= 0) { this.kill(b); return; }
     }

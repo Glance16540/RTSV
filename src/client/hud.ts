@@ -637,7 +637,7 @@ export class Hud {
     const top = [
       RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
         `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
-      `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder + (game.field ? '' : ` · <span class="creed" title="${this.creedTip(p.virtue)}">${creedOf(p.virtue).icon} ${creedOf(p.virtue).name}</span>`),
+      `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder + this.weatherTag() + (game.field ? '' : ` · <span class="creed" title="${this.creedTip(p.virtue)}">${creedOf(p.virtue).icon} ${creedOf(p.virtue).name}</span>`),
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,
       this.app.paused ? '▶' : '⏸',
@@ -664,6 +664,14 @@ export class Hud {
     for (let i = this.alerts.length - 1; i >= 0; i--) if ((this.alerts[i].t += dt) > 6) this.alerts.splice(i, 1);
     if ((this.miniT -= dt) <= 0) { this.miniT = 0.12; this.drawMinimap(); }
   }
+  /** Foul weather, named in the top bar with what it does. */
+  private weatherTag(): string {
+    const w = this.app.game.foul;
+    if (!w) return '';
+    const [icon, name, tip] = w === 'rain' ? ['🌧️', 'Rain', 'Bows and guns reach one tile less. Fires go out quickly.'] : w === 'snow' ? ['🌨️', 'Snow', 'Everyone moves slower off the roads.'] : ['🌪️', 'Dust storm', 'No one sees as far. Bows and guns reach one tile less.'];
+    return ` · <span title="${tip}">${icon} ${name}</span>`;
+  }
+
   private creedTip(virtue: number): string {
     const c = creedOf(virtue);
     const where = virtue > 0 ? `Piety ${Math.round(virtue)}` : virtue < 0 ? `Decadence ${Math.round(-virtue)}` : 'In balance';

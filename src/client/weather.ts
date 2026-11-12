@@ -1,6 +1,6 @@
 // Weather: rain over green country and steppe, snowfall in the north, dust blowing across the desert.
-// It comes and goes on its own, dimming the sun and thickening the haze while it lasts. It is seen
-// only: nothing in the match depends on it. `?weather=rain|snow|dust|clear` holds one kind.
+// The match decides when it comes and goes and what it does to the fighting (see Game.stepWeather);
+// this draws it, and the renderer dims the sun and thickens the haze while it lasts. `?weather=rain|snow|dust|clear` holds one kind.
 
 import * as THREE from 'three';
 import { Climate } from '../sim/map';
@@ -55,14 +55,18 @@ export class Weather {
     return out.set(this.kind === 'dust' ? 0xc8a878 : this.kind === 'snow' ? 0xd0d8e4 : 0x7c8894);
   }
 
-  update(dt: number, clock: number, cx: number, cy: number): void {
-    if ((this.until -= dt) <= 0) {
+  /** `sim` is the match's own weather, which this follows unless one kind is being held for a look. */
+  update(dt: number, clock: number, cx: number, cy: number, sim?: { weather: string; weatherAmt: number }): void {
+    if (sim && !this.held) {
+      if (sim.weather) this.kind = sim.weather as Kind;
+      this.amount = sim.weatherAmt;
+    } else if ((this.until -= dt) <= 0) {
       const wet: Kind = this.climate === 'snow' ? 'snow' : this.climate === 'desert' ? 'dust' : 'rain';
       if (this.held) { this.kind = this.held === 'clear' ? this.kind : this.held; this.want = this.held === 'clear' ? 0 : 1; this.until = 1e9; }
       else if (this.want > 0) { this.want = 0; this.until = 90 + Math.random() * 150; } // it passes
       else { this.kind = wet; this.want = 0.5 + Math.random() * 0.5; this.until = 45 + Math.random() * 60; }
     }
-    this.amount += Math.sign(this.want - this.amount) * Math.min(Math.abs(this.want - this.amount), dt / 9);
+    if (!sim || this.held) this.amount += Math.sign(this.want - this.amount) * Math.min(Math.abs(this.want - this.amount), dt / 9);
     const a = this.amount, rain = this.kind === 'rain';
     this.rain.visible = rain && a > 0.01;
     this.flakes.visible = !rain && this.kind !== 'clear' && a > 0.01;

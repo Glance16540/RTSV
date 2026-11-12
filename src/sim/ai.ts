@@ -1,5 +1,6 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
+import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
 import { LEANING } from './creed';
@@ -577,7 +578,10 @@ export class AIController {
   private findSpot(type: string, x: number, y: number, minR: number, maxR: number): { cx: number; cy: number } | null {
     const g = this.game;
     const s = BUILDINGS[type].size;
-    for (let r = minR; r <= maxR; r += 1.5) {
+    // First a spot out of the bog; failing that, anywhere that is free. (Keeping off its own roads as well was
+    // tried and pushed its town so far apart that a Hard opponent stopped beating an Easy one.)
+    let bog = false;
+    for (const fussy of [true, false]) if (fussy || bog) for (let r = minR; r <= maxR; r += 1.5) {
       const steps = Math.ceil(r * 5);
       const a0 = g.rng() * Math.PI * 2;
       for (let k = 0; k < steps; k++) {
@@ -587,6 +591,7 @@ export class AIController {
         for (let yy = cy - 1; yy <= cy + s && ok; yy++)
           for (let xx = cx - 1; xx <= cx + s; xx++) {
             if (xx < 1 || yy < 1 || xx >= g.size - 1 || yy >= g.size - 1 || g.occupied[yy * g.size + xx]) { ok = false; break; }
+            if (fussy && g.terrain[yy * g.size + xx] === T_MARSH) { ok = false; bog = true; break; }
           }
         if (ok) return { cx, cy };
       }
