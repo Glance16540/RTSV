@@ -97,7 +97,9 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
   tail.rotation.x = -0.4;
 }
 
-const UNIT_HEIGHT: Record<string, number> = { rider: 1.45, knight: 1.5, mammoth: 1.9, catapult: 1.1, warlord: 1.2 };
+const UNIT_HEIGHT: Record<string, number> = {
+  rider: 1.45, knight: 1.5, hussar: 1.5, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
+};
 
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number): THREE.Group {
   const key = type === 'villager' ? `villager_${gender}` : type;
@@ -302,6 +304,131 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       g.add(body);
       g.userData.arm = a;
       const ring = add(g, geo('aura', () => new THREE.RingGeometry(0.5, 0.58, 24)), 0xf2c230, 0, 0.03, 0, 0x8a6a10);
+      ring.rotation.x = -Math.PI / 2;
+      ring.castShadow = false;
+      break;
+    }
+    case 'javelineer': {
+      humanoid(g, 0xb08c58, 0x6b5236, hair);
+      box(g, 0.31, 0.08, 0.19, color, 0, 0.56, 0);
+      const a = arm(g);
+      const j = cyl(a, 0.015, 0.015, 0.9, WOOD, 0, -0.1, 0.1, 5);
+      j.rotation.x = Math.PI / 2 - 0.5;
+      for (const x of [-0.04, 0.04]) cyl(g, 0.012, 0.012, 0.7, WOOD, x, 0.55, -0.16, 4);
+      break;
+    }
+    case 'hound': {
+      const fur = 0x8a6238;
+      box(g, 0.18, 0.2, 0.5, fur, 0, 0.32, 0);
+      box(g, 0.15, 0.16, 0.2, fur, 0, 0.42, 0.32);
+      box(g, 0.08, 0.08, 0.14, 0x4a3420, 0, 0.38, 0.46);
+      for (const x of [-0.05, 0.05]) box(g, 0.04, 0.09, 0.03, 0x4a3420, x, 0.54, 0.28);
+      [[-0.06, 0.18], [0.06, 0.18], [-0.06, -0.18], [0.06, -0.18]].forEach(([x, z], i) => leg(g, 0.05, 0.24, 0x6e4c2a, x, z, i % 3 ? Math.PI : 0));
+      box(g, 0.2, 0.05, 0.12, color, 0, 0.42, 0.05);
+      box(g, 0.04, 0.04, 0.22, fur, 0, 0.42, -0.34).rotation.x = -0.6;
+      break;
+    }
+    case 'chariot': {
+      const h = new THREE.Group();
+      h.position.z = 0.55;
+      horse(h, HORSE[seed % HORSE.length]);
+      g.add(h);
+      box(g, 0.6, 0.08, 0.5, WOOD, 0, 0.36, -0.42);
+      box(g, 0.6, 0.3, 0.05, color, 0, 0.55, -0.18);
+      for (const x of [-0.3, 0.3]) box(g, 0.05, 0.3, 0.5, DARKWOOD, x, 0.55, -0.42);
+      for (const x of [-0.36, 0.36]) { const w = cyl(g, 0.26, 0.26, 0.05, DARKWOOD, x, 0.26, -0.42, 12); w.rotation.z = Math.PI / 2; }
+      box(g, 0.04, 0.04, 0.6, WOOD, 0, 0.42, 0.05);
+      const r = new THREE.Group();
+      r.position.set(0, 0.4, -0.42);
+      r.scale.setScalar(0.9);
+      humanoid(r, color, 0x5b4630, hair);
+      const a = arm(r);
+      const bow = add(a, geo('bow', () => new THREE.TorusGeometry(0.24, 0.018, 4, 10, Math.PI)), WOOD, 0, -0.24, 0.22);
+      bow.rotation.set(0, Math.PI / 2, -Math.PI / 2);
+      g.add(r);
+      g.userData.arm = a;
+      break;
+    }
+    case 'berserker': {
+      humanoid(g, SKIN, 0x5a4028, 0xb8562a);
+      box(g, 0.32, 0.1, 0.2, color, 0, 0.34, 0);
+      box(g, 0.34, 0.07, 0.2, 0x5a4028, 0, 0.6, 0);
+      const a = arm(g);
+      cyl(a, 0.02, 0.02, 0.6, WOOD, 0, -0.22, 0.22, 5).rotation.x = Math.PI / 2;
+      box(a, 0.03, 0.22, 0.18, IRON, 0, -0.22, 0.48);
+      break;
+    }
+    case 'pikeman': {
+      humanoid(g, IRON, 0x54585e, 0x777c84);
+      box(g, 0.31, 0.14, 0.19, color, 0, 0.5, 0);
+      cyl(g, 0.15, 0.13, 0.08, IRON, 0, 0.86, 0, 8);
+      const a = arm(g);
+      const s = cyl(a, 0.02, 0.02, 2.0, WOOD, 0, -0.2, 0.55, 5);
+      s.rotation.x = Math.PI / 2 - 0.12;
+      const tip = cyl(a, 0, 0.045, 0.2, IRON, 0, -0.07, 1.6, 5);
+      tip.rotation.x = Math.PI / 2 - 0.12;
+      break;
+    }
+    case 'grenadier': {
+      humanoid(g, color, 0xe8e2d0, hair);
+      box(g, 0.08, 0.34, 0.2, 0xe8e2d0, 0, 0.46, 0);
+      cyl(g, 0.11, 0.13, 0.22, 0x2c2c30, 0, 0.95, 0, 8);
+      const a = arm(g);
+      ball(a, 0.07, 0x2c2c30, 0, -0.28, 0.06);
+      box(g, 0.14, 0.16, 0.1, 0x6a4a2a, 0.12, 0.42, -0.14);
+      break;
+    }
+    case 'ram': {
+      box(g, 0.7, 0.1, 1.3, DARKWOOD, 0, 0.3, 0);
+      for (const [x, z] of [[-0.4, 0.45], [0.4, 0.45], [-0.4, -0.45], [0.4, -0.45]]) { const w = cyl(g, 0.2, 0.2, 0.08, DARKWOOD, x, 0.2, z, 10); w.rotation.z = Math.PI / 2; }
+      const cover = add(g, geo('ramroof', () => { const c = new THREE.CylinderGeometry(0.5, 0.5, 1.3, 3).toNonIndexed(); c.computeVertexNormals(); return c; }), 0x7a5a38, 0, 0.72, 0);
+      cover.rotation.set(Math.PI / 2, 0, 0);
+      box(g, 0.74, 0.06, 0.3, color, 0, 0.5, 0);
+      const a = new THREE.Group();
+      a.position.set(0, 0.5, 0);
+      const log = cyl(a, 0.1, 0.1, 1.5, WOOD, 0, 0, 0.25, 8);
+      log.rotation.x = Math.PI / 2;
+      cyl(a, 0.13, 0.13, 0.2, IRON, 0, 0, 1.02, 8).rotation.x = Math.PI / 2;
+      g.add(a);
+      g.userData.ram = a;
+      break;
+    }
+    case 'scorpion': {
+      box(g, 0.4, 0.1, 0.8, WOOD, 0, 0.3, -0.05);
+      for (const x of [-0.28, 0.28]) { const w = cyl(g, 0.22, 0.22, 0.07, DARKWOOD, x, 0.22, -0.1, 10); w.rotation.z = Math.PI / 2; }
+      box(g, 0.08, 0.3, 0.08, DARKWOOD, 0, 0.5, 0.1);
+      box(g, 0.1, 0.08, 1.0, DARKWOOD, 0, 0.68, 0.15);
+      box(g, 1.0, 0.05, 0.06, WOOD, 0, 0.7, 0.5);
+      cyl(g, 0.015, 0.015, 0.9, IRON, 0, 0.74, 0.3, 4).rotation.x = Math.PI / 2;
+      box(g, 0.3, 0.2, 0.04, color, 0, 0.5, -0.4);
+      break;
+    }
+    case 'hussar': {
+      horse(g, HORSE[(seed + 1) % HORSE.length]);
+      box(g, 0.34, 0.06, 0.4, color, 0, 0.72, -0.05);
+      const r = new THREE.Group();
+      r.position.y = 0.42;
+      r.scale.setScalar(0.92);
+      humanoid(r, color, 0xe8e2d0, hair);
+      cyl(r, 0.1, 0.12, 0.2, 0x7a2a2a, 0, 0.94, 0, 8);
+      box(r, 0.3, 0.3, 0.04, 0x7a2a2a, 0.06, 0.5, -0.13).rotation.z = 0.3;
+      const a = arm(r);
+      const sabre = box(a, 0.03, 0.05, 0.6, 0xe4e8ee, 0, -0.24, 0.3);
+      sabre.rotation.x = -0.2;
+      g.add(r);
+      g.userData.arm = a;
+      break;
+    }
+    case 'strategist': {
+      cyl(g, 0.11, 0.27, 0.66, 0xe8e2d0, 0, 0.33, 0, 10);
+      cyl(g, 0.22, 0.28, 0.16, color, 0, 0.09, 0, 10);
+      box(g, 0.1, 0.5, 0.3, color, 0, 0.42, 0);
+      ball(g, 0.12, SKIN, 0, 0.78, 0);
+      box(g, 0.14, 0.12, 0.04, 0xd8d8d8, 0, 0.7, 0.1);
+      cyl(g, 0.13, 0.12, 0.06, 0xf2c230, 0, 0.9, 0, 8);
+      const a = arm(g);
+      cyl(a, 0.05, 0.05, 0.34, 0xf0e8d0, 0, -0.24, 0.12, 8).rotation.x = Math.PI / 2;
+      const ring = add(g, geo('aura2', () => new THREE.RingGeometry(0.5, 0.56, 24)), 0x8ad0ff, 0, 0.03, 0, 0x2a6a9a);
       ring.rotation.x = -Math.PI / 2;
       ring.castShadow = false;
       break;

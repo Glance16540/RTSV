@@ -303,10 +303,22 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
     } else a.at = to;
     return 'moved';
   }
-  c.pending = { armyId, from: a.at, to, attacker: a.owner, defender: t.owner, aStr: strengthVs(a, defenders(c, to)), dStr: defence(c, to, a.units) };
+  // Armies in neighbouring land lend some of their weight to the fight.
+  const support = (f: number, skip: number) => (f < 0 ? 0 : reserves(c, f, to, skip).reduce((n, r) => n + armyStrength(r) * 0.3, 0));
+  const round = (v: number) => Math.round(v * 10) / 10;
+  c.pending = {
+    armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
+    aStr: round(strengthVs(a, defenders(c, to)) + support(a.owner, a.id)), dStr: round(defence(c, to, a.units) + support(t.owner, -1)),
+  };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
   return 'battle';
+}
+
+/** A faction's armies next door to a territory, strongest first: they can support a battle there. */
+export function reserves(c: Campaign, f: number, tid: number, skipArmy = -1): Army[] {
+  return c.armies.filter((a) => a.owner === f && a.id !== skipArmy && a.at !== tid && c.territories[tid].adj.includes(a.at))
+    .sort((x, y) => armyStrength(y) - armyStrength(x));
 }
 
 /** Settle the pending battle by dice, or record the result of one that was fought out. */
@@ -514,15 +526,21 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       age: fort ? 1 : 0, buildings: fort ? ['tower', 'tower'] : [], atk: army ? army.vet : 0,
     };
   };
+  const myReserve = reserves(c, 0, p.to, p.armyId)[0];
+  const foeReserve = foe < 0 ? undefined : reserves(c, foe, p.to, p.armyId)[0];
+  const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
     seed: t.seed, size: 72, level: foe < 0 ? 0 : c.level, humanAttacks,
     title: humanAttacks ? `The assault on ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true,
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1,
         bonus: humanAttacks ? side(defenders, true, p.dStr) : side(attackers, false, p.aStr),
       },
+      // The strongest army next door on each side joins the battle as an ally with its own camp.
+      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, bonus: side(foeReserve, false, armyStrength(foeReserve)) }] : []),
+      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, bonus: side(myReserve, false, armyStrength(myReserve)) }] : []),
     ],
   };
 }

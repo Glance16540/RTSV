@@ -768,3 +768,141 @@ describe('conquest campaign', () => {
     run(g, 5);
   });
 });
+
+describe('new units', () => {
+  const duel = (a: string, b: string, n = 4, gap = 3) => {
+    const g = new Game(7, setups);
+    const as: Unit[] = [], bs: Unit[] = [];
+    for (let i = 0; i < n; i++) { as.push(g.spawnUnit(a, 0, 44 + i * 1.2, 48)); bs.push(g.spawnUnit(b, 1, 44 + i * 1.2, 48 + gap)); }
+    run(g, 60);
+    return { a: as.filter((u) => !u.dead).length, b: bs.filter((u) => !u.dead).length };
+  };
+
+  it('each new unit does its job', () => {
+    expect(duel('javelineer', 'slinger').a).toBeGreaterThan(0); // skirmishers beat missile troops
+    expect(duel('javelineer', 'slinger').b).toBe(0);
+    expect(duel('pikeman', 'knight').b).toBe(0);
+    expect(duel('hound', 'bowman', 6, 5).b).toBe(0); // hounds close the distance
+    // A Scorpion bolt takes a great bite out of a beast, though unguarded it will still be trampled.
+    const g = new Game(7, setups);
+    g.spawnUnit('scorpion', 0, 44.5, 48.5);
+    const beast = g.spawnUnit('mammoth', 1, 44.5, 56.5);
+    g.cmdStop(1, [beast.id]);
+    beast.stance = 'hold';
+    run(g, 1.5);
+    expect(beast.maxHp - beast.hp).toBeGreaterThanOrEqual(55);
+    expect(duel('hussar', 'crossbowman', 4, 6).b).toBe(0);
+  });
+
+  it('rams ignore units and flatten buildings; berserkers speed up when hurt', () => {
+    const g = new Game(7, setups);
+    const ram = g.spawnUnit('ram', 0, 46.5, 46.5);
+    const guard = g.spawnUnit('villager', 1, 47.5, 46.5, 'm');
+    const wall = g.spawnBuilding('palisade', 1, 46, 49, true);
+    g.cmdTarget(0, [ram.id], guard.id);
+    run(g, 1);
+    expect((ram.order as { id?: number } | null)?.id).not.toBe(guard.id); // cannot be set on a unit
+    g.cmdStop(0, [ram.id]);
+    run(g, 8);
+    expect(wall.dead).toBe(true);
+    expect(guard.hp).toBe(guard.maxHp);
+    // Arrows barely scratch it.
+    const archers = [0, 1, 2].map((i) => g.spawnUnit('bowman', 1, 44 + i, 42));
+    run(g, 10);
+    expect(ram.hp).toBeGreaterThan(ram.maxHp * 0.8);
+    expect(archers.length).toBe(3);
+    // Frenzy.
+    const fresh = g.spawnUnit('berserker', 0, 60.5, 60.5), hurt = g.spawnUnit('berserker', 0, 60.5, 66.5);
+    hurt.hp = hurt.maxHp * 0.2;
+    const d1 = g.spawnBuilding('stonewall', 1, 61, 60, true), d2 = g.spawnBuilding('stonewall', 1, 61, 66, true);
+    g.cmdTarget(0, [fresh.id], d1.id);
+    g.cmdTarget(0, [hurt.id], d2.id);
+    run(g, 12);
+    expect(d2.maxHp - d2.hp).toBeGreaterThan((d1.maxHp - d1.hp) * 1.4);
+  });
+
+  it('a Strategist saps enemy damage and mends allies', () => {
+    const fight = (withHero: boolean) => {
+      const g = new Game(7, setups);
+      const victim = g.spawnUnit('knight', 0, 46.5, 46.5);
+      g.cmdStop(0, [victim.id]);
+      victim.stance = 'hold';
+      if (withHero) { const s = g.spawnUnit('strategist', 0, 46.5, 43.5); s.stance = 'hold'; (s.def as unknown) = { ...s.def, atk: 0, heal: 0 }; }
+      const foe = g.spawnBuilding('tower', 1, 48, 48, true);
+      run(g, 10);
+      return { lost: victim.maxHp - victim.hp, tower: foe };
+    };
+    // Towers are buildings, so use a unit attacker instead for the damage comparison.
+    const hit = (withHero: boolean) => {
+      const g = new Game(7, setups);
+      const target = g.spawnBuilding('stonewall', 0, 46, 48, true);
+      if (withHero) g.spawnUnit('strategist', 0, 46.5, 51.5).stance = 'hold';
+      const foe = g.spawnUnit('swordsman', 1, 46.5, 47.2);
+      g.cmdTarget(1, [foe.id], target.id);
+      run(g, 10);
+      return target.maxHp - target.hp;
+    };
+    void fight;
+    const plain = hit(false), sapped = hit(true);
+    expect(sapped).toBeLessThan(plain * 0.9);
+    const g = new Game(7, setups);
+    const s = g.spawnUnit('strategist', 0, 46.5, 46.5), friend = g.spawnUnit('clubman', 0, 47.5, 46.5);
+    friend.hp = 10;
+    run(g, 6);
+    expect(friend.hp).toBeGreaterThan(20);
+    expect(g.cmdTrain(0, g.buildings.find((b) => b.owner === 0)!.id, 'strategist')).toBe(false); // needs the Iron Age
+    expect(s.def.limit).toBe(1);
+  });
+});
+
+describe('fighting as a side', () => {
+  const four = (teams: number[]) => new Game(9, teams.map((team, i) => ({ name: 'P' + i, color: i + 1, isAI: i > 0, team })));
+
+  it('tribute moves resources between allies only, and needs a market', () => {
+    const g = four([0, 0, 1, 1]);
+    expect(g.cmdTribute(0, 1, 'wood')).toBe(false); // no market yet
+    g.spawnBuilding('market', 0, 40, 40, true);
+    expect(g.cmdTribute(0, 2, 'wood')).toBe(false); // an enemy
+    expect(g.cmdTribute(0, 1, 'wood')).toBe(true);
+    expect(g.players[0].res.wood).toBe(100);
+    expect(g.players[1].res.wood).toBe(300);
+    expect(g.allies(0).map((p) => p.id)).toEqual([1]);
+  });
+
+  it('an allied AI answers a call and comes to the defence of its ally', () => {
+    const g = four([0, 0, 1, 1]);
+    const ai = new AIController(g, 1);
+    const troops = [0, 1, 2, 3].map((i) => g.spawnUnit('swordsman', 1, g.spec.starts[1].x - 2 + i, g.spec.starts[1].y + 6));
+    g.cmdSignal(0, 60, 40);
+    run(g, 3, () => ai.update());
+    expect(troops.every((u) => u.order?.t === 'attackMove' && Math.hypot(u.order.x - 60, u.order.y - 40) < 3)).toBe(true);
+    // Later, raiders hit the human's town: the ally's idle troops march to it.
+    g.cmdStop(1, troops.map((u) => u.id));
+    const myTc = g.buildings.find((b) => b.owner === 0)!;
+    const raider = g.spawnUnit('swordsman', 2, myTc.x + 3, myTc.y);
+    g.cmdTarget(2, [raider.id], myTc.id);
+    run(g, 6, () => ai.update());
+    expect(troops.some((u) => u.order?.t === 'attackMove' && Math.hypot(u.order.x - myTc.x, u.order.y - myTc.y) < 6)).toBe(true);
+  });
+});
+
+describe('conquest reserves', () => {
+  it('armies next door support a battle and join it as allies', () => {
+    const c = newCampaign(7);
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const army = armyAt(c, home.id)!;
+    const target = c.territories[home.adj[0]];
+    const side = c.territories.find((t) => t.id !== home.id && t.adj.includes(target.id))!;
+    side.owner = 0;
+    c.armies.push({ id: 50, owner: 0, at: side.id, units: { archers: 4 }, hero: false, vet: 0, moved: false });
+    moveArmy(c, army.id, target.id);
+    expect(c.pending!.aStr).toBeCloseTo(5 + 4 * 0.3, 1);
+    const cfg = battleConfig(c)!;
+    expect(cfg.setups.map((s) => [s.name, s.team])).toEqual([['You', 0], ['Local Tribe', 1], ['Your reserve', 0]]);
+    expect(cfg.setups[2].bonus!.units).toEqual({ slinger: 8 });
+    const g = new Game(cfg.seed, cfg.setups, cfg.size);
+    expect(g.hostile(0, 2)).toBe(false);
+    expect(g.units.filter((u) => u.owner === 2 && u.type === 'slinger').length).toBe(8);
+    run(g, 5);
+  });
+});

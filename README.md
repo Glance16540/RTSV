@@ -39,6 +39,11 @@ house together matters.
 Crossbowmen, then Musketeers; Clubmen become Swordsmen; Scout Riders become Knights; Catapults
 become Bombards. Existing units change on the spot and new ones are trained in the better form.
 
+**A wide roster.** Thirty-odd unit types with distinct jobs, including Javelin Throwers that
+pick off archers, War Hounds, Chariot Archers, Berserkers that strike faster as they are wounded,
+Pikemen, Battering Rams that shrug off arrows but cannot fight units, Scorpions, Grenadiers,
+Hussars, and a second hero, the Strategist, whose presence saps enemy damage and mends allies.
+
 **Empire Earth-style touches.**
 - *Morale:* up to five houses near a Town Center make its defenders take up to 25% less damage.
 - *Hero:* one Warlord at a time; allies fighting near him deal +25% damage.
@@ -78,7 +83,8 @@ short of. The villager build menu has two pages, settlement and military.
 **Rivals and map size.** One to three AI rivals and a Small, Medium or Large map, chosen on the
 start screen. With several rivals you choose the sides: a free-for-all, one rival fighting as
 your ally, or all of them allied against you. Allies share sight, pass through each other's
-gates and win together.
+gates and win together. An allied AI comes to your defence, joins your attacks, answers a call
+(`L` over a spot) and shares a surplus; you can send it resources from a Market.
 
 **Saving.** The 💾 button stores the game in your browser, and it autosaves every two minutes.
 *Continue saved game* on the start screen picks it up again.
@@ -103,7 +109,8 @@ land.
   falls with it, and a new one can be summoned at your capital.
 - **Battles.** When an army enters land held by someone else, fight it yourself as a real-time
   match or auto-resolve it; the map shows your odds first. In a real-time battle each side fields the troops it has on the map,
-  Warlord included; a Fortress starts its defender in the Bronze Age with towers.
+  Warlord included; a Fortress starts its defender in the Bronze Age with towers. Armies in
+  neighbouring land add weight to the fight and join a real-time battle as allies.
 
 Rivals take their turns after yours and fight each other too. Hold the last territory standing to
 win. The campaign is saved in your browser after every action.
@@ -122,6 +129,7 @@ win. The campaign is saved in your browser after every action.
 | `H` `.` `,` `Space` | Town Center, next idle villager, whole army, centre on selection |
 | `Ctrl+1-9` / `1-9` | Set / recall control group |
 | `Shift`-click while placing | Place several buildings |
+| `L` | Call allies to the spot under the cursor |
 | `Del` `Esc` `P` `M` | Destroy selected, cancel, pause, mute |
 
 ## Generated art

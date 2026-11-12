@@ -291,6 +291,8 @@ export class Renderer {
       this.floaters.push({ x: ev.x, y: ev.y, text: '👶', t: 0 });
     } else if (ev.t === 'grown' && ev.player === this.game.humanId) {
       this.floaters.push({ x: ev.x, y: ev.y, text: '✨', t: 0 });
+    } else if (ev.t === 'signal' && !this.game.hostile(ev.player, this.game.humanId)) {
+      for (let i = 0; i < 3; i++) setTimeout(() => this.ping(ev.x, ev.y, 0x8ad0ff), i * 250);
     } else if (ev.t === 'quake') {
       if (Math.hypot(ev.x - this.cx, ev.y - this.cy) < this.dist) this.shake = 5;
       for (let i = 0; i < 5; i++) this.ping(ev.x + (Math.random() - 0.5) * 6, ev.y + (Math.random() - 0.5) * 6, 0xc8a070);
@@ -368,6 +370,8 @@ export class Renderer {
       const swing = u.attackAnim > 0 ? Math.sin((u.attackAnim / 0.35) * Math.PI) : 0;
       arm.rotation.x = u.type === 'catapult' ? swing * 1.2 : -swing * 1.3 + (u.moving ? Math.sin(v.phase) * 0.3 : 0);
     }
+    const ramLog = g.userData.ram as THREE.Object3D | undefined;
+    if (ramLog) ramLog.position.z = u.attackAnim > 0 ? Math.sin((u.attackAnim / 0.35) * Math.PI) * 0.35 : 0;
     const carry = g.userData.carry as THREE.Mesh | undefined;
     if (carry) {
       carry.visible = u.carryAmt > 0;

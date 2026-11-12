@@ -2,7 +2,7 @@
 
 import {
   Army, COMPANIES, Campaign, HERO_COST, LOCALS, MAP_H, MAP_W, SITES, TRAITS, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
-  canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, territoryIncome, companyCost, siteCost, winChance, BEATS,
+  canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
 } from '../sim/campaign';
 
 export interface OverworldHooks {
@@ -107,7 +107,7 @@ export class Overworld {
     };
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
       (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
-        ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr) : 1 - winChance(p.aStr, p.dStr)) * 100)} times in 100.`,
+        (battleConfig(c)!.setups.length > 2 ? ' Armies from neighbouring land will join the battle.' : '') + ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr) : 1 - winChance(p.aStr, p.dStr)) * 100)} times in 100.`,
       [['Fight the battle', () => this.hooks.fight()], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);

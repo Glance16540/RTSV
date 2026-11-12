@@ -10,7 +10,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -175,6 +175,10 @@ export interface Player {
   /** The wildlife "player": never wins, loses or builds. */
   neutral: boolean;
   bell: boolean;
+  /** A call for allies to gather at a point. */
+  signal: { x: number; y: number; t: number } | null;
+  /** Building this player's army is marching on, so allies can join in (AI players). */
+  attackTarget: number;
 }
 
 export type GameEvent =
@@ -188,6 +192,7 @@ export type GameEvent =
   | { t: 'alert'; player: number; x: number; y: number }
   | { t: 'defeated'; player: number }
   | { t: 'wonder'; player: number }
+  | { t: 'signal'; player: number; x: number; y: number }
   | { t: 'gameover'; winner: number };
 
 export interface PlayerSetup {
@@ -237,6 +242,7 @@ export class Game {
   private hash: Unit[][] = [];
   private hashN: number;
   private heroes: Unit[][] = [];
+  private strategists: Unit[] = [];
   private tcs: Building[][] = [];
 
   constructor(public seed: number, public setups: PlayerSetup[], size = 96) {
@@ -259,7 +265,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i,
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, stats: newStats(), history: [],
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       this.heroes.push([]);
       this.tcs.push([]);
@@ -290,7 +296,7 @@ export class Game {
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, stats: newStats(), history: [],
+      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, signal: null, attackTarget: 0, stats: newStats(), history: [],
     });
     this.heroes.push([]);
     this.tcs.push([]);
@@ -468,6 +474,15 @@ export class Game {
     return best * MORALE_PER_HOUSE;
   }
 
+  /** Damage multiplier for an attacker standing near an enemy Strategist. */
+  weakenAt(owner: number, x: number, y: number): number {
+    let m = 1;
+    for (const s of this.strategists) {
+      if (this.hostile(s.owner, owner) && Math.hypot(s.x - x, s.y - y) <= (s.def.auraRange ?? 0)) m = Math.min(m, s.def.weaken ?? 1);
+    }
+    return m;
+  }
+
   /** Attack multiplier from a friendly hero nearby. */
   auraAt(owner: number, x: number, y: number): number {
     let best = 1;
@@ -494,10 +509,10 @@ export class Game {
 
   private scratch: Unit[] = [];
 
-  private findEnemy(owner: number, x: number, y: number, radius: number, minRange = 0): Entity | null {
+  private findEnemy(owner: number, x: number, y: number, radius: number, minRange = 0, buildingsOnly = false): Entity | null {
     let best: Entity | null = null;
     let bestD = Infinity;
-    for (const v of this.unitsNear(x, y, radius, this.scratch)) {
+    for (const v of buildingsOnly ? [] : this.unitsNear(x, y, radius, this.scratch)) {
       if (!this.hostile(v.owner, owner) || v.def.docile) continue;
       const d = Math.hypot(v.x - x, v.y - y);
       if (d > radius || d < minRange) continue;
@@ -827,6 +842,29 @@ export class Game {
     if (q.kind === 'age') p.agingUp = false;
   }
 
+  /** Players on the same side as `owner` who are still in the game. */
+  allies(owner: number): Player[] {
+    return this.players.filter((p) => p.id !== owner && !p.neutral && !p.defeated && !this.hostile(p.id, owner));
+  }
+
+  /** Call allies to a point: their armies march there ready to fight. */
+  cmdSignal(owner: number, x: number, y: number): void {
+    this.players[owner].signal = { x, y, t: this.time };
+    this.events.push({ t: 'signal', player: owner, x, y });
+  }
+
+  /** Send 100 of a resource to an ally. Needs a Market, like any other trade. */
+  cmdTribute(owner: number, to: number, res: ResType): boolean {
+    const p = this.players[owner], q = this.players[to];
+    if (!q || to === owner || q.neutral || q.defeated || this.hostile(owner, to)) return false;
+    if (!this.buildings.some((b) => b.owner === owner && b.type === 'market' && b.complete)) { this.msg(owner, 'You need a Market to send tribute.'); return false; }
+    if (p.res[res] < 100) { this.msg(owner, `Not enough ${res} to send.`); return false; }
+    p.res[res] -= 100;
+    q.res[res] += 100;
+    this.msg(to, `${p.name} sent you 100 ${res}.`);
+    return true;
+  }
+
   /** Sell 100 of a resource for gold, or buy 100 with gold, at a Market. */
   cmdTrade(owner: number, bid: number, res: ResType, dir: 'sell' | 'buy'): boolean {
     const b = this.entities.get(bid);
@@ -989,12 +1027,14 @@ export class Game {
 
     for (const bucket of this.hash) bucket.length = 0;
     for (const h of this.heroes) h.length = 0;
+    this.strategists.length = 0;
     for (const u of this.units) {
       if (u.inside) continue; // sheltered units cannot be seen, hit or bumped
       const hx = Math.min(this.hashN - 1, Math.max(0, Math.floor(u.x / HASH)));
       const hy = Math.min(this.hashN - 1, Math.max(0, Math.floor(u.y / HASH)));
       this.hash[hy * this.hashN + hx].push(u);
       if (u.def.aura) this.heroes[u.owner].push(u);
+      if (u.def.weaken) this.strategists.push(u);
     }
 
     for (let i = this.units.length - 1; i >= 0; i--) {
@@ -1250,7 +1290,7 @@ export class Game {
           u.scanT = 0.4;
           // Units holding their ground only strike what is already within reach.
           const hold = u.stance === 'hold';
-          const e = this.findEnemy(u.owner, u.x, u.y, hold ? u.def.range + 1.2 : u.def.sight, u.def.minRange);
+          const e = this.findEnemy(u.owner, u.x, u.y, hold ? u.def.range + 1.2 : u.def.sight, u.def.minRange, u.def.siegeOnly);
           if (e && (!hold || this.dist(u, e) <= u.def.range + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
         }
       }
@@ -1267,7 +1307,7 @@ export class Game {
         u.scanT -= DT;
         if (u.scanT <= 0) {
           u.scanT = 0.4;
-          const e = this.findEnemy(u.owner, u.x, u.y, u.def.sight, u.def.minRange);
+          const e = this.findEnemy(u.owner, u.x, u.y, u.def.sight, u.def.minRange, u.def.siegeOnly);
           if (e) {
             o.started = false;
             this.setOrder(u, { t: 'attack', id: e.id, then: o });
@@ -1289,7 +1329,7 @@ export class Game {
 
       case 'attack': {
         const t = this.entities.get(o.id);
-        if (!t || t.dead || !this.hostile(t.owner, u.owner) || t.kind === 'resource') { this.setOrder(u, o.then ?? null); break; }
+        if (!t || t.dead || !this.hostile(t.owner, u.owner) || t.kind === 'resource' || (u.def.siegeOnly && t.kind === 'unit')) { this.setOrder(u, o.then ?? null); break; }
         if (o.auto && Math.hypot(u.x - o.ox!, u.y - o.oy!) > LEASH[u.stance]) { this.setOrder(u, { t: 'move', x: o.ox!, y: o.oy! }); break; }
         const d = this.dist(u, t);
         if (u.def.minRange && d < u.def.minRange) {
@@ -1557,10 +1597,10 @@ export class Game {
 
   private strike(u: Unit, t: Entity): void {
     const p = this.players[u.owner];
-    u.cooldown = u.def.cooldown;
+    u.cooldown = u.def.cooldown * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1);
     u.attackAnim = 0.35;
     const atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0);
-    const aura = u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y);
+    const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
     if (u.def.projectile) {
       this.projectiles.push({
         x: u.x, y: u.y, sx: u.x, sy: u.y, tx: t.x, ty: t.y, targetId: t.id,

@@ -7,11 +7,11 @@ const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
 const ARMY_TARGET = [4, 10, 18, 26, 32];
 const ARMY_MIX: string[][] = [
-  ['clubman', 'clubman', 'slinger'],
-  ['spearman', 'bowman', 'rider', 'bowman', 'spearman', 'mammoth', 'shaman'],
-  ['swordsman', 'bowman', 'rider', 'prophet', 'swordsman', 'catapult', 'mammoth', 'shaman', 'spearman'],
-  ['swordsman', 'crossbowman', 'knight', 'prophet', 'crossbowman', 'catapult', 'knight', 'shaman', 'spearman', 'bowman'],
-  ['musketeer', 'knight', 'bombard', 'prophet', 'musketeer', 'swordsman', 'knight', 'shaman', 'spearman', 'bowman'],
+  ['clubman', 'slinger', 'hound', 'clubman', 'javelineer'],
+  ['spearman', 'bowman', 'rider', 'chariot', 'bowman', 'spearman', 'mammoth', 'shaman', 'hound'],
+  ['swordsman', 'bowman', 'rider', 'prophet', 'berserker', 'ram', 'scorpion', 'catapult', 'mammoth', 'shaman', 'spearman'],
+  ['swordsman', 'crossbowman', 'knight', 'prophet', 'pikeman', 'berserker', 'ram', 'catapult', 'knight', 'shaman', 'spearman', 'bowman'],
+  ['musketeer', 'knight', 'bombard', 'prophet', 'grenadier', 'hussar', 'musketeer', 'pikeman', 'ram', 'shaman', 'spearman', 'bowman'],
 ];
 const BUILD_ORDER: { type: string; age: number; villagers: number; count: number }[] = [
   { type: 'barracks', age: 0, villagers: 8, count: 1 },
@@ -39,6 +39,8 @@ export class AIController {
   private wallT = 0;
   /** Building the army is currently marching on. */
   private targetId = 0;
+  /** Time of the last ally signal this AI answered. */
+  private signalT = -1;
   /** Seconds before the first attack may launch. */
   firstAttack = 420;
   /** Multiplier on how large an army the AI wants. */
@@ -138,6 +140,10 @@ export class AIController {
       }
       if (p.res.food < 100 && p.res.gold > 450) g.cmdTrade(pid, market.id, 'food', 'buy');
       if (p.res.wood < 60 && p.res.gold > 450) g.cmdTrade(pid, market.id, 'wood', 'buy');
+      // Share a surplus with an ally who has run dry.
+      for (const ally of g.allies(pid)) {
+        for (const r of ['food', 'wood', 'gold', 'stone'] as ResType[]) if (ally.res[r] < 150 && p.res[r] > 1500) g.cmdTribute(pid, ally.id, r);
+      }
     }
 
     // Technologies.
@@ -172,6 +178,9 @@ export class AIController {
       if (p.age >= 1 && tc && tc.complete && !saving && g.countUnits(pid, 'warlord') === 0 && g.canAfford(p, UNITS.warlord.cost)) {
         g.cmdTrain(pid, tc.id, 'warlord');
       }
+      if (p.age >= 2 && tc && tc.complete && !saving && g.countUnits(pid, 'strategist') === 0 && g.canAfford(p, UNITS.strategist.cost)) {
+        g.cmdTrain(pid, tc.id, 'strategist');
+      }
     }
 
     if (underAttack && this.state === 'build') {
@@ -179,12 +188,35 @@ export class AIController {
       if (idle.length) g.cmdMove(pid, idle.map((u) => u.id), p.lastAttacked!.x, p.lastAttacked!.y, true);
     }
 
+    // ---- Fighting as a side ----
+    const allies = g.allies(pid);
+    if (allies.length && !underAttack) {
+      // An ally's call comes first: everyone who can fight goes.
+      const call = allies.map((a) => a.signal).filter((s): s is NonNullable<typeof s> => !!s && s.t > this.signalT && g.time - s.t < 60)[0];
+      if (call) {
+        this.signalT = call.t;
+        if (fighters.length) g.cmdMove(pid, army.map((u) => u.id), call.x, call.y, true);
+      } else if (this.state === 'build') {
+        // Otherwise help an ally whose town is being hit right now.
+        const hurt = allies.find((a) => a.lastAttacked && g.time - a.lastAttacked.t < 6 && g.buildings.some((b) => b.owner === a.id && Math.hypot(b.x - a.lastAttacked!.x, b.y - a.lastAttacked!.y) < 14));
+        const idle = army.filter((u) => !u.order);
+        if (hurt && idle.length >= 3) g.cmdMove(pid, idle.map((u) => u.id), hurt.lastAttacked!.x, hurt.lastAttacked!.y, true);
+      }
+    }
+    const push = allies.length ? this.allyPush(allies) : null;
+    p.attackTarget = this.state === 'attack' ? this.targetId : 0; // tell allies what we are marching on
+
     const attackSize = Math.max(4, Math.floor(armyTarget * 0.8));
     if (this.state === 'build') {
       const clock = g.buildings.some((b) => g.hostile(b.owner, pid) && b.type === 'wonder'); // no time to wait for a full army
       if ((fighters.length >= attackSize && g.time > this.firstAttack && !underAttack) || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
+      } else if (push && fighters.length >= Math.max(3, attackSize / 2) && !underAttack) {
+        // An ally is on the offensive: join with what we have rather than attack alone later.
+        this.state = 'attack';
+        this.attackT = 0;
+        this.targetId = push.id;
       } else {
         // Keep idle troops gathered in front of the base.
         const mid = g.size / 2;
@@ -206,6 +238,25 @@ export class AIController {
     }
   }
 
+  /** The enemy building an ally is assaulting, if any: an AI ally's target, or one a human ally's army has reached. */
+  private allyPush(allies: { id: number; isAI: boolean; attackTarget: number }[]): Entity | null {
+    const g = this.game;
+    for (const a of allies) {
+      if (a.isAI) {
+        const t = g.entities.get(a.attackTarget);
+        if (t && !t.dead) return t;
+        continue;
+      }
+      const troops = g.units.filter((u) => u.owner === a.id && g.isMilitary(u));
+      if (troops.length < 5) continue;
+      for (const b of g.buildings) {
+        if (!g.hostile(b.owner, this.pid) || b.def.wall) continue;
+        if (troops.filter((u) => Math.hypot(u.x - b.x, u.y - b.y) < 12).length >= 5) return b;
+      }
+    }
+    return null;
+  }
+
   /** Prophets strike clumps of enemy troops with plague and enemy buildings with earthquakes. */
   private castCalamities(army: Unit[]): void {
     const g = this.game;
@@ -224,7 +275,7 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {

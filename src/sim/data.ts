@@ -82,6 +82,12 @@ export interface UnitDef {
   auraRange?: number;
   /** Max simultaneously alive per player. */
   limit?: number;
+  /** Damage multiplier applied to enemies attacking within auraRange (a Strategist's presence). */
+  weaken?: number;
+  /** Can only attack buildings. */
+  siegeOnly?: boolean;
+  /** Attacks faster the more wounded it is. */
+  frenzy?: boolean;
   projectile?: 'arrow' | 'stone' | 'boulder' | 'shot';
   /** Harmless wild animal: never targeted automatically. */
   docile?: boolean;
@@ -119,6 +125,67 @@ export const UNITS: Record<string, UnitDef> = {
     desc: 'Stone Age skirmisher. Weak but ranged.',
     cost: { food: 30, wood: 25 }, time: 15, age: 0, hp: 35, atk: 5, armor: 0, range: 5, speed: 2.1,
     cooldown: 1.9, sight: 8, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'stone',
+  }),
+  javelineer: U({
+    id: 'javelineer', name: 'Javelin Thrower', icon: '🎋',
+    desc: 'Short-ranged skirmisher that picks off slingers and archers.',
+    cost: { food: 30, wood: 20 }, time: 14, age: 0, hp: 42, atk: 5, armor: 0, range: 4, speed: 2.3,
+    cooldown: 1.7, sight: 8, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'arrow', bonus: { ranged: 2 },
+  }),
+  hound: U({
+    id: 'hound', name: 'War Hound', icon: '🐕',
+    desc: 'Cheap, fast and fragile. Hounds run down villagers and archers in packs.',
+    cost: { food: 35 }, time: 10, age: 0, hp: 34, atk: 5, armor: 0, range: 0.5, speed: 3.3,
+    cooldown: 1.0, sight: 8, pop: 1, cls: 'beast', radius: 0.26, bonus: { villager: 1.5, ranged: 1.4 },
+  }),
+  chariot: U({
+    id: 'chariot', name: 'Chariot Archer', icon: '🛞',
+    desc: 'A mobile firing platform: shoots like an archer, moves like cavalry.',
+    cost: { food: 60, wood: 60 }, time: 20, age: 1, hp: 75, atk: 7, armor: 1, range: 5.5, speed: 3.2,
+    cooldown: 1.9, sight: 9, pop: 2, cls: 'cavalry', radius: 0.48, projectile: 'arrow', bonus: { infantry: 1.3 },
+  }),
+  berserker: U({
+    id: 'berserker', name: 'Berserker', icon: '🪓',
+    desc: 'Unarmoured shock infantry. The more wounded a Berserker is, the faster it strikes.',
+    cost: { food: 70, gold: 25 }, time: 16, age: 2, hp: 95, atk: 12, armor: 0, range: 0.5, speed: 2.5,
+    cooldown: 1.5, sight: 7, pop: 1, cls: 'infantry', radius: 0.3, frenzy: true,
+  }),
+  pikeman: U({
+    id: 'pikeman', name: 'Pikeman', icon: '🔱',
+    desc: 'Medieval pike infantry. A wall of points that stops any charge.',
+    cost: { food: 50, wood: 35 }, time: 16, age: 3, hp: 120, atk: 10, armor: 2, range: 0.9, speed: 2.1,
+    cooldown: 1.5, sight: 7, pop: 1, cls: 'infantry', radius: 0.3, bonus: { cavalry: 4, beast: 3.5 },
+  }),
+  grenadier: U({
+    id: 'grenadier', name: 'Grenadier', icon: '🧨',
+    desc: 'Lobs grenades a short way. Each one hurts everything near where it lands, walls included.',
+    cost: { food: 60, gold: 50 }, time: 20, age: 4, hp: 80, atk: 20, armor: 1, range: 4.5, speed: 2.0,
+    cooldown: 2.6, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, projectile: 'stone', splash: 1.2, bonus: { building: 1.8 },
+  }),
+  ram: U({
+    id: 'ram', name: 'Battering Ram', icon: '🐏',
+    desc: 'Smashes buildings and walls, and shrugs off arrows. It cannot fight units at all.',
+    cost: { wood: 180, gold: 40 }, time: 28, age: 2, hp: 240, atk: 30, armor: 6, range: 0.6, speed: 1.4,
+    cooldown: 2.4, sight: 6, pop: 2, cls: 'siege', radius: 0.5, bonus: { building: 4 }, siegeOnly: true,
+  }),
+  scorpion: U({
+    id: 'scorpion', name: 'Scorpion', icon: '🦂',
+    desc: 'A giant crossbow on wheels. One bolt at a time, at long range: deadly to beasts, riders and heroes.',
+    cost: { wood: 120, gold: 80 }, time: 26, age: 2, hp: 70, atk: 30, armor: 1, range: 9, minRange: 2,
+    speed: 1.4, cooldown: 3.6, sight: 10, pop: 2, cls: 'siege', radius: 0.45, projectile: 'arrow',
+    bonus: { beast: 2, cavalry: 1.5, hero: 1.5, building: 0.3 },
+  }),
+  hussar: U({
+    id: 'hussar', name: 'Hussar', icon: '🏇',
+    desc: 'The fastest horseman. Raids villagers, archers and siege guns, and is gone before help arrives.',
+    cost: { food: 80, gold: 50 }, time: 20, age: 4, hp: 150, atk: 14, armor: 2, range: 0.6, speed: 3.9,
+    cooldown: 1.2, sight: 10, pop: 1, cls: 'cavalry', radius: 0.42, bonus: { villager: 1.6, ranged: 1.6, siege: 2.5 },
+  }),
+  strategist: U({
+    id: 'strategist', name: 'Strategist', icon: '📜',
+    desc: 'Hero. Only one may live at a time. Enemies fighting near the Strategist deal 20% less damage, and nearby allies are slowly healed.',
+    cost: { food: 150, gold: 200 }, time: 40, age: 2, hp: 300, atk: 6, armor: 2, range: 5, speed: 2.3,
+    cooldown: 1.8, sight: 10, pop: 2, cls: 'hero', radius: 0.34, projectile: 'stone', weaken: 0.8, auraRange: 7, heal: 3, limit: 1,
   }),
   spearman: U({
     id: 'spearman', name: 'Spearman', icon: '🔱',
@@ -244,7 +311,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'towncenter', name: 'Town Center', icon: '🏛️',
     desc: 'Heart of your settlement. Trains villagers, advances ages and accepts all resources. Houses built nearby raise the morale of defenders.',
     cost: { wood: 300, stone: 200 }, time: 90, age: 1, hp: 2200, size: 4, pop: 10, sight: 10,
-    trains: ['villager', 'warlord'], techs: [], dropoff: true, atk: 7, range: 7, cooldown: 2, shelter: 12,
+    trains: ['villager', 'warlord', 'strategist'], techs: [], dropoff: true, atk: 7, range: 7, cooldown: 2, shelter: 12,
   }),
   house: B({
     id: 'house', name: 'House', icon: '🏠',
@@ -268,7 +335,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'barracks', name: 'Barracks', icon: '🗡️',
     desc: 'Trains infantry.',
     cost: { wood: 120 }, time: 28, age: 0, hp: 1000, size: 3, pop: 0, sight: 6,
-    trains: ['clubman', 'slinger', 'spearman', 'swordsman'], techs: ['up_bowman', 'up_swordsman'],
+    trains: ['clubman', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
   }),
   range: B({
     id: 'range', name: 'Archery Range', icon: '🏹',
@@ -280,7 +347,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'stable', name: 'Stable', icon: '🐴',
     desc: 'Trains cavalry and war beasts.',
     cost: { wood: 150 }, time: 30, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['rider', 'mammoth', 'knight'], techs: ['up_knight'],
+    trains: ['rider', 'chariot', 'mammoth', 'knight', 'hussar'], techs: ['up_knight'],
   }),
   temple: B({
     id: 'temple', name: 'Temple', icon: '⛩️',
@@ -298,7 +365,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'workshop', name: 'Siege Workshop', icon: '🛠️',
     desc: 'Builds siege engines.',
     cost: { wood: 180, gold: 80 }, time: 34, age: 2, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['catapult', 'bombard'], techs: ['up_bombard'],
+    trains: ['ram', 'scorpion', 'catapult', 'bombard'], techs: ['up_bombard'],
   }),
   wonder: B({
     id: 'wonder', name: 'Wonder', icon: '🗿',
@@ -423,6 +490,10 @@ export const TECHS: Record<string, TechDef> = {
   up_swordsman: T({
     id: 'up_swordsman', name: 'Swords for Clubmen', icon: '⚔️', desc: 'All Clubmen become Swordsmen, and Clubmen are trained as Swordsmen from now on.',
     cost: { food: 200, gold: 120 }, time: 40, age: 2, upgrade: ['clubman', 'swordsman'], apply: () => {},
+  }),
+  up_pike: T({
+    id: 'up_pike', name: 'Pike Drill', icon: '🔱', desc: 'All Spearmen become Pikemen.',
+    cost: { food: 250, wood: 150 }, time: 45, age: 3, upgrade: ['spearman', 'pikeman'], apply: () => {},
   }),
   up_crossbow: T({
     id: 'up_crossbow', name: 'Crossbows', icon: '🎯', desc: 'All Bowmen become Crossbowmen.',

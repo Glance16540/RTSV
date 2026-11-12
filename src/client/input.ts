@@ -292,6 +292,12 @@ export class Input {
       case 'P':
         app.togglePause();
         break;
+      case 'L': {
+        // Call allies to the spot under the cursor.
+        const p = app.r.groundAt(this.mx, this.my);
+        if (p && app.game.allies(app.pid).length) { app.game.cmdSignal(app.pid, p.x, p.y); app.hud.toast('📣 Allies called to this spot.'); }
+        break;
+      }
       case 'M':
         app.hud.toggleMute();
         break;

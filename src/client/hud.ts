@@ -136,6 +136,7 @@ export class Hud {
       this.app.lastAlert = { x: ev.x, y: ev.y };
     } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
     else if (ev.t === 'defeated') this.toast(ev.player === pid ? 'Your settlement has fallen. Your ally fights on.' : `${game.players[ev.player].name} has been destroyed.`, 'big');
+    else if (ev.t === 'signal' && ev.player !== pid && !game.hostile(ev.player, pid)) this.toast(`📣 ${game.players[ev.player].name} calls for you.`);
     else if (ev.t === 'wonder') {
       this.toast(ev.player === pid ? '🗿 Your Wonder is complete. Defend it for five minutes to win!' : `🗿 ${game.players[ev.player].name} has built a Wonder. Destroy it within five minutes!`, ev.player === pid ? 'big' : 'big warn');
     } else if (ev.t === 'gameover') {
@@ -294,6 +295,12 @@ export class Hud {
         }
         out.push({ id: '', icon: '', name: '', desc: '', act: () => {} }, { id: '', icon: '', name: '', desc: '', act: () => {} });
       }
+      const ally = game.allies(pid)[0];
+      if (ally) {
+        for (const r of RES_TYPES) {
+          out.push({ id: 'give' + r, icon: RI(r) + '🤝', name: `Send 100 ${r} to ${ally.name}`, desc: 'A gift to your ally. Nothing comes back.', cost: { [r]: 100 }, act: () => game.cmdTribute(pid, ally.id, r) });
+        }
+      }
     }
     if (b.def.shelter && same.some((s) => s.sheltered.length)) {
       out.push({
@@ -388,6 +395,8 @@ export class Hud {
       const morale = game.moraleAt(e.owner, e.x, e.y);
       if (morale > 0) extra += `<div class="good">🏠 Home morale: takes ${Math.round(morale * 100)}% less damage</div>`;
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
+      if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
+      if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       if (e.trait) extra = `<div class="good">${VILLAGER_TRAITS[e.trait].icon} ${VILLAGER_TRAITS[e.trait].name}: ${VILLAGER_TRAITS[e.trait].desc}</div>` + extra;
       const role = (e.growT > 0 ? 'Child' : d.name) + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
