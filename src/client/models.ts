@@ -37,8 +37,8 @@ const cyl = (p: THREE.Object3D, rt: number, rb: number, h: number, color: number
   add(p, geo(`c${rt},${rb},${h},${seg}`, () => new THREE.CylinderGeometry(rt, rb, h, seg)), color, x, y, z);
 const ball = (p: THREE.Object3D, r: number, color: number, x = 0, y = 0, z = 0, em = 0) =>
   add(p, geo(`s${r}`, () => new THREE.SphereGeometry(r, 10, 8)), color, x, y, z, em);
-/** Four-sided pyramid roof aligned with the building walls. */
-const roof = (p: THREE.Object3D, half: number, h: number, color: number, x = 0, y = 0, z = 0) => {
+/** A plain four-sided pyramid aligned with the building walls. */
+const pyramid = (p: THREE.Object3D, half: number, h: number, color: number, x = 0, y = 0, z = 0) => {
   const m = add(p, geo(`r${half},${h}`, () => {
     const c = new THREE.ConeGeometry(half * Math.SQRT2, h, 4).toNonIndexed();
     c.computeVertexNormals(); // flat faces so each side of the roof catches the light differently
@@ -46,6 +46,68 @@ const roof = (p: THREE.Object3D, half: number, h: number, color: number, x = 0, 
   }), color, x, y + h / 2, z);
   m.rotation.y = Math.PI / 4;
   return m;
+};
+
+/** How a nation roofs its buildings. */
+type RoofKind = 'pitched' | 'low' | 'steep' | 'flat' | 'dome' | 'pagoda' | 'yurt';
+interface Style { roof: RoofKind; walls: number[]; roofs: number[]; post?: number }
+const PLAIN: Style = { roof: 'pitched', walls: [0xb89a6a, 0xa98458, 0xb3aea2, 0xd9d2c0, 0xe8e2d4], roofs: [0xc9b458, 0xb08c40, 0x7d5a40, 0xa8432f, 0x4a5874] };
+/** Walls and roofs by age for each nation. Player colour still marks whose building it is. */
+const STYLES: Record<string, Style> = {
+  hearth: PLAIN,
+  stonekin: { roof: 'low', walls: [0xc4b08c, 0xd0c0a0, 0xdcd2bc, 0xe6dfd0, 0xeeeae0], roofs: [0xb8704a, 0xb86840, 0xb55e38, 0xb05432, 0xa84a2e], post: 0xe8e2d4 },
+  greece: { roof: 'low', walls: [0xd0c6ae, 0xdcd4c0, 0xe6e0d0, 0xeeeae0, 0xf4f1ea], roofs: [0xc08050, 0xbc7446, 0xb8683e, 0xb05c38, 0x9a5236], post: 0xf4f1ea },
+  egypt: { roof: 'flat', walls: [0xd4b47c, 0xdabc86, 0xe0c692, 0xe6d0a0, 0xead8ae], roofs: [0xc09a5c, 0xc8a468, 0xd0ae74, 0xd8b880, 0xdcc08c], post: 0xd8a848 },
+  babylon: { roof: 'flat', walls: [0xb4865a, 0xbc9064, 0xc49a6e, 0xcca47a, 0xd4ae86], roofs: [0x8a6a44, 0x7a6a50, 0x3a6a9a, 0x2f62a0, 0x2a58a0], post: 0x2f62a0 },
+  dawn: { roof: 'flat', walls: [0xcabc9a, 0xd2c6a6, 0xdad0b4, 0xe2dac2, 0xe8e2d0], roofs: [0xb4a482, 0xbcae8e, 0xc4b89a, 0xccc2a8, 0xd4ccb6], post: 0xe2dac2 },
+  arabs: { roof: 'dome', walls: [0xd4c298, 0xdccca6, 0xe4d6b6, 0xece2c8, 0xf2ecda], roofs: [0xc4b088, 0xcab890, 0x4a9a8c, 0x3a8c88, 0x2f8684], post: 0x3a8c88 },
+  persia: { roof: 'dome', walls: [0xc4aa82, 0xccb48e, 0xd4be9c, 0xdccaac, 0xe4d6be], roofs: [0xb49464, 0xbc9e70, 0x3a78a8, 0x2f6aa8, 0x2a60a8], post: 0xd8b060 },
+  forge: { roof: 'pagoda', walls: [0xb89a6a, 0xc0a474, 0xcabca4, 0xd8d0c0, 0xe2dcd0], roofs: [0x8a866c, 0x7c8470, 0x5f8f78, 0x4f9078, 0x449078], post: 0xa8322a },
+  japan: { roof: 'pagoda', walls: [0xc4b088, 0xd0c09c, 0xdcd2b8, 0xe8e2d0, 0xf0ece2], roofs: [0x7a6c5e, 0x6c6258, 0x5e5a5a, 0x54565e, 0x4c5060], post: 0x5a3a28 },
+  wild: { roof: 'steep', walls: [0x8a6a44, 0x82623e, 0x7c5c3a, 0x765838, 0x705436], roofs: [0x7a8448, 0x6e7842, 0x6a5c3c, 0x5a4c36, 0x4c4238] },
+  england: { roof: 'steep', walls: [0xb89a6a, 0xb8a078, 0xcfc6b0, 0xd9d2c0, 0xe8e2d4], roofs: [0xc9b458, 0xb89848, 0x8a6a48, 0x6a6460, 0x565a66] },
+  steppe: { roof: 'yurt', walls: [0xd4cab4, 0xd8d0bc, 0xded6c4, 0xe2dccc, 0xe8e2d4], roofs: [0xe6dec8, 0xdcd2ba, 0xd0c2a2, 0xc4ae86, 0xb89a6a] },
+};
+let style: Style = PLAIN;
+let styleRoof = PLAIN.roofs[0];
+
+/**
+ * A roof in the fashion of whoever is building. Spires, awnings and anything in another colour
+ * stay simple pyramids, so only real roofs take the nation's shape.
+ */
+const roof = (p: THREE.Object3D, half: number, h: number, color: number, x = 0, y = 0, z = 0): THREE.Object3D => {
+  const kind = color === styleRoof && h < half * 1.5 ? style.roof : 'pitched';
+  if (kind === 'pitched') return pyramid(p, half, h, color, x, y, z);
+  if (kind === 'low') return pyramid(p, half * 1.04, h * 0.62, color, x, y, z);
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  p.add(g);
+  if (kind === 'steep') {
+    pyramid(g, half * 1.02, h * 1.45, color);
+    // Crossed beams at the peak.
+    for (const r of [0.5, -0.5]) box(g, 0.05, 0.4, 0.05, DARKWOOD, 0, h * 1.45, 0).rotation.z = r;
+  } else if (kind === 'flat') {
+    // A roof to walk on, with a parapet and a stair hut.
+    box(g, half * 2 + 0.08, 0.12, half * 2 + 0.08, color, 0, 0.06, 0);
+    for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(g, 0.2, 0.2, 0.2, color, cx * (half - 0.08), 0.22, cz * (half - 0.08));
+    if (half > 0.8) box(g, half * 0.7, 0.3, half * 0.7, color, -half * 0.35, 0.27, -half * 0.35);
+  } else if (kind === 'dome') {
+    box(g, half * 2 + 0.06, 0.1, half * 2 + 0.06, style.walls[2], 0, 0.05, 0);
+    const d = add(g, geo(`dome${half}`, () => new THREE.SphereGeometry(half * 0.82, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2)), color, 0, 0.1, 0);
+    d.scale.y = Math.max(0.75, Math.min(1.25, h / half));
+    cyl(g, 0.02, 0.04, 0.3, 0xe8c860, 0, 0.1 + half * 0.82 * d.scale.y + 0.12, 0, 6);
+  } else if (kind === 'yurt') {
+    add(g, geo(`yurt${half},${h}`, () => new THREE.CylinderGeometry(half * 0.2, half * 1.12, h * 0.75, 12)), color, 0, h * 0.375, 0);
+    cyl(g, half * 1.14, half * 1.14, 0.08, 0xa8432f, 0, 0.02, 0, 12);
+    cyl(g, half * 0.22, half * 0.22, 0.06, 0x5a4a3a, 0, h * 0.75 + 0.02, 0, 10);
+  } else {
+    // Pagoda: wide eaves below, a second, steeper roof above.
+    pyramid(g, half * 1.22, h * 0.42, color);
+    box(g, half * 1.3, 0.16, half * 1.3, style.post ?? DARKWOOD, 0, h * 0.42 - 0.02, 0);
+    pyramid(g, half * 0.78, h * 0.7, color, 0, h * 0.48, 0);
+    cyl(g, 0.03, 0.05, 0.25, 0xe8c860, 0, h * 1.18 + 0.1, 0, 6);
+  }
+  return g;
 };
 
 const SKIN = 0xe0ac7e;
@@ -673,8 +735,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   return g;
 }
 
-const WALL = [0xb89a6a, 0xa98458, 0xb3aea2, 0xd9d2c0, 0xe8e2d4];
-const ROOF = [0xc9b458, 0xb08c40, 0x7d5a40, 0xa8432f, 0x4a5874];
 const STONE = 0x9d9a92;
 
 function flag(g: THREE.Object3D, color: number, x: number, y: number, z: number, h = 0.9): void {
@@ -682,7 +742,7 @@ function flag(g: THREE.Object3D, color: number, x: number, y: number, z: number,
   box(g, 0.03, 0.26, 0.42, color, x, y + h - 0.15, z + 0.23);
 }
 
-export function makeBuilding(type: string, color: number, age: number): THREE.Group {
+export function makeBuilding(type: string, color: number, age: number, civ = ''): THREE.Group {
   const size = BUILDINGS[type].size;
   const gen = generatedModel(type, age, size * 0.94, 'footprint');
   if (gen) {
@@ -694,7 +754,9 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
     return gen;
   }
   const g = new THREE.Group();
-  const wall = WALL[age], rf = ROOF[age];
+  style = STYLES[civ] ?? PLAIN;
+  const wall = style.walls[age] ?? style.walls[style.walls.length - 1], rf = styleRoof = style.roofs[age] ?? style.roofs[style.roofs.length - 1];
+  const post = style.post ?? (age >= 2 ? STONE : DARKWOOD);
   switch (type) {
     case 'towncenter': {
       box(g, 3.5, 1.2, 3.5, wall, 0, 0.6, 0);
@@ -702,7 +764,7 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
       box(g, 1.3, 3.0, 1.3, wall, 0, 1.5, 0);
       box(g, 0.5, 0.4, 0.06, DARKWOOD, 0, 2.5, 0.66);
       roof(g, 0.95, 0.8, color, 0, 3.0, 0);
-      for (const [x, z] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) box(g, 0.4, 1.6, 0.4, age >= 2 ? STONE : DARKWOOD, x, 0.8, z);
+      for (const [x, z] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) box(g, 0.4, 1.6, 0.4, post, x, 0.8, z);
       box(g, 0.8, 0.9, 0.1, DARKWOOD, 0, 0.45, 1.76);
       box(g, 0.9, 0.5, 0.06, color, -1.0, 0.75, 1.77);
       box(g, 0.9, 0.5, 0.06, color, 1.0, 0.75, 1.77);

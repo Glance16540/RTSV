@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
-import { T_DIRT, T_WATER } from '../sim/map';
+import { buildScenery, Scenery } from './scenery';
 import { makeBuilding, makeResource, makeUnit, mat, RES_COLOR } from './models';
 
 const PITCH = (50 * Math.PI) / 180;
@@ -29,8 +29,10 @@ export class Renderer {
   private buildingViews = new Map<number, THREE.Group>();
   private resViews = new Map<number, THREE.Group>();
   private treeIndex = new Map<number, number>();
-  private trunks!: THREE.InstancedMesh;
-  private leaves!: THREE.InstancedMesh;
+  /** Every instanced part of the forest; a felled tree is hidden in each. */
+  private forest: THREE.InstancedMesh[] = [];
+  private scenery!: Scenery;
+  private haze = new THREE.Fog(0x9fb0c4, 60, 160);
   private fogTex!: THREE.DataTexture;
   private fogAlpha: Float32Array;
   private rings: THREE.Mesh[] = [];
@@ -58,16 +60,25 @@ export class Renderer {
     this.cx = st.x;
     this.cy = st.y;
 
-    this.scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x6a5a40, 0.95));
-    this.sun = new THREE.DirectionalLight(0xfff0d8, 2.5);
+    // A low warm sun against a cool sky: long soft shadows, and shape on everything that stands up.
+    this.gl.toneMapping = THREE.ACESFilmicToneMapping;
+    this.gl.toneMappingExposure = 1.02;
+    this.scene.fog = this.haze;
+    this.scene.add(new THREE.HemisphereLight(0xd6e6ff, 0x8a7858, 1.55));
+    this.sun = new THREE.DirectionalLight(0xffe2b4, 3.0);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
-    this.sun.shadow.bias = -0.0008;
-    this.sun.shadow.normalBias = 0.03;
+    this.sun.shadow.mapSize.set(4096, 4096);
+    this.sun.shadow.bias = -0.0006;
+    this.sun.shadow.normalBias = 0.04;
+    this.sun.shadow.radius = 2.5;
+    const fill = new THREE.DirectionalLight(0xa8c0ec, 0.9); // sky light from the shadow side, so shade is blue, not black
+    fill.position.set(40, 30, -30);
+    this.scene.add(fill);
     this.scene.add(this.sun, this.sun.target);
 
     this.fogAlpha = new Float32Array(game.size * game.size).fill(1);
-    this.buildTerrain();
+    this.scenery = buildScenery(game.size, game.terrain);
+    this.scene.add(this.scenery.group);
     this.buildTrees();
     this.buildFog();
 
@@ -99,72 +110,48 @@ export class Renderer {
 
   // ---- Static scenery ----
 
-  private buildTerrain(): void {
-    const N = this.game.size, T = this.game.terrain;
-    const px = 8;
-    const c = document.createElement('canvas');
-    c.width = c.height = N * px;
-    const ctx = c.getContext('2d')!;
-    const img = ctx.createImageData(c.width, c.height);
-    const tAt = (x: number, y: number) => (x < 0 || y < 0 || x >= N || y >= N ? T_WATER : T[y * N + x]);
-    let s = 12345;
-    const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-    for (let y = 0; y < c.height; y++) {
-      for (let x = 0; x < c.width; x++) {
-        const tx = (x / px) | 0, ty = (y / px) | 0;
-        const t = tAt(tx, ty);
-        const n = rnd();
-        const patch = Math.sin(tx * 0.37 + ty * 0.21) * Math.cos(ty * 0.29 - tx * 0.13);
-        let r: number, g: number, b: number;
-        if (t === T_WATER) {
-          r = 38 + n * 10; g = 96 + n * 14 + patch * 8; b = 150 + n * 18;
-        } else {
-          const shore = tAt(tx - 1, ty) === T_WATER || tAt(tx + 1, ty) === T_WATER || tAt(tx, ty - 1) === T_WATER || tAt(tx, ty + 1) === T_WATER;
-          if (shore) { r = 196 + n * 16; g = 178 + n * 14; b = 120 + n * 12; }
-          else if (t === T_DIRT) { r = 132 + n * 18 + patch * 6; g = 124 + n * 16 + patch * 8; b = 70 + n * 12; }
-          else { r = 88 + n * 16 + patch * 12; g = 136 + n * 18 + patch * 14; b = 62 + n * 12; }
-        }
-        const i = (y * c.width + x) * 4;
-        img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
-      }
-    }
-    ctx.putImageData(img, 0, 0);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, N, 0, 0, N, 0, N, 0, 0, N], 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
-    geo.setIndex([0, 2, 1, 0, 3, 2]);
-    const ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex }));
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-  }
-
   private buildTrees(): void {
     const trees = this.game.resources.filter((r) => r.type === 'tree');
-    const trunkG = new THREE.CylinderGeometry(0.07, 0.1, 0.5, 5);
-    trunkG.translate(0, 0.25, 0);
-    const leafG = new THREE.ConeGeometry(0.42, 1.25, 6);
-    leafG.translate(0, 1.0, 0);
-    this.trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshLambertMaterial({ color: 0x5c4028 }), trees.length);
-    this.leaves = new THREE.InstancedMesh(leafG, new THREE.MeshLambertMaterial({ color: 0xffffff }), trees.length);
-    this.leaves.castShadow = this.trunks.castShadow = true;
-    this.leaves.receiveShadow = true;
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color();
+    const trunkG = new THREE.CylinderGeometry(0.06, 0.11, 0.6, 6);
+    trunkG.translate(0, 0.3, 0);
+    const skirtG = new THREE.ConeGeometry(0.5, 0.9, 7);
+    skirtG.translate(0, 0.8, 0);
+    const topG = new THREE.ConeGeometry(0.34, 0.85, 7);
+    topG.translate(0, 1.4, 0);
+    const crownG = new THREE.IcosahedronGeometry(0.5, 1);
+    crownG.scale(1, 0.85, 1);
+    crownG.translate(0, 0.95, 0);
+    const puffG = new THREE.IcosahedronGeometry(0.32, 0);
+    puffG.translate(0.24, 1.25, 0.1);
+    const leaf = () => new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+    const make = (g: THREE.BufferGeometry, mt: THREE.Material) => {
+      const im = new THREE.InstancedMesh(g, mt, trees.length);
+      im.castShadow = im.receiveShadow = true;
+      this.forest.push(im);
+      return im;
+    };
+    const trunks = make(trunkG, new THREE.MeshLambertMaterial({ color: 0x5c4028 }));
+    const skirt = make(skirtG, leaf()), top = make(topG, leaf()), crown = make(crownG, leaf()), puff = make(puffG, leaf());
+    const m = new THREE.Matrix4(), none = new THREE.Matrix4().makeScale(0, 0, 0), q = new THREE.Quaternion(), col = new THREE.Color();
     trees.forEach((t, i) => {
       const h = ((t.id * 2654435761) >>> 0) / 4294967296;
       const h2 = ((t.id * 40503) % 1000) / 1000;
+      const h3 = ((t.id * 7919) % 1000) / 1000;
       const sc = 0.85 + h * 0.5;
       q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, h * 6.28);
       m.compose(new THREE.Vector3(t.x + (h2 - 0.5) * 0.3, 0, t.y + (h - 0.5) * 0.3), q, new THREE.Vector3(sc, sc * (0.9 + h2 * 0.3), sc));
-      this.trunks.setMatrixAt(i, m);
-      this.leaves.setMatrixAt(i, m);
-      this.leaves.setColorAt(i, col.setHSL(0.3 + h2 * 0.06, 0.45, 0.2 + h * 0.1));
+      // Stands of fir with broadleaves among them, more of one or the other from grove to grove.
+      const fir = h3 < 0.5 + 0.35 * Math.sin(t.x * 0.13 + t.y * 0.09);
+      trunks.setMatrixAt(i, m);
+      skirt.setMatrixAt(i, fir ? m : none); top.setMatrixAt(i, fir ? m : none);
+      crown.setMatrixAt(i, fir ? none : m); puff.setMatrixAt(i, fir ? none : m);
+      skirt.setColorAt(i, col.setHSL(0.37 + h2 * 0.04, 0.5, 0.13 + h * 0.06));
+      top.setColorAt(i, col.setHSL(0.36 + h2 * 0.04, 0.5, 0.16 + h * 0.07));
+      crown.setColorAt(i, col.setHSL(0.26 + h2 * 0.07, 0.62, 0.2 + h * 0.08));
+      puff.setColorAt(i, col.setHSL(0.25 + h2 * 0.07, 0.64, 0.24 + h * 0.08));
       this.treeIndex.set(t.id, i);
     });
-    this.scene.add(this.trunks, this.leaves);
+    this.scene.add(...this.forest);
   }
 
   private buildFog(): void {
@@ -179,7 +166,7 @@ export class Renderer {
     const u0 = -e / N, u1 = 1 + e / N;
     geo.setAttribute('uv', new THREE.Float32BufferAttribute([u0, u0, u1, u0, u1, u1, u0, u1], 2));
     geo.setIndex([0, 2, 1, 0, 3, 2]);
-    const fog = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: this.fogTex, transparent: true, depthTest: false, depthWrite: false }));
+    const fog = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: this.fogTex, transparent: true, depthTest: false, depthWrite: false, fog: false }));
     fog.renderOrder = 100;
     fog.frustumCulled = false;
     this.scene.add(fog);
@@ -221,8 +208,11 @@ export class Renderer {
     this.camera.position.y += Math.sin(this.clock * 47) * sh;
     this.camera.lookAt(this.cx, 0, this.cy);
     this.camera.updateMatrixWorld();
-    const r = this.dist * 0.75;
-    this.sun.position.set(this.cx - 30, 55, this.cy + 18);
+    const r = this.dist * 0.72;
+    this.sun.position.set(this.cx - 38, 44, this.cy + 20);
+    // Haze thickens toward the far edge of the view, and thins out when the camera is close in.
+    this.haze.near = this.dist * 1.25;
+    this.haze.far = this.dist * 4.6;
     this.sun.target.position.set(this.cx, 0, this.cy);
     const sc = this.sun.shadow.camera;
     sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 160;
@@ -276,9 +266,7 @@ export class Renderer {
       const ti = this.treeIndex.get(ev.id);
       if (ti !== undefined) {
         const m = new THREE.Matrix4().makeScale(0, 0, 0);
-        this.trunks.setMatrixAt(ti, m);
-        this.leaves.setMatrixAt(ti, m);
-        this.trunks.instanceMatrix.needsUpdate = this.leaves.instanceMatrix.needsUpdate = true;
+        for (const im of this.forest) { im.setMatrixAt(ti, m); im.instanceMatrix.needsUpdate = true; }
         this.treeIndex.delete(ev.id);
       }
     } else if (ev.t === 'age') {
@@ -325,7 +313,7 @@ export class Renderer {
       if (this.ghost) this.scene.remove(this.ghost);
       const s = BUILDINGS[type].size;
       this.ghost = new THREE.Group();
-      const model = makeBuilding(type, 0xffffff, this.game.players[this.game.humanId].age);
+      const model = makeBuilding(type, 0xffffff, this.game.players[this.game.humanId].age, this.game.players[this.game.humanId].civ);
       const gm = new THREE.MeshBasicMaterial({ color: ok ? 0x7dff8a : 0xff5a4a, transparent: true, opacity: 0.55, depthWrite: false });
       model.traverse((o) => { if (o instanceof THREE.Mesh) { o.material = gm; o.castShadow = false; } });
       const pad = new THREE.Mesh(new THREE.PlaneGeometry(s, s), new THREE.MeshBasicMaterial({ color: ok ? 0x3dff5a : 0xff3020, transparent: true, opacity: 0.3, depthWrite: false }));
@@ -350,6 +338,7 @@ export class Renderer {
     if (!v) {
       v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type };
       v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
+      v.g.rotation.order = 'YXZ'; // so leaning forward and rocking are in the unit's own frame, whichever way it faces
       this.unitViews.set(u.id, v);
       this.scene.add(v.g);
     }
@@ -357,17 +346,36 @@ export class Renderer {
     g.visible = this.isVisible(u);
     if (!g.visible) return;
     const x = u.px + (u.x - u.px) * alpha, y = u.py + (u.y - u.py) * alpha;
-    let bob = 0;
-    if (u.moving) { v.phase += dt * u.def.speed * 5; bob = Math.abs(Math.sin(v.phase)) * 0.06; }
-    g.position.set(x, bob, y);
-    g.scale.setScalar(u.growT > 0 ? 0.62 : 1);
+    const swing = u.attackAnim > 0 ? Math.sin((u.attackAnim / 0.35) * Math.PI) : 0;
+    const mounted = u.def.cls === 'cavalry' || u.def.cls === 'beast';
+    const size = u.growT > 0 ? 0.62 : 1;
+    let bob = 0, pitch = 0, roll = 0, breathe = 1;
+    if (u.def.naval) {
+      // Afloat: riding the swell, rolling a little.
+      bob = -0.05 + Math.sin(this.clock * 1.4 + v.phase) * 0.035;
+      roll = Math.sin(this.clock * 1.1 + v.phase) * 0.05;
+      pitch = Math.sin(this.clock * 0.9 + v.phase * 2) * 0.03;
+    } else if (u.moving) {
+      v.phase += dt * u.def.speed * 5;
+      bob = Math.abs(Math.sin(v.phase)) * (mounted ? 0.09 : 0.06);
+      pitch = mounted ? Math.sin(v.phase * 2) * 0.06 : 0.07; // riders rock at the gallop; walkers lean into their stride
+      roll = mounted ? 0 : Math.sin(v.phase) * 0.05;
+    } else {
+      breathe = 1 + Math.sin(this.clock * 2.2 + v.phase) * 0.012; // standing, they still breathe
+    }
+    // A blow is struck with the whole body: a lunge forward and back.
+    const lunge = u.def.naval || u.def.cls === 'siege' ? 0 : swing * 0.14;
+    pitch += u.def.naval || u.def.cls === 'siege' ? 0 : swing * 0.16;
+    g.position.set(x + Math.sin(g.rotation.y) * lunge, bob, y + Math.cos(g.rotation.y) * lunge);
+    g.scale.set(size, size * breathe, size);
+    g.rotation.x += (pitch - g.rotation.x) * Math.min(1, dt * 14);
+    g.rotation.z += (roll - g.rotation.z) * Math.min(1, dt * 14);
     let d = u.facing - g.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
     for (const l of v.legs) l.rotation.x = u.moving ? Math.sin(v.phase + (l.userData.leg as number)) * 0.65 : l.rotation.x * 0.8;
     const arm = g.userData.arm as THREE.Object3D | undefined;
     if (arm) {
-      const swing = u.attackAnim > 0 ? Math.sin((u.attackAnim / 0.35) * Math.PI) : 0;
       arm.rotation.x = u.type === 'catapult' ? swing * 1.2 : -swing * 1.3 + (u.moving ? Math.sin(v.phase) * 0.3 : 0);
     }
     const ramLog = g.userData.ram as THREE.Object3D | undefined;
@@ -384,7 +392,7 @@ export class Renderer {
   private syncBuilding(b: Building): void {
     let g = this.buildingViews.get(b.id);
     if (!g) {
-      g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age);
+      g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ);
       g.position.set(b.x, 0, b.y);
       this.buildingViews.set(b.id, g);
       this.scene.add(g);
@@ -438,6 +446,7 @@ export class Renderer {
     for (const b of game.buildings) this.syncBuilding(b);
     for (const r of game.resources) this.syncResource(r);
     this.updateFog(dt);
+    this.scenery.update(this.clock);
 
     // Selection rings.
     let n = 0;
@@ -494,6 +503,7 @@ export class Renderer {
     for (let i = this.dying.length - 1; i >= 0; i--) {
       const d = this.dying[i];
       d.t += dt;
+      d.g.rotation.x = 0;
       d.g.rotation.z = Math.min(1, d.t / 0.35) * (Math.PI / 2);
       if (d.t > 1.2) d.g.position.y -= dt * 0.6;
       if (d.t > 2.2) { this.scene.remove(d.g); this.dying.splice(i, 1); }
