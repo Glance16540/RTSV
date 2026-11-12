@@ -26,98 +26,184 @@ const page = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hearth &amp; Empire — Voice Booth</title>
+<title>Hearth &amp; Empire — Take the Throne</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap">
 <style>
-  :root { --bg: #14110d; --panel: #201a13; --edge: #4a3c28; --fg: #efe6d2; --dim: #b3a58a; --gold: #e2b85a; --good: #7fc77a; --warn: #e0705a; }
+  /* A summons to a throne: ink-dark hall, gold leaf, parchment type; once a nation is chosen its colour takes the banners. */
+  :root { --bg: #0d0f14; --hall: #141722; --panel: #1a1d29; --panel2: #212536; --edge: #343a50; --fg: #f1e7d0; --dim: #a9a595; --gold: #e3b655; --gold2: #f6dc94; --good: #86cf8f; --warn: #ef7d63; --nation: #b8862f;
+    --display: 'Cinzel', 'Trajan Pro', Georgia, 'Times New Roman', serif; --quote: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; --ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color-scheme: dark; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; }
-  main { max-width: 820px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right)) 120px max(16px, env(safe-area-inset-left)); }
-  h1 { font: 600 30px Georgia, 'Times New Roman', serif; color: var(--gold); margin: 0 0 4px; }
-  h2 { font: 600 20px Georgia, serif; color: var(--gold); margin: 28px 0 8px; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body { margin: 0; color: var(--fg); font: 16px/1.55 var(--ui);
+    background: radial-gradient(1200px 600px at 85% -10%, #3a2a1466, transparent 60%), radial-gradient(900px 500px at 0% 0%, #1f2a4a66, transparent 60%), var(--bg); background-attachment: fixed; }
+  main { max-width: 980px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 140px max(16px, env(safe-area-inset-left)); }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: 0.02em; margin: 0; text-wrap: balance; }
   p { margin: 0 0 12px; } .dim { color: var(--dim); } small { color: var(--dim); }
-  ol { padding-left: 20px; margin: 0 0 12px; } li { margin-bottom: 4px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
-  button { font: inherit; color: var(--fg); background: #33291b; border: 1px solid var(--edge); border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+  [hidden] { display: none !important; }
+  .err { color: var(--warn); }
+
+  /* hero */
+  .hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: center; padding: 56px 0 36px; }
+  .eyebrow { font: 600 12px var(--ui); letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+  .hero h1 { font-size: clamp(38px, 6.4vw, 68px); line-height: 1.04; background: linear-gradient(180deg, var(--gold2), var(--gold) 55%, #b98a35); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero .lede { font: 500 clamp(20px, 2.4vw, 25px)/1.35 var(--quote); color: var(--fg); margin: 18px 0 24px; max-width: 30ch; }
+  .cta { display: inline-block; font: 700 15px var(--display); letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; color: #1a1305; background: linear-gradient(180deg, var(--gold2), var(--gold)); padding: 13px 22px; border-radius: 4px; box-shadow: 0 6px 24px #e3b65533, inset 0 -2px 0 #0003; }
+  .cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .court { position: relative; height: 340px; }
+  .court i { position: absolute; border-radius: 50%; background-size: cover; background-position: center; border: 3px solid var(--gold); box-shadow: 0 10px 30px #000a, 0 0 0 6px #0d0f14, 0 0 0 7px #e3b65555; animation: drift 9s ease-in-out infinite alternate; }
+  .court i:nth-child(1) { width: 150px; height: 150px; left: 32%; top: 26%; z-index: 3; }
+  .court i:nth-child(2) { width: 104px; height: 104px; left: 4%; top: 8%; animation-delay: -2s; }
+  .court i:nth-child(3) { width: 112px; height: 112px; right: 2%; top: 4%; animation-delay: -4s; }
+  .court i:nth-child(4) { width: 96px; height: 96px; left: 0; bottom: 6%; animation-delay: -1s; }
+  .court i:nth-child(5) { width: 108px; height: 108px; right: 4%; bottom: 2%; animation-delay: -5s; }
+  .court i:nth-child(6) { width: 78px; height: 78px; left: 36%; top: 0; animation-delay: -3s; }
+  .court i:nth-child(7) { width: 82px; height: 82px; left: 40%; bottom: 0; animation-delay: -6s; }
+  .court .empty { background: repeating-linear-gradient(45deg, #1a1d29, #1a1d29 6px, #212536 6px, #212536 12px); border-style: dashed; display: grid; place-items: center; font: 700 54px var(--display); font-style: normal; color: var(--gold); }
+  @keyframes drift { from { transform: translateY(-6px); } to { transform: translateY(8px); } }
+
+  /* the three steps */
+  .path { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 8px 0 22px; }
+  .path div { position: relative; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--edge); border-top: 3px solid var(--gold); border-radius: 6px; padding: 18px 18px 16px 74px; min-width: 0; }
+  .path .num { position: absolute; left: 16px; top: 12px; font: 700 44px/1 var(--display); color: var(--gold); opacity: 0.9; }
+  .path b { display: block; font: 700 17px var(--display); letter-spacing: 0.04em; margin-bottom: 4px; }
+  .path span { color: var(--dim); font-size: 14px; }
+  .fine { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: center; justify-content: space-between; color: var(--dim); font-size: 14px; border: 1px solid var(--edge); border-radius: 6px; padding: 12px 16px; background: #0a0c1099; }
+  .fine label { color: var(--fg); }
+
+  /* choosing */
+  .sect { display: flex; align-items: baseline; gap: 14px; margin: 44px 0 16px; }
+  .sect h2 { font-size: clamp(24px, 3.4vw, 34px); color: var(--gold); }
+  .sect::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--gold), transparent); opacity: 0.5; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .nation { --c: var(--gold); background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s; }
+  .nation:hover { transform: translateY(-3px); border-color: var(--c); box-shadow: 0 14px 34px #0009; }
+  .nation header { position: relative; padding: 18px 16px 14px; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 45%, #0d0f14)); }
+  .nation header::after { content: ''; position: absolute; left: 0; right: 0; bottom: -9px; height: 10px; background: linear-gradient(135deg, var(--panel) 25%, transparent 25%) 0 0 / 20px 10px, linear-gradient(225deg, var(--panel) 25%, transparent 25%) 0 0 / 20px 10px; transform: scaleY(-1); }
+  .nation h3 { font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; color: #fff8e6; text-shadow: 0 2px 6px #0008; }
+  .nation .says { font: italic 500 17px/1.35 var(--quote); color: var(--fg); padding: 14px 16px 6px; flex: 1; }
+  .nation .says::before { content: '“'; color: var(--c); font-size: 30px; line-height: 0; vertical-align: -8px; margin-right: 2px; }
+  .nation .who { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 14px; }
+  button { font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--edge); border-radius: 6px; padding: 9px 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.15s; }
   button:hover:not(:disabled) { border-color: var(--gold); } button:disabled { opacity: 0.45; cursor: default; }
-  button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-  .pick { text-align: left; display: flex; gap: 10px; align-items: center; border-left-width: 5px; }
-  .seal { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 700 24px Georgia, serif; color: #fff4d6; text-shadow: 0 1px 2px #0009; border: 2px solid var(--gold); box-shadow: inset 0 0 10px #0007; background-size: cover; background-position: center; }
-  .seal.big { width: 72px; height: 72px; font-size: 40px; }
-  .head { display: flex; gap: 14px; align-items: center; } .head h2 { margin: 0; } .head p { margin: 0; } .pick b { display: block; } .pick small { display: block; }
-  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
-  .card.done { border-color: #3f6a3c; }
-  .when { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
-  .line { font: italic 20px/1.4 Georgia, serif; margin: 4px 0 10px; }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .rec.on { background: #7a2418; border-color: var(--warn); }
-  .state { font-size: 14px; color: var(--dim); } .state.ok { color: var(--good); }
-  input[type=text], textarea { font: inherit; color: var(--fg); background: #100d09; border: 1px solid var(--edge); border-radius: 6px; padding: 8px 10px; width: min(100%, 320px); }
-  textarea.line { display: block; width: 100%; resize: vertical; min-height: 64px; font: italic 19px/1.4 Georgia, serif; }
-  textarea.line.own { border-color: var(--gold); }
-  textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px; }
-  .fields input { width: 100%; } .fields label { display: block; font-size: 14px; color: var(--dim); }
-  .stock { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
-  .stock button { padding: 0; width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--edge); background-size: cover; background-position: center; }
-  .stock button.on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
-  .q { margin: 14px 0 0; } .q b { display: block; margin-bottom: 6px; }
-  .q label { display: flex; gap: 8px; align-items: baseline; padding: 6px 10px; border: 1px solid var(--edge); border-radius: 6px; margin-bottom: 6px; cursor: pointer; }
-  .q label:hover { border-color: var(--gold); } .q label:has(input:checked) { border-color: var(--gold); background: #33291b; }
-  .q input { accent-color: var(--gold); }
-  .traits { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 14px; }
-  .trait { font-size: 14px; } .trait b { color: var(--gold); display: block; }
-  .meter { position: relative; height: 6px; border-radius: 3px; background: #100d09; border: 1px solid var(--edge); margin: 5px 0 3px; }
-  .meter i { position: absolute; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--gold); }
-  .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); }
-  .steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
-  .steps a { color: var(--fg); text-decoration: none; border: 1px solid var(--edge); border-radius: 999px; padding: 5px 12px; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; }
-  .steps a:hover { border-color: var(--gold); } .steps a.done { border-color: #3f6a3c; }
-  .tick { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--dim); display: inline-grid; place-items: center; font-size: 10px; line-height: 1; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--gold2); outline-offset: 2px; }
+  .pick { position: relative; text-align: left; display: flex; gap: 12px; align-items: center; width: 100%; padding: 8px 12px 8px 8px; background: #0d0f1488; }
+  .pick:hover:not(:disabled) { background: var(--panel2); transform: translateX(3px); }
+  .pick b { display: block; font-weight: 600; } .pick small { display: block; }
+  .pick .go { position: absolute; right: 12px; top: 50%; translate: 0 -50%; background: var(--panel2); padding: 4px 0 4px 10px; color: var(--gold); font: 700 12px var(--display); letter-spacing: 0.1em; text-transform: uppercase; opacity: 0; transition: opacity 0.15s; }
+  .pick:hover .go, .pick:focus-visible .go { opacity: 1; }
+  .seal { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font: 700 24px var(--display); color: #fff4d6; text-shadow: 0 1px 2px #0009; border: 2px solid var(--gold); box-shadow: inset 0 0 10px #0007; background-size: cover; background-position: center; }
+
+  /* the booth */
+  .back { margin: 20px 0 0; }
+  .head { position: relative; display: flex; gap: 22px; align-items: center; margin: 14px 0 0; padding: 28px 24px; border-radius: 10px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--nation) 60%, #000);
+    background: radial-gradient(600px 240px at 0% 0%, color-mix(in srgb, var(--nation) 75%, transparent), transparent 70%), linear-gradient(135deg, color-mix(in srgb, var(--nation) 40%, #0d0f14), #12141c 70%); box-shadow: 0 18px 50px #0008; }
+  .head .eyebrow { margin: 0 0 6px; color: var(--gold2); }
+  .head h2 { font-size: clamp(26px, 4.4vw, 44px); line-height: 1.08; color: #fff8e6; text-shadow: 0 2px 10px #0009; overflow-wrap: anywhere; }
+  .head p { margin: 6px 0 0; font: 500 20px var(--quote); color: var(--fg); }
+  .seal.big { width: 116px; height: 116px; font-size: 62px; border-width: 4px; box-shadow: 0 10px 30px #000a, 0 0 0 6px #0d0f1499, 0 0 0 7px #e3b65566, inset 0 0 18px #0008; }
+  .steps { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; padding: 10px 0; background: linear-gradient(180deg, var(--bg) 70%, transparent); }
+  .steps a { color: var(--fg); text-decoration: none; border: 1px solid var(--edge); border-radius: 999px; padding: 7px 14px; font: 600 14px var(--ui); display: inline-flex; gap: 8px; align-items: center; background: var(--panel); }
+  .steps a:hover { border-color: var(--gold); } .steps a.done { border-color: var(--good); }
+  .tick { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--dim); display: inline-grid; place-items: center; font-size: 11px; line-height: 1; }
   .done .tick { background: var(--good); border-color: var(--good); color: #10200f; } .done .tick::after { content: '✓'; }
   .part .tick { border-color: var(--gold); background: #6a4e16; }
-  h2 small { font: 400 14px system-ui, sans-serif; }
+  .step { display: flex; align-items: center; gap: 16px; margin: 40px 0 14px; scroll-margin-top: 70px; }
+  .step .num { flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font: 700 26px var(--display); color: #1a1305; background: linear-gradient(180deg, var(--gold2), var(--gold)); box-shadow: 0 0 0 5px #e3b65522; }
+  .step h2 { font-size: clamp(22px, 3vw, 30px); color: var(--fg); } .step small { display: block; font: 400 14px var(--ui); letter-spacing: 0; margin-top: 2px; }
+  .card { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--edge); border-radius: 8px; padding: 18px 20px; margin-bottom: 12px; }
+  .card > b:first-child { font: 700 17px var(--display); letter-spacing: 0.04em; color: var(--gold2); display: block; margin-bottom: 4px; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 14px 0; }
+  .fields input { width: 100%; font: 600 19px var(--quote); } .fields label { display: block; font: 600 11px var(--ui); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+  input[type=text], textarea { font: inherit; color: var(--fg); background: #0a0c10; border: 1px solid var(--edge); border-radius: 6px; padding: 10px 12px; width: min(100%, 340px); }
+  input[type=file] { color: var(--dim); max-width: 100%; }
+  .stock { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 14px; }
+  .stock button { padding: 0; width: 72px; height: 72px; border-radius: 50%; border: 2px solid var(--edge); background-size: cover; background-position: center; }
+  .stock button:hover { transform: scale(1.12); border-color: var(--gold); z-index: 1; }
+  .stock button.on { border-color: var(--gold2); box-shadow: 0 0 0 3px var(--gold), 0 8px 20px #000a; transform: scale(1.08); }
+  .q { margin: 20px 0 0; border: 0; padding: 0; min-width: 0; } .q b { display: block; margin-bottom: 8px; font: 600 21px/1.3 var(--quote); }
+  .q label { display: flex; gap: 10px; align-items: baseline; padding: 10px 14px; border: 1px solid var(--edge); border-radius: 6px; margin-bottom: 6px; cursor: pointer; background: #0d0f1488; transition: border-color 0.15s, background 0.15s, transform 0.15s; }
+  .q label:hover { border-color: var(--gold); transform: translateX(3px); }
+  .q label:has(input:checked) { border-color: var(--gold); background: linear-gradient(90deg, #6a4e1655, #6a4e1611); box-shadow: inset 3px 0 0 var(--gold); }
+  .q input { accent-color: var(--gold); }
+  .traits { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; padding: 16px; border-radius: 8px; background: #0a0c10; border: 1px solid var(--gold); }
+  .trait { font-size: 14px; } .trait b { color: var(--gold2); display: block; font: 700 17px var(--display); letter-spacing: 0.03em; }
+  .meter { position: relative; height: 6px; border-radius: 3px; background: var(--panel2); margin: 8px 0 4px; }
+  .meter i { position: absolute; top: -5px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px #e3b65533; transition: left 0.4s cubic-bezier(.2,.9,.3,1.2); }
+  .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); }
+  .note { background: #0a0c1099; border: 1px solid var(--edge); border-left: 4px solid var(--gold); border-radius: 6px; padding: 12px 16px; margin: 12px 0; }
+  .note.stop { border: 1px solid var(--gold); background: linear-gradient(135deg, #6a4e1640, #0a0c1099); padding: 18px 20px; }
+  .note.stop b { font: 700 18px var(--display); color: var(--gold2); }
+  .when { font: 600 11px var(--ui); color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em; }
+  textarea.line { display: block; width: 100%; resize: vertical; min-height: 70px; font: italic 500 23px/1.35 var(--quote); margin: 6px 0 0; }
+  textarea.line.own { border-color: var(--gold); }
+  .card.done { border-color: var(--good); box-shadow: inset 4px 0 0 var(--good); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .rec { border-radius: 999px; padding: 9px 18px; font-weight: 600; border-color: #7a3328; background: #3a1712; }
+  .rec:hover:not(:disabled) { border-color: var(--warn); background: #55201a; }
+  .rec.on { background: #b3311f; border-color: #ffb3a3; animation: pulse 1.1s ease-out infinite; }
+  @keyframes pulse { from { box-shadow: 0 0 0 0 #ef7d63aa; } to { box-shadow: 0 0 0 16px #ef7d6300; } }
+  .play { border-radius: 999px; }
+  .state { font-size: 14px; color: var(--dim); } .state.ok { color: var(--good); }
   .link { background: none; border: none; padding: 0; color: var(--gold); text-decoration: underline; font-size: 14px; }
-  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0e0b08ee; border-top: 1px solid var(--edge); padding: 10px max(16px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
-  .bar .in { max-width: 820px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
-  .primary { background: #6a4e16; border-color: var(--gold); font-weight: 600; }
-  .note { background: #2a1d12; border: 1px solid var(--edge); border-left: 4px solid var(--gold); border-radius: 6px; padding: 10px 12px; margin: 12px 0; }
-  .err { color: var(--warn); }
-  [hidden] { display: none !important; }
+  .primary { font: 700 14px var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: #1a1305; background: linear-gradient(180deg, var(--gold2), var(--gold)); border: 0; padding: 12px 20px; box-shadow: 0 6px 20px #e3b65533; }
+  .primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+  .primary:disabled { background: var(--panel2); color: var(--dim); box-shadow: none; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; background: #0a0c10f2; border-top: 1px solid var(--gold); padding: 12px max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .bar .in { max-width: 980px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+
+  /* crowned */
+  .crowned { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: radial-gradient(circle at 50% 40%, #3a2a14f7, #05060af7 70%); animation: fade 0.4s; }
+  .crowned .in { text-align: center; max-width: 520px; animation: rise 0.6s cubic-bezier(.2,.9,.3,1.1); }
+  .crowned .seal { width: 150px; height: 150px; font-size: 80px; margin: 0 auto 22px; border-width: 5px; box-shadow: 0 0 0 8px #0d0f14, 0 0 0 10px var(--gold), 0 0 80px #e3b65577; }
+  .crowned h2 { font-size: clamp(28px, 6vw, 46px); line-height: 1.15; color: var(--gold2); }
+  .crowned p { font: 500 21px/1.4 var(--quote); margin: 14px 0 22px; }
+  @keyframes fade { from { opacity: 0; } } @keyframes rise { from { opacity: 0; transform: translateY(24px) scale(0.96); } }
+
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; padding-top: 32px; } .court { height: 250px; order: -1; }
+    .court i:nth-child(1) { width: 120px; height: 120px; left: 34%; } .court i:nth-child(6), .court i:nth-child(7) { display: none; }
+    .path { grid-template-columns: 1fr; } .head { flex-direction: column; text-align: center; padding: 22px 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>Voice Booth</h1>
-  <p class="dim">Hearth &amp; Empire, a 3D strategy game of rival nations — become the voice of one nation's leader.</p>
-
   <section id="choose">
-    <p>You have been asked to become a leader in the game. Pick one below, then work through three steps. You can stop after any of them and send what you have; the voice can come later, or never.</p>
-    <ol>
-      <li><b>Who they are</b>: a name, a title and a portrait. A couple of minutes.</li>
-      <li><b>How they rule</b>: eight questions that decide how the computer plays your nation. A couple of minutes.</li>
-      <li><b>Their words and voice</b>: rewrite any line, and record them with your microphone. About fifteen minutes.</li>
-    </ol>
-    <p>Whenever you stop, press <b>Download</b> and send that one file back to whoever invited you.</p>
-    <div class="note">Nothing is uploaded anywhere. Your work stays in this browser tab until you download it, and is lost if you close the tab first.</div>
-    <div class="card">
-      <b>Already started?</b>
-      <p class="dim" style="margin:4px 0 8px">Open the file you downloaded last time and carry on where you stopped, for example to add your voice.</p>
-      <div class="row"><label for="resume">Continue from a saved file:</label><input type="file" id="resume" accept=".zip,application/zip"></div>
-      <p id="resumeerr" class="err" hidden style="margin:8px 0 0"></p>
+    <div class="hero">
+      <div>
+        <div class="eyebrow">Hearth &amp; Empire · a 3D strategy game of rival nations</div>
+        <h1>A throne stands empty.</h1>
+        <p class="lede">Thirteen nations need a ruler. Give one your name, your judgement and your voice, then meet yourself in the campaign.</p>
+        <a class="cta" href="#nations">Choose your nation</a>
+      </div>
+      <div class="court" id="court" aria-hidden="true"></div>
     </div>
-    <h2>Choose your leader</h2>
+    <div class="path">
+      <div><span class="num">I</span><b>Who they are</b><span>A name, a title and a portrait. Two minutes.</span></div>
+      <div><span class="num">II</span><b>How they rule</b><span>Eight questions decide how the computer plays your nation. Two minutes.</span></div>
+      <div><span class="num">III</span><b>Their voice</b><span>Rewrite their lines and record them. Fifteen minutes, now or later.</span></div>
+    </div>
+    <p class="dim">Stop after any step, press <b>Download</b>, and send that one file back to whoever invited you. Nothing is uploaded anywhere: your work stays in this browser tab until you download it, and is lost if you close the tab first.</p>
+    <div class="fine">
+      <span><b style="color:var(--fg)">Already started?</b> Open the file you downloaded last time and carry on, for example to add your voice.</span>
+      <span class="row"><label for="resume">Continue from a saved file:</label><input type="file" id="resume" accept=".zip,application/zip"></span>
+    </div>
+    <p id="resumeerr" class="err" hidden style="margin:8px 0 0"></p>
+    <div class="sect" id="nations"><h2>Choose your nation</h2></div>
     <div class="grid" id="leaders"></div>
   </section>
 
   <section id="booth" hidden>
-    <p><button id="back">← Choose a different leader</button></p>
-    <div class="head"><span class="seal big" id="seal"></span><div><h2 id="who"></h2><p id="title" class="dim"></p></div></div>
+    <p class="back"><button id="back">← Choose a different leader</button></p>
+    <div class="head"><span class="seal big" id="seal"></span><div><div class="eyebrow" id="realm"></div><h2 id="who"></h2><p id="title"></p></div></div>
     <nav class="steps" id="steps" aria-label="Your progress">
       <a href="#step1" id="s1"><span class="tick"></span>1. Who they are</a>
       <a href="#step2" id="s2"><span class="tick"></span>2. How they rule</a>
       <a href="#step3" id="s3"><span class="tick"></span>3. Words and voice</a>
     </nav>
-    <h2 id="step1">Step 1 · Who they are</h2>
+    <div class="step" id="step1"><span class="num">I</span><h2>Who they are</h2></div>
     <div class="card">
       <b>Make this character your own</b>
       <p class="dim">The leader below is only a starting point. Rename them, change their title, give them a portrait, and rewrite any of their lines; in the campaign they will appear and speak as you made them. Leave anything as it is to keep it.</p>
@@ -130,7 +216,7 @@ const page = `<!doctype html>
       <div class="row"><label class="dim" style="font-size:14px" for="pic">Or your own picture:</label><input type="file" id="pic" accept="image/*"><button class="link" id="nopic" hidden>Remove the portrait</button></div>
       <p class="dim" style="font-size:12px;margin:8px 0 0">Portraits shown are public-domain works from The Metropolitan Museum of Art, Open Access.</p>
     </div>
-    <h2 id="step2">Step 2 · How they rule</h2>
+    <div class="step" id="step2"><span class="num">II</span><h2>How they rule</h2></div>
     <div class="card">
       <b>How do they rule?</b>
       <p class="dim">Answer as your leader would. When you are not the one playing this nation, the computer plays it the way you answer: how readily it goes to war, whether its towns turn to the church or the tavern, whether it walls itself in or rides out, and how it bargains. Skip any question, or all of them, to leave the nation as it was written.</p>
@@ -142,7 +228,7 @@ const page = `<!doctype html>
       <b>You can stop here.</b> Steps 1 and 2 are enough for your leader to appear in the campaign as you made them, with their lines shown as text. Download and send the file now, and come back to add your voice whenever you like: open this page again and choose <i>Continue from a saved file</i>.
       <p style="margin:10px 0 0"><button id="save2" class="primary" disabled>Download what I have so far</button></p>
     </div>
-    <h2 id="step3">Step 3 · Their words and voice <small>(optional)</small></h2>
+    <div class="step" id="step3"><span class="num">III</span><h2>Their words and voice<small>Optional. Do it now, later, or not at all.</small></h2></div>
     <div class="note"><b>How they were written</b> (play them your own way if you prefer): <span id="direction"></span></div>
     <p><label for="actor">Your name, for the credits <small>(optional)</small></label><br><input type="text" id="actor" maxlength="60" autocomplete="name"></p>
     <p class="dim">Tips: a quiet room, the microphone a hand's width from your mouth, and leave half a second of silence before you speak. Each line should run two to six seconds. Record as many or as few as you like; unrecorded lines stay as text in the game. Each box says when the leader speaks the line: keep your own version to that moment, and to one or two sentences.</p>
@@ -150,6 +236,13 @@ const page = `<!doctype html>
     <div id="lines"></div>
   </section>
 </main>
+
+<div class="crowned" id="crowned" hidden role="dialog" aria-labelledby="crownedh"><div class="in">
+  <span class="seal" id="crownseal"></span>
+  <h2 id="crownedh"></h2>
+  <p id="crownedp"></p>
+  <button class="primary" id="crownedok">Carry on</button>
+</div></div>
 
 <div class="bar" id="bar" hidden><div class="in">
   <span id="count" class="state"></span>
@@ -169,18 +262,40 @@ let active = null; // { rec, key } while a line is being recorded
 const takes = new Map(); // line key -> { wav: Uint8Array, url }
 
 // ---- choosing a leader ----
-for (const l of LEADERS) {
-  const b = document.createElement('button');
-  b.className = 'pick';
-  b.style.borderLeftColor = l.color;
-  b.innerHTML = '<span class="seal"></span><span><b></b><small></small></span>';
-  b.querySelector('.seal').textContent = monogram(l.name);
-  b.querySelector('.seal').style.backgroundColor = l.color;
-  b.querySelector('b').textContent = l.name;
-  b.querySelector('small').textContent = l.nation + ' · ' + (l.female ? 'a woman' : 'a man') + ' · ' + l.lines.length + ' lines';
-  b.addEventListener('click', () => open(l));
-  $('leaders').appendChild(b);
+// A court of faces around the empty seat.
+{
+  const faces = [STOCK.man[0], STOCK.woman[3], STOCK.man[8], STOCK.woman[9], STOCK.man[13], STOCK.woman[5]];
+  const court = $('court');
+  const seat = document.createElement('i');
+  seat.className = 'empty';
+  seat.textContent = '?';
+  court.appendChild(seat);
+  for (const f of faces) { const i = document.createElement('i'); i.style.backgroundImage = 'url(' + f.jpg + ')'; court.appendChild(i); }
 }
+// One banner for each nation, with whoever may lead it.
+const nations = [];
+for (const l of LEADERS) { let n = nations.find((x) => x.civ === l.civ); if (!n) nations.push(n = { civ: l.civ, name: l.nation, color: l.color, who: [] }); n.who.push(l); }
+for (const n of nations) {
+  const card = document.createElement('article');
+  card.className = 'nation';
+  card.style.setProperty('--c', n.color);
+  card.innerHTML = '<header><h3></h3></header><p class="says"></p><div class="who"></div>';
+  card.querySelector('h3').textContent = n.name;
+  card.querySelector('.says').textContent = n.who[0].lines[0].text;
+  for (const l of n.who) {
+    const b = document.createElement('button');
+    b.className = 'pick';
+    b.innerHTML = '<span class="seal"></span><span><b></b><small></small></span><span class="go">Rule</span>';
+    b.querySelector('.seal').textContent = monogram(l.name);
+    b.querySelector('.seal').style.backgroundColor = l.color;
+    b.querySelector('b').textContent = l.name;
+    b.querySelector('small').textContent = (l.female ? 'A woman' : 'A man') + ' · ' + l.title;
+    b.addEventListener('click', () => open(l));
+    card.querySelector('.who').appendChild(b);
+  }
+  $('leaders').appendChild(card);
+}
+$('crownedok').addEventListener('click', () => { $('crowned').hidden = true; });
 $('back').addEventListener('click', () => {
   if ((takes.size || character() || picture) && !window.confirmLeave) { $('back').textContent = 'Your work on this leader will be lost. Click again to go back.'; window.confirmLeave = true; return; }
   window.confirmLeave = false;
@@ -193,6 +308,8 @@ $('back').addEventListener('click', () => {
 
 function open(l) {
   leader = l;
+  document.documentElement.style.setProperty('--nation', l.color);
+  $('realm').textContent = 'Ruler of the ' + l.nation;
   $('cname').value = l.name;
   $('ctitle').value = l.title;
   setPicture(null);
@@ -306,7 +423,7 @@ function heading() {
   seal.textContent = picture ? '' : monogram($('who').textContent);
   seal.style.backgroundColor = leader.color;
   seal.style.backgroundImage = picture ? 'url(' + picture.url + ')' : '';
-  $('title').textContent = (said($('ctitle').value) || leader.title) + ' · ' + leader.nation;
+  $('title').textContent = said($('ctitle').value) || leader.title;
   if (!$('booth').hidden) refresh();
 }
 $('cname').addEventListener('input', heading);
@@ -495,6 +612,14 @@ $('save').addEventListener('click', () => {
   a.click();
   a.remove();
   $('count').textContent = 'Downloaded. Send that file back to whoever invited you. Keep a copy if you want to add more later.';
+  const cs = $('crownseal');
+  cs.textContent = picture ? '' : monogram(shown);
+  cs.style.backgroundColor = leader.color;
+  cs.style.backgroundImage = picture ? 'url(' + picture.url + ')' : '';
+  $('crownedh').textContent = 'Long may you reign, ' + shown + '.';
+  $('crownedp').textContent = 'Your file is in your downloads. Send it back to whoever invited you' + (takes.size < leader.lines.length ? ', and keep a copy: you can open it here again to add ' + (takes.size ? 'more of ' : '') + 'your voice.' : '.');
+  $('crowned').hidden = false;
+  $('crownedok').focus();
 });
 // ---- carrying on from a file saved earlier ----
 // Reads the plain zip this page writes. A zip that another program has compressed cannot be read here.
