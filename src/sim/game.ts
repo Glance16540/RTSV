@@ -229,6 +229,8 @@ export class Game {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
   private nextId = 1;
+  /** Route searches left this tick. Spreading them out stops a big army order causing a hitch. */
+  private pathBudget = 0;
   private hash: Unit[][] = [];
   private hashN: number;
   private heroes: Unit[][] = [];
@@ -973,6 +975,7 @@ export class Game {
     if (this.winner >= 0) return;
     this.tick++;
     this.time += DT;
+    this.pathBudget = 16;
 
     for (const bucket of this.hash) bucket.length = 0;
     for (const h of this.heroes) h.length = 0;
@@ -1133,7 +1136,9 @@ export class Game {
     if (this.dist(u, t) <= reach) { u.path = null; u.pathFor = 0; return 'there'; }
     u.repathT -= DT;
     const drifted = t.kind === 'unit' && Math.abs(t.x - u.goalX) + Math.abs(t.y - u.goalY) > 1 && u.repathT <= 0;
+    if ((u.pathFor !== t.id || drifted) && this.pathBudget <= 0) return 'moving'; // wait for a later tick
     if (u.pathFor !== t.id || drifted) {
+      this.pathBudget--;
       const h = t.kind === 'unit' ? 0 : t.size / 2;
       const res = this.pf.find(u.x, u.y, t.x - h, t.y - h, t.x + h, t.y + h, Math.max(0.71, reach - 0.4));
       u.path = res.path;
@@ -1158,6 +1163,8 @@ export class Game {
   private walkTo(u: Unit, o: { x: number; y: number; started?: boolean; tries?: number }): boolean {
     if (!u.path) {
       if (o.started) return true;
+      if (this.pathBudget <= 0) return false; // wait for a later tick
+      this.pathBudget--;
       o.started = true;
       const p = this.pf.nearestFree(o.x, o.y);
       const res = this.pf.find(u.x, u.y, p.x, p.y, p.x, p.y, 0.71);

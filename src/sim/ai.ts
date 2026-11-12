@@ -370,7 +370,8 @@ export class AIController {
             && !this.route(v, u).partial) : undefined;
           if (deer) { g.cmdTarget(pid, [v.id], deer.id); have.food++; hunters++; break; }
           if (farmCount < want.food * total + 3 && farms.filter((f) => !f.complete).length < 3 && p.res.wood >= BUILDINGS.farm.cost.wood!) {
-            const spot = this.findSpot('farm', home.x, home.y, 5, 14);
+            // Fields can spread well beyond the crowded town centre (and outside its wall).
+            const spot = this.findSpot('farm', home.x, home.y, 5, 26);
             if (spot && g.cmdPlace(pid, 'farm', spot.cx, spot.cy, [v.id])) { have.food++; farmCount++; break; }
           }
           continue;
