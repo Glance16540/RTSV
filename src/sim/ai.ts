@@ -171,7 +171,8 @@ export class AIController {
     if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0)) {
       // The civilisation's own unit turns up often once its age is reached.
       const own = CIVS[p.civ]?.unique;
-      const mix = own && UNITS[own].age <= p.age ? [...ARMY_MIX[p.age], own, own, own] : ARMY_MIX[p.age];
+      const own2 = CIVS[p.civ]?.unique2;
+      const mix = [...ARMY_MIX[p.age], ...(own && UNITS[own].age <= p.age ? [own, own, own] : []), ...(own2 && UNITS[own2].age <= p.age ? [own2, own2] : [])];
       for (let k = 0; k < mix.length; k++) {
         const type = mix[(this.mixI + k) % mix.length];
         const def = UNITS[type];

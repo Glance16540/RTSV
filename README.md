@@ -34,12 +34,12 @@ technologies, and changes how your settlement looks.
 
 | People | Bonuses | Only they train |
 | --- | --- | --- |
-| Stonekin | Buildings +25% health, 25% faster building, towers shoot further | Shieldbearer: arrows do half damage |
-| Steppe Riders | Cavalry 15% cheaper and 10% faster | Lancer: a crushing first blow after a run-up |
-| Hearthfolk | Farms +25%, children 25% sooner, bigger houses | Hearthguard: fights harder near its own houses |
-| Forgeborn | Research 30% faster and 15% cheaper, tougher siege | Fire Thrower: scorches a group and sets buildings alight |
-| Dawn Court | Cheaper Shamans and Prophets, faster faith, stronger healing | Zealot: mends itself with every blow |
-| Wildborn | Game yields 50% more, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf |
+| Stonekin | Buildings +25% health, 25% faster building, towers shoot further | Shieldbearer: arrows do half damage; Trebuchet (Middle Ages): out-ranges every engine of its age |
+| Steppe Riders | Cavalry 15% cheaper and 10% faster | Lancer: a crushing first blow after a run-up; Horse Archer (Iron Age): shoots from the saddle |
+| Hearthfolk | Farms +25%, children 25% sooner, bigger houses | Hearthguard: fights harder near its own houses; Herbwife (Iron Age): quick, cheap healer |
+| Forgeborn | Research 30% faster and 15% cheaper, tougher siege | Fire Thrower: scorches a group and sets buildings alight; Organ Gun (Gunpowder Age): tears up packed infantry |
+| Dawn Court | Cheaper Shamans and Prophets, faster faith, stronger healing | Zealot: mends itself with every blow; Dawn Templar (Middle Ages): armoured horseman who does the same |
+| Wildborn | Game yields 50% more, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf; War Bear (Iron Age): strikes faster as it is wounded |
 
 **Generations.** Villagers grow old: after a long working life they slow down as elders and
 eventually die, so a village lasts only as long as its families keep raising children. A child of
@@ -178,7 +178,8 @@ neighbouring land.
   Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
   fought around a great lake with docks and ships. Build a Harbour on a coast and an army
   there can sail to any other coast in one march; troops landing from the sea fight at four-fifths
-  strength. Rivals build harbours and make landings too.
+  strength. Rivals build harbours and make landings too. Harbours are marked ⚓ on the map, and a coast of
+  yours within reach of a rival's harbour says so.
 - **The Warlord** marches with one army and adds to its strength. If that army is destroyed he
   falls with it, and a new one can be summoned at your capital.
 - **Battles.** When an army enters land held by someone else, fight it yourself as a real-time

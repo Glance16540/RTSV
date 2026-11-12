@@ -233,7 +233,7 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 #ow-dialog .levels button { margin-top: 12px; padding: 10px 18px; font-size: 16px; }
 @media (max-width: 760px) { #overworld { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } }
 #ow-sel .good, #ow-status .good { color: var(--good); }
-#ow-status .bad { color: #e0705a; }
+#ow-status .bad, #ow-sel .bad { color: #e0705a; }
 
 /* ---- Leaders ---- */
 .speech { display: flex; gap: 10px; align-items: flex-start; text-align: left; }

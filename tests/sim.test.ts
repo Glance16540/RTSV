@@ -5,7 +5,7 @@ import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
-import { CIV_COLOR, CIV_IDS } from '../src/sim/data';
+import { CIV_COLOR, CIV_IDS, CIVS, UNITS } from '../src/sim/data';
 import { advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
@@ -1755,5 +1755,39 @@ describe('ages on the campaign map', () => {
     const c = newCampaign(3, 2, 2);
     for (let i = 0; i < 40 && c.phase !== 'over'; i++) { endTurn(c); while (c.pending || c.demand) { if (c.demand) answerDemand(c, false); else resolvePending(c, 'auto'); continueAI(c); } }
     expect(c.factions.slice(1).some((f) => (f.age ?? 0) > 0)).toBe(true);
+  });
+});
+
+describe('second unique units', () => {
+  it('each people has a later unit of its own that only it can train, and that fights as described', () => {
+    const seen = new Set<string>();
+    for (const id of CIV_IDS) {
+      const u2 = CIVS[id].unique2;
+      expect(UNITS[u2].civ).toBe(id);
+      expect(UNITS[u2].age).toBeGreaterThan(UNITS[CIVS[id].unique].age);
+      expect(Object.values(BUILDINGS).some((b) => b.trains.includes(u2))).toBe(true);
+      seen.add(u2);
+    }
+    expect(seen.size).toBe(CIV_IDS.length);
+
+    const g = new Game(5, [{ name: 'A', color: 1, isAI: false, civ: 'steppe' }, { name: 'B', color: 2, isAI: false, civ: 'wild' }]);
+    const p = g.players[0];
+    p.age = 4; for (const r of ['food', 'wood', 'gold', 'stone'] as const) p.res[r] = 5000;
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    const stable = g.spawnBuilding('stable', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) + 6, true);
+    expect(g.cmdTrain(0, stable.id, 'horsearcher')).toBe(true);
+    expect(g.cmdTrain(0, stable.id, 'warbear')).toBe(false); // not theirs
+    // A horse archer shoots; a wounded war bear strikes faster; a herbwife heals.
+    const ha = g.spawnUnit('horsearcher', 0, 48, 48), dummy = g.spawnUnit('swordsman', 1, 52, 48);
+    dummy.stance = 'hold';
+    g.cmdTarget(0, [ha.id], dummy.id);
+    run(g, 4);
+    expect(dummy.hp).toBeLessThan(dummy.maxHp);
+    expect(Math.hypot(ha.x - dummy.x, ha.y - dummy.y)).toBeGreaterThan(2);
+    const hurt = g.spawnUnit('swordsman', 0, 40, 40);
+    hurt.hp = 20;
+    g.spawnUnit('herbwife', 0, 41, 40);
+    run(g, 4);
+    expect(hurt.hp).toBeGreaterThan(40);
   });
 });

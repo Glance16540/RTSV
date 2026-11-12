@@ -98,7 +98,7 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
 }
 
 const UNIT_HEIGHT: Record<string, number> = {
-  rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, wolfrider: 1.4, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
+  horsearcher: 1.45, templar: 1.5, warbear: 0.9, trebuchet: 1.6, organgun: 0.8, rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, wolfrider: 1.4, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
 };
 
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number): THREE.Group {
@@ -347,6 +347,83 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       box(g, 0.44, 0.1, 0.07, IRON, -0.05, 0.42, 0.21);
       const a = arm(g);
       box(a, 0.04, 0.05, 0.4, 0xd0d4da, 0, -0.26, 0.22);
+      break;
+    }
+    case 'horsearcher': {
+      horse(g, HORSE[(seed + 1) % HORSE.length]);
+      const r = new THREE.Group();
+      r.position.y = 0.42;
+      r.scale.setScalar(0.92);
+      humanoid(r, color, 0x5b4630, hair);
+      cyl(r, 0.14, 0.1, 0.1, 0x7a5a30, 0, 0.9, 0, 8);
+      const a = arm(r);
+      const bow = add(a, geo('bow', () => new THREE.TorusGeometry(0.24, 0.018, 4, 10, Math.PI)), WOOD, 0, -0.24, 0.22);
+      bow.rotation.set(0, Math.PI / 2, -Math.PI / 2);
+      box(r, 0.1, 0.3, 0.08, 0x6a4a2a, 0.06, 0.5, -0.14);
+      g.add(r);
+      g.userData.arm = a;
+      break;
+    }
+    case 'templar': {
+      horse(g, 0xd8d0c0, 0xe8c860);
+      const r = new THREE.Group();
+      r.position.y = 0.42;
+      r.scale.setScalar(0.95);
+      humanoid(r, 0xf0e8d0, 0x8a7a50, hair);
+      box(r, 0.32, 0.22, 0.2, 0xe8c860, 0, 0.6, 0);
+      box(r, 0.2, 0.16, 0.2, IRON, 0, 0.9, 0);
+      ball(r, 0.05, 0xffd060, 0, 1.02, 0, 0x886620);
+      box(r, 0.33, 0.06, 0.21, color, 0, 0.5, 0);
+      const a = arm(r);
+      box(a, 0.04, 0.04, 0.6, IRON, 0, -0.24, 0.34);
+      box(a, 0.16, 0.04, 0.04, 0xe8c860, 0, -0.24, 0.08);
+      g.add(r);
+      g.userData.arm = a;
+      break;
+    }
+    case 'warbear': {
+      const fur = 0x5a4030;
+      box(g, 0.46, 0.44, 0.9, fur, 0, 0.5, 0);
+      box(g, 0.4, 0.2, 0.4, 0x6a4c38, 0, 0.76, -0.1);
+      box(g, 0.3, 0.3, 0.3, fur, 0, 0.6, 0.58);
+      box(g, 0.16, 0.14, 0.16, 0x3a2a20, 0, 0.54, 0.78);
+      for (const x of [-0.11, 0.11]) box(g, 0.08, 0.08, 0.05, 0x3a2a20, x, 0.78, 0.5);
+      [[-0.16, 0.3], [0.16, 0.3], [-0.16, -0.3], [0.16, -0.3]].forEach(([x, z], i) => leg(g, 0.13, 0.32, 0x4a3426, x, z, i % 3 ? Math.PI : 0));
+      box(g, 0.48, 0.06, 0.3, color, 0, 0.74, -0.1);
+      break;
+    }
+    case 'herbwife': {
+      cyl(g, 0.1, 0.24, 0.58, 0x5a8a4a, 0, 0.29, 0, 10);
+      cyl(g, 0.2, 0.25, 0.12, color, 0, 0.07, 0, 10);
+      ball(g, 0.12, SKIN, 0, 0.7, 0);
+      box(g, 0.26, 0.1, 0.24, 0xe8e2d0, 0, 0.8, -0.02);
+      const a = arm(g);
+      box(a, 0.2, 0.14, 0.16, 0x9a7a4a, 0, -0.26, 0.14);
+      g.userData.glow = ball(a, 0.06, 0x9dff90, 0, -0.16, 0.14, 0x2f8a3a);
+      break;
+    }
+    case 'trebuchet': {
+      box(g, 0.9, 0.1, 1.3, DARKWOOD, 0, 0.16, 0);
+      for (const [x, z] of [[-0.45, 0.5], [0.45, 0.5], [-0.45, -0.5], [0.45, -0.5]]) { const w = cyl(g, 0.16, 0.16, 0.08, DARKWOOD, x, 0.16, z, 10); w.rotation.z = Math.PI / 2; }
+      for (const x of [-0.32, 0.32]) { box(g, 0.07, 1.1, 0.07, WOOD, x, 0.7, 0.2).rotation.x = 0.3; box(g, 0.07, 1.1, 0.07, WOOD, x, 0.7, -0.2).rotation.x = -0.3; }
+      box(g, 0.74, 0.07, 0.07, WOOD, 0, 1.2, 0);
+      const a = new THREE.Group();
+      a.position.set(0, 1.2, 0);
+      box(a, 0.07, 0.07, 1.7, WOOD, 0, 0, -0.45);
+      box(a, 0.3, 0.3, 0.3, 0x6a6a6a, 0, -0.2, 0.36);
+      box(a, 0.04, 0.3, 0.04, 0x8a7a5a, 0, -0.15, -1.28);
+      a.rotation.x = -0.5;
+      g.add(a);
+      g.userData.arm = a;
+      box(g, 0.92, 0.06, 0.2, color, 0, 0.24, -0.5);
+      break;
+    }
+    case 'organgun': {
+      box(g, 0.6, 0.1, 0.8, DARKWOOD, 0, 0.3, -0.05);
+      for (const x of [-0.36, 0.36]) { const w = cyl(g, 0.26, 0.26, 0.07, DARKWOOD, x, 0.26, 0, 12); w.rotation.z = Math.PI / 2; }
+      for (let i = 0; i < 5; i++) { const b = cyl(g, 0.035, 0.035, 0.7, IRON, -0.2 + i * 0.1, 0.42, 0.2, 6); b.rotation.x = Math.PI / 2 - 0.08; }
+      box(g, 0.56, 0.08, 0.1, 0x3a3a3a, 0, 0.4, -0.1);
+      box(g, 0.62, 0.06, 0.2, color, 0, 0.36, -0.35);
       break;
     }
     case 'lancer': {
