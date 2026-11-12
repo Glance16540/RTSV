@@ -176,7 +176,12 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 }
 .sheet button:hover { filter: brightness(1.1); }
 .sheet button.secondary { margin-top: 12px; padding: 7px 22px; font-size: 15px; background: none; color: var(--gold); border-color: var(--edge); }
-.started #continue-btn, .started #conquest-btn, .started #missions-btn, .started #missions { display: none; }
+.started #continue-btn, .started .mainplay, .started .skirmish-h, .started #missions-btn, .started #missions { display: none; }
+.mainplay { margin-top: 6px; padding-bottom: 16px; border-bottom: 1px solid #3c3122; }
+.mainplay button { margin-top: 14px; padding: 12px 56px; font-size: 20px; }
+.mainplay p { margin: 8px auto 0; max-width: 520px; color: var(--muted); font-size: 13px; }
+.sheet h3.skirmish-h { margin: 14px 0 0; text-align: center; }
+.sheet .levels .new { background: linear-gradient(#3a3024, #241d15); color: var(--gold); border-color: var(--edge); }
 #missions { display: grid; gap: 8px; margin: 12px auto 0; max-width: 640px; }
 #missions.hidden { display: none; }
 .sheet #missions button { margin: 0; padding: 10px 14px; text-align: left; font: inherit; color: var(--text); background: rgba(0, 0, 0, 0.3); border: 1px solid var(--edge); }
@@ -244,3 +249,5 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 .ow-side > * { flex: none; }
 .ow-side #ow-log { flex: 1 0 60px; }
 #ow-speech { min-height: 0; }
+.ow-side .hint { color: var(--muted); font-size: 13px; }
+#ow-status .hint { margin-top: 6px; }

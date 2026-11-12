@@ -35,6 +35,14 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `stonekin_ageup_2` | They advance to a new age | A new age. The same stone. |
 | `stonekin_wonder_1` | They complete a Wonder | There. Let the centuries argue with that. |
 | `stonekin_wonder_2` | They complete a Wonder | It is finished. It will be standing when your name is forgotten. |
+| `stonekin_truce_1` | They accept the player's offer of a truce | A wall between us, and peace on both sides of it. Agreed. |
+| `stonekin_truce_2` | They accept the player's offer of a truce | Good fences. I have always said so. |
+| `stonekin_refuse_1` | They turn down a truce | No. I have not yet decided what you are. |
+| `stonekin_refuse_2` | They turn down a truce | Peace is built slowly. You are in too much of a hurry. |
+| `stonekin_demand_1` | They demand tribute from the player | You are building on my doorstep. Pay for the stone, and I will overlook it. |
+| `stonekin_demand_2` | They demand tribute from the player | A toll. Everyone who crosses my land pays one. |
+| `stonekin_betray_1` | The player breaks a truce with them | You gave your word. I had it carved. Now I shall have to break the stone. |
+| `stonekin_betray_2` | The player breaks a truce with them | I do not forget. Ask the mountains. |
 
 ## Khatun Sarnai — Khatun of the Long Grass
 
@@ -60,6 +68,14 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `steppe_ageup_2` | They advance to a new age | The world changes. We simply get there first. |
 | `steppe_wonder_1` | They complete a Wonder | Even riders want one thing that stays where it is put. |
 | `steppe_wonder_2` | They complete a Wonder | Look at that. I may never leave. |
+| `steppe_truce_1` | They accept the player's offer of a truce | Why not? There are slower people to rob. |
+| `steppe_truce_2` | They accept the player's offer of a truce | A truce! How tame of us. Very well. |
+| `steppe_refuse_1` | They turn down a truce | Peace? I have only just saddled up. |
+| `steppe_refuse_2` | They turn down a truce | Ask me again when you can catch me. |
+| `steppe_demand_1` | They demand tribute from the player | Your herds are fat. Send me some and I ride past. |
+| `steppe_demand_2` | They demand tribute from the player | Pay me, and my riders will have somewhere else to be. |
+| `steppe_betray_1` | The player breaks a truce with them | Oh, well played. Now run. |
+| `steppe_betray_2` | The player breaks a truce with them | You broke faith first. Remember that when you hear the hooves. |
 
 ## Mother Elowen Marsh — Hearthmother of the Hearthfolk
 
@@ -85,6 +101,14 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `hearth_ageup_2` | They advance to a new age | A better age for our grandchildren. That was always the work. |
 | `hearth_wonder_1` | They complete a Wonder | Every family put a stone in that. Every one. |
 | `hearth_wonder_2` | They complete a Wonder | There now. Something for the children to be proud of. |
+| `hearth_truce_1` | They accept the player's offer of a truce | Thank you, dear. Let the children grow up without this. |
+| `hearth_truce_2` | They accept the player's offer of a truce | Peace. Come and eat with us, then. |
+| `hearth_refuse_1` | They turn down a truce | Not while my people are still burying theirs. |
+| `hearth_refuse_2` | They turn down a truce | I would like to, dear. I do not trust you yet. |
+| `hearth_demand_1` | They demand tribute from the player | We have had a hard winter and you have had a soft one. Share. |
+| `hearth_demand_2` | They demand tribute from the player | A little grain for my little ones. I am asking nicely. |
+| `hearth_betray_1` | The player breaks a truce with them | I fed your people at my table. Shame on you. |
+| `hearth_betray_2` | The player breaks a truce with them | You looked me in the eye and promised. Remember this, all of you. |
 
 ## Master Vex Calder — First Artificer of the Forgeborn
 
@@ -110,6 +134,14 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `forge_ageup_2` | They advance to a new age | New methods. Discard the old ones, they were embarrassing. |
 | `forge_wonder_1` | They complete a Wonder | It works. Of course it works. |
 | `forge_wonder_2` | They complete a Wonder | Observe. That is what thinking looks like when it is finished. |
+| `forge_truce_1` | They accept the player's offer of a truce | Agreed. I have experiments that war keeps interrupting. |
+| `forge_truce_2` | They accept the player's offer of a truce | A sensible arrangement. Sign here. And here. |
+| `forge_refuse_1` | They turn down a truce | The numbers do not favour it. For you, I mean. |
+| `forge_refuse_2` | They turn down a truce | No. I need to see how the engines perform against you. |
+| `forge_demand_1` | They demand tribute from the player | I require materials. You have them. This need not be complicated. |
+| `forge_demand_2` | They demand tribute from the player | Consider it funding. You will benefit eventually. Probably. |
+| `forge_betray_1` | The player breaks a truce with them | Dishonest. And worse, unpredictable. I shall correct for it. |
+| `forge_betray_2` | The player breaks a truce with them | I had you filed under reliable. My error. |
 
 ## High Seer Amaris — Voice of the Dawn Court
 
@@ -135,6 +167,14 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `dawn_ageup_2` | They advance to a new age | The age turns, as I said it would. |
 | `dawn_wonder_1` | They complete a Wonder | A house for the dawn itself. Now it will never leave us. |
 | `dawn_wonder_2` | They complete a Wonder | Look up. This is the shape of what is coming. |
+| `dawn_truce_1` | They accept the player's offer of a truce | Yes. I saw us at peace, for a while. |
+| `dawn_truce_2` | They accept the player's offer of a truce | The dawn smiles on this. So do I. |
+| `dawn_refuse_1` | They turn down a truce | I have seen where that road leads. No. |
+| `dawn_refuse_2` | They turn down a truce | It is not written. Not yet. |
+| `dawn_demand_1` | They demand tribute from the player | An offering is due. The dawn has shown me exactly how much. |
+| `dawn_demand_2` | They demand tribute from the player | Give, and be spared. I have seen what happens otherwise. |
+| `dawn_betray_1` | The player breaks a truce with them | I saw this as well. I prayed I was mistaken. |
+| `dawn_betray_2` | The player breaks a truce with them | Oathbreaker. Even the sun will turn its face from you. |
 
 ## Hroth Wolf-Father — First Hunter of the Wildborn
 
@@ -160,5 +200,13 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `wild_ageup_2` | They advance to a new age | The world grows. The hunt grows with it. |
 | `wild_wonder_1` | They complete a Wonder | A den for all the packs. Even I am surprised. |
 | `wild_wonder_2` | They complete a Wonder | We built that. Do not tell the wolves, they will think us soft. |
+| `wild_truce_1` | They accept the player's offer of a truce | Fine. The pack hunts elsewhere. For now. |
+| `wild_truce_2` | They accept the player's offer of a truce | We do not bite the hand. This season. |
+| `wild_refuse_1` | They turn down a truce | Wolves do not make treaties with sheep. |
+| `wild_refuse_2` | They turn down a truce | No. I like you better afraid. |
+| `wild_demand_1` | They demand tribute from the player | Leave meat at the forest edge. Or become it. |
+| `wild_demand_2` | They demand tribute from the player | The pack takes a share. You may choose which. |
+| `wild_betray_1` | The player breaks a truce with them | You bared your throat and then bit. I respect it. I will still kill you. |
+| `wild_betray_2` | The player breaks a truce with them | Now it is a blood debt. The wolves keep count. |
 
-108 lines in all.
+156 lines in all.

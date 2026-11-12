@@ -13,9 +13,13 @@ export type LeaderEvent =
   | 'eliminated' // their last land falls
   | 'battle' // a real-time match against them begins
   | 'ageup' // they advance an age
-  | 'wonder'; // they complete a Wonder
+  | 'wonder' // they complete a Wonder
+  | 'truce' // they accept the player's offer of a truce
+  | 'refuse' // they turn a truce down
+  | 'demand' // they demand tribute from the player
+  | 'betray'; // the player breaks a truce with them
 
-export const LEADER_EVENTS: LeaderEvent[] = ['intro', 'attack', 'defend', 'win', 'lose', 'eliminated', 'battle', 'ageup', 'wonder'];
+export const LEADER_EVENTS: LeaderEvent[] = ['intro', 'attack', 'defend', 'win', 'lose', 'eliminated', 'battle', 'ageup', 'wonder', 'truce', 'refuse', 'demand', 'betray'];
 export const EVENT_NOTES: Record<LeaderEvent, string> = {
   intro: 'First meeting on the campaign map',
   attack: "Marching on the player's land",
@@ -26,6 +30,10 @@ export const EVENT_NOTES: Record<LeaderEvent, string> = {
   battle: 'A real-time battle against them begins',
   ageup: 'They advance to a new age',
   wonder: 'They complete a Wonder',
+  truce: "They accept the player's offer of a truce",
+  refuse: 'They turn down a truce',
+  demand: 'They demand tribute from the player',
+  betray: 'The player breaks a truce with them',
 };
 
 export interface Leader {
@@ -52,6 +60,10 @@ export const LEADERS: Record<string, Leader> = {
       battle: ['Mark the lines and raise the walls. We are in no hurry.', 'Let them come to us. They always do.'],
       ageup: ['Slowly, slowly. And yet here we are.', 'A new age. The same stone.'],
       wonder: ['There. Let the centuries argue with that.', 'It is finished. It will be standing when your name is forgotten.'],
+      truce: ['A wall between us, and peace on both sides of it. Agreed.', 'Good fences. I have always said so.'],
+      refuse: ['No. I have not yet decided what you are.', 'Peace is built slowly. You are in too much of a hurry.'],
+      demand: ['You are building on my doorstep. Pay for the stone, and I will overlook it.', 'A toll. Everyone who crosses my land pays one.'],
+      betray: ['You gave your word. I had it carved. Now I shall have to break the stone.', 'I do not forget. Ask the mountains.'],
     },
   },
   steppe: {
@@ -67,6 +79,10 @@ export const LEADERS: Record<string, Leader> = {
       battle: ['Saddle up. I want to be home by dusk.', 'Ride them down before they have finished counting us.'],
       ageup: ['Faster horses, sharper lances. Keep up.', 'The world changes. We simply get there first.'],
       wonder: ['Even riders want one thing that stays where it is put.', 'Look at that. I may never leave.'],
+      truce: ['Why not? There are slower people to rob.', 'A truce! How tame of us. Very well.'],
+      refuse: ['Peace? I have only just saddled up.', 'Ask me again when you can catch me.'],
+      demand: ['Your herds are fat. Send me some and I ride past.', 'Pay me, and my riders will have somewhere else to be.'],
+      betray: ['Oh, well played. Now run.', 'You broke faith first. Remember that when you hear the hooves.'],
     },
   },
   hearth: {
@@ -82,6 +98,10 @@ export const LEADERS: Record<string, Leader> = {
       battle: ['Stay close to home and close to each other. That is how we win.', 'Bar the doors, light the fires. Nobody stands alone today.'],
       ageup: ['Look how the little ones have grown.', 'A better age for our grandchildren. That was always the work.'],
       wonder: ['Every family put a stone in that. Every one.', 'There now. Something for the children to be proud of.'],
+      truce: ['Thank you, dear. Let the children grow up without this.', 'Peace. Come and eat with us, then.'],
+      refuse: ['Not while my people are still burying theirs.', 'I would like to, dear. I do not trust you yet.'],
+      demand: ['We have had a hard winter and you have had a soft one. Share.', 'A little grain for my little ones. I am asking nicely.'],
+      betray: ['I fed your people at my table. Shame on you.', 'You looked me in the eye and promised. Remember this, all of you.'],
     },
   },
   forge: {
@@ -97,6 +117,10 @@ export const LEADERS: Record<string, Leader> = {
       battle: ['Engines to the front. Try to bring some of them back.', 'Begin. And somebody keep a tally, I want numbers afterwards.'],
       ageup: ['Finally. I have been waiting for the rest of you to catch up.', 'New methods. Discard the old ones, they were embarrassing.'],
       wonder: ['It works. Of course it works.', 'Observe. That is what thinking looks like when it is finished.'],
+      truce: ['Agreed. I have experiments that war keeps interrupting.', 'A sensible arrangement. Sign here. And here.'],
+      refuse: ['The numbers do not favour it. For you, I mean.', 'No. I need to see how the engines perform against you.'],
+      demand: ['I require materials. You have them. This need not be complicated.', 'Consider it funding. You will benefit eventually. Probably.'],
+      betray: ['Dishonest. And worse, unpredictable. I shall correct for it.', 'I had you filed under reliable. My error.'],
     },
   },
   dawn: {
@@ -112,6 +136,10 @@ export const LEADERS: Record<string, Leader> = {
       battle: ['Kneel, then rise. The dawn is with us.', 'Go forward without fear. I have seen who is standing at dusk.'],
       ageup: ['A new sun rises on us.', 'The age turns, as I said it would.'],
       wonder: ['A house for the dawn itself. Now it will never leave us.', 'Look up. This is the shape of what is coming.'],
+      truce: ['Yes. I saw us at peace, for a while.', 'The dawn smiles on this. So do I.'],
+      refuse: ['I have seen where that road leads. No.', 'It is not written. Not yet.'],
+      demand: ['An offering is due. The dawn has shown me exactly how much.', 'Give, and be spared. I have seen what happens otherwise.'],
+      betray: ['I saw this as well. I prayed I was mistaken.', 'Oathbreaker. Even the sun will turn its face from you.'],
     },
   },
   wild: {
@@ -127,6 +155,10 @@ export const LEADERS: Record<string, Leader> = {
       battle: ['Loose the hounds. Follow the blood.', 'No walls. No waiting. Hunt.'],
       ageup: ['Sharper teeth.', 'The world grows. The hunt grows with it.'],
       wonder: ['A den for all the packs. Even I am surprised.', 'We built that. Do not tell the wolves, they will think us soft.'],
+      truce: ['Fine. The pack hunts elsewhere. For now.', 'We do not bite the hand. This season.'],
+      refuse: ['Wolves do not make treaties with sheep.', 'No. I like you better afraid.'],
+      demand: ['Leave meat at the forest edge. Or become it.', 'The pack takes a share. You may choose which.'],
+      betray: ['You bared your throat and then bit. I respect it. I will still kill you.', 'Now it is a blood debt. The wolves keep count.'],
     },
   },
 };

@@ -6,7 +6,7 @@ import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS } from '../src/sim/data';
-import { armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { answerDemand, atTruce, offerTruce, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -704,7 +704,7 @@ describe('conquest campaign', () => {
         l.lines[ev].forEach((_, i) => keys.add(lineKey(l.civ, ev, i)));
       }
     }
-    expect(keys.size).toBe(108);
+    expect(keys.size).toBe(156);
     expect(keys.has('steppe_attack_2')).toBe(true);
     // In a campaign: the player attacks a rival, wins, and finally wipes them out.
     const c = newCampaign(7, 1);
@@ -792,7 +792,7 @@ describe('conquest campaign', () => {
     // Storming fortified land.
     const foe = c.territories.find((t) => t.capital === 1)!;
     foe.buildings.push('fortress');
-    expect(defence(c, foe.id)).toBe(5 + 1 + 3);
+    expect(defence(c, foe.id)).toBe(5 + 1 + (c.factions[1].civ === 'stonekin' ? 4 : 3));
     const raiders = { id: 99, owner: 0, at: foe.adj[0], units: { cavalry: 6 }, hero: false, vet: 2, moved: false };
     c.territories[foe.adj[0]].owner = 0;
     c.armies = c.armies.filter((a) => a.at !== foe.adj[0]);
@@ -817,7 +817,8 @@ describe('conquest campaign', () => {
     const c = newCampaign(3, 2, 2);
     let guard = 0;
     while (c.phase !== 'over' && guard++ < 400) {
-      if (c.pending) resolvePending(c, 'auto'); // the player never fights in person here
+      if (c.demand) answerDemand(c, false);
+      else if (c.pending) resolvePending(c, 'auto'); // the player never fights in person here
       else if (c.phase === 'player') endTurn(c);
       else continueAI(c);
     }
@@ -1186,5 +1187,108 @@ describe('dawn court and wildborn', () => {
     expect(friend.hp).toBe(friend.maxHp);
     expect(guard.order).toBe(null);
     expect(stranger.hp < stranger.maxHp || stranger.dead).toBe(true);
+  });
+});
+
+describe('campaign diplomacy and peoples', () => {
+  it('each people has its own edge on the map', () => {
+    const land = newCampaign(7).territories.find((t) => t.capital < 0 && t.trait !== 'horses')!;
+    expect(siteCost(land, 'fortress', 'stonekin')).toBe(5);
+    expect(siteCost(land, 'fortress', 'forge')).toBe(8);
+    expect(siteCost(land, 'fortress', 'hearth')).toBe(9);
+    expect(companyCost(land, 'cavalry', 'steppe')).toBe(3);
+    expect(companyCost(land, 'cavalry', 'wild')).toBe(4);
+    expect(heroCost('dawn')).toBe(4);
+    const farm = { ...land, buildings: ['farm'], trait: '' };
+    expect(territoryIncome(farm, 'hearth')).toBe(territoryIncome(farm, 'forge') + 1);
+    expect(Object.keys(CAMPAIGN_EDGE).sort()).toEqual(CIV_IDS.slice().sort());
+    expect(Object.keys(PERSONA).sort()).toEqual(CIV_IDS.slice().sort());
+    // Dawn Court attackers cancel the defender's home advantage.
+    const dawn = newCampaign(7, 1, 1, 'dawn'), other = newCampaign(7, 1, 1, 'forge');
+    expect(homeEdge(dawn, 0)).toBe(1);
+    expect(homeEdge(other, 0)).toBe(1.1);
+    // Steppe armies may march twice through their own land.
+    const st = newCampaign(7, 1, 1, 'steppe');
+    const home = st.territories.find((t) => t.capital === 0)!;
+    const a = st.territories[home.adj[0]], army = armyAt(st, home.id)!;
+    a.owner = 0;
+    expect(moveArmy(st, army.id, a.id)).toBe('moved');
+    expect(army.moved).toBe(false);
+    expect(moveArmy(st, army.id, home.id)).toBe('moved');
+    expect(army.moved).toBe(true);
+  });
+
+  it('truces are offered, kept by rivals and can be broken by the player at a price', () => {
+    // Find a campaign where the rival is open to peace.
+    let c = newCampaign(1, 1);
+    for (let seed = 1; seed < 60; seed++) {
+      c = newCampaign(seed, 1);
+      c.speech.length = 0;
+      c.factions[0].supplies = 20;
+      c.armies.find((x) => x.owner === 0)!.units.infantry = 9; // strength makes them listen
+      if (offerTruce(c, 1)) break;
+      expect(c.speech[0].event).toBe('refuse');
+      expect(c.factions[0].supplies).toBe(20); // a refusal costs nothing
+    }
+    expect(atTruce(c, 0, 1)).toBe(true);
+    expect(c.factions[0].supplies).toBe(20 - TRUCE_COST);
+    expect(c.speech[0].event).toBe('truce');
+    expect(offerTruce(c, 1)).toBe(false); // already at truce
+    // The rival will not march on us while it lasts, however strong it is.
+    const myCap = c.territories.find((t) => t.capital === 0)!;
+    const beside = c.territories[myCap.adj[0]];
+    beside.owner = 1;
+    c.armies = c.armies.filter((x) => x.at !== beside.id);
+    c.armies.push({ id: 90, owner: 1, at: beside.id, units: { cavalry: 12 }, hero: false, vet: 0, moved: false });
+    expect(moveArmy(c, 90, myCap.id)).toBe('invalid');
+    // Breaking it ourselves is allowed, is remembered, and is answered.
+    c.speech.length = 0;
+    const mine = armyAt(c, myCap.id)!;
+    expect(moveArmy(c, mine.id, beside.id)).toBe('battle');
+    expect(atTruce(c, 0, 1)).toBe(false);
+    expect(c.honor).toBe(-1);
+    expect(c.speech.map((sp) => sp.event)).toEqual(['betray']);
+    resolvePending(c, 'defender');
+    c.factions[0].supplies = 20;
+    expect(offerTruce(c, 1)).toBe(false); // nobody trusts an oathbreaker
+  });
+
+  it('a stronger, greedy neighbour demands tribute, and the answer matters', () => {
+    const setup = () => {
+      const c = newCampaign(5, 1, 1, 'hearth');
+      c.factions[1].civ = 'wild'; // the greediest leader
+      c.turn = 6;
+      const myCap = c.territories.find((t) => t.capital === 0)!;
+      const beside = c.territories[myCap.adj[0]];
+      beside.owner = 1;
+      c.armies = c.armies.filter((x) => x.at !== beside.id);
+      c.armies.push({ id: 91, owner: 1, at: beside.id, units: { cavalry: 12 }, hero: false, vet: 0, moved: false });
+      c.factions[0].supplies = 20;
+      return c;
+    };
+    let c = setup();
+    let asked = false;
+    for (let i = 0; i < 40 && !asked; i++) {
+      c = setup();
+      c.rngState = i * 7919;
+      endTurn(c);
+      asked = !!c.demand;
+    }
+    expect(asked).toBe(true);
+    expect(c.phase).toBe('ai'); // the rivals wait for an answer
+    expect(c.speech.some((sp) => sp.event === 'demand')).toBe(true);
+    const amount = c.demand!.amount, theirs = c.factions[1].supplies;
+    const paid = JSON.parse(JSON.stringify(c));
+    answerDemand(paid, true);
+    expect(paid.factions[0].supplies).toBe(20 - amount);
+    expect(paid.factions[1].supplies).toBe(theirs + amount);
+    expect(atTruce(paid, 0, 1)).toBe(true);
+    continueAI(paid);
+    expect(paid.pending).toBe(null); // bought off: no attack
+    answerDemand(c, false);
+    expect(c.factions[1].angry).toBe(true);
+    continueAI(c);
+    expect(c.pending?.attacker).toBe(1); // refused: they come at once
+    expect(totalStrength(c, 1)).toBeGreaterThan(totalStrength(c, 0));
   });
 });

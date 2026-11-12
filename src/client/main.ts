@@ -165,7 +165,9 @@ const boot = (() => {
     return null;
   }
 })();
-const params = new URLSearchParams(boot ?? location.search);
+// With nothing in the address, a refresh returns to whatever was open (the campaign map, a mission).
+const sticky = (() => { try { return sessionStorage.getItem('rtsv-mode'); } catch { return null; } })();
+const params = new URLSearchParams(boot ?? (location.search || sticky || ''));
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
 /** skirmish: a single match. campaign: the Conquest map. battle: a Conquest battle fought in real time. */
 const mode = params.has('battle') ? 'battle' : params.has('campaign') ? 'campaign' : missionById(params.get('mission') ?? '') ? 'mission' : 'skirmish';
@@ -195,6 +197,7 @@ const writeCampaign = (c: Campaign) => { try { localStorage.setItem(CAMPAIGN_KEY
 const go = (query: string) => {
   try {
     sessionStorage.setItem('rtsv-boot', query);
+    sessionStorage.setItem('rtsv-mode', query);
     location.reload();
   } catch {
     location.href = location.pathname + query;
@@ -256,6 +259,7 @@ loadAssets().then(() => {
   teamSel.addEventListener('change', regenerate);
   sizeSel.addEventListener('change', regenerate);
   aiSel.addEventListener('change', regenerate);
+  if (mode === 'skirmish' && readCampaign()) el('conquest-btn').textContent = 'Continue the campaign';
   el('conquest-btn').addEventListener('click', () => go(`?campaign=1&ai=${aiSel.value}&civ=${(el('civ') as HTMLSelectElement).value}`));
 
   const app = new App(game);

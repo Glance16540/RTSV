@@ -4,7 +4,7 @@ import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
 import {
-  Army, COMPANIES, Campaign, HERO_COST, LOCALS, MAP_H, MAP_W, SITES, TRAITS, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, TRAITS, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
   canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
 } from '../sim/campaign';
 
@@ -47,6 +47,7 @@ export class Overworld {
       if (kind === 'raise') raise(this.c, 0, this.sel, id);
       if (kind === 'build') build(this.c, 0, this.sel, id);
       if (kind === 'hero') summonHero(this.c, 0, this.sel);
+      if (kind === 'truce') offerTruce(this.c, Number(id));
       this.changed();
     });
     $('ow-end').addEventListener('click', () => {
@@ -63,7 +64,10 @@ export class Overworld {
   /** Show the next thing a leader has said, once the last has had its moment. */
   private nextSpeech(): void {
     if (Date.now() < this.speakT) return;
-    const s = this.c.speech.shift();
+    // An answer to something the player just did comes before any introductions still waiting.
+    const q = this.c.speech;
+    const at = Math.max(0, q.findIndex((x) => x.event !== 'intro'));
+    const s = q.splice(at, 1)[0];
     if (!s) return;
     this.speaking = s;
     this.speakT = Date.now() + 4500;
@@ -83,7 +87,8 @@ export class Overworld {
       this.dialog(c.winner === 0 ? 'The land is yours' : 'Your people are conquered',
         c.winner === 0 ? `Every rival has fallen. It took ${c.turn} turns.` : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`,
         [['New campaign', () => this.askNew()], ['Main menu', () => this.hooks.exit()]]);
-    } else if (c.pending) this.askBattle();
+    } else if (c.demand) this.askDemand();
+    else if (c.pending) this.askBattle();
     else $('ow-dialog').classList.add('hidden');
   }
 
@@ -92,9 +97,16 @@ export class Overworld {
     if (c.phase !== 'player' || c.pending) return;
     const army = armyAt(c, this.sel);
     if (army && army.owner === 0 && !army.moved && tid !== this.sel && c.territories[this.sel].adj.includes(tid)) {
-      moveArmy(c, army.id, tid);
-      if (!c.pending) this.sel = tid; // marched into friendly land
-      this.changed();
+      const march = () => {
+        moveArmy(c, army.id, tid);
+        if (!c.pending) this.sel = tid; // marched into friendly land
+        this.changed();
+      };
+      const owner = c.territories[tid].owner;
+      if (atTruce(c, 0, owner)) {
+        this.dialog(`Break your truce with ${c.factions[owner].name}?`, 'Marching on their land ends the truce at once. No rival will agree to another with an oathbreaker.',
+          [['March anyway', march], ['Keep the peace', () => this.changed()]]);
+      } else march();
       return;
     }
     this.sel = tid;
@@ -127,15 +139,29 @@ export class Overworld {
     };
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
       (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
-        (battleConfig(c)!.setups.length > 2 ? ' Armies from neighbouring land will join the battle.' : '') + ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr) : 1 - winChance(p.aStr, p.dStr)) * 100)} times in 100.`,
+        (battleConfig(c)!.setups.length > 2 ? ' Armies from neighbouring land will join the battle.' : '') + ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr, homeEdge(c, p.attacker)) : 1 - winChance(p.aStr, p.dStr, homeEdge(c, p.attacker))) * 100)} times in 100.`,
       [['Fight the battle', () => this.hooks.fight()], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);
   }
 
+  private askDemand(): void {
+    const c = this.c, d = c.demand!;
+    const fac = c.factions[d.from];
+    const answer = (pay: boolean) => {
+      answerDemand(c, pay);
+      if (c.phase === 'ai') continueAI(c);
+      this.changed();
+    };
+    const canPay = c.factions[0].supplies >= d.amount;
+    this.dialog(`${LEADERS[fac.civ].name} demands tribute`,
+      `${fac.name} want ${d.amount} supplies. Pay, and they will leave you alone for four turns. Refuse, and they will come for you at once if they think they can win.` + (canPay ? '' : ' You do not have enough to pay.'),
+      [...(canPay ? [[`Pay ${d.amount} supplies`, () => answer(true)] as [string, () => void]] : []), ['Refuse', () => answer(false)]]);
+  }
+
   private askNew(): void {
     const el = $('ow-dialog');
-    el.innerHTML = `<div class="sheet small"><h1>New campaign</h1><p class="lead">This replaces the campaign in progress.</p>
+    el.innerHTML = `<div class="sheet small"><h1>New campaign</h1><p class="lead">A new world, new rivals. This replaces the campaign in progress.</p>
       <label class="mapsize">Rivals <select id="ow-rivals"><option>1</option><option selected>2</option><option>3</option></select></label>
       <label class="mapsize">Your people <select id="ow-civ"><option value="">Surprise me</option>${CIV_IDS.map((id) => `<option value="${id}">${CIVS[id].icon} ${CIVS[id].name}</option>`).join('')}</select></label>
       <label class="mapsize">Difficulty <select id="ow-level"><option value="0">Easy</option><option value="1" selected>Normal</option><option value="2">Hard</option></select></label>
@@ -143,6 +169,14 @@ export class Overworld {
     el.classList.remove('hidden');
     $('ow-go').addEventListener('click', () => this.hooks.newCampaign(Number(($('ow-rivals') as HTMLSelectElement).value), Number(($('ow-level') as HTMLSelectElement).value), ($('ow-civ') as HTMLSelectElement).value));
     $('ow-cancel').addEventListener('click', () => this.changed());
+    const edge = document.createElement('p');
+    edge.className = 'lead';
+    edge.style.fontSize = '13px';
+    el.querySelector('.levels')!.before(edge);
+    const civSel = $('ow-civ') as HTMLSelectElement;
+    const show = () => { edge.textContent = civSel.value ? `${CIVS[civSel.value].name}: ${CAMPAIGN_EDGE[civSel.value]}` : ''; };
+    civSel.addEventListener('change', show);
+    show();
   }
 
   // ---- Drawing ----
@@ -228,11 +262,12 @@ export class Overworld {
     const a = armyAt(c, this.sel);
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
-      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${f.isAI ? ` <small>${LEADERS[f.civ].name}</small>` : ''}</span>`).join('') + '</div>';
+      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${f.isAI ? ` <small>${LEADERS[f.civ].name}${atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
+      `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>`;
     const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ' · ♛ Warlord' : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
-      <div>Income ${territoryIncome(t)} · Defence ${defence(c, t.id)}</div>
+      <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '')} · Defence ${defence(c, t.id)}</div>
       ${t.trait ? `<div class="good">${TRAITS[t.trait].icon} ${TRAITS[t.trait].name}: ${TRAITS[t.trait].desc}</div>` : ''}
       <div>${t.buildings.map((b) => `${SITES[b].icon} ${SITES[b].name}`).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>
       ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
@@ -240,12 +275,16 @@ export class Overworld {
     const btn = (act: string, label: string, cost: number, ok: boolean, tip = '') => `<button data-act="${act}" title="${tip}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label} <small>${cost}</small></button>`;
     let html = '';
     if (t.owner === 0) {
-      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
-      if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Summon a new Warlord', HERO_COST, canSummonHero(c, 0, t.id), 'Needs an army in your capital');
-      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k)) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k), canBuild(c, 0, t.id, k), d.desc);
+      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
+      if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Summon a new Warlord', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital');
+      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k)) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
+    } else if (t.owner > 0 && c.factions[t.owner].alive) {
+      const truce = c.truces.find((x) => x.with === t.owner);
+      if (truce) html += `<div class="hint">🕊️ At truce with ${c.factions[t.owner].name} until turn ${truce.until}.</div>`;
+      else html += btn('truce:' + t.owner, `🕊️ Offer ${LEADERS[c.factions[t.owner].civ].name} a truce`, TRUCE_COST, me.supplies >= TRUCE_COST, c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts six turns.');
     }
     $('ow-actions').innerHTML = html;
-    ($('ow-end') as HTMLButtonElement).disabled = c.phase !== 'player' || !!c.pending;
+    ($('ow-end') as HTMLButtonElement).disabled = c.phase !== 'player' || !!c.pending || !!c.demand;
     $('ow-log').innerHTML = c.log.slice(-7).reverse().map((l) => `<div>${l}</div>`).join('');
   }
 }

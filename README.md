@@ -134,6 +134,12 @@ neighbouring land.
   march, when battles are won and lost, and when they fall. All 108 lines are written and shown
   on screen; recordings dropped into `public/assets/voice/` are played automatically. See
   [docs/VOICE_SCRIPT.md](docs/VOICE_SCRIPT.md) for every line, its filename and voice direction.
+- **Diplomacy.** Offer a rival a truce; whether they accept depends on their leader's temper,
+  who is stronger and whether you have kept your word before. Rivals keep a truce. You may break
+  one, but no leader will make another with an oathbreaker. A stronger, greedy neighbour may demand
+  tribute: pay and be left alone for a while, or refuse and be attacked.
+- **Each people plays differently on the map**, and each leader has a temperament: some are
+  cautious builders, some raid at poor odds, some are quick to make peace.
 - **Buildings.** Each territory has three slots (four in a capital): Farmland for income, a
   Barracks, Archery Range or Stable to raise troops there, and a Fortress for defence.
 - **Armies** are made of companies of infantry, archers and cavalry, up to twelve. Cavalry

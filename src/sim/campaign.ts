@@ -7,7 +7,7 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 
 export const MAP_W = 1000;
 export const MAP_H = 600;
-export const CAMPAIGN_VERSION = 4;
+export const CAMPAIGN_VERSION = 5;
 
 export const MAX_ARMY = 12; // companies in one army
 export const HERO_COST = 8;
@@ -44,10 +44,42 @@ export const TRAITS: Record<string, TraitDef> = {
   hills: { name: 'High ground', icon: '⛰️', desc: '+2 defence.' },
   horses: { name: 'Horse plains', icon: '🐎', desc: 'Stables and cavalry cost less here.' },
 };
-export const siteCost = (t: Territory, site: string): number => SITES[site].cost - (site === 'stable' && t.trait === 'horses' ? 2 : 0);
-export const companyCost = (t: Territory, type: string): number => COMPANIES[type].cost - (type === 'cavalry' && t.trait === 'horses' ? 1 : 0);
+/** What sets each people apart on the campaign map. */
+export const CAMPAIGN_EDGE: Record<string, string> = {
+  stonekin: 'Fortresses cost 5 instead of 9 and add 4 defence instead of 3.',
+  steppe: 'Cavalry costs 1 less, and an army that marches into friendly land may march again.',
+  hearth: 'Farmland yields 1 more, and so does the capital.',
+  forge: 'Every building costs 1 less.',
+  dawn: 'A new Warlord costs half, and attacks ignore the defender\'s home advantage.',
+  wild: 'Local tribes fight them at 1 less, and taking their land brings 2 supplies of plunder.',
+};
 
-export interface Faction { id: number; name: string; civ: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean }
+/** How each leader plays: caution in attack, taste for forts and farms, openness to peace, and greed. */
+export const PERSONA: Record<string, { margin: number; fort: number; farm: number; peace: number; greed: number }> = {
+  stonekin: { margin: 1, fort: 0.6, farm: 0.5, peace: 0.6, greed: 0.1 },
+  steppe: { margin: -1, fort: 0.1, farm: 0.3, peace: 0.25, greed: 0.35 },
+  hearth: { margin: 1, fort: 0.3, farm: 0.8, peace: 0.75, greed: 0.05 },
+  forge: { margin: 0, fort: 0.3, farm: 0.5, peace: 0.45, greed: 0.2 },
+  dawn: { margin: 0, fort: 0.2, farm: 0.5, peace: 0.5, greed: 0.25 },
+  wild: { margin: -1, fort: 0.05, farm: 0.3, peace: 0.2, greed: 0.4 },
+};
+export const TRUCE_COST = 3;
+export const TRUCE_TURNS = 6;
+
+export function siteCost(t: Territory, site: string, civ = ''): number {
+  if (site === 'fortress' && civ === 'stonekin') return 5;
+  return Math.max(2, SITES[site].cost - (site === 'stable' && t.trait === 'horses' ? 2 : 0) - (civ === 'forge' ? 1 : 0));
+}
+export function companyCost(t: Territory, type: string, civ = ''): number {
+  return Math.max(1, COMPANIES[type].cost - (type === 'cavalry' && t.trait === 'horses' ? 1 : 0) - (type === 'cavalry' && civ === 'steppe' ? 1 : 0));
+}
+export const heroCost = (civ: string): number => (civ === 'dawn' ? HERO_COST / 2 : HERO_COST);
+
+export interface Faction {
+  id: number; name: string; civ: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean;
+  lastDemand: number; // turn this rival last demanded tribute
+  angry: boolean; // refused: will attack the player at worse odds this turn
+}
 
 export interface Territory {
   id: number;
@@ -69,6 +101,7 @@ export interface Army {
   at: number;
   units: Record<string, number>; // companies by type
   hero: boolean; // the faction's Warlord marches with this army
+  marched?: boolean; // has already made its extra march this turn (Steppe Riders)
   vet: number; // battles won, up to MAX_VETERAN: +1 strength each
   moved: boolean;
 }
@@ -102,6 +135,12 @@ export interface Campaign {
   log: string[];
   /** Things rival leaders have said that the player has not yet been shown. */
   speech: Speech[];
+  /** Truces between the player and rivals: neither side may attack the other until the turn given. */
+  truces: { with: number; until: number }[];
+  /** Falls when the player breaks a truce; rivals will not deal with a known oathbreaker. */
+  honor: number;
+  /** A rival's demand for tribute, waiting for the player's answer. */
+  demand: { from: number; amount: number } | null;
 }
 
 const NAMES = [
@@ -145,7 +184,7 @@ export function territoryAt(ts: { x: number; y: number }[], px: number, py: numb
 export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: string): Campaign {
   const c: Campaign = {
     v: CAMPAIGN_VERSION, seed, rngState: seed >>> 0, level, turn: 1, phase: 'player', cursor: 0, spent: false,
-    factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [],
+    factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [], truces: [], honor: 0, demand: null,
   };
   const pick = <T>(list: T[]): T => list.splice(Math.floor(rand(c) * list.length), 1)[0];
   const [cols, rows] = pick([[4, 3], [5, 3], [5, 3], [6, 3], [5, 4], [6, 4]]);
@@ -198,7 +237,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     homes.push(best);
   }
   civs.forEach((civ, f) => {
-    c.factions.push({ id: f, name: f === 0 ? 'You' : CIVS[civ].name, civ, color: CIV_COLOR[civ], isAI: f > 0, supplies: 8, alive: true, heroAlive: true });
+    c.factions.push({ id: f, name: f === 0 ? 'You' : CIVS[civ].name, civ, color: CIV_COLOR[civ], isAI: f > 0, supplies: 8, alive: true, heroAlive: true, lastDemand: 0, angry: false });
     const t = c.territories[homes[f]];
     t.owner = f;
     t.capital = f;
@@ -230,11 +269,13 @@ export const armyStrength = (a: Army): number => strengthVs(a);
 
 export function income(c: Campaign, f: number): number {
   let n = 0;
-  for (const t of c.territories) if (t.owner === f) n += territoryIncome(t);
+  for (const t of c.territories) if (t.owner === f) n += territoryIncome(t, c.factions[f].civ);
   return n;
 }
-export const territoryIncome = (t: Territory): number =>
-  2 + (t.buildings.includes('farm') ? (t.trait === 'fertile' ? 4 : 2) : 0) + (t.capital >= 0 ? 2 : 0) + (t.trait === 'gold' ? 3 : 0);
+export function territoryIncome(t: Territory, civ = ''): number {
+  const hearth = civ === 'hearth' ? 1 : 0;
+  return 2 + (t.buildings.includes('farm') ? (t.trait === 'fertile' ? 4 : 2) + hearth : 0) + (t.capital >= 0 ? 2 + hearth : 0) + (t.trait === 'gold' ? 3 : 0);
+}
 
 /** The companies an attacker would face in a territory. Locals and town guards fight as infantry. */
 export function defenders(c: Campaign, tid: number): Record<string, number> {
@@ -245,42 +286,50 @@ export function defenders(c: Campaign, tid: number): Record<string, number> {
 }
 
 /** Everything that defends a territory, optionally against a particular mix of attackers. */
-export function defence(c: Campaign, tid: number, vs: Record<string, number> = {}): number {
+export function defence(c: Campaign, tid: number, vs: Record<string, number> = {}, attackerCiv = ''): number {
   const t = c.territories[tid];
   const ground = t.trait === 'hills' ? 2 : 0;
-  if (t.owner < 0) return t.militia + ground;
+  if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs) : 0) + 1 + (t.buildings.includes('fortress') ? 3 : 0) + ground) * 10) / 10;
+  const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs) : 0) + 1 + fort + ground) * 10) / 10;
 }
 
+/** True while the player and a rival are bound by a truce. */
+export function atTruce(c: Campaign, a: number, b: number): boolean {
+  const other = a === 0 ? b : b === 0 ? a : -1;
+  return other > 0 && c.truces.some((t) => t.with === other && t.until >= c.turn);
+}
+export const totalStrength = (c: Campaign, f: number): number => c.armies.filter((a) => a.owner === f).reduce((n, a) => n + armyStrength(a), 0);
+
 /** Chance (0..1) that the attacker wins an auto-resolved battle at these strengths. */
-export function winChance(aStr: number, dStr: number): number {
+export function winChance(aStr: number, dStr: number, home = 1.1): number {
   let wins = 0;
   const n = 24;
   for (let i = 0; i < n; i++)
-    for (let j = 0; j < n; j++) if (aStr * (0.75 + (0.5 * i) / (n - 1)) > dStr * 1.1 * (0.75 + (0.5 * j) / (n - 1))) wins++;
+    for (let j = 0; j < n; j++) if (aStr * (0.75 + (0.5 * i) / (n - 1)) > dStr * home * (0.75 + (0.5 * j) / (n - 1))) wins++;
   return wins / (n * n);
 }
 
 export function canBuild(c: Campaign, f: number, tid: number, site: string): boolean {
   const t = c.territories[tid];
-  return t.owner === f && !!SITES[site] && !t.buildings.includes(site) && t.buildings.length < slots(t) && c.factions[f].supplies >= siteCost(t, site);
+  return t.owner === f && !!SITES[site] && !t.buildings.includes(site) && t.buildings.length < slots(t) && c.factions[f].supplies >= siteCost(t, site, c.factions[f].civ);
 }
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && c.factions[f].supplies >= companyCost(t, type) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
+  return t.owner === f && !!def && t.buildings.includes(def.needs) && c.factions[f].supplies >= companyCost(t, type, c.factions[f].civ) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
   const a = armyAt(c, tid);
-  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && c.factions[f].supplies >= HERO_COST;
+  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && c.factions[f].supplies >= heroCost(c.factions[f].civ);
 }
 
 // ---- Actions ----
 
 export function build(c: Campaign, f: number, tid: number, site: string): boolean {
   if (!canBuild(c, f, tid, site)) return false;
-  c.factions[f].supplies -= siteCost(c.territories[tid], site);
+  c.factions[f].supplies -= siteCost(c.territories[tid], site, c.factions[f].civ);
   c.territories[tid].buildings.push(site);
   return true;
 }
@@ -288,7 +337,7 @@ export function build(c: Campaign, f: number, tid: number, site: string): boolea
 /** Raise one company. It joins the army standing in the territory, or forms a new one. */
 export function raise(c: Campaign, f: number, tid: number, type: string): boolean {
   if (!canRaise(c, f, tid, type)) return false;
-  c.factions[f].supplies -= companyCost(c.territories[tid], type);
+  c.factions[f].supplies -= companyCost(c.territories[tid], type, c.factions[f].civ);
   let a = armyAt(c, tid);
   if (!a) {
     a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, vet: 0, moved: true }; // fresh troops march next turn
@@ -300,7 +349,7 @@ export function raise(c: Campaign, f: number, tid: number, type: string): boolea
 
 export function summonHero(c: Campaign, f: number, tid: number): boolean {
   if (!canSummonHero(c, f, tid)) return false;
-  c.factions[f].supplies -= HERO_COST;
+  c.factions[f].supplies -= heroCost(c.factions[f].civ);
   c.factions[f].heroAlive = true;
   armyAt(c, tid)!.hero = true;
   return true;
@@ -330,11 +379,14 @@ const fname = (c: Campaign, f: number, start = false) =>
  */
 export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'battle' | 'invalid' {
   const a = c.armies.find((x) => x.id === armyId);
-  if (!a || a.moved || c.pending || !c.territories[a.at].adj.includes(to)) return 'invalid';
+  if (!a || a.moved || c.pending || c.demand || !c.territories[a.at].adj.includes(to)) return 'invalid';
   const t = c.territories[to];
+  const civ = c.factions[a.owner].civ;
   if (t.owner === a.owner) {
     const other = armyAt(c, to);
-    a.moved = true;
+    // Steppe Riders cover ground: one march through friendly land does not end an army's turn.
+    if (civ === 'steppe' && !a.marched) a.marched = true;
+    else a.moved = true;
     if (other) {
       // Two friendly armies become one; companies over the limit stay behind.
       for (const type of Object.keys(a.units)) {
@@ -343,21 +395,30 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
       }
       if (a.hero) { other.hero = true; a.hero = false; }
       other.vet = Math.max(other.vet, a.vet);
+      other.moved = other.moved || a.moved;
       if (!armySize(a)) c.armies.splice(c.armies.indexOf(a), 1);
     } else a.at = to;
     return 'moved';
   }
   // Armies in neighbouring land lend some of their weight to the fight.
+  if (atTruce(c, a.owner, t.owner)) {
+    if (a.owner !== 0) return 'invalid'; // rivals keep their word
+    // The player marches on a truce partner: the truce is over and nobody forgets it.
+    c.truces = c.truces.filter((x) => x.with !== t.owner);
+    c.honor--;
+    say(c, t.owner, 'betray');
+    c.log.push(`You have broken your truce with ${c.factions[t.owner].name}.`);
+  }
   const support = (f: number, skip: number) => (f < 0 ? 0 : reserves(c, f, to, skip).reduce((n, r) => n + armyStrength(r) * 0.3, 0));
   const round = (v: number) => Math.round(v * 10) / 10;
   c.pending = {
     armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
-    aStr: round(strengthVs(a, defenders(c, to)) + support(a.owner, a.id)), dStr: round(defence(c, to, a.units) + support(t.owner, -1)),
+    aStr: round(strengthVs(a, defenders(c, to)) + support(a.owner, a.id)), dStr: round(defence(c, to, a.units, civ) + support(t.owner, -1)),
   };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
   else if (human(t.owner)) say(c, a.owner, 'attack');
-  else say(c, t.owner, 'defend');
+  else if (c.speech[c.speech.length - 1]?.event !== 'betray') say(c, t.owner, 'defend');
   return 'battle';
 }
 
@@ -367,6 +428,47 @@ export function reserves(c: Campaign, f: number, tid: number, skipArmy = -1): Ar
     .sort((x, y) => armyStrength(y) - armyStrength(x));
 }
 
+/** How much fighting on home ground is worth to a defender against this attacker. */
+export const homeEdge = (c: Campaign, attacker: number): number => (c.factions[attacker]?.civ === 'dawn' ? 1 : 1.1);
+
+/**
+ * Offer a rival a truce. Whether they accept depends on their leader's temper, who is stronger
+ * and whether the player has kept faith before. The supplies are only spent if they agree.
+ */
+export function offerTruce(c: Campaign, f: number): boolean {
+  const fac = c.factions[f];
+  if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || c.factions[0].supplies < TRUCE_COST || c.phase !== 'player') return false;
+  const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
+  const willing = PERSONA[fac.civ].peace + (mine >= theirs ? 0.25 : -0.15);
+  if (c.honor < 0 || rand(c) > willing) {
+    say(c, f, 'refuse');
+    c.log.push(`${fac.name} will not hear of a truce.`);
+    return false;
+  }
+  c.factions[0].supplies -= TRUCE_COST;
+  c.truces.push({ with: f, until: c.turn + TRUCE_TURNS });
+  say(c, f, 'truce');
+  c.log.push(`A truce with ${fac.name} until turn ${c.turn + TRUCE_TURNS}.`);
+  return true;
+}
+
+/** Answer a rival's demand for tribute: pay and be left alone for a while, or refuse and face them. */
+export function answerDemand(c: Campaign, pay: boolean): void {
+  const d = c.demand;
+  if (!d) return;
+  const fac = c.factions[d.from];
+  c.demand = null;
+  if (pay && c.factions[0].supplies >= d.amount) {
+    c.factions[0].supplies -= d.amount;
+    fac.supplies += d.amount;
+    c.truces.push({ with: d.from, until: c.turn + 4 });
+    c.log.push(`You paid ${fac.name} ${d.amount} supplies. They will leave you be until turn ${c.turn + 4}.`);
+  } else {
+    fac.angry = true;
+    c.log.push(`You refused ${fac.name}'s demand.`);
+  }
+}
+
 /** Settle the pending battle by dice, or record the result of one that was fought out. */
 export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender'): boolean {
   const p = c.pending;
@@ -374,7 +476,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   let attackerWon = how === 'attacker';
   if (how === 'auto') {
     // Defenders fight on their own ground, which is worth a little.
-    const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * 1.1 * (0.75 + rand(c) * 0.5);
+    const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * homeEdge(c, p.attacker) * (0.75 + rand(c) * 0.5);
     attackerWon = a > d;
   }
   c.pending = null;
@@ -392,6 +494,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       army.moved = true;
     }
     c.log.push(`${fname(c, p.attacker, true)} took ${t.name} from ${fname(c, p.defender)}.`);
+    if (p.defender < 0 && c.factions[p.attacker].civ === 'wild') c.factions[p.attacker].supplies += 2; // plunder
     if (t.capital >= 0 && t.capital !== p.attacker) {
       // Sacking a capital carries off its stores.
       const loot = Math.floor(c.factions[t.capital].supplies / 2);
@@ -438,13 +541,16 @@ export function endTurn(c: Campaign): void {
 
 /** Carry on with the rivals' turns, e.g. after the player has defended against an attack. */
 export function continueAI(c: Campaign): void {
-  while (c.phase === 'ai' && !c.pending) {
+  while (c.phase === 'ai' && !c.pending && !c.demand) {
     const f = c.factions[c.cursor];
     if (!f) {
       // Everyone has moved: a new turn begins.
       c.turn++;
       c.phase = 'player';
-      for (const a of c.armies) a.moved = false;
+      for (const a of c.armies) { a.moved = false; a.marched = false; }
+      for (const x of c.factions) x.angry = false;
+      for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
+      c.truces = c.truces.filter((tr) => tr.until >= c.turn);
       for (const x of c.factions) if (x.alive) x.supplies += Math.round(income(c, x.id) * (x.isAI ? [0.8, 1, 1.25][c.level] : 1));
       c.log.push(`Turn ${c.turn}.`);
       turnEvent(c);
@@ -486,15 +592,26 @@ function turnEvent(c: Campaign): void {
 
 /** One decision for an AI faction. Returns true once it has nothing left to do this turn. */
 function aiStep(c: Campaign, f: Faction): boolean {
+  const me = PERSONA[f.civ];
+  const civ = f.civ;
   if (!c.spent) {
+    // A greedy leader with the stronger army and a border with the player may ask to be paid off.
+    const neighbours = c.territories.some((t) => t.owner === f.id && t.adj.some((n) => c.territories[n].owner === 0));
+    if (neighbours && c.turn >= 4 && c.turn - f.lastDemand >= 6 && !atTruce(c, 0, f.id) && c.factions[0].alive
+      && totalStrength(c, f.id) > totalStrength(c, 0) * 1.3 && rand(c) < me.greed) {
+      f.lastDemand = c.turn;
+      c.demand = { from: f.id, amount: Math.min(8, 3 + Math.floor(c.turn / 5)) };
+      say(c, f.id, 'demand');
+      return false;
+    }
     c.spent = true;
     const own = c.territories.filter((t) => t.owner === f.id);
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     for (const t of own) {
       const border = t.adj.some((n) => c.territories[n].owner !== f.id);
       if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');
-      else if (rand(c) < 0.5) build(c, f.id, t.id, 'farm');
-      else if (border && f.supplies > 14 && rand(c) < 0.3) build(c, f.id, t.id, 'fortress');
+      else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
+      else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
     // Spend what is left on troops, growing existing armies before starting new ones.
     const yards = own.filter((t) => Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
@@ -513,16 +630,24 @@ function aiStep(c: Campaign, f: Faction): boolean {
   const army = c.armies.find((a) => a.owner === f.id && !a.moved);
   if (!army) return true;
   const here = c.territories[army.at];
-  const targets = here.adj.filter((id) => c.territories[id].owner !== f.id).sort((a, b) => defence(c, a) - defence(c, b));
-  const margin = [3, 2, 1][c.level];
-  if (targets.length && strengthVs(army, defenders(c, targets[0])) >= defence(c, targets[0], army.units) + margin) {
-    moveArmy(c, army.id, targets[0]);
-    return false;
+  // Never march on someone we have a truce with.
+  const targets = here.adj.filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner))
+    .sort((a, b) => defence(c, a, army.units, civ) - defence(c, b, army.units, civ));
+  // A leader who has just been refused goes for the player before anyone else.
+  if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
+  if (targets.length) {
+    const t = c.territories[targets[0]];
+    // Cautious leaders want better odds; a leader who has just been refused wants blood.
+    const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
+    if (strengthVs(army, defenders(c, t.id)) >= defence(c, t.id, army.units, civ) + margin) {
+      moveArmy(c, army.id, t.id);
+      return false;
+    }
   }
-  if (!targets.length) {
+  if (!here.adj.some((id) => c.territories[id].owner !== f.id)) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
-    if (next >= 0) { moveArmy(c, army.id, next); return false; }
+    if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
   }
   army.moved = true;
   return false;
