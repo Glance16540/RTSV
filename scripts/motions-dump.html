@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const CLIPS = { walk: 'Walking_A', run: 'Running_A', idle: 'Idle', strike: '1H_Melee_Attack_Chop', stab: '1H_Melee_Attack_Stab', shoot: '1H_Ranged_Shoot', work: '2H_Melee_Attack_Chop', reach: 'Interact', cast: 'Spellcast_Shoot', cheer: 'Cheer' };
+const CLIPS = { walk: 'Walking_A', run: 'Running_A', idle: 'Idle', strike: '1H_Melee_Attack_Chop', stab: '1H_Melee_Attack_Stab', shoot: '1H_Ranged_Shoot', work: '2H_Melee_Attack_Chop', reach: 'Interact', cast: 'Spellcast_Shoot', cheer: 'Cheer', death1: 'Death_A', death2: 'Death_B' };
 const FPS = 24;
 const gltf = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('src'));
 const scene = gltf.scene;

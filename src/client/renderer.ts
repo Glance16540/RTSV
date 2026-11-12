@@ -15,7 +15,12 @@ const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean }
+/** A drop of blood in the air, or a chip of wood from an engine or a hull. */
+interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
+interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
+interface Dying { g: THREE.Group; t: number; v: UnitView; clip: string; dropped: boolean }
+const BLOOD = 0x7a0c10;
 /** Recorded motions (walking, working, striking…), as turns of a figure's few joints. See scripts/motions.cjs. */
 const motions = MOTIONS as unknown as Record<string, { dur: number; frames: number[][] }>;
 const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
@@ -57,7 +62,15 @@ export class Renderer {
   private v3 = new THREE.Vector3();
   private clock = 0;
   private shake = 0;
-  private dying: { g: THREE.Group; t: number }[] = [];
+  private dying: Dying[] = [];
+  private drops: Drop[] = [];
+  private stains: Stain[] = [];
+  /** Blood, wounds and bodies. Off with ?gore=0. */
+  private gore = new URLSearchParams(location.search).get('gore') !== '0';
+  private dropGeo = new THREE.SphereGeometry(0.03, 5, 4);
+  private stainGeo = new THREE.CircleGeometry(1, 12).rotateX(-Math.PI / 2);
+  private bloodMat = new THREE.MeshBasicMaterial({ color: BLOOD });
+  private chipMat = new THREE.MeshBasicMaterial({ color: 0x8a6238 });
   private rubble: Rubble[] = [];
   private roads!: Roads;
   private staffViews = new Map<number, { key: string; g: THREE.Group }>();
@@ -284,7 +297,7 @@ export class Renderer {
       const u = this.unitViews.get(ev.id);
       if (u) {
         // Fallen units topple over and sink away instead of vanishing.
-        if (u.g.visible) this.dying.push({ g: u.g, t: 0 });
+        if (u.g.visible) this.fall(u);
         else this.scene.remove(u.g);
         this.unitViews.delete(ev.id);
       }
@@ -362,14 +375,16 @@ export class Renderer {
     let v = this.unitViews.get(u.id);
     const job = u.type === 'villager' ? this.jobOf(u) : '';
     let turned: number | null = null;
-    if (v && (v.type !== u.type || v.job !== job)) {
+    // Healed back past a stage, they are made whole again: gear restored, clothes mended.
+    const mended = !!v && !!v.rig && v.hurt > (u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0);
+    if (v && (v.type !== u.type || v.job !== job || mended)) {
       // Re-equipped by an upgrade, or set to a new trade: swap the model.
       turned = v.g.rotation.y;
       this.scene.remove(v.g);
       v = undefined;
     }
     if (!v) {
-      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job };
+      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
       v.rig = new URLSearchParams(location.search).get('motion') === '0' ? null : rigBiped(v.g);
       v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
@@ -379,6 +394,7 @@ export class Renderer {
     }
     const g = v.g;
     g.visible = this.isVisible(u);
+    if (u.hp !== v.hp) this.wound(u, v);
     if (!g.visible) return;
     const x = u.px + (u.x - u.px) * alpha, y = u.py + (u.y - u.py) * alpha;
     const swing = u.attackAnim > 0 ? Math.sin((u.attackAnim / 0.35) * Math.PI) : 0;
@@ -423,6 +439,98 @@ export class Renderer {
     }
     const glow = g.userData.glow as THREE.Mesh | undefined;
     if (glow) glow.scale.setScalar(u.healTarget ? 1.3 + Math.sin(this.clock * 10) * 0.4 : 1);
+  }
+
+  /** A unit has died: how it falls depends on what it was. */
+  private fall(v: UnitView): void {
+    const g = v.g, at = g.position;
+    if (v.cls === 'siege') {
+      // An engine flies apart like a small building.
+      this.spray(at.x, at.y + 0.5, at.z, 14, false);
+      this.collapse(g);
+      return;
+    }
+    if (v.flesh) { this.spray(at.x, at.y + 0.5, at.z, 16, true); this.stain(at.x, at.z, v.cls === 'beast' || v.cls === 'cavalry' ? 0.6 : 0.4, 3.5); }
+    else this.spray(at.x, at.y + 0.4, at.z, 12, false);
+    this.dying.push({ g, t: 0, v, clip: (v.phase * 7) % 2 > 1 ? 'death1' : 'death2', dropped: false });
+  }
+
+  /** Drops of blood (or chips of wood) thrown up from a blow. */
+  private spray(x: number, y: number, z: number, n: number, blood: boolean): void {
+    if (blood && !this.gore) return;
+    for (let i = 0; i < n && this.drops.length < 220; i++) {
+      const m = new THREE.Mesh(this.dropGeo, blood ? this.bloodMat : this.chipMat);
+      m.material.userData.outlineParameters = { visible: false };
+      m.position.set(x, y, z);
+      m.scale.setScalar(0.6 + Math.random() * 0.9);
+      const a = Math.random() * Math.PI * 2, s = 0.4 + Math.random() * 1.6;
+      this.scene.add(m);
+      this.drops.push({ m, vx: Math.cos(a) * s, vz: Math.sin(a) * s, vy: 1 + Math.random() * 2.6, blood });
+    }
+  }
+
+  /** A mark on the ground: a spatter where a drop lands, a pool spreading under a body. It fades in time. */
+  private stain(x: number, z: number, size: number, grow = 0): void {
+    if (!this.gore) return;
+    if (this.stains.length > 260) { const old = this.stains.shift()!; this.scene.remove(old.m); (old.m.material as THREE.Material).dispose(); }
+    const mt = new THREE.MeshBasicMaterial({ color: BLOOD, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    mt.userData.outlineParameters = { visible: false };
+    const m = new THREE.Mesh(this.stainGeo, mt);
+    m.position.set(x, this.scenery.heightAt(x, z) + 0.04, z);
+    m.rotation.y = Math.random() * 6;
+    m.scale.set(grow ? 0.05 : size * (0.7 + Math.random() * 0.6), 1, grow ? 0.05 : size * (0.5 + Math.random() * 0.5));
+    m.renderOrder = 4;
+    m.userData.size = size;
+    this.scene.add(m);
+    this.stains.push({ m, t: 0, grow, life: grow ? 40 : 22 });
+  }
+
+  private stepGore(dt: number): void {
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const d = this.drops[i], p = d.m.position;
+      d.vy -= 9 * dt;
+      p.x += d.vx * dt; p.y += d.vy * dt; p.z += d.vz * dt;
+      if (p.y <= this.scenery.heightAt(p.x, p.z) + 0.03) {
+        if (d.blood && Math.random() < 0.6) this.stain(p.x, p.z, 0.04 + Math.random() * 0.06);
+        this.scene.remove(d.m);
+        this.drops.splice(i, 1);
+      }
+    }
+    for (let i = this.stains.length - 1; i >= 0; i--) {
+      const s = this.stains[i];
+      s.t += dt;
+      if (s.grow && s.t < s.grow) { const k = (s.t / s.grow) * (s.m.userData.size as number); s.m.scale.set(k, 1, k * 0.8); }
+      (s.m.material as THREE.MeshBasicMaterial).opacity = 0.85 * Math.min(1, (s.life - s.t) / 6);
+      if (s.t > s.life) { this.scene.remove(s.m); (s.m.material as THREE.Material).dispose(); this.stains.splice(i, 1); }
+    }
+  }
+
+  /**
+   * Wounds show. A blow draws blood. Below two thirds strength a fighter has lost a shield or a hat and
+   * their clothes are torn; below one third the rest of their gear is gone and they are bloodied.
+   */
+  private wound(u: Unit, v: UnitView): void {
+    const g = v.g, lost = v.hp - u.hp;
+    if (lost > 0.5 && g.visible) this.spray(g.position.x, g.position.y + (v.rig ? 0.55 : 0.7), g.position.z, Math.min(6, 1 + Math.round((lost / u.maxHp) * 22)), v.flesh);
+    v.hp = u.hp;
+    const hurt = u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0;
+    if (hurt <= v.hurt || !v.rig) { if (!v.rig) v.hurt = hurt; return; }
+    const rig = v.rig;
+    g.updateMatrixWorld(true);
+    // Armour and gear are knocked off: about half of it at the first stage, all of it at the second.
+    const on = rig.gear.filter((p) => p.parent && p.parent !== this.scene);
+    for (const p of on.slice(0, hurt === 2 ? on.length : Math.ceil(on.length / 2))) { if (g.visible) this.throwPiece(p, g.position, 1, 0.5); else p.removeFromParent(); }
+    if (this.gore) {
+      // Torn cloth shows skin; cuts show red. Placed over the chest, back and hem.
+      const seed = u.id * 31 + hurt * 7, r = (k: number): number => (((seed + k * 97) * 2654435761) >>> 0) / 4294967296;
+      for (let k = 0; k < (hurt === 2 ? 5 : 3); k++) {
+        const front = r(k) > 0.35 ? 1 : -1, patch = new THREE.Mesh(new THREE.BoxGeometry(0.035 + r(k + 9) * 0.05, 0.03 + r(k + 5) * 0.07, 0.012), mat(k % 2 || hurt === 2 ? BLOOD : 0xe0ac7e));
+        patch.position.set((r(k + 1) - 0.5) * 0.17, 0.08 + r(k + 2) * 0.3, front * (0.092 - Math.abs(r(k + 1) - 0.5) * 0.05));
+        patch.rotation.z = (r(k + 3) - 0.5) * 1.4;
+        rig.torso.add(patch);
+      }
+    }
+    v.hurt = hurt;
   }
 
   /** The trade a villager is plying, from the order in hand. Idle or merely walking, they wear their own clothes. */
@@ -485,11 +593,15 @@ export class Renderer {
       name = 'work';
       t = 0.15;
     }
+    this.setPose(rig, name, t, Math.min(1, dt * 16));
+    this.swing(u, v, name === 'run', dt);
+  }
+
+  /** Turns the joints toward frame `t` (0 to 1, wrapping) of a recorded motion. `ease` lets one motion flow into the next. */
+  private setPose(rig: Rig, name: string, t: number, ease: number): void {
     const m = motions[name], n = m.frames.length;
     const f = (((t % 1) + 1) % 1) * n, i = Math.floor(f) % n, k = f - Math.floor(f);
     const a = m.frames[i], b = m.frames[(i + 1) % n];
-    // Ease toward the pose, so one motion flows into the next.
-    const ease = Math.min(1, dt * 16);
     const turn = (o: THREE.Object3D, at: number): void => {
       qa.set(a[at], a[at + 1], a[at + 2], a[at + 3]);
       qb.set(b[at], b[at + 1], b[at + 2], b[at + 3]);
@@ -499,8 +611,12 @@ export class Renderer {
     turn(rig.root, 1); turn(rig.torso, 5); turn(rig.head, 9); turn(rig.armR, 13); turn(rig.armL, 17);
     if (rig.legs[0]) turn(rig.legs[0], 21);
     if (rig.legs[1]) turn(rig.legs[1], 25);
-    // Loose things on the body take each footfall and each blow, and go on swinging after.
-    const jolt = (u.moving ? Math.sin(v.phase * 2) * (name === 'run' ? 34 : 26) : 0) + (u.attackAnim > 0 ? Math.cos((u.attackAnim / 0.35) * Math.PI) * 22 : 0);
+  }
+
+  /** Loose things on the body take each footfall and each blow, and go on swinging after. */
+  private swing(u: Unit, v: UnitView, running: boolean, dt: number): void {
+    const rig = v.rig!;
+    const jolt = (u.moving ? Math.sin(v.phase * 2) * (running ? 34 : 26) : 0) + (u.attackAnim > 0 ? Math.cos((u.attackAnim / 0.35) * Math.PI) * 22 : 0);
     const steps = Math.max(1, Math.ceil(Math.min(dt, 0.1) / 0.012)), h = Math.min(dt, 0.1) / steps;
     for (const l of rig.loose) {
       for (let s = 0; s < steps; s++) { l.v += (-l.k * l.d - l.c * l.v + jolt * l.gain) * h; l.d += l.v * h; }
@@ -530,14 +646,14 @@ export class Renderer {
     if (Math.hypot(centre.x - this.cx, centre.z - this.cy) < this.dist) this.shake = Math.max(this.shake, 0.35);
   }
 
-  private throwPiece(m: THREE.Object3D, centre: THREE.Vector3, top: number): void {
+  private throwPiece(m: THREE.Object3D, centre: THREE.Vector3, top: number, force = 1): void {
     const p = this.v3;
     this.scene.attach(m);
     m.getWorldPosition(p);
-    const dx = p.x - centre.x, dz = p.z - centre.z, d = Math.hypot(dx, dz) || 1, push = 0.6 + Math.random() * 1.8;
+    const dx = p.x - centre.x, dz = p.z - centre.z, d = Math.hypot(dx, dz) || 1, push = (0.6 + Math.random() * 1.8) * force;
     const high = Math.min(1, Math.max(0, (p.y - centre.y) / top));
     this.rubble.push({
-      m, vx: (dx / d) * push + (Math.random() - 0.5), vz: (dz / d) * push + (Math.random() - 0.5), vy: 0.5 + Math.random() * 2.5,
+      m, vx: (dx / d) * push + (Math.random() - 0.5), vz: (dz / d) * push + (Math.random() - 0.5), vy: (0.5 + Math.random() * 2.5) * force,
       spin: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(7),
       // The foot gives way first and the top comes down after it.
       t: 0, wait: high * 0.35 + Math.random() * 0.1, ground: this.scenery.heightAt(p.x, p.z), rest: false,
@@ -719,11 +835,35 @@ export class Renderer {
     for (let i = this.dying.length - 1; i >= 0; i--) {
       const d = this.dying[i];
       d.t += dt;
-      d.g.rotation.x = 0;
-      d.g.rotation.z = Math.min(1, d.t / 0.35) * (Math.PI / 2);
-      if (d.t > 1.2) d.g.position.y -= dt * 0.6;
-      if (d.t > 2.2) { this.scene.remove(d.g); this.dying.splice(i, 1); }
+      const rig = d.v.rig;
+      if (rig) {
+        // Struck down: the recorded fall, weapon and shield dropping from the hands, then the body lies a while.
+        const m = motions[d.clip];
+        this.setPose(rig, d.clip, Math.min(0.999, d.t / m.dur) * (1 - 1 / m.frames.length), Math.min(1, dt * 18));
+        if (!d.dropped && d.t > 0.25) {
+          d.dropped = true;
+          d.g.updateMatrixWorld(true);
+          for (const w of [...rig.armR.children.slice(3), ...rig.gear.filter((p) => p.parent === rig.armL)]) this.throwPiece(w, d.g.position, 1, 0.5);
+        }
+        if (d.t > 7) d.g.position.y -= dt * 0.12;
+        if (d.t > 10) { this.scene.remove(d.g); this.dying.splice(i, 1); }
+      } else if (d.v.naval) {
+        // A ship settles by the stern and goes down.
+        d.g.rotation.x += (-0.5 - d.g.rotation.x) * Math.min(1, dt * 1.5);
+        d.g.rotation.z += (0.25 - d.g.rotation.z) * Math.min(1, dt * 1.5);
+        d.g.position.y -= dt * (0.12 + d.t * 0.12);
+        if (d.t > 4) { this.scene.remove(d.g); this.dying.splice(i, 1); }
+      } else {
+        // Beasts and riders go over on their side, kick once, and lie.
+        d.g.rotation.x = 0;
+        const k = Math.min(1, d.t / 0.4);
+        d.g.rotation.z = (k * k * (3 - 2 * k)) * (Math.PI / 2) * (d.v.phase > 3 ? 1 : -1) + (d.t > 0.4 && d.t < 0.9 ? Math.sin((d.t - 0.4) * 25) * 0.05 : 0);
+        for (const l of d.v.legs) l.rotation.x = d.t < 1.2 ? Math.sin(d.t * 18 + (l.userData.leg as number)) * 0.5 * (1 - d.t / 1.2) : 0;
+        if (d.t > 6) d.g.position.y -= dt * 0.15;
+        if (d.t > 9) { this.scene.remove(d.g); this.dying.splice(i, 1); }
+      }
     }
+    this.stepGore(dt);
     for (let i = this.floaters.length - 1; i >= 0; i--) if ((this.floaters[i].t += dt) > 2) this.floaters.splice(i, 1);
 
     this.stepRubble(dt);

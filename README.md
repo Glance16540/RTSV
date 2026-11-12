@@ -339,3 +339,6 @@ for filenames and a ready-made generation prompt.
   KayKit Adventurers character pack by Kay Lousberg (public domain, CC0), reduced to the few joints our figures
   have and stored in `src/client/motions.json`. To rebuild that file: `node scripts/motions.cjs <path to Knight.glb>`.
 - Buildings shed pieces as they are damaged and fall apart when destroyed.
+- Wounds show: blows draw blood, gear is knocked off and clothes tear as a fighter weakens, and the fallen
+  drop with a recorded death, their weapons beside them. Engines fly apart and ships sink. `?gore=0` turns
+  the blood and wounds off.

@@ -165,6 +165,7 @@ function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y
   ball(g, 0.11, SKIN, 0, y + 0.76, 0).scale.y = 1.08;
   add(g, geo('hair', () => new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)), hair, 0, y + 0.778, -0.012);
   face(g, y + 0.765);
+  for (const c of g.children) c.userData.body ??= true; // the person, as against what they wear and carry
 }
 
 /**
@@ -215,6 +216,7 @@ function woman(g: THREE.Object3D, dress: number, hair: number, seed: number, tri
     cap(braid, 0.03, 0.26, hair, 0, -0.12, 0);
     ball(braid, 0.045, trim, 0, -0.02, 0);
   }
+  for (const c of g.children) c.userData.body ??= true;
 }
 
 /** Right arm + weapon, pivoting at the shoulder so it can swing. A sleeve to the elbow if `sleeve` is given. */
@@ -243,7 +245,7 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
 }
 
 /** The joints of a figure on foot, turned by the recorded motions. */
-export interface Rig { root: THREE.Group; torso: THREE.Group; head: THREE.Group; armR: THREE.Object3D; armL: THREE.Group; legs: THREE.Object3D[]; loose: Loose[] }
+export interface Rig { root: THREE.Group; torso: THREE.Group; head: THREE.Group; armR: THREE.Object3D; armL: THREE.Group; legs: THREE.Object3D[]; loose: Loose[]; /** Armour, hats, shields and gear that can be knocked off, the first to go first. */ gear: THREE.Object3D[] }
 /**
  * Something on a figure that is not held rigid: it lags, bounces and settles on a spring as the body moves.
  * `mode` y bobs it up and down; rx and rz swing it about where it hangs.
@@ -276,6 +278,7 @@ export function rigBiped(g: THREE.Group): Rig | null {
     const marked = p.userData.loose as Spring | undefined;
     if (marked) free(p, marked);
     // A hat, crest or plume nods; a shield on the arm rattles; a pack, quiver or cape on the back swings.
+    else if (p.userData.body) continue;
     else if (to === head && c.y > 0.84) free(p, { mode: 'y', gain: 0.03, k: 220, c: 9 });
     else if (to === armL && Math.max(s.x, s.y, s.z) > 0.2) free(p, { mode: 'rx', gain: 0.6, k: 120, c: 6 });
     else if (to === torso && c.z < -0.09 && s.y < 0.5) free(p, { mode: 'rx', gain: 0.8, k: 90, c: 5 });
@@ -285,7 +288,9 @@ export function rigBiped(g: THREE.Group): Rig | null {
   for (const l of found) l.rest = l.mode === 'y' ? l.o.position.y : l.mode === 'rx' ? l.o.rotation.x : l.o.rotation.z;
   // The leg on the weapon side first, as the motions list it.
   legs.sort((a, b) => b.position.x - a.position.x);
-  return { root, torso, head, armR, armL, legs, loose: found };
+  const keep = new Set<unknown>([g.userData.carry, g.userData.glow]);
+  const gear = [...armL.children, ...head.children, ...torso.children].filter((p) => !p.userData.body && p !== armR && p !== head && p !== armL && !keep.has(p));
+  return { root, torso, head, armR, armL, legs, loose: found, gear };
 }
 
 const UNIT_HEIGHT: Record<string, number> = {
