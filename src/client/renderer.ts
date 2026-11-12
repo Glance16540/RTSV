@@ -445,7 +445,7 @@ export class Renderer {
     const carry = g.userData.carry as THREE.Mesh | undefined;
     if (carry) {
       carry.visible = u.carryAmt > 0;
-      if (carry.visible) carry.material = mat(RES_COLOR[u.carryType]);
+      if (carry.visible) carry.material = mat(RES_COLOR[u.carryType], 0, true);
     }
     const glow = g.userData.glow as THREE.Mesh | undefined;
     if (glow) glow.scale.setScalar(u.healTarget ? 1.3 + Math.sin(this.clock * 10) * 0.4 : 1);
@@ -551,28 +551,28 @@ export class Renderer {
       const skin = villager ? k % 4 !== 3 : k % 2 === 0 && level < 2;
       const big = villager ? 1.5 + level * 0.25 : 1;
       const front = r(k) > 0.35 ? 1 : -1;
-      const patch = new THREE.Mesh(new THREE.BoxGeometry((0.035 + r(k + 9) * 0.05) * big, (0.03 + r(k + 5) * 0.07) * big, 0.012), mat(skin ? SKIN : BLOOD));
+      const patch = new THREE.Mesh(new THREE.BoxGeometry((0.035 + r(k + 9) * 0.05) * big, (0.03 + r(k + 5) * 0.07) * big, 0.012), mat(skin ? SKIN : BLOOD, 0, true));
       patch.position.set((r(k + 1) - 0.5) * 0.17, 0.08 + r(k + 2) * 0.3, front * (0.094 - Math.abs(r(k + 1) - 0.5) * 0.05));
       patch.rotation.z = (r(k + 3) - 0.5) * 1.4;
       rig.torso.add(patch);
     }
     if (!villager || level < 2) return;
     // A sleeve torn away, then both; in rags, a skirt split to the thigh or a tunic open across the chest.
-    const bare = (o: THREE.Object3D): void => o.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh && m.userData.body !== undefined || (m.isMesh && m.parent === rig.armR)) m.material = mat(SKIN); });
+    const bare = (o: THREE.Object3D): void => o.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh && m.userData.body !== undefined || (m.isMesh && m.parent === rig.armR)) m.material = mat(SKIN, 0, true); });
     if (rig.armR.children[0]) bare(rig.armR.children[0]);
     if (level < 3) return;
     for (const c of rig.armL.children) if (c.userData.body) bare(c);
     const skirt = rig.torso.children.find((c) => (c.userData.loose as { mode?: string } | undefined)?.mode === 'rx' && (c as THREE.Group).isGroup && c.position.y > -0.05 && c.position.y < 0.2);
     if (skirt) {
-      const slit = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.26, 0.012), mat(SKIN));
+      const slit = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.26, 0.012), mat(SKIN, 0, true));
       slit.position.set(r(40) > 0.5 ? 0.07 : -0.07, -0.26, 0.118);
       slit.rotation.x = -0.24;
       skirt.add(slit);
-      const sh = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat(SKIN));
+      const sh = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat(SKIN, 0, true));
       sh.position.set(r(41) > 0.5 ? 0.1 : -0.1, 0.305, 0.01);
       rig.torso.add(sh);
     } else {
-      const open = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.17, 0.012), mat(SKIN));
+      const open = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.17, 0.012), mat(SKIN, 0, true));
       open.position.set(0, 0.24, 0.1);
       open.rotation.z = (r(42) - 0.5) * 0.5;
       rig.torso.add(open);

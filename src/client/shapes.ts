@@ -9,6 +9,8 @@ RAMP.minFilter = RAMP.magFilter = THREE.NearestFilter;
 RAMP.needsUpdate = true;
 /** Read by the outline pass: anything made with these materials gets an ink edge. */
 export const INK = { visible: true, thickness: 0.0075, color: [0.13, 0.09, 0.06], alpha: 1 };
+/** People, beasts and engines take a much finer, softer line than buildings, or it swallows them at their size. */
+export const INK_FINE = { visible: true, thickness: 0.0026, color: [0.24, 0.17, 0.12], alpha: 1 };
 
 type Draw = (g: CanvasRenderingContext2D, r: () => number) => void;
 function canvasTex(w: number, h: number, draw: Draw): THREE.CanvasTexture {
@@ -72,13 +74,13 @@ function surface(key: string): THREE.Texture {
 
 const toons = new Map<string, THREE.MeshToonMaterial>();
 /** The one material everything standing in the world is made of. */
-export function toon(color: number, tex: Surface = '', emissive = 0): THREE.MeshToonMaterial {
-  const key = `${color}:${tex}:${emissive}`;
+export function toon(color: number, tex: Surface = '', emissive = 0, fine = false): THREE.MeshToonMaterial {
+  const key = `${color}:${tex}:${emissive}:${fine}`;
   let m = toons.get(key);
   if (!m) {
     const map = tex ? surface(tex) : null;
     m = new THREE.MeshToonMaterial({ color, emissive, map, gradientMap: RAMP, emissiveMap: emissive && map ? map : null });
-    m.userData.outlineParameters = INK;
+    m.userData.outlineParameters = fine ? INK_FINE : INK;
     toons.set(key, m);
   }
   return m;

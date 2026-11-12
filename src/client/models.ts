@@ -11,8 +11,10 @@ import { banner, boxGeo, shapedBuilding, Surface, toon } from './shapes';
  * Empty while a unit is being made: people and beasts are plain colour.
  */
 const made = new Map<number, Surface>();
-export function mat(color: number, emissive = 0): THREE.MeshToonMaterial {
-  return toon(color, emissive ? '' : made.get(color) ?? '', emissive);
+/** True while a unit is being made: its parts take the fine outline. */
+let figure = false;
+export function mat(color: number, emissive = 0, fine = figure): THREE.MeshToonMaterial {
+  return toon(color, emissive ? '' : made.get(color) ?? '', emissive, fine);
 }
 
 const geos = new Map<string, THREE.BufferGeometry>();
@@ -382,6 +384,7 @@ function outfit(g: THREE.Object3D, a: THREE.Group, f: boolean, job: Job): void {
 export type StaffRole = 'milkmaid' | 'patron' | 'monk' | 'nun';
 export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 'low'): THREE.Group {
   made.clear();
+  figure = true;
   const g = new THREE.Group();
   const hair = HAIR[seed % HAIR.length], GOLD = 0xe8c860;
   const mug = (p: THREE.Object3D, x: number, y: number, z: number): void => { cyl(p, 0.04, 0.035, 0.08, 0xd8a838, x, y, z, 8); cyl(p, 0.042, 0.042, 0.02, 0xfff4d8, x, y + 0.05, z, 8); };
@@ -430,6 +433,7 @@ export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 
 
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number, job: Job = ''): THREE.Group {
   made.clear();
+  figure = true;
   const alias = MODEL_ALIAS[type];
   if (alias && !generatedModel(type, 0, 1, 'height')) {
     const g = makeUnit(alias[0], color, gender, seed, job);
@@ -1014,6 +1018,7 @@ export function makeBuilding(type: string, color: number, age: number, civ = '',
   style = STYLES[civ] ?? PLAIN;
   const wall = style.walls[age] ?? style.walls[style.walls.length - 1], rf = styleRoof = style.roofs[age] ?? style.roofs[style.roofs.length - 1];
   const post = style.post ?? (age >= 2 ? STONE : DARKWOOD);
+  figure = false;
   // What this building's colours are made of. Set before anything is drawn, the owner's colour last so it stays plain.
   made.clear();
   made.set(WOOD, 'planks'); made.set(DARKWOOD, 'planks'); made.set(STONE, 'stone'); made.set(0x8a8a84, 'stone');
@@ -1306,6 +1311,7 @@ export function makeBuilding(type: string, color: number, age: number, civ = '',
 
 export function makeResource(type: string, seed: number): THREE.Group {
   made.clear();
+  figure = false;
   const g = new THREE.Group();
   const r = (k: number) => ((seed * 9301 + k * 49297) % 233280) / 233280;
   if (type === 'carcass') {

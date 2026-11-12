@@ -82,15 +82,15 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 35 systems, 56 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 14 Working, rough, 7 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:14"></span><span class="thin" style="flex:7"></span><span class="none" style="flex:3"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 40 systems, 75 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 19 Working, rough, 7 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:19"></span><span class="thin" style="flex:7"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
-      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">35</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">14</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">7</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">40</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">19</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">7</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
     </div>
   </div>
 
-  <section class="area"><h2>Town and economy <span class="n">4</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <section class="area"><h2>Town and economy <span class="n">5</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Gathering</h3><span class="pill solid">Working</span></header>
   <p class="what">Villagers bring in food, wood, gold and stone.</p>
   <ul class="has"><li>Berries, farms, hunting and fishing for food</li><li>Trees, gold and stone to work</li><li>Storehouses as drop-off points</li></ul>
@@ -99,12 +99,17 @@ footer { color: var(--dim); font-size: 13px; }
   <header><h3>Building and walls</h3><span class="pill solid">Working</span></header>
   <p class="what">Raise a town and fortify it.</p>
   <ul class="has"><li>19 buildings across two build pages</li><li>Palisades, stone walls, gates and towers; drag to draw walls</li><li>A Wonder that wins the game if it stands</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>Nations differ in roofs and colours only</li><li>Buildings need nearly level ground, but nothing tells you why a spot is refused</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Buildings need nearly level ground, but nothing tells you why a spot is refused</li></ul>
 </article><article class="sys solid" data-status="solid">
   <header><h3>Ages and research</h3><span class="pill solid">Working</span></header>
   <p class="what">Advance through five ages and buy upgrades.</p>
   <ul class="has"><li>5 ages from Stone to Gunpowder</li><li>21 upgrades: tools, weapons, armour, unit lines</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>The research list is short and the same for every nation</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Roads</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Every building is joined to its town centre.</p>
+  <ul class="has"><li>A road is laid the moment a building is placed, and joins nearby roads into streets</li><li>Units move faster on roads and their routes prefer them</li><li>Dirt tracks become cobbles from the Iron Age</li><li>Saved with the game</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>You cannot lay or remove a road yourself</li><li>Roads do not join one town to another</li><li>Only checked on level ground</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Market</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Buy and sell resources for gold.</p>
@@ -216,11 +221,16 @@ footer { color: var(--dim); font-size: 13px; }
   
   <h4>Gaps</h4><ul class="gaps"><li>No story, no world events, no named places</li></ul>
 </article></div></section>
-  <section class="area"><h2>Ways to play <span class="n">6</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <section class="area"><h2>Ways to play <span class="n">7</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Skirmish</h3><span class="pill solid">Working</span></header>
   <p class="what">One battle against one to three rivals.</p>
   <ul class="has"><li>Three difficulties, three map sizes, inland or great lake</li><li>Free-for-all, an ally, or all against you</li></ul>
   <p class="nogap">No known gaps</p>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Country and ground</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">The kind of land a battle is fought over.</p>
+  <ul class="has"><li>Four countries: green (woods, marsh, beaches), desert, steppe, the snowy north</li><li>Chosen in the skirmish menu, or the homeland of a people</li><li>Sand, snow, marsh and slopes slow a march; routes go round bad ground</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The computer opponent takes no account of ground or roads</li><li>Desert and steppe have less wood and nobody has checked that they are fair</li><li>No palms or cacti in the desert</li><li>Missions are all green country</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Computer opponent</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Rivals that build, fight and sail.</p>
@@ -240,18 +250,33 @@ footer { color: var(--dim); font-size: 13px; }
   <header><h3>Saving</h3><span class="pill solid">Working</span></header>
   <p class="what">Keep a game and come back.</p>
   <ul class="has"><li>Save button and autosave every two minutes</li><li>Campaigns are saved between turns</li></ul>
-  <p class="nogap">No known gaps</p>
+  <h4>Gaps</h4><ul class="gaps"><li>A change to the game can make older saves unloadable; the latest did</li></ul>
 </article><article class="sys none" data-status="none">
   <header><h3>Playing with friends</h3><span class="pill none">Not built</span></header>
   <p class="what">Two people in one game.</p>
   
   <h4>Gaps</h4><ul class="gaps"><li>No multiplayer of any kind</li></ul>
 </article></div></section>
-  <section class="area"><h2>Look and sound <span class="n">3</span></h2><div class="grid"><article class="sys rough" data-status="rough">
+  <section class="area"><h2>Look and sound <span class="n">6</span></h2><div class="grid"><article class="sys rough" data-status="rough">
   <header><h3>3D world</h3><span class="pill rough">Working, rough</span></header>
-  <p class="what">The battlefield, its units and buildings.</p>
-  <ul class="has"><li>Painted ground with soft shorelines, moving water, scattered grass and stones</li><li>Hills that rise and fall and mountain ranges with snow on the peaks</li><li>Low warm sunlight, soft shadows, haze and drifting cloud shadows</li><li>Each nation roofs and colours its buildings its own way</li><li>Units lean into a walk, lunge to strike, breathe at rest; ships ride the swell</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>No generated models installed: units and buildings are still simple built-in figures</li><li>Nations differ in roofs and colours only, not in whole building shapes</li></ul>
+  <p class="what">The battlefield and its light.</p>
+  <ul class="has"><li>Painted ground with soft shorelines, moving water, scattered grass and stones</li><li>Hills that rise and fall and mountain ranges with snow on the peaks</li><li>Low warm sunlight, soft shadows, haze and drifting cloud shadows</li><li>A drawn finish: banded shade with an ink outline, heavy on buildings and fine on people</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No weather or seasons</li><li>How fast it runs on a phone or in a big battle has not been measured</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Buildings</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">What a town is made of.</p>
+  <ul class="has"><li>Thirteen buildings shaped by hand: pitched roofs with eaves, timber framing, tiles and thatch, stonework, round towers, props</li><li>Each nation keeps its own roofs (domes, pagodas, flat roofs, tents) and colours by age</li><li>Church and tavern drawn bright, plain, ruined or gaudy by the town's standing</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Walls, gate, farm, work camp, wonder and the ruined church are still the old box shapes</li><li>Nations share one set of building shapes under their own roofs</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>People</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">How men, women and soldiers look and move.</p>
+  <ul class="has"><li>Men broad in the shoulder, women with a waist, bust and full skirt; faces, hands, boots, three hairstyles</li><li>Villagers dress for their work: woodcutter, farmer, hunter, forager, miner, builder</li><li>Milkmaids, patrons, monks and nuns stand at their building, dressed to the town's standing</li><li>Recorded motions on foot: walk, run, work, strike, stab, shoot, cast, two deaths</li><li>Loose things bounce and swing: chests, hair, skirts, hats, shields, weapons, packs</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Motion has only been checked in still frames, never watched</li><li>Arms and legs have no elbows or knees</li><li>Riders, animals, engines and ships still move the old simple way</li><li>Weapons, helmets and shields are still boxy</li><li>Staff at the tavern and church stand still</li><li>No generated models installed</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Damage and death</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">What fighting does to people and buildings.</p>
+  <ul class="has"><li>Buildings shed pieces as they weaken and fall apart when destroyed</li><li>Blows draw blood that spatters the ground and fades</li><li>Soldiers lose shields, helmets and armour as they weaken</li><li>Villagers' clothes tear to show skin, and they die in rags</li><li>People fall with a recorded death and drop their weapons; beasts topple, engines fly apart, ships sink</li><li>Blood and wounds can be switched off</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Torn clothes are flat patches, not real rips</li><li>Riders do not fall from their horses</li><li>Whether the dead end up lying flat has not been confirmed</li><li>The switch for blood is an address option, not a setting in the menu</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Icons and screens</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Buttons, resource icons and menus.</p>
@@ -266,7 +291,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>98 tests, all passing</li></ul>
+  <ul class="has"><li>101 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>
