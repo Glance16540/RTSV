@@ -274,6 +274,12 @@ export class Input {
         if (tc) { app.select([tc.id]); app.centerOnSelection(); }
         break;
       }
+      case ',': {
+        // The whole army, wherever it is.
+        const army = app.game.units.filter((u) => u.owner === app.pid && app.game.isMilitary(u) && !u.inside);
+        if (army.length) { app.select(army.map((u) => u.id)); sfx.play('select'); }
+        break;
+      }
       case '.':
       case 'Tab':
         app.nextIdle();

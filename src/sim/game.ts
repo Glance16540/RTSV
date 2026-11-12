@@ -10,7 +10,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -147,6 +147,9 @@ export interface Projectile {
   done: boolean;
 }
 
+export interface Stats { gathered: number; trained: number; born: number; kills: number; lost: number; razed: number; buildingsLost: number }
+const newStats = (): Stats => ({ gathered: 0, trained: 0, born: 0, kills: 0, lost: 0, razed: 0, buildingsLost: 0 });
+
 export interface Player {
   id: number;
   name: string;
@@ -165,6 +168,9 @@ export interface Player {
   defeated: boolean;
   lastAttacked: { x: number; y: number; t: number } | null;
   alertT: number;
+  stats: Stats;
+  /** Score sampled every 30 seconds, for the end-of-game chart. */
+  history: number[];
   /** The wildlife "player": never wins, loses or builds. */
   neutral: boolean;
   bell: boolean;
@@ -248,7 +254,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI,
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false,
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, stats: newStats(), history: [],
       });
       this.heroes.push([]);
       this.tcs.push([]);
@@ -279,7 +285,7 @@ export class Game {
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false,
+      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, stats: newStats(), history: [],
     });
     this.heroes.push([]);
     this.tcs.push([]);
@@ -1001,6 +1007,7 @@ export class Game {
     if (this.quakes.length && this.quakes[0].t <= 0) this.quakes = this.quakes.filter((q) => q.t > 0);
 
     if (this.tick % 4 === 0) this.updateVision();
+    if (this.tick % 600 === 0) for (const p of this.players) if (!p.neutral) p.history.push(this.score(p.id));
     if (this.tick % 20 === 0) {
       this.upkeep();
       this.checkVictory();
@@ -1028,6 +1035,16 @@ export class Game {
         tc.morale = Math.min(MORALE_MAX_HOUSES, n);
       }
     }
+  }
+
+  /** A rough measure of how a player is doing: people, buildings, progress and deeds. */
+  score(owner: number): number {
+    const p = this.players[owner];
+    if (p.defeated) return 0;
+    let n = p.age * 150 + p.techs.size * 25 + p.stats.kills * 4 + p.stats.razed * 15;
+    for (const u of this.units) if (u.owner === owner) n += u.type === 'villager' ? 8 : 10 + u.def.pop * 6;
+    for (const b of this.buildings) if (b.owner === owner && b.complete && !b.def.wall) n += 20;
+    return Math.round(n);
   }
 
   /** Seconds until a player's Wonder wins them the game, or -1 if they have none standing. */
@@ -1402,6 +1419,7 @@ export class Game {
       const r = this.approach(u, d, REACH);
       if (r === 'there') {
         p.res[u.carryType] += u.carryAmt;
+        p.stats.gathered += u.carryAmt;
         u.carryAmt = 0;
         o.phase = 'go';
         if (!o.id) this.setOrder(u, null); // was only asked to drop off
@@ -1562,7 +1580,11 @@ export class Game {
       tp.alertT = this.time;
       this.events.push({ t: 'alert', player: t.owner, x: t.x, y: t.y });
     }
-    if (t.hp <= 0) this.kill(t);
+    if (t.hp <= 0) {
+      const s = this.players[owner].stats, ts = tp.stats;
+      if (t.kind === 'unit') { s.kills++; ts.lost++; } else { s.razed++; ts.buildingsLost++; }
+      this.kill(t);
+    }
   }
 
   private updateProjectiles(): void {
@@ -1652,6 +1674,7 @@ export class Game {
           if (p.pop + def.pop <= p.popCap) {
             b.queue.shift();
             this.spawnFrom(b, q.id, q.gender);
+            p.stats.trained++;
           } else q.blocked = true;
         } else if (q.kind === 'tech') {
           b.queue.shift();
@@ -1699,6 +1722,7 @@ export class Game {
             child.family = b.family;
             child.maxHp = child.hp = Math.round(child.def.hp * 0.4);
             this.setTrait(child, trait);
+            p.stats.born++;
             this.events.push({ t: 'birth', player: b.owner, x: child.x, y: child.y });
           } else b.birthBlocked = true;
         }

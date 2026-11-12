@@ -229,6 +229,22 @@ describe('ages and combat', () => {
     expect(mine.hp).toBe(mine.maxHp);
   });
 
+  it('keeps score: kills, losses, gathering and a history', () => {
+    const g = new Game(7, setups);
+    for (let i = 0; i < 3; i++) { g.spawnUnit('swordsman', 0, 46 + i, 48); g.spawnUnit('clubman', 1, 46 + i, 50); }
+    const v = villagers(g, 0)[0];
+    const tree = g.resources.filter((r) => r.type === 'tree').sort((a, b) => g.dist(v, a) - g.dist(v, b))[0];
+    g.cmdTarget(0, [v.id], tree.id);
+    const before = g.score(0);
+    run(g, 65);
+    expect(g.players[0].stats.kills).toBe(3);
+    expect(g.players[1].stats.lost).toBe(3);
+    expect(g.players[0].stats.gathered).toBeGreaterThan(0);
+    expect(g.players[0].history.length).toBe(2); // sampled every 30 seconds
+    expect(g.score(0)).toBeGreaterThan(before - 100);
+    expect(Game.restore(g.serialize()).players[0].stats.kills).toBe(3);
+  });
+
   it('destroying every enemy building wins the game', () => {
     const g = new Game(7, setups);
     g.cmdDelete(1, g.buildings.filter((b) => b.owner === 1).map((b) => b.id));

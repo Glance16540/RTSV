@@ -386,11 +386,40 @@ export function continueAI(c: Campaign): void {
       for (const a of c.armies) a.moved = false;
       for (const x of c.factions) if (x.alive) x.supplies += Math.round(income(c, x.id) * (x.isAI ? [0.8, 1, 1.25][c.level] : 1));
       c.log.push(`Turn ${c.turn}.`);
+      turnEvent(c);
       return;
     }
     if (f.alive && !aiStep(c, f)) continue; // aiStep returns false while the faction still has moves
     c.cursor++;
     c.spent = false;
+  }
+}
+
+/** Now and then something happens that nobody planned. */
+function turnEvent(c: Campaign): void {
+  if (rand(c) > 0.4) return;
+  const owned = c.territories.filter((t) => t.owner >= 0);
+  const t = owned[Math.floor(rand(c) * owned.length)];
+  if (!t) return;
+  const f = c.factions[t.owner];
+  const who = f.id === 0 ? 'your' : `${f.name}'s`;
+  const a = armyAt(c, t.id);
+  const roll = rand(c);
+  if (roll < 0.3) {
+    f.supplies += 4;
+    c.log.push(`A fine harvest in ${t.name} adds 4 to ${who} supplies.`);
+  } else if (roll < 0.5 && a && a.owner === f.id && armySize(a) < MAX_ARMY) {
+    a.units.infantry = (a.units.infantry ?? 0) + 1;
+    c.log.push(`Volunteers from ${t.name} join ${who} army.`);
+  } else if (roll < 0.7 && a && a.owner === f.id && armySize(a) > 1) {
+    casualties(a, 1);
+    c.log.push(`Fever in the camp at ${t.name} costs ${who} army a company.`);
+  } else if (roll < 0.85 && t.buildings.includes('farm')) {
+    t.buildings.splice(t.buildings.indexOf('farm'), 1);
+    c.log.push(`Raiders burn the farmland of ${t.name}.`);
+  } else {
+    f.supplies = Math.max(0, f.supplies - 3);
+    c.log.push(`A hard season in ${t.name} costs 3 of ${who} supplies.`);
   }
 }
 

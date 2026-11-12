@@ -69,6 +69,9 @@ every rival is told the moment it is finished. Richer AIs build them too.
 **Stances and patrol.** Soldiers can be Aggressive, Defensive or told to Hold ground, and can
 patrol between two points.
 
+**After the match.** The end screen charts every player's score over time and tallies what they
+gathered, raised, trained, killed and lost.
+
 **Market.** From the Bronze Age, sell surplus food, wood or stone for gold, or buy what you are
 short of. The villager build menu has two pages, settlement and military.
 
@@ -114,7 +117,7 @@ win. The campaign is saved in your browser after every action.
 | Arrow keys / screen edge | Scroll |
 | Mouse wheel / middle-drag | Zoom / pan |
 | `Q W E R T` `A S D F G` `Z X C V B` | Command card buttons, by position |
-| `H` `.` `Space` | Town Center, next idle villager, centre on selection |
+| `H` `.` `,` `Space` | Town Center, next idle villager, whole army, centre on selection |
 | `Ctrl+1-9` / `1-9` | Set / recall control group |
 | `Shift`-click while placing | Place several buildings |
 | `Del` `Esc` `P` `M` | Destroy selected, cancel, pause, mute |

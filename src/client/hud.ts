@@ -143,8 +143,25 @@ export class Hud {
       const byWonder = game.wonderLeft(ev.winner) === 0;
       $('end-text').textContent = win ? (byWonder ? 'Your Wonder has stood the test. The world acknowledges your people.' : 'Your enemy lies in ruins. Your people will tell this story for ages.')
         : byWonder ? `${game.players[ev.winner].name}'s Wonder stood too long.` : 'Your settlement has fallen.';
+      $('end-stats').innerHTML = this.summary();
       $('end').classList.remove('hidden');
     }
+  }
+
+  /** End-of-game chart and table: how each player's fortunes went. */
+  private summary(): string {
+    const game = this.app.game;
+    const ps = game.players.filter((q) => !q.neutral);
+    const top = Math.max(1, ...ps.flatMap((q) => q.history));
+    const n = Math.max(2, ...ps.map((q) => q.history.length));
+    const lines = ps.map((q) => {
+      const pts = q.history.map((v, i) => `${((i / (n - 1)) * 600).toFixed(1)},${(124 - (v / top) * 116).toFixed(1)}`).join(' ');
+      return `<polyline points="${pts}" fill="none" stroke="${hex(q.color)}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    }).join('');
+    const rows = ps.map((q) => `<tr><td style="color:${hex(q.color)}">■ ${q.name}</td><td>${game.score(q.id)}</td><td>${AGES[q.age].name}</td>
+      <td>${q.stats.gathered}</td><td>${q.stats.born}</td><td>${q.stats.trained}</td><td>${q.stats.kills}</td><td>${q.stats.lost}</td><td>${q.stats.razed}</td></tr>`).join('');
+    return `<svg viewBox="0 0 600 130" preserveAspectRatio="none" role="img" aria-label="Score over time">${lines}</svg>
+      <table><tr><th></th><th>Score</th><th>Age</th><th>Gathered</th><th>Born</th><th>Trained</th><th>Kills</th><th>Losses</th><th>Razed</th></tr>${rows}</table>`;
   }
 
   press(i: number): void {
