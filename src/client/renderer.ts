@@ -526,6 +526,9 @@ export class Renderer {
     if (arm && !v.rig) {
       arm.rotation.x = u.type === 'catapult' ? swing * 1.2 : -swing * 1.3 + (u.moving ? Math.sin(v.phase) * 0.3 : 0);
     }
+    // A gun or a bolt-thrower kicks back as it looses, and runs out again.
+    const rec = g.userData.recoil as THREE.Object3D | undefined;
+    if (rec) { rec.userData.z0 ??= rec.position.z; rec.position.z = (rec.userData.z0 as number) - swing * 0.16; }
     const ramLog = g.userData.ram as THREE.Object3D | undefined;
     if (ramLog) ramLog.position.z = u.attackAnim > 0 ? Math.sin((u.attackAnim / 0.35) * Math.PI) * 0.35 : 0;
     const carry = g.userData.carry as THREE.Mesh | undefined;

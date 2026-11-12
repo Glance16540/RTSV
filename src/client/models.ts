@@ -629,6 +629,352 @@ export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 
   return g;
 }
 
+/** A length of rope or chain between two points. */
+function line(p: THREE.Object3D, a: number[], b: number[], color = 0x8a7250, r = 0.009): THREE.Mesh {
+  const d = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = d.length();
+  const m = add(p, geo(`ln${r}`, () => new THREE.CylinderGeometry(r, r, 1, 4)), color, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  m.scale.y = len;
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+  m.castShadow = false;
+  return m;
+}
+/** One of the crew: a small figure standing at his post. */
+function crewman(g: THREE.Object3D, body: number, seed: number, x: number, y: number, z: number, ry = 0, s = 0.5): THREE.Group {
+  const r = new THREE.Group();
+  r.position.set(x, y, z);
+  r.rotation.y = ry;
+  r.scale.setScalar(s);
+  r.userData.stands = true;
+  const was = who;
+  who = seed;
+  humanoid(r, body, 0x5b4630, hairOf(seed));
+  who = was;
+  g.add(r);
+  return r;
+}
+/** Cloth seen from both sides: sails, awnings, flags. One material a colour. */
+const sailMats = new Map<number, THREE.Material>();
+function canvas(p: THREE.Object3D, gm: THREE.BufferGeometry, color: number, x: number, y: number, z: number): THREE.Mesh {
+  let m = sailMats.get(color);
+  if (!m) { m = mat(color).clone(); m.side = THREE.DoubleSide; sailMats.set(color, m); }
+  const o = new THREE.Mesh(gm, m);
+  o.position.set(x, y, z);
+  o.castShadow = true;
+  p.add(o);
+  return o;
+}
+/** A sail bellied by a following wind: w across, h tall. */
+const sailGeo = (w: number, h: number, taper = 1): THREE.BufferGeometry => geo(`sail${w},${h},${taper}`, () => {
+  const pl = new THREE.PlaneGeometry(w, h, 6, 4), pos = pl.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const v = pos.getY(i) / h + 0.5, k = taper + (1 - taper) * (1 - v); // narrower toward the head if tapered
+    pos.setX(i, pos.getX(i) * k);
+    pos.setZ(i, Math.cos((pos.getX(i) / w) * Math.PI) * Math.cos((pos.getY(i) / h) * Math.PI * 0.8) * w * 0.22);
+  }
+  pl.computeVertexNormals();
+  return pl;
+});
+/** A hull: drawn to a point at the bow, narrower at the keel, rising fore and aft. */
+const hullGeo = (key: string, w: number, h: number, len: number, sheer = 1.6): THREE.BufferGeometry => geo(`${key}${w},${h},${len}`, () => {
+  const b = new THREE.BoxGeometry(w, h, len, 4, 3, 12), pos = b.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const t = pos.getZ(i) / len + 0.5, up = pos.getY(i) / h + 0.5; // t: stern 0 to bow 1
+    const beam = Math.sin(Math.min(1, t * 1.2 + 0.24) * Math.PI) ** 0.6 * (0.5 + 0.5 * up ** 0.7);
+    pos.setX(i, pos.getX(i) * Math.max(0.03, beam));
+    pos.setY(i, pos.getY(i) + Math.abs(t - 0.45) ** 2 * h * sheer * up);
+  }
+  b.computeVertexNormals();
+  return b;
+});
+
+/**
+ * Siege engines and ships: built as the machines they are, with their working parts and their crews.
+ * Returns false for anything else. What moves is marked for the renderer: `arm` (a throwing arm), `ram`
+ * (the swung log), `recoil` (a barrel or slide that kicks back), wheels, oars and pennants.
+ */
+function machine(g: THREE.Group, type: string, color: number, seed: number): boolean {
+  const TIM = 0x6e4c2c, PALE = 0x9a7448, ROPE = 0x8a7250, BLACK = 0x2c2c30, STONE_C = 0x8a8680, dark = shade(color, 0.6);
+  const frame = (w: number, len: number, y: number, r: number, axles: number[]): void => {
+    // Two sills, cross-pieces, and a wheel at each end of every axle.
+    for (const x of [-w / 2, w / 2]) box(g, 0.09, 0.1, len, TIM, x, y, 0);
+    for (const z of [-len / 2 + 0.06, 0, len / 2 - 0.06]) box(g, w, 0.08, 0.09, DARKWOOD, 0, y, z);
+    for (const z of axles) { cyl(g, 0.03, 0.03, w + 0.2, BLACK, 0, r, z, 6).rotation.z = Math.PI / 2; for (const x of [-1, 1]) wheel(g, r, x * (w / 2 + 0.09), r, z); }
+  };
+  const shot = (x: number, z: number, n: number, r: number, c: number): void => { for (let i = 0; i < n; i++) ball(g, r, c, x + (i % 2) * r * 1.9 - (i > 3 ? r : 0) * 0, r + (i > 3 ? r * 1.6 : 0), z + Math.floor((i % 4) / 2) * r * 1.9 + (i > 3 ? r * 0.9 : 0)); };
+  switch (type) {
+    case 'catapult': {
+      frame(0.62, 1.3, 0.26, 0.2, [0.42, -0.42]);
+      box(g, 0.5, 0.03, 1.1, PALE, 0, 0.32, 0); // the bed
+      // The uprights and the padded bar the arm is stopped by.
+      for (const x of [-0.31, 0.31]) { box(g, 0.08, 0.66, 0.09, TIM, x, 0.62, 0.22); const br = box(g, 0.06, 0.6, 0.06, DARKWOOD, x, 0.52, -0.06); br.rotation.x = -0.75; }
+      cyl(g, 0.065, 0.065, 0.62, 0xb8a888, 0, 0.93, 0.22, 8).rotation.z = Math.PI / 2;
+      for (const x of [-0.2, 0, 0.2]) add(g, geo('wrap', () => new THREE.TorusGeometry(0.068, 0.012, 4, 8).rotateY(Math.PI / 2)), ROPE, x, 0.93, 0.22);
+      // The twisted skein the arm is driven by, in its iron-bound frame.
+      cyl(g, 0.085, 0.085, 0.7, ROPE, 0, 0.42, 0.14, 8).rotation.z = Math.PI / 2;
+      for (const x of [-0.36, 0.36]) cyl(g, 0.1, 0.1, 0.03, BLACK, x, 0.42, 0.14, 8).rotation.z = Math.PI / 2;
+      const a = new THREE.Group();
+      a.position.set(0, 0.42, 0.14);
+      const beam = cyl(a, 0.03, 0.045, 1.0, PALE, 0, 0.2, -0.4, 7);
+      beam.rotation.x = Math.PI / 2 + 0.5;
+      const cup = add(a, geo('cup', () => new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5)), DARKWOOD, 0, 0.46, -0.84);
+      cup.rotation.x = 0.5;
+      ball(a, 0.095, STONE_C, 0, 0.47, -0.84);
+      for (const k of [0.3, 0.55]) add(a, geo('bind', () => new THREE.TorusGeometry(0.045, 0.012, 4, 8)), BLACK, 0, 0.2 + (k - 0.42) * 0.48 * 1.0, -0.4 - (k - 0.42) * 0.88);
+      g.add(a);
+      g.userData.arm = a;
+      // The winch at the tail, its handspikes, and the rope that hauls the arm down.
+      cyl(g, 0.05, 0.05, 0.6, DARKWOOD, 0, 0.42, -0.56, 8).rotation.z = Math.PI / 2;
+      for (const x of [-0.34, 0.34]) for (const r of [0, Math.PI / 2]) box(g, 0.025, 0.3, 0.025, PALE, x, 0.42, -0.56).rotation.x = r;
+      line(g, [0, 0.44, -0.56], [0, 0.72, -0.5], ROPE);
+      // Her owner's colours on the side boards, shot stacked ready, and the crew.
+      for (const x of [-0.36, 0.36]) box(g, 0.02, 0.16, 0.6, color, x, 0.42, -0.2);
+      shot(0.5, -0.5, 5, 0.07, STONE_C);
+      crewman(g, color, seed, -0.52, 0, -0.5, 0.4); crewman(g, dark, seed + 3, 0.5, 0, 0.1, -0.6);
+      return true;
+    }
+    case 'ram': {
+      frame(0.66, 1.5, 0.26, 0.2, [0.5, -0.5]);
+      // Six posts, a ridge, and a steep roof of raw hides against fire and stones.
+      for (const z of [-0.66, 0, 0.66]) for (const x of [-0.33, 0.33]) box(g, 0.07, 0.6, 0.07, TIM, x, 0.6, z);
+      box(g, 0.08, 0.08, 1.7, DARKWOOD, 0, 1.22, 0);
+      for (const s of [-1, 1]) {
+        const slope = box(g, 0.03, 0.62, 1.62, 0x7a5a38, s * 0.24, 0.98, 0);
+        slope.rotation.z = s * 0.68;
+        for (let i = 0; i < 6; i++) { const hide = box(g, 0.012, 0.3, 0.26, [0x8a6a44, 0x6e5234, 0x9a7a50][i % 3], s * (0.2 + (i % 2) * 0.13), 1.04 - (i % 2) * 0.2, -0.66 + i * 0.26); hide.rotation.z = s * 0.68; }
+      }
+      box(g, 0.1, 0.1, 1.72, color, 0, 1.28, 0); // the ridge in her owner's colour
+      // The ram itself: a trunk hung on chains, shod with an iron head, swung by the men under the roof.
+      const a = new THREE.Group();
+      a.position.set(0, 0.56, 0);
+      cyl(a, 0.085, 0.1, 1.75, PALE, 0, 0, 0.2, 9).rotation.x = Math.PI / 2;
+      for (const z of [-0.4, 0.2, 0.8]) add(a, geo('hoop', () => new THREE.TorusGeometry(0.1, 0.015, 4, 10)), BLACK, 0, 0, z);
+      cyl(a, 0.13, 0.11, 0.2, BLACK, 0, 0, 1.12, 9).rotation.x = Math.PI / 2;
+      const nose = add(a, geo('ramnose', () => new THREE.ConeGeometry(0.13, 0.22, 9)), 0x54585e, 0, 0, 1.32);
+      nose.rotation.x = Math.PI / 2;
+      for (const z of [-0.35, 0.55]) for (const x of [-0.05, 0.05]) line(a, [x, 0.08, z], [x * 0.3, 0.64, z], BLACK, 0.008);
+      g.add(a);
+      g.userData.ram = a;
+      crewman(g, color, seed, -0.16, 0.06, -0.3, 0, 0.46); crewman(g, dark, seed + 5, 0.16, 0.06, 0.25, 0, 0.46);
+      return true;
+    }
+    case 'scorpion': {
+      frame(0.5, 0.9, 0.24, 0.2, [-0.05]);
+      box(g, 0.06, 0.06, 0.5, DARKWOOD, 0, 0.14, -0.6).rotation.x = -0.25; // the trail
+      cyl(g, 0.05, 0.07, 0.34, TIM, 0, 0.46, 0.05, 8);
+      // The spring frame: two bundles of twisted sinew in an iron-plated box, an arm through each.
+      box(g, 0.56, 0.05, 0.12, BLACK, 0, 0.82, 0.3); box(g, 0.56, 0.05, 0.12, BLACK, 0, 0.6, 0.3);
+      for (const x of [-0.19, 0.19]) { cyl(g, 0.05, 0.05, 0.22, ROPE, x, 0.71, 0.3, 7); box(g, 0.04, 0.26, 0.12, TIM, x * 1.42, 0.71, 0.3); }
+      for (const s of [-1, 1]) { const bowArm = cyl(g, 0.018, 0.028, 0.46, PALE, s * 0.36, 0.71, 0.22, 6); bowArm.rotation.set(0, 0, 0); bowArm.rotation.z = Math.PI / 2; bowArm.rotation.y = s * 0.45; line(g, [s * 0.55, 0.71, 0.12], [0, 0.71, -0.22], 0xd8d0b8, 0.006); }
+      box(g, 0.28, 0.3, 0.02, color, 0, 0.71, 0.37); // a painted plate before the springs
+      // The slide, with a bolt laid in its groove; it kicks back when she shoots.
+      const a = new THREE.Group();
+      a.position.set(0, 0.69, 0);
+      box(a, 0.09, 0.06, 1.0, TIM, 0, 0, 0.05);
+      cyl(a, 0.012, 0.012, 0.8, PALE, 0, 0.045, 0.2, 5).rotation.x = Math.PI / 2;
+      const tip = add(a, geo('bolt', () => new THREE.ConeGeometry(0.03, 0.12, 5)), 0xc8ccd4, 0, 0.045, 0.66);
+      tip.rotation.x = Math.PI / 2;
+      for (const r of [0, Math.PI / 2]) box(a, 0.05, 0.004, 0.1, 0xd8d0b8, 0, 0.045, -0.15).rotation.z = r;
+      g.add(a);
+      g.userData.recoil = a;
+      cyl(g, 0.035, 0.035, 0.3, DARKWOOD, 0, 0.66, -0.42, 7).rotation.z = Math.PI / 2;
+      for (const x of [-0.17, 0.17]) box(g, 0.02, 0.2, 0.02, PALE, x, 0.66, -0.42);
+      for (let i = 0; i < 3; i++) cyl(g, 0.012, 0.012, 0.6, PALE, 0.42 + i * 0.03, 0.06 + i * 0.012, -0.3, 5).rotation.x = Math.PI / 2;
+      crewman(g, color, seed, -0.4, 0, -0.5, 0.3);
+      return true;
+    }
+    case 'trebuchet': {
+      frame(0.9, 1.5, 0.2, 0.15, [0.55, -0.55]);
+      box(g, 0.74, 0.03, 1.3, PALE, 0, 0.26, 0);
+      // A pair of trestles carrying the axle high above the bed.
+      for (const x of [-0.36, 0.36]) {
+        for (const s of [-1, 1]) { const leg2 = box(g, 0.08, 1.4, 0.08, TIM, x, 0.9, s * 0.3); leg2.rotation.x = -s * 0.42; }
+        box(g, 0.06, 0.06, 0.62, DARKWOOD, x, 0.66, 0);
+        const cross = box(g, 0.05, 0.9, 0.05, DARKWOOD, x, 0.75, 0); cross.rotation.x = 0.9;
+      }
+      cyl(g, 0.045, 0.045, 0.86, BLACK, 0, 1.52, 0, 8).rotation.z = Math.PI / 2;
+      const a = new THREE.Group();
+      a.position.set(0, 1.52, 0);
+      // The beam at rest: its long end hauled down to the bed, the weight hanging high at the short end.
+      const rest = new THREE.Group();
+      rest.rotation.x = 0.62;
+      a.add(rest);
+      cyl(rest, 0.03, 0.055, 2.3, PALE, 0, 0, 0.55, 8).rotation.x = Math.PI / 2;
+      for (const z of [-0.3, 0.3, 1.0]) add(rest, geo('tband', () => new THREE.TorusGeometry(0.05, 0.012, 4, 8)), BLACK, 0, 0, z);
+      // The counterweight: an iron-bound box of stone on a hinge.
+      const box2 = new THREE.Group();
+      box2.position.set(0, 0, -0.56);
+      box2.rotation.x = -0.62; // hangs plumb whatever the beam does at rest
+      box(box2, 0.4, 0.4, 0.36, DARKWOOD, 0, -0.3, 0);
+      for (const y of [-0.16, -0.44]) box(box2, 0.42, 0.04, 0.38, BLACK, 0, y, 0);
+      for (const x of [-0.16, 0.16]) line(box2, [x, -0.1, 0], [x * 0.3, 0, 0], BLACK, 0.012);
+      for (const [x, z] of [[-0.08, 0.05], [0.08, -0.06], [0, 0.1]]) ball(box2, 0.08, STONE_C, x, -0.08, z);
+      rest.add(box2);
+      // The sling, trailing from the long end with its stone.
+      line(rest, [0, 0, 1.68], [0, -0.08, 1.2], ROPE); line(rest, [0.02, 0, 1.68], [0.03, -0.1, 1.2], ROPE);
+      add(rest, geo('pouch', () => new THREE.SphereGeometry(0.1, 8, 5, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5)), 0x5a4630, 0, -0.06, 1.14);
+      ball(rest, 0.085, STONE_C, 0, -0.05, 1.14);
+      g.add(a);
+      g.userData.arm = a;
+      // The windlass, her colours, and stone ready to hand.
+      cyl(g, 0.055, 0.055, 0.8, DARKWOOD, 0, 0.42, -0.6, 8).rotation.z = Math.PI / 2;
+      for (const x of [-0.44, 0.44]) add(g, geo('capstan', () => new THREE.TorusGeometry(0.16, 0.02, 5, 10).rotateY(Math.PI / 2)), PALE, x, 0.42, -0.6);
+      for (const x of [-0.47, 0.47]) box(g, 0.02, 0.18, 0.7, color, x, 0.36, 0.1);
+      const pen = box(g, 0.012, 0.1, 0.26, color, 0.36, 1.72, -0.14); pen.userData.pennant = true;
+      box(g, 0.02, 0.3, 0.02, DARKWOOD, 0.36, 1.66, 0);
+      shot(0.62, -0.3, 6, 0.08, STONE_C);
+      crewman(g, color, seed, -0.62, 0, -0.55, 0.5); crewman(g, dark, seed + 2, 0.6, 0, 0.45, -0.8);
+      return true;
+    }
+    case 'bombard': {
+      // A great gun on a field carriage: cheeks, a trail, tall wheels.
+      for (const x of [-1, 1]) { const cheek = box(g, 0.07, 0.2, 0.95, TIM, x * 0.2, 0.36, -0.12); cheek.rotation.x = -0.12; box(g, 0.075, 0.03, 0.6, BLACK, x * 0.2, 0.47, 0.06); wheel(g, 0.32, x * 0.36, 0.32, 0.12); }
+      cyl(g, 0.035, 0.035, 0.8, BLACK, 0, 0.32, 0.12, 6).rotation.z = Math.PI / 2;
+      box(g, 0.12, 0.1, 0.7, TIM, 0, 0.18, -0.72).rotation.x = -0.3;
+      box(g, 0.44, 0.1, 0.08, color, 0, 0.3, -0.42);
+      const a = new THREE.Group();
+      a.position.set(0, 0.5, 0);
+      const tube = add(a, geo('gun', () => new THREE.LatheGeometry([[0, 0], [0.11, 0.02], [0.135, 0.1], [0.12, 0.22], [0.11, 0.5], [0.1, 0.9], [0.095, 1.12], [0.125, 1.16], [0.125, 1.22], [0.085, 1.22], [0.075, 1.1]].map(([r, y]) => new THREE.Vector2(r, y)), 12)), BLACK, 0, 0.02, -0.4);
+      tube.rotation.x = Math.PI / 2 - 0.2;
+      for (const k of [0.22, 0.5, 0.78]) { const ring = add(a, geo('gunring', () => new THREE.TorusGeometry(0.118, 0.016, 5, 12)), 0x54585e, 0, 0.02 + Math.sin(0.2) * k * 1.0, -0.4 + Math.cos(0.2) * k * 1.0); ring.rotation.x = -0.2; }
+      ball(a, 0.05, BLACK, 0, 0.01, -0.44);
+      cyl(a, 0.035, 0.035, 0.44, BLACK, 0, 0.1, -0.02, 6).rotation.z = Math.PI / 2; // the trunnions
+      g.add(a);
+      g.userData.recoil = a;
+      // Powder, shot, a rammer, and the gunners.
+      cyl(g, 0.11, 0.11, 0.2, 0x7a5230, 0.5, 0.1, -0.55, 9);
+      for (const y of [0.04, 0.16]) add(g, geo('keghoop', () => new THREE.TorusGeometry(0.112, 0.01, 4, 10).rotateX(Math.PI / 2)), BLACK, 0.5, y, -0.55);
+      shot(-0.56, -0.6, 6, 0.065, 0x3a3a40);
+      cyl(g, 0.014, 0.014, 0.9, PALE, -0.42, 0.05, 0.3, 5).rotation.x = Math.PI / 2;
+      crewman(g, color, seed, 0.5, 0, -0.2, -0.5); crewman(g, dark, seed + 4, -0.5, 0, -0.3, 0.5);
+      return true;
+    }
+    case 'organgun': {
+      for (const x of [-1, 1]) wheel(g, 0.27, x * 0.38, 0.27, 0);
+      cyl(g, 0.03, 0.03, 0.84, BLACK, 0, 0.27, 0, 6).rotation.z = Math.PI / 2;
+      box(g, 0.56, 0.08, 0.7, TIM, 0, 0.32, -0.05);
+      box(g, 0.1, 0.09, 0.6, TIM, 0, 0.16, -0.62).rotation.x = -0.3;
+      // Two tiers of barrels on a tilted bed, fired together.
+      const a = new THREE.Group();
+      a.position.set(0, 0.42, -0.05);
+      a.rotation.x = -0.1;
+      box(a, 0.6, 0.05, 0.6, DARKWOOD, 0, 0, 0);
+      for (let row = 0; row < 2; row++) for (let i = 0; i < 6 - row; i++) {
+        const b = cyl(a, 0.026, 0.032, 0.72, BLACK, -0.25 + (i + row * 0.5) * 0.1, 0.06 + row * 0.07, 0.14, 7);
+        b.rotation.x = Math.PI / 2;
+        add(a, geo('muzzle', () => new THREE.TorusGeometry(0.03, 0.008, 4, 8)), 0x54585e, -0.25 + (i + row * 0.5) * 0.1, 0.06 + row * 0.07, 0.5);
+      }
+      for (const z of [-0.18, 0.18]) box(a, 0.62, 0.02, 0.05, 0x54585e, 0, 0.17, z);
+      g.add(a);
+      g.userData.recoil = a;
+      // A mantlet before the gunners, in her owner's colours.
+      const shield = box(g, 0.86, 0.5, 0.04, TIM, 0, 0.66, 0.52);
+      shield.rotation.x = -0.12;
+      box(g, 0.5, 0.16, 0.05, color, 0, 0.78, 0.535).rotation.x = -0.12;
+      box(g, 0.4, 0.1, 0.06, 0x18140f, 0, 0.56, 0.52).rotation.x = -0.12;
+      cyl(g, 0.1, 0.1, 0.18, 0x7a5230, -0.5, 0.09, -0.5, 9);
+      crewman(g, color, seed, 0.46, 0, -0.45, -0.3);
+      return true;
+    }
+    case 'fishboat': case 'galley': case 'frigate': case 'transport': {
+      const big = type === 'frigate', cog = type === 'transport', gal = type === 'galley', small = type === 'fishboat';
+      const L = big ? 1.9 : cog ? 1.6 : gal ? 1.75 : 1.05, W = big ? 0.6 : cog ? 0.66 : gal ? 0.42 : 0.4, H = big ? 0.36 : cog ? 0.34 : gal ? 0.24 : 0.22;
+      const deckY = 0.02 + H * 0.62;
+      /** How wide the hull is at z, as a share of its full beam: things on the rail must follow it in toward the ends. */
+      const beamAt = (z: number): number => Math.sin(Math.min(1, (z / L + 0.5) * 1.2 + 0.24) * Math.PI) ** 0.6;
+      // The hull, a darker strake along it, her owner's colour on the rail, and the deck.
+      add(g, hullGeo('hull', W, H, L), small ? 0x9a7448 : TIM, 0, 0.02 + H / 2 - 0.06, 0);
+      add(g, hullGeo('strake', W * 1.03, H * 0.16, L * 0.99), DARKWOOD, 0, deckY - H * 0.34, 0);
+      add(g, hullGeo('rail', W * 1.05, H * 0.14, L * 0.995), color, 0, deckY - H * 0.06, 0);
+      add(g, hullGeo('deck', W * 0.84, 0.03, L * 0.9), 0xb89466, 0, deckY, -L * 0.02);
+      // Stem and stern posts rising out of the ends.
+      const stem = cyl(g, 0.025, 0.04, H * 1.5, DARKWOOD, 0, deckY + H * 0.75, L * 0.5, 6); stem.rotation.x = 0.5;
+      const stern = cyl(g, 0.025, 0.04, H * 1.2, DARKWOOD, 0, deckY + H * 0.5, -L * 0.47, 6); stern.rotation.x = -0.35;
+      // A steering oar on the quarter.
+      const steer = cyl(g, 0.012, 0.012, H * 2.4, PALE, W * 0.36, deckY, -L * 0.42, 5); steer.rotation.set(0.35, 0, -0.2);
+      box(g, 0.012, H * 0.9, 0.09, PALE, W * 0.4, deckY - H * 0.9, -L * 0.47).rotation.x = 0.35;
+      const mast = (z: number, tall: number, sw: number, sh: number, stripe: boolean, top = false): void => {
+        cyl(g, 0.022, 0.034, tall, DARKWOOD, 0, deckY + tall / 2, z, 7);
+        const sy = deckY + tall * (top ? 0.44 : 0.52);
+        cyl(g, 0.014, 0.014, sw + 0.08, DARKWOOD, 0, sy + sh / 2, z + 0.03, 5).rotation.z = Math.PI / 2;
+        canvas(g, sailGeo(sw, sh), 0xece4d0, 0, sy, z + 0.03);
+        if (stripe) for (const x of [-sw * 0.25, sw * 0.25]) canvas(g, sailGeo(sw * 0.16, sh * 0.96), color, x, sy, z + 0.03 + sw * 0.135);
+        if (top) { const ty = deckY + tall * 0.84; cyl(g, 0.011, 0.011, sw * 0.7, DARKWOOD, 0, ty + sh * 0.26, z + 0.03, 5).rotation.z = Math.PI / 2; canvas(g, sailGeo(sw * 0.66, sh * 0.5), 0xece4d0, 0, ty, z + 0.03); }
+        // Stays to the rail, and her pennant at the masthead.
+        for (const x of [-1, 1]) line(g, [0, deckY + tall * 0.94, z], [x * W * 0.4, deckY, z - 0.12], 0x3a3028, 0.005);
+        const pen = box(g, 0.012, 0.07, 0.24, color, 0, deckY + tall + 0.02, z - 0.12); pen.userData.pennant = true;
+      };
+      if (small) {
+        // A lateen sail on a slanting yard, a net over the side, the catch in baskets, one man at his work.
+        cyl(g, 0.018, 0.028, 0.8, DARKWOOD, 0, deckY + 0.4, 0.08, 6);
+        const yard = cyl(g, 0.012, 0.012, 0.95, DARKWOOD, 0, deckY + 0.66, 0.02, 5); yard.rotation.x = Math.PI / 2 - 0.5;
+        const lat = canvas(g, geo('lateen', () => { const s = new THREE.Shape(); s.moveTo(-0.42, 0.24); s.lineTo(0.44, -0.2); s.quadraticCurveTo(-0.05, -0.22, -0.4, -0.3); s.closePath(); return new THREE.ShapeGeometry(s, 5).rotateY(Math.PI / 2); }), 0xd8c8a0, 0.02, deckY + 0.5, 0.0);
+        lat.rotation.z = 0.06;
+        const pen = box(g, 0.012, 0.06, 0.18, color, 0, deckY + 0.84, -0.02); pen.userData.pennant = true;
+        const net = canvas(g, geo('net', () => new THREE.PlaneGeometry(0.34, 0.3, 4, 3)), 0x4a4638, -W * 0.5, deckY - 0.03, -0.12);
+        net.rotation.set(0, Math.PI / 2, 0.5);
+        for (const [x, z] of [[0.08, -0.3], [-0.06, -0.22]]) { cyl(g, 0.06, 0.05, 0.07, 0xa8884e, x, deckY + 0.05, z, 8); for (let i = 0; i < 3; i++) ball(g, 0.022, 0x9ab0c0, x + (i - 1) * 0.03, deckY + 0.095, z + (i % 2) * 0.03); }
+        crewman(g, color, seed, -0.02, deckY, 0.3, 2.4, 0.42);
+        return true;
+      }
+      if (gal) {
+        // Long and low: a ram at the waterline, shields along the rail, a bank of oars a side, an awning aft.
+        const beak = add(g, geo('beak', () => new THREE.ConeGeometry(0.06, 0.34, 6)), 0x54585e, 0, 0.1, L * 0.55);
+        beak.rotation.x = Math.PI / 2;
+        for (let i = 0; i < 6; i++) for (const x of [-1, 1]) {
+          const z = -L * 0.3 + i * L * 0.11;
+          const sh = add(g, geo('gshield', () => new THREE.CylinderGeometry(0.06, 0.06, 0.016, 8).rotateZ(Math.PI / 2)), i % 2 ? color : 0xb8a070, x * W * 0.5 * beamAt(z), deckY + 0.02, z);
+          sh.castShadow = false;
+          if (i < 5) {
+            const o = new THREE.Group();
+            o.position.set(x * W * 0.46 * beamAt(z + L * 0.055), deckY - 0.02, z + L * 0.055);
+            cyl(o, 0.011, 0.011, 0.56, PALE, x * 0.26, -0.085, 0, 5).rotation.z = x * (Math.PI / 2 - 0.32);
+            box(o, 0.11, 0.012, 0.05, PALE, x * 0.52, -0.17, 0).rotation.z = x * -0.32;
+            o.userData.oar = x;
+            g.add(o);
+          }
+        }
+        mast(0.12, 1.15, 0.72, 0.56, true);
+        for (const x of [-0.15, 0.15]) for (const z of [-L * 0.3, -L * 0.42]) box(g, 0.02, 0.26, 0.02, DARKWOOD, x, deckY + 0.13, z);
+        canvas(g, geo('awning', () => new THREE.PlaneGeometry(0.36, 0.26).rotateX(-Math.PI / 2)), color, 0, deckY + 0.27, -L * 0.36);
+        crewman(g, color, seed, 0, deckY, -L * 0.36, 0, 0.42); crewman(g, dark, seed + 2, 0.05, deckY, L * 0.3, 0, 0.42);
+        return true;
+      }
+      // A tall ship: castles fore and aft.
+      const castle = (z: number, len: number, up: number): void => {
+        box(g, W * 0.72, up, len, TIM, 0, deckY + up / 2, z);
+        box(g, W * 0.8, 0.03, len + 0.06, 0xb89466, 0, deckY + up, z);
+        for (const x of [-1, 1]) for (let k = 0; k < 3; k++) box(g, 0.03, 0.07, len / 5, DARKWOOD, x * W * 0.38, deckY + up + 0.05, z - len / 3 + k * (len / 3));
+        for (const x of [-1, 1]) box(g, 0.012, up * 0.42, len * 0.5, 0xf0d890, x * W * 0.365, deckY + up * 0.55, z, 0x6a5010).castShadow = false;
+      };
+      castle(-L * 0.34, L * 0.24, big ? 0.26 : 0.22);
+      castle(L * 0.3, L * 0.16, big ? 0.16 : 0.14);
+      ball(g, 0.035, 0xffc860, 0, deckY + (big ? 0.26 : 0.22) + 0.14, -L * 0.45, 0xd89020).castShadow = false; // the stern lantern
+      if (big) {
+        // A warship: a bowsprit and jib, two masts with topsails, and a row of guns run out each side.
+        const sprit = cyl(g, 0.014, 0.022, 0.6, DARKWOOD, 0, deckY + 0.3, L * 0.6, 5); sprit.rotation.x = Math.PI / 2 - 0.3;
+        canvas(g, geo('jib', () => { const s = new THREE.Shape(); s.moveTo(0, 0.5); s.lineTo(0.5, -0.1); s.lineTo(0, -0.1); s.closePath(); return new THREE.ShapeGeometry(s).rotateY(-Math.PI / 2); }), 0xece4d0, 0, deckY + 0.36, L * 0.3);
+        mast(L * 0.14, 1.5, 0.78, 0.5, true, true);
+        mast(-L * 0.16, 1.3, 0.66, 0.44, false, true);
+        cyl(g, 0.07, 0.05, 0.07, DARKWOOD, 0, deckY + 1.2, L * 0.14, 8); // the fighting top
+        for (const x of [-1, 1]) for (let i = 0; i < 4; i++) {
+          const z = -L * 0.2 + i * L * 0.12;
+          box(g, 0.012, 0.075, 0.085, 0x18140f, x * W * 0.43 * beamAt(z), deckY - H * 0.26, z).castShadow = false;
+          cyl(g, 0.02, 0.026, 0.12, BLACK, x * W * 0.45 * beamAt(z), deckY - H * 0.26, z, 6).rotation.z = Math.PI / 2;
+        }
+        crewman(g, color, seed, 0, deckY + 0.26, -L * 0.34, 0, 0.4); crewman(g, dark, seed + 2, 0.1, deckY, 0, 1.2, 0.4); crewman(g, dark, seed + 6, -0.05, deckY + 0.16, L * 0.3, 0, 0.4);
+        return true;
+      }
+      // A merchant cog carrying troops: one broad sail and a deck full of cargo.
+      mast(0, 1.3, 0.92, 0.62, true);
+      for (const [x, z, s] of [[-0.14, -0.05, 0.16], [0.12, -0.12, 0.14], [0.1, 0.16, 0.13], [-0.12, 0.2, 0.15]]) box(g, s, s, s, 0xb08850, x, deckY + s / 2 + 0.015, z).rotation.y = x * 4;
+      cyl(g, 0.07, 0.07, 0.14, 0x7a5230, 0, deckY + 0.085, -0.22, 8);
+      crewman(g, color, seed, 0, deckY + 0.22, -L * 0.34, 0, 0.4); crewman(g, dark, seed + 2, 0.16, deckY, 0.3, -1, 0.4);
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * A villager taken by a Slaver: stripped to a loincloth (a woman keeps a band of cloth across the chest as well),
  * barefoot, a rope about the neck and the wrists tied.
@@ -691,6 +1037,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   }
   const g = new THREE.Group();
   person(g, seed);
+  if (machine(g, type, color, seed)) return g;
   const hair = hairOf(seed);
   switch (type) {
     case 'villager': {
@@ -793,20 +1140,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       const a = arm(g);
       box(a, 0.045, 0.06, 0.85, DARKWOOD, 0, -0.24, 0.3);
       box(a, 0.03, 0.03, 0.4, 0x2c2c30, 0, -0.21, 0.62);
-      break;
-    }
-    case 'bombard': {
-      box(g, 0.5, 0.14, 0.9, WOOD, 0, 0.3, -0.1);
-      for (const x of [-0.34, 0.34]) {
-        wheel(g, 0.3, x, 0.3, 0);
-      }
-      const a = new THREE.Group();
-      a.position.set(0, 0.48, -0.1);
-      const barrel = cyl(a, 0.13, 0.18, 1.2, 0x2c2c30, 0, 0.12, 0.35, 10);
-      barrel.rotation.x = Math.PI / 2 - 0.25;
-      g.add(a);
-      box(g, 0.56, 0.08, 0.2, color, 0, 0.42, -0.4);
-      box(g, 0.1, 0.1, 0.5, DARKWOOD, 0, 0.18, -0.75);
       break;
     }
     case 'rider':
@@ -1017,30 +1350,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       g.userData.glow = ball(a, 0.06, 0x9dff90, 0, -0.16, 0.14, 0x2f8a3a);
       break;
     }
-    case 'trebuchet': {
-      box(g, 0.9, 0.1, 1.3, DARKWOOD, 0, 0.16, 0);
-      for (const [x, z] of [[-0.45, 0.5], [0.45, 0.5], [-0.45, -0.5], [0.45, -0.5]]) wheel(g, 0.16, x, 0.16, z);
-      for (const x of [-0.32, 0.32]) { box(g, 0.07, 1.1, 0.07, WOOD, x, 0.7, 0.2).rotation.x = 0.3; box(g, 0.07, 1.1, 0.07, WOOD, x, 0.7, -0.2).rotation.x = -0.3; }
-      box(g, 0.74, 0.07, 0.07, WOOD, 0, 1.2, 0);
-      const a = new THREE.Group();
-      a.position.set(0, 1.2, 0);
-      box(a, 0.07, 0.07, 1.7, WOOD, 0, 0, -0.45);
-      box(a, 0.3, 0.3, 0.3, 0x6a6a6a, 0, -0.2, 0.36);
-      box(a, 0.04, 0.3, 0.04, 0x8a7a5a, 0, -0.15, -1.28);
-      a.rotation.x = -0.5;
-      g.add(a);
-      g.userData.arm = a;
-      box(g, 0.92, 0.06, 0.2, color, 0, 0.24, -0.5);
-      break;
-    }
-    case 'organgun': {
-      box(g, 0.6, 0.1, 0.8, DARKWOOD, 0, 0.3, -0.05);
-      for (const x of [-0.36, 0.36]) wheel(g, 0.26, x, 0.26, 0);
-      for (let i = 0; i < 5; i++) { const b = cyl(g, 0.035, 0.035, 0.7, IRON, -0.2 + i * 0.1, 0.42, 0.2, 6); b.rotation.x = Math.PI / 2 - 0.08; }
-      box(g, 0.56, 0.08, 0.1, 0x3a3a3a, 0, 0.4, -0.1);
-      box(g, 0.62, 0.06, 0.2, color, 0, 0.36, -0.35);
-      break;
-    }
     case 'lancer': {
       horse(g, HORSE[(seed + 2) % HORSE.length]);
       const r = new THREE.Group();
@@ -1158,87 +1467,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       box(g, 0.14, 0.16, 0.1, 0x6a4a2a, 0.12, 0.42, -0.14);
       break;
     }
-    case 'fishboat':
-    case 'galley':
-    case 'frigate': {
-      const big = type === 'frigate', war = type !== 'fishboat';
-      const L = big ? 1.5 : war ? 1.25 : 0.85, W = big ? 0.5 : war ? 0.4 : 0.34;
-      // Hull: carvel-built, drawn to a point at the bow, narrower at the keel, rising a little fore and aft.
-      const hull = (key: string, w: number, h: number, len: number): THREE.BufferGeometry => geo(key, () => {
-        const b = new THREE.BoxGeometry(w, h, len, 2, 2, 8), pos = b.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-          const t = pos.getZ(i) / len + 0.5, up = pos.getY(i) / h + 0.5; // t: stern 0 to bow 1
-          const beam = Math.sin(Math.min(1, t * 1.25 + 0.22) * Math.PI) ** 0.6 * (0.55 + 0.45 * up);
-          pos.setX(i, pos.getX(i) * Math.max(0.04, beam));
-          pos.setY(i, pos.getY(i) + (Math.abs(t - 0.45) ** 2) * h * 1.6 * up);
-        }
-        b.computeVertexNormals();
-        return b;
-      });
-      add(g, hull(`hull${W},${L}`, W, 0.26, L), WOOD, 0, 0.1, 0);
-      add(g, hull(`deck${W},${L}`, W * 0.86, 0.03, L * 0.9), 0xb89466, 0, 0.215, -L * 0.02);
-      add(g, hull(`wale${W},${L}`, W * 1.04, 0.05, L * 0.98), color, 0, 0.2, 0);
-      box(g, W * 0.6, 0.14, L * 0.16, DARKWOOD, 0, 0.3, -L * 0.36); // the sterncastle
-      if (war) { const ramP = cyl(g, 0, 0.05, 0.28, IRON, 0, 0.1, L * 0.53, 6); ramP.rotation.x = Math.PI / 2; }
-      // Masts, each with a yard and a sail bellied by the wind, and the owner's pennant at the head.
-      const sail = (w: number, h: number): THREE.BufferGeometry => geo(`sail${w},${h}`, () => {
-        const pl = new THREE.PlaneGeometry(w, h, 6, 4), pos = pl.attributes.position;
-        for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.cos((pos.getX(i) / w) * Math.PI) * Math.cos((pos.getY(i) / h) * Math.PI * 0.8) * w * 0.22);
-        pl.computeVertexNormals();
-        return pl;
-      });
-      const masts = big ? [-0.3, 0.3] : [0];
-      for (const z of masts) {
-        const mh = war ? 1.05 : 0.75, sw = war ? 0.62 : 0.4, sh = war ? 0.5 : 0.34, sy = war ? 0.82 : 0.62;
-        cyl(g, 0.025, 0.035, mh, DARKWOOD, 0, 0.2 + mh / 2, z, 6);
-        cyl(g, 0.015, 0.015, sw + 0.06, DARKWOOD, 0, sy + sh / 2, z + 0.03, 5).rotation.z = Math.PI / 2;
-        const sl = add(g, sail(sw, sh), war ? 0xece4d0 : 0xd8c8a0, 0, sy, z + 0.03);
-        sl.material = (sl.material as THREE.Material).clone();
-        (sl.material as THREE.Material).side = THREE.DoubleSide;
-        loose(sl, 'rx', 0.25, 60, 4);
-        if (war) box(g, sw * 0.5, 0.09, 0.012, color, 0, sy, z + 0.03 + sw * 0.225);
-        const pen = box(g, 0.012, 0.07, 0.2, color, 0, 0.2 + mh, z - 0.1);
-        pen.userData.pennant = true;
-      }
-      if (!war) { box(g, 0.2, 0.08, 0.2, 0x8a9aa8, 0.02, 0.26, -0.2); cyl(g, 0.012, 0.012, 0.55, DARKWOOD, 0.16, 0.36, 0.12, 5).rotation.x = -0.9; }
-      // A galley is rowed: three oars a side, pulled together.
-      if (war && !big) for (const z of [-0.3, 0, 0.3]) for (const x of [-1, 1]) {
-        const o = new THREE.Group();
-        o.position.set(x * W * 0.45, 0.2, z);
-        const blade = cyl(o, 0.012, 0.012, 0.5, DARKWOOD, x * 0.22, -0.07, 0, 5);
-        blade.rotation.z = x * (Math.PI / 2 - 0.32);
-        box(o, 0.1, 0.012, 0.05, WOOD, x * 0.43, -0.14, 0).rotation.z = x * -0.32;
-        o.userData.oar = x;
-        g.add(o);
-      }
-      if (big) for (const z of [-0.35, 0, 0.35]) for (const x of [-1, 1]) cyl(g, 0.028, 0.032, 0.13, 0x2c2c30, x * W * 0.3, 0.25, z, 6).rotation.z = Math.PI / 2;
-      break;
-    }
-    case 'ram': {
-      box(g, 0.7, 0.1, 1.3, DARKWOOD, 0, 0.3, 0);
-      for (const [x, z] of [[-0.4, 0.45], [0.4, 0.45], [-0.4, -0.45], [0.4, -0.45]]) wheel(g, 0.2, x, 0.2, z);
-      const cover = add(g, geo('ramroof', () => { const c = new THREE.CylinderGeometry(0.5, 0.5, 1.3, 3).toNonIndexed(); c.computeVertexNormals(); return c; }), 0x7a5a38, 0, 0.72, 0);
-      cover.rotation.set(Math.PI / 2, 0, 0);
-      box(g, 0.74, 0.06, 0.3, color, 0, 0.5, 0);
-      const a = new THREE.Group();
-      a.position.set(0, 0.5, 0);
-      const log = cyl(a, 0.1, 0.1, 1.5, WOOD, 0, 0, 0.25, 8);
-      log.rotation.x = Math.PI / 2;
-      cyl(a, 0.13, 0.13, 0.2, IRON, 0, 0, 1.02, 8).rotation.x = Math.PI / 2;
-      g.add(a);
-      g.userData.ram = a;
-      break;
-    }
-    case 'scorpion': {
-      box(g, 0.4, 0.1, 0.8, WOOD, 0, 0.3, -0.05);
-      for (const x of [-0.28, 0.28]) wheel(g, 0.22, x, 0.22, -0.1);
-      box(g, 0.08, 0.3, 0.08, DARKWOOD, 0, 0.5, 0.1);
-      box(g, 0.1, 0.08, 1.0, DARKWOOD, 0, 0.68, 0.15);
-      box(g, 1.0, 0.05, 0.06, WOOD, 0, 0.7, 0.5);
-      cyl(g, 0.015, 0.015, 0.9, IRON, 0, 0.74, 0.3, 4).rotation.x = Math.PI / 2;
-      box(g, 0.3, 0.2, 0.04, color, 0, 0.5, -0.4);
-      break;
-    }
     case 'hussar': {
       horse(g, HORSE[(seed + 1) % HORSE.length]);
       box(g, 0.34, 0.06, 0.4, color, 0, 0.72, -0.05);
@@ -1267,25 +1495,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       const ring = add(g, geo('aura2', () => new THREE.RingGeometry(0.5, 0.56, 24)), 0x8ad0ff, 0, 0.03, 0, 0x2a6a9a);
       ring.rotation.x = -Math.PI / 2;
       ring.castShadow = false;
-      break;
-    }
-    case 'catapult': {
-      box(g, 0.6, 0.14, 1.0, WOOD, 0, 0.3, 0);
-      for (const [x, z] of [[-0.36, 0.34], [0.36, 0.34], [-0.36, -0.34], [0.36, -0.34]]) {
-        wheel(g, 0.2, x, 0.2, z);
-      }
-      box(g, 0.08, 0.5, 0.08, DARKWOOD, -0.22, 0.6, 0.15);
-      box(g, 0.08, 0.5, 0.08, DARKWOOD, 0.22, 0.6, 0.15);
-      box(g, 0.52, 0.08, 0.08, DARKWOOD, 0, 0.84, 0.15);
-      const a = new THREE.Group();
-      a.position.set(0, 0.5, 0.15);
-      const beam = box(a, 0.07, 0.07, 0.95, WOOD, 0, 0.2, -0.38);
-      beam.rotation.x = 0.5;
-      ball(a, 0.11, 0x777777, 0, 0.42, -0.8);
-      g.add(a);
-      g.userData.arm = a;
-      box(g, 0.03, 0.5, 0.03, DARKWOOD, 0.26, 0.6, -0.45);
-      box(g, 0.02, 0.16, 0.24, color, 0.26, 0.78, -0.33);
       break;
     }
   }
