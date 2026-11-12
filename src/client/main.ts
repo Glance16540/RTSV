@@ -153,7 +153,19 @@ export class App {
   }
 }
 
-const params = new URLSearchParams(location.search);
+// Changing mode (a new map, a mission, the campaign) restarts the page. The options for the next
+// start are handed over in session storage so this also works where the address cannot carry a
+// query string; a query string in the address is still honoured on a fresh visit.
+const boot = (() => {
+  try {
+    const b = sessionStorage.getItem('rtsv-boot');
+    sessionStorage.removeItem('rtsv-boot');
+    return b;
+  } catch {
+    return null;
+  }
+})();
+const params = new URLSearchParams(boot ?? location.search);
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
 /** skirmish: a single match. campaign: the Conquest map. battle: a Conquest battle fought in real time. */
 const mode = params.has('battle') ? 'battle' : params.has('campaign') ? 'campaign' : missionById(params.get('mission') ?? '') ? 'mission' : 'skirmish';
@@ -180,7 +192,14 @@ function readCampaign(): Campaign | null {
   }
 }
 const writeCampaign = (c: Campaign) => { try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(c)); } catch { /* storage unavailable */ } };
-const go = (query: string) => { location.href = location.pathname + query; };
+const go = (query: string) => {
+  try {
+    sessionStorage.setItem('rtsv-boot', query);
+    location.reload();
+  } catch {
+    location.href = location.pathname + query;
+  }
+};
 
 loadAssets().then(() => {
   const el = (id: string) => document.getElementById(id)!;
