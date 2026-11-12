@@ -44,9 +44,13 @@ They stand in until each leader has a portrait of their own.
 
 - [The Capture of Carthage](https://www.metmuseum.org/art/collection/search/437795), 1725–29 — Giovanni Battista Tiepolo
 - [The Death of Socrates](https://www.metmuseum.org/art/collection/search/436105), 1787 — Jacques Louis David
+- [Grooms and Foreign Horses](https://www.metmuseum.org/art/collection/search/39767), 17th–18th century — Jin Nong
 - [The Temple at Dendur, Nubia](https://www.metmuseum.org/art/collection/search/382200), 1848 — David Roberts
 - [The Battle of Vercellae](https://www.metmuseum.org/art/collection/search/437794), 1725–29 — Giovanni Battista Tiepolo
+- [Gudvangen](https://www.metmuseum.org/art/collection/search/839044), 1839 — Thomas Fearnley
 - [The Tower of Babel or Birs Nimrud Restored](https://www.metmuseum.org/art/collection/search/891634), ca. 1885 — William Simpson
 - [The Battle of Yashima, from The Tale of the Heike (Heike monogatari)](https://www.metmuseum.org/art/collection/search/45182), 17th century — Tosa School
+- [Halt of Caravans at the Wells of Saba (Beersheba) in the Desert South of Hebron](https://www.metmuseum.org/art/collection/search/441358), 1850 — Charles de Coubertin
 - [Ancient Rome](https://www.metmuseum.org/art/collection/search/437244), 1757 — Giovanni Paolo Panini
 - [A View near Tivoli (Morning)](https://www.metmuseum.org/art/collection/search/10500), 1832 — Thomas Cole
+- [Palace Landscape](https://www.metmuseum.org/art/collection/search/49005), early 19th century — Tani Bunchō
