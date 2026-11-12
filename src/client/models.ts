@@ -133,25 +133,71 @@ function leg(g: THREE.Object3D, w: number, h: number, color: number, x: number, 
   g.add(hip);
 }
 
-function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y = 0): void {
-  if (y === 0) g.userData.biped = true;
-  leg(g, 0.1, 0.3, legs, -0.07, 0, 0, y);
-  leg(g, 0.1, 0.3, legs, 0.07, 0, Math.PI, y);
-  // A belted tunic, flared at the hem and drawn in at the neck.
-  lathe(g, 'tunic', [[0.15, 0], [0.135, 0.07], [0.115, 0.17], [0.12, 0.2], [0.155, 0.36], [0.07, 0.43]], body, 0, y + 0.24, 0).scale.z = 0.72;
-  add(g, geo('belt', () => new THREE.TorusGeometry(0.118, 0.016, 5, 12).rotateX(Math.PI / 2)), 0x2e2218, 0, y + 0.43, 0).scale.z = 0.72;
-  const la = cap(g, 0.045, 0.3, body, -0.19, y + 0.47, 0);
-  la.rotation.z = -0.14;
-  ball(g, 0.045, SKIN, -0.215, y + 0.33, 0);
-  ball(g, 0.12, SKIN, 0, y + 0.76, 0);
-  add(g, geo('hair', () => new THREE.SphereGeometry(0.128, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.52)), hair, 0, y + 0.775, -0.012);
+/** A man's or woman's leg: thigh, a narrower shin and a boot, hinged at the hip. */
+function humanLeg(g: THREE.Object3D, color: number, x: number, side: number, y: number): void {
+  const hip = new THREE.Group();
+  hip.position.set(x, y + 0.3, 0);
+  hip.userData.leg = side;
+  cap(hip, 0.058, 0.18, color, 0, -0.085, 0);
+  add(hip, geo('shin', () => new THREE.CylinderGeometry(0.05, 0.036, 0.14, 8)), color, 0, -0.2, 0);
+  box(hip, 0.075, 0.05, 0.14, 0x2e2218, 0, -0.275, 0.025);
+  g.add(hip);
+}
+/** A face: two dark eyes are enough at this size to make a head read as a person. */
+function face(g: THREE.Object3D, y: number, z = 0.098): void {
+  for (const x of [-0.042, 0.042]) add(g, geo('eye', () => new THREE.SphereGeometry(0.015, 6, 5)), 0x1e1a18, x, y, z).castShadow = false;
 }
 
-/** Right arm + weapon, pivoting at the shoulder so it can swing. */
-function arm(g: THREE.Object3D, y = 0): THREE.Group {
+/** A man on foot (or in the saddle, with y raised): broad in the shoulder, belted at the waist. */
+function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y = 0): void {
+  if (y === 0) g.userData.biped = true;
+  humanLeg(g, legs, -0.065, 0, y);
+  humanLeg(g, legs, 0.065, Math.PI, y);
+  // A belted tunic: flared at the hem, wide at the chest and shoulders, drawn in at the neck.
+  lathe(g, 'tunic', [[0.135, 0], [0.125, 0.06], [0.108, 0.17], [0.112, 0.2], [0.142, 0.31], [0.152, 0.37], [0.1, 0.41], [0.045, 0.44]], body, 0, y + 0.24, 0).scale.z = 0.66;
+  add(g, geo('belt', () => new THREE.TorusGeometry(0.112, 0.016, 5, 12).rotateX(Math.PI / 2)), 0x2e2218, 0, y + 0.43, 0).scale.z = 0.68;
+  for (const x of [-0.155, 0.155]) ball(g, 0.055, body, x, y + 0.6, 0);
+  cyl(g, 0.04, 0.046, 0.08, SKIN, 0, y + 0.67, 0, 8);
+  // The off arm: a sleeve to the elbow, a bare forearm and a hand.
+  cap(g, 0.042, 0.19, body, -0.185, y + 0.52, 0).rotation.z = -0.12;
+  cap(g, 0.035, 0.17, SKIN, -0.205, y + 0.385, 0.01).rotation.z = -0.06;
+  ball(g, 0.04, SKIN, -0.213, y + 0.295, 0.015);
+  ball(g, 0.11, SKIN, 0, y + 0.76, 0).scale.y = 1.08;
+  add(g, geo('hair', () => new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)), hair, 0, y + 0.778, -0.012);
+  face(g, y + 0.765);
+}
+
+/**
+ * A woman in a long dress: a full skirt from the hips, a narrow waist, a fitted bodice,
+ * and her hair worn long, pinned up or under a scarf.
+ */
+function woman(g: THREE.Object3D, dress: number, hair: number, seed: number, trim = 0xe8e2d4): void {
+  g.userData.biped = true;
+  lathe(g, 'skirt', [[0.21, 0], [0.2, 0.04], [0.155, 0.2], [0.13, 0.3], [0.086, 0.4]], dress).scale.z = 0.8;
+  lathe(g, 'bodice', [[0.086, 0], [0.1, 0.06], [0.116, 0.11], [0.11, 0.16], [0.118, 0.2], [0.06, 0.245], [0.036, 0.27]], dress, 0, 0.4, 0).scale.z = 0.6;
+  for (const x of [-0.05, 0.05]) ball(g, 0.05, dress, x, 0.512, 0.048);
+  add(g, geo('sash', () => new THREE.TorusGeometry(0.086, 0.014, 5, 12).rotateX(Math.PI / 2)), trim, 0, 0.405, 0).scale.z = 0.72;
+  for (const x of [-0.05, 0.05]) box(g, 0.06, 0.04, 0.1, 0x2e2218, x, 0.02, 0.13);
+  cyl(g, 0.033, 0.038, 0.08, SKIN, 0, 0.67, 0, 8);
+  // The off arm, slimmer than a man's.
+  cap(g, 0.034, 0.18, dress, -0.15, 0.53, 0).rotation.z = -0.14;
+  cap(g, 0.029, 0.16, SKIN, -0.172, 0.4, 0.01).rotation.z = -0.06;
+  ball(g, 0.033, SKIN, -0.18, 0.315, 0.015);
+  ball(g, 0.104, SKIN, 0, 0.76, 0).scale.y = 1.06;
+  face(g, 0.762, 0.092);
+  add(g, geo('hairf', () => new THREE.SphereGeometry(0.115, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55)), seed % 3 === 2 ? trim : hair, 0, 0.775, -0.014);
+  if (seed % 3 === 0) cap(g, 0.07, 0.34, hair, 0, 0.62, -0.085).scale.set(1.35, 1, 0.55); // worn long down the back
+  else if (seed % 3 === 1) ball(g, 0.062, hair, 0, 0.83, -0.085); // pinned up in a bun
+  else { cap(g, 0.03, 0.26, hair, 0, 0.6, -0.1); ball(g, 0.045, trim, 0, 0.7, -0.1); } // a scarf, and a braid below it
+}
+
+/** Right arm + weapon, pivoting at the shoulder so it can swing. A sleeve to the elbow if `sleeve` is given. */
+function arm(g: THREE.Object3D, y = 0, sleeve = SKIN, slim = 1): THREE.Group {
   const a = new THREE.Group();
   a.position.set(0.19, y + 0.58, 0);
-  cap(a, 0.045, 0.3, SKIN, 0, -0.12, 0);
+  cap(a, 0.042 * slim, 0.19, sleeve, 0, -0.06, 0);
+  cap(a, 0.035 * slim, 0.17, SKIN, 0, -0.19, 0.008);
+  ball(a, 0.04 * slim, SKIN, 0, -0.285, 0.012);
   g.add(a);
   g.userData.arm = a;
   return a;
@@ -236,17 +282,11 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   switch (type) {
     case 'villager': {
       if (gender === 'f') {
-        g.userData.biped = true;
-        lathe(g, 'dress', [[0.23, 0], [0.22, 0.05], [0.11, 0.36], [0.115, 0.42], [0.13, 0.54], [0.06, 0.6]], color, 0, 0, 0);
-        cap(g, 0.04, 0.28, color, -0.17, 0.44, 0).rotation.z = -0.14;
-        const a = arm(g, -0.04);
-        a.position.x = 0.17;
-        ball(g, 0.12, SKIN, 0, 0.7, 0);
-        ball(g, 0.135, hair, 0, 0.73, -0.035);
-        box(g, 0.2, 0.26, 0.07, hair, 0, 0.56, -0.11);
+        woman(g, color, hair, seed);
+        arm(g, -0.02, color, 0.82).position.x = 0.15;
       } else {
         humanoid(g, color, 0x5b4630, hair);
-        arm(g);
+        arm(g, 0, color);
       }
       const carry = box(g, 0.2, 0.2, 0.16, RES_COLOR.wood, 0, 0.5, -0.19);
       carry.visible = false;
@@ -534,11 +574,9 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       break;
     }
     case 'herbwife': {
-      cyl(g, 0.1, 0.24, 0.58, 0x5a8a4a, 0, 0.29, 0, 10);
-      cyl(g, 0.2, 0.25, 0.12, color, 0, 0.07, 0, 10);
-      ball(g, 0.12, SKIN, 0, 0.7, 0);
-      box(g, 0.26, 0.1, 0.24, 0xe8e2d0, 0, 0.8, -0.02);
-      const a = arm(g);
+      woman(g, 0x5a8a4a, hair, 2, color);
+      const a = arm(g, -0.02, 0x5a8a4a, 0.82);
+      a.position.x = 0.15;
       box(a, 0.2, 0.14, 0.16, 0x9a7a4a, 0, -0.26, 0.14);
       g.userData.glow = ball(a, 0.06, 0x9dff90, 0, -0.16, 0.14, 0x2f8a3a);
       break;
