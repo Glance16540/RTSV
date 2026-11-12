@@ -40,3 +40,13 @@ They stand in until each leader has a portrait of their own.
 - [Portrait scroll of seven generations of the same family](https://www.metmuseum.org/art/collection/search/51813), 18th or 19th century — Unidentified artist
 - [Okita of the Naniwa-ya Teahouse](https://www.metmuseum.org/art/collection/search/55867), ca. 1793 — Kitagawa Utamaro
 
+## Paintings behind the voice booth
+
+- [The Capture of Carthage](https://www.metmuseum.org/art/collection/search/437795), 1725–29 — Giovanni Battista Tiepolo
+- [The Death of Socrates](https://www.metmuseum.org/art/collection/search/436105), 1787 — Jacques Louis David
+- [The Temple at Dendur, Nubia](https://www.metmuseum.org/art/collection/search/382200), 1848 — David Roberts
+- [The Battle of Vercellae](https://www.metmuseum.org/art/collection/search/437794), 1725–29 — Giovanni Battista Tiepolo
+- [The Tower of Babel or Birs Nimrud Restored](https://www.metmuseum.org/art/collection/search/891634), ca. 1885 — William Simpson
+- [The Battle of Yashima, from The Tale of the Heike (Heike monogatari)](https://www.metmuseum.org/art/collection/search/45182), 17th century — Tosa School
+- [Ancient Rome](https://www.metmuseum.org/art/collection/search/437244), 1757 — Giovanni Paolo Panini
+- [A View near Tivoli (Morning)](https://www.metmuseum.org/art/collection/search/10500), 1832 — Thomas Cole

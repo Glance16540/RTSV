@@ -19,6 +19,8 @@ const leaders = Object.values(LEADERS).flatMap((l) => [[l, false], ...(l.alt ? [
 // Stock portraits to choose from: public-domain works from The Metropolitan Museum of Art's Open Access
 // collection, cropped small (see docs/PORTRAIT_CREDITS.md).
 const stock = JSON.parse(readFileSync('scripts/portraits.json', 'utf8'));
+// Paintings of the ancient world that drift behind the page, from the same museum collection.
+const BACKDROPS = JSON.parse(readFileSync('scripts/backdrops.json', 'utf8')).map((b) => ({ jpg: b.jpg, title: b.title.split(',')[0], artist: b.artist }));
 const STOCK = Object.fromEntries(Object.entries(stock).map(([sex, list]) => [sex, list.map((p) => ({ jpg: p.jpg, title: p.title + (p.date ? ', ' + p.date : '') }))]));
 
 const page = `<!doctype html>
@@ -35,18 +37,33 @@ const page = `<!doctype html>
     --display: 'Cinzel', 'Trajan Pro', Georgia, 'Times New Roman', serif; --quote: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; --ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color-scheme: dark; }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; scroll-padding-top: 16px; }
-  body { margin: 0; color: var(--fg); font: 16px/1.55 var(--ui);
-    background: radial-gradient(1200px 600px at 85% -10%, #3a2a1466, transparent 60%), radial-gradient(900px 500px at 0% 0%, #1f2a4a66, transparent 60%), var(--bg); background-attachment: fixed; }
+  body { margin: 0; color: var(--fg); font: 16px/1.55 var(--ui); background: var(--bg); }
   main { max-width: 980px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 140px max(16px, env(safe-area-inset-left)); }
   h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: 0.02em; margin: 0; text-wrap: balance; }
   p { margin: 0 0 12px; } .dim { color: var(--dim); } small { color: var(--dim); }
   [hidden] { display: none !important; }
   .err { color: var(--warn); }
 
+  /* the world behind the page: paintings that drift and give way to one another, under sparks from a fire */
+  .world { position: fixed; inset: 0; z-index: -2; overflow: hidden; background: var(--bg); }
+  .world i { position: absolute; inset: -6%; background-size: cover; background-position: center 30%; opacity: 0; transition: opacity 2.6s ease-in-out; will-change: transform, opacity; }
+  .world i.on { opacity: 1; }
+  .world i.a { animation: pan-a 22s linear infinite alternate; } .world i.b { animation: pan-b 22s linear infinite alternate; }
+  @keyframes pan-a { from { transform: scale(1.02) translate(-1.5%, 1%); } to { transform: scale(1.16) translate(2%, -2%); } }
+  @keyframes pan-b { from { transform: scale(1.16) translate(2%, 1.5%); } to { transform: scale(1.03) translate(-2%, -1%); } }
+  .world::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #0d0f14eb 0%, #0d0f14a6 40%, #0d0f1438 68%, #0d0f1470 100%), linear-gradient(180deg, #0d0f1426 0%, #0d0f1400 30%, #0d0f14b8 80%, #0d0f14f2 100%); transition: background-color 1.2s; }
+  body.inbooth .world::after { background-color: #0d0f14c4; }
+  #sparks { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100%; pointer-events: none; }
+  .plate { position: fixed; right: max(14px, env(safe-area-inset-right)); top: 12px; z-index: 1; font: 500 11px var(--ui); letter-spacing: 0.08em; text-transform: uppercase; color: #f1e7d0aa; text-shadow: 0 1px 3px #000; text-align: right; transition: opacity 1s; }
+  body.inbooth .plate { opacity: 0; }
+
   /* hero */
-  .hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: center; padding: 56px 0 36px; }
+  .hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: center; padding: 56px 0 36px; min-height: min(78vh, 640px); }
+  .hero h1, .hero .lede, .eyebrow { text-shadow: 0 2px 18px #000c; }
   .eyebrow { font: 600 12px var(--ui); letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
-  .hero h1 { font-size: clamp(38px, 6.4vw, 68px); line-height: 1.04; background: linear-gradient(180deg, var(--gold2), var(--gold) 55%, #b98a35); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero h1 { font-size: clamp(38px, 6.4vw, 72px); line-height: 1.04; color: var(--gold2); animation: arrive 1.1s cubic-bezier(.2,.8,.2,1) both; }
+  .hero .lede { animation: arrive 1.1s 0.25s cubic-bezier(.2,.8,.2,1) both; } .hero .cta { animation: arrive 1.1s 0.5s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(18px); } }
   .hero .lede { font: 500 clamp(20px, 2.4vw, 25px)/1.35 var(--quote); color: var(--fg); margin: 18px 0 24px; max-width: 30ch; }
   .cta { display: inline-block; font: 700 15px var(--display); letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; color: #1a1305; background: linear-gradient(180deg, var(--gold2), var(--gold)); padding: 13px 22px; border-radius: 4px; box-shadow: 0 6px 24px #e3b65533, inset 0 -2px 0 #0003; }
   .cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
@@ -64,7 +81,7 @@ const page = `<!doctype html>
 
   /* the three steps */
   .path { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 8px 0 22px; }
-  .path div { position: relative; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--edge); border-top: 3px solid var(--gold); border-radius: 6px; padding: 18px 18px 16px 74px; min-width: 0; }
+  .path div { position: relative; background: linear-gradient(180deg, #212536e6, #1a1d29e6); backdrop-filter: blur(6px); border: 1px solid var(--edge); border-top: 3px solid var(--gold); border-radius: 6px; padding: 18px 18px 16px 74px; min-width: 0; }
   .path .num { position: absolute; left: 16px; top: 12px; font: 700 44px/1 var(--display); color: var(--gold); opacity: 0.9; }
   .path b { display: block; font: 700 17px var(--display); letter-spacing: 0.04em; margin-bottom: 4px; }
   .path span { color: var(--dim); font-size: 14px; }
@@ -76,7 +93,7 @@ const page = `<!doctype html>
   .sect h2 { font-size: clamp(24px, 3.4vw, 34px); color: var(--gold); }
   .sect::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--gold), transparent); opacity: 0.5; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-  .nation { --c: var(--gold); background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s; }
+  .nation { --c: var(--gold); background: #1a1d29f2; border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s; }
   .nation:hover { transform: translateY(-3px); border-color: var(--c); box-shadow: 0 14px 34px #0009; }
   .nation header { position: relative; padding: 18px 16px 14px; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 45%, #0d0f14)); }
   .nation header::after { content: ''; position: absolute; left: 0; right: 0; bottom: -9px; height: 10px; background: linear-gradient(135deg, var(--panel) 25%, transparent 25%) 0 0 / 20px 10px, linear-gradient(225deg, var(--panel) 25%, transparent 25%) 0 0 / 20px 10px; transform: scaleY(-1); }
@@ -169,6 +186,9 @@ const page = `<!doctype html>
 </style>
 </head>
 <body>
+<div class="world" id="world" aria-hidden="true"><i class="a"></i><i class="b"></i></div>
+<canvas id="sparks" aria-hidden="true"></canvas>
+<div class="plate" id="plate" aria-hidden="true"></div>
 <main>
   <section id="choose">
     <div class="hero">
@@ -214,7 +234,7 @@ const page = `<!doctype html>
       <span class="dim" style="font-size:14px">Their portrait <small>(optional; shown in a circle beside their words. Pick one of these for now, or use a picture of your own.)</small></span>
       <div class="stock" id="stock"></div>
       <div class="row"><label class="dim" style="font-size:14px" for="pic">Or your own picture:</label><input type="file" id="pic" accept="image/*"><button class="link" id="nopic" hidden>Remove the portrait</button></div>
-      <p class="dim" style="font-size:12px;margin:8px 0 0">Portraits shown are public-domain works from The Metropolitan Museum of Art, Open Access.</p>
+      <p class="dim" style="font-size:12px;margin:8px 0 0">Portraits and the paintings behind this page are public-domain works from The Metropolitan Museum of Art, Open Access.</p>
     </div>
     <div class="step" id="step2"><span class="num">II</span><h2>How they rule</h2></div>
     <div class="card">
@@ -252,6 +272,7 @@ const page = `<!doctype html>
 <script>
 const LEADERS = ${JSON.stringify(leaders)};
 const STOCK = ${JSON.stringify(STOCK)};
+const BACKDROPS = ${JSON.stringify(BACKDROPS)};
 const QUESTIONS = ${JSON.stringify(TEMPER_QUESTIONS)};
 const AXES = ${JSON.stringify(TEMPER_AXES)};
 const WORDS = ${JSON.stringify(TEMPER_WORDS)};
@@ -262,6 +283,46 @@ let active = null; // { rec, key } while a line is being recorded
 const takes = new Map(); // line key -> { wav: Uint8Array, url }
 
 // ---- choosing a leader ----
+// ---- the world behind the page ----
+{
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const layers = [...$('world').children];
+  let n = Math.floor(Math.random() * BACKDROPS.length), top = 0;
+  const show = () => {
+    const b = BACKDROPS[n % BACKDROPS.length], l = layers[top];
+    l.style.backgroundImage = 'url(' + b.jpg + ')';
+    l.classList.add('on');
+    layers[1 - top].classList.remove('on');
+    $('plate').textContent = b.title + (b.artist ? ' · ' + b.artist : '');
+    top = 1 - top; n++;
+  };
+  show();
+  if (!still) setInterval(() => { if (!document.hidden) show(); }, 11000);
+
+  // Sparks rising, as from a hearth below the page.
+  const cv = $('sparks'), g = cv.getContext('2d');
+  let W = 0, H = 0, sparks = [];
+  const size = () => { W = cv.width = innerWidth; H = cv.height = innerHeight; };
+  const born = (anywhere) => ({ x: Math.random() * W, y: anywhere ? Math.random() * H : H + 10, r: 0.6 + Math.random() * 1.8, vy: 0.25 + Math.random() * 0.7, sway: Math.random() * 6.28, life: 0.4 + Math.random() * 0.6 });
+  size(); addEventListener('resize', size);
+  if (!still) {
+    sparks = Array.from({ length: Math.min(70, Math.round(innerWidth / 18)) }, () => born(true));
+    const tick = () => {
+      if (!document.hidden) {
+        g.clearRect(0, 0, W, H);
+        for (const s of sparks) {
+          s.y -= s.vy; s.sway += 0.02; s.x += Math.sin(s.sway) * 0.35;
+          const a = Math.max(0, Math.min(1, s.y / H)) * s.life * (0.6 + 0.4 * Math.sin(s.sway * 3));
+          g.beginPath(); g.fillStyle = 'rgba(246,200,110,' + a.toFixed(3) + ')'; g.shadowColor = 'rgba(255,170,60,0.9)'; g.shadowBlur = 8;
+          g.arc(s.x, s.y, s.r, 0, 6.28); g.fill();
+          if (s.y < -10) Object.assign(s, born(false));
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  }
+}
 // A court of faces around the empty seat.
 {
   const faces = [STOCK.man[0], STOCK.woman[3], STOCK.man[8], STOCK.woman[9], STOCK.man[13], STOCK.woman[5]];
@@ -303,11 +364,13 @@ $('back').addEventListener('click', () => {
   for (const t of takes.values()) URL.revokeObjectURL(t.url);
   takes.clear();
   $('booth').hidden = true; $('bar').hidden = true; $('choose').hidden = false;
+  document.body.classList.remove('inbooth');
   window.scrollTo(0, 0);
 });
 
 function open(l) {
   leader = l;
+  document.body.classList.add('inbooth');
   document.documentElement.style.setProperty('--nation', l.color);
   $('realm').textContent = 'Ruler of the ' + l.nation;
   $('cname').value = l.name;
