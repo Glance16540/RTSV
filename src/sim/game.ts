@@ -92,6 +92,7 @@ export interface Unit extends Base {
   homeY: number;
   inside: number; // building this unit is sheltering in, or ship it is aboard
   cargo?: number[]; // a transport ship's passengers
+  frail?: number; // a child who will not live to grow up: dies when growT falls to this
   captive?: Captive | null; // a Slaver's prisoner, being led to a camp
   merc?: boolean; // hired at a tavern: fights for wages and leaves when they stop
   resume: Order | null; // job to return to after sheltering
@@ -1115,6 +1116,18 @@ export class Game {
     }
   }
 
+  /** A child grows a little older. Returns true if the child died: not every child lives to grow up. */
+  private grow(u: Unit): boolean {
+    u.growT -= DT;
+    if (u.frail && u.growT <= u.frail) {
+      this.msg(u.owner, `${u.name}, a child of the ${u.family || 'town'}, has died young.`);
+      this.kill(u);
+      return true;
+    }
+    if (u.growT <= 0) this.comeOfAge(u);
+    return false;
+  }
+
   /** Is this villager spending their days in a tavern? Their house raises no children meanwhile. */
   private atTavern(id: number): boolean {
     const u = this.entities.get(id);
@@ -1666,7 +1679,7 @@ export class Game {
     if (u.inside) {
       const ship = this.entities.get(u.inside);
       if (ship && ship.kind === 'unit') { u.x = ship.x; u.y = ship.y; }
-      if (u.growT > 0 && (u.growT -= DT) <= 0) this.comeOfAge(u);
+      if (u.growT > 0 && this.grow(u)) return;
       return;
     }
     u.moving = false;
@@ -1676,7 +1689,7 @@ export class Game {
     if (u.def.heal) this.updateHealer(u);
     if (u.def.aura && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + 1.5 * DT); // heroes slowly regenerate
     if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith * this.creed(u.owner).faith);
-    if (u.growT > 0 && (u.growT -= DT) <= 0) this.comeOfAge(u);
+    if (u.growT > 0 && this.grow(u)) return;
     if (this.aging && u.lifespan > 0 && u.growT <= 0 && (u.age += DT) > u.lifespan) {
       this.events.push({ t: 'oldage', player: u.owner, name: `${u.name}${u.family ? ' ' + u.family : ''}` });
       this.kill(u);
@@ -2300,6 +2313,10 @@ export class Game {
             this.setOrder(child, null);
             child.growT = GROW_TIME;
             child.bornAt = b.id;
+            // In a town whose families are strong, more children live to grow up. (Decided without the
+            // game's dice, so the rest of the match is not disturbed by it.)
+            const fate = ((child.id * 2654435761 + this.seed * 40503) >>> 0) / 4294967296;
+            if (fate < this.creed(b.owner).childLoss) child.frail = GROW_TIME * (0.15 + 0.7 * (fate / Math.max(0.01, this.creed(b.owner).childLoss)));
             // Children take after their parents: usually one of their traits, now and then something new.
             const mother = this.entities.get(b.residents.f) as Unit, father = this.entities.get(b.residents.m) as Unit;
             const roll = this.rng();

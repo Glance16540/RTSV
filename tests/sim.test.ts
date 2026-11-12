@@ -2147,3 +2147,28 @@ describe('the holy town and the work camp', () => {
     expect(g.units.some((u) => u.owner === 1 && u.name === 'Boaz')).toBe(true);
   });
 });
+
+describe('children who live to grow up', () => {
+  it('nearly all do in a righteous town, far fewer in a decadent one', () => {
+    const raise = (virtue: number) => {
+      const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
+      const p = g.players[0];
+      p.dilemmaT = 1e9; p.popCap = 400; p.res.food = 1e6;
+      g.aging = false;
+      const tc = g.buildings.find((b) => b.owner === 0)!;
+      for (let i = 0; i < 6; i++) {
+        const h = g.spawnBuilding('house', 0, Math.floor(tc.x) - 12 + i * 4, Math.floor(tc.y) + 8, true);
+        const m = g.spawnUnit('villager', 0, h.x, h.y + 2, 'm'), f = g.spawnUnit('villager', 0, h.x + 0.5, h.y + 2, 'f');
+        h.residents = { m: m.id, f: f.id }; m.homeId = h.id; f.homeId = h.id;
+      }
+      let died = 0;
+      run(g, 600, () => { p.virtue = virtue; p.popCap = 400; died += g.events.filter((e) => e.t === 'msg' && e.player === 0 && e.text.includes('died young')).length; g.events.length = 0; });
+      return { born: p.stats.born, died };
+    };
+    const holy = raise(90), fallen = raise(-90);
+    expect(holy.born).toBeGreaterThan(20);
+    expect(holy.died / holy.born).toBeLessThan(0.08);
+    expect(fallen.died / fallen.born).toBeGreaterThan(0.15);
+    expect(holy.born).toBeGreaterThan(fallen.born); // and the faithful have more of them to begin with
+  });
+});

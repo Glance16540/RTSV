@@ -83,11 +83,14 @@ What a town believes also decides what it will raise:
 
 Where your people stand on the scale between piety and decadence sets their creed:
 
-- **Devout**, then **Righteous**: children come sooner, faith gathers faster, healing and morale
+- **Devout**, then **Righteous**: children come sooner and more of them live to grow up (one in
+  ten is lost in an ordinary town, one in twenty among the Devout, one in fifty among the
+  Righteous). Faith gathers faster, healing and morale
   are stronger. A plague passes among the Devout in half the time, and among the Righteous it does
   not take hold at all. They research more slowly and trade on worse terms.
 - **Worldly**, then **Decadent**: soldiers are trained faster, gold is mined faster and the market
-  pays more. But villagers are distracted from their work, children come later, plagues last
+  pays more. But villagers are distracted from their work, children come later and
+  fewer live to grow up (up to more than one in four lost), plagues last
   longer, and faith, healing and morale wither.
 
 Hover over the creed in the top bar to see where you stand. Every few minutes a dilemma is also
