@@ -332,6 +332,27 @@ export class AIController {
     if (gate && g.canPlace('gate', gate.cx, gate.cy)) g.cmdPlace(this.pid, 'gate', gate.cx, gate.cy, []);
   }
 
+  /** For every water cell, how many cells of water it is joined to. */
+  private waterSizes(): Int32Array {
+    const g = this.game, N = g.size, out = new Int32Array(N * N), seen = new Uint8Array(N * N);
+    for (let i = 0; i < N * N; i++) {
+      if (seen[i] || g.terrain[i] !== 1) continue;
+      const cells = [i];
+      seen[i] = 1;
+      for (let k = 0; k < cells.length; k++) {
+        const c = cells[k], x = c % N, y = (c - x) / N;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy, n = ny * N + nx;
+          if (nx < 0 || ny < 0 || nx >= N || ny >= N || seen[n] || g.terrain[n] !== 1) continue;
+          seen[n] = 1;
+          cells.push(n);
+        }
+      }
+      for (const c of cells) out[c] = cells.length;
+    }
+    return out;
+  }
+
   /** A landing in progress: troops gather at the shore, board a transport and are put ashore near the enemy. */
   private raid: { phase: 'load' | 'sail'; ship: number; men: number[]; t: number; called: boolean; load: { wx: number; wy: number; lx: number; ly: number }; land: { wx: number; wy: number }; tx: number; ty: number } | null = null;
   private raidT = 420;
@@ -352,6 +373,9 @@ export class AIController {
         const waited = g.time - r.t;
         if (aboard >= Math.max(3, men.length) || (waited > 60 && aboard >= 3)) {
           g.cmdUnloadAt(pid, [ship.id], r.land.wx, r.land.wy);
+          // Warships go ahead to clear the landing.
+          const escort = ships.filter((u) => u.def.atk > 0).map((u) => u.id);
+          if (escort.length) g.cmdMove(pid, escort, r.land.wx, r.land.wy, true);
           r.phase = 'sail';
           r.t = g.time;
         } else if (waited > 90 || underAttack) {
@@ -405,15 +429,21 @@ export class AIController {
       if (this.dockSpot === undefined) {
         // The nearest shore that has fish within a boat's reach of it.
         this.dockSpot = null;
-        let bd = 46;
+        let bd = 46, bestSize = 0;
+        const size = this.waterSizes();
         for (let cy = 2; cy < g.size - 5; cy++)
           for (let cx = 2; cx < g.size - 5; cx++) {
             const d = Math.hypot(cx + 1.5 - home.x, cy + 1.5 - home.y);
-            if (d >= bd || d < 8 || !g.canPlace('dock', cx, cy)) continue;
+            if (d >= 46 || d < 8 || !g.canPlace('dock', cx, cy)) continue;
             const fish = g.findResourceNear(cx + 1.5, cy + 1.5, 'food', pid, 22, 0, true);
             if (!fish) continue;
             const from = g.seaPf.nearestFree(cx + 1.5, cy + 1.5);
-            if (Math.hypot(from.x - cx - 1.5, from.y - cy - 1.5) > 3 || g.seaPf.find(from.x, from.y, fish.x, fish.y, fish.x, fish.y, 1).partial) continue;
+            if (Math.hypot(from.x - cx - 1.5, from.y - cy - 1.5) > 3) continue;
+            // Open water beats a pond: more fish, and somewhere for ships to go.
+            const body = size[Math.floor(from.y) * g.size + Math.floor(from.x)];
+            if (body < bestSize * 0.8 || (body <= bestSize * 1.25 && d >= bd)) continue;
+            if (g.seaPf.find(from.x, from.y, fish.x, fish.y, fish.x, fish.y, 1).partial) continue;
+            bestSize = Math.max(bestSize, body);
             bd = d;
             this.dockSpot = { cx, cy };
           }
@@ -439,7 +469,16 @@ export class AIController {
     if (this.level >= 1 && p.age >= 1 && boats.length) {
       if (p.age >= 4 && !p.techs.has('up_frigate') && !p.pending.has('up_frigate') && dock.queue.length === 0) g.cmdResearch(pid, dock.id, 'up_frigate');
       const fleet = ships.filter((u) => u.def.atk > 0).length + queued('galley');
-      if (fleet < [0, 2, 3][this.level] && dock.queue.length < 2 && p.res.gold >= 120) g.cmdTrain(pid, dock.id, 'galley');
+      // Match whatever the enemy has put on the water, and one more.
+      const theirs = g.units.filter((u) => u.def.naval && u.def.atk > 0 && g.hostile(u.owner, pid)).length;
+      const want = Math.min(6, Math.max([0, 2, 3][this.level], theirs + 1));
+      if (fleet < want && dock.queue.length < 2 && p.res.gold >= 120) g.cmdTrain(pid, dock.id, 'galley');
+      // Idle warships go to wherever enemy ships are raiding our boats or shore.
+      const raider = g.units.find((u) => u.def.naval && u.def.atk > 0 && g.hostile(u.owner, pid) && Math.hypot(u.x - dock.x, u.y - dock.y) < 30);
+      if (raider) {
+        const idle = ships.filter((u) => u.def.atk > 0 && !u.order).map((u) => u.id);
+        if (idle.length) g.cmdMove(pid, idle, raider.x, raider.y, true);
+      }
     }
   }
 
