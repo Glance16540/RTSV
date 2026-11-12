@@ -7,7 +7,7 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 
 export const MAP_W = 1000;
 export const MAP_H = 600;
-export const CAMPAIGN_VERSION = 6;
+export const CAMPAIGN_VERSION = 7;
 
 export const MAX_ARMY = 12; // companies in one army
 export const HERO_COST = 8;
@@ -65,6 +65,10 @@ export const PERSONA: Record<string, { margin: number; fort: number; farm: numbe
 };
 export const TRUCE_COST = 3;
 export const TRUCE_TURNS = 6;
+export const ALLIANCE_COST = 6;
+/** Hold this share of all the land for this many turns running and the campaign is won. */
+export const DOMINION_SHARE = 0.6;
+export const DOMINION_TURNS = 3;
 
 export function siteCost(t: Territory, site: string, civ = ''): number {
   if (site === 'fortress' && civ === 'stonekin') return 5;
@@ -78,6 +82,7 @@ export const heroCost = (civ: string): number => (civ === 'dawn' ? HERO_COST / 2
 export interface Faction {
   id: number; name: string; civ: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean;
   lastDemand: number; // turn this rival last demanded tribute
+  refused?: number; // turn they last turned the player down: they will not be asked twice in a turn
   angry: boolean; // refused: will attack the player at worse odds this turn
 }
 
@@ -143,6 +148,10 @@ export interface Campaign {
   honor: number;
   /** A rival's demand for tribute, waiting for the player's answer. */
   demand: { from: number; amount: number } | null;
+  /** The rival sworn to the player as an ally, or -1. */
+  ally: number;
+  /** Who holds most of the land, and for how many turns running. */
+  dominion: { f: number; turns: number };
 }
 
 const NAMES = [
@@ -192,7 +201,7 @@ export function territoryAt(ts: { x: number; y: number }[], px: number, py: numb
 export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: string): Campaign {
   const c: Campaign = {
     v: CAMPAIGN_VERSION, seed, rngState: seed >>> 0, level, turn: 1, phase: 'player', cursor: 0, spent: false,
-    factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [], truces: [], honor: 0, demand: null,
+    factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [], truces: [], honor: 0, demand: null, ally: -1, dominion: { f: -1, turns: 0 },
   };
   const pick = <T>(list: T[]): T => list.splice(Math.floor(rand(c) * list.length), 1)[0];
   const [cols, rows] = pick([[4, 3], [5, 3], [5, 3], [6, 3], [5, 4], [6, 4]]);
@@ -307,8 +316,13 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
 /** True while the player and a rival are bound by a truce. */
 export function atTruce(c: Campaign, a: number, b: number): boolean {
   const other = a === 0 ? b : b === 0 ? a : -1;
-  return other > 0 && c.truces.some((t) => t.with === other && t.until >= c.turn);
+  return other > 0 && (other === c.ally || c.truces.some((t) => t.with === other && t.until >= c.turn));
 }
+/** The faction fighting at this one's side, or -1: the player and their ally stand together. */
+export const allyOf = (c: Campaign, f: number): number => (c.ally < 0 ? -1 : f === 0 ? c.ally : f === c.ally ? 0 : -1);
+/** How many territories a faction must hold to rule by dominion. */
+export const dominionNeed = (c: Campaign): number => Math.ceil(c.territories.length * DOMINION_SHARE);
+export const landOf = (c: Campaign, f: number): number => c.territories.filter((t) => t.owner === f).length;
 export const totalStrength = (c: Campaign, f: number): number => c.armies.filter((a) => a.owner === f).reduce((n, a) => n + armyStrength(a), 0);
 
 /** Chance (0..1) that the attacker wins an auto-resolved battle at these strengths. */
@@ -413,12 +427,15 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
   if (atTruce(c, a.owner, t.owner)) {
     if (a.owner !== 0) return 'invalid'; // rivals keep their word
     // The player marches on a truce partner: the truce is over and nobody forgets it.
+    const sworn = c.ally === t.owner;
     c.truces = c.truces.filter((x) => x.with !== t.owner);
-    c.honor--;
+    if (sworn) c.ally = -1;
+    c.honor -= sworn ? 2 : 1;
     say(c, t.owner, 'betray');
-    c.log.push(`You have broken your truce with ${c.factions[t.owner].name}.`);
+    c.log.push(`You have broken your ${sworn ? 'alliance' : 'truce'} with ${c.factions[t.owner].name}.`);
   }
-  const support = (f: number, skip: number) => (f < 0 ? 0 : reserves(c, f, to, skip).reduce((n, r) => n + armyStrength(r) * 0.3, 0));
+  const lend = (f: number, skip: number) => (f < 0 ? 0 : reserves(c, f, to, skip).reduce((n, r) => n + armyStrength(r) * 0.3, 0));
+  const support = (f: number, skip: number) => lend(f, skip) + lend(f < 0 ? -1 : allyOf(c, f), skip);
   const round = (v: number) => Math.round(v * 10) / 10;
   c.pending = {
     armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
@@ -446,10 +463,11 @@ export const homeEdge = (c: Campaign, attacker: number): number => (c.factions[a
  */
 export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
-  if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || c.factions[0].supplies < TRUCE_COST || c.phase !== 'player') return false;
+  if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || c.factions[0].supplies < TRUCE_COST || c.phase !== 'player' || fac.refused === c.turn) return false;
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
   const willing = PERSONA[fac.civ].peace + (mine >= theirs ? 0.25 : -0.15);
   if (c.honor < 0 || rand(c) > willing) {
+    fac.refused = c.turn;
     say(c, f, 'refuse');
     c.log.push(`${fac.name} will not hear of a truce.`);
     return false;
@@ -458,6 +476,34 @@ export function offerTruce(c: Campaign, f: number): boolean {
   c.truces.push({ with: f, until: c.turn + TRUCE_TURNS });
   say(c, f, 'truce');
   c.log.push(`A truce with ${fac.name} until turn ${c.turn + TRUCE_TURNS}.`);
+  return true;
+}
+
+/**
+ * Offer an alliance to a rival the player is at truce with. An ally never attacks the player,
+ * and each lends its neighbouring armies to the other's battles. Only one alliance at a time,
+ * and none when just two peoples are left: one of them must rule.
+ */
+export function canAlly(c: Campaign, f: number): boolean {
+  const fac = c.factions[f];
+  return !!fac && fac.isAI && fac.alive && fac.refused !== c.turn && c.ally < 0 && c.phase === 'player' && c.honor >= 0 && c.truces.some((t) => t.with === f && t.until >= c.turn)
+    && c.factions.filter((x) => x.alive).length >= 3 && c.factions[0].supplies >= ALLIANCE_COST;
+}
+export function offerAlliance(c: Campaign, f: number): boolean {
+  if (!canAlly(c, f)) return false;
+  const fac = c.factions[f];
+  // A leader is readier to stand with you against someone stronger than both of you.
+  const threat = c.factions.some((x) => x.alive && x.id !== 0 && x.id !== f && totalStrength(c, x.id) > totalStrength(c, f));
+  if (rand(c) > PERSONA[fac.civ].peace + (threat ? 0.35 : 0.05)) {
+    fac.refused = c.turn;
+    say(c, f, 'refuse');
+    c.log.push(`${fac.name} will not bind themselves to you.`);
+    return false;
+  }
+  c.factions[0].supplies -= ALLIANCE_COST;
+  c.ally = f;
+  say(c, f, 'ally');
+  c.log.push(`${fac.name} are now your allies.`);
   return true;
 }
 
@@ -539,6 +585,32 @@ function checkElimination(c: Campaign): void {
   const alive = c.factions.filter((f) => f.alive);
   if (!c.factions[0].alive) { c.phase = 'over'; c.winner = alive[0]?.id ?? -1; }
   else if (alive.length === 1) { c.phase = 'over'; c.winner = 0; }
+  else if (c.ally >= 0 && (!c.factions[c.ally].alive || alive.length === 2)) {
+    // With every other people gone, allies become the last two rivals.
+    const was = c.factions[c.ally];
+    c.ally = -1;
+    if (was.alive) {
+      c.truces = c.truces.filter((t) => t.with !== was.id).concat({ with: was.id, until: c.turn + 2 });
+      say(c, was.id, 'rivalry');
+      c.log.push(`Only you and ${was.name} remain. The alliance is over; they will hold their hand until turn ${c.turn + 2}.`);
+    }
+  }
+}
+
+/** Count the turns one people has held most of the land; long enough and nobody can challenge them. */
+function checkDominion(c: Campaign): void {
+  const need = dominionNeed(c);
+  const lead = c.factions.find((f) => f.alive && landOf(c, f.id) >= need);
+  if (!lead) { c.dominion = { f: -1, turns: 0 }; return; }
+  c.dominion = { f: lead.id, turns: c.dominion.f === lead.id ? c.dominion.turns + 1 : 1 };
+  const left = DOMINION_TURNS - c.dominion.turns;
+  if (left <= 0) {
+    c.phase = 'over';
+    c.winner = lead.id;
+    c.log.push(lead.id === 0 ? 'Your rule is beyond challenge.' : `${lead.name} rule beyond challenge.`);
+  } else {
+    c.log.push(`${lead.id === 0 ? 'You hold' : `${lead.name} hold`} most of the land. ${left} more turn${left > 1 ? 's' : ''} and ${lead.id === 0 ? 'your' : 'their'} rule is beyond challenge.`);
+  }
 }
 
 // ---- Turn structure ----
@@ -567,6 +639,7 @@ export function continueAI(c: Campaign): void {
       for (const x of c.factions) if (x.alive) x.supplies += Math.round(income(c, x.id) * (x.isAI ? [0.8, 1, 1.25][c.level] : 1));
       c.log.push(`Turn ${c.turn}.`);
       turnEvent(c);
+      checkDominion(c);
       return;
     }
     if (f.alive && !aiStep(c, f)) continue; // aiStep returns false while the faction still has moves
@@ -647,6 +720,11 @@ function aiStep(c: Campaign, f: Faction): boolean {
   const targets = here.adj.filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner))
     .sort((a, b) => defence(c, a, army.units, civ) - defence(c, b, army.units, civ));
   // A leader who has just been refused goes for the player before anyone else.
+  // An ally goes first for whoever is at the player's borders.
+  if (c.ally === f.id) {
+    const foe = (id: number) => { const o = c.territories[id].owner; return o > 0 && c.territories.some((t) => t.owner === o && t.adj.some((n) => c.territories[n].owner === 0)) ? 0 : 1; };
+    targets.sort((a, b) => foe(a) - foe(b));
+  }
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
   if (targets.length) {
     const t = c.territories[targets[0]];
@@ -718,6 +796,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const localCiv = CIV_IDS.filter((id) => id !== c.factions[0].civ)[t.seed % (CIV_IDS.length - 1)];
   const myReserve = reserves(c, 0, p.to, p.armyId)[0];
   const foeReserve = foe < 0 ? undefined : reserves(c, foe, p.to, p.armyId)[0];
+  const allyReserve = c.ally < 0 ? undefined : reserves(c, c.ally, p.to, p.armyId)[0];
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
     seed: t.seed, size: field ? 56 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field,
@@ -731,7 +810,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       // The strongest army next door on each side joins the battle as an ally with its own camp.
       ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, bonus: side(foeReserve, false, armyStrength(foeReserve)) }] : []),
       ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, bonus: side(myReserve, false, armyStrength(myReserve)) }] : []),
-    ],
+      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, bonus: side(allyReserve, false, armyStrength(allyReserve)) }] : []),
+    ].slice(0, 4),
   };
 }
 

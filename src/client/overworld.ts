@@ -4,7 +4,7 @@ import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
 import {
-  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, TRAITS, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, TRAITS, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
   canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
 } from '../sim/campaign';
 
@@ -48,6 +48,7 @@ export class Overworld {
       if (kind === 'build') build(this.c, 0, this.sel, id);
       if (kind === 'hero') summonHero(this.c, 0, this.sel);
       if (kind === 'truce') offerTruce(this.c, Number(id));
+      if (kind === 'ally') offerAlliance(this.c, Number(id));
       this.changed();
     });
     $('ow-end').addEventListener('click', () => {
@@ -85,7 +86,7 @@ export class Overworld {
     const c = this.c;
     if (c.phase === 'over') {
       this.dialog(c.winner === 0 ? 'The land is yours' : 'Your people are conquered',
-        c.winner === 0 ? `Every rival has fallen. It took ${c.turn} turns.` : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`,
+        c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`,
         [['New campaign', () => this.askNew()], ['Main menu', () => this.hooks.exit()]]);
     } else if (c.demand) this.askDemand();
     else if (c.pending) this.askBattle();
@@ -104,7 +105,7 @@ export class Overworld {
       };
       const owner = c.territories[tid].owner;
       if (atTruce(c, 0, owner)) {
-        this.dialog(`Break your truce with ${c.factions[owner].name}?`, 'Marching on their land ends the truce at once. No rival will agree to another with an oathbreaker.',
+        this.dialog(`Break your ${c.ally === owner ? 'alliance' : 'truce'} with ${c.factions[owner].name}?`, `Marching on their land ends the ${c.ally === owner ? 'alliance' : 'truce'} at once. No rival will agree to another with an oathbreaker.`,
           [['March anyway', march], ['Keep the peace', () => this.changed()]]);
       } else march();
       return;
@@ -262,8 +263,10 @@ export class Overworld {
     const a = armyAt(c, this.sel);
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
-      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${f.isAI ? ` <small>${LEADERS[f.civ].name}${atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
-      `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>`;
+      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${f.isAI ? ` <small>${LEADERS[f.civ].name}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
+      `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
+      `<div class="hint">👑 Win by taking every land, or by holding ${dominionNeed(c)} of ${c.territories.length} for ${DOMINION_TURNS} turns <small>(you hold ${landOf(c, 0)})</small>.` +
+      (c.dominion.f >= 0 ? ` <b class="${c.dominion.f === 0 ? 'good' : 'bad'}">${c.dominion.f === 0 ? 'You have' : c.factions[c.dominion.f].name + ' have'} held it for ${c.dominion.turns}.</b>` : '') + '</div>';
     const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ' · ♛ Warlord' : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
@@ -280,8 +283,12 @@ export class Overworld {
       if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k)) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
     } else if (t.owner > 0 && c.factions[t.owner].alive) {
       const truce = c.truces.find((x) => x.with === t.owner);
-      if (truce) html += `<div class="hint">🕊️ At truce with ${c.factions[t.owner].name} until turn ${truce.until}.</div>`;
-      else html += btn('truce:' + t.owner, `🕊️ Offer ${LEADERS[c.factions[t.owner].civ].name} a truce`, TRUCE_COST, me.supplies >= TRUCE_COST, c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts six turns.');
+      if (c.ally === t.owner) html += `<div class="hint">🤝 ${c.factions[t.owner].name} are your allies. Their armies next to a battle of yours fight in it, and yours in theirs.</div>`;
+      else if (truce) {
+        html += `<div class="hint">🕊️ At truce with ${c.factions[t.owner].name} until turn ${truce.until}.</div>`;
+        if (c.ally < 0 && c.factions.filter((f) => f.alive).length >= 3) html += btn('ally:' + t.owner, `🤝 Offer ${LEADERS[c.factions[t.owner].civ].name} an alliance`, ALLIANCE_COST, canAlly(c, t.owner), c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts until one of you breaks it or only you two remain.');
+      }
+      else html += btn('truce:' + t.owner, `🕊️ Offer ${LEADERS[c.factions[t.owner].civ].name} a truce`, TRUCE_COST, me.supplies >= TRUCE_COST && c.factions[t.owner].refused !== c.turn, c.factions[t.owner].refused === c.turn ? 'They have given their answer for this turn.' : c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts six turns.');
     }
     $('ow-actions').innerHTML = html;
     ($('ow-end') as HTMLButtonElement).disabled = c.phase !== 'player' || !!c.pending || !!c.demand;

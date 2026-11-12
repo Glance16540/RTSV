@@ -6,7 +6,7 @@ import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS } from '../src/sim/data';
-import { answerDemand, atTruce, offerTruce, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -706,7 +706,7 @@ describe('conquest campaign', () => {
         l.lines[ev].forEach((_, i) => keys.add(lineKey(l.civ, ev, i)));
       }
     }
-    expect(keys.size).toBe(216);
+    expect(keys.size).toBe(240);
     expect(keys.has('steppe_attack_2')).toBe(true);
     // In a campaign: the player attacks a rival, wins, and finally wipes them out.
     const c = newCampaign(7, 1);
@@ -826,7 +826,8 @@ describe('conquest campaign', () => {
     }
     expect(c.phase).toBe('over');
     expect(c.winner).toBeGreaterThan(0); // a passive player is eventually conquered
-    expect(c.factions[0].alive).toBe(false);
+    // Either wiped out, or a rival came to hold most of the land.
+    expect(!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS).toBe(true);
     expect(c.territories.every((t) => t.buildings.length <= 4 && new Set(t.buildings).size === t.buildings.length)).toBe(true);
   });
 
@@ -1345,5 +1346,86 @@ describe('field battles', () => {
     ({ c, army } = setup());
     finishBattle(c, false, { clubman: 9 });
     expect(c.armies.includes(army)).toBe(false); // a lost attack still costs the army
+  });
+});
+
+describe('alliances and dominion', () => {
+  it('an ally is sworn from a truce, lends its armies, and the bond ends when only two remain', () => {
+    let c = newCampaign(1, 2), ok = false;
+    for (let seed = 1; seed < 80 && !ok; seed++) {
+      c = newCampaign(seed, 2);
+      c.factions[0].supplies = 40;
+      expect(canAlly(c, 1)).toBe(false); // no truce yet
+      if (!offerTruce(c, 1)) continue;
+      ok = offerAlliance(c, 1);
+    }
+    expect(ok).toBe(true);
+    expect(c.ally).toBe(1);
+    expect(c.speech.some((s) => s.event === 'ally')).toBe(true);
+    expect(c.factions[0].supplies).toBe(40 - TRUCE_COST - ALLIANCE_COST);
+    expect(canAlly(c, 2)).toBe(false); // one alliance at a time
+    c.truces = [];
+    expect(atTruce(c, 0, 1)).toBe(true); // an alliance does not run out
+
+    // The ally's army next door adds weight to the player's attack.
+    const mine = c.armies.find((a) => a.owner === 0)!;
+    const target = c.territories.find((t) => t.owner === 2)!;
+    const from = c.territories[target.adj[0]], side = c.territories[target.adj[1] ?? target.adj[0]];
+    from.owner = 0; mine.at = from.id; mine.moved = false;
+    c.armies = c.armies.filter((a) => a === mine || (a.at !== from.id && a.at !== side.id));
+    const alone = (() => { const d = JSON.parse(JSON.stringify(c)); moveArmy(d, mine.id, target.id); return d.pending.aStr; })();
+    if (side.id !== from.id) {
+      side.owner = 1;
+      c.armies.push({ id: c.nextArmy++, owner: 1, at: side.id, units: { infantry: 4 }, hero: false, vet: 0, moved: false });
+      const helped = (() => { const d = JSON.parse(JSON.stringify(c)); moveArmy(d, mine.id, target.id); return d.pending.aStr; })();
+      expect(helped).toBeGreaterThan(alone);
+      const d = JSON.parse(JSON.stringify(c));
+      moveArmy(d, mine.id, target.id);
+      expect(battleConfig(d)!.setups.some((s) => s.team === 0 && s.name.includes('(ally)'))).toBe(true);
+    }
+
+    // The third people fall: the alliance gives way to a short truce.
+    for (const t of c.territories) if (t.owner === 2) t.owner = 0;
+    c.armies = c.armies.filter((a) => a.owner !== 2);
+    const loc = c.territories.find((t) => t.owner < 0 && t.adj.some((n) => c.territories[n].owner === 0));
+    if (loc) {
+      const a = c.armies.find((x) => x.owner === 0)!;
+      a.at = loc.adj.find((n) => c.territories[n].owner === 0)!; a.moved = false; a.units = { infantry: 12 };
+      c.armies = c.armies.filter((x) => x === a || x.at !== a.at);
+      moveArmy(c, a.id, loc.id);
+      resolvePending(c, 'attacker');
+      expect(c.ally).toBe(-1);
+      expect(c.speech.some((s) => s.event === 'rivalry')).toBe(true);
+      expect(atTruce(c, 0, 1)).toBe(true);
+    }
+  });
+
+  it('breaking an alliance costs more honour than breaking a truce', () => {
+    const c = newCampaign(7, 2);
+    c.ally = 1;
+    const target = c.territories.find((t) => t.owner === 1)!;
+    const a = c.armies.find((x) => x.owner === 0)!;
+    const from = c.territories[target.adj[0]];
+    from.owner = 0; c.armies = c.armies.filter((x) => x === a || x.at !== from.id); a.at = from.id;
+    expect(moveArmy(c, a.id, target.id)).toBe('battle');
+    expect(c.ally).toBe(-1);
+    expect(c.honor).toBe(-2);
+  });
+
+  it('holding most of the land for long enough wins the campaign', () => {
+    const c = newCampaign(7, 2);
+    const need = dominionNeed(c);
+    const spare = c.territories.filter((t) => t.capital < 0);
+    for (let i = 0; i < spare.length && c.territories.filter((t) => t.owner === 0).length < need; i++) spare[i].owner = 0;
+    c.armies = c.armies.filter((a) => a.owner === 0 || c.territories[a.at].owner === a.owner);
+    // Nobody can touch the player while we count.
+    c.truces = [{ with: 1, until: 99 }, { with: 2, until: 99 }];
+    for (const t of c.territories) if (t.owner === 0) t.buildings = ['fortress'];
+    let turns = 0;
+    while (c.phase !== 'over' && turns < 10) { endTurn(c); turns++; }
+    expect(c.territories.filter((t) => t.owner === 0).length).toBeGreaterThanOrEqual(need);
+    expect(c.winner).toBe(0);
+    expect(turns).toBe(DOMINION_TURNS);
+    expect(c.factions.filter((f) => f.alive).length).toBeGreaterThan(1);
   });
 });

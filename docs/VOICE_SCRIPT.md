@@ -43,6 +43,10 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `stonekin_demand_2` | They demand tribute from the player | A toll. Everyone who crosses my land pays one. |
 | `stonekin_betray_1` | The player breaks a truce with them | You gave your word. I had it carved. Now I shall have to break the stone. |
 | `stonekin_betray_2` | The player breaks a truce with them | I do not forget. Ask the mountains. |
+| `stonekin_ally_1` | They accept an alliance with the player | Then we build one wall, you and I, and stand on it together. |
+| `stonekin_ally_2` | They accept an alliance with the player | My hall is your hall. My shield is in front of you. |
+| `stonekin_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | We built well together. But a hall has one high seat. |
+| `stonekin_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | No quarrel, friend. Only the last stone, and one of us must lay it. |
 | `stonekin_p_start_1` | As the player's own leader: a campaign or match begins | We begin as we always have. One stone, then the next. |
 | `stonekin_p_start_2` | As the player's own leader: a campaign or match begins | The ground is good. Let us build on it. |
 | `stonekin_p_win_1` | As the player's own leader: a battle is won | Good. Now mend what was broken. |
@@ -86,6 +90,10 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `steppe_demand_2` | They demand tribute from the player | Pay me, and my riders will have somewhere else to be. |
 | `steppe_betray_1` | The player breaks a truce with them | Oh, well played. Now run. |
 | `steppe_betray_2` | The player breaks a truce with them | You broke faith first. Remember that when you hear the hooves. |
+| `steppe_ally_1` | They accept an alliance with the player | Ride with us, then! Try to keep up. |
+| `steppe_ally_2` | They accept an alliance with the player | Two herds, one thunder. I like it. |
+| `steppe_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | Nobody left to chase but you. Pity. Good hunting, friend. |
+| `steppe_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | We rode well together. Now let us see who rides faster. |
 | `steppe_p_start_1` | As the player's own leader: a campaign or match begins | The grass is high and the day is young. Ride! |
 | `steppe_p_start_2` | As the player's own leader: a campaign or match begins | New country! I can smell it. Mount up. |
 | `steppe_p_win_1` | As the player's own leader: a battle is won | Ha! Did you see them run? |
@@ -129,6 +137,10 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `hearth_demand_2` | They demand tribute from the player | A little grain for my little ones. I am asking nicely. |
 | `hearth_betray_1` | The player breaks a truce with them | I fed your people at my table. Shame on you. |
 | `hearth_betray_2` | The player breaks a truce with them | You looked me in the eye and promised. Remember this, all of you. |
+| `hearth_ally_1` | They accept an alliance with the player | Then you are family, and we look after family. |
+| `hearth_ally_2` | They accept an alliance with the player | Pull up a chair, dear. Your enemies are ours now. |
+| `hearth_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | Oh, my dear. There is only one table left, and we cannot both sit at the head. |
+| `hearth_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | I had hoped it would not come to us. Go gently, and so will I. |
 | `hearth_p_start_1` | As the player's own leader: a campaign or match begins | Here we are, then. Let us make it a home. |
 | `hearth_p_start_2` | As the player's own leader: a campaign or match begins | Light the first fire, dear. The rest follows. |
 | `hearth_p_win_1` | As the player's own leader: a battle is won | Well done, all of you. Now come in and eat. |
@@ -172,6 +184,10 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `forge_demand_2` | They demand tribute from the player | Consider it funding. You will benefit eventually. Probably. |
 | `forge_betray_1` | The player breaks a truce with them | Dishonest. And worse, unpredictable. I shall correct for it. |
 | `forge_betray_2` | The player breaks a truce with them | I had you filed under reliable. My error. |
+| `forge_ally_1` | They accept an alliance with the player | Agreed. Our combined output will be remarkable. |
+| `forge_ally_2` | They accept an alliance with the player | An alliance. I have drawn up a schedule. You are on it. |
+| `forge_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | The variables have reduced to two. You and I. Regrettable, but clear. |
+| `forge_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | Our partnership has served its purpose. I shall dismantle it carefully. |
 | `forge_p_start_1` | As the player's own leader: a campaign or match begins | Right. Let us see what can be made of this place. |
 | `forge_p_start_2` | As the player's own leader: a campaign or match begins | An untouched site. Excellent. Begin measuring. |
 | `forge_p_win_1` | As the player's own leader: a battle is won | As designed. Note what worked. |
@@ -215,6 +231,10 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `dawn_demand_2` | They demand tribute from the player | Give, and be spared. I have seen what happens otherwise. |
 | `dawn_betray_1` | The player breaks a truce with them | I saw this as well. I prayed I was mistaken. |
 | `dawn_betray_2` | The player breaks a truce with them | Oathbreaker. Even the sun will turn its face from you. |
+| `dawn_ally_1` | They accept an alliance with the player | I have seen our banners side by side. Let it be so. |
+| `dawn_ally_2` | They accept an alliance with the player | Walk in the light with us. We go together now. |
+| `dawn_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | The vision ends with one sun in the sky. I am sorry it must be decided. |
+| `dawn_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | We were a fair dawn together. But the day has only one noon. |
 | `dawn_p_start_1` | As the player's own leader: a campaign or match begins | The dawn brought us here. Let us learn why. |
 | `dawn_p_start_2` | As the player's own leader: a campaign or match begins | I have seen what we become. Come, it starts now. |
 | `dawn_p_win_1` | As the player's own leader: a battle is won | It unfolded as I saw it. |
@@ -258,6 +278,10 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `wild_demand_2` | They demand tribute from the player | The pack takes a share. You may choose which. |
 | `wild_betray_1` | The player breaks a truce with them | You bared your throat and then bit. I respect it. I will still kill you. |
 | `wild_betray_2` | The player breaks a truce with them | Now it is a blood debt. The wolves keep count. |
+| `wild_ally_1` | They accept an alliance with the player | One pack, then. Your kill is our kill. |
+| `wild_ally_2` | They accept an alliance with the player | Run beside us. We do not ask twice. |
+| `wild_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | The prey is gone. Only two wolves left, and one hill. |
+| `wild_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | You hunted well with us. Now we circle. No hatred in it. |
 | `wild_p_start_1` | As the player's own leader: a campaign or match begins | Good country. Much game. We stay. |
 | `wild_p_start_2` | As the player's own leader: a campaign or match begins | Mark the borders. Let the others smell it. |
 | `wild_p_win_1` | As the player's own leader: a battle is won | A clean kill. |
@@ -269,4 +293,4 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `wild_p_ageup_1` | As the player's own leader: a new age is reached | We grow. Good. Stay hungry anyway. |
 | `wild_p_ageup_2` | As the player's own leader: a new age is reached | New claws. Use them. |
 
-216 lines in all.
+240 lines in all.

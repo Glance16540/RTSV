@@ -18,6 +18,8 @@ export type LeaderEvent =
   | 'refuse' // they turn a truce down
   | 'demand' // they demand tribute from the player
   | 'betray' // the player breaks a truce with them
+  | 'ally' // they accept an alliance with the player
+  | 'rivalry' // the alliance ends: only they and the player are left
   // Spoken to the player by their own leader:
   | 'p_start' // a campaign or match begins
   | 'p_win' // the player wins a battle
@@ -25,7 +27,7 @@ export type LeaderEvent =
   | 'p_alert' // the player's town is attacked
   | 'p_ageup'; // the player advances an age
 
-export const LEADER_EVENTS: LeaderEvent[] = ['intro', 'attack', 'defend', 'win', 'lose', 'eliminated', 'battle', 'ageup', 'wonder', 'truce', 'refuse', 'demand', 'betray', 'p_start', 'p_win', 'p_loss', 'p_alert', 'p_ageup'];
+export const LEADER_EVENTS: LeaderEvent[] = ['intro', 'attack', 'defend', 'win', 'lose', 'eliminated', 'battle', 'ageup', 'wonder', 'truce', 'refuse', 'demand', 'betray', 'ally', 'rivalry', 'p_start', 'p_win', 'p_loss', 'p_alert', 'p_ageup'];
 export const EVENT_NOTES: Record<LeaderEvent, string> = {
   intro: 'First meeting on the campaign map',
   attack: "Marching on the player's land",
@@ -40,6 +42,8 @@ export const EVENT_NOTES: Record<LeaderEvent, string> = {
   refuse: 'They turn down a truce',
   demand: 'They demand tribute from the player',
   betray: 'The player breaks a truce with them',
+  ally: 'They accept an alliance with the player',
+  rivalry: 'The alliance ends because only they and the player are left; regretful, not hostile yet',
   p_start: 'As the player\'s own leader: a campaign or match begins',
   p_win: 'As the player\'s own leader: a battle is won',
   p_loss: 'As the player\'s own leader: a battle is lost',
@@ -75,6 +79,8 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['No. I have not yet decided what you are.', 'Peace is built slowly. You are in too much of a hurry.'],
       demand: ['You are building on my doorstep. Pay for the stone, and I will overlook it.', 'A toll. Everyone who crosses my land pays one.'],
       betray: ['You gave your word. I had it carved. Now I shall have to break the stone.', 'I do not forget. Ask the mountains.'],
+      ally: ["Then we build one wall, you and I, and stand on it together.", "My hall is your hall. My shield is in front of you."],
+      rivalry: ["We built well together. But a hall has one high seat.", "No quarrel, friend. Only the last stone, and one of us must lay it."],
       p_start: ['We begin as we always have. One stone, then the next.', 'The ground is good. Let us build on it.'],
       p_win: ['Good. Now mend what was broken.', 'They broke on us like water on rock.'],
       p_loss: ['We have lost ground before. We took it back.', 'Count the dead. Then count the stones we still hold.'],
@@ -99,6 +105,8 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['Peace? I have only just saddled up.', 'Ask me again when you can catch me.'],
       demand: ['Your herds are fat. Send me some and I ride past.', 'Pay me, and my riders will have somewhere else to be.'],
       betray: ['Oh, well played. Now run.', 'You broke faith first. Remember that when you hear the hooves.'],
+      ally: ["Ride with us, then! Try to keep up.", "Two herds, one thunder. I like it."],
+      rivalry: ["Nobody left to chase but you. Pity. Good hunting, friend.", "We rode well together. Now let us see who rides faster."],
       p_start: ['The grass is high and the day is young. Ride!', 'New country! I can smell it. Mount up.'],
       p_win: ['Ha! Did you see them run?', 'That is how it is done. Water the horses.'],
       p_loss: ['We lost that one. We will lose them next time, in the hills.', 'Scatter, regroup, return. It is what we do.'],
@@ -123,6 +131,8 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['Not while my people are still burying theirs.', 'I would like to, dear. I do not trust you yet.'],
       demand: ['We have had a hard winter and you have had a soft one. Share.', 'A little grain for my little ones. I am asking nicely.'],
       betray: ['I fed your people at my table. Shame on you.', 'You looked me in the eye and promised. Remember this, all of you.'],
+      ally: ["Then you are family, and we look after family.", "Pull up a chair, dear. Your enemies are ours now."],
+      rivalry: ["Oh, my dear. There is only one table left, and we cannot both sit at the head.", "I had hoped it would not come to us. Go gently, and so will I."],
       p_start: ['Here we are, then. Let us make it a home.', 'Light the first fire, dear. The rest follows.'],
       p_win: ['Well done, all of you. Now come in and eat.', 'They are gone. Is everyone accounted for?'],
       p_loss: ['Oh, my dears. We will mourn tonight and plant tomorrow.', 'We have lost good people. Hold the rest close.'],
@@ -147,6 +157,8 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['The numbers do not favour it. For you, I mean.', 'No. I need to see how the engines perform against you.'],
       demand: ['I require materials. You have them. This need not be complicated.', 'Consider it funding. You will benefit eventually. Probably.'],
       betray: ['Dishonest. And worse, unpredictable. I shall correct for it.', 'I had you filed under reliable. My error.'],
+      ally: ["Agreed. Our combined output will be remarkable.", "An alliance. I have drawn up a schedule. You are on it."],
+      rivalry: ["The variables have reduced to two. You and I. Regrettable, but clear.", "Our partnership has served its purpose. I shall dismantle it carefully."],
       p_start: ['Right. Let us see what can be made of this place.', 'An untouched site. Excellent. Begin measuring.'],
       p_win: ['As designed. Note what worked.', 'Efficient. I am almost pleased.'],
       p_loss: ['Unacceptable. I want to know exactly what failed.', 'We will rebuild it. Better, this time.'],
@@ -171,6 +183,8 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['I have seen where that road leads. No.', 'It is not written. Not yet.'],
       demand: ['An offering is due. The dawn has shown me exactly how much.', 'Give, and be spared. I have seen what happens otherwise.'],
       betray: ['I saw this as well. I prayed I was mistaken.', 'Oathbreaker. Even the sun will turn its face from you.'],
+      ally: ["I have seen our banners side by side. Let it be so.", "Walk in the light with us. We go together now."],
+      rivalry: ["The vision ends with one sun in the sky. I am sorry it must be decided.", "We were a fair dawn together. But the day has only one noon."],
       p_start: ['The dawn brought us here. Let us learn why.', 'I have seen what we become. Come, it starts now.'],
       p_win: ['It unfolded as I saw it.', 'The light was with us. Give thanks.'],
       p_loss: ['This, too, was in the vision. It is not the last page.', 'A dark hour. They do not last. I have checked.'],
@@ -195,6 +209,8 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['Wolves do not make treaties with sheep.', 'No. I like you better afraid.'],
       demand: ['Leave meat at the forest edge. Or become it.', 'The pack takes a share. You may choose which.'],
       betray: ['You bared your throat and then bit. I respect it. I will still kill you.', 'Now it is a blood debt. The wolves keep count.'],
+      ally: ["One pack, then. Your kill is our kill.", "Run beside us. We do not ask twice."],
+      rivalry: ["The prey is gone. Only two wolves left, and one hill.", "You hunted well with us. Now we circle. No hatred in it."],
       p_start: ['Good country. Much game. We stay.', 'Mark the borders. Let the others smell it.'],
       p_win: ['A clean kill.', 'The pack feeds tonight.'],
       p_loss: ['We bled. We are not dead. Remember the difference.', 'Lick the wounds. Then we hunt them.'],

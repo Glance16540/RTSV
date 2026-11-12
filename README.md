@@ -131,7 +131,7 @@ Each turn you collect supplies from the land you hold and spend them, then march
 neighbouring land.
 
 - **Leaders.** Each rival is led by a named leader who speaks when you first meet, when armies
-  march, when battles are won and lost, and when they fall. All 216 lines are written and shown
+  march, when battles are won and lost, and when they fall. All 240 lines are written and shown
   on screen; recordings dropped into `public/assets/voice/` are played automatically. See
   [docs/VOICE_SCRIPT.md](docs/VOICE_SCRIPT.md) for every line, its filename and voice direction.
 - **Three ways to fight.** A *field battle* is the two armies alone on open ground and is over in
@@ -143,6 +143,13 @@ neighbouring land.
   who is stronger and whether you have kept your word before. Rivals keep a truce. You may break
   one, but no leader will make another with an oathbreaker. A stronger, greedy neighbour may demand
   tribute: pay and be left alone for a while, or refuse and be attacked.
+- **Alliances.** A rival you are at truce with may agree to an alliance. Allies never attack each
+  other, each lends its neighbouring armies to the other's battles (they join a real-time battle
+  on your side), and your ally goes first for whoever is at your borders. One alliance at a time;
+  when only the two of you are left it ends, with a short truce. Betraying an ally is remembered
+  twice over.
+- **Two ways to win.** Take every territory, or hold six in every ten for three turns running.
+  A rival can win the same way, so a runaway neighbour has to be stopped.
 - **Each people plays differently on the map**, and each leader has a temperament: some are
   cautious builders, some raid at poor odds, some are quick to make peace.
 - **Buildings.** Each territory has three slots (four in a capital): Farmland for income, a
@@ -158,8 +165,7 @@ neighbouring land.
   Warlord included; a Fortress starts its defender in the Bronze Age with towers. Armies in
   neighbouring land add weight to the fight and join a real-time battle as allies.
 
-Rivals take their turns after yours and fight each other too. Hold the last territory standing to
-win. The campaign is saved in your browser after every action.
+Rivals take their turns after yours and fight each other too. The campaign is saved in your browser after every action.
 
 ## Controls
 
