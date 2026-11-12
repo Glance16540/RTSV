@@ -4,7 +4,7 @@ import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
-import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
+import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, GUARD_DRIVE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../sim/map';
 import { ico, setIconLeaning } from './assets';
@@ -362,7 +362,7 @@ export class Hud {
         }
       }
     }
-    if (b.def.staff && same.some((s) => s.staff?.length)) {
+    if ((b.def.staff || b.def.guards) && same.some((s) => s.staff?.length)) {
       out.push({ id: 'unstaff1', icon: ico('unstaff', '🚶'), name: 'Send one back to work', desc: 'A stationed villager comes out and can be given other work.', act: () => { game.cmdUnstaff(pid, b.id); } });
       out.push({ id: 'unstaffall', icon: ico('unstaffall', '🚪'), name: 'Send everyone out', desc: 'All the villagers stationed here come out.', act: () => { for (const s of same) game.cmdUnstaff(pid, s.id, true); } });
     }
@@ -502,6 +502,10 @@ export class Hud {
         body += `<div class="${b.morale ? 'good' : 'hint'}">🏠 Houses nearby: ${b.morale}/${MORALE_MAX_HOUSES} — defenders take ${Math.round(b.morale * MORALE_PER_HOUSE * 100)}% less damage</div>`;
       }
       if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Inside: ${b.sheltered.length}/${b.def.shelter} — Alt+right-click to send units in</div>`;
+      if (b.def.guards) {
+        const on = b.staff?.length ?? 0;
+        body += `<div class="${on ? 'good' : 'hint'}">🗡️ Guards: ${on}/${b.def.guards} — right-click with Slavers to post them. Each drives the men held here ${(GUARD_DRIVE * 100).toFixed(0)}% harder.</div>`;
+      }
       if (b.def.camp) {
         const n = b.captives?.length ?? 0;
         const men = (b.captives ?? []).filter((c) => c.gender === 'm').length, women = n - men;
@@ -666,10 +670,10 @@ export class Hud {
   }
   /** Foul weather, named in the top bar with what it does. */
   private weatherTag(): string {
-    const w = this.app.game.foul;
-    if (!w) return '';
+    const w = this.app.game.foul, moon = !this.app.game.field && this.app.game.night ? ' · <span title="Night. A work camp shuts its captives in until dawn.">🌙 Night</span>' : '';
+    if (!w) return moon;
     const [icon, name, tip] = w === 'rain' ? ['🌧️', 'Rain', 'Bows and guns reach one tile less. Fires go out quickly.'] : w === 'snow' ? ['🌨️', 'Snow', 'Everyone moves slower off the roads.'] : ['🌪️', 'Dust storm', 'No one sees as far. Bows and guns reach one tile less.'];
-    return ` · <span title="${tip}">${icon} ${name}</span>`;
+    return ` · <span title="${tip}">${icon} ${name}</span>` + moon;
   }
 
   private creedTip(virtue: number): string {

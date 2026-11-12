@@ -7,7 +7,7 @@ import {
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { leaningWith } from './temper';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
@@ -51,6 +51,9 @@ export type Order =
   | { t: 'cast'; ability: string; x: number; y: number; started?: boolean; tries?: number };
 
 /** A villager held against their will: enough to give them back as they were. */
+/** Seconds from one dawn to the next. */
+export const DAY_LENGTH = 300;
+
 export interface Captive { from: number; name: string; family: string; gender: Gender; trait: string; trait2: string; age: number; lifespan: number }
 
 export interface Unit extends Base {
@@ -838,6 +841,10 @@ export class Game {
         else this.setOrder(u, { t: 'capture', id: t.id });
       } else if (u.def.slaver && u.captive && t.kind === 'building' && t.owner === owner && t.def.camp) {
         this.setOrder(u, { t: 'deliver', id: t.id });
+      } else if (u.def.slaver && t.kind === 'building' && t.owner === owner && t.def.guards && t.complete) {
+        // With no one to deliver, he is posted there as a guard.
+        if ((t.staff?.length ?? 0) < t.def.guards) this.setOrder(u, { t: 'staff', id: t.id });
+        else if (us.length === 1) this.msg(owner, 'The camp has all the guards it can use.');
       } else if (this.hostile(t.owner, owner)) {
         if (u.def.atk > 0) this.setOrder(u, { t: 'attack', id: t.id });
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
@@ -1204,7 +1211,8 @@ export class Game {
       // The men are put to work; it is the women held there who bear the camp's children.
       const men = b.captives.filter((c) => c.gender === 'm').length, women = b.captives.length - men;
       p.captives += b.captives.length;
-      p.captiveMen += men;
+      // Men under a guard's eye are driven harder.
+      p.captiveMen += men * (1 + GUARD_DRIVE * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0));
       b.campT = (b.campT ?? 0) + women / CAMP_BIRTH;
       if (b.campT >= 1 && p.pop + 1 <= p.popCap) {
         b.campT = 0;
@@ -1343,7 +1351,7 @@ export class Game {
       p.maids = 0;
       p.patrons = 0;
       for (const b of this.buildings) {
-        if (b.owner !== p.id || !b.staff?.length) continue;
+        if (b.owner !== p.id || !b.staff?.length || b.def.camp) continue; // a camp's guards are neither clergy nor maids
         if (b.type !== 'tavern') { p.clergy += b.staff.length; continue; }
         p.maids += b.staff.length;
         for (const id of b.staff) { const u = this.entities.get(id); if (u && u.kind === 'unit' && u.gender === 'm') p.patrons++; }
@@ -1651,6 +1659,9 @@ export class Game {
     this.weatherAmt += Math.sign(d) * Math.min(Math.abs(d), DT / 9);
     if (this.weatherAmt <= 0 && this.weatherWant === 0) this.weather = '';
   }
+  /** How far through the day it is, 0 at dawn to 1 at the next: the last three tenths are night. A day is five minutes. */
+  get dayT(): number { return (this.time % DAY_LENGTH) / DAY_LENGTH; }
+  get night(): boolean { return this.dayT >= 0.7; }
   /** The weather that is heavy enough to matter just now, or ''. */
   get foul(): '' | 'rain' | 'snow' | 'dust' { return this.weatherAmt >= 0.4 ? this.weather : ''; }
   /** How far a unit can strike: bows and guns lose a little reach in rain or blowing dust. */
@@ -2053,7 +2064,7 @@ export class Game {
 
       case 'staff': {
         const b = this.entities.get(o.id);
-        if (!b || b.kind !== 'building' || b.dead || !b.complete || (b.staff?.length ?? 0) >= (b.def.staff ?? 0)) { this.setOrder(u, null); break; }
+        if (!b || b.kind !== 'building' || b.dead || !b.complete || (b.staff?.length ?? 0) >= (b.def.staff ?? b.def.guards ?? 0)) { this.setOrder(u, null); break; }
         const r = this.approach(u, b, REACH);
         if (r === 'there') {
           (b.staff ??= []).push(u.id);

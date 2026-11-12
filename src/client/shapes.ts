@@ -894,47 +894,63 @@ function stonewall(o: Look): THREE.Group {
   }, pier);
 }
 
-/** The work camp: a stockade round a bare yard, a barred hut, a guard platform over the gate and a post in the middle. */
+/**
+ * The work camp: a stockade round a bare yard and two rooms. On the left the workroom, open-fronted, where the
+ * women are kept at the querns and looms by day. Along the back the bunkhouse, barred, which the men go out to
+ * labour from and everyone is shut into at night. A guard's platform over the gate. Where things stand is given
+ * in `userData.camp` (in plot units from the centre) so the renderer can walk the captives between them.
+ */
 function workcamp(o: Look): THREE.Group {
-  const g = new THREE.Group(), wood = toon(0x6a4a2c, 'planks'), dark = toon(TIMBER), iron = toon(0x2e2e34);
-  bx(g, 2.8, 0.05, 2.8, toon(0x6e5c44), 0, 0.025, 0).castShadow = false;
-  const R = 1.36;
+  const g = new THREE.Group(), wood = toon(0x6a4a2c, 'planks'), dark = toon(TIMBER), iron = toon(0x2e2e34), stone = toon(0xa8a49a, 'stone');
+  bx(g, 3.8, 0.05, 3.8, toon(0x6e5c44), 0, 0.025, 0).castShadow = false;
+  const R = 1.86;
   const stake = (x: number, z: number, i: number): void => {
-    const h = 0.86 + (i % 3) * 0.07;
+    const h = 0.9 + (i % 3) * 0.07;
     mesh(g, new THREE.CylinderGeometry(0.055, 0.065, h, 6), wood, x, h / 2, z);
     mesh(g, new THREE.ConeGeometry(0.055, 0.16, 6), toon(0xb89466), x, h + 0.08, z);
   };
   let i = 0;
-  for (let k = -R; k <= R + 0.01; k += 0.136) {
+  for (let k = -R; k <= R + 0.01; k += 0.1376) {
     stake(k, -R, i++); stake(-R, k, i++); stake(R, k, i++);
-    if (Math.abs(k) > 0.34) stake(k, R, i++);
+    if (Math.abs(k - 0.9) > 0.36) stake(k, R, i++);
   }
-  for (const y of [0.3, 0.66]) { bx(g, 2 * R, 0.05, 0.04, dark, 0, y, -R + 0.07); for (const s of [-1, 1]) bx(g, 0.04, 0.05, 2 * R, dark, s * (R - 0.07), y, 0); }
-  // The gate: two tall posts, a bar across, and the owner's colours over it.
-  for (const s of [-1, 1]) mesh(g, new THREE.CylinderGeometry(0.08, 0.09, 1.5, 7), dark, s * 0.38, 0.75, R);
-  bx(g, 0.9, 0.1, 0.1, dark, 0, 1.45, R);
-  cloth(g, o.team, 0.5, 0.34, 0, 1.2, R + 0.06);
-  // The hut: low, plank-built, a barred front and a heavy door.
-  walls(g, 1.5, 0.72, 1.0, wood, -0.5, 0, -0.66);
-  leanTo(g, toon(0x4a3a2a, 'planks'), 1.7, 1.2, -0.5, 0.8, -0.66, 0.18);
-  bx(g, 0.62, 0.36, 0.03, toon(0x18140f), -0.78, 0.44, -0.15);
-  for (let x = -1.04; x <= -0.52; x += 0.105) mesh(g, new THREE.CylinderGeometry(0.014, 0.014, 0.38, 5), iron, x, 0.44, -0.135);
-  pane(g, 'door', 0.34, 0.58, -0.08, 0.3, -0.15);
-  // The guard's platform in the corner, with a ladder up to it.
-  for (const [x, z] of [[0.6, 0.45], [1.15, 0.45], [0.6, 1.0], [1.15, 1.0]]) mesh(g, new THREE.CylinderGeometry(0.04, 0.05, 1.5, 6), dark, x, 0.75, z);
-  bx(g, 0.75, 0.06, 0.75, toon(PLANK, 'planks'), 0.875, 1.5, 0.725);
-  for (const [x, z, w, d] of [[0.875, 0.37, 0.75, 0.04], [0.875, 1.08, 0.75, 0.04], [1.23, 0.725, 0.04, 0.75]]) bx(g, w, 0.05, d, dark, x, 1.8, z);
-  for (const [x, z] of [[0.52, 0.37], [1.23, 0.37], [0.52, 1.08], [1.23, 1.08]]) bx(g, 0.04, 0.3, 0.04, dark, x, 1.66, z);
-  for (const s of [-0.09, 0.09]) bx(g, 0.03, 1.62, 0.03, dark, 0.44, 0.78, 0.725 + s).rotation.z = -0.12;
-  for (let y = 0.2; y < 1.5; y += 0.22) bx(g, 0.03, 0.03, 0.2, dark, 0.44 - (y - 0.78) * 0.12, y, 0.725);
-  banner(g, o.team, 1.15, 1.5, 1.0, 0.8);
-  // The post, the stocks, and what the work is: split stone, a barrow, a pile of chain.
-  mesh(g, new THREE.CylinderGeometry(0.05, 0.06, 0.95, 7), dark, 0.25, 0.475, -0.1);
-  mesh(g, new THREE.TorusGeometry(0.05, 0.014, 5, 10), iron, 0.25, 0.8, -0.04);
-  bx(g, 0.5, 0.22, 0.05, wood, -0.6, 0.48, 0.55); for (const s of [-1, 1]) bx(g, 0.05, 0.6, 0.05, dark, -0.6 + s * 0.22, 0.3, 0.55);
-  for (const [x, z, s] of [[0.9, -0.8, 0.2], [1.1, -0.6, 0.15], [0.75, -0.55, 0.13], [1.0, -1.0, 0.16]]) mesh(g, wobble(new THREE.DodecahedronGeometry(s, 0), 0.03, 3), toon(0xa8a49a, 'stone'), x, s * 0.7, z);
-  mesh(g, new THREE.TorusGeometry(0.09, 0.022, 5, 10).rotateX(Math.PI / 2), iron, 0.1, 0.03, 0.5);
-  mesh(g, new THREE.TorusGeometry(0.07, 0.022, 5, 10).rotateX(Math.PI / 2), iron, 0.16, 0.05, 0.56);
+  for (const y of [0.3, 0.7]) { bx(g, 2 * R, 0.05, 0.04, dark, 0, y, -R + 0.07); for (const s2 of [-1, 1]) bx(g, 0.04, 0.05, 2 * R, dark, s2 * (R - 0.07), y, 0); }
+  // The gate, toward the right of the front, with the owner's colours over it.
+  for (const s2 of [-1, 1]) mesh(g, new THREE.CylinderGeometry(0.08, 0.09, 1.55, 7), dark, 0.9 + s2 * 0.4, 0.775, R);
+  bx(g, 0.95, 0.1, 0.1, dark, 0.9, 1.5, R);
+  cloth(g, o.team, 0.5, 0.34, 0.9, 1.25, R + 0.06);
+  // The bunkhouse along the back: long, low, plank-built, one heavy door and a row of barred slits. A light shows in it at night.
+  walls(g, 3.0, 0.85, 1.05, wood, 0.15, 0, -1.15);
+  leanTo(g, toon(0x4a3a2a, 'planks'), 3.2, 1.3, 0.15, 0.95, -1.15, 0.2);
+  pane(g, 'door', 0.4, 0.62, 0.9, 0.32, -0.62);
+  for (const x of [-1.0, -0.5, 0.0]) { bx(g, 0.3, 0.2, 0.03, toon(0x18140f), x, 0.58, -0.62); for (let k = -1; k <= 1; k++) mesh(g, new THREE.CylinderGeometry(0.012, 0.012, 0.2, 5), iron, x + k * 0.09, 0.58, -0.6); }
+  const lamp = bx(g, 0.3, 0.2, 0.02, toon(0xffc860, '', 0xd89020), -0.5, 0.58, -0.612);
+  lamp.castShadow = false; lamp.visible = false;
+  g.userData.nightLamp = lamp;
+  // The workroom down the left side: three walls and a roof, open to the yard, with querns to grind at and a loom.
+  walls(g, 0.08, 0.8, 1.7, wood, -1.72, 0, 0.55);
+  walls(g, 0.95, 0.8, 0.08, wood, -1.25, 0, -0.3); walls(g, 0.95, 0.8, 0.08, wood, -1.25, 0, 1.4);
+  for (const z of [-0.26, 0.55, 1.36]) bx(g, 0.08, 0.86, 0.08, dark, -0.8, 0.43, z);
+  leanTo(g, toon(0x4a3a2a, 'planks'), 1.2, 1.9, -1.25, 0.9, 0.55, 0);
+  g.children[g.children.length - 1].rotation.set(0, 0, 0.16);
+  for (const z of [0.1, 0.6]) { mesh(g, new THREE.CylinderGeometry(0.15, 0.17, 0.12, 10), stone, -0.95, 0.06, z); mesh(g, new THREE.CylinderGeometry(0.13, 0.13, 0.07, 10), toon(0x8a8680, 'stone'), -0.95, 0.155, z); mesh(g, new THREE.CylinderGeometry(0.012, 0.012, 0.12, 5), dark, -0.87, 0.24, z); }
+  for (const x of [-1.5, -1.1]) bx(g, 0.04, 0.6, 0.04, dark, x, 0.3, 1.1);
+  bx(g, 0.46, 0.04, 0.04, dark, -1.3, 0.6, 1.1); bx(g, 0.4, 0.34, 0.012, toon(0xd8d0b8, 'plaster'), -1.3, 0.4, 1.1);
+  sack(g, -1.5, -0.05); sack(g, -1.5, 0.35, 0xbfae84);
+  // The guard's platform inside the gate, with a ladder up to it.
+  for (const [x, z] of [[1.15, 0.9], [1.7, 0.9], [1.15, 1.45], [1.7, 1.45]]) mesh(g, new THREE.CylinderGeometry(0.04, 0.05, 1.5, 6), dark, x, 0.75, z);
+  bx(g, 0.75, 0.06, 0.75, toon(PLANK, 'planks'), 1.425, 1.5, 1.175);
+  for (const [x, z, w, d] of [[1.425, 0.82, 0.75, 0.04], [1.425, 1.53, 0.75, 0.04], [1.78, 1.175, 0.04, 0.75]]) bx(g, w, 0.05, d, dark, x, 1.8, z);
+  for (const [x, z] of [[1.07, 0.82], [1.78, 0.82], [1.07, 1.53], [1.78, 1.53]]) bx(g, 0.04, 0.3, 0.04, dark, x, 1.66, z);
+  for (const s2 of [-0.09, 0.09]) bx(g, 0.03, 1.62, 0.03, dark, 0.99, 0.78, 1.175 + s2).rotation.z = -0.12;
+  for (let y = 0.2; y < 1.5; y += 0.22) bx(g, 0.03, 0.03, 0.2, dark, 0.99 - (y - 0.78) * 0.12, y, 1.175);
+  banner(g, o.team, 1.7, 1.5, 1.45, 0.8);
+  // What the men's work is: a heap of rough stone to break, split blocks stacked beside it, a barrow.
+  for (const [x, z, sz] of [[0.3, 0.75, 0.22], [0.55, 0.95, 0.17], [0.15, 1.0, 0.15], [0.45, 0.6, 0.14], [0.05, 0.7, 0.13]]) mesh(g, wobble(new THREE.DodecahedronGeometry(sz, 0), 0.03, 3), stone, x, sz * 0.7, z);
+  for (let k = 0; k < 5; k++) bx(g, 0.22, 0.14, 0.16, stone, -0.25 + (k % 3) * 0.24, 0.07 + Math.floor(k / 3) * 0.14, 1.45);
+  mesh(g, new THREE.CylinderGeometry(0.05, 0.06, 0.95, 7), dark, 0.3, 0.475, 0.05);
+  mesh(g, new THREE.TorusGeometry(0.05, 0.014, 5, 10), iron, 0.3, 0.8, 0.11);
+  g.userData.camp = { bunk: [0.9, -0.45], work: [[-0.6, 0.1], [-0.6, 0.6], [-0.62, 1.05], [-0.58, -0.15]], heap: [[0.75, 0.75], [0.3, 0.4], [-0.1, 1.1], [0.7, 1.2]], post: [[0.95, 1.5], [0.6, -0.2], [-0.5, 0.5], [1.5, 0.4]], span: 3.9 };
   return g;
 }
 
@@ -1080,6 +1096,8 @@ export function shapedBuilding(type: string, size: number, o: Look, seed: number
   const k = Math.min(1.2, (size * 0.97) / Math.max(s.x, s.z));
   inner.position.set(-c.x * k, 0, -c.z * k);
   inner.scale.setScalar(k);
+  // Where its marked spots ended up once fitted to the plot, for anything that walks about inside it.
+  if (inner.userData.camp) Object.assign(inner.userData.camp, { k, ox: -c.x * k, oz: -c.z * k });
   const g = new THREE.Group();
   g.add(inner);
   g.userData = inner.userData;

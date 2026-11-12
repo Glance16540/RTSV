@@ -2167,6 +2167,39 @@ describe('the holy town and the work camp', () => {
     expect(ruth!.gender).toBe('f');
   });
 
+  it('slavers posted at a camp drive its men harder; the day has a night', () => {
+    const { g, p, tc } = town();
+    p.virtue = -80;
+    const camp = g.spawnBuilding('workcamp', 0, Math.floor(tc.x) - 9, Math.floor(tc.y) + 3, true);
+    expect(camp.size).toBe(4);
+    const man = (name: string) => ({ from: 1, name, family: '', gender: 'm' as const, trait: '', trait2: '', age: 0, lifespan: 9999 });
+    camp.captives = [man('Boaz'), man('Amos')];
+    run(g, 2);
+    expect(p.captiveMen).toBe(2);
+    // A villager cannot stand guard; a Slaver with no one to deliver can.
+    const v = g.spawnUnit('villager', 0, camp.x, camp.y + 3, 'm'), s1 = g.spawnUnit('slaver', 0, camp.x + 1, camp.y + 3), s2 = g.spawnUnit('slaver', 0, camp.x - 1, camp.y + 3);
+    g.cmdTarget(0, [v.id], camp.id);
+    g.cmdTarget(0, [s1.id, s2.id], camp.id);
+    run(g, 12);
+    expect(v.inside).toBe(0);
+    expect(camp.staff).toEqual(expect.arrayContaining([s1.id, s2.id]));
+    expect(p.captiveMen).toBeCloseTo(2 * 1.5);
+    expect(p.clergy).toBe(0); // guards are not counted as clergy or maids
+    expect(p.maids).toBe(0);
+    expect(Game.restore(g.serialize()).buildings.find((b) => b.type === 'workcamp')!.staff!.length).toBe(2);
+    // Sent out again, the men are back to their own pace.
+    expect(g.cmdUnstaff(0, camp.id, true)).toBe(2);
+    run(g, 2);
+    expect(p.captiveMen).toBe(2);
+    // Day and night: seven tenths of five minutes light, the rest dark.
+    const d = new Game(5, g.setups);
+    expect(d.night).toBe(false);
+    run(d, 215);
+    expect(d.night).toBe(true);
+    run(d, 90);
+    expect(d.night).toBe(false);
+  });
+
   it('a slaver killed on the road loses his captive', () => {
     const { g, p } = town();
     p.virtue = -80;

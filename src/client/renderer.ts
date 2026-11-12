@@ -16,6 +16,8 @@ const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
+/** One figure in a work camp's yard: a captive on their round, or a Slaver on guard. */
+interface CampFig { g: THREE.Group; rig: Rig | null; woman: boolean; guard: boolean; i: number; goal: 'out' | 'work' | 'in'; wait: number; in: boolean }
 interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh } }
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
@@ -63,6 +65,8 @@ export class Renderer {
   private v3 = new THREE.Vector3();
   private clock = 0;
   private wallTick = -1;
+  private nightC = new THREE.Color(0x1c2440);
+  private moonC = new THREE.Color(0x8fa8ff);
   /** `?fog=0`: the whole map is shown, for looking at the game rather than playing it. */
   private noFog = new URLSearchParams(location.search).get('fog') === '0';
   /** `?motion=0`: figures are not given joints and move the old simple way. */
@@ -84,6 +88,10 @@ export class Renderer {
   private tintC = new THREE.Color();
   private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] }>();
   private dust: Dust[] = [];
+  private campViews = new Map<number, { key: string; g: THREE.Group; figs: CampFig[] }>();
+  /** How far into night it is, 0 by day to 1 in full dark, eased through dusk and dawn. */
+  private nightAmt = 0;
+  private frameDt = 0.016;
   /** Hearts that rise from where a decadent town is busy at its pleasures. */
   private hearts: { m: THREE.Mesh; t: number; sway: number }[] = [];
   private heartGeo?: THREE.BufferGeometry;
@@ -277,8 +285,14 @@ export class Renderer {
     this.haze.near = this.dist * (1.25 - w * 0.75);
     this.haze.far = this.dist * (4.6 - w * 2.5);
     this.haze.color.set(0x9fb0c4).lerp(this.weather.tint(this.tintC), w);
-    this.sun.intensity = 3.0 * (1 - w * 0.6);
-    this.sky.intensity = 1.55 * (1 - w * 0.18);
+    // Night: the sun gives way to a dim blue light, eased in over dusk and out over dawn. A pitched battle is fought by day.
+    const dayT = this.game.field ? 0 : this.game.dayT, ramp = (a: number, b: number, v: number): number => Math.min(1, Math.max(0, (v - a) / (b - a)));
+    const n = this.nightAmt = Math.min(ramp(0.66, 0.72, dayT), 1 - ramp(0.96, 1, dayT));
+    this.haze.color.lerp(this.nightC, n * 0.75);
+    this.sun.intensity = 3.0 * (1 - w * 0.6) * (1 - n * 0.78);
+    this.sun.color.set(0xffe2b4).lerp(this.moonC, n);
+    this.sky.intensity = 1.55 * (1 - w * 0.18) * (1 - n * 0.5);
+    this.gl.toneMappingExposure = 1.02 - n * 0.2;
     this.sun.target.position.set(this.cx, 0, this.cy);
     const sc = this.sun.shadow.camera;
     sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 160;
@@ -333,7 +347,7 @@ export class Renderer {
         this.unitViews.delete(ev.id);
       }
       const b = this.buildingViews.get(ev.id);
-      if (b) { if (b.userData.site) this.scene.remove(b.userData.site as THREE.Object3D); if (b.visible && !b.userData.site) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); const sv = this.staffViews.get(ev.id); if (sv) { this.scene.remove(sv.g); this.staffViews.delete(ev.id); } }
+      if (b) { if (b.userData.site) this.scene.remove(b.userData.site as THREE.Object3D); if (b.visible && !b.userData.site) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); const sv = this.staffViews.get(ev.id); if (sv) { this.scene.remove(sv.g); this.staffViews.delete(ev.id); } const cv = this.campViews.get(ev.id); if (cv) { this.scene.remove(cv.g); this.campViews.delete(ev.id); } }
       const r = this.resViews.get(ev.id);
       if (r) { this.scene.remove(r); this.resViews.delete(ev.id); }
       const ti = this.treeIndex.get(ev.id);
@@ -663,35 +677,85 @@ export class Renderer {
   }
 
   /** Milkmaids and patrons at the tavern, monks and nuns at the church: those inside are shown standing at the front. */
-  /** The prisoners of a work camp, seen in its yard in their loincloths: the men at hard labour, the women standing by. */
-  private syncCamp(b: Building, shown: boolean): void {
-    const held = b.captives ?? [], key = held.map((c) => c.gender).join('');
-    let sv = this.staffViews.get(b.id);
-    if (sv && sv.key !== key) { this.scene.remove(sv.g); sv = undefined; this.staffViews.delete(b.id); }
-    if (!sv && held.length) {
-      const g = new THREE.Group(), figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] = [];
+  /**
+   * A work camp's day. Its women are kept in the workroom at the querns; its men go out from the bunkhouse to break
+   * stone in the yard and back in again; any Slavers posted there stand guard. At dusk everyone is walked to the
+   * bunkhouse and shut in, a lamp shows at its window, and the yard is empty until dawn.
+   */
+  private syncCamp(b: Building, g: THREE.Group, shown: boolean): void {
+    const spots = g.userData.camp as { bunk: number[]; work: number[][]; heap: number[][]; post: number[][]; k: number; ox: number; oz: number } | undefined;
+    if (!spots) return;
+    const held = b.captives ?? [], guards = b.staff?.length ?? 0, key = held.map((c) => c.gender).join('') + ':' + guards;
+    const at = (p: number[]): [number, number] => [b.x + spots.ox + p[0] * spots.k, b.y + spots.oz + p[1] * spots.k];
+    let cv = this.campViews.get(b.id);
+    if (cv && cv.key !== key) { this.scene.remove(cv.g); cv = undefined; this.campViews.delete(b.id); }
+    if (!cv && (held.length || guards)) {
+      const grp = new THREE.Group(), figs: CampFig[] = [], door = at(spots.bunk);
       held.slice(0, 10).forEach((c, i) => {
         const fig = makeCaptive(c.gender, (c.name.length * 7 + c.age + i) | 0);
-        // In the open part of the yard and along the front of the stockade.
-        const x = b.x + 0.15 + ((i % 4) - 1.5) * 0.36 + (i > 3 ? 0.2 : 0), z = b.y + 0.25 + Math.floor(i / 4) * 0.42;
-        fig.position.set(x, this.scenery.heightAt(x, z), z);
-        fig.rotation.y = Math.PI / 4 + Math.sin(b.id + i * 2.3) * 0.9;
-        fig.scale.multiplyScalar(0.9);
-        g.add(fig);
-        figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), role: c.gender === 'm' ? 'labour' : 'held', seed: (b.id * 1.3 + i * 2.1) % 6.28, lean0: 0 });
+        fig.scale.multiplyScalar(0.88 * spots.k);
+        fig.rotation.order = 'YXZ';
+        fig.position.set(door[0], 0, door[1]);
+        grp.add(fig);
+        figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), woman: c.gender === 'f', guard: false, i, goal: 'out', wait: i * 0.9, in: true });
       });
-      sv = { key, g, figs };
-      this.staffViews.set(b.id, sv);
-      this.scene.add(g);
+      const color = this.game.players[b.owner].color;
+      for (let i = 0; i < guards; i++) {
+        const fig = makeUnit('slaver', color, null, b.id + i * 13), [x, z] = at(spots.post[i % spots.post.length]);
+        fig.scale.multiplyScalar(0.9 * spots.k);
+        fig.position.set(x, this.scenery.heightAt(x, z) + (i % spots.post.length === 0 ? 0 : 0), z);
+        fig.rotation.y = Math.PI / 4 + i * 1.7;
+        grp.add(fig);
+        figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), woman: false, guard: true, i, goal: 'out', wait: 0, in: false });
+      }
+      cv = { key, g: grp, figs };
+      this.campViews.set(b.id, cv);
+      this.scene.add(grp);
     }
-    if (!sv) return;
-    sv.g.visible = shown;
+    const night = this.nightAmt > 0.5, lamp = g.userData.nightLamp as THREE.Object3D | undefined;
+    if (lamp) lamp.visible = night && held.length > 0;
+    if (!cv) return;
+    cv.g.visible = shown;
     if (!shown) return;
-    for (const f of sv.figs) {
-      if (!f.rig) continue;
-      const t = this.clock + f.seed * 2;
-      if (f.role === 'labour') this.setPose(f.rig, 'work', (t % 1.5) / 1.5, 1);
-      else { this.setPose(f.rig, 'idle', t / motions.idle.dur, 1); f.rig.head.rotation.x += 0.3; }
+    const dt = Math.min(0.1, this.frameDt), door = at(spots.bunk);
+    for (const f of cv.figs) {
+      const t = this.clock + f.i * 1.9;
+      if (f.guard) { if (f.rig) this.setPose(f.rig, 'idle', t / motions.idle.dur, 1); continue; }
+      // Where this one should be now: shut in at night; by day a woman at her place in the workroom, a man at the stone or on his way back in.
+      const place = f.woman ? at(spots.work[f.i % spots.work.length]) : at(spots.heap[f.i % spots.heap.length]);
+      const goIn = night || (!f.woman && f.goal === 'in');
+      const target = goIn ? door : place;
+      if (f.in) {
+        // Inside. By day a man comes out again after a short while, and a woman at dawn.
+        if (!night && (f.wait -= dt) <= 0) { f.in = false; f.goal = 'out'; f.g.position.set(door[0], 0, door[1]); }
+        f.g.visible = false;
+        continue;
+      }
+      f.g.visible = true;
+      const dx = target[0] - f.g.position.x, dz = target[1] - f.g.position.z, d = Math.hypot(dx, dz);
+      let pose = 'idle', pt = t / motions.idle.dur;
+      if (d > 0.06) {
+        const step = Math.min(d, dt * 0.55 * (night ? 1.3 : 1));
+        f.g.position.x += (dx / d) * step; f.g.position.z += (dz / d) * step;
+        const want = Math.atan2(dx, dz), turn = Math.atan2(Math.sin(want - f.g.rotation.y), Math.cos(want - f.g.rotation.y));
+        f.g.rotation.y += turn * Math.min(1, dt * 8);
+        pose = 'walk'; pt = t * 1.1;
+      } else if (goIn) {
+        f.in = true; f.wait = 2.5 + (f.i % 3); f.goal = 'out';
+        f.g.visible = false;
+        continue;
+      } else if (f.woman) {
+        // At the quern: bent to it, turning the stone.
+        f.g.rotation.y += Math.atan2(Math.sin(-Math.PI / 2 - f.g.rotation.y), Math.cos(-Math.PI / 2 - f.g.rotation.y)) * Math.min(1, dt * 6);
+        pose = 'reach'; pt = (t % 2.2) / 2.2;
+      } else {
+        // At the heap: a spell of breaking stone, then back inside with it.
+        pose = 'work'; pt = (t % 1.5) / 1.5;
+        if (f.goal === 'out') { f.goal = 'work'; f.wait = 7 + (f.i % 4) * 1.5; }
+        if ((f.wait -= dt) <= 0) f.goal = 'in';
+      }
+      f.g.position.y = this.scenery.heightAt(f.g.position.x, f.g.position.z);
+      if (f.rig) { this.setPose(f.rig, pose, pt, 1); if (pose !== 'work') f.rig.head.rotation.x += 0.3; }
     }
   }
 
@@ -965,7 +1029,7 @@ export class Renderer {
     }
     g.visible = this.isVisible(b);
     if (b.def.staff) this.syncStaff(b, g.visible && b.complete, lean);
-    if (b.def.camp) this.syncCamp(b, g.visible && b.complete);
+    if (b.def.camp) this.syncCamp(b, g, g.visible && b.complete);
     if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
     g.userData.hurt = hurt;
     // A building going up rises out of its footings inside a scaffold of poles, which comes down when it is done.
@@ -1033,6 +1097,7 @@ export class Renderer {
   }
 
   frame(alpha: number, dt: number, selection: number[]): void {
+    this.frameDt = dt;
     const game = this.game;
     this.clock += dt;
     if (this.shake > 0) this.shake -= dt;
