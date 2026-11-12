@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
-import { makeBuilding, makeResource, makeUnit, mat, RES_COLOR } from './models';
+import { makeBuilding, makeResource, makeUnit, mat, RES_COLOR, Rig, rigBiped } from './models';
+import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, wobble } from './shapes';
@@ -13,7 +14,10 @@ const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number }
+/** Recorded motions (walking, working, striking…), as turns of a figure's few joints. See scripts/motions.cjs. */
+const motions = MOTIONS as unknown as Record<string, { dur: number; frames: number[][] }>;
+const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
 interface Floater { x: number; y: number; text: string; t: number }
 interface Ping { mesh: THREE.Mesh; t: number }
 /** A piece of a fallen building, thrown clear and left to tumble. */
@@ -357,7 +361,8 @@ export class Renderer {
       v = undefined;
     }
     if (!v) {
-      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type };
+      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0 };
+      v.rig = new URLSearchParams(location.search).get('motion') === '0' ? null : rigBiped(v.g);
       v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
       v.g.rotation.order = 'YXZ'; // so leaning forward and rocking are in the unit's own frame, whichever way it faces
       this.unitViews.set(u.id, v);
@@ -378,9 +383,9 @@ export class Renderer {
       pitch = Math.sin(this.clock * 0.9 + v.phase * 2) * 0.03;
     } else if (u.moving) {
       v.phase += dt * u.def.speed * 5;
-      bob = Math.abs(Math.sin(v.phase)) * (mounted ? 0.09 : 0.06);
+      bob = v.rig ? 0 : Math.abs(Math.sin(v.phase)) * (mounted ? 0.09 : 0.06);
       pitch = mounted ? Math.sin(v.phase * 2) * 0.06 : 0.07; // riders rock at the gallop; walkers lean into their stride
-      roll = mounted ? 0 : Math.sin(v.phase) * 0.05;
+      roll = mounted || v.rig ? 0 : Math.sin(v.phase) * 0.05;
     } else {
       breathe = 1 + Math.sin(this.clock * 2.2 + v.phase) * 0.012; // standing, they still breathe
     }
@@ -394,9 +399,10 @@ export class Renderer {
     let d = u.facing - g.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
-    for (const l of v.legs) l.rotation.x = u.moving ? Math.sin(v.phase + (l.userData.leg as number)) * 0.65 : l.rotation.x * 0.8;
+    if (v.rig) { this.pose(u, v, dt); }
+    else for (const l of v.legs) l.rotation.x = u.moving ? Math.sin(v.phase + (l.userData.leg as number)) * 0.65 : l.rotation.x * 0.8;
     const arm = g.userData.arm as THREE.Object3D | undefined;
-    if (arm) {
+    if (arm && !v.rig) {
       arm.rotation.x = u.type === 'catapult' ? swing * 1.2 : -swing * 1.3 + (u.moving ? Math.sin(v.phase) * 0.3 : 0);
     }
     const ramLog = g.userData.ram as THREE.Object3D | undefined;
@@ -408,6 +414,42 @@ export class Renderer {
     }
     const glow = g.userData.glow as THREE.Mesh | undefined;
     if (glow) glow.scale.setScalar(u.healTarget ? 1.3 + Math.sin(this.clock * 10) * 0.4 : 1);
+  }
+
+  /** Sets a figure's joints from the recorded motion that fits what it is doing. */
+  private pose(u: Unit, v: UnitView, dt: number): void {
+    const rig = v.rig!;
+    let name = 'idle', t = (this.clock + v.phase) / motions.idle.dur;
+    if (u.attackAnim > 0) {
+      name = u.type === 'villager' ? 'work' : u.def.range >= 3 ? 'shoot' : /spear|pike|lancer|hoplite|javelin|bill/.test(u.type) ? 'stab' : u.healTarget ? 'cast' : 'strike';
+      // The blow lands in the middle of the recorded swing; play that part across the time the blow takes.
+      t = 0.2 + (1 - Math.min(1, u.attackAnim / 0.35)) * 0.5;
+      v.work = 0.5;
+    } else if (u.moving) {
+      name = u.def.speed > 1.25 ? 'run' : 'walk';
+      t = v.phase / (Math.PI * 2);
+    } else if (u.healTarget) {
+      name = 'cast';
+      t = this.clock / motions.cast.dur;
+    } else if ((v.work -= dt) > 0 && u.type === 'villager') {
+      // Between strokes a worker draws back for the next one instead of dropping to rest.
+      name = 'work';
+      t = 0.15;
+    }
+    const m = motions[name], n = m.frames.length;
+    const f = (((t % 1) + 1) % 1) * n, i = Math.floor(f) % n, k = f - Math.floor(f);
+    const a = m.frames[i], b = m.frames[(i + 1) % n];
+    // Ease toward the pose, so one motion flows into the next.
+    const ease = Math.min(1, dt * 16);
+    const turn = (o: THREE.Object3D, at: number): void => {
+      qa.set(a[at], a[at + 1], a[at + 2], a[at + 3]);
+      qb.set(b[at], b[at + 1], b[at + 2], b[at + 3]);
+      o.quaternion.slerp(qa.slerp(qb, k), ease);
+    };
+    rig.root.position.y += (0.3 * (1 + (a[0] + (b[0] - a[0]) * k) * 0.8) - rig.root.position.y) * ease;
+    turn(rig.root, 1); turn(rig.torso, 5); turn(rig.head, 9); turn(rig.armR, 13); turn(rig.armL, 17);
+    if (rig.legs[0]) turn(rig.legs[0], 21);
+    if (rig.legs[1]) turn(rig.legs[1], 25);
   }
 
   /** A building that falls comes apart: every piece is thrown clear, tumbles, settles and sinks away. */

@@ -330,3 +330,12 @@ for filenames and a ready-made generation prompt.
   - `ai.ts` — computer opponent
 - `src/client/` — Three.js renderer, procedural models, HUD and input
 - `tests/` — simulation tests
+
+## The drawn look, motion and destruction
+
+- `src/client/shapes.ts` holds the look: banded shade with an ink outline, painted surfaces, and the hand-shaped
+  buildings. Add `?outline=0` to the address to turn the outline off, `?motion=0` for the old simple walk.
+- Figures on foot move with recorded motions (walk, run, work, strike, stab, shoot, cast). They come from the
+  KayKit Adventurers character pack by Kay Lousberg (public domain, CC0), reduced to the few joints our figures
+  have and stored in `src/client/motions.json`. To rebuild that file: `node scripts/motions.cjs <path to Knight.glb>`.
+- Buildings shed pieces as they are damaged and fall apart when destroyed.

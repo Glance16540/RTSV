@@ -134,6 +134,7 @@ function leg(g: THREE.Object3D, w: number, h: number, color: number, x: number, 
 }
 
 function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y = 0): void {
+  if (y === 0) g.userData.biped = true;
   leg(g, 0.1, 0.3, legs, -0.07, 0, 0, y);
   leg(g, 0.1, 0.3, legs, 0.07, 0, Math.PI, y);
   // A belted tunic, flared at the hem and drawn in at the neck.
@@ -167,6 +168,32 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
   [[-0.1, 0.3], [0.1, 0.3], [-0.1, -0.3], [0.1, -0.3]].forEach(([x, z], i) => leg(g, 0.08, 0.42, color, x, z, i % 3 ? Math.PI : 0));
   const tail = box(g, 0.06, 0.3, 0.06, 0x2a1e16, 0, 0.52, -0.44);
   tail.rotation.x = -0.4;
+}
+
+/** The joints of a figure on foot, turned by the recorded motions. */
+export interface Rig { root: THREE.Group; torso: THREE.Group; head: THREE.Group; armR: THREE.Object3D; armL: THREE.Group; legs: THREE.Object3D[] }
+/**
+ * Gives a figure on foot its joints. The figure is built standing still, as one flat group of parts;
+ * here each part is hung on the joint it belongs to (by where it sits), so the whole figure can be posed.
+ */
+export function rigBiped(g: THREE.Group): Rig | null {
+  if (!g.userData.biped || !g.userData.arm) return null;
+  g.updateMatrixWorld(true);
+  const parts = [...g.children];
+  const joint = (x: number, y: number, z: number, parent: THREE.Object3D): THREE.Group => { const j = new THREE.Group(); j.position.set(x, y, z); parent.add(j); return j; };
+  const root = joint(0, 0.3, 0, g), torso = joint(0, 0, 0, root), head = joint(0, 0.37, 0, torso), armL = joint(-0.19, 0.28, 0, torso);
+  const armR = g.userData.arm as THREE.Object3D, legs: THREE.Object3D[] = [];
+  g.updateMatrixWorld(true);
+  const box = new THREE.Box3(), c = new THREE.Vector3(), s = new THREE.Vector3();
+  for (const p of parts) {
+    if (p.userData.leg !== undefined) { root.attach(p); legs.push(p); continue; }
+    if (p === armR) { torso.attach(p); continue; }
+    box.setFromObject(p, true); box.getCenter(c); box.getSize(s);
+    (c.y > 0.67 ? head : c.x < -0.14 && s.x < 0.3 && c.y < 0.67 ? armL : torso).attach(p);
+  }
+  // The leg on the weapon side first, as the motions list it.
+  legs.sort((a, b) => b.position.x - a.position.x);
+  return { root, torso, head, armR, armL, legs };
 }
 
 const UNIT_HEIGHT: Record<string, number> = {
@@ -209,6 +236,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   switch (type) {
     case 'villager': {
       if (gender === 'f') {
+        g.userData.biped = true;
         lathe(g, 'dress', [[0.23, 0], [0.22, 0.05], [0.11, 0.36], [0.115, 0.42], [0.13, 0.54], [0.06, 0.6]], color, 0, 0, 0);
         cap(g, 0.04, 0.28, color, -0.17, 0.44, 0).rotation.z = -0.14;
         const a = arm(g, -0.04);

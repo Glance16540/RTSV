@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- Run under the dev server by scripts/motions.cjs: reads a rigged character (KayKit Adventurers, CC0) and writes out
+     its motions as the handful of joint turns this game's figures have. See README, "Motion". -->
+<html><body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+const CLIPS = { walk: 'Walking_A', run: 'Running_A', idle: 'Idle', strike: '1H_Melee_Attack_Chop', stab: '1H_Melee_Attack_Stab', shoot: '1H_Ranged_Shoot', work: '2H_Melee_Attack_Chop', reach: 'Interact', cast: 'Spellcast_Shoot', cheer: 'Cheer' };
+const FPS = 24;
+const gltf = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('src'));
+const scene = gltf.scene;
+const bone = (n) => scene.getObjectByName(n.replace('.', '')) ?? scene.getObjectByName(n);
+const B = Object.fromEntries(['hips', 'chest', 'head', 'upperarm.l', 'upperarm.r', 'hand.l', 'hand.r', 'upperleg.l', 'upperleg.r', 'foot.l', 'foot.r'].map((n) => [n, bone(n)]));
+for (const [k, v] of Object.entries(B)) if (!v) throw new Error('no bone ' + k);
+const wq = (o) => o.getWorldQuaternion(new THREE.Quaternion()), wp = (o) => o.getWorldPosition(new THREE.Vector3());
+// Left and right are swapped and the pose mirrored, so the weapon hand lands on the side this game's figures hold theirs.
+const mq = (q) => new THREE.Quaternion(q.x, -q.y, -q.z, q.w), mp = (p) => new THREE.Vector3(-p.x, p.y, p.z);
+scene.updateMatrixWorld(true);
+scene.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.pose(); });
+scene.updateMatrixWorld(true);
+const rest = { hips: mq(wq(B.hips)), chest: mq(wq(B.chest)), head: mq(wq(B.head)), y: wp(B.hips).y };
+const DOWN = new THREE.Vector3(0, -1, 0);
+const mixer = new THREE.AnimationMixer(scene);
+const out = {};
+const r3 = (n) => Math.round(n * 1000) / 1000;
+for (const [key, name] of Object.entries(CLIPS)) {
+  const clip = gltf.animations.find((a) => a.name === name);
+  if (!clip) throw new Error('no clip ' + name);
+  mixer.stopAllAction();
+  const act = mixer.clipAction(clip); act.play();
+  const n = Math.max(2, Math.round(clip.duration * FPS)), frames = [];
+  for (let i = 0; i < n; i++) {
+    mixer.setTime((i / n) * clip.duration);
+    scene.updateMatrixWorld(true);
+    const Dh = mq(wq(B.hips)).multiply(rest.hips.clone().invert());
+    const Dc = mq(wq(B.chest)).multiply(rest.chest.clone().invert());
+    const Dhead = mq(wq(B.head)).multiply(rest.head.clone().invert());
+    const limb = (from, to, parent, splay) => {
+      const dir = mp(wp(to)).sub(mp(wp(from))); dir.x *= splay; dir.normalize(); // these characters hold their arms wide; ours are slimmer
+      return parent.clone().invert().multiply(new THREE.Quaternion().setFromUnitVectors(DOWN, dir));
+    };
+    const qs = [
+      Dh,
+      Dh.clone().invert().multiply(Dc),
+      Dc.clone().invert().multiply(Dhead),
+      limb(B['upperarm.r'], B['hand.r'], Dc, 0.6), // the figure's weapon arm: its +x side once mirrored
+      limb(B['upperarm.l'], B['hand.l'], Dc, 0.6),
+      limb(B['upperleg.r'], B['foot.r'], Dh, 1),
+      limb(B['upperleg.l'], B['foot.l'], Dh, 1),
+    ];
+    frames.push([r3((wp(B.hips).y - rest.y) / rest.y), ...qs.flatMap((q) => [r3(q.x), r3(q.y), r3(q.z), r3(q.w)])]);
+  }
+  out[key] = { dur: r3(clip.duration), frames };
+}
+window.motions = out;
+document.title = 'done';
+</script></body></html>

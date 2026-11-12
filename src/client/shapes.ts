@@ -172,13 +172,14 @@ function chimney(p: THREE.Object3D, x: number, y: number, z: number, h = 0.7): v
   walls(p, 0.3, h, 0.3, st, x, y, z);
   bx(p, 0.38, 0.07, 0.38, st, x, y + h, z);
 }
-export function barrel(p: THREE.Object3D, x: number, z: number, s = 1): void {
+export function barrel(p: THREE.Object3D, x: number, z: number, s = 1): THREE.Group {
   const g = new THREE.Group();
   g.position.set(x, 0, z); g.scale.setScalar(s); p.add(g);
   const wood = toon(0x9a6a3e, 'planks');
   mesh(g, new THREE.LatheGeometry([[0.13, 0], [0.17, 0.12], [0.18, 0.2], [0.17, 0.28], [0.13, 0.4]].map(([a, b]) => new THREE.Vector2(a, b)), 12), wood);
   mesh(g, new THREE.CircleGeometry(0.13, 12).rotateX(-Math.PI / 2), wood, 0, 0.4, 0);
   for (const y of [0.08, 0.32]) mesh(g, new THREE.TorusGeometry(0.165, 0.012, 5, 14).rotateX(Math.PI / 2), toon(0x3a3a40), 0, y, 0);
+  return g;
 }
 /** A pole with a cloth in the owner's colour, hanging with a ripple in it. */
 export function banner(p: THREE.Object3D, team: number, x: number, y: number, z: number, h = 0.8): void {
@@ -392,13 +393,164 @@ function tower(o: Look): THREE.Group {
   return g;
 }
 
-const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { towncenter: hall, house, temple: church, tavern, barracks, tower };
+const PLANK = 0x9a6a3e;
+const crate = (g: THREE.Object3D, s: number, x: number, z: number, y = 0, ry = 0): void => { const c = bx(g, s, s, s, toon(0xb08850, 'planks'), x, y + s / 2, z); c.rotation.y = ry; };
+const sack = (g: THREE.Object3D, x: number, z: number, c = 0xcdbb94): void => { mesh(g, new THREE.SphereGeometry(0.16, 8, 6), toon(c), x, 0.13, z).scale.set(1, 0.8, 0.8); };
+function logs(g: THREE.Object3D, x: number, z: number, n: number, len = 0.9): void {
+  for (let i = 0, row = 0, k = 0; i < n; i++, k++) { if (k >= 3 - row) { row++; k = 0; } mesh(g, new THREE.CylinderGeometry(0.08, 0.08, len, 7).rotateZ(Math.PI / 2), toon(0x8a6238, 'planks'), x, 0.08 + row * 0.14, z + (k + row * 0.5) * 0.17); }
+}
+/** A single slope on posts: the roof of a shed, a porch or a stall. */
+function leanTo(g: THREE.Object3D, m: THREE.Material, w: number, d: number, x: number, y: number, z: number, tilt = 0.25): void {
+  bx(g, w, 0.07, d, m, x, y, z).rotation.x = tilt;
+}
+function storehouse(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  walls(g, 1.7, 0.16, 1.4, toon(0xb8b4aa, 'stone'));
+  walls(g, 1.6, 0.9, 1.3, o.age >= 3 ? wallMat(o) : toon(o.age === 0 ? o.wall : PLANK, 'planks'), 0, 0.14);
+  posts(g, o, 1.6, 0.9, 1.3, 0.14);
+  top(g, o, 1.6, 1.3, 1.04, 0.75);
+  bx(g, 1.62, 0.07, 1.32, toon(o.team), 0, 0.98, 0);
+  // Wide double doors, one ajar, and goods waiting outside.
+  pane(g, 'door', 0.34, 0.7, -0.18, 0.5, 0.66);
+  pane(g, 'door', 0.34, 0.7, 0.24, 0.5, 0.74).rotation.y = -0.5;
+  crate(g, 0.3, 0.72, 0.9); crate(g, 0.24, 0.5, 1.0, 0, 0.4); crate(g, 0.22, 0.7, 0.92, 0.3, 0.3);
+  sack(g, -0.6, 0.9); sack(g, -0.8, 0.95, 0xbfae84); sack(g, -0.7, 0.92, 0xd8c8a0);
+  barrel(g, -1.0, 0.3, 0.85);
+  return g;
+}
+function dock(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  const plank = toon(PLANK, 'planks');
+  bx(g, 2.8, 0.1, 2.8, plank, 0, 0.1, 0);
+  for (const [x, z] of [[-1.3, 1.3], [1.3, 1.3], [1.3, -1.3], [-1.3, -1.3], [0.9, 1.3], [0, 1.3]]) mesh(g, new THREE.CylinderGeometry(0.07, 0.08, 0.6, 7), toon(TIMBER), x, 0.3, z);
+  // The boathouse.
+  walls(g, 1.5, 0.8, 1.3, toon(o.age === 0 ? o.wall : PLANK, 'planks'), -0.5, 0.15, -0.55);
+  top(g, o, 1.5, 1.3, 0.95, 0.6, -0.5, -0.55);
+  bx(g, 1.52, 0.07, 1.32, toon(o.team), -0.5, 0.88, -0.55);
+  pane(g, 'door', 0.5, 0.6, -0.5, 0.46, 0.11);
+  // A boat drawn up on the deck, nets drying, a catch in crates.
+  const hull = mesh(g, new THREE.SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), toon(0x7a5230, 'planks'), 0.85, 0.42, 0.5);
+  hull.scale.set(0.42, 0.5, 1.1); hull.rotation.y = 0.3;
+  bx(g, 0.3, 0.03, 0.08, plank, 0.85, 0.36, 0.5).rotation.y = 0.3;
+  for (const x of [-1.0, -0.2]) mesh(g, new THREE.CylinderGeometry(0.025, 0.025, 0.9, 5), toon(TIMBER), x, 0.6, 0.9);
+  const net = bx(g, 0.84, 0.5, 0.02, toon(0xc8c0a0, 'window'), -0.6, 0.72, 0.9); net.castShadow = false;
+  crate(g, 0.3, 0.75, -0.9, 0.15); barrel(g, 1.1, -0.5).position.y = 0.15;
+  banner(g, o.team, -1.25, 0.15, -1.25, 1.0);
+  return g;
+}
+function range(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  const wm = toon(o.age === 0 ? o.wall : PLANK, 'planks');
+  walls(g, 2.7, 1.1, 0.12, wm, 0, 0, -1.25);
+  for (const x of [-1.3, 1.3]) { walls(g, 0.12, 1.0, 0.9, wm, x, 0, -0.85); mesh(g, new THREE.CylinderGeometry(0.05, 0.06, 0.95, 6), toon(TIMBER), x, 0.47, -0.1); }
+  leanTo(g, pitched(o) ? roofMat(o) : toon(o.roofColor, 'tiles'), 2.95, 1.5, 0, 1.08, -0.68, 0.16);
+  bx(g, 2.72, 0.07, 0.14, toon(o.team), 0, 1.0, -1.25);
+  // A bow rack and arrow tubs under the roof, butts out in the yard.
+  bx(g, 1.0, 0.05, 0.05, toon(TIMBER), -0.5, 0.7, -1.1);
+  for (const x of [-0.85, -0.6, -0.35, -0.1]) mesh(g, new THREE.TorusGeometry(0.22, 0.012, 4, 10, Math.PI), toon(0x6a4a2a), x, 0.5, -1.08).rotation.set(0, Math.PI / 2, Math.PI / 2);
+  for (const x of [0.5, 0.85]) { mesh(g, new THREE.CylinderGeometry(0.1, 0.08, 0.3, 8), toon(PLANK, 'planks'), x, 0.15, -0.9); for (const d of [-0.03, 0.03]) mesh(g, new THREE.CylinderGeometry(0.008, 0.008, 0.4, 4), toon(0xe8dcc0), x + d, 0.38, -0.9 + d); }
+  for (const x of [-0.8, 0, 0.8]) {
+    mesh(g, new THREE.CylinderGeometry(0.32, 0.32, 0.12, 16).rotateX(Math.PI / 2), toon(0xd8c070, 'thatch'), x, 0.55, 1.15).rotation.x = -0.15;
+    mesh(g, new THREE.CylinderGeometry(0.22, 0.22, 0.13, 16).rotateX(Math.PI / 2), toon(0xf4eee0), x, 0.55, 1.16).rotation.x = -0.15;
+    mesh(g, new THREE.CylinderGeometry(0.1, 0.1, 0.14, 12).rotateX(Math.PI / 2), toon(0xc0392b), x, 0.55, 1.17).rotation.x = -0.15;
+    for (const s of [-1, 1]) bx(g, 0.04, 0.6, 0.04, toon(TIMBER), x + s * 0.2, 0.28, 1.05).rotation.x = 0.25;
+  }
+  banner(g, o.team, -1.25, 1.1, -1.2, 0.5);
+  return g;
+}
+function fence(g: THREE.Object3D, x0: number, z0: number, x1: number, z1: number): void {
+  const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.5)), ang = Math.atan2(x1 - x0, z1 - z0);
+  for (let i = 0; i <= n; i++) mesh(g, new THREE.CylinderGeometry(0.035, 0.04, 0.5, 5), toon(TIMBER), x0 + (x1 - x0) * i / n, 0.25, z0 + (z1 - z0) * i / n);
+  for (const y of [0.22, 0.42]) bx(g, 0.035, 0.045, len, toon(PLANK, 'planks'), (x0 + x1) / 2, y, (z0 + z1) / 2).rotation.y = ang;
+}
+function stable(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  walls(g, 2.7, 0.9, 1.4, o.age >= 2 ? wallMat(o) : toon(o.age === 0 ? o.wall : PLANK, 'planks'), 0, 0, -0.65);
+  posts(g, o, 2.7, 0.9, 1.4);
+  top(g, o, 2.7, 1.4, 0.9, 0.7, 0, -0.65);
+  bx(g, 2.72, 0.07, 1.42, toon(o.team), 0, 0.84, -0.65);
+  // Three stalls with half doors, dark within.
+  for (const x of [-0.85, 0, 0.85]) { bx(g, 0.56, 0.7, 0.03, toon(0x2a2018), x, 0.4, 0.055); pane(g, 'door', 0.56, 0.36, x, 0.2, 0.08); }
+  // The paddock, with hay and a trough.
+  fence(g, -1.3, 0.1, -1.3, 1.3); fence(g, 1.3, 0.1, 1.3, 1.3); fence(g, -1.3, 1.3, -0.3, 1.3); fence(g, 0.4, 1.3, 1.3, 1.3);
+  mesh(g, new THREE.CylinderGeometry(0.26, 0.26, 0.4, 12).rotateZ(Math.PI / 2), toon(0xd8c060, 'thatch'), 0.85, 0.26, 0.8);
+  mesh(g, new THREE.CylinderGeometry(0.22, 0.22, 0.36, 12), toon(0xd0b858, 'thatch'), 0.45, 0.18, 0.55);
+  bx(g, 0.7, 0.2, 0.26, toon(PLANK, 'planks'), -0.75, 0.12, 0.85);
+  bx(g, 0.6, 0.03, 0.18, toon(0x3a6a8a), -0.75, 0.22, 0.85).castShadow = false;
+  banner(g, o.team, 1.3, 0, -1.25, 1.1);
+  return g;
+}
+function blacksmith(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  const st = toon(0xa8a49a, 'stone'), iron = toon(0x2c2c30);
+  walls(g, 2.3, 1.0, 1.6, o.age >= 1 ? st : toon(o.wall, 'planks'), -0.1, 0, -0.5);
+  top(g, o, 2.3, 1.6, 1.0, 0.75, -0.1, -0.5);
+  bx(g, 2.32, 0.07, 1.62, toon(o.team), -0.1, 0.93, -0.5);
+  // A great stone stack, its mouth glowing.
+  walls(g, 0.5, 2.3, 0.5, toon(0x8a867c, 'stone'), 0.85, 0, -0.9);
+  bx(g, 0.6, 0.1, 0.6, toon(0x8a867c, 'stone'), 0.85, 2.3, -0.9);
+  bx(g, 0.3, 0.04, 0.3, toon(0xff7a20, '', 0xcc4400), 0.85, 2.36, -0.9).castShadow = false;
+  pane(g, 'door', 0.5, 0.75, -0.8, 0.4, 0.31);
+  // The open forge under a lean-to: hearth, anvil on a block, quenching tub, tools.
+  leanTo(g, pitched(o) ? roofMat(o) : toon(o.roofColor, 'tiles'), 1.5, 1.0, 0.5, 1.0, 0.75, 0.3);
+  for (const x of [-0.15, 1.15]) mesh(g, new THREE.CylinderGeometry(0.045, 0.05, 0.85, 6), toon(TIMBER), x, 0.42, 1.15);
+  walls(g, 0.6, 0.42, 0.5, toon(0x6a665e, 'stone'), 0.75, 0, 0.6);
+  bx(g, 0.44, 0.06, 0.34, toon(0xff7a20, '', 0xcc4400), 0.75, 0.43, 0.6).castShadow = false;
+  mesh(g, new THREE.CylinderGeometry(0.13, 0.15, 0.3, 8), toon(TIMBER, 'planks'), 0.1, 0.15, 0.85);
+  bx(g, 0.34, 0.1, 0.14, iron, 0.1, 0.38, 0.85); bx(g, 0.16, 0.06, 0.1, iron, 0.1, 0.31, 0.85);
+  mesh(g, new THREE.ConeGeometry(0.06, 0.16, 6).rotateZ(-Math.PI / 2), iron, 0.33, 0.39, 0.85);
+  barrel(g, -0.4, 0.9, 0.8);
+  for (const [x, c] of [[-1.0, 0x9aa0a8], [-0.85, 0x7a7e86], [-0.7, 0x9aa0a8]]) bx(g, 0.05, 0.6, 0.02, toon(c), x, 0.5, 0.33).rotation.z = (x + 0.85) * 0.6;
+  return g;
+}
+function workshop(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  walls(g, 2.5, 1.1, 1.7, o.age >= 3 ? wallMat(o) : toon(o.age === 0 ? o.wall : PLANK, 'planks'), 0, 0, -0.5);
+  posts(g, o, 2.5, 1.1, 1.7);
+  top(g, o, 2.5, 1.7, 1.1, 0.8, 0, -0.5);
+  bx(g, 2.52, 0.07, 1.72, toon(o.team), 0, 1.03, -0.5);
+  pane(g, 'door', 0.9, 0.85, 0, 0.44, 0.36);
+  for (const x of [-0.9, 0.9]) pane(g, 'window', 0.3, 0.36, x, 0.65, 0.36);
+  // A cart wheel against the wall, a sawhorse with a beam on it, timber stacked.
+  const wheel = new THREE.Group(); wheel.position.set(1.0, 0.45, 0.6); wheel.rotation.set(-0.25, 0.2, 0); g.add(wheel);
+  mesh(wheel, new THREE.TorusGeometry(0.4, 0.05, 6, 16), toon(TIMBER));
+  for (let i = 0; i < 4; i++) bx(wheel, 0.76, 0.04, 0.04, toon(PLANK), 0, 0, 0).rotation.z = (i * Math.PI) / 4;
+  mesh(wheel, new THREE.CylinderGeometry(0.07, 0.07, 0.1, 8).rotateX(Math.PI / 2), toon(0x3a3a40));
+  for (const x of [-0.3, 0.3]) for (const s of [-1, 1]) bx(g, 0.04, 0.5, 0.04, toon(TIMBER), x, 0.23, 1.1 + s * 0.12).rotation.x = -s * 0.35;
+  bx(g, 1.1, 0.1, 0.1, toon(0xb08850, 'planks'), 0, 0.5, 1.1);
+  logs(g, -1.0, 0.75, 6, 0.8);
+  return g;
+}
+function market(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  bx(g, 2.8, 0.08, 2.8, toon(0xb0a890, 'stone'), 0, 0.04, 0).castShadow = false;
+  const cloths = [o.team, 0xe8dcc0, 0xc0392b, 0xd8a838], goods = [0xd8c060, 0xc0392b, 0x8aa838, 0xe87a30];
+  [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]].forEach(([x, z], i) => {
+    bx(g, 0.9, 0.42, 0.6, toon(PLANK, 'planks'), x, 0.29, z);
+    for (const [px, pz, h] of [[-0.45, -0.32, 1.25], [0.45, -0.32, 1.25], [-0.45, 0.38, 1.0], [0.45, 0.38, 1.0]]) mesh(g, new THREE.CylinderGeometry(0.03, 0.03, h, 5), toon(TIMBER), x + px, h / 2, z + pz);
+    // A striped awning sloping to the front.
+    for (let k = 0; k < 5; k++) { const a = bx(g, 0.21, 0.04, 0.86, toon(k % 2 ? 0xf4eee0 : cloths[i]), x - 0.42 + k * 0.21, 1.13, z + 0.03); a.rotation.x = 0.33; }
+    for (let k = 0; k < 3; k++) mesh(g, new THREE.SphereGeometry(0.09, 8, 6), toon(goods[(i + k) % 4]), x - 0.26 + k * 0.26, 0.56, z + 0.05);
+    crate(g, 0.2, x + 0.3, z + 0.48, 0.08, i);
+  });
+  // The well in the middle.
+  mesh(g, new THREE.CylinderGeometry(0.32, 0.34, 0.36, 14, 1, true), toon(0xb8b4aa, 'stone'), 0, 0.26, 0);
+  mesh(g, new THREE.CircleGeometry(0.31, 14).rotateX(-Math.PI / 2), toon(0x2a4a68), 0, 0.34, 0);
+  for (const s of [-1, 1]) mesh(g, new THREE.CylinderGeometry(0.03, 0.03, 0.9, 5), toon(TIMBER), s * 0.31, 0.6, 0);
+  bx(g, 0.72, 0.05, 0.05, toon(TIMBER), 0, 1.02, 0);
+  banner(g, o.team, 1.25, 0.08, 1.25, 1.3);
+  return g;
+}
+
+const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
 /** A hand-shaped building, sized to fit `size` tiles, or null where there is none yet (or the old one is kept). */
 export function shapedBuilding(type: string, size: number, o: Look, seed: number): THREE.Group | null {
   const make = MAKERS[type];
   if (!make || (type === 'temple' && o.leaning === 'low')) return null;
   const inner = make(o, seed);
-  const box = new THREE.Box3().setFromObject(inner), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+  inner.updateMatrixWorld(true);
+  // Measured to the true corners: a roof set on the diagonal must not count as wider than it is.
+  const box = new THREE.Box3().setFromObject(inner, true), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
   const k = Math.min(1.2, (size * 0.97) / Math.max(s.x, s.z));
   inner.position.set(-c.x * k, 0, -c.z * k);
   inner.scale.setScalar(k);
