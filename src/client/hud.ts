@@ -351,8 +351,7 @@ export class Hud {
       }
     }
     if (b.def.staff && same.some((s) => s.staff?.length)) {
-      const who = b.type === 'tavern' ? 'tavern maid' : 'cleric';
-      out.push({ id: 'unstaff1', icon: ico('unstaff', '🚶'), name: `Send one ${who} back to work`, desc: 'A stationed villager comes out and can be given other work.', act: () => { game.cmdUnstaff(pid, b.id); } });
+      out.push({ id: 'unstaff1', icon: ico('unstaff', '🚶'), name: 'Send one back to work', desc: 'A stationed villager comes out and can be given other work.', act: () => { game.cmdUnstaff(pid, b.id); } });
       out.push({ id: 'unstaffall', icon: ico('unstaffall', '🚪'), name: 'Send everyone out', desc: 'All the villagers stationed here come out.', act: () => { for (const s of same) game.cmdUnstaff(pid, s.id, true); } });
     }
     if (b.def.shelter && same.some((s) => s.sheltered.length)) {
@@ -489,11 +488,15 @@ export class Hud {
       }
       if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Inside: ${b.sheltered.length}/${b.def.shelter} — Alt+right-click to send units in</div>`;
       if (b.def.staff) {
-        const n = b.staff?.length ?? 0, tav = b.type === 'tavern';
-        body += `<div class="${n ? 'good' : 'hint'}">${tav ? '🍺 Tavern maids' : '🙏 Clergy'}: ${n}/${b.def.staff} — right-click with villagers to station them</div>` +
+        const tav = b.type === 'tavern';
+        const who = (b.staff ?? []).map((id) => game.entities.get(id)).filter((u): u is Unit => !!u && u.kind === 'unit');
+        const men = who.filter((u) => u.gender === 'm').length, women = who.length - men;
+        const count = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
+        const roll = tav ? `${count(women, 'milkmaid', 'milkmaids')}, ${count(men, 'patron', 'patrons')}` : `${count(men, 'monk', 'monks')}, ${count(women, 'nun', 'nuns')}`;
+        body += `<div class="${who.length ? 'good' : 'hint'}">${tav ? '🍺' : '🙏'} ${roll} <small>(${who.length}/${b.def.staff})</small> — right-click with villagers to station them</div>` +
           `<div class="hint">${tav
-            ? `Each brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute and adds ${MAID_VIRTUE} decadence a minute, but slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%.`
-            : `Each adds ${CLERGY_VIRTUE} piety a minute and brings children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner.`} Up to ${STAFF_CAP} count in all.</div>`;
+            ? `Each brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute and adds ${MAID_VIRTUE} decadence a minute, but slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile.`
+            : `Each adds ${CLERGY_VIRTUE} piety a minute and brings the town's children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner. They leave their own house when they enter.`} Up to ${STAFF_CAP} count in all.</div>`;
       }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
@@ -642,7 +645,7 @@ export class Hud {
     const c = creedOf(virtue);
     const where = virtue > 0 ? `Piety ${Math.round(virtue)}` : virtue < 0 ? `Decadence ${Math.round(-virtue)}` : 'In balance';
     const p = this.app.game.players[this.app.pid];
-    return `${where} of 100 (${p.clergy} clergy, ${p.maids} tavern maids). ${c.desc}` + (c.boons.length ? ` Boons: ${c.boons.join('; ')}. Banes: ${c.banes.join('; ')}.` : ' No boons or banes.');
+    return `${where} of 100 (${p.clergy} in the church, ${p.maids} in the tavern). ${c.desc}` + (c.boons.length ? ` Boons: ${c.boons.join('; ')}. Banes: ${c.banes.join('; ')}.` : ' No boons or banes.');
   }
 
   /** Put the dilemma awaiting the player's answer on screen, or take it away once answered. */

@@ -1922,3 +1922,58 @@ describe('church and tavern', () => {
     expect(maids).toBeGreaterThan(0);
   });
 });
+
+describe('faith, plague and the home', () => {
+  it('the devout get over a plague in half the time and no plague takes hold among the righteous; the decadent suffer longer', () => {
+    const lasts = (virtue: number) => {
+      const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
+      g.players[1].virtue = virtue;
+      const pr = g.spawnUnit('prophet', 0, 40, 40);
+      pr.mana = 200;
+      const v = g.spawnUnit('swordsman', 1, 44, 40);
+      v.stance = 'hold'; pr.stance = 'hold';
+      g.cmdCast(0, [pr.id], 'plague', 44, 40);
+      run(g, 3);
+      return v.plagueT;
+    };
+    const plain = lasts(0);
+    expect(plain).toBeGreaterThan(10);
+    expect(lasts(40)).toBeLessThan(plain * 0.6);
+    expect(lasts(80)).toBe(0);
+    expect(lasts(-80)).toBeGreaterThan(plain * 1.3);
+    expect(creedOf(80).name).toBe('Righteous');
+  });
+
+  it('a monk or nun leaves their house; a house with someone at the tavern raises no children', () => {
+    const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
+    const p = g.players[0];
+    p.age = 1; p.dilemmaT = 1e9; p.res.food = 2000;
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    const house = g.spawnBuilding('house', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) - 2, true);
+    const tavern = g.spawnBuilding('tavern', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) + 3, true);
+    const church = g.spawnBuilding('temple', 0, Math.floor(tc.x) + 11, Math.floor(tc.y) + 3, true);
+    const man = g.spawnUnit('villager', 0, house.x, house.y + 2, 'm'), woman = g.spawnUnit('villager', 0, house.x + 1, house.y + 2, 'f');
+    g.cmdTarget(0, [man.id, woman.id], house.id);
+    run(g, 10);
+    expect(house.residents.m).toBe(man.id);
+    expect(house.residents.f).toBe(woman.id);
+    // He goes drinking: the cradle stays empty however long we wait.
+    g.cmdTarget(0, [man.id], tavern.id);
+    run(g, 15);
+    expect(man.inside).toBe(tavern.id);
+    const before = house.birthProgress;
+    run(g, 30);
+    expect(house.birthProgress).toBe(before);
+    expect(house.residents.m).toBe(man.id); // still his house
+    // He comes home and life goes on.
+    g.cmdUnstaff(0, tavern.id, true);
+    run(g, 10);
+    expect(house.birthProgress).toBeGreaterThan(before);
+    // She takes the veil: the house is no longer hers.
+    g.cmdTarget(0, [woman.id], church.id);
+    run(g, 20);
+    expect(woman.inside).toBe(church.id);
+    expect(house.residents.f).toBe(0);
+    expect(woman.homeId).toBe(0);
+  });
+});

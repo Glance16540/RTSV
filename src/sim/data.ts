@@ -502,13 +502,13 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   temple: B({
     id: 'temple', name: 'Church', icon: '⛪',
-    desc: 'Station up to four villagers here as clergy: each makes your people more pious and brings children sooner. Also trains shamans and prophets and researches blessings.',
+    desc: 'Station up to four villagers here as monks (men) and nuns (women): each makes your people more pious and brings the town\'s children sooner. Those who enter leave their own house. Also trains shamans and prophets and researches blessings.',
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
     trains: ['shaman', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',
-    desc: 'Station up to four villagers here as tavern maids: each brings in gold and makes your people more decadent, but the whole town works a little slower for the distraction.',
+    desc: 'Station up to four villagers here: women serve as milkmaids, men sit as patrons. Each brings in gold and makes your people more decadent, the whole town works a little slower for the distraction, and their own houses raise no children while they are here.',
     cost: { wood: 110 }, time: 26, age: 1, hp: 600, size: 3, pop: 0, sight: 5,
     trains: [], techs: [], staff: 4,
   }),

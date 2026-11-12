@@ -51,26 +51,32 @@ faster), Swift, Hardy (more health) or Skilled (build faster). Children usually 
 from their mother or father and carry the family name of the house they were born in, so who you
 house together matters.
 
-**Church and tavern.** Two buildings pull your people opposite ways, and both run on villagers
-you station inside them, who stop doing other work while they are there. Right-click the building
-with villagers to station them (four to a building, eight counted in all); its buttons send them
-back out.
+**Church and tavern.** Good and evil here follow a biblical pattern: faithfulness is rewarded in
+the family and in protection from calamity, and decadence pays in coin while it eats at the home
+and at honest work. Two buildings pull your people opposite ways, and both run on villagers you
+station inside them, who stop doing other work while they are there. Right-click the building with
+villagers to station them (four to a building, eight counted in all); its buttons send them back
+out.
 
-- *Clergy in a Church* each add piety and bring children sooner, so a pious town grows through its
-  families.
-- *Maids in a Tavern* each bring in gold and add decadence, but the whole town gathers a little
-  slower for the distraction.
+- *In a Church* a man becomes a monk and a woman a nun. Each adds piety and brings the town's
+  children sooner. Taking vows, they leave the house they shared.
+- *In a Tavern* a woman becomes a milkmaid and a man a patron. Each brings in gold and adds
+  decadence, the whole town gathers a little slower for the distraction, and a house with someone
+  at the tavern raises no children until they come home.
 
-Where your people stand on the scale between piety and decadence sets their creed. The Devout and
-Zealous have more children, gather faith faster, heal better and hold firmer near home, but research
-slowly and trade badly. The Worldly and Decadent train soldiers faster, mine more gold and get
-better prices, but have fewer children and their faith, healing and morale wither. Hover over the
-creed in the top bar to see where you stand.
+Where your people stand on the scale between piety and decadence sets their creed:
 
-Every few minutes a dilemma is also put to you (strangers at the gate, a gambling den, a prophet
-calling a fast): the pious answer usually costs something now and the worldly one usually pays, and
-either moves the scale. Market trading nudges it towards decadence. Rivals choose for themselves:
-pious peoples staff a church, worldly ones build a tavern.
+- **Devout**, then **Righteous**: children come sooner, faith gathers faster, healing and morale
+  are stronger. A plague passes among the Devout in half the time, and among the Righteous it does
+  not take hold at all. They research more slowly and trade on worse terms.
+- **Worldly**, then **Decadent**: soldiers are trained faster, gold is mined faster and the market
+  pays more. But villagers are distracted from their work, children come later, plagues last
+  longer, and faith, healing and morale wither.
+
+Hover over the creed in the top bar to see where you stand. Every few minutes a dilemma is also
+put to you (strangers at the gate, a gambling den, a prophet calling a fast): the pious answer
+usually costs something now and the worldly one usually pays, and either moves the scale. Rivals
+choose for themselves: pious peoples staff a church, worldly ones build a tavern.
 
 **Unit upgrades.** Research re-equips whole lines at once: Slingers become Bowmen, then
 Crossbowmen, then Musketeers; Clubmen become Swordsmen; Scout Riders become Knights; Catapults

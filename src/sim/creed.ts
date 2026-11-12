@@ -3,7 +3,10 @@
 
 import type { ResType } from './data';
 
-/** What one villager stationed in a church or tavern does. */
+/**
+ * What one villager stationed in a church or tavern does. In a church a man is a monk and a woman a
+ * nun; in a tavern a woman is a milkmaid and a man a patron.
+ */
 export const CLERGY_VIRTUE = 3; // piety per minute, each
 export const CLERGY_BIRTH = 0.08; // children come this much sooner, each
 export const MAID_VIRTUE = 3; // decadence per minute, each
@@ -16,19 +19,23 @@ export interface Creed {
   boons: string[]; banes: string[];
   /** Multipliers. `research` and `train` are on time taken (lower is faster). */
   faith: number; heal: number; morale: number; research: number; train: number; gold: number; trade: number; birth: number;
+  /** How long a plague lasts among them, as a multiple; 0 means no plague takes hold at all. */
+  plague: number;
+  /** How hard villagers work at gathering. */
+  work: number;
 }
 
-const base = { faith: 1, heal: 1, morale: 1, research: 1, train: 1, gold: 1, trade: 1, birth: 1 };
+const base = { faith: 1, heal: 1, morale: 1, research: 1, train: 1, gold: 1, trade: 1, birth: 1, plague: 1, work: 1 };
 export const CREEDS: Creed[] = [
-  { ...base, id: 'zealous', name: 'Zealous', icon: '🕯️', desc: 'The church rules the town.', faith: 1.6, heal: 1.4, morale: 1.3, birth: 1.3, research: 1.25, gold: 0.85, trade: 0.85,
-    boons: ['Children come 30% sooner', 'Faith gathers 60% faster', 'Healing 40% stronger', 'Morale near the Town Center 30% stronger'], banes: ['Research takes 25% longer', 'Gold is mined 15% slower', 'The market pays 15% less'] },
-  { ...base, id: 'devout', name: 'Devout', icon: '🙏', desc: 'A god-fearing people.', faith: 1.3, heal: 1.2, morale: 1.15, birth: 1.15, research: 1.1, trade: 0.95,
-    boons: ['Children come 15% sooner', 'Faith gathers 30% faster', 'Healing 20% stronger', 'Morale 15% stronger'], banes: ['Research takes 10% longer', 'The market pays 5% less'] },
+  { ...base, id: 'zealous', name: 'Righteous', icon: '🕯️', desc: 'A people who keep the faith in all they do.', plague: 0, faith: 1.6, heal: 1.4, morale: 1.3, birth: 1.3, research: 1.25, gold: 0.85, trade: 0.85,
+    boons: ['No plague takes hold among them', 'Children come 30% sooner', 'Faith gathers 60% faster', 'Healing 40% stronger', 'Morale near the Town Center 30% stronger'], banes: ['Research takes 25% longer', 'Gold is mined 15% slower', 'The market pays 15% less'] },
+  { ...base, id: 'devout', name: 'Devout', icon: '🙏', desc: 'A god-fearing people.', plague: 0.5, faith: 1.3, heal: 1.2, morale: 1.15, birth: 1.15, research: 1.1, trade: 0.95,
+    boons: ['Plagues pass in half the time', 'Children come 15% sooner', 'Faith gathers 30% faster', 'Healing 20% stronger', 'Morale 15% stronger'], banes: ['Research takes 10% longer', 'The market pays 5% less'] },
   { ...base, id: 'temperate', name: 'Temperate', icon: '⚖️', desc: 'Neither saints nor sinners.', boons: [], banes: [] },
-  { ...base, id: 'worldly', name: 'Worldly', icon: '🍷', desc: 'They like their comforts.', train: 0.9, gold: 1.1, trade: 1.15, faith: 0.8, morale: 0.9, birth: 0.9,
-    boons: ['Soldiers are trained 10% faster', 'Gold is mined 10% faster', 'The market pays 15% more'], banes: ['Children come 10% later', 'Faith gathers 20% slower', 'Morale 10% weaker'] },
-  { ...base, id: 'decadent', name: 'Decadent', icon: '🎭', desc: 'Anything can be bought here.', train: 0.8, gold: 1.2, trade: 1.3, birth: 0.75, faith: 0.5, heal: 0.8, morale: 0.6,
-    boons: ['Soldiers are trained 20% faster', 'Gold is mined 20% faster', 'The market pays 30% more'], banes: ['Children come 25% later', 'Faith gathers at half speed', 'Healing 20% weaker', 'Morale 40% weaker'] },
+  { ...base, id: 'worldly', name: 'Worldly', icon: '🍷', desc: 'They like their comforts.', plague: 1.25, work: 0.95, train: 0.9, gold: 1.1, trade: 1.15, faith: 0.8, morale: 0.9, birth: 0.9,
+    boons: ['Soldiers are trained 10% faster', 'Gold is mined 10% faster', 'The market pays 15% more'], banes: ['Villagers are distracted: gathering 5% slower', 'Plagues last a quarter longer', 'Children come 10% later', 'Faith gathers 20% slower', 'Morale 10% weaker'] },
+  { ...base, id: 'decadent', name: 'Decadent', icon: '🎭', desc: 'Anything can be bought here.', plague: 1.5, work: 0.9, train: 0.8, gold: 1.2, trade: 1.3, birth: 0.75, faith: 0.5, heal: 0.8, morale: 0.6,
+    boons: ['Soldiers are trained 20% faster', 'Gold is mined 20% faster', 'The market pays 30% more'], banes: ['Villagers are distracted: gathering 10% slower', 'Plagues last half as long again', 'Children come 25% later', 'Faith gathers at half speed', 'Healing 20% weaker', 'Morale 40% weaker'] },
 ];
 
 /** The creed a people lives by at a given point on the scale (-100 decadent to +100 pious). */
@@ -62,12 +69,12 @@ export const DILEMMAS: Dilemma[] = [
   { id: 'masks', title: 'The festival of masks', text: 'The young want a night when nobody knows anybody.',
     a: { label: 'Forbid it', virtue: 10, res: {}, result: 'The masks are burned in the square.' },
     b: { label: 'Allow it, and charge the visitors', virtue: -15, res: { food: -60, gold: 120 }, result: 'Half the valley comes. Nobody remembers much.' } },
-  { id: 'relic', title: 'A pedlar with a relic', text: 'He swears the bone is a saint\'s. He also sells strong wine by the cart.',
-    a: { label: 'Buy the relic for the church', virtue: 15, res: { gold: -80 }, result: 'It is laid under the altar, whatever it is.' },
+  { id: 'relic', title: 'A pedlar with a relic', text: 'He carries a relic he says belonged to a holy man. He also sells strong wine by the cart.',
+    a: { label: 'Buy the relic for the church', virtue: 15, res: { gold: -80 }, result: 'It is laid under the altar with reverence.' },
     b: { label: 'Buy the wine and sell it on', virtue: -15, res: { gold: 90 }, result: 'The carts are empty by nightfall, at a profit.' } },
   { id: 'tithe', title: 'The priests ask for a tithe', text: 'A tenth of the stone quarried, for the church walls.',
     a: { label: 'Grant it', virtue: 15, res: { stone: -80 }, result: 'The church wall rises another course.' },
-    b: { label: 'Refuse, and tax the church instead', virtue: -15, res: { gold: 70 }, result: 'The priests pay, tight-lipped.' } },
+    b: { label: 'Refuse, and tax the church instead', virtue: -15, res: { gold: 70 }, result: 'The priests pay, and say nothing.' } },
 ];
 
 /** Which way each people leans when left to decide for itself (chance of the pious answer). */

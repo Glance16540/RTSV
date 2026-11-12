@@ -980,6 +980,14 @@ export class Game {
     return true;
   }
 
+  /** Is this villager spending their days in a tavern? Their house raises no children meanwhile. */
+  private atTavern(id: number): boolean {
+    const u = this.entities.get(id);
+    if (!u || u.kind !== 'unit' || !u.inside) return false;
+    const b = this.entities.get(u.inside);
+    return !!b && b.kind === 'building' && b.type === 'tavern';
+  }
+
   /** The creed a player's people live by. */
   creed(owner: number): Creed {
     return creedOf(this.players[owner]?.virtue ?? 0);
@@ -1632,6 +1640,12 @@ export class Game {
         if (r === 'there') {
           (b.staff ??= []).push(u.id);
           u.inside = b.id;
+          if (b.type !== 'tavern') {
+            // A monk or a nun takes vows and leaves the house they shared.
+            const home = this.entities.get(u.homeId);
+            if (home && home.kind === 'building') { home.residents[u.gender!] = 0; home.birthProgress = 0; }
+            u.homeId = 0;
+          }
           u.carryAmt = 0;
           this.setOrder(u, null);
           u.x = u.px = b.x;
@@ -1680,7 +1694,11 @@ export class Game {
             u.facing = Math.atan2(o.x - u.x, o.y - u.y);
             if (o.ability === 'plague') {
               for (const v of this.unitsNear(o.x, o.y, a.radius, this.scratch)) {
-                if (this.hostile(v.owner, u.owner) && Math.hypot(v.x - o.x, v.y - o.y) <= a.radius) v.plagueT = 20;
+                if (this.hostile(v.owner, u.owner) && Math.hypot(v.x - o.x, v.y - o.y) <= a.radius) {
+                  // The faithful are spared, or get off lightly; the decadent suffer longer.
+                  const k = this.creed(v.owner).plague;
+                  if (k > 0) v.plagueT = 20 * k;
+                }
               }
               this.events.push({ t: 'plague', x: o.x, y: o.y });
             } else {
@@ -1829,7 +1847,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.creed(u.owner).work * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -2083,7 +2101,7 @@ export class Game {
         const r = this.entities.get(b.residents[g]);
         if (b.residents[g] && (!r || r.dead || r.owner !== b.owner)) b.residents[g] = 0;
       }
-      if (b.residents.m && b.residents.f && !b.birthsPaused) {
+      if (b.residents.m && b.residents.f && !b.birthsPaused && !this.atTavern(b.residents.m) && !this.atTavern(b.residents.f)) {
         if (b.birthProgress < 1) b.birthProgress = Math.min(1, b.birthProgress + DT / this.birthTime(b));
         if (b.birthProgress >= 1) {
           if (p.pop + 1 <= p.popCap && p.res.food >= BIRTH_COST) {
