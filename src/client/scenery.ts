@@ -2,7 +2,7 @@
 // falls away under moving water, scattered grass, stones and flowers, and cloud shadows drifting over.
 
 import * as THREE from 'three';
-import { T_DIRT, T_ROCK, T_WATER } from '../sim/map';
+import { Climate, T_DIRT, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../sim/map';
 
 /** Repeatable noise in [0, 1): the same land is drawn the same way every time. */
 function hash(x: number, y: number): number {
@@ -28,7 +28,7 @@ export interface Scenery {
   update(clock: number): void;
 }
 
-export function buildScenery(N: number, T: Uint8Array, hills: Float32Array): Scenery {
+export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, climate: Climate = ''): Scenery {
   const group = new THREE.Group();
   const tAt = (x: number, y: number): number => (x < 0 || y < 0 || x >= N || y >= N ? T_WATER : T[y * N + x]);
 
@@ -83,15 +83,37 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array): Sce
       // Wander the borders so they do not follow the square tiles.
       const ju = u + (noise(u * 1.9 + 31, v * 1.9) - 0.5) * 0.7, jv = v + (noise(u * 1.9, v * 1.9 + 17) - 0.5) * 0.7;
       const water = amount(T_WATER, ju, jv), dirt = amount(T_DIRT, ju, jv), rock = amount(T_ROCK, ju, jv), high = groundH(u, v);
+      const dune = amount(T_SAND, ju, jv), bog = amount(T_MARSH, ju, jv), white = amount(T_SNOW, ju, jv);
       const broad = fbm(u * 0.16, v * 0.16), mid = fbm(u * 0.9 + 50, v * 0.9), grain = hash(x, y);
       // Grass: two greens in broad patches, dry tufts here and there, a fine grain over it all.
       let r = 74 + broad * 34 + mid * 14, g = 122 + broad * 30 + mid * 20, b = 52 + broad * 14 + mid * 8;
       const dry = smooth(0.62, 0.8, fbm(u * 0.35 + 7, v * 0.35 + 90));
       r += dry * 34; g += dry * 14; b -= dry * 4;
       if (hash(x >> 1, (y >> 1) + 999) > 0.93) { r -= 16; g -= 14; b -= 10; } // blades in shadow
+      // The grass of the country: sun-bleached on the steppe, thin and grey-green in the cold, sparse scrub in the desert.
+      if (climate === 'steppe') { r += 46 + dry * 10; g += 26; b += 2; }
+      else if (climate === 'snow') { r -= 6; g -= 14; b += 8; }
+      else if (climate === 'desert') { r += 26; g += 6; b -= 6; }
       // Hill grass is paler and drier the higher it grows.
       const up = smooth(0.3, 1.5, high) * (1 - smooth(0.3, 0.6, rock));
       r += up * 30; g += up * 16; b += up * 4;
+      // Sand: pale, rippled by the wind, a shade redder in the desert.
+      if (dune > 0) {
+        const k = smooth(0.3, 0.7, dune + (mid - 0.5) * 0.35), ripple = Math.sin((u * 0.9 + v * 2.6 + broad * 5) * 3.2) * 6;
+        const red = climate === 'desert' ? 10 : 0;
+        r += (218 + red + broad * 16 + ripple - r) * k; g += (196 + broad * 14 + ripple - g) * k; b += (140 - red + broad * 12 + ripple * 0.6 - b) * k;
+      }
+      // Marsh: dark wet green, with pools of standing water.
+      if (bog > 0) {
+        const k = smooth(0.3, 0.7, bog + (mid - 0.5) * 0.35), pool = smooth(0.56, 0.7, fbm(u * 1.4 + 11, v * 1.4 + 5));
+        r += (58 + mid * 18 - r) * k; g += (86 + mid * 22 - g) * k; b += (50 + mid * 12 - b) * k;
+        r += (44 - r) * pool * k; g += (70 - g) * pool * k; b += (74 - b) * pool * k;
+      }
+      // Lying snow, blue in the hollows, with grass showing through at its edges.
+      if (white > 0) {
+        const k = smooth(0.3, 0.72, white + (mid - 0.5) * 0.45);
+        r += (232 + broad * 14 - r) * k; g += (238 + broad * 12 - g) * k; b += (246 + broad * 6 - b) * k;
+      }
       // Bare earth, trodden paler in the middle.
       const earth = smooth(0.3, 0.7, dirt + (mid - 0.5) * 0.35);
       r += (150 + mid * 26 - r) * earth; g += (128 + mid * 22 - g) * earth; b += (84 + mid * 14 - b) * earth;
@@ -187,7 +209,8 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array): Sce
     for (let x = 0; x < N; x++) {
       if (T[y * N + x] === T_WATER || T[y * N + x] === T_ROCK) continue;
       const shore = tAt(x - 1, y) === T_WATER || tAt(x + 1, y) === T_WATER || tAt(x, y - 1) === T_WATER || tAt(x, y + 1) === T_WATER;
-      const grass = T[y * N + x] !== T_DIRT && !shore;
+      const kind = T[y * N + x];
+      const grass = kind !== T_DIRT && kind !== T_SAND && kind !== T_SNOW && !shore;
       for (let k = 0; k < 3; k++) {
         const h = hash(x * 7 + k, y * 13 + k * 5), h2 = hash(x * 3 + k * 11, y * 5 + 77), h3 = hash(x + k * 31, y * 9 + 5);
         const px2 = x + h2, py2 = y + h3;
@@ -195,7 +218,7 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array): Sce
         if (grass && h < 0.22) {
           const s = 0.55 + h2 * 0.6;
           tufts.push(m.compose(new THREE.Vector3(px2, heightAt(px2, py2), py2), q, new THREE.Vector3(s, s * (0.8 + h3 * 0.7), s)).clone());
-          tuftCol.push(new THREE.Color().setHSL(0.25 + h3 * 0.07, 0.55 + h2 * 0.15, 0.13 + h * 0.3));
+          tuftCol.push(new THREE.Color().setHSL(climate === 'steppe' ? 0.14 + h3 * 0.05 : kind === T_MARSH ? 0.2 + h3 * 0.05 : 0.25 + h3 * 0.07, 0.55 + h2 * 0.15, 0.13 + h * 0.3 + (climate === 'steppe' ? 0.12 : 0)));
         } else if (grass && h > 0.975) {
           blooms.push(m.compose(new THREE.Vector3(px2, heightAt(px2, py2) + 0.07, py2), q, new THREE.Vector3(1, 1, 1)).clone());
           bloomCol.push(new THREE.Color(PETALS[Math.floor(h2 * PETALS.length)]));

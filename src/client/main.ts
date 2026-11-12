@@ -1,3 +1,4 @@
+import { Climate } from '../sim/map';
 import { AIController } from '../sim/ai';
 import { CIVS, CIV_IDS, UNITS, AGES } from '../sim/data';
 import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
@@ -233,14 +234,18 @@ loadAssets().then(() => {
     game = new Game(mission.seed, mission.setups, mission.size);
     mission.init(game);
   }
+  // The country a battle is fought in: chosen, or the homeland of whoever holds the ground.
+  const HOMELAND: Record<string, Climate> = { egypt: 'desert', arabs: 'desert', babylon: 'desert', persia: 'desert', dawn: 'desert', steppe: 'steppe', wild: 'snow' };
+  const asked = params.get('climate') ?? 'auto';
+  const climateOf = (civ: string): Climate => (['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? (asked as Climate) : HOMELAND[civ] ?? 'temperate');
   // Skirmishes and campaign battles are fought over hills and mountains; `?flat=1` gives the old level ground.
   const relief = params.get('flat') !== '1';
-  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, relief) : new Game(seed, [
+  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, relief, climateOf(cfg.setups[cfg.humanAttacks ? 1 : 0].civ ?? '')) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
-  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake', relief);
+  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake', relief, climateOf(myCiv));
 
   // The map is generated before the menu appears, so a different size means a fresh page.
   const sizeSel = el('map-size') as HTMLSelectElement;
@@ -258,7 +263,10 @@ loadAssets().then(() => {
   const civ = CIVS[game.players[0].civ];
   el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b> and, from the ${AGES[UNITS[civ.unique2].age].name}, the <b>${UNITS[civ.unique2].name}</b>.` +
     `<br><small>Rivals: ${game.players.filter((p) => p.isAI).map((p) => `${CIVS[p.civ].icon} ${p.name}`).join(', ')}</small>`;
-  const regenerate = () => go(`?size=${sizeSel.value}&land=${landSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
+  const climateSel = el('map-climate') as HTMLSelectElement;
+  climateSel.value = ['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? asked : 'auto';
+  climateSel.addEventListener('change', () => regenerate());
+  const regenerate = () => go(`?size=${sizeSel.value}&land=${landSel.value}&climate=${climateSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
   civSel.addEventListener('change', regenerate);
   teamSel.addEventListener('change', regenerate);
   sizeSel.addEventListener('change', regenerate);

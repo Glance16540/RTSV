@@ -27,6 +27,14 @@ export class Pathfinder {
    */
   pass = 0;
 
+  /**
+   * How hard each cell is to cross, if the ground is not all alike: 1 for open ground, more for sand, snow,
+   * marsh and slopes, less for a road. Routes weigh it, so units go round a bog and follow a road.
+   */
+  cost: Float32Array | null = null;
+  /** The least any cell costs: keeps the search's estimate of what is left honest. */
+  static readonly MIN_COST = 0.6;
+
   constructor(public n: number, public blocked: Uint8Array) {
     const size = n * n;
     this.g = new Float32Array(size);
@@ -76,21 +84,23 @@ export class Pathfinder {
     heap.length = 0;
     const pass = this.pass;
     const solid = (c: number) => blocked[c] !== 0 && blocked[c] !== pass;
-    const h = (c: number) => rectDist((c % n) + 0.5, ((c / n) | 0) + 0.5, x0, y0, x1, y1);
+    const cost = this.cost, hk = cost ? Pathfinder.MIN_COST : 1;
+    const far = (c: number) => rectDist((c % n) + 0.5, ((c / n) | 0) + 0.5, x0, y0, x1, y1);
+    const h = (c: number) => far(c) * hk;
 
     g[start] = 0;
     f[start] = h(start);
     from[start] = -1;
     stamp[start] = v;
     this.push(start);
-    let best = start, bestH = f[start];
+    let best = start, bestH = far(start);
     let goal = -1;
 
     while (heap.length) {
       const c = this.pop();
       if (closed[c] === v) continue;
       closed[c] = v;
-      const hc = f[c] - g[c];
+      const hc = cost ? far(c) : f[c] - g[c];
       if (hc < bestH) { bestH = hc; best = c; }
       if (hc <= reach && !solid(c)) { goal = c; break; }
       const cx = c % n, cy = (c / n) | 0;
@@ -101,7 +111,7 @@ export class Pathfinder {
         const ni = ny * n + nx;
         if (solid(ni) || closed[ni] === v) continue;
         if (k >= 4 && (solid(cy * n + nx) || solid(ny * n + cx))) continue;
-        const ng = g[c] + DIRS[k][2];
+        const ng = g[c] + (cost ? DIRS[k][2] * (cost[c] + cost[ni]) * 0.5 : DIRS[k][2]);
         if (stamp[ni] === v && ng >= g[ni]) continue;
         stamp[ni] = v;
         g[ni] = ng;
@@ -153,12 +163,25 @@ export class Pathfinder {
     }
     while (i < count) {
       let j = Math.min(count - 1, i + 24);
-      while (j > i && !this.lineClear(ax, ay, pts[j * 2], pts[j * 2 + 1])) j--;
+      while (j > i && (!this.lineClear(ax, ay, pts[j * 2], pts[j * 2 + 1]) || this.dearer(ax, ay, pts, i, j))) j--;
       out.push(pts[j * 2], pts[j * 2 + 1]);
       ax = pts[j * 2]; ay = pts[j * 2 + 1];
       i = j + 1;
     }
     return out;
+  }
+
+  /** True if cutting straight to waypoint j would cross worse ground than the route through waypoints i…j does. */
+  private dearer(ax: number, ay: number, pts: number[], i: number, j: number): boolean {
+    const cost = this.cost, n = this.n;
+    if (!cost) return false;
+    const at = (x: number, y: number): number => cost[Math.min(n - 1, Math.max(0, Math.floor(y))) * n + Math.min(n - 1, Math.max(0, Math.floor(x)))];
+    let along = 0, px = ax, py = ay;
+    for (let k = i; k <= j; k++) { const x = pts[k * 2], y = pts[k * 2 + 1]; along += Math.hypot(x - px, y - py) * (at(x, y) + at(px, py)) * 0.5; px = x; py = y; }
+    const bx = pts[j * 2], by = pts[j * 2 + 1], len = Math.hypot(bx - ax, by - ay), steps = Math.max(1, Math.ceil(len / 0.5));
+    let sum = 0;
+    for (let s = 0; s <= steps; s++) sum += at(ax + ((bx - ax) * s) / steps, ay + ((by - ay) * s) / steps);
+    return len * (sum / (steps + 1)) > along * 1.03;
   }
 
   private push(c: number): void {

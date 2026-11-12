@@ -342,3 +342,12 @@ for filenames and a ready-made generation prompt.
 - Wounds show: blows draw blood, gear is knocked off and clothes tear as a fighter weakens, and the fallen
   drop with a recorded death, their weapons beside them. Engines fly apart and ships sink. `?gore=0` turns
   the blood and wounds off.
+
+## Roads, rough ground and the country
+
+- A building is joined to its owner's nearest town centre by a road as soon as it is placed (`layRoad` in
+  `src/sim/game.ts`). Units move faster along a road and their routes prefer one.
+- Every tile has a cost to cross (`game.moveCost`): sand, snow, marsh and slopes are slower. Routes weigh it,
+  so units go round a bog instead of through it.
+- A map has a country (`Climate` in `src/sim/map.ts`): green (woods, marsh, beaches), desert, steppe or the
+  snowy north. In a skirmish it is chosen in the menu or follows your people's homeland; `?climate=desert`.

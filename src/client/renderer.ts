@@ -109,7 +109,7 @@ export class Renderer {
     this.scene.add(this.sun, this.sun.target);
 
     this.fogAlpha = new Float32Array(game.size * game.size).fill(1);
-    this.scenery = buildScenery(game.size, game.terrain, game.spec.height);
+    this.scenery = buildScenery(game.size, game.terrain, game.spec.height, game.climate);
     this.scene.add(this.scenery.group);
     this.roads = new Roads(game, this.scenery, this.scene);
     this.buildTrees();
@@ -177,14 +177,24 @@ export class Renderer {
       const tx = t.x + (h2 - 0.5) * 0.3, tz = t.y + (h - 0.5) * 0.3;
       m.compose(new THREE.Vector3(tx, this.scenery.heightAt(tx, tz), tz), q, new THREE.Vector3(sc, sc * (0.9 + h2 * 0.3), sc));
       // Stands of fir with broadleaves among them, more of one or the other from grove to grove.
-      const fir = h3 < 0.5 + 0.35 * Math.sin(t.x * 0.13 + t.y * 0.09);
+      const fir = this.game.climate === 'desert' ? false : this.game.climate === 'snow' ? h3 < 0.85 : h3 < 0.5 + 0.35 * Math.sin(t.x * 0.13 + t.y * 0.09);
       trunks.setMatrixAt(i, m);
       skirt.setMatrixAt(i, fir ? m : none); top.setMatrixAt(i, fir ? m : none);
       crown.setMatrixAt(i, fir ? none : m); puff.setMatrixAt(i, fir ? none : m);
-      skirt.setColorAt(i, col.setHSL(0.37 + h2 * 0.04, 0.5, 0.13 + h * 0.06));
-      top.setColorAt(i, col.setHSL(0.36 + h2 * 0.04, 0.5, 0.16 + h * 0.07));
-      crown.setColorAt(i, col.setHSL(0.26 + h2 * 0.07, 0.62, 0.2 + h * 0.08));
-      puff.setColorAt(i, col.setHSL(0.25 + h2 * 0.07, 0.64, 0.24 + h * 0.08));
+      // Woods take the colour of the country: snow on the boughs in the cold, dusty olive in the dry.
+      const cl = this.game.climate;
+      if (cl === 'snow') {
+        skirt.setColorAt(i, col.setHSL(0.4, 0.3, 0.22 + h * 0.06));
+        top.setColorAt(i, col.setHSL(0.55, 0.12, 0.8 + h * 0.1));
+        crown.setColorAt(i, col.setHSL(0.5, 0.1, 0.62 + h * 0.1));
+        puff.setColorAt(i, col.setHSL(0.55, 0.12, 0.86));
+      } else {
+        const dry = cl === 'desert' ? 1 : cl === 'steppe' ? 0.6 : 0;
+        skirt.setColorAt(i, col.setHSL(0.37 - dry * 0.1 + h2 * 0.04, 0.5 - dry * 0.15, 0.13 + h * 0.06 + dry * 0.05));
+        top.setColorAt(i, col.setHSL(0.36 - dry * 0.1 + h2 * 0.04, 0.5 - dry * 0.15, 0.16 + h * 0.07 + dry * 0.05));
+        crown.setColorAt(i, col.setHSL(0.26 - dry * 0.08 + h2 * 0.07, 0.62 - dry * 0.25, 0.2 + h * 0.08 + dry * 0.04));
+        puff.setColorAt(i, col.setHSL(0.25 - dry * 0.08 + h2 * 0.07, 0.64 - dry * 0.25, 0.24 + h * 0.08 + dry * 0.04));
+      }
       this.treeIndex.set(t.id, i);
     });
     this.scene.add(...this.forest);
@@ -302,7 +312,7 @@ export class Renderer {
         this.unitViews.delete(ev.id);
       }
       const b = this.buildingViews.get(ev.id);
-      if (b) { if (b.visible && b.scale.y > 0.5) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); this.roads.relay(); const sv = this.staffViews.get(ev.id); if (sv) { this.scene.remove(sv.g); this.staffViews.delete(ev.id); } }
+      if (b) { if (b.visible && b.scale.y > 0.5) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); const sv = this.staffViews.get(ev.id); if (sv) { this.scene.remove(sv.g); this.staffViews.delete(ev.id); } }
       const r = this.resViews.get(ev.id);
       if (r) { this.scene.remove(r); this.resViews.delete(ev.id); }
       const ti = this.treeIndex.get(ev.id);
@@ -758,8 +768,6 @@ export class Renderer {
       g.position.set(b.x, Math.min(hh(b.x, b.y), hh(b.x - k, b.y - k), hh(b.x + k, b.y - k), hh(b.x - k, b.y + k), hh(b.x + k, b.y + k)), b.y);
       this.buildingViews.set(b.id, g);
       this.scene.add(g);
-      // A path is worn to the town centre as soon as the building is placed. A new town centre redraws them all.
-      if (b.type === 'towncenter') this.roads.relay(); else this.roads.add(b);
     }
     g.visible = this.isVisible(b);
     if (b.def.staff) this.syncStaff(b, g.visible && b.complete, lean);
@@ -903,7 +911,7 @@ export class Renderer {
     for (let i = this.floaters.length - 1; i >= 0; i--) if ((this.floaters[i].t += dt) > 2) this.floaters.splice(i, 1);
 
     this.stepRubble(dt);
-    this.roads.update(dt, (b) => this.isVisible(b));
+    this.roads.update((b) => this.isVisible(b));
     if (this.ink) {
       // Only what is made of the drawn materials takes an outline; the ground, water, rings and fog never do.
       if (this.inked++ % 12 === 0) this.scene.traverse((o) => {

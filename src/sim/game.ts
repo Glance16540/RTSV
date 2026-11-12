@@ -5,14 +5,14 @@ import {
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
-import { generateMap, MapSpec, NodeType, T_ROCK, T_WATER } from './map';
+import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { leaningWith } from './temper';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
 const HASH = 4; // spatial hash bucket size in tiles
@@ -301,9 +301,22 @@ export class Game {
    * @param field A field battle: no towns or villagers, just each side's army. A side is beaten
    *   when it has no soldiers left.
    */
-  constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false) {
+  /**
+   * How hard each tile is to cross, as a divisor of speed and a weight on routes: 1 on open ground,
+   * more on sand, snow, marsh and slopes, 0.6 times that on a road.
+   */
+  moveCost: Float32Array;
+  private groundCost: Float32Array;
+  /** How many roads run over each tile. */
+  road: Uint8Array;
+  /** Each building's road: the town centre it leads to, then the tiles from that end to the building. */
+  roadOf = new Map<number, number[]>();
+  /** Goes up whenever a road is laid or lifted, so whoever draws them knows to look again. */
+  roadVersion = 0;
+
+  constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false, public climate: Climate = '') {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
-    this.spec = generateMap(seed, size, setups.length, sea, relief);
+    this.spec = generateMap(seed, size, setups.length, sea, relief, climate);
     this.size = size;
     this.terrain = this.spec.terrain;
     this.blocked = new Uint8Array(size * size);
@@ -311,6 +324,20 @@ export class Game {
     this.vis = new Uint8Array(size * size);
     for (let i = 0; i < size * size; i++) if (this.terrain[i] === T_WATER || this.terrain[i] === T_ROCK) { this.blocked[i] = 1; this.occupied[i] = 1; }
     this.pf = this.landPf = new Pathfinder(size, this.blocked);
+    this.groundCost = new Float32Array(size * size);
+    this.road = new Uint8Array(size * size);
+    const H = this.spec.height;
+    for (let i = 0; i < size * size; i++) {
+      const t = this.terrain[i];
+      let c = t === T_SAND ? 1.12 : t === T_SNOW ? 1.25 : t === T_MARSH ? 1.9 : 1;
+      // A slope is slower the steeper it is.
+      let steep = 0;
+      for (const j of [i - 1, i + 1, i - size, i + size]) if (j >= 0 && j < size * size && this.terrain[j] !== T_ROCK) steep = Math.max(steep, Math.abs(H[i] - H[j]));
+      c += Math.min(0.8, steep * 0.9);
+      this.groundCost[i] = c;
+    }
+    this.moveCost = Float32Array.from(this.groundCost);
+    this.landPf.cost = this.moveCost;
     // Ships see the world the other way round: water is open, everything else is solid.
     const seaBlocked = new Uint8Array(size * size);
     for (let i = 0; i < size * size; i++) seaBlocked[i] = this.terrain[i] === T_WATER ? 0 : 1;
@@ -450,6 +477,8 @@ export class Game {
     this.entities.set(b.id, b);
     this.buildings.push(b);
     this.setCells(cx, cy, def.size, def.gate ? 2 + this.players[owner].team : 1, !def.walkable); // gates open for the whole team
+    // A road is worn to the town centre as soon as a building is placed. A new town centre draws every road afresh.
+    if (type === 'towncenter') this.relayRoads(); else this.layRoad(b);
     return b;
   }
 
@@ -486,6 +515,7 @@ export class Game {
         if (home.residents.f === e.id) home.residents.f = 0;
       }
     } else if (e.kind === 'building') {
+      if (e.type === 'towncenter') this.relayRoads(); else this.liftRoad(e.id);
       this.unstaff(e, e.staff?.length ?? 0);
       // A fallen camp's prisoners go home.
       (e.captives ?? []).forEach((c, i) => this.freeCaptive(c, e.x - 1.5 + (i % 4), e.y + e.size / 2 + 0.6 + Math.floor(i / 4) * 0.6));
@@ -884,13 +914,94 @@ export class Game {
   }
 
   // ------------------------------------------------------------------
+  // Roads
+  // ------------------------------------------------------------------
+
+  private setRoad(cells: number[], d: number): void {
+    for (let k = 1; k < cells.length; k++) { const i = cells[k]; this.road[i] += d; this.moveCost[i] = this.groundCost[i] * (this.road[i] ? 0.6 : 1); }
+    this.roadVersion++;
+  }
+
+  private liftRoad(id: number): void {
+    const cells = this.roadOf.get(id);
+    if (!cells) return;
+    this.roadOf.delete(id);
+    this.setRoad(cells, -1);
+  }
+
+  /** Every road laid again from nothing, oldest building first. */
+  private relayRoads(): void {
+    for (const cells of this.roadOf.values()) this.setRoad(cells, -1);
+    this.roadOf.clear();
+    for (const b of [...this.buildings].sort((p, q) => p.id - q.id)) this.layRoad(b);
+    this.roadVersion++;
+  }
+
+  /**
+   * Joins a building to its owner's nearest town centre by the cheapest way over open ground.
+   * Ground already under a road is far cheaper, so new roads run to the nearest street and follow it.
+   * Units move faster along a road and their routes prefer one.
+   */
+  private layRoad(b: Building): void {
+    if (b.def.wall || b.type === 'farm' || b.type === 'towncenter' || this.roadOf.has(b.id)) return;
+    const N = this.size;
+    let tc: Building | null = null, best = 40;
+    for (const o of this.buildings) if (o.type === 'towncenter' && o.owner === b.owner && !o.dead) { const d = Math.hypot(o.x - b.x, o.y - b.y); if (d < best) { best = d; tc = o; } }
+    if (!tc) return;
+    const open = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < N && y < N && !this.occupied[y * N + x];
+    const ring = (o: Building): number[] => {
+      const out: number[] = [];
+      for (let y = o.cy - 1; y <= o.cy + o.size; y++) for (let x = o.cx - 1; x <= o.cx + o.size; x++) {
+        const edge = x < o.cx || y < o.cy || x >= o.cx + o.size || y >= o.cy + o.size;
+        const corner = (x < o.cx || x >= o.cx + o.size) && (y < o.cy || y >= o.cy + o.size);
+        if (edge && !corner && open(x, y)) out.push(y * N + x);
+      }
+      return out;
+    };
+    const goal = new Uint8Array(N * N);
+    for (const i of ring(tc)) goal[i] = 1;
+    const cost = new Float32Array(N * N).fill(Infinity), from = new Int32Array(N * N).fill(-1);
+    // A small binary heap of [cost, tile] pairs.
+    const heap: number[] = [];
+    const swap = (p: number, q: number): void => { for (const d of [0, 1]) { const t = heap[p * 2 + d]; heap[p * 2 + d] = heap[q * 2 + d]; heap[q * 2 + d] = t; } };
+    const push = (c: number, i: number): void => { heap.push(c, i); let k = heap.length / 2 - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p * 2] <= heap[k * 2]) break; swap(p, k); k = p; } };
+    const pop = (): number => {
+      const top = heap[1], n = heap.length / 2 - 1;
+      heap[0] = heap[n * 2]; heap[1] = heap[n * 2 + 1]; heap.length = n * 2;
+      for (let k = 0; ;) { let m = k; for (const c of [k * 2 + 1, k * 2 + 2]) if (c < n && heap[c * 2] < heap[m * 2]) m = c; if (m === k) break; swap(m, k); k = m; }
+      return top;
+    };
+    for (const i of ring(b)) { cost[i] = 0; push(0, i); }
+    let end = -1;
+    while (heap.length) {
+      const c0 = heap[0], i = pop();
+      if (c0 > cost[i]) continue;
+      if (goal[i]) { end = i; break; }
+      const x = i % N, y = (i / N) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = x + dx, ny = y + dy;
+        if (!open(nx, ny) || (dx && dy && (!open(nx, y) || !open(x, ny)))) continue;
+        const j = ny * N + nx;
+        const step = (dx && dy ? Math.SQRT2 : 1) * this.groundCost[j] * (this.road[j] ? 0.35 : 1);
+        if (c0 + step < cost[j]) { cost[j] = c0 + step; from[j] = i; push(c0 + step, j); }
+      }
+    }
+    if (end < 0) return;
+    const cells = [tc.id];
+    for (let i = end; i >= 0; i = from[i]) cells.push(i);
+    this.roadOf.set(b.id, cells);
+    this.setRoad(cells, 1);
+  }
+
+  // ------------------------------------------------------------------
   // Save / load
   // ------------------------------------------------------------------
 
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -900,7 +1011,10 @@ export class Game {
   static restore(json: string): Game {
     const d = JSON.parse(json);
     if (d.v !== SAVE_VERSION) throw new Error('Incompatible save');
-    const g = new Game(d.seed, d.setups, d.size, d.field, d.sea, !!d.relief); // regenerates the same terrain from the seed
+    const g = new Game(d.seed, d.setups, d.size, d.field, d.sea, !!d.relief, d.climate ?? ''); // regenerates the same terrain from the seed
+    for (const cells of g.roadOf.values()) g.setRoad(cells, -1);
+    g.roadOf = new Map(d.roads ?? []);
+    for (const cells of g.roadOf.values()) g.setRoad(cells, 1);
     g.entities.clear();
     g.blocked.fill(0);
     g.occupied.fill(0);
@@ -1623,6 +1737,8 @@ export class Game {
   private moveAlong(u: Unit): 'done' | 'moving' | 'blocked' {
     if (!u.path) return 'done';
     let step = u.def.speed * (this.has(u, 'swift') ? 1.2 : 1) * (this.isElder(u) ? 0.85 : 1) * (u.def.cls === 'cavalry' ? this.players[u.owner].mods.cavSpeed : 1) * DT;
+    // Roads speed a march; sand, snow, marsh and slopes slow it.
+    if (!u.def.naval) step /= this.moveCost[Math.min(this.size - 1, Math.max(0, Math.floor(u.y))) * this.size + Math.min(this.size - 1, Math.max(0, Math.floor(u.x)))];
     if (u.def.charge) u.chargeD += step;
     const ox = u.x, oy = u.y;
     while (step > 0 && u.pathI < u.path.length) {

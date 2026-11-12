@@ -3,7 +3,7 @@ import { AIController } from '../src/sim/ai';
 import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
-import { connected, generateMap, T_ROCK, T_WATER } from '../src/sim/map';
+import { connected, generateMap, T_GRASS, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
@@ -2389,5 +2389,83 @@ describe('men and women as leaders', () => {
     setLeaderCharacter('greece', null);
     setLeaderCharacter('dawn', null);
     expect(leaderOf('greece')!.name).toBe(LEADERS.greece.name);
+  });
+});
+
+describe('roads, rough ground and the country', () => {
+  it('a building is joined to its town centre by a road, which is lifted when it falls and kept across a save', () => {
+    const g = new Game(5, setups);
+    const p = spot(g, 'barracks', 0);
+    const b = g.spawnBuilding('barracks', 0, p.cx, p.cy, true);
+    const cells = g.roadOf.get(b.id)!;
+    expect(cells.length).toBeGreaterThan(1);
+    expect(cells[0]).toBe(g.buildings.find((x) => x.owner === 0 && x.type === 'towncenter')!.id);
+    for (const i of cells.slice(1)) { expect(g.road[i]).toBeGreaterThan(0); expect(g.moveCost[i]).toBeCloseTo(0.6); }
+    // Walls and farms take no road.
+    const f = spot(g, 'farm', 0);
+    expect(g.roadOf.has(g.spawnBuilding('farm', 0, f.cx, f.cy, true).id)).toBe(false);
+    const back = Game.restore(g.serialize());
+    expect([...back.roadOf]).toEqual([...g.roadOf]);
+    expect(Array.from(back.moveCost)).toEqual(Array.from(g.moveCost));
+    g.cmdDelete(0, [b.id]);
+    run(g, 1);
+    expect(g.roadOf.has(b.id)).toBe(false);
+    expect(cells.slice(1).every((i) => g.road[i] === 0 && g.moveCost[i] === 1)).toBe(true);
+  });
+
+  it('units march faster on a road and slower through marsh, and their routes go round bad ground', () => {
+    const march = (cost: number): number => {
+      const g = new Game(5, setups);
+      // A straight open lane somewhere on the map.
+      let lx = 0, ly = 0;
+      find: for (let y = 4; y < 92; y++) for (let x = 4; x < 70; x++) {
+        let ok = true;
+        for (let k = -1; k < 17 && ok; k++) for (const dy of [-1, 0, 1]) if (g.occupied[(y + dy) * 96 + x + k] || g.moveCost[(y + dy) * 96 + x + k] !== 1) ok = false;
+        if (ok) { lx = x; ly = y; break find; }
+      }
+      expect(lx).toBeGreaterThan(0);
+      const u = g.spawnUnit('villager', 0, lx + 0.5, ly + 0.5, 'm');
+      // Bad ground is laid three tiles deep, or the route would simply step round it.
+      for (let k = 0; k < 16; k++) for (const dy of cost > 1 ? [-1, 0, 1] : [0]) g.moveCost[(ly + dy) * 96 + lx + k] = cost;
+      g.cmdMove(0, [u.id], lx + 15.5, ly + 0.5);
+      run(g, 4);
+      return u.x - (lx + 0.5);
+    };
+    const plain = march(1), road = march(0.6), bog = march(1.9);
+    expect(road).toBeGreaterThan(plain * 1.4);
+    expect(bog).toBeLessThan(plain * 0.8);
+    // A wide bog lies straight across the way, with open ground to one side: the route goes round.
+    const g = new Game(5, setups, 96, true);
+    for (let y = 40; y < 60; y++) for (let x = 46; x < 52; x++) g.moveCost[y * 96 + x] = 1.9;
+    const res = g.landPf.find(40.5, 50.5, 58.5, 50.5, 58.5, 50.5, 0.71);
+    let wet = 0;
+    for (let k = 0; k < res.path.length; k += 2) if (g.moveCost[Math.floor(res.path[k + 1]) * 96 + Math.floor(res.path[k])] > 1.5) wet++;
+    expect(res.partial).toBe(false);
+    expect(wet).toBe(0);
+  });
+
+  it('each country has its own ground, the same for both sides, and every home can still reach the others', () => {
+    const count = (m: ReturnType<typeof generateMap>, t: number) => m.terrain.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+    const plain = generateMap(7, 96, 2, true, true);
+    expect(count(plain, T_SAND) + count(plain, T_MARSH) + count(plain, T_SNOW)).toBe(0);
+    const green = generateMap(7, 96, 2, true, true, 'temperate'), desert = generateMap(7, 96, 2, true, true, 'desert'), snow = generateMap(7, 96, 2, true, true, 'snow'), steppe = generateMap(7, 96, 2, true, true, 'steppe');
+    expect(count(green, T_SAND)).toBeGreaterThan(50); // beaches
+    expect(count(green, T_MARSH)).toBeGreaterThan(20);
+    expect(count(desert, T_SAND)).toBeGreaterThan(count(desert, T_GRASS));
+    expect(count(snow, T_SNOW)).toBeGreaterThan(count(snow, T_GRASS));
+    const trees = (m: ReturnType<typeof generateMap>) => m.nodes.filter((n) => n.type === 'tree').length;
+    expect(trees(desert)).toBeLessThan(trees(green));
+    expect(trees(steppe)).toBeLessThan(trees(green));
+    for (const m of [green, desert, snow, steppe]) {
+      // Fair: the land is the same seen from either home.
+      for (let i = 0; i < 96 * 96; i++) { const a = m.terrain[i], b = m.terrain[96 * 96 - 1 - i]; if (a >= T_SAND && b !== T_WATER && b !== T_ROCK && b !== 2) expect(b).toBe(a); }
+      const blocked = new Uint8Array(96 * 96);
+      for (let i = 0; i < 96 * 96; i++) if (m.terrain[i] === T_WATER || m.terrain[i] === T_ROCK) blocked[i] = 1;
+      expect(connected(96, blocked, m.starts[0], m.starts[1])).toBe(true);
+    }
+    // The country is kept across a save.
+    const g = new Game(7, setups, 96, false, true, true, 'desert');
+    expect(Game.restore(g.serialize()).climate).toBe('desert');
+    expect(Array.from(Game.restore(g.serialize()).terrain)).toEqual(Array.from(g.terrain));
   });
 });

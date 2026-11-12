@@ -6,6 +6,14 @@ export const T_DIRT = 2;
 /** Mountain: nothing walks, sails or builds here. */
 export const T_ROCK = 3;
 /** How high the hills rise, in tiles. */
+/** Loose sand: desert, and the beach along any shore. A little slow to cross. */
+export const T_SAND = 4;
+/** Marsh: reeds and standing water. Slow going. */
+export const T_MARSH = 5;
+/** Lying snow. Slow going. */
+export const T_SNOW = 6;
+/** The kind of country a map is: '' is the plain grassland of the earliest maps, with none of the newer ground. */
+export type Climate = '' | 'temperate' | 'desert' | 'snow' | 'steppe';
 export const HILL_HEIGHT = 1.6;
 
 export type NodeType = 'tree' | 'berries' | 'gold' | 'stone' | 'carcass' | 'fish';
@@ -50,7 +58,7 @@ function valueNoise(rng: () => number, size: number, scale: number): (x: number,
  * @param sea Put a great lake in the middle of the map, for fishing and warships.
  * @param relief Raise hills and mountain ranges. Mountains cannot be crossed; hills can, and give the high ground.
  */
-export function generateMap(seed: number, size = 96, players = 2, sea = false, relief = false): MapSpec {
+export function generateMap(seed: number, size = 96, players = 2, sea = false, relief = false, climate: Climate = ''): MapSpec {
   const rng = mulberry32(seed);
   const N = size;
   const terrain = new Uint8Array(N * N);
@@ -245,6 +253,39 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false, r
   for (let k = 0, tries = 0; k < Math.round(2 * area) && tries < 90; tries++) {
     const x = 6 + rng() * (N - 12), y = 6 + rng() * (N - 12);
     if (startDist(x, y) > 27 && herd('wolf', x, y, 2 + Math.floor(rng() * 2)) > 0) k++;
+  }
+
+  // The country itself, on its own dice: sand, snow and marsh over the grass, and thinner woods where it is dry.
+  if (climate) {
+    const cr = mulberry32(seed ^ 0xc11a7e);
+    const patch = valueNoise(cr, N, 9), fine = valueNoise(cr, N, 4);
+    const water = (x: number, y: number, r: number): boolean => {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const ax = x + dx, ay = y + dy; if (ax >= 0 && ay >= 0 && ax < N && ay < N && terrain[ay * N + ax] === T_WATER) return true; }
+      return false;
+    };
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const i = y * N + x;
+      // Decided once for a tile and its mirror images together, so the land is the same from every home.
+      const im = images(x, y).map(([ix, iy]) => iy * N + ix);
+      if (im.some((j) => j < i) || im.some((j) => terrain[j] !== T_GRASS)) continue;
+      const p = sym(patch, x, y), f = sym(fine, x, y), d = startDist(x, y);
+      let to = T_GRASS;
+      if (climate === 'desert') {
+        // Sand everywhere but round water (an oasis), on scattered scrub, and on the green each people settled.
+        if (!water(x, y, 3) && p < 0.72 && d > 6) to = T_SAND;
+      } else if (climate === 'snow') {
+        if (d > 8 && (d > 15 || p * 0.7 + f * 0.3 > 0.34)) to = T_SNOW;
+      } else if (water(x, y, 1)) to = T_SAND; // a beach
+      else if (climate === 'temperate' && d > 13 && im.every((j) => height[j] < 0.2 && !taken[j]) && ((water(x, y, 3) && p > 0.52) || p * 0.6 + f * 0.4 > 0.8)) to = T_MARSH;
+      if (to !== T_GRASS) for (const j of im) terrain[j] = to;
+    }
+    if (climate === 'desert' || climate === 'steppe') {
+      for (let k = nodes.length - 1; k >= 0; k--) {
+        const n = nodes[k];
+        if (n.type !== 'tree' || startDist(n.cx, n.cy) < 16 || (climate === 'desert' && water(n.cx, n.cy, 4))) continue;
+        if (Math.round(sym(fine, n.cx, n.cy) * 1e6) < (climate === 'desert' ? 620000 : 500000)) { taken[n.cy * N + n.cx] = 0; nodes.splice(k, 1); }
+      }
+    }
   }
 
   return { size: N, terrain, height, starts, nodes, animals };
