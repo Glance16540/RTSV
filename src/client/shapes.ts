@@ -253,8 +253,49 @@ function yard(g: THREE.Object3D, o: Look, pick: number, x: number, z: number): v
   }
 }
 /** A house. Each nation builds four kinds under its own roof; which one a plot gets, and what is in its yard, varies. */
+/** A round felt tent on a lattice wall: what the people of the steppe live in. */
+function ger(g: THREE.Object3D, o: Look, r: number, x: number, z: number, door = true): void {
+  const felt = toon(0xe9e2d0, 'plaster'), h = r * 0.72;
+  const wall = new THREE.CylinderGeometry(r, r * 1.02, h, 18), uv = wall.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 4, uv.getY(i));
+  mesh(g, wall, felt, x, h / 2, z);
+  mesh(g, new THREE.ConeGeometry(r * 1.07, r * 0.62, 18, 1, true), felt, x, h + r * 0.31, z);
+  mesh(g, new THREE.CylinderGeometry(r * 0.2, r * 0.24, 0.07, 12), toon(TIMBER), x, h + r * 0.56, z); // the crown, open to let the smoke out
+  // Ropes round the wall and the owner's colour at the eaves.
+  for (const y of [h * 0.35, h * 0.7]) mesh(g, new THREE.TorusGeometry(r * 1.015, 0.012, 4, 20).rotateX(Math.PI / 2), toon(0x8a7250), x, y, z);
+  mesh(g, new THREE.TorusGeometry(r * 1.04, 0.035, 5, 20).rotateX(Math.PI / 2), toon(o.team), x, h, z);
+  mesh(g, new THREE.TorusGeometry(r * 0.62, 0.02, 4, 16).rotateX(Math.PI / 2), toon(o.roofColor), x, h + r * 0.26, z);
+  if (door) {
+    bx(g, 0.34, h * 0.86, 0.06, toon(0xa8432f, 'planks'), x, h * 0.43, z + r);
+    bx(g, 0.4, 0.05, 0.08, toon(TIMBER), x, h * 0.88, z + r);
+  }
+}
 function house(o: Look, seed: number): THREE.Group {
   const g = new THREE.Group(), kind = seed % 4, stone = toon(0xb8b4aa, 'stone');
+  if (o.roofKind === 'yurt') {
+    // A family's tents: one large, or a large and a small, with what a herding household keeps outside.
+    const big = kind === 0 ? 0.86 : 0.72, bx0 = kind === 0 ? 0 : -0.28, bz0 = kind === 0 ? -0.1 : -0.2;
+    ger(g, o, big, bx0, bz0);
+    if (kind !== 0) ger(g, o, 0.42, 0.72, kind === 1 ? 0.35 : -0.5, kind === 1);
+    const m = bx(g, 0.16, 0.2, 0.05, toon(0x4aa3ff, '', 0x2a6ac0), bx0 - 0.34, big * 0.4, bz0 + big * 0.95);
+    const f = bx(g, 0.16, 0.2, 0.05, toon(0xff7ab8, '', 0xc04a80), bx0 + 0.34, big * 0.4, bz0 + big * 0.95);
+    m.rotation.y = -0.4; f.rotation.y = 0.4;
+    m.castShadow = f.castShadow = false;
+    g.userData.resM = m; g.userData.resF = f;
+    if (kind === 2 || kind === 3) {
+      // A drying rack hung with strips of meat, or a two-wheeled cart.
+      for (const dx of [-0.25, 0.25]) bx(g, 0.03, 0.5, 0.03, toon(TIMBER), -0.95 + dx, 0.25, 0.75);
+      bx(g, 0.56, 0.03, 0.03, toon(TIMBER), -0.95, 0.5, 0.75);
+      for (let i = 0; i < 4; i++) bx(g, 0.05, 0.16, 0.012, toon(i % 2 ? 0x8a3a2a : 0xa85a3a), -1.14 + i * 0.13, 0.41, 0.75).castShadow = false;
+    } else {
+      bx(g, 0.5, 0.05, 0.34, toon(PLANK, 'planks'), -0.95, 0.24, 0.75);
+      for (const dz of [-0.2, 0.2]) mesh(g, new THREE.TorusGeometry(0.16, 0.03, 5, 12).rotateY(Math.PI / 2).rotateY(Math.PI / 2), toon(TIMBER), -0.95, 0.17, 0.75 + dz);
+      bx(g, 0.5, 0.03, 0.03, toon(TIMBER), -0.5, 0.2, 0.75).rotation.z = -0.25;
+    }
+    yard(g, o, seed + 1, 0.95, 0.85);
+    if (seed % 2) g.scale.x = -1;
+    return g;
+  }
   const lamps = (x: number, y: number, z: number, gap: number): void => {
     // Lit windows show which residents have moved in: blue for the man, pink for the woman.
     const m = bx(g, 0.28, 0.3, 0.05, toon(0x4aa3ff, '', 0x2a6ac0), x - gap, y, z);
@@ -450,8 +491,38 @@ function tavern(o: Look): THREE.Group {
   }
   return g;
 }
-function barracks(o: Look): THREE.Group {
+function barracks(o: Look, seed = 0): THREE.Group {
   const g = new THREE.Group();
+  if (seed % 2) {
+    // The other kind: a hall down one side and a square to drill in, with tents for the men along the back.
+    const wm2 = o.age >= 2 ? toon(0xc8c2b4, 'stone') : toon(o.age === 0 ? o.wall : 0x9a6a3e, 'planks');
+    walls(g, 1.3, 1.15, 2.9, wm2, -0.9, 0, 0);
+    top(g, o, 1.3, 2.9, 1.15, 0.8, -0.9, 0);
+    bx(g, 1.32, 0.08, 2.92, toon(o.team), -0.9, 1.06, 0);
+    pane(g, 'door', 0.6, 0.8, -0.24, 0.42, 0.4, Math.PI / 2);
+    for (const z of [-0.8, 1.0]) pane(g, 'window', 0.26, 0.34, -0.24, 0.7, z, Math.PI / 2);
+    cloth(g, o.team, 0.4, 0.55, -0.9, 0.8, 1.47);
+    bx(g, 1.9, 0.04, 2.8, toon(0x9a8460), 0.6, 0.02, 0).castShadow = false; // the drill square, trodden bare
+    for (const [x, z] of [[0.35, -1.0], [1.05, -1.0]]) {
+      // A soldier's tent: canvas over a ridge pole.
+      gable(g, 0.6, 0.7, 0.5, 0.0, toon(0xd8d0b8, 'plaster'), toon(0xc8c0a8, 'plaster'), x, z, 0.02, 0.03);
+      bx(g, 0.2, 0.3, 0.02, toon(0x3a3028), x, 0.15, z + 0.36);
+    }
+    // Straw men to strike at, a rack of spears, and a brazier.
+    for (const [x, z] of [[0.3, 0.5], [1.0, 0.9]]) {
+      bx(g, 0.05, 0.75, 0.05, toon(TIMBER), x, 0.375, z);
+      bx(g, 0.5, 0.05, 0.05, toon(TIMBER), x, 0.56, z);
+      mesh(g, new THREE.CylinderGeometry(0.13, 0.11, 0.36, 8), toon(0xd8c070, 'thatch'), x, 0.5, z);
+      mesh(g, new THREE.SphereGeometry(0.1, 8, 6), toon(0xd8c070, 'thatch'), x, 0.8, z);
+    }
+    bx(g, 0.7, 0.04, 0.04, toon(TIMBER), 1.15, 0.5, 0.1);
+    for (const x of [0.85, 1.45]) bx(g, 0.04, 0.5, 0.04, toon(TIMBER), x, 0.25, 0.1);
+    for (const x of [0.95, 1.15, 1.35]) { mesh(g, new THREE.CylinderGeometry(0.012, 0.012, 0.9, 5), toon(TIMBER), x, 0.45, 0.04).rotation.x = 0.2; mesh(g, new THREE.ConeGeometry(0.03, 0.1, 5), toon(0xc8ccd4), x, 0.93, -0.06); }
+    mesh(g, new THREE.CylinderGeometry(0.14, 0.08, 0.3, 8), toon(0x3a3a40), 0.65, 0.15, 0.1);
+    mesh(g, new THREE.ConeGeometry(0.1, 0.26, 6), toon(0xffb040, '', 0xcc5500), 0.65, 0.42, 0.1).castShadow = false;
+    banner(g, o.team, 1.5, 0, 1.4, 1.3);
+    return g;
+  }
   const wm = o.age >= 2 ? toon(0xc8c2b4, 'stone') : toon(o.age === 0 ? o.wall : 0x9a6a3e, 'planks');
   walls(g, 2.6, 1.1, 1.5, wm, 0, 0, -0.5);
   top(g, o, 2.6, 1.5, 1.1, 0.8, 0, -0.5);
