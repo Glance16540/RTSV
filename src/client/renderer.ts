@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
-import { Job, makeBuilding, makeCaptive, makeResource, makeStaff, makeUnit, mat, RES_COLOR, Rig, rigBiped } from './models';
+import { Job, makeBuilding, makeCaptive, makeResource, makeStaff, makeUnit, ofPeople, mat, RES_COLOR, Rig, rigBiped } from './models';
 import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
@@ -431,6 +431,7 @@ export class Renderer {
       v = undefined;
     }
     if (!v) {
+      ofPeople(this.game.players[u.owner].civ);
       v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, wear, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
       v.rig = this.still ? null : rigBiped(v.g);
@@ -481,6 +482,7 @@ export class Renderer {
     if (v.rig) { this.pose(u, v, dt); }
     // A Slaver's prisoner walks behind him on a rope, stripped to a loincloth.
     if (u.captive && !v.led) {
+      ofPeople(this.game.players[u.captive.from]?.civ ?? ''); // a captive is still one of the people they were taken from
       const cg = makeCaptive(u.captive.gender, (u.captive.name.length * 7 + u.captive.age) | 0);
       cg.position.set(-0.05, 0, -0.62);
       cg.rotation.y = 0.15;
@@ -692,6 +694,7 @@ export class Renderer {
     if (!cv && (held.length || guards)) {
       const grp = new THREE.Group(), figs: CampFig[] = [], door = at(spots.bunk);
       held.slice(0, 10).forEach((c, i) => {
+        ofPeople(this.game.players[c.from]?.civ ?? '');
         const fig = makeCaptive(c.gender, (c.name.length * 7 + c.age + i) | 0);
         fig.scale.multiplyScalar(0.88 * spots.k);
         fig.rotation.order = 'YXZ';
@@ -701,6 +704,7 @@ export class Renderer {
       });
       const color = this.game.players[b.owner].color;
       for (let i = 0; i < guards; i++) {
+        ofPeople(this.game.players[b.owner].civ);
         const fig = makeUnit('slaver', color, null, b.id + i * 13), [x, z] = at(spots.post[i % spots.post.length]);
         fig.scale.multiplyScalar(0.9 * spots.k);
         fig.position.set(x, this.scenery.heightAt(x, z) + (i % spots.post.length === 0 ? 0 : 0), z);
@@ -813,6 +817,7 @@ export class Renderer {
       for (let i = 0; i < women + men; i++) {
         const f = i < women;
         const role = tav ? (f ? 'milkmaid' : 'patron') : f ? 'nun' : 'monk';
+        ofPeople(this.game.players[b.owner].civ);
         const fig = makeStaff(role, b.id + i * 7, lean);
         // Along the front and round the near corner, where the camera sees them.
         const k = i - (women + men - 1) / 2;

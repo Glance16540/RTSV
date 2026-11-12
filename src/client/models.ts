@@ -173,16 +173,51 @@ const roof = (p: THREE.Object3D, half: number, h: number, color: number, x = 0, 
 
 /** The skin of the figure being built: set from its seed, so a crowd is not all one shade. */
 let SKIN = 0xe0ac7e;
-const TONES = [0xe0ac7e, 0xe8b88e, 0xd69a6c, 0xe0ac7e, 0xc68a5c, 0xeec0a0, 0xb07848, 0xd8a074];
-const HAIR = [0x3a2a1a, 0x5a3a1c, 0x1e1a18, 0x8a6a3a, 0xa8552a, 0x2a2018, 0xc8a860, 0x6e6a66];
+/**
+ * How a nation's people look, by the part of the world they come from: a few close shades of skin, and the hair
+ * colours found among them. One people is broadly one colour; the differences within it are small.
+ */
+const PEOPLES: Record<string, { skin: number[]; hair: number[] }> = {
+  // The north and west of Europe: fair, with brown, blond and red hair.
+  wild: { skin: [0xf0c8a8, 0xeec0a0, 0xe8b894], hair: [0xc8a860, 0xd8b870, 0xa8552a, 0x8a6a3a, 0x5a3a1c] },
+  england: { skin: [0xeec0a0, 0xe8b894, 0xf0c8a8], hair: [0x5a3a1c, 0x8a6a3a, 0xa8552a, 0xc8a860, 0x3a2a1a] },
+  hearth: { skin: [0xe8b894, 0xe4b088, 0xeec0a0], hair: [0x5a3a1c, 0x3a2a1a, 0x8a6a3a, 0xc8a860, 0x2a2018] },
+  // The Mediterranean: olive, with dark hair.
+  stonekin: { skin: [0xdca676, 0xd69a6c, 0xe0ac7e], hair: [0x2a2018, 0x3a2a1a, 0x1e1a18, 0x5a3a1c] },
+  greece: { skin: [0xdca676, 0xd8a074, 0xd69a6c], hair: [0x2a2018, 0x1e1a18, 0x3a2a1a, 0x5a3a1c] },
+  // The Near East: tan to brown, with black hair.
+  dawn: { skin: [0xcf9568, 0xc98e62, 0xd69a6c], hair: [0x1e1a18, 0x2a2018, 0x3a2a1a] },
+  babylon: { skin: [0xc98e62, 0xc48658, 0xcf9568], hair: [0x1e1a18, 0x2a2018, 0x16120f] },
+  persia: { skin: [0xcf9568, 0xc98e62, 0xd8a074], hair: [0x1e1a18, 0x2a2018, 0x3a2a1a] },
+  arabs: { skin: [0xc48658, 0xbc7e50, 0xc98e62], hair: [0x1e1a18, 0x16120f, 0x2a2018] },
+  // The Nile: brown.
+  egypt: { skin: [0xa87852, 0xa0704a, 0xb0825c], hair: [0x16120f, 0x1e1a18] },
+  // The steppe and the Far East: light tan, with straight black hair.
+  steppe: { skin: [0xdcae80, 0xd6a678, 0xe0b488], hair: [0x16120f, 0x1e1a18, 0x2a2018] },
+  forge: { skin: [0xe6bc92, 0xe0b488, 0xeac49c], hair: [0x16120f, 0x1e1a18] },
+  japan: { skin: [0xeac49c, 0xe6bc92, 0xeeccA6], hair: [0x16120f, 0x1e1a18] },
+};
+const ANYONE = { skin: [0xe0ac7e, 0xd8a074, 0xe4b088], hair: [0x3a2a1a, 0x5a3a1c, 0x1e1a18, 0x8a6a3a] };
+/** The people the figure being built belongs to. Set by `ofPeople` before a figure is made. */
+let people = ANYONE;
+/** Says whose people the next figures are: a nation's id, or '' for no one in particular. */
+export function ofPeople(civ: string): void {
+  people = PEOPLES[civ] ?? ANYONE;
+  HAIR = people.hair;
+}
+let HAIR = ANYONE.hair;
+/** Hair gone grey: an old head among any people, one in nine. */
+const GREY = 0x8a8680;
 /** The seed of the figure being built: decides beards, how hair is worn and the like. */
 let who = 0;
 /** Starts a figure: its skin, and the seed its small differences are drawn from. */
 function person(g: THREE.Object3D, seed: number): void {
   who = Math.abs(seed | 0);
-  SKIN = TONES[(who * 7 + 3) % TONES.length];
+  SKIN = people.skin[(who * 7 + 3) % people.skin.length];
   g.userData.skin = SKIN;
 }
+/** This figure's hair: one of its people's colours, or grey. */
+const hairOf = (seed: number): number => (Math.abs(seed | 0) % 9 === 4 ? GREY : HAIR[Math.abs(seed | 0) % HAIR.length]);
 const shade = (c: number, k: number): number => new THREE.Color(c).multiplyScalar(k).getHex();
 /** Small marks on a face or a cuff, drawn without an ink line round them: at this size the line would be all there was. */
 const plainMats = new Map<number, THREE.MeshToonMaterial>();
@@ -275,7 +310,7 @@ function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y
     for (let i = 0; i < 2; i++) dot(g, geo('lace', () => new THREE.BoxGeometry(0.03, 0.006, 0.006)), shade(body, 1.35), 0, y + 0.6 - i * 0.03, 0.093 - i * 0.004);
   }
   ball(g, 0.11, SKIN, 0, y + 0.76, 0).scale.y = 1.08;
-  const own = HAIR.includes(hair); // his own hair, as against a helmet or a hood given as its colour
+  const own = HAIR.includes(hair) || hair === GREY; // his own hair, as against a helmet or a hood given as its colour
   const worn = own ? who % 5 : -1;
   if (worn === 3) {
     // Going bald: a fringe round the back and sides.
@@ -549,7 +584,7 @@ export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 
   figure = true;
   const g = new THREE.Group();
   person(g, seed);
-  const hair = HAIR[seed % HAIR.length], GOLD = 0xe8c860;
+  const hair = hairOf(seed), GOLD = 0xe8c860;
   const mug = (p: THREE.Object3D, x: number, y: number, z: number): void => { cyl(p, 0.04, 0.035, 0.08, 0xd8a838, x, y, z, 8); cyl(p, 0.042, 0.042, 0.02, 0xfff4d8, x, y + 0.05, z, 8); };
   const robe = (color: number, fat = 1): void => {
     const r = lathe(g, 'robe', [[0.18, 0], [0.165, 0.1], [0.12, 0.4], [0.135, 0.56], [0.14, 0.6], [0.05, 0.67]], color);
@@ -603,7 +638,7 @@ export function makeCaptive(gender: Gender, seed: number): THREE.Group {
   figure = true;
   const g = new THREE.Group();
   person(g, seed);
-  const hair = HAIR[seed % HAIR.length], rag = [0xb8a888, 0xa89878, 0xc4b494][seed % 3], rope = 0x8a7250, f = gender === 'f';
+  const hair = hairOf(seed), rag = [0xb8a888, 0xa89878, 0xc4b494][seed % 3], rope = 0x8a7250, f = gender === 'f';
   humanoid(g, SKIN, SKIN, hair);
   // Bare feet: the boots a free villager wears are gone.
   g.traverse((o) => { const m = o as THREE.Mesh; if (o.userData.boot === 1) m.material = mat(SKIN); else if (o.userData.boot === 2) o.visible = false; });
@@ -656,7 +691,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   }
   const g = new THREE.Group();
   person(g, seed);
-  const hair = HAIR[seed % HAIR.length];
+  const hair = hairOf(seed);
   switch (type) {
     case 'villager': {
       let a: THREE.Group;
