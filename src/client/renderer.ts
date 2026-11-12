@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
-import { Job, makeBuilding, makeResource, makeStaff, makeUnit, mat, RES_COLOR, Rig, rigBiped } from './models';
+import { Job, makeBuilding, makeCaptive, makeResource, makeStaff, makeUnit, mat, RES_COLOR, Rig, rigBiped } from './models';
 import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
@@ -16,7 +16,7 @@ const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh } }
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
 interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
@@ -465,6 +465,22 @@ export class Renderer {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
     if (v.rig) { this.pose(u, v, dt); }
+    // A Slaver's prisoner walks behind him on a rope, stripped to a loincloth.
+    if (u.captive && !v.led) {
+      const cg = makeCaptive(u.captive.gender, (u.captive.name.length * 7 + u.captive.age) | 0);
+      cg.position.set(-0.05, 0, -0.62);
+      cg.rotation.y = 0.15;
+      const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.55, 4).rotateX(Math.PI / 2), mat(0x8a7250, 0, true));
+      rope.position.set(0.04, 0.6, -0.33);
+      rope.rotation.x = 0.18;
+      g.add(cg, rope);
+      v.led = { g: cg, rig: this.still ? null : rigBiped(cg), rope };
+    } else if (!u.captive && v.led) { g.remove(v.led.g, v.led.rope); v.led = undefined; }
+    if (v.led?.rig) {
+      // Head down, a step behind the pace.
+      this.setPose(v.led.rig, u.moving ? 'walk' : 'idle', u.moving ? v.phase / (Math.PI * 2) + 0.3 : (this.clock + v.phase) / motions.idle.dur, 1); // set outright, so the bowed head below is not added twice
+      v.led.rig.head.rotation.x += 0.35;
+    }
     else for (const l of v.legs) {
       // Four legs at a trot: each swings from the shoulder or hip and folds half way down as it comes forward.
       const ph = v.phase + (l.userData.leg as number), knee = l.userData.knee as THREE.Object3D | undefined;
@@ -647,6 +663,38 @@ export class Renderer {
   }
 
   /** Milkmaids and patrons at the tavern, monks and nuns at the church: those inside are shown standing at the front. */
+  /** The prisoners of a work camp, seen in its yard in their loincloths: the men at hard labour, the women standing by. */
+  private syncCamp(b: Building, shown: boolean): void {
+    const held = b.captives ?? [], key = held.map((c) => c.gender).join('');
+    let sv = this.staffViews.get(b.id);
+    if (sv && sv.key !== key) { this.scene.remove(sv.g); sv = undefined; this.staffViews.delete(b.id); }
+    if (!sv && held.length) {
+      const g = new THREE.Group(), figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] = [];
+      held.slice(0, 10).forEach((c, i) => {
+        const fig = makeCaptive(c.gender, (c.name.length * 7 + c.age + i) | 0);
+        // In the open part of the yard and along the front of the stockade.
+        const x = b.x + 0.15 + ((i % 4) - 1.5) * 0.36 + (i > 3 ? 0.2 : 0), z = b.y + 0.25 + Math.floor(i / 4) * 0.42;
+        fig.position.set(x, this.scenery.heightAt(x, z), z);
+        fig.rotation.y = Math.PI / 4 + Math.sin(b.id + i * 2.3) * 0.9;
+        fig.scale.multiplyScalar(0.9);
+        g.add(fig);
+        figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), role: c.gender === 'm' ? 'labour' : 'held', seed: (b.id * 1.3 + i * 2.1) % 6.28, lean0: 0 });
+      });
+      sv = { key, g, figs };
+      this.staffViews.set(b.id, sv);
+      this.scene.add(g);
+    }
+    if (!sv) return;
+    sv.g.visible = shown;
+    if (!shown) return;
+    for (const f of sv.figs) {
+      if (!f.rig) continue;
+      const t = this.clock + f.seed * 2;
+      if (f.role === 'labour') this.setPose(f.rig, 'work', (t % 1.5) / 1.5, 1);
+      else { this.setPose(f.rig, 'idle', t / motions.idle.dur, 1); f.rig.head.rotation.x += 0.3; }
+    }
+  }
+
   /** A small heart drifts up from a spot and fades: the sign of a tryst going on behind a door. */
   private heart(x: number, y: number, z: number): void {
     if (!this.heartGeo) {
@@ -917,6 +965,7 @@ export class Renderer {
     }
     g.visible = this.isVisible(b);
     if (b.def.staff) this.syncStaff(b, g.visible && b.complete, lean);
+    if (b.def.camp) this.syncCamp(b, g.visible && b.complete);
     if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
     g.userData.hurt = hurt;
     // A building going up rises out of its footings inside a scaffold of poles, which comes down when it is done.

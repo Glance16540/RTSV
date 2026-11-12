@@ -517,6 +517,39 @@ export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 
   return g;
 }
 
+/**
+ * A villager taken by a Slaver: stripped to a loincloth (a woman keeps a band of cloth across the chest as well),
+ * barefoot, a rope about the neck and the wrists tied.
+ */
+export function makeCaptive(gender: Gender, seed: number): THREE.Group {
+  made.clear();
+  figure = true;
+  const g = new THREE.Group(), hair = HAIR[seed % HAIR.length], rag = [0xb8a888, 0xa89878, 0xc4b494][seed % 3], rope = 0x8a7250, f = gender === 'f';
+  humanoid(g, SKIN, SKIN, hair);
+  // Bare feet: the boots a free villager wears are gone.
+  g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && o.parent?.userData.leg !== undefined && m.geometry.type === 'BoxGeometry') m.material = mat(SKIN); });
+  // The loincloth: a wrap about the hips, a flap before and behind.
+  box(g, 0.275, 0.08, 0.2, rag, 0, 0.4, 0);
+  box(g, 0.13, 0.17, 0.018, rag, 0, 0.3, 0.098).rotation.x = -0.08;
+  box(g, 0.13, 0.15, 0.018, rag, 0, 0.31, -0.098).rotation.x = 0.08;
+  if (f) {
+    box(g, 0.29, 0.085, 0.2, rag, 0, 0.555, 0);
+    for (const x of [-0.05, 0.05]) loose(ball(g, 0.05, rag, x, 0.552, 0.07), 'y', 0.07, 150, 5.5);
+    // Her hair, loose down her back.
+    const fall = new THREE.Group();
+    fall.position.set(0, 0.76, -0.085);
+    fall.userData.joint = 'head';
+    g.add(loose(fall, 'rx', 1.0, 80, 4));
+    cap(fall, 0.07, 0.34, hair, 0, -0.14, 0).scale.set(1.35, 1, 0.55);
+    g.scale.set(0.9, 0.96, 0.9);
+  }
+  add(g, geo('noose', () => new THREE.TorusGeometry(0.052, 0.012, 5, 10).rotateX(Math.PI / 2)), rope, 0, 0.675, 0);
+  const a = arm(g, 0, SKIN, f ? 0.85 : 1);
+  add(a, geo('cuff', () => new THREE.TorusGeometry(0.04, 0.011, 5, 10).rotateX(Math.PI / 2)), rope, 0, -0.25, 0.01);
+  add(g, geo('cuff', () => new THREE.TorusGeometry(0.04, 0.011, 5, 10).rotateX(Math.PI / 2)), rope, -0.21, 0.33, 0.012);
+  return g;
+}
+
 /** `wear` is how the town's standing shows in a village woman's dress: 0 as usual, 1 pious (covered, a scarf), 2 decadent (a laced bodice worn low), 3 more so. */
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number, job: Job = '', wear = 0): THREE.Group {
   made.clear();
