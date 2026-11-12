@@ -107,6 +107,18 @@ gates and win together. An allied AI comes to your defence, joins your attacks, 
 research, control groups, rally points, synthesised sound, and an AI opponent with three
 difficulty levels that plays by the same rules.
 
+## Missions
+
+*Missions* on the start screen offers three scripted scenarios with objectives shown as you play:
+
+- **First Hearth** — a gentle tutorial: gather, found a family, grow, raise soldiers and drive off
+  a wolf pack. Nobody attacks you.
+- **Hold the Line** — defend a walled town against eight growing waves of raiders for ten minutes.
+- **Race for the Wonder** — two rich kingdoms each try to build a Wonder and keep it standing.
+
+The start screen also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
+for whether villagers grow old.
+
 ## Conquest campaign
 
 *Conquest campaign* on the start screen opens a turn-based map of fifteen territories. Each turn
@@ -154,6 +166,7 @@ for filenames and a ready-made generation prompt.
 
 ## Code layout
 
+- `src/sim/scenario.ts` — scripted missions and their objectives
 - `src/sim/campaign.ts` — Conquest rules: territories, armies, turns, battle set-up
 - `src/client/overworld.ts` — the Conquest map screen
 - `src/sim/` — the game simulation. No DOM or rendering, runs headless at 20 ticks per second.

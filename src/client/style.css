@@ -176,7 +176,17 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 }
 .sheet button:hover { filter: brightness(1.1); }
 .sheet button.secondary { margin-top: 12px; padding: 7px 22px; font-size: 15px; background: none; color: var(--gold); border-color: var(--edge); }
-.started #continue-btn, .started #conquest-btn { display: none; }
+.started #continue-btn, .started #conquest-btn, .started #missions-btn, .started #missions { display: none; }
+#missions { display: grid; gap: 8px; margin: 12px auto 0; max-width: 640px; }
+#missions.hidden { display: none; }
+.sheet #missions button { margin: 0; padding: 10px 14px; text-align: left; font: inherit; color: var(--text); background: rgba(0, 0, 0, 0.3); border: 1px solid var(--edge); }
+#missions b { display: block; font: 600 16px Georgia, serif; color: var(--gold); }
+#missions small { color: var(--muted); }
+#settings { margin: 14px auto 0; max-width: 640px; color: var(--muted); font-size: 13px; }
+#settings summary { cursor: pointer; color: var(--gold); }
+#settings label { display: inline-flex; align-items: center; gap: 6px; margin: 8px 10px 0; }
+.mapsize.check { cursor: pointer; }
+.battle .mapsize.check { display: none; }
 .sheet button.secondary { margin-left: 6px; margin-right: 6px; }
 .mapsize { display: inline-block; margin: 18px 12px 0; color: var(--muted); }
 .mapsize select { margin-left: 8px; padding: 4px 8px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; }

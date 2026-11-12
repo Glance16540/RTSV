@@ -3,6 +3,7 @@ import { CIVS, CIV_IDS, UNITS } from '../sim/data';
 import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets } from './assets';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
+import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
 import { Overworld } from './overworld';
 import { Input } from './input';
@@ -33,10 +34,15 @@ export class App {
   /** Identifies which Conquest battle a save belongs to. */
   saveTag = '';
   onGameOver: ((won: boolean) => void) | null = null;
+  /** The scripted mission being played, if any, and how it stands. */
+  mission: Mission | null = null;
+  missionStatus: MissionStatus | null = null;
 
   constructor(game: Game) {
     this.game = game;
-    for (const p of this.game.players) if (p.isAI) this.ai.push(new AIController(this.game, p.id));
+    this.mission = game.scenario ? missionById(game.scenario.id) ?? null : null;
+    // A mission's enemy is scripted unless the mission says it has a mind of its own.
+    for (const p of this.game.players) if (p.isAI && (!this.mission || this.mission.aiLevel !== null)) this.ai.push(new AIController(this.game, p.id));
     this.r = new Renderer(document.getElementById('game') as HTMLCanvasElement, this.game);
     this.hud = new Hud(this);
     this.input = new Input(this);
@@ -116,7 +122,10 @@ export class App {
       let steps = 0;
       while (this.acc >= DT && steps++ < 12) {
         game.step();
-        if (game.tick % 20 === 0) for (const a of this.ai) a.update();
+        if (game.tick % 20 === 0) {
+          for (const a of this.ai) a.update();
+          if (this.mission) this.missionStatus = runMission(game, this.mission);
+        }
         this.acc -= DT;
       }
       if (this.acc > DT) this.acc = 0;
@@ -147,8 +156,8 @@ export class App {
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
 /** skirmish: a single match. campaign: the Conquest map. battle: a Conquest battle fought in real time. */
-const mode = params.has('battle') ? 'battle' : params.has('campaign') ? 'campaign' : 'skirmish';
-const SAVE_KEY = mode === 'battle' ? 'rtsv-battle-save' : 'rtsv-save';
+const mode = params.has('battle') ? 'battle' : params.has('campaign') ? 'campaign' : missionById(params.get('mission') ?? '') ? 'mission' : 'skirmish';
+const SAVE_KEY = mode === 'battle' ? 'rtsv-battle-save' : mode === 'mission' ? 'rtsv-mission-save' : 'rtsv-save';
 const CAMPAIGN_KEY = 'rtsv-campaign';
 const RESULT_KEY = 'rtsv-battle-result';
 interface Saved { game: string; ai: object[]; cam: { x: number; y: number; d: number }; tag?: string }
@@ -197,6 +206,11 @@ loadAssets().then(() => {
   // Sides: every tribe for itself, one rival fighting at your side, or all of them against you.
   const sides = rivals > 1 && ['ally', 'gang'].includes(params.get('teams') ?? '') ? params.get('teams')! : 'ffa';
   const team = (i: number) => (sides === 'ffa' ? i : i === 0 || (sides === 'ally' && i === 1) ? 0 : 1);
+  const mission = mode === 'mission' ? missionById(params.get('mission')!)! : null;
+  if (mission) {
+    game = new Game(mission.seed, mission.setups, mission.size);
+    mission.init(game);
+  }
   game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
@@ -267,6 +281,49 @@ loadAssets().then(() => {
     el('again-btn').textContent = 'Return to the map';
     el('concede-btn').classList.remove('hidden');
     el('concede-btn').addEventListener('click', () => { finish(false); go('?campaign=1'); });
+  }
+
+  // ---- Options chosen before a match ----
+  const agingBox = el('aging') as HTMLInputElement;
+  if (mode === 'skirmish' && !saved) {
+    game.aging = params.get('aging') !== '0';
+    agingBox.checked = game.aging;
+    agingBox.addEventListener('change', () => { app.game.aging = agingBox.checked; });
+  }
+
+  // ---- Settings kept between visits ----
+  const prefs = { volume: 0.5, music: true, edge: true, scroll: 1, ...JSON.parse((() => { try { return localStorage.getItem('rtsv-prefs') ?? '{}'; } catch { return '{}'; } })()) };
+  const applyPrefs = () => {
+    sfx.setVolume(prefs.volume);
+    sfx.music = prefs.music;
+    app.input.edgeScroll = prefs.edge;
+    app.input.scrollSpeed = prefs.scroll;
+    try { localStorage.setItem('rtsv-prefs', JSON.stringify(prefs)); } catch { /* storage unavailable */ }
+  };
+  const bind = (id: string, key: 'volume' | 'scroll' | 'music' | 'edge') => {
+    const input = el(id) as HTMLInputElement;
+    if (input.type === 'checkbox') input.checked = prefs[key] as boolean;
+    else input.value = String(prefs[key]);
+    input.addEventListener('input', () => { (prefs[key] as number | boolean) = input.type === 'checkbox' ? input.checked : Number(input.value); applyPrefs(); });
+  };
+  bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll');
+  applyPrefs();
+
+  // ---- Missions ----
+  el('missions').innerHTML = MISSIONS.map((m) => `<button data-mission="${m.id}"><b>${m.name}</b><small>${m.brief}</small></button>`).join('');
+  el('missions').addEventListener('click', (e) => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-mission]')?.dataset.mission;
+    if (id) go(`?mission=${id}`);
+  });
+  el('missions-btn').addEventListener('click', () => el('missions').classList.toggle('hidden'));
+  if (mission) {
+    for (const a of app.ai) a.setLevel(mission.aiLevel ?? 1);
+    app.missionStatus = mission.tick(game);
+    startScreen.classList.add('started', 'battle');
+    startScreen.querySelector('h1')!.textContent = mission.name;
+    startScreen.querySelector('.lead')!.textContent = mission.brief;
+    startScreen.querySelector<HTMLButtonElement>('.levels .resume')!.textContent = 'Begin';
+    el('again-btn').textContent = 'Back to the menu';
   }
 
   if (mode === 'campaign') {

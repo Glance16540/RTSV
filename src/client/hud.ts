@@ -444,6 +444,17 @@ export class Hud {
   // ---- First steps guide ----
 
   private updateGuide(): void {
+    if (this.app.mission) {
+      // A mission shows its own objectives in place of the first-steps tips.
+      const st = this.app.missionStatus;
+      const sig = 'm' + (st ? st.objectives.map((o) => o.text + o.done).join('|') : '') + this.app.paused;
+      if (sig === this.guideSig) return;
+      this.guideSig = sig;
+      const el = $('guide');
+      el.classList.toggle('hidden', !st || this.app.paused);
+      if (st) el.innerHTML = `<h4>${this.app.mission.name}</h4>` + st.objectives.map((o) => `<div class="${o.done ? 'done' : 'now'}">${o.done ? '✓' : '○'} ${o.text}</div>`).join('');
+      return;
+    }
     const { game, pid } = this.app;
     const p = game.players[pid];
     const mine = game.buildings.filter((b) => b.owner === pid);

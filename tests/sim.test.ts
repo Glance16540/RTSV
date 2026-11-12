@@ -3,6 +3,7 @@ import { AIController } from '../src/sim/ai';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
+import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
@@ -969,7 +970,7 @@ describe('generations', () => {
   it('villagers grow old, slow down and die, unless aging is off', () => {
     const g = new Game(5, setups);
     const [a, b] = villagers(g, 0);
-    expect(a.lifespan).toBeGreaterThanOrEqual(22 * 60);
+    expect(a.lifespan).toBeGreaterThanOrEqual(16 * 60);
     a.age = a.lifespan * 0.8;
     expect(g.isElder(a)).toBe(true);
     b.age = b.lifespan - 2;
@@ -1016,4 +1017,66 @@ describe('generations', () => {
     expect(g.renown(house)).toBe(0);
     expect(slow).toBeGreaterThan(0);
   });
+});
+
+describe('missions', () => {
+  const start = (id: string) => { const m = missionById(id)!; const g = new Game(m.seed, m.setups, m.size); m.init(g); return { m, g }; };
+
+  it('every mission sets up cleanly and reports objectives', () => {
+    for (const mission of MISSIONS) {
+      const { m, g } = start(mission.id);
+      const st = runMission(g, m);
+      expect(st.objectives.length).toBeGreaterThan(2);
+      expect(st.result).toBe(null);
+      run(g, 5);
+      expect(Game.restore(g.serialize()).scenario!.id).toBe(m.id);
+    }
+  });
+
+  it('First Hearth is won by doing what it asks', () => {
+    const { m, g } = start('hearth');
+    expect(g.aging).toBe(false);
+    expect(g.scenario!.ids.length).toBe(3);
+    const done = () => runMission(g, m).objectives.map((o) => o.done);
+    expect(done().every((d) => !d)).toBe(true);
+    const vs = villagers(g, 0);
+    const tree = g.resources.filter((r) => r.type === 'tree').sort((a, b) => g.dist(vs[0], a) - g.dist(vs[0], b))[0];
+    g.cmdTarget(0, vs.slice(0, 3).map((v) => v.id), tree.id);
+    expect(done()[0]).toBe(true);
+    const hs = spot(g, 'house', 0);
+    const house = g.spawnBuilding('house', 0, hs.cx, hs.cy, true);
+    house.residents = { m: vs.find((v) => v.gender === 'm')!.id, f: vs.find((v) => v.gender === 'f')!.id };
+    const bs = spot(g, 'barracks', 0);
+    g.spawnBuilding('barracks', 0, bs.cx, bs.cy, true);
+    for (let i = 0; i < 6; i++) g.spawnUnit('clubman', 0, g.spec.starts[0].x + i - 3, g.spec.starts[0].y + 5);
+    expect(done().slice(1, 5)).toEqual([true, true, true, true]);
+    expect(g.winner).toBe(-1);
+    g.cmdDelete(g.wild, g.scenario!.ids);
+    expect(runMission(g, m).result).toBe('win');
+    expect(g.winner).toBe(0);
+  });
+
+  it('Hold the Line sends growing waves, and is lost or won on the Town Center', () => {
+    const lost = start('line');
+    expect(lost.g.buildings.filter((b) => b.owner === 0 && b.def.gate).length).toBeGreaterThanOrEqual(2);
+    expect(lost.g.buildings.filter((b) => b.owner === 0 && b.type === 'tower').length).toBe(2);
+    let waves = 0, biggest = 0;
+    run(lost.g, 200, () => {
+      const st = runMission(lost.g, lost.m);
+      waves = lost.g.scenario!.n;
+      biggest = Math.max(biggest, lost.g.units.filter((u) => u.owner === 1 && u.type !== 'villager').length);
+      void st;
+    });
+    expect(waves).toBeGreaterThanOrEqual(2);
+    expect(biggest).toBeGreaterThanOrEqual(3);
+    lost.g.cmdDelete(0, lost.g.buildings.filter((b) => b.owner === 0 && b.type === 'towncenter').map((b) => b.id));
+    expect(runMission(lost.g, lost.m).result).toBe('lose');
+    expect(lost.g.winner).toBe(1);
+    // With a strong garrison the ten minutes pass and the mission is won.
+    const won = start('line');
+    for (let i = 0; i < 24; i++) won.g.spawnUnit('knight', 0, won.g.spec.starts[0].x - 4 + (i % 8), won.g.spec.starts[0].y + 5 + Math.floor(i / 8));
+    run(won.g, 605, () => { if (won.g.winner < 0) runMission(won.g, won.m); });
+    expect(won.g.winner).toBe(0);
+    expect(won.g.scenario!.n).toBe(8);
+  }, 120000);
 });

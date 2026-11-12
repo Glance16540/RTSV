@@ -8,6 +8,8 @@ import type { App } from './main';
 import { sfx } from './sfx';
 
 export class Input {
+  edgeScroll = true;
+  scrollSpeed = 1;
   private keys = new Set<string>();
   private mx = 0;
   private my = 0;
@@ -313,14 +315,14 @@ export class Input {
     if (this.keys.has('ArrowRight')) dx += 1;
     if (this.keys.has('ArrowUp')) dy += 1;
     if (this.keys.has('ArrowDown')) dy -= 1;
-    if (this.inside && !this.pan && !this.drag?.active && document.hasFocus()) {
+    if (this.edgeScroll && this.inside && !this.pan && !this.drag?.active && document.hasFocus()) {
       const m = 4, w = window.innerWidth, h = window.innerHeight;
       if (this.mx <= m) dx -= 1;
       if (this.mx >= w - m) dx += 1;
       if (this.my <= m) dy += 1;
       if (this.my >= h - m) dy -= 1;
     }
-    if (dx || dy) r.moveCamera(dx * r.dist * dt * 0.9, dy * r.dist * dt * 0.9);
+    if (dx || dy) r.moveCamera(dx * r.dist * dt * 0.9 * this.scrollSpeed, dy * r.dist * dt * 0.9 * this.scrollSpeed);
 
     if (app.placing) {
       const c = this.placeCell(app.placing);

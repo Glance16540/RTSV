@@ -6,6 +6,13 @@ const GAP: Partial<Record<Name, number>> = { hit: 0.07, shot: 0.09, death: 0.12,
 
 class Sfx {
   muted = false;
+  music = true;
+  private volume = 0.5;
+
+  setVolume(v: number): void {
+    this.volume = v;
+    if (this.out) this.out.gain.value = v;
+  }
   private ctx: AudioContext | null = null;
   private out: GainNode | null = null;
   private last = new Map<Name, number>();
@@ -16,7 +23,7 @@ class Sfx {
     try {
       this.ctx = new AudioContext();
       this.out = this.ctx.createGain();
-      this.out.gain.value = 0.5;
+      this.out.gain.value = this.volume;
       this.out.connect(this.ctx.destination);
       this.startMusic();
     } catch {
@@ -29,7 +36,7 @@ class Sfx {
     const scale = [220, 247, 294, 330, 392, 440, 494, 587];
     let i = 3, beat = 0;
     setInterval(() => {
-      if (!this.ctx || this.muted || this.ctx.state !== 'running' || document.hidden) return;
+      if (!this.ctx || this.muted || !this.music || this.ctx.state !== 'running' || document.hidden) return;
       if (beat++ % 8 === 0) this.tone(beat % 16 === 1 ? 110 : 147, 9, 'sine', 0.035);
       if (Math.random() < 0.65) {
         i = Math.max(0, Math.min(scale.length - 1, i + Math.floor(Math.random() * 5) - 2));

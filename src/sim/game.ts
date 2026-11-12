@@ -10,7 +10,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -237,6 +237,8 @@ export class Game {
   humanId = 0;
   /** Villagers grow old and die. Turned off for short Conquest battles. */
   aging = true;
+  /** Progress of a scripted mission, if one is being played: which, a counter, and ids it is tracking. */
+  scenario: { id: string; n: number; ids: number[] } | null = null;
   /** Player id that owns wild animals. */
   wild = -1;
   /** Seeded generator whose state is saved with the game, so a loaded game plays out identically. */
@@ -772,7 +774,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -806,6 +808,7 @@ export class Game {
     g.nextId = d.nextId;
     g.rngState = d.rngState;
     g.aging = d.aging;
+    g.scenario = d.scenario;
     g.vis.set(d.vis);
     g.events = [];
     g.upkeep();
