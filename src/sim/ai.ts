@@ -74,7 +74,7 @@ export class AIController {
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
 
     // Town bell: hide the villagers while raiders are in the village.
-    const raiders = underAttack ? g.units.filter((u) => u.owner !== pid && u.owner !== g.wild && u.def.atk > 3 && Math.hypot(u.x - home.x, u.y - home.y) < 13).length : 0;
+    const raiders = underAttack ? g.units.filter((u) => g.hostile(u.owner, pid) && u.owner !== g.wild && u.def.atk > 3 && Math.hypot(u.x - home.x, u.y - home.y) < 13).length : 0;
     if (!p.bell && raiders >= 3) g.cmdBell(pid, true);
     else if (p.bell && (!p.lastAttacked || g.time - p.lastAttacked.t > 10)) g.cmdBell(pid, false);
 
@@ -181,7 +181,7 @@ export class AIController {
 
     const attackSize = Math.max(4, Math.floor(armyTarget * 0.8));
     if (this.state === 'build') {
-      const clock = g.buildings.some((b) => b.owner !== pid && b.type === 'wonder'); // no time to wait for a full army
+      const clock = g.buildings.some((b) => g.hostile(b.owner, pid) && b.type === 'wonder'); // no time to wait for a full army
       if ((fighters.length >= attackSize && g.time > this.firstAttack && !underAttack) || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
@@ -212,11 +212,11 @@ export class AIController {
     for (const u of army) {
       if (!u.def.mana || u.order?.t === 'cast') continue;
       if (u.mana >= ABILITIES.plague.cost) {
-        const near = g.units.filter((v) => v.owner !== this.pid && v.owner !== g.wild && v.plagueT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
+        const near = g.units.filter((v) => g.hostile(v.owner, this.pid) && v.owner !== g.wild && v.plagueT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
         if (near.length >= 3) { g.cmdCast(this.pid, [u.id], 'plague', near[0].x, near[0].y); continue; }
       }
       if (u.mana >= ABILITIES.quake.cost) {
-        const b = g.buildings.find((v) => v.owner !== this.pid && Math.hypot(v.x - u.x, v.y - u.y) < 11);
+        const b = g.buildings.find((v) => g.hostile(v.owner, this.pid) && Math.hypot(v.x - u.x, v.y - u.y) < 11);
         if (b) g.cmdCast(this.pid, [u.id], 'quake', b.x, b.y);
       }
     }
@@ -255,7 +255,7 @@ export class AIController {
   }
 
   private route(from: Unit, to: Entity): { partial: boolean } {
-    this.game.pf.pass = 2 + this.pid;
+    this.game.pf.pass = 2 + this.game.players[this.pid].team;
     const h = to.kind === 'unit' ? 0 : to.size / 2;
     return this.game.pf.find(from.x, from.y, to.x - h, to.y - h, to.x + h, to.y + h, 1);
   }
@@ -268,12 +268,12 @@ export class AIController {
    */
   private pickTarget(from: Unit): Entity | null {
     // A rival's Wonder is a clock running out: go for it before anything else.
-    const wonder = this.game.buildings.find((b) => b.owner !== this.pid && b.type === 'wonder');
+    const wonder = this.game.buildings.find((b) => this.game.hostile(b.owner, this.pid) && b.type === 'wonder');
     if (wonder) return wonder;
     const cur = this.game.entities.get(this.targetId);
     if (cur && !cur.dead) return cur;
     const d = (b: Entity) => Math.hypot(b.x - from.x, b.y - from.y);
-    const enemy = this.game.buildings.filter((b) => b.owner !== this.pid && !b.def.wall);
+    const enemy = this.game.buildings.filter((b) => this.game.hostile(b.owner, this.pid) && !b.def.wall);
     const done = enemy.filter((b) => b.complete);
     const list = (done.length ? done : enemy).sort((a, b) => d(a) - d(b));
     const pick = list.slice(0, 10).find((b) => !this.route(from, b).partial) ?? list[0] ?? null;

@@ -131,14 +131,15 @@ export class Hud {
       if (ev.player === pid) this.toast(`You have advanced to the ${AGES[game.players[pid].age].name}!`, 'big');
       else this.toast(`${game.players[ev.player].name} has advanced to the ${AGES[game.players[ev.player].age].name}.`);
     } else if (ev.t === 'alert' && ev.player === pid) {
-      this.toast('⚠️ You are under attack!', 'warn');
+      this.toast('⚠️ You are under attack! (Space to look)', 'warn');
       this.alerts.push({ x: ev.x, y: ev.y, t: 0 });
+      this.app.lastAlert = { x: ev.x, y: ev.y };
     } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
-    else if (ev.t === 'defeated' && ev.player !== pid) this.toast(`${game.players[ev.player].name} has been destroyed.`, 'big');
+    else if (ev.t === 'defeated') this.toast(ev.player === pid ? 'Your settlement has fallen. Your ally fights on.' : `${game.players[ev.player].name} has been destroyed.`, 'big');
     else if (ev.t === 'wonder') {
       this.toast(ev.player === pid ? '🗿 Your Wonder is complete. Defend it for five minutes to win!' : `🗿 ${game.players[ev.player].name} has built a Wonder. Destroy it within five minutes!`, ev.player === pid ? 'big' : 'big warn');
     } else if (ev.t === 'gameover') {
-      const win = ev.winner === pid;
+      const win = !game.hostile(ev.winner, pid); // an ally's victory is yours too
       $('end-title').textContent = win ? 'Victory' : 'Defeat';
       const byWonder = game.wonderLeft(ev.winner) === 0;
       $('end-text').textContent = win ? (byWonder ? 'Your Wonder has stood the test. The world acknowledges your people.' : 'Your enemy lies in ruins. Your people will tell this story for ages.')
@@ -370,7 +371,7 @@ export class Hud {
     }
     const owner = game.players[e.owner];
     const mine = e.owner === pid;
-    const tag = mine ? '' : ` <span style="color:${hex(owner.color)}">(${owner.name})</span>`;
+    const tag = mine ? '' : ` <span style="color:${hex(owner.color)}">(${owner.name}${owner.neutral || game.hostile(e.owner, pid) ? '' : ', ally'})</span>`;
     const hp = `${this.bar(e.hp / e.maxHp, 'hp')}<small>${Math.ceil(e.hp)} / ${e.maxHp}</small>`;
     if (e.kind === 'unit') {
       const d = e.def;

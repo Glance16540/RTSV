@@ -10,7 +10,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -155,6 +155,7 @@ export interface Player {
   name: string;
   color: number;
   isAI: boolean;
+  team: number;
   res: Record<ResType, number>;
   /** Unit types that have been re-equipped: training the key now produces the value. */
   upgrades: Record<string, string>;
@@ -193,6 +194,8 @@ export interface PlayerSetup {
   name: string;
   color: number;
   isAI: boolean;
+  /** Players with the same team number are allies. Defaults to everyone for themselves. */
+  team?: number;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
   bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number };
 }
@@ -253,7 +256,7 @@ export class Game {
 
     setups.forEach((s, i) => {
       this.players.push({
-        id: i, name: s.name, color: s.color, isAI: s.isAI,
+        id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i,
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
         defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, stats: newStats(), history: [],
@@ -285,7 +288,7 @@ export class Game {
     });
     this.wild = this.players.length;
     this.players.push({
-      id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, res: { food: 0, wood: 0, gold: 0, stone: 0 },
+      id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
       defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, stats: newStats(), history: [],
     });
@@ -348,11 +351,11 @@ export class Game {
       x: cx + def.size / 2, y: cy + def.size / 2, hp: complete ? def.hp : 1, maxHp: def.hp, dead: false,
       progress: complete ? 1 : 0, complete, queue: [], rallyX: 0, rallyY: 0, rallyId: 0, hasRally: false,
       residents: { m: 0, f: 0 }, birthProgress: 0, birthBlocked: false, birthsPaused: false, family: '', children: 0, cooldown: 0, scanT: 0, workerId: 0, sheltered: [], doneAt: 0,
-      morale: 0, seen: owner === this.humanId,
+      morale: 0, seen: !this.hostile(owner, this.humanId),
     };
     this.entities.set(b.id, b);
     this.buildings.push(b);
-    this.setCells(cx, cy, def.size, def.gate ? 2 + owner : 1, !def.walkable);
+    this.setCells(cx, cy, def.size, def.gate ? 2 + this.players[owner].team : 1, !def.walkable); // gates open for the whole team
     return b;
   }
 
@@ -419,6 +422,11 @@ export class Game {
   }
   private msg(player: number, text: string): void {
     this.events.push({ t: 'msg', player, text });
+  }
+
+  /** True if two owners are enemies. Allies and unowned things (resources) are never hostile. */
+  hostile(a: number, b: number): boolean {
+    return a >= 0 && b >= 0 && this.players[a].team !== this.players[b].team;
   }
 
   /** Distance from a unit to the edge of another entity. */
@@ -490,7 +498,7 @@ export class Game {
     let best: Entity | null = null;
     let bestD = Infinity;
     for (const v of this.unitsNear(x, y, radius, this.scratch)) {
-      if (v.owner === owner || v.def.docile) continue;
+      if (!this.hostile(v.owner, owner) || v.def.docile) continue;
       const d = Math.hypot(v.x - x, v.y - y);
       if (d > radius || d < minRange) continue;
       // Prefer things that fight back over villagers.
@@ -499,7 +507,7 @@ export class Game {
     }
     if (best || owner === this.wild) return best;
     for (const b of this.buildings) {
-      if (b.owner === owner) continue;
+      if (!this.hostile(b.owner, owner)) continue;
       const h = b.size / 2;
       const d = rectDist(x, y, b.x - h, b.y - h, b.x + h, b.y + h);
       if (d > radius || d < minRange) continue;
@@ -636,9 +644,11 @@ export class Game {
       if (t.kind === 'resource') {
         if (villager) this.orderGather(u, t);
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
-      } else if (t.owner !== owner) {
+      } else if (this.hostile(t.owner, owner)) {
         if (u.def.atk > 0) this.setOrder(u, { t: 'attack', id: t.id });
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
+      } else if (t.owner !== owner) {
+        this.setOrder(u, { t: 'move', x: t.x, y: t.y }); // an ally's: just walk over
       } else if (t.kind === 'building' && villager) {
         if (!t.complete || t.hp < t.maxHp) this.setOrder(u, { t: 'build', id: t.id, then: this.job(u) });
         else if (t.type === 'farm') this.orderGather(u, t);
@@ -735,7 +745,7 @@ export class Game {
     g.buildings = d.buildings;
     for (const b of g.buildings) {
       b.def = BUILDINGS[b.type];
-      g.setCells(b.cx, b.cy, b.size, b.def.gate ? 2 + b.owner : 1, !b.def.walkable);
+      g.setCells(b.cx, b.cy, b.size, b.def.gate ? 2 + d.players[b.owner].team : 1, !b.def.walkable);
     }
     g.units = d.units;
     for (const u of g.units) u.def = UNITS[u.type];
@@ -1001,7 +1011,7 @@ export class Game {
       q.t -= DT;
       for (const b of this.buildings.slice()) {
         const h = b.size / 2;
-        if (b.owner === q.owner || rectDist(q.x, q.y, b.x - h, b.y - h, b.x + h, b.y + h) > q.r) continue;
+        if (!this.hostile(b.owner, q.owner) || rectDist(q.x, q.y, b.x - h, b.y - h, b.x + h, b.y + h) > q.r) continue;
         b.hp -= 60 * DT;
         this.players[b.owner].lastAttacked = { x: b.x, y: b.y, t: this.time };
         if (b.hp <= 0) this.kill(b);
@@ -1078,9 +1088,10 @@ export class Game {
         for (const u of this.units.filter((u) => u.owner === p.id)) this.kill(u);
       }
     }
+    // The game ends when only one side is left standing.
     const left = this.players.filter((p) => !p.defeated && !p.neutral);
-    if (left.length === 1 && this.players.length > 2) {
-      this.winner = left[0].id;
+    if (left.length && left.every((p) => p.team === left[0].team) && this.players.some((p) => !p.neutral && p.team !== left[0].team)) {
+      this.winner = (left.find((p) => !p.isAI) ?? left[0]).id;
       this.events.push({ t: 'gameover', winner: this.winner });
     }
   }
@@ -1098,8 +1109,9 @@ export class Game {
           if (dx * dx + dy * dy <= r2) vis[cy * N + cx] = 2;
         }
     };
-    for (const u of this.units) if (u.owner === this.humanId) stamp(u.x, u.y, u.def.sight);
-    for (const b of this.buildings) if (b.owner === this.humanId) stamp(b.x, b.y, (b.complete ? b.def.sight : 2) + b.size / 2);
+    // Allies share what they see.
+    for (const u of this.units) if (!this.hostile(u.owner, this.humanId)) stamp(u.x, u.y, u.def.sight);
+    for (const b of this.buildings) if (!this.hostile(b.owner, this.humanId)) stamp(b.x, b.y, (b.complete ? b.def.sight : 2) + b.size / 2);
     for (const b of this.buildings) {
       if (!b.seen && vis[Math.floor(b.y) * N + Math.floor(b.x)] === 2) b.seen = true;
     }
@@ -1189,7 +1201,7 @@ export class Game {
   }
 
   private updateUnit(u: Unit): void {
-    this.pf.pass = 2 + u.owner; // gates open for their owner only
+    this.pf.pass = 2 + this.players[u.owner].team; // gates open for their own side only
     u.px = u.x;
     u.py = u.y;
     if (u.inside) {
@@ -1277,7 +1289,7 @@ export class Game {
 
       case 'attack': {
         const t = this.entities.get(o.id);
-        if (!t || t.dead || t.owner === u.owner || t.kind === 'resource') { this.setOrder(u, o.then ?? null); break; }
+        if (!t || t.dead || !this.hostile(t.owner, u.owner) || t.kind === 'resource') { this.setOrder(u, o.then ?? null); break; }
         if (o.auto && Math.hypot(u.x - o.ox!, u.y - o.oy!) > LEASH[u.stance]) { this.setOrder(u, { t: 'move', x: o.ox!, y: o.oy! }); break; }
         const d = this.dist(u, t);
         if (u.def.minRange && d < u.def.minRange) {
@@ -1322,7 +1334,7 @@ export class Game {
             u.facing = Math.atan2(o.x - u.x, o.y - u.y);
             if (o.ability === 'plague') {
               for (const v of this.unitsNear(o.x, o.y, a.radius, this.scratch)) {
-                if (v.owner !== u.owner && Math.hypot(v.x - o.x, v.y - o.y) <= a.radius) v.plagueT = 20;
+                if (this.hostile(v.owner, u.owner) && Math.hypot(v.x - o.x, v.y - o.y) <= a.radius) v.plagueT = 20;
               }
               this.events.push({ t: 'plague', x: o.x, y: o.y });
             } else {
@@ -1534,7 +1546,7 @@ export class Game {
       if (m > cap) { px = (px / m) * cap; py = (py / m) * cap; }
       const nx = u.x + px, ny = u.y + py;
       if (nx < 0.5 || ny < 0.5 || nx > N - 0.5 || ny > N - 0.5) continue;
-      this.pf.pass = 2 + u.owner;
+      this.pf.pass = 2 + this.players[u.owner].team;
       if (this.pf.isBlocked(Math.floor(nx), Math.floor(ny))) continue;
       u.x = nx;
       u.y = ny;
@@ -1559,7 +1571,7 @@ export class Game {
       this.hit(u.owner, atk, aura, u.def.cls, u.def.bonus, t, 1);
       if (u.def.splash) {
         for (const v of this.unitsNear(t.x, t.y, u.def.splash, this.scratch.slice())) {
-          if (v.owner !== u.owner && v !== t && Math.hypot(v.x - t.x, v.y - t.y) <= u.def.splash) {
+          if (this.hostile(v.owner, u.owner) && v !== t && Math.hypot(v.x - t.x, v.y - t.y) <= u.def.splash) {
             this.hit(u.owner, atk, aura, u.def.cls, u.def.bonus, v, 0.5);
           }
         }
@@ -1608,11 +1620,11 @@ export class Game {
       p.done = true;
       if (p.splash > 0) {
         for (const v of this.unitsNear(p.x, p.y, p.splash, this.scratch.slice())) {
-          if (v.owner !== p.owner && Math.hypot(v.x - p.x, v.y - p.y) <= p.splash) this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, v, 1);
+          if (this.hostile(v.owner, p.owner) && Math.hypot(v.x - p.x, v.y - p.y) <= p.splash) this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, v, 1);
         }
         for (const b of this.buildings.slice()) {
           const h = b.size / 2;
-          if (b.owner !== p.owner && rectDist(p.x, p.y, b.x - h, b.y - h, b.x + h, b.y + h) <= p.splash * 0.5) {
+          if (this.hostile(b.owner, p.owner) && rectDist(p.x, p.y, b.x - h, b.y - h, b.x + h, b.y + h) <= p.splash * 0.5) {
             this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, b, 1);
           }
         }
@@ -1642,7 +1654,7 @@ export class Game {
 
   /** Free cell next to a building, closest to a desired point. */
   private exitSpot(b: Building, tx: number, ty: number): { x: number; y: number } {
-    this.pf.pass = 2 + b.owner;
+    this.pf.pass = 2 + this.players[b.owner].team;
     let best = { x: b.x, y: b.y + b.size / 2 + 0.5 };
     let bestD = Infinity;
     for (let y = b.cy - 1; y <= b.cy + b.size; y++)
@@ -1749,7 +1761,7 @@ export class Game {
         let bestD = range;
         for (const v of this.unitsNear(b.x, b.y, range, this.scratch)) {
           const d = Math.hypot(v.x - b.x, v.y - b.y);
-          if (v.owner !== b.owner && !v.def.docile && d < bestD) { bestD = d; best = v; }
+          if (this.hostile(v.owner, b.owner) && !v.def.docile && d < bestD) { bestD = d; best = v; }
         }
         if (best) {
           b.cooldown = b.def.cooldown! / (1 + 0.3 * b.sheltered.length); // sheltered villagers help shoot

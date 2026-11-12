@@ -50,8 +50,11 @@ export class App {
     this.casting = null;
   }
 
+  /** Where the last under-attack warning came from. */
+  lastAlert: { x: number; y: number } | null = null;
+
   centerOnSelection(): void {
-    const e = this.game.entities.get(this.sel[0]);
+    const e = this.game.entities.get(this.sel[0]) ?? this.lastAlert; // nothing selected: go to the trouble
     if (e) { this.r.cx = e.x; this.r.cy = e.y; }
   }
 
@@ -123,7 +126,7 @@ export class App {
       this.r.handle(ev);
       this.hud.handle(ev);
       this.sound(ev);
-      if (ev.t === 'gameover') this.onGameOver?.(ev.winner === this.pid);
+      if (ev.t === 'gameover') this.onGameOver?.(!game.hostile(ev.winner, this.pid));
     }
     // Weapon sounds for fights the player can see.
     for (const u of game.units) {
@@ -186,19 +189,26 @@ loadAssets().then(() => {
   if (saved) {
     try { game = Game.restore(saved.game); } catch { saved = null; }
   }
+  // Sides: every tribe for itself, one rival fighting at your side, or all of them against you.
+  const sides = rivals > 1 && ['ally', 'gang'].includes(params.get('teams') ?? '') ? params.get('teams')! : 'ffa';
+  const team = (i: number) => (sides === 'ffa' ? i : i === 0 || (sides === 'ally' && i === 1) ? 0 : 1);
   game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
-  ].slice(0, 1 + rivals), size);
+  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, team: team(i) })), size);
 
   // The map is generated before the menu appears, so a different size means a fresh page.
   const sizeSel = el('map-size') as HTMLSelectElement;
   sizeSel.value = String(game.size);
   const aiSel = el('rivals') as HTMLSelectElement;
   aiSel.value = String(game.players.filter((p) => p.isAI).length);
-  const regenerate = () => go(`?size=${sizeSel.value}&ai=${aiSel.value}`);
+  const teamSel = el('teams') as HTMLSelectElement;
+  teamSel.value = sides;
+  teamSel.disabled = game.players.filter((p) => p.isAI).length < 2;
+  const regenerate = () => go(`?size=${sizeSel.value}&ai=${aiSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
+  teamSel.addEventListener('change', regenerate);
   sizeSel.addEventListener('change', regenerate);
   aiSel.addEventListener('change', regenerate);
   el('conquest-btn').addEventListener('click', () => go(`?campaign=1&ai=${aiSel.value}`));

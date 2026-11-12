@@ -76,7 +76,9 @@ gathered, raised, trained, killed and lost.
 short of. The villager build menu has two pages, settlement and military.
 
 **Rivals and map size.** One to three AI rivals and a Small, Medium or Large map, chosen on the
-start screen. With several rivals it is a free-for-all: they fight each other as well as you.
+start screen. With several rivals you choose the sides: a free-for-all, one rival fighting as
+your ally, or all of them allied against you. Allies share sight, pass through each other's
+gates and win together.
 
 **Saving.** The 💾 button stores the game in your browser, and it autosaves every two minutes.
 *Continue saved game* on the start screen picks it up again.

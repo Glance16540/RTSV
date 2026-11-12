@@ -410,6 +410,58 @@ describe('queued orders', () => {
   });
 });
 
+describe('teams', () => {
+  const four = (teams: number[]) => new Game(9, teams.map((team, i) => ({ name: 'P' + i, color: i + 1, isAI: i > 0, team })));
+
+  it('allies do not fight, share sight and gates, and win together', () => {
+    const g = four([0, 0, 1, 1]);
+    expect(g.hostile(0, 1)).toBe(false);
+    expect(g.hostile(0, 2)).toBe(true);
+    expect(g.hostile(0, g.wild)).toBe(true);
+    // Soldiers of allied players stand side by side; an enemy nearby is attacked by both.
+    const mine = g.spawnUnit('swordsman', 0, 60.5, 60.5), friend = g.spawnUnit('swordsman', 1, 61.5, 60.5);
+    run(g, 3);
+    expect(mine.hp).toBe(mine.maxHp);
+    expect(friend.order).toBe(null);
+    g.cmdTarget(0, [mine.id], friend.id);
+    expect(mine.order?.t).toBe('move'); // cannot be told to attack an ally
+    const foe = g.spawnUnit('villager', 2, 63.5, 60.5, 'm');
+    run(g, 6);
+    expect(foe.dead).toBe(true);
+    // An ally's gate opens for us; an enemy's does not.
+    for (let dx = -3; dx <= 3; dx++) g.spawnBuilding(dx === 0 ? 'gate' : 'palisade', 1, 64 + dx, 70, true);
+    g.pf.pass = 2 + g.players[0].team;
+    expect(g.pf.isBlocked(64, 70)).toBe(false);
+    g.pf.pass = 2 + g.players[2].team;
+    expect(g.pf.isBlocked(64, 70)).toBe(true);
+    // We see what our ally sees.
+    const allyTc = g.buildings.find((b) => b.owner === 1 && b.type === 'towncenter')!;
+    expect(g.vis[Math.floor(allyTc.y) * g.size + Math.floor(allyTc.x)]).toBe(2);
+    // Victory belongs to the side, and the game goes on while an ally stands.
+    g.cmdDelete(2, g.buildings.filter((b) => b.owner === 2).map((b) => b.id));
+    run(g, 2);
+    expect(g.winner).toBe(-1);
+    g.cmdDelete(0, g.buildings.filter((b) => b.owner === 0).map((b) => b.id));
+    run(g, 2);
+    expect(g.players[0].defeated).toBe(true);
+    expect(g.winner).toBe(-1);
+    g.cmdDelete(3, g.buildings.filter((b) => b.owner === 3).map((b) => b.id));
+    run(g, 2);
+    expect(g.winner).toBe(1);
+    expect(g.hostile(g.winner, 0)).toBe(false);
+  });
+
+  it('allied AIs leave each other alone and go for the other side', () => {
+    const g = four([0, 1, 1, 1]);
+    const ais = [1, 2, 3].map((i) => new AIController(g, i));
+    ais.forEach((a) => { a.setLevel(2); });
+    run(g, 60 * 14, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
+    // The three allies never hurt one another's buildings, and the lone player is the one under attack.
+    for (const i of [1, 2, 3]) expect(g.players[i].stats.buildingsLost).toBe(0);
+    expect(g.players[0].defeated || g.players[0].lastAttacked !== null).toBe(true);
+  }, 180000);
+});
+
 describe('upgrades, gunpowder and traits', () => {
   it('an upgrade re-equips existing units and changes what is trained', () => {
     const g = new Game(7, setups);
