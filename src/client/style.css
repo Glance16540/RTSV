@@ -100,6 +100,7 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 #info small { color: var(--muted); }
 #info .hint, .stat { color: var(--muted); }
 #info .good { color: var(--good); }
+#info .bad { color: #e0705a; }
 #info .warn { color: var(--warn); font-weight: 600; }
 .bar { height: 7px; max-width: 300px; margin: 4px 0 2px; background: #000; border: 1px solid #4a3d28; border-radius: 3px; overflow: hidden; }
 .bar > div { height: 100%; background: var(--gold); }

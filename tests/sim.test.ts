@@ -2200,6 +2200,47 @@ describe('the holy town and the work camp', () => {
     expect(d.night).toBe(false);
   });
 
+  it('by night unwatched captives slip away and an unguarded camp of men may rise; guards prevent both', () => {
+    const camped = (men: number, women: number, guards: number) => {
+      const { g, p, tc } = town();
+      p.virtue = -80; p.popCap = 5; // no room for the camp's own children: this is about who gets out
+      const camp = g.spawnBuilding('workcamp', 0, Math.floor(tc.x) - 9, Math.floor(tc.y) + 3, true);
+      const held = (name: string, gender: 'm' | 'f') => ({ from: 1, name, family: '', gender, trait: '', trait2: '', age: 0, lifespan: 9999 });
+      camp.captives = [...Array.from({ length: men }, (_, i) => held('Man' + i, 'm')), ...Array.from({ length: women }, (_, i) => held('Woman' + i, 'f'))];
+      const posted = Array.from({ length: guards }, (_, i) => g.spawnUnit('slaver', 0, camp.x - 1 + i, camp.y + 3));
+      if (guards) g.cmdTarget(0, posted.map((s) => s.id), camp.id);
+      const said: string[] = [];
+      const through = (seconds: number) => run(g, seconds, () => { for (const e of g.events) if (e.t === 'msg') said.push(e.text); g.events.length = 0; });
+      return { g, camp, said, through };
+    };
+    // By day no one gets out, guarded or not.
+    const day = camped(6, 2, 0);
+    day.through(200);
+    expect(day.g.night).toBe(false);
+    expect(day.camp.captives!.length).toBe(8);
+    expect(day.g.unwatched(day.camp)).toBe(8);
+    // Through three nights with no guard, a camp of women loses some of them one by one, and they run for home as themselves.
+    const loose = camped(0, 6, 0);
+    const theirs = loose.g.units.filter((u) => u.owner === 1 && u.type === 'villager').length;
+    loose.through(900);
+    expect(loose.camp.captives!.length).toBeLessThan(6);
+    expect(loose.said.some((t) => t.includes('slipped away'))).toBe(true);
+    expect(loose.said.some((t) => t.includes('risen'))).toBe(false); // it takes men to rise
+    expect(loose.g.units.filter((u) => u.owner === 1 && u.type === 'villager').length).toBeGreaterThanOrEqual(theirs); // those who got out are back among their own, unless cut down on the way
+    expect(loose.g.units.some((u) => u.owner === 1 && u.name.startsWith('Woman'))).toBe(true);
+    // Two guards watch six: no one gets out however many nights pass.
+    const held = camped(3, 3, 2);
+    held.through(900);
+    expect(held.camp.staff!.length).toBe(2);
+    expect(held.g.unwatched(held.camp)).toBe(0);
+    expect(held.camp.captives!.length).toBe(6);
+    // A camp full of unwatched men rises sooner or later: it burns and half of them are gone at a stroke.
+    const risen = camped(10, 0, 0);
+    risen.through(1500);
+    expect(risen.said.some((t) => t.includes('risen'))).toBe(true);
+    expect(risen.camp.dead || risen.camp.hp < risen.camp.maxHp).toBe(true);
+  });
+
   it('a slaver killed on the road loses his captive', () => {
     const { g, p } = town();
     p.virtue = -80;

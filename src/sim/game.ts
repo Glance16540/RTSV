@@ -7,7 +7,7 @@ import {
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { leaningWith } from './temper';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
@@ -1203,6 +1203,44 @@ export class Game {
   }
 
   /** Captives drive the town's work and, held together, still raise children for their captors. */
+  /** How many of a camp's captives its guards cannot keep an eye on. */
+  unwatched(b: Building): number { return Math.max(0, (b.captives?.length ?? 0) - GUARD_WATCH * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)); }
+  /** One captive gets out of a camp and makes for home on foot: they can be run down again on the way. */
+  private breakOut(b: Building, i: number): void {
+    const c = b.captives!.splice(i, 1)[0], home = this.players[c.from];
+    if (!home || home.defeated) return;
+    const at = this.landPf.nearestFree(b.x, b.y + b.size / 2 + 0.8);
+    const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
+    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
+    const tc = this.tcs[c.from]?.[0];
+    if (tc) this.cmdMove(c.from, [v.id], tc.x, tc.y + tc.size / 2 + 1);
+    this.msg(c.from, `${c.name} has got out of the camp and is running for home.`);
+  }
+  /**
+   * What holding people costs. By night, a captive no guard is watching may slip away; and a camp with enough men
+   * unwatched may rise: they fire the place and half of all it holds break out at once. Each guard posted watches
+   * three. (Decided without the game's dice, so the rest of the match is not disturbed by it.)
+   */
+  private campNight(p: Player, b: Building): void {
+    const loose = this.unwatched(b);
+    if (!loose) return;
+    const roll = (salt: number): number => (((this.seed * 31 + b.id * 2654435761 + Math.floor(this.time) * 40503 + salt * 7919) >>> 0) % 100000) / 100000;
+    const menLoose = Math.min(loose, b.captives!.filter((c) => c.gender === 'm').length);
+    if (menLoose >= REVOLT_MEN && roll(1) < 1 / REVOLT_TIME) {
+      const out = Math.ceil(b.captives!.length / 2);
+      for (let k = 0; k < out; k++) this.breakOut(b, b.captives!.length - 1);
+      b.burnT = Math.max(b.burnT, 10);
+      b.hp = Math.max(1, b.hp - b.maxHp * 0.25);
+      this.msg(p.id, `⛓️ The work camp has risen in the night! ${out} captives have broken out and the stockade is burning. Post more guards.`);
+      this.events.push({ t: 'alert', player: p.id, x: b.x, y: b.y });
+      return;
+    }
+    if (roll(2) < 1 / ESCAPE_TIME) { // one at a time, about one a night: a trickle, where a rising is a flood
+      this.breakOut(b, b.captives!.length - 1); // the last brought in is the least watched
+      this.msg(p.id, '⛓️ A captive has slipped away from the work camp in the night. A guard would have seen it.');
+    }
+  }
+
   private updateCamps(p: Player): void {
     p.captives = 0;
     p.captiveMen = 0;
@@ -1220,6 +1258,7 @@ export class Game {
         p.stats.born++;
         this.events.push({ t: 'birth', player: p.id, x: b.x, y: b.y });
       } else if (b.campT > 1) b.campT = 1;
+      if (this.night) this.campNight(p, b);
     }
     if (p.captives) this.shiftVirtue(p.id, (-Math.min(CAPTIVE_CAP, p.captives) * CAPTIVE_VIRTUE) / 60);
   }

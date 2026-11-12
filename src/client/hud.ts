@@ -4,7 +4,7 @@ import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
-import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, GUARD_DRIVE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
+import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, GUARD_DRIVE, GUARD_WATCH, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../sim/map';
 import { ico, setIconLeaning } from './assets';
@@ -504,7 +504,9 @@ export class Hud {
       if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Inside: ${b.sheltered.length}/${b.def.shelter} — Alt+right-click to send units in</div>`;
       if (b.def.guards) {
         const on = b.staff?.length ?? 0;
-        body += `<div class="${on ? 'good' : 'hint'}">🗡️ Guards: ${on}/${b.def.guards} — right-click with Slavers to post them. Each drives the men held here ${(GUARD_DRIVE * 100).toFixed(0)}% harder.</div>`;
+        body += `<div class="${on ? 'good' : 'hint'}">🗡️ Guards: ${on}/${b.def.guards} — right-click with Slavers to post them. Each drives the men held here ${(GUARD_DRIVE * 100).toFixed(0)}% harder and watches ${GUARD_WATCH} captives through the night.</div>`;
+        const loose = game.unwatched(b);
+        if (loose) body += `<div class="bad">⚠️ ${loose} unwatched: by night they may slip away, and enough men unwatched may rise and burn the camp.</div>`;
       }
       if (b.def.camp) {
         const n = b.captives?.length ?? 0;

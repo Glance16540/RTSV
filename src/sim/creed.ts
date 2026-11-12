@@ -31,6 +31,10 @@ export const isHoly = (virtue: number): boolean => virtue >= 30;
 export const isDecadent = (virtue: number): boolean => virtue <= -70;
 export const CAPTURE_TIME = 3; // seconds a Slaver needs to bind a villager
 export const CAPTIVE_WORK = 0.1; // the whole town gathers this much faster, per man held
+export const GUARD_WATCH = 3; // captives one guard can keep an eye on through the night
+export const ESCAPE_TIME = 110; // seconds of night, on average, before a camp with anyone unwatched loses one of them
+export const REVOLT_MEN = 4; // this many men held beyond what the guards can watch, and the camp may rise
+export const REVOLT_TIME = 150; // seconds of night, on average, before such a camp does
 export const GUARD_DRIVE = 0.25; // each Slaver posted at a camp makes its men's work count this much more
 export const CAPTIVE_VIRTUE = 2; // decadence a minute, per captive
 export const CAMP_BIRTH = 110; // seconds for one woman held to add a villager; more women, sooner
