@@ -6,11 +6,12 @@ import {
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { generateMap, MapSpec, NodeType, T_WATER } from './map';
+import { Creed, DILEMMAS, LEANING, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -184,6 +185,12 @@ export interface Player {
   /** The wildlife "player": never wins, loses or builds. */
   neutral: boolean;
   bell: boolean;
+  /** Piety against decadence, -100 to 100. */
+  virtue: number;
+  /** A dilemma waiting for an answer (its id), when the next is due, and how many have been put. */
+  dilemma: string | null;
+  dilemmaT: number;
+  dilemmas: number;
   /** A call for allies to gather at a point. */
   signal: { x: number; y: number; t: number } | null;
   /** Building this player's army is marching on, so allies can join in (AI players). */
@@ -201,6 +208,8 @@ export type GameEvent =
   | { t: 'alert'; player: number; x: number; y: number }
   | { t: 'defeated'; player: number }
   | { t: 'wonder'; player: number }
+  | { t: 'dilemma'; player: number; id: string }
+  | { t: 'creed'; player: number; creed: string }
   | { t: 'oldage'; player: number; name: string }
   | { t: 'signal'; player: number; x: number; y: number }
   | { t: 'gameover'; winner: number };
@@ -293,7 +302,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i, civ: s.civ && CIVS[s.civ] ? s.civ : CIV_IDS[i % CIV_IDS.length],
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, signal: null, attackTarget: 0, stats: newStats(), history: [],
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
       this.heroes.push([]);
@@ -333,7 +342,7 @@ export class Game {
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, civ: '', res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, signal: null, attackTarget: 0, stats: newStats(), history: [],
+      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
     });
     this.heroes.push([]);
     this.tcs.push([]);
@@ -537,7 +546,7 @@ export class Game {
     for (const tc of this.tcs[owner]) {
       if (tc.morale > best && Math.hypot(tc.x - x, tc.y - y) <= MORALE_RADIUS) best = tc.morale;
     }
-    return best * MORALE_PER_HOUSE;
+    return best * MORALE_PER_HOUSE * this.creed(owner).morale;
   }
 
   /** Damage multiplier for an attacker standing near an enemy Strategist. */
@@ -873,7 +882,7 @@ export class Game {
       gender = m <= f ? 'm' : 'f';
     }
     this.pay(p, cost);
-    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time, cost });
+    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train : 1), cost });
     return true;
   }
 
@@ -911,7 +920,7 @@ export class Game {
     if (!this.canAfford(p, cost)) { this.msg(owner, `Not enough resources for ${t.name}.`); return false; }
     this.pay(p, cost);
     p.pending.add(id);
-    b.queue.push({ kind: 'tech', id, t: 0, time: t.time * p.mods.techTime, cost });
+    b.queue.push({ kind: 'tech', id, t: 0, time: t.time * p.mods.techTime * this.creed(owner).research, cost });
     return true;
   }
 
@@ -961,6 +970,56 @@ export class Game {
     return true;
   }
 
+  /** The creed a player's people live by. */
+  creed(owner: number): Creed {
+    return creedOf(this.players[owner]?.virtue ?? 0);
+  }
+
+  private shiftVirtue(owner: number, by: number): void {
+    const p = this.players[owner];
+    const was = this.creed(owner);
+    p.virtue = Math.max(-100, Math.min(100, p.virtue + by));
+    const now = this.creed(owner);
+    if (now !== was) this.events.push({ t: 'creed', player: owner, creed: now.id });
+  }
+
+  /** Once a second: habits pull the scale, and now and then a dilemma is put to each people. */
+  private updateCreeds(): void {
+    if (this.field) return;
+    for (const p of this.players) {
+      if (p.id === this.wild || p.defeated || !this.tcs[p.id]?.length) continue;
+      // Temples and holy folk keep a people pious, a little at a time.
+      const temples = Math.min(2, this.buildings.filter((b) => b.owner === p.id && b.type === 'temple' && b.complete).length);
+      if (temples && p.virtue < 60) this.shiftVirtue(p.id, temples / 120);
+      if (p.dilemma || this.time < p.dilemmaT) continue;
+      // Chosen without the game's dice, so that a match plays out the same with or without them.
+      const pick = (this.seed * 31 + p.id * 17 + p.dilemmas * 7) % DILEMMAS.length;
+      p.dilemma = DILEMMAS[pick].id;
+      p.dilemmas++;
+      if (p.isAI) {
+        const roll = ((this.seed * 13 + p.id * 29 + p.dilemmas * 37) % 100) / 100;
+        const pious = roll < (LEANING[p.civ] ?? 0.5);
+        if (!this.cmdDecide(p.id, pious ? 'a' : 'b')) this.cmdDecide(p.id, pious ? 'b' : 'a');
+        if (p.dilemma) { p.dilemma = null; p.dilemmaT = this.time + 240; }
+      } else this.events.push({ t: 'dilemma', player: p.id, id: p.dilemma });
+    }
+  }
+
+  /** Answer the dilemma before a player: 'a' is the pious course, 'b' the worldly one. */
+  cmdDecide(owner: number, choice: 'a' | 'b'): boolean {
+    const p = this.players[owner];
+    const d = DILEMMAS.find((x) => x.id === p?.dilemma);
+    if (!d) return false;
+    const c = d[choice];
+    for (const r of RES_TYPES) if (p.res[r] + (c.res[r] ?? 0) < 0) { this.msg(owner, `Not enough ${r} for that.`); return false; }
+    for (const r of RES_TYPES) p.res[r] += c.res[r] ?? 0;
+    p.dilemma = null;
+    p.dilemmaT = this.time + 240;
+    this.msg(owner, c.result);
+    this.shiftVirtue(owner, c.virtue);
+    return true;
+  }
+
   /** Sell 100 of a resource for gold, or buy 100 with gold, at a Market. */
   cmdTrade(owner: number, bid: number, res: ResType, dir: 'sell' | 'buy'): boolean {
     const b = this.entities.get(bid);
@@ -970,8 +1029,9 @@ export class Game {
     const cost: Cost = dir === 'sell' ? { [res]: 100 } : { gold: rate.buy };
     if (!this.canAfford(p, cost)) { this.msg(owner, dir === 'sell' ? `Not enough ${res} to sell.` : 'Not enough gold.'); return false; }
     this.pay(p, cost);
-    if (dir === 'sell') p.res.gold += rate.sell;
+    if (dir === 'sell') p.res.gold += Math.round(rate.sell * this.creed(owner).trade);
     else p.res[res] += 100;
+    this.shiftVirtue(owner, -2); // a people that haggles thinks about money
     return true;
   }
 
@@ -1173,7 +1233,7 @@ export class Game {
 
   /** Seconds a house needs for its next child. Each child takes a little longer than the last. */
   birthTime(b: Building): number {
-    return (BIRTH_TIME * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * (1 + 0.1 * this.renown(b)));
+    return (BIRTH_TIME * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * this.creed(b.owner).birth * (1 + 0.1 * this.renown(b)));
   }
 
   // ------------------------------------------------------------------
@@ -1210,6 +1270,7 @@ export class Game {
       if (b && !b.dead) this.updateBuilding(b);
     }
     this.updateProjectiles();
+    if (this.tick % 20 === 0) this.updateCreeds();
     for (const q of this.quakes) {
       q.t -= DT;
       for (const b of this.buildings.slice()) {
@@ -1423,7 +1484,7 @@ export class Game {
     if (u.attackAnim > 0) u.attackAnim -= DT;
     if (u.def.heal) this.updateHealer(u);
     if (u.def.aura && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + 1.5 * DT); // heroes slowly regenerate
-    if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith);
+    if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith * this.creed(u.owner).faith);
     if (u.growT > 0 && (u.growT -= DT) <= 0) this.comeOfAge(u);
     if (this.aging && u.lifespan > 0 && u.growT <= 0 && (u.age += DT) > u.lifespan) {
       this.events.push({ t: 'oldage', player: u.owner, name: `${u.name}${u.family ? ' ' + u.family : ''}` });
@@ -1717,7 +1778,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -1752,7 +1813,7 @@ export class Game {
     }
     if (t && t.kind === 'unit') {
       t.plagueT = 0;
-      t.hp = Math.min(t.maxHp, t.hp + u.def.heal! * this.players[u.owner].mods.heal * DT);
+      t.hp = Math.min(t.maxHp, t.hp + u.def.heal! * this.players[u.owner].mods.heal * this.creed(u.owner).heal * DT);
       if (t.hp >= t.maxHp) u.healTarget = 0;
     }
   }

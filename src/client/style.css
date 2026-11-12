@@ -253,3 +253,19 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 .ow-side .hint { color: var(--muted); font-size: 13px; }
 #ow-status .hint { margin-top: 6px; }
 #end-stats .speech { margin: 0 auto 12px; max-width: 520px; }
+
+#age .creed { cursor: help; color: #e8dcc0; font-weight: 400; }
+#dilemma {
+  position: absolute; top: 96px; right: 14px; width: 330px; padding: 12px 14px; pointer-events: auto;
+  background: rgba(24, 19, 14, 0.94); border: 1px solid var(--gold); border-radius: 6px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+}
+#dilemma h3 { margin: 0 0 4px; font: 600 17px Georgia, serif; color: var(--gold); }
+#dilemma p { margin: 0 0 8px; line-height: 1.35; }
+#dilemma p.hint { margin: 8px 0 0; font-size: 12px; opacity: 0.7; }
+#dilemma button {
+  display: block; width: 100%; text-align: left; margin-top: 6px; padding: 8px 10px; cursor: pointer;
+  background: rgba(60, 46, 28, 0.9); color: #f0e6d0; border: 1px solid var(--edge); border-radius: 4px; font: inherit;
+}
+#dilemma button:hover { border-color: var(--gold); background: rgba(84, 64, 36, 0.95); }
+#dilemma button small { display: block; opacity: 0.8; margin-top: 2px; }
+@media (max-width: 720px) { #dilemma { left: 8px; right: 8px; width: auto; top: 84px; } }

@@ -333,6 +333,22 @@ export class AIController {
     if (gate && g.canPlace('gate', gate.cx, gate.cy)) g.cmdPlace(this.pid, 'gate', gate.cx, gate.cy, []);
   }
 
+  /** Where a landing from this dock would load and come ashore, if its water reaches an enemy shore. Looked up afresh every two minutes. */
+  private plan: { t: number; v: { load: { wx: number; wy: number; lx: number; ly: number }; land: { wx: number; wy: number }; target: { x: number; y: number } } | null } | null = null;
+  private landing(dock: Building): NonNullable<AIController['plan']>['v'] {
+    const g = this.game;
+    if (this.plan && g.time - this.plan.t < 120) return this.plan.v;
+    const team = g.players[this.pid].team;
+    const d = (b: Building) => Math.hypot(b.x - dock.x, b.y - dock.y);
+    const target = g.buildings.filter((b) => g.hostile(b.owner, this.pid) && !b.def.wall && b.owner !== g.wild).sort((a, b) => d(a) - d(b))[0];
+    const from = g.seaPf.nearestFree(dock.x, dock.y);
+    const load = g.shoreSpot(dock.x, dock.y, 9, team, from.x, from.y);
+    const land = target && g.shoreSpot(target.x, target.y, 26, team, from.x, from.y);
+    const ok = target && load && land && Math.hypot(land.wx - load.wx, land.wy - load.wy) >= 20;
+    this.plan = { t: g.time, v: ok ? { load: load!, land: land!, target: { x: target.x, y: target.y } } : null };
+    return this.plan.v;
+  }
+
   /** For every water cell, how many cells of water it is joined to. */
   private waterSizes(): Int32Array {
     const g = this.game, N = g.size, out = new Int32Array(N * N), seen = new Uint8Array(N * N);
@@ -403,12 +419,9 @@ export class AIController {
     if (!dock || p.age < 1 || g.time < this.raidT || underAttack || this.state !== 'build') return;
     const fighters = army.filter((u) => u.def.atk > 0 && !u.def.aura && u.def.cls !== 'siege' && !u.inside);
     if (fighters.length < 8) return;
-    // Is there anywhere to land? Work it out from the dock's own water before paying for a ship.
-    const target = this.pickTarget(fighters[0]);
-    const from = g.seaPf.nearestFree(dock.x, dock.y);
-    const load = g.shoreSpot(dock.x, dock.y, 9, team, from.x, from.y);
-    const land = target && g.shoreSpot(target.x, target.y, 26, team, from.x, from.y);
-    if (!target || !load || !land || Math.hypot(land.wx - load.wx, land.wy - load.wy) < 20) { this.raidT = g.time + 180; return; }
+    const plan = this.landing(dock);
+    if (!plan) { this.raidT = g.time + 180; return; }
+    const { load, land, target } = plan;
     const ship = ships.find((u) => u.def.carry && !u.cargo?.length);
     if (!ship) {
       if (!dock.queue.some((q) => q.kind === 'unit' && q.id === 'transport') && dock.queue.length < 2) g.cmdTrain(pid, dock.id, 'transport');
@@ -465,6 +478,10 @@ export class AIController {
       if (b.order) continue;
       const near = g.findResourceNear(b.x, b.y, 'food', pid, 30, 0, true);
       if (near) g.cmdTarget(pid, [b.id], near.id);
+    }
+    // A transport early, before the town fills up, if there is anywhere to land with it.
+    if (this.level >= 1 && p.age >= 1 && boats.length && !ships.some((u) => u.def.carry) && !queued('transport') && dock.queue.length < 2 && this.landing(dock)) {
+      g.cmdTrain(pid, dock.id, 'transport');
     }
     // Warships once there is something to protect, and the ships to match the age.
     if (this.level >= 1 && p.age >= 1 && boats.length) {

@@ -51,6 +51,16 @@ faster), Swift, Hardy (more health) or Skilled (build faster). Children usually 
 from their mother or father and carry the family name of the house they were born in, so who you
 house together matters.
 
+**Piety and decadence.** Every few minutes a dilemma is put to you: strangers at the gate, a
+gambling den by the market, a prophet calling a fast. The pious answer usually costs something now;
+the worldly one usually pays. Your answers move your people along a scale, and where they stand
+shapes what they are good at. The Devout and Zealous gather faith faster, heal better and hold
+firmer near home, but research slowly and trade badly. The Worldly and Decadent train soldiers
+faster, mine more gold and get better prices, but their faith, healing and morale wither. Temples
+pull a people slowly towards piety and market trading pulls the other way. Rivals answer for
+themselves, each people with its own leaning. Hover over the creed in the top bar to see where
+you stand.
+
 **Unit upgrades.** Research re-equips whole lines at once: Slingers become Bowmen, then
 Crossbowmen, then Musketeers; Clubmen become Swordsmen; Scout Riders become Knights; Catapults
 become Bombards. Existing units change on the spot and new ones are trained in the better form.

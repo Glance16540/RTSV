@@ -4,6 +4,7 @@ import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
+import { Choice, DILEMMAS, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_WATER } from '../sim/map';
 import { ico } from './assets';
@@ -47,6 +48,7 @@ export class Hud {
   private miniT = 0;
   private alerts: { x: number; y: number; t: number }[] = [];
   private hoverBtn = -1;
+  private dilemmaShown: string | null = null;
   private buildPage = 0;
   private guideSig = '';
   private guideOff = false;
@@ -169,7 +171,10 @@ export class Hud {
     else if (ev.t === 'defeated') this.toast(ev.player === pid ? 'Your settlement has fallen. Your ally fights on.' : `${game.players[ev.player].name} has been destroyed.`, 'big');
     else if (ev.t === 'signal' && ev.player !== pid && !game.hostile(ev.player, pid)) this.toast(`📣 ${game.players[ev.player].name} calls for you.`);
     else if (ev.t === 'oldage' && ev.player === pid) this.toast(`🕯️ ${ev.name} has died of old age.`);
-    else if (ev.t === 'wonder') {
+    else if (ev.t === 'creed' && ev.player === pid) {
+      const c = creedOf(game.players[pid].virtue);
+      this.toast(`${c.icon} Your people are now ${c.name}. ${c.desc}`, 'big');
+    } else if (ev.t === 'wonder') {
       if (ev.player !== pid) this.leaderSay(ev.player, 'wonder');
       this.toast(ev.player === pid ? '🗿 Your Wonder is complete. Defend it for five minutes to win!' : `🗿 ${game.players[ev.player].name} has built a Wonder. Destroy it within five minutes!`, ev.player === pid ? 'big' : 'big warn');
     } else if (ev.t === 'gameover') {
@@ -333,7 +338,7 @@ export class Hud {
         for (const r of ['food', 'wood', 'stone'] as ResType[]) {
           const rate = TRADE[r]!;
           out.push(dir === 'sell'
-            ? { id: 'sell' + r, icon: RI(r) + '→', name: `Sell 100 ${r}`, desc: `Receive ${RI('gold')}${rate.sell}.`, cost: { [r]: 100 }, act: () => game.cmdTrade(pid, b.id, r, 'sell') }
+            ? { id: 'sell' + r, icon: RI(r) + '→', name: `Sell 100 ${r}`, desc: `Receive ${RI('gold')}${Math.round(rate.sell * game.creed(pid).trade)}.`, cost: { [r]: 100 }, act: () => game.cmdTrade(pid, b.id, r, 'sell') }
             : { id: 'buy' + r, icon: '→' + RI(r), name: `Buy 100 ${r}`, desc: `Receive ${RI(r)}100.`, cost: { gold: rate.buy }, act: () => game.cmdTrade(pid, b.id, r, 'buy') });
         }
         out.push({ id: '', icon: '', name: '', desc: '', act: () => {} }, { id: '', icon: '', name: '', desc: '', act: () => {} });
@@ -594,17 +599,18 @@ export class Hud {
     const top = [
       RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
         `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
-      `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder,
+      `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder + (game.field ? '' : ` · <span class="creed" title="${this.creedTip(p.virtue)}">${creedOf(p.virtue).icon} ${creedOf(p.virtue).name}</span>`),
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,
       this.app.paused ? '▶' : '⏸',
       this.app.speed + '×',
     ];
+    this.showDilemma(p.dilemma);
     const sig = top.join('#');
     if (sig !== this.topSig) {
       this.topSig = sig;
       $('res').innerHTML = top[0];
-      $('age').textContent = top[1];
+      $('age').innerHTML = top[1];
       $('idle').innerHTML = `🧑‍🌾 <b>${top[2]}</b> idle`;
       $('idle').classList.toggle('dim', idle === 0);
       $('clock').textContent = top[3];
@@ -619,5 +625,34 @@ export class Hud {
 
     for (let i = this.alerts.length - 1; i >= 0; i--) if ((this.alerts[i].t += dt) > 6) this.alerts.splice(i, 1);
     if ((this.miniT -= dt) <= 0) { this.miniT = 0.12; this.drawMinimap(); }
+  }
+  private creedTip(virtue: number): string {
+    const c = creedOf(virtue);
+    const where = virtue > 0 ? `Piety ${Math.round(virtue)}` : virtue < 0 ? `Decadence ${Math.round(-virtue)}` : 'In balance';
+    return `${where} of 100. ${c.desc}` + (c.boons.length ? ` Boons: ${c.boons.join('; ')}. Banes: ${c.banes.join('; ')}.` : ' No boons or banes.');
+  }
+
+  /** Put the dilemma awaiting the player's answer on screen, or take it away once answered. */
+  private showDilemma(id: string | null): void {
+    if (id === this.dilemmaShown) return;
+    this.dilemmaShown = id;
+    const el = $('dilemma');
+    const d = DILEMMAS.find((x) => x.id === id);
+    el.classList.toggle('hidden', !d);
+    if (!d) return;
+    const { game, pid } = this.app;
+    const terms = (c: Choice) => {
+      const parts = RES_TYPES.filter((r) => c.res[r]).map((r) => `${c.res[r]! > 0 ? '+' : '−'}${Math.abs(c.res[r]!)} ${RI(r)}`);
+      parts.push(c.virtue > 0 ? `🙏 piety +${c.virtue}` : `🎭 decadence +${-c.virtue}`);
+      return parts.join(' · ');
+    };
+    el.innerHTML = `<h3>${d.title}</h3><p>${d.text}</p>` +
+      (['a', 'b'] as const).map((k) => `<button data-k="${k}"><b>${d[k].label}</b><small>${terms(d[k])}</small></button>`).join('') +
+      `<p class="hint">How you answer moves your people towards piety or decadence. Each has its boons and banes: hover over ${creedOf(game.players[pid].virtue).icon} at the top.</p>`;
+    el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+      game.cmdDecide(pid, (b as HTMLElement).dataset.k as 'a' | 'b');
+      sfx.play('order');
+    }));
+    sfx.play('alert');
   }
 }
