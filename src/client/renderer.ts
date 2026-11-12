@@ -10,7 +10,7 @@ import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
-import { INK, RAMP, wobble } from './shapes';
+import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
 
 const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
@@ -62,6 +62,7 @@ export class Renderer {
   private ray = new THREE.Raycaster();
   private v3 = new THREE.Vector3();
   private clock = 0;
+  private wallTick = -1;
   private shake = 0;
   private dying: Dying[] = [];
   private drops: Drop[] = [];
@@ -688,7 +689,7 @@ export class Renderer {
   private collapse(g: THREE.Group): void {
     g.updateMatrixWorld(true);
     const parts: THREE.Mesh[] = [];
-    g.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.visible) parts.push(o as THREE.Mesh); });
+    g.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.visible && o.parent?.visible !== false) parts.push(o as THREE.Mesh); });
     const centre = g.position, box = new THREE.Box3().setFromObject(g), top = Math.max(0.5, box.max.y - centre.y);
     for (const m of parts) this.throwPiece(m, centre, top);
     this.scene.remove(g);
@@ -726,7 +727,7 @@ export class Renderer {
     g.updateMatrixWorld(true);
     const keep = new Set<unknown>([g.userData.fire, g.userData.resM, g.userData.resF]);
     const parts: THREE.Mesh[] = [];
-    g.traverse((o) => { if ((o as THREE.Mesh).isMesh && !keep.has(o)) parts.push(o as THREE.Mesh); });
+    g.traverse((o) => { if ((o as THREE.Mesh).isMesh && !keep.has(o) && o.parent?.visible !== false) parts.push(o as THREE.Mesh); });
     if (g.userData.whole === undefined) g.userData.whole = parts.length;
     const want = Math.round((g.userData.whole as number) * (stage === 2 ? 0.4 : 0.16)) - ((g.userData.whole as number) - parts.length);
     const box = new THREE.Box3().setFromObject(g), top = Math.max(0.5, box.max.y - g.position.y);
@@ -762,6 +763,31 @@ export class Renderer {
       d.m.position.y += dt * 0.35;
       (d.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.55 * (1 - d.t / 1.6));
       if (d.t > 1.6) { this.scene.remove(d.m); this.dust.splice(i, 1); }
+    }
+  }
+
+  /**
+   * Walls join up: each wall tile shows an arm toward every neighbouring wall, gate or tower, a gate turns
+   * to stand across its wall, and the heavier post shows only at ends, corners and junctions.
+   */
+  private linkWalls(): void {
+    const N = this.game.size, at = new Set<number>();
+    for (const b of this.game.buildings) if (b.def.wall || b.type === 'tower') at.add(Math.floor(b.y) * N + Math.floor(b.x));
+    if (!at.size) return;
+    for (const b of this.game.buildings) {
+      if (!b.def.wall) continue;
+      const g = this.buildingViews.get(b.id);
+      if (!g) continue;
+      const cx = Math.floor(b.x), cy = Math.floor(b.y), on = WALL_DIRS.map(([dx, dz]) => at.has((cy + dz) * N + cx + dx));
+      if (g.userData.gate) { g.rotation.y = (on[2] || on[6]) && !on[0] && !on[4] ? Math.PI / 2 : 0; continue; }
+      const arms = g.userData.arms as THREE.Group[] | undefined;
+      if (!arms) continue;
+      // A diagonal arm only where no square neighbour already carries the wall round that corner.
+      for (const i of [1, 3, 5, 7]) on[i] = on[i] && !on[i - 1] && !on[(i + 1) % 8];
+      const count = on.filter(Boolean).length;
+      if (count === 0) on[0] = on[4] = true; // a lone piece stands as a short length, not a post
+      arms.forEach((a, i) => { a.visible = on[i]; });
+      (g.userData.pier as THREE.Object3D).visible = !(count === 2 && on.some((v, i) => v && on[(i + 4) % 8]));
     }
   }
 
@@ -831,6 +857,7 @@ export class Renderer {
     this.placeCamera();
     for (const u of game.units) this.syncUnit(u, alpha, dt);
     for (const b of game.buildings) this.syncBuilding(b);
+    if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
     this.updateFog(dt);
     this.scenery.update(this.clock);

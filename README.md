@@ -133,7 +133,9 @@ food. Wolf packs roam the wilds and attack anyone who strays close.
 **Town bell.** Ring it at the Town Center and villagers run to shelter in Town Centers and Watch
 Towers, safe from harm and adding to the arrow fire. Ring the all-clear and they return to work.
 
-**Walls and gates.** Drag out lines of Palisade (Stone Age) or Stone Wall (Bronze Age). Walls
+**Walls and gates.** Drag out lines of Palisade (Stone Age) or Stone Wall (Bronze Age). Each piece
+is drawn reaching toward the walls, gates and towers next to it, so a line reads as one wall, with a
+heavier post at corners and ends; a gate turns to stand across its wall. Walls
 block everyone; a Gate lets only your own units through, so enemies have to break in.
 
 **Garrison.** Alt+right-click a Town Center or Watch Tower to send foot units inside; each one

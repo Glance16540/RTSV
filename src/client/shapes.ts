@@ -607,6 +607,7 @@ function gate(o: Look): THREE.Group {
   bx(g, 1.0, 0.24, 1.0, stone ? m : toon(TIMBER, 'planks'), 0, 1.5, 0);
   bx(g, 0.58, 0.12, 0.3, toon(o.team), 0, 1.3, 0);
   for (const s of [-1, 1]) { const d = bx(g, 0.05, 1.2, 0.28, toon(0x6a4828, 'planks'), s * 0.26, 0.62, 0.3); d.rotation.y = s * 0.5; for (const y of [0.3, 0.95]) bx(g, 0.06, 0.05, 0.29, toon(0x2a2a2e), s * 0.26, y, 0.3).rotation.y = s * 0.5; }
+  g.userData.gate = true;
   return g;
 }
 
@@ -646,9 +647,112 @@ function wonder(o: Look): THREE.Group {
   return g;
 }
 
+/** The eight ways a wall can run on from its own tile, as [dx, dz]: east first, then round by south. */
+export const WALL_DIRS: [number, number][] = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+/**
+ * A wall tile is a post with an arm toward each neighbour. All eight arms are built and the renderer
+ * shows the ones that lead to another wall, gate or tower, so a drawn line reads as one wall.
+ */
+function walled(g: THREE.Group, arm: (a: THREE.Group, len: number) => void, pier: THREE.Object3D): THREE.Group {
+  g.userData.arms = WALL_DIRS.map(([dx, dz]) => {
+    const a = new THREE.Group();
+    a.rotation.y = -Math.atan2(dz, dx);
+    arm(a, Math.hypot(dx, dz) * 0.5);
+    a.visible = dz === 0; // until its neighbours are known it stands as a short straight length
+    g.add(a);
+    return a;
+  });
+  g.userData.pier = pier;
+  return g;
+}
+function palisade(o: Look, seed: number): THREE.Group {
+  const g = new THREE.Group(), wood = toon(o.age >= 1 ? 0x6e4c2c : 0x8a6238, 'planks'), tip = toon(0xb89466);
+  const stake = (p: THREE.Object3D, x: number, z: number, h: number, r = 0.085): void => {
+    mesh(p, new THREE.CylinderGeometry(r * 0.9, r, h, 7), wood, x, h / 2, z);
+    mesh(p, new THREE.ConeGeometry(r * 0.9, 0.2, 7), tip, x, h + 0.1, z);
+  };
+  const pier = new THREE.Group();
+  stake(pier, 0, 0, 1.22, 0.11);
+  mesh(pier, new THREE.CylinderGeometry(0.118, 0.118, 0.07, 8), toon(o.team), 0, 0.92, 0);
+  g.add(pier);
+  stake(g, 0, 0, 1.05);
+  return walled(g, (a, len) => {
+    const n = Math.round(len / 0.165);
+    for (let i = 1; i <= n; i++) stake(a, (i / n) * len, ((i * 7 + seed) % 3 - 1) * 0.012, 0.98 + ((i * 5 + seed) % 4) * 0.045);
+    // Lashed together with two rails on the inner face.
+    for (const y of [0.42, 0.8]) bx(a, len, 0.05, 0.04, toon(TIMBER), len / 2, y, 0.09);
+  }, pier);
+}
+function stonewall(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  const sandy = o.roofKind === 'flat' || o.roofKind === 'dome';
+  const st = toon(sandy ? 0xd2c09a : 0xb8b4aa, 'stone'), capM = toon(sandy ? 0xbfae88 : 0xa29e94, 'stone');
+  const T = 0.44, H = 1.05;
+  walls(g, T, H, T, st);
+  const pier = new THREE.Group();
+  walls(pier, 0.6, 1.3, 0.6, st);
+  bx(pier, 0.66, 0.08, 0.66, capM, 0, 1.3, 0);
+  for (const [x, z] of [[-0.23, -0.23], [0.23, -0.23], [-0.23, 0.23], [0.23, 0.23]]) bx(pier, 0.18, 0.2, 0.18, st, x, 1.44, z);
+  bx(pier, 0.62, 0.09, 0.62, toon(o.team), 0, 1.02, 0);
+  g.add(pier);
+  return walled(g, (a, len) => {
+    bx(a, len, H, T, st, len / 2, H / 2, 0);
+    // A walk along the top between two parapets, each with its battlements.
+    for (const s of [-1, 1]) {
+      bx(a, len, 0.12, 0.09, capM, len / 2, H + 0.06, s * (T / 2 - 0.045));
+      const n = Math.max(1, Math.round(len / 0.25));
+      for (let i = 0; i < n; i++) bx(a, 0.13, 0.16, 0.1, st, ((i + 0.5) / n) * len, H + 0.2, s * (T / 2 - 0.045));
+    }
+  }, pier);
+}
+
+/** The work camp: a stockade round a bare yard, a barred hut, a guard platform over the gate and a post in the middle. */
+function workcamp(o: Look): THREE.Group {
+  const g = new THREE.Group(), wood = toon(0x6a4a2c, 'planks'), dark = toon(TIMBER), iron = toon(0x2e2e34);
+  bx(g, 2.8, 0.05, 2.8, toon(0x6e5c44), 0, 0.025, 0).castShadow = false;
+  const R = 1.36;
+  const stake = (x: number, z: number, i: number): void => {
+    const h = 0.86 + (i % 3) * 0.07;
+    mesh(g, new THREE.CylinderGeometry(0.055, 0.065, h, 6), wood, x, h / 2, z);
+    mesh(g, new THREE.ConeGeometry(0.055, 0.16, 6), toon(0xb89466), x, h + 0.08, z);
+  };
+  let i = 0;
+  for (let k = -R; k <= R + 0.01; k += 0.136) {
+    stake(k, -R, i++); stake(-R, k, i++); stake(R, k, i++);
+    if (Math.abs(k) > 0.34) stake(k, R, i++);
+  }
+  for (const y of [0.3, 0.66]) { bx(g, 2 * R, 0.05, 0.04, dark, 0, y, -R + 0.07); for (const s of [-1, 1]) bx(g, 0.04, 0.05, 2 * R, dark, s * (R - 0.07), y, 0); }
+  // The gate: two tall posts, a bar across, and the owner's colours over it.
+  for (const s of [-1, 1]) mesh(g, new THREE.CylinderGeometry(0.08, 0.09, 1.5, 7), dark, s * 0.38, 0.75, R);
+  bx(g, 0.9, 0.1, 0.1, dark, 0, 1.45, R);
+  cloth(g, o.team, 0.5, 0.34, 0, 1.2, R + 0.06);
+  // The hut: low, plank-built, a barred front and a heavy door.
+  walls(g, 1.5, 0.72, 1.0, wood, -0.5, 0, -0.66);
+  leanTo(g, toon(0x4a3a2a, 'planks'), 1.7, 1.2, -0.5, 0.8, -0.66, 0.18);
+  bx(g, 0.62, 0.36, 0.03, toon(0x18140f), -0.78, 0.44, -0.15);
+  for (let x = -1.04; x <= -0.52; x += 0.105) mesh(g, new THREE.CylinderGeometry(0.014, 0.014, 0.38, 5), iron, x, 0.44, -0.135);
+  pane(g, 'door', 0.34, 0.58, -0.08, 0.3, -0.15);
+  // The guard's platform in the corner, with a ladder up to it.
+  for (const [x, z] of [[0.6, 0.45], [1.15, 0.45], [0.6, 1.0], [1.15, 1.0]]) mesh(g, new THREE.CylinderGeometry(0.04, 0.05, 1.5, 6), dark, x, 0.75, z);
+  bx(g, 0.75, 0.06, 0.75, toon(PLANK, 'planks'), 0.875, 1.5, 0.725);
+  for (const [x, z, w, d] of [[0.875, 0.37, 0.75, 0.04], [0.875, 1.08, 0.75, 0.04], [1.23, 0.725, 0.04, 0.75]]) bx(g, w, 0.05, d, dark, x, 1.8, z);
+  for (const [x, z] of [[0.52, 0.37], [1.23, 0.37], [0.52, 1.08], [1.23, 1.08]]) bx(g, 0.04, 0.3, 0.04, dark, x, 1.66, z);
+  for (const s of [-0.09, 0.09]) bx(g, 0.03, 1.62, 0.03, dark, 0.44, 0.78, 0.725 + s).rotation.z = -0.12;
+  for (let y = 0.2; y < 1.5; y += 0.22) bx(g, 0.03, 0.03, 0.2, dark, 0.44 - (y - 0.78) * 0.12, y, 0.725);
+  banner(g, o.team, 1.15, 1.5, 1.0, 0.8);
+  // The post, the stocks, and what the work is: split stone, a barrow, a pile of chain.
+  mesh(g, new THREE.CylinderGeometry(0.05, 0.06, 0.95, 7), dark, 0.25, 0.475, -0.1);
+  mesh(g, new THREE.TorusGeometry(0.05, 0.014, 5, 10), iron, 0.25, 0.8, -0.04);
+  bx(g, 0.5, 0.22, 0.05, wood, -0.6, 0.48, 0.55); for (const s of [-1, 1]) bx(g, 0.05, 0.6, 0.05, dark, -0.6 + s * 0.22, 0.3, 0.55);
+  for (const [x, z, s] of [[0.9, -0.8, 0.2], [1.1, -0.6, 0.15], [0.75, -0.55, 0.13], [1.0, -1.0, 0.16]]) mesh(g, wobble(new THREE.DodecahedronGeometry(s, 0), 0.03, 3), toon(0xa8a49a, 'stone'), x, s * 0.7, z);
+  mesh(g, new THREE.TorusGeometry(0.09, 0.022, 5, 10).rotateX(Math.PI / 2), iron, 0.1, 0.03, 0.5);
+  mesh(g, new THREE.TorusGeometry(0.07, 0.022, 5, 10).rotateX(Math.PI / 2), iron, 0.16, 0.05, 0.56);
+  return g;
+}
+
 /** Built to their plot exactly, since they stand shoulder to shoulder or lie flat: not resized to fit. */
-const AS_BUILT = new Set(['gate', 'farm']);
-const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, wonder, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
+const AS_BUILT = new Set(['gate', 'farm', 'palisade', 'stonewall']);
+const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, palisade, stonewall, workcamp, wonder, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
 /** A hand-shaped building, sized to fit `size` tiles, or null where there is none yet (or the old one is kept). */
 export function shapedBuilding(type: string, size: number, o: Look, seed: number): THREE.Group | null {
   const make = MAKERS[type];

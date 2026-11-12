@@ -32,8 +32,50 @@ function add(parent: THREE.Object3D, g: THREE.BufferGeometry, color: number, x: 
   parent.add(m);
   return m;
 }
-const box = (p: THREE.Object3D, w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0, em = 0) =>
-  add(p, geo(`b${w},${h},${d}`, () => boxGeo(w, h, d)), color, x, y, z, em);
+const BLADES = new Set([0xd0d4da, 0xe4e8ee]);
+/**
+ * A box, except on a figure, where three things that were once written as boxes are drawn as what they are:
+ * a band round the body (belt, tabard, sash) follows the body round, a band on the head is a helmet or cap
+ * with a brim, and a long bright bar in the hand is a blade with a point, a guard and a pommel.
+ */
+const box = (p: THREE.Object3D, w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0, em = 0): THREE.Mesh => {
+  if (figure && x === 0 && Math.abs(z) <= 0.03 && w >= 0.24 && w <= 0.36 && d >= 0.17 && d <= 0.26 && h <= 0.2 && !p.userData.limb) {
+    if (y < 0.8) {
+      const m = add(p, geo(`band${h}`, () => new THREE.CylinderGeometry(0.5, 0.5, h, 14)), color, x, y, z, em);
+      m.scale.set(w * 0.98, 1, d * 1.04);
+      return m;
+    }
+    const m = add(p, geo('helm', () => new THREE.SphereGeometry(0.5, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)), color, x, y - h / 2 - 0.03, z, em);
+    m.scale.set(w * 0.9, h * 2 + 0.06, w * 0.9);
+    add(m, geo('brim', () => new THREE.CylinderGeometry(0.58, 0.6, 0.06, 14)), color, 0, 0.03, 0, em);
+    return m;
+  }
+  if (figure && p.userData.limb && BLADES.has(color) && w <= 0.06 && h <= 0.08 && d >= 0.4) {
+    const m = add(p, geo(`blade${h},${d}`, () => {
+      const b = new THREE.BoxGeometry(0.016, h, d, 1, 1, 4), pos = b.attributes.position;
+      // Narrowing to a point over the last quarter, and a touch slimmer toward the hilt.
+      for (let i = 0; i < pos.count; i++) { const t = pos.getZ(i) / d + 0.5; pos.setY(i, pos.getY(i) * (t > 0.99 ? 0.05 : t > 0.7 ? 0.8 : 1)); if (t > 0.99) pos.setX(i, 0); }
+      b.computeVertexNormals();
+      return b;
+    }), color, x, y, z, em);
+    const hilt = -d / 2;
+    add(m, geo('grip', () => new THREE.CylinderGeometry(0.016, 0.016, 0.11, 6).rotateX(Math.PI / 2)), 0x3a2a1c, 0, 0, hilt + 0.045);
+    add(m, geo(`guard${h}`, () => new THREE.BoxGeometry(0.03, h * 2.6, 0.026)), 0xb89a4a, 0, 0, hilt + 0.11);
+    add(m, geo('pommel', () => new THREE.SphereGeometry(0.024, 7, 5)), 0xb89a4a, 0, 0, hilt - 0.015);
+    return m;
+  }
+  return add(p, geo(`b${w},${h},${d}`, () => boxGeo(w, h, d)), color, x, y, z, em);
+};
+/** A round shield carried on the off arm: dished, with a rim and a boss. */
+function shield(g: THREE.Object3D, r: number, color: number, x: number, y: number, z: number): THREE.Group {
+  const s = new THREE.Group();
+  s.position.set(x, y, z);
+  add(s, geo('dish', () => new THREE.SphereGeometry(1, 14, 5, 0, Math.PI * 2, 0, Math.PI * 0.32).rotateZ(Math.PI / 2).translate(0.8, 0, 0)), color, 0, 0, 0).scale.set(r * 0.5, r * 1.18, r * 1.18);
+  add(s, geo('rim', () => new THREE.TorusGeometry(1, 0.07, 5, 16).rotateY(Math.PI / 2)), 0x6a5a40, 0.02, 0, 0).scale.setScalar(r);
+  add(s, geo('boss', () => new THREE.SphereGeometry(1, 8, 6)), 0xb8b8c0, -0.05 - r * 0.08, 0, 0).scale.setScalar(r * 0.24);
+  g.add(s);
+  return s;
+}
 /** A rounded limb or body: a capsule r thick and len long overall, standing upright. */
 const cap = (p: THREE.Object3D, r: number, len: number, color: number, x = 0, y = 0, z = 0) =>
   add(p, geo(`k${r},${len}`, () => new THREE.CapsuleGeometry(r, Math.max(0.001, len - r * 2), 3, 8)), color, x, y, z);
@@ -485,10 +527,11 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     }
     case 'deer': {
       const fur = 0xa8743e;
-      box(g, 0.24, 0.26, 0.6, fur, 0, 0.5, 0);
-      const neck = box(g, 0.12, 0.34, 0.14, fur, 0, 0.74, 0.3);
+      cap(g, 0.135, 0.64, fur, 0, 0.5, 0).rotation.x = Math.PI / 2;
+      const neck = cap(g, 0.065, 0.4, fur, 0, 0.74, 0.3);
       neck.rotation.x = 0.4;
-      box(g, 0.13, 0.13, 0.26, fur, 0, 0.9, 0.44);
+      cap(g, 0.07, 0.28, fur, 0, 0.9, 0.44).rotation.x = Math.PI / 2 + 0.2;
+      for (const x of [-0.06, 0.06]) add(g, geo('ear', () => new THREE.ConeGeometry(0.03, 0.09, 4)), fur, x, 0.99, 0.36);
       [[-0.08, 0.22], [0.08, 0.22], [-0.08, -0.22], [0.08, -0.22]].forEach(([x, z], i) => leg(g, 0.05, 0.4, 0x7a5228, x, z, i % 3 ? Math.PI : 0));
       box(g, 0.08, 0.1, 0.06, 0xf0e8d8, 0, 0.56, -0.32);
       if (seed % 2) for (const x of [-0.07, 0.07]) box(g, 0.03, 0.22, 0.03, 0xe8dcc0, x, 1.06, 0.36).rotation.z = x * 5;
@@ -496,12 +539,13 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     }
     case 'wolf': {
       const fur = 0x5c5c62;
-      box(g, 0.24, 0.24, 0.66, fur, 0, 0.4, 0);
-      box(g, 0.2, 0.2, 0.26, fur, 0, 0.52, 0.42);
-      box(g, 0.1, 0.1, 0.16, 0x3a3a40, 0, 0.48, 0.6);
-      for (const x of [-0.07, 0.07]) box(g, 0.05, 0.1, 0.04, 0x3a3a40, x, 0.66, 0.36);
+      cap(g, 0.125, 0.7, fur, 0, 0.4, 0).rotation.x = Math.PI / 2;
+      ball(g, 0.14, fur, 0, 0.44, 0.2);
+      ball(g, 0.115, fur, 0, 0.52, 0.42);
+      cap(g, 0.05, 0.2, 0x3a3a40, 0, 0.48, 0.58).rotation.x = Math.PI / 2;
+      for (const x of [-0.07, 0.07]) add(g, geo('ear', () => new THREE.ConeGeometry(0.03, 0.09, 4)), 0x3a3a40, x, 0.66, 0.36);
       [[-0.08, 0.24], [0.08, 0.24], [-0.08, -0.24], [0.08, -0.24]].forEach(([x, z], i) => leg(g, 0.06, 0.3, 0x4a4a50, x, z, i % 3 ? Math.PI : 0));
-      box(g, 0.07, 0.07, 0.34, fur, 0, 0.44, -0.46).rotation.x = 0.5;
+      cap(g, 0.045, 0.36, fur, 0, 0.42, -0.46).rotation.x = Math.PI / 2 - 0.5;
       break;
     }
     case 'clubman': {
@@ -526,8 +570,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       s.rotation.x = Math.PI / 2 - 0.15;
       const tip = cyl(a, 0, 0.045, 0.16, IRON, 0, -0.14, 1.0, 5);
       tip.rotation.x = Math.PI / 2 - 0.15;
-      const sh = cyl(g, 0.17, 0.17, 0.04, 0x8a6a3a, -0.22, 0.46, 0.1, 10);
-      sh.rotation.z = Math.PI / 2;
+      shield(g, 0.17, 0x8a6a3a, -0.22, 0.46, 0.1);
       break;
     }
     case 'swordsman': {
@@ -535,8 +578,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       box(g, 0.31, 0.12, 0.19, color, 0, 0.5, 0);
       const a = arm(g);
       box(a, 0.04, 0.06, 0.5, 0xd0d4da, 0, -0.26, 0.28);
-      const sh = cyl(g, 0.2, 0.2, 0.05, color, -0.23, 0.46, 0.08, 10);
-      sh.rotation.z = Math.PI / 2;
+      shield(g, 0.2, color, -0.23, 0.46, 0.08);
       break;
     }
     case 'bowman':
@@ -714,8 +756,16 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     case 'shieldbearer': {
       humanoid(g, 0x8a8f96, 0x54585e, 0x777c84);
       box(g, 0.31, 0.12, 0.19, color, 0, 0.5, 0);
-      box(g, 0.5, 0.72, 0.06, color, -0.05, 0.42, 0.2);
-      box(g, 0.44, 0.1, 0.07, IRON, -0.05, 0.42, 0.21);
+      // A tall curved shield held across the front: bowed round the body, bound in iron, with a boss.
+      const ts = new THREE.Group();
+      ts.position.set(-0.05, 0.42, 0.06);
+      const arc = (key: string, h: number, r: number): THREE.BufferGeometry => geo(key, () => new THREE.CylinderGeometry(r, r, h, 10, 1, true, -0.85, 1.7));
+      const face = add(ts, arc('tshield', 0.72, 0.3), color, 0, 0, 0);
+      face.material = (face.material as THREE.Material).clone(); // its own, so only the shield is drawn on both faces
+      (face.material as THREE.Material).side = THREE.DoubleSide;
+      for (const y of [-0.33, 0.33]) add(ts, arc('tband', 0.06, 0.305), IRON, 0, y, 0);
+      add(ts, geo('tboss', () => new THREE.SphereGeometry(0.07, 8, 6)), 0xb8b8c0, 0, 0, 0.3);
+      g.add(ts);
       const a = arm(g);
       box(a, 0.04, 0.05, 0.4, 0xd0d4da, 0, -0.26, 0.22);
       break;
@@ -816,8 +866,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       const a = arm(g);
       cyl(a, 0.02, 0.02, 0.9, WOOD, 0, -0.1, 0.2, 5).rotation.x = Math.PI / 2 - 0.9;
       ball(a, 0.07, 0xffb040, 0, 0.26, 0.5, 0xcc5500).castShadow = false;
-      const sh = cyl(g, 0.18, 0.18, 0.04, 0x8a6a3a, -0.22, 0.46, 0.1, 10);
-      sh.rotation.z = Math.PI / 2;
+      shield(g, 0.18, 0x8a6a3a, -0.22, 0.46, 0.1);
       break;
     }
     case 'firethrower': {
