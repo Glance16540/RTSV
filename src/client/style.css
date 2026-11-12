@@ -251,3 +251,4 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 #ow-speech { min-height: 0; }
 .ow-side .hint { color: var(--muted); font-size: 13px; }
 #ow-status .hint { margin-top: 6px; }
+#end-stats .speech { margin: 0 auto 12px; max-width: 520px; }

@@ -233,7 +233,7 @@ loadAssets().then(() => {
     game = new Game(mission.seed, mission.setups, mission.size);
     mission.init(game);
   }
-  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size) : new Game(seed, [
+  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
@@ -288,7 +288,10 @@ loadAssets().then(() => {
       app.paused = false;
       // The rival's leader has a word as the match begins.
       const foe = app.game.players.find((p) => p.isAI && !p.neutral && app.game.hostile(p.id, app.pid) && !p.name.endsWith(' reserve'));
-      if (first && foe && app.game.time < 1 && (!app.mission || app.mission.aiLevel !== null)) app.hud.leaderSay(foe.id, 'battle');
+      if (first && app.game.time < 1) {
+        app.hud.advisorSay('p_start');
+        if (foe && (!app.mission || app.mission.aiLevel !== null)) setTimeout(() => app.hud.leaderSay(foe.id, 'battle'), 3500);
+      }
     });
   }
 
@@ -298,12 +301,17 @@ loadAssets().then(() => {
     if (!saved) game.aging = false; // a battle is over long before anyone grows old
     startScreen.classList.add('started', 'battle');
     startScreen.querySelector('h1')!.textContent = cfg.title;
-    startScreen.querySelector('.lead')!.textContent = cfg.humanAttacks
-      ? 'Your army has made camp. Destroy every enemy building to take this land.'
-      : 'The enemy is at the gates. Destroy every enemy building to hold this land.';
+    startScreen.querySelector('.lead')!.textContent = cfg.field
+      ? 'The armies have met in open country. There is nothing to build: destroy every enemy soldier. Whoever is left standing marches on.'
+      : cfg.humanAttacks
+        ? 'Your army has made camp. Destroy every enemy building to take this land.'
+        : 'The enemy is at the gates. Destroy every enemy building to hold this land.';
     startScreen.querySelector<HTMLButtonElement>('.levels .resume')!.textContent = saved ? 'Resume the battle' : 'To battle';
     const finish = (won: boolean) => {
-      try { localStorage.setItem(RESULT_KEY, won ? 'win' : 'loss'); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      // Who is still standing decides what is left of the army on the campaign map.
+      const survivors: Record<string, number> = {};
+      for (const u of app.game.units) if (u.owner === app.pid) survivors[u.type] = (survivors[u.type] ?? 0) + 1;
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -359,7 +367,8 @@ loadAssets().then(() => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      finishBattle(c, result === 'win');
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number> };
+      finishBattle(c, r.won, r.survivors);
       if (c.phase === 'ai') continueAI(c);
     }
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);

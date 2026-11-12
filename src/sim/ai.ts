@@ -61,6 +61,7 @@ export class AIController {
     const g = this.game, pid = this.pid;
     const p = g.players[pid];
     if (p.defeated) return;
+    if (g.field) { this.fieldBattle(); return; }
 
     const villagers: Unit[] = [], army: Unit[] = [];
     for (const u of g.units) {
@@ -238,6 +239,27 @@ export class AIController {
         }
       }
     }
+  }
+
+  /**
+   * A field battle has no town to run: gather for a moment, then march the whole army on the
+   * enemy and keep at it until one side is gone.
+   */
+  private fieldBattle(): void {
+    const g = this.game, pid = this.pid;
+    if (g.time < [14, 8, 4][this.level]) return; // give the other side a moment to look at the field
+    if ((this.attackT -= 1) > 0) return;
+    this.attackT = 3;
+    const idle = g.units.filter((u) => u.owner === pid && !u.order);
+    if (!idle.length) return;
+    const lead = idle[0];
+    let target: Unit | null = null, best = Infinity;
+    for (const u of g.units) {
+      if (!g.hostile(u.owner, pid) || u.owner === g.wild) continue;
+      const d = Math.hypot(u.x - lead.x, u.y - lead.y);
+      if (d < best) { best = d; target = u; }
+    }
+    if (target) g.cmdMove(pid, idle.map((u) => u.id), target.x, target.y, true);
   }
 
   /** The enemy building an ally is assaulting, if any: an AI ally's target, or one a human ally's army has reached. */

@@ -139,8 +139,8 @@ export class Overworld {
     };
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
       (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
-        (battleConfig(c)!.setups.length > 2 ? ' Armies from neighbouring land will join the battle.' : '') + ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr, homeEdge(c, p.attacker)) : 1 - winChance(p.aStr, p.dStr, homeEdge(c, p.attacker))) * 100)} times in 100.`,
-      [['Fight the battle', () => this.hooks.fight()], ['Auto-resolve', settle],
+        (battleConfig(c)!.setups.length > 2 ? ' Armies from neighbouring land will join the battle.' : '') + ' A field battle is the two armies alone and is over in minutes; a siege battle has towns to build and takes much longer.' + ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr, homeEdge(c, p.attacker)) : 1 - winChance(p.aStr, p.dStr, homeEdge(c, p.attacker))) * 100)} times in 100.`,
+      [['Field battle', () => { p.mode = 'field'; this.hooks.fight(); }], ['Siege battle', () => { p.mode = 'siege'; this.hooks.fight(); }], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);
   }

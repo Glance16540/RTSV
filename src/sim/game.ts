@@ -10,7 +10,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -258,7 +258,11 @@ export class Game {
   private strategists: Unit[] = [];
   private tcs: Building[][] = [];
 
-  constructor(public seed: number, public setups: PlayerSetup[], size = 96) {
+  /**
+   * @param field A field battle: no towns or villagers, just each side's army. A side is beaten
+   *   when it has no soldiers left.
+   */
+  constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false) {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
     this.spec = generateMap(seed, size, setups.length);
     this.size = size;
@@ -284,12 +288,14 @@ export class Game {
       this.heroes.push([]);
       this.tcs.push([]);
       const st = this.spec.starts[i];
-      this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
       const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
-      this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
-      this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
-      this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
-      this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
+      if (!field) {
+        this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
+        this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
+        this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
+        this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
+      }
       // The founders are not all the same age, so they do not all die in the same minute.
       for (const u of this.units) if (u.owner === i) u.age = this.rng() * 240;
       if (s.bonus) {
@@ -304,7 +310,8 @@ export class Game {
         });
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
-          for (let j = 0; j < n; j++, k++) this.spawnUnit(type, i, st.x - 3.5 + (k % 8), st.y + (5 + Math.floor(k / 8)) * dir);
+          // In a field battle the army forms up where the town would have been.
+          for (let j = 0; j < n; j++, k++) this.spawnUnit(type, i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir);
         }
       }
     });
@@ -316,7 +323,8 @@ export class Game {
     });
     this.heroes.push([]);
     this.tcs.push([]);
-    for (const a of this.spec.animals) this.spawnUnit(a.type, this.wild, a.x, a.y);
+    if (!field) for (const a of this.spec.animals) this.spawnUnit(a.type, this.wild, a.x, a.y);
+    if (field) this.aging = false;
     this.upkeep();
     this.updateVision();
   }
@@ -776,7 +784,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -786,7 +794,7 @@ export class Game {
   static restore(json: string): Game {
     const d = JSON.parse(json);
     if (d.v !== SAVE_VERSION) throw new Error('Incompatible save');
-    const g = new Game(d.seed, d.setups, d.size); // regenerates the same terrain from the seed
+    const g = new Game(d.seed, d.setups, d.size, d.field); // regenerates the same terrain from the seed
     g.entities.clear();
     g.blocked.fill(0);
     g.occupied.fill(0);
@@ -1179,12 +1187,14 @@ export class Game {
       }
     }
     const alive = new Set<number>();
-    for (const b of this.buildings) if (!b.def.wall) alive.add(b.owner);
+    if (this.field) { for (const u of this.units) if (this.isMilitary(u)) alive.add(u.owner); }
+    else for (const b of this.buildings) if (!b.def.wall) alive.add(b.owner);
     for (const p of this.players) {
       if (!p.defeated && !p.neutral && !alive.has(p.id)) {
         p.defeated = true;
         this.events.push({ t: 'defeated', player: p.id });
         for (const u of this.units.filter((u) => u.owner === p.id)) this.kill(u);
+        if (this.field) for (const b of this.buildings.filter((b) => b.owner === p.id)) this.kill(b);
       }
     }
     // The game ends when only one side is left standing.

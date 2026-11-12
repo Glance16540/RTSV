@@ -131,9 +131,14 @@ Each turn you collect supplies from the land you hold and spend them, then march
 neighbouring land.
 
 - **Leaders.** Each rival is led by a named leader who speaks when you first meet, when armies
-  march, when battles are won and lost, and when they fall. All 108 lines are written and shown
+  march, when battles are won and lost, and when they fall. All 216 lines are written and shown
   on screen; recordings dropped into `public/assets/voice/` are played automatically. See
   [docs/VOICE_SCRIPT.md](docs/VOICE_SCRIPT.md) for every line, its filename and voice direction.
+- **Three ways to fight.** A *field battle* is the two armies alone on open ground and is over in
+  minutes. A *siege battle* is a full match with towns to build. Or auto-resolve. After a battle
+  you fight yourself, your army on the map is whatever actually survived it.
+- **Your own leader** speaks for your people when a campaign or match begins, when you win or
+  lose, when your town is attacked and when you reach a new age.
 - **Diplomacy.** Offer a rival a truce; whether they accept depends on their leader's temper,
   who is stronger and whether you have kept your word before. Rivals keep a truce. You may break
   one, but no leader will make another with an oathbreaker. A stronger, greedy neighbour may demand

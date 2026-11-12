@@ -129,6 +129,17 @@ export class Hud {
     setTimeout(() => el.remove(), stay + 800);
   }
 
+  private alertSaid = -100;
+
+  /** The player's own leader speaks to them. */
+  advisorSay(event: LeaderEvent): void {
+    const civ = this.app.game.players[this.app.pid].civ;
+    if (!LEADERS[civ]) return;
+    const s = { civ, event, index: Math.floor(Math.random() * LEADERS[civ].lines[event].length) };
+    this.toast(speechHtml(s), 'leader', true);
+    playLine(s);
+  }
+
   /** A rival leader says something: shown as a banner, and spoken once the line has been recorded. */
   leaderSay(player: number, event: LeaderEvent): void {
     const { game, pid } = this.app;
@@ -145,10 +156,12 @@ export class Hud {
     const { game, pid } = this.app;
     if (ev.t === 'msg' && ev.player === pid) this.toast(ev.text);
     else if (ev.t === 'age') {
-      if (ev.player === pid) this.toast(`You have advanced to the ${AGES[game.players[pid].age].name}!`, 'big');
+      if (ev.player === pid) { this.toast(`You have advanced to the ${AGES[game.players[pid].age].name}!`, 'big'); this.advisorSay('p_ageup'); }
       else { this.toast(`${game.players[ev.player].name} has advanced to the ${AGES[game.players[ev.player].age].name}.`); this.leaderSay(ev.player, 'ageup'); }
     } else if (ev.t === 'alert' && ev.player === pid) {
       this.toast('⚠️ You are under attack! (Space to look)', 'warn');
+      // Your leader does not shout about every skirmish.
+      if (game.time - this.alertSaid > 60 && !game.field) { this.alertSaid = game.time; this.advisorSay('p_alert'); }
       this.alerts.push({ x: ev.x, y: ev.y, t: 0 });
       this.app.lastAlert = { x: ev.x, y: ev.y };
     } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
@@ -165,7 +178,10 @@ export class Hud {
       const byWonder = game.wonderLeft(ev.winner) === 0;
       $('end-text').textContent = win ? (byWonder ? 'Your Wonder has stood the test. The world acknowledges your people.' : 'Your enemy lies in ruins. Your people will tell this story for ages.')
         : byWonder ? `${game.players[ev.winner].name}'s Wonder stood too long.` : 'Your settlement has fallen.';
-      $('end-stats').innerHTML = this.summary();
+      const civ = game.players[pid].civ;
+      const last = { civ, event: (win ? 'p_win' : 'p_loss') as LeaderEvent, index: Math.floor(Math.random() * 2) };
+      $('end-stats').innerHTML = (LEADERS[civ] ? speechHtml(last) : '') + this.summary();
+      playLine(last);
       $('end').classList.remove('hidden');
     }
   }
@@ -463,6 +479,7 @@ export class Hud {
   // ---- First steps guide ----
 
   private updateGuide(): void {
+    if (this.app.game.field) { $('guide').classList.add('hidden'); return; } // nothing to teach in a field battle
     if (this.app.mission) {
       // A mission shows its own objectives in place of the first-steps tips.
       const st = this.app.missionStatus;

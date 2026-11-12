@@ -43,6 +43,16 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `stonekin_demand_2` | They demand tribute from the player | A toll. Everyone who crosses my land pays one. |
 | `stonekin_betray_1` | The player breaks a truce with them | You gave your word. I had it carved. Now I shall have to break the stone. |
 | `stonekin_betray_2` | The player breaks a truce with them | I do not forget. Ask the mountains. |
+| `stonekin_p_start_1` | As the player's own leader: a campaign or match begins | We begin as we always have. One stone, then the next. |
+| `stonekin_p_start_2` | As the player's own leader: a campaign or match begins | The ground is good. Let us build on it. |
+| `stonekin_p_win_1` | As the player's own leader: a battle is won | Good. Now mend what was broken. |
+| `stonekin_p_win_2` | As the player's own leader: a battle is won | They broke on us like water on rock. |
+| `stonekin_p_loss_1` | As the player's own leader: a battle is lost | We have lost ground before. We took it back. |
+| `stonekin_p_loss_2` | As the player's own leader: a battle is lost | Count the dead. Then count the stones we still hold. |
+| `stonekin_p_alert_1` | As the player's own leader: the town is under attack | They are at the walls. Good. That is what walls are for. |
+| `stonekin_p_alert_2` | As the player's own leader: the town is under attack | To the gates. Calmly. |
+| `stonekin_p_ageup_1` | As the player's own leader: a new age is reached | We have earned this, slowly, as we earn everything. |
+| `stonekin_p_ageup_2` | As the player's own leader: a new age is reached | A new age. See that we build it to last. |
 
 ## Khatun Sarnai — Khatun of the Long Grass
 
@@ -76,6 +86,16 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `steppe_demand_2` | They demand tribute from the player | Pay me, and my riders will have somewhere else to be. |
 | `steppe_betray_1` | The player breaks a truce with them | Oh, well played. Now run. |
 | `steppe_betray_2` | The player breaks a truce with them | You broke faith first. Remember that when you hear the hooves. |
+| `steppe_p_start_1` | As the player's own leader: a campaign or match begins | The grass is high and the day is young. Ride! |
+| `steppe_p_start_2` | As the player's own leader: a campaign or match begins | New country! I can smell it. Mount up. |
+| `steppe_p_win_1` | As the player's own leader: a battle is won | Ha! Did you see them run? |
+| `steppe_p_win_2` | As the player's own leader: a battle is won | That is how it is done. Water the horses. |
+| `steppe_p_loss_1` | As the player's own leader: a battle is lost | We lost that one. We will lose them next time, in the hills. |
+| `steppe_p_loss_2` | As the player's own leader: a battle is lost | Scatter, regroup, return. It is what we do. |
+| `steppe_p_alert_1` | As the player's own leader: the town is under attack | Raiders in our camp! The cheek of it. After them! |
+| `steppe_p_alert_2` | As the player's own leader: the town is under attack | They have come to us. How thoughtful. Ride them down. |
+| `steppe_p_ageup_1` | As the player's own leader: a new age is reached | Faster. Always faster. I approve. |
+| `steppe_p_ageup_2` | As the player's own leader: a new age is reached | A new age, and we are first into it. |
 
 ## Mother Elowen Marsh — Hearthmother of the Hearthfolk
 
@@ -109,6 +129,16 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `hearth_demand_2` | They demand tribute from the player | A little grain for my little ones. I am asking nicely. |
 | `hearth_betray_1` | The player breaks a truce with them | I fed your people at my table. Shame on you. |
 | `hearth_betray_2` | The player breaks a truce with them | You looked me in the eye and promised. Remember this, all of you. |
+| `hearth_p_start_1` | As the player's own leader: a campaign or match begins | Here we are, then. Let us make it a home. |
+| `hearth_p_start_2` | As the player's own leader: a campaign or match begins | Light the first fire, dear. The rest follows. |
+| `hearth_p_win_1` | As the player's own leader: a battle is won | Well done, all of you. Now come in and eat. |
+| `hearth_p_win_2` | As the player's own leader: a battle is won | They are gone. Is everyone accounted for? |
+| `hearth_p_loss_1` | As the player's own leader: a battle is lost | Oh, my dears. We will mourn tonight and plant tomorrow. |
+| `hearth_p_loss_2` | As the player's own leader: a battle is lost | We have lost good people. Hold the rest close. |
+| `hearth_p_alert_1` | As the player's own leader: the town is under attack | They are in the village! Ring the bell, get the children inside! |
+| `hearth_p_alert_2` | As the player's own leader: the town is under attack | To your homes, and then to your spears. |
+| `hearth_p_ageup_1` | As the player's own leader: a new age is reached | Look how far we have come from that first fire. |
+| `hearth_p_ageup_2` | As the player's own leader: a new age is reached | A better world for the little ones. Good. |
 
 ## Master Vex Calder — First Artificer of the Forgeborn
 
@@ -142,6 +172,16 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `forge_demand_2` | They demand tribute from the player | Consider it funding. You will benefit eventually. Probably. |
 | `forge_betray_1` | The player breaks a truce with them | Dishonest. And worse, unpredictable. I shall correct for it. |
 | `forge_betray_2` | The player breaks a truce with them | I had you filed under reliable. My error. |
+| `forge_p_start_1` | As the player's own leader: a campaign or match begins | Right. Let us see what can be made of this place. |
+| `forge_p_start_2` | As the player's own leader: a campaign or match begins | An untouched site. Excellent. Begin measuring. |
+| `forge_p_win_1` | As the player's own leader: a battle is won | As designed. Note what worked. |
+| `forge_p_win_2` | As the player's own leader: a battle is won | Efficient. I am almost pleased. |
+| `forge_p_loss_1` | As the player's own leader: a battle is lost | Unacceptable. I want to know exactly what failed. |
+| `forge_p_loss_2` | As the player's own leader: a battle is lost | We will rebuild it. Better, this time. |
+| `forge_p_alert_1` | As the player's own leader: the town is under attack | They are attacking the works! Mind the furnaces! |
+| `forge_p_alert_2` | As the player's own leader: the town is under attack | Intruders. Somebody do something practical about it. |
+| `forge_p_ageup_1` | As the player's own leader: a new age is reached | At last, proper tools. |
+| `forge_p_ageup_2` | As the player's own leader: a new age is reached | Progress. Throw out the old drawings. |
 
 ## High Seer Amaris — Voice of the Dawn Court
 
@@ -175,6 +215,16 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `dawn_demand_2` | They demand tribute from the player | Give, and be spared. I have seen what happens otherwise. |
 | `dawn_betray_1` | The player breaks a truce with them | I saw this as well. I prayed I was mistaken. |
 | `dawn_betray_2` | The player breaks a truce with them | Oathbreaker. Even the sun will turn its face from you. |
+| `dawn_p_start_1` | As the player's own leader: a campaign or match begins | The dawn brought us here. Let us learn why. |
+| `dawn_p_start_2` | As the player's own leader: a campaign or match begins | I have seen what we become. Come, it starts now. |
+| `dawn_p_win_1` | As the player's own leader: a battle is won | It unfolded as I saw it. |
+| `dawn_p_win_2` | As the player's own leader: a battle is won | The light was with us. Give thanks. |
+| `dawn_p_loss_1` | As the player's own leader: a battle is lost | This, too, was in the vision. It is not the last page. |
+| `dawn_p_loss_2` | As the player's own leader: a battle is lost | A dark hour. They do not last. I have checked. |
+| `dawn_p_alert_1` | As the player's own leader: the town is under attack | Shadows at the threshold. Stand firm, the sun is rising. |
+| `dawn_p_alert_2` | As the player's own leader: the town is under attack | They come, as foretold. We are ready, as foretold. |
+| `dawn_p_ageup_1` | As the player's own leader: a new age is reached | A new light rises on our people. |
+| `dawn_p_ageup_2` | As the player's own leader: a new age is reached | The age turns. We turn with it. |
 
 ## Hroth Wolf-Father — First Hunter of the Wildborn
 
@@ -208,5 +258,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `wild_demand_2` | They demand tribute from the player | The pack takes a share. You may choose which. |
 | `wild_betray_1` | The player breaks a truce with them | You bared your throat and then bit. I respect it. I will still kill you. |
 | `wild_betray_2` | The player breaks a truce with them | Now it is a blood debt. The wolves keep count. |
+| `wild_p_start_1` | As the player's own leader: a campaign or match begins | Good country. Much game. We stay. |
+| `wild_p_start_2` | As the player's own leader: a campaign or match begins | Mark the borders. Let the others smell it. |
+| `wild_p_win_1` | As the player's own leader: a battle is won | A clean kill. |
+| `wild_p_win_2` | As the player's own leader: a battle is won | The pack feeds tonight. |
+| `wild_p_loss_1` | As the player's own leader: a battle is lost | We bled. We are not dead. Remember the difference. |
+| `wild_p_loss_2` | As the player's own leader: a battle is lost | Lick the wounds. Then we hunt them. |
+| `wild_p_alert_1` | As the player's own leader: the town is under attack | Something in the den. Kill it. |
+| `wild_p_alert_2` | As the player's own leader: the town is under attack | They hunt us? Here? Show them their mistake. |
+| `wild_p_ageup_1` | As the player's own leader: a new age is reached | We grow. Good. Stay hungry anyway. |
+| `wild_p_ageup_2` | As the player's own leader: a new age is reached | New claws. Use them. |
 
-156 lines in all.
+216 lines in all.

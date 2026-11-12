@@ -685,8 +685,10 @@ describe('conquest campaign', () => {
       expect(new Set(civs).size).toBe(4); // no two factions are the same people
       for (const f of c.factions) expect(f.color).toBe(CIV_COLOR[f.civ]);
       // Each rival leader introduces themselves.
-      expect(c.speech.map((sp) => sp.civ)).toEqual(civs.slice(1));
-      expect(c.speech.every((sp) => sp.event === 'intro' && speechText(sp).length > 10)).toBe(true);
+      // Your own leader opens, then each rival leader introduces themselves.
+      expect(c.speech[0]).toMatchObject({ civ: civs[0], event: 'p_start' });
+      expect(c.speech.slice(1).map((sp) => sp.civ)).toEqual(civs.slice(1));
+      expect(c.speech.slice(1).every((sp) => sp.event === 'intro' && speechText(sp).length > 10)).toBe(true);
     }
     expect(shapes.size).toBeGreaterThanOrEqual(4);
     expect(homes.size).toBeGreaterThan(20);
@@ -704,7 +706,7 @@ describe('conquest campaign', () => {
         l.lines[ev].forEach((_, i) => keys.add(lineKey(l.civ, ev, i)));
       }
     }
-    expect(keys.size).toBe(156);
+    expect(keys.size).toBe(216);
     expect(keys.has('steppe_attack_2')).toBe(true);
     // In a campaign: the player attacks a rival, wins, and finally wipes them out.
     const c = newCampaign(7, 1);
@@ -718,7 +720,7 @@ describe('conquest campaign', () => {
     expect(c.speech.map((sp) => sp.event)).toEqual(['defend']);
     expect(c.speech[0].civ).toBe(c.factions[1].civ);
     finishBattle(c, true);
-    expect(c.speech.map((sp) => sp.event)).toEqual(['defend', 'lose', 'eliminated']);
+    expect(c.speech.map((sp) => sp.event)).toEqual(['defend', 'lose', 'p_win', 'eliminated']);
     expect(c.phase).toBe('over');
     // And when a rival comes for the player and wins.
     const d = newCampaign(7, 1);
@@ -734,7 +736,7 @@ describe('conquest campaign', () => {
     expect(cfg.setups[0].civ).toBe(d.factions[0].civ);
     expect(cfg.setups[1].civ).toBe(d.factions[1].civ);
     finishBattle(d, false);
-    expect(d.speech.map((sp) => sp.event)).toEqual(['attack', 'win']);
+    expect(d.speech.map((sp) => sp.event)).toEqual(['attack', 'win', 'p_loss']);
   });
 
   it('spending, marching, and battles follow the rules', () => {
@@ -1290,5 +1292,58 @@ describe('campaign diplomacy and peoples', () => {
     continueAI(c);
     expect(c.pending?.attacker).toBe(1); // refused: they come at once
     expect(totalStrength(c, 1)).toBeGreaterThan(totalStrength(c, 0));
+  });
+});
+
+describe('field battles', () => {
+  it('have no towns, are fought by the armies alone and end when one is gone', () => {
+    const c = newCampaign(7, 1);
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const army = armyAt(c, home.id)!;
+    army.units = { infantry: 5, archers: 3 };
+    moveArmy(c, army.id, home.adj[0]);
+    c.pending!.mode = 'field';
+    const cfg = battleConfig(c)!;
+    expect(cfg.field).toBe(true);
+    expect(cfg.size).toBe(56);
+    const g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field);
+    expect(g.buildings.length).toBe(0);
+    expect(g.units.some((u) => u.type === 'villager' || u.owner === g.wild)).toBe(false);
+    expect(g.units.filter((u) => u.owner === 0).map((u) => u.type).sort().join()).toBe([...Array(10).fill('clubman'), ...Array(6).fill('slinger'), 'warlord'].join());
+    expect(g.aging).toBe(false);
+    // The enemy marches on us of its own accord, and the fight is settled without anyone building anything.
+    const ai = new AIController(g, 1);
+    ai.setLevel(cfg.level);
+    run(g, 240, () => { if (g.winner < 0) ai.update(); });
+    expect(g.winner).toBeGreaterThanOrEqual(0);
+    expect(g.time).toBeLessThan(240);
+    expect(g.units.some((u) => g.hostile(u.owner, g.winner))).toBe(false);
+    expect(Game.restore(new Game(cfg.seed, cfg.setups, cfg.size, true).serialize()).field).toBe(true);
+  });
+
+  it('what is left of a winning army is what survived the fight', () => {
+    const setup = () => {
+      const c = newCampaign(7, 1);
+      const home = c.territories.find((t) => t.capital === 0)!;
+      const army = armyAt(c, home.id)!;
+      army.units = { infantry: 5, archers: 3 };
+      moveArmy(c, army.id, home.adj[0]);
+      return { c, army };
+    };
+    let { c, army } = setup();
+    finishBattle(c, true, { clubman: 5, slinger: 1, warlord: 1 });
+    expect(army.units).toEqual({ infantry: 3, archers: 1 }); // two clubmen to a company, rounded up
+    expect(army.hero).toBe(true);
+    ({ c, army } = setup());
+    finishBattle(c, true, { clubman: 30 });
+    expect(army.units).toEqual({ infantry: 5 }); // never more than marched in; the archers are gone
+    expect(army.hero).toBe(false);
+    expect(c.factions[0].heroAlive).toBe(false);
+    ({ c, army } = setup());
+    finishBattle(c, true, {});
+    expect(armySize(army)).toBe(1); // a won battle never erases the army
+    ({ c, army } = setup());
+    finishBattle(c, false, { clubman: 9 });
+    expect(c.armies.includes(army)).toBe(false); // a lost attack still costs the army
   });
 });

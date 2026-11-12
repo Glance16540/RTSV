@@ -7,7 +7,7 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 
 export const MAP_W = 1000;
 export const MAP_H = 600;
-export const CAMPAIGN_VERSION = 5;
+export const CAMPAIGN_VERSION = 6;
 
 export const MAX_ARMY = 12; // companies in one army
 export const HERO_COST = 8;
@@ -115,6 +115,8 @@ export interface Pending {
   defender: number; // -1 for locals
   aStr: number;
   dStr: number;
+  /** How the player chose to fight it: armies only on open ground, or a full battle with towns. */
+  mode?: 'field' | 'siege';
 }
 
 export interface Campaign {
@@ -156,6 +158,12 @@ function say(c: Campaign, f: number, event: LeaderEvent): void {
   const fac = c.factions[f];
   if (!fac || !fac.isAI || !LEADERS[fac.civ]) return;
   c.speech.push({ civ: fac.civ, event, index: Math.floor(rand(c) * LEADERS[fac.civ].lines[event].length) });
+}
+
+/** The player's own leader has something to say. */
+function advise(c: Campaign, event: LeaderEvent): void {
+  const civ = c.factions[0]?.civ;
+  if (civ && LEADERS[civ]) c.speech.push({ civ, event, index: Math.floor(rand(c) * LEADERS[civ].lines[event].length) });
 }
 
 function rand(c: { rngState: number }): number {
@@ -246,6 +254,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     c.armies.push({ id: c.nextArmy++, owner: f, at: t.id, units: { infantry: 3 }, hero: true, vet: 0, moved: false });
   });
   c.log.push(`Turn 1. You lead the ${CIVS[mine].name}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
+  advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');
   return c;
 }
@@ -481,7 +490,11 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   }
   c.pending = null;
   // The rival leader has something to say about a battle against the player.
-  if (p.attacker === 0 || p.defender === 0) say(c, p.attacker === 0 ? p.defender : p.attacker, attackerWon === (p.attacker === 0) ? 'lose' : 'win');
+  if (p.attacker === 0 || p.defender === 0) {
+    const won = attackerWon === (p.attacker === 0);
+    say(c, p.attacker === 0 ? p.defender : p.attacker, won ? 'lose' : 'win');
+    advise(c, won ? 'p_win' : 'p_loss');
+  }
   const t = c.territories[p.to];
   const army = c.armies.find((x) => x.id === p.armyId);
   const defArmy = armyAt(c, p.to);
@@ -675,7 +688,7 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
 
 // ---- Real-time battles ----
 
-export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean }
+export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean }
 
 /** Turn the pending battle into a real-time match: each side fields the troops it has on the map. */
 export function battleConfig(c: Campaign): BattleConfig | null {
@@ -683,6 +696,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   if (!p) return null;
   const t = c.territories[p.to];
   const humanAttacks = p.attacker === 0;
+  const field = p.mode === 'field';
   const foe = humanAttacks ? p.defender : p.attacker;
   const attackers = c.armies.find((a) => a.id === p.armyId);
   const defenders = armyAt(c, p.to);
@@ -706,7 +720,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const foeReserve = foe < 0 ? undefined : reserves(c, foe, p.to, p.armyId)[0];
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
-    seed: t.seed, size: 72, level: foe < 0 ? 0 : c.level, humanAttacks,
+    seed: t.seed, size: field ? 56 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field,
     title: humanAttacks ? `The assault on ${t.name}` : `The defence of ${t.name}`,
     setups: [
       { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
@@ -722,9 +736,34 @@ export function battleConfig(c: Campaign): BattleConfig | null {
 }
 
 /** Record the outcome of a battle the player fought in person. */
-export function finishBattle(c: Campaign, playerWon: boolean): void {
+/** Units that fight in person for each company type, e.g. two clubmen for an infantry company. */
+const unitsOf = (type: string): [string, number] => Object.entries(COMPANIES[type].units)[0];
+
+/**
+ * Record the outcome of a battle the player fought in person. If the player won and `survivors`
+ * (their remaining units, by type) is given, their army keeps only the companies that lived
+ * through it, in place of the usual estimate of losses.
+ */
+export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>): void {
   const p = c.pending;
   if (!p) return;
   const humanAttacks = p.attacker === 0;
+  const mine = humanAttacks ? c.armies.find((a) => a.id === p.armyId) : armyAt(c, p.to);
+  const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
+  if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) return;
+  const units: Record<string, number> = {};
+  for (const [type, had] of Object.entries(before.units)) {
+    const [unit, per] = unitsOf(type);
+    const left = Math.min(had, Math.ceil((survivors[unit] ?? 0) / per));
+    if (left > 0) units[type] = left;
+  }
+  // An army is never wiped out by a battle it won: its last company limps home.
+  if (!Object.keys(units).length) units[Object.keys(before.units)[0] ?? 'infantry'] = 1;
+  mine.units = units;
+  if (before.hero && !(survivors.warlord > 0)) {
+    mine.hero = false;
+    c.factions[0].heroAlive = false;
+    c.log.push('Your Warlord fell in the fighting.');
+  }
 }

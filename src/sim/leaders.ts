@@ -17,9 +17,15 @@ export type LeaderEvent =
   | 'truce' // they accept the player's offer of a truce
   | 'refuse' // they turn a truce down
   | 'demand' // they demand tribute from the player
-  | 'betray'; // the player breaks a truce with them
+  | 'betray' // the player breaks a truce with them
+  // Spoken to the player by their own leader:
+  | 'p_start' // a campaign or match begins
+  | 'p_win' // the player wins a battle
+  | 'p_loss' // the player loses a battle
+  | 'p_alert' // the player's town is attacked
+  | 'p_ageup'; // the player advances an age
 
-export const LEADER_EVENTS: LeaderEvent[] = ['intro', 'attack', 'defend', 'win', 'lose', 'eliminated', 'battle', 'ageup', 'wonder', 'truce', 'refuse', 'demand', 'betray'];
+export const LEADER_EVENTS: LeaderEvent[] = ['intro', 'attack', 'defend', 'win', 'lose', 'eliminated', 'battle', 'ageup', 'wonder', 'truce', 'refuse', 'demand', 'betray', 'p_start', 'p_win', 'p_loss', 'p_alert', 'p_ageup'];
 export const EVENT_NOTES: Record<LeaderEvent, string> = {
   intro: 'First meeting on the campaign map',
   attack: "Marching on the player's land",
@@ -34,6 +40,11 @@ export const EVENT_NOTES: Record<LeaderEvent, string> = {
   refuse: 'They turn down a truce',
   demand: 'They demand tribute from the player',
   betray: 'The player breaks a truce with them',
+  p_start: 'As the player\'s own leader: a campaign or match begins',
+  p_win: 'As the player\'s own leader: a battle is won',
+  p_loss: 'As the player\'s own leader: a battle is lost',
+  p_alert: 'As the player\'s own leader: the town is under attack',
+  p_ageup: 'As the player\'s own leader: a new age is reached',
 };
 
 export interface Leader {
@@ -64,6 +75,11 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['No. I have not yet decided what you are.', 'Peace is built slowly. You are in too much of a hurry.'],
       demand: ['You are building on my doorstep. Pay for the stone, and I will overlook it.', 'A toll. Everyone who crosses my land pays one.'],
       betray: ['You gave your word. I had it carved. Now I shall have to break the stone.', 'I do not forget. Ask the mountains.'],
+      p_start: ['We begin as we always have. One stone, then the next.', 'The ground is good. Let us build on it.'],
+      p_win: ['Good. Now mend what was broken.', 'They broke on us like water on rock.'],
+      p_loss: ['We have lost ground before. We took it back.', 'Count the dead. Then count the stones we still hold.'],
+      p_alert: ['They are at the walls. Good. That is what walls are for.', 'To the gates. Calmly.'],
+      p_ageup: ['We have earned this, slowly, as we earn everything.', 'A new age. See that we build it to last.'],
     },
   },
   steppe: {
@@ -83,6 +99,11 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['Peace? I have only just saddled up.', 'Ask me again when you can catch me.'],
       demand: ['Your herds are fat. Send me some and I ride past.', 'Pay me, and my riders will have somewhere else to be.'],
       betray: ['Oh, well played. Now run.', 'You broke faith first. Remember that when you hear the hooves.'],
+      p_start: ['The grass is high and the day is young. Ride!', 'New country! I can smell it. Mount up.'],
+      p_win: ['Ha! Did you see them run?', 'That is how it is done. Water the horses.'],
+      p_loss: ['We lost that one. We will lose them next time, in the hills.', 'Scatter, regroup, return. It is what we do.'],
+      p_alert: ['Raiders in our camp! The cheek of it. After them!', 'They have come to us. How thoughtful. Ride them down.'],
+      p_ageup: ['Faster. Always faster. I approve.', 'A new age, and we are first into it.'],
     },
   },
   hearth: {
@@ -102,6 +123,11 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['Not while my people are still burying theirs.', 'I would like to, dear. I do not trust you yet.'],
       demand: ['We have had a hard winter and you have had a soft one. Share.', 'A little grain for my little ones. I am asking nicely.'],
       betray: ['I fed your people at my table. Shame on you.', 'You looked me in the eye and promised. Remember this, all of you.'],
+      p_start: ['Here we are, then. Let us make it a home.', 'Light the first fire, dear. The rest follows.'],
+      p_win: ['Well done, all of you. Now come in and eat.', 'They are gone. Is everyone accounted for?'],
+      p_loss: ['Oh, my dears. We will mourn tonight and plant tomorrow.', 'We have lost good people. Hold the rest close.'],
+      p_alert: ['They are in the village! Ring the bell, get the children inside!', 'To your homes, and then to your spears.'],
+      p_ageup: ['Look how far we have come from that first fire.', 'A better world for the little ones. Good.'],
     },
   },
   forge: {
@@ -121,6 +147,11 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['The numbers do not favour it. For you, I mean.', 'No. I need to see how the engines perform against you.'],
       demand: ['I require materials. You have them. This need not be complicated.', 'Consider it funding. You will benefit eventually. Probably.'],
       betray: ['Dishonest. And worse, unpredictable. I shall correct for it.', 'I had you filed under reliable. My error.'],
+      p_start: ['Right. Let us see what can be made of this place.', 'An untouched site. Excellent. Begin measuring.'],
+      p_win: ['As designed. Note what worked.', 'Efficient. I am almost pleased.'],
+      p_loss: ['Unacceptable. I want to know exactly what failed.', 'We will rebuild it. Better, this time.'],
+      p_alert: ['They are attacking the works! Mind the furnaces!', 'Intruders. Somebody do something practical about it.'],
+      p_ageup: ['At last, proper tools.', 'Progress. Throw out the old drawings.'],
     },
   },
   dawn: {
@@ -140,6 +171,11 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['I have seen where that road leads. No.', 'It is not written. Not yet.'],
       demand: ['An offering is due. The dawn has shown me exactly how much.', 'Give, and be spared. I have seen what happens otherwise.'],
       betray: ['I saw this as well. I prayed I was mistaken.', 'Oathbreaker. Even the sun will turn its face from you.'],
+      p_start: ['The dawn brought us here. Let us learn why.', 'I have seen what we become. Come, it starts now.'],
+      p_win: ['It unfolded as I saw it.', 'The light was with us. Give thanks.'],
+      p_loss: ['This, too, was in the vision. It is not the last page.', 'A dark hour. They do not last. I have checked.'],
+      p_alert: ['Shadows at the threshold. Stand firm, the sun is rising.', 'They come, as foretold. We are ready, as foretold.'],
+      p_ageup: ['A new light rises on our people.', 'The age turns. We turn with it.'],
     },
   },
   wild: {
@@ -159,6 +195,11 @@ export const LEADERS: Record<string, Leader> = {
       refuse: ['Wolves do not make treaties with sheep.', 'No. I like you better afraid.'],
       demand: ['Leave meat at the forest edge. Or become it.', 'The pack takes a share. You may choose which.'],
       betray: ['You bared your throat and then bit. I respect it. I will still kill you.', 'Now it is a blood debt. The wolves keep count.'],
+      p_start: ['Good country. Much game. We stay.', 'Mark the borders. Let the others smell it.'],
+      p_win: ['A clean kill.', 'The pack feeds tonight.'],
+      p_loss: ['We bled. We are not dead. Remember the difference.', 'Lick the wounds. Then we hunt them.'],
+      p_alert: ['Something in the den. Kill it.', 'They hunt us? Here? Show them their mistake.'],
+      p_ageup: ['We grow. Good. Stay hungry anyway.', 'New claws. Use them.'],
     },
   },
 };
