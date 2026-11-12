@@ -213,7 +213,7 @@ const framed = (o: Look): boolean => (o.roofKind === 'pitched' || o.roofKind ===
 function top(g: THREE.Object3D, o: Look, w: number, d: number, y: number, rise: number, x = 0, z = 0): void {
   if (!pitched(o)) {
     const half = Math.min(w, d) / 2;
-    const r = o.otherRoof(g, half, rise, x, y, z);
+    const r = o.otherRoof(g, half, Math.min(rise, half * 1.4), x, y, z); // kept low enough that a small wing still gets the nation's roof, not a plain peak
     if (w > d) r.scale.x *= w / d; else r.scale.z *= d / w;
     return;
   }
@@ -507,8 +507,24 @@ function logs(g: THREE.Object3D, x: number, z: number, n: number, len = 0.9): vo
 function leanTo(g: THREE.Object3D, m: THREE.Material, w: number, d: number, x: number, y: number, z: number, tilt = 0.25): void {
   bx(g, w, 0.07, d, m, x, y, z).rotation.x = tilt;
 }
-function storehouse(o: Look): THREE.Group {
+function storehouse(o: Look, seed = 0): THREE.Group {
   const g = new THREE.Group();
+  if (seed % 2) {
+    // The other kind: an open-sided barn on posts, the goods stacked under the roof where anyone can reach them.
+    const tim = toon(TIMBER, 'planks');
+    bx(g, 1.9, 0.08, 1.5, toon(0x8a7a5c), 0, 0.04, 0).castShadow = false;
+    for (const x of [-0.82, 0, 0.82]) for (const z of [-0.62, 0.62]) bx(g, 0.1, 1.0, 0.1, tim, x, 0.58, z);
+    walls(g, 1.74, 1.0, 0.08, toon(o.age === 0 ? o.wall : PLANK, 'planks'), 0, 0.08, -0.62);
+    for (const z of [-0.62, 0.62]) bx(g, 1.8, 0.09, 0.09, tim, 0, 1.08, z);
+    for (const x of [-0.82, 0.82]) { const br = bx(g, 0.06, 0.5, 0.06, tim, x * 0.82, 0.9, 0.62); br.rotation.z = x > 0 ? 0.7 : -0.7; }
+    top(g, o, 1.9, 1.5, 1.12, 0.7);
+    bx(g, 1.82, 0.07, 0.1, toon(o.team), 0, 1.0, 0.64);
+    crate(g, 0.34, -0.5, -0.2); crate(g, 0.3, -0.48, -0.18, 0.34, 0.3); crate(g, 0.3, -0.1, -0.25, 0, 0.2); crate(g, 0.26, 0.55, 0.2, 0, 0.5);
+    sack(g, 0.3, -0.3); sack(g, 0.5, -0.32, 0xbfae84); sack(g, 0.4, -0.3, 0xd8c8a0); sack(g, 0.1, 0.3, 0xbfae84);
+    logs(g, -0.2, 0.3, 5, 0.7);
+    barrel(g, 0.62, -0.1, 0.8); barrel(g, 1.12, 0.4, 0.8); barrel(g, -1.1, 0.5, 0.7);
+    return g;
+  }
   walls(g, 1.7, 0.16, 1.4, toon(0xb8b4aa, 'stone'));
   walls(g, 1.6, 0.9, 1.3, o.age >= 3 ? wallMat(o) : toon(o.age === 0 ? o.wall : PLANK, 'planks'), 0, 0.14);
   posts(g, o, 1.6, 0.9, 1.3, 0.14);
