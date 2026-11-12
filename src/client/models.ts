@@ -1150,7 +1150,7 @@ function flag(g: THREE.Object3D, color: number, x: number, y: number, z: number,
  * @param leaning How the owner's town leans: a pious town keeps its church bright and its tavern plain;
  *   a decadent one lets the church fall to ruin and dresses the tavern in lanterns and banners.
  */
-export function makeBuilding(type: string, color: number, age: number, civ = '', leaning: '' | 'holy' | 'low' = ''): THREE.Group {
+export function makeBuilding(type: string, color: number, age: number, civ = '', leaning: '' | 'holy' | 'low' = '', seed = Math.round(Math.random() * 8)): THREE.Group {
   const size = BUILDINGS[type].size;
   const gen = generatedModel(type, age, size * 0.94, 'footprint');
   if (gen) {
@@ -1173,7 +1173,7 @@ export function makeBuilding(type: string, color: number, age: number, civ = '',
   made.set(wall, age === 0 ? 'planks' : age === 2 ? 'stone' : 'plaster');
   made.set(rf, style.roof === 'steep' || (style.roof === 'pitched' && age <= 1) || style.roof === 'yurt' ? 'thatch' : 'tiles');
   made.delete(color);
-  const shaped = shapedBuilding(type, size, { wall, roofColor: rf, team: color, post, age, roofKind: style.roof, leaning, otherRoof: (p, half, h, x, y, z) => roof(p, half, h, rf, x, y, z) }, Math.round(Math.random() * 8));
+  const shaped = shapedBuilding(type, size, { wall, roofColor: rf, team: color, post, age, roofKind: style.roof, leaning, otherRoof: (p, half, h, x, y, z) => roof(p, half, h, rf, x, y, z) }, seed);
   if (shaped) return shaped;
   switch (type) {
     case 'towncenter': {

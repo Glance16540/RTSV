@@ -230,24 +230,94 @@ function posts(g: THREE.Object3D, o: Look, w: number, h: number, d: number, y0 =
   else if (o.age >= 1) for (const sx of [-1, 1]) for (const sz of [-1, 1]) bx(g, 0.14, h, 0.14, toon(o.post, 'plaster'), sx * w / 2, y0 + h / 2, sz * d / 2);
 }
 
+/** What stands beside a house: each has one or two of these, so no two plots look the same. */
+function yard(g: THREE.Object3D, o: Look, pick: number, x: number, z: number): void {
+  const k = ((pick % 5) + 5) % 5;
+  if (k === 0) for (let i = 0; i < 5; i++) mesh(g, new THREE.CylinderGeometry(0.05, 0.05, 0.4, 6).rotateX(Math.PI / 2), toon(TIMBER), x, 0.06 + Math.floor(i / 3) * 0.1, z - 0.1 + (i % 3) * 0.11 + Math.floor(i / 3) * 0.05);
+  else if (k === 1) barrel(g, x, z, 0.8);
+  else if (k === 2) {
+    // A vegetable patch: dark turned earth and rows of green.
+    bx(g, 0.5, 0.04, 0.6, toon(0x5a4630), x, 0.02, z).castShadow = false;
+    for (let i = 0; i < 6; i++) mesh(g, new THREE.SphereGeometry(0.045, 6, 5), toon(i % 3 ? 0x5a9a3a : 0x8ab04a), x - 0.13 + (i % 2) * 0.26, 0.07, z - 0.2 + Math.floor(i / 2) * 0.2).castShadow = false;
+  } else if (k === 3) {
+    // A washing line between two poles.
+    for (const dz of [-0.3, 0.3]) mesh(g, new THREE.CylinderGeometry(0.018, 0.022, 0.6, 5), toon(TIMBER), x, 0.3, z + dz);
+    bx(g, 0.01, 0.01, 0.6, toon(0xd8d0c0), x, 0.57, z);
+    [0xf0ece0, o.team, 0xc8a878].forEach((c, i) => { bx(g, 0.012, 0.17, 0.13, toon(c), x, 0.48, z - 0.18 + i * 0.18).castShadow = false; });
+  } else {
+    // A well: a ring of stone, a little roof on two posts, a bucket.
+    mesh(g, new THREE.CylinderGeometry(0.16, 0.18, 0.22, 10), toon(0xb8b4aa, 'stone'), x, 0.11, z);
+    mesh(g, new THREE.CylinderGeometry(0.12, 0.12, 0.02, 10), toon(0x2a3a4a), x, 0.215, z);
+    for (const dx of [-0.15, 0.15]) bx(g, 0.03, 0.42, 0.03, toon(TIMBER), x + dx, 0.4, z);
+    gable(g, 0.3, 0.26, 0.12, 0.6, toon(o.roofColor, 'thatch'), null, x, z, 0.06, 0.04);
+  }
+}
+/** A house. Each nation builds four kinds under its own roof; which one a plot gets, and what is in its yard, varies. */
 function house(o: Look, seed: number): THREE.Group {
-  const g = new THREE.Group();
-  walls(g, 1.9, 0.2, 1.5, toon(0xb8b4aa, 'stone'));
-  walls(g, 1.8, 0.95, 1.4, wallMat(o), 0, 0.18);
-  posts(g, o, 1.8, 0.95, 1.4, 0.18);
-  top(g, o, 1.8, 1.4, 1.13, 0.85);
-  if (pitched(o)) chimney(g, 0.55, 1.3, -0.3, 0.8);
-  pane(g, 'door', 0.36, 0.66, 0, 0.53, 0.71);
-  bx(g, 0.5, 0.06, 0.24, toon(0xb8b4aa, 'stone'), 0, 0.03, 0.86);
-  bx(g, 0.5, 0.05, 0.2, toon(o.team), 0, 0.92, 0.8).rotation.x = 0.35;
-  // Lit windows show which residents have moved in: blue for the man, pink for the woman.
-  const m = bx(g, 0.28, 0.3, 0.05, toon(0x4aa3ff, '', 0x2a6ac0), -0.55, 0.7, 0.71);
-  const f = bx(g, 0.28, 0.3, 0.05, toon(0xff7ab8, '', 0xc04a80), 0.55, 0.7, 0.71);
-  m.castShadow = f.castShadow = false;
-  g.userData.resM = m; g.userData.resF = f;
-  for (const z of [0.1, -0.4]) pane(g, 'window', 0.3, 0.38, 0.91, 0.72, z, Math.PI / 2);
-  if (seed % 2) for (let i = 0; i < 5; i++) mesh(g, new THREE.CylinderGeometry(0.05, 0.05, 0.4, 6).rotateX(Math.PI / 2), toon(TIMBER), -1.08, 0.06 + Math.floor(i / 3) * 0.1, 0.2 + (i % 3) * 0.11 + Math.floor(i / 3) * 0.05);
-  else barrel(g, -1.1, 0.3, 0.8);
+  const g = new THREE.Group(), kind = seed % 4, stone = toon(0xb8b4aa, 'stone');
+  const lamps = (x: number, y: number, z: number, gap: number): void => {
+    // Lit windows show which residents have moved in: blue for the man, pink for the woman.
+    const m = bx(g, 0.28, 0.3, 0.05, toon(0x4aa3ff, '', 0x2a6ac0), x - gap, y, z);
+    const f = bx(g, 0.28, 0.3, 0.05, toon(0xff7ab8, '', 0xc04a80), x + gap, y, z);
+    m.castShadow = f.castShadow = false;
+    g.userData.resM = m; g.userData.resF = f;
+  };
+  const door = (x: number, z: number): void => {
+    pane(g, 'door', 0.36, 0.66, x, 0.53, z);
+    bx(g, 0.5, 0.06, 0.24, stone, x, 0.03, z + 0.15);
+    bx(g, 0.5, 0.05, 0.2, toon(o.team), x, 0.92, z + 0.09).rotation.x = 0.35;
+  };
+  if (kind === 0) {
+    // The plain cottage.
+    walls(g, 1.9, 0.2, 1.5, stone);
+    walls(g, 1.8, 0.95, 1.4, wallMat(o), 0, 0.18);
+    posts(g, o, 1.8, 0.95, 1.4, 0.18);
+    top(g, o, 1.8, 1.4, 1.13, 0.85);
+    if (pitched(o)) chimney(g, 0.55, 1.3, -0.3, 0.8);
+    door(0, 0.71); lamps(0, 0.7, 0.71, 0.55);
+    for (const z of [0.1, -0.4]) pane(g, 'window', 0.3, 0.38, 0.91, 0.72, z, Math.PI / 2);
+    yard(g, o, seed, -1.12, 0.3);
+  } else if (kind === 1) {
+    // Two rooms at a corner: a main range and a wing coming forward, each under its own roof.
+    walls(g, 1.5, 0.2, 1.1, stone, -0.15, 0, -0.35); walls(g, 0.9, 0.2, 1.0, stone, 0.45, 0, 0.5);
+    walls(g, 1.4, 0.95, 1.0, wallMat(o), -0.15, 0.18, -0.35);
+    posts(g, o, 1.4, 0.95, 1.0, 0.18);
+    walls(g, 0.8, 0.85, 0.95, wallMat(o), 0.45, 0.18, 0.5);
+    top(g, o, 1.4, 1.0, 1.13, 0.8, -0.15, -0.35);
+    top(g, o, 0.8, 1.0, 1.03, 0.62, 0.45, 0.48);
+    if (pitched(o)) chimney(g, -0.6, 1.25, -0.5, 0.8);
+    door(-0.4, 0.16); lamps(0.45, 0.66, 0.98, 0.17);
+    pane(g, 'window', 0.3, 0.38, -0.86, 0.72, -0.35, Math.PI / 2);
+    yard(g, o, seed + 2, -0.55, 0.75); yard(g, o, seed + 4, 1.05, -0.4);
+  } else if (kind === 2) {
+    // Tall and narrow: two floors, the upper one jutting out over the door.
+    walls(g, 1.5, 0.2, 1.4, stone);
+    walls(g, 1.35, 0.9, 1.25, wallMat(o, false), 0, 0.18);
+    bx(g, 1.55, 0.08, 1.45, toon(TIMBER, 'planks'), 0, 1.1, 0);
+    walls(g, 1.5, 0.8, 1.4, wallMat(o), 0, 1.14);
+    posts(g, o, 1.5, 0.8, 1.4, 1.14);
+    top(g, o, 1.4, 1.5, 1.94, 0.8);
+    if (pitched(o)) chimney(g, 0.4, 2.0, -0.4, 0.8);
+    door(0, 0.635); lamps(0, 1.52, 0.71, 0.4);
+    pane(g, 'window', 0.26, 0.34, 0.5, 0.66, 0.635);
+    for (const z of [0.3, -0.3]) pane(g, 'window', 0.28, 0.36, 0.76, 1.52, z, Math.PI / 2);
+    yard(g, o, seed + 1, -1.0, 0.35); yard(g, o, seed + 3, 1.0, 0.4);
+  } else {
+    // A long low cottage with a lean-to store on the end.
+    walls(g, 2.0, 0.16, 1.2, stone, -0.1, 0, -0.1);
+    walls(g, 1.9, 0.8, 1.1, wallMat(o), -0.1, 0.14, -0.1);
+    posts(g, o, 1.9, 0.8, 1.1, 0.14);
+    top(g, o, 1.9, 1.1, 0.94, 0.7, -0.1, -0.1);
+    if (pitched(o)) chimney(g, -0.7, 1.0, -0.2, 0.75);
+    walls(g, 0.5, 0.6, 0.9, toon(0x8a6238, 'planks'), 1.1, 0, -0.1);
+    leanTo(g, toon(0x6a4a2c, 'planks'), 0.62, 1.0, 1.1, 0.66, -0.1, 0);
+    g.children[g.children.length - 1].rotation.set(0, 0, -0.3);
+    door(-0.5, 0.46); lamps(0.25, 0.6, 0.46, 0.2);
+    pane(g, 'window', 0.28, 0.34, -1.06, 0.6, -0.1, Math.PI / 2);
+    yard(g, o, seed + 2, 0.3, 0.95); yard(g, o, seed + 4, -0.9, 0.9);
+  }
+  // Half of them stand the other way round.
+  if (seed % 2) g.scale.x = -1;
   return g;
 }
 function hall(o: Look): THREE.Group {

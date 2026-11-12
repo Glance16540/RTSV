@@ -852,7 +852,7 @@ export class Renderer {
     // Rebuilt whole when it is repaired, or when the town's leaning changes.
     if (g && (g.userData.lean !== lean || hurt < ((g.userData.hurt as number) ?? 0))) { this.scene.remove(g); g = undefined; }
     if (!g) {
-      g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ, lean);
+      g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ, lean, (b.id * 7 + 3) % 97); // the same plot always gets the same house
       g.userData.lean = lean;
       // A building sits on the lowest corner of its plot, so no wall hangs in the air.
       const k = b.size / 2 - 0.1, hh = this.scenery.heightAt.bind(this.scenery);
