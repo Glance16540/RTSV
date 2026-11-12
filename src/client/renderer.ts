@@ -84,6 +84,9 @@ export class Renderer {
   private tintC = new THREE.Color();
   private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] }>();
   private dust: Dust[] = [];
+  /** Hearts that rise from where a decadent town is busy at its pleasures. */
+  private hearts: { m: THREE.Mesh; t: number; sway: number }[] = [];
+  private heartGeo?: THREE.BufferGeometry;
   /** Draws the ink edge around everything standing in the world. Off with ?outline=0. */
   private ink: OutlineEffect | null = null;
   private inked = 0;
@@ -644,6 +647,49 @@ export class Renderer {
   }
 
   /** Milkmaids and patrons at the tavern, monks and nuns at the church: those inside are shown standing at the front. */
+  /** A small heart drifts up from a spot and fades: the sign of a tryst going on behind a door. */
+  private heart(x: number, y: number, z: number): void {
+    if (!this.heartGeo) {
+      const sh = new THREE.Shape();
+      sh.moveTo(0, -0.1); sh.bezierCurveTo(-0.16, 0.02, -0.1, 0.14, 0, 0.06); sh.bezierCurveTo(0.1, 0.14, 0.16, 0.02, 0, -0.1);
+      this.heartGeo = new THREE.ShapeGeometry(sh, 6);
+    }
+    const mt = new THREE.MeshBasicMaterial({ color: 0xff4a7a, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide, fog: false });
+    mt.userData.outlineParameters = { visible: false };
+    const m = new THREE.Mesh(this.heartGeo, mt);
+    m.position.set(x, y, z);
+    m.renderOrder = 80;
+    this.scene.add(m);
+    this.hearts.push({ m, t: 0, sway: Math.random() * 6.28 });
+  }
+  private stepHearts(dt: number): void {
+    // Where they come from: a staffed tavern, and houses where a man and a woman are both at home, in a town that has let itself go.
+    for (const b of this.game.buildings) {
+      if (!b.complete || (b.type !== 'tavern' && b.type !== 'house')) continue;
+      const virtue = this.game.players[b.owner].virtue ?? 0;
+      if (virtue > -30) continue;
+      const busy = b.type === 'tavern' ? (b.staff?.length ?? 0) >= 2 : b.residents.m !== 0 && b.residents.f !== 0;
+      const g = this.buildingViews.get(b.id);
+      if (!busy || !g?.visible) continue;
+      const every = (b.type === 'tavern' ? 2.2 : 5.5) * (virtue <= -70 ? 0.6 : 1), slot = Math.floor((this.clock + b.id * 1.37) / every);
+      if (g.userData.heartSlot === slot) continue;
+      const first = g.userData.heartSlot === undefined;
+      g.userData.heartSlot = slot;
+      // Not every beat: it comes in spells, with quiet between.
+      if (!first && ((Math.sin(slot * 12.9898 + b.id) * 43758.5453) % 1 + 1) % 1 < (b.type === 'tavern' ? 0.8 : 0.5)) this.heart(b.x + (Math.random() - 0.5) * b.size * 0.5, g.position.y + (b.type === 'tavern' ? 1.6 : 1.1), b.y + (Math.random() - 0.3) * b.size * 0.4);
+    }
+    for (let i = this.hearts.length - 1; i >= 0; i--) {
+      const h = this.hearts[i];
+      h.t += dt;
+      h.m.position.y += dt * 0.55;
+      h.m.position.x += Math.sin(h.t * 3 + h.sway) * dt * 0.12;
+      h.m.quaternion.copy(this.camera.quaternion);
+      h.m.scale.setScalar(0.8 + Math.min(1, h.t * 3) * 0.9);
+      (h.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.95 * (1 - h.t / 2.4));
+      if (h.t > 2.4) { this.scene.remove(h.m); (h.m.material as THREE.Material).dispose(); this.hearts.splice(i, 1); }
+    }
+  }
+
   private syncStaff(b: Building, shown: boolean, lean: '' | 'holy' | 'low'): void {
     let women = 0, men = 0;
     for (const id of b.staff ?? []) { const s = this.game.entities.get(id) as Unit | undefined; if (s) { if (s.gender === 'f') women++; else men++; } }
@@ -662,6 +708,13 @@ export class Renderer {
         fig.position.set(b.x + x, this.scenery.heightAt(b.x + x, b.y + z), b.y + z);
         fig.rotation.y = Math.PI / 4 + Math.sin(b.id + i * 3.1) * 0.5;
         fig.scale.setScalar(0.92);
+        // In a town that has let itself go, the first maid and the first patron are found in each other's arms round the side.
+        if (tav && lean === 'low' && women > 0 && men > 0 && (i === 0 || i === women)) {
+          const sx = b.x - half - 0.22, sz = b.y + half * 0.35, side = i === 0 ? -1 : 1;
+          fig.position.set(sx, this.scenery.heightAt(sx, sz), sz + side * 0.13);
+          fig.rotation.set(0.1, side < 0 ? 0 : Math.PI, 0);
+          fig.userData.pair = true;
+        }
         g.add(fig);
         figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), role, seed: (b.id * 1.3 + i * 2.1) % 6.28, lean0: fig.rotation.z });
       }
@@ -677,9 +730,9 @@ export class Renderer {
     for (const f of sv.figs) {
       const t = this.clock + f.seed * 3, beat = Math.floor(t / 2.6), busy = ((Math.sin(beat * 12.9898 + f.seed) * 43758.5453) % 1 + 1) % 1 < rowdy;
       if (f.rig) {
-        const name = !busy ? 'idle' : f.role === 'patron' ? 'cheer' : 'reach';
+        const name = f.g.userData.pair ? 'reach' : !busy ? 'idle' : f.role === 'patron' ? 'cheer' : 'reach';
         this.setPose(f.rig, name, busy ? (t % 2.6) / 2.6 : t / motions.idle.dur, 0.12);
-        if (f.role === 'patron' && lean === 'low') f.g.rotation.z = f.lean0 + Math.sin(t * 1.3) * 0.08; // unsteady on his feet
+        if (f.role === 'patron' && lean === 'low' && !f.g.userData.pair) f.g.rotation.z = f.lean0 + Math.sin(t * 1.3) * 0.08; // unsteady on his feet
       } else {
         f.g.rotation.x = busy || lean === 'holy' ? Math.max(0, Math.sin(t * 0.8)) * 0.28 : Math.sin(t * 0.9) * 0.03;
       }
@@ -1030,6 +1083,7 @@ export class Renderer {
     for (let i = this.floaters.length - 1; i >= 0; i--) if ((this.floaters[i].t += dt) > 2) this.floaters.splice(i, 1);
 
     this.stepRubble(dt);
+    this.stepHearts(dt);
     this.roads.update((b) => this.isVisible(b));
     this.weather.update(dt, this.clock, this.cx, this.cy, this.game);
     if (this.ink) {

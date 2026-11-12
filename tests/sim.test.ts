@@ -1893,6 +1893,31 @@ describe('church and tavern', () => {
     expect(vs[0].dead).toBe(false);
   });
 
+  it('in a worldly town the tavern has children no household owns to, and sooner in a decadent one', () => {
+    const born = (virtue: number, men: number, women: number): number => {
+      const { g, p, tc } = town();
+      const tavern = g.spawnBuilding('tavern', 0, Math.floor(tc.x) + 8, Math.floor(tc.y) + 2, true);
+      const staff = [...Array.from({ length: men }, () => g.spawnUnit('villager', 0, tavern.x, tavern.y + 2.5, 'm')), ...Array.from({ length: women }, () => g.spawnUnit('villager', 0, tavern.x + 1, tavern.y + 2.5, 'f'))];
+      g.cmdTarget(0, staff.map((v) => v.id), tavern.id);
+      run(g, 20);
+      expect(tavern.staff!.length).toBe(men + women);
+      for (let i = 0; i < 4; i++) g.spawnBuilding('house', 0, Math.floor(tc.x) - 10 + i * 3, Math.floor(tc.y) + 8, true); // room for more people
+      // Held at the standing under test: the maids themselves would otherwise drag it down as the minutes pass.
+      const seen = new Set<number>();
+      let child: (typeof g.units)[number] | undefined;
+      run(g, 300, () => { p.virtue = virtue; for (const u of g.units) if (u.bornAt === tavern.id && !seen.has(u.id)) { seen.add(u.id); child = u; expect(u.growT).toBeGreaterThan(0); expect(u.family).toBe(''); } });
+      const n = seen.size; // the tavern's own, not any a household had meanwhile
+      if (child) expect(child.bornAt).toBe(tavern.id);
+      return n;
+    };
+    expect(born(0, 1, 1)).toBe(0); // not in a temperate town
+    expect(born(-50, 0, 2)).toBe(0); // nor with no patrons
+    const worldly = born(-50, 1, 1), decadent = born(-90, 1, 1);
+    expect(worldly).toBeGreaterThanOrEqual(1);
+    expect(decadent).toBeGreaterThan(worldly);
+    expect(born(-50, 2, 2)).toBeGreaterThan(worldly); // more couples, more children
+  });
+
   it('tavern maids bring in gold and decadence, and distract the rest of the town', () => {
     const { g, p, tc, vs } = town();
     const tavern = g.spawnBuilding('tavern', 0, Math.floor(tc.x) + 8, Math.floor(tc.y) + 2, true);

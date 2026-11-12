@@ -7,7 +7,7 @@ import {
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { leaningWith } from './temper';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
@@ -138,6 +138,7 @@ export interface Building extends Base {
   sheltered: number[]; // villagers hiding inside
   captives?: Captive[]; // a work camp's prisoners
   campT?: number; // progress towards the camp's next villager
+  trystT?: number; // progress towards a tavern's next child born out of any household
   staff?: number[]; // villagers stationed here to work: clergy or tavern maids
   morale: number; // town centers: number of houses nearby (capped)
   seen: boolean; // has the human player ever seen this building
@@ -1305,6 +1306,34 @@ export class Game {
   }
 
   /** Once a second: habits pull the scale, and now and then a dilemma is put to each people. */
+  /**
+   * In a worldly town, what goes on between the maids and the patrons of a tavern has its consequences: now and
+   * then a child is born there that belongs to no household. It costs no food and needs no house, and like any
+   * child of such a town it is less likely to live to grow up.
+   */
+  private tavernBirth(p: Player, b: Building): void {
+    if (p.virtue > -30 || !b.complete) return;
+    let men = 0;
+    for (const id of b.staff!) { const u = this.entities.get(id); if (u && u.kind === 'unit' && u.gender === 'm') men++; }
+    const pairs = Math.min(men, b.staff!.length - men);
+    if (!pairs) return;
+    b.trystT = (b.trystT ?? 0) + pairs / (TAVERN_BIRTH * (isDecadent(p.virtue) ? 0.66 : 1));
+    if (b.trystT < 1) return;
+    if (p.pop + 1 > p.popCap) { b.trystT = 1; return; }
+    b.trystT = 0;
+    // Decided without the game's dice, so the rest of the match is not disturbed by it.
+    const child = this.spawnFrom(b, 'villager', (b.id + this.tick / 20) % 2 < 1 ? 'm' : 'f');
+    this.setOrder(child, null);
+    child.growT = GROW_TIME;
+    child.bornAt = b.id;
+    const fate = ((child.id * 2654435761 + this.seed * 40503) >>> 0) / 4294967296, loss = this.creed(p.id).childLoss;
+    if (fate < loss) child.frail = GROW_TIME * (0.15 + 0.7 * (fate / Math.max(0.01, loss)));
+    child.maxHp = child.hp = Math.round(child.def.hp * 0.4);
+    p.stats.born++;
+    this.events.push({ t: 'birth', player: p.id, x: child.x, y: child.y });
+    this.events.push({ t: 'msg', player: p.id, text: '🍷 A child is born at the tavern, and no one asks whose.' });
+  }
+
   private updateCreeds(): void {
     if (this.field) return;
     for (const p of this.players) {
@@ -1319,6 +1348,7 @@ export class Game {
         p.maids += b.staff.length;
         for (const id of b.staff) { const u = this.entities.get(id); if (u && u.kind === 'unit' && u.gender === 'm') p.patrons++; }
         this.tavernPlague(p, b);
+        this.tavernBirth(p, b);
       }
       this.payMercenaries(p);
       this.updateCamps(p);
