@@ -293,6 +293,7 @@ function house(o: Look, seed: number): THREE.Group {
       bx(g, 0.5, 0.03, 0.03, toon(TIMBER), -0.5, 0.2, 0.75).rotation.z = -0.25;
     }
     yard(g, o, seed + 1, 0.95, 0.85);
+    if (o.leaning === 'low' && seed % 3 !== 1) castOff(g, o, 0.2, bz0 + big + 0.35, 0, 0, 0);
     if (seed % 2) g.scale.x = -1;
     return g;
   }
@@ -357,6 +358,10 @@ function house(o: Look, seed: number): THREE.Group {
     pane(g, 'window', 0.28, 0.34, -1.06, 0.6, -0.1, Math.PI / 2);
     yard(g, o, seed + 2, 0.3, 0.95); yard(g, o, seed + 4, -0.9, 0.9);
   }
+  // How the town lives shows at its doors: flowers kept by a pious household, a woman's clothes left out by a decadent one.
+  const hang = [[0.62, 0.98, 0.725], [-0.78, 0.98, 0.165], [-0.46, 0.98, 0.64], [0.78, 0.84, 0.465]][kind];
+  if (o.leaning === 'low' && seed % 3 !== 1) { const at = [[0.3, 1.1], [-0.1, 0.45], [0.2, 1.1], [-0.25, 1.0]][kind]; castOff(g, o, at[0], at[1], seed % 3 ? hang[1] : 0, hang[0], hang[2]); } // clear of the yard and the wing
+  if (o.leaning === 'holy') for (const [dx, c] of [[-0.34, 0xe8506a], [-0.22, 0xf0d040], [0.34, 0xffffff], [0.24, 0xe8506a]]) mesh(g, new THREE.SphereGeometry(0.06, 6, 5), toon(c), hang[0] * 0.2 + dx * 2.2, 0.07, hang[2] + 0.22).castShadow = false;
   // Half of them stand the other way round.
   if (seed % 2) g.scale.x = -1;
   return g;
@@ -464,6 +469,7 @@ function castOff(g: THREE.Object3D, o: Look, x: number, z: number, hangY: number
   shift.scale.set(1.3, 1, 0.7); shift.rotation.y = 0.6; shift.castShadow = false;
   for (const [dx, ry] of [[0.3, 0.4], [0.42, -0.7]]) bx(g, 0.06, 0.04, 0.1, toon(0x2e2218), x + dx, 0.02, z - 0.16).rotation.y = ry;
   // And one hung up where everyone can see it: bodice above, skirt below, swaying a little off true.
+  if (hangY <= 0) return;
   const hung = new THREE.Group();
   hung.position.set(hangX, hangY, hangZ);
   hung.rotation.z = 0.12;

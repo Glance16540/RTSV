@@ -849,10 +849,10 @@ export class Renderer {
   private syncBuilding(b: Building): void {
     let g = this.buildingViews.get(b.id);
     // A church or a tavern shows how its town leans, and is rebuilt when that changes.
-    const lean = b.type === 'temple' || b.type === 'tavern' ? leaningOf(this.game.players[b.owner].virtue ?? 0) : '';
+    const lean = b.type === 'temple' || b.type === 'tavern' || b.type === 'house' ? leaningOf(this.game.players[b.owner].virtue ?? 0) : '';
     const hurt = !b.complete ? 0 : b.hp < b.maxHp * 0.33 ? 2 : b.hp < b.maxHp * 0.66 ? 1 : 0;
     // Rebuilt whole when it is repaired, or when the town's leaning changes.
-    if (g && (g.userData.lean !== lean || hurt < ((g.userData.hurt as number) ?? 0))) { this.scene.remove(g); g = undefined; }
+    if (g && (g.userData.lean !== lean || hurt < ((g.userData.hurt as number) ?? 0))) { if (g.userData.site) this.scene.remove(g.userData.site as THREE.Object3D); this.scene.remove(g); g = undefined; }
     if (!g) {
       g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ, lean, (b.id * 7 + 3) % 97); // the same plot always gets the same house
       g.userData.lean = lean;
