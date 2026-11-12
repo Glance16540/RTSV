@@ -167,6 +167,7 @@ export type GameEvent =
   | { t: 'birth'; player: number; x: number; y: number }
   | { t: 'age'; player: number }
   | { t: 'alert'; player: number; x: number; y: number }
+  | { t: 'defeated'; player: number }
   | { t: 'gameover'; winner: number };
 
 export interface PlayerSetup { name: string; color: number; isAI: boolean }
@@ -210,7 +211,7 @@ export class Game {
 
   constructor(public seed: number, public setups: PlayerSetup[], size = 96) {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
-    this.spec = generateMap(seed, size);
+    this.spec = generateMap(seed, size, setups.length);
     this.size = size;
     this.terrain = this.spec.terrain;
     this.blocked = new Uint8Array(size * size);
@@ -234,7 +235,7 @@ export class Game {
       this.tcs.push([]);
       const st = this.spec.starts[i];
       this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
-      const dir = i === 0 ? 1 : -1;
+      const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
       this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
       this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
       this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
@@ -972,6 +973,7 @@ export class Game {
     for (const p of this.players) {
       if (!p.defeated && !p.neutral && !alive.has(p.id)) {
         p.defeated = true;
+        this.events.push({ t: 'defeated', player: p.id });
         for (const u of this.units.filter((u) => u.owner === p.id)) this.kill(u);
       }
     }

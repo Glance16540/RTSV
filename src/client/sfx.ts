@@ -18,9 +18,25 @@ class Sfx {
       this.out = this.ctx.createGain();
       this.out.gain.value = 0.5;
       this.out.connect(this.ctx.destination);
+      this.startMusic();
     } catch {
       this.ctx = null;
     }
+  }
+
+  /** Quiet generative background music: slow pentatonic notes wandering over a low drone. */
+  private startMusic(): void {
+    const scale = [220, 247, 294, 330, 392, 440, 494, 587];
+    let i = 3, beat = 0;
+    setInterval(() => {
+      if (!this.ctx || this.muted || this.ctx.state !== 'running' || document.hidden) return;
+      if (beat++ % 8 === 0) this.tone(beat % 16 === 1 ? 110 : 147, 9, 'sine', 0.035);
+      if (Math.random() < 0.65) {
+        i = Math.max(0, Math.min(scale.length - 1, i + Math.floor(Math.random() * 5) - 2));
+        this.tone(scale[i], 2.4, 'sine', 0.04);
+        this.tone(scale[i] * 2, 1.2, 'triangle', 0.01);
+      }
+    }, 1300);
   }
 
   private tone(freq: number, dur: number, type: OscillatorType, vol: number, at = 0, slide = 0): void {

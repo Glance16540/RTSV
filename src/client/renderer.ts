@@ -10,7 +10,7 @@ const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
-interface UnitView { g: THREE.Group; phase: number }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[] }
 interface Floater { x: number; y: number; text: string; t: number }
 interface Ping { mesh: THREE.Mesh; t: number }
 
@@ -341,7 +341,8 @@ export class Renderer {
   private syncUnit(u: Unit, alpha: number, dt: number): void {
     let v = this.unitViews.get(u.id);
     if (!v) {
-      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id), phase: (u.id * 1.7) % 6.28 };
+      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id), phase: (u.id * 1.7) % 6.28, legs: [] };
+      v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
       this.unitViews.set(u.id, v);
       this.scene.add(v.g);
     }
@@ -356,6 +357,7 @@ export class Renderer {
     let d = u.facing - g.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
+    for (const l of v.legs) l.rotation.x = u.moving ? Math.sin(v.phase + (l.userData.leg as number)) * 0.65 : l.rotation.x * 0.8;
     const arm = g.userData.arm as THREE.Object3D | undefined;
     if (arm) {
       const swing = u.attackAnim > 0 ? Math.sin((u.attackAnim / 0.35) * Math.PI) : 0;

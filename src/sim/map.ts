@@ -40,24 +40,33 @@ function valueNoise(rng: () => number, size: number, scale: number): (x: number,
   };
 }
 
-export function generateMap(seed: number, size = 96): MapSpec {
+export function generateMap(seed: number, size = 96, players = 2): MapSpec {
   const rng = mulberry32(seed);
   const N = size;
   const terrain = new Uint8Array(N * N);
   const taken = new Uint8Array(N * N); // cells holding a resource node
   const nodes: MapSpec['nodes'] = [];
-  const starts = [
-    { x: 17, y: 17 },
-    { x: N - 17, y: N - 17 },
-  ];
+  // Two players face each other across the map (point symmetry). Three or four each take a
+  // corner of a map that looks the same from all four (quarter-turn symmetry).
+  const quad = players > 2;
+  /** A cell-aligned square and its symmetric images. */
+  const images = (cx: number, cy: number, s = 1): [number, number][] => quad
+    ? [[cx, cy], [N - s - cy, cx], [N - s - cx, N - s - cy], [cy, N - s - cx]]
+    : [[cx, cy], [N - s - cx, N - s - cy]];
+  const corners = images(17, 17, 0).map(([x, y]) => ({ x, y }));
+  const starts = corners.slice(0, Math.max(2, Math.min(4, players)));
 
   const forestN = valueNoise(rng, N, 8);
   const waterN = valueNoise(rng, N, 13);
-  // Averaging a point with its mirror image keeps the map fair for both players.
-  const sym = (f: (x: number, y: number) => number, x: number, y: number) =>
-    (f(x, y) + f(N - 1 - x, N - 1 - y)) / 2;
+  // Averaging a point with its symmetric images keeps the map fair for every player.
+  const sym = (f: (x: number, y: number) => number, x: number, y: number) => {
+    let v = 0;
+    const im = images(x, y);
+    for (const [ix, iy] of im) v += f(ix, iy);
+    return v / im.length;
+  };
   const startDist = (x: number, y: number) =>
-    Math.min(...starts.map((s) => Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y)));
+    Math.min(...corners.map((s) => Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y)));
 
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
@@ -83,13 +92,12 @@ export function generateMap(seed: number, size = 96): MapSpec {
     nodes.push({ type, cx, cy });
     return true;
   };
-  /** Place a node and its mirror image. */
+  /** Place a node and its symmetric images. */
   const putPair = (type: NodeType, cx: number, cy: number) => {
     const s = type === 'gold' || type === 'stone' ? 2 : 1;
-    const mx = N - cx - s, my = N - cy - s;
-    if (!free(cx, cy, s) || !free(mx, my, s)) return false;
-    put(type, cx, cy);
-    put(type, mx, my);
+    const im = images(cx, cy, s);
+    if (!im.every(([x, y]) => free(x, y, s))) return false;
+    for (const [x, y] of im) put(type, x, y);
     return true;
   };
 
@@ -128,20 +136,27 @@ export function generateMap(seed: number, size = 96): MapSpec {
   for (let y = 1; y < N - 1; y++)
     for (let x = 1; x < N - 1; x++) {
       if (startDist(x, y) < 8) continue;
-      if (sym(forestN, x, y) > 0.6 && rng() < 0.82 && y * N + x <= (N - 1 - y) * N + (N - 1 - x)) putPair('tree', x, y);
+      // Each set of symmetric cells is decided once, from its lowest-numbered member.
+      if (images(x, y).some(([ix, iy]) => iy * N + ix < y * N + x)) continue;
+      if (sym(forestN, x, y) > 0.6 && rng() < 0.82) putPair('tree', x, y);
     }
 
-  // Guarantee a land route between the two bases by carving one if needed.
-  const blocked = new Uint8Array(N * N);
-  for (let i = 0; i < N * N; i++) blocked[i] = terrain[i] === T_WATER || taken[i] ? 1 : 0;
-  if (!connected(N, blocked, starts[0], starts[1])) {
+  // Guarantee a land route from the first base to every other by carving one where needed.
+  for (const target of starts.slice(1)) {
+    const blocked = new Uint8Array(N * N);
+    for (const n of nodes) {
+      const sz = n.type === 'gold' || n.type === 'stone' ? 2 : 1;
+      for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) blocked[(n.cy + y) * N + n.cx + x] = 1;
+    }
+    for (let i = 0; i < N * N; i++) if (terrain[i] === T_WATER) blocked[i] = 1;
+    if (connected(N, blocked, starts[0], target)) continue;
     const carve = new Uint8Array(N * N);
     const steps = N * 3;
     for (let k = 0; k <= steps; k++) {
       const t = k / steps;
       const wob = Math.sin(t * Math.PI * 3) * 6;
-      const x = starts[0].x + (starts[1].x - starts[0].x) * t + wob;
-      const y = starts[0].y + (starts[1].y - starts[0].y) * t - wob;
+      const x = starts[0].x + (target.x - starts[0].x) * t + wob;
+      const y = starts[0].y + (target.y - starts[0].y) * t - wob;
       for (let dy = -2; dy <= 2; dy++)
         for (let dx = -2; dx <= 2; dx++) {
           const cx = Math.floor(x) + dx, cy = Math.floor(y) + dy;
@@ -151,7 +166,7 @@ export function generateMap(seed: number, size = 96): MapSpec {
     for (let i = 0; i < N * N; i++) if (carve[i] && terrain[i] === T_WATER) terrain[i] = T_GRASS;
     for (let k = nodes.length - 1; k >= 0; k--) {
       const n = nodes[k];
-      if (n.type === 'tree' && carve[n.cy * N + n.cx]) nodes.splice(k, 1);
+      if (n.type === 'tree' && carve[n.cy * N + n.cx]) { taken[n.cy * N + n.cx] = 0; nodes.splice(k, 1); }
     }
   }
 
@@ -161,8 +176,9 @@ export function generateMap(seed: number, size = 96): MapSpec {
     let placed = 0;
     for (let k = 0; k < count * 4 && placed < count; k++) {
       const ax = x + (rng() - 0.5) * 4, ay = y + (rng() - 0.5) * 4;
-      if (!free(Math.floor(ax), Math.floor(ay)) || !free(Math.floor(N - ax), Math.floor(N - ay))) continue;
-      animals.push({ type, x: ax, y: ay }, { type, x: N - ax, y: N - ay });
+      const im: [number, number][] = quad ? [[ax, ay], [N - ay, ax], [N - ax, N - ay], [ay, N - ax]] : [[ax, ay], [N - ax, N - ay]];
+      if (!im.every(([x, y]) => free(Math.floor(x), Math.floor(y)))) continue;
+      for (const [x, y] of im) animals.push({ type, x, y });
       placed++;
     }
     return placed;

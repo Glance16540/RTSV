@@ -57,9 +57,18 @@ const HORSE = [0x6b4a2e, 0x8a6a48, 0x3e2e24];
 
 export const RES_COLOR: Record<string, number> = { food: 0xc0392b, wood: 0x8a5a2b, gold: 0xf2c230, stone: 0x9a9a9a };
 
+/** A leg hinged at the hip so it can swing while walking. `side` alternates the stride. */
+function leg(g: THREE.Object3D, w: number, h: number, color: number, x: number, z: number, side: number, y = 0): void {
+  const hip = new THREE.Group();
+  hip.position.set(x, y + h, z);
+  hip.userData.leg = side;
+  box(hip, w, h, w * 1.15, color, 0, -h / 2, 0);
+  g.add(hip);
+}
+
 function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y = 0): void {
-  box(g, 0.1, 0.3, 0.12, legs, -0.07, y + 0.15, 0);
-  box(g, 0.1, 0.3, 0.12, legs, 0.07, y + 0.15, 0);
+  leg(g, 0.1, 0.3, legs, -0.07, 0, 0, y);
+  leg(g, 0.1, 0.3, legs, 0.07, 0, Math.PI, y);
   box(g, 0.3, 0.32, 0.18, body, 0, y + 0.46, 0);
   box(g, 0.08, 0.28, 0.1, SKIN, -0.19, y + 0.46, 0);
   ball(g, 0.12, SKIN, 0, y + 0.74, 0);
@@ -83,7 +92,7 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
   const neck = box(g, 0.16, 0.4, 0.2, color, 0, 0.82, 0.4);
   neck.rotation.x = 0.5;
   box(g, 0.15, 0.16, 0.32, color, 0, 0.98, 0.58);
-  for (const [x, z] of [[-0.1, 0.3], [0.1, 0.3], [-0.1, -0.3], [0.1, -0.3]]) box(g, 0.08, 0.42, 0.08, color, x, 0.21, z);
+  [[-0.1, 0.3], [0.1, 0.3], [-0.1, -0.3], [0.1, -0.3]].forEach(([x, z], i) => leg(g, 0.08, 0.42, color, x, z, i % 3 ? Math.PI : 0));
   const tail = box(g, 0.06, 0.3, 0.06, 0x2a1e16, 0, 0.52, -0.44);
   tail.rotation.x = -0.4;
 }
@@ -128,7 +137,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       const neck = box(g, 0.12, 0.34, 0.14, fur, 0, 0.74, 0.3);
       neck.rotation.x = 0.4;
       box(g, 0.13, 0.13, 0.26, fur, 0, 0.9, 0.44);
-      for (const [x, z] of [[-0.08, 0.22], [0.08, 0.22], [-0.08, -0.22], [0.08, -0.22]]) box(g, 0.05, 0.4, 0.05, 0x7a5228, x, 0.2, z);
+      [[-0.08, 0.22], [0.08, 0.22], [-0.08, -0.22], [0.08, -0.22]].forEach(([x, z], i) => leg(g, 0.05, 0.4, 0x7a5228, x, z, i % 3 ? Math.PI : 0));
       box(g, 0.08, 0.1, 0.06, 0xf0e8d8, 0, 0.56, -0.32);
       if (seed % 2) for (const x of [-0.07, 0.07]) box(g, 0.03, 0.22, 0.03, 0xe8dcc0, x, 1.06, 0.36).rotation.z = x * 5;
       break;
@@ -139,7 +148,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       box(g, 0.2, 0.2, 0.26, fur, 0, 0.52, 0.42);
       box(g, 0.1, 0.1, 0.16, 0x3a3a40, 0, 0.48, 0.6);
       for (const x of [-0.07, 0.07]) box(g, 0.05, 0.1, 0.04, 0x3a3a40, x, 0.66, 0.36);
-      for (const [x, z] of [[-0.08, 0.24], [0.08, 0.24], [-0.08, -0.24], [0.08, -0.24]]) box(g, 0.06, 0.3, 0.06, 0x4a4a50, x, 0.15, z);
+      [[-0.08, 0.24], [0.08, 0.24], [-0.08, -0.24], [0.08, -0.24]].forEach(([x, z], i) => leg(g, 0.06, 0.3, 0x4a4a50, x, z, i % 3 ? Math.PI : 0));
       box(g, 0.07, 0.07, 0.34, fur, 0, 0.44, -0.46).rotation.x = 0.5;
       break;
     }
@@ -220,7 +229,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       const fur = 0x6a4a30;
       box(g, 0.85, 0.8, 1.25, fur, 0, 0.95, -0.05);
       box(g, 0.6, 0.6, 0.5, fur, 0, 1.05, 0.72);
-      for (const [x, z] of [[-0.28, 0.4], [0.28, 0.4], [-0.28, -0.45], [0.28, -0.45]]) cyl(g, 0.15, 0.17, 0.6, 0x5a3e28, x, 0.3, z);
+      [[-0.28, 0.4], [0.28, 0.4], [-0.28, -0.45], [0.28, -0.45]].forEach(([x, z], i) => leg(g, 0.3, 0.6, 0x5a3e28, x, z, i % 3 ? Math.PI : 0));
       const trunk = cyl(g, 0.1, 0.06, 0.7, fur, 0, 0.62, 1.0);
       trunk.rotation.x = 0.25;
       for (const x of [-0.24, 0.24]) {

@@ -57,7 +57,8 @@ speeds up its arrow fire. On Normal and Hard the AI walls its base with a palisa
 **Market.** From the Bronze Age, sell surplus food, wood or stone for gold, or buy what you are
 short of. The villager build menu has two pages, settlement and military.
 
-**Map size.** Small, Medium or Large, chosen on the start screen.
+**Rivals and map size.** One to three AI rivals and a Small, Medium or Large map, chosen on the
+start screen. With several rivals it is a free-for-all: they fight each other as well as you.
 
 **Saving.** The 💾 button stores the game in your browser, and it autosaves every two minutes.
 *Continue saved game* on the start screen picks it up again.

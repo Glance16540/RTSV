@@ -29,7 +29,7 @@ export class App {
 
   constructor(game: Game) {
     this.game = game;
-    this.ai.push(new AIController(this.game, 1));
+    for (const p of this.game.players) if (p.isAI) this.ai.push(new AIController(this.game, p.id));
     this.r = new Renderer(document.getElementById('game') as HTMLCanvasElement, this.game);
     this.hud = new Hud(this);
     this.input = new Input(this);
@@ -77,7 +77,7 @@ export class App {
   save(announce = true): boolean {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        game: this.game.serialize(), ai: this.ai[0].save(), cam: { x: this.r.cx, y: this.r.cy, d: this.r.dist },
+        game: this.game.serialize(), ai: this.ai.map((a) => a.save()), cam: { x: this.r.cx, y: this.r.cy, d: this.r.dist },
       }));
       if (announce) this.hud.toast('Game saved.');
       return true;
@@ -134,7 +134,7 @@ export class App {
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
 const SAVE_KEY = 'rtsv-save';
-interface Saved { game: string; ai: object; cam: { x: number; y: number; d: number } }
+interface Saved { game: string; ai: object[]; cam: { x: number; y: number; d: number } }
 
 function readSave(): Saved | null {
   try {
@@ -151,18 +151,25 @@ loadAssets().then(() => {
   if (saved) {
     try { game = Game.restore(saved.game); } catch { saved = null; }
   }
+  const rivals = [1, 2, 3].includes(Number(params.get('ai'))) ? Number(params.get('ai')) : 1;
   const size = [72, 96, 128].includes(Number(params.get('size'))) ? Number(params.get('size')) : 96;
   game ??= new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
-  ], size);
+    { name: 'Golden Horde', color: 0xe0b020, isAI: true },
+    { name: 'Green Clan', color: 0x3aa648, isAI: true },
+  ].slice(0, 1 + rivals), size);
   // The map is generated before the menu appears, so a different size means a fresh page.
   const sizeSel = document.getElementById('map-size') as HTMLSelectElement;
   sizeSel.value = String(game.size);
-  sizeSel.addEventListener('change', () => { location.search = `?size=${sizeSel.value}`; });
+  const aiSel = document.getElementById('rivals') as HTMLSelectElement;
+  aiSel.value = String(game.players.filter((p) => p.isAI).length);
+  const regenerate = () => { location.search = `?size=${sizeSel.value}&ai=${aiSel.value}`; };
+  sizeSel.addEventListener('change', regenerate);
+  aiSel.addEventListener('change', regenerate);
   const app = new App(game);
   if (saved) {
-    app.ai[0].load(saved.ai);
+    app.ai.forEach((a, i) => a.load(saved!.ai[i] ?? {}));
     app.r.cx = saved.cam.x; app.r.cy = saved.cam.y; app.r.dist = saved.cam.d;
     document.getElementById('start')!.classList.add('started');
   } else if (readSave()) {
@@ -178,7 +185,7 @@ loadAssets().then(() => {
   for (const btn of startScreen.querySelectorAll<HTMLButtonElement>('[data-level]')) {
     btn.addEventListener('click', () => {
       // The first click picks the difficulty; afterwards the same screen is just the help page.
-      if (!startScreen.classList.contains('started')) app.ai[0].setLevel(Number(btn.dataset.level));
+      if (!startScreen.classList.contains('started')) for (const a of app.ai) a.setLevel(Number(btn.dataset.level));
       startScreen.classList.add('hidden', 'started');
       sfx.unlock();
       app.paused = false;

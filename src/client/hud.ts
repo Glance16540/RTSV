@@ -134,6 +134,7 @@ export class Hud {
       this.toast('⚠️ You are under attack!', 'warn');
       this.alerts.push({ x: ev.x, y: ev.y, t: 0 });
     } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
+    else if (ev.t === 'defeated' && ev.player !== pid) this.toast(`${game.players[ev.player].name} has been destroyed.`, 'big');
     else if (ev.t === 'gameover') {
       const win = ev.winner === pid;
       $('end-title').textContent = win ? 'Victory' : 'Defeat';
@@ -397,7 +398,7 @@ export class Hud {
       ['Grow to 10 people', 'Train villagers at the Town Center (H) and let your families raise children.', p.pop >= 10],
       ['Raise an army', 'Villager → Military buildings (V) → Barracks, then train three soldiers.', units.filter((u) => game.isMilitary(u)).length >= 3],
       ['Advance to the Bronze Age', 'Select the Town Center (H) and press T once you have the food and wood.', p.age >= 1],
-      ['Destroy the Red Tribe', 'Scout with soldiers, then select your army, press Q and click their base.', game.winner === pid],
+      ['Destroy your rivals', 'Scout with soldiers, then select your army, press Q and click their base.', game.winner === pid],
     ];
     const i = steps.findIndex((s) => !s[2]);
     const show = !this.guideOff && i >= 0 && !this.app.paused;

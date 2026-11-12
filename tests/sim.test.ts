@@ -38,6 +38,37 @@ describe('map', () => {
   });
 });
 
+describe('four players', () => {
+  it('gives every player a reachable corner with the same resources', () => {
+    for (const size of [72, 96, 128]) {
+      const m = generateMap(4, size, 4);
+      expect(m.starts.length).toBe(4);
+      const blocked = new Uint8Array(m.size * m.size);
+      m.terrain.forEach((t, i) => { if (t === T_WATER) blocked[i] = 1; });
+      for (const n of m.nodes) {
+        const s = n.type === 'gold' || n.type === 'stone' ? 2 : 1;
+        for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) blocked[(n.cy + y) * m.size + n.cx + x] = 1;
+      }
+      for (const st of m.starts.slice(1)) expect(connected(m.size, blocked, m.starts[0], st), `size ${size}`).toBe(true);
+      const near = (st: { x: number; y: number }, type: string) => m.nodes.filter((n) => n.type === type && Math.hypot(n.cx - st.x, n.cy - st.y) < 14).length;
+      for (const type of ['berries', 'gold', 'stone']) {
+        const counts = m.starts.map((st) => near(st, type));
+        expect(counts[0]).toBeGreaterThan(0);
+        expect(new Set(counts).size, `${type} at size ${size}`).toBe(1);
+      }
+    }
+  });
+
+  it('three AIs and a bystander play a free-for-all without errors', () => {
+    const g = new Game(9, [setups[0], { ...setups[1], name: 'B' }, { ...setups[1], name: 'C' }, { ...setups[1], name: 'D' }]);
+    const ais = [1, 2, 3].map((i) => new AIController(g, i));
+    run(g, 60 * 20, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
+    console.log('ffa 20m: ' + g.players.slice(0, 4).map((p) => `${p.name}[age ${p.age} pop ${p.pop}${p.defeated ? ' OUT' : ''}]`).join(' ') + ` winner ${g.winner}`);
+    expect(g.players.slice(1, 4).every((p) => p.age >= 1 || p.defeated)).toBe(true);
+    expect(g.wild).toBe(4);
+  }, 180000);
+});
+
 describe('economy', () => {
   it('villagers gather each resource and deposit it', () => {
     const g = new Game(3, setups);
