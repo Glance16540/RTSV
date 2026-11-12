@@ -413,6 +413,7 @@ export class Renderer {
         if (o.userData.leg === undefined) return;
         // A rider's legs are not walked: they sit astride, knees out and feet forward.
         const seat = o.parent && o.parent !== v!.g && o.parent.userData.biped ? o.parent : null;
+        if (seat?.userData.stands) return;
         if (seat) { o.rotation.set(-0.75, 0, o.position.x > 0 ? 0.5 : -0.5); v!.seat = seat; v!.seatY = seat.userData.seatY ??= seat.position.y; }
         else v!.legs.push(o);
       });
@@ -459,6 +460,19 @@ export class Renderer {
       l.rotation.x = u.moving ? Math.sin(ph) * 0.6 : l.rotation.x * 0.8;
       if (knee) knee.rotation.x = u.moving ? Math.max(0, -Math.cos(ph)) * 1.0 : knee.rotation.x * 0.8;
     }
+    // Wheels turn with the ground covered; oars are pulled together; pennants and sails stir.
+    if (g.userData.spin === undefined) {
+      const spin: THREE.Object3D[] = [], oars: THREE.Object3D[] = [], pens: THREE.Object3D[] = [];
+      g.traverse((o) => { if (o.userData.wheel) spin.push(o); else if (o.userData.oar) oars.push(o); else if (o.userData.pennant) pens.push(o); });
+      g.userData.spin = spin; g.userData.oars = oars; g.userData.pens = pens;
+    }
+    if (u.moving) for (const w of g.userData.spin as THREE.Object3D[]) w.rotation.x += (dt * u.def.speed) / (w.userData.wheel as number);
+    for (const o of g.userData.oars as THREE.Object3D[]) {
+      const ph = this.clock * 3.2, s = o.userData.oar as number;
+      o.rotation.y += ((u.moving ? Math.sin(ph) * 0.5 * s : 0) - o.rotation.y) * Math.min(1, dt * 8);
+      o.rotation.z += ((u.moving ? Math.max(0, Math.cos(ph)) * 0.3 * s : 0.25 * s) - o.rotation.z) * Math.min(1, dt * 8);
+    }
+    for (const pn of g.userData.pens as THREE.Object3D[]) pn.rotation.y = Math.sin(this.clock * 5 + v.phase) * 0.35;
     const nod = g.userData.nod as THREE.Object3D | undefined, tail = g.userData.tail as THREE.Object3D | undefined;
     // The head nods with the stride, or dips now and then while standing; the tail streams or flicks.
     if (nod) nod.rotation.x += ((u.moving ? 0.1 + Math.sin(v.phase * 2 + 0.8) * 0.1 : Math.max(0, Math.sin(this.clock * 0.5 + v.phase) - 0.7) * 1.6) - swing * 0.35 - nod.rotation.x) * Math.min(1, dt * 8);

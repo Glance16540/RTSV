@@ -66,6 +66,18 @@ const box = (p: THREE.Object3D, w: number, h: number, d: number, color: number, 
   }
   return add(p, geo(`b${w},${h},${d}`, () => boxGeo(w, h, d)), color, x, y, z, em);
 };
+/** A spoked cart wheel on an axle along x. It turns as the unit travels (see the renderer). */
+function wheel(g: THREE.Object3D, r: number, x: number, y: number, z: number): THREE.Group {
+  const w = new THREE.Group();
+  w.position.set(x, y, z);
+  w.userData.wheel = r;
+  add(w, geo('wrim', () => new THREE.TorusGeometry(1, 0.13, 6, 16).rotateY(Math.PI / 2)), DARKWOOD, 0, 0, 0).scale.set(r * 0.9, r * 0.9, r * 0.9);
+  add(w, geo('whub', () => new THREE.CylinderGeometry(0.2, 0.2, 0.5, 8).rotateZ(Math.PI / 2)), 0x3a3a40, 0, 0, 0).scale.setScalar(r);
+  for (let i = 0; i < 3; i++) add(w, geo('wspoke', () => new THREE.BoxGeometry(0.12, 1.8, 0.1)), WOOD, 0, 0, 0).scale.setScalar(r), (w.children[w.children.length - 1].rotation.x = (i * Math.PI) / 3);
+  g.add(w);
+  return w;
+}
+
 /** A round shield carried on the off arm: dished, with a rim and a boss. */
 function shield(g: THREE.Object3D, r: number, color: number, x: number, y: number, z: number): THREE.Group {
   const s = new THREE.Group();
@@ -634,8 +646,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     case 'bombard': {
       box(g, 0.5, 0.14, 0.9, WOOD, 0, 0.3, -0.1);
       for (const x of [-0.34, 0.34]) {
-        const w = cyl(g, 0.3, 0.3, 0.09, DARKWOOD, x, 0.3, 0, 12);
-        w.rotation.z = Math.PI / 2;
+        wheel(g, 0.3, x, 0.3, 0);
       }
       const a = new THREE.Group();
       a.position.set(0, 0.48, -0.1);
@@ -856,7 +867,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     }
     case 'trebuchet': {
       box(g, 0.9, 0.1, 1.3, DARKWOOD, 0, 0.16, 0);
-      for (const [x, z] of [[-0.45, 0.5], [0.45, 0.5], [-0.45, -0.5], [0.45, -0.5]]) { const w = cyl(g, 0.16, 0.16, 0.08, DARKWOOD, x, 0.16, z, 10); w.rotation.z = Math.PI / 2; }
+      for (const [x, z] of [[-0.45, 0.5], [0.45, 0.5], [-0.45, -0.5], [0.45, -0.5]]) wheel(g, 0.16, x, 0.16, z);
       for (const x of [-0.32, 0.32]) { box(g, 0.07, 1.1, 0.07, WOOD, x, 0.7, 0.2).rotation.x = 0.3; box(g, 0.07, 1.1, 0.07, WOOD, x, 0.7, -0.2).rotation.x = -0.3; }
       box(g, 0.74, 0.07, 0.07, WOOD, 0, 1.2, 0);
       const a = new THREE.Group();
@@ -872,7 +883,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     }
     case 'organgun': {
       box(g, 0.6, 0.1, 0.8, DARKWOOD, 0, 0.3, -0.05);
-      for (const x of [-0.36, 0.36]) { const w = cyl(g, 0.26, 0.26, 0.07, DARKWOOD, x, 0.26, 0, 12); w.rotation.z = Math.PI / 2; }
+      for (const x of [-0.36, 0.36]) wheel(g, 0.26, x, 0.26, 0);
       for (let i = 0; i < 5; i++) { const b = cyl(g, 0.035, 0.035, 0.7, IRON, -0.2 + i * 0.1, 0.42, 0.2, 6); b.rotation.x = Math.PI / 2 - 0.08; }
       box(g, 0.56, 0.08, 0.1, 0x3a3a3a, 0, 0.4, -0.1);
       box(g, 0.62, 0.06, 0.2, color, 0, 0.36, -0.35);
@@ -946,14 +957,18 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       h.position.z = 0.55;
       horse(h, HORSE[seed % HORSE.length]);
       g.add(h);
-      box(g, 0.6, 0.08, 0.5, WOOD, 0, 0.36, -0.42);
-      box(g, 0.6, 0.3, 0.05, color, 0, 0.55, -0.18);
-      for (const x of [-0.3, 0.3]) box(g, 0.05, 0.3, 0.5, DARKWOOD, x, 0.55, -0.42);
-      for (const x of [-0.36, 0.36]) { const w = cyl(g, 0.26, 0.26, 0.05, DARKWOOD, x, 0.26, -0.42, 12); w.rotation.z = Math.PI / 2; }
+      box(g, 0.56, 0.06, 0.5, WOOD, 0, 0.36, -0.42);
+      // The car: a low curved front the driver stands behind, open at the back.
+      const car = add(g, geo('car', () => new THREE.CylinderGeometry(0.3, 0.3, 0.34, 12, 1, true, -1.7, 3.4)), color, 0, 0.56, -0.42);
+      car.material = (car.material as THREE.Material).clone();
+      (car.material as THREE.Material).side = THREE.DoubleSide;
+      add(g, geo('carrim', () => new THREE.TorusGeometry(0.3, 0.02, 5, 12, 3.4).rotateX(Math.PI / 2).rotateY(Math.PI / 2 + 1.7)), DARKWOOD, 0, 0.73, -0.42);
+      for (const x of [-0.36, 0.36]) wheel(g, 0.26, x, 0.26, -0.42);
       box(g, 0.04, 0.04, 0.6, WOOD, 0, 0.42, 0.05);
       const r = new THREE.Group();
       r.position.set(0, 0.4, -0.42);
       r.scale.setScalar(0.9);
+      r.userData.stands = true; // the driver stands in the car, not astride
       humanoid(r, color, 0x5b4630, hair);
       const a = arm(r);
       const bow = add(a, geo('bow', () => new THREE.TorusGeometry(0.24, 0.018, 4, 10, Math.PI)), WOOD, 0, -0.24, 0.22);
@@ -996,28 +1011,60 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     case 'frigate': {
       const big = type === 'frigate', war = type !== 'fishboat';
       const L = big ? 1.5 : war ? 1.25 : 0.85, W = big ? 0.5 : war ? 0.4 : 0.34;
-      // Hull: a long box with a pointed bow and a raised stern.
-      box(g, W, 0.16, L * 0.7, WOOD, 0, 0.1, -L * 0.06);
-      const bow = add(g, geo(`bow${W}`, () => { const c = new THREE.ConeGeometry(W * 0.71, L * 0.34, 4).toNonIndexed(); c.computeVertexNormals(); return c; }), WOOD, 0, 0.1, L * 0.45);
-      bow.rotation.set(Math.PI / 2, Math.PI / 4, 0);
-      bow.scale.y = 1; bow.scale.z = 0.32;
-      box(g, W * 0.9, 0.12, L * 0.2, DARKWOOD, 0, 0.22, -L * 0.36);
-      box(g, W + 0.04, 0.05, L * 0.7, color, 0, 0.2, -L * 0.06);
-      // Mast and sail.
+      // Hull: carvel-built, drawn to a point at the bow, narrower at the keel, rising a little fore and aft.
+      const hull = (key: string, w: number, h: number, len: number): THREE.BufferGeometry => geo(key, () => {
+        const b = new THREE.BoxGeometry(w, h, len, 2, 2, 8), pos = b.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const t = pos.getZ(i) / len + 0.5, up = pos.getY(i) / h + 0.5; // t: stern 0 to bow 1
+          const beam = Math.sin(Math.min(1, t * 1.25 + 0.22) * Math.PI) ** 0.6 * (0.55 + 0.45 * up);
+          pos.setX(i, pos.getX(i) * Math.max(0.04, beam));
+          pos.setY(i, pos.getY(i) + (Math.abs(t - 0.45) ** 2) * h * 1.6 * up);
+        }
+        b.computeVertexNormals();
+        return b;
+      });
+      add(g, hull(`hull${W},${L}`, W, 0.26, L), WOOD, 0, 0.1, 0);
+      add(g, hull(`deck${W},${L}`, W * 0.86, 0.03, L * 0.9), 0xb89466, 0, 0.215, -L * 0.02);
+      add(g, hull(`wale${W},${L}`, W * 1.04, 0.05, L * 0.98), color, 0, 0.2, 0);
+      box(g, W * 0.6, 0.14, L * 0.16, DARKWOOD, 0, 0.3, -L * 0.36); // the sterncastle
+      if (war) { const ramP = cyl(g, 0, 0.05, 0.28, IRON, 0, 0.1, L * 0.53, 6); ramP.rotation.x = Math.PI / 2; }
+      // Masts, each with a yard and a sail bellied by the wind, and the owner's pennant at the head.
+      const sail = (w: number, h: number): THREE.BufferGeometry => geo(`sail${w},${h}`, () => {
+        const pl = new THREE.PlaneGeometry(w, h, 6, 4), pos = pl.attributes.position;
+        for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.cos((pos.getX(i) / w) * Math.PI) * Math.cos((pos.getY(i) / h) * Math.PI * 0.8) * w * 0.22);
+        pl.computeVertexNormals();
+        return pl;
+      });
       const masts = big ? [-0.3, 0.3] : [0];
       for (const z of masts) {
-        cyl(g, 0.03, 0.04, war ? 1.0 : 0.7, DARKWOOD, 0, (war ? 0.5 : 0.35) + 0.15, z, 6);
-        box(g, war ? 0.62 : 0.4, war ? 0.5 : 0.34, 0.03, war ? 0xe8e0cc : 0xd8c8a0, 0, war ? 0.8 : 0.6, z + 0.04);
-        if (war) box(g, 0.62, 0.1, 0.035, color, 0, 0.8, z + 0.045);
+        const mh = war ? 1.05 : 0.75, sw = war ? 0.62 : 0.4, sh = war ? 0.5 : 0.34, sy = war ? 0.82 : 0.62;
+        cyl(g, 0.025, 0.035, mh, DARKWOOD, 0, 0.2 + mh / 2, z, 6);
+        cyl(g, 0.015, 0.015, sw + 0.06, DARKWOOD, 0, sy + sh / 2, z + 0.03, 5).rotation.z = Math.PI / 2;
+        const sl = add(g, sail(sw, sh), war ? 0xece4d0 : 0xd8c8a0, 0, sy, z + 0.03);
+        sl.material = (sl.material as THREE.Material).clone();
+        (sl.material as THREE.Material).side = THREE.DoubleSide;
+        loose(sl, 'rx', 0.25, 60, 4);
+        if (war) box(g, sw * 0.5, 0.09, 0.012, color, 0, sy, z + 0.03 + sw * 0.225);
+        const pen = box(g, 0.012, 0.07, 0.2, color, 0, 0.2 + mh, z - 0.1);
+        pen.userData.pennant = true;
       }
-      if (!war) { box(g, 0.2, 0.08, 0.2, 0x8a9aa8, 0.02, 0.2, -0.2); box(g, 0.03, 0.03, 0.5, DARKWOOD, 0.2, 0.25, 0.1).rotation.x = -0.5; }
-      if (war && !big) for (const z of [-0.3, 0, 0.3]) for (const x of [-1, 1]) box(g, 0.34, 0.02, 0.04, DARKWOOD, x * (W / 2 + 0.14), 0.12, z).rotation.z = x * 0.35;
-      if (big) for (const z of [-0.35, 0, 0.35]) for (const x of [-1, 1]) cyl(g, 0.04, 0.04, 0.16, IRON, x * (W / 2 + 0.02), 0.2, z, 6).rotation.z = Math.PI / 2;
+      if (!war) { box(g, 0.2, 0.08, 0.2, 0x8a9aa8, 0.02, 0.26, -0.2); cyl(g, 0.012, 0.012, 0.55, DARKWOOD, 0.16, 0.36, 0.12, 5).rotation.x = -0.9; }
+      // A galley is rowed: three oars a side, pulled together.
+      if (war && !big) for (const z of [-0.3, 0, 0.3]) for (const x of [-1, 1]) {
+        const o = new THREE.Group();
+        o.position.set(x * W * 0.45, 0.2, z);
+        const blade = cyl(o, 0.012, 0.012, 0.5, DARKWOOD, x * 0.22, -0.07, 0, 5);
+        blade.rotation.z = x * (Math.PI / 2 - 0.32);
+        box(o, 0.1, 0.012, 0.05, WOOD, x * 0.43, -0.14, 0).rotation.z = x * -0.32;
+        o.userData.oar = x;
+        g.add(o);
+      }
+      if (big) for (const z of [-0.35, 0, 0.35]) for (const x of [-1, 1]) cyl(g, 0.028, 0.032, 0.13, 0x2c2c30, x * W * 0.3, 0.25, z, 6).rotation.z = Math.PI / 2;
       break;
     }
     case 'ram': {
       box(g, 0.7, 0.1, 1.3, DARKWOOD, 0, 0.3, 0);
-      for (const [x, z] of [[-0.4, 0.45], [0.4, 0.45], [-0.4, -0.45], [0.4, -0.45]]) { const w = cyl(g, 0.2, 0.2, 0.08, DARKWOOD, x, 0.2, z, 10); w.rotation.z = Math.PI / 2; }
+      for (const [x, z] of [[-0.4, 0.45], [0.4, 0.45], [-0.4, -0.45], [0.4, -0.45]]) wheel(g, 0.2, x, 0.2, z);
       const cover = add(g, geo('ramroof', () => { const c = new THREE.CylinderGeometry(0.5, 0.5, 1.3, 3).toNonIndexed(); c.computeVertexNormals(); return c; }), 0x7a5a38, 0, 0.72, 0);
       cover.rotation.set(Math.PI / 2, 0, 0);
       box(g, 0.74, 0.06, 0.3, color, 0, 0.5, 0);
@@ -1032,7 +1079,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     }
     case 'scorpion': {
       box(g, 0.4, 0.1, 0.8, WOOD, 0, 0.3, -0.05);
-      for (const x of [-0.28, 0.28]) { const w = cyl(g, 0.22, 0.22, 0.07, DARKWOOD, x, 0.22, -0.1, 10); w.rotation.z = Math.PI / 2; }
+      for (const x of [-0.28, 0.28]) wheel(g, 0.22, x, 0.22, -0.1);
       box(g, 0.08, 0.3, 0.08, DARKWOOD, 0, 0.5, 0.1);
       box(g, 0.1, 0.08, 1.0, DARKWOOD, 0, 0.68, 0.15);
       box(g, 1.0, 0.05, 0.06, WOOD, 0, 0.7, 0.5);
@@ -1073,8 +1120,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     case 'catapult': {
       box(g, 0.6, 0.14, 1.0, WOOD, 0, 0.3, 0);
       for (const [x, z] of [[-0.36, 0.34], [0.36, 0.34], [-0.36, -0.34], [0.36, -0.34]]) {
-        const w = cyl(g, 0.2, 0.2, 0.08, DARKWOOD, x, 0.2, z, 10);
-        w.rotation.z = Math.PI / 2;
+        wheel(g, 0.2, x, 0.2, z);
       }
       box(g, 0.08, 0.5, 0.08, DARKWOOD, -0.22, 0.6, 0.15);
       box(g, 0.08, 0.5, 0.08, DARKWOOD, 0.22, 0.6, 0.15);
