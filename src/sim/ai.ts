@@ -2,6 +2,7 @@
 
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
+import { LEANING } from './creed';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -133,6 +134,7 @@ export class AIController {
     if (!saving && !underAttack) this.buildWalls(home, villagers, stalled.length > 0);
 
     this.assignWorkers(villagers, mine, home);
+    if (!underAttack) this.staffHouses(mine, villagers, home);
     if (g.sea && !saving) this.navy(mine, ships, villagers, home);
     if (g.sea && this.level >= 1) this.seaRaid(mine, ships, army, !!underAttack);
 
@@ -370,6 +372,27 @@ export class AIController {
     return out;
   }
 
+  /** Once the town can spare the hands, put a few in the church or the tavern, as this people leans. */
+  private staffHouses(mine: Building[], villagers: Unit[], home: Building): void {
+    const g = this.game, pid = this.pid, p = g.players[pid];
+    if (this.level < 1 || p.age < 1 || villagers.length < 16) return;
+    const pious = (LEANING[p.civ] ?? 0.5) >= 0.5;
+    const type = pious ? 'temple' : 'tavern';
+    const want = villagers.length >= 26 ? 4 : 2;
+    if ((pious ? p.clergy : p.maids) >= want) return;
+    const house = mine.find((b) => b.type === type && b.complete && (b.staff?.length ?? 0) < (b.def.staff ?? 0));
+    if (!house) {
+      // Build the house itself if the town has none (the build order gets to a church late, and never to a tavern).
+      if (!mine.some((b) => b.type === type) && p.res.wood >= (BUILDINGS[type].cost.wood ?? 0) + 60) this.build(type, home, villagers, 6, 18);
+      return;
+    }
+    // Anyone already walking there counts.
+    if (villagers.some((v) => v.order?.t === 'staff')) return;
+    const free = villagers.filter((v) => !v.inside && (!v.order || v.order.t === 'gather'));
+    const v = free.sort((a, b) => Math.hypot(a.x - house.x, a.y - house.y) - Math.hypot(b.x - house.x, b.y - house.y))[0];
+    if (v) g.cmdTarget(pid, [v.id], house.id);
+  }
+
   /** A landing in progress: troops gather at the shore, board a transport and are put ashore near the enemy. */
   private raid: { phase: 'load' | 'sail'; ship: number; men: number[]; t: number; called: boolean; load: { wx: number; wy: number; lx: number; ly: number }; land: { wx: number; wy: number }; tx: number; ty: number } | null = null;
   private raidT = 420;
@@ -532,7 +555,7 @@ export class AIController {
     let bestD = Infinity;
     for (const v of villagers) {
       const o = v.order;
-      if (v.inside || (o && (o.t === 'build' || o.t === 'movein' || o.t === 'shelter'))) continue;
+      if (v.inside || (o && (o.t === 'build' || o.t === 'movein' || o.t === 'shelter' || o.t === 'staff'))) continue;
       const d = Math.hypot(v.x - x, v.y - y) + (o ? (o.t === 'gather' && o.res === 'wood' ? 4 : 10) : 0);
       if (d < bestD) { bestD = d; best = v; }
     }

@@ -6,7 +6,7 @@ import {
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { generateMap, MapSpec, NodeType, T_WATER } from './map';
-import { Creed, DILEMMAS, LEANING, creedOf } from './creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
@@ -41,6 +41,7 @@ export type Order =
   | { t: 'movein'; id: number; then?: Order | null }
   | { t: 'shelter'; id: number; then?: Order | null }
   | { t: 'board'; id: number }
+  | { t: 'staff'; id: number }
   | { t: 'unload'; x: number; y: number; started?: boolean; tries?: number }
   | { t: 'cast'; ability: string; x: number; y: number; started?: boolean; tries?: number };
 
@@ -124,6 +125,7 @@ export interface Building extends Base {
   doneAt: number; // game time construction finished (0 if not yet)
   burnT: number; // seconds of fire left after a flame attack
   sheltered: number[]; // villagers hiding inside
+  staff?: number[]; // villagers stationed here to work: clergy or tavern maids
   morale: number; // town centers: number of houses nearby (capped)
   seen: boolean; // has the human player ever seen this building
 }
@@ -187,6 +189,9 @@ export interface Player {
   bell: boolean;
   /** Piety against decadence, -100 to 100. */
   virtue: number;
+  /** Villagers stationed in churches and in taverns, counted once a second. */
+  clergy: number;
+  maids: number;
   /** A dilemma waiting for an answer (its id), when the next is due, and how many have been put. */
   dilemma: string | null;
   dilemmaT: number;
@@ -302,7 +307,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i, civ: s.civ && CIVS[s.civ] ? s.civ : CIV_IDS[i % CIV_IDS.length],
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, clergy: 0, maids: 0, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
       this.heroes.push([]);
@@ -342,7 +347,7 @@ export class Game {
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, civ: '', res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, clergy: 0, maids: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
     });
     this.heroes.push([]);
     this.tcs.push([]);
@@ -447,7 +452,7 @@ export class Game {
       this.units.splice(this.units.indexOf(e), 1);
       this.players[e.owner].pop -= e.def.pop;
       const shelter = this.entities.get(e.inside);
-      if (shelter && shelter.kind === 'building') shelter.sheltered = shelter.sheltered.filter((id) => id !== e.id);
+      if (shelter && shelter.kind === 'building') { shelter.sheltered = shelter.sheltered.filter((id) => id !== e.id); if (shelter.staff) shelter.staff = shelter.staff.filter((id) => id !== e.id); }
       if (shelter && shelter.kind === 'unit' && shelter.cargo) shelter.cargo = shelter.cargo.filter((id) => id !== e.id);
       // Everyone aboard a sinking ship goes down with it.
       for (const id of e.cargo ?? []) { const c = this.entities.get(id); if (c && c.kind === 'unit') { c.inside = 0; this.kill(c); } }
@@ -462,6 +467,7 @@ export class Game {
         if (home.residents.f === e.id) home.residents.f = 0;
       }
     } else if (e.kind === 'building') {
+      this.unstaff(e, e.staff?.length ?? 0);
       this.buildings.splice(this.buildings.indexOf(e), 1);
       this.setCells(e.cx, e.cy, e.size, 0, true);
       this.release(e);
@@ -746,6 +752,10 @@ export class Game {
       } else if (t.kind === 'building' && villager) {
         if (!t.complete || t.hp < t.maxHp) this.setOrder(u, { t: 'build', id: t.id, then: this.job(u) });
         else if (t.type === 'farm') this.orderGather(u, t);
+        else if (t.def.staff) {
+          if ((t.staff?.length ?? 0) < t.def.staff) this.setOrder(u, { t: 'staff', id: t.id });
+          else if (us.length === 1) this.msg(owner, `The ${t.def.name.toLowerCase()} has all the hands it can use.`);
+        }
         else if (t.type === 'house') {
           const g = u.gender!;
           if (!t.residents[g] && !slots[g] && u.homeId !== t.id) {
@@ -988,9 +998,14 @@ export class Game {
     if (this.field) return;
     for (const p of this.players) {
       if (p.id === this.wild || p.defeated || !this.tcs[p.id]?.length) continue;
-      // Temples and holy folk keep a people pious, a little at a time.
-      const temples = Math.min(2, this.buildings.filter((b) => b.owner === p.id && b.type === 'temple' && b.complete).length);
-      if (temples && p.virtue < 60) this.shiftVirtue(p.id, temples / 120);
+      // Clergy pull a people towards piety, tavern maids the other way; the maids also earn their keep.
+      p.clergy = 0;
+      p.maids = 0;
+      for (const b of this.buildings) if (b.owner === p.id && b.staff?.length) { if (b.type === 'tavern') p.maids += b.staff.length; else p.clergy += b.staff.length; }
+      const clergy = Math.min(STAFF_CAP, p.clergy), maids = Math.min(STAFF_CAP, p.maids);
+      const pull = (clergy * CLERGY_VIRTUE - maids * MAID_VIRTUE) / 60;
+      if (pull) this.shiftVirtue(p.id, pull);
+      if (maids) { p.res.gold += maids * MAID_GOLD; p.stats.gathered += maids * MAID_GOLD; }
       if (p.dilemma || this.time < p.dilemmaT) continue;
       // Chosen without the game's dice, so that a match plays out the same with or without them.
       const pick = (this.seed * 31 + p.id * 17 + p.dilemmas * 7) % DILEMMAS.length;
@@ -1226,6 +1241,27 @@ export class Game {
     b.sheltered = [];
   }
 
+  /** Send stationed villagers back out of a church or tavern: one of them, or everybody. */
+  cmdUnstaff(owner: number, bid: number, all = false): number {
+    const b = this.entities.get(bid);
+    if (!b || b.kind !== 'building' || b.owner !== owner || !b.staff?.length) return 0;
+    return this.unstaff(b, all ? b.staff.length : 1);
+  }
+  private unstaff(b: Building, n: number): number {
+    let out = 0;
+    while (n-- > 0 && b.staff?.length) {
+      const u = this.entities.get(b.staff.pop()!);
+      if (!u || u.kind !== 'unit') continue;
+      const s = this.exitSpot(b, b.x, b.y + b.size);
+      u.inside = 0;
+      u.x = u.px = s.x;
+      u.y = u.py = s.y;
+      this.setOrder(u, null);
+      out++;
+    }
+    return out;
+  }
+
   cmdPauseBirths(owner: number, houseId: number, paused: boolean): void {
     const h = this.entities.get(houseId);
     if (h && h.kind === 'building' && h.owner === owner) h.birthsPaused = paused;
@@ -1233,7 +1269,7 @@ export class Game {
 
   /** Seconds a house needs for its next child. Each child takes a little longer than the last. */
   birthTime(b: Building): number {
-    return (BIRTH_TIME * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * this.creed(b.owner).birth * (1 + 0.1 * this.renown(b)));
+    return (BIRTH_TIME * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * this.creed(b.owner).birth * (1 + CLERGY_BIRTH * Math.min(STAFF_CAP, this.players[b.owner].clergy)) * (1 + 0.1 * this.renown(b)));
   }
 
   // ------------------------------------------------------------------
@@ -1589,6 +1625,21 @@ export class Game {
         if (this.walkTo(u, o)) { this.setOrder(u, null); this.unload(u); }
         break;
 
+      case 'staff': {
+        const b = this.entities.get(o.id);
+        if (!b || b.kind !== 'building' || b.dead || !b.complete || (b.staff?.length ?? 0) >= (b.def.staff ?? 0)) { this.setOrder(u, null); break; }
+        const r = this.approach(u, b, REACH);
+        if (r === 'there') {
+          (b.staff ??= []).push(u.id);
+          u.inside = b.id;
+          u.carryAmt = 0;
+          this.setOrder(u, null);
+          u.x = u.px = b.x;
+          u.y = u.py = b.y;
+        } else if (r === 'fail') this.setOrder(u, null);
+        break;
+      }
+
       case 'board': {
         const s = this.entities.get(o.id);
         if (!s || s.kind !== 'unit' || s.dead || !s.def.carry) { this.setOrder(u, null); break; }
@@ -1778,7 +1829,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;

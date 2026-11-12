@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AIController } from '../src/sim/ai';
-import { CREEDS, DILEMMAS, creedOf } from '../src/sim/creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
@@ -1850,5 +1850,75 @@ describe('piety and decadence', () => {
     expect(r.players[0].virtue).toBe(p.virtue);
     expect(creedOf(100).id).toBe('zealous');
     expect(CREEDS.length).toBe(5);
+  });
+});
+
+describe('church and tavern', () => {
+  const town = () => {
+    const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
+    const p = g.players[0];
+    p.age = 1; p.dilemmaT = 1e9; g.players[1].dilemmaT = 1e9;
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    const vs = [0, 1, 2, 3, 4, 5].map((i) => g.spawnUnit('villager', 0, tc.x + 4 + (i % 3), tc.y + 4 + Math.floor(i / 3), i % 2 ? 'f' : 'm'));
+    return { g, p, tc, vs };
+  };
+
+  it('clergy make a people pious and bring children sooner; they stop working while stationed', () => {
+    const { g, p, tc, vs } = town();
+    const church = g.spawnBuilding('temple', 0, Math.floor(tc.x) + 8, Math.floor(tc.y) + 2, true);
+    expect(church.def.name).toBe('Church');
+    const house = g.buildings.find((b) => b.type === 'house') ?? g.spawnBuilding('house', 0, Math.floor(tc.x) - 6, Math.floor(tc.y) + 6, true);
+    const plain = g.birthTime(house);
+    g.cmdTarget(0, vs.map((v) => v.id), church.id);
+    run(g, 20);
+    expect(church.staff!.length).toBe(4); // room for four; the rest are turned away
+    expect(vs.filter((v) => v.inside === church.id).length).toBe(4);
+    expect(p.clergy).toBe(4);
+    run(g, 60);
+    expect(p.virtue).toBeGreaterThan(4 * CLERGY_VIRTUE * 0.9);
+    expect(g.birthTime(house)).toBeLessThan(plain / (1 + 4 * CLERGY_BIRTH) + 0.01);
+    // Out they come, one and then all.
+    expect(g.cmdUnstaff(0, church.id)).toBe(1);
+    expect(g.cmdUnstaff(0, church.id, true)).toBe(3);
+    expect(vs.every((v) => !v.inside)).toBe(true);
+    run(g, 2);
+    expect(p.clergy).toBe(0);
+    // A church that falls puts its clergy on the street, alive.
+    g.cmdTarget(0, [vs[0].id], church.id);
+    run(g, 15);
+    expect(vs[0].inside).toBe(church.id);
+    g.cmdDelete(0, [church.id]);
+    expect(vs[0].inside).toBe(0);
+    expect(vs[0].dead).toBe(false);
+  });
+
+  it('tavern maids bring in gold and decadence, and distract the rest of the town', () => {
+    const { g, p, tc, vs } = town();
+    const tavern = g.spawnBuilding('tavern', 0, Math.floor(tc.x) + 8, Math.floor(tc.y) + 2, true);
+    g.cmdTarget(0, vs.slice(0, 3).map((v) => v.id), tavern.id);
+    run(g, 20);
+    expect(tavern.staff!.length).toBe(3);
+    const gold = p.res.gold, virtue = p.virtue;
+    run(g, 60);
+    expect(p.maids).toBe(3);
+    expect(p.res.gold - gold).toBeGreaterThan(3 * MAID_GOLD * 60 * 0.95);
+    expect(p.virtue).toBeLessThan(virtue - 3 * MAID_VIRTUE * 0.9);
+    // Saved and restored, they are still behind the bar.
+    const r = Game.restore(g.serialize());
+    expect(r.buildings.find((b) => b.type === 'tavern')!.staff!.length).toBe(3);
+    run(r, 2);
+    expect(r.players[0].maids).toBe(3);
+  });
+
+  it('a pious AI staffs its church and a worldly one builds and staffs a tavern', () => {
+    const g = new Game(9, [{ name: 'A', color: 1, isAI: true, civ: 'dawn' }, { name: 'B', color: 2, isAI: true, civ: 'forge' }]);
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    let clergy = 0, maids = 0;
+    for (let t = 0; t < 20 * 60 * 14 && g.winner < 0 && !(clergy && maids); t++) {
+      g.step();
+      if (t % 20 === 0) { for (const a of ais) a.update(); clergy = Math.max(clergy, g.players[0].clergy); maids = Math.max(maids, g.players[1].maids); }
+    }
+    expect(clergy).toBeGreaterThan(0);
+    expect(maids).toBeGreaterThan(0);
   });
 });

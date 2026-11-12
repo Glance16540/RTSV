@@ -51,15 +51,26 @@ faster), Swift, Hardy (more health) or Skilled (build faster). Children usually 
 from their mother or father and carry the family name of the house they were born in, so who you
 house together matters.
 
-**Piety and decadence.** Every few minutes a dilemma is put to you: strangers at the gate, a
-gambling den by the market, a prophet calling a fast. The pious answer usually costs something now;
-the worldly one usually pays. Your answers move your people along a scale, and where they stand
-shapes what they are good at. The Devout and Zealous gather faith faster, heal better and hold
-firmer near home, but research slowly and trade badly. The Worldly and Decadent train soldiers
-faster, mine more gold and get better prices, but their faith, healing and morale wither. Temples
-pull a people slowly towards piety and market trading pulls the other way. Rivals answer for
-themselves, each people with its own leaning. Hover over the creed in the top bar to see where
-you stand.
+**Church and tavern.** Two buildings pull your people opposite ways, and both run on villagers
+you station inside them, who stop doing other work while they are there. Right-click the building
+with villagers to station them (four to a building, eight counted in all); its buttons send them
+back out.
+
+- *Clergy in a Church* each add piety and bring children sooner, so a pious town grows through its
+  families.
+- *Maids in a Tavern* each bring in gold and add decadence, but the whole town gathers a little
+  slower for the distraction.
+
+Where your people stand on the scale between piety and decadence sets their creed. The Devout and
+Zealous have more children, gather faith faster, heal better and hold firmer near home, but research
+slowly and trade badly. The Worldly and Decadent train soldiers faster, mine more gold and get
+better prices, but have fewer children and their faith, healing and morale wither. Hover over the
+creed in the top bar to see where you stand.
+
+Every few minutes a dilemma is also put to you (strangers at the gate, a gambling den, a prophet
+calling a fast): the pious answer usually costs something now and the worldly one usually pays, and
+either moves the scale. Market trading nudges it towards decadence. Rivals choose for themselves:
+pious peoples staff a church, worldly ones build a tavern.
 
 **Unit upgrades.** Research re-equips whole lines at once: Slingers become Bowmen, then
 Crossbowmen, then Musketeers; Clubmen become Swordsmen; Scout Riders become Knights; Catapults
@@ -126,7 +137,7 @@ gates and win together. An allied AI comes to your defence, joins your attacks, 
 **Saving.** The 💾 button stores the game in your browser, and it autosaves every two minutes.
 *Continue saved game* on the start screen picks it up again.
 
-**Also:** fog of war, minimap, four resources, farms, storehouses, towers, blacksmith and temple
+**Also:** fog of war, minimap, four resources, farms, storehouses, towers, blacksmith and church
 research, control groups, rally points, synthesised sound, and an AI opponent with three
 difficulty levels that plays by the same rules.
 

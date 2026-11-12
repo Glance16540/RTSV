@@ -756,17 +756,22 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
       break;
     }
     case 'temple': {
+      // A church: a long nave with a pitched roof, a square tower with a spire and a cross.
       const st = age >= 2 ? 0xcfc8b8 : 0xb0a488;
-      box(g, 2.8, 0.4, 2.8, st, 0, 0.2, 0);
-      box(g, 2.2, 0.4, 2.2, st, 0, 0.6, 0);
-      box(g, 1.6, 0.5, 1.6, st, 0, 1.05, 0);
-      for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) cyl(g, 0.1, 0.1, 0.7, 0xe8e2d0, x, 1.65, z);
-      box(g, 1.6, 0.14, 1.6, rf, 0, 2.05, 0);
-      ball(g, 0.2, 0xffb040, 0, 1.5, 0, 0xcc5500).castShadow = false;
-      box(g, 0.5, 0.35, 0.06, color, 0, 0.62, 1.12);
-      box(g, 0.6, 0.12, 0.8, st, 0, 0.06, 1.7);
-      box(g, 0.6, 0.12, 0.5, st, 0, 0.18, 1.55);
-      flag(g, color, -1.3, 0.4, 1.3, 1.0);
+      box(g, 2.8, 0.14, 2.8, 0x8f8a7c, 0, 0.07, 0).castShadow = false;
+      box(g, 1.5, 1.2, 2.3, st, 0.35, 0.74, -0.1);
+      const nave = add(g, geo('naveroof', () => { const c = new THREE.CylinderGeometry(1, 1, 2.4, 3).toNonIndexed(); c.computeVertexNormals(); return c; }), rf, 0.35, 1.7, -0.1);
+      nave.rotation.set(Math.PI / 2, 0, 0);
+      nave.scale.set(0.95, 1, 0.75);
+      box(g, 0.9, 2.3, 0.9, st, -0.8, 1.29, 0.75);
+      roof(g, 0.5, 1.1, rf, -0.8, 2.44, 0.75);
+      box(g, 0.06, 0.5, 0.06, 0xe8c860, -0.8, 3.75, 0.75);
+      box(g, 0.3, 0.06, 0.06, 0xe8c860, -0.8, 3.85, 0.75);
+      box(g, 0.4, 0.7, 0.06, DARKWOOD, 0.35, 0.49, 1.06);
+      for (const z of [-0.8, -0.1, 0.6]) box(g, 0.05, 0.5, 0.26, 0xf0d890, 1.11, 0.9, z, 0x6a5010);
+      box(g, 0.3, 0.3, 0.05, 0xf0d890, -0.8, 1.9, 1.21, 0x6a5010);
+      box(g, 0.92, 0.08, 0.92, color, -0.8, 2.4, 0.75);
+      flag(g, color, 1.25, 0.14, 1.25, 1.0);
       break;
     }
     case 'blacksmith': {
@@ -827,6 +832,23 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
       box(g, 0.9, 0.12, 0.8, st, 0, 0.06, 2.2);
       box(g, 0.8, 0.6, 0.06, color, 0, 0.9, 1.92);
       flag(g, color, 1.5, 0.5, 1.5, 1.6);
+      break;
+    }
+    case 'tavern': {
+      // A long timbered alehouse with a jettied upper floor, a sign and barrels at the door.
+      box(g, 2.4, 0.9, 1.8, wall, 0, 0.45, -0.1);
+      box(g, 2.6, 0.6, 2.0, 0xd8c8a0, 0, 1.2, -0.1);
+      for (const x of [-1.25, -0.6, 0, 0.6, 1.25]) box(g, 0.08, 0.6, 2.02, DARKWOOD, x, 1.2, -0.1);
+      box(g, 2.62, 0.08, 2.02, color, 0, 0.92, -0.1);
+      const top = add(g, geo('tavroof', () => { const c = new THREE.CylinderGeometry(1.25, 1.25, 2.7, 3).toNonIndexed(); c.computeVertexNormals(); return c; }), rf, 0, 1.82, -0.1);
+      top.rotation.set(0, 0, Math.PI / 2);
+      top.scale.set(0.52, 1, 0.92);
+      box(g, 0.3, 0.9, 0.3, 0x8a8a84, 0.9, 2.1, -0.5);
+      box(g, 0.5, 0.75, 0.06, DARKWOOD, -0.5, 0.38, 0.82);
+      for (const x of [0.3, 0.9]) box(g, 0.34, 0.3, 0.05, 0xf0d890, x, 0.6, 0.82, 0x6a5010);
+      box(g, 0.05, 0.05, 0.5, DARKWOOD, -1.0, 1.35, 1.1);
+      box(g, 0.36, 0.3, 0.04, 0xc8a040, -1.0, 1.15, 1.3);
+      for (const [x, z] of [[1.15, 1.05], [0.8, 1.15], [1.0, 1.4]]) cyl(g, 0.16, 0.16, 0.34, 0x7a5230, x, 0.17, z, 8);
       break;
     }
     case 'market': {

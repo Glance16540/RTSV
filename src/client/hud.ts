@@ -4,7 +4,7 @@ import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
-import { Choice, DILEMMAS, creedOf } from '../sim/creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_WATER } from '../sim/map';
 import { ico } from './assets';
@@ -350,6 +350,11 @@ export class Hud {
         }
       }
     }
+    if (b.def.staff && same.some((s) => s.staff?.length)) {
+      const who = b.type === 'tavern' ? 'tavern maid' : 'cleric';
+      out.push({ id: 'unstaff1', icon: ico('unstaff', '🚶'), name: `Send one ${who} back to work`, desc: 'A stationed villager comes out and can be given other work.', act: () => { game.cmdUnstaff(pid, b.id); } });
+      out.push({ id: 'unstaffall', icon: ico('unstaffall', '🚪'), name: 'Send everyone out', desc: 'All the villagers stationed here come out.', act: () => { for (const s of same) game.cmdUnstaff(pid, s.id, true); } });
+    }
     if (b.def.shelter && same.some((s) => s.sheltered.length)) {
       out.push({
         id: 'release', icon: ico('release', '🚪'), name: 'Send everyone out', desc: 'Units inside come back out.',
@@ -483,6 +488,13 @@ export class Hud {
         body += `<div class="${b.morale ? 'good' : 'hint'}">🏠 Houses nearby: ${b.morale}/${MORALE_MAX_HOUSES} — defenders take ${Math.round(b.morale * MORALE_PER_HOUSE * 100)}% less damage</div>`;
       }
       if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Inside: ${b.sheltered.length}/${b.def.shelter} — Alt+right-click to send units in</div>`;
+      if (b.def.staff) {
+        const n = b.staff?.length ?? 0, tav = b.type === 'tavern';
+        body += `<div class="${n ? 'good' : 'hint'}">${tav ? '🍺 Tavern maids' : '🙏 Clergy'}: ${n}/${b.def.staff} — right-click with villagers to station them</div>` +
+          `<div class="hint">${tav
+            ? `Each brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute and adds ${MAID_VIRTUE} decadence a minute, but slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%.`
+            : `Each adds ${CLERGY_VIRTUE} piety a minute and brings children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner.`} Up to ${STAFF_CAP} count in all.</div>`;
+      }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
     return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;
@@ -629,7 +641,8 @@ export class Hud {
   private creedTip(virtue: number): string {
     const c = creedOf(virtue);
     const where = virtue > 0 ? `Piety ${Math.round(virtue)}` : virtue < 0 ? `Decadence ${Math.round(-virtue)}` : 'In balance';
-    return `${where} of 100. ${c.desc}` + (c.boons.length ? ` Boons: ${c.boons.join('; ')}. Banes: ${c.banes.join('; ')}.` : ' No boons or banes.');
+    const p = this.app.game.players[this.app.pid];
+    return `${where} of 100 (${p.clergy} clergy, ${p.maids} tavern maids). ${c.desc}` + (c.boons.length ? ` Boons: ${c.boons.join('; ')}. Banes: ${c.banes.join('; ')}.` : ' No boons or banes.');
   }
 
   /** Put the dilemma awaiting the player's answer on screen, or take it away once answered. */

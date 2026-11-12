@@ -33,7 +33,7 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 >   `mammoth` (war mammoth with rider), `shaman`, `prophet` (hooded robed seer with staff),
 >   `warlord` (crowned hero), `catapult`
 > - Buildings: `towncenter`, `house`, `storehouse`, `farm`, `barracks`, `range` (archery
->   range), `stable`, `temple`, `blacksmith`, `workshop` (siege workshop), `tower`, `palisade` (log wall), `stonewall`, `gate`, `market` (trading stalls), `wonder` (great stepped monument)
+>   range), `stable`, `temple` (shown in game as the Church), `tavern`, `blacksmith`, `workshop` (siege workshop), `tower`, `palisade` (log wall), `stonewall`, `gate`, `market` (trading stalls), `wonder` (great stepped monument)
 > - Resources: `food` (meat), `wood` (logs), `gold` (coins), `stone` (cut stone),
 >   `population` (group of people)
 > - Map objects: `node_tree`, `node_berries`, `node_gold`, `node_stone`
@@ -58,7 +58,7 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 > three-quarter top-down view, then convert it to 3D. Do buildings first. Filenames in
 > `models/`:
 > - Buildings (Stone Age look: mud walls, thatch): `house`, `towncenter`, `storehouse`,
->   `barracks`, `range`, `stable`, `temple` (stepped stone shrine), `blacksmith`, `workshop`,
+>   `barracks`, `range`, `stable`, `temple` (the Church: nave, tower and spire), `tavern` (timbered alehouse), `blacksmith`, `workshop`,
 >   `tower`, `farm` (flat square crop field)
 > - Units (neutral standing pose): `villager_m`, `villager_f`, `clubman`, `slinger`,
 >   `spearman`, `swordsman`, `bowman`, `crossbowman`, `rider`, `knight`, `mammoth`, `shaman`,

@@ -442,6 +442,8 @@ export interface BuildingDef {
   shelter?: number;
   dropoff?: boolean;
   walkable?: boolean;
+  /** How many villagers can be stationed inside to work there (clergy in a church, maids in a tavern). */
+  staff?: number;
   atk?: number;
   range?: number;
   cooldown?: number;
@@ -499,10 +501,16 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     trains: ['rider', 'lancer', 'wolfrider', 'chariot', 'mammoth', 'knight', 'hussar', 'horsearcher', 'templar', 'warbear'], techs: ['up_knight'],
   }),
   temple: B({
-    id: 'temple', name: 'Temple', icon: '⛩️',
-    desc: 'Trains shamans and prophets, and researches blessings for your families.',
+    id: 'temple', name: 'Church', icon: '⛪',
+    desc: 'Station up to four villagers here as clergy: each makes your people more pious and brings children sooner. Also trains shamans and prophets and researches blessings.',
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
-    trains: ['shaman', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'],
+    trains: ['shaman', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
+  }),
+  tavern: B({
+    id: 'tavern', name: 'Tavern', icon: '🍺',
+    desc: 'Station up to four villagers here as tavern maids: each brings in gold and makes your people more decadent, but the whole town works a little slower for the distraction.',
+    cost: { wood: 110 }, time: 26, age: 1, hp: 600, size: 3, pop: 0, sight: 5,
+    trains: [], techs: [], staff: 4,
   }),
   blacksmith: B({
     id: 'blacksmith', name: 'Blacksmith', icon: '⚒️',
@@ -552,7 +560,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
 /** Order in which buildings appear in the villager build menu. */
 /** Villager build menu, in two pages: settlement and military. */
 export const BUILD_PAGES = [
-  ['house', 'storehouse', 'farm', 'dock', 'market', 'towncenter', 'temple', 'blacksmith', 'palisade', 'gate', 'stonewall', 'wonder'],
+  ['house', 'storehouse', 'farm', 'dock', 'market', 'towncenter', 'temple', 'tavern', 'blacksmith', 'palisade', 'gate', 'stonewall', 'wonder'],
   ['barracks', 'range', 'stable', 'workshop', 'tower'],
 ];
 
