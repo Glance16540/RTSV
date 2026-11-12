@@ -56,8 +56,15 @@ export async function loadAssets(): Promise<void> {
 }
 
 /** HTML for an icon: the generated image if present, otherwise the emoji. */
+/** Which way a town leans, for anything drawn differently in a pious town and a decadent one. */
+export type Leaning = '' | 'holy' | 'low';
+export const leaningOf = (virtue: number): Leaning => (virtue >= 30 ? 'holy' : virtue <= -30 ? 'low' : '');
+let leaning: Leaning = '';
+/** The player's own town decides how their icons are drawn: wholesome when pious, gaudy or run-down when decadent. */
+export function setIconLeaning(virtue: number): void { leaning = leaningOf(virtue); }
+
 export function ico(key: string, emoji: string): string {
-  const file = manifest.icons[key] ?? (key === 'villager' ? manifest.icons.villager_m : undefined);
+  const file = (leaning && manifest.icons[`${key}_${leaning}`]) || manifest.icons[key] || (key === 'villager' ? manifest.icons.villager_m : undefined);
   return file ? `<img class="ico" src="${BASE}icons/${file}" alt="" draggable="false">` : emoji;
 }
 

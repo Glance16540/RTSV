@@ -5,6 +5,7 @@ import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
 import { makeBuilding, makeResource, makeUnit, mat, RES_COLOR } from './models';
+import { leaningOf } from './assets';
 
 const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
@@ -33,12 +34,6 @@ export class Renderer {
   private forest: THREE.InstancedMesh[] = [];
   private scenery!: Scenery;
   private haze = new THREE.Fog(0x9fb0c4, 60, 160);
-  private sky!: THREE.HemisphereLight;
-  private fill!: THREE.DirectionalLight;
-  /** How the town stands, from -1 (decadent) to 1 (righteous), eased so the light turns slowly. */
-  private mood = 0;
-  private veil: HTMLDivElement;
-  private motes!: THREE.Points;
   private fogTex!: THREE.DataTexture;
   private fogAlpha: Float32Array;
   private rings: THREE.Mesh[] = [];
@@ -70,29 +65,16 @@ export class Renderer {
     this.gl.toneMapping = THREE.ACESFilmicToneMapping;
     this.gl.toneMappingExposure = 1.02;
     this.scene.fog = this.haze;
-    this.sky = new THREE.HemisphereLight(0xd6e6ff, 0x8a7858, 1.55);
-    this.scene.add(this.sky);
+    this.scene.add(new THREE.HemisphereLight(0xd6e6ff, 0x8a7858, 1.55));
     this.sun = new THREE.DirectionalLight(0xffe2b4, 3.0);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(4096, 4096);
     this.sun.shadow.bias = -0.0006;
     this.sun.shadow.normalBias = 0.04;
     this.sun.shadow.radius = 2.5;
-    const fill = this.fill = new THREE.DirectionalLight(0xa8c0ec, 0.9); // sky light from the shadow side, so shade is blue, not black
+    const fill = new THREE.DirectionalLight(0xa8c0ec, 0.9); // sky light from the shadow side, so shade is blue, not black
     fill.position.set(40, 30, -30);
     this.scene.add(fill);
-    // A wash over the whole view that follows the town's standing: a golden glow, or a wine-dark closing in.
-    this.veil = document.createElement('div');
-    this.veil.style.cssText = 'position:fixed;inset:0;pointer-events:none;mix-blend-mode:soft-light;transition:opacity 1s';
-    canvas.after(this.veil);
-    // Things in the air: golden motes in a righteous town, red sparks and smoke-glow in a decadent one.
-    const mp = new Float32Array(180 * 3);
-    for (let i = 0; i < 180; i++) { mp[i * 3] = (Math.random() - 0.5) * 60; mp[i * 3 + 1] = Math.random() * 9; mp[i * 3 + 2] = (Math.random() - 0.5) * 60; }
-    const mg = new THREE.BufferGeometry();
-    mg.setAttribute('position', new THREE.Float32BufferAttribute(mp, 3));
-    this.motes = new THREE.Points(mg, new THREE.PointsMaterial({ color: 0xffe9a8, size: 0.16, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
-    this.motes.frustumCulled = false;
-    this.scene.add(this.motes);
     this.scene.add(this.sun, this.sun.target);
 
     this.fogAlpha = new Float32Array(game.size * game.size).fill(1);
@@ -201,47 +183,6 @@ export class Renderer {
       d[i * 4 + 3] = a[i] * 255;
     }
     this.fogTex.needsUpdate = true;
-  }
-
-  /**
-   * The look of the world follows the player's standing: the more righteous the town, the warmer
-   * and more golden the light; the more decadent, the redder, smokier and more lamplit.
-   */
-  private setMood(dt: number): void {
-    const p = this.game.players[this.game.humanId];
-    const want = Math.max(-1, Math.min(1, (p?.virtue ?? 0) / 100));
-    this.mood += (want - this.mood) * Math.min(1, dt * 0.6);
-    const m = this.mood, holy = Math.max(0, m), low = Math.max(0, -m);
-    const mix = (base: number, warm: number, lurid: number) => new THREE.Color(base).lerp(new THREE.Color(warm), holy).lerp(new THREE.Color(lurid), low);
-    this.sun.color.copy(mix(0xffe2b4, 0xffd08a, 0xffb0a0));
-    this.sun.intensity = 3.0 + holy * 0.5 - low * 0.7;
-    this.sky.color.copy(mix(0xd6e6ff, 0xfff0d2, 0xd0b0e0));
-    this.sky.groundColor.copy(mix(0x8a7858, 0xa08a58, 0x7a5060));
-    this.fill.color.copy(mix(0xa8c0ec, 0xf0d8b0, 0xd890c8));
-    this.fill.intensity = 0.9 + low * 0.25;
-    this.haze.color.copy(mix(0x9fb0c4, 0xe6cf9a, 0x7a4468));
-    this.gl.toneMappingExposure = 1.02 + holy * 0.1 - low * 0.08;
-    // The wash: gold spreading from the middle, or rose in the middle with the edges drawing dark.
-    this.veil.style.background = m >= 0
-      ? 'radial-gradient(ellipse at 50% 45%, #ffe2a0 0%, #ffcf80 55%, #e8a860 100%)'
-      : 'radial-gradient(ellipse at 50% 55%, #ff9ab8 0%, #c04a7a 50%, #1c0616 100%)';
-    this.veil.style.opacity = String(m >= 0 ? Math.min(0.55, m * 0.6) : Math.min(0.3, -m * 0.32));
-    // Motes rise slowly in the light; sparks climb faster and flicker.
-    const mat = this.motes.material as THREE.PointsMaterial, pos = this.motes.geometry.getAttribute('position') as THREE.BufferAttribute;
-    mat.opacity = Math.min(0.85, Math.abs(m) * 1.1) * (m < 0 ? 0.7 + 0.3 * Math.sin(this.clock * 9) : 1);
-    mat.color.setHex(m >= 0 ? 0xffe9a8 : 0xff5a6a);
-    mat.size = m >= 0 ? 0.14 : 0.2;
-    if (mat.opacity > 0.01) {
-      const rise = m >= 0 ? 0.25 : 0.9;
-      for (let i = 0; i < pos.count; i++) {
-        let y = pos.getY(i) + dt * rise * (0.6 + (i % 5) * 0.2);
-        if (y > 9) y = 0;
-        pos.setY(i, y);
-        pos.setX(i, pos.getX(i) + Math.sin(this.clock * 0.7 + i) * dt * 0.25);
-      }
-      pos.needsUpdate = true;
-      this.motes.position.set(this.cx, 0, this.cy);
-    }
   }
 
   // ---- Camera ----
@@ -458,8 +399,12 @@ export class Renderer {
 
   private syncBuilding(b: Building): void {
     let g = this.buildingViews.get(b.id);
+    // A church or a tavern shows how its town leans, and is rebuilt when that changes.
+    const lean = b.type === 'temple' || b.type === 'tavern' ? leaningOf(this.game.players[b.owner].virtue ?? 0) : '';
+    if (g && g.userData.lean !== lean) { this.scene.remove(g); g = undefined; }
     if (!g) {
-      g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ);
+      g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ, lean);
+      g.userData.lean = lean;
       // A building sits on the lowest corner of its plot, so no wall hangs in the air.
       const k = b.size / 2 - 0.1, hh = this.scenery.heightAt.bind(this.scenery);
       g.position.set(b.x, Math.min(hh(b.x, b.y), hh(b.x - k, b.y - k), hh(b.x + k, b.y - k), hh(b.x - k, b.y + k), hh(b.x + k, b.y + k)), b.y);
@@ -516,7 +461,6 @@ export class Renderer {
     for (const r of game.resources) this.syncResource(r);
     this.updateFog(dt);
     this.scenery.update(this.clock);
-    this.setMood(dt);
 
     // Selection rings.
     let n = 0;

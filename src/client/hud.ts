@@ -7,7 +7,7 @@ import {
 import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_ROCK, T_WATER } from '../sim/map';
-import { ico } from './assets';
+import { ico, setIconLeaning } from './assets';
 import { LOCALS } from '../sim/campaign';
 import { LEADERS, LeaderEvent } from '../sim/leaders';
 import type { App } from './main';
@@ -514,7 +514,8 @@ export class Hud {
         const men = who.filter((u) => u.gender === 'm').length, women = who.length - men;
         const count = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
         const roll = tav ? `${count(women, 'milkmaid', 'milkmaids')}, ${count(men, 'patron', 'patrons')}` : `${count(men, 'monk', 'monks')}, ${count(women, 'nun', 'nuns')}`;
-        body += `<div class="${who.length ? 'good' : 'hint'}">${tav ? '🍺' : '🙏'} ${roll} <small>(${who.length}/${b.def.staff})</small> — right-click with villagers to station them</div>` +
+        const faces = tav ? ico('milkmaid', '').repeat(women) + ico('patron', '').repeat(men) : ico('monk', '').repeat(men) + ico('nun', '').repeat(women);
+        body += `<div class="${who.length ? 'good' : 'hint'} staffrow">${faces || (tav ? ico('tavern', '🍺') : ico('temple', '🙏'))} ${roll} <small>(${who.length}/${b.def.staff})</small> — right-click with villagers to station them</div>` +
           `<div class="hint">${tav
             ? `A milkmaid brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute. A patron eats and drinks ${(PATRON_FOOD * 60).toFixed(0)} food a minute, but soldiers are trained ${(PATRON_MUSTER * 100).toFixed(0)}% faster for each one. Each adds ${MAID_VIRTUE} decadence a minute and slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile. In a worldly town, plague can break out here.`
             : `Each adds ${CLERGY_VIRTUE} piety a minute and brings the town's children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner. They leave their own house when they enter.`} Up to ${STAFF_CAP} count in all.</div>`;
@@ -621,6 +622,7 @@ export class Hud {
   update(dt: number): void {
     const { game, pid } = this.app;
     const p = game.players[pid];
+    setIconLeaning(p.virtue);
     let idle = 0;
     for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside) idle++;
     const tc = game.buildings.find((b) => b.owner === pid && b.queue[0]?.kind === 'age');

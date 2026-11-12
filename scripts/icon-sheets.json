@@ -1,14 +1,666 @@
 {
-  "style": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: ",
-  "sheets": [
-    [["food", "a roast leg of meat"], ["wood", "three stacked logs"], ["gold", "a pile of gold coins"], ["stone", "a cut block of grey stone"], ["population", "three villagers standing together"], ["villager_m", "a peasant man holding a hoe"], ["villager_f", "a peasant woman carrying a basket"], ["villager", "a peasant man and woman side by side"], ["couple", "two joined wedding rings"], ["births_resume", "a wooden cradle with a baby"], ["births_pause", "an empty wooden cradle"], ["evict", "an open door with footprints leading away"], ["ageup", "a rising sun behind a tower"], ["bell", "a bronze bell swinging"], ["bell_clear", "a dove carrying an olive branch"], ["stop", "a raised open hand"]],
-    [["attackmove", "two crossed swords"], ["patrol", "a guard walking with a lantern"], ["stance_aggressive", "a charging wild boar"], ["stance_defensive", "a shield planted upright in the ground"], ["stance_hold", "a banner on a pole planted in the ground"], ["unload", "a gangplank from a boat down to a beach"], ["unstaff", "one person walking out of a doorway"], ["release", "a crowd of people walking out through an open gate"], ["page_settlement", "a cluster of three small thatched houses"], ["page_military", "a helmet above two crossed spears"], ["node_tree", "a single oak tree"], ["node_berries", "a bush covered in red berries"], ["node_gold", "a rock veined with gold ore"], ["node_stone", "a heap of grey boulders"], ["node_carcass", "a haunch of venison on the ground"], ["node_fish", "two fish leaping from water"]],
-    [["towncenter", "a timber town hall with a central tower and a banner"], ["house", "a small thatched cottage with a smoking chimney"], ["storehouse", "a wooden storehouse with barrels and sacks"], ["dock", "a wooden pier with a boathouse"], ["farm", "a ploughed field of wheat with a scarecrow"], ["barracks", "a long soldiers' hall with shields hung on the wall"], ["range", "a round straw archery target with arrows in it"], ["stable", "a horse looking out over a stable door"], ["temple", "a stone church with a steeple and a cross"], ["tavern", "a tavern with a hanging sign and a foaming ale mug"], ["workcamp", "a stockade of sharpened stakes with a watch platform"], ["blacksmith", "an anvil and hammer by a glowing forge"], ["workshop", "a carpenter's workshop with a great wooden wheel"], ["wonder", "a towering stepped monument with a golden top"], ["market", "a market stall under a striped awning"], ["tower", "a tall stone watch tower"]],
-    [["palisade", "a wall of sharpened wooden logs"], ["stonewall", "a stretch of stone wall with battlements"], ["gate", "a fortified gatehouse with open wooden doors"], ["stonetools", "a flint hand axe"], ["bronzetools", "a bronze pickaxe and sickle crossed"], ["wheelbarrow", "a wooden wheelbarrow loaded with stones"], ["fertility", "a mother holding an infant"], ["extendedfamily", "a large family of six gathered round a hearth"], ["herbalism", "a mortar and pestle with herbs"], ["weapons1", "a bronze short sword"], ["weapons2", "an iron longsword"], ["weapons3", "a gleaming steel greatsword"], ["armor1", "a leather hide jerkin"], ["armor2", "a coat of scale armour"], ["armor3", "a steel plate breastplate"], ["ballistics", "a bundle of heavy arrows with iron heads"]],
-    [["up_frigate", "a tall three-masted sailing warship"], ["up_bowman", "a longbow beside a sling"], ["up_swordsman", "a sword laid across a wooden club"], ["up_pike", "a row of long pikes held upright"], ["up_crossbow", "a wooden crossbow"], ["up_knight", "a knight's great helm with a plume"], ["up_musket", "a matchlock musket"], ["up_bombard", "a bronze cannon barrel being cast"], ["plague", "a plague doctor's beaked mask"], ["quake", "the ground splitting in a jagged crack under a falling tower"], ["deer", "a stag with antlers"], ["wolf", "a snarling wolf"], ["clubman", "a stone-age warrior with a wooden club"], ["slinger", "a warrior whirling a sling"], ["javelineer", "a warrior about to throw a javelin"], ["hound", "a war dog in a spiked collar"]],
-    [["chariot", "an archer in a two-wheeled chariot pulled by a horse"], ["berserker", "a wild bare-chested warrior with two axes"], ["pikeman", "a soldier with a very long pike"], ["grenadier", "a soldier holding a lit round grenade"], ["ram", "a covered battering ram on wheels"], ["scorpion", "a giant crossbow on a wheeled frame"], ["hussar", "a light cavalryman with a sabre on a galloping horse"], ["strategist", "an old general studying a map"], ["zealot", "a robed warrior with a staff and a short sword"], ["wolfrider", "a warrior riding a giant wolf"], ["shieldbearer", "a Roman legionary with a large rectangular shield"], ["trebuchet", "a tall counterweight trebuchet"], ["horsearcher", "a steppe archer shooting a bow from a galloping horse"], ["herbwife", "an old woman healer with a basket of herbs"], ["organgun", "a cart with a row of many small gun barrels"], ["templar", "an armoured temple guard on an armoured horse"]],
-    [["warbear", "an armoured bear rearing up"], ["khopesh", "an Egyptian guard with a curved sickle-sword and shield"], ["warchariot", "an Egyptian war chariot with two horses"], ["sapper", "a soldier with a pickaxe and a torch"], ["gateguard", "a Babylonian guard with a tall shield and spear"], ["immortal", "a Persian Immortal with a wicker shield and spear"], ["warelephant", "a war elephant with a tower on its back"], ["hoplite", "a Greek hoplite with a round shield, crested helmet and spear"], ["companion", "a Greek cavalryman with a lance on a rearing horse"], ["longbowman", "an English archer drawing a longbow"], ["billman", "an English soldier with a hooked polearm"], ["camelrider", "a warrior riding a camel"], ["mameluke", "a mounted Mameluke in a turban with a curved sword"], ["samurai", "a samurai in armour with a katana"], ["ashigaru", "a Japanese foot soldier in a conical hat with a matchlock gun"], ["lancer", "a Mongol rider with a long lance"]],
-    [["hearthguard", "a household guard with a round shield and axe"], ["firethrower", "a soldier with a fire lance spitting flame"], ["spearman", "a soldier with a spear and small shield"], ["swordsman", "a soldier with a sword and shield"], ["bowman", "an archer with a short bow"], ["crossbowman", "a soldier aiming a crossbow"], ["musketeer", "a soldier firing a musket"], ["fishboat", "a small fishing boat with a net"], ["transport", "a broad wooden transport ship with one sail"], ["galley", "a war galley with oars and a ram"], ["frigate", "a sailing warship firing a cannon"], ["bombard", "a heavy cannon on a wooden carriage"], ["rider", "a scout on a light horse"], ["knight", "a knight in full armour on a charging warhorse"], ["mammoth", "a woolly mammoth with a rider"], ["shaman", "a shaman in a horned headdress with a bone staff"]],
-    [["priest", "a priest in robes holding up a cross"], ["slaver", "a rough man carrying a rope and shackles"], ["prophet", "a wild-bearded prophet with arms raised to the sky"], ["warlord", "a warlord in a cloak with a great banner"], ["catapult", "a wooden catapult"], ["monk", "a monk with a tonsure praying"], ["nun", "a nun in a habit holding a candle"], ["milkmaid", "a tavern milkmaid carrying two pitchers"], ["patron", "a man drinking from a tankard at a table"], ["captive", "a pair of iron shackles and chain"], ["mercenary", "a hired soldier holding out a purse of coins"], ["piety", "an open book with a cross above it"], ["decadence", "a goblet of wine and a pair of dice"], ["dilemma", "a set of balance scales"], ["morale", "a hearth fire burning in a stone fireplace"], ["trade", "a merchant's cart loaded with goods"]]
+ "style": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: ",
+ "sheets": [
+  [
+   [
+    "food",
+    "a roast leg of meat"
+   ],
+   [
+    "wood",
+    "three stacked logs"
+   ],
+   [
+    "gold",
+    "a pile of gold coins"
+   ],
+   [
+    "stone",
+    "a cut block of grey stone"
+   ],
+   [
+    "population",
+    "three villagers standing together"
+   ],
+   [
+    "villager_m",
+    "a peasant man holding a hoe"
+   ],
+   [
+    "villager_f",
+    "a peasant woman carrying a basket"
+   ],
+   [
+    "villager",
+    "a peasant man and woman side by side"
+   ],
+   [
+    "couple",
+    "two joined wedding rings"
+   ],
+   [
+    "births_resume",
+    "a wooden cradle with a baby"
+   ],
+   [
+    "births_pause",
+    "an empty wooden cradle"
+   ],
+   [
+    "evict",
+    "an open door with footprints leading away"
+   ],
+   [
+    "ageup",
+    "a rising sun behind a tower"
+   ],
+   [
+    "bell",
+    "a bronze bell swinging"
+   ],
+   [
+    "bell_clear",
+    "a dove carrying an olive branch"
+   ],
+   [
+    "stop",
+    "a raised open hand"
+   ]
+  ],
+  [
+   [
+    "attackmove",
+    "two crossed swords"
+   ],
+   [
+    "patrol",
+    "a guard walking with a lantern"
+   ],
+   [
+    "stance_aggressive",
+    "a charging wild boar"
+   ],
+   [
+    "stance_defensive",
+    "a shield planted upright in the ground"
+   ],
+   [
+    "stance_hold",
+    "a banner on a pole planted in the ground"
+   ],
+   [
+    "unload",
+    "a gangplank from a boat down to a beach"
+   ],
+   [
+    "unstaff",
+    "one person walking out of a doorway"
+   ],
+   [
+    "release",
+    "a crowd of people walking out through an open gate"
+   ],
+   [
+    "page_settlement",
+    "a cluster of three small thatched houses"
+   ],
+   [
+    "page_military",
+    "a helmet above two crossed spears"
+   ],
+   [
+    "node_tree",
+    "a single oak tree"
+   ],
+   [
+    "node_berries",
+    "a bush covered in red berries"
+   ],
+   [
+    "node_gold",
+    "a rock veined with gold ore"
+   ],
+   [
+    "node_stone",
+    "a heap of grey boulders"
+   ],
+   [
+    "node_carcass",
+    "a haunch of venison on the ground"
+   ],
+   [
+    "node_fish",
+    "two fish leaping from water"
+   ]
+  ],
+  [
+   [
+    "towncenter",
+    "a timber town hall with a central tower and a banner"
+   ],
+   [
+    "house",
+    "a small thatched cottage with a smoking chimney"
+   ],
+   [
+    "storehouse",
+    "a wooden storehouse with barrels and sacks"
+   ],
+   [
+    "dock",
+    "a wooden pier with a boathouse"
+   ],
+   [
+    "farm",
+    "a ploughed field of wheat with a scarecrow"
+   ],
+   [
+    "barracks",
+    "a long soldiers' hall with shields hung on the wall"
+   ],
+   [
+    "range",
+    "a round straw archery target with arrows in it"
+   ],
+   [
+    "stable",
+    "a horse looking out over a stable door"
+   ],
+   [
+    "temple",
+    "a stone church with a steeple and a cross"
+   ],
+   [
+    "tavern",
+    "a tavern with a hanging sign and a foaming ale mug"
+   ],
+   [
+    "workcamp",
+    "a stockade of sharpened stakes with a watch platform"
+   ],
+   [
+    "blacksmith",
+    "an anvil and hammer by a glowing forge"
+   ],
+   [
+    "workshop",
+    "a carpenter's workshop with a great wooden wheel"
+   ],
+   [
+    "wonder",
+    "a towering stepped monument with a golden top"
+   ],
+   [
+    "market",
+    "a market stall under a striped awning"
+   ],
+   [
+    "tower",
+    "a tall stone watch tower"
+   ]
+  ],
+  [
+   [
+    "palisade",
+    "a wall of sharpened wooden logs"
+   ],
+   [
+    "stonewall",
+    "a stretch of stone wall with battlements"
+   ],
+   [
+    "gate",
+    "a fortified gatehouse with open wooden doors"
+   ],
+   [
+    "stonetools",
+    "a flint hand axe"
+   ],
+   [
+    "bronzetools",
+    "a bronze pickaxe and sickle crossed"
+   ],
+   [
+    "wheelbarrow",
+    "a wooden wheelbarrow loaded with stones"
+   ],
+   [
+    "fertility",
+    "a mother holding an infant"
+   ],
+   [
+    "extendedfamily",
+    "a large family of six gathered round a hearth"
+   ],
+   [
+    "herbalism",
+    "a mortar and pestle with herbs"
+   ],
+   [
+    "weapons1",
+    "a bronze short sword"
+   ],
+   [
+    "weapons2",
+    "an iron longsword"
+   ],
+   [
+    "weapons3",
+    "a gleaming steel greatsword"
+   ],
+   [
+    "armor1",
+    "a leather hide jerkin"
+   ],
+   [
+    "armor2",
+    "a coat of scale armour"
+   ],
+   [
+    "armor3",
+    "a steel plate breastplate"
+   ],
+   [
+    "ballistics",
+    "a bundle of heavy arrows with iron heads"
+   ]
+  ],
+  [
+   [
+    "up_frigate",
+    "a tall three-masted sailing warship"
+   ],
+   [
+    "up_bowman",
+    "a longbow beside a sling"
+   ],
+   [
+    "up_swordsman",
+    "a sword laid across a wooden club"
+   ],
+   [
+    "up_pike",
+    "a row of long pikes held upright"
+   ],
+   [
+    "up_crossbow",
+    "a wooden crossbow"
+   ],
+   [
+    "up_knight",
+    "a knight's great helm with a plume"
+   ],
+   [
+    "up_musket",
+    "a matchlock musket"
+   ],
+   [
+    "up_bombard",
+    "a bronze cannon barrel being cast"
+   ],
+   [
+    "plague",
+    "a plague doctor's beaked mask"
+   ],
+   [
+    "quake",
+    "the ground splitting in a jagged crack under a falling tower"
+   ],
+   [
+    "deer",
+    "a stag with antlers"
+   ],
+   [
+    "wolf",
+    "a snarling wolf"
+   ],
+   [
+    "clubman",
+    "a stone-age warrior with a wooden club"
+   ],
+   [
+    "slinger",
+    "a warrior whirling a sling"
+   ],
+   [
+    "javelineer",
+    "a warrior about to throw a javelin"
+   ],
+   [
+    "hound",
+    "a war dog in a spiked collar"
+   ]
+  ],
+  [
+   [
+    "chariot",
+    "an archer in a two-wheeled chariot pulled by a horse"
+   ],
+   [
+    "berserker",
+    "a wild bare-chested warrior with two axes"
+   ],
+   [
+    "pikeman",
+    "a soldier with a very long pike"
+   ],
+   [
+    "grenadier",
+    "a soldier holding a lit round grenade"
+   ],
+   [
+    "ram",
+    "a covered battering ram on wheels"
+   ],
+   [
+    "scorpion",
+    "a giant crossbow on a wheeled frame"
+   ],
+   [
+    "hussar",
+    "a light cavalryman with a sabre on a galloping horse"
+   ],
+   [
+    "strategist",
+    "an old general studying a map"
+   ],
+   [
+    "zealot",
+    "a robed warrior with a staff and a short sword"
+   ],
+   [
+    "wolfrider",
+    "a warrior riding a giant wolf"
+   ],
+   [
+    "shieldbearer",
+    "a Roman legionary with a large rectangular shield"
+   ],
+   [
+    "trebuchet",
+    "a tall counterweight trebuchet"
+   ],
+   [
+    "horsearcher",
+    "a steppe archer shooting a bow from a galloping horse"
+   ],
+   [
+    "herbwife",
+    "an old woman healer with a basket of herbs"
+   ],
+   [
+    "organgun",
+    "a cart with a row of many small gun barrels"
+   ],
+   [
+    "templar",
+    "an armoured temple guard on an armoured horse"
+   ]
+  ],
+  [
+   [
+    "warbear",
+    "an armoured bear rearing up"
+   ],
+   [
+    "khopesh",
+    "an Egyptian guard with a curved sickle-sword and shield"
+   ],
+   [
+    "warchariot",
+    "an Egyptian war chariot with two horses"
+   ],
+   [
+    "sapper",
+    "a soldier with a pickaxe and a torch"
+   ],
+   [
+    "gateguard",
+    "a Babylonian guard with a tall shield and spear"
+   ],
+   [
+    "immortal",
+    "a Persian Immortal with a wicker shield and spear"
+   ],
+   [
+    "warelephant",
+    "a war elephant with a tower on its back"
+   ],
+   [
+    "hoplite",
+    "a Greek hoplite with a round shield, crested helmet and spear"
+   ],
+   [
+    "companion",
+    "a Greek cavalryman with a lance on a rearing horse"
+   ],
+   [
+    "longbowman",
+    "an English archer drawing a longbow"
+   ],
+   [
+    "billman",
+    "an English soldier with a hooked polearm"
+   ],
+   [
+    "camelrider",
+    "a warrior riding a camel"
+   ],
+   [
+    "mameluke",
+    "a mounted Mameluke in a turban with a curved sword"
+   ],
+   [
+    "samurai",
+    "a samurai in armour with a katana"
+   ],
+   [
+    "ashigaru",
+    "a Japanese foot soldier in a conical hat with a matchlock gun"
+   ],
+   [
+    "lancer",
+    "a Mongol rider with a long lance"
+   ]
+  ],
+  [
+   [
+    "hearthguard",
+    "a household guard with a round shield and axe"
+   ],
+   [
+    "firethrower",
+    "a soldier with a fire lance spitting flame"
+   ],
+   [
+    "spearman",
+    "a soldier with a spear and small shield"
+   ],
+   [
+    "swordsman",
+    "a soldier with a sword and shield"
+   ],
+   [
+    "bowman",
+    "an archer with a short bow"
+   ],
+   [
+    "crossbowman",
+    "a soldier aiming a crossbow"
+   ],
+   [
+    "musketeer",
+    "a soldier firing a musket"
+   ],
+   [
+    "fishboat",
+    "a small fishing boat with a net"
+   ],
+   [
+    "transport",
+    "a broad wooden transport ship with one sail"
+   ],
+   [
+    "galley",
+    "a war galley with oars and a ram"
+   ],
+   [
+    "frigate",
+    "a sailing warship firing a cannon"
+   ],
+   [
+    "bombard",
+    "a heavy cannon on a wooden carriage"
+   ],
+   [
+    "rider",
+    "a scout on a light horse"
+   ],
+   [
+    "knight",
+    "a knight in full armour on a charging warhorse"
+   ],
+   [
+    "mammoth",
+    "a woolly mammoth with a rider"
+   ],
+   [
+    "shaman",
+    "a shaman in a horned headdress with a bone staff"
+   ]
+  ],
+  [
+   [
+    "priest",
+    "a priest in robes holding up a cross"
+   ],
+   [
+    "slaver",
+    "a rough man carrying a rope and shackles"
+   ],
+   [
+    "prophet",
+    "a wild-bearded prophet with arms raised to the sky"
+   ],
+   [
+    "warlord",
+    "a warlord in a cloak with a great banner"
+   ],
+   [
+    "catapult",
+    "a wooden catapult"
+   ],
+   [
+    "monk",
+    "a monk with a tonsure praying"
+   ],
+   [
+    "nun",
+    "a nun in a habit holding a candle"
+   ],
+   [
+    "milkmaid",
+    "a tavern milkmaid carrying two pitchers"
+   ],
+   [
+    "patron",
+    "a man drinking from a tankard at a table"
+   ],
+   [
+    "captive",
+    "a pair of iron shackles and chain"
+   ],
+   [
+    "mercenary",
+    "a hired soldier holding out a purse of coins"
+   ],
+   [
+    "piety",
+    "an open book with a cross above it"
+   ],
+   [
+    "decadence",
+    "a goblet of wine and a pair of dice"
+   ],
+   [
+    "dilemma",
+    "a set of balance scales"
+   ],
+   [
+    "morale",
+    "a hearth fire burning in a stone fireplace"
+   ],
+   [
+    "trade",
+    "a merchant's cart loaded with goods"
+   ]
+  ],
+  [
+   [
+    "milkmaid_holy",
+    "a modest dairymaid in a high-necked dress, apron and white headscarf carrying two milk pails"
+   ],
+   [
+    "milkmaid_low",
+    "a flirtatious tavern wench in a low-cut laced bodice with bare shoulders, winking, holding two foaming tankards"
+   ],
+   [
+    "patron_holy",
+    "a sober man at a table with a bowl of soup and a small cup"
+   ],
+   [
+    "patron_low",
+    "a drunk man slumped over a table among spilled tankards and dice"
+   ],
+   [
+    "monk_holy",
+    "a serene monk kneeling in prayer"
+   ],
+   [
+    "monk_low",
+    "a fat friar asleep against a wine barrel with a goblet in his hand"
+   ],
+   [
+    "tavern_holy",
+    "a plain quiet village inn with closed shutters and a small sign"
+   ],
+   [
+    "tavern_low",
+    "a gaudy tavern hung with red lanterns and bright banners, a huge ale-mug sign, light blazing from the windows"
+   ],
+   [
+    "temple_holy",
+    "a well-kept white stone church with a tall steeple, a golden cross, flowers at the door and light shining from the windows"
+   ],
+   [
+    "temple_low",
+    "a ruined crumbling church with a collapsed roof, broken steeple, cracked walls overgrown with ivy and weeds"
+   ],
+   [
+    "villager_f_holy",
+    "a modest peasant woman in a headscarf and long dress carrying a loaf of bread"
+   ],
+   [
+    "villager_f_low",
+    "a woman in a gaudy low-cut red dress with bare shoulders, jewellery and loose hair, hand on hip"
+   ],
+   [
+    "villager_m_holy",
+    "a neat hardworking peasant man with a hoe and a straw hat"
+   ],
+   [
+    "villager_m_low",
+    "a slouching idle man with a bottle in one hand and dice in the other"
+   ],
+   [
+    "house_holy",
+    "a tidy thatched cottage with flower boxes and a small cross above the door"
+   ],
+   [
+    "house_low",
+    "a shabby cottage with broken shutters, a sagging roof and empty bottles by the door"
+   ]
   ]
+ ],
+ "variants": "Sheet 10 holds pairs: the icon a pious town shows (_holy) and the one a decadent town shows (_low). Its prompt adds: The icons come in pairs: a virtuous version then a decadent version of the same subject."
 }

@@ -1,5 +1,5 @@
 // Cuts the generated icon sheets (4 by 4 grids, see scripts/icon-sheets.json) into one small image per icon
-// in public/assets/icons. Usage: node scripts/slice-icons.cjs <folder holding sheet0.png … sheet8.png>
+// in public/assets/icons. Usage: node scripts/slice-icons.cjs <folder holding sheet0.png … sheet9.png>
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');

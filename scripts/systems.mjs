@@ -37,7 +37,7 @@ export const AREAS = [
     name: 'Faith and vice',
     systems: [
       { name: 'Piety and decadence', status: 'rough', what: 'A town drifts between Righteous and Decadent, with boons and banes each way.',
-        has: ['Five standings, each changing births, plague, gold, work and more', '{dilemmas} dilemmas that ask you to choose', 'Each nation starts with its own leaning'],
+        has: ['Five standings, each changing births, plague, gold, work and more', 'A town looks its standing: church bright or in ruins, tavern plain or hung with lanterns, people and houses drawn modest or gaudy', '{dilemmas} dilemmas that ask you to choose', 'Each nation starts with its own leaning'],
         gaps: ['Only {dilemmas} dilemmas, so they repeat', 'The numbers behind every boon and bane are guesses', 'Which way each nation leans is my guess, not yours'] },
       { name: 'Church', status: 'rough', what: 'Villagers serve as monks and nuns; the town grows pious.',
         has: ['Up to four clergy per Church', 'More children, shorter plagues, some plagues prevented', 'A holy town trains Priests and refuses pagan units'],

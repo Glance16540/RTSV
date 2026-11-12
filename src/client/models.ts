@@ -742,7 +742,11 @@ function flag(g: THREE.Object3D, color: number, x: number, y: number, z: number,
   box(g, 0.03, 0.26, 0.42, color, x, y + h - 0.15, z + 0.23);
 }
 
-export function makeBuilding(type: string, color: number, age: number, civ = ''): THREE.Group {
+/**
+ * @param leaning How the owner's town leans: a pious town keeps its church bright and its tavern plain;
+ *   a decadent one lets the church fall to ruin and dresses the tavern in lanterns and banners.
+ */
+export function makeBuilding(type: string, color: number, age: number, civ = '', leaning: '' | 'holy' | 'low' = ''): THREE.Group {
   const size = BUILDINGS[type].size;
   const gen = generatedModel(type, age, size * 0.94, 'footprint');
   if (gen) {
@@ -859,7 +863,27 @@ export function makeBuilding(type: string, color: number, age: number, civ = '')
     }
     case 'temple': {
       // A church: a long nave with a pitched roof, a square tower with a spire and a cross.
-      const st = age >= 2 ? 0xcfc8b8 : 0xb0a488;
+      if (leaning === 'low') {
+        // Neglected: the roof fallen in, the tower broken off, ivy on stained walls, the cross askew.
+        const old = 0x8a8474, ivy = 0x4a6a34;
+        box(g, 2.8, 0.14, 2.8, 0x77725f, 0, 0.07, 0).castShadow = false;
+        box(g, 1.5, 1.2, 0.14, old, 0.35, 0.74, -1.18);
+        box(g, 0.14, 1.2, 2.3, old, -0.33, 0.74, -0.1);
+        box(g, 0.14, 0.8, 1.3, old, 1.03, 0.54, -0.6);
+        box(g, 0.14, 0.45, 0.8, old, 1.03, 0.36, 0.5);
+        box(g, 0.6, 0.9, 0.14, old, -0.1, 0.59, 1.0);
+        const beam = box(g, 0.1, 0.1, 1.9, DARKWOOD, 0.4, 0.75, -0.2); beam.rotation.set(0.5, 0.3, 0);
+        const beam2 = box(g, 0.1, 0.1, 1.5, DARKWOOD, 0.1, 0.4, 0.1); beam2.rotation.set(-0.2, -0.6, 0.3);
+        for (const [x, z, s] of [[0.5, 0.2, 0.3], [0.8, -0.3, 0.22], [0.2, -0.6, 0.26], [0.9, 0.9, 0.2]]) { const r = box(g, s, s * 0.7, s, old, x, 0.2, z); r.rotation.y = x * 3; }
+        box(g, 0.9, 1.5, 0.9, old, -0.8, 0.89, 0.75);
+        const jag = box(g, 0.5, 0.5, 0.9, old, -0.95, 1.8, 0.75); jag.rotation.z = 0.25;
+        const cross = box(g, 0.06, 0.5, 0.06, 0x7a6a3a, -0.55, 1.85, 0.75); cross.rotation.z = -0.6;
+        box(g, 0.3, 0.06, 0.06, 0x7a6a3a, -0.48, 1.95, 0.75).rotation.z = -0.6;
+        for (const [x, y, z, w, h] of [[-0.8, 0.7, 1.22, 0.6, 0.9], [-0.42, 0.6, 0.2, 0.05, 0.9], [0.5, 0.5, -1.27, 0.8, 0.6], [1.12, 0.4, -0.6, 0.05, 0.6]]) box(g, w, h, w === 0.05 ? 0.7 : 0.05, ivy, x, y, z).castShadow = false;
+        for (const [x, z] of [[0.9, 1.2], [1.2, 0.2], [-1.2, -0.9], [0.2, 1.3]]) ball(g, 0.16, ivy, x, 0.2, z).castShadow = false;
+        break;
+      }
+      const st = leaning === 'holy' ? 0xf2eee2 : age >= 2 ? 0xcfc8b8 : 0xb0a488;
       box(g, 2.8, 0.14, 2.8, 0x8f8a7c, 0, 0.07, 0).castShadow = false;
       box(g, 1.5, 1.2, 2.3, st, 0.35, 0.74, -0.1);
       const nave = add(g, geo('naveroof', () => { const c = new THREE.CylinderGeometry(1, 1, 2.4, 3).toNonIndexed(); c.computeVertexNormals(); return c; }), rf, 0.35, 1.7, -0.1);
@@ -873,6 +897,13 @@ export function makeBuilding(type: string, color: number, age: number, civ = '')
       for (const z of [-0.8, -0.1, 0.6]) box(g, 0.05, 0.5, 0.26, 0xf0d890, 1.11, 0.9, z, 0x6a5010);
       box(g, 0.3, 0.3, 0.05, 0xf0d890, -0.8, 1.9, 1.21, 0x6a5010);
       box(g, 0.92, 0.08, 0.92, color, -0.8, 2.4, 0.75);
+      if (leaning === 'holy') {
+        // Cared for: a great gilded cross, windows lit from within, flowers along the wall.
+        box(g, 0.09, 0.75, 0.09, 0xffd860, -0.8, 3.95, 0.75, 0x8a6a10);
+        box(g, 0.46, 0.09, 0.09, 0xffd860, -0.8, 4.1, 0.75, 0x8a6a10);
+        for (const z of [-0.8, -0.1, 0.6]) box(g, 0.06, 0.52, 0.28, 0xffe9a0, 1.115, 0.9, z, 0xc09020).castShadow = false;
+        for (const [x, z, c] of [[1.25, -0.9, 0xe8506a], [1.25, -0.3, 0xf0d040], [1.25, 0.3, 0xffffff], [0.0, 1.25, 0xe8506a], [0.7, 1.25, 0xf0d040]]) ball(g, 0.11, c, x, 0.24, z).castShadow = false;
+      }
       flag(g, color, 1.25, 0.14, 1.25, 1.0);
       break;
     }
@@ -970,6 +1001,18 @@ export function makeBuilding(type: string, color: number, age: number, civ = '')
       box(g, 0.05, 0.05, 0.5, DARKWOOD, -1.0, 1.35, 1.1);
       box(g, 0.36, 0.3, 0.04, 0xc8a040, -1.0, 1.15, 1.3);
       for (const [x, z] of [[1.15, 1.05], [0.8, 1.15], [1.0, 1.4]]) cyl(g, 0.16, 0.16, 0.34, 0x7a5230, x, 0.17, z, 8);
+      if (leaning === 'low') {
+        // Dressed to draw a crowd: red lanterns along the eaves, bright pennants, a great painted mug, tables outside.
+        for (const x of [-1.2, -0.6, 0, 0.6, 1.2]) { box(g, 0.02, 0.18, 0.02, DARKWOOD, x, 0.82, 0.95); ball(g, 0.1, 0xff3a30, x, 0.68, 0.95, 0xcc1a10).castShadow = false; }
+        for (const [x, c] of [[-1.0, 0xe83a6a], [-0.5, 0xf0c030], [0, 0xe83a6a], [0.5, 0xf0c030], [1.0, 0xe83a6a]]) { const p = box(g, 0.2, 0.26, 0.03, c, x, 1.62, 0.93); p.rotation.z = Math.PI / 4; p.castShadow = false; }
+        cyl(g, 0.26, 0.22, 0.5, 0xf0c030, -1.0, 2.0, 1.3, 10);
+        box(g, 0.3, 0.1, 0.3, 0xfff4d8, -1.0, 2.3, 1.3);
+        for (const x of [-0.9, 0.1]) { cyl(g, 0.3, 0.3, 0.06, WOOD, x, 0.36, 1.5, 10); cyl(g, 0.05, 0.05, 0.36, DARKWOOD, x, 0.18, 1.5, 6); ball(g, 0.07, 0xf0c030, x + 0.1, 0.44, 1.5).castShadow = false; }
+        box(g, 0.7, 0.02, 0.5, 0xb02a4a, -0.5, 0.02, 1.15).castShadow = false;
+      } else if (leaning === 'holy') {
+        // A sober house: shutters closed, no light in the windows.
+        for (const x of [0.3, 0.9]) box(g, 0.36, 0.32, 0.06, DARKWOOD, x, 0.6, 0.83);
+      }
       break;
     }
     case 'market': {

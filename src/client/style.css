@@ -149,6 +149,7 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 #info .icon .ico { width: 52px; height: 52px; }
 .multi .ico { width: 40px; height: 40px; }
 .queue .ico { width: 30px; height: 30px; }
+.staffrow .ico { width: 34px; height: 34px; vertical-align: middle; margin-right: 2px; }
 
 .screen { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(6, 6, 8, 0.72) center / cover; padding: 16px; overflow: auto; }
 .sheet {
