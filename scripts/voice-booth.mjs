@@ -1,7 +1,7 @@
 // Writes docs/voice-booth.html: one self-contained page to send to whoever is voicing a leader.
 // They pick a leader, record each line with their microphone, and download a zip of recordings
 // named exactly as the game expects. Run with `npm run voice-booth` after changing the lines.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { CHARACTER_LIMITS, EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
 import { CIVS, CIV_COLOR } from '../src/sim/data.ts';
 
@@ -14,6 +14,11 @@ const leaders = Object.values(LEADERS).flatMap((l) => [[l, false], ...(l.alt ? [
     lines: LEADER_EVENTS.flatMap((ev) => lines[ev].map((text, i) => ({ key: lineKey(l.civ, ev, i), ev, i, when: EVENT_NOTES[ev], text }))),
   };
 }));
+
+// Stock portraits to choose from: public-domain works from The Metropolitan Museum of Art's Open Access
+// collection, cropped small (see docs/PORTRAIT_CREDITS.md).
+const stock = JSON.parse(readFileSync('scripts/portraits.json', 'utf8'));
+const STOCK = Object.fromEntries(Object.entries(stock).map(([sex, list]) => [sex, list.map((p) => ({ jpg: p.jpg, title: p.title + (p.date ? ', ' + p.date : '') }))]));
 
 const page = `<!doctype html>
 <html lang="en">
@@ -51,6 +56,9 @@ const page = `<!doctype html>
   textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px; }
   .fields input { width: 100%; } .fields label { display: block; font-size: 14px; color: var(--dim); }
+  .stock { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+  .stock button { padding: 0; width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--edge); background-size: cover; background-position: center; }
+  .stock button.on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
   .link { background: none; border: none; padding: 0; color: var(--gold); text-decoration: underline; font-size: 14px; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0e0b08ee; border-top: 1px solid var(--edge); padding: 10px max(16px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .bar .in { max-width: 820px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
@@ -88,8 +96,10 @@ const page = `<!doctype html>
         <div><label for="cname">Their name</label><input type="text" id="cname" maxlength="${CHARACTER_LIMITS.name}"></div>
         <div><label for="ctitle">Their title</label><input type="text" id="ctitle" maxlength="${CHARACTER_LIMITS.title}"></div>
       </div>
-      <label class="dim" style="font-size:14px" for="pic">Their portrait <small>(optional: a photo, drawing or painting; it is shown in a circle beside their words. Without one they carry the seal above.)</small></label>
-      <div class="row" style="margin-top:6px"><input type="file" id="pic" accept="image/*"><button class="link" id="nopic" hidden>Remove the picture</button></div>
+      <span class="dim" style="font-size:14px">Their portrait <small>(optional; shown in a circle beside their words. Pick one of these for now, or use a picture of your own.)</small></span>
+      <div class="stock" id="stock"></div>
+      <div class="row"><label class="dim" style="font-size:14px" for="pic">Or your own picture:</label><input type="file" id="pic" accept="image/*"><button class="link" id="nopic" hidden>Remove the portrait</button></div>
+      <p class="dim" style="font-size:12px;margin:8px 0 0">Portraits shown are public-domain works from The Metropolitan Museum of Art, Open Access.</p>
     </div>
     <div class="note"><b>How they were written</b> (play them your own way if you prefer): <span id="direction"></span></div>
     <p><label for="actor">Your name, for the credits <small>(optional)</small></label><br><input type="text" id="actor" maxlength="60" autocomplete="name"></p>
@@ -106,6 +116,7 @@ const page = `<!doctype html>
 
 <script>
 const LEADERS = ${JSON.stringify(leaders)};
+const STOCK = ${JSON.stringify(STOCK)};
 const $ = (id) => document.getElementById(id);
 let leader = null;
 let stream = null;
@@ -140,6 +151,21 @@ function open(l) {
   $('cname').value = l.name;
   $('ctitle').value = l.title;
   setPicture(null);
+  const sb = $('stock');
+  sb.innerHTML = '';
+  for (const s of STOCK[l.female ? 'woman' : 'man']) {
+    const b = document.createElement('button');
+    b.style.backgroundImage = 'url(' + s.jpg + ')';
+    b.title = s.title;
+    b.setAttribute('aria-label', 'Portrait: ' + s.title);
+    b.addEventListener('click', () => {
+      const bin = atob(s.jpg.split(',')[1]), data = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+      $('pic').value = '';
+      setPicture({ data, ext: 'jpg', url: URL.createObjectURL(new Blob([data], { type: 'image/jpeg' })), stock: b });
+    });
+    sb.appendChild(b);
+  }
   heading();
   $('direction').textContent = l.voice;
   const box = $('lines');
@@ -181,12 +207,13 @@ function monogram(name) {
   return Array.from(w)[0].toUpperCase();
 }
 // Their own picture for the leader, cut square and small enough to send.
-let picture = null; // { png: Uint8Array, url }
+let picture = null; // { data: Uint8Array, ext, url, stock?: the button it was picked from }
 function setPicture(p) {
   if (picture) URL.revokeObjectURL(picture.url);
   picture = p;
   $('nopic').hidden = !p;
   if (!p) $('pic').value = '';
+  for (const b of $('stock').children) b.classList.toggle('on', !!p && p.stock === b);
   if (leader) heading();
 }
 $('pic').addEventListener('change', async () => {
@@ -199,7 +226,7 @@ $('pic').addEventListener('change', async () => {
     // Portraits are taller than wide more often than not: keep the top, where the face is.
     c.getContext('2d').drawImage(img, (img.width - side) / 2, Math.max(0, (img.height - side) * 0.2), side, side, 0, 0, 256, 256);
     const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
-    setPicture({ png: new Uint8Array(await blob.arrayBuffer()), url: URL.createObjectURL(blob) });
+    setPicture({ data: new Uint8Array(await blob.arrayBuffer()), ext: 'png', url: URL.createObjectURL(blob) });
   } catch (e) {
     setPicture(null);
     $('title').textContent = 'That file could not be read as a picture. Try a JPEG or PNG.';
@@ -347,7 +374,7 @@ $('save').addEventListener('click', () => {
   if (who) files.push({ name: 'credit_' + leader.civ + '.txt', data: new TextEncoder().encode(who) });
   // Tells the game which of the nation's two leaders these recordings are of.
   files.push({ name: 'persona_' + leader.civ + '.txt', data: new TextEncoder().encode(leader.persona) });
-  if (picture) files.push({ name: 'portrait_' + leader.civ + '.png', data: picture.png });
+  if (picture) files.push({ name: 'portrait_' + leader.civ + '.' + picture.ext, data: picture.data });
   // The character they made of the leader: their name, title and any lines in their own words.
   if (made) files.push({ name: 'character_' + leader.civ + '.json', data: new TextEncoder().encode(JSON.stringify(made, null, 2)) });
   const a = document.createElement('a');
