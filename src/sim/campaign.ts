@@ -4,6 +4,7 @@
 import { AGES, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import type { PlayerSetup } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
+import { habitsWith } from './temper';
 
 export const MAP_W = 1000;
 export const MAP_H = 600;
@@ -528,7 +529,7 @@ export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || c.factions[0].supplies < truceCost(c.factions[0].civ) || c.phase !== 'player' || fac.refused === c.turn) return false;
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
-  const willing = PERSONA[fac.civ].peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0);
+  const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0);
   if (c.honor < 0 || rand(c) > willing) {
     fac.refused = c.turn;
     say(c, f, 'refuse');
@@ -557,7 +558,7 @@ export function offerAlliance(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   // A leader is readier to stand with you against someone stronger than both of you.
   const threat = c.factions.some((x) => x.alive && x.id !== 0 && x.id !== f && totalStrength(c, x.id) > totalStrength(c, f));
-  if (rand(c) > PERSONA[fac.civ].peace + (threat ? 0.35 : 0.05) + 0.1 * (fac.favor ?? 0)) {
+  if (rand(c) > habitsWith(fac.civ, PERSONA[fac.civ]).peace + (threat ? 0.35 : 0.05) + 0.1 * (fac.favor ?? 0)) {
     fac.refused = c.turn;
     say(c, f, 'refuse');
     c.log.push(`${fac.name} will not bind themselves to you.`);
@@ -777,7 +778,7 @@ function turnEvent(c: Campaign): void {
 
 /** One decision for an AI faction. Returns true once it has nothing left to do this turn. */
 function aiStep(c: Campaign, f: Faction): boolean {
-  const me = PERSONA[f.civ];
+  const me = habitsWith(f.civ, PERSONA[f.civ]);
   const civ = f.civ;
   if (!c.spent) {
     // A greedy leader with the stronger army and a border with the player may ask to be paid off.

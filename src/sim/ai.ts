@@ -3,6 +3,7 @@
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
 import { LEANING } from './creed';
+import { battleHabits, leaningWith } from './temper';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -52,8 +53,10 @@ export class AIController {
   /** 0 easy, 1 normal, 2 hard. */
   setLevel(level: number): void {
     this.level = level;
-    this.firstAttack = [660, 420, 270][level];
-    this.armyScale = [0.65, 1, 1.3][level];
+    // A leader with a temperament of their own attacks sooner or later, with more or fewer, than the level alone says.
+    const habits = battleHabits(this.game.players[this.pid].civ);
+    this.firstAttack = [660, 420, 270][level] * habits.haste;
+    this.armyScale = [0.65, 1, 1.3][level] * habits.army;
     this.game.players[this.pid].mods.gather += [-0.2, 0, 0.2][level];
   }
 
@@ -322,7 +325,8 @@ export class AIController {
   /** From the Bronze Age, spend spare wood on a palisade around the base, with a gate every few segments. */
   private buildWalls(home: Building, villagers: Unit[], busy: boolean): void {
     const g = this.game, p = g.players[this.pid];
-    if (this.level < 1 || p.age < 1 || busy || p.res.wood < 260) return;
+    const walls = battleHabits(p.civ).walls; // some leaders never wall their town; others do it before anything else
+    if (walls === 'never' || this.level < 1 || p.age < 1 || busy || p.res.wood < (walls === 'early' ? 150 : 260)) return;
     if (!this.ring) {
       const R = 16, x0 = Math.floor(home.x), y0 = Math.floor(home.y);
       this.ring = [];
@@ -383,7 +387,7 @@ export class AIController {
   private staffHouses(mine: Building[], villagers: Unit[], home: Building): void {
     const g = this.game, pid = this.pid, p = g.players[pid];
     if (this.level < 1 || p.age < 1 || villagers.length < 16) return;
-    const pious = (LEANING[p.civ] ?? 0.5) >= 0.5;
+    const pious = leaningWith(p.civ, LEANING[p.civ] ?? 0.5) >= 0.5;
     const type = pious ? 'temple' : 'tavern';
     const want = villagers.length >= 26 ? 4 : 2;
     if ((pious ? p.clergy : p.maids) >= want) return;

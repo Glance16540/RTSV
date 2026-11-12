@@ -6,6 +6,7 @@ import {
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { generateMap, MapSpec, NodeType, T_WATER } from './map';
+import { leaningWith } from './temper';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
@@ -1181,7 +1182,7 @@ export class Game {
       p.dilemmas++;
       if (p.isAI) {
         const roll = ((this.seed * 13 + p.id * 29 + p.dilemmas * 37) % 100) / 100;
-        const pious = roll < (LEANING[p.civ] ?? 0.5);
+        const pious = roll < leaningWith(p.civ, LEANING[p.civ] ?? 0.5);
         if (!this.cmdDecide(p.id, pious ? 'a' : 'b')) this.cmdDecide(p.id, pious ? 'b' : 'a');
         if (p.dilemma) { p.dilemma = null; p.dilemmaT = this.time + 240; }
       } else this.events.push({ t: 'dilemma', player: p.id, id: p.dilemma });

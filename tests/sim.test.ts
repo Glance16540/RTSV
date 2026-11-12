@@ -5,6 +5,7 @@ import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
+import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS, CIVS, UNITS } from '../src/sim/data';
 import { ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
@@ -2261,6 +2262,40 @@ describe('men and women as leaders', () => {
     setLeaderPersona('dawn', true);
     expect(leaderOf('dawn')!.name).toBe('Eliab the Seer');
     setLeaderPersona('dawn', false);
+  });
+
+  it('a leader\'s answers about how they rule steer how the computer plays their nation', () => {
+    // Every axis can be pushed both ways by the questions.
+    const first = temperFrom(Object.fromEntries(TEMPER_QUESTIONS.map((q) => [q.id, 0])))!;
+    const last = temperFrom(Object.fromEntries(TEMPER_QUESTIONS.map((q) => [q.id, 2])))!;
+    expect(first.war).toBeGreaterThan(0.33); expect(first.faith).toBeGreaterThan(0.33); expect(first.fort).toBeGreaterThan(0.33);
+    expect(last.fort).toBeLessThan(-0.33); expect(last.faith).toBeLessThan(-0.33); expect(last.greed).toBeGreaterThan(0.33);
+    expect(temperFrom({})).toBeNull();
+    expect(temperWord('war', 0.8)).toBe('Warlike');
+    // Unset, a nation plays as written.
+    const written = PERSONA.hearth;
+    expect(habitsWith('hearth', written)).toBe(written);
+    expect(leaningWith('hearth', 0.7)).toBe(0.7);
+    expect(battleHabits('hearth')).toEqual({ haste: 1, army: 1, walls: 'usual' });
+    // A warlike, worldly raider: attacks sooner with more, never walls, turns to the tavern, refuses peace.
+    setTemperament('hearth', { war: 1, faith: -1, fort: -1, greed: 1 });
+    const b = battleHabits('hearth');
+    expect(b.haste).toBeLessThan(0.7); expect(b.army).toBeGreaterThan(1.1); expect(b.walls).toBe('never');
+    expect(leaningWith('hearth', 0.7)).toBeLessThan(0.2);
+    const h = habitsWith('hearth', written);
+    expect(h.margin).toBe(-1); expect(h.peace).toBeLessThan(written.peace); expect(h.greed).toBeGreaterThan(written.greed); expect(h.fort).toBeLessThan(0.1);
+    const g = new Game(3, [{ name: 'A', color: 1, isAI: true, civ: 'hearth' }, { name: 'B', color: 2, isAI: true, civ: 'stonekin' }]);
+    const raider = new AIController(g, 0), plain = new AIController(g, 1);
+    raider.setLevel(1); plain.setLevel(1);
+    expect(raider.firstAttack).toBeLessThan(plain.firstAttack);
+    expect(raider.armyScale).toBeGreaterThan(plain.armyScale);
+    // A pious fortifier is the opposite, and out-of-range numbers are held in.
+    setTemperament('hearth', { war: -5, faith: 9, fort: 1, greed: -1 });
+    expect(battleHabits('hearth').walls).toBe('early');
+    expect(battleHabits('hearth').haste).toBeCloseTo(1.3);
+    expect(leaningWith('hearth', 0.1)).toBeGreaterThan(0.9);
+    setTemperament('hearth', null);
+    expect(battleHabits('hearth').walls).toBe('usual');
   });
 
   it('a leader can be rewritten as a character of the voice actor\'s own', () => {

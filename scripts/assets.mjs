@@ -39,7 +39,7 @@ if (existsSync(join(root, 'voice'))) {
     if (!m) continue;
     try {
       const c = JSON.parse(readFileSync(join(root, 'voice', file), 'utf8'));
-      if (c && typeof c === 'object') manifest.characters[m[1]] = { name: c.name, title: c.title, lines: c.lines };
+      if (c && typeof c === 'object') manifest.characters[m[1]] = { name: c.name, title: c.title, temper: c.temper, lines: c.lines };
     } catch {
       console.warn(`assets: ${file} is not valid JSON and was ignored`);
     }

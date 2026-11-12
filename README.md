@@ -286,6 +286,13 @@ title and a portrait (one of 30 stock museum portraits, credited in
 they leave alone stays as written. The nation, and whether the leader is a man or a woman, come
 from the leader they picked. They can also send a character with no recordings at all.
 
+The booth also asks eight questions about how the leader rules. The answers make a temperament
+(warlike or peaceable, pious or worldly, digs in or roams, grasping or open-handed) that travels in
+the same file. When the computer plays that nation it follows it: when it first attacks and with
+how many, whether it walls its town, whether its people turn to the church or the tavern, and on
+the campaign map how it bargains, fortifies and picks its fights. The questions and what each
+answer means are in `src/sim/temper.ts`.
+
 Unzip what they send back into `public/assets/voice/` and restart the game. The recordings play
 whenever those lines appear, and if they gave their name the leader is shown as "voiced by" them.
 Run `npm run voice-booth` to regenerate the page after changing any lines.

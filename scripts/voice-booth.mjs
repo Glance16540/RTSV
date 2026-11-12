@@ -4,6 +4,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { CHARACTER_LIMITS, EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
 import { CIVS, CIV_COLOR } from '../src/sim/data.ts';
+import { TEMPER_AXES, TEMPER_QUESTIONS, TEMPER_WORDS } from '../src/sim/temper.ts';
 
 // Most nations can be led by a man or by a woman: both are offered, and the recordings say which was voiced.
 const leaders = Object.values(LEADERS).flatMap((l) => [[l, false], ...(l.alt ? [[l.alt, true]] : [])].map(([who, alt]) => {
@@ -59,6 +60,15 @@ const page = `<!doctype html>
   .stock { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
   .stock button { padding: 0; width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--edge); background-size: cover; background-position: center; }
   .stock button.on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+  .q { margin: 14px 0 0; } .q b { display: block; margin-bottom: 6px; }
+  .q label { display: flex; gap: 8px; align-items: baseline; padding: 6px 10px; border: 1px solid var(--edge); border-radius: 6px; margin-bottom: 6px; cursor: pointer; }
+  .q label:hover { border-color: var(--gold); } .q label:has(input:checked) { border-color: var(--gold); background: #33291b; }
+  .q input { accent-color: var(--gold); }
+  .traits { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 14px; }
+  .trait { font-size: 14px; } .trait b { color: var(--gold); display: block; }
+  .meter { position: relative; height: 6px; border-radius: 3px; background: #100d09; border: 1px solid var(--edge); margin: 5px 0 3px; }
+  .meter i { position: absolute; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--gold); }
+  .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); }
   .link { background: none; border: none; padding: 0; color: var(--gold); text-decoration: underline; font-size: 14px; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0e0b08ee; border-top: 1px solid var(--edge); padding: 10px max(16px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .bar .in { max-width: 820px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
@@ -101,6 +111,13 @@ const page = `<!doctype html>
       <div class="row"><label class="dim" style="font-size:14px" for="pic">Or your own picture:</label><input type="file" id="pic" accept="image/*"><button class="link" id="nopic" hidden>Remove the portrait</button></div>
       <p class="dim" style="font-size:12px;margin:8px 0 0">Portraits shown are public-domain works from The Metropolitan Museum of Art, Open Access.</p>
     </div>
+    <div class="card">
+      <b>How do they rule?</b>
+      <p class="dim">Answer as your leader would. When you are not the one playing this nation, the computer plays it the way you answer: how readily it goes to war, whether its towns turn to the church or the tavern, whether it walls itself in or rides out, and how it bargains. Skip any question, or all of them, to leave the nation as it was written.</p>
+      <div id="questions"></div>
+      <div class="traits" id="traits" hidden></div>
+      <p style="margin:10px 0 0"><button class="link" id="noanswers" hidden>Clear my answers</button></p>
+    </div>
     <div class="note"><b>How they were written</b> (play them your own way if you prefer): <span id="direction"></span></div>
     <p><label for="actor">Your name, for the credits <small>(optional)</small></label><br><input type="text" id="actor" maxlength="60" autocomplete="name"></p>
     <p class="dim">Tips: a quiet room, the microphone a hand's width from your mouth, and leave half a second of silence before you speak. Each line should run two to six seconds. Record as many or as few as you like; unrecorded lines stay as text in the game. Each box says when the leader speaks the line: keep your own version to that moment, and to one or two sentences.</p>
@@ -117,6 +134,9 @@ const page = `<!doctype html>
 <script>
 const LEADERS = ${JSON.stringify(leaders)};
 const STOCK = ${JSON.stringify(STOCK)};
+const QUESTIONS = ${JSON.stringify(TEMPER_QUESTIONS)};
+const AXES = ${JSON.stringify(TEMPER_AXES)};
+const WORDS = ${JSON.stringify(TEMPER_WORDS)};
 const $ = (id) => document.getElementById(id);
 let leader = null;
 let stream = null;
@@ -151,6 +171,27 @@ function open(l) {
   $('cname').value = l.name;
   $('ctitle').value = l.title;
   setPicture(null);
+  answers = {};
+  const qb = $('questions');
+  qb.innerHTML = '';
+  QUESTIONS.forEach((q, n) => {
+    const d = document.createElement('fieldset');
+    d.className = 'q';
+    d.style.border = '0'; d.style.padding = '0';
+    d.innerHTML = '<legend style="padding:0"><b></b></legend>';
+    d.querySelector('b').textContent = (n + 1) + '. ' + q.ask;
+    q.answers.forEach((a, i) => {
+      const l = document.createElement('label');
+      l.innerHTML = '<input type="radio"><span></span>';
+      const r = l.querySelector('input');
+      r.name = 'q-' + q.id; r.id = 'q-' + q.id + '-' + i;
+      l.querySelector('span').textContent = a.say;
+      r.addEventListener('change', () => { answers[q.id] = i; temperShow(); refresh(); });
+      d.appendChild(l);
+    });
+    qb.appendChild(d);
+  });
+  temperShow();
   const sb = $('stock');
   sb.innerHTML = '';
   for (const s of STOCK[l.female ? 'woman' : 'man']) {
@@ -245,6 +286,43 @@ function heading() {
 }
 $('cname').addEventListener('input', heading);
 $('ctitle').addEventListener('input', heading);
+// How they answered the questions about their rule, and the temperament that makes.
+let answers = {};
+function temper() {
+  const sum = {}, n = {};
+  let any = false;
+  for (const q of QUESTIONS) {
+    const a = q.answers[answers[q.id]];
+    if (!a) continue;
+    any = true;
+    for (const k of AXES) if (a.move[k] !== undefined) { sum[k] = (sum[k] || 0) + a.move[k]; n[k] = (n[k] || 0) + 1; }
+  }
+  if (!any) return null;
+  const out = {};
+  for (const k of AXES) out[k] = n[k] ? Math.round(Math.max(-1, Math.min(1, sum[k] / n[k])) * 100) / 100 : 0;
+  return out;
+}
+function temperShow() {
+  const t = temper(), box = $('traits');
+  box.hidden = !t; $('noanswers').hidden = !t;
+  if (!t) return;
+  box.innerHTML = '';
+  for (const k of AXES) {
+    const d = document.createElement('div');
+    d.className = 'trait';
+    d.innerHTML = '<b></b><div class="meter"><i></i></div><div class="ends"><span></span><span></span></div>';
+    d.querySelector('b').textContent = WORDS[k][t[k] > 0.33 ? 2 : t[k] < -0.33 ? 0 : 1];
+    d.querySelector('i').style.left = ((t[k] + 1) * 50) + '%';
+    const ends = d.querySelectorAll('.ends span');
+    ends[0].textContent = WORDS[k][0]; ends[1].textContent = WORDS[k][2];
+    box.appendChild(d);
+  }
+}
+$('noanswers').addEventListener('click', () => {
+  answers = {};
+  for (const r of document.querySelectorAll('#questions input')) r.checked = false;
+  temperShow(); refresh();
+});
 // What they changed about the leader, in the form the game reads; null if they changed nothing.
 function character() {
   const c = {}, lines = {};
@@ -256,6 +334,8 @@ function character() {
     if (t && t !== ln.text) { lines[ln.ev] = lines[ln.ev] || [null, null]; lines[ln.ev][ln.i] = t; }
   }
   if (Object.keys(lines).length) c.lines = lines;
+  const t = temper();
+  if (t) c.temper = t;
   return Object.keys(c).length ? c : null;
 }
 function refresh() {

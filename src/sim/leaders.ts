@@ -447,7 +447,7 @@ export function setLeaderPersona(civ: string, alt: boolean): void {
  * A leader as rewritten by whoever voices them: their own name, title and wording of any line.
  * Whatever is left out stays as written. The leader keeps their nation and whether they are a man or a woman.
  */
-export interface Character { name?: string; title?: string; lines?: Partial<Record<LeaderEvent, (string | null)[]>> }
+export interface Character { name?: string; title?: string; temper?: Partial<Record<'war' | 'faith' | 'fort' | 'greed', number>>; lines?: Partial<Record<LeaderEvent, (string | null)[]>> }
 export const CHARACTER_LIMITS = { name: 40, title: 60, line: 160 };
 // Their words end up in the page, so anything that could be markup is dropped.
 const clean = (s: unknown, max: number): string => (typeof s === 'string' ? s : '').replace(/[<>&"`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
