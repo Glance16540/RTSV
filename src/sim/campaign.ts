@@ -44,6 +44,9 @@ export const TRAITS: Record<string, TraitDef> = {
   hills: { name: 'High ground', icon: '⛰️', desc: '+2 defence.' },
   horses: { name: 'Horse plains', icon: '🐎', desc: 'Stables and cavalry cost less here.' },
 };
+/** Land on the edge of the map may lie on the sea. Not drawn by lot with the others, so old worlds keep their shape. */
+export const COAST: TraitDef = { name: 'Coast', icon: '🌊', desc: '+1 supply each turn from fishing. Siege battles here are fought around a great lake, with docks and ships.' };
+export const traitOf = (key: string): TraitDef | undefined => (key === 'coast' ? COAST : TRAITS[key]);
 /** What sets each people apart on the campaign map. */
 export const CAMPAIGN_EDGE: Record<string, string> = {
   stonekin: 'Fortresses cost 5 instead of 9 and add 4 defence instead of 3.',
@@ -267,6 +270,11 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     t.trait = '';
     c.armies.push({ id: c.nextArmy++, owner: f, at: t.id, units: { infantry: 3 }, hero: true, vet: 0, moved: false });
   });
+  // Some plain land on the rim of the map lies on the sea.
+  for (const t of c.territories) {
+    const rim = t.x < MAP_W * 0.14 || t.x > MAP_W * 0.86 || t.y < MAP_H * 0.16 || t.y > MAP_H * 0.84;
+    if (rim && !t.trait && t.capital < 0 && t.seed % 2 === 0) t.trait = 'coast';
+  }
   c.log.push(`Turn 1. You lead the ${CIVS[mine].name}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');
@@ -297,7 +305,7 @@ export function income(c: Campaign, f: number): number {
 }
 export function territoryIncome(t: Territory, civ = ''): number {
   const hearth = civ === 'hearth' ? 1 : 0;
-  return 2 + (t.buildings.includes('farm') ? (t.trait === 'fertile' ? 4 : 2) + hearth : 0) + (t.capital >= 0 ? 2 + hearth : 0) + (t.trait === 'gold' ? 3 : 0);
+  return 2 + (t.buildings.includes('farm') ? (t.trait === 'fertile' ? 4 : 2) + hearth : 0) + (t.capital >= 0 ? 2 + hearth : 0) + (t.trait === 'gold' ? 3 : t.trait === 'coast' ? 1 : 0);
 }
 
 /** The companies an attacker would face in a territory. Locals and town guards fight as infantry. */
@@ -807,7 +815,7 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
 
 // ---- Real-time battles ----
 
-export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean }
+export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean }
 
 /** Turn the pending battle into a real-time match: each side fields the troops it has on the map. */
 export function battleConfig(c: Campaign): BattleConfig | null {
@@ -840,7 +848,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const allyReserve = c.ally < 0 ? undefined : reserves(c, c.ally, p.to, p.armyId)[0];
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
-    seed: t.seed, size: field ? 56 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field,
+    seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `The assault on ${t.name}` : `The defence of ${t.name}`,
     setups: [
       { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },

@@ -4,7 +4,7 @@ import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
 import {
-  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, TRAITS, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
   canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
 } from '../sim/campaign';
 
@@ -234,7 +234,7 @@ export class Overworld {
         ctx.fillStyle = d < t.buildings.length ? '#3a2c18' : 'rgba(58,44,24,0.22)';
         ctx.fillRect(t.x - n0 * 6 + 1 + d * 12, t.y - 18, 9, 5);
       }
-      const marks = (t.buildings.includes('fortress') ? '🏰' : '') + (t.trait ? TRAITS[t.trait].icon : '');
+      const marks = (t.buildings.includes('fortress') ? '🏰' : '') + (t.trait ? traitOf(t.trait)!.icon : '');
       if (marks) { ctx.font = '15px serif'; ctx.fillText(marks, t.x + 40, t.y - 10); }
       if (t.capital >= 0) { ctx.font = '20px serif'; ctx.fillStyle = '#f6d860'; ctx.strokeStyle = '#3a2c18'; ctx.lineWidth = 3; ctx.strokeText('★', t.x - 30, t.y - 9); ctx.fillText('★', t.x - 30, t.y - 9); }
       const a = armyAt(c, t.id);
@@ -273,7 +273,7 @@ export class Overworld {
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
       <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '')} · Defence ${defence(c, t.id)}</div>
-      ${t.trait ? `<div class="good">${TRAITS[t.trait].icon} ${TRAITS[t.trait].name}: ${TRAITS[t.trait].desc}</div>` : ''}
+      ${t.trait ? `<div class="good">${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}: ${traitOf(t.trait)!.desc}</div>` : ''}
       <div>${t.buildings.map((b) => `${SITES[b].icon} ${SITES[b].name}`).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>
       ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 ? '' : 'Select one of your armies to march on this land.'}</div>`;

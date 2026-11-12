@@ -115,6 +115,8 @@ export interface UnitDef {
   civ?: string;
   /** A ship: moves on water only. */
   naval?: boolean;
+  /** How many land units it can carry across water. */
+  carry?: number;
   /** Can work fish shoals, bringing the catch to a Dock. */
   fisher?: boolean;
   /** Fraction of damage from arrows, stones and shot that is shrugged off. */
@@ -306,6 +308,12 @@ export const UNITS: Record<string, UnitDef> = {
     cost: { wood: 60 }, time: 18, age: 0, hp: 60, atk: 0, armor: 0, range: 0, speed: 2.2,
     cooldown: 1, sight: 7, pop: 1, cls: 'siege', radius: 0.42, naval: true, fisher: true,
   }),
+  transport: U({
+    id: 'transport', name: 'Transport Ship', icon: '🚤',
+    desc: 'Carries up to eight land units across water. Right-click it with them to board at the shore; unload at any shore. If it sinks, all aboard are lost.',
+    cost: { wood: 110 }, time: 24, age: 1, hp: 200, atk: 0, armor: 1, range: 0, speed: 2.4,
+    cooldown: 1, sight: 8, pop: 1, cls: 'siege', radius: 0.5, naval: true, carry: 8,
+  }),
   galley: U({
     id: 'galley', name: 'War Galley', icon: '⛵',
     desc: 'Warship. Sinks boats, and rakes anything within bowshot of the water.',
@@ -426,7 +434,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'dock', name: 'Dock', icon: '⚓',
     desc: 'Must stand at the water\'s edge. Builds boats and takes in their catch.',
     cost: { wood: 120 }, time: 28, age: 0, hp: 700, size: 3, pop: 0, sight: 7,
-    trains: ['fishboat', 'galley'], techs: ['up_frigate'], dropoff: true,
+    trains: ['fishboat', 'transport', 'galley'], techs: ['up_frigate'], dropoff: true,
   }),
   farm: B({
     id: 'farm', name: 'Farm', icon: '🌾',

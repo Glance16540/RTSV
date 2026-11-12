@@ -1574,3 +1574,77 @@ describe('the AI at sea', () => {
     for (const u of g.units) if (u.def.naval) expect(g.terrain[Math.floor(u.y) * g.size + Math.floor(u.x)]).toBe(1);
   });
 });
+
+describe('transport ships', () => {
+  it('carry land units over water, put them ashore, and take them down if sunk', () => {
+    const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }], 96, false, true);
+    // Two shore cells on the great lake, far apart.
+    const mid = g.size / 2;
+    const shores: { x: number; y: number; wx: number; wy: number }[] = [];
+    for (let y = 3; y < g.size - 3; y++) for (let x = 3; x < g.size - 3; x++) {
+      if (g.landPf.isBlocked(x, y) || Math.hypot(x - mid, y - mid) > g.size * 0.3) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (g.terrain[(y + dy) * g.size + x + dx] === 1) { shores.push({ x: x + 0.5, y: y + 0.5, wx: x + dx + 0.5, wy: y + dy + 0.5 }); break; }
+    }
+    const a = shores[0];
+    const reach = (s: typeof a) => !g.seaPf.find(a.wx, a.wy, s.wx, s.wy, s.wx, s.wy, 0.71).partial;
+    const b = shores.filter(reach).sort((p, q) => Math.hypot(q.x - a.x, q.y - a.y) - Math.hypot(p.x - a.x, p.y - a.y))[0];
+    expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeGreaterThan(12);
+
+    const ship = g.spawnUnit('transport', 0, a.wx, a.wy);
+    const men = [0, 1, 2].map(() => g.spawnUnit('clubman', 0, a.x, a.y));
+    for (const m of men) m.stance = 'hold';
+    g.cmdTarget(0, men.map((m) => m.id), ship.id);
+    run(g, 5);
+    expect(ship.cargo?.length).toBe(3);
+    expect(men.every((m) => m.inside === ship.id)).toBe(true);
+    // Nowhere to land in open water.
+    g.cmdMove(0, [ship.id], b.wx, b.wy);
+    run(g, 40);
+    expect(Math.hypot(ship.x - b.wx, ship.y - b.wy)).toBeLessThan(2);
+    expect(g.cmdUnload(0, [ship.id])).toBe(3);
+    expect(ship.cargo!.length).toBe(0);
+    for (const m of men) {
+      expect(m.inside).toBe(0);
+      expect(g.landPf.isBlocked(Math.floor(m.x), Math.floor(m.y))).toBe(false);
+      expect(Math.hypot(m.x - b.x, m.y - b.y)).toBeLessThan(5);
+    }
+    // Back aboard, saved and restored, then sunk: nobody survives.
+    g.cmdTarget(0, men.map((m) => m.id), ship.id);
+    run(g, 8);
+    expect(ship.cargo!.length).toBe(3);
+    const r = Game.restore(g.serialize());
+    const s2 = r.units.find((u) => u.type === 'transport')!;
+    expect(s2.cargo!.length).toBe(3);
+    const before = r.units.filter((u) => u.type === 'clubman').length;
+    const gal = r.spawnUnit('frigate', 1, s2.x + 1, s2.y);
+    r.cmdTarget(1, [gal.id], s2.id);
+    run(r, 60);
+    expect(r.units.some((u) => u.type === 'transport')).toBe(false);
+    expect(r.units.filter((u) => u.type === 'clubman').length).toBe(before - 3);
+  });
+});
+
+describe('coastal land', () => {
+  it('some rim territories are coast: they pay a little more and their sieges are fought on a lake', () => {
+    let found = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const c = newCampaign(seed, 2);
+      for (const t of c.territories.filter((x) => x.trait === 'coast')) {
+        found++;
+        expect(t.capital).toBe(-1);
+        expect(territoryIncome(t)).toBe(territoryIncome({ ...t, trait: '' }) + 1);
+      }
+      const coast = c.territories.find((t) => t.trait === 'coast' && t.owner < 0);
+      if (!coast) continue;
+      const a = c.armies.find((x) => x.owner === 0)!;
+      const from = c.territories[coast.adj[0]];
+      from.owner = 0; c.armies = c.armies.filter((x) => x === a || x.at !== from.id); a.at = from.id;
+      expect(moveArmy(c, a.id, coast.id)).toBe('battle');
+      c.pending!.mode = 'siege';
+      expect(battleConfig(c)!.sea).toBe(true);
+      c.pending!.mode = 'field';
+      expect(battleConfig(c)!.sea).toBe(false);
+    }
+    expect(found).toBeGreaterThan(3);
+  });
+});

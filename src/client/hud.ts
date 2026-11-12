@@ -248,6 +248,12 @@ export class Hud {
           id: 'patrol', icon: ico('patrol', '🔁'), name: 'Patrol', desc: 'Click a location: units walk back and forth between here and there, attacking anything they meet.',
           active: this.app.patrolMode, act: () => { this.app.select(this.app.sel); this.app.patrolMode = true; },
         });
+        if (units.some((u) => u.cargo?.length)) {
+          out.push({
+            id: 'unload', icon: ico('unload', '⏏️'), name: 'Put ashore', desc: 'Everyone aboard lands on the shore beside the ship.',
+            act: () => { game.cmdUnload(pid, ids); },
+          });
+        }
         const prophets = units.filter((u) => u.def.mana);
         if (prophets.length) {
           const faith = Math.max(...prophets.map((u) => u.mana));
@@ -427,6 +433,7 @@ export class Hud {
         extra += `<div>${e.homeId ? '🏠 Lives in a house' : '⛺ Homeless — right-click a house to move in'}</div>`;
         if (e.carryAmt > 0) extra += `<div>Carrying ${RI(e.carryType)} ${e.carryAmt}</div>`;
       }
+      if (d.carry) extra += `<div class="${e.cargo?.length ? 'good' : 'hint'}">Aboard: ${e.cargo?.length ?? 0}/${d.carry} — right-click the ship with land units to board</div>`;
       if (d.mana) extra += `<div>Faith ${Math.floor(e.mana)} / ${d.mana}</div>${this.bar(e.mana / d.mana, 'faith')}`;
       if (e.plagueT > 0) extra += '<div class="warn">☠️ Plagued — a Shaman can cure it</div>';
       const morale = game.moraleAt(e.owner, e.x, e.y);

@@ -233,7 +233,7 @@ loadAssets().then(() => {
     game = new Game(mission.seed, mission.setups, mission.size);
     mission.init(game);
   }
-  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field) : new Game(seed, [
+  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },

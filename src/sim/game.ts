@@ -39,6 +39,7 @@ export type Order =
   | { t: 'build'; id: number; then?: Order | null }
   | { t: 'movein'; id: number; then?: Order | null }
   | { t: 'shelter'; id: number; then?: Order | null }
+  | { t: 'board'; id: number }
   | { t: 'cast'; ability: string; x: number; y: number; started?: boolean; tries?: number };
 
 export interface Unit extends Base {
@@ -81,7 +82,8 @@ export interface Unit extends Base {
   mana: number;
   homeX: number; // where a wild animal lives
   homeY: number;
-  inside: number; // building this unit is sheltering in
+  inside: number; // building this unit is sheltering in, or ship it is aboard
+  cargo?: number[]; // a transport ship's passengers
   resume: Order | null; // job to return to after sheltering
 }
 
@@ -432,6 +434,9 @@ export class Game {
       this.players[e.owner].pop -= e.def.pop;
       const shelter = this.entities.get(e.inside);
       if (shelter && shelter.kind === 'building') shelter.sheltered = shelter.sheltered.filter((id) => id !== e.id);
+      if (shelter && shelter.kind === 'unit' && shelter.cargo) shelter.cargo = shelter.cargo.filter((id) => id !== e.id);
+      // Everyone aboard a sinking ship goes down with it.
+      for (const id of e.cargo ?? []) { const c = this.entities.get(id); if (c && c.kind === 'unit') { c.inside = 0; this.kill(c); } }
       if (e.type === 'deer') {
         // The hunters carve up what they killed.
         const meat = this.addResource('carcass', Math.floor(e.x), Math.floor(e.y));
@@ -720,6 +725,8 @@ export class Game {
       } else if (this.hostile(t.owner, owner)) {
         if (u.def.atk > 0) this.setOrder(u, { t: 'attack', id: t.id });
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
+      } else if (t.kind === 'unit' && t.def.carry && t.owner === owner && !u.def.naval) {
+        this.setOrder(u, { t: 'board', id: t.id });
       } else if (t.owner !== owner) {
         this.setOrder(u, { t: 'move', x: t.x, y: t.y }); // an ally's: just walk over
       } else if (t.kind === 'building' && villager) {
@@ -1053,6 +1060,37 @@ export class Game {
   }
 
   /** Send units into a Town Center or Watch Tower. They are safe inside and add to its arrow fire. */
+  /** Put everyone aboard the given transports ashore on the land beside them. Returns how many landed. */
+  cmdUnload(owner: number, ids: number[]): number {
+    let landed = 0;
+    for (const s of this.ownUnits(ids, owner)) {
+      if (!s.cargo?.length) continue;
+      this.landPf.pass = 2 + this.players[owner].team;
+      const spots: { x: number; y: number; d: number }[] = [];
+      const cx = Math.floor(s.x), cy = Math.floor(s.y);
+      for (let y = cy - 3; y <= cy + 3; y++)
+        for (let x = cx - 3; x <= cx + 3; x++) {
+          const d = Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y);
+          if (d <= 2.6 && !this.landPf.isBlocked(x, y)) spots.push({ x: x + 0.5, y: y + 0.5, d });
+        }
+      if (!spots.length) { this.msg(owner, 'There is no land here to put them ashore.'); continue; }
+      spots.sort((a, b) => a.d - b.d);
+      s.cargo.forEach((id, i) => {
+        const u = this.entities.get(id);
+        if (!u || u.kind !== 'unit') return;
+        const p = spots[i % spots.length];
+        u.inside = 0;
+        u.x = u.px = p.x + (this.rng() - 0.5) * 0.3;
+        u.y = u.py = p.y + (this.rng() - 0.5) * 0.3;
+        u.path = null;
+        u.pathFor = 0;
+        landed++;
+      });
+      s.cargo = [];
+    }
+    return landed;
+  }
+
   cmdShelter(owner: number, ids: number[], buildingId: number): number {
     const b = this.entities.get(buildingId);
     if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || !b.def.shelter) return 0;
@@ -1334,6 +1372,8 @@ export class Game {
     u.px = u.x;
     u.py = u.y;
     if (u.inside) {
+      const ship = this.entities.get(u.inside);
+      if (ship && ship.kind === 'unit') { u.x = ship.x; u.y = ship.y; }
       if (u.growT > 0 && (u.growT -= DT) <= 0) this.comeOfAge(u);
       return;
     }
@@ -1443,6 +1483,22 @@ export class Game {
       case 'gather':
         this.updateGather(u, o);
         break;
+
+      case 'board': {
+        const s = this.entities.get(o.id);
+        if (!s || s.kind !== 'unit' || s.dead || !s.def.carry) { this.setOrder(u, null); break; }
+        if ((s.cargo?.length ?? 0) >= s.def.carry) { this.msg(u.owner, 'The ship is full.'); this.setOrder(u, null); break; }
+        const r = this.approach(u, s, 1.5);
+        if (r === 'there') {
+          (s.cargo ??= []).push(u.id);
+          u.inside = s.id;
+          this.setOrder(u, null);
+          u.path = null;
+          u.x = u.px = s.x;
+          u.y = u.py = s.y;
+        } else if (r === 'fail') { this.msg(u.owner, 'Bring the ship to the shore first.'); this.setOrder(u, null); }
+        break;
+      }
 
       case 'shelter': {
         const b = this.entities.get(o.id);

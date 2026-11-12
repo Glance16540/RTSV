@@ -87,7 +87,9 @@ speeds up its arrow fire. On Normal and Hard the AI walls its base with a palisa
 **Water and ships.** Choose the *Great lake* map and the middle of the world is water. A Dock,
 built at the water's edge, launches Fishing Boats that work fish shoals and bring the catch home,
 and War Galleys that sink boats and rake anything within bowshot of the shore. In the Gunpowder
-Age galleys become Frigates whose broadsides break buildings. Ships never leave the water; foot
+Age galleys become Frigates whose broadsides break buildings. Transport Ships carry up to
+eight land units across the water: right-click the ship to board at the shore, *Put ashore* to land;
+if the ship sinks, everyone aboard is lost. Ships never leave the water; foot
 soldiers with blades cannot reach them, but archers and towers can. The AI fishes and builds a
 small fleet too.
 
@@ -168,6 +170,8 @@ neighbouring land.
   rides down archers, archers wear down infantry, infantry stops cavalry. An army that wins a
   battle becomes veteran: stronger on the map and harder-hitting in real-time battles.
 - **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
+  Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
+  fought around a great lake with docks and ships.
 - **The Warlord** marches with one army and adds to its strength. If that army is destroyed he
   falls with it, and a new one can be summoned at your capital.
 - **Battles.** When an army enters land held by someone else, fight it yourself as a real-time
