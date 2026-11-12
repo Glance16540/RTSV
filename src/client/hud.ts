@@ -504,8 +504,9 @@ export class Hud {
       if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Inside: ${b.sheltered.length}/${b.def.shelter} — Alt+right-click to send units in</div>`;
       if (b.def.camp) {
         const n = b.captives?.length ?? 0;
-        body += `<div class="${n ? 'good' : 'hint'}">⛓️ Captives: ${n}/${b.def.camp}${n ? ` <small>(${b.captives!.map((c) => c.name).join(', ')})</small>` : ' — send Slavers after enemy villagers'}</div>` +
-          `<div class="hint">Each captive makes the whole town gather ${(CAPTIVE_WORK * 100).toFixed(0)}% faster and adds ${CAPTIVE_VIRTUE} decadence a minute. The camp turns out a new villager about every ${Math.round(CAMP_BIRTH / Math.max(1, n))} seconds. If it falls, they go home.</div>`;
+        const men = (b.captives ?? []).filter((c) => c.gender === 'm').length, women = n - men;
+        body += `<div class="${n ? 'good' : 'hint'}">⛓️ Captives: ${men} ${men === 1 ? 'man' : 'men'}, ${women} ${women === 1 ? 'woman' : 'women'} <small>(${n}/${b.def.camp}${n ? ': ' + b.captives!.map((c) => c.name).join(', ') : ''})</small>${n ? '' : ' — send Slavers after enemy villagers'}</div>` +
+          `<div class="hint">Each man held makes the whole town gather ${(CAPTIVE_WORK * 100).toFixed(0)}% faster. Each woman held makes the camp turn out villagers sooner${women ? `: one about every ${Math.round(CAMP_BIRTH / women)} seconds now` : ` (one every ${CAMP_BIRTH} seconds for one woman)`}. Each captive adds ${CAPTIVE_VIRTUE} decadence a minute. If the camp falls, they go home.</div>`;
       }
       if (b.def.staff) {
         const tav = b.type === 'tavern';

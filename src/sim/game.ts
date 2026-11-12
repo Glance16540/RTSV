@@ -201,6 +201,7 @@ export interface Player {
   /** Villagers stationed in churches and in taverns, counted once a second. */
   clergy: number;
   captives: number; // prisoners in work camps
+  captiveMen: number; // the men among them, who do the work
   maids: number; // everyone in the taverns
   patrons: number; // the men among them
   /** When plague last broke out in this people's taverns. */
@@ -320,7 +321,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i, civ: s.civ && CIVS[s.civ] ? s.civ : CIV_IDS[i % CIV_IDS.length],
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, clergy: 0, captives: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, clergy: 0, captives: 0, captiveMen: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
       this.heroes.push([]);
@@ -360,7 +361,7 @@ export class Game {
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, civ: '', res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, clergy: 0, captives: 0, maids: 0, patrons: 0, plagueAt: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, clergy: 0, captives: 0, captiveMen: 0, maids: 0, patrons: 0, plagueAt: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
     });
     this.heroes.push([]);
     this.tcs.push([]);
@@ -1040,10 +1041,14 @@ export class Game {
   /** Captives drive the town's work and, held together, still raise children for their captors. */
   private updateCamps(p: Player): void {
     p.captives = 0;
+    p.captiveMen = 0;
     for (const b of this.buildings) {
       if (b.owner !== p.id || !b.captives?.length) continue;
+      // The men are put to work; it is the women held there who bear the camp's children.
+      const men = b.captives.filter((c) => c.gender === 'm').length, women = b.captives.length - men;
       p.captives += b.captives.length;
-      b.campT = (b.campT ?? 0) + b.captives.length / CAMP_BIRTH;
+      p.captiveMen += men;
+      b.campT = (b.campT ?? 0) + women / CAMP_BIRTH;
       if (b.campT >= 1 && p.pop + 1 <= p.popCap) {
         b.campT = 0;
         this.spawnFrom(b, 'villager', this.rng() < 0.5 ? 'm' : 'f');
@@ -2029,7 +2034,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captives)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;

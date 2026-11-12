@@ -536,7 +536,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   workcamp: B({
     id: 'workcamp', name: 'Work Camp', icon: '⛓️',
-    desc: 'Only a Decadent town can build it. Holds up to eight captives seized by Slavers. Every captive makes the whole town gather faster, and the camp still turns out new villagers. If it falls, the captives go home.',
+    desc: 'Only a Decadent town can build it. Holds up to eight captives seized by Slavers. Every man held makes the whole town gather faster; every woman held makes the camp turn out new villagers sooner. If it falls, the captives go home.',
     cost: { wood: 150 }, time: 30, age: 1, hp: 700, size: 3, pop: 0, sight: 5,
     trains: [], techs: [], needs: 'decadent', camp: 8,
   }),

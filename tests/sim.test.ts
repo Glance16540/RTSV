@@ -2105,12 +2105,23 @@ describe('the holy town and the work camp', () => {
     expect(camp.captives!.map((c) => c.name)).toEqual(['Ruth']);
     run(g, 2);
     expect(p.captives).toBe(1);
+    expect(p.captiveMen).toBe(0); // a woman: she adds villagers, not work
+    // A man held adds work and no children.
+    const solo = new Game(5, g.setups);
+    const sc = solo.spawnBuilding('workcamp', 0, 30, 30, true);
+    sc.captives = [{ from: 1, name: 'Boaz', family: '', gender: 'm', trait: '', trait2: '', age: 0, lifespan: 9999 }];
+    solo.players[0].dilemmaT = 1e9; solo.players[0].popCap = 200;
+    const sv = solo.units.filter((u) => u.owner === 0 && u.type === 'villager').length;
+    run(solo, 130);
+    expect(solo.players[0].captiveMen).toBe(1);
+    expect(sc.campT ?? 0).toBe(0);
+    expect(solo.units.filter((u) => u.owner === 0 && u.type === 'villager').length).toBeLessThanOrEqual(sv + 2); // only what the town itself trains or bears
     // Saved and restored, she is still held.
     expect(Game.restore(g.serialize()).buildings.find((b) => b.type === 'workcamp')!.captives!.length).toBe(1);
     // The camp turns out villagers for its owners in time.
     const mine = g.units.filter((u) => u.owner === 0 && u.type === 'villager').length;
     p.popCap = 200;
-    run(g, 160);
+    run(g, 120);
     expect(g.units.filter((u) => u.owner === 0 && u.type === 'villager').length).toBeGreaterThan(mine);
     // Break the camp and Ruth goes home, still herself.
     g.cmdDelete(0, [camp.id]);

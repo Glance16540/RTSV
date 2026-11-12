@@ -77,8 +77,8 @@ What a town believes also decides what it will raise:
   Nor will it train Slavers or build Work Camps.
 - *A Decadent town* can train the **Slaver** at its Tavern and build the **Work Camp**. Right-click
   an enemy villager with a Slaver and he binds them in three seconds and leads them back to a camp
-  with room. Every captive makes the whole town gather 7% faster, and the camp still turns out new
-  villagers for its owners. Kill the Slaver on the road, or break the camp, and the captives go
+  with room. Every man held makes the whole town gather 10% faster; every woman held makes the
+  camp turn out new villagers for its owners sooner. Kill the Slaver on the road, or break the camp, and the captives go
   home as they were, name and all.
 
 Where your people stand on the scale between piety and decadence sets their creed:
