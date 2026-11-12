@@ -6,7 +6,7 @@ import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS } from '../src/sim/data';
-import { reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -1718,5 +1718,42 @@ describe('harbours', () => {
       expect(a.at).toBe(to.id);
     }
     expect(done).toBe(true);
+  });
+});
+
+describe('ages on the campaign map', () => {
+  it('advancing costs supplies, strengthens armies and starts battles in that age with its weapons', () => {
+    const c = newCampaign(7, 1);
+    expect(canAdvance(c, 0)).toBe(false);
+    c.factions[0].supplies = AGE_COST[0] + AGE_COST[1];
+    expect(advanceAge(c, 0)).toBe(true);
+    expect(advanceAge(c, 0)).toBe(true);
+    expect(ageOf(c, 0)).toBe(2);
+    expect(c.factions[0].supplies).toBe(0);
+    expect(c.speech.some((s) => s.event === 'p_ageup')).toBe(true);
+    const a = c.armies.find((x) => x.owner === 0)!;
+    const target = c.territories.find((t) => t.owner < 0 && c.territories[a.at].adj.includes(t.id))!;
+    c.armies = c.armies.filter((x) => x === a || !target.adj.includes(x.at));
+    moveArmy(c, a.id, target.id);
+    expect(c.pending!.aStr).toBeCloseTo(Math.round(armyStrength(a) * (1 + 2 * AGE_EDGE) * 10) / 10, 1);
+    c.pending!.mode = 'field';
+    const cfg = battleConfig(c)!;
+    expect(cfg.setups[0].bonus!.age).toBe(2);
+    expect(cfg.setups[1].bonus!.age).toBe(0);
+    const g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field);
+    // Iron Age weapons: the infantry companies turn out as swordsmen, not clubmen.
+    expect(g.units.some((u) => u.owner === 0 && u.type === 'swordsman')).toBe(true);
+    expect(g.units.some((u) => u.owner === 0 && u.type === 'clubman')).toBe(false);
+    expect(g.units.some((u) => u.owner === 1 && u.type === 'clubman')).toBe(true);
+    // Survivors fighting with the new weapons still count as the same companies.
+    const inf = a.units.infantry;
+    finishBattle(c, true, { swordsman: inf * 2, warlord: 1 });
+    expect(a.units.infantry).toBe(inf);
+  });
+
+  it('rivals advance too once they have the stores', () => {
+    const c = newCampaign(3, 2, 2);
+    for (let i = 0; i < 40 && c.phase !== 'over'; i++) { endTurn(c); while (c.pending || c.demand) { if (c.demand) answerDemand(c, false); else resolvePending(c, 'auto'); continueAI(c); } }
+    expect(c.factions.slice(1).some((f) => (f.age ?? 0) > 0)).toBe(true);
   });
 });

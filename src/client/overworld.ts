@@ -1,10 +1,10 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
-import { CIVS, CIV_IDS } from '../sim/data';
+import { AGES, CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
 import {
-  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, AGE_COST, AGE_EDGE, ageOf, canAdvance, advanceAge, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
   canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
 } from '../sim/campaign';
 
@@ -50,6 +50,7 @@ export class Overworld {
       if (kind === 'truce') offerTruce(this.c, Number(id));
       if (kind === 'ally') offerAlliance(this.c, Number(id));
       if (kind === 'gift') sendGift(this.c, Number(id));
+      if (kind === 'age') advanceAge(this.c, 0);
       this.changed();
     });
     $('ow-end').addEventListener('click', () => {
@@ -265,7 +266,7 @@ export class Overworld {
     const a = armyAt(c, this.sel);
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
-      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${f.isAI ? ` <small>${LEADERS[f.civ].name}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
+      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.isAI ? ` <small>${LEADERS[f.civ].name}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
       `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
       `<div class="hint">👑 Win by taking every land, or by holding ${dominionNeed(c)} of ${c.territories.length} for ${DOMINION_TURNS} turns <small>(you hold ${landOf(c, 0)})</small>.` +
       (c.dominion.f >= 0 ? ` <b class="${c.dominion.f === 0 ? 'good' : 'bad'}">${c.dominion.f === 0 ? 'You have' : c.factions[c.dominion.f].name + ' have'} held it for ${c.dominion.turns}.</b>` : '') + '</div>' +
@@ -282,6 +283,7 @@ export class Overworld {
     let html = '';
     if (t.owner === 0) {
       for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
+      if (ageOf(c, 0) < AGE_COST.length) html += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, AGE_COST[ageOf(c, 0)], canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Summon a new Warlord', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital');
       if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || t.trait === 'coast')) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
     } else if (t.owner > 0 && c.factions[t.owner].alive) {

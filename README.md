@@ -171,6 +171,9 @@ neighbouring land.
 - **Armies** are made of companies of infantry, archers and cavalry, up to twelve. Cavalry
   rides down archers, archers wear down infantry, infantry stops cavalry. An army that wins a
   battle becomes veteran: stronger on the map and harder-hitting in real-time battles.
+- **Ages.** Spend supplies to bring your whole people into the next age. Every age makes your
+  armies a tenth stronger on the map, and your real-time battles begin in that age with its weapons
+  already in hand (swordsmen in place of clubmen, and so on). Rivals advance too.
 - **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
   Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
   fought around a great lake with docks and ships. Build a Harbour on a coast and an army

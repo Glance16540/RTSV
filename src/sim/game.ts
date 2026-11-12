@@ -214,7 +214,8 @@ export interface PlayerSetup {
   /** Civilisation id. Defaults to a different one for each player. */
   civ?: string;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
-  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number };
+  /** `armed`: the side already has every weapon upgrade of its starting age. */
+  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean };
 }
 
 export class Game {
@@ -312,6 +313,9 @@ export class Game {
         const p = this.players[i];
         p.age = s.bonus.age ?? 0;
         p.mods.atk += s.bonus.atk ?? 0; // veterans hit harder
+        if (s.bonus.armed) {
+          for (const t of Object.values(TECHS)) if (t.upgrade && t.age <= p.age) { p.techs.add(t.id); p.upgrades[t.upgrade[0]] = t.upgrade[1]; }
+        }
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
         // Defensive works stand at the corners of the town.
         (s.bonus.buildings ?? []).forEach((type, j) => {
@@ -321,7 +325,7 @@ export class Game {
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
           // In a field battle the army forms up where the town would have been.
-          for (let j = 0; j < n; j++, k++) this.spawnUnit(type, i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir);
+          for (let j = 0; j < n; j++, k++) this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir);
         }
       }
     });

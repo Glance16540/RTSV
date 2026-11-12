@@ -1,7 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
-import { CIVS, CIV_COLOR, CIV_IDS } from './data';
+import { AGES, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import type { PlayerSetup } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 
@@ -71,6 +71,10 @@ export const TRUCE_COST = 3;
 export const TRUCE_TURNS = 6;
 export const ALLIANCE_COST = 6;
 export const GIFT_COST = 4;
+/** Supplies to bring a whole people into the next age, from the Stone Age up. */
+export const AGE_COST = [10, 16, 24, 34];
+/** Each age past the first makes a people's armies this much stronger. */
+export const AGE_EDGE = 0.1;
 export const MAX_FAVOR = 3;
 /** Hold this share of all the land for this many turns running and the campaign is won. */
 export const DOMINION_SHARE = 0.6;
@@ -88,6 +92,7 @@ export const heroCost = (civ: string): number => (civ === 'dawn' ? HERO_COST / 2
 export interface Faction {
   id: number; name: string; civ: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean;
   lastDemand: number; // turn this rival last demanded tribute
+  age?: number; // the age this people has reached on the campaign map, 0 to 4
   favor?: number; // goodwill earned with gifts and help, up to MAX_FAVOR: makes them readier to deal
   refused?: number; // turn they last turned the player down: they will not be asked twice in a turn
   angry: boolean; // refused: will attack the player at worse odds this turn
@@ -293,6 +298,20 @@ export function reach(c: Campaign, tid: number): number[] {
   return [...t.adj, ...c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id)).map((x) => x.id)];
 }
 export const SEA_LANDING = 0.8;
+export const ageOf = (c: Campaign, f: number): number => (f < 0 ? 0 : c.factions[f].age ?? 0);
+const ageEdge = (c: Campaign, f: number): number => 1 + AGE_EDGE * ageOf(c, f);
+export const canAdvance = (c: Campaign, f: number): boolean => ageOf(c, f) < AGE_COST.length && c.factions[f].alive && c.factions[f].supplies >= AGE_COST[ageOf(c, f)];
+/** Bring a people into the next age: stronger armies everywhere, and battles begin in that age with its weapons. */
+export function advanceAge(c: Campaign, f: number): boolean {
+  if (!canAdvance(c, f)) return false;
+  const fac = c.factions[f];
+  fac.supplies -= AGE_COST[ageOf(c, f)];
+  fac.age = ageOf(c, f) + 1;
+  c.log.push(`${f === 0 ? 'Your people have' : `${fac.name} have`} entered the ${AGES[fac.age].name}.`);
+  if (f === 0) advise(c, 'p_ageup');
+  else say(c, f, 'ageup');
+  return true;
+}
 export const armyAt = (c: Campaign, tid: number): Army | undefined => c.armies.find((a) => a.at === tid);
 /** Number of companies in an army. */
 export const armySize = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
@@ -463,7 +482,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
   const round = (v: number) => Math.round(v * 10) / 10;
   c.pending = {
     armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
-    aStr: round((strengthVs(a, defenders(c, to)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1)), ...(sea ? { sea: true } : {}), dStr: round(defence(c, to, a.units, civ) + support(t.owner, -1)),
+    aStr: round((strengthVs(a, defenders(c, to)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1) * ageEdge(c, a.owner)), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
   };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
@@ -753,6 +772,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
     c.spent = true;
     const own = c.territories.filter((t) => t.owner === f.id);
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
+    // A people with stores to spare moves with the times.
+    if (c.turn >= 5 && f.supplies >= (AGE_COST[ageOf(c, f.id)] ?? Infinity) + 8) advanceAge(c, f.id);
     for (const t of own) {
       const border = t.adj.some((n) => c.territories[n].owner !== f.id);
       if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');
@@ -792,7 +813,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     // Cautious leaders want better odds; a leader who has just been refused wants blood.
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
     const bySea = !here.adj.includes(t.id);
-    if (strengthVs(army, defenders(c, t.id)) * (bySea ? SEA_LANDING : 1) >= defence(c, t.id, army.units, civ) + margin) {
+    if (strengthVs(army, defenders(c, t.id)) * (bySea ? SEA_LANDING : 1) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
       moveArmy(c, army.id, t.id);
       return false;
     }
@@ -840,7 +861,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const foe = humanAttacks ? p.defender : p.attacker;
   const attackers = c.armies.find((a) => a.id === p.armyId);
   const defenders = armyAt(c, p.to);
-  const side = (army: Army | undefined, defending: boolean, str: number) => {
+  const side = (army: Army | undefined, defending: boolean, str: number, age = 0) => {
     const units: Record<string, number> = {};
     const add = (type: string, n: number) => { units[type] = (units[type] ?? 0) + n; };
     if (army) {
@@ -851,7 +872,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     const fort = defending && t.buildings.includes('fortress');
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
-      age: fort ? 1 : 0, buildings: fort ? ['tower', 'tower'] : [], atk: army ? army.vet : 0,
+      age: Math.max(fort ? 1 : 0, age), armed: true, buildings: fort ? ['tower', 'tower'] : [], atk: army ? army.vet : 0,
     };
   };
   // The locals of a territory are always the same people, one that is not the player's.
@@ -864,15 +885,15 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
         name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ,
-        bonus: humanAttacks ? side(defenders, true, p.dStr) : side(attackers, false, p.aStr),
+        bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
-      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, bonus: side(foeReserve, false, armyStrength(foeReserve)) }] : []),
-      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, bonus: side(myReserve, false, armyStrength(myReserve)) }] : []),
-      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, bonus: side(allyReserve, false, armyStrength(allyReserve)) }] : []),
+      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
+      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
+      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
     ].slice(0, 4),
   };
 }
@@ -897,7 +918,10 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const units: Record<string, number> = {};
   for (const [type, had] of Object.entries(before.units)) {
     const [unit, per] = unitsOf(type);
-    const left = Math.min(had, Math.ceil((survivors[unit] ?? 0) / per));
+    // In a later age the company fought with better weapons: count those too.
+    let alive = 0;
+    for (let u: string | undefined = unit; u; u = Object.values(TECHS).find((t) => t.upgrade?.[0] === u)?.upgrade![1]) alive += survivors[u] ?? 0;
+    const left = Math.min(had, Math.ceil(alive / per));
     if (left > 0) units[type] = left;
   }
   // An army is never wiped out by a battle it won: its last company limps home.
