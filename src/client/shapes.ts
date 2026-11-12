@@ -241,9 +241,9 @@ function yard(g: THREE.Object3D, o: Look, pick: number, x: number, z: number): v
     for (let i = 0; i < 6; i++) mesh(g, new THREE.SphereGeometry(0.045, 6, 5), toon(i % 3 ? 0x5a9a3a : 0x8ab04a), x - 0.13 + (i % 2) * 0.26, 0.07, z - 0.2 + Math.floor(i / 2) * 0.2).castShadow = false;
   } else if (k === 3) {
     // A washing line between two poles.
-    for (const dz of [-0.3, 0.3]) mesh(g, new THREE.CylinderGeometry(0.018, 0.022, 0.6, 5), toon(TIMBER), x, 0.3, z + dz);
-    bx(g, 0.01, 0.01, 0.6, toon(0xd8d0c0), x, 0.57, z);
-    [0xf0ece0, o.team, 0xc8a878].forEach((c, i) => { bx(g, 0.012, 0.17, 0.13, toon(c), x, 0.48, z - 0.18 + i * 0.18).castShadow = false; });
+    for (const dz of [-0.32, 0.32]) mesh(g, new THREE.CylinderGeometry(0.025, 0.03, 0.66, 6), toon(TIMBER), x, 0.33, z + dz);
+    bx(g, 0.02, 0.02, 0.64, toon(0x6a5a44), x, 0.62, z).castShadow = false;
+    [0xf0ece0, o.team, 0xc8a878].forEach((c, i) => { bx(g, 0.02, 0.2, 0.15, toon(c), x, 0.51, z - 0.19 + i * 0.19); });
   } else {
     // A well: a ring of stone, a little roof on two posts, a bucket.
     mesh(g, new THREE.CylinderGeometry(0.16, 0.18, 0.22, 10), toon(0xb8b4aa, 'stone'), x, 0.11, z);
@@ -907,12 +907,72 @@ function workcamp(o: Look): THREE.Group {
   return g;
 }
 
+/** What the steppe builds instead of walls: a great tent for the purpose, and its trade set out in front of it. */
+function camp(o: Look, type: string): THREE.Group {
+  const g = new THREE.Group(), tim = toon(TIMBER);
+  bx(g, 2.8, 0.03, 2.8, toon(0x9a8a64), 0, 0.015, 0).castShadow = false;
+  if (type === 'towncenter') {
+    // The khan's tent, raised on a platform, flanked by two lesser ones, with the standard before it.
+    mesh(g, new THREE.CylinderGeometry(1.25, 1.35, 0.16, 20), toon(PLANK, 'planks'), 0, 0.08, -0.3);
+    const up = new THREE.Group(); up.position.y = 0.16; g.add(up);
+    ger(up, o, 1.1, 0, -0.3);
+    ger(g, o, 0.5, -1.15, 0.75); ger(g, o, 0.5, 1.15, 0.75);
+    for (let i = 0; i < 2; i++) bx(g, 0.7 - i * 0.14, 0.08, 0.2, toon(PLANK, 'planks'), 0, 0.04 + i * 0.08, 1.05 - i * 0.18);
+    banner(g, o.team, -0.5, 0, 1.3, 1.7); banner(g, o.team, 0.5, 0, 1.3, 1.7);
+    return g;
+  }
+  ger(g, o, type === 'storehouse' ? 0.8 : 0.95, -0.3, -0.35);
+  if (type === 'storehouse') {
+    crate(g, 0.32, 0.85, 0.3); crate(g, 0.26, 0.86, 0.32, 0.32, 0.4); crate(g, 0.28, 0.5, 0.75, 0, 0.3);
+    sack(g, 0.1, 0.9); sack(g, -0.1, 0.95, 0xbfae84); sack(g, 0, 0.92, 0xd8c8a0);
+    barrel(g, 0.95, -0.3, 0.85); barrel(g, -0.9, 0.8, 0.8);
+  } else if (type === 'barracks') {
+    bx(g, 0.8, 0.04, 0.04, tim, 0.8, 0.5, 0.2);
+    for (const x of [0.45, 1.15]) bx(g, 0.04, 0.5, 0.04, tim, x, 0.25, 0.2);
+    for (const x of [0.55, 0.8, 1.05]) { mesh(g, new THREE.CylinderGeometry(0.012, 0.012, 0.95, 5), tim, x, 0.47, 0.14).rotation.x = 0.2; mesh(g, new THREE.ConeGeometry(0.03, 0.1, 5), toon(0xc8ccd4), x, 0.98, 0.04); }
+    for (const [x, z] of [[-0.6, 0.95], [0.3, 1.0]]) { bx(g, 0.05, 0.75, 0.05, tim, x, 0.375, z); bx(g, 0.5, 0.05, 0.05, tim, x, 0.56, z); mesh(g, new THREE.CylinderGeometry(0.13, 0.11, 0.36, 8), toon(0xd8c070, 'thatch'), x, 0.5, z); mesh(g, new THREE.SphereGeometry(0.1, 8, 6), toon(0xd8c070, 'thatch'), x, 0.8, z); }
+    ger(g, o, 0.4, 0.95, -0.85, false);
+    banner(g, o.team, 1.2, 0, 1.2, 1.4);
+  } else if (type === 'blacksmith') {
+    // The forge under an open awning: a stone hearth with its fire, an anvil on a block, a quenching tub.
+    for (const [x, z] of [[0.45, 0.2], [1.25, 0.2], [0.45, 1.1], [1.25, 1.1]]) bx(g, 0.06, 0.9, 0.06, tim, x, 0.45, z);
+    leanTo(g, toon(0xd8d0b8, 'plaster'), 1.0, 1.1, 0.85, 0.95, 0.65, 0.12);
+    walls(g, 0.5, 0.4, 0.4, toon(0x8a8680, 'stone'), 0.85, 0, 0.35);
+    mesh(g, new THREE.ConeGeometry(0.13, 0.3, 6), toon(0xff7a20, '', 0xcc4400), 0.85, 0.55, 0.35).castShadow = false;
+    bx(g, 0.2, 0.26, 0.2, tim, 0.65, 0.13, 0.9); bx(g, 0.32, 0.1, 0.14, toon(0x2c2c30), 0.65, 0.31, 0.9);
+    barrel(g, 1.15, 0.9, 0.7);
+  } else if (type === 'stable') {
+    fence(g, 0.35, 0.0, 1.3, 0.0); fence(g, 1.3, 0.0, 1.3, 1.3); fence(g, 1.3, 1.3, -0.9, 1.3); fence(g, -0.9, 1.3, -0.9, 0.7);
+    for (const [x, z] of [[0.9, 0.9], [0.6, 1.0]]) mesh(g, new THREE.SphereGeometry(0.2, 8, 6), toon(0xd8c070, 'thatch'), x, 0.14, z).scale.y = 0.7;
+    bx(g, 0.5, 0.14, 0.2, toon(PLANK, 'planks'), -0.3, 0.14, 1.05);
+    for (const x of [-0.5, -0.1]) bx(g, 0.04, 0.14, 0.2, tim, x, 0.07, 1.05);
+    banner(g, o.team, 1.3, 0, 0.0, 1.1);
+  } else if (type === 'range') {
+    for (const x of [-0.6, 0.2, 1.0]) { mesh(g, new THREE.CylinderGeometry(0.22, 0.22, 0.1, 14).rotateX(Math.PI / 2), toon(0xd8c070, 'thatch'), x, 0.5, 1.15); mesh(g, new THREE.CylinderGeometry(0.08, 0.08, 0.11, 10).rotateX(Math.PI / 2), toon(0xb03a30), x, 0.5, 1.15); bx(g, 0.04, 0.5, 0.04, tim, x, 0.22, 1.1); }
+    bx(g, 0.6, 0.04, 0.04, tim, 0.95, 0.5, 0.1);
+    for (const x of [0.7, 1.2]) bx(g, 0.04, 0.5, 0.04, tim, x, 0.25, 0.1);
+    for (const x of [0.8, 0.95, 1.1]) mesh(g, new THREE.TorusGeometry(0.2, 0.014, 4, 10, Math.PI).rotateY(Math.PI / 2), toon(0x8a6238), x, 0.45, 0.1).rotation.z = -Math.PI / 2;
+    banner(g, o.team, 1.25, 0, -0.9, 1.2);
+  } else {
+    // The workshop: timber, a wheel being made, a frame half built.
+    logs(g, 0.9, 0.3, 6, 0.8);
+    mesh(g, new THREE.TorusGeometry(0.3, 0.045, 6, 14), toon(0x6a4828), 0.2, 0.32, 1.05).rotation.y = 0.3;
+    for (const x of [0.75, 1.25]) bx(g, 0.06, 0.8, 0.06, tim, x, 0.4, 1.0).rotation.z = x < 1 ? 0.12 : -0.12;
+    bx(g, 0.6, 0.06, 0.06, tim, 1.0, 0.72, 1.0);
+    bx(g, 0.36, 0.3, 0.24, toon(PLANK, 'planks'), -0.7, 0.15, 1.0);
+  }
+  return g;
+}
+
 /** Built to their plot exactly, since they stand shoulder to shoulder or lie flat: not resized to fit. */
+/** What a steppe people keeps under felt rather than behind walls. */
+const CAMPED = new Set(['towncenter', 'storehouse', 'barracks', 'blacksmith', 'stable', 'range', 'workshop']);
 const AS_BUILT = new Set(['gate', 'farm', 'palisade', 'stonewall']);
 const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, palisade, stonewall, workcamp, wonder, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
 /** A hand-shaped building, sized to fit `size` tiles, or null where there is none yet (or the old one is kept). */
 export function shapedBuilding(type: string, size: number, o: Look, seed: number): THREE.Group | null {
-  const make = MAKERS[type];
+  const tented = o.roofKind === 'yurt' && CAMPED.has(type);
+  const make = tented ? (lk: Look) => camp(lk, type) : MAKERS[type];
   if (!make) return null;
   // No two roofs weather alike: each building's is a shade lighter or darker, warmer or cooler, than its neighbour's.
   const tint = new THREE.Color(o.roofColor), hsl = { h: 0, s: 0, l: 0 };
