@@ -89,9 +89,11 @@ built at the water's edge, launches Fishing Boats that work fish shoals and brin
 and War Galleys that sink boats and rake anything within bowshot of the shore. In the Gunpowder
 Age galleys become Frigates whose broadsides break buildings. Transport Ships carry up to
 eight land units across the water: right-click the ship to board at the shore, *Put ashore* to land;
-if the ship sinks, everyone aboard is lost. Ships never leave the water; foot
+if the ship sinks, everyone aboard is lost. Right-click dry land with a loaded transport and it
+sails as close as it can and lands them there. The AI makes landings of its own when its dock is on
+the same water as your shore. Ships never leave the water; foot
 soldiers with blades cannot reach them, but archers and towers can. The AI fishes and builds a
-small fleet too.
+small fleet too. A dock placed on water with no fish nearby earns a warning.
 
 **Wonder.** In the Middle Ages you can build a Wonder. If it stands for five minutes you win, and
 every rival is told the moment it is finished. Richer AIs build them too.

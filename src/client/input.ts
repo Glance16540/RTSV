@@ -6,6 +6,7 @@ import { SLOT_KEYS } from './hud';
 import { ABILITIES } from '../sim/data';
 import type { App } from './main';
 import { sfx } from './sfx';
+import { T_WATER } from '../sim/map';
 
 export class Input {
   edgeScroll = true;
@@ -231,7 +232,11 @@ export class Input {
         game.cmdTarget(pid, units, target.id, queue);
         r.ping(target.x, target.y, target.owner >= 0 && target.owner !== pid ? 0xff5a4a : 0xffe27a);
       } else {
-        game.cmdMove(pid, units, x, y, false, queue);
+        // A loaded transport sent to dry land sails as close as it can and puts everyone ashore.
+        const cell = game.terrain[Math.floor(y) * game.size + Math.floor(x)];
+        const loaded = cell === T_WATER ? [] : units.filter((id) => { const u = game.entities.get(id); return u?.kind === 'unit' && !!u.cargo?.length; });
+        if (loaded.length) game.cmdUnloadAt(pid, loaded, x, y);
+        game.cmdMove(pid, units.filter((id) => !loaded.includes(id)), x, y, false, queue);
         r.ping(x, y, 0x8dff8a);
       }
     } else {

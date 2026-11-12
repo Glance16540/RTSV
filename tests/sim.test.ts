@@ -1648,3 +1648,42 @@ describe('coastal land', () => {
     expect(found).toBeGreaterThan(3);
   });
 });
+
+describe('landings', () => {
+  it('a loaded transport sent to a point sails there and lands its troops', () => {
+    const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }], 96, false, true);
+    const mid = g.size / 2;
+    const a = g.shoreSpot(mid, mid - 14, 12, 0)!;
+    const b = g.shoreSpot(mid, mid + 14, 12, 0, a.wx, a.wy)!;
+    expect(a && b).toBeTruthy();
+    const ship = g.spawnUnit('transport', 0, a.wx, a.wy);
+    const men = [0, 1, 2, 3].map(() => g.spawnUnit('spearman', 0, a.lx, a.ly));
+    g.cmdTarget(0, men.map((m) => m.id), ship.id);
+    run(g, 5);
+    expect(ship.cargo!.length).toBe(4);
+    g.cmdUnloadAt(0, [ship.id], b.lx, b.ly);
+    run(g, 60);
+    expect(ship.cargo!.length).toBe(0);
+    for (const m of men) expect(Math.hypot(m.x - b.lx, m.y - b.ly)).toBeLessThan(9);
+    expect(Math.hypot(a.lx - b.lx, a.ly - b.ly)).toBeGreaterThan(18);
+    expect(ship.order).toBeNull();
+  });
+
+  it('the AI lands troops across the lake when its dock is on it', () => {
+    const g = new Game(23, [{ name: 'A', color: 1, isAI: true }, { name: 'B', color: 2, isAI: true }], 96, false, true);
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    let carried = 0, landedFar = false;
+    const home = g.buildings.filter((b) => b.type === 'towncenter').map((b) => ({ x: b.x, y: b.y }));
+    for (let t = 0; t < 20 * 60 * 12 && g.winner < 0 && !landedFar; t++) {
+      g.step();
+      if (t % 20 === 0) for (const a of ais) a.update();
+      if (t % 20 === 0) for (const s of g.units) if (s.def.carry) {
+        carried = Math.max(carried, s.cargo?.length ?? 0);
+        // A ship that has carried troops and is now empty, far from home, has made its landing.
+        if (carried >= 3 && !s.cargo?.length && Math.hypot(s.x - home[s.owner].x, s.y - home[s.owner].y) > 40) landedFar = true;
+      }
+    }
+    expect(carried).toBeGreaterThanOrEqual(3);
+    expect(landedFar).toBe(true);
+  });
+});

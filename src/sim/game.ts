@@ -40,6 +40,7 @@ export type Order =
   | { t: 'movein'; id: number; then?: Order | null }
   | { t: 'shelter'; id: number; then?: Order | null }
   | { t: 'board'; id: number }
+  | { t: 'unload'; x: number; y: number; started?: boolean; tries?: number }
   | { t: 'cast'; ability: string; x: number; y: number; started?: boolean; tries?: number };
 
 export interface Unit extends Base {
@@ -775,6 +776,7 @@ export class Game {
     if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return null; }
     this.pay(p, def.cost);
     const b = this.spawnBuilding(type, owner, cx, cy, false);
+    if (type === 'dock' && !this.findResourceNear(b.x, b.y, 'food', owner, 26, 0, true)) this.msg(owner, 'There are no fish near this water: boats built here will have nothing to catch.');
     const us = this.ownUnits(builderIds, owner).filter((u) => u.type === 'villager' && u.growT <= 0);
     const done = this.command(us, queue);
     for (const u of us) this.setOrder(u, { t: 'build', id: b.id, then: queue ? null : this.job(u) });
@@ -1063,8 +1065,42 @@ export class Game {
   /** Put everyone aboard the given transports ashore on the land beside them. Returns how many landed. */
   cmdUnload(owner: number, ids: number[]): number {
     let landed = 0;
-    for (const s of this.ownUnits(ids, owner)) {
-      if (!s.cargo?.length) continue;
+    for (const s of this.ownUnits(ids, owner)) landed += this.unload(s);
+    return landed;
+  }
+
+  /** Sail to the water nearest a point and put everyone ashore there. */
+  cmdUnloadAt(owner: number, ids: number[], x: number, y: number): void {
+    for (const s of this.ownUnits(ids, owner)) if (s.cargo?.length) this.setOrder(s, { t: 'unload', x, y });
+  }
+
+  /**
+   * The water cell nearest a point that has open land right beside it: somewhere a ship can
+   * take on or land troops. `fromX/fromY`, if given, is water the ship must be able to sail from.
+   */
+  shoreSpot(x: number, y: number, radius: number, team: number, fromX?: number, fromY?: number): { wx: number; wy: number; lx: number; ly: number } | null {
+    this.landPf.pass = 2 + team;
+    let best: { wx: number; wy: number; lx: number; ly: number } | null = null, bd = radius;
+    const N = this.size;
+    for (let cy = Math.max(1, Math.floor(y - radius)); cy <= Math.min(N - 2, y + radius); cy++)
+      for (let cx = Math.max(1, Math.floor(x - radius)); cx <= Math.min(N - 2, x + radius); cx++) {
+        if (this.terrain[cy * N + cx] !== T_WATER) continue;
+        const d = Math.hypot(cx + 0.5 - x, cy + 0.5 - y);
+        if (d >= bd) continue;
+        const land = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => !this.landPf.isBlocked(cx + dx, cy + dy));
+        if (!land) continue;
+        if (fromX !== undefined && this.seaPf.find(fromX, fromY!, cx + 0.5, cy + 0.5, cx + 0.5, cy + 0.5, 0.71).partial) continue;
+        bd = d;
+        best = { wx: cx + 0.5, wy: cy + 0.5, lx: cx + land[0] + 0.5, ly: cy + land[1] + 0.5 };
+      }
+    return best;
+  }
+
+  private unload(s: Unit): number {
+    let landed = 0;
+    const owner = s.owner;
+    {
+      if (!s.cargo?.length) return 0;
       this.landPf.pass = 2 + this.players[owner].team;
       const spots: { x: number; y: number; d: number }[] = [];
       const cx = Math.floor(s.x), cy = Math.floor(s.y);
@@ -1073,7 +1109,7 @@ export class Game {
           const d = Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y);
           if (d <= 2.6 && !this.landPf.isBlocked(x, y)) spots.push({ x: x + 0.5, y: y + 0.5, d });
         }
-      if (!spots.length) { this.msg(owner, 'There is no land here to put them ashore.'); continue; }
+      if (!spots.length) { this.msg(owner, 'There is no land here to put them ashore.'); return 0; }
       spots.sort((a, b) => a.d - b.d);
       s.cargo.forEach((id, i) => {
         const u = this.entities.get(id);
@@ -1482,6 +1518,10 @@ export class Game {
 
       case 'gather':
         this.updateGather(u, o);
+        break;
+
+      case 'unload':
+        if (this.walkTo(u, o)) { this.setOrder(u, null); this.unload(u); }
         break;
 
       case 'board': {

@@ -134,6 +134,7 @@ export class AIController {
 
     this.assignWorkers(villagers, mine, home);
     if (g.sea && !saving) this.navy(mine, ships, villagers, home);
+    if (g.sea && this.level >= 1) this.seaRaid(mine, ships, army, !!underAttack);
 
     // Market: turn whatever is piling up into whatever has run out.
     const market = mine.find((b) => b.type === 'market' && b.complete);
@@ -301,7 +302,7 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, raid: this.raid, raidT: this.raidT };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {
@@ -329,6 +330,69 @@ export class AIController {
     g.cmdPlaceLine(this.pid, 'palisade', stretch.filter((c) => c !== gate), [builder.id]);
     // Where a gate cannot stand (a tree, the map edge) the gap simply stays open.
     if (gate && g.canPlace('gate', gate.cx, gate.cy)) g.cmdPlace(this.pid, 'gate', gate.cx, gate.cy, []);
+  }
+
+  /** A landing in progress: troops gather at the shore, board a transport and are put ashore near the enemy. */
+  private raid: { phase: 'load' | 'sail'; ship: number; men: number[]; t: number; called: boolean; load: { wx: number; wy: number; lx: number; ly: number }; land: { wx: number; wy: number }; tx: number; ty: number } | null = null;
+  private raidT = 420;
+  private seaRaid(mine: Building[], ships: Unit[], army: Unit[], underAttack: boolean): void {
+    const g = this.game, pid = this.pid, p = g.players[pid], team = p.team;
+    const dock = mine.find((b) => b.type === 'dock' && b.complete);
+    const r = this.raid;
+    if (r) {
+      const ship = g.entities.get(r.ship);
+      if (!ship || ship.kind !== 'unit' || ship.dead) { this.raid = null; this.raidT = g.time + 240; return; }
+      const aboard = ship.cargo?.length ?? 0;
+      if (r.phase === 'load') {
+        const men = r.men.map((id) => g.entities.get(id)).filter((u): u is Unit => !!u && u.kind === 'unit' && !u.dead);
+        if (!r.called && Math.hypot(ship.x - r.load.wx, ship.y - r.load.wy) < 1.2) {
+          r.called = true;
+          g.cmdTarget(pid, men.map((u) => u.id), ship.id);
+        }
+        const waited = g.time - r.t;
+        if (aboard >= Math.max(3, men.length) || (waited > 60 && aboard >= 3)) {
+          g.cmdUnloadAt(pid, [ship.id], r.land.wx, r.land.wy);
+          r.phase = 'sail';
+          r.t = g.time;
+        } else if (waited > 90 || underAttack) {
+          // It is not coming together: everyone off, try again later.
+          g.cmdUnload(pid, [ship.id]);
+          this.raid = null;
+          this.raidT = g.time + 200;
+        } else if (r.called && waited > 20 && Math.floor(waited) % 15 === 0) {
+          g.cmdTarget(pid, men.filter((u) => !u.inside).map((u) => u.id), ship.id); // stragglers
+        }
+      } else if (!aboard) {
+        // Ashore: go for the town, and send the ship home.
+        g.cmdMove(pid, r.men, r.tx, r.ty, true);
+        g.cmdMove(pid, [ship.id], r.load.wx, r.load.wy);
+        this.raid = null;
+        this.raidT = g.time + 300;
+      } else if (g.time - r.t > 120) {
+        g.cmdUnload(pid, [ship.id]);
+        this.raid = null;
+        this.raidT = g.time + 300;
+      }
+      return;
+    }
+    if (!dock || p.age < 1 || g.time < this.raidT || underAttack || this.state !== 'build') return;
+    const fighters = army.filter((u) => u.def.atk > 0 && !u.def.aura && u.def.cls !== 'siege' && !u.inside);
+    if (fighters.length < 8) return;
+    // Is there anywhere to land? Work it out from the dock's own water before paying for a ship.
+    const target = this.pickTarget(fighters[0]);
+    const from = g.seaPf.nearestFree(dock.x, dock.y);
+    const load = g.shoreSpot(dock.x, dock.y, 9, team, from.x, from.y);
+    const land = target && g.shoreSpot(target.x, target.y, 26, team, from.x, from.y);
+    if (!target || !load || !land || Math.hypot(land.wx - load.wx, land.wy - load.wy) < 20) { this.raidT = g.time + 180; return; }
+    const ship = ships.find((u) => u.def.carry && !u.cargo?.length);
+    if (!ship) {
+      if (!dock.queue.some((q) => q.kind === 'unit' && q.id === 'transport') && dock.queue.length < 2) g.cmdTrain(pid, dock.id, 'transport');
+      return;
+    }
+    const men = fighters.sort((a, b) => Math.hypot(a.x - load.lx, a.y - load.ly) - Math.hypot(b.x - load.lx, b.y - load.ly)).slice(0, 6);
+    g.cmdMove(pid, [ship.id], load.wx, load.wy);
+    g.cmdMove(pid, men.map((u) => u.id), load.lx, load.ly);
+    this.raid = { phase: 'load', ship: ship.id, men: men.map((u) => u.id), t: g.time, called: false, load, land, tx: target.x, ty: target.y };
   }
 
   /** On a lake map: a dock near fish, a few fishing boats, and a small fleet to guard them. */
