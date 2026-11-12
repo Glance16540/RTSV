@@ -392,7 +392,7 @@ export class Renderer {
     g.visible = this.isVisible(b);
     g.scale.y = b.complete ? 1 : 0.12 + 0.88 * b.progress;
     // Badly damaged buildings burn.
-    const burning = b.complete && b.hp < b.maxHp * 0.5;
+    const burning = (b.complete && b.hp < b.maxHp * 0.5) || b.burnT > 0;
     let fire = g.userData.fire as THREE.Mesh | undefined;
     if (burning && !fire) {
       fire = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 6), new THREE.MeshBasicMaterial({ color: 0xff8a20, transparent: true, opacity: 0.85 }));

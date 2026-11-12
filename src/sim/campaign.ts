@@ -105,6 +105,8 @@ const NAMES = [
   'Mistfen', 'Eastmarch', 'Goldwater', 'Thornhold', 'Westshore', 'Redcliff', 'Oakhollow',
 ];
 const FACTIONS: [string, number][] = [['You', 0x2f7bff], ['Red Tribe', 0xe0452f], ['Golden Horde', 0xe0b020], ['Green Clan', 0x3aa648]];
+/** Which civilisation each faction fights as in real-time battles (the locals are Hearthfolk). */
+const CIV_ORDER = ['stonekin', 'steppe', 'hearth', 'forge'];
 export const LOCALS = { name: 'Local Tribe', color: 0x9a8a6a };
 
 function rand(c: { rngState: number }): number {
@@ -533,14 +535,14 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: 72, level: foe < 0 ? 0 : c.level, humanAttacks,
     title: humanAttacks ? `The assault on ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: CIV_ORDER[0], bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1,
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: CIV_ORDER[foe < 0 ? 2 : foe],
         bonus: humanAttacks ? side(defenders, true, p.dStr) : side(attackers, false, p.aStr),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
-      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, bonus: side(foeReserve, false, armyStrength(foeReserve)) }] : []),
-      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, bonus: side(myReserve, false, armyStrength(myReserve)) }] : []),
+      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: CIV_ORDER[foe], bonus: side(foeReserve, false, armyStrength(foeReserve)) }] : []),
+      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: CIV_ORDER[0], bonus: side(myReserve, false, armyStrength(myReserve)) }] : []),
     ],
   };
 }

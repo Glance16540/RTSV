@@ -1,7 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import {
-  ABILITIES, AGES, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
+  ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
@@ -10,7 +10,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -68,9 +68,13 @@ export interface Unit extends Base {
   attackAnim: number; // counts down after each swing, for rendering
   healTarget: number;
   stance: Stance;
+  chargeD: number; // tiles run since the last blow, for charging units
   name: string; // villagers have names
   family: string; // family a villager was born into, if any
   trait: string; // key of VILLAGER_TRAITS, or ''
+  trait2: string; // a second trait, for the lucky
+  age: number; // seconds lived as an adult
+  lifespan: number; // seconds of adult life this villager will have
   growT: number; // seconds until a child becomes a working adult (0 for adults)
   bornAt: number; // house a child was born in
   plagueT: number; // seconds of plague remaining
@@ -114,6 +118,7 @@ export interface Building extends Base {
   scanT: number;
   workerId: number;
   doneAt: number; // game time construction finished (0 if not yet)
+  burnT: number; // seconds of fire left after a flame attack
   sheltered: number[]; // villagers hiding inside
   morale: number; // town centers: number of houses nearby (capped)
   seen: boolean; // has the human player ever seen this building
@@ -156,6 +161,7 @@ export interface Player {
   color: number;
   isAI: boolean;
   team: number;
+  civ: string;
   res: Record<ResType, number>;
   /** Unit types that have been re-equipped: training the key now produces the value. */
   upgrades: Record<string, string>;
@@ -192,6 +198,7 @@ export type GameEvent =
   | { t: 'alert'; player: number; x: number; y: number }
   | { t: 'defeated'; player: number }
   | { t: 'wonder'; player: number }
+  | { t: 'oldage'; player: number; name: string }
   | { t: 'signal'; player: number; x: number; y: number }
   | { t: 'gameover'; winner: number };
 
@@ -201,6 +208,8 @@ export interface PlayerSetup {
   isAI: boolean;
   /** Players with the same team number are allies. Defaults to everyone for themselves. */
   team?: number;
+  /** Civilisation id. Defaults to a different one for each player. */
+  civ?: string;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
   bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number };
 }
@@ -226,6 +235,8 @@ export class Game {
   /** Fog of war for the human player: 0 unexplored, 1 explored, 2 visible. */
   vis: Uint8Array;
   humanId = 0;
+  /** Villagers grow old and die. Turned off for short Conquest battles. */
+  aging = true;
   /** Player id that owns wild animals. */
   wild = -1;
   /** Seeded generator whose state is saved with the game, so a loaded game plays out identically. */
@@ -262,11 +273,12 @@ export class Game {
 
     setups.forEach((s, i) => {
       this.players.push({
-        id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i,
+        id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i, civ: s.civ && CIVS[s.civ] ? s.civ : CIV_IDS[i % CIV_IDS.length],
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
         defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
+      CIVS[this.players[i].civ].apply(this.players[i].mods);
       this.heroes.push([]);
       this.tcs.push([]);
       const st = this.spec.starts[i];
@@ -276,6 +288,8 @@ export class Game {
       this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
       this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
       this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
+      // The founders are not all the same age, so they do not all die in the same minute.
+      for (const u of this.units) if (u.owner === i) u.age = this.rng() * 240;
       if (s.bonus) {
         const p = this.players[i];
         p.age = s.bonus.age ?? 0;
@@ -294,7 +308,7 @@ export class Game {
     });
     this.wild = this.players.length;
     this.players.push({
-      id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, res: { food: 0, wood: 0, gold: 0, stone: 0 },
+      id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, civ: '', res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
       defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, signal: null, attackTarget: 0, stats: newStats(), history: [],
     });
@@ -324,18 +338,20 @@ export class Game {
   spawnUnit(type: string, owner: number, x: number, y: number, gender?: Gender): Unit {
     const def = UNITS[type];
     const u: Unit = {
-      id: this.nextId++, kind: 'unit', type, def, owner, x, y, px: x, py: y, hp: def.hp, maxHp: def.hp, dead: false,
+      id: this.nextId++, kind: 'unit', type, def, owner, x, y, px: x, py: y, hp: def.hp, maxHp: def.hp, dead: false, chargeD: 0,
       facing: 0, gender: type === 'villager' ? gender ?? (this.rng() < 0.5 ? 'm' : 'f') : null,
       order: null, queue: [], path: null, pathI: 0, pathFor: 0, pathPartial: false, goalX: 0, goalY: 0, repathT: 0,
       cooldown: 0, scanT: this.rng() * 0.4, carryType: 'food', carryAmt: 0, gatherT: 0, homeId: 0,
-      moving: false, anchored: false, attackAnim: 0, healTarget: 0, stance: 'aggressive', name: '', family: '', trait: '', growT: 0, bornAt: 0, plagueT: 0,
+      moving: false, anchored: false, attackAnim: 0, healTarget: 0, stance: 'aggressive', name: '', family: '', trait: '', trait2: '', age: 0, lifespan: 0, growT: 0, bornAt: 0, plagueT: 0,
       mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
     };
     if (type === 'villager') {
       const names = u.gender === 'm' ? NAMES_M : NAMES_F;
       u.name = names[Math.floor(this.rng() * names.length)];
       if (this.rng() < 0.3) this.setTrait(u, Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)]);
+      u.lifespan = LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]);
     }
+    if (def.cls === 'siege') u.hp = u.maxHp = Math.round(def.hp * this.players[owner].mods.siegeHp);
     this.entities.set(u.id, u);
     this.units.push(u);
     this.players[owner].pop += def.pop;
@@ -343,18 +359,34 @@ export class Game {
   }
 
   /** Give a villager a trait (or none), keeping its health in step. */
-  setTrait(u: Unit, trait: string): void {
-    u.trait = trait;
-    const max = Math.round(u.def.hp * (trait === 'hardy' ? 1.5 : 1) * (u.growT > 0 ? 0.4 : 1));
+  setTrait(u: Unit, trait: string, trait2 = ''): void {
+    u.trait = trait || trait2;
+    u.trait2 = trait && trait2 !== trait ? trait2 : '';
+    const max = Math.round(u.def.hp * (this.has(u, 'hardy') ? 1.5 : 1) * (u.growT > 0 ? 0.4 : 1));
     u.hp = (u.hp / u.maxHp) * max;
     u.maxHp = max;
   }
 
+  has(u: Unit, trait: string): boolean {
+    return u.trait === trait || u.trait2 === trait;
+  }
+
+  /** Old villagers slow down. */
+  isElder(u: Unit): boolean {
+    return this.aging && u.lifespan > 0 && u.age > u.lifespan * ELDER_AT;
+  }
+
+  /** A family's standing: one rank for every few children raised, up to three. */
+  renown(b: Building): number {
+    return Math.min(3, Math.floor(b.children / RENOWN_CHILDREN));
+  }
+
   spawnBuilding(type: string, owner: number, cx: number, cy: number, complete: boolean): Building {
     const def = BUILDINGS[type];
+    const maxHp = Math.round(def.hp * this.players[owner].mods.buildingHp);
     const b: Building = {
       id: this.nextId++, kind: 'building', type, def, owner, cx, cy, size: def.size,
-      x: cx + def.size / 2, y: cy + def.size / 2, hp: complete ? def.hp : 1, maxHp: def.hp, dead: false,
+      x: cx + def.size / 2, y: cy + def.size / 2, hp: complete ? maxHp : 1, maxHp, dead: false, burnT: 0,
       progress: complete ? 1 : 0, complete, queue: [], rallyX: 0, rallyY: 0, rallyId: 0, hasRally: false,
       residents: { m: 0, f: 0 }, birthProgress: 0, birthBlocked: false, birthsPaused: false, family: '', children: 0, cooldown: 0, scanT: 0, workerId: 0, sheltered: [], doneAt: 0,
       morale: 0, seen: !this.hostile(owner, this.humanId),
@@ -740,7 +772,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -773,6 +805,7 @@ export class Game {
     g.winner = d.winner;
     g.nextId = d.nextId;
     g.rngState = d.rngState;
+    g.aging = d.aging;
     g.vis.set(d.vis);
     g.events = [];
     g.upkeep();
@@ -785,19 +818,38 @@ export class Game {
     if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || !UNITS[type] || !b.def.trains.includes(type)) return false;
     type = this.trainedAs(owner, type);
     const def = UNITS[type];
+    if (def.civ && def.civ !== p.civ) return false;
     if (def.age > p.age) { this.msg(owner, `Requires the ${AGES[def.age].name}.`); return false; }
     if (b.queue.length >= 8) { this.msg(owner, 'Queue is full.'); return false; }
     if (def.limit && this.countUnits(owner, type) >= def.limit) { this.msg(owner, `You can only have ${def.limit} ${def.name}.`); return false; }
-    if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return false; }
+    const cost = this.unitCost(owner, type);
+    if (!this.canAfford(p, cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return false; }
     if (type === 'villager' && !gender) {
       let m = 0, f = 0;
       for (const u of this.units) if (u.owner === owner && u.type === 'villager') u.gender === 'm' ? m++ : f++;
       for (const ob of this.buildings) if (ob.owner === owner) for (const q of ob.queue) if (q.gender) q.gender === 'm' ? m++ : f++;
       gender = m <= f ? 'm' : 'f';
     }
-    this.pay(p, def.cost);
-    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time, cost: def.cost });
+    this.pay(p, cost);
+    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time, cost });
     return true;
+  }
+
+  /** What a unit costs this player, after civilisation discounts. */
+  unitCost(owner: number, type: string): Cost {
+    const def = UNITS[type], k = def.cls === 'cavalry' ? this.players[owner].mods.cavCost : 1;
+    if (k === 1) return def.cost;
+    const out: Cost = {};
+    for (const r of RES_TYPES) if (def.cost[r]) out[r] = Math.round(def.cost[r]! * k);
+    return out;
+  }
+
+  techCost(owner: number, id: string): Cost {
+    const t = TECHS[id], k = this.players[owner].mods.techCost;
+    if (k === 1) return t.cost;
+    const out: Cost = {};
+    for (const r of RES_TYPES) if (t.cost[r]) out[r] = Math.round(t.cost[r]! * k);
+    return out;
   }
 
   techAvailable(p: Player, id: string): boolean {
@@ -812,10 +864,11 @@ export class Game {
     if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || !t || !b.def.techs.includes(id)) return false;
     if (!this.techAvailable(p, id)) { this.msg(owner, 'Not available yet.'); return false; }
     if (b.queue.length >= 8) { this.msg(owner, 'Queue is full.'); return false; }
-    if (!this.canAfford(p, t.cost)) { this.msg(owner, `Not enough resources for ${t.name}.`); return false; }
-    this.pay(p, t.cost);
+    const cost = this.techCost(owner, id);
+    if (!this.canAfford(p, cost)) { this.msg(owner, `Not enough resources for ${t.name}.`); return false; }
+    this.pay(p, cost);
     p.pending.add(id);
-    b.queue.push({ kind: 'tech', id, t: 0, time: t.time, cost: t.cost });
+    b.queue.push({ kind: 'tech', id, t: 0, time: t.time * p.mods.techTime, cost });
     return true;
   }
 
@@ -1012,7 +1065,7 @@ export class Game {
 
   /** Seconds a house needs for its next child. Each child takes a little longer than the last. */
   birthTime(b: Building): number {
-    return (BIRTH_TIME * Math.min(3, 1 + 0.2 * b.children)) / this.players[b.owner].mods.birth;
+    return (BIRTH_TIME * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * (1 + 0.1 * this.renown(b)));
   }
 
   // ------------------------------------------------------------------
@@ -1076,7 +1129,7 @@ export class Game {
     for (const b of this.buildings) {
       if (!b.complete) continue;
       const p = this.players[b.owner];
-      p.popCap += b.def.pop + (b.type === 'house' ? p.mods.housePop : 0);
+      p.popCap += b.def.pop + (b.type === 'house' ? p.mods.housePop + this.renown(b) : 0);
       if (b.type === 'towncenter') this.tcs[b.owner].push(b);
     }
     for (const p of this.players) {
@@ -1161,7 +1214,8 @@ export class Game {
 
   private moveAlong(u: Unit): 'done' | 'moving' | 'blocked' {
     if (!u.path) return 'done';
-    let step = u.def.speed * (u.trait === 'swift' ? 1.2 : 1) * DT;
+    let step = u.def.speed * (this.has(u, 'swift') ? 1.2 : 1) * (this.isElder(u) ? 0.85 : 1) * (u.def.cls === 'cavalry' ? this.players[u.owner].mods.cavSpeed : 1) * DT;
+    if (u.def.charge) u.chargeD += step;
     const ox = u.x, oy = u.y;
     while (step > 0 && u.pathI < u.path.length) {
       const tx = u.path[u.pathI], ty = u.path[u.pathI + 1];
@@ -1256,6 +1310,11 @@ export class Game {
     if (u.def.aura && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + 1.5 * DT); // heroes slowly regenerate
     if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT);
     if (u.growT > 0 && (u.growT -= DT) <= 0) this.comeOfAge(u);
+    if (this.aging && u.lifespan > 0 && u.growT <= 0 && (u.age += DT) > u.lifespan) {
+      this.events.push({ t: 'oldage', player: u.owner, name: `${u.name}${u.family ? ' ' + u.family : ''}` });
+      this.kill(u);
+      return;
+    }
     if (u.plagueT > 0) {
       u.plagueT -= DT;
       u.hp -= 2.5 * DT;
@@ -1407,8 +1466,9 @@ export class Game {
           u.anchored = true;
           u.facing = Math.atan2(b.x - u.x, b.y - u.y);
           u.attackAnim = 0.3;
+          const p0 = this.players[u.owner];
           if (!b.complete) {
-            const work = (DT / b.def.time) * (u.trait === 'skilled' ? 1.6 : 1);
+            const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build;
             b.progress += work;
             b.hp = Math.min(b.maxHp, b.hp + b.maxHp * work);
             if (b.progress >= 1) {
@@ -1446,7 +1506,7 @@ export class Game {
   /** A child grows up: it can now work, and takes up a parent's trade unless the house has a rally point. */
   private comeOfAge(u: Unit): void {
     u.growT = 0;
-    this.setTrait(u, u.trait); // full adult health
+    this.setTrait(u, u.trait, u.trait2); // full adult health
     this.events.push({ t: 'grown', player: u.owner, x: u.x, y: u.y });
     if (u.order || u.inside) return;
     const home = this.entities.get(u.bornAt);
@@ -1522,7 +1582,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (u.trait === 'strong' ? 1.25 : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -1599,7 +1659,10 @@ export class Game {
     const p = this.players[u.owner];
     u.cooldown = u.def.cooldown * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1);
     u.attackAnim = 0.35;
-    const atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0);
+    let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0);
+    if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
+    if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
+    if (u.def.burn && t.kind === 'building') t.burnT = 8;
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
     if (u.def.projectile) {
       this.projectiles.push({
@@ -1626,6 +1689,7 @@ export class Game {
     let mult = bonus?.[tcls] ?? 1;
     // Arrows and sling stones barely scratch walls.
     if (tcls === 'building' && (cls === 'ranged' || cls === 'building')) mult *= 0.35;
+    if (t.kind === 'unit' && t.def.rangedResist && (cls === 'ranged' || cls === 'building')) mult *= 1 - t.def.rangedResist;
     let armor = 0;
     let morale = 0;
     if (t.kind === 'unit') {
@@ -1721,6 +1785,11 @@ export class Game {
   }
 
   private updateBuilding(b: Building): void {
+    if (b.burnT > 0) {
+      b.burnT -= DT;
+      b.hp -= 5 * DT;
+      if (b.hp <= 0) { this.kill(b); return; }
+    }
     if (!b.complete) return;
     const p = this.players[b.owner];
 
@@ -1777,10 +1846,13 @@ export class Game {
             const mother = this.entities.get(b.residents.f) as Unit, father = this.entities.get(b.residents.m) as Unit;
             const roll = this.rng();
             const trait = roll < 0.45 ? mother.trait : roll < 0.9 ? father.trait : Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)];
+            // One child in four of two gifted parents gets both gifts.
+            const other = trait === mother.trait ? father.trait : mother.trait;
+            const second = trait && other && other !== trait && this.rng() < 0.25 ? other : '';
             if (!b.family) b.family = FAMILY_NAMES[Math.floor(this.rng() * FAMILY_NAMES.length)];
             child.family = b.family;
             child.maxHp = child.hp = Math.round(child.def.hp * 0.4);
-            this.setTrait(child, trait);
+            this.setTrait(child, trait, second);
             p.stats.born++;
             this.events.push({ t: 'birth', player: b.owner, x: child.x, y: child.y });
           } else b.birthBlocked = true;
@@ -1796,7 +1868,7 @@ export class Game {
       b.scanT -= DT;
       if (b.cooldown <= 0 && b.scanT <= 0) {
         b.scanT = 0.3;
-        const range = b.def.range! + b.size / 2;
+        const range = b.def.range! + b.size / 2 + p.mods.towerRange;
         let best: Unit | null = null;
         let bestD = range;
         for (const v of this.unitsNear(b.x, b.y, range, this.scratch)) {

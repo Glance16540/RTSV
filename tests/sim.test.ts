@@ -906,3 +906,114 @@ describe('conquest reserves', () => {
     run(g, 5);
   });
 });
+
+describe('civilisations', () => {
+  const as = (civ: string) => new Game(7, [{ ...setups[0], civ }, { ...setups[1], civ: 'steppe' }]);
+
+  it('each people has its bonuses and its own unit', () => {
+    const stone = as('stonekin'), forge = as('forge'), hearth = as('hearth');
+    const tc = (g: Game) => g.buildings.find((b) => b.owner === 0)!;
+    expect(tc(stone).maxHp).toBe(Math.round(2200 * 1.25));
+    expect(tc(forge).maxHp).toBe(2200);
+    // Only the right people can train a unique unit, and rivals are assigned different peoples by default.
+    for (const g of [stone, forge]) { g.players[0].age = 4; Object.assign(g.players[0].res, { food: 9000, wood: 9000, gold: 9000, stone: 9000 }); }
+    const b1 = stone.spawnBuilding('barracks', 0, 40, 40, true), b2 = forge.spawnBuilding('barracks', 0, 40, 40, true);
+    expect(stone.cmdTrain(0, b1.id, 'shieldbearer')).toBe(true);
+    expect(forge.cmdTrain(0, b2.id, 'shieldbearer')).toBe(false);
+    expect(new Game(7, setups).players.map((p) => p.civ).slice(0, 2)).toEqual(['stonekin', 'steppe']);
+    // Steppe cavalry is cheaper; Forgeborn research is cheaper and quicker.
+    expect(stone.unitCost(1, 'rider')).toEqual({ food: 60, gold: 26 });
+    expect(stone.unitCost(0, 'rider')).toEqual({ food: 70, gold: 30 });
+    expect(forge.techCost(0, 'up_bowman')).toEqual({ food: 102, wood: 85 });
+    forge.cmdResearch(0, b2.id, 'up_bowman');
+    expect(b2.queue[0].time).toBeCloseTo(21);
+    // Hearthfolk houses hold one more.
+    const cap = hearth.players[0].popCap;
+    const hs = spot(hearth, 'house', 0);
+    hearth.spawnBuilding('house', 0, hs.cx, hs.cy, true);
+    run(hearth, 1.1);
+    expect(hearth.players[0].popCap).toBe(cap + 6);
+  });
+
+  it('unique units behave as described', () => {
+    const g = as('stonekin');
+    // Shieldbearers shrug off half of an arrow.
+    const shield = g.spawnUnit('shieldbearer', 0, 40.5, 48.5), plain = g.spawnUnit('spearman', 0, 40.5, 56.5);
+    for (const u of [shield, plain]) { u.stance = 'hold'; }
+    g.spawnUnit('bowman', 1, 45.5, 48.5).stance = 'hold';
+    g.spawnUnit('bowman', 1, 45.5, 56.5).stance = 'hold';
+    run(g, 8);
+    expect(shield.maxHp - shield.hp).toBeLessThan((plain.maxHp - plain.hp) * 0.5);
+    // A Lancer's charge: the first blow after a run is far heavier than the ones that follow.
+    const wall = g.spawnBuilding('stonewall', 0, 46, 58, true);
+    const lancer = g.spawnUnit('lancer', 1, 46.5, 50.5);
+    g.cmdTarget(1, [lancer.id], wall.id);
+    let first = 0;
+    for (let i = 0; i < 200 && !first; i++) { g.step(); if (wall.hp < wall.maxHp) first = wall.maxHp - wall.hp; }
+    const afterFirst = wall.hp;
+    for (let i = 0; i < 200 && wall.hp === afterFirst; i++) g.step(); // the next, ordinary blow
+    expect(first).toBeGreaterThan((afterFirst - wall.hp) * 2);
+    // Fire keeps burning after the Fire Thrower is gone.
+    const hut = g.spawnBuilding('house', 0, 70, 70, true);
+    const fire = g.spawnUnit('firethrower', 1, 71, 68.5);
+    g.cmdTarget(1, [fire.id], hut.id);
+    run(g, 2);
+    g.cmdDelete(1, [fire.id]);
+    const hp = hut.hp;
+    run(g, 4);
+    expect(hut.hp).toBeLessThan(hp - 15);
+  });
+});
+
+describe('generations', () => {
+  it('villagers grow old, slow down and die, unless aging is off', () => {
+    const g = new Game(5, setups);
+    const [a, b] = villagers(g, 0);
+    expect(a.lifespan).toBeGreaterThanOrEqual(22 * 60);
+    a.age = a.lifespan * 0.8;
+    expect(g.isElder(a)).toBe(true);
+    b.age = b.lifespan - 2;
+    run(g, 3);
+    expect(b.dead).toBe(true);
+    expect(g.events.some((e) => e.t === 'oldage')).toBe(true);
+    const still = new Game(5, setups);
+    still.aging = false;
+    const c = villagers(still, 0)[0];
+    c.age = c.lifespan - 1;
+    run(still, 3);
+    expect(c.dead).toBe(false);
+    expect(still.isElder(c)).toBe(false);
+    expect(Game.restore(still.serialize()).aging).toBe(false);
+  });
+
+  it('gifted couples sometimes have doubly gifted children, and families gain renown', () => {
+    const g = new Game(5, setups);
+    const vs = villagers(g, 0);
+    const man = vs.find((v) => v.gender === 'm')!, woman = vs.find((v) => v.gender === 'f')!;
+    g.setTrait(man, 'strong');
+    g.setTrait(woman, 'swift');
+    const hs = spot(g, 'house', 0);
+    const house = g.spawnBuilding('house', 0, hs.cx, hs.cy, true);
+    house.residents = { m: man.id, f: woman.id };
+    g.players[0].res.food = 99999;
+    let both = 0;
+    const slow = g.birthTime(house);
+    for (let i = 0; i < 60; i++) {
+      house.birthProgress = 1;
+      g.step();
+      const child = villagers(g, 0).find((v) => v.growT > 0)!;
+      if (g.has(child, 'strong') && g.has(child, 'swift')) both++;
+      g.cmdDelete(0, [child.id]);
+    }
+    expect(both).toBeGreaterThan(4);
+    expect(both).toBeLessThan(30);
+    expect(g.renown(house)).toBe(3);
+    house.children = 9; // same slowdown from child count, now with renown
+    const cap = g.players[0].popCap;
+    run(g, 1.1);
+    expect(g.players[0].popCap).toBeGreaterThanOrEqual(cap); // renown adds room
+    house.children = 0;
+    expect(g.renown(house)).toBe(0);
+    expect(slow).toBeGreaterThan(0);
+  });
+});

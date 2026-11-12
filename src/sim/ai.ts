@@ -1,6 +1,6 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
-import { ABILITIES, AGES, BUILDINGS, ResType, TECHS, TRADE, UNITS } from './data';
+import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
@@ -165,7 +165,9 @@ export class AIController {
     const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale);
     this.castCalamities(army);
     if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0)) {
-      const mix = ARMY_MIX[p.age];
+      // The civilisation's own unit turns up often once its age is reached.
+      const own = CIVS[p.civ]?.unique;
+      const mix = own && UNITS[own].age <= p.age ? [...ARMY_MIX[p.age], own, own, own] : ARMY_MIX[p.age];
       for (let k = 0; k < mix.length; k++) {
         const type = mix[(this.mixI + k) % mix.length];
         const def = UNITS[type];

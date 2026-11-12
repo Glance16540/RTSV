@@ -1,7 +1,7 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import {
-  ABILITIES, AGES, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
+  ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
@@ -137,6 +137,7 @@ export class Hud {
     } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
     else if (ev.t === 'defeated') this.toast(ev.player === pid ? 'Your settlement has fallen. Your ally fights on.' : `${game.players[ev.player].name} has been destroyed.`, 'big');
     else if (ev.t === 'signal' && ev.player !== pid && !game.hostile(ev.player, pid)) this.toast(`📣 ${game.players[ev.player].name} calls for you.`);
+    else if (ev.t === 'oldage' && ev.player === pid) this.toast(`🕯️ ${ev.name} has died of old age.`);
     else if (ev.t === 'wonder') {
       this.toast(ev.player === pid ? '🗿 Your Wonder is complete. Defend it for five minutes to win!' : `🗿 ${game.players[ev.player].name} has built a Wonder. Destroy it within five minutes!`, ev.player === pid ? 'big' : 'big warn');
     } else if (ev.t === 'gameover') {
@@ -250,13 +251,14 @@ export class Hud {
     // Upgraded types are trained in place of the ones they replaced, so list each result once.
     for (const type of [...new Set(b.def.trains.map((t) => game.trainedAs(pid, t)))]) {
       const d = UNITS[type];
+      if (d.civ && d.civ !== p.civ) continue; // another people's unit
       const locked = d.age > p.age ? `Requires the ${AGES[d.age].name}.` : undefined;
       if (type === 'villager') {
         out.push({ id: 't:vm', icon: MAN(), name: 'Train Villager (man)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'm') });
         out.push({ id: 't:vf', icon: WOMAN(), name: 'Train Villager (woman)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'f') });
       } else {
         out.push({
-          id: 't:' + type, icon: ico(type, d.icon), name: 'Train ' + d.name, cost: d.cost, locked,
+          id: 't:' + type, icon: ico(type, d.icon), name: 'Train ' + d.name, cost: game.unitCost(pid, type), locked,
           desc: `${d.desc}<br><span class="stat">❤ ${d.hp} · ⚔ ${d.atk} · 🛡 ${d.armor}${d.range > 1 ? ` · range ${d.range}` : ''} · pop ${d.pop}</span>`,
           act: () => game.cmdTrain(pid, least().id, type),
         });
@@ -266,7 +268,7 @@ export class Hud {
       const t = TECHS[id];
       if (p.techs.has(id) || p.pending.has(id)) continue;
       const locked = t.age > p.age ? `Requires the ${AGES[t.age].name}.` : t.requires && !p.techs.has(t.requires) ? `Requires ${TECHS[t.requires].name}.` : undefined;
-      out.push({ id: 'r:' + id, icon: ico(id, t.icon), name: 'Research ' + t.name, desc: t.desc, cost: t.cost, locked, act: () => game.cmdResearch(pid, b.id, id) });
+      out.push({ id: 'r:' + id, icon: ico(id, t.icon), name: 'Research ' + t.name, desc: t.desc, cost: game.techCost(pid, id), locked, act: () => game.cmdResearch(pid, b.id, id) });
     }
     if (b.type === 'towncenter' && p.age < AGES.length - 1) {
       const next = AGES[p.age + 1];
@@ -397,7 +399,11 @@ export class Hud {
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
       if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
-      if (e.trait) extra = `<div class="good">${VILLAGER_TRAITS[e.trait].icon} ${VILLAGER_TRAITS[e.trait].name}: ${VILLAGER_TRAITS[e.trait].desc}</div>` + extra;
+      for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
+      if (e.lifespan > 0 && e.growT <= 0 && game.aging) {
+        const years = Math.floor(16 + (e.age / e.lifespan) * 54);
+        extra += game.isElder(e) ? `<div class="hint">🧓 Elder, ${years} years old: works and walks more slowly</div>` : `<div class="hint">${years} years old</div>`;
+      }
       const role = (e.growT > 0 ? 'Child' : d.name) + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
       return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>
@@ -417,9 +423,9 @@ export class Hud {
       }
       if (b.type === 'house') {
         const r = b.residents;
-        const nameOf = (id: number) => { const u = game.entities.get(id); return u && u.kind === 'unit' ? u.name + (u.trait ? ' ' + VILLAGER_TRAITS[u.trait].icon : '') : ''; };
+        const nameOf = (id: number) => { const u = game.entities.get(id); return u && u.kind === 'unit' ? u.name + (u.trait ? ' ' + VILLAGER_TRAITS[u.trait].icon : '') + (u.trait2 ? VILLAGER_TRAITS[u.trait2].icon : '') : ''; };
         body += `<div class="family"><span class="${r.m ? 'in m' : ''}">♂ ${nameOf(r.m) || 'empty'}</span><span class="${r.f ? 'in f' : ''}">♀ ${nameOf(r.f) || 'empty'}</span></div>`;
-        if (b.family) body += `<div>The ${b.family} family</div>`;
+        if (b.family) body += `<div>The ${b.family} family${game.renown(b) ? ` · renown ${'★'.repeat(game.renown(b))}: +${game.renown(b)} room, children ${game.renown(b) * 10}% sooner` : ''}</div>`;
         if (r.m && r.f) {
           body += b.birthsPaused ? '<div>Not raising children (paused)</div>'
             : `<div>Raising a child${b.children ? ` · ${b.children} raised` : ''}</div>${this.bar(b.birthProgress, 'love')}` +
@@ -534,7 +540,7 @@ export class Hud {
     const top = [
       RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
         `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
-      AGES[p.age].name + aging + wonder,
+      `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder,
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,
       this.app.paused ? '▶' : '⏸',

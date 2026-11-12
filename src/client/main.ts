@@ -1,4 +1,5 @@
 import { AIController } from '../sim/ai';
+import { CIVS, CIV_IDS, UNITS } from '../sim/data';
 import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets } from './assets';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
@@ -189,6 +190,10 @@ loadAssets().then(() => {
   if (saved) {
     try { game = Game.restore(saved.game); } catch { saved = null; }
   }
+  // Your people are your choice; rivals take the others in turn.
+  const myCiv = CIVS[params.get('civ') ?? ''] ? params.get('civ')! : CIV_IDS[0];
+  const others = CIV_IDS.filter((c) => c !== myCiv);
+  const civFor = (i: number) => (i === 0 ? myCiv : others[(i - 1 + seed) % others.length]);
   // Sides: every tribe for itself, one rival fighting at your side, or all of them against you.
   const sides = rivals > 1 && ['ally', 'gang'].includes(params.get('teams') ?? '') ? params.get('teams')! : 'ffa';
   const team = (i: number) => (sides === 'ffa' ? i : i === 0 || (sides === 'ally' && i === 1) ? 0 : 1);
@@ -197,7 +202,7 @@ loadAssets().then(() => {
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
-  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, team: team(i) })), size);
+  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, team: team(i), civ: civFor(i) })), size);
 
   // The map is generated before the menu appears, so a different size means a fresh page.
   const sizeSel = el('map-size') as HTMLSelectElement;
@@ -207,7 +212,14 @@ loadAssets().then(() => {
   const teamSel = el('teams') as HTMLSelectElement;
   teamSel.value = sides;
   teamSel.disabled = game.players.filter((p) => p.isAI).length < 2;
-  const regenerate = () => go(`?size=${sizeSel.value}&ai=${aiSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
+  const civSel = el('civ') as HTMLSelectElement;
+  civSel.innerHTML = CIV_IDS.map((id) => `<option value="${id}">${CIVS[id].icon} ${CIVS[id].name}</option>`).join('');
+  civSel.value = game.players[0].civ;
+  const civ = CIVS[game.players[0].civ];
+  el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b>.` +
+    `<br><small>Rivals: ${game.players.filter((p) => p.isAI).map((p) => `${p.name} (${CIVS[p.civ].name})`).join(', ')}</small>`;
+  const regenerate = () => go(`?size=${sizeSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
+  civSel.addEventListener('change', regenerate);
   teamSel.addEventListener('change', regenerate);
   sizeSel.addEventListener('change', regenerate);
   aiSel.addEventListener('change', regenerate);
@@ -241,6 +253,7 @@ loadAssets().then(() => {
   if (cfg) {
     // A Conquest battle: difficulty and armies come from the campaign, and the result goes back to it.
     if (!saved) for (const a of app.ai) a.setLevel(cfg.level);
+    if (!saved) game.aging = false; // a battle is over long before anyone grows old
     startScreen.classList.add('started', 'battle');
     startScreen.querySelector('h1')!.textContent = cfg.title;
     startScreen.querySelector('.lead')!.textContent = cfg.humanAttacks

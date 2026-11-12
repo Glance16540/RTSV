@@ -58,7 +58,8 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 > - Units (neutral standing pose): `villager_m`, `villager_f`, `clubman`, `slinger`,
 >   `spearman`, `swordsman`, `bowman`, `crossbowman`, `rider`, `knight`, `mammoth`, `shaman`,
 >   `prophet`, `warlord`, `catapult`, `musketeer`, `bombard` (cannon), `javelineer`, `hound` (war dog), `chariot`, `berserker`,
->   `pikeman`, `grenadier`, `ram` (battering ram), `scorpion` (bolt thrower), `hussar`, `strategist`,
+>   `pikeman`, `grenadier`, `ram` (battering ram), `scorpion` (bolt thrower), `hussar`, `strategist`, `shieldbearer`, `lancer`, `hearthguard`,
+>   `firethrower`,
 >   `deer`, `wolf`
 > - If generations remain, later-age building variants named `<building>_1` (Bronze: timber),
 >   `<building>_2` (Iron: stone and shingle), `<building>_3` (medieval: plaster and red tile),

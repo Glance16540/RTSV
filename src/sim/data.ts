@@ -40,6 +40,16 @@ export interface Mods {
   housePop: number; // extra population per house
   heal: number; // shaman heal multiplier
   towerAtk: number; // flat attack bonus for buildings
+  // Civilisation traits:
+  build: number; // construction speed multiplier
+  buildingHp: number; // building health multiplier
+  towerRange: number; // extra range for towers and town centres
+  cavCost: number; // cavalry cost multiplier
+  cavSpeed: number; // cavalry speed multiplier
+  farm: number; // farm yield multiplier
+  techTime: number; // research time multiplier
+  techCost: number; // research cost multiplier
+  siegeHp: number; // siege engine health multiplier
 }
 
 export const baseMods = (): Mods => ({
@@ -51,6 +61,15 @@ export const baseMods = (): Mods => ({
   housePop: 0,
   heal: 1,
   towerAtk: 0,
+  build: 1,
+  buildingHp: 1,
+  towerRange: 0,
+  cavCost: 1,
+  cavSpeed: 1,
+  farm: 1,
+  techTime: 1,
+  techCost: 1,
+  siegeHp: 1,
 });
 
 export interface UnitDef {
@@ -84,6 +103,16 @@ export interface UnitDef {
   limit?: number;
   /** Damage multiplier applied to enemies attacking within auraRange (a Strategist's presence). */
   weaken?: number;
+  /** Only this civilisation can train it. */
+  civ?: string;
+  /** Fraction of damage from arrows, stones and shot that is shrugged off. */
+  rangedResist?: number;
+  /** Attack multiplier on the first blow after a run of at least three tiles. */
+  charge?: number;
+  /** Attack multiplier while fighting near home (inside house morale range). */
+  homeBonus?: number;
+  /** Sets buildings alight: they keep burning after the attack. */
+  burn?: boolean;
   /** Can only attack buildings. */
   siegeOnly?: boolean;
   /** Attacks faster the more wounded it is. */
@@ -186,6 +215,30 @@ export const UNITS: Record<string, UnitDef> = {
     desc: 'Hero. Only one may live at a time. Enemies fighting near the Strategist deal 20% less damage, and nearby allies are slowly healed.',
     cost: { food: 150, gold: 200 }, time: 40, age: 2, hp: 300, atk: 6, armor: 2, range: 5, speed: 2.3,
     cooldown: 1.8, sight: 10, pop: 2, cls: 'hero', radius: 0.34, projectile: 'stone', weaken: 0.8, auraRange: 7, heal: 3, limit: 1,
+  }),
+  shieldbearer: U({
+    id: 'shieldbearer', name: 'Shieldbearer', icon: '🛡️', civ: 'stonekin',
+    desc: 'Stonekin only. A walking wall: arrows, stones and shot do half damage to it.',
+    cost: { food: 55, wood: 30 }, time: 17, age: 1, hp: 120, atk: 7, armor: 3, range: 0.5, speed: 1.9,
+    cooldown: 1.6, sight: 7, pop: 1, cls: 'infantry', radius: 0.32, rangedResist: 0.5,
+  }),
+  lancer: U({
+    id: 'lancer', name: 'Lancer', icon: '🏇', civ: 'steppe',
+    desc: 'Steppe Riders only. After a run-up of three tiles its first blow lands with two and a half times the force.',
+    cost: { food: 75, gold: 35 }, time: 18, age: 1, hp: 105, atk: 9, armor: 1, range: 0.7, speed: 3.6,
+    cooldown: 1.5, sight: 9, pop: 1, cls: 'cavalry', radius: 0.42, charge: 2.5, bonus: { ranged: 1.3 },
+  }),
+  hearthguard: U({
+    id: 'hearthguard', name: 'Hearthguard', icon: '🔥', civ: 'hearth',
+    desc: 'Hearthfolk only. Cheap infantry that fights half again as hard near its own houses.',
+    cost: { food: 45 }, time: 12, age: 0, hp: 65, atk: 6, armor: 1, range: 0.5, speed: 2.1,
+    cooldown: 1.4, sight: 7, pop: 1, cls: 'infantry', radius: 0.3, homeBonus: 1.5,
+  }),
+  firethrower: U({
+    id: 'firethrower', name: 'Fire Thrower', icon: '🔥', civ: 'forge',
+    desc: 'Forgeborn only. A short jet of flame that scorches everything around its target and leaves buildings burning.',
+    cost: { food: 60, gold: 70 }, time: 22, age: 2, hp: 85, atk: 9, armor: 1, range: 2.2, speed: 1.9,
+    cooldown: 0.8, sight: 7, pop: 2, cls: 'infantry', radius: 0.32, splash: 1.3, burn: true, bonus: { building: 1.5 },
   }),
   spearman: U({
     id: 'spearman', name: 'Spearman', icon: '🔱',
@@ -335,7 +388,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'barracks', name: 'Barracks', icon: '🗡️',
     desc: 'Trains infantry.',
     cost: { wood: 120 }, time: 28, age: 0, hp: 1000, size: 3, pop: 0, sight: 6,
-    trains: ['clubman', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
+    trains: ['clubman', 'hearthguard', 'shieldbearer', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
   }),
   range: B({
     id: 'range', name: 'Archery Range', icon: '🏹',
@@ -347,7 +400,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'stable', name: 'Stable', icon: '🐴',
     desc: 'Trains cavalry and war beasts.',
     cost: { wood: 150 }, time: 30, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['rider', 'chariot', 'mammoth', 'knight', 'hussar'], techs: ['up_knight'],
+    trains: ['rider', 'lancer', 'chariot', 'mammoth', 'knight', 'hussar'], techs: ['up_knight'],
   }),
   temple: B({
     id: 'temple', name: 'Temple', icon: '⛩️',
@@ -365,7 +418,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'workshop', name: 'Siege Workshop', icon: '🛠️',
     desc: 'Builds siege engines.',
     cost: { wood: 180, gold: 80 }, time: 34, age: 2, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['ram', 'scorpion', 'catapult', 'bombard'], techs: ['up_bombard'],
+    trains: ['firethrower', 'ram', 'scorpion', 'catapult', 'bombard'], techs: ['up_bombard'],
   }),
   wonder: B({
     id: 'wonder', name: 'Wonder', icon: '🗿',
@@ -513,6 +566,32 @@ export const TECHS: Record<string, TechDef> = {
   }),
 };
 
+/** Civilisations: each has standing bonuses and one unit nobody else can train. */
+export interface CivDef { id: string; name: string; icon: string; desc: string; bonuses: string[]; unique: string; apply: (m: Mods) => void }
+export const CIVS: Record<string, CivDef> = {
+  stonekin: {
+    id: 'stonekin', name: 'Stonekin', icon: '⛰️', desc: 'Patient builders who are hard to dislodge.', unique: 'shieldbearer',
+    bonuses: ['Buildings have 25% more health', 'Villagers build 25% faster', 'Towers and Town Centers shoot 1 tile further'],
+    apply: (m) => { m.buildingHp = 1.25; m.build = 1.25; m.towerRange = 1; },
+  },
+  steppe: {
+    id: 'steppe', name: 'Steppe Riders', icon: '🐎', desc: 'Born in the saddle.', unique: 'lancer',
+    bonuses: ['Cavalry costs 15% less', 'Cavalry moves 10% faster'],
+    apply: (m) => { m.cavCost = 0.85; m.cavSpeed = 1.1; },
+  },
+  hearth: {
+    id: 'hearth', name: 'Hearthfolk', icon: '🏠', desc: 'Farmers whose strength is their families.', unique: 'hearthguard',
+    bonuses: ['Farms yield 25% more', 'Families raise children 25% faster', 'Houses hold 1 more person'],
+    apply: (m) => { m.farm = 1.25; m.birth += 0.25; m.housePop += 1; },
+  },
+  forge: {
+    id: 'forge', name: 'Forgeborn', icon: '⚒️', desc: 'Makers and tinkerers.', unique: 'firethrower',
+    bonuses: ['Research is 30% faster and 15% cheaper', 'Siege engines have 25% more health'],
+    apply: (m) => { m.techTime = 0.7; m.techCost = 0.85; m.siegeHp = 1.25; },
+  },
+};
+export const CIV_IDS = Object.keys(CIVS);
+
 export interface AbilityDef { id: string; name: string; icon: string; desc: string; cost: number; radius: number }
 export const ABILITIES: Record<string, AbilityDef> = {
   plague: {
@@ -543,6 +622,9 @@ export const WONDER_TIME = 300; // seconds a Wonder must stand to win
 export const BIRTH_TIME = 32; // seconds until a housed couple has a child
 export const GROW_TIME = 25; // seconds before a child is old enough to work
 export const BIRTH_COST = 25; // food
+export const LIFESPAN: [number, number] = [22 * 60, 30 * 60]; // seconds of adult life before a villager dies of old age
+export const ELDER_AT = 0.7; // fraction of a lifespan after which a villager slows down
+export const RENOWN_CHILDREN = 3; // children raised per rank of family renown (up to three ranks)
 export const MORALE_RADIUS = 12; // tiles around a town center
 export const MORALE_PER_HOUSE = 0.05; // damage reduction per nearby house
 export const MORALE_MAX_HOUSES = 5;

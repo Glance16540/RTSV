@@ -98,7 +98,7 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
 }
 
 const UNIT_HEIGHT: Record<string, number> = {
-  rider: 1.45, knight: 1.5, hussar: 1.5, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
+  rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
 };
 
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number): THREE.Group {
@@ -306,6 +306,49 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       const ring = add(g, geo('aura', () => new THREE.RingGeometry(0.5, 0.58, 24)), 0xf2c230, 0, 0.03, 0, 0x8a6a10);
       ring.rotation.x = -Math.PI / 2;
       ring.castShadow = false;
+      break;
+    }
+    case 'shieldbearer': {
+      humanoid(g, 0x8a8f96, 0x54585e, 0x777c84);
+      box(g, 0.31, 0.12, 0.19, color, 0, 0.5, 0);
+      box(g, 0.5, 0.72, 0.06, color, -0.05, 0.42, 0.2);
+      box(g, 0.44, 0.1, 0.07, IRON, -0.05, 0.42, 0.21);
+      const a = arm(g);
+      box(a, 0.04, 0.05, 0.4, 0xd0d4da, 0, -0.26, 0.22);
+      break;
+    }
+    case 'lancer': {
+      horse(g, HORSE[(seed + 2) % HORSE.length]);
+      const r = new THREE.Group();
+      r.position.y = 0.42;
+      r.scale.setScalar(0.92);
+      humanoid(r, color, 0x5b4630, hair);
+      cyl(r, 0.13, 0.03, 0.2, 0x8a6a3a, 0, 0.92, 0, 8);
+      const a = arm(r);
+      const l = cyl(a, 0.022, 0.022, 1.9, WOOD, 0, -0.2, 0.7, 5);
+      l.rotation.x = Math.PI / 2;
+      box(a, 0.02, 0.18, 0.3, color, 0, -0.1, 1.3);
+      g.add(r);
+      g.userData.arm = a;
+      break;
+    }
+    case 'hearthguard': {
+      humanoid(g, 0xa87a4e, 0x6b5236, hair);
+      box(g, 0.32, 0.16, 0.2, color, 0, 0.44, 0);
+      const a = arm(g);
+      cyl(a, 0.02, 0.02, 0.9, WOOD, 0, -0.1, 0.2, 5).rotation.x = Math.PI / 2 - 0.9;
+      ball(a, 0.07, 0xffb040, 0, 0.26, 0.5, 0xcc5500).castShadow = false;
+      const sh = cyl(g, 0.18, 0.18, 0.04, 0x8a6a3a, -0.22, 0.46, 0.1, 10);
+      sh.rotation.z = Math.PI / 2;
+      break;
+    }
+    case 'firethrower': {
+      humanoid(g, 0x4a4642, 0x2c2c30, 0x2c2c30);
+      box(g, 0.31, 0.1, 0.19, color, 0, 0.5, 0);
+      cyl(g, 0.11, 0.11, 0.34, 0x8a5a2a, 0, 0.5, -0.17, 8);
+      const a = arm(g);
+      cyl(a, 0.035, 0.035, 0.6, 0x2c2c30, 0, -0.24, 0.26, 6).rotation.x = Math.PI / 2;
+      ball(a, 0.06, 0xff8a20, 0, -0.24, 0.6, 0xcc4400).castShadow = false;
       break;
     }
     case 'javelineer': {

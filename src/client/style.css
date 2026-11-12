@@ -180,7 +180,9 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 .sheet button.secondary { margin-left: 6px; margin-right: 6px; }
 .mapsize { display: inline-block; margin: 18px 12px 0; color: var(--muted); }
 .mapsize select { margin-left: 8px; padding: 4px 8px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; }
-.started .mapsize { display: none; }
+.started .mapsize, .started #civ-info { display: none; }
+#civ-info { margin: 10px auto 0; max-width: 640px; color: var(--muted); font-size: 13px; }
+#civ-info b { color: var(--text); }
 .sheet .levels button { margin-top: 12px; }
 .levels { display: flex; justify-content: center; gap: 12px; }
 .levels .resume, .started .levels .new { display: none; }

@@ -30,6 +30,20 @@ fragile and unable to work until they grow up, when they take up a parent's trad
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
 
+**Four peoples.** Choose yours on the start screen; rivals take the others.
+
+| People | Bonuses | Only they train |
+| --- | --- | --- |
+| Stonekin | Buildings +25% health, 25% faster building, towers shoot further | Shieldbearer: arrows do half damage |
+| Steppe Riders | Cavalry 15% cheaper and 10% faster | Lancer: a crushing first blow after a run-up |
+| Hearthfolk | Farms +25%, children 25% sooner, bigger houses | Hearthguard: fights harder near its own houses |
+| Forgeborn | Research 30% faster and 15% cheaper, tougher siege | Fire Thrower: scorches a group and sets buildings alight |
+
+**Generations.** Villagers grow old: after a long working life they slow down as elders and
+eventually die, so a village lasts only as long as its families keep raising children. A child of
+two gifted parents sometimes inherits both gifts, and a house that raises many children gains
+renown: more room and quicker births.
+
 **Names, families and traits.** Every villager has a name, and about a third are Strong (gather
 faster), Swift, Hardy (more health) or Skilled (build faster). Children usually inherit a trait
 from their mother or father and carry the family name of the house they were born in, so who you
