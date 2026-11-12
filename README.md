@@ -273,7 +273,7 @@ apart from the ones that name them. The booth lists both, and the zip records wh
 the game is led by whichever leader your friend played.
 
 The leader is only a starting point. In the booth your friend can rename them, give them a new
-title and face, and rewrite any line in their own words; the zip then carries a
+title and a portrait of their own (any picture), and rewrite any line in their own words; the zip then carries a
 `character_<nation>.json` and the campaign shows and speaks the character they made. Anything
 they leave alone stays as written. The nation, and whether the leader is a man or a woman, come
 from the leader they picked. They can also send a character with no recordings at all.

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { Character, setLeaderCharacter, setLeaderPersona } from '../sim/leaders';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string>; credits?: Record<string, string>; personas?: Record<string, string>; characters?: Record<string, Character> }
+interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string>; credits?: Record<string, string>; personas?: Record<string, string>; characters?: Record<string, Character>; portraits?: Record<string, string> }
 /** Optional per-model corrections in public/assets/tweaks.json, keyed by model name. */
 interface Tweak { scale?: number; yaw?: number; y?: number }
 
@@ -58,6 +58,13 @@ export async function loadAssets(): Promise<void> {
 export function ico(key: string, emoji: string): string {
   const file = manifest.icons[key] ?? (key === 'villager' ? manifest.icons.villager_m : undefined);
   return file ? `<img class="ico" src="${BASE}icons/${file}" alt="" draggable="false">` : emoji;
+}
+
+/** HTML for a leader's portrait: the picture their voice actor sent, else a painted `leader_<civ>` icon, else nothing. */
+export function portrait(civ: string): string {
+  const own = manifest.portraits?.[civ];
+  if (own) return `<img class="ico" src="${BASE}voice/${own}" alt="" draggable="false">`;
+  return manifest.icons['leader_' + civ] ? ico('leader_' + civ, '') : '';
 }
 
 /** Who voiced a nation's leader, if their recordings came with a credit. */

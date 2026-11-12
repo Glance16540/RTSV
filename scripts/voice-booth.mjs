@@ -2,14 +2,14 @@
 // They pick a leader, record each line with their microphone, and download a zip of recordings
 // named exactly as the game expects. Run with `npm run voice-booth` after changing the lines.
 import { writeFileSync } from 'node:fs';
-import { CHARACTER_LIMITS, EVENT_NOTES, FACES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
+import { CHARACTER_LIMITS, EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
 import { CIVS, CIV_COLOR } from '../src/sim/data.ts';
 
 // Most nations can be led by a man or by a woman: both are offered, and the recordings say which was voiced.
 const leaders = Object.values(LEADERS).flatMap((l) => [[l, false], ...(l.alt ? [[l.alt, true]] : [])].map(([who, alt]) => {
   const lines = personaLines(l.civ, alt);
   return {
-    civ: l.civ, persona: alt ? 'alt' : 'main', nation: CIVS[l.civ].name, icon: who.icon, name: who.name, title: who.title, voice: who.voice, female: who.female,
+    civ: l.civ, persona: alt ? 'alt' : 'main', nation: CIVS[l.civ].name, name: who.name, title: who.title, voice: who.voice, female: who.female,
     color: '#' + CIV_COLOR[l.civ].toString(16).padStart(6, '0'),
     lines: LEADER_EVENTS.flatMap((ev) => lines[ev].map((text, i) => ({ key: lineKey(l.civ, ev, i), ev, i, when: EVENT_NOTES[ev], text }))),
   };
@@ -35,7 +35,9 @@ const page = `<!doctype html>
   button:hover:not(:disabled) { border-color: var(--gold); } button:disabled { opacity: 0.45; cursor: default; }
   button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .pick { text-align: left; display: flex; gap: 10px; align-items: center; border-left-width: 5px; }
-  .pick .face { font-size: 28px; } .pick b { display: block; } .pick small { display: block; }
+  .seal { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 700 24px Georgia, serif; color: #fff4d6; text-shadow: 0 1px 2px #0009; border: 2px solid var(--gold); box-shadow: inset 0 0 10px #0007; background-size: cover; background-position: center; }
+  .seal.big { width: 72px; height: 72px; font-size: 40px; }
+  .head { display: flex; gap: 14px; align-items: center; } .head h2 { margin: 0; } .head p { margin: 0; } .pick b { display: block; } .pick small { display: block; }
   .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
   .card.done { border-color: #3f6a3c; }
   .when { font-size: 13px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -49,8 +51,6 @@ const page = `<!doctype html>
   textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px; }
   .fields input { width: 100%; } .fields label { display: block; font-size: 14px; color: var(--dim); }
-  .faces { display: flex; flex-wrap: wrap; gap: 6px; }
-  .faces button { font-size: 24px; padding: 4px 8px; line-height: 1.2; } .faces button.on { border-color: var(--gold); background: #6a4e16; }
   .link { background: none; border: none; padding: 0; color: var(--gold); text-decoration: underline; font-size: 14px; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0e0b08ee; border-top: 1px solid var(--edge); padding: 10px max(16px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .bar .in { max-width: 820px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
@@ -63,13 +63,13 @@ const page = `<!doctype html>
 <body>
 <main>
   <h1>Voice Booth</h1>
-  <p class="dim">Hearth &amp; Empire — become the voice of a nation's leader.</p>
+  <p class="dim">Hearth &amp; Empire, a 3D strategy game of rival nations — become the voice of one nation's leader.</p>
 
   <section id="choose">
     <p>You have been asked to voice a leader in the game. It takes about fifteen minutes.</p>
     <ol>
       <li>Pick your leader below. Most nations can be led by a man or by a woman; choose whichever you will voice.</li>
-      <li>Make them yours: give them your own name, title and face, and rewrite any line into something you would rather say.</li>
+      <li>Make them yours: give them your own name, title and portrait, and rewrite any line into something you would rather say.</li>
       <li>Read each line aloud and record it. You can listen back and redo any line.</li>
       <li>Press <b>Download my recordings</b> and send that one file back to whoever invited you.</li>
     </ol>
@@ -80,17 +80,16 @@ const page = `<!doctype html>
 
   <section id="booth" hidden>
     <p><button id="back">← Choose a different leader</button></p>
-    <h2 id="who"></h2>
-    <p id="title" class="dim"></p>
+    <div class="head"><span class="seal big" id="seal"></span><div><h2 id="who"></h2><p id="title" class="dim"></p></div></div>
     <div class="card">
       <b>Make this character your own</b>
-      <p class="dim">The leader below is only a starting point. Rename them, change their title and face, and rewrite any of their lines; in the campaign they will appear and speak as you made them. Leave anything as it is to keep it.</p>
+      <p class="dim">The leader below is only a starting point. Rename them, change their title, give them a portrait, and rewrite any of their lines; in the campaign they will appear and speak as you made them. Leave anything as it is to keep it.</p>
       <div class="fields">
         <div><label for="cname">Their name</label><input type="text" id="cname" maxlength="${CHARACTER_LIMITS.name}"></div>
         <div><label for="ctitle">Their title</label><input type="text" id="ctitle" maxlength="${CHARACTER_LIMITS.title}"></div>
       </div>
-      <label class="dim" style="font-size:14px">Their face</label>
-      <div class="faces" id="faces"></div>
+      <label class="dim" style="font-size:14px" for="pic">Their portrait <small>(optional: a photo, drawing or painting; it is shown in a circle beside their words. Without one they carry the seal above.)</small></label>
+      <div class="row" style="margin-top:6px"><input type="file" id="pic" accept="image/*"><button class="link" id="nopic" hidden>Remove the picture</button></div>
     </div>
     <div class="note"><b>How they were written</b> (play them your own way if you prefer): <span id="direction"></span></div>
     <p><label for="actor">Your name, for the credits <small>(optional)</small></label><br><input type="text" id="actor" maxlength="60" autocomplete="name"></p>
@@ -107,7 +106,6 @@ const page = `<!doctype html>
 
 <script>
 const LEADERS = ${JSON.stringify(leaders)};
-const FACES = ${JSON.stringify(FACES)};
 const $ = (id) => document.getElementById(id);
 let leader = null;
 let stream = null;
@@ -119,14 +117,16 @@ for (const l of LEADERS) {
   const b = document.createElement('button');
   b.className = 'pick';
   b.style.borderLeftColor = l.color;
-  b.innerHTML = '<span class="face">' + l.icon + '</span><span><b></b><small></small></span>';
+  b.innerHTML = '<span class="seal"></span><span><b></b><small></small></span>';
+  b.querySelector('.seal').textContent = monogram(l.name);
+  b.querySelector('.seal').style.backgroundColor = l.color;
   b.querySelector('b').textContent = l.name;
   b.querySelector('small').textContent = l.nation + ' · ' + (l.female ? 'a woman' : 'a man') + ' · ' + l.lines.length + ' lines';
   b.addEventListener('click', () => open(l));
   $('leaders').appendChild(b);
 }
 $('back').addEventListener('click', () => {
-  if ((takes.size || character()) && !window.confirmLeave) { $('back').textContent = 'Your work on this leader will be lost. Click again to go back.'; window.confirmLeave = true; return; }
+  if ((takes.size || character() || picture) && !window.confirmLeave) { $('back').textContent = 'Your work on this leader will be lost. Click again to go back.'; window.confirmLeave = true; return; }
   window.confirmLeave = false;
   $('back').textContent = '← Choose a different leader';
   for (const t of takes.values()) URL.revokeObjectURL(t.url);
@@ -137,18 +137,9 @@ $('back').addEventListener('click', () => {
 
 function open(l) {
   leader = l;
-  face = l.icon;
   $('cname').value = l.name;
   $('ctitle').value = l.title;
-  const fb = $('faces');
-  fb.innerHTML = '';
-  for (const f of [l.icon, ...FACES[l.female ? 'woman' : 'man'].filter((x) => x !== l.icon)]) {
-    const b = document.createElement('button');
-    b.textContent = f;
-    b.setAttribute('aria-label', 'Face ' + f);
-    b.addEventListener('click', () => { face = f; heading(); });
-    fb.appendChild(b);
-  }
+  setPicture(null);
   heading();
   $('direction').textContent = l.voice;
   const box = $('lines');
@@ -182,12 +173,47 @@ function open(l) {
   window.scrollTo(0, 0);
 }
 
-let face = '';
+// The letter on a leader's seal: the first of their name, past any word of rank.
+function monogram(name) {
+  const RANKS = ['consul', 'augusta', 'khan', 'khatun', 'count', 'countess', 'lady', 'lord', 'master', 'jarl', 'pharaoh', 'king', 'queen', 'shah', 'shahbanu', 'strategos', 'archon', 'earl', 'emir', 'emira', 'sir', 'the', 'saint', 'prince', 'princess', 'duke', 'duchess', 'emperor', 'empress', 'chief', 'captain', 'general'];
+  const words = name.split(/\\s+/).filter(Boolean);
+  const w = words.find((x) => !RANKS.includes(x.toLowerCase())) || words[0] || '?';
+  return Array.from(w)[0].toUpperCase();
+}
+// Their own picture for the leader, cut square and small enough to send.
+let picture = null; // { png: Uint8Array, url }
+function setPicture(p) {
+  if (picture) URL.revokeObjectURL(picture.url);
+  picture = p;
+  $('nopic').hidden = !p;
+  if (!p) $('pic').value = '';
+  if (leader) heading();
+}
+$('pic').addEventListener('change', async () => {
+  const f = $('pic').files[0];
+  if (!f) return;
+  try {
+    const img = await createImageBitmap(f);
+    const side = Math.min(img.width, img.height), c = document.createElement('canvas');
+    c.width = c.height = 256;
+    // Portraits are taller than wide more often than not: keep the top, where the face is.
+    c.getContext('2d').drawImage(img, (img.width - side) / 2, Math.max(0, (img.height - side) * 0.2), side, side, 0, 0, 256, 256);
+    const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+    setPicture({ png: new Uint8Array(await blob.arrayBuffer()), url: URL.createObjectURL(blob) });
+  } catch (e) {
+    setPicture(null);
+    $('title').textContent = 'That file could not be read as a picture. Try a JPEG or PNG.';
+  }
+});
+$('nopic').addEventListener('click', () => setPicture(null));
 const said = (s) => s.replace(/[<>&"\`]/g, '').replace(/\\s+/g, ' ').trim();
 function heading() {
-  $('who').textContent = face + ' ' + (said($('cname').value) || leader.name);
+  $('who').textContent = said($('cname').value) || leader.name;
+  const seal = $('seal');
+  seal.textContent = picture ? '' : monogram($('who').textContent);
+  seal.style.backgroundColor = leader.color;
+  seal.style.backgroundImage = picture ? 'url(' + picture.url + ')' : '';
   $('title').textContent = (said($('ctitle').value) || leader.title) + ' · ' + leader.nation;
-  for (const b of $('faces').children) b.classList.toggle('on', b.textContent === face);
   if (!$('booth').hidden) refresh();
 }
 $('cname').addEventListener('input', heading);
@@ -198,7 +224,6 @@ function character() {
   const name = said($('cname').value), title = said($('ctitle').value);
   if (name && name !== leader.name) c.name = name;
   if (title && title !== leader.title) c.title = title;
-  if (face !== leader.icon) c.icon = face;
   for (const ln of leader.lines) {
     const t = said($('card-' + ln.key).querySelector('.line').value);
     if (t && t !== ln.text) { lines[ln.ev] = lines[ln.ev] || [null, null]; lines[ln.ev][ln.i] = t; }
@@ -209,7 +234,7 @@ function character() {
 function refresh() {
   const c = character(), own = c && c.lines ? Object.values(c.lines).flat().filter(Boolean).length : 0;
   $('count').textContent = takes.size + ' of ' + leader.lines.length + ' lines recorded' + (own ? ' · ' + own + ' in your own words' : '');
-  $('save').disabled = (takes.size === 0 && !c) || !!active;
+  $('save').disabled = (takes.size === 0 && !c && !picture) || !!active;
   $('save').textContent = takes.size ? 'Download my recordings' : 'Download my character';
 }
 
@@ -322,7 +347,8 @@ $('save').addEventListener('click', () => {
   if (who) files.push({ name: 'credit_' + leader.civ + '.txt', data: new TextEncoder().encode(who) });
   // Tells the game which of the nation's two leaders these recordings are of.
   files.push({ name: 'persona_' + leader.civ + '.txt', data: new TextEncoder().encode(leader.persona) });
-  // The character they made of the leader: their name, title, face and any lines in their own words.
+  if (picture) files.push({ name: 'portrait_' + leader.civ + '.png', data: picture.png });
+  // The character they made of the leader: their name, title and any lines in their own words.
   if (made) files.push({ name: 'character_' + leader.civ + '.json', data: new TextEncoder().encode(JSON.stringify(made, null, 2)) });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(zip(files));
@@ -332,7 +358,7 @@ $('save').addEventListener('click', () => {
   a.remove();
   $('count').textContent = 'Downloaded. Send that file back to whoever invited you.';
 });
-window.addEventListener('beforeunload', (e) => { if (takes.size || (leader && !$('booth').hidden && character())) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', (e) => { if (takes.size || (leader && !$('booth').hidden && (character() || picture))) { e.preventDefault(); e.returnValue = ''; } });
 </script>
 </body>
 </html>

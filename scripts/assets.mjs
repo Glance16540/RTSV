@@ -39,10 +39,18 @@ if (existsSync(join(root, 'voice'))) {
     if (!m) continue;
     try {
       const c = JSON.parse(readFileSync(join(root, 'voice', file), 'utf8'));
-      if (c && typeof c === 'object') manifest.characters[m[1]] = { name: c.name, title: c.title, icon: c.icon, lines: c.lines };
+      if (c && typeof c === 'object') manifest.characters[m[1]] = { name: c.name, title: c.title, lines: c.lines };
     } catch {
       console.warn(`assets: ${file} is not valid JSON and was ignored`);
     }
+  }
+}
+// A picture the voice actor chose for their leader: portrait_<nation>.png beside the recordings.
+manifest.portraits = {};
+if (existsSync(join(root, 'voice'))) {
+  for (const file of readdirSync(join(root, 'voice')).sort()) {
+    const m = /^portrait_([a-z]+)\.(png|jpe?g|webp)$/.exec(file);
+    if (m) manifest.portraits[m[1]] = file;
   }
 }
 writeFileSync(join(root, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');

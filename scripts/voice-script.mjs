@@ -12,7 +12,7 @@ restart \`npm run dev\`: the game plays it whenever that line appears. Lines wit
 are shown as text only, so recordings can be added a few at a time.
 
 Lines run two to six seconds. A portrait named \`leader_<people>.png\` in
-\`public/assets/icons/\` replaces the placeholder face.
+\`public/assets/icons/\` replaces the leader's seal.
 
 This file is generated from \`src/sim/leaders.ts\`; edit the lines there and run
 \`npm run voice-script\`.
