@@ -6,7 +6,7 @@ import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS } from '../src/sim/data';
-import { sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -1685,5 +1685,38 @@ describe('landings', () => {
     }
     expect(carried).toBeGreaterThanOrEqual(3);
     expect(landedFar).toBe(true);
+  });
+});
+
+describe('harbours', () => {
+  it('an army sails from a harbour to any other coast, and lands at a disadvantage', () => {
+    let done = false;
+    for (let seed = 1; seed <= 40 && !done; seed++) {
+      const c = newCampaign(seed, 2);
+      const coasts = c.territories.filter((t) => t.trait === 'coast');
+      const from = coasts[0], to = coasts.find((t) => t !== from && !from.adj.includes(t.id) && t.owner < 0);
+      if (!from || !to) continue;
+      done = true;
+      const inland = c.territories.find((t) => t.trait !== 'coast' && t.capital < 0)!;
+      inland.owner = 0; from.owner = 0; from.buildings = [];
+      c.factions[0].supplies = 30;
+      expect(canBuild(c, 0, inland.id, 'harbour')).toBe(false);
+      expect(reach(c, from.id)).toEqual(from.adj);
+      expect(build(c, 0, from.id, 'harbour')).toBe(true);
+      expect(reach(c, from.id)).toContain(to.id);
+      const a = c.armies.find((x) => x.owner === 0)!;
+      c.armies = c.armies.filter((x) => x === a || (x.at !== from.id && x.at !== to.id));
+      a.at = from.id; a.moved = false; a.units = { infantry: 6 };
+      // Nobody next door to help either side, so the numbers are easy to check.
+      c.armies = c.armies.filter((x) => x === a || !to.adj.includes(x.at));
+      expect(moveArmy(c, a.id, to.id)).toBe('battle');
+      expect(c.pending!.sea).toBe(true);
+      expect(c.pending!.aStr).toBeCloseTo(Math.round(armyStrength(a) * SEA_LANDING * 10) / 10, 1);
+      expect(battleConfig(c)!.title).toContain('landing');
+      resolvePending(c, 'attacker');
+      expect(to.owner).toBe(0);
+      expect(a.at).toBe(to.id);
+    }
+    expect(done).toBe(true);
   });
 });

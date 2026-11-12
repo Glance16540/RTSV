@@ -28,6 +28,7 @@ export const SITES: Record<string, SiteDef> = {
   barracks: { name: 'Barracks', icon: '🗡️', cost: 5, desc: 'Raise infantry here.' },
   range: { name: 'Archery Range', icon: '🏹', cost: 5, desc: 'Raise archers here.' },
   stable: { name: 'Stable', icon: '🐴', cost: 7, desc: 'Raise cavalry here.' },
+  harbour: { name: 'Harbour', icon: '⚓', cost: 6, desc: 'Coast only. An army here can sail to any other coast. Troops landing from the sea fight at four-fifths strength.' },
   fortress: { name: 'Fortress', icon: '🏰', cost: 9, desc: '+3 defence. In battle the defender starts in the Bronze Age with towers.' },
 };
 export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
@@ -126,6 +127,8 @@ export interface Pending {
   defender: number; // -1 for locals
   aStr: number;
   dStr: number;
+  /** The attackers came by ship. */
+  sea?: boolean;
   /** How the player chose to fight it: armies only on open ground, or a full battle with towns. */
   mode?: 'field' | 'siege';
 }
@@ -283,6 +286,13 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
 
 // ---- Queries ----
 
+/** Where an army in this territory can go in one march: next door, or from a harbour to any other coast. */
+export function reach(c: Campaign, tid: number): number[] {
+  const t = c.territories[tid];
+  if (t.trait !== 'coast' || !t.buildings.includes('harbour')) return t.adj;
+  return [...t.adj, ...c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id)).map((x) => x.id)];
+}
+export const SEA_LANDING = 0.8;
 export const armyAt = (c: Campaign, tid: number): Army | undefined => c.armies.find((a) => a.at === tid);
 /** Number of companies in an army. */
 export const armySize = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
@@ -349,7 +359,7 @@ export function winChance(aStr: number, dStr: number, home = 1.1): number {
 
 export function canBuild(c: Campaign, f: number, tid: number, site: string): boolean {
   const t = c.territories[tid];
-  return t.owner === f && !!SITES[site] && !t.buildings.includes(site) && t.buildings.length < slots(t) && c.factions[f].supplies >= siteCost(t, site, c.factions[f].civ);
+  return t.owner === f && !!SITES[site] && (site !== 'harbour' || t.trait === 'coast') && !t.buildings.includes(site) && t.buildings.length < slots(t) && c.factions[f].supplies >= siteCost(t, site, c.factions[f].civ);
 }
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
@@ -415,7 +425,8 @@ const fname = (c: Campaign, f: number, start = false) =>
  */
 export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'battle' | 'invalid' {
   const a = c.armies.find((x) => x.id === armyId);
-  if (!a || a.moved || c.pending || c.demand || !c.territories[a.at].adj.includes(to)) return 'invalid';
+  if (!a || a.moved || c.pending || c.demand || !reach(c, a.at).includes(to)) return 'invalid';
+  const sea = !c.territories[a.at].adj.includes(to);
   const t = c.territories[to];
   const civ = c.factions[a.owner].civ;
   if (t.owner === a.owner) {
@@ -452,7 +463,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
   const round = (v: number) => Math.round(v * 10) / 10;
   c.pending = {
     armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
-    aStr: round(strengthVs(a, defenders(c, to)) + support(a.owner, a.id)), dStr: round(defence(c, to, a.units, civ) + support(t.owner, -1)),
+    aStr: round((strengthVs(a, defenders(c, to)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1)), ...(sea ? { sea: true } : {}), dStr: round(defence(c, to, a.units, civ) + support(t.owner, -1)),
   };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
@@ -745,6 +756,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     for (const t of own) {
       const border = t.adj.some((n) => c.territories[n].owner !== f.id);
       if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');
+      else if (t.trait === 'coast' && !t.buildings.includes('harbour') && f.supplies > 12 && rand(c) < 0.4) build(c, f.id, t.id, 'harbour');
       else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
@@ -766,7 +778,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
   if (!army) return true;
   const here = c.territories[army.at];
   // Never march on someone we have a truce with.
-  const targets = here.adj.filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner))
+  const targets = reach(c, here.id).filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner))
     .sort((a, b) => defence(c, a, army.units, civ) - defence(c, b, army.units, civ));
   // A leader who has just been refused goes for the player before anyone else.
   // An ally goes first for whoever is at the player's borders.
@@ -779,7 +791,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
     const t = c.territories[targets[0]];
     // Cautious leaders want better odds; a leader who has just been refused wants blood.
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
-    if (strengthVs(army, defenders(c, t.id)) >= defence(c, t.id, army.units, civ) + margin) {
+    const bySea = !here.adj.includes(t.id);
+    if (strengthVs(army, defenders(c, t.id)) * (bySea ? SEA_LANDING : 1) >= defence(c, t.id, army.units, civ) + margin) {
       moveArmy(c, army.id, t.id);
       return false;
     }
@@ -849,7 +862,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
-    title: humanAttacks ? `The assault on ${t.name}` : `The defence of ${t.name}`,
+    title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
       { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
       {

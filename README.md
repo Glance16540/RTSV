@@ -173,7 +173,9 @@ neighbouring land.
   battle becomes veteran: stronger on the map and harder-hitting in real-time battles.
 - **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
   Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
-  fought around a great lake with docks and ships.
+  fought around a great lake with docks and ships. Build a Harbour on a coast and an army
+  there can sail to any other coast in one march; troops landing from the sea fight at four-fifths
+  strength. Rivals build harbours and make landings too.
 - **The Warlord** marches with one army and adds to its strength. If that army is destroyed he
   falls with it, and a new one can be summoned at your capital.
 - **Battles.** When an army enters land held by someone else, fight it yourself as a real-time

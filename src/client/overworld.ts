@@ -4,7 +4,7 @@ import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
 import {
-  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
   canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
 } from '../sim/campaign';
 
@@ -98,7 +98,7 @@ export class Overworld {
     const c = this.c;
     if (c.phase !== 'player' || c.pending) return;
     const army = armyAt(c, this.sel);
-    if (army && army.owner === 0 && !army.moved && tid !== this.sel && c.territories[this.sel].adj.includes(tid)) {
+    if (army && army.owner === 0 && !army.moved && tid !== this.sel && reach(c, this.sel).includes(tid)) {
       const march = () => {
         moveArmy(c, army.id, tid);
         if (!c.pending) this.sel = tid; // marched into friendly land
@@ -141,6 +141,7 @@ export class Overworld {
     };
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
       (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
+        (p.sea ? ` ${attacking ? 'Your troops land' : 'They land'} from the sea, at ${Math.round(SEA_LANDING * 100)}% of their strength.` : '') +
         (battleConfig(c)!.setups.length > 2 ? ' Armies from neighbouring land will join the battle.' : '') + ' A field battle is the two armies alone and is over in minutes; a siege battle has towns to build and takes much longer.' + ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr, homeEdge(c, p.attacker)) : 1 - winChance(p.aStr, p.dStr, homeEdge(c, p.attacker))) * 100)} times in 100.`,
       [['Field battle', () => { p.mode = 'field'; this.hooks.fight(); }], ['Siege battle', () => { p.mode = 'siege'; this.hooks.fight(); }], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
@@ -187,7 +188,7 @@ export class Overworld {
     const c = this.c, ctx = this.ctx, cell = this.cell;
     const army = armyAt(c, this.sel);
     const canMarch = c.phase === 'player' && !!army && army.owner === 0 && !army.moved;
-    const reach = new Set(canMarch ? c.territories[this.sel].adj : []);
+    const reach = new Set(canMarch ? reachOf(c, this.sel) : []);
     const img = ctx.createImageData(MAP_W, MAP_H);
     const tint = c.territories.map((t) => {
       const base = t.owner < 0 ? PAPER : rgb(c.factions[t.owner].color).map((v, i) => v * 0.5 + PAPER[i] * 0.5);
@@ -282,7 +283,7 @@ export class Overworld {
     if (t.owner === 0) {
       for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Summon a new Warlord', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital');
-      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k)) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
+      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || t.trait === 'coast')) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
     } else if (t.owner > 0 && c.factions[t.owner].alive) {
       const truce = c.truces.find((x) => x.with === t.owner);
       if (c.ally === t.owner) html += `<div class="hint">🤝 ${c.factions[t.owner].name} are your allies. Their armies next to a battle of yours fight in it, and yours in theirs.</div>`;
