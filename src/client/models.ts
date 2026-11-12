@@ -4,16 +4,15 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Gender } from '../sim/game';
 import { generatedModel } from './assets';
+import { banner, boxGeo, shapedBuilding, Surface, toon } from './shapes';
 
-const mats = new Map<string, THREE.MeshLambertMaterial>();
-export function mat(color: number, emissive = 0): THREE.MeshLambertMaterial {
-  const key = `${color}:${emissive}`;
-  let m = mats.get(key);
-  if (!m) {
-    m = new THREE.MeshLambertMaterial({ color, emissive });
-    mats.set(key, m);
-  }
-  return m;
+/**
+ * What each colour of the building in hand is made of, so its walls, roof and timbers are painted as such.
+ * Empty while a unit is being made: people and beasts are plain colour.
+ */
+const made = new Map<number, Surface>();
+export function mat(color: number, emissive = 0): THREE.MeshToonMaterial {
+  return toon(color, emissive ? '' : made.get(color) ?? '', emissive);
 }
 
 const geos = new Map<string, THREE.BufferGeometry>();
@@ -32,7 +31,13 @@ function add(parent: THREE.Object3D, g: THREE.BufferGeometry, color: number, x: 
   return m;
 }
 const box = (p: THREE.Object3D, w: number, h: number, d: number, color: number, x = 0, y = 0, z = 0, em = 0) =>
-  add(p, geo(`b${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d)), color, x, y, z, em);
+  add(p, geo(`b${w},${h},${d}`, () => boxGeo(w, h, d)), color, x, y, z, em);
+/** A rounded limb or body: a capsule r thick and len long overall, standing upright. */
+const cap = (p: THREE.Object3D, r: number, len: number, color: number, x = 0, y = 0, z = 0) =>
+  add(p, geo(`k${r},${len}`, () => new THREE.CapsuleGeometry(r, Math.max(0.001, len - r * 2), 3, 8)), color, x, y, z);
+/** A shape turned on a lathe from a profile of [radius, height] points: tunics, skirts, pots. */
+const lathe = (p: THREE.Object3D, key: string, pts: number[][], color: number, x = 0, y = 0, z = 0) =>
+  add(p, geo(`l${key}`, () => new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 12)), color, x, y, z);
 const cyl = (p: THREE.Object3D, rt: number, rb: number, h: number, color: number, x = 0, y = 0, z = 0, seg = 8) =>
   add(p, geo(`c${rt},${rb},${h},${seg}`, () => new THREE.CylinderGeometry(rt, rb, h, seg)), color, x, y, z);
 const ball = (p: THREE.Object3D, r: number, color: number, x = 0, y = 0, z = 0, em = 0) =>
@@ -124,36 +129,41 @@ function leg(g: THREE.Object3D, w: number, h: number, color: number, x: number, 
   const hip = new THREE.Group();
   hip.position.set(x, y + h, z);
   hip.userData.leg = side;
-  box(hip, w, h, w * 1.15, color, 0, -h / 2, 0);
+  cap(hip, w * 0.56, h, color, 0, -h / 2, 0);
   g.add(hip);
 }
 
 function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y = 0): void {
   leg(g, 0.1, 0.3, legs, -0.07, 0, 0, y);
   leg(g, 0.1, 0.3, legs, 0.07, 0, Math.PI, y);
-  box(g, 0.3, 0.32, 0.18, body, 0, y + 0.46, 0);
-  box(g, 0.08, 0.28, 0.1, SKIN, -0.19, y + 0.46, 0);
-  ball(g, 0.12, SKIN, 0, y + 0.74, 0);
-  const h = ball(g, 0.125, hair, 0, y + 0.78, -0.02);
-  h.scale.set(1, 0.7, 1);
+  // A belted tunic, flared at the hem and drawn in at the neck.
+  lathe(g, 'tunic', [[0.15, 0], [0.135, 0.07], [0.115, 0.17], [0.12, 0.2], [0.155, 0.36], [0.07, 0.43]], body, 0, y + 0.24, 0).scale.z = 0.72;
+  add(g, geo('belt', () => new THREE.TorusGeometry(0.118, 0.016, 5, 12).rotateX(Math.PI / 2)), 0x2e2218, 0, y + 0.43, 0).scale.z = 0.72;
+  const la = cap(g, 0.045, 0.3, body, -0.19, y + 0.47, 0);
+  la.rotation.z = -0.14;
+  ball(g, 0.045, SKIN, -0.215, y + 0.33, 0);
+  ball(g, 0.12, SKIN, 0, y + 0.76, 0);
+  add(g, geo('hair', () => new THREE.SphereGeometry(0.128, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.52)), hair, 0, y + 0.775, -0.012);
 }
 
 /** Right arm + weapon, pivoting at the shoulder so it can swing. */
 function arm(g: THREE.Object3D, y = 0): THREE.Group {
   const a = new THREE.Group();
   a.position.set(0.19, y + 0.58, 0);
-  box(a, 0.08, 0.28, 0.1, SKIN, 0, -0.12, 0);
+  cap(a, 0.045, 0.3, SKIN, 0, -0.12, 0);
   g.add(a);
   g.userData.arm = a;
   return a;
 }
 
 function horse(g: THREE.Object3D, color: number, armor = 0): void {
-  box(g, 0.3, 0.3, 0.8, color, 0, 0.55, 0);
-  if (armor) box(g, 0.34, 0.2, 0.6, armor, 0, 0.56, -0.02);
-  const neck = box(g, 0.16, 0.4, 0.2, color, 0, 0.82, 0.4);
+  cap(g, 0.17, 0.88, color, 0, 0.56, 0).rotation.x = Math.PI / 2;
+  if (armor) box(g, 0.36, 0.2, 0.6, armor, 0, 0.6, -0.02);
+  const neck = cap(g, 0.1, 0.5, color, 0, 0.84, 0.4);
   neck.rotation.x = 0.5;
-  box(g, 0.15, 0.16, 0.32, color, 0, 0.98, 0.58);
+  cap(g, 0.085, 0.36, color, 0, 0.99, 0.6).rotation.x = Math.PI / 2 + 0.25;
+  for (const x of [-0.06, 0.06]) add(g, geo('ear', () => new THREE.ConeGeometry(0.03, 0.09, 4)), color, x, 1.1, 0.5);
+  box(g, 0.03, 0.26, 0.2, 0x2a1e16, 0, 0.93, 0.3).rotation.x = 0.5;
   [[-0.1, 0.3], [0.1, 0.3], [-0.1, -0.3], [0.1, -0.3]].forEach(([x, z], i) => leg(g, 0.08, 0.42, color, x, z, i % 3 ? Math.PI : 0));
   const tail = box(g, 0.06, 0.3, 0.06, 0x2a1e16, 0, 0.52, -0.44);
   tail.rotation.x = -0.4;
@@ -172,6 +182,7 @@ const MODEL_ALIAS: Record<string, [string, number]> = {
 };
 
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number): THREE.Group {
+  made.clear();
   const alias = MODEL_ALIAS[type];
   if (alias && !generatedModel(type, 0, 1, 'height')) {
     const g = makeUnit(alias[0], color, gender, seed);
@@ -198,8 +209,8 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   switch (type) {
     case 'villager': {
       if (gender === 'f') {
-        cyl(g, 0.09, 0.24, 0.56, color, 0, 0.28, 0, 10);
-        box(g, 0.07, 0.24, 0.09, SKIN, -0.17, 0.46, 0);
+        lathe(g, 'dress', [[0.23, 0], [0.22, 0.05], [0.11, 0.36], [0.115, 0.42], [0.13, 0.54], [0.06, 0.6]], color, 0, 0, 0);
+        cap(g, 0.04, 0.28, color, -0.17, 0.44, 0).rotation.z = -0.14;
         const a = arm(g, -0.04);
         a.position.x = 0.17;
         ball(g, 0.12, SKIN, 0, 0.7, 0);
@@ -738,8 +749,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
 const STONE = 0x9d9a92;
 
 function flag(g: THREE.Object3D, color: number, x: number, y: number, z: number, h = 0.9): void {
-  box(g, 0.05, h, 0.05, DARKWOOD, x, y + h / 2, z);
-  box(g, 0.03, 0.26, 0.42, color, x, y + h - 0.15, z + 0.23);
+  banner(g, color, x, y, z, Math.max(0.2, h - 0.5));
 }
 
 /**
@@ -761,6 +771,15 @@ export function makeBuilding(type: string, color: number, age: number, civ = '',
   style = STYLES[civ] ?? PLAIN;
   const wall = style.walls[age] ?? style.walls[style.walls.length - 1], rf = styleRoof = style.roofs[age] ?? style.roofs[style.roofs.length - 1];
   const post = style.post ?? (age >= 2 ? STONE : DARKWOOD);
+  // What this building's colours are made of. Set before anything is drawn, the owner's colour last so it stays plain.
+  made.clear();
+  made.set(WOOD, 'planks'); made.set(DARKWOOD, 'planks'); made.set(STONE, 'stone'); made.set(0x8a8a84, 'stone');
+  made.set(post, age >= 2 || style.post ? 'stone' : 'planks');
+  made.set(wall, age === 0 ? 'planks' : age === 2 ? 'stone' : 'plaster');
+  made.set(rf, style.roof === 'steep' || (style.roof === 'pitched' && age <= 1) || style.roof === 'yurt' ? 'thatch' : 'tiles');
+  made.delete(color);
+  const shaped = shapedBuilding(type, size, { wall, roofColor: rf, team: color, post, age, roofKind: style.roof, leaning, otherRoof: (p, half, h, x, y, z) => roof(p, half, h, rf, x, y, z) }, Math.round(Math.random() * 8));
+  if (shaped) return shaped;
   switch (type) {
     case 'towncenter': {
       box(g, 3.5, 1.2, 3.5, wall, 0, 0.6, 0);
@@ -1043,6 +1062,7 @@ export function makeBuilding(type: string, color: number, age: number, civ = '',
 }
 
 export function makeResource(type: string, seed: number): THREE.Group {
+  made.clear();
   const g = new THREE.Group();
   const r = (k: number) => ((seed * 9301 + k * 49297) % 233280) / 233280;
   if (type === 'carcass') {

@@ -6,6 +6,8 @@ import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/ga
 import { buildScenery, Scenery } from './scenery';
 import { makeBuilding, makeResource, makeUnit, mat, RES_COLOR } from './models';
 import { leaningOf } from './assets';
+import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
+import { INK, RAMP, wobble } from './shapes';
 
 const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
@@ -14,6 +16,9 @@ const FOV = 30;
 interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string }
 interface Floater { x: number; y: number; text: string; t: number }
 interface Ping { mesh: THREE.Mesh; t: number }
+/** A piece of a fallen building, thrown clear and left to tumble. */
+interface Rubble { m: THREE.Object3D; vx: number; vy: number; vz: number; spin: THREE.Vector3; t: number; wait: number; ground: number; rest: boolean }
+interface Dust { m: THREE.Mesh; t: number }
 
 export class Renderer {
   scene = new THREE.Scene();
@@ -48,6 +53,11 @@ export class Renderer {
   private clock = 0;
   private shake = 0;
   private dying: { g: THREE.Group; t: number }[] = [];
+  private rubble: Rubble[] = [];
+  private dust: Dust[] = [];
+  /** Draws the ink edge around everything standing in the world. Off with ?outline=0. */
+  private ink: OutlineEffect | null = null;
+  private inked = 0;
   private area: THREE.Mesh;
 
   constructor(public canvas: HTMLCanvasElement, private game: Game) {
@@ -62,6 +72,7 @@ export class Renderer {
     this.cy = st.y;
 
     // A low warm sun against a cool sky: long soft shadows, and shape on everything that stands up.
+    if (new URLSearchParams(location.search).get('outline') !== '0') this.ink = new OutlineEffect(this.gl, { defaultThickness: INK.thickness, defaultColor: INK.color });
     this.gl.toneMapping = THREE.ACESFilmicToneMapping;
     this.gl.toneMappingExposure = 1.02;
     this.scene.fog = this.haze;
@@ -119,19 +130,21 @@ export class Renderer {
     skirtG.translate(0, 0.8, 0);
     const topG = new THREE.ConeGeometry(0.34, 0.85, 7);
     topG.translate(0, 1.4, 0);
-    const crownG = new THREE.IcosahedronGeometry(0.5, 1);
+    wobble(skirtG, 0.14, 1); wobble(topG, 0.14, 2);
+    const crownG = wobble(new THREE.IcosahedronGeometry(0.52, 2), 0.2, 3);
     crownG.scale(1, 0.85, 1);
     crownG.translate(0, 0.95, 0);
-    const puffG = new THREE.IcosahedronGeometry(0.32, 0);
+    const puffG = wobble(new THREE.IcosahedronGeometry(0.34, 2), 0.2, 5);
     puffG.translate(0.24, 1.25, 0.1);
-    const leaf = () => new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+    const inked = (color: number): THREE.Material => { const mt = new THREE.MeshToonMaterial({ color, gradientMap: RAMP }); mt.userData.outlineParameters = INK; return mt; };
+    const leaf = () => inked(0xa4a4a4);
     const make = (g: THREE.BufferGeometry, mt: THREE.Material) => {
       const im = new THREE.InstancedMesh(g, mt, trees.length);
       im.castShadow = im.receiveShadow = true;
       this.forest.push(im);
       return im;
     };
-    const trunks = make(trunkG, new THREE.MeshLambertMaterial({ color: 0x5c4028 }));
+    const trunks = make(trunkG, inked(0x5c4028));
     const skirt = make(skirtG, leaf()), top = make(topG, leaf()), crown = make(crownG, leaf()), puff = make(puffG, leaf());
     const m = new THREE.Matrix4(), none = new THREE.Matrix4().makeScale(0, 0, 0), q = new THREE.Quaternion(), col = new THREE.Color();
     trees.forEach((t, i) => {
@@ -268,7 +281,7 @@ export class Renderer {
         this.unitViews.delete(ev.id);
       }
       const b = this.buildingViews.get(ev.id);
-      if (b) { this.scene.remove(b); this.buildingViews.delete(ev.id); }
+      if (b) { if (b.visible && b.scale.y > 0.5) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); }
       const r = this.resViews.get(ev.id);
       if (r) { this.scene.remove(r); this.resViews.delete(ev.id); }
       const ti = this.treeIndex.get(ev.id);
@@ -397,11 +410,94 @@ export class Renderer {
     if (glow) glow.scale.setScalar(u.healTarget ? 1.3 + Math.sin(this.clock * 10) * 0.4 : 1);
   }
 
+  /** A building that falls comes apart: every piece is thrown clear, tumbles, settles and sinks away. */
+  private collapse(g: THREE.Group): void {
+    g.updateMatrixWorld(true);
+    const parts: THREE.Mesh[] = [];
+    g.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.visible) parts.push(o as THREE.Mesh); });
+    const centre = g.position, box = new THREE.Box3().setFromObject(g), top = Math.max(0.5, box.max.y - centre.y);
+    for (const m of parts) this.throwPiece(m, centre, top);
+    this.scene.remove(g);
+    const size = Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
+    for (let i = 0; i < 7; i++) {
+      const mt = new THREE.MeshBasicMaterial({ color: 0xb8ac98, transparent: true, opacity: 0.55, depthWrite: false });
+      mt.userData.outlineParameters = { visible: false };
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), mt);
+      m.position.set(centre.x + (Math.random() - 0.5) * size, centre.y + 0.3 + Math.random() * 0.6, centre.z + (Math.random() - 0.5) * size);
+      this.scene.add(m);
+      this.dust.push({ m, t: -i * 0.05 });
+    }
+    if (Math.hypot(centre.x - this.cx, centre.z - this.cy) < this.dist) this.shake = Math.max(this.shake, 0.35);
+  }
+
+  private throwPiece(m: THREE.Object3D, centre: THREE.Vector3, top: number): void {
+    const p = this.v3;
+    this.scene.attach(m);
+    m.getWorldPosition(p);
+    const dx = p.x - centre.x, dz = p.z - centre.z, d = Math.hypot(dx, dz) || 1, push = 0.6 + Math.random() * 1.8;
+    const high = Math.min(1, Math.max(0, (p.y - centre.y) / top));
+    this.rubble.push({
+      m, vx: (dx / d) * push + (Math.random() - 0.5), vz: (dz / d) * push + (Math.random() - 0.5), vy: 0.5 + Math.random() * 2.5,
+      spin: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(7),
+      // The foot gives way first and the top comes down after it.
+      t: 0, wait: high * 0.35 + Math.random() * 0.1, ground: this.scenery.heightAt(p.x, p.z), rest: false,
+    });
+  }
+
+  /**
+   * Damage shows as it is done: as a building's strength falls past two thirds and then one third,
+   * more of its pieces are knocked off and fall, well before the whole of it comes down.
+   */
+  private shed(g: THREE.Group, stage: number): void {
+    g.updateMatrixWorld(true);
+    const keep = new Set<unknown>([g.userData.fire, g.userData.resM, g.userData.resF]);
+    const parts: THREE.Mesh[] = [];
+    g.traverse((o) => { if ((o as THREE.Mesh).isMesh && !keep.has(o)) parts.push(o as THREE.Mesh); });
+    if (g.userData.whole === undefined) g.userData.whole = parts.length;
+    const want = Math.round((g.userData.whole as number) * (stage === 2 ? 0.4 : 0.16)) - ((g.userData.whole as number) - parts.length);
+    const box = new THREE.Box3().setFromObject(g), top = Math.max(0.5, box.max.y - g.position.y);
+    // Small pieces and high ones go first: tiles, beams, chimneys, battlements. The great walls stand to the end.
+    const size = new THREE.Vector3(), at = new THREE.Vector3();
+    const score = (m: THREE.Mesh): number => { m.geometry.computeBoundingBox(); m.geometry.boundingBox!.getSize(size); m.getWorldPosition(at); return size.x * size.y * size.z * 3 - (at.y - g.position.y) / top + ((m.id * 2654435761) >>> 0) / 4294967296 * 0.9; };
+    parts.sort((a, b) => score(a) - score(b));
+    for (const m of parts.slice(0, Math.max(0, want))) { if (g.visible) this.throwPiece(m, g.position, top); else m.removeFromParent(); }
+  }
+
+  private stepRubble(dt: number): void {
+    for (let i = this.rubble.length - 1; i >= 0; i--) {
+      const r = this.rubble[i];
+      if ((r.t += dt) < r.wait) continue;
+      const m = r.m;
+      if (!r.rest) {
+        r.vy -= 14 * dt;
+        m.position.x += r.vx * dt; m.position.y += r.vy * dt; m.position.z += r.vz * dt;
+        m.rotation.x += r.spin.x * dt; m.rotation.y += r.spin.y * dt; m.rotation.z += r.spin.z * dt;
+        if (m.position.y < r.ground + 0.08) {
+          m.position.y = r.ground + 0.08;
+          if (Math.abs(r.vy) < 1.6) r.rest = true;
+          r.vy = -r.vy * 0.32; r.vx *= 0.55; r.vz *= 0.55; r.spin.multiplyScalar(0.5);
+        }
+      } else if (r.t > 3.2) m.position.y -= dt * 0.25;
+      if (r.t > 5) { this.scene.remove(m); this.rubble.splice(i, 1); }
+    }
+    for (let i = this.dust.length - 1; i >= 0; i--) {
+      const d = this.dust[i];
+      d.t += dt;
+      d.m.visible = d.t > 0;
+      d.m.scale.setScalar(0.6 + Math.max(0, d.t) * 1.6);
+      d.m.position.y += dt * 0.35;
+      (d.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.55 * (1 - d.t / 1.6));
+      if (d.t > 1.6) { this.scene.remove(d.m); this.dust.splice(i, 1); }
+    }
+  }
+
   private syncBuilding(b: Building): void {
     let g = this.buildingViews.get(b.id);
     // A church or a tavern shows how its town leans, and is rebuilt when that changes.
     const lean = b.type === 'temple' || b.type === 'tavern' ? leaningOf(this.game.players[b.owner].virtue ?? 0) : '';
-    if (g && g.userData.lean !== lean) { this.scene.remove(g); g = undefined; }
+    const hurt = !b.complete ? 0 : b.hp < b.maxHp * 0.33 ? 2 : b.hp < b.maxHp * 0.66 ? 1 : 0;
+    // Rebuilt whole when it is repaired, or when the town's leaning changes.
+    if (g && (g.userData.lean !== lean || hurt < ((g.userData.hurt as number) ?? 0))) { this.scene.remove(g); g = undefined; }
     if (!g) {
       g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ, lean);
       g.userData.lean = lean;
@@ -412,6 +508,8 @@ export class Renderer {
       this.scene.add(g);
     }
     g.visible = this.isVisible(b);
+    if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
+    g.userData.hurt = hurt;
     g.scale.y = b.complete ? 1 : 0.12 + 0.88 * b.progress;
     // Badly damaged buildings burn.
     const burning = (b.complete && b.hp < b.maxHp * 0.5) || b.burnT > 0;
@@ -525,6 +623,14 @@ export class Renderer {
     }
     for (let i = this.floaters.length - 1; i >= 0; i--) if ((this.floaters[i].t += dt) > 2) this.floaters.splice(i, 1);
 
-    this.gl.render(this.scene, this.camera);
+    this.stepRubble(dt);
+    if (this.ink) {
+      // Only what is made of the drawn materials takes an outline; the ground, water, rings and fog never do.
+      if (this.inked++ % 12 === 0) this.scene.traverse((o) => {
+        const mt = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+        if (mt) for (const x of Array.isArray(mt) ? mt : [mt]) if (!x.userData.outlineParameters) x.userData.outlineParameters = { visible: false };
+      });
+      this.ink.render(this.scene, this.camera);
+    } else this.gl.render(this.scene, this.camera);
   }
 }
