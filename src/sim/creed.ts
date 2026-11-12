@@ -48,9 +48,11 @@ export interface Creed {
   work: number;
   /** The share of children who do not live to grow up. */
   childLoss: number;
+  /** How long a villager takes to raise at the Town Center, as a multiple: a town that has let itself go finds few willing. */
+  settle: number;
 }
 
-const base = { faith: 1, heal: 1, morale: 1, research: 1, train: 1, gold: 1, trade: 1, birth: 1, plague: 1, work: 1, childLoss: 0.1 };
+const base = { faith: 1, heal: 1, morale: 1, research: 1, train: 1, gold: 1, trade: 1, birth: 1, plague: 1, work: 1, childLoss: 0.1, settle: 1 };
 export const CREEDS: Creed[] = [
   { ...base, id: 'zealous', name: 'Righteous', icon: '🕯️', desc: 'A people who keep the faith in all they do.', plague: 0, childLoss: 0.02, faith: 1.6, heal: 1.4, morale: 1.3, birth: 1.3, research: 1.25, gold: 0.85, trade: 0.85,
     boons: ['Almost every child lives to grow up (1 in 50 lost)', 'No plague takes hold among them', 'Children come 30% sooner', 'Faith gathers 60% faster', 'Healing 40% stronger', 'Morale near the Town Center 30% stronger'], banes: ['Research takes 25% longer', 'Gold is mined 15% slower', 'The market pays 15% less'] },
@@ -59,8 +61,8 @@ export const CREEDS: Creed[] = [
   { ...base, id: 'temperate', name: 'Temperate', icon: '⚖️', desc: 'Neither saints nor sinners.', boons: [], banes: [] },
   { ...base, id: 'worldly', name: 'Worldly', icon: '🍷', desc: 'They like their comforts.', plague: 1.25, childLoss: 0.18, work: 0.95, train: 0.9, gold: 1.1, trade: 1.15, faith: 0.8, morale: 0.9, birth: 0.9,
     boons: ['Soldiers are trained 10% faster', 'Gold is mined 10% faster', 'The market pays 15% more'], banes: ['Nearly 1 child in 5 does not live to grow up', 'Villagers are distracted: gathering 5% slower', 'Plagues last a quarter longer', 'Children come 10% later', 'Faith gathers 20% slower', 'Morale 10% weaker'] },
-  { ...base, id: 'decadent', name: 'Decadent', icon: '🎭', desc: 'Anything can be bought here.', plague: 1.5, childLoss: 0.28, work: 0.9, train: 0.8, gold: 1.2, trade: 1.3, birth: 0.75, faith: 0.5, heal: 0.8, morale: 0.6,
-    boons: ['Soldiers are trained 20% faster', 'Gold is mined 20% faster', 'The market pays 30% more'], banes: ['More than 1 child in 4 does not live to grow up', 'Villagers are distracted: gathering 10% slower', 'Plagues last half as long again', 'Children come 25% later', 'Faith gathers at half speed', 'Healing 20% weaker', 'Morale 40% weaker'] },
+  { ...base, id: 'decadent', name: 'Decadent', icon: '🎭', desc: 'Anything can be bought here, and its own people are dying out: it grows by what it takes.', plague: 1.5, childLoss: 0.5, work: 0.9, train: 0.8, gold: 1.2, trade: 1.3, birth: 0.4, settle: 2, faith: 0.5, heal: 0.8, morale: 0.6,
+    boons: ['Soldiers are trained 20% faster', 'Gold is mined 20% faster', 'The market pays 30% more', 'Can build a Work Camp and send Slavers: captives are how such a town grows'], banes: ['Its own households are dying out: children come less than half as often, and half of those do not live to grow up', 'Villagers take twice as long to raise at the Town Center', 'Villagers are distracted: gathering 10% slower', 'Plagues last half as long again', 'Faith gathers at half speed', 'Healing 20% weaker', 'Morale 40% weaker'] },
 ];
 
 /** The creed a people lives by at a given point on the scale (-100 decadent to +100 pious). */

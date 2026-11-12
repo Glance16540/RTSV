@@ -3,7 +3,7 @@
 import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
-import { LEANING } from './creed';
+import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
@@ -139,6 +139,7 @@ export class AIController {
 
     this.assignWorkers(villagers, mine, home);
     if (!underAttack) this.staffHouses(mine, villagers, home);
+    if (!underAttack) this.slaving(mine, villagers, home);
     if (g.sea && !saving) this.navy(mine, ships, villagers, home);
     if (g.sea && this.level >= 1) this.seaRaid(mine, ships, army, !!underAttack);
 
@@ -384,12 +385,44 @@ export class AIController {
     return out;
   }
 
+  /**
+   * A town that has become Decadent is dying out and knows it: it builds a Work Camp, keeps a pair of Slavers, and
+   * sends them after the nearest rival villagers for as long as the camp has room.
+   */
+  private slaving(mine: Building[], villagers: Unit[], home: Building): void {
+    const g = this.game, pid = this.pid, p = g.players[pid];
+    if (this.level < 1 || !isDecadent(p.virtue) || p.age < 1 || Math.floor(g.time) % 3) return;
+    const camp = mine.find((b) => b.type === 'workcamp');
+    if (!camp) { if (villagers.length >= 10) this.build('workcamp', home, villagers, 7, 18); return; }
+    if (!camp.complete) return;
+    const slavers = g.units.filter((u) => u.owner === pid && u.def.slaver);
+    const tavern = mine.find((b) => b.type === 'tavern' && b.complete);
+    if (tavern && slavers.length < 2 && !tavern.queue.length && g.canAfford(p, UNITS.slaver.cost)) g.cmdTrain(pid, tavern.id, 'slaver');
+    if ((camp.captives?.length ?? 0) >= (camp.def.camp ?? 0)) return;
+    for (const s of slavers) {
+      if (s.order || s.captive || s.inside) continue;
+      let best: Unit | null = null, bestD = Infinity;
+      for (const v of g.units) {
+        if (v.type !== 'villager' || v.growT > 0 || v.inside || v.owner === g.wild || !g.hostile(v.owner, pid)) continue;
+        const d = Math.hypot(v.x - s.x, v.y - s.y);
+        if (d < bestD) { bestD = d; best = v; }
+      }
+      if (best) g.cmdTarget(pid, [s.id], best.id);
+    }
+  }
+
   /** Once the town can spare the hands, put a few in the church or the tavern, as this people leans. */
   private staffHouses(mine: Building[], villagers: Unit[], home: Building): void {
     const g = this.game, pid = this.pid, p = g.players[pid];
     if (this.level < 1 || p.age < 1 || villagers.length < 16) return;
     const pious = leaningWith(p.civ, LEANING[p.civ] ?? 0.5) >= 0.5;
     const type = pious ? 'temple' : 'tavern';
+    if (!pious) {
+      // It likes the tavern's gold but knows where the road ends: a Decadent town's own people die out. Near the
+      // edge it empties the tavern, and does not fill it again until it has drawn well back.
+      if (p.virtue <= -60) { for (const b of mine) if (b.type === 'tavern' && b.staff?.length) g.cmdUnstaff(pid, b.id, true); return; }
+      if (p.virtue <= -45) return;
+    }
     const want = villagers.length >= 26 ? 4 : 2;
     if ((pious ? p.clergy : p.maids) >= want) return;
     const house = mine.find((b) => b.type === type && b.complete && (b.staff?.length ?? 0) < (b.def.staff ?? 0));

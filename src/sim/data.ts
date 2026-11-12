@@ -622,9 +622,9 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   workcamp: B({
     id: 'workcamp', name: 'Work Camp', icon: '⛓️',
-    desc: 'Only a Decadent town can build it. Holds up to eight captives seized by Slavers, in two rooms: a workroom where the women are kept by day, and a bunkhouse the men go out to labour from and everyone is shut into at night. Every man held makes the whole town gather faster, and faster still for each Slaver posted as a guard (up to four). Every woman held makes the camp turn out new villagers sooner. If it falls, the captives go home.',
+    desc: 'Only a Decadent town can build it. Holds up to twelve captives seized by Slavers, in two rooms: a workroom where the women are kept by day, and a bunkhouse the men go out to labour from and everyone is shut into at night. Every man held makes the whole town gather faster, and faster still for each Slaver posted as a guard (up to four). Every woman held makes the camp turn out new villagers sooner. If it falls, the captives go home.',
     cost: { wood: 180 }, time: 34, age: 1, hp: 850, size: 4, pop: 0, sight: 5,
-    trains: [], techs: [], needs: 'decadent', camp: 8, guards: 4,
+    trains: [], techs: [], needs: 'decadent', camp: 12, guards: 4,
   }),
   blacksmith: B({
     id: 'blacksmith', name: 'Blacksmith', icon: '⚒️',

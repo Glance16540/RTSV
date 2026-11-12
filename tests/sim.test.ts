@@ -2218,6 +2218,25 @@ describe('the holy town and the work camp', () => {
 });
 
 describe('children who live to grow up', () => {
+  it('a decadent town is dying out: few children, half of them lost, villagers slow to raise; it grows by its camp', () => {
+    const dec = CREEDS.find((c) => c.id === 'decadent')!, mid = CREEDS.find((c) => c.id === 'temperate')!, worldly = CREEDS.find((c) => c.id === 'worldly')!;
+    expect(dec.birth).toBeLessThan(0.5 * mid.birth);
+    expect(dec.childLoss).toBeGreaterThanOrEqual(0.5);
+    expect(dec.settle).toBe(2);
+    expect(worldly.settle).toBe(1); // only the far end of the scale
+    // A villager takes twice as long to raise at the Town Center.
+    const queued = (virtue: number): number => {
+      const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
+      g.players[0].virtue = virtue; g.players[0].res.food = 999;
+      const tc = g.buildings.find((b) => b.owner === 0)!;
+      g.cmdTrain(0, tc.id, 'villager');
+      return tc.queue[0].time;
+    };
+    expect(queued(-90)).toBeCloseTo(queued(0) * 2);
+    // The camp holds twelve, and its women still bring villagers at the old pace whatever the town's own homes do.
+    expect(BUILDINGS.workcamp.camp).toBe(12);
+  });
+
   it('nearly all do in a righteous town, far fewer in a decadent one', () => {
     const raise = (virtue: number) => {
       const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);

@@ -1084,7 +1084,7 @@ export class Game {
       gender = m <= f ? 'm' : 'f';
     }
     this.pay(p, cost);
-    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train * (1 - PATRON_MUSTER * Math.min(STAFF_CAP, p.patrons)) : 1), cost });
+    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train * (1 - PATRON_MUSTER * Math.min(STAFF_CAP, p.patrons)) : type === 'villager' ? this.creed(owner).settle : 1), cost });
     return true;
   }
 
