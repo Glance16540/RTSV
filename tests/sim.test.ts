@@ -3,7 +3,7 @@ import { AIController } from '../src/sim/ai';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
-import { armyAt, armyStrength, battleConfig, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -394,6 +394,62 @@ describe('queued orders', () => {
   });
 });
 
+describe('stances, patrol and wonder', () => {
+  it('stances decide how far a unit chases', () => {
+    const g = new Game(7, setups);
+    const mk = (stance: 'aggressive' | 'defensive' | 'hold', y: number) => { const u = g.spawnUnit('swordsman', 0, 40.5, y); u.stance = stance; return u; };
+    const hold = mk('hold', 44.5), aggressive = mk('aggressive', 54.5);
+    const bait1 = g.spawnUnit('villager', 1, 44.5, 44.5, 'm'), bait2 = g.spawnUnit('villager', 1, 44.5, 54.5, 'm');
+    run(g, 8);
+    expect(Math.hypot(hold.x - 40.5, hold.y - 44.5)).toBeLessThan(0.5); // never left its post
+    expect(bait1.hp).toBe(bait1.maxHp);
+    expect(bait2.dead).toBe(true);
+    expect(aggressive.x).toBeGreaterThan(42);
+    // Something walking into reach of a holding unit is still struck.
+    const fool = g.spawnUnit('villager', 1, 41.2, 44.5, 'm');
+    run(g, 6);
+    expect(fool.dead).toBe(true);
+  });
+
+  it('patrolling units walk their beat and fight what they meet', () => {
+    const g = new Game(7, setups);
+    const u = g.spawnUnit('swordsman', 0, 40.5, 48.5);
+    g.cmdPatrol(0, [u.id], 46.5, 48.5);
+    let maxX = 0, returned = false;
+    run(g, 14, () => { maxX = Math.max(maxX, u.x); if (maxX > 46 && u.x < 41.5) returned = true; });
+    expect(maxX).toBeGreaterThan(46);
+    expect(returned).toBe(true);
+    expect(u.order?.t).toBe('patrol');
+    const foe = g.spawnUnit('villager', 1, 43.5, 50, 'm');
+    run(g, 10);
+    expect(foe.dead).toBe(true);
+    expect(u.order?.t).toBe('patrol');
+  });
+
+  it('a Wonder that stands for five minutes wins, and losing it stops the clock', () => {
+    const g = new Game(7, setups);
+    const v = villagers(g, 1)[0];
+    const s = spot(g, 'wonder', 1);
+    g.players[1].age = 3;
+    Object.assign(g.players[1].res, { food: 5000, wood: 5000, gold: 5000, stone: 5000 });
+    const w = g.cmdPlace(1, 'wonder', s.cx, s.cy, [v.id])!;
+    w.progress = 0.999;
+    run(g, 20);
+    expect(w.complete).toBe(true);
+    expect(g.events.some((e) => e.t === 'wonder')).toBe(true);
+    expect(g.wonderLeft(1)).toBeGreaterThan(270);
+    expect(g.wonderLeft(0)).toBe(-1);
+    run(g, 200);
+    expect(g.winner).toBe(-1);
+    const copy = Game.restore(g.serialize());
+    copy.cmdDelete(1, [w.id]);
+    run(copy, 120);
+    expect(copy.winner).toBe(-1); // clock stopped with the Wonder gone
+    run(g, 100);
+    expect(g.winner).toBe(1);
+  });
+});
+
 describe('market', () => {
   it('trades surplus for gold and gold for what is short', () => {
     const g = new Game(7, setups);
@@ -468,6 +524,7 @@ describe('conquest campaign', () => {
     const home = c.territories.find((t) => t.capital === 0)!;
     const army = armyAt(c, home.id)!;
     expect(income(c, 0)).toBe(6); // 2 + farmland 2 + capital 2
+    expect(c.territories.some((t) => t.trait)).toBe(true);
     expect(armyStrength(army)).toBe(5); // three infantry and the Warlord
     expect(canRaise(c, 0, home.id, 'archers')).toBe(false); // no archery range yet
     expect(build(c, 0, home.id, 'range')).toBe(true);
@@ -477,7 +534,11 @@ describe('conquest campaign', () => {
     expect(c.factions[0].supplies).toBe(8 - 5 - 2);
     const target = c.territories[home.adj[0]];
     expect(moveArmy(c, army.id, target.id)).toBe('battle');
-    expect(c.pending).toMatchObject({ attacker: 0, defender: -1, aStr: 6, dStr: target.militia });
+    // Archers fight 30% harder against the locals' infantry: 3 + 1.3 + Warlord 2.
+    expect(c.pending).toMatchObject({ attacker: 0, defender: -1, aStr: 6.3, dStr: target.militia + (target.trait === 'hills' ? 2 : 0) });
+    expect(winChance(6.3, 1)).toBe(1);
+    expect(winChance(3, 3)).toBeLessThan(0.5); // the defender has the edge at even strength
+    expect(winChance(1, 6)).toBe(0);
     const cfg = battleConfig(c)!;
     expect(cfg.setups[0].bonus!.units).toEqual({ clubman: 6, slinger: 2, warlord: 1 });
     expect(cfg.setups[1].bonus!.units).toEqual({ clubman: target.militia * 2 });
@@ -489,6 +550,8 @@ describe('conquest campaign', () => {
     expect(target.owner).toBe(0);
     expect(army.at).toBe(target.id);
     expect(army.hero).toBe(true);
+    expect(army.vet).toBe(1); // a victory makes veterans
+    expect(armyStrength(army)).toBe(armySize(army) + 2 + 1);
     expect(moveArmy(c, army.id, home.id)).toBe('invalid'); // already moved this turn
     endTurn(c);
     expect(c.turn === 2 || c.pending !== null).toBe(true);
@@ -512,16 +575,20 @@ describe('conquest campaign', () => {
     const foe = c.territories.find((t) => t.capital === 1)!;
     foe.buildings.push('fortress');
     expect(defence(c, foe.id)).toBe(5 + 1 + 3);
-    const raiders = { id: 99, owner: 0, at: foe.adj[0], units: { cavalry: 6 }, hero: false, moved: false };
+    const raiders = { id: 99, owner: 0, at: foe.adj[0], units: { cavalry: 6 }, hero: false, vet: 2, moved: false };
     c.territories[foe.adj[0]].owner = 0;
     c.armies = c.armies.filter((a) => a.at !== foe.adj[0]);
     c.armies.push(raiders);
     moveArmy(c, 99, foe.id);
     const cfg = battleConfig(c)!;
     expect(cfg.setups[1].bonus).toMatchObject({ age: 1, buildings: ['tower', 'tower'] });
+    expect(cfg.setups[0].bonus!.atk).toBe(2);
+    // Infantry is the answer to cavalry: the defenders count for more against this army.
+    expect(c.pending!.dStr).toBeGreaterThan(defence(c, foe.id));
     const g = new Game(cfg.seed, cfg.setups, cfg.size);
     expect(g.buildings.filter((b) => b.owner === 1 && b.type === 'tower').length).toBe(2);
     expect(g.units.filter((u) => u.owner === 0 && u.type === 'rider').length).toBe(12);
+    expect(g.players[0].mods.atk).toBe(2);
     finishBattle(c, true);
     expect(foe.owner).toBe(0);
     expect(foe.buildings).not.toContain('fortress');

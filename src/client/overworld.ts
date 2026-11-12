@@ -1,8 +1,8 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
 import {
-  Army, COMPANIES, Campaign, HERO_COST, LOCALS, MAP_H, MAP_W, SITES, armyAt, armySize, armyStrength, build, canBuild, canRaise,
-  canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, territoryIncome,
+  Army, COMPANIES, Campaign, HERO_COST, LOCALS, MAP_H, MAP_W, SITES, TRAITS, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, territoryIncome, companyCost, siteCost, winChance, BEATS,
 } from '../sim/campaign';
 
 export interface OverworldHooks {
@@ -106,7 +106,8 @@ export class Overworld {
       this.changed();
     };
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
-      attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`,
+      (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
+        ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr) : 1 - winChance(p.aStr, p.dStr)) * 100)} times in 100.`,
       [['Fight the battle', () => this.hooks.fight()], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);
@@ -176,7 +177,8 @@ export class Overworld {
         ctx.fillStyle = d < t.buildings.length ? '#3a2c18' : 'rgba(58,44,24,0.22)';
         ctx.fillRect(t.x - n0 * 6 + 1 + d * 12, t.y - 18, 9, 5);
       }
-      if (t.buildings.includes('fortress')) { ctx.font = '17px serif'; ctx.fillText('🏰', t.x + 34, t.y - 10); }
+      const marks = (t.buildings.includes('fortress') ? '🏰' : '') + (t.trait ? TRAITS[t.trait].icon : '');
+      if (marks) { ctx.font = '15px serif'; ctx.fillText(marks, t.x + 40, t.y - 10); }
       if (t.capital >= 0) { ctx.font = '20px serif'; ctx.fillStyle = '#f6d860'; ctx.strokeStyle = '#3a2c18'; ctx.lineWidth = 3; ctx.strokeText('★', t.x - 30, t.y - 9); ctx.fillText('★', t.x - 30, t.y - 9); }
       const a = armyAt(c, t.id);
       const n = a ? armySize(a) : t.owner < 0 ? t.militia : 0;
@@ -206,19 +208,20 @@ export class Overworld {
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
       '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.name} ${c.territories.filter((x) => x.owner === f.id).length}</span>`).join('') + '</div>';
-    const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ' · ♛ Warlord' : '');
+    const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ' · ♛ Warlord' : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
       <div>Income ${territoryIncome(t)} · Defence ${defence(c, t.id)}</div>
+      ${t.trait ? `<div class="good">${TRAITS[t.trait].icon} ${TRAITS[t.trait].name}: ${TRAITS[t.trait].desc}</div>` : ''}
       <div>${t.buildings.map((b) => `${SITES[b].icon} ${SITES[b].name}`).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>
       ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 ? '' : 'Select one of your armies to march on this land.'}</div>`;
     const btn = (act: string, label: string, cost: number, ok: boolean, tip = '') => `<button data-act="${act}" title="${tip}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label} <small>${cost}</small></button>`;
     let html = '';
     if (t.owner === 0) {
-      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, d.cost, canRaise(c, 0, t.id, k), `Strength ${d.str}`);
+      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Summon a new Warlord', HERO_COST, canSummonHero(c, 0, t.id), 'Needs an army in your capital');
-      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k)) html += btn('build:' + k, `${d.icon} Build ${d.name}`, d.cost, canBuild(c, 0, t.id, k), d.desc);
+      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k)) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k), canBuild(c, 0, t.id, k), d.desc);
     }
     $('ow-actions').innerHTML = html;
     ($('ow-end') as HTMLButtonElement).disabled = c.phase !== 'player' || !!c.pending;

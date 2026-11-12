@@ -471,6 +471,23 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
       box(g, 0.5, 0.3, 1.06, color, 0, 1.3, 0);
       break;
     }
+    case 'wonder': {
+      const st = 0xd8cfb4;
+      box(g, 3.8, 0.5, 3.8, st, 0, 0.25, 0);
+      box(g, 3.0, 0.5, 3.0, st, 0, 0.75, 0);
+      box(g, 2.2, 0.5, 2.2, st, 0, 1.25, 0);
+      box(g, 1.4, 0.5, 1.4, st, 0, 1.75, 0);
+      box(g, 0.5, 2.2, 0.5, 0xe8e2d0, 0, 3.1, 0);
+      roof(g, 0.3, 0.6, 0xf2c230, 0, 4.2, 0);
+      for (const [x, z] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) {
+        cyl(g, 0.14, 0.16, 1.2, 0xe8e2d0, x, 1.1, z);
+        ball(g, 0.16, 0xffb040, x, 1.85, z, 0xcc5500).castShadow = false;
+      }
+      box(g, 0.9, 0.12, 0.8, st, 0, 0.06, 2.2);
+      box(g, 0.8, 0.6, 0.06, color, 0, 0.9, 1.92);
+      flag(g, color, 1.5, 0.5, 1.5, 1.6);
+      break;
+    }
     case 'market': {
       box(g, 2.8, 0.1, 2.8, 0x9a8a68, 0, 0.05, 0).castShadow = false;
       const cloth = [color, 0xe8dcc0, 0xc0392b, color];

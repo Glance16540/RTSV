@@ -54,6 +54,12 @@ block everyone; a Gate lets only your own units through, so enemies have to brea
 **Garrison.** Alt+right-click a Town Center or Watch Tower to send foot units inside; each one
 speeds up its arrow fire. On Normal and Hard the AI walls its base with a palisade and gates.
 
+**Wonder.** In the Middle Ages you can build a Wonder. If it stands for five minutes you win, and
+every rival is told the moment it is finished. Richer AIs build them too.
+
+**Stances and patrol.** Soldiers can be Aggressive, Defensive or told to Hold ground, and can
+patrol between two points.
+
 **Market.** From the Bronze Age, sell surplus food, wood or stone for gold, or buy what you are
 short of. The villager build menu has two pages, settlement and military.
 
@@ -75,11 +81,14 @@ land.
 
 - **Buildings.** Each territory has three slots (four in a capital): Farmland for income, a
   Barracks, Archery Range or Stable to raise troops there, and a Fortress for defence.
-- **Armies** are made of companies of infantry, archers and cavalry, up to twelve.
+- **Armies** are made of companies of infantry, archers and cavalry, up to twelve. Cavalry
+  rides down archers, archers wear down infantry, infantry stops cavalry. An army that wins a
+  battle becomes veteran: stronger on the map and harder-hitting in real-time battles.
+- **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
 - **The Warlord** marches with one army and adds to its strength. If that army is destroyed he
   falls with it, and a new one can be summoned at your capital.
 - **Battles.** When an army enters land held by someone else, fight it yourself as a real-time
-  match or auto-resolve it. In a real-time battle each side fields the troops it has on the map,
+  match or auto-resolve it; the map shows your odds first. In a real-time battle each side fields the troops it has on the map,
   Warlord included; a Fortress starts its defender in the Bronze Age with towers.
 
 Rivals take their turns after yours and fight each other too. Hold the last territory standing to

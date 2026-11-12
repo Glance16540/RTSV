@@ -286,6 +286,11 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 180, gold: 80 }, time: 34, age: 2, hp: 900, size: 3, pop: 0, sight: 6,
     trains: ['catapult'], techs: [],
   }),
+  wonder: B({
+    id: 'wonder', name: 'Wonder', icon: '🗿',
+    desc: 'A monument for the ages. If it stands for five minutes after completion, you win. Everyone will know you have built it.',
+    cost: { food: 600, wood: 1000, gold: 800, stone: 800 }, time: 240, age: 3, hp: 3200, size: 4, pop: 0, sight: 8, trains: [], techs: [],
+  }),
   market: B({
     id: 'market', name: 'Market', icon: '⚖️',
     desc: 'Trade food, wood and stone for gold, or gold for what you are short of.',
@@ -317,7 +322,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
 /** Order in which buildings appear in the villager build menu. */
 /** Villager build menu, in two pages: settlement and military. */
 export const BUILD_PAGES = [
-  ['house', 'storehouse', 'farm', 'market', 'towncenter', 'temple', 'blacksmith', 'palisade', 'gate', 'stonewall'],
+  ['house', 'storehouse', 'farm', 'market', 'towncenter', 'temple', 'blacksmith', 'palisade', 'gate', 'stonewall', 'wonder'],
   ['barracks', 'range', 'stable', 'workshop', 'tower'],
 ];
 
@@ -411,6 +416,7 @@ export const ABILITIES: Record<string, AbilityDef> = {
 
 // ---- Tunable constants ----
 export const POP_LIMIT = 150;
+export const WONDER_TIME = 300; // seconds a Wonder must stand to win
 export const BIRTH_TIME = 32; // seconds until a housed couple has a child
 export const GROW_TIME = 25; // seconds before a child is old enough to work
 export const BIRTH_COST = 25; // food

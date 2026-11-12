@@ -33,7 +33,7 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 >   `mammoth` (war mammoth with rider), `shaman`, `prophet` (hooded robed seer with staff),
 >   `warlord` (crowned hero), `catapult`
 > - Buildings: `towncenter`, `house`, `storehouse`, `farm`, `barracks`, `range` (archery
->   range), `stable`, `temple`, `blacksmith`, `workshop` (siege workshop), `tower`, `palisade` (log wall), `stonewall`, `gate`, `market` (trading stalls)
+>   range), `stable`, `temple`, `blacksmith`, `workshop` (siege workshop), `tower`, `palisade` (log wall), `stonewall`, `gate`, `market` (trading stalls), `wonder` (great stepped monument)
 > - Resources: `food` (meat), `wood` (logs), `gold` (coins), `stone` (cut stone),
 >   `population` (group of people)
 > - Map objects: `node_tree`, `node_berries`, `node_gold`, `node_stone`

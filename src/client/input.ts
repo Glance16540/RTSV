@@ -105,7 +105,7 @@ export class Input {
     const app = this.app;
     if (e.button === 1) { this.pan = { x: e.clientX, y: e.clientY }; e.preventDefault(); return; }
     if (e.button === 2) {
-      if (app.placing || app.attackMode || app.casting) { app.select(app.sel); return; }
+      if (app.placing || app.attackMode || app.patrolMode || app.casting) { app.select(app.sel); return; }
       const p = app.r.groundAt(e.clientX, e.clientY);
       if (p) this.commandAt(p.x, p.y, this.pick(e.clientX, e.clientY), e.altKey || e.ctrlKey, e.shiftKey);
       return;
@@ -129,6 +129,16 @@ export class Input {
         sfx.play('order');
       }
       app.casting = null;
+      return;
+    }
+    if (app.patrolMode) {
+      const p = app.r.groundAt(e.clientX, e.clientY);
+      if (p) {
+        sfx.play('order');
+        app.game.cmdPatrol(app.pid, app.sel, p.x, p.y);
+        app.r.ping(p.x, p.y, 0x6ac8ff);
+      }
+      app.patrolMode = false;
       return;
     }
     if (app.attackMode) {
@@ -253,7 +263,7 @@ export class Input {
     switch (k) {
       case 'Escape':
         this.line = null;
-        if (app.placing || app.attackMode || app.casting) app.select(app.sel);
+        if (app.placing || app.attackMode || app.patrolMode || app.casting) app.select(app.sel);
         else app.select([]);
         break;
       case 'Delete':
@@ -304,7 +314,7 @@ export class Input {
       const c = this.placeCell(app.placing);
       if (c) r.setGhost(app.placing, c.cx, c.cy, app.game.canPlace(app.placing, c.cx, c.cy, true));
     } else r.setGhost(null);
-    r.canvas.style.cursor = app.placing ? 'copy' : app.attackMode || app.casting ? 'crosshair' : 'default';
+    r.canvas.style.cursor = app.placing ? 'copy' : app.attackMode || app.patrolMode || app.casting ? 'crosshair' : 'default';
     const cast = app.casting ? r.groundAt(this.mx, this.my) : null;
     r.setAreaMarker(cast ? { x: cast.x, y: cast.y, r: ABILITIES[app.casting!].radius } : null);
   }

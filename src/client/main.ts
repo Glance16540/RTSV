@@ -19,6 +19,7 @@ export class App {
   sel: number[] = [];
   placing: string | null = null;
   attackMode = false;
+  patrolMode = false;
   /** Calamity waiting for a target click. */
   casting: string | null = null;
   paused = true;
@@ -45,6 +46,7 @@ export class App {
     this.sel = ids;
     this.placing = null;
     this.attackMode = false;
+    this.patrolMode = false;
     this.casting = null;
   }
 
@@ -70,6 +72,7 @@ export class App {
     const mine = 'player' in ev && ev.player === this.pid;
     if (ev.t === 'age' && mine) sfx.play('age');
     else if (ev.t === 'alert' && mine) sfx.play('alert');
+    else if (ev.t === 'wonder') sfx.play(mine ? 'age' : 'alert');
     else if (ev.t === 'birth' && mine) sfx.play('birth');
     else if (ev.t === 'grown' && mine) sfx.play('grown');
     else if (ev.t === 'msg' && mine) sfx.play(/^(Not|Cannot|You can only|Queue|Requires)/.test(ev.text) ? 'error' : 'done');

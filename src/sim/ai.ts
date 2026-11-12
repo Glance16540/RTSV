@@ -22,6 +22,7 @@ const BUILD_ORDER: { type: string; age: number; villagers: number; count: number
   { type: 'temple', age: 1, villagers: 0, count: 1 },
   { type: 'tower', age: 1, villagers: 0, count: 2 },
   { type: 'workshop', age: 2, villagers: 0, count: 1 },
+  { type: 'wonder', age: 3, villagers: 0, count: 1 },
   { type: 'barracks', age: 2, villagers: 0, count: 2 },
 ];
 
@@ -113,6 +114,8 @@ export class AIController {
       for (const step of BUILD_ORDER) {
         if (step.age > p.age || villagers.length < step.villagers || count(step.type) >= step.count) continue;
         if (saving && step.type !== 'barracks') continue;
+        // A Wonder is for an AI that is rich and not on the easy setting.
+        if (step.type === 'wonder' && (this.level < 1 || p.res.wood < 1600 || !g.canAfford(p, BUILDINGS.wonder.cost))) continue;
         if (g.canAfford(p, BUILDINGS[step.type].cost)) this.build(step.type, home, villagers, 7, 13);
         break;
       }
@@ -177,7 +180,8 @@ export class AIController {
 
     const attackSize = Math.max(4, Math.floor(armyTarget * 0.8));
     if (this.state === 'build') {
-      if (fighters.length >= attackSize && g.time > this.firstAttack && !underAttack) {
+      const clock = g.buildings.some((b) => b.owner !== pid && b.type === 'wonder'); // no time to wait for a full army
+      if ((fighters.length >= attackSize && g.time > this.firstAttack && !underAttack) || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
       } else {
@@ -262,6 +266,9 @@ export class AIController {
    * wall and breaks through.
    */
   private pickTarget(from: Unit): Entity | null {
+    // A rival's Wonder is a clock running out: go for it before anything else.
+    const wonder = this.game.buildings.find((b) => b.owner !== this.pid && b.type === 'wonder');
+    if (wonder) return wonder;
     const cur = this.game.entities.get(this.targetId);
     if (cur && !cur.dead) return cur;
     const d = (b: Entity) => Math.hypot(b.x - from.x, b.y - from.y);

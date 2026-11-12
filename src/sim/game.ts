@@ -1,7 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import {
-  ABILITIES, AGES, TRADE, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
+  ABILITIES, AGES, TRADE, WONDER_TIME, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
@@ -10,11 +10,14 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
 export type Gender = 'm' | 'f';
+/** How far a unit will go after enemies it spots: anywhere, a few steps, or not at all. */
+export type Stance = 'aggressive' | 'defensive' | 'hold';
+const LEASH: Record<Stance, number> = { aggressive: 11, defensive: 4, hold: 0.6 };
 
 interface Base {
   id: number;
@@ -30,6 +33,7 @@ interface Base {
 export type Order =
   | { t: 'move'; x: number; y: number; started?: boolean; tries?: number }
   | { t: 'attackMove'; x: number; y: number; started?: boolean; tries?: number }
+  | { t: 'patrol'; x: number; y: number; ax: number; ay: number; bx: number; by: number; started?: boolean; tries?: number }
   | { t: 'attack'; id: number; then?: Order | null; auto?: boolean; ox?: number; oy?: number }
   | { t: 'gather'; id: number; res: ResType; phase: 'go' | 'return'; nx: number; ny: number; dropId: number; fails: number }
   | { t: 'build'; id: number; then?: Order | null }
@@ -63,6 +67,7 @@ export interface Unit extends Base {
   anchored: boolean; // working in place: not pushed by other units
   attackAnim: number; // counts down after each swing, for rendering
   healTarget: number;
+  stance: Stance;
   growT: number; // seconds until a child becomes a working adult (0 for adults)
   bornAt: number; // house a child was born in
   plagueT: number; // seconds of plague remaining
@@ -104,6 +109,7 @@ export interface Building extends Base {
   cooldown: number;
   scanT: number;
   workerId: number;
+  doneAt: number; // game time construction finished (0 if not yet)
   sheltered: number[]; // villagers hiding inside
   morale: number; // town centers: number of houses nearby (capped)
   seen: boolean; // has the human player ever seen this building
@@ -168,6 +174,7 @@ export type GameEvent =
   | { t: 'age'; player: number }
   | { t: 'alert'; player: number; x: number; y: number }
   | { t: 'defeated'; player: number }
+  | { t: 'wonder'; player: number }
   | { t: 'gameover'; winner: number };
 
 export interface PlayerSetup {
@@ -175,7 +182,7 @@ export interface PlayerSetup {
   color: number;
   isAI: boolean;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
-  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[] };
+  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number };
 }
 
 export class Game {
@@ -249,6 +256,7 @@ export class Game {
       if (s.bonus) {
         const p = this.players[i];
         p.age = s.bonus.age ?? 0;
+        p.mods.atk += s.bonus.atk ?? 0; // veterans hit harder
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
         // Defensive works stand at the corners of the town.
         (s.bonus.buildings ?? []).forEach((type, j) => {
@@ -297,7 +305,7 @@ export class Game {
       facing: 0, gender: type === 'villager' ? gender ?? (this.rng() < 0.5 ? 'm' : 'f') : null,
       order: null, queue: [], path: null, pathI: 0, pathFor: 0, pathPartial: false, goalX: 0, goalY: 0, repathT: 0,
       cooldown: 0, scanT: this.rng() * 0.4, carryType: 'food', carryAmt: 0, gatherT: 0, homeId: 0,
-      moving: false, anchored: false, attackAnim: 0, healTarget: 0, growT: 0, bornAt: 0, plagueT: 0,
+      moving: false, anchored: false, attackAnim: 0, healTarget: 0, stance: 'aggressive', growT: 0, bornAt: 0, plagueT: 0,
       mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
     };
     this.entities.set(u.id, u);
@@ -312,7 +320,7 @@ export class Game {
       id: this.nextId++, kind: 'building', type, def, owner, cx, cy, size: def.size,
       x: cx + def.size / 2, y: cy + def.size / 2, hp: complete ? def.hp : 1, maxHp: def.hp, dead: false,
       progress: complete ? 1 : 0, complete, queue: [], rallyX: 0, rallyY: 0, rallyId: 0, hasRally: false,
-      residents: { m: 0, f: 0 }, birthProgress: 0, birthBlocked: false, birthsPaused: false, children: 0, cooldown: 0, scanT: 0, workerId: 0, sheltered: [],
+      residents: { m: 0, f: 0 }, birthProgress: 0, birthBlocked: false, birthsPaused: false, children: 0, cooldown: 0, scanT: 0, workerId: 0, sheltered: [], doneAt: 0,
       morale: 0, seen: owner === this.humanId,
     };
     this.entities.set(b.id, b);
@@ -567,6 +575,21 @@ export class Game {
       this.setOrder(u, attackMove && u.def.atk > 0 ? { t: 'attackMove', x: tx, y: ty } : { t: 'move', x: tx, y: ty });
     });
     done();
+  }
+
+  /** Walk back and forth between where each unit stands and a point, attacking anything met. */
+  cmdPatrol(owner: number, ids: number[], x: number, y: number): void {
+    const us = this.ownUnits(ids, owner);
+    const done = this.command(us, false);
+    for (const u of us) {
+      if (u.def.atk > 0) this.setOrder(u, { t: 'patrol', x, y, ax: u.x, ay: u.y, bx: x, by: y });
+      else this.setOrder(u, { t: 'move', x, y });
+    }
+    done();
+  }
+
+  cmdStance(owner: number, ids: number[], stance: Stance): void {
+    for (const u of this.ownUnits(ids, owner)) u.stance = stance;
   }
 
   cmdStop(owner: number, ids: number[]): void {
@@ -987,7 +1010,25 @@ export class Game {
     }
   }
 
+  /** Seconds until a player's Wonder wins them the game, or -1 if they have none standing. */
+  wonderLeft(owner: number): number {
+    let best = -1;
+    for (const b of this.buildings) {
+      if (b.owner !== owner || b.type !== 'wonder' || !b.complete) continue;
+      const left = Math.max(0, WONDER_TIME - (this.time - b.doneAt));
+      if (best < 0 || left < best) best = left;
+    }
+    return best;
+  }
+
   private checkVictory(): void {
+    for (const p of this.players) {
+      if (!p.neutral && !p.defeated && this.wonderLeft(p.id) === 0) {
+        this.winner = p.id;
+        this.events.push({ t: 'gameover', winner: p.id });
+        return;
+      }
+    }
     const alive = new Set<number>();
     for (const b of this.buildings) if (!b.def.wall) alive.add(b.owner);
     for (const p of this.players) {
@@ -1151,8 +1192,10 @@ export class Game {
         u.scanT -= DT;
         if (u.scanT <= 0) {
           u.scanT = 0.4;
-          const e = this.findEnemy(u.owner, u.x, u.y, u.def.sight, u.def.minRange);
-          if (e) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
+          // Units holding their ground only strike what is already within reach.
+          const hold = u.stance === 'hold';
+          const e = this.findEnemy(u.owner, u.x, u.y, hold ? u.def.range + 1.2 : u.def.sight, u.def.minRange);
+          if (e && (!hold || this.dist(u, e) <= u.def.range + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
         }
       }
       return;
@@ -1163,6 +1206,7 @@ export class Game {
         if (this.walkTo(u, o)) this.setOrder(u, null);
         break;
 
+      case 'patrol':
       case 'attackMove': {
         u.scanT -= DT;
         if (u.scanT <= 0) {
@@ -1174,14 +1218,23 @@ export class Game {
             break;
           }
         }
-        if (this.walkTo(u, o)) this.setOrder(u, null);
+        if (this.walkTo(u, o)) {
+          if (o.t === 'patrol') {
+            // Turn round and walk the beat the other way.
+            const back = o.x === o.bx && o.y === o.by;
+            o.x = back ? o.ax : o.bx;
+            o.y = back ? o.ay : o.by;
+            o.started = false;
+            u.path = null;
+          } else this.setOrder(u, null);
+        }
         break;
       }
 
       case 'attack': {
         const t = this.entities.get(o.id);
         if (!t || t.dead || t.owner === u.owner || t.kind === 'resource') { this.setOrder(u, o.then ?? null); break; }
-        if (o.auto && Math.hypot(u.x - o.ox!, u.y - o.oy!) > 11) { this.setOrder(u, { t: 'move', x: o.ox!, y: o.oy! }); break; }
+        if (o.auto && Math.hypot(u.x - o.ox!, u.y - o.oy!) > LEASH[u.stance]) { this.setOrder(u, { t: 'move', x: o.ox!, y: o.oy! }); break; }
         const d = this.dist(u, t);
         if (u.def.minRange && d < u.def.minRange) {
           // Too close to fire. Auto-acquired targets are dropped so another can be picked.
@@ -1264,6 +1317,8 @@ export class Game {
             if (b.progress >= 1) {
               b.progress = 1;
               b.complete = true;
+              b.doneAt = this.time;
+              if (b.type === 'wonder') this.events.push({ t: 'wonder', player: b.owner });
               this.upkeep();
             }
           } else {

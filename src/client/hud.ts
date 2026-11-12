@@ -4,7 +4,7 @@ import {
   ABILITIES, AGES, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE,
   TECHS, UNITS, costText,
 } from '../sim/data';
-import { Building, Entity, GameEvent, Unit } from '../sim/game';
+import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_WATER } from '../sim/map';
 import { ico } from './assets';
 import type { App } from './main';
@@ -135,10 +135,14 @@ export class Hud {
       this.alerts.push({ x: ev.x, y: ev.y, t: 0 });
     } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
     else if (ev.t === 'defeated' && ev.player !== pid) this.toast(`${game.players[ev.player].name} has been destroyed.`, 'big');
-    else if (ev.t === 'gameover') {
+    else if (ev.t === 'wonder') {
+      this.toast(ev.player === pid ? '🗿 Your Wonder is complete. Defend it for five minutes to win!' : `🗿 ${game.players[ev.player].name} has built a Wonder. Destroy it within five minutes!`, ev.player === pid ? 'big' : 'big warn');
+    } else if (ev.t === 'gameover') {
       const win = ev.winner === pid;
       $('end-title').textContent = win ? 'Victory' : 'Defeat';
-      $('end-text').textContent = win ? 'Your enemy lies in ruins. Your people will tell this story for ages.' : 'Your settlement has fallen.';
+      const byWonder = game.wonderLeft(ev.winner) === 0;
+      $('end-text').textContent = win ? (byWonder ? 'Your Wonder has stood the test. The world acknowledges your people.' : 'Your enemy lies in ruins. Your people will tell this story for ages.')
+        : byWonder ? `${game.players[ev.winner].name}'s Wonder stood too long.` : 'Your settlement has fallen.';
       $('end').classList.remove('hidden');
     }
   }
@@ -185,6 +189,10 @@ export class Hud {
           id: 'atk', icon: ico('attackmove', '⚔️'), name: 'Attack-move', desc: 'Click a location: units march there and fight anything they meet on the way.',
           active: this.app.attackMode, act: () => { this.app.select(this.app.sel); this.app.attackMode = true; },
         });
+        out.push({
+          id: 'patrol', icon: ico('patrol', '🔁'), name: 'Patrol', desc: 'Click a location: units walk back and forth between here and there, attacking anything they meet.',
+          active: this.app.patrolMode, act: () => { this.app.select(this.app.sel); this.app.patrolMode = true; },
+        });
         const prophets = units.filter((u) => u.def.mana);
         if (prophets.length) {
           const faith = Math.max(...prophets.map((u) => u.mana));
@@ -195,6 +203,17 @@ export class Hud {
               active: this.app.casting === a.id, act: () => { this.app.select(this.app.sel); this.app.casting = a.id; },
             });
           }
+        }
+      }
+      if (!units.every((u) => u.type === 'villager')) {
+        while (out.length < 5) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
+        const stances: [Stance, string, string, string][] = [
+          ['aggressive', '🔥', 'Aggressive', 'Chase any enemy that comes into view.'],
+          ['defensive', '🛡️', 'Defensive', 'Fight enemies that come near, but do not chase far.'],
+          ['hold', '⚓', 'Hold ground', 'Stay put and only strike enemies within reach.'],
+        ];
+        for (const [st, icon, name, desc] of stances) {
+          out.push({ id: 'st:' + st, icon: ico('stance_' + st, icon), name: 'Stance: ' + name, desc, active: units.every((u) => u.stance === st), act: () => game.cmdStance(pid, ids, st) });
         }
       }
       while (out.length < 14) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
@@ -473,11 +492,17 @@ export class Hud {
     for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside) idle++;
     const tc = game.buildings.find((b) => b.owner === pid && b.queue[0]?.kind === 'age');
     const aging = tc ? ` → ${AGES[p.age + 1].name} ${Math.floor((tc.queue[0].t / tc.queue[0].time) * 100)}%` : '';
+    // A standing Wonder is everyone's business: show whose it is and how long is left.
+    let wonder = '';
+    for (const q of game.players) {
+      const left = q.neutral ? -1 : game.wonderLeft(q.id);
+      if (left >= 0) wonder += ` · 🗿 ${q.id === pid ? 'Your' : q.name + "'s"} Wonder ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+    }
     const mins = Math.floor(game.time / 60), secs = Math.floor(game.time % 60);
     const top = [
       RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
         `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
-      AGES[p.age].name + aging,
+      AGES[p.age].name + aging + wonder,
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,
       this.app.paused ? '▶' : '⏸',
