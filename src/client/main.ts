@@ -256,7 +256,7 @@ loadAssets().then(() => {
   teamSel.addEventListener('change', regenerate);
   sizeSel.addEventListener('change', regenerate);
   aiSel.addEventListener('change', regenerate);
-  el('conquest-btn').addEventListener('click', () => go(`?campaign=1&ai=${aiSel.value}`));
+  el('conquest-btn').addEventListener('click', () => go(`?campaign=1&ai=${aiSel.value}&civ=${(el('civ') as HTMLSelectElement).value}`));
 
   const app = new App(game);
   app.saveTag = tag;
@@ -277,9 +277,14 @@ loadAssets().then(() => {
     btn.addEventListener('click', () => {
       // The first click picks the difficulty; afterwards the same screen is just the help page.
       if (!startScreen.classList.contains('started')) for (const a of app.ai) a.setLevel(Number(btn.dataset.level));
+      const first = !startScreen.classList.contains('started') || startScreen.classList.contains('battle');
       startScreen.classList.add('hidden', 'started');
+      startScreen.classList.remove('battle');
       sfx.unlock();
       app.paused = false;
+      // The rival's leader has a word as the match begins.
+      const foe = app.game.players.find((p) => p.isAI && !p.neutral && app.game.hostile(p.id, app.pid) && !p.name.endsWith(' reserve'));
+      if (first && foe && app.game.time < 1 && (!app.mission || app.mission.aiLevel !== null)) app.hud.leaderSay(foe.id, 'battle');
     });
   }
 
@@ -353,13 +358,13 @@ loadAssets().then(() => {
       finishBattle(c, result === 'win');
       if (c.phase === 'ai') continueAI(c);
     }
-    c ??= newCampaign(seed, Math.max(2, rivals), 1);
+    c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);
     const state = c;
     startScreen.classList.add('hidden');
     new Overworld(state, {
       save: () => writeCampaign(state),
       fight: () => { writeCampaign(state); go('?battle=1'); },
-      newCampaign: (r, l) => { writeCampaign(newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l)); go('?campaign=1'); },
+      newCampaign: (r, l, civ) => { writeCampaign(newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined)); go('?campaign=1'); },
       exit: () => go(''),
     });
   }

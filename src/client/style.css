@@ -228,3 +228,19 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 #ow-dialog .levels button { margin-top: 12px; padding: 10px 18px; font-size: 16px; }
 @media (max-width: 760px) { #overworld { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } }
 #ow-sel .good { color: var(--good); }
+
+/* ---- Leaders ---- */
+.speech { display: flex; gap: 10px; align-items: flex-start; text-align: left; }
+.speech .portrait { flex: none; width: 54px; height: 54px; display: grid; place-items: center; font-size: 34px; line-height: 1; background: var(--panel); border: 3px solid var(--edge); border-radius: 50%; overflow: hidden; }
+.speech .portrait .ico { width: 100%; height: 100%; border-radius: 0; object-fit: cover; }
+.speech p { margin: 2px 0 0; font: italic 15px/1.35 Georgia, serif; color: var(--text); }
+.speech small { color: var(--muted); }
+#ow-speech { min-height: 92px; padding: 10px; background: rgba(0, 0, 0, 0.25); border: 1px solid #3c3122; border-radius: 4px; cursor: pointer; }
+#ow-speech:empty { display: none; }
+.ow-factions { flex-direction: column; }
+.ow-factions small { font-weight: 400; }
+.toast.leader { max-width: 520px; padding: 10px 14px; border-color: var(--gold); }
+.toast.leader .portrait { width: 44px; height: 44px; font-size: 28px; }
+.ow-side > * { flex: none; }
+.ow-side #ow-log { flex: 1 0 60px; }
+#ow-speech { min-height: 0; }

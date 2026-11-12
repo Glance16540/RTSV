@@ -4,12 +4,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string> }
+interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string> }
 /** Optional per-model corrections in public/assets/tweaks.json, keyed by model name. */
 interface Tweak { scale?: number; yaw?: number; y?: number }
 
 const BASE = 'assets/';
-let manifest: Manifest = { icons: {}, models: {}, art: {} };
+let manifest: Manifest = { icons: {}, models: {}, art: {}, voice: {} };
 let tweaks: Record<string, Tweak> = {};
 const models = new Map<string, { root: THREE.Object3D; size: THREE.Vector3 }>();
 
@@ -54,6 +54,12 @@ export async function loadAssets(): Promise<void> {
 export function ico(key: string, emoji: string): string {
   const file = manifest.icons[key] ?? (key === 'villager' ? manifest.icons.villager_m : undefined);
   return file ? `<img class="ico" src="${BASE}icons/${file}" alt="" draggable="false">` : emoji;
+}
+
+/** Recording of a leader's line, if one has been added. */
+export function voiceUrl(key: string): string | null {
+  const file = manifest.voice[key];
+  return file ? `${BASE}voice/${file}` : null;
 }
 
 export function artUrl(key: string): string | null {

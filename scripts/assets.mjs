@@ -4,7 +4,7 @@ import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 
 const root = 'public/assets';
-const kinds = { icons: ['.png', '.webp', '.jpg', '.jpeg', '.svg'], models: ['.glb'], art: ['.png', '.webp', '.jpg', '.jpeg'] };
+const kinds = { icons: ['.png', '.webp', '.jpg', '.jpeg', '.svg'], models: ['.glb'], art: ['.png', '.webp', '.jpg', '.jpeg'], voice: ['.mp3', '.ogg', '.wav', '.m4a'] };
 const manifest = {};
 for (const [dir, exts] of Object.entries(kinds)) {
   manifest[dir] = {};

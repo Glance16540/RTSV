@@ -30,7 +30,7 @@ fragile and unable to work until they grow up, when they take up a parent's trad
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
 
-**Four peoples.** Choose yours on the start screen; rivals take the others.
+**Six peoples.** Choose yours on the start screen; rivals take others.
 
 | People | Bonuses | Only they train |
 | --- | --- | --- |
@@ -38,6 +38,8 @@ technologies, and changes how your settlement looks.
 | Steppe Riders | Cavalry 15% cheaper and 10% faster | Lancer: a crushing first blow after a run-up |
 | Hearthfolk | Farms +25%, children 25% sooner, bigger houses | Hearthguard: fights harder near its own houses |
 | Forgeborn | Research 30% faster and 15% cheaper, tougher siege | Fire Thrower: scorches a group and sets buildings alight |
+| Dawn Court | Cheaper Shamans and Prophets, faster faith, stronger healing | Zealot: mends itself with every blow |
+| Wildborn | Game yields 50% more, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf |
 
 **Generations.** Villagers grow old: after a long working life they slow down as elders and
 eventually die, so a village lasts only as long as its families keep raising children. A child of
@@ -121,10 +123,17 @@ for whether villagers grow old.
 
 ## Conquest campaign
 
-*Conquest campaign* on the start screen opens a turn-based map of fifteen territories. Each turn
-you collect supplies from the land you hold and spend them, then march armies into neighbouring
-land.
+*Conquest campaign* is the main game. Every campaign is a newly generated world: the map has
+anywhere from twelve to twenty-four territories, the capitals fall in different places, and each
+faction is a different people led by its own leader. You choose your people, or let chance decide.
 
+Each turn you collect supplies from the land you hold and spend them, then march armies into
+neighbouring land.
+
+- **Leaders.** Each rival is led by a named leader who speaks when you first meet, when armies
+  march, when battles are won and lost, and when they fall. All 108 lines are written and shown
+  on screen; recordings dropped into `public/assets/voice/` are played automatically. See
+  [docs/VOICE_SCRIPT.md](docs/VOICE_SCRIPT.md) for every line, its filename and voice direction.
 - **Buildings.** Each territory has three slots (four in a capital): Farmland for income, a
   Barracks, Archery Range or Stable to raise troops there, and a Fortress for defence.
 - **Armies** are made of companies of infantry, archers and cavalry, up to twelve. Cavalry
@@ -167,6 +176,7 @@ for filenames and a ready-made generation prompt.
 ## Code layout
 
 - `src/sim/scenario.ts` — scripted missions and their objectives
+- `src/sim/leaders.ts` — each people's leader and their lines
 - `src/sim/campaign.ts` — Conquest rules: territories, armies, turns, battle set-up
 - `src/client/overworld.ts` — the Conquest map screen
 - `src/sim/` — the game simulation. No DOM or rendering, runs headless at 20 ticks per second.

@@ -4,6 +4,8 @@ import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
+import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
+import { CIV_COLOR, CIV_IDS } from '../src/sim/data';
 import { armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
@@ -651,7 +653,9 @@ describe('conquest campaign', () => {
   it('builds a connected map with a capital and an army for each faction', () => {
     for (const rivals of [1, 2, 3]) {
       const c = newCampaign(42 + rivals, rivals);
-      expect(c.territories.length).toBe(15);
+      const n = c.territories.length;
+      expect(n).toBeGreaterThanOrEqual(12);
+      expect(n).toBeLessThanOrEqual(24);
       expect(c.factions.length).toBe(rivals + 1);
       for (const f of c.factions) {
         const cap = c.territories.find((t) => t.capital === f.id)!;
@@ -661,10 +665,76 @@ describe('conquest campaign', () => {
       // Every territory can be reached from the first.
       const seen = new Set([0]);
       const q = [0];
-      while (q.length) for (const n of c.territories[q.pop()!].adj) if (!seen.has(n)) { seen.add(n); q.push(n); }
-      expect(seen.size).toBe(15);
-      expect(c.territories.every((t) => t.adj.every((n) => c.territories[n].adj.includes(t.id)))).toBe(true);
+      while (q.length) for (const t of c.territories[q.pop()!].adj) if (!seen.has(t)) { seen.add(t); q.push(t); }
+      expect(seen.size).toBe(n);
+      expect(c.territories.every((t) => t.adj.every((a) => c.territories[a].adj.includes(t.id)))).toBe(true);
+      // Capitals are never next door to each other.
+      const caps = c.territories.filter((t) => t.capital >= 0);
+      expect(caps.every((a) => caps.every((b) => a === b || !a.adj.includes(b.id)))).toBe(true);
     }
+  });
+
+  it('every campaign is a different world of different peoples, each with a leader', () => {
+    const shapes = new Set<number>(), homes = new Set<string>(), lineups = new Set<string>();
+    for (let seed = 1; seed <= 30; seed++) {
+      const c = newCampaign(seed, 3);
+      shapes.add(c.territories.length);
+      homes.add(c.territories.filter((t) => t.capital >= 0).map((t) => t.id).join(','));
+      const civs = c.factions.map((f) => f.civ);
+      lineups.add(civs.join(','));
+      expect(new Set(civs).size).toBe(4); // no two factions are the same people
+      for (const f of c.factions) expect(f.color).toBe(CIV_COLOR[f.civ]);
+      // Each rival leader introduces themselves.
+      expect(c.speech.map((sp) => sp.civ)).toEqual(civs.slice(1));
+      expect(c.speech.every((sp) => sp.event === 'intro' && speechText(sp).length > 10)).toBe(true);
+    }
+    expect(shapes.size).toBeGreaterThanOrEqual(4);
+    expect(homes.size).toBeGreaterThan(20);
+    expect(lineups.size).toBeGreaterThan(20);
+    expect(newCampaign(9, 2, 1, 'wild').factions[0].civ).toBe('wild');
+    expect(JSON.stringify(newCampaign(9, 2))).toBe(JSON.stringify(newCampaign(9, 2))); // same seed, same world
+  });
+
+  it('leaders have a full set of lines and speak when things happen', () => {
+    expect(Object.keys(LEADERS).sort()).toEqual(CIV_IDS.slice().sort());
+    const keys = new Set<string>();
+    for (const l of Object.values(LEADERS)) {
+      for (const ev of LEADER_EVENTS) {
+        expect(l.lines[ev].length, `${l.civ} ${ev}`).toBeGreaterThanOrEqual(2);
+        l.lines[ev].forEach((_, i) => keys.add(lineKey(l.civ, ev, i)));
+      }
+    }
+    expect(keys.size).toBe(108);
+    expect(keys.has('steppe_attack_2')).toBe(true);
+    // In a campaign: the player attacks a rival, wins, and finally wipes them out.
+    const c = newCampaign(7, 1);
+    c.speech.length = 0;
+    const foeCap = c.territories.find((t) => t.capital === 1)!;
+    const next = c.territories[foeCap.adj[0]];
+    next.owner = 0;
+    c.armies = c.armies.filter((a) => a.owner !== 0 && a.at !== next.id);
+    c.armies.push({ id: 77, owner: 0, at: next.id, units: { cavalry: 10 }, hero: false, vet: 0, moved: false });
+    moveArmy(c, 77, foeCap.id);
+    expect(c.speech.map((sp) => sp.event)).toEqual(['defend']);
+    expect(c.speech[0].civ).toBe(c.factions[1].civ);
+    finishBattle(c, true);
+    expect(c.speech.map((sp) => sp.event)).toEqual(['defend', 'lose', 'eliminated']);
+    expect(c.phase).toBe('over');
+    // And when a rival comes for the player and wins.
+    const d = newCampaign(7, 1);
+    d.speech.length = 0;
+    const myCap = d.territories.find((t) => t.capital === 0)!;
+    const beside = d.territories[myCap.adj[0]];
+    beside.owner = 1;
+    d.armies = d.armies.filter((a) => a.at !== beside.id);
+    d.armies.push({ id: 78, owner: 1, at: beside.id, units: { cavalry: 10 }, hero: false, vet: 0, moved: false });
+    moveArmy(d, 78, myCap.id);
+    expect(d.speech.map((sp) => sp.event)).toEqual(['attack']);
+    const cfg = battleConfig(d)!;
+    expect(cfg.setups[0].civ).toBe(d.factions[0].civ);
+    expect(cfg.setups[1].civ).toBe(d.factions[1].civ);
+    finishBattle(d, false);
+    expect(d.speech.map((sp) => sp.event)).toEqual(['attack', 'win']);
   });
 
   it('spending, marching, and battles follow the rules', () => {
@@ -1079,4 +1149,42 @@ describe('missions', () => {
     expect(won.g.winner).toBe(0);
     expect(won.g.scenario!.n).toBe(8);
   }, 120000);
+});
+
+describe('dawn court and wildborn', () => {
+  it('have their own bonuses and units', () => {
+    const g = new Game(7, [{ ...setups[0], civ: 'dawn' }, { ...setups[1], civ: 'wild' }]);
+    expect(g.unitCost(0, 'shaman')).toEqual({ food: 30, gold: 45 });
+    expect(g.unitCost(1, 'shaman')).toEqual({ food: 40, gold: 60 });
+    expect(g.unitCost(1, 'hound')).toEqual({ food: 26 });
+    // Faith comes back faster to the Dawn Court.
+    const mine = g.spawnUnit('prophet', 0, 40.5, 40.5), theirs = g.spawnUnit('prophet', 1, 60.5, 60.5);
+    mine.mana = theirs.mana = 0;
+    run(g, 10);
+    expect(mine.mana).toBeCloseTo(15, 0);
+    expect(theirs.mana).toBeCloseTo(10, 0);
+    // Zealots mend as they strike.
+    const zealot = g.spawnUnit('zealot', 0, 46.5, 48.5);
+    zealot.hp = 40;
+    const post = g.spawnBuilding('stonewall', 1, 46, 49, true);
+    g.cmdTarget(0, [zealot.id], post.id);
+    run(g, 6);
+    expect(zealot.hp).toBeGreaterThan(50);
+    for (const p of [0, 1]) { g.players[p].age = 1; Object.assign(g.players[p].res, { food: 999, gold: 999 }); }
+    const b0 = g.spawnBuilding('stable', 0, 30, 40, true), b1 = g.spawnBuilding('stable', 1, 30, 46, true);
+    expect(g.cmdTrain(1, b1.id, 'wolfrider')).toBe(true);
+    expect(g.cmdTrain(0, b0.id, 'wolfrider')).toBe(false);
+  });
+
+  it('wild wolves leave the Wildborn alone, and are left alone by them', () => {
+    const g = new Game(3, [{ ...setups[0], civ: 'wild' }, { ...setups[1], civ: 'stonekin' }]);
+    const wolf = g.units.find((u) => u.type === 'wolf')!;
+    const friend = g.spawnUnit('villager', 0, wolf.x + 1.5, wolf.y, 'm'), guard = g.spawnUnit('clubman', 0, wolf.x - 1.5, wolf.y);
+    const stranger = g.spawnUnit('villager', 1, wolf.x, wolf.y + 2.5, 'm');
+    g.aging = false;
+    run(g, 12);
+    expect(friend.hp).toBe(friend.maxHp);
+    expect(guard.order).toBe(null);
+    expect(stranger.hp < stranger.maxHp || stranger.dead).toBe(true);
+  });
 });

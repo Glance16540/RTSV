@@ -548,6 +548,8 @@ export class Game {
     let bestD = Infinity;
     for (const v of buildingsOnly ? [] : this.unitsNear(x, y, radius, this.scratch)) {
       if (!this.hostile(v.owner, owner) || v.def.docile) continue;
+      // Wolves and the Wildborn leave each other alone.
+      if ((owner === this.wild && this.players[v.owner].civ === 'wild') || (v.owner === this.wild && this.players[owner].civ === 'wild')) continue;
       const d = Math.hypot(v.x - x, v.y - y);
       if (d > radius || d < minRange) continue;
       // Prefer things that fight back over villagers.
@@ -840,7 +842,8 @@ export class Game {
 
   /** What a unit costs this player, after civilisation discounts. */
   unitCost(owner: number, type: string): Cost {
-    const def = UNITS[type], k = def.cls === 'cavalry' ? this.players[owner].mods.cavCost : 1;
+    const def = UNITS[type], m = this.players[owner].mods;
+    const k = def.cls === 'cavalry' ? m.cavCost : def.cls === 'support' ? m.clergyCost : def.cls === 'beast' ? m.beastCost : 1;
     if (k === 1) return def.cost;
     const out: Cost = {};
     for (const r of RES_TYPES) if (def.cost[r]) out[r] = Math.round(def.cost[r]! * k);
@@ -1311,7 +1314,7 @@ export class Game {
     if (u.attackAnim > 0) u.attackAnim -= DT;
     if (u.def.heal) this.updateHealer(u);
     if (u.def.aura && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + 1.5 * DT); // heroes slowly regenerate
-    if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT);
+    if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith);
     if (u.growT > 0 && (u.growT -= DT) <= 0) this.comeOfAge(u);
     if (this.aging && u.lifespan > 0 && u.growT <= 0 && (u.age += DT) > u.lifespan) {
       this.events.push({ t: 'oldage', player: u.owner, name: `${u.name}${u.family ? ' ' + u.family : ''}` });
@@ -1585,7 +1588,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -1666,6 +1669,7 @@ export class Game {
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
     if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
+    if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
     if (u.def.projectile) {
       this.projectiles.push({

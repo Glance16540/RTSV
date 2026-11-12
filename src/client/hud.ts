@@ -7,7 +7,10 @@ import {
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_WATER } from '../sim/map';
 import { ico } from './assets';
+import { LOCALS } from '../sim/campaign';
+import { LEADERS, LeaderEvent } from '../sim/leaders';
 import type { App } from './main';
+import { playLine, speechHtml } from './voice';
 import { sfx } from './sfx';
 
 export const SLOT_KEYS = 'QWERTASDFGZXCVB';
@@ -113,15 +116,29 @@ export class Hud {
     $('mute').textContent = sfx.muted ? '🔇' : '🔊';
   }
 
-  toast(text: string, cls = ''): void {
+  toast(text: string, cls = '', html = false): void {
     const box = $('toasts');
     const el = document.createElement('div');
     el.className = 'toast ' + cls;
-    el.textContent = text;
+    if (html) el.innerHTML = text;
+    else el.textContent = text;
     box.appendChild(el);
     while (box.children.length > 5) box.firstChild!.remove();
-    setTimeout(() => el.classList.add('fade'), 3500);
-    setTimeout(() => el.remove(), 4300);
+    const stay = cls.includes('leader') ? 6500 : 3500;
+    setTimeout(() => el.classList.add('fade'), stay);
+    setTimeout(() => el.remove(), stay + 800);
+  }
+
+  /** A rival leader says something: shown as a banner, and spoken once the line has been recorded. */
+  leaderSay(player: number, event: LeaderEvent): void {
+    const { game, pid } = this.app;
+    const p = game.players[player];
+    const l = p && LEADERS[p.civ];
+    // Local tribes and reserve armies are not led by anyone with a name.
+    if (!l || !p.isAI || p.neutral || !game.hostile(player, pid) || p.name === LOCALS.name || p.name.endsWith(' reserve')) return;
+    const s = { civ: p.civ, event, index: Math.floor(Math.random() * l.lines[event].length) };
+    this.toast(speechHtml(s), 'leader', true);
+    playLine(s);
   }
 
   handle(ev: GameEvent): void {
@@ -129,16 +146,18 @@ export class Hud {
     if (ev.t === 'msg' && ev.player === pid) this.toast(ev.text);
     else if (ev.t === 'age') {
       if (ev.player === pid) this.toast(`You have advanced to the ${AGES[game.players[pid].age].name}!`, 'big');
-      else this.toast(`${game.players[ev.player].name} has advanced to the ${AGES[game.players[ev.player].age].name}.`);
+      else { this.toast(`${game.players[ev.player].name} has advanced to the ${AGES[game.players[ev.player].age].name}.`); this.leaderSay(ev.player, 'ageup'); }
     } else if (ev.t === 'alert' && ev.player === pid) {
       this.toast('⚠️ You are under attack! (Space to look)', 'warn');
       this.alerts.push({ x: ev.x, y: ev.y, t: 0 });
       this.app.lastAlert = { x: ev.x, y: ev.y };
     } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
+    else if (ev.t === 'defeated' && ev.player !== pid) { this.toast(`${game.players[ev.player].name} has been destroyed.`, 'big'); this.leaderSay(ev.player, 'eliminated'); }
     else if (ev.t === 'defeated') this.toast(ev.player === pid ? 'Your settlement has fallen. Your ally fights on.' : `${game.players[ev.player].name} has been destroyed.`, 'big');
     else if (ev.t === 'signal' && ev.player !== pid && !game.hostile(ev.player, pid)) this.toast(`📣 ${game.players[ev.player].name} calls for you.`);
     else if (ev.t === 'oldage' && ev.player === pid) this.toast(`🕯️ ${ev.name} has died of old age.`);
     else if (ev.t === 'wonder') {
+      if (ev.player !== pid) this.leaderSay(ev.player, 'wonder');
       this.toast(ev.player === pid ? '🗿 Your Wonder is complete. Defend it for five minutes to win!' : `🗿 ${game.players[ev.player].name} has built a Wonder. Destroy it within five minutes!`, ev.player === pid ? 'big' : 'big warn');
     } else if (ev.t === 'gameover') {
       const win = !game.hostile(ev.winner, pid); // an ally's victory is yours too

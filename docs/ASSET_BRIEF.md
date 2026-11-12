@@ -47,6 +47,11 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 >   sword), `weapons2` (iron sword), `weapons3` (steel sword), `armor1` (hide armor), `armor2`
 >   (scale armor), `armor3` (plate armor), `ballistics` (flaming arrows on a tower)
 >
+> - Leader portraits (head and shoulders, painted, facing slightly left): `leader_stonekin`
+>   (grizzled bearded thane), `leader_steppe` (young horsewoman queen), `leader_hearth` (kind
+>   older matriarch), `leader_forge` (sharp-eyed artificer with goggles), `leader_dawn` (serene
+>   veiled seer), `leader_wild` (scarred hunter in wolf pelt)
+>
 > **3. 3D models** — GLB, textured, static (no rigging or animation), low-poly (about 10k
 > triangles), one object per file, standing upright, front facing forward. For each one,
 > first generate a clean reference image of the object alone on a plain background from a
@@ -59,7 +64,7 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 >   `spearman`, `swordsman`, `bowman`, `crossbowman`, `rider`, `knight`, `mammoth`, `shaman`,
 >   `prophet`, `warlord`, `catapult`, `musketeer`, `bombard` (cannon), `javelineer`, `hound` (war dog), `chariot`, `berserker`,
 >   `pikeman`, `grenadier`, `ram` (battering ram), `scorpion` (bolt thrower), `hussar`, `strategist`, `shieldbearer`, `lancer`, `hearthguard`,
->   `firethrower`,
+>   `firethrower`, `zealot`, `wolfrider`,
 >   `deer`, `wolf`
 > - If generations remain, later-age building variants named `<building>_1` (Bronze: timber),
 >   `<building>_2` (Iron: stone and shingle), `<building>_3` (medieval: plaster and red tile),

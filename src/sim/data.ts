@@ -50,6 +50,10 @@ export interface Mods {
   techTime: number; // research time multiplier
   techCost: number; // research cost multiplier
   siegeHp: number; // siege engine health multiplier
+  faith: number; // prophet faith regeneration multiplier
+  clergyCost: number; // shaman and prophet cost multiplier
+  hunt: number; // yield multiplier when butchering game
+  beastCost: number; // hound and mammoth cost multiplier
 }
 
 export const baseMods = (): Mods => ({
@@ -70,6 +74,10 @@ export const baseMods = (): Mods => ({
   techTime: 1,
   techCost: 1,
   siegeHp: 1,
+  faith: 1,
+  clergyCost: 1,
+  hunt: 1,
+  beastCost: 1,
 });
 
 export interface UnitDef {
@@ -113,6 +121,8 @@ export interface UnitDef {
   homeBonus?: number;
   /** Sets buildings alight: they keep burning after the attack. */
   burn?: boolean;
+  /** Health regained with each blow struck. */
+  drain?: number;
   /** Can only attack buildings. */
   siegeOnly?: boolean;
   /** Attacks faster the more wounded it is. */
@@ -215,6 +225,18 @@ export const UNITS: Record<string, UnitDef> = {
     desc: 'Hero. Only one may live at a time. Enemies fighting near the Strategist deal 20% less damage, and nearby allies are slowly healed.',
     cost: { food: 150, gold: 200 }, time: 40, age: 2, hp: 300, atk: 6, armor: 2, range: 5, speed: 2.3,
     cooldown: 1.8, sight: 10, pop: 2, cls: 'hero', radius: 0.34, projectile: 'stone', weaken: 0.8, auraRange: 7, heal: 3, limit: 1,
+  }),
+  zealot: U({
+    id: 'zealot', name: 'Zealot', icon: '☀️', civ: 'dawn',
+    desc: 'Dawn Court only. Fast, fervent infantry that mends its own wounds with every blow it lands.',
+    cost: { food: 55, gold: 20 }, time: 15, age: 1, hp: 85, atk: 9, armor: 1, range: 0.5, speed: 2.6,
+    cooldown: 1.3, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, drain: 4,
+  }),
+  wolfrider: U({
+    id: 'wolfrider', name: 'Wolf Rider', icon: '🐺', civ: 'wild',
+    desc: 'Wildborn only. A hunter on a great wolf: quick, savage against villagers and archers, and cheap to feed.',
+    cost: { food: 75 }, time: 16, age: 1, hp: 95, atk: 10, armor: 0, range: 0.6, speed: 3.7,
+    cooldown: 1.2, sight: 9, pop: 1, cls: 'cavalry', radius: 0.42, bonus: { villager: 1.6, ranged: 1.4 },
   }),
   shieldbearer: U({
     id: 'shieldbearer', name: 'Shieldbearer', icon: '🛡️', civ: 'stonekin',
@@ -388,7 +410,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'barracks', name: 'Barracks', icon: '🗡️',
     desc: 'Trains infantry.',
     cost: { wood: 120 }, time: 28, age: 0, hp: 1000, size: 3, pop: 0, sight: 6,
-    trains: ['clubman', 'hearthguard', 'shieldbearer', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
+    trains: ['clubman', 'hearthguard', 'shieldbearer', 'zealot', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
   }),
   range: B({
     id: 'range', name: 'Archery Range', icon: '🏹',
@@ -400,7 +422,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'stable', name: 'Stable', icon: '🐴',
     desc: 'Trains cavalry and war beasts.',
     cost: { wood: 150 }, time: 30, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['rider', 'lancer', 'chariot', 'mammoth', 'knight', 'hussar'], techs: ['up_knight'],
+    trains: ['rider', 'lancer', 'wolfrider', 'chariot', 'mammoth', 'knight', 'hussar'], techs: ['up_knight'],
   }),
   temple: B({
     id: 'temple', name: 'Temple', icon: '⛩️',
@@ -590,7 +612,21 @@ export const CIVS: Record<string, CivDef> = {
     apply: (m) => { m.techTime = 0.7; m.techCost = 0.85; m.siegeHp = 1.25; },
   },
 };
+Object.assign(CIVS, {
+  dawn: {
+    id: 'dawn', name: 'Dawn Court', icon: '☀️', desc: 'A priesthood that sees what is coming.', unique: 'zealot',
+    bonuses: ['Shamans and Prophets cost 25% less', 'Prophets regain faith 50% faster', 'Shamans heal 30% faster'],
+    apply: (m: Mods) => { m.clergyCost = 0.75; m.faith = 1.5; m.heal += 0.3; },
+  },
+  wild: {
+    id: 'wild', name: 'Wildborn', icon: '🐺', desc: 'Hunters who run with the wolves.', unique: 'wolfrider',
+    bonuses: ['Game yields 50% more food', 'War Hounds and Mammoths cost 25% less', 'Wild wolves never attack them'],
+    apply: (m: Mods) => { m.hunt = 1.5; m.beastCost = 0.75; },
+  },
+} satisfies Record<string, CivDef>);
 export const CIV_IDS = Object.keys(CIVS);
+/** Banner colour of each people on the campaign map and in battle. */
+export const CIV_COLOR: Record<string, number> = { stonekin: 0x6f8fb0, steppe: 0xe0452f, hearth: 0x3aa648, forge: 0xe0902a, dawn: 0xe0c020, wild: 0x8a5ad0 };
 
 export interface AbilityDef { id: string; name: string; icon: string; desc: string; cost: number; radius: number }
 export const ABILITIES: Record<string, AbilityDef> = {

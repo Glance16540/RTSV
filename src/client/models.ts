@@ -98,7 +98,7 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
 }
 
 const UNIT_HEIGHT: Record<string, number> = {
-  rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
+  rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, wolfrider: 1.4, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
 };
 
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number): THREE.Group {
@@ -306,6 +306,38 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       const ring = add(g, geo('aura', () => new THREE.RingGeometry(0.5, 0.58, 24)), 0xf2c230, 0, 0.03, 0, 0x8a6a10);
       ring.rotation.x = -Math.PI / 2;
       ring.castShadow = false;
+      break;
+    }
+    case 'zealot': {
+      cyl(g, 0.1, 0.22, 0.5, 0xf0e8d0, 0, 0.3, 0, 10);
+      box(g, 0.1, 0.3, 0.12, 0xf0e8d0, -0.07, 0.15, 0);
+      box(g, 0.1, 0.3, 0.12, 0xf0e8d0, 0.07, 0.15, 0);
+      box(g, 0.31, 0.1, 0.19, color, 0, 0.5, 0);
+      box(g, 0.08, 0.26, 0.1, SKIN, -0.19, 0.46, 0);
+      ball(g, 0.12, SKIN, 0, 0.74, 0);
+      cyl(g, 0.16, 0.16, 0.02, 0xf2c230, 0, 0.9, -0.04, 12).rotation.x = Math.PI / 2;
+      const a = arm(g);
+      cyl(a, 0.02, 0.02, 0.6, WOOD, 0, -0.22, 0.2, 5).rotation.x = Math.PI / 2;
+      ball(a, 0.08, 0xf2c230, 0, -0.22, 0.5, 0x8a6a10);
+      break;
+    }
+    case 'wolfrider': {
+      const fur = 0x4a4a52;
+      box(g, 0.3, 0.3, 0.9, fur, 0, 0.5, 0);
+      box(g, 0.26, 0.26, 0.34, fur, 0, 0.66, 0.56);
+      box(g, 0.12, 0.12, 0.2, 0x2c2c32, 0, 0.6, 0.8);
+      for (const x of [-0.09, 0.09]) box(g, 0.06, 0.12, 0.05, 0x2c2c32, x, 0.84, 0.5);
+      [[-0.1, 0.32], [0.1, 0.32], [-0.1, -0.32], [0.1, -0.32]].forEach(([x, z], i) => leg(g, 0.08, 0.36, 0x3a3a42, x, z, i % 3 ? Math.PI : 0));
+      box(g, 0.08, 0.08, 0.4, fur, 0, 0.56, -0.6).rotation.x = 0.5;
+      const r = new THREE.Group();
+      r.position.y = 0.36;
+      r.scale.setScalar(0.9);
+      humanoid(r, 0x7a5a38, 0x5a4028, hair);
+      box(r, 0.31, 0.1, 0.19, color, 0, 0.5, 0);
+      const a = arm(r);
+      cyl(a, 0.02, 0.02, 0.9, WOOD, 0, -0.22, 0.3, 5).rotation.x = Math.PI / 2;
+      g.add(r);
+      g.userData.arm = a;
       break;
     }
     case 'shieldbearer': {

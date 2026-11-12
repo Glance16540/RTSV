@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "assets": "node scripts/assets.mjs",
+    "voice-script": "node --experimental-strip-types scripts/voice-script.mjs",
     "predev": "node scripts/assets.mjs",
     "prebuild": "node scripts/assets.mjs",
     "dev": "vite",

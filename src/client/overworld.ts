@@ -1,5 +1,8 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
+import { CIVS, CIV_IDS } from '../sim/data';
+import { LEADERS, Speech } from '../sim/leaders';
+import { playLine, speechHtml } from './voice';
 import {
   Army, COMPANIES, Campaign, HERO_COST, LOCALS, MAP_H, MAP_W, SITES, TRAITS, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
   canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
@@ -9,7 +12,7 @@ export interface OverworldHooks {
   save(): void;
   /** Leave for the real-time battle described by `campaign.pending`. */
   fight(): void;
-  newCampaign(rivals: number, level: number): void;
+  newCampaign(rivals: number, level: number, civ: string): void;
   exit(): void;
 }
 
@@ -22,6 +25,8 @@ export class Overworld {
   private ctx: CanvasRenderingContext2D;
   private cell: Uint8Array;
   private sel: number;
+  private speaking: Speech | null = null;
+  private speakT = 0;
 
   constructor(private c: Campaign, private hooks: OverworldHooks) {
     const canvas = $('ow-canvas') as HTMLCanvasElement;
@@ -50,12 +55,27 @@ export class Overworld {
     });
     $('ow-exit').addEventListener('click', () => hooks.exit());
     $('ow-new').addEventListener('click', () => this.askNew());
+    $('ow-speech').addEventListener('click', () => { this.speakT = 0; this.nextSpeech(); });
     $('overworld').classList.remove('hidden');
     this.changed();
   }
 
+  /** Show the next thing a leader has said, once the last has had its moment. */
+  private nextSpeech(): void {
+    if (Date.now() < this.speakT) return;
+    const s = this.c.speech.shift();
+    if (!s) return;
+    this.speaking = s;
+    this.speakT = Date.now() + 4500;
+    $('ow-speech').innerHTML = speechHtml(s);
+    playLine(s);
+    this.hooks.save();
+    if (this.c.speech.length) setTimeout(() => this.nextSpeech(), 4600);
+  }
+
   /** Something changed: save, redraw, and deal with any battle or ending that is now due. */
   private changed(): void {
+    this.nextSpeech();
     this.hooks.save();
     this.render();
     const c = this.c;
@@ -117,10 +137,11 @@ export class Overworld {
     const el = $('ow-dialog');
     el.innerHTML = `<div class="sheet small"><h1>New campaign</h1><p class="lead">This replaces the campaign in progress.</p>
       <label class="mapsize">Rivals <select id="ow-rivals"><option>1</option><option selected>2</option><option>3</option></select></label>
+      <label class="mapsize">Your people <select id="ow-civ"><option value="">Surprise me</option>${CIV_IDS.map((id) => `<option value="${id}">${CIVS[id].icon} ${CIVS[id].name}</option>`).join('')}</select></label>
       <label class="mapsize">Difficulty <select id="ow-level"><option value="0">Easy</option><option value="1" selected>Normal</option><option value="2">Hard</option></select></label>
       <div class="levels"><button id="ow-go">Begin</button><button id="ow-cancel">Cancel</button></div></div>`;
     el.classList.remove('hidden');
-    $('ow-go').addEventListener('click', () => this.hooks.newCampaign(Number(($('ow-rivals') as HTMLSelectElement).value), Number(($('ow-level') as HTMLSelectElement).value)));
+    $('ow-go').addEventListener('click', () => this.hooks.newCampaign(Number(($('ow-rivals') as HTMLSelectElement).value), Number(($('ow-level') as HTMLSelectElement).value), ($('ow-civ') as HTMLSelectElement).value));
     $('ow-cancel').addEventListener('click', () => this.changed());
   }
 
@@ -207,7 +228,7 @@ export class Overworld {
     const a = armyAt(c, this.sel);
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
-      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.name} ${c.territories.filter((x) => x.owner === f.id).length}</span>`).join('') + '</div>';
+      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${f.isAI ? ` <small>${LEADERS[f.civ].name}</small>` : ''}</span>`).join('') + '</div>';
     const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ' · ♛ Warlord' : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>

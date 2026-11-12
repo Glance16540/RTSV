@@ -1,11 +1,13 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { CIVS, CIV_COLOR, CIV_IDS } from './data';
 import type { PlayerSetup } from './game';
+import { LEADERS, LeaderEvent, Speech } from './leaders';
 
 export const MAP_W = 1000;
 export const MAP_H = 600;
-export const CAMPAIGN_VERSION = 3;
+export const CAMPAIGN_VERSION = 4;
 
 export const MAX_ARMY = 12; // companies in one army
 export const HERO_COST = 8;
@@ -45,7 +47,7 @@ export const TRAITS: Record<string, TraitDef> = {
 export const siteCost = (t: Territory, site: string): number => SITES[site].cost - (site === 'stable' && t.trait === 'horses' ? 2 : 0);
 export const companyCost = (t: Territory, type: string): number => COMPANIES[type].cost - (type === 'cavalry' && t.trait === 'horses' ? 1 : 0);
 
-export interface Faction { id: number; name: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean }
+export interface Faction { id: number; name: string; civ: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean }
 
 export interface Territory {
   id: number;
@@ -98,16 +100,24 @@ export interface Campaign {
   nextArmy: number;
   winner: number;
   log: string[];
+  /** Things rival leaders have said that the player has not yet been shown. */
+  speech: Speech[];
 }
 
 const NAMES = [
   'Ashford Vale', 'Stonereach', 'Greenmere', 'Highmoor', 'Riverbend', 'Wolfwood', 'Sunfields', 'Ironcrag',
-  'Mistfen', 'Eastmarch', 'Goldwater', 'Thornhold', 'Westshore', 'Redcliff', 'Oakhollow',
+  'Mistfen', 'Eastmarch', 'Goldwater', 'Thornhold', 'Westshore', 'Redcliff', 'Oakhollow', 'Harrowdale',
+  'Saltmarsh', 'Kingsbarrow', 'Emberfell', 'Windscar', 'Lowmere', 'Frosthollow', 'Amberfield', 'Ravenmoor',
+  'Greywater', 'Brackenridge',
 ];
-const FACTIONS: [string, number][] = [['You', 0x2f7bff], ['Red Tribe', 0xe0452f], ['Golden Horde', 0xe0b020], ['Green Clan', 0x3aa648]];
-/** Which civilisation each faction fights as in real-time battles (the locals are Hearthfolk). */
-const CIV_ORDER = ['stonekin', 'steppe', 'hearth', 'forge'];
 export const LOCALS = { name: 'Local Tribe', color: 0x9a8a6a };
+
+/** A rival leader speaks: queue one of their lines for the map screen to show (and, one day, play). */
+function say(c: Campaign, f: number, event: LeaderEvent): void {
+  const fac = c.factions[f];
+  if (!fac || !fac.isAI || !LEADERS[fac.civ]) return;
+  c.speech.push({ civ: fac.civ, event, index: Math.floor(rand(c) * LEADERS[fac.civ].lines[event].length) });
+}
 
 function rand(c: { rngState: number }): number {
   let t = (c.rngState = (c.rngState + 0x6d2b79f5) >>> 0);
@@ -127,19 +137,24 @@ export function territoryAt(ts: { x: number; y: number }[], px: number, py: numb
   return best;
 }
 
-export function newCampaign(seed: number, rivals = 1, level = 1): Campaign {
+/**
+ * A fresh campaign on a newly generated map. The size and shape of the map, where each capital
+ * lies and which peoples are in play all vary with the seed. Every faction is a different people;
+ * `playerCiv` fixes the player's, otherwise that is random too.
+ */
+export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: string): Campaign {
   const c: Campaign = {
     v: CAMPAIGN_VERSION, seed, rngState: seed >>> 0, level, turn: 1, phase: 'player', cursor: 0, spent: false,
-    factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [],
+    factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [],
   };
-  const cols = 5, rows = 3;
+  const pick = <T>(list: T[]): T => list.splice(Math.floor(rand(c) * list.length), 1)[0];
+  const [cols, rows] = pick([[4, 3], [5, 3], [5, 3], [6, 3], [5, 4], [6, 4]]);
   const names = NAMES.slice();
   for (let j = 0; j < rows; j++)
     for (let i = 0; i < cols; i++) {
-      const name = names.splice(Math.floor(rand(c) * names.length), 1)[0];
       c.territories.push({
-        id: j * cols + i, name, owner: -1, capital: -1, adj: [],
-        x: ((i + 0.5) * MAP_W) / cols + (rand(c) - 0.5) * 90, y: ((j + 0.5) * MAP_H) / rows + (rand(c) - 0.5) * 70,
+        id: j * cols + i, name: pick(names), owner: -1, capital: -1, adj: [],
+        x: ((i + 0.5) * MAP_W) / cols + (rand(c) - 0.5) * (MAP_W / cols) * 0.5, y: ((j + 0.5) * MAP_H) / rows + (rand(c) - 0.5) * (MAP_H / rows) * 0.4,
         buildings: rand(c) < 0.35 ? ['farm'] : [], trait: rand(c) < 0.45 ? Object.keys(TRAITS)[Math.floor(rand(c) * 4)] : '', militia: 2 + Math.floor(rand(c) * 3), seed: 1 + Math.floor(rand(c) * 1e6),
       });
     }
@@ -154,18 +169,45 @@ export function newCampaign(seed: number, rivals = 1, level = 1): Campaign {
       if (x + step < MAP_W) link(t, territoryAt(c.territories, x + step, y));
       if (y + step < MAP_H) link(t, territoryAt(c.territories, x, y + step));
     }
-  // Capitals: you in the west, the first rival in the east, others north and south.
-  const homes = [cols, 2 * cols - 1, 2, 2 * cols + 2];
-  for (let f = 0; f <= Math.min(3, Math.max(1, rivals)); f++) {
-    c.factions.push({ id: f, name: FACTIONS[f][0], color: FACTIONS[f][1], isAI: f > 0, supplies: 8, alive: true, heroAlive: true });
+
+  // Peoples: the player's choice (or luck), then a different one for every rival.
+  const pool = CIV_IDS.slice();
+  const mine = playerCiv && CIVS[playerCiv] ? pool.splice(pool.indexOf(playerCiv), 1)[0] : pick(pool);
+  const civs = [mine];
+  const count = Math.min(3, Math.max(1, rivals));
+  for (let f = 1; f <= count; f++) civs.push(pick(pool));
+
+  // Capitals: the first anywhere on the rim of the map, each further one as far from the others as it can be.
+  const steps = (from: number): number[] => {
+    const d = c.territories.map(() => Infinity);
+    d[from] = 0;
+    const q = [from];
+    while (q.length) { const cur = q.shift()!; for (const n of c.territories[cur].adj) if (d[n] === Infinity) { d[n] = d[cur] + 1; q.push(n); } }
+    return d;
+  };
+  const rim = c.territories.filter((t) => t.id % cols === 0 || t.id % cols === cols - 1 || t.id < cols || t.id >= cols * (rows - 1));
+  const homes = [rim[Math.floor(rand(c) * rim.length)].id];
+  while (homes.length <= count) {
+    const dist = homes.map(steps);
+    let best = -1, bestD = -1;
+    for (const t of c.territories) {
+      if (homes.includes(t.id)) continue;
+      const d = Math.min(...dist.map((row) => row[t.id])) + rand(c) * 0.5; // the fraction breaks ties differently each time
+      if (d > bestD) { bestD = d; best = t.id; }
+    }
+    homes.push(best);
+  }
+  civs.forEach((civ, f) => {
+    c.factions.push({ id: f, name: f === 0 ? 'You' : CIVS[civ].name, civ, color: CIV_COLOR[civ], isAI: f > 0, supplies: 8, alive: true, heroAlive: true });
     const t = c.territories[homes[f]];
     t.owner = f;
     t.capital = f;
     t.buildings = ['barracks', 'farm'];
     t.trait = '';
     c.armies.push({ id: c.nextArmy++, owner: f, at: t.id, units: { infantry: 3 }, hero: true, vet: 0, moved: false });
-  }
-  c.log.push('Turn 1. Your people look beyond their borders.');
+  });
+  c.log.push(`Turn 1. You lead the ${CIVS[mine].name}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
+  for (let f = 1; f <= count; f++) say(c, f, 'intro');
   return c;
 }
 
@@ -314,6 +356,8 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
   };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
+  else if (human(t.owner)) say(c, a.owner, 'attack');
+  else say(c, t.owner, 'defend');
   return 'battle';
 }
 
@@ -334,6 +378,8 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     attackerWon = a > d;
   }
   c.pending = null;
+  // The rival leader has something to say about a battle against the player.
+  if (p.attacker === 0 || p.defender === 0) say(c, p.attacker === 0 ? p.defender : p.attacker, attackerWon === (p.attacker === 0) ? 'lose' : 'win');
   const t = c.territories[p.to];
   const army = c.armies.find((x) => x.id === p.armyId);
   const defArmy = armyAt(c, p.to);
@@ -369,6 +415,7 @@ function checkElimination(c: Campaign): void {
   for (const f of c.factions) {
     if (f.alive && !c.territories.some((t) => t.owner === f.id)) {
       f.alive = false;
+      say(c, f.id, 'eliminated');
       c.armies = c.armies.filter((a) => a.owner !== f.id);
       c.log.push(`${f.name} ${f.isAI ? 'has' : 'have'} been wiped from the map.`);
     }
@@ -528,6 +575,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       age: fort ? 1 : 0, buildings: fort ? ['tower', 'tower'] : [], atk: army ? army.vet : 0,
     };
   };
+  // The locals of a territory are always the same people, one that is not the player's.
+  const localCiv = CIV_IDS.filter((id) => id !== c.factions[0].civ)[t.seed % (CIV_IDS.length - 1)];
   const myReserve = reserves(c, 0, p.to, p.armyId)[0];
   const foeReserve = foe < 0 ? undefined : reserves(c, foe, p.to, p.armyId)[0];
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
@@ -535,14 +584,14 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: 72, level: foe < 0 ? 0 : c.level, humanAttacks,
     title: humanAttacks ? `The assault on ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: CIV_ORDER[0], bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: CIV_ORDER[foe < 0 ? 2 : foe],
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ,
         bonus: humanAttacks ? side(defenders, true, p.dStr) : side(attackers, false, p.aStr),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
-      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: CIV_ORDER[foe], bonus: side(foeReserve, false, armyStrength(foeReserve)) }] : []),
-      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: CIV_ORDER[0], bonus: side(myReserve, false, armyStrength(myReserve)) }] : []),
+      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, bonus: side(foeReserve, false, armyStrength(foeReserve)) }] : []),
+      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, bonus: side(myReserve, false, armyStrength(myReserve)) }] : []),
     ],
   };
 }
