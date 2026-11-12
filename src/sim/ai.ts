@@ -63,10 +63,11 @@ export class AIController {
     if (p.defeated) return;
     if (g.field) { this.fieldBattle(); return; }
 
-    const villagers: Unit[] = [], army: Unit[] = [];
+    const villagers: Unit[] = [], army: Unit[] = [], ships: Unit[] = [];
     for (const u of g.units) {
       if (u.owner !== pid) continue;
       if (u.type === 'villager') { if (u.growT <= 0) villagers.push(u); }
+      else if (u.def.naval) ships.push(u);
       else army.push(u);
     }
     const mine = g.buildings.filter((b) => b.owner === pid);
@@ -132,6 +133,7 @@ export class AIController {
     if (!saving && !underAttack) this.buildWalls(home, villagers, stalled.length > 0);
 
     this.assignWorkers(villagers, mine, home);
+    if (g.sea && !saving) this.navy(mine, ships, villagers, home);
 
     // Market: turn whatever is piling up into whatever has run out.
     const market = mine.find((b) => b.type === 'market' && b.complete);
@@ -327,6 +329,54 @@ export class AIController {
     g.cmdPlaceLine(this.pid, 'palisade', stretch.filter((c) => c !== gate), [builder.id]);
     // Where a gate cannot stand (a tree, the map edge) the gap simply stays open.
     if (gate && g.canPlace('gate', gate.cx, gate.cy)) g.cmdPlace(this.pid, 'gate', gate.cx, gate.cy, []);
+  }
+
+  /** On a lake map: a dock near fish, a few fishing boats, and a small fleet to guard them. */
+  private dockSpot: { cx: number; cy: number } | null | undefined;
+  private navy(mine: Building[], ships: Unit[], villagers: Unit[], home: Building): void {
+    const g = this.game, pid = this.pid, p = g.players[pid];
+    const dock = mine.find((b) => b.type === 'dock');
+    if (!dock) {
+      if (g.time < 150 || p.res.wood < 200) return;
+      if (this.dockSpot === undefined) {
+        // The nearest shore that has fish within a boat's reach of it.
+        this.dockSpot = null;
+        let bd = 46;
+        for (let cy = 2; cy < g.size - 5; cy++)
+          for (let cx = 2; cx < g.size - 5; cx++) {
+            const d = Math.hypot(cx + 1.5 - home.x, cy + 1.5 - home.y);
+            if (d >= bd || d < 8 || !g.canPlace('dock', cx, cy)) continue;
+            const fish = g.findResourceNear(cx + 1.5, cy + 1.5, 'food', pid, 22, 0, true);
+            if (!fish) continue;
+            const from = g.seaPf.nearestFree(cx + 1.5, cy + 1.5);
+            if (Math.hypot(from.x - cx - 1.5, from.y - cy - 1.5) > 3 || g.seaPf.find(from.x, from.y, fish.x, fish.y, fish.x, fish.y, 1).partial) continue;
+            bd = d;
+            this.dockSpot = { cx, cy };
+          }
+      }
+      const spot = this.dockSpot;
+      if (!spot) return;
+      if (!g.canPlace('dock', spot.cx, spot.cy)) { this.dockSpot = undefined; return; }
+      const v = this.pickBuilder(villagers, spot.cx, spot.cy);
+      if (v) g.cmdPlace(pid, 'dock', spot.cx, spot.cy, [v.id]);
+      return;
+    }
+    if (!dock.complete) return;
+    const queued = (type: string) => dock.queue.filter((q) => q.kind === 'unit' && q.id === type).length;
+    const boats = ships.filter((u) => u.def.fisher);
+    const fish = g.findResourceNear(dock.x, dock.y, 'food', pid, 30, 0, true);
+    if (fish && boats.length + queued('fishboat') < [2, 3, 4][this.level] && dock.queue.length < 2) g.cmdTrain(pid, dock.id, 'fishboat');
+    for (const b of boats) {
+      if (b.order) continue;
+      const near = g.findResourceNear(b.x, b.y, 'food', pid, 30, 0, true);
+      if (near) g.cmdTarget(pid, [b.id], near.id);
+    }
+    // Warships once there is something to protect, and the ships to match the age.
+    if (this.level >= 1 && p.age >= 1 && boats.length) {
+      if (p.age >= 4 && !p.techs.has('up_frigate') && !p.pending.has('up_frigate') && dock.queue.length === 0) g.cmdResearch(pid, dock.id, 'up_frigate');
+      const fleet = ships.length - boats.length + queued('galley');
+      if (fleet < [0, 2, 3][this.level] && dock.queue.length < 2 && p.res.gold >= 120) g.cmdTrain(pid, dock.id, 'galley');
+    }
   }
 
   private route(from: Unit, to: Entity): { partial: boolean } {

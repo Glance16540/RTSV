@@ -113,6 +113,10 @@ export interface UnitDef {
   weaken?: number;
   /** Only this civilisation can train it. */
   civ?: string;
+  /** A ship: moves on water only. */
+  naval?: boolean;
+  /** Can work fish shoals, bringing the catch to a Dock. */
+  fisher?: boolean;
   /** Fraction of damage from arrows, stones and shot that is shrugged off. */
   rangedResist?: number;
   /** Attack multiplier on the first blow after a run of at least three tiles. */
@@ -296,6 +300,24 @@ export const UNITS: Record<string, UnitDef> = {
     cost: { food: 50, gold: 60 }, time: 20, age: 4, hp: 70, atk: 24, armor: 1, range: 7.5, speed: 2.0,
     cooldown: 3.2, sight: 10, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'shot',
   }),
+  fishboat: U({
+    id: 'fishboat', name: 'Fishing Boat', icon: '🛶',
+    desc: 'Works fish shoals and brings the catch to a Dock. Carries twice what a villager can.',
+    cost: { wood: 60 }, time: 18, age: 0, hp: 60, atk: 0, armor: 0, range: 0, speed: 2.2,
+    cooldown: 1, sight: 7, pop: 1, cls: 'siege', radius: 0.42, naval: true, fisher: true,
+  }),
+  galley: U({
+    id: 'galley', name: 'War Galley', icon: '⛵',
+    desc: 'Warship. Sinks boats, and rakes anything within bowshot of the water.',
+    cost: { wood: 90, gold: 40 }, time: 26, age: 1, hp: 140, atk: 9, armor: 1, range: 6, speed: 2.6,
+    cooldown: 2, sight: 9, pop: 2, cls: 'siege', radius: 0.5, naval: true, projectile: 'arrow', bonus: { siege: 1.6 },
+  }),
+  frigate: U({
+    id: 'frigate', name: 'Frigate', icon: '🚢',
+    desc: 'Gunpowder warship. Its broadside reaches far inland and breaks buildings.',
+    cost: { wood: 160, gold: 110 }, time: 34, age: 4, hp: 260, atk: 24, armor: 2, range: 8, speed: 2.4,
+    cooldown: 3, sight: 11, pop: 3, cls: 'siege', radius: 0.55, naval: true, projectile: 'shot', splash: 0.8, bonus: { building: 2, siege: 1.4 },
+  }),
   bombard: U({
     id: 'bombard', name: 'Bombard', icon: '💣',
     desc: 'Gunpowder siege gun. Outranges everything and levels buildings. Helpless up close.',
@@ -400,6 +422,12 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 60 }, time: 18, age: 0, hp: 500, size: 2, pop: 0, sight: 5,
     trains: [], techs: ['stonetools', 'bronzetools', 'wheelbarrow'], dropoff: true,
   }),
+  dock: B({
+    id: 'dock', name: 'Dock', icon: '⚓',
+    desc: 'Must stand at the water\'s edge. Builds boats and takes in their catch.',
+    cost: { wood: 120 }, time: 28, age: 0, hp: 700, size: 3, pop: 0, sight: 7,
+    trains: ['fishboat', 'galley'], techs: ['up_frigate'], dropoff: true,
+  }),
   farm: B({
     id: 'farm', name: 'Farm', icon: '🌾',
     desc: 'Endless but slow source of food for one villager.',
@@ -478,7 +506,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
 /** Order in which buildings appear in the villager build menu. */
 /** Villager build menu, in two pages: settlement and military. */
 export const BUILD_PAGES = [
-  ['house', 'storehouse', 'farm', 'market', 'towncenter', 'temple', 'blacksmith', 'palisade', 'gate', 'stonewall', 'wonder'],
+  ['house', 'storehouse', 'farm', 'dock', 'market', 'towncenter', 'temple', 'blacksmith', 'palisade', 'gate', 'stonewall', 'wonder'],
   ['barracks', 'range', 'stable', 'workshop', 'tower'],
 ];
 
@@ -557,6 +585,10 @@ export const TECHS: Record<string, TechDef> = {
   ballistics: T({
     id: 'ballistics', name: 'Fortified Arrows', icon: '🏰', desc: 'Towers and Town Centers +4 attack.',
     cost: { wood: 150, stone: 100 }, time: 35, age: 2, apply: (m) => { m.towerAtk += 4; },
+  }),
+  up_frigate: T({
+    id: 'up_frigate', name: 'Ships of the Line', icon: '🚢', desc: 'All War Galleys become Frigates, and Galleys are built as Frigates from now on.',
+    cost: { wood: 300, gold: 250 }, time: 50, age: 4, upgrade: ['galley', 'frigate'], apply: () => {},
   }),
   up_bowman: T({
     id: 'up_bowman', name: 'Bows for Slingers', icon: '🏹', desc: 'All Slingers become Bowmen, and Slingers are trained as Bowmen from now on.',
@@ -665,9 +697,9 @@ export const MORALE_RADIUS = 12; // tiles around a town center
 export const MORALE_PER_HOUSE = 0.05; // damage reduction per nearby house
 export const MORALE_MAX_HOUSES = 5;
 
-export const RESOURCE_AMOUNT: Record<string, number> = { tree: 120, berries: 220, gold: 1000, stone: 800, carcass: 130 };
-export const RESOURCE_KIND: Record<string, ResType> = { tree: 'wood', berries: 'food', gold: 'gold', stone: 'stone', carcass: 'food' };
-export const GATHER_RATE: Record<string, number> = { tree: 0.75, berries: 0.8, gold: 0.7, stone: 0.65, farm: 0.62, carcass: 1.0 };
+export const RESOURCE_AMOUNT: Record<string, number> = { tree: 120, berries: 220, gold: 1000, stone: 800, carcass: 130, fish: 450 };
+export const RESOURCE_KIND: Record<string, ResType> = { tree: 'wood', berries: 'food', gold: 'gold', stone: 'stone', carcass: 'food', fish: 'food' };
+export const GATHER_RATE: Record<string, number> = { tree: 0.75, berries: 0.8, gold: 0.7, stone: 0.65, farm: 0.62, carcass: 1.0, fish: 0.95 };
 
 export const RES_ICON: Record<ResType, string> = { food: '🍖', wood: '🪵', gold: '🪙', stone: '🪨' };
 

@@ -84,6 +84,13 @@ block everyone; a Gate lets only your own units through, so enemies have to brea
 **Garrison.** Alt+right-click a Town Center or Watch Tower to send foot units inside; each one
 speeds up its arrow fire. On Normal and Hard the AI walls its base with a palisade and gates.
 
+**Water and ships.** Choose the *Great lake* map and the middle of the world is water. A Dock,
+built at the water's edge, launches Fishing Boats that work fish shoals and bring the catch home,
+and War Galleys that sink boats and rake anything within bowshot of the shore. In the Gunpowder
+Age galleys become Frigates whose broadsides break buildings. Ships never leave the water; foot
+soldiers with blades cannot reach them, but archers and towers can. The AI fishes and builds a
+small fleet too.
+
 **Wonder.** In the Middle Ages you can build a Wonder. If it stands for five minutes you win, and
 every rival is told the moment it is finished. Richer AIs build them too.
 
@@ -96,7 +103,7 @@ gathered, raised, trained, killed and lost.
 **Market.** From the Bronze Age, sell surplus food, wood or stone for gold, or buy what you are
 short of. The villager build menu has two pages, settlement and military.
 
-**Rivals and map size.** One to three AI rivals and a Small, Medium or Large map, chosen on the
+**Rivals and map size.** One to three AI rivals and a Small, Medium or Large map, inland or around a great lake, chosen on the
 start screen. With several rivals you choose the sides: a free-for-all, one rival fighting as
 your ally, or all of them allied against you. Allies share sight, pass through each other's
 gates and win together. An allied AI comes to your defence, joins your attacks, answers a call

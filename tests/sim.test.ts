@@ -1473,3 +1473,104 @@ describe('an active ally', () => {
     if (c.turn > turn && c.ally === 1) expect(c.log.some((l) => l.includes('share 3 supplies'))).toBe(true);
   });
 });
+
+describe('water and ships', () => {
+  const lake = (seed = 5) => new Game(seed, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }], 96, false, true);
+  /** A spot for a dock on the shore of the great lake (not of some pond near a base). */
+  const shore = (g: Game) => {
+    const mid = g.size / 2;
+    const tc = g.resources.filter((r) => r.type === 'fish').sort((a, b) => Math.hypot(a.x - mid, a.y - mid) - Math.hypot(b.x - mid, b.y - mid))[0];
+    let best: [number, number] | null = null, bd = Infinity;
+    for (let y = 2; y < g.size - 5; y++) for (let x = 2; x < g.size - 5; x++) {
+      const d = Math.hypot(x - tc.x, y - tc.y);
+      if (d < bd && g.canPlace('dock', x, y)) { bd = d; best = [x, y]; }
+    }
+    return best!;
+  };
+
+  it('a lake map has a sea with fish in it, and the land is otherwise unchanged', () => {
+    const g = lake(), plain = new Game(5, g.setups);
+    const water = (x: Game) => x.terrain.reduce((n, t) => n + (t === 1 ? 1 : 0), 0);
+    expect(water(g)).toBeGreaterThan(water(plain) + 500);
+    const fish = g.resources.filter((r) => r.type === 'fish');
+    expect(fish.length).toBeGreaterThanOrEqual(8);
+    for (const f of fish) expect(g.terrain[f.cy * g.size + f.cx]).toBe(1);
+    expect(g.canPlace('dock', Math.floor(g.buildings[0].x) + 5, Math.floor(g.buildings[0].y) + 5)).toBe(false); // no water there
+  });
+
+  it('fishing boats bring in food through a dock, and never leave the water', () => {
+    const g = lake();
+    const [cx, cy] = shore(g);
+    const dock = g.spawnBuilding('dock', 0, cx, cy, true);
+    g.players[0].res.wood = 500;
+    expect(g.cmdTrain(0, dock.id, 'fishboat')).toBe(true);
+    run(g, 25);
+    const boat = g.units.find((u) => u.type === 'fishboat')!;
+    expect(boat).toBeTruthy();
+    expect(g.terrain[Math.floor(boat.y) * g.size + Math.floor(boat.x)]).toBe(1);
+    const fish = g.resources.filter((r) => r.type === 'fish').sort((a, b) => Math.hypot(a.x - boat.x, a.y - boat.y) - Math.hypot(b.x - boat.x, b.y - boat.y))[0];
+    // A villager cannot fish; a boat can.
+    const v = g.units.find((u) => u.owner === 0 && u.type === 'villager')!;
+    g.cmdTarget(0, [v.id], fish.id);
+    expect(v.order?.t).toBe('move');
+    g.cmdTarget(0, [boat.id], fish.id);
+    expect(boat.order?.t).toBe('gather');
+    const food = g.players[0].res.food;
+    let dry = false;
+    run(g, 150, () => { if (g.terrain[Math.floor(boat.y) * g.size + Math.floor(boat.x)] !== 1) dry = true; });
+    expect(dry).toBe(false);
+    expect(g.players[0].res.food).toBeGreaterThan(food + 15);
+    // Told to go ashore, it stops at the water's edge.
+    g.cmdMove(0, [boat.id], g.buildings[0].x, g.buildings[0].y);
+    run(g, 30);
+    expect(g.terrain[Math.floor(boat.y) * g.size + Math.floor(boat.x)]).toBe(1);
+  });
+
+  it('a galley sinks boats and shells the shore; swordsmen ignore ships, a save keeps them afloat', () => {
+    const g = lake();
+    const [cx, cy] = shore(g);
+    const dock = g.spawnBuilding('dock', 1, cx, cy, true);
+    const wet = g.seaPf.nearestFree(dock.x, dock.y);
+    const galley = g.spawnUnit('galley', 0, wet.x, wet.y);
+    const hp = dock.hp;
+    g.cmdTarget(0, [galley.id], dock.id);
+    run(g, 20);
+    expect(dock.hp).toBeLessThan(hp);
+    // A melee unit beside the water does not chase the ship.
+    const land = g.landPf.nearestFree(galley.x, galley.y);
+    const club = g.spawnUnit('clubman', 1, land.x, land.y);
+    run(g, 5);
+    expect((club.order as { id?: number } | null)?.id).not.toBe(galley.id);
+    // A slinger does shoot it.
+    const ghp = galley.hp;
+    const sl = g.spawnUnit('slinger', 1, land.x, land.y);
+    g.cmdTarget(1, [sl.id], galley.id);
+    run(g, 6);
+    expect(galley.hp).toBeLessThan(ghp);
+    const r = Game.restore(g.serialize());
+    expect(r.sea).toBe(true);
+    const g2 = r.units.find((u) => u.type === 'galley')!;
+    run(r, 5);
+    expect(r.terrain[Math.floor(g2.y) * r.size + Math.floor(g2.x)]).toBe(1);
+    // Frigates replace galleys once researched.
+    g.players[0].upgrades.galley = 'frigate';
+    expect(g.trainedAs(0, 'galley')).toBe('frigate');
+  });
+});
+
+describe('the AI at sea', () => {
+  it('on a lake map the AI builds a dock, fishes and launches warships; inland games are untouched', () => {
+    const g = new Game(11, [{ name: 'A', color: 1, isAI: true }, { name: 'B', color: 2, isAI: true }], 96, false, true);
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    let boats = 0, galleys = 0;
+    for (let t = 0; t < 20 * 60 * 14 && g.winner < 0; t++) {
+      g.step();
+      if (t % 20 === 0) for (const a of ais) a.update();
+      if (t % 200 === 0) { boats = Math.max(boats, g.units.filter((u) => u.type === 'fishboat').length); galleys = Math.max(galleys, g.units.filter((u) => u.def.naval && !u.def.fisher).length); }
+    }
+    expect(g.buildings.some((b) => b.type === 'dock') || boats > 0).toBe(true);
+    expect(boats).toBeGreaterThanOrEqual(2);
+    expect(galleys).toBeGreaterThanOrEqual(1);
+    for (const u of g.units) if (u.def.naval) expect(g.terrain[Math.floor(u.y) * g.size + Math.floor(u.x)]).toBe(1);
+  });
+});

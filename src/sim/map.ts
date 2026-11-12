@@ -4,7 +4,7 @@ export const T_GRASS = 0;
 export const T_WATER = 1;
 export const T_DIRT = 2;
 
-export type NodeType = 'tree' | 'berries' | 'gold' | 'stone' | 'carcass';
+export type NodeType = 'tree' | 'berries' | 'gold' | 'stone' | 'carcass' | 'fish';
 
 export interface MapSpec {
   size: number;
@@ -40,7 +40,8 @@ function valueNoise(rng: () => number, size: number, scale: number): (x: number,
   };
 }
 
-export function generateMap(seed: number, size = 96, players = 2): MapSpec {
+/** @param sea Put a great lake in the middle of the map, for fishing and warships. */
+export function generateMap(seed: number, size = 96, players = 2, sea = false): MapSpec {
   const rng = mulberry32(seed);
   const N = size;
   const terrain = new Uint8Array(N * N);
@@ -74,6 +75,7 @@ export function generateMap(seed: number, size = 96, players = 2): MapSpec {
       const i = y * N + x;
       if (d < 5) terrain[i] = T_DIRT;
       else if (d > 15 && sym(waterN, x, y) > 0.66) terrain[i] = T_WATER;
+      else if (sea && d > 15 && Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2) < N * 0.2 * (0.75 + 0.5 * sym(waterN, x, y))) terrain[i] = T_WATER;
     }
   }
 
@@ -168,6 +170,17 @@ export function generateMap(seed: number, size = 96, players = 2): MapSpec {
       const n = nodes[k];
       if (n.type === 'tree' && carve[n.cy * N + n.cx]) { taken[n.cy * N + n.cx] = 0; nodes.splice(k, 1); }
     }
+  }
+
+  // Fish shoals in open water. They use their own dice so that the land is the same with or without them.
+  const fishRng = mulberry32(seed ^ 0x51f15e);
+  const wet = (x: number, y: number) => x > 0 && y > 0 && x < N - 1 && y < N - 1 && terrain[y * N + x] === T_WATER && !taken[y * N + x];
+  for (let k = Math.round((sea ? 9 : 3) * ((N * N) / (96 * 96))), tries = 0; k > 0 && tries < 600; tries++) {
+    const x = 2 + Math.floor(fishRng() * (N - 4)), y = 2 + Math.floor(fishRng() * (N - 4));
+    const im = images(x, y);
+    if (!im.every(([ix, iy]) => wet(ix, iy))) continue;
+    for (const [ix, iy] of im) if (!taken[iy * N + ix]) { taken[iy * N + ix] = 1; nodes.push({ type: 'fish', cx: ix, cy: iy }); }
+    k--;
   }
 
   // Wildlife: deer near each base and out on the map, wolf packs in the wilds.

@@ -238,11 +238,13 @@ loadAssets().then(() => {
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
-  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, team: team(i), civ: civFor(i) })), size);
+  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake');
 
   // The map is generated before the menu appears, so a different size means a fresh page.
   const sizeSel = el('map-size') as HTMLSelectElement;
   sizeSel.value = String(game.size);
+  const landSel = el('map-land') as HTMLSelectElement;
+  landSel.value = game.sea ? 'lake' : 'inland';
   const aiSel = el('rivals') as HTMLSelectElement;
   aiSel.value = String(game.players.filter((p) => p.isAI).length);
   const teamSel = el('teams') as HTMLSelectElement;
@@ -254,10 +256,11 @@ loadAssets().then(() => {
   const civ = CIVS[game.players[0].civ];
   el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b>.` +
     `<br><small>Rivals: ${game.players.filter((p) => p.isAI).map((p) => `${p.name} (${CIVS[p.civ].name})`).join(', ')}</small>`;
-  const regenerate = () => go(`?size=${sizeSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
+  const regenerate = () => go(`?size=${sizeSel.value}&land=${landSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
   civSel.addEventListener('change', regenerate);
   teamSel.addEventListener('change', regenerate);
   sizeSel.addEventListener('change', regenerate);
+  landSel.addEventListener('change', regenerate);
   aiSel.addEventListener('change', regenerate);
   if (mode === 'skirmish' && readCampaign()) el('conquest-btn').textContent = 'Continue the campaign';
   el('conquest-btn').addEventListener('click', () => go(`?campaign=1&ai=${aiSel.value}&civ=${(el('civ') as HTMLSelectElement).value}`));

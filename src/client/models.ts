@@ -453,6 +453,30 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       box(g, 0.14, 0.16, 0.1, 0x6a4a2a, 0.12, 0.42, -0.14);
       break;
     }
+    case 'fishboat':
+    case 'galley':
+    case 'frigate': {
+      const big = type === 'frigate', war = type !== 'fishboat';
+      const L = big ? 1.5 : war ? 1.25 : 0.85, W = big ? 0.5 : war ? 0.4 : 0.34;
+      // Hull: a long box with a pointed bow and a raised stern.
+      box(g, W, 0.16, L * 0.7, WOOD, 0, 0.1, -L * 0.06);
+      const bow = add(g, geo(`bow${W}`, () => { const c = new THREE.ConeGeometry(W * 0.71, L * 0.34, 4).toNonIndexed(); c.computeVertexNormals(); return c; }), WOOD, 0, 0.1, L * 0.45);
+      bow.rotation.set(Math.PI / 2, Math.PI / 4, 0);
+      bow.scale.y = 1; bow.scale.z = 0.32;
+      box(g, W * 0.9, 0.12, L * 0.2, DARKWOOD, 0, 0.22, -L * 0.36);
+      box(g, W + 0.04, 0.05, L * 0.7, color, 0, 0.2, -L * 0.06);
+      // Mast and sail.
+      const masts = big ? [-0.3, 0.3] : [0];
+      for (const z of masts) {
+        cyl(g, 0.03, 0.04, war ? 1.0 : 0.7, DARKWOOD, 0, (war ? 0.5 : 0.35) + 0.15, z, 6);
+        box(g, war ? 0.62 : 0.4, war ? 0.5 : 0.34, 0.03, war ? 0xe8e0cc : 0xd8c8a0, 0, war ? 0.8 : 0.6, z + 0.04);
+        if (war) box(g, 0.62, 0.1, 0.035, color, 0, 0.8, z + 0.045);
+      }
+      if (!war) { box(g, 0.2, 0.08, 0.2, 0x8a9aa8, 0.02, 0.2, -0.2); box(g, 0.03, 0.03, 0.5, DARKWOOD, 0.2, 0.25, 0.1).rotation.x = -0.5; }
+      if (war && !big) for (const z of [-0.3, 0, 0.3]) for (const x of [-1, 1]) box(g, 0.34, 0.02, 0.04, DARKWOOD, x * (W / 2 + 0.14), 0.12, z).rotation.z = x * 0.35;
+      if (big) for (const z of [-0.35, 0, 0.35]) for (const x of [-1, 1]) cyl(g, 0.04, 0.04, 0.16, IRON, x * (W / 2 + 0.02), 0.2, z, 6).rotation.z = Math.PI / 2;
+      break;
+    }
     case 'ram': {
       box(g, 0.7, 0.1, 1.3, DARKWOOD, 0, 0.3, 0);
       for (const [x, z] of [[-0.4, 0.45], [0.4, 0.45], [-0.4, -0.45], [0.4, -0.45]]) { const w = cyl(g, 0.2, 0.2, 0.08, DARKWOOD, x, 0.2, z, 10); w.rotation.z = Math.PI / 2; }
@@ -589,6 +613,19 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
       box(g, 0.5, 0.6, 0.06, DARKWOOD, 0, 0.3, 0.81);
       box(g, 0.3, 0.3, 0.3, WOOD, 0.75, 0.15, 0.85);
       box(g, 0.24, 0.24, 0.24, WOOD, 0.5, 0.12, 0.92);
+      break;
+    }
+    case 'dock': {
+      // A boathouse on a plank deck, with a jetty running out and mooring posts.
+      box(g, 2.8, 0.1, 2.8, WOOD, 0, 0.08, 0);
+      box(g, 1.5, 0.8, 1.3, wall, -0.5, 0.5, -0.55);
+      roof(g, 0.95, 0.5, rf, -0.5, 0.9, -0.55);
+      box(g, 1.52, 0.1, 1.32, color, -0.5, 0.82, -0.55);
+      box(g, 0.5, 0.06, 1.3, DARKWOOD, 0.9, 0.14, 0.7);
+      for (const [x, z] of [[-1.3, 1.3], [1.3, 1.3], [1.3, -1.3], [-1.3, -1.3], [0.9, 1.3]]) cyl(g, 0.07, 0.07, 0.5, DARKWOOD, x, 0.25, z, 6);
+      box(g, 0.4, 0.3, 0.4, 0x8a6a3a, 0.7, 0.28, -0.8);
+      cyl(g, 0.16, 0.16, 0.3, 0x6a4a2a, 0.2, 0.28, 0.6, 8);
+      flag(g, color, -1.1, 0.9, -1.1);
       break;
     }
     case 'farm': {
@@ -749,6 +786,15 @@ export function makeResource(type: string, seed: number): THREE.Group {
     const body = box(g, 0.3, 0.2, 0.6, 0x9a6038, 0, 0.1, 0);
     body.rotation.y = r(1) * 6;
     box(g, 0.2, 0.06, 0.3, 0xb03a30, 0.05, 0.22, 0).rotation.y = r(1) * 6;
+  } else if (type === 'fish') {
+    // A shoal: a ring of ripples and a few silver backs breaking the surface.
+    const ring = add(g, geo('ripple', () => new THREE.TorusGeometry(0.36, 0.025, 4, 16)), 0xbfe0ee, 0, 0.03, 0);
+    ring.rotation.x = Math.PI / 2; ring.castShadow = false;
+    for (let i = 0; i < 4; i++) {
+      const a = r(i) * 6.28, d = 0.08 + r(i + 5) * 0.2;
+      const f = ball(g, 0.08, 0xc8d4dc, Math.cos(a) * d, 0.03, Math.sin(a) * d);
+      f.scale.set(0.6, 0.5, 1.6); f.rotation.y = a; f.castShadow = false;
+    }
   } else if (type === 'berries') {
     const b = ball(g, 0.36, 0x3e7a34, 0, 0.26, 0);
     b.scale.y = 0.75;

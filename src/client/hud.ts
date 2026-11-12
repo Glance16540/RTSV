@@ -29,11 +29,11 @@ interface Btn {
 const $ = (id: string) => document.getElementById(id)!;
 const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const GENDER = { m: '♂', f: '♀' };
-const NODE_NAME: Record<string, string> = { tree: 'Tree', berries: 'Berry Bush', gold: 'Gold Mine', stone: 'Stone Quarry', carcass: 'Deer Carcass' };
+const NODE_NAME: Record<string, string> = { tree: 'Tree', berries: 'Berry Bush', gold: 'Gold Mine', stone: 'Stone Quarry', carcass: 'Deer Carcass', fish: 'Fish Shoal' };
 const RI = (r: ResType) => ico(r, RES_ICON[r]);
 const MAN = () => ico('villager_m', '👨‍🌾');
 const WOMAN = () => ico('villager_f', '👩‍🌾');
-const NODE_ICON: Record<string, string> = { tree: '🌲', berries: '🫐', gold: '🪙', stone: '🪨', carcass: '🍖' };
+const NODE_ICON: Record<string, string> = { tree: '🌲', berries: '🫐', gold: '🪙', stone: '🪨', carcass: '🍖', fish: '🐟' };
 
 export class Hud {
   private btns: Btn[] = [];
@@ -527,7 +527,7 @@ export class Hud {
       const t = game.terrain[i];
       set(i, t === T_WATER ? 0x2f6a9c : t === T_DIRT ? 0x8a8048 : 0x5c8a40);
     }
-    const NODE: Record<string, number> = { tree: 0x2c5a2a, berries: 0xd0507a, gold: 0xf2c230, stone: 0xb0b0b0, carcass: 0xd0507a };
+    const NODE: Record<string, number> = { tree: 0x2c5a2a, berries: 0xd0507a, gold: 0xf2c230, stone: 0xb0b0b0, carcass: 0xd0507a, fish: 0xd8eef8 };
     for (const n of game.resources)
       for (let y = 0; y < n.size; y++) for (let x = 0; x < n.size; x++) set((n.cy + y) * N + n.cx + x, NODE[n.type]);
     for (const b of game.buildings) {

@@ -219,7 +219,10 @@ export class Game {
   terrain: Uint8Array;
   blocked: Uint8Array; // impassable cells
   occupied: Uint8Array; // cells that cannot be built on
+  /** The pathfinder for whoever is being moved right now: `landPf` except while a ship is updated. */
   pf: Pathfinder;
+  landPf!: Pathfinder;
+  seaPf!: Pathfinder;
   spec: MapSpec;
   players: Player[] = [];
   entities = new Map<number, Entity>();
@@ -262,16 +265,20 @@ export class Game {
    * @param field A field battle: no towns or villagers, just each side's army. A side is beaten
    *   when it has no soldiers left.
    */
-  constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false) {
+  constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false) {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
-    this.spec = generateMap(seed, size, setups.length);
+    this.spec = generateMap(seed, size, setups.length, sea);
     this.size = size;
     this.terrain = this.spec.terrain;
     this.blocked = new Uint8Array(size * size);
     this.occupied = new Uint8Array(size * size);
     this.vis = new Uint8Array(size * size);
     for (let i = 0; i < size * size; i++) if (this.terrain[i] === T_WATER) { this.blocked[i] = 1; this.occupied[i] = 1; }
-    this.pf = new Pathfinder(size, this.blocked);
+    this.pf = this.landPf = new Pathfinder(size, this.blocked);
+    // Ships see the world the other way round: water is open, everything else is solid.
+    const seaBlocked = new Uint8Array(size * size);
+    for (let i = 0; i < size * size; i++) seaBlocked[i] = this.terrain[i] === T_WATER ? 0 : 1;
+    this.seaPf = new Pathfinder(size, seaBlocked);
     this.hashN = Math.ceil(size / HASH);
     for (let i = 0; i < this.hashN * this.hashN; i++) this.hash.push([]);
 
@@ -341,7 +348,7 @@ export class Game {
     };
     this.entities.set(r.id, r);
     this.resources.push(r);
-    if (type !== 'carcass') this.setCells(cx, cy, size, 1, true); // a carcass can be walked over
+    if (type !== 'carcass' && type !== 'fish') this.setCells(cx, cy, size, 1, true); // a carcass can be walked over
     return r;
   }
 
@@ -451,7 +458,7 @@ export class Game {
       this.upkeep();
     } else {
       this.resources.splice(this.resources.indexOf(e), 1);
-      if (e.type !== 'carcass') this.setCells(e.cx, e.cy, e.size, 0, true);
+      if (e.type !== 'carcass' && e.type !== 'fish') this.setCells(e.cx, e.cy, e.size, 0, true);
     }
   }
 
@@ -497,6 +504,13 @@ export class Game {
         if (this.occupied[i]) return false;
         if (forHuman && this.vis[i] === 0) return false;
       }
+    if (type === 'dock') {
+      // A dock needs water along at least one side.
+      let shore = false;
+      for (let y = cy - 1; y <= cy + s && !shore; y++)
+        for (let x = cx - 1; x <= cx + s; x++) if ((x < cx || x >= cx + s) !== (y < cy || y >= cy + s) && this.terrain[y * this.size + x] === T_WATER) { shore = true; break; }
+      if (!shore) return false;
+    }
     return true;
   }
 
@@ -551,11 +565,11 @@ export class Game {
 
   private scratch: Unit[] = [];
 
-  private findEnemy(owner: number, x: number, y: number, radius: number, minRange = 0, buildingsOnly = false): Entity | null {
+  private findEnemy(owner: number, x: number, y: number, radius: number, minRange = 0, buildingsOnly = false, noShips = false): Entity | null {
     let best: Entity | null = null;
     let bestD = Infinity;
     for (const v of buildingsOnly ? [] : this.unitsNear(x, y, radius, this.scratch)) {
-      if (!this.hostile(v.owner, owner) || v.def.docile) continue;
+      if (!this.hostile(v.owner, owner) || v.def.docile || (noShips && v.def.naval)) continue;
       // Wolves and the Wildborn leave each other alone.
       if ((owner === this.wild && this.players[v.owner].civ === 'wild') || (v.owner === this.wild && this.players[owner].civ === 'wild')) continue;
       const d = Math.hypot(v.x - x, v.y - y);
@@ -581,7 +595,7 @@ export class Game {
     let best: Building | null = null;
     let bestD = Infinity;
     for (const b of this.buildings) {
-      if (b.owner !== u.owner || !b.complete || !b.def.dropoff) continue;
+      if (b.owner !== u.owner || !b.complete || !b.def.dropoff || (b.type === 'dock') !== !!u.def.naval) continue;
       const d = this.dist(u, b);
       if (d < bestD) { bestD = d; best = b; }
     }
@@ -595,15 +609,15 @@ export class Game {
   }
 
   /** Find another source of the same resource close to a point. */
-  findResourceNear(x: number, y: number, res: ResType, owner: number, radius = 14, exclude = 0): Entity | null {
+  findResourceNear(x: number, y: number, res: ResType, owner: number, radius = 14, exclude = 0, fish = false): Entity | null {
     let best: Entity | null = null;
     let bestD = radius;
     for (const r of this.resources) {
-      if (r.resType !== res || r.id === exclude) continue;
+      if (r.resType !== res || r.id === exclude || (r.type === 'fish') !== fish) continue;
       const d = Math.hypot(r.x - x, r.y - y);
       if (d < bestD && this.exposed(r)) { bestD = d; best = r; }
     }
-    if (!best && res === 'food') {
+    if (!best && res === 'food' && !fish) {
       for (const b of this.buildings) {
         if (b.type !== 'farm' || b.owner !== owner || !b.complete || b.workerId || b.id === exclude) continue;
         const d = Math.hypot(b.x - x, b.y - y);
@@ -701,7 +715,7 @@ export class Game {
     for (const u of us) {
       const villager = u.type === 'villager' && u.growT <= 0;
       if (t.kind === 'resource') {
-        if (villager) this.orderGather(u, t);
+        if (t.type === 'fish' ? u.def.fisher : villager) this.orderGather(u, t);
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
       } else if (this.hostile(t.owner, owner)) {
         if (u.def.atk > 0) this.setOrder(u, { t: 'attack', id: t.id });
@@ -719,9 +733,11 @@ export class Game {
           } else if (us.length === 1) {
             this.msg(owner, u.homeId === t.id ? 'This villager already lives here.' : `This house already has a ${g === 'm' ? 'man' : 'woman'}.`);
           }
-        } else if (t.def.dropoff && u.carryAmt > 0) {
+        } else if (t.def.dropoff && t.type !== 'dock' && u.carryAmt > 0) {
           this.setOrder(u, { t: 'gather', id: 0, res: u.carryType, phase: 'return', nx: u.x, ny: u.y, dropId: t.id, fails: 0 });
         } else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
+      } else if (t.kind === 'building' && t.type === 'dock' && t.complete && u.def.fisher && u.carryAmt > 0) {
+        this.setOrder(u, { t: 'gather', id: 0, res: u.carryType, phase: 'return', nx: u.x, ny: u.y, dropId: t.id, fails: 0 });
       } else {
         this.setOrder(u, { t: 'move', x: t.x, y: t.y });
       }
@@ -784,7 +800,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, sea: this.sea, vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -794,13 +810,13 @@ export class Game {
   static restore(json: string): Game {
     const d = JSON.parse(json);
     if (d.v !== SAVE_VERSION) throw new Error('Incompatible save');
-    const g = new Game(d.seed, d.setups, d.size, d.field); // regenerates the same terrain from the seed
+    const g = new Game(d.seed, d.setups, d.size, d.field, d.sea); // regenerates the same terrain from the seed
     g.entities.clear();
     g.blocked.fill(0);
     g.occupied.fill(0);
     for (let i = 0; i < g.terrain.length; i++) if (g.terrain[i] === T_WATER) { g.blocked[i] = 1; g.occupied[i] = 1; }
     g.resources = d.resources;
-    for (const r of g.resources) if (r.type !== 'carcass') g.setCells(r.cx, r.cy, r.size, 1, true);
+    for (const r of g.resources) if (r.type !== 'carcass' && r.type !== 'fish') g.setCells(r.cx, r.cy, r.size, 1, true);
     g.buildings = d.buildings;
     for (const b of g.buildings) {
       b.def = BUILDINGS[b.type];
@@ -1108,7 +1124,9 @@ export class Game {
       const u = this.units[i];
       if (u && !u.dead) this.updateUnit(u);
     }
+    this.pf = this.landPf;
     this.separate();
+    this.pf = this.landPf;
     for (let i = this.buildings.length - 1; i >= 0; i--) {
       const b = this.buildings[i];
       if (b && !b.dead) this.updateBuilding(b);
@@ -1311,6 +1329,7 @@ export class Game {
   }
 
   private updateUnit(u: Unit): void {
+    this.pf = u.def.naval ? this.seaPf : this.landPf;
     this.pf.pass = 2 + this.players[u.owner].team; // gates open for their own side only
     u.px = u.x;
     u.py = u.y;
@@ -1365,7 +1384,7 @@ export class Game {
           u.scanT = 0.4;
           // Units holding their ground only strike what is already within reach.
           const hold = u.stance === 'hold';
-          const e = this.findEnemy(u.owner, u.x, u.y, hold ? u.def.range + 1.2 : u.def.sight, u.def.minRange, u.def.siegeOnly);
+          const e = this.findEnemy(u.owner, u.x, u.y, hold ? u.def.range + 1.2 : u.def.sight, u.def.minRange, u.def.siegeOnly, !u.def.naval && u.def.range < 1.5);
           if (e && (!hold || this.dist(u, e) <= u.def.range + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
         }
       }
@@ -1382,7 +1401,7 @@ export class Game {
         u.scanT -= DT;
         if (u.scanT <= 0) {
           u.scanT = 0.4;
-          const e = this.findEnemy(u.owner, u.x, u.y, u.def.sight, u.def.minRange, u.def.siegeOnly);
+          const e = this.findEnemy(u.owner, u.x, u.y, u.def.sight, u.def.minRange, u.def.siegeOnly, !u.def.naval && u.def.range < 1.5);
           if (e) {
             o.started = false;
             this.setOrder(u, { t: 'attack', id: e.id, then: o });
@@ -1567,7 +1586,7 @@ export class Game {
       !!e && !e.dead && (e.kind === 'resource' ||
         (e.kind === 'building' && e.type === 'farm' && e.owner === u.owner && e.complete && (!e.workerId || e.workerId === u.id)));
     if (!valid(t)) {
-      t = this.findResourceNear(o.nx, o.ny, o.res, u.owner) ?? undefined;
+      t = this.findResourceNear(o.nx, o.ny, o.res, u.owner, 14, 0, !!u.def.fisher) ?? undefined;
       if (!valid(t)) {
         if (u.carryAmt > 0 && this.nearestDropoff(u)) { o.phase = 'return'; o.id = 0; o.dropId = 0; }
         else this.setOrder(u, null);
@@ -1584,7 +1603,7 @@ export class Game {
     if (r === 'fail') {
       // Unreachable (e.g. a tree deep inside a forest): try something closer to where we ended up.
       o.fails++;
-      const alt = o.fails <= 3 ? this.findResourceNear(u.x, u.y, o.res, u.owner, 14, t.id) : null;
+      const alt = o.fails <= 3 ? this.findResourceNear(u.x, u.y, o.res, u.owner, 14, t.id, !!u.def.fisher) : null;
       if (!alt) { this.setOrder(u, null); return; }
       if (t.kind === 'building') t.workerId = 0;
       o.id = alt.id;
@@ -1607,7 +1626,7 @@ export class Game {
         if (t.amount <= 0) { this.kill(t); break; }
       }
     }
-    if (u.carryAmt >= p.mods.carry) {
+    if (u.carryAmt >= p.mods.carry * (u.def.fisher ? 2 : 1)) {
       o.phase = 'return';
       o.dropId = 0;
       u.pathFor = 0;
@@ -1662,6 +1681,7 @@ export class Game {
       if (m > cap) { px = (px / m) * cap; py = (py / m) * cap; }
       const nx = u.x + px, ny = u.y + py;
       if (nx < 0.5 || ny < 0.5 || nx > N - 0.5 || ny > N - 0.5) continue;
+      this.pf = u.def.naval ? this.seaPf : this.landPf;
       this.pf.pass = 2 + this.players[u.owner].team;
       if (this.pf.isBlocked(Math.floor(nx), Math.floor(ny))) continue;
       u.x = nx;
@@ -1774,24 +1794,28 @@ export class Game {
   }
 
   /** Free cell next to a building, closest to a desired point. */
-  private exitSpot(b: Building, tx: number, ty: number): { x: number; y: number } {
-    this.pf.pass = 2 + this.players[b.owner].team;
+  private exitSpot(b: Building, tx: number, ty: number, naval = false): { x: number; y: number } {
+    if (naval) { const p = this.exitSpotOn(this.seaPf, b, tx, ty); return p; }
+    return this.exitSpotOn(this.landPf, b, tx, ty);
+  }
+  private exitSpotOn(pf: Pathfinder, b: Building, tx: number, ty: number): { x: number; y: number } {
+    pf.pass = 2 + this.players[b.owner].team;
     let best = { x: b.x, y: b.y + b.size / 2 + 0.5 };
     let bestD = Infinity;
     for (let y = b.cy - 1; y <= b.cy + b.size; y++)
       for (let x = b.cx - 1; x <= b.cx + b.size; x++) {
         if (x >= b.cx && x < b.cx + b.size && y >= b.cy && y < b.cy + b.size) continue;
-        if (this.pf.isBlocked(x, y)) continue;
+        if (pf.isBlocked(x, y)) continue;
         const d = Math.hypot(x + 0.5 - tx, y + 0.5 - ty);
         if (d < bestD) { bestD = d; best = { x: x + 0.5, y: y + 0.5 }; }
       }
-    return bestD === Infinity ? this.pf.nearestFree(best.x, best.y) : best;
+    return bestD === Infinity ? pf.nearestFree(best.x, best.y) : best;
   }
 
   private spawnFrom(b: Building, type: string, gender?: Gender): Unit {
     const tx = b.hasRally ? b.rallyX : b.x;
     const ty = b.hasRally ? b.rallyY : b.y + b.size;
-    const s = this.exitSpot(b, tx, ty);
+    const s = this.exitSpot(b, tx, ty, !!UNITS[type].naval);
     const u = this.spawnUnit(type, b.owner, s.x, s.y, gender);
     if (b.hasRally) {
       const t = this.entities.get(b.rallyId);
