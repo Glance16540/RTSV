@@ -1,9 +1,8 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
 import {
-  Campaign, MAP_H, MAP_W, MAX_DEV, RECRUIT_COST, RECRUIT_SIZE, REINFORCE_COST, LOCALS, armyAt, canDevelop, canRecruit,
-  canReinforce, continueAI, defence, develop, developCost, endTurn, income, moveArmy, recruit, reinforce, resolvePending,
-  territoryAt,
+  Army, COMPANIES, Campaign, HERO_COST, LOCALS, MAP_H, MAP_W, SITES, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, territoryIncome,
 } from '../sim/campaign';
 
 export interface OverworldHooks {
@@ -39,9 +38,10 @@ export class Overworld {
     $('ow-actions').addEventListener('click', (e) => {
       const act = (e.target as HTMLElement).closest('button')?.dataset.act;
       if (!act || this.c.phase !== 'player') return;
-      if (act === 'recruit') recruit(this.c, 0, this.sel);
-      if (act === 'reinforce') reinforce(this.c, 0, this.sel);
-      if (act === 'develop') develop(this.c, 0, this.sel);
+      const [kind, id] = act.split(':');
+      if (kind === 'raise') raise(this.c, 0, this.sel, id);
+      if (kind === 'build') build(this.c, 0, this.sel, id);
+      if (kind === 'hero') summonHero(this.c, 0, this.sel);
       this.changed();
     });
     $('ow-end').addEventListener('click', () => {
@@ -106,7 +106,7 @@ export class Overworld {
       this.changed();
     };
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
-      attacking ? `Your army of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches ${p.aStr} strong against your defence of ${p.dStr}.`,
+      attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`,
       [['Fight the battle', () => this.hooks.fight()], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);
@@ -170,14 +170,16 @@ export class Overworld {
       ctx.strokeText(t.name, t.x, t.y - 26);
       ctx.fillStyle = '#2a2014';
       ctx.fillText(t.name, t.x, t.y - 26);
-      // Development pips, and a star for a capital.
-      for (let d = 0; d < MAX_DEV; d++) {
-        ctx.fillStyle = d < t.dev ? '#3a2c18' : 'rgba(58,44,24,0.22)';
-        ctx.fillRect(t.x - 17 + d * 12, t.y - 18, 9, 5);
+      // A pip for each building slot, a mark on fortified land, and a star for a capital.
+      const n0 = slots(t);
+      for (let d = 0; d < n0; d++) {
+        ctx.fillStyle = d < t.buildings.length ? '#3a2c18' : 'rgba(58,44,24,0.22)';
+        ctx.fillRect(t.x - n0 * 6 + 1 + d * 12, t.y - 18, 9, 5);
       }
+      if (t.buildings.includes('fortress')) { ctx.font = '17px serif'; ctx.fillText('🏰', t.x + 34, t.y - 10); }
       if (t.capital >= 0) { ctx.font = '20px serif'; ctx.fillStyle = '#f6d860'; ctx.strokeStyle = '#3a2c18'; ctx.lineWidth = 3; ctx.strokeText('★', t.x - 30, t.y - 9); ctx.fillText('★', t.x - 30, t.y - 9); }
       const a = armyAt(c, t.id);
-      const n = a ? a.size : t.owner < 0 ? t.militia : 0;
+      const n = a ? armySize(a) : t.owner < 0 ? t.militia : 0;
       if (!n) continue;
       const col = a ? c.factions[a.owner].color : LOCALS.color;
       ctx.globalAlpha = a && a.moved && c.phase === 'player' ? 0.6 : 1;
@@ -191,6 +193,7 @@ export class Overworld {
       ctx.font = `700 ${a ? 18 : 14}px system-ui, sans-serif`;
       ctx.fillStyle = '#fff';
       ctx.fillText(String(n), t.x, t.y + (a ? 18 : 17));
+      if (a && a.hero) { ctx.font = '18px serif'; ctx.fillStyle = '#f6d860'; ctx.strokeStyle = '#3a2c18'; ctx.lineWidth = 3; ctx.strokeText('♛', t.x + 20, t.y + 4); ctx.fillText('♛', t.x + 20, t.y + 4); }
       ctx.globalAlpha = 1;
     }
     this.renderSide(canMarch);
@@ -203,16 +206,21 @@ export class Overworld {
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
       '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.name} ${c.territories.filter((x) => x.owner === f.id).length}</span>`).join('') + '</div>';
+    const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ' · ♛ Warlord' : '');
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
-      <div>Development ${'●'.repeat(t.dev)}${'○'.repeat(MAX_DEV - t.dev)} · income ${2 + t.dev + (t.capital >= 0 ? 2 : 0)}</div>
-      <div>Defence ${defence(c, t.id)}${a ? ` · army of ${a.size}${a.moved && a.owner === 0 ? ' (has moved)' : ''}` : ''}</div>
+      <div>Income ${territoryIncome(t)} · Defence ${defence(c, t.id)}</div>
+      <div>${t.buildings.map((b) => `${SITES[b].icon} ${SITES[b].name}`).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>
+      ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 ? '' : 'Select one of your armies to march on this land.'}</div>`;
-    const btn = (act: string, label: string, ok: boolean) => `<button data-act="${act}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label}</button>`;
-    $('ow-actions').innerHTML = t.owner !== 0 ? '' :
-      btn('recruit', `Raise an army of ${RECRUIT_SIZE} <small>${RECRUIT_COST} supplies</small>`, canRecruit(c, 0, t.id)) +
-      btn('reinforce', `Reinforce the army <small>${REINFORCE_COST} supplies</small>`, canReinforce(c, 0, t.id)) +
-      (t.dev < MAX_DEV ? btn('develop', `Develop the land <small>${developCost(t.dev)} supplies</small>`, canDevelop(c, 0, t.id)) : '');
+    const btn = (act: string, label: string, cost: number, ok: boolean, tip = '') => `<button data-act="${act}" title="${tip}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label} <small>${cost}</small></button>`;
+    let html = '';
+    if (t.owner === 0) {
+      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, d.cost, canRaise(c, 0, t.id, k), `Strength ${d.str}`);
+      if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Summon a new Warlord', HERO_COST, canSummonHero(c, 0, t.id), 'Needs an army in your capital');
+      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k)) html += btn('build:' + k, `${d.icon} Build ${d.name}`, d.cost, canBuild(c, 0, t.id, k), d.desc);
+    }
+    $('ow-actions').innerHTML = html;
     ($('ow-end') as HTMLButtonElement).disabled = c.phase !== 'player' || !!c.pending;
     $('ow-log').innerHTML = c.log.slice(-7).reverse().map((l) => `<div>${l}</div>`).join('');
   }

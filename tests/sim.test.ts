@@ -3,7 +3,7 @@ import { AIController } from '../src/sim/ai';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
-import { armyAt, battleConfig, canRecruit, continueAI, endTurn, finishBattle, income, moveArmy, newCampaign, reinforce, resolvePending } from '../src/sim/campaign';
+import { armyAt, armyStrength, battleConfig, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -467,26 +467,65 @@ describe('conquest campaign', () => {
     const c = newCampaign(7);
     const home = c.territories.find((t) => t.capital === 0)!;
     const army = armyAt(c, home.id)!;
-    expect(income(c, 0)).toBe(6); // 2 + development 2 + capital 2
-    expect(canRecruit(c, 0, home.id)).toBe(false); // an army is already here
-    expect(reinforce(c, 0, home.id)).toBe(true);
-    expect(army.size).toBe(4);
-    expect(c.factions[0].supplies).toBe(4);
+    expect(income(c, 0)).toBe(6); // 2 + farmland 2 + capital 2
+    expect(armyStrength(army)).toBe(5); // three infantry and the Warlord
+    expect(canRaise(c, 0, home.id, 'archers')).toBe(false); // no archery range yet
+    expect(build(c, 0, home.id, 'range')).toBe(true);
+    expect(build(c, 0, home.id, 'range')).toBe(false); // one of each
+    expect(raise(c, 0, home.id, 'archers')).toBe(true);
+    expect(army.units).toEqual({ infantry: 3, archers: 1 });
+    expect(c.factions[0].supplies).toBe(8 - 5 - 2);
     const target = c.territories[home.adj[0]];
     expect(moveArmy(c, army.id, target.id)).toBe('battle');
-    expect(c.pending).toMatchObject({ attacker: 0, defender: -1, aStr: 4, dStr: target.militia });
+    expect(c.pending).toMatchObject({ attacker: 0, defender: -1, aStr: 6, dStr: target.militia });
     const cfg = battleConfig(c)!;
-    expect(cfg.setups[0].bonus!.units!.clubman).toBe(4);
+    expect(cfg.setups[0].bonus!.units).toEqual({ clubman: 6, slinger: 2, warlord: 1 });
+    expect(cfg.setups[1].bonus!.units).toEqual({ clubman: target.militia * 2 });
     expect(cfg.setups[1].name).toBe('Local Tribe');
     expect(cfg.level).toBe(0);
-    expect(endTurn(c)).toBe(undefined);
+    endTurn(c);
     expect(c.phase).toBe('player'); // cannot end the turn with a battle outstanding
     finishBattle(c, true);
     expect(target.owner).toBe(0);
     expect(army.at).toBe(target.id);
+    expect(army.hero).toBe(true);
     expect(moveArmy(c, army.id, home.id)).toBe('invalid'); // already moved this turn
     endTurn(c);
     expect(c.turn === 2 || c.pending !== null).toBe(true);
+  });
+
+  it('a lost army takes its Warlord with it, and a fortress is razed when stormed', () => {
+    const c = newCampaign(7);
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const army = armyAt(c, home.id)!;
+    const target = c.territories[home.adj[0]];
+    moveArmy(c, army.id, target.id);
+    finishBattle(c, false);
+    expect(c.armies.some((a) => a.owner === 0)).toBe(false);
+    expect(c.factions[0].heroAlive).toBe(false);
+    expect(canSummonHero(c, 0, home.id)).toBe(false); // needs an army to lead
+    c.factions[0].supplies = 20;
+    raise(c, 0, home.id, 'infantry');
+    expect(summonHero(c, 0, home.id)).toBe(true);
+    expect(armyAt(c, home.id)!.hero).toBe(true);
+    // Storming fortified land.
+    const foe = c.territories.find((t) => t.capital === 1)!;
+    foe.buildings.push('fortress');
+    expect(defence(c, foe.id)).toBe(5 + 1 + 3);
+    const raiders = { id: 99, owner: 0, at: foe.adj[0], units: { cavalry: 6 }, hero: false, moved: false };
+    c.territories[foe.adj[0]].owner = 0;
+    c.armies = c.armies.filter((a) => a.at !== foe.adj[0]);
+    c.armies.push(raiders);
+    moveArmy(c, 99, foe.id);
+    const cfg = battleConfig(c)!;
+    expect(cfg.setups[1].bonus).toMatchObject({ age: 1, buildings: ['tower', 'tower'] });
+    const g = new Game(cfg.seed, cfg.setups, cfg.size);
+    expect(g.buildings.filter((b) => b.owner === 1 && b.type === 'tower').length).toBe(2);
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'rider').length).toBe(12);
+    finishBattle(c, true);
+    expect(foe.owner).toBe(0);
+    expect(foe.buildings).not.toContain('fortress');
+    expect(c.factions[1].heroAlive).toBe(false);
   });
 
   it('a lost defence costs the territory, and rivals fight the campaign to a finish', () => {
@@ -500,7 +539,7 @@ describe('conquest campaign', () => {
     expect(c.phase).toBe('over');
     expect(c.winner).toBeGreaterThan(0); // a passive player is eventually conquered
     expect(c.factions[0].alive).toBe(false);
-    expect(c.territories.every((t) => t.dev >= 0 && t.dev <= 3)).toBe(true);
+    expect(c.territories.every((t) => t.buildings.length <= 4 && new Set(t.buildings).size === t.buildings.length)).toBe(true);
   });
 
   it('battle bonuses give each side its army in the real-time game', () => {
@@ -509,9 +548,9 @@ describe('conquest campaign', () => {
     moveArmy(c, armyAt(c, home.id)!.id, home.adj[0]);
     const cfg = battleConfig(c)!;
     const g = new Game(cfg.seed, cfg.setups, cfg.size);
-    expect(g.units.filter((u) => u.owner === 0 && u.type === 'clubman').length).toBe(3);
-    expect(g.units.filter((u) => u.owner === 0 && u.type === 'slinger').length).toBe(2);
-    expect(g.players[0].res.food).toBe(200 + 120);
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'clubman').length).toBe(6);
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'warlord').length).toBe(1);
+    expect(g.players[0].res.food).toBe(200 + 150);
     run(g, 5);
   });
 });

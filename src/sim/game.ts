@@ -175,7 +175,7 @@ export interface PlayerSetup {
   color: number;
   isAI: boolean;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
-  bonus?: { units?: Record<string, number>; res?: number; age?: number };
+  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[] };
 }
 
 export class Game {
@@ -250,6 +250,11 @@ export class Game {
         const p = this.players[i];
         p.age = s.bonus.age ?? 0;
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
+        // Defensive works stand at the corners of the town.
+        (s.bonus.buildings ?? []).forEach((type, j) => {
+          const cx = st.x + (j % 2 ? -6 : 4), cy = st.y + (j % 2 ? 4 : -6) * (j > 1 ? -1 : 1);
+          if (this.canPlace(type, cx, cy)) this.spawnBuilding(type, i, cx, cy, true);
+        });
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
           for (let j = 0; j < n; j++, k++) this.spawnUnit(type, i, st.x - 3.5 + (k % 8), st.y + (5 + Math.floor(k / 8)) * dir);

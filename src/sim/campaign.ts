@@ -5,16 +5,32 @@ import type { PlayerSetup } from './game';
 
 export const MAP_W = 1000;
 export const MAP_H = 600;
-export const CAMPAIGN_VERSION = 1;
+export const CAMPAIGN_VERSION = 2;
 
-export const RECRUIT_COST = 6;
-export const RECRUIT_SIZE = 3;
-export const REINFORCE_COST = 2;
-export const MAX_ARMY = 12;
-export const MAX_DEV = 3;
-export const developCost = (dev: number) => 3 * (dev + 1);
+export const MAX_ARMY = 12; // companies in one army
+export const HERO_COST = 8;
+export const HERO_STRENGTH = 2;
 
-export interface Faction { id: number; name: string; color: number; isAI: boolean; supplies: number; alive: boolean }
+/** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
+export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
+export const COMPANIES: Record<string, CompanyDef> = {
+  infantry: { name: 'Infantry', icon: '🗡️', cost: 2, str: 1, needs: 'barracks', units: { clubman: 2 } },
+  archers: { name: 'Archers', icon: '🏹', cost: 2, str: 1, needs: 'range', units: { slinger: 2 } },
+  cavalry: { name: 'Cavalry', icon: '🐎', cost: 4, str: 2, needs: 'stable', units: { rider: 2 } },
+};
+
+/** Buildings that can stand on a territory. */
+export interface SiteDef { name: string; icon: string; cost: number; desc: string }
+export const SITES: Record<string, SiteDef> = {
+  farm: { name: 'Farmland', icon: '🌾', cost: 4, desc: '+2 supplies each turn.' },
+  barracks: { name: 'Barracks', icon: '🗡️', cost: 5, desc: 'Raise infantry here.' },
+  range: { name: 'Archery Range', icon: '🏹', cost: 5, desc: 'Raise archers here.' },
+  stable: { name: 'Stable', icon: '🐴', cost: 7, desc: 'Raise cavalry here.' },
+  fortress: { name: 'Fortress', icon: '🏰', cost: 9, desc: '+3 defence. In battle the defender starts in the Bronze Age with towers.' },
+};
+export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
+
+export interface Faction { id: number; name: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean }
 
 export interface Territory {
   id: number;
@@ -23,13 +39,20 @@ export interface Territory {
   y: number;
   owner: number; // faction id, or -1 for independent locals
   capital: number; // faction whose capital this is, or -1
-  dev: number; // development 0..3: more income, stronger defence
+  buildings: string[];
   militia: number; // defenders of an independent territory
   adj: number[];
   seed: number; // battles here are always fought on the same ground
 }
 
-export interface Army { id: number; owner: number; at: number; size: number; moved: boolean }
+export interface Army {
+  id: number;
+  owner: number;
+  at: number;
+  units: Record<string, number>; // companies by type
+  hero: boolean; // the faction's Warlord marches with this army
+  moved: boolean;
+}
 
 /** A battle waiting to be fought or auto-resolved. */
 export interface Pending {
@@ -98,7 +121,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1): Campaign {
       c.territories.push({
         id: j * cols + i, name, owner: -1, capital: -1, adj: [],
         x: ((i + 0.5) * MAP_W) / cols + (rand(c) - 0.5) * 90, y: ((j + 0.5) * MAP_H) / rows + (rand(c) - 0.5) * 70,
-        dev: rand(c) < 0.35 ? 1 : 0, militia: 1 + Math.floor(rand(c) * 3), seed: 1 + Math.floor(rand(c) * 1e6),
+        buildings: rand(c) < 0.35 ? ['farm'] : [], militia: 2 + Math.floor(rand(c) * 3), seed: 1 + Math.floor(rand(c) * 1e6),
       });
     }
   // Neighbours are whichever territories share a border.
@@ -115,12 +138,12 @@ export function newCampaign(seed: number, rivals = 1, level = 1): Campaign {
   // Capitals: you in the west, the first rival in the east, others north and south.
   const homes = [cols, 2 * cols - 1, 2, 2 * cols + 2];
   for (let f = 0; f <= Math.min(3, Math.max(1, rivals)); f++) {
-    c.factions.push({ id: f, name: FACTIONS[f][0], color: FACTIONS[f][1], isAI: f > 0, supplies: 6, alive: true });
+    c.factions.push({ id: f, name: FACTIONS[f][0], color: FACTIONS[f][1], isAI: f > 0, supplies: 8, alive: true, heroAlive: true });
     const t = c.territories[homes[f]];
     t.owner = f;
     t.capital = f;
-    t.dev = 2;
-    c.armies.push({ id: c.nextArmy++, owner: f, at: t.id, size: RECRUIT_SIZE, moved: false });
+    t.buildings = ['barracks', 'farm'];
+    c.armies.push({ id: c.nextArmy++, owner: f, at: t.id, units: { infantry: 3 }, hero: true, moved: false });
   }
   c.log.push('Turn 1. Your people look beyond their borders.');
   return c;
@@ -129,53 +152,84 @@ export function newCampaign(seed: number, rivals = 1, level = 1): Campaign {
 // ---- Queries ----
 
 export const armyAt = (c: Campaign, tid: number): Army | undefined => c.armies.find((a) => a.at === tid);
+/** Number of companies in an army. */
+export const armySize = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
+export function armyStrength(a: Army): number {
+  let s = a.hero ? HERO_STRENGTH : 0;
+  for (const [type, n] of Object.entries(a.units)) s += n * COMPANIES[type].str;
+  return s;
+}
 
 export function income(c: Campaign, f: number): number {
   let n = 0;
-  for (const t of c.territories) if (t.owner === f) n += 2 + t.dev + (t.capital === f ? 2 : 0);
+  for (const t of c.territories) if (t.owner === f) n += territoryIncome(t);
   return n;
 }
+export const territoryIncome = (t: Territory): number => 2 + (t.buildings.includes('farm') ? 2 : 0) + (t.capital >= 0 ? 2 : 0);
 
 /** Everything that defends a territory: its army plus its walls and people. */
 export function defence(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   if (t.owner < 0) return t.militia;
   const a = armyAt(c, tid);
-  return (a && a.owner === t.owner ? a.size : 0) + 1 + t.dev;
+  return (a && a.owner === t.owner ? armyStrength(a) : 0) + 1 + (t.buildings.includes('fortress') ? 3 : 0);
 }
 
-export function canRecruit(c: Campaign, f: number, tid: number): boolean {
+export function canBuild(c: Campaign, f: number, tid: number, site: string): boolean {
   const t = c.territories[tid];
-  return t.owner === f && (t.capital === f || t.dev >= 2) && !armyAt(c, tid) && c.factions[f].supplies >= RECRUIT_COST;
+  return t.owner === f && !!SITES[site] && !t.buildings.includes(site) && t.buildings.length < slots(t) && c.factions[f].supplies >= SITES[site].cost;
 }
-export function canReinforce(c: Campaign, f: number, tid: number): boolean {
+export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
+  const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return !!a && a.owner === f && c.territories[tid].owner === f && a.size < MAX_ARMY && c.factions[f].supplies >= REINFORCE_COST;
+  return t.owner === f && !!def && t.buildings.includes(def.needs) && c.factions[f].supplies >= def.cost && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
 }
-export function canDevelop(c: Campaign, f: number, tid: number): boolean {
-  const t = c.territories[tid];
-  return t.owner === f && t.dev < MAX_DEV && c.factions[f].supplies >= developCost(t.dev);
+export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
+  const a = armyAt(c, tid);
+  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && c.factions[f].supplies >= HERO_COST;
 }
 
 // ---- Actions ----
 
-export function recruit(c: Campaign, f: number, tid: number): boolean {
-  if (!canRecruit(c, f, tid)) return false;
-  c.factions[f].supplies -= RECRUIT_COST;
-  c.armies.push({ id: c.nextArmy++, owner: f, at: tid, size: RECRUIT_SIZE, moved: true });
+export function build(c: Campaign, f: number, tid: number, site: string): boolean {
+  if (!canBuild(c, f, tid, site)) return false;
+  c.factions[f].supplies -= SITES[site].cost;
+  c.territories[tid].buildings.push(site);
   return true;
 }
-export function reinforce(c: Campaign, f: number, tid: number): boolean {
-  if (!canReinforce(c, f, tid)) return false;
-  c.factions[f].supplies -= REINFORCE_COST;
-  armyAt(c, tid)!.size++;
+
+/** Raise one company. It joins the army standing in the territory, or forms a new one. */
+export function raise(c: Campaign, f: number, tid: number, type: string): boolean {
+  if (!canRaise(c, f, tid, type)) return false;
+  c.factions[f].supplies -= COMPANIES[type].cost;
+  let a = armyAt(c, tid);
+  if (!a) {
+    a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, moved: true }; // fresh troops march next turn
+    c.armies.push(a);
+  }
+  a.units[type] = (a.units[type] ?? 0) + 1;
   return true;
 }
-export function develop(c: Campaign, f: number, tid: number): boolean {
-  if (!canDevelop(c, f, tid)) return false;
-  c.factions[f].supplies -= developCost(c.territories[tid].dev);
-  c.territories[tid].dev++;
+
+export function summonHero(c: Campaign, f: number, tid: number): boolean {
+  if (!canSummonHero(c, f, tid)) return false;
+  c.factions[f].supplies -= HERO_COST;
+  c.factions[f].heroAlive = true;
+  armyAt(c, tid)!.hero = true;
   return true;
+}
+
+/** Remove `n` companies from an army, taking from its most numerous type first. It keeps at least one. */
+function casualties(a: Army, n: number): void {
+  for (let i = 0; i < n && armySize(a) > 1; i++) {
+    const type = Object.keys(a.units).sort((x, y) => a.units[y] - a.units[x])[0];
+    if (--a.units[type] <= 0) delete a.units[type];
+  }
+}
+
+function destroyArmy(c: Campaign, a: Army): void {
+  if (a.hero) c.factions[a.owner].heroAlive = false;
+  c.armies.splice(c.armies.indexOf(a), 1);
 }
 
 /** A faction's name as it reads in a sentence: `start` for the beginning, otherwise mid-sentence. */
@@ -195,16 +249,17 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
     const other = armyAt(c, to);
     a.moved = true;
     if (other) {
-      // Two friendly armies become one; anyone over the limit stays behind.
-      const total = Math.min(MAX_ARMY, a.size + other.size);
-      const left = a.size + other.size - total;
-      other.size = total;
-      if (left > 0) a.size = left;
-      else c.armies.splice(c.armies.indexOf(a), 1);
+      // Two friendly armies become one; companies over the limit stay behind.
+      for (const type of Object.keys(a.units)) {
+        while (a.units[type] > 0 && armySize(other) < MAX_ARMY) { a.units[type]--; other.units[type] = (other.units[type] ?? 0) + 1; }
+        if (!a.units[type]) delete a.units[type];
+      }
+      if (a.hero) { other.hero = true; a.hero = false; }
+      if (!armySize(a)) c.armies.splice(c.armies.indexOf(a), 1);
     } else a.at = to;
     return 'moved';
   }
-  c.pending = { armyId, from: a.at, to, attacker: a.owner, defender: t.owner, aStr: a.size, dStr: defence(c, to) };
+  c.pending = { armyId, from: a.at, to, attacker: a.owner, defender: t.owner, aStr: armyStrength(a), dStr: defence(c, to) };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
   return 'battle';
@@ -225,9 +280,9 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   const army = c.armies.find((x) => x.id === p.armyId);
   const defArmy = armyAt(c, p.to);
   if (attackerWon) {
-    if (defArmy) c.armies.splice(c.armies.indexOf(defArmy), 1);
+    if (defArmy) destroyArmy(c, defArmy);
     if (army) {
-      army.size = Math.max(1, army.size - Math.ceil(p.dStr * 0.4));
+      casualties(army, Math.ceil(p.dStr * 0.4));
       army.at = p.to;
       army.moved = true;
     }
@@ -240,10 +295,10 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       t.capital = -1;
     }
     t.owner = p.attacker;
-    t.dev = Math.max(0, t.dev - 1);
+    t.buildings = t.buildings.filter((b) => b !== 'fortress'); // the walls do not survive the assault
   } else {
-    if (army) c.armies.splice(c.armies.indexOf(army), 1);
-    if (defArmy) defArmy.size = Math.max(1, defArmy.size - Math.ceil(p.aStr * 0.3));
+    if (army) destroyArmy(c, army);
+    if (defArmy) casualties(defArmy, Math.ceil(p.aStr * 0.3));
     else if (t.owner < 0) t.militia = Math.max(1, t.militia - Math.floor(p.aStr * 0.3));
     c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and ${p.attacker === 0 ? 'were' : 'was'} thrown back.`);
   }
@@ -298,18 +353,34 @@ export function continueAI(c: Campaign): void {
 function aiStep(c: Campaign, f: Faction): boolean {
   if (!c.spent) {
     c.spent = true;
-    for (const t of c.territories) if (canRecruit(c, f.id, t.id) && (t.capital === f.id || rand(c) < 0.5)) recruit(c, f.id, t.id);
-    const mine = c.armies.filter((a) => a.owner === f.id).sort((a, b) => b.size - a.size);
-    for (const a of mine) while (a.size < 9 && reinforce(c, f.id, a.at)) { /* keep growing the army */ }
-    for (const t of c.territories) if (rand(c) < 0.4 && canDevelop(c, f.id, t.id)) develop(c, f.id, t.id);
+    const own = c.territories.filter((t) => t.owner === f.id);
+    for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
+    for (const t of own) {
+      const border = t.adj.some((n) => c.territories[n].owner !== f.id);
+      if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');
+      else if (rand(c) < 0.5) build(c, f.id, t.id, 'farm');
+      else if (border && f.supplies > 14 && rand(c) < 0.3) build(c, f.id, t.id, 'fortress');
+    }
+    // Spend what is left on troops, growing existing armies before starting new ones.
+    const yards = own.filter((t) => Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
+      .sort((a, b) => (armyAt(c, b.id) ? 1 : 0) - (armyAt(c, a.id) ? 1 : 0));
+    for (const t of yards) {
+      for (let guard = 0; guard < 12; guard++) {
+        const a = armyAt(c, t.id);
+        if (a && armySize(a) >= 9) break;
+        const types = Object.keys(COMPANIES).filter((k) => canRaise(c, f.id, t.id, k));
+        if (!types.length) break;
+        raise(c, f.id, t.id, types[Math.floor(rand(c) * types.length)]);
+      }
+    }
     return false;
   }
   const army = c.armies.find((a) => a.owner === f.id && !a.moved);
   if (!army) return true;
   const here = c.territories[army.at];
   const targets = here.adj.filter((id) => c.territories[id].owner !== f.id).sort((a, b) => defence(c, a) - defence(c, b));
-  const margin = [2, 1, 0][c.level];
-  if (targets.length && army.size >= defence(c, targets[0]) + margin) {
+  const margin = [3, 2, 1][c.level];
+  if (targets.length && armyStrength(army) >= defence(c, targets[0]) + margin) {
     moveArmy(c, army.id, targets[0]);
     return false;
   }
@@ -346,24 +417,38 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
 
 export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean }
 
-/** Turn the pending battle into a real-time match: bigger armies and built-up land start stronger. */
+/** Turn the pending battle into a real-time match: each side fields the troops it has on the map. */
 export function battleConfig(c: Campaign): BattleConfig | null {
   const p = c.pending;
   if (!p) return null;
   const t = c.territories[p.to];
   const humanAttacks = p.attacker === 0;
   const foe = humanAttacks ? p.defender : p.attacker;
-  const side = (str: number, defending: boolean) => ({
-    units: { clubman: str, slinger: Math.ceil(str / 2) },
-    res: 40 * str + (defending ? 80 * t.dev : 0),
-    age: defending && t.dev >= 3 ? 1 : 0,
-  });
+  const attackers = c.armies.find((a) => a.id === p.armyId);
+  const defenders = armyAt(c, p.to);
+  const side = (army: Army | undefined, defending: boolean, str: number) => {
+    const units: Record<string, number> = {};
+    const add = (type: string, n: number) => { units[type] = (units[type] ?? 0) + n; };
+    if (army) {
+      for (const [type, n] of Object.entries(army.units)) for (const [u, k] of Object.entries(COMPANIES[type].units)) add(u, k * n);
+      if (army.hero) add('warlord', 1);
+    }
+    if (defending) add('clubman', t.owner < 0 ? t.militia * 2 : 2); // the people of the land turn out too
+    const fort = defending && t.buildings.includes('fortress');
+    return {
+      units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
+      age: fort ? 1 : 0, buildings: fort ? ['tower', 'tower'] : [],
+    };
+  };
   return {
     seed: t.seed, size: 72, level: foe < 0 ? 0 : c.level, humanAttacks,
     title: humanAttacks ? `The assault on ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, bonus: side(humanAttacks ? p.aStr : p.dStr, !humanAttacks) },
-      { name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, bonus: side(humanAttacks ? p.dStr : p.aStr, humanAttacks) },
+      { name: 'You', color: c.factions[0].color, isAI: false, bonus: humanAttacks ? side(attackers, false, p.aStr) : side(defenders, true, p.dStr) },
+      {
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true,
+        bonus: humanAttacks ? side(defenders, true, p.dStr) : side(attackers, false, p.aStr),
+      },
     ],
   };
 }

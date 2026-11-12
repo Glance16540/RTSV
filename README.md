@@ -70,14 +70,20 @@ difficulty levels that plays by the same rules.
 ## Conquest campaign
 
 *Conquest campaign* on the start screen opens a turn-based map of fifteen territories. Each turn
-you collect supplies from the land you hold and spend them to raise armies, reinforce them or
-develop territories, then march armies into neighbouring land. When an army enters land held by
-someone else there is a battle: fight it yourself as a real-time match, or auto-resolve it.
+you collect supplies from the land you hold and spend them, then march armies into neighbouring
+land.
 
-In a real-time battle each side starts with soldiers and resources in proportion to its strength
-on the map, and a developed territory gives its defender a head start. Rivals take their turns
-after yours and fight each other too. Hold the last territory standing to win. The campaign is
-saved in your browser after every action.
+- **Buildings.** Each territory has three slots (four in a capital): Farmland for income, a
+  Barracks, Archery Range or Stable to raise troops there, and a Fortress for defence.
+- **Armies** are made of companies of infantry, archers and cavalry, up to twelve.
+- **The Warlord** marches with one army and adds to its strength. If that army is destroyed he
+  falls with it, and a new one can be summoned at your capital.
+- **Battles.** When an army enters land held by someone else, fight it yourself as a real-time
+  match or auto-resolve it. In a real-time battle each side fields the troops it has on the map,
+  Warlord included; a Fortress starts its defender in the Bronze Age with towers.
+
+Rivals take their turns after yours and fight each other too. Hold the last territory standing to
+win. The campaign is saved in your browser after every action.
 
 ## Controls
 
