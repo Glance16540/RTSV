@@ -60,9 +60,15 @@ out.
 
 - *In a Church* a man becomes a monk and a woman a nun. Each adds piety and brings the town's
   children sooner. Taking vows, they leave the house they shared.
-- *In a Tavern* a woman becomes a milkmaid and a man a patron. Each brings in gold and adds
+- *In a Tavern* a woman becomes a milkmaid and a man a patron. A milkmaid brings in gold. A patron
+  eats and drinks your food away, but soldiers are trained faster for every patron. Each adds
   decadence, the whole town gathers a little slower for the distraction, and a house with someone
   at the tavern raises no children until they come home.
+- *Mercenaries.* With anyone in the tavern you can hire swords for gold alone, and they appear at
+  once. They cost more than soldiers you raise yourself, want wages every minute, and walk away
+  when the gold runs out.
+- *Plague.* In a Worldly or Decadent town a crowded tavern is where plague breaks out, striking
+  everyone nearby. It never starts in a town that has kept the faith.
 
 Where your people stand on the scale between piety and decadence sets their creed:
 

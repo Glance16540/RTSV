@@ -4,7 +4,7 @@ import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
+import { MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_WATER } from '../sim/map';
 import { ico } from './assets';
@@ -294,6 +294,18 @@ export class Hud {
     /** Send the order to the selected building with the shortest queue. */
     const least = () => same.slice().sort((x, y) => x.queue.length - y.queue.length)[0];
 
+    if (b.type === 'tavern' && b.complete) {
+      for (const base of MERC_TYPES) {
+        const type = game.trainedAs(pid, base), d = UNITS[type];
+        if (UNITS[base].age > p.age) continue;
+        out.push({
+          id: 'hire:' + base, icon: ico(type, d.icon), name: `Hire a ${d.name}`, cost: { gold: game.hireCost(pid, base) },
+          locked: b.staff?.length ? undefined : 'Someone must be in the tavern to send word.',
+          desc: `A sword for hire: gold only, and he is here at once. He wants ${(MERC_WAGE * 60).toFixed(1)} gold a minute after that, and walks away when the gold runs out.<br><span class="stat">❤ ${d.hp} · ⚔ ${d.atk} · 🛡 ${d.armor}${d.range > 1 ? ` · range ${d.range}` : ''} · pop ${d.pop}</span>`,
+          act: () => { game.cmdHire(pid, b.id, base); },
+        });
+      }
+    }
     // Upgraded types are trained in place of the ones they replaced, so list each result once.
     for (const type of [...new Set(b.def.trains.map((t) => game.trainedAs(pid, t)))]) {
       const d = UNITS[type];
@@ -442,6 +454,7 @@ export class Hud {
         extra += `<div>${e.homeId ? '🏠 Lives in a house' : '⛺ Homeless — right-click a house to move in'}</div>`;
         if (e.carryAmt > 0) extra += `<div>Carrying ${RI(e.carryType)} ${e.carryAmt}</div>`;
       }
+      if (e.merc) extra += `<div class="hint">💰 Mercenary: ${(MERC_WAGE * 60).toFixed(1)} gold a minute, or he leaves</div>`;
       if (d.carry) extra += `<div class="${e.cargo?.length ? 'good' : 'hint'}">Aboard: ${e.cargo?.length ?? 0}/${d.carry} — right-click the ship with land units to board</div>`;
       if (d.mana) extra += `<div>Faith ${Math.floor(e.mana)} / ${d.mana}</div>${this.bar(e.mana / d.mana, 'faith')}`;
       if (e.plagueT > 0) extra += '<div class="warn">☠️ Plagued — a Shaman can cure it</div>';
@@ -495,7 +508,7 @@ export class Hud {
         const roll = tav ? `${count(women, 'milkmaid', 'milkmaids')}, ${count(men, 'patron', 'patrons')}` : `${count(men, 'monk', 'monks')}, ${count(women, 'nun', 'nuns')}`;
         body += `<div class="${who.length ? 'good' : 'hint'}">${tav ? '🍺' : '🙏'} ${roll} <small>(${who.length}/${b.def.staff})</small> — right-click with villagers to station them</div>` +
           `<div class="hint">${tav
-            ? `Each brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute and adds ${MAID_VIRTUE} decadence a minute, but slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile.`
+            ? `A milkmaid brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute. A patron eats and drinks ${(PATRON_FOOD * 60).toFixed(0)} food a minute, but soldiers are trained ${(PATRON_MUSTER * 100).toFixed(0)}% faster for each one. Each adds ${MAID_VIRTUE} decadence a minute and slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile. In a worldly town, plague can break out here.`
             : `Each adds ${CLERGY_VIRTUE} piety a minute and brings the town's children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner. They leave their own house when they enter.`} Up to ${STAFF_CAP} count in all.</div>`;
       }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;

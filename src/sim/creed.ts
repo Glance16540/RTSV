@@ -12,6 +12,14 @@ export const CLERGY_BIRTH = 0.08; // children come this much sooner, each
 export const MAID_VIRTUE = 3; // decadence per minute, each
 export const MAID_GOLD = 0.35; // gold a second, each
 export const MAID_DISTRACTION = 0.025; // everyone gathers this much slower, each
+export const PATRON_FOOD = 0.15; // food a second a patron drinks and eats away
+export const PATRON_MUSTER = 0.04; // soldiers are trained this much faster, per patron
+/** Swords for hire at a tavern: gold only, at this multiple of the unit's whole cost, and on the spot. */
+export const MERC_PRICE = 1.6;
+export const MERC_WAGE = 0.06; // gold a second each; unpaid, they walk away
+export const MERC_TYPES = ['clubman', 'slinger', 'spearman', 'rider'];
+/** Chance each second, per person in the tavern, that plague breaks out in a worldly town (doubled in a decadent one). */
+export const TAVERN_PLAGUE = 0.0012;
 export const STAFF_CAP = 8; // more than this many clergy or maids add nothing
 
 export interface Creed {

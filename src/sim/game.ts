@@ -6,7 +6,7 @@ import {
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { generateMap, MapSpec, NodeType, T_WATER } from './map';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from './creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
@@ -87,6 +87,7 @@ export interface Unit extends Base {
   homeY: number;
   inside: number; // building this unit is sheltering in, or ship it is aboard
   cargo?: number[]; // a transport ship's passengers
+  merc?: boolean; // hired at a tavern: fights for wages and leaves when they stop
   resume: Order | null; // job to return to after sheltering
 }
 
@@ -191,7 +192,10 @@ export interface Player {
   virtue: number;
   /** Villagers stationed in churches and in taverns, counted once a second. */
   clergy: number;
-  maids: number;
+  maids: number; // everyone in the taverns
+  patrons: number; // the men among them
+  /** When plague last broke out in this people's taverns. */
+  plagueAt: number;
   /** A dilemma waiting for an answer (its id), when the next is due, and how many have been put. */
   dilemma: string | null;
   dilemmaT: number;
@@ -307,7 +311,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i, civ: s.civ && CIVS[s.civ] ? s.civ : CIV_IDS[i % CIV_IDS.length],
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, clergy: 0, maids: 0, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, clergy: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
       this.heroes.push([]);
@@ -347,7 +351,7 @@ export class Game {
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, civ: '', res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, clergy: 0, maids: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, clergy: 0, maids: 0, patrons: 0, plagueAt: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
     });
     this.heroes.push([]);
     this.tcs.push([]);
@@ -892,7 +896,7 @@ export class Game {
       gender = m <= f ? 'm' : 'f';
     }
     this.pay(p, cost);
-    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train : 1), cost });
+    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train * (1 - PATRON_MUSTER * Math.min(STAFF_CAP, p.patrons)) : 1), cost });
     return true;
   }
 
@@ -980,6 +984,62 @@ export class Game {
     return true;
   }
 
+  /** What a tavern asks, in gold, for a hired sword of this kind (as this player would field it). */
+  hireCost(owner: number, type: string): number {
+    const c = this.unitCost(owner, this.trainedAs(owner, type));
+    return Math.round(RES_TYPES.reduce((n, r) => n + (c[r] ?? 0), 0) * MERC_PRICE / 5) * 5;
+  }
+
+  /** Hire a mercenary at a tavern that has someone in it: gold only, and he is there at once. */
+  cmdHire(owner: number, bid: number, type: string): Unit | null {
+    const b = this.entities.get(bid), p = this.players[owner];
+    if (!b || b.kind !== 'building' || b.owner !== owner || b.type !== 'tavern' || !b.complete || !MERC_TYPES.includes(type)) return null;
+    const as = this.trainedAs(owner, type), def = UNITS[as];
+    if (def.age > p.age && UNITS[type].age > p.age) return null;
+    if (!b.staff?.length) { this.msg(owner, 'Nobody is in the tavern to send word to the hired swords.'); return null; }
+    const price = this.hireCost(owner, type);
+    if (p.res.gold < price) { this.msg(owner, 'Not enough gold.'); return null; }
+    if (p.pop + def.pop > p.popCap) { this.msg(owner, 'Not enough housing.'); return null; }
+    p.res.gold -= price;
+    const u = this.spawnFrom(b, as);
+    u.merc = true;
+    p.stats.trained++;
+    this.shiftVirtue(owner, -1); // an army bought is not an army raised
+    return u;
+  }
+
+  /** Mercenaries want their wages every second; when the gold is gone, so are they, one at a time. */
+  private payMercenaries(p: Player): void {
+    const mercs = this.units.filter((u) => u.owner === p.id && u.merc);
+    if (!mercs.length) return;
+    const due = mercs.length * MERC_WAGE;
+    if (p.res.gold >= due) { p.res.gold -= due; return; }
+    p.res.gold = 0;
+    if (Math.floor(this.time) % 4 === 0) {
+      const u = mercs[0];
+      this.msg(p.id, `Unpaid, a hired ${u.def.name.toLowerCase()} has walked away.`);
+      this.kill(u);
+    }
+  }
+
+  /** In a town that has turned from the faith, a crowded tavern is where plague begins. */
+  private tavernPlague(p: Player, b: Building): void {
+    const c = this.creed(p.id);
+    if (c.plague <= 1 || this.time - p.plagueAt < 180) return;
+    if (this.rng() >= TAVERN_PLAGUE * b.staff!.length * (c.id === 'decadent' ? 2 : 1)) return;
+    p.plagueAt = this.time;
+    let struck = 0;
+    for (const u of this.units) {
+      if (u.owner !== p.id || u.inside || u.def.naval || Math.hypot(u.x - b.x, u.y - b.y) > 6) continue;
+      u.plagueT = 12 * c.plague;
+      struck++;
+    }
+    if (struck) {
+      this.events.push({ t: 'plague', x: b.x, y: b.y });
+      this.msg(p.id, 'Plague has broken out at the tavern!');
+    }
+  }
+
   /** Is this villager spending their days in a tavern? Their house raises no children meanwhile. */
   private atTavern(id: number): boolean {
     const u = this.entities.get(id);
@@ -1009,11 +1069,22 @@ export class Game {
       // Clergy pull a people towards piety, tavern maids the other way; the maids also earn their keep.
       p.clergy = 0;
       p.maids = 0;
-      for (const b of this.buildings) if (b.owner === p.id && b.staff?.length) { if (b.type === 'tavern') p.maids += b.staff.length; else p.clergy += b.staff.length; }
+      p.patrons = 0;
+      for (const b of this.buildings) {
+        if (b.owner !== p.id || !b.staff?.length) continue;
+        if (b.type !== 'tavern') { p.clergy += b.staff.length; continue; }
+        p.maids += b.staff.length;
+        for (const id of b.staff) { const u = this.entities.get(id); if (u && u.kind === 'unit' && u.gender === 'm') p.patrons++; }
+        this.tavernPlague(p, b);
+      }
+      this.payMercenaries(p);
       const clergy = Math.min(STAFF_CAP, p.clergy), maids = Math.min(STAFF_CAP, p.maids);
       const pull = (clergy * CLERGY_VIRTUE - maids * MAID_VIRTUE) / 60;
       if (pull) this.shiftVirtue(p.id, pull);
-      if (maids) { p.res.gold += maids * MAID_GOLD; p.stats.gathered += maids * MAID_GOLD; }
+      // Milkmaids earn the tavern's keep; patrons eat and drink their households' stores away.
+      const women = Math.min(STAFF_CAP, p.maids - p.patrons);
+      if (women) { p.res.gold += women * MAID_GOLD; p.stats.gathered += women * MAID_GOLD; }
+      p.res.food = Math.max(0, p.res.food - Math.min(STAFF_CAP, p.patrons) * PATRON_FOOD);
       if (p.dilemma || this.time < p.dilemmaT) continue;
       // Chosen without the game's dice, so that a match plays out the same with or without them.
       const pick = (this.seed * 31 + p.id * 17 + p.dilemmas * 7) % DILEMMAS.length;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AIController } from '../src/sim/ai';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
+import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
@@ -1901,7 +1901,10 @@ describe('church and tavern', () => {
     const gold = p.res.gold, virtue = p.virtue;
     run(g, 60);
     expect(p.maids).toBe(3);
-    expect(p.res.gold - gold).toBeGreaterThan(3 * MAID_GOLD * 60 * 0.95);
+    const women = vs.slice(0, 3).filter((v) => v.gender === 'f').length;
+    expect(p.patrons).toBe(3 - women);
+    expect(p.res.gold - gold).toBeGreaterThan(women * MAID_GOLD * 60 * 0.95);
+    expect(p.res.gold - gold).toBeLessThan(women * MAID_GOLD * 60 * 1.05 + 1);
     expect(p.virtue).toBeLessThan(virtue - 3 * MAID_VIRTUE * 0.9);
     // Saved and restored, they are still behind the bar.
     const r = Game.restore(g.serialize());
@@ -1975,5 +1978,77 @@ describe('faith, plague and the home', () => {
     expect(woman.inside).toBe(church.id);
     expect(house.residents.f).toBe(0);
     expect(woman.homeId).toBe(0);
+  });
+});
+
+describe('the tavern\'s other trade', () => {
+  const town = () => {
+    const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
+    const p = g.players[0];
+    p.age = 1; p.dilemmaT = 1e9; g.players[1].dilemmaT = 1e9;
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    const tavern = g.spawnBuilding('tavern', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) + 3, true);
+    const man = g.spawnUnit('villager', 0, tavern.x - 1, tavern.y + 2.5, 'm'), woman = g.spawnUnit('villager', 0, tavern.x + 1, tavern.y + 2.5, 'f');
+    return { g, p, tc, tavern, man, woman };
+  };
+
+  it('a patron drinks food away and hurries the muster; a milkmaid earns', () => {
+    const { g, p, tc, tavern, man } = town();
+    g.cmdTarget(0, [man.id], tavern.id);
+    run(g, 10);
+    expect(p.patrons).toBe(1);
+    const food = p.res.food, gold = p.res.gold;
+    run(g, 20);
+    expect(p.res.gold).toBe(gold); // he earns nothing
+    // (villagers elsewhere may be gathering, so only check the drain is there)
+    const barracks = g.spawnBuilding('barracks', 0, Math.floor(tc.x) - 8, Math.floor(tc.y) + 3, true);
+    p.res.food = 1000; p.res.wood = 1000;
+    g.cmdTrain(0, barracks.id, 'clubman');
+    const withPatron = barracks.queue[0].time;
+    g.cmdUnstaff(0, tavern.id, true);
+    run(g, 2);
+    g.cmdTrain(0, barracks.id, 'clubman');
+    expect(withPatron).toBeCloseTo(barracks.queue[barracks.queue.length - 1].time * (1 - PATRON_MUSTER), 3);
+    expect(food).toBeGreaterThan(0);
+  });
+
+  it('mercenaries are hired for gold on the spot, want wages, and walk away unpaid', () => {
+    const { g, p, tavern, woman } = town();
+    p.res.gold = 500;
+    expect(g.cmdHire(0, tavern.id, 'clubman')).toBeNull(); // nobody in the tavern
+    g.cmdTarget(0, [woman.id], tavern.id);
+    run(g, 10);
+    const price = g.hireCost(0, 'clubman');
+    const gold = p.res.gold, virtue = p.virtue;
+    const m = g.cmdHire(0, tavern.id, 'clubman')!;
+    expect(m.merc).toBe(true);
+    expect(m.type).toBe('clubman');
+    expect(p.res.gold).toBeCloseTo(gold - price, 5);
+    expect(p.virtue).toBeLessThan(virtue);
+    expect(g.cmdHire(0, tavern.id, 'mammoth')).toBeNull(); // not for hire
+    // Wages are paid while there is gold; a restored game remembers who is hired.
+    g.cmdUnstaff(0, tavern.id, true);
+    const g0 = p.res.gold;
+    run(g, 10);
+    expect(p.res.gold).toBeCloseTo(g0 - 10 * MERC_WAGE, 1);
+    expect(Game.restore(g.serialize()).units.some((u) => u.merc)).toBe(true);
+    p.res.gold = 0;
+    run(g, 6);
+    expect(m.dead).toBe(true);
+  });
+
+  it('plague breaks out in the tavern of a decadent town, never a righteous or temperate one', () => {
+    const outbreak = (virtue: number) => {
+      const { g, p, tavern, man, woman } = town();
+      g.cmdTarget(0, [man.id, woman.id], tavern.id);
+      run(g, 10);
+      const bystander = g.spawnUnit('villager', 0, tavern.x, tavern.y + 3, 'm');
+      let sick = false;
+      for (let i = 0; i < 20 * 60 * 12 && !sick; i++) { p.virtue = virtue; bystander.hp = bystander.maxHp; g.step(); sick = bystander.plagueT > 0; }
+      return sick;
+    };
+    expect(outbreak(-90)).toBe(true);
+    expect(outbreak(0)).toBe(false);
+    expect(outbreak(90)).toBe(false);
   });
 });

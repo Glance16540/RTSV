@@ -192,6 +192,11 @@ export class AIController {
       }
     }
 
+    // A worldly people with gold in hand buys swords when the enemy is at the door.
+    if (underAttack && p.res.gold > 350 && this.level >= 1) {
+      const tavern = mine.find((b) => b.type === 'tavern' && b.complete && b.staff?.length);
+      if (tavern) g.cmdHire(pid, tavern.id, p.age >= 1 ? 'spearman' : 'clubman');
+    }
     if (underAttack && this.state === 'build') {
       const idle = army.filter((u) => !u.order || u.order.t === 'move');
       if (idle.length) g.cmdMove(pid, idle.map((u) => u.id), p.lastAttacked!.x, p.lastAttacked!.y, true);

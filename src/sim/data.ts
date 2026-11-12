@@ -508,7 +508,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',
-    desc: 'Station up to four villagers here: women serve as milkmaids, men sit as patrons. Each brings in gold and makes your people more decadent, the whole town works a little slower for the distraction, and their own houses raise no children while they are here.',
+    desc: 'Station up to four villagers here. Milkmaids (women) bring in gold; patrons (men) drink your food away but speed up the training of soldiers. With anyone inside you can hire mercenaries for gold. All of it makes your people more decadent, slows the town\'s work, empties their own cradles, and in a worldly town invites plague.',
     cost: { wood: 110 }, time: 26, age: 1, hp: 600, size: 3, pop: 0, sight: 5,
     trains: [], techs: [], staff: 4,
   }),
