@@ -614,7 +614,7 @@ export class Renderer {
   private tear(v: UnitView, level: number): void {
     const rig = v.rig;
     if (!rig || !this.gore) return;
-    const SKIN = 0xe0ac7e, villager = v.type === 'villager';
+    const SKIN = (v.g.userData.skin as number | undefined) ?? 0xe0ac7e, villager = v.type === 'villager';
     const seed = Math.round(v.phase * 1000) + level * 7, r = (k: number): number => (((seed + k * 97) * 2654435761) >>> 0) / 4294967296;
     const n = villager ? [0, 3, 5, 9][level] : [0, 3, 5, 5][level];
     for (let k = 0; k < n; k++) {

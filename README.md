@@ -68,7 +68,7 @@ out.
 
 - *In a Church* a man becomes a monk and a woman a nun. Each adds piety and brings the town's
   children sooner. Taking vows, they leave the house they shared.
-- *What goes on at the tavern.* Once a town is Worldly or worse, a tavern with at least one milkmaid and one patron now and then has a child that belongs to no household: it costs no food and needs no house, comes sooner the more couples there are and sooner again in a Decadent town, and is as likely to die young as any child of such a town. Hearts rise from a busy tavern and from houses where a couple is at home.
+- *What goes on at the tavern.* Hearts rise from a busy tavern in a Worldly or Decadent town, and from houses where a couple is at home. Almost nothing comes of it: the maids and patrons take care that it does not. Once in a very long while (tens of minutes, a little sooner in a Decadent town) a tavern with both has a child that belongs to no household, costs no food and needs no house.
 - *In a Tavern* a woman becomes a milkmaid and a man a patron. A milkmaid brings in gold. A patron
   eats and drinks your food away, but soldiers are trained faster for every patron. Each adds
   decadence, the whole town gathers a little slower for the distraction, and a house with someone

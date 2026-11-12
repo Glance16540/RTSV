@@ -20,8 +20,12 @@ export const MERC_WAGE = 0.06; // gold a second each; unpaid, they walk away
 export const MERC_TYPES = ['clubman', 'slinger', 'spearman', 'rider'];
 /** Chance each second, per person in the tavern, that plague breaks out in a worldly town (doubled in a decadent one). */
 export const TAVERN_PLAGUE = 0.0012;
-/** Seconds for one maid and one patron of a worldly town's tavern to add a child no household owns to; a decadent town's take two thirds as long. */
-export const TAVERN_BIRTH = 170;
+/**
+ * Seconds for a maid and a patron of a worldly town's tavern to add a child no household owns to. Long: they
+ * take care that it does not happen, and it almost never does. A decadent town's take two thirds as long, and no
+ * more than two couples count.
+ */
+export const TAVERN_BIRTH = 3000;
 /** A holy town is Devout or better; a town given over to decadence is Decadent. */
 export const isHoly = (virtue: number): boolean => virtue >= 30;
 export const isDecadent = (virtue: number): boolean => virtue <= -70;

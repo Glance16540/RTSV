@@ -171,8 +171,30 @@ const roof = (p: THREE.Object3D, half: number, h: number, color: number, x = 0, 
   return g;
 };
 
-const SKIN = 0xe0ac7e;
-const HAIR = [0x3a2a1a, 0x5a3a1c, 0x1e1a18, 0x8a6a3a];
+/** The skin of the figure being built: set from its seed, so a crowd is not all one shade. */
+let SKIN = 0xe0ac7e;
+const TONES = [0xe0ac7e, 0xe8b88e, 0xd69a6c, 0xe0ac7e, 0xc68a5c, 0xeec0a0, 0xb07848, 0xd8a074];
+const HAIR = [0x3a2a1a, 0x5a3a1c, 0x1e1a18, 0x8a6a3a, 0xa8552a, 0x2a2018, 0xc8a860, 0x6e6a66];
+/** The seed of the figure being built: decides beards, how hair is worn and the like. */
+let who = 0;
+/** Starts a figure: its skin, and the seed its small differences are drawn from. */
+function person(g: THREE.Object3D, seed: number): void {
+  who = Math.abs(seed | 0);
+  SKIN = TONES[(who * 7 + 3) % TONES.length];
+  g.userData.skin = SKIN;
+}
+const shade = (c: number, k: number): number => new THREE.Color(c).multiplyScalar(k).getHex();
+/** Small marks on a face or a cuff, drawn without an ink line round them: at this size the line would be all there was. */
+const plainMats = new Map<number, THREE.MeshToonMaterial>();
+function dot(p: THREE.Object3D, g: THREE.BufferGeometry, color: number, x: number, y: number, z: number): THREE.Mesh {
+  let m = plainMats.get(color);
+  if (!m) { m = mat(color, 0, true).clone(); m.userData.outlineParameters = { visible: false }; plainMats.set(color, m); }
+  const o = new THREE.Mesh(g, m);
+  o.position.set(x, y, z);
+  o.castShadow = false;
+  p.add(o);
+  return o;
+}
 const WOOD = 0x7a5230;
 const DARKWOOD = 0x4e3520;
 const IRON = 0x9aa0a8;
@@ -204,12 +226,27 @@ function humanLeg(g: THREE.Object3D, color: number, x: number, side: number, y: 
   hip.userData.limb = true;
   cap(hip, 0.058, 0.18, color, 0, -0.085, 0);
   add(hip, geo('shin', () => new THREE.CylinderGeometry(0.05, 0.036, 0.14, 8)), color, 0, -0.2, 0);
-  box(hip, 0.075, 0.05, 0.14, 0x2e2218, 0, -0.275, 0.025);
+  // A boot: a rounded foot with a sole under it and a turned-down cuff at the calf.
+  const leather = 0x3a2a1c;
+  const foot = cap(hip, 0.036, 0.15, leather, 0, -0.268, 0.03);
+  foot.rotation.x = Math.PI / 2;
+  foot.scale.set(1.05, 1, 0.8);
+  foot.userData.boot = 1;
+  box(hip, 0.078, 0.014, 0.15, 0x1e1610, 0, -0.293, 0.03).userData.boot = 2;
+  add(hip, geo('bootcuff', () => new THREE.CylinderGeometry(0.047, 0.043, 0.04, 8)), shade(leather, 1.25), 0, -0.225, 0).userData.boot = 2;
   g.add(hip);
 }
 /** A face: two dark eyes are enough at this size to make a head read as a person. */
-function face(g: THREE.Object3D, y: number, z = 0.098): void {
-  for (const x of [-0.042, 0.042]) add(g, geo('eye', () => new THREE.SphereGeometry(0.015, 6, 5)), 0x1e1a18, x, y, z).castShadow = false;
+function face(g: THREE.Object3D, y: number, z = 0.098, brow = 0x2a2018, f = false): void {
+  for (const x of [-0.042, 0.042]) {
+    add(g, geo('eye', () => new THREE.SphereGeometry(0.015, 6, 5)), 0x1e1a18, x, y, z).castShadow = false;
+    // A brow over each eye, set a little lower toward the nose; a woman's finer and higher.
+    dot(g, geo(f ? 'browf' : 'brow', () => new THREE.BoxGeometry(f ? 0.03 : 0.036, f ? 0.006 : 0.009, 0.008)), brow, x, y + (f ? 0.03 : 0.026), z - 0.004).rotation.z = (x > 0 ? -1 : 1) * (f ? 0.1 : 0.2);
+  }
+  dot(g, geo('nose', () => new THREE.SphereGeometry(0.017, 6, 5)), shade(SKIN, 0.92), 0, y - 0.026, z + 0.008).scale.set(0.8, 1.15, 1);
+  dot(g, geo('mouth', () => new THREE.BoxGeometry(0.036, 0.008, 0.006)), f ? 0xb04a4a : shade(SKIN, 0.6), 0, y - 0.058, z - 0.006);
+  for (const x of [-0.104, 0.104]) dot(g, geo('ear', () => new THREE.SphereGeometry(0.022, 6, 5)), SKIN, x, y - 0.012, z - 0.1).scale.set(0.55, 1, 0.8);
+  if (f) for (const x of [-0.06, 0.06]) dot(g, geo('cheek', () => new THREE.SphereGeometry(0.018, 6, 5)), 0xe89a8a, x, y - 0.034, z - 0.012).scale.set(1, 0.7, 0.4);
 }
 
 /** A man on foot (or in the saddle, with y raised): broad in the shoulder, belted at the waist. */
@@ -223,12 +260,36 @@ function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y
   for (const x of [-0.155, 0.155]) ball(g, 0.055, body, x, y + 0.6, 0);
   cyl(g, 0.04, 0.046, 0.08, SKIN, 0, y + 0.67, 0, 8);
   // The off arm: a sleeve to the elbow, a bare forearm and a hand.
-  cap(g, 0.042, 0.19, body, -0.185, y + 0.52, 0).rotation.z = -0.12;
+  const offSleeve = cap(g, 0.042, 0.19, body, -0.185, y + 0.52, 0);
+  offSleeve.rotation.z = -0.12;
   cap(g, 0.035, 0.17, SKIN, -0.205, y + 0.385, 0.01).rotation.z = -0.06;
-  ball(g, 0.04, SKIN, -0.213, y + 0.295, 0.015);
+  const offHand = ball(g, 0.04, SKIN, -0.213, y + 0.295, 0.015);
+  dot(offHand, geo('thumb', () => new THREE.SphereGeometry(0.016, 5, 4)), SKIN, 0.028, 0.006, 0.02);
+  dot(offHand, geo('fingers', () => new THREE.SphereGeometry(0.026, 6, 4)), SKIN, 0, -0.026, 0.006).scale.set(1, 0.8, 0.7);
+  if (body !== SKIN) {
+    // What makes it clothing: a cuff, a collar, a stitched hem, a buckle on the belt, lacing at the throat.
+    dot(offSleeve, geo('cuff', () => new THREE.CylinderGeometry(0.046, 0.046, 0.022, 8)), shade(body, 0.72), 0, -0.088, 0);
+    dot(g, geo('collar', () => new THREE.TorusGeometry(0.05, 0.014, 5, 10).rotateX(Math.PI / 2)), shade(body, 0.72), 0, y + 0.655, 0.004).scale.z = 0.85;
+    dot(g, geo('hem', () => new THREE.TorusGeometry(0.133, 0.009, 4, 14).rotateX(Math.PI / 2)), shade(body, 0.72), 0, y + 0.246, 0).scale.z = 0.66;
+    dot(g, geo('buckle', () => new THREE.BoxGeometry(0.034, 0.03, 0.012)), 0xc8a040, 0, y + 0.43, 0.079);
+    for (let i = 0; i < 2; i++) dot(g, geo('lace', () => new THREE.BoxGeometry(0.03, 0.006, 0.006)), shade(body, 1.35), 0, y + 0.6 - i * 0.03, 0.093 - i * 0.004);
+  }
   ball(g, 0.11, SKIN, 0, y + 0.76, 0).scale.y = 1.08;
-  add(g, geo('hair', () => new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)), hair, 0, y + 0.778, -0.012);
-  face(g, y + 0.765);
+  const own = HAIR.includes(hair); // his own hair, as against a helmet or a hood given as its colour
+  const worn = own ? who % 5 : -1;
+  if (worn === 3) {
+    // Going bald: a fringe round the back and sides.
+    add(g, geo('fringe', () => new THREE.SphereGeometry(0.118, 12, 6, 0, Math.PI * 2, Math.PI * 0.28, Math.PI * 0.26)), hair, 0, y + 0.772, -0.016);
+  } else add(g, geo('hair', () => new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)), hair, 0, y + 0.778, -0.012);
+  if (worn === 1) cap(g, 0.07, 0.2, hair, 0, y + 0.72, -0.075).scale.set(1.4, 1, 0.6); // worn long to the collar
+  if (worn === 4) ball(g, 0.045, hair, 0, y + 0.895, -0.03); // tied up in a knot
+  face(g, y + 0.765, 0.098, own ? shade(hair, 0.8) : 0x2a2018);
+  if (own && who % 4 === 1) {
+    // A full beard.
+    const beard = add(g, geo('beard', () => new THREE.SphereGeometry(0.1, 10, 6, 0, Math.PI * 2, Math.PI * 0.56, Math.PI * 0.44)), hair, 0, y + 0.765, 0.022);
+    beard.scale.set(1, 1.15, 0.95);
+    beard.userData.joint = 'head';
+  } else if (own && who % 4 === 3) dot(g, geo('tache', () => new THREE.BoxGeometry(0.06, 0.014, 0.012)), hair, 0, y + 0.722, 0.098);
   for (const c of g.children) c.userData.body ??= true; // the person, as against what they wear and carry
 }
 
@@ -254,14 +315,25 @@ function woman(g: THREE.Object3D, dress: number, hair: number, seed: number, tri
     for (let i = 0; i < 3; i++) box(g, 0.05, 0.008, 0.01, 0xf4eee0, 0, 0.42 + i * 0.03, 0.079);
   }
   add(g, geo('sash', () => new THREE.TorusGeometry(0.086, 0.014, 5, 12).rotateX(Math.PI / 2)), trim, 0, 0.405, 0).scale.z = 0.72;
-  for (const x of [-0.05, 0.05]) box(g, 0.06, 0.04, 0.1, 0x2e2218, x, 0.02, 0.13);
+  for (const x of [-0.05, 0.05]) { const sh = cap(g, 0.026, 0.1, 0x3a2a1c, x, 0.024, 0.135); sh.rotation.x = Math.PI / 2; sh.scale.set(1.1, 1, 0.75); }
   cyl(g, 0.033, 0.038, 0.08, SKIN, 0, 0.67, 0, 8);
   // The off arm, slimmer than a man's.
-  cap(g, 0.034, 0.18, dress, -0.15, 0.53, 0).rotation.z = -0.14;
+  const offSleeve = cap(g, 0.034, 0.18, dress, -0.15, 0.53, 0);
+  offSleeve.rotation.z = -0.14;
+  dot(offSleeve, geo('cufff', () => new THREE.CylinderGeometry(0.038, 0.038, 0.02, 8)), trim, 0, -0.084, 0);
   cap(g, 0.029, 0.16, SKIN, -0.172, 0.4, 0.01).rotation.z = -0.06;
-  ball(g, 0.033, SKIN, -0.18, 0.315, 0.015);
+  const offHand = ball(g, 0.033, SKIN, -0.18, 0.315, 0.015);
+  dot(offHand, geo('thumbf', () => new THREE.SphereGeometry(0.013, 5, 4)), SKIN, 0.023, 0.005, 0.017);
+  dot(offHand, geo('fingersf', () => new THREE.SphereGeometry(0.021, 6, 4)), SKIN, 0, -0.022, 0.005).scale.set(1, 0.8, 0.7);
   ball(g, 0.104, SKIN, 0, 0.76, 0).scale.y = 1.06;
-  face(g, 0.762, 0.092);
+  face(g, 0.762, 0.092, shade(hair, 0.8), true);
+  // A band stitched round the hem, cuffs, and at the throat a collar (or, worn low, a ribbon and a pendant).
+  dot(skirt, geo('hemf', () => new THREE.TorusGeometry(0.207, 0.011, 4, 16).rotateX(Math.PI / 2)), trim, 0, -0.385, 0).scale.z = 0.8;
+  dot(skirt, geo('hemf2', () => new THREE.TorusGeometry(0.196, 0.006, 4, 16).rotateX(Math.PI / 2)), shade(dress, 0.7), 0, -0.34, 0).scale.z = 0.8;
+  if (cut) {
+    dot(g, geo('ribbon', () => new THREE.TorusGeometry(0.036, 0.007, 4, 10).rotateX(Math.PI / 2)), 0x2a1a1e, 0, 0.672, 0);
+    dot(g, geo('pendant', () => new THREE.SphereGeometry(0.012, 6, 5)), 0xe8c860, 0, 0.6, 0.066);
+  } else dot(g, geo('collarf', () => new THREE.TorusGeometry(0.042, 0.012, 5, 10).rotateX(Math.PI / 2)), trim, 0, 0.652, 0.004).scale.z = 0.85;
   add(g, geo('hairf', () => new THREE.SphereGeometry(0.115, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55)), seed % 3 === 2 ? trim : hair, 0, 0.775, -0.014);
   if (seed % 3 === 0) {
     // Worn long down the back, swinging from the nape.
@@ -288,9 +360,13 @@ function arm(g: THREE.Object3D, y = 0, sleeve = SKIN, slim = 1): THREE.Group {
   const a = new THREE.Group();
   a.position.set(0.19, y + 0.58, 0);
   a.userData.limb = true;
-  cap(a, 0.042 * slim, 0.19, sleeve, 0, -0.06, 0);
+  const up = cap(a, 0.042 * slim, 0.19, sleeve, 0, -0.06, 0);
   cap(a, 0.035 * slim, 0.17, SKIN, 0, -0.19, 0.008);
-  ball(a, 0.04 * slim, SKIN, 0, -0.285, 0.012);
+  const hand = ball(a, 0.04 * slim, SKIN, 0, -0.285, 0.012);
+  // Hung on the sleeve and the hand, so they bend with the elbow and keep the arm's own parts in their order.
+  if (sleeve !== SKIN) dot(up, geo('cuff', () => new THREE.CylinderGeometry(0.046, 0.046, 0.022, 8)), shade(sleeve, 0.72), 0, -0.088, 0).scale.setScalar(slim);
+  dot(hand, geo('thumb', () => new THREE.SphereGeometry(0.016, 5, 4)), SKIN, -0.028 * slim, 0.006, 0.02);
+  dot(hand, geo('fingers', () => new THREE.SphereGeometry(0.026, 6, 4)), SKIN, 0, -0.026, 0.006).scale.set(1, 0.8, 0.7);
   g.add(a);
   g.userData.arm = a;
   return a;
@@ -472,6 +548,7 @@ export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 
   made.clear();
   figure = true;
   const g = new THREE.Group();
+  person(g, seed);
   const hair = HAIR[seed % HAIR.length], GOLD = 0xe8c860;
   const mug = (p: THREE.Object3D, x: number, y: number, z: number): void => { cyl(p, 0.04, 0.035, 0.08, 0xd8a838, x, y, z, 8); cyl(p, 0.042, 0.042, 0.02, 0xfff4d8, x, y + 0.05, z, 8); };
   const robe = (color: number, fat = 1): void => {
@@ -524,10 +601,12 @@ export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 
 export function makeCaptive(gender: Gender, seed: number): THREE.Group {
   made.clear();
   figure = true;
-  const g = new THREE.Group(), hair = HAIR[seed % HAIR.length], rag = [0xb8a888, 0xa89878, 0xc4b494][seed % 3], rope = 0x8a7250, f = gender === 'f';
+  const g = new THREE.Group();
+  person(g, seed);
+  const hair = HAIR[seed % HAIR.length], rag = [0xb8a888, 0xa89878, 0xc4b494][seed % 3], rope = 0x8a7250, f = gender === 'f';
   humanoid(g, SKIN, SKIN, hair);
   // Bare feet: the boots a free villager wears are gone.
-  g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && o.parent?.userData.leg !== undefined && m.geometry.type === 'BoxGeometry') m.material = mat(SKIN); });
+  g.traverse((o) => { const m = o as THREE.Mesh; if (o.userData.boot === 1) m.material = mat(SKIN); else if (o.userData.boot === 2) o.visible = false; });
   // The loincloth: a wrap about the hips, a flap before and behind.
   box(g, 0.275, 0.08, 0.2, rag, 0, 0.4, 0);
   box(g, 0.13, 0.17, 0.018, rag, 0, 0.3, 0.098).rotation.x = -0.08;
@@ -576,6 +655,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     return gen;
   }
   const g = new THREE.Group();
+  person(g, seed);
   const hair = HAIR[seed % HAIR.length];
   switch (type) {
     case 'villager': {

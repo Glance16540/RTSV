@@ -1307,15 +1307,15 @@ export class Game {
 
   /** Once a second: habits pull the scale, and now and then a dilemma is put to each people. */
   /**
-   * In a worldly town, what goes on between the maids and the patrons of a tavern has its consequences: now and
-   * then a child is born there that belongs to no household. It costs no food and needs no house, and like any
+   * In a worldly town, what goes on between the maids and the patrons of a tavern has its consequences, but
+   * rarely: they take care to prevent it. Once in a long while a child is born there that belongs to no household. It costs no food and needs no house, and like any
    * child of such a town it is less likely to live to grow up.
    */
   private tavernBirth(p: Player, b: Building): void {
     if (p.virtue > -30 || !b.complete) return;
     let men = 0;
     for (const id of b.staff!) { const u = this.entities.get(id); if (u && u.kind === 'unit' && u.gender === 'm') men++; }
-    const pairs = Math.min(men, b.staff!.length - men);
+    const pairs = Math.min(2, men, b.staff!.length - men);
     if (!pairs) return;
     b.trystT = (b.trystT ?? 0) + pairs / (TAVERN_BIRTH * (isDecadent(p.virtue) ? 0.66 : 1));
     if (b.trystT < 1) return;
