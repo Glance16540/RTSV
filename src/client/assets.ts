@@ -2,10 +2,10 @@
 // Anything missing falls back to the built-in emoji icon or procedural model.
 
 import * as THREE from 'three';
-import { setLeaderPersona } from '../sim/leaders';
+import { Character, setLeaderCharacter, setLeaderPersona } from '../sim/leaders';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string>; credits?: Record<string, string>; personas?: Record<string, string> }
+interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string>; credits?: Record<string, string>; personas?: Record<string, string>; characters?: Record<string, Character> }
 /** Optional per-model corrections in public/assets/tweaks.json, keyed by model name. */
 interface Tweak { scale?: number; yaw?: number; y?: number }
 
@@ -27,6 +27,7 @@ export async function loadAssets(): Promise<void> {
   manifest = { ...manifest, ...(await json<Partial<Manifest>>(BASE + 'manifest.json', {})) };
   // A nation whose recordings are of its second leader is led by that leader in the game.
   for (const [civ, who] of Object.entries(manifest.personas ?? {})) setLeaderPersona(civ, who === 'alt');
+  for (const [civ, c] of Object.entries(manifest.characters ?? {})) setLeaderCharacter(civ, c);
   if (!Object.keys(manifest.models).length) return;
   tweaks = await json(BASE + 'tweaks.json', {});
   const loader = new GLTFLoader();

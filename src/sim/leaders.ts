@@ -434,6 +434,30 @@ const useAlt = new Set<string>();
 export function setLeaderPersona(civ: string, alt: boolean): void {
   if (alt) useAlt.add(civ); else useAlt.delete(civ);
 }
+/**
+ * A leader as rewritten by whoever voices them: their own name, title, face and wording of any line.
+ * Whatever is left out stays as written. The leader keeps their nation and whether they are a man or a woman.
+ */
+export interface Character { name?: string; title?: string; icon?: string; lines?: Partial<Record<LeaderEvent, (string | null)[]>> }
+export const CHARACTER_LIMITS = { name: 40, title: 60, line: 160 };
+/** Faces a character may wear. */
+export const FACES = { man: ['🧔', '🧔🏻', '🧔🏽', '🧔🏿', '👨', '👨🏽', '👨🏿', '👨‍🦰', '👨‍🦳', '👴', '👴🏽', '🤴', '🤴🏽', '👳🏽‍♂️', '🧙‍♂️', '🥷'], woman: ['👩', '👩🏻', '👩🏽', '👩🏿', '👩‍🦰', '👩‍🦳', '👩‍🦱', '👵', '👵🏽', '👸', '👸🏾', '🧕🏽', '🧝‍♀️', '🧙‍♀️', '👩‍🔬', '🦸‍♀️'] };
+// Their words end up in the page, so anything that could be markup is dropped.
+const clean = (s: unknown, max: number): string => (typeof s === 'string' ? s : '').replace(/[<>&"`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
+const custom = new Map<string, Character>();
+/** Install (or with `null`, remove) the character someone has made of a nation's leader. */
+export function setLeaderCharacter(civ: string, c: Character | null): void {
+  const l = LEADERS[civ];
+  if (!l) return;
+  if (!c || typeof c !== 'object') { custom.delete(civ); return; }
+  const out: Character = { name: clean(c.name, CHARACTER_LIMITS.name), title: clean(c.title, CHARACTER_LIMITS.title), lines: {} };
+  if ([...FACES.man, ...FACES.woman].includes(c.icon ?? '')) out.icon = c.icon;
+  for (const ev of LEADER_EVENTS) {
+    const given = c.lines?.[ev];
+    if (Array.isArray(given)) out.lines![ev] = l.lines[ev].map((_, i) => clean(given[i], CHARACTER_LIMITS.line) || null);
+  }
+  custom.set(civ, out);
+}
 /** The lines a persona speaks: the nation's lines, with their own versions of the ones that name them. */
 export function personaLines(civ: string, alt: boolean): Record<LeaderEvent, string[]> {
   const l = LEADERS[civ];
@@ -449,8 +473,14 @@ export function personaLines(civ: string, alt: boolean): Record<LeaderEvent, str
 export function leaderOf(civ: string): (Persona & { civ: string; lines: Record<LeaderEvent, string[]> }) | undefined {
   const l = LEADERS[civ];
   if (!l) return undefined;
-  if (!useAlt.has(civ) || !l.alt) return l;
-  const { lines: _own, ...who } = l.alt;
-  return { ...who, civ, lines: personaLines(civ, true) };
+  const alt = useAlt.has(civ) && !!l.alt;
+  const { lines: _own, ...who } = alt ? l.alt! : l;
+  const base = { ...who, civ, lines: personaLines(civ, alt) };
+  const c = custom.get(civ);
+  if (!c) return base;
+  // The character someone made of this leader: their name, title, face and words, where they gave any.
+  const lines = { ...base.lines };
+  for (const ev of LEADER_EVENTS) if (c.lines?.[ev]) lines[ev] = base.lines[ev].map((line, i) => c.lines![ev]![i] || line);
+  return { ...base, name: c.name || base.name, title: c.title || base.title, icon: c.icon && FACES[base.female ? 'woman' : 'man'].includes(c.icon) ? c.icon : base.icon, lines };
 }
 export const speechText = (s: Speech): string => leaderOf(s.civ)?.lines[s.event][s.index] ?? '';

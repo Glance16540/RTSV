@@ -2,7 +2,7 @@
 // They pick a leader, record each line with their microphone, and download a zip of recordings
 // named exactly as the game expects. Run with `npm run voice-booth` after changing the lines.
 import { writeFileSync } from 'node:fs';
-import { EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
+import { CHARACTER_LIMITS, EVENT_NOTES, FACES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
 import { CIVS, CIV_COLOR } from '../src/sim/data.ts';
 
 // Most nations can be led by a man or by a woman: both are offered, and the recordings say which was voiced.
@@ -11,7 +11,7 @@ const leaders = Object.values(LEADERS).flatMap((l) => [[l, false], ...(l.alt ? [
   return {
     civ: l.civ, persona: alt ? 'alt' : 'main', nation: CIVS[l.civ].name, icon: who.icon, name: who.name, title: who.title, voice: who.voice, female: who.female,
     color: '#' + CIV_COLOR[l.civ].toString(16).padStart(6, '0'),
-    lines: LEADER_EVENTS.flatMap((ev) => lines[ev].map((text, i) => ({ key: lineKey(l.civ, ev, i), when: EVENT_NOTES[ev], text }))),
+    lines: LEADER_EVENTS.flatMap((ev) => lines[ev].map((text, i) => ({ key: lineKey(l.civ, ev, i), ev, i, when: EVENT_NOTES[ev], text }))),
   };
 }));
 
@@ -43,7 +43,15 @@ const page = `<!doctype html>
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .rec.on { background: #7a2418; border-color: var(--warn); }
   .state { font-size: 14px; color: var(--dim); } .state.ok { color: var(--good); }
-  input[type=text] { font: inherit; color: var(--fg); background: #100d09; border: 1px solid var(--edge); border-radius: 6px; padding: 8px 10px; width: min(100%, 320px); }
+  input[type=text], textarea { font: inherit; color: var(--fg); background: #100d09; border: 1px solid var(--edge); border-radius: 6px; padding: 8px 10px; width: min(100%, 320px); }
+  textarea.line { display: block; width: 100%; resize: vertical; min-height: 64px; font: italic 19px/1.4 Georgia, serif; }
+  textarea.line.own { border-color: var(--gold); }
+  textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .fields input { width: 100%; } .fields label { display: block; font-size: 14px; color: var(--dim); }
+  .faces { display: flex; flex-wrap: wrap; gap: 6px; }
+  .faces button { font-size: 24px; padding: 4px 8px; line-height: 1.2; } .faces button.on { border-color: var(--gold); background: #6a4e16; }
+  .link { background: none; border: none; padding: 0; color: var(--gold); text-decoration: underline; font-size: 14px; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0e0b08ee; border-top: 1px solid var(--edge); padding: 10px max(16px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .bar .in { max-width: 820px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
   .primary { background: #6a4e16; border-color: var(--gold); font-weight: 600; }
@@ -61,6 +69,7 @@ const page = `<!doctype html>
     <p>You have been asked to voice a leader in the game. It takes about fifteen minutes.</p>
     <ol>
       <li>Pick your leader below. Most nations can be led by a man or by a woman; choose whichever you will voice.</li>
+      <li>Make them yours: give them your own name, title and face, and rewrite any line into something you would rather say.</li>
       <li>Read each line aloud and record it. You can listen back and redo any line.</li>
       <li>Press <b>Download my recordings</b> and send that one file back to whoever invited you.</li>
     </ol>
@@ -73,9 +82,19 @@ const page = `<!doctype html>
     <p><button id="back">← Choose a different leader</button></p>
     <h2 id="who"></h2>
     <p id="title" class="dim"></p>
-    <div class="note"><b>How to play them:</b> <span id="direction"></span></div>
+    <div class="card">
+      <b>Make this character your own</b>
+      <p class="dim">The leader below is only a starting point. Rename them, change their title and face, and rewrite any of their lines; in the campaign they will appear and speak as you made them. Leave anything as it is to keep it.</p>
+      <div class="fields">
+        <div><label for="cname">Their name</label><input type="text" id="cname" maxlength="${CHARACTER_LIMITS.name}"></div>
+        <div><label for="ctitle">Their title</label><input type="text" id="ctitle" maxlength="${CHARACTER_LIMITS.title}"></div>
+      </div>
+      <label class="dim" style="font-size:14px">Their face</label>
+      <div class="faces" id="faces"></div>
+    </div>
+    <div class="note"><b>How they were written</b> (play them your own way if you prefer): <span id="direction"></span></div>
     <p><label for="actor">Your name, for the credits <small>(optional)</small></label><br><input type="text" id="actor" maxlength="60" autocomplete="name"></p>
-    <p class="dim">Tips: a quiet room, the microphone a hand's width from your mouth, and leave half a second of silence before you speak. Each line should run two to six seconds. Record as many or as few as you like; unrecorded lines stay as text in the game.</p>
+    <p class="dim">Tips: a quiet room, the microphone a hand's width from your mouth, and leave half a second of silence before you speak. Each line should run two to six seconds. Record as many or as few as you like; unrecorded lines stay as text in the game. Each box says when the leader speaks the line: keep your own version to that moment, and to one or two sentences.</p>
     <p id="micerr" class="err" hidden></p>
     <div id="lines"></div>
   </section>
@@ -88,6 +107,7 @@ const page = `<!doctype html>
 
 <script>
 const LEADERS = ${JSON.stringify(leaders)};
+const FACES = ${JSON.stringify(FACES)};
 const $ = (id) => document.getElementById(id);
 let leader = null;
 let stream = null;
@@ -106,7 +126,7 @@ for (const l of LEADERS) {
   $('leaders').appendChild(b);
 }
 $('back').addEventListener('click', () => {
-  if (takes.size && !window.confirmLeave) { $('back').textContent = 'Your recordings for this leader will be lost. Click again to go back.'; window.confirmLeave = true; return; }
+  if ((takes.size || character()) && !window.confirmLeave) { $('back').textContent = 'Your work on this leader will be lost. Click again to go back.'; window.confirmLeave = true; return; }
   window.confirmLeave = false;
   $('back').textContent = '← Choose a different leader';
   for (const t of takes.values()) URL.revokeObjectURL(t.url);
@@ -117,8 +137,19 @@ $('back').addEventListener('click', () => {
 
 function open(l) {
   leader = l;
-  $('who').textContent = l.icon + ' ' + l.name;
-  $('title').textContent = l.title + ' · ' + l.nation;
+  face = l.icon;
+  $('cname').value = l.name;
+  $('ctitle').value = l.title;
+  const fb = $('faces');
+  fb.innerHTML = '';
+  for (const f of [l.icon, ...FACES[l.female ? 'woman' : 'man'].filter((x) => x !== l.icon)]) {
+    const b = document.createElement('button');
+    b.textContent = f;
+    b.setAttribute('aria-label', 'Face ' + f);
+    b.addEventListener('click', () => { face = f; heading(); });
+    fb.appendChild(b);
+  }
+  heading();
   $('direction').textContent = l.voice;
   const box = $('lines');
   box.innerHTML = '';
@@ -126,10 +157,22 @@ function open(l) {
     const c = document.createElement('div');
     c.className = 'card';
     c.id = 'card-' + ln.key;
-    c.innerHTML = '<div class="when"></div><div class="line"></div><div class="row">' +
-      '<button class="rec">● Record</button><button class="play" disabled>▶ Listen</button><span class="state"></span></div>';
+    c.innerHTML = '<div class="when"></div><textarea class="line" rows="2" maxlength="${CHARACTER_LIMITS.line}"></textarea><div class="row" style="margin-top:10px">' +
+      '<button class="rec">● Record</button><button class="play" disabled>▶ Listen</button><span class="state"></span><button class="link reset" hidden>Put the original words back</button></div>';
     c.querySelector('.when').textContent = (i + 1) + ' of ' + l.lines.length + ' · ' + ln.when;
-    c.querySelector('.line').textContent = '\\u201c' + ln.text + '\\u201d';
+    const ta = c.querySelector('.line'), reset = c.querySelector('.reset');
+    ta.value = ln.text;
+    ta.setAttribute('aria-label', 'Line ' + (i + 1) + ': ' + ln.when);
+    const changed = () => {
+      const own = said(ta.value) !== ln.text && said(ta.value) !== '';
+      ta.classList.toggle('own', own);
+      reset.hidden = !own;
+      const st = c.querySelector('.state');
+      if (takes.has(ln.key) && takes.get(ln.key).text !== said(ta.value)) { st.textContent = 'The words changed after you recorded this. Record it again.'; st.className = 'state err'; }
+      refresh();
+    };
+    ta.addEventListener('input', changed);
+    reset.addEventListener('click', () => { ta.value = ln.text; changed(); });
     c.querySelector('.rec').addEventListener('click', () => toggle(ln.key));
     c.querySelector('.play').addEventListener('click', () => { const t = takes.get(ln.key); if (t) new Audio(t.url).play(); });
     box.appendChild(c);
@@ -139,9 +182,35 @@ function open(l) {
   window.scrollTo(0, 0);
 }
 
+let face = '';
+const said = (s) => s.replace(/[<>&"\`]/g, '').replace(/\\s+/g, ' ').trim();
+function heading() {
+  $('who').textContent = face + ' ' + (said($('cname').value) || leader.name);
+  $('title').textContent = (said($('ctitle').value) || leader.title) + ' · ' + leader.nation;
+  for (const b of $('faces').children) b.classList.toggle('on', b.textContent === face);
+  if (!$('booth').hidden) refresh();
+}
+$('cname').addEventListener('input', heading);
+$('ctitle').addEventListener('input', heading);
+// What they changed about the leader, in the form the game reads; null if they changed nothing.
+function character() {
+  const c = {}, lines = {};
+  const name = said($('cname').value), title = said($('ctitle').value);
+  if (name && name !== leader.name) c.name = name;
+  if (title && title !== leader.title) c.title = title;
+  if (face !== leader.icon) c.icon = face;
+  for (const ln of leader.lines) {
+    const t = said($('card-' + ln.key).querySelector('.line').value);
+    if (t && t !== ln.text) { lines[ln.ev] = lines[ln.ev] || [null, null]; lines[ln.ev][ln.i] = t; }
+  }
+  if (Object.keys(lines).length) c.lines = lines;
+  return Object.keys(c).length ? c : null;
+}
 function refresh() {
-  $('count').textContent = takes.size + ' of ' + leader.lines.length + ' lines recorded';
-  $('save').disabled = takes.size === 0 || !!active;
+  const c = character(), own = c && c.lines ? Object.values(c.lines).flat().filter(Boolean).length : 0;
+  $('count').textContent = takes.size + ' of ' + leader.lines.length + ' lines recorded' + (own ? ' · ' + own + ' in your own words' : '');
+  $('save').disabled = (takes.size === 0 && !c) || !!active;
+  $('save').textContent = takes.size ? 'Download my recordings' : 'Download my character';
 }
 
 // ---- recording ----
@@ -168,7 +237,7 @@ async function toggle(key) {
       const wav = await toWav(new Blob(chunks, { type: rec.mimeType }));
       const old = takes.get(key);
       if (old) URL.revokeObjectURL(old.url);
-      takes.set(key, { wav, url: URL.createObjectURL(new Blob([wav], { type: 'audio/wav' })) });
+      takes.set(key, { wav, text: said(card.querySelector('.line').value), url: URL.createObjectURL(new Blob([wav], { type: 'audio/wav' })) });
       card.classList.add('done');
       card.querySelector('.play').disabled = false;
       state.textContent = '✓ Recorded, ' + ((wav.length - 44) / 2 / RATE).toFixed(1) + ' s';
@@ -244,12 +313,17 @@ function zip(files) {
 $('save').addEventListener('click', () => {
   const who = $('actor').value.trim();
   const files = [...takes].map(([key, t]) => ({ name: key + '.wav', data: t.wav }));
-  const readme = 'Recordings for ' + leader.name + ' (' + leader.nation + ') in Hearth & Empire.\\n' + (who ? 'Voiced by ' + who + '.\\n' : '') +
+  const made = character();
+  const shown = (made && made.name) || leader.name;
+  const readme = 'Recordings for ' + shown + ' (' + leader.nation + ') in Hearth & Empire.\\n' + (who ? 'Voiced by ' + who + '.\\n' : '') +
+    (made ? 'A character of their own making, based on ' + leader.name + '.\\n' : '') +
     takes.size + ' of ' + leader.lines.length + ' lines.\\n\\nTo use them: copy every file in this folder into public/assets/voice/ in the game and restart it.\\n';
   files.push({ name: 'README.txt', data: new TextEncoder().encode(readme) });
   if (who) files.push({ name: 'credit_' + leader.civ + '.txt', data: new TextEncoder().encode(who) });
   // Tells the game which of the nation's two leaders these recordings are of.
   files.push({ name: 'persona_' + leader.civ + '.txt', data: new TextEncoder().encode(leader.persona) });
+  // The character they made of the leader: their name, title, face and any lines in their own words.
+  if (made) files.push({ name: 'character_' + leader.civ + '.json', data: new TextEncoder().encode(JSON.stringify(made, null, 2)) });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(zip(files));
   a.download = 'voice-' + leader.civ + (leader.persona === 'alt' ? '-alt' : '') + (who ? '-' + who.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : '') + '.zip';
@@ -258,7 +332,7 @@ $('save').addEventListener('click', () => {
   a.remove();
   $('count').textContent = 'Downloaded. Send that file back to whoever invited you.';
 });
-window.addEventListener('beforeunload', (e) => { if (takes.size) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', (e) => { if (takes.size || (leader && !$('booth').hidden && character())) { e.preventDefault(); e.returnValue = ''; } });
 </script>
 </body>
 </html>

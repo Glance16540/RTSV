@@ -31,5 +31,19 @@ if (existsSync(join(root, 'voice'))) {
     if (m && readFileSync(join(root, 'voice', file), 'utf8').trim() === 'alt') manifest.personas[m[1]] = 'alt';
   }
 }
+// A leader rewritten by whoever voices them: character_<nation>.json, as the voice booth writes it.
+manifest.characters = {};
+if (existsSync(join(root, 'voice'))) {
+  for (const file of readdirSync(join(root, 'voice')).sort()) {
+    const m = /^character_([a-z]+)\.json$/.exec(file);
+    if (!m) continue;
+    try {
+      const c = JSON.parse(readFileSync(join(root, 'voice', file), 'utf8'));
+      if (c && typeof c === 'object') manifest.characters[m[1]] = { name: c.name, title: c.title, icon: c.icon, lines: c.lines };
+    } catch {
+      console.warn(`assets: ${file} is not valid JSON and was ignored`);
+    }
+  }
+}
 writeFileSync(join(root, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 console.log(`assets: ${Object.entries(manifest).map(([k, v]) => `${Object.keys(v).length} ${k}`).join(', ')}`);

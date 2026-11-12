@@ -5,7 +5,7 @@ import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
-import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, personaLines, setLeaderPersona, speechText } from '../src/sim/leaders';
+import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS, CIVS, UNITS } from '../src/sim/data';
 import { ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
@@ -2261,5 +2261,26 @@ describe('men and women as leaders', () => {
     setLeaderPersona('dawn', true);
     expect(leaderOf('dawn')!.name).toBe('Eliab the Seer');
     setLeaderPersona('dawn', false);
+  });
+
+  it('a leader can be rewritten as a character of the voice actor\'s own', () => {
+    setLeaderCharacter('greece', { name: 'Dave the <b>Bold</b>', title: '', icon: '🧙‍♂️', lines: { attack: [null, 'Right. <script>Shields</script> up, lads.'], win: ['x'.repeat(500)] } });
+    const l = leaderOf('greece')!;
+    expect(l.name).toBe('Dave the bBold/b'); // nothing that could be markup survives
+    expect(l.title).toBe(LEADERS.greece.title); // left blank: kept
+    expect(l.icon).toBe('🧙‍♂️');
+    expect(l.female).toBe(false);
+    expect(speechText({ civ: 'greece', event: 'attack', index: 0 })).toBe(LEADERS.greece.lines.attack[0]);
+    expect(speechText({ civ: 'greece', event: 'attack', index: 1 })).toBe('Right. scriptShields/script up, lads.');
+    expect(speechText({ civ: 'greece', event: 'win', index: 0 }).length).toBe(160);
+    expect(speechText({ civ: 'greece', event: 'win', index: 1 })).toBe(LEADERS.greece.lines.win[1]);
+    expect(speechText({ civ: 'greece', event: 'intro', index: 0 })).toBe(LEADERS.greece.lines.intro[0]);
+    // A face of the other sex is not taken, and rubbish is ignored.
+    setLeaderCharacter('dawn', { name: 'Miriam', icon: '👸', lines: 'nonsense' as never });
+    expect(leaderOf('dawn')!.icon).toBe(LEADERS.dawn.icon);
+    expect(leaderOf('dawn')!.female).toBe(false);
+    setLeaderCharacter('greece', null);
+    setLeaderCharacter('dawn', null);
+    expect(leaderOf('greece')!.name).toBe(LEADERS.greece.name);
   });
 });
