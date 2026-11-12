@@ -6,7 +6,7 @@ import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS } from '../src/sim/data';
-import { answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -1427,5 +1427,49 @@ describe('alliances and dominion', () => {
     expect(c.winner).toBe(0);
     expect(turns).toBe(DOMINION_TURNS);
     expect(c.factions.filter((f) => f.alive).length).toBeGreaterThan(1);
+  });
+});
+
+describe('an active ally', () => {
+  it('gifts earn goodwill, an ally shares stores and rewards an answered call', () => {
+    const c = newCampaign(7, 2);
+    c.factions[0].supplies = 40;
+    for (let i = 0; i < 5; i++) sendGift(c, 2);
+    expect(c.factions[2].favor).toBe(MAX_FAVOR);
+    expect(c.factions[0].supplies).toBe(40 - GIFT_COST * MAX_FAVOR); // no more once goodwill is full
+    c.ally = 1;
+    expect(canGift(c, 1)).toBe(true);
+
+    // Faction 2 takes land from the ally: the ally asks for help.
+    const land = c.territories.find((t) => t.owner === 1)!;
+    const from = c.territories[land.adj[0]];
+    from.owner = 2;
+    c.armies = c.armies.filter((a) => a.at !== from.id && a.at !== land.id);
+    c.armies.push({ id: c.nextArmy++, owner: 2, at: from.id, units: { infantry: 12 }, hero: false, vet: 0, moved: false });
+    c.territories.find((t) => t.owner === 1 && t !== land) ?? (c.territories.find((t) => t.owner < 0)!.owner = 1);
+    moveArmy(c, c.nextArmy - 1, land.id);
+    if (c.pending) resolvePending(c, 'attacker');
+    expect(land.owner).toBe(2);
+    expect(c.request?.foe).toBe(2);
+
+    // The player answers by taking that land back from faction 2.
+    const mine = c.armies.find((a) => a.owner === 0)!;
+    const base = c.territories[land.adj.find((n) => n !== from.id) ?? land.adj[0]];
+    if (base.owner !== 0) { base.owner = 0; c.armies = c.armies.filter((a) => a === mine || a.at !== base.id); }
+    mine.at = base.id; mine.moved = false;
+    c.factions[1].supplies = 10;
+    const before = c.factions[0].supplies;
+    expect(moveArmy(c, mine.id, land.id)).toBe('battle');
+    resolvePending(c, 'attacker');
+    expect(c.request).toBeNull();
+    expect(c.factions[0].supplies).toBe(before + 4);
+
+    // A rich ally shares with a poor friend at the turn.
+    c.factions[0].supplies = 0; c.factions[1].supplies = 30;
+    c.truces = [{ with: 2, until: 99 }];
+    const turn = c.turn;
+    endTurn(c);
+    while (c.pending) { resolvePending(c, 'defender'); continueAI(c); }
+    if (c.turn > turn && c.ally === 1) expect(c.log.some((l) => l.includes('share 3 supplies'))).toBe(true);
   });
 });

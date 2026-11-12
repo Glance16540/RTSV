@@ -148,6 +148,9 @@ neighbouring land.
   on your side), and your ally goes first for whoever is at your borders. One alliance at a time;
   when only the two of you are left it ends, with a short truce. Betraying an ally is remembered
   twice over.
+- **Gifts and calls for help.** Send any rival supplies to earn goodwill, which makes them readier
+  to agree to a truce or an alliance. An ally who loses land asks you to strike at whoever took it
+  and thanks you if you do, and an ally with full stores shares with you when yours run low.
 - **Two ways to win.** Take every territory, or hold six in every ten for three turns running.
   A rival can win the same way, so a runaway neighbour has to be stopped.
 - **Each people plays differently on the map**, and each leader has a temperament: some are

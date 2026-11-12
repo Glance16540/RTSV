@@ -66,6 +66,8 @@ export const PERSONA: Record<string, { margin: number; fort: number; farm: numbe
 export const TRUCE_COST = 3;
 export const TRUCE_TURNS = 6;
 export const ALLIANCE_COST = 6;
+export const GIFT_COST = 4;
+export const MAX_FAVOR = 3;
 /** Hold this share of all the land for this many turns running and the campaign is won. */
 export const DOMINION_SHARE = 0.6;
 export const DOMINION_TURNS = 3;
@@ -82,6 +84,7 @@ export const heroCost = (civ: string): number => (civ === 'dawn' ? HERO_COST / 2
 export interface Faction {
   id: number; name: string; civ: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean;
   lastDemand: number; // turn this rival last demanded tribute
+  favor?: number; // goodwill earned with gifts and help, up to MAX_FAVOR: makes them readier to deal
   refused?: number; // turn they last turned the player down: they will not be asked twice in a turn
   angry: boolean; // refused: will attack the player at worse odds this turn
 }
@@ -152,6 +155,8 @@ export interface Campaign {
   ally: number;
   /** Who holds most of the land, and for how many turns running. */
   dominion: { f: number; turns: number };
+  /** The ally has asked the player to strike at this people before the turn given. */
+  request?: { foe: number; until: number } | null;
 }
 
 const NAMES = [
@@ -465,7 +470,7 @@ export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || c.factions[0].supplies < TRUCE_COST || c.phase !== 'player' || fac.refused === c.turn) return false;
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
-  const willing = PERSONA[fac.civ].peace + (mine >= theirs ? 0.25 : -0.15);
+  const willing = PERSONA[fac.civ].peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0);
   if (c.honor < 0 || rand(c) > willing) {
     fac.refused = c.turn;
     say(c, f, 'refuse');
@@ -494,7 +499,7 @@ export function offerAlliance(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   // A leader is readier to stand with you against someone stronger than both of you.
   const threat = c.factions.some((x) => x.alive && x.id !== 0 && x.id !== f && totalStrength(c, x.id) > totalStrength(c, f));
-  if (rand(c) > PERSONA[fac.civ].peace + (threat ? 0.35 : 0.05)) {
+  if (rand(c) > PERSONA[fac.civ].peace + (threat ? 0.35 : 0.05) + 0.1 * (fac.favor ?? 0)) {
     fac.refused = c.turn;
     say(c, f, 'refuse');
     c.log.push(`${fac.name} will not bind themselves to you.`);
@@ -504,6 +509,21 @@ export function offerAlliance(c: Campaign, f: number): boolean {
   c.ally = f;
   say(c, f, 'ally');
   c.log.push(`${fac.name} are now your allies.`);
+  return true;
+}
+
+/** Send a rival supplies. It earns goodwill, and an ally can spend them on troops. */
+export function canGift(c: Campaign, f: number): boolean {
+  const fac = c.factions[f];
+  return !!fac && fac.isAI && fac.alive && c.phase === 'player' && c.honor >= 0 && c.factions[0].supplies >= GIFT_COST && (c.ally === f || (fac.favor ?? 0) < MAX_FAVOR);
+}
+export function sendGift(c: Campaign, f: number): boolean {
+  if (!canGift(c, f)) return false;
+  const fac = c.factions[f];
+  c.factions[0].supplies -= GIFT_COST;
+  fac.supplies += GIFT_COST;
+  fac.favor = Math.min(MAX_FAVOR, (fac.favor ?? 0) + 1);
+  c.log.push(`You sent ${fac.name} ${GIFT_COST} supplies.`);
   return true;
 }
 
@@ -562,6 +582,20 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       t.capital = -1;
     }
     t.owner = p.attacker;
+    if (c.ally >= 0 && c.factions[c.ally].alive) {
+      const ally = c.factions[c.ally];
+      if (p.defender === c.ally && p.attacker > 0 && !c.request) {
+        c.request = { foe: p.attacker, until: c.turn + 4 };
+        c.log.push(`${ally.name} ask you to strike at ${c.factions[p.attacker].name} before turn ${c.turn + 4}.`);
+      } else if (p.attacker === 0 && c.request && p.defender === c.request.foe) {
+        const thanks = Math.min(4, ally.supplies);
+        ally.supplies -= thanks;
+        c.factions[0].supplies += thanks;
+        ally.favor = Math.min(MAX_FAVOR, (ally.favor ?? 0) + 1);
+        c.request = null;
+        c.log.push(`${ally.name} thank you for answering their call${thanks ? ` and send ${thanks} supplies` : ''}.`);
+      }
+    }
     t.buildings = t.buildings.filter((b) => b !== 'fortress'); // the walls do not survive the assault
   } else {
     if (army) destroyArmy(c, army);
@@ -638,6 +672,13 @@ export function continueAI(c: Campaign): void {
       c.truces = c.truces.filter((tr) => tr.until >= c.turn);
       for (const x of c.factions) if (x.alive) x.supplies += Math.round(income(c, x.id) * (x.isAI ? [0.8, 1, 1.25][c.level] : 1));
       c.log.push(`Turn ${c.turn}.`);
+      if (c.request && (c.request.until < c.turn || c.ally < 0 || !c.factions[c.request.foe].alive)) c.request = null;
+      if (c.ally >= 0 && c.factions[c.ally].supplies >= 12 && c.factions[0].supplies < 6) {
+        // An ally with full stores does not watch a friend go hungry.
+        c.factions[c.ally].supplies -= 3;
+        c.factions[0].supplies += 3;
+        c.log.push(`${c.factions[c.ally].name} share 3 supplies with you.`);
+      }
       turnEvent(c);
       checkDominion(c);
       return;
