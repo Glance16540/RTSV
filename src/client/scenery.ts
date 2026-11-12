@@ -101,7 +101,7 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       if (dune > 0) {
         const k = smooth(0.3, 0.7, dune + (mid - 0.5) * 0.35), ripple = Math.sin((u * 0.9 + v * 2.6 + broad * 5) * 3.2) * 6;
         const red = climate === 'desert' ? 10 : 0;
-        r += (218 + red + broad * 16 + ripple - r) * k; g += (196 + broad * 14 + ripple - g) * k; b += (140 - red + broad * 12 + ripple * 0.6 - b) * k;
+        r += (188 + red + broad * 18 + ripple - r) * k; g += (156 + broad * 15 + ripple - g) * k; b += (98 - red + broad * 12 + ripple * 0.6 - b) * k; // kept well short of white: the sun is strong
       }
       // Marsh: dark wet green, with pools of standing water.
       if (bog > 0) {
@@ -126,7 +126,7 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       // Sand along the shore, wet and darker at the waterline.
       const sand = smooth(0.14, 0.4, water);
       const wet = smooth(0.4, 0.55, water);
-      r += (212 + mid * 14 - r) * sand; g += (194 + mid * 12 - g) * sand; b += (142 + mid * 10 - b) * sand;
+      r += (192 + mid * 14 - r) * sand; g += (166 + mid * 12 - g) * sand; b += (112 + mid * 10 - b) * sand;
       r -= wet * 46; g -= wet * 34; b -= wet * 18;
       // The lake bed: sand going down into green-blue dark.
       const deep = smooth(0.5, 1, water);

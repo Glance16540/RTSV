@@ -354,3 +354,4 @@ for filenames and a ready-made generation prompt.
 - A map has a country (`Climate` in `src/sim/map.ts`): green (woods, marsh, beaches), desert, steppe or the
   snowy north. In a skirmish it is chosen in the menu or follows your people's homeland; `?climate=desert`.
 - Weather belongs to the match (`Game.stepWeather`), on its own seeded run of chances, and only in a country (the plain maps have none). While it is heavy, rain takes a tile off bows and guns and puts fires out, snow slows everyone off the roads, and a dust storm cuts sight by two tiles and takes a tile off bows and guns. `src/client/weather.ts` draws it; `?weather=rain|snow|dust|clear` holds one kind on screen without changing the match.
+- `?fog=0` shows the whole map with no fog of war, for looking at the game rather than playing it.

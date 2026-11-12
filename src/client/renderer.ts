@@ -63,6 +63,8 @@ export class Renderer {
   private v3 = new THREE.Vector3();
   private clock = 0;
   private wallTick = -1;
+  /** `?fog=0`: the whole map is shown, for looking at the game rather than playing it. */
+  private noFog = new URLSearchParams(location.search).get('fog') === '0';
   /** `?motion=0`: figures are not given joints and move the old simple way. */
   private still = new URLSearchParams(location.search).get('motion') === '0';
   private shake = 0;
@@ -224,6 +226,7 @@ export class Renderer {
     const fog = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: this.fogTex, transparent: true, depthTest: false, depthWrite: false, fog: false }));
     fog.renderOrder = 100;
     fog.frustumCulled = false;
+    fog.visible = !this.noFog;
     this.scene.add(fog);
   }
 
@@ -310,6 +313,7 @@ export class Renderer {
   isVisible(e: Entity): boolean {
     const g = this.game;
     if (e.kind === 'unit' && e.inside) return false;
+    if (this.noFog) return true;
     if (e.owner >= 0 && !g.hostile(e.owner, g.humanId)) return true; // ours or an ally's
     if (e.kind === 'building') return e.seen;
     const v = g.vis[Math.floor(e.y) * g.size + Math.floor(e.x)];
@@ -326,7 +330,7 @@ export class Renderer {
         this.unitViews.delete(ev.id);
       }
       const b = this.buildingViews.get(ev.id);
-      if (b) { if (b.visible && b.scale.y > 0.5) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); const sv = this.staffViews.get(ev.id); if (sv) { this.scene.remove(sv.g); this.staffViews.delete(ev.id); } }
+      if (b) { if (b.userData.site) this.scene.remove(b.userData.site as THREE.Object3D); if (b.visible && !b.userData.site) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); const sv = this.staffViews.get(ev.id); if (sv) { this.scene.remove(sv.g); this.staffViews.delete(ev.id); } }
       const r = this.resViews.get(ev.id);
       if (r) { this.scene.remove(r); this.resViews.delete(ev.id); }
       const ti = this.treeIndex.get(ev.id);
@@ -860,7 +864,32 @@ export class Renderer {
     if (b.def.staff) this.syncStaff(b, g.visible && b.complete, lean);
     if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
     g.userData.hurt = hurt;
-    g.scale.y = b.complete ? 1 : 0.12 + 0.88 * b.progress;
+    // A building going up rises out of its footings inside a scaffold of poles, which comes down when it is done.
+    let site = g.userData.site as THREE.Group | undefined;
+    if (!b.complete) {
+      if (g.userData.tall === undefined) { g.userData.baseY = g.position.y; g.userData.tall = new THREE.Box3().setFromObject(g).max.y - g.position.y; }
+      const tall = g.userData.tall as number;
+      if (!site) {
+        site = new THREE.Group();
+        const pole = mat(0x8a6a44), h = Math.min(tall, 2.6) + 0.25, r = b.size / 2 - 0.06;
+        const footing = new THREE.Mesh(new THREE.BoxGeometry(b.size * 0.96, 0.08, b.size * 0.96), mat(0x7a6850));
+        footing.position.y = 0.04; footing.receiveShadow = true; site.add(footing);
+        if (!b.def.wall && b.type !== 'farm') {
+          for (const [x, z] of [[-r, -r], [r, -r], [-r, r], [r, r]]) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, h, 5), pole); m.position.set(x, h / 2, z); m.castShadow = true; site.add(m); }
+          for (const y of [h * 0.45, h * 0.9]) for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(2 * r, 0.04, 0.04), pole); m.position.set(k === 0 ? 0 : k === 1 ? r : k === 2 ? 0 : -r, y, k === 0 ? -r : k === 1 ? 0 : k === 2 ? r : 0); m.rotation.y = k % 2 ? Math.PI / 2 : 0; site.add(m); }
+          for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(2.4 * r, 0.035, 0.035), pole); m.position.set(0, h * 0.45, k ? r : -r); m.rotation.z = k ? 0.42 : -0.42; site.add(m); }
+        }
+        site.position.set(g.position.x, g.userData.baseY as number, g.position.z);
+        this.scene.add(site);
+        g.userData.site = site;
+      }
+      site.visible = g.visible;
+      g.position.y = (g.userData.baseY as number) - (1 - b.progress) * tall * 0.96;
+    } else if (site) {
+      this.scene.remove(site);
+      g.userData.site = undefined;
+      g.position.y = g.userData.baseY as number;
+    }
     // Badly damaged buildings burn.
     const burning = (b.complete && b.hp < b.maxHp * 0.5) || b.burnT > 0;
     let fire = g.userData.fire as THREE.Mesh | undefined;

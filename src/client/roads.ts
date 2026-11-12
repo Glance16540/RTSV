@@ -12,19 +12,21 @@ function surface(cobbled: boolean): THREE.CanvasTexture {
   const g = c.getContext('2d')!;
   let s = cobbled ? 91 : 17;
   const r = (): number => ((s = (s * 16807 + 11) % 2147483647) / 2147483647);
-  g.fillStyle = cobbled ? '#8f8674' : '#a88a5c';
+  g.fillStyle = cobbled ? '#5e574b' : '#7e6240';
   g.fillRect(0, 0, 64, 256);
   if (cobbled) {
-    for (let y = 0; y < 256; y += 13) for (let x = (y / 13) % 2 ? -6 : 0; x < 64; x += 13) {
-      const v = 150 + r() * 60;
-      g.fillStyle = `rgb(${v | 0},${(v - 6) | 0},${(v - 22) | 0})`;
-      g.beginPath(); g.roundRect(x + 1 + r() * 2, y + 1 + r() * 2, 10, 10, 3); g.fill();
+    // Small worn setts in warm greys, darker than the plaster and stone of the houses beside them.
+    for (let y = 0; y < 256; y += 8) for (let x = (y / 8) % 2 ? -4 : 0; x < 64; x += 8) {
+      const v = 104 + r() * 46;
+      g.fillStyle = `rgb(${v | 0},${(v - 8) | 0},${(v - 24) | 0})`;
+      g.beginPath(); g.roundRect(x + 0.6 + r(), y + 0.6 + r(), 6.4, 6.4, 2); g.fill();
     }
   } else {
-    for (let i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? '#8a6e44' : '#c4a878'; g.globalAlpha = 0.25; g.fillRect(r() * 64, r() * 256, 2 + r() * 5, 2 + r() * 4); }
-    // Two wheel ruts.
-    g.globalAlpha = 0.22; g.fillStyle = '#6a5230';
-    for (const x of [19, 41]) g.fillRect(x, 0, 4, 256);
+    // Trodden earth: darker than sand or the bare ground of a town, mottled, worn palest down the middle.
+    for (let i = 0; i < 420; i++) { g.fillStyle = r() < 0.55 ? '#6a5032' : '#96784e'; g.globalAlpha = 0.3; g.fillRect(r() * 64, r() * 256, 2 + r() * 6, 2 + r() * 5); }
+    const worn = g.createLinearGradient(0, 0, 64, 0);
+    worn.addColorStop(0.2, 'rgba(160,132,90,0)'); worn.addColorStop(0.5, 'rgba(160,132,90,0.35)'); worn.addColorStop(0.8, 'rgba(160,132,90,0)');
+    g.globalAlpha = 1; g.fillStyle = worn; g.fillRect(0, 0, 64, 256);
   }
   // Ragged, fading edges, so the path sinks into the grass instead of ending in a line.
   g.globalAlpha = 1;
@@ -94,7 +96,7 @@ export class Roads {
       next.push(pts[pts.length - 1]);
       pts = next;
     }
-    const half = cobbled ? 0.5 : 0.42, pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    const half = cobbled ? 0.44 : 0.4, pos: number[] = [], uv: number[] = [], idx: number[] = [];
     let run = 0;
     for (let i = 0; i < pts.length; i++) {
       const [x, y] = pts[i], [px, py] = pts[Math.max(0, i - 1)], [nx, ny] = pts[Math.min(pts.length - 1, i + 1)];

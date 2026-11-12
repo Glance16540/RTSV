@@ -757,6 +757,11 @@ const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, g
 export function shapedBuilding(type: string, size: number, o: Look, seed: number): THREE.Group | null {
   const make = MAKERS[type];
   if (!make) return null;
+  // No two roofs weather alike: each building's is a shade lighter or darker, warmer or cooler, than its neighbour's.
+  const tint = new THREE.Color(o.roofColor), hsl = { h: 0, s: 0, l: 0 };
+  tint.getHSL(hsl);
+  tint.setHSL(hsl.h + ((seed % 3) - 1) * 0.012, hsl.s * (0.85 + (seed % 4) * 0.08), Math.min(0.9, hsl.l * (0.86 + ((seed * 5) % 7) * 0.05)));
+  o = { ...o, roofColor: tint.getHex() };
   const inner = make(o, seed);
   if (AS_BUILT.has(type)) return inner;
   inner.updateMatrixWorld(true);
