@@ -45,6 +45,8 @@ export class Hud {
   private alerts: { x: number; y: number; t: number }[] = [];
   private hoverBtn = -1;
   private buildPage = 0;
+  private guideSig = '';
+  private guideOff = false;
 
   constructor(private app: App) {
     const N = app.game.size;
@@ -74,6 +76,12 @@ export class Hud {
       if (pick) this.app.select(this.app.sel.filter((id) => this.app.game.entities.get(id)?.type === pick.dataset.type));
     });
 
+    try { this.guideOff = localStorage.getItem('rtsv-guide-off') === '1'; } catch { /* storage unavailable */ }
+    $('guide').addEventListener('pointerdown', (e) => {
+      if (!(e.target as HTMLElement).closest('button')) return;
+      this.guideOff = true;
+      try { localStorage.setItem('rtsv-guide-off', '1'); } catch { /* storage unavailable */ }
+    });
     $('idle').addEventListener('pointerdown', () => this.app.nextIdle());
     $('pause').addEventListener('pointerdown', () => this.app.togglePause());
     $('speed').addEventListener('pointerdown', () => this.app.cycleSpeed());
@@ -375,6 +383,35 @@ export class Hud {
     return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;
   }
 
+  // ---- First steps guide ----
+
+  private updateGuide(): void {
+    const { game, pid } = this.app;
+    const p = game.players[pid];
+    const mine = game.buildings.filter((b) => b.owner === pid);
+    const units = game.units.filter((u) => u.owner === pid);
+    const steps: [string, string, boolean][] = [
+      ['Put your villagers to work', 'Drag a box around them, then right-click berries or trees.', units.some((u) => u.order?.t === 'gather') || game.time > 240],
+      ['Build a House', 'Select a villager, press Q, then click a spot near the Town Center.', mine.some((b) => b.type === 'house' && b.complete)],
+      ['Start a family', 'Select the house and press Q, or right-click it with a man and a woman.', mine.some((b) => b.residents.m && b.residents.f)],
+      ['Grow to 10 people', 'Train villagers at the Town Center (H) and let your families raise children.', p.pop >= 10],
+      ['Raise an army', 'Villager → Military buildings (V) → Barracks, then train three soldiers.', units.filter((u) => game.isMilitary(u)).length >= 3],
+      ['Advance to the Bronze Age', 'Select the Town Center (H) and press T once you have the food and wood.', p.age >= 1],
+      ['Destroy the Red Tribe', 'Scout with soldiers, then select your army, press Q and click their base.', game.winner === pid],
+    ];
+    const i = steps.findIndex((s) => !s[2]);
+    const show = !this.guideOff && i >= 0 && !this.app.paused;
+    const sig = show ? String(i) : '';
+    if (sig === this.guideSig) return;
+    this.guideSig = sig;
+    const el = $('guide');
+    el.classList.toggle('hidden', !show);
+    if (!show) return;
+    el.innerHTML = `<h4>First steps ${i + 1}/${steps.length}<button title="Hide these tips">✕</button></h4>` +
+      (i > 0 ? `<div class="done">✓ ${steps[i - 1][0]}</div>` : '') +
+      `<div class="now"><b>${steps[i][0]}</b><small>${steps[i][1]}</small></div>`;
+  }
+
   // ---- Minimap ----
 
   private drawMinimap(): void {
@@ -458,6 +495,7 @@ export class Hud {
     }
 
     this.updateCard();
+    this.updateGuide();
     const info = this.infoHtml();
     if (info !== this.infoSig) { this.infoSig = info; $('info').innerHTML = info; }
 

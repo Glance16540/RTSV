@@ -44,6 +44,7 @@ export class Renderer {
   private v3 = new THREE.Vector3();
   private clock = 0;
   private shake = 0;
+  private dying: { g: THREE.Group; t: number }[] = [];
   private area: THREE.Mesh;
 
   constructor(public canvas: HTMLCanvasElement, private game: Game) {
@@ -262,7 +263,12 @@ export class Renderer {
   handle(ev: GameEvent): void {
     if (ev.t === 'remove') {
       const u = this.unitViews.get(ev.id);
-      if (u) { this.scene.remove(u.g); this.unitViews.delete(ev.id); }
+      if (u) {
+        // Fallen units topple over and sink away instead of vanishing.
+        if (u.g.visible) this.dying.push({ g: u.g, t: 0 });
+        else this.scene.remove(u.g);
+        this.unitViews.delete(ev.id);
+      }
       const b = this.buildingViews.get(ev.id);
       if (b) { this.scene.remove(b); this.buildingViews.delete(ev.id); }
       const r = this.resViews.get(ev.id);
@@ -374,6 +380,20 @@ export class Renderer {
     }
     g.visible = this.isVisible(b);
     g.scale.y = b.complete ? 1 : 0.12 + 0.88 * b.progress;
+    // Badly damaged buildings burn.
+    const burning = b.complete && b.hp < b.maxHp * 0.5;
+    let fire = g.userData.fire as THREE.Mesh | undefined;
+    if (burning && !fire) {
+      fire = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 6), new THREE.MeshBasicMaterial({ color: 0xff8a20, transparent: true, opacity: 0.85 }));
+      fire.position.set(b.size * 0.15, b.type === 'farm' ? 0.5 : b.size * 0.35 + 0.9, -b.size * 0.1);
+      g.add(fire);
+      g.userData.fire = fire;
+    }
+    if (fire) {
+      fire.visible = burning;
+      const k = 0.8 + (1 - b.hp / (b.maxHp * 0.5)) * 1.4;
+      fire.scale.set(k, k * (0.85 + Math.sin(this.clock * 17 + b.id) * 0.25), k);
+    }
     if (b.type === 'house') {
       (g.userData.resM as THREE.Mesh).visible = b.residents.m !== 0;
       (g.userData.resF as THREE.Mesh).visible = b.residents.f !== 0;
@@ -459,6 +479,13 @@ export class Renderer {
       p.mesh.scale.setScalar(1 + p.t * 2.5);
       (p.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - p.t / 0.6;
       if (p.t > 0.6) { this.scene.remove(p.mesh); this.pings.splice(i, 1); }
+    }
+    for (let i = this.dying.length - 1; i >= 0; i--) {
+      const d = this.dying[i];
+      d.t += dt;
+      d.g.rotation.z = Math.min(1, d.t / 0.35) * (Math.PI / 2);
+      if (d.t > 1.2) d.g.position.y -= dt * 0.6;
+      if (d.t > 2.2) { this.scene.remove(d.g); this.dying.splice(i, 1); }
     }
     for (let i = this.floaters.length - 1; i >= 0; i--) if ((this.floaters[i].t += dt) > 2) this.floaters.splice(i, 1);
 

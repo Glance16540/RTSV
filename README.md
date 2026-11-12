@@ -73,6 +73,7 @@ difficulty levels that plays by the same rules.
 | Left-click / drag | Select (double-click selects all of a type on screen) |
 | Right-click | Move, gather, build, repair, attack, move into a house, set rally point |
 | Alt + right-click | Send units inside a Town Center or Watch Tower |
+| Shift + right-click | Queue an order after the current one |
 | Arrow keys / screen edge | Scroll |
 | Mouse wheel / middle-drag | Zoom / pan |
 | `Q W E R T` `A S D F G` `Z X C V B` | Command card buttons, by position |

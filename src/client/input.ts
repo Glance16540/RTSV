@@ -107,7 +107,7 @@ export class Input {
     if (e.button === 2) {
       if (app.placing || app.attackMode || app.casting) { app.select(app.sel); return; }
       const p = app.r.groundAt(e.clientX, e.clientY);
-      if (p) this.commandAt(p.x, p.y, this.pick(e.clientX, e.clientY), e.altKey || e.ctrlKey);
+      if (p) this.commandAt(p.x, p.y, this.pick(e.clientX, e.clientY), e.altKey || e.ctrlKey, e.shiftKey);
       return;
     }
     if (e.button !== 0) return;
@@ -116,7 +116,7 @@ export class Input {
       const def = BUILDINGS[app.placing];
       if (c && def.wall && !def.gate) { this.line = c; return; }
       if (c) {
-        const built = app.game.cmdPlace(app.pid, app.placing, c.cx, c.cy, app.sel);
+        const built = app.game.cmdPlace(app.pid, app.placing, c.cx, c.cy, app.sel, e.shiftKey);
         if (built) sfx.play('place');
         if (built && !e.shiftKey) app.placing = null;
       }
@@ -205,7 +205,7 @@ export class Input {
   }
 
   /** Right-click order at a world position (also used by the minimap). */
-  commandAt(x: number, y: number, target: Entity | null, garrison: boolean): void {
+  commandAt(x: number, y: number, target: Entity | null, garrison: boolean, queue = false): void {
     const { game, pid, sel, r } = this.app;
     const ents = sel.map((id) => game.entities.get(id)).filter((e): e is Entity => !!e && e.owner === pid);
     if (!ents.length) return;
@@ -216,10 +216,10 @@ export class Input {
         game.cmdShelter(pid, units, target.id);
         r.ping(target.x, target.y, 0xffe27a);
       } else if (target && !units.includes(target.id)) {
-        game.cmdTarget(pid, units, target.id);
+        game.cmdTarget(pid, units, target.id, queue);
         r.ping(target.x, target.y, target.owner >= 0 && target.owner !== pid ? 0xff5a4a : 0xffe27a);
       } else {
-        game.cmdMove(pid, units, x, y);
+        game.cmdMove(pid, units, x, y, false, queue);
         r.ping(x, y, 0x8dff8a);
       }
     } else {

@@ -65,6 +65,16 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 .toast.warn { border-color: var(--warn); color: #ffd0c4; }
 .toast.fade { opacity: 0; }
 
+#guide {
+  pointer-events: auto; position: absolute; top: 50px; left: 12px; width: 270px; padding: 8px 12px;
+  background: rgba(20, 16, 12, 0.88); border: 1px solid var(--edge); border-radius: 4px;
+}
+#guide h4 { margin: 0 0 4px; font: 600 14px Georgia, serif; color: var(--gold); display: flex; justify-content: space-between; }
+#guide h4 button { border: 0; background: none; color: var(--muted); padding: 0 2px; }
+#guide .done { color: var(--muted); text-decoration: line-through; }
+#guide .now { margin-top: 4px; }
+#guide .now small { display: block; color: var(--muted); }
+
 /* ---- Bottom bar ---- */
 #bottom {
   pointer-events: auto;

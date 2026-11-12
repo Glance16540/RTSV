@@ -324,6 +324,44 @@ describe('walls and gates', () => {
   });
 });
 
+describe('queued orders', () => {
+  it('a shift-queued order runs after the current one, and stop clears the queue', () => {
+    const g = new Game(7, setups);
+    const u = g.spawnUnit('clubman', 0, 40.5, 48.5);
+    g.cmdMove(0, [u.id], 44.5, 48.5);
+    g.cmdMove(0, [u.id], 44.5, 52.5, false, true);
+    g.cmdMove(0, [u.id], 40.5, 52.5, false, true);
+    expect(u.queue.length).toBe(2);
+    run(g, 2.2);
+    expect(Math.hypot(u.x - 44.5, u.y - 48.5)).toBeLessThan(0.6); // first leg done, not cut short
+    run(g, 6);
+    expect(Math.hypot(u.x - 40.5, u.y - 52.5)).toBeLessThan(0.3);
+    expect(u.order).toBe(null);
+    g.cmdMove(0, [u.id], 44.5, 48.5);
+    g.cmdMove(0, [u.id], 44.5, 52.5, false, true);
+    g.cmdStop(0, [u.id]);
+    expect(u.order).toBe(null);
+    expect(u.queue.length).toBe(0);
+    // An ordinary order replaces the queue.
+    g.cmdMove(0, [u.id], 44.5, 48.5);
+    g.cmdMove(0, [u.id], 44.5, 52.5, false, true);
+    g.cmdMove(0, [u.id], 41.5, 48.5);
+    expect(u.queue.length).toBe(0);
+  });
+
+  it('villagers build shift-placed buildings one after another', () => {
+    const g = new Game(7, [{ ...setups[0], isAI: true }, setups[1]]);
+    const v = villagers(g, 0)[0];
+    const a = spot(g, 'house', 0);
+    const h1 = g.cmdPlace(0, 'house', a.cx, a.cy, [v.id], true)!;
+    const b = spot(g, 'house', 0);
+    const h2 = g.cmdPlace(0, 'house', b.cx, b.cy, [v.id], true)!;
+    expect(v.order).toMatchObject({ t: 'build', id: h1.id });
+    run(g, 60);
+    expect(h1.complete && h2.complete).toBe(true);
+  });
+});
+
 describe('market', () => {
   it('trades surplus for gold and gold for what is short', () => {
     const g = new Game(7, setups);
@@ -369,6 +407,6 @@ describe('save and load', () => {
     expect(copy.units.length).toBe(g.units.length);
     for (let i = 0; i < 600; i++) { g.step(); copy.step(); }
     expect(copy.serialize()).toBe(g.serialize());
-    expect(() => Game.restore(g.serialize().replace('"v":1', '"v":0'))).toThrow();
+    expect(() => Game.restore(g.serialize().replace(/"v":\d+/, '"v":0'))).toThrow();
   });
 });

@@ -10,7 +10,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -45,6 +45,7 @@ export interface Unit extends Base {
   facing: number;
   gender: Gender | null;
   order: Order | null;
+  queue: Order[]; // orders to carry out after the current one (shift-click)
   path: number[] | null;
   pathI: number;
   pathFor: number; // entity id the current path leads to
@@ -273,7 +274,7 @@ export class Game {
     const u: Unit = {
       id: this.nextId++, kind: 'unit', type, def, owner, x, y, px: x, py: y, hp: def.hp, maxHp: def.hp, dead: false,
       facing: 0, gender: type === 'villager' ? gender ?? (this.rng() < 0.5 ? 'm' : 'f') : null,
-      order: null, path: null, pathI: 0, pathFor: 0, pathPartial: false, goalX: 0, goalY: 0, repathT: 0,
+      order: null, queue: [], path: null, pathI: 0, pathFor: 0, pathPartial: false, goalX: 0, goalY: 0, repathT: 0,
       cooldown: 0, scanT: this.rng() * 0.4, carryType: 'food', carryAmt: 0, gatherT: 0, homeId: 0,
       moving: false, anchored: false, attackAnim: 0, healTarget: 0, growT: 0, bornAt: 0, plagueT: 0,
       mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
@@ -503,13 +504,39 @@ export class Game {
   }
 
   private setOrder(u: Unit, o: Order | null): void {
+    if (!o && u.queue.length) o = u.queue.shift()!;
     u.order = o;
     u.path = null;
     u.pathFor = 0;
   }
 
-  cmdMove(owner: number, ids: number[], x: number, y: number, attackMove = false): void {
+  /**
+   * Start a command for some units. Normally it replaces what they were doing. With `queue`,
+   * a busy unit keeps its current order and does the new one afterwards. Call the returned
+   * function once the new orders have been set.
+   */
+  private command(us: Unit[], queue: boolean): () => void {
+    if (!queue) {
+      for (const u of us) u.queue.length = 0;
+      return () => {};
+    }
+    const saved = us.map((u) => ({ u, o: u.order, path: u.path, pathI: u.pathI, pathFor: u.pathFor }));
+    return () => {
+      for (const s of saved) {
+        const next = s.u.order;
+        if (!s.o || next === s.o) continue;
+        s.u.order = s.o;
+        s.u.path = s.path;
+        s.u.pathI = s.pathI;
+        s.u.pathFor = s.pathFor;
+        if (next && s.u.queue.length < 8) s.u.queue.push(next);
+      }
+    };
+  }
+
+  cmdMove(owner: number, ids: number[], x: number, y: number, attackMove = false, queue = false): void {
     const us = this.ownUnits(ids, owner);
+    const done = this.command(us, queue);
     const side = Math.ceil(Math.sqrt(us.length));
     us.forEach((u, i) => {
       const ox = us.length > 1 ? ((i % side) - (side - 1) / 2) * 0.85 : 0;
@@ -518,17 +545,19 @@ export class Game {
       const ty = Math.min(this.size - 1.5, Math.max(1.5, y + oy));
       this.setOrder(u, attackMove && u.def.atk > 0 ? { t: 'attackMove', x: tx, y: ty } : { t: 'move', x: tx, y: ty });
     });
+    done();
   }
 
   cmdStop(owner: number, ids: number[]): void {
-    for (const u of this.ownUnits(ids, owner)) this.setOrder(u, null);
+    for (const u of this.ownUnits(ids, owner)) { u.queue.length = 0; this.setOrder(u, null); }
   }
 
   /** Context-sensitive order: attack, gather, build, repair, move in... */
-  cmdTarget(owner: number, ids: number[], targetId: number): void {
+  cmdTarget(owner: number, ids: number[], targetId: number, queue = false): void {
     const t = this.entities.get(targetId);
     if (!t) return;
     const us = this.ownUnits(ids, owner);
+    const done = this.command(us, queue);
     // A house only takes one man and one woman; do not march the whole selection inside.
     const slots = { m: false, f: false };
     for (const u of us) {
@@ -557,6 +586,7 @@ export class Game {
         this.setOrder(u, { t: 'move', x: t.x, y: t.y });
       }
     }
+    done();
   }
 
   /** The gathering job a villager should go back to after an errand. */
@@ -574,7 +604,7 @@ export class Game {
     this.setOrder(u, { t: 'gather', id: t.id, res, phase: 'go', nx: t.x, ny: t.y, dropId: 0, fails: 0 });
   }
 
-  cmdPlace(owner: number, type: string, cx: number, cy: number, builderIds: number[]): Building | null {
+  cmdPlace(owner: number, type: string, cx: number, cy: number, builderIds: number[], queue = false): Building | null {
     const p = this.players[owner];
     const def = BUILDINGS[type];
     if (!def || def.age > p.age) return null;
@@ -582,7 +612,10 @@ export class Game {
     if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return null; }
     this.pay(p, def.cost);
     const b = this.spawnBuilding(type, owner, cx, cy, false);
-    for (const u of this.ownUnits(builderIds, owner)) if (u.type === 'villager' && u.growT <= 0) this.setOrder(u, { t: 'build', id: b.id, then: this.job(u) });
+    const us = this.ownUnits(builderIds, owner).filter((u) => u.type === 'villager' && u.growT <= 0);
+    const done = this.command(us, queue);
+    for (const u of us) this.setOrder(u, { t: 'build', id: b.id, then: queue ? null : this.job(u) });
+    done();
     return b;
   }
 
