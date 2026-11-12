@@ -6,7 +6,7 @@ import {
 } from '../sim/data';
 import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
-import { T_DIRT, T_WATER } from '../sim/map';
+import { T_DIRT, T_ROCK, T_WATER } from '../sim/map';
 import { ico } from './assets';
 import { LOCALS } from '../sim/campaign';
 import { LEADERS, LeaderEvent } from '../sim/leaders';
@@ -573,7 +573,7 @@ export class Hud {
     const set = (i: number, c: number) => { d[i * 4] = c >> 16; d[i * 4 + 1] = (c >> 8) & 255; d[i * 4 + 2] = c & 255; d[i * 4 + 3] = 255; };
     for (let i = 0; i < N * N; i++) {
       const t = game.terrain[i];
-      set(i, t === T_WATER ? 0x2f6a9c : t === T_DIRT ? 0x8a8048 : 0x5c8a40);
+      set(i, t === T_WATER ? 0x2f6a9c : t === T_ROCK ? 0x8c8a86 : t === T_DIRT ? 0x8a8048 : game.spec.height[i] > 0.8 ? 0x86a24e : game.spec.height[i] > 0.3 ? 0x6e9646 : 0x5c8a40);
     }
     const NODE: Record<string, number> = { tree: 0x2c5a2a, berries: 0xd0507a, gold: 0xf2c230, stone: 0xb0b0b0, carcass: 0xd0507a, fish: 0xd8eef8 };
     for (const n of game.resources)

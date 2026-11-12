@@ -77,7 +77,7 @@ export class Renderer {
     this.scene.add(this.sun, this.sun.target);
 
     this.fogAlpha = new Float32Array(game.size * game.size).fill(1);
-    this.scenery = buildScenery(game.size, game.terrain);
+    this.scenery = buildScenery(game.size, game.terrain, game.spec.height);
     this.scene.add(this.scenery.group);
     this.buildTrees();
     this.buildFog();
@@ -139,7 +139,8 @@ export class Renderer {
       const h3 = ((t.id * 7919) % 1000) / 1000;
       const sc = 0.85 + h * 0.5;
       q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, h * 6.28);
-      m.compose(new THREE.Vector3(t.x + (h2 - 0.5) * 0.3, 0, t.y + (h - 0.5) * 0.3), q, new THREE.Vector3(sc, sc * (0.9 + h2 * 0.3), sc));
+      const tx = t.x + (h2 - 0.5) * 0.3, tz = t.y + (h - 0.5) * 0.3;
+      m.compose(new THREE.Vector3(tx, this.scenery.heightAt(tx, tz), tz), q, new THREE.Vector3(sc, sc * (0.9 + h2 * 0.3), sc));
       // Stands of fir with broadleaves among them, more of one or the other from grove to grove.
       const fir = h3 < 0.5 + 0.35 * Math.sin(t.x * 0.13 + t.y * 0.09);
       trunks.setMatrixAt(i, m);
@@ -225,12 +226,18 @@ export class Renderer {
     this.ray.setFromCamera(ndc, this.camera);
     const o = this.ray.ray.origin, d = this.ray.ray.direction;
     if (d.y >= -1e-4) return null;
-    const t = (height - o.y) / d.y;
-    return { x: o.x + d.x * t, y: o.z + d.z * t };
+    // The ground is not flat: step toward where the ray meets it.
+    let x = 0, y = 0, lift = 0;
+    for (let k = 0; k < 4; k++) {
+      const t = (height + lift - o.y) / d.y;
+      x = o.x + d.x * t; y = o.z + d.z * t;
+      lift = this.scenery.heightAt(x, y);
+    }
+    return { x, y };
   }
 
   project(x: number, y: number, h = 0): { x: number; y: number } {
-    this.v3.set(x, h, y).project(this.camera);
+    this.v3.set(x, h + this.scenery.heightAt(x, y), y).project(this.camera);
     return { x: (this.v3.x * 0.5 + 0.5) * window.innerWidth, y: (-this.v3.y * 0.5 + 0.5) * window.innerHeight };
   }
 
@@ -292,7 +299,7 @@ export class Renderer {
   ping(x: number, y: number, color: number): void {
     const m = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.42, 20), new THREE.MeshBasicMaterial({ color, transparent: true, depthTest: false }));
     m.rotation.x = -Math.PI / 2;
-    m.position.set(x, 0.06, y);
+    m.position.set(x, this.scenery.heightAt(x, y) + 0.06, y);
     m.renderOrder = 50;
     this.scene.add(m);
     this.pings.push({ mesh: m, t: 0 });
@@ -301,7 +308,7 @@ export class Renderer {
   /** Circle showing where a calamity will land. */
   setAreaMarker(a: { x: number; y: number; r: number } | null): void {
     this.area.visible = !!a;
-    if (a) { this.area.position.set(a.x, 0.06, a.y); this.area.scale.setScalar(a.r); }
+    if (a) { this.area.position.set(a.x, this.scenery.heightAt(a.x, a.y) + 0.06, a.y); this.area.scale.setScalar(a.r); }
   }
 
   setGhost(type: string | null, cx = 0, cy = 0, ok = true): void {
@@ -325,7 +332,7 @@ export class Renderer {
       this.ghostOk = ok;
     }
     const s = BUILDINGS[type].size;
-    this.ghost!.position.set(cx + s / 2, 0, cy + s / 2);
+    this.ghost!.position.set(cx + s / 2, this.scenery.heightAt(cx + s / 2, cy + s / 2), cy + s / 2);
   }
 
   private syncUnit(u: Unit, alpha: number, dt: number): void {
@@ -366,7 +373,7 @@ export class Renderer {
     // A blow is struck with the whole body: a lunge forward and back.
     const lunge = u.def.naval || u.def.cls === 'siege' ? 0 : swing * 0.14;
     pitch += u.def.naval || u.def.cls === 'siege' ? 0 : swing * 0.16;
-    g.position.set(x + Math.sin(g.rotation.y) * lunge, bob, y + Math.cos(g.rotation.y) * lunge);
+    g.position.set(x + Math.sin(g.rotation.y) * lunge, bob + this.scenery.heightAt(x, y), y + Math.cos(g.rotation.y) * lunge);
     g.scale.set(size, size * breathe, size);
     g.rotation.x += (pitch - g.rotation.x) * Math.min(1, dt * 14);
     g.rotation.z += (roll - g.rotation.z) * Math.min(1, dt * 14);
@@ -393,7 +400,9 @@ export class Renderer {
     let g = this.buildingViews.get(b.id);
     if (!g) {
       g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ);
-      g.position.set(b.x, 0, b.y);
+      // A building sits on the lowest corner of its plot, so no wall hangs in the air.
+      const k = b.size / 2 - 0.1, hh = this.scenery.heightAt.bind(this.scenery);
+      g.position.set(b.x, Math.min(hh(b.x, b.y), hh(b.x - k, b.y - k), hh(b.x + k, b.y - k), hh(b.x - k, b.y + k), hh(b.x + k, b.y + k)), b.y);
       this.buildingViews.set(b.id, g);
       this.scene.add(g);
     }
@@ -422,7 +431,7 @@ export class Renderer {
   private syncResource(r: ResourceNode): void {
     if (r.type === 'tree' || this.resViews.has(r.id)) return;
     const g = makeResource(r.type, r.id);
-    g.position.set(r.x, 0, r.y);
+    g.position.set(r.x, this.scenery.heightAt(r.x, r.y), r.y);
     this.resViews.set(r.id, g);
     this.scene.add(g);
   }
@@ -460,14 +469,14 @@ export class Renderer {
       (m.material as THREE.MeshBasicMaterial).color.setHex(col);
       if (e.kind === 'unit') {
         const v = this.unitViews.get(id);
-        m.position.set(v ? v.g.position.x : e.x, 0.05, v ? v.g.position.z : e.y);
+        m.position.set(v ? v.g.position.x : e.x, this.scenery.heightAt(e.x, e.y) + 0.07, v ? v.g.position.z : e.y);
         m.scale.setScalar(e.def.radius + 0.18);
       } else {
-        m.position.set(e.x, 0.05, e.y);
+        m.position.set(e.x, this.scenery.heightAt(e.x, e.y) + 0.07, e.y);
         m.scale.setScalar(e.size * 0.72);
         if (e.kind === 'building' && e.hasRally && e.owner === game.humanId) {
           this.rally.visible = true;
-          this.rally.position.set(e.rallyX, 0, e.rallyY);
+          this.rally.position.set(e.rallyX, this.scenery.heightAt(e.rallyX, e.rallyY), e.rallyY);
         }
       }
     }
@@ -487,8 +496,9 @@ export class Renderer {
       const arc = p.kind === 'boulder' ? total * 0.3 : p.kind === 'shot' ? 0 : total * 0.08;
       const big = p.kind === 'boulder' ? 5 : p.kind === 'stone' ? 2 : p.kind === 'shot' ? 1.4 : 1;
       m.scale.set(big, big, p.kind === 'arrow' ? 1 : 0.1 * big);
-      m.position.set(p.x, 0.8 + Math.sin(t * Math.PI) * arc, p.y);
-      m.lookAt(p.tx, 0.8 + Math.cos(t * Math.PI) * arc * -2, p.ty);
+      const gh = this.scenery.heightAt(p.sx, p.sy) * (1 - t) + this.scenery.heightAt(p.tx, p.ty) * t;
+      m.position.set(p.x, gh + 0.8 + Math.sin(t * Math.PI) * arc, p.y);
+      m.lookAt(p.tx, this.scenery.heightAt(p.tx, p.ty) + 0.8 + Math.cos(t * Math.PI) * arc * -2, p.ty);
       m.visible = game.vis[Math.floor(p.y) * game.size + Math.floor(p.x)] === 2;
     }
     for (let i = ps.length; i < this.shots.length; i++) this.shots[i].visible = false;

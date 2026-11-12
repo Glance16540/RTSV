@@ -233,12 +233,14 @@ loadAssets().then(() => {
     game = new Game(mission.seed, mission.setups, mission.size);
     mission.init(game);
   }
-  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea) : new Game(seed, [
+  // Skirmishes and campaign battles are fought over hills and mountains; `?flat=1` gives the old level ground.
+  const relief = params.get('flat') !== '1';
+  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, relief) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
-  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake');
+  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake', relief);
 
   // The map is generated before the menu appears, so a different size means a fresh page.
   const sizeSel = el('map-size') as HTMLSelectElement;

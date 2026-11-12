@@ -3,7 +3,7 @@ import { AIController } from '../src/sim/ai';
 import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
-import { connected, generateMap, T_WATER } from '../src/sim/map';
+import { connected, generateMap, T_ROCK, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
@@ -2262,6 +2262,76 @@ describe('men and women as leaders', () => {
     setLeaderPersona('dawn', true);
     expect(leaderOf('dawn')!.name).toBe('Eliab the Seer');
     setLeaderPersona('dawn', false);
+  });
+
+  it('a map with relief has hills to hold and mountains to go round', () => {
+    for (const seed of [3, 11, 42]) {
+      const flat = generateMap(seed, 96, 2, false), m = generateMap(seed, 96, 2, false, true);
+      const N = m.size;
+      expect(flat.height.every((h) => h === 0)).toBe(true);
+      expect(flat.terrain.includes(T_ROCK)).toBe(false);
+      // The water lies where it did, so a seed still means the same country.
+      for (let i = 0; i < N * N; i++) if (flat.terrain[i] === T_WATER) expect(m.terrain[i]).toBe(T_WATER);
+      expect(m.terrain.includes(T_ROCK)).toBe(true);
+      expect(Math.max(...m.height)).toBeGreaterThan(1);
+      // Homes stand on level ground, clear of the ranges.
+      for (const s of m.starts) for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) {
+        const i = (s.y + dy) * N + s.x + dx;
+        expect(m.height[i]).toBe(0);
+        expect(m.terrain[i]).not.toBe(T_ROCK);
+      }
+      // Nothing grows or lies on bare rock, and no height stands in or beside water.
+      for (const n of m.nodes) if (n.type !== 'fish') expect(m.terrain[n.cy * N + n.cx]).not.toBe(T_ROCK);
+      for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) {
+        const i = y * N + x;
+        if (m.terrain[i] === T_WATER) expect(m.height[i]).toBe(0);
+        else if ([i - 1, i + 1, i - N, i + N].some((j) => m.terrain[j] === T_WATER)) expect(m.height[i]).toBeLessThanOrEqual(0.46);
+      }
+      // There is always a way through from one home to the other.
+      const blocked = new Uint8Array(N * N);
+      for (let i = 0; i < N * N; i++) if (m.terrain[i] === T_WATER || m.terrain[i] === T_ROCK) blocked[i] = 1;
+      for (const n of m.nodes) if (n.type !== 'fish') { const sz = n.type === 'gold' || n.type === 'stone' ? 2 : 1; for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) blocked[(n.cy + y) * N + n.cx + x] = 1; }
+      expect(connected(N, blocked, m.starts[0], m.starts[1])).toBe(true);
+    }
+  });
+
+  it('high ground strikes harder, mountains cannot be crossed or built on, and steep ground cannot be built on', () => {
+    const g = new Game(11, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }], 96, false, false, true);
+    const N = g.size, H = g.spec.height;
+    expect(new Game(11, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]).heightAt(40, 40)).toBe(0);
+    // Find a hilltop and a spot on the flat.
+    let top = 0, low = -1;
+    for (let i = 0; i < N * N; i++) { if (H[i] > H[top]) top = i; if (low < 0 && H[i] === 0 && g.terrain[i] === 0) low = i; }
+    const at = (i: number) => ({ x: (i % N) + 0.5, y: Math.floor(i / N) + 0.5 });
+    expect(g.heightAt(at(top).x, at(top).y)).toBeCloseTo(H[top], 5);
+    expect(g.highGround(at(top).x, at(top).y, at(low))).toBe(1.25);
+    expect(g.highGround(at(low).x, at(low).y, at(top))).toBe(0.85);
+    expect(g.highGround(at(low).x, at(low).y, at(low))).toBe(1);
+    // Rock is closed to walkers and builders alike.
+    const rock = g.terrain.indexOf(T_ROCK);
+    expect(g.landPf.isBlocked(rock % N, Math.floor(rock / N))).toBe(true);
+    expect(g.canPlace('house', rock % N, Math.floor(rock / N))).toBe(false);
+    // A slope too steep for a house; the flat by the Town Center is fine.
+    let steep = -1;
+    for (let y = 2; y < N - 4 && steep < 0; y++) for (let x = 2; x < N - 4; x++) {
+      const hs = [0, 1, N, N + 1].map((k) => H[y * N + x + k]);
+      if (Math.max(...hs) - Math.min(...hs) > 0.42 && [0, 1, N, N + 1].every((k) => !g.occupied[y * N + x + k])) { steep = y * N + x; break; }
+    }
+    expect(steep).toBeGreaterThan(-1);
+    expect(g.canPlace('house', steep % N, Math.floor(steep / N))).toBe(false);
+    const st = g.spec.starts[0];
+    let ok = false;
+    for (let d = 3; d < 8 && !ok; d++) ok = g.canPlace('house', st.x + d, st.y + d);
+    expect(ok).toBe(true);
+    // A game with relief saves and comes back with the same land.
+    const back = Game.restore(g.serialize());
+    expect(back.relief).toBe(true);
+    expect(Array.from(back.terrain)).toEqual(Array.from(g.terrain));
+    // And the computer can still play a match on it.
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    g.players[0].isAI = g.players[1].isAI = true;
+    for (let i = 0; i < 20 * 240; i++) { if (i % 20 === 0) for (const a of ais) a.update(); g.step(); }
+    expect(g.buildings.filter((b) => b.owner === 0).length).toBeGreaterThan(2);
   });
 
   it('a leader\'s answers about how they rule steer how the computer plays their nation', () => {

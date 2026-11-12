@@ -2,7 +2,7 @@
 // falls away under moving water, scattered grass, stones and flowers, and cloud shadows drifting over.
 
 import * as THREE from 'three';
-import { T_DIRT, T_WATER } from '../sim/map';
+import { T_DIRT, T_ROCK, T_WATER } from '../sim/map';
 
 /** Repeatable noise in [0, 1): the same land is drawn the same way every time. */
 function hash(x: number, y: number): number {
@@ -22,13 +22,48 @@ const smooth = (a: number, b: number, v: number): number => { const t = Math.min
 export interface Scenery {
   /** Everything to add to the scene. */
   group: THREE.Group;
+  /** Height of the ground at a point: hills, mountains, and never below the waterline. */
+  heightAt(x: number, y: number): number;
   /** Advance the water and the cloud shadows. */
   update(clock: number): void;
 }
 
-export function buildScenery(N: number, T: Uint8Array): Scenery {
+export function buildScenery(N: number, T: Uint8Array, hills: Float32Array): Scenery {
   const group = new THREE.Group();
   const tAt = (x: number, y: number): number => (x < 0 || y < 0 || x >= N || y >= N ? T_WATER : T[y * N + x]);
+
+  // ---- the shape of the land ----
+  // Mountains climb with every step into the range, so a wide range has high peaks and a thin one is a ridge.
+  const depth = new Float32Array(N * N);
+  let frontier: number[] = [];
+  for (let i = 0; i < N * N; i++) if (T[i] === T_ROCK) { const x = i % N, y = (i / N) | 0; if ([tAt(x - 1, y), tAt(x + 1, y), tAt(x, y - 1), tAt(x, y + 1)].some((t) => t !== T_ROCK)) { depth[i] = 1; frontier.push(i); } }
+  for (let d = 2; frontier.length; d++) {
+    const next: number[] = [];
+    for (const i of frontier) for (const j of [i - 1, i + 1, i - N, i + N]) if (j >= 0 && j < N * N && T[j] === T_ROCK && !depth[j]) { depth[j] = d; next.push(j); }
+    frontier = next;
+  }
+  const tileH = new Float32Array(N * N);
+  for (let i = 0; i < N * N; i++) {
+    const x = i % N, y = (i / N) | 0;
+    tileH[i] = T[i] === T_ROCK ? Math.min(7, 0.8 + Math.pow(depth[i], 1.05) * 1.35) * (0.7 + noise(x * 0.45 + 3, y * 0.45 + 8) * 0.7) : hills[i];
+  }
+  const W = N + 1;
+  const cornerH = new Float32Array(W * W);
+  for (let y = 0; y <= N; y++) {
+    for (let x = 0; x <= N; x++) {
+      const wet = tAt(x - 1, y - 1) === T_WATER && tAt(x, y - 1) === T_WATER && tAt(x - 1, y) === T_WATER && tAt(x, y) === T_WATER;
+      let sum = 0, n = 0, rock = 0;
+      for (const [tx, ty] of [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]]) if (tx >= 0 && ty >= 0 && tx < N && ty < N) { sum += tileH[ty * N + tx]; n++; if (T[ty * N + tx] === T_ROCK) rock++; }
+      // A crag is jagged; a hill is smooth.
+      cornerH[y * W + x] = wet ? -0.55 : (n ? sum / n : 0) + (rock === 4 ? (hash(x * 5, y * 7) - 0.5) * 1.7 : rock >= 2 ? (hash(x * 5, y * 7) - 0.5) * 0.5 : 0);
+    }
+  }
+  const groundH = (x: number, y: number): number => {
+    const fx = Math.min(N - 0.001, Math.max(0, x)), fy = Math.min(N - 0.001, Math.max(0, y));
+    const xi = Math.floor(fx), yi = Math.floor(fy), tx = fx - xi, ty = fy - yi, i = yi * W + xi;
+    return (cornerH[i] * (1 - tx) + cornerH[i + 1] * tx) * (1 - ty) + (cornerH[i + W] * (1 - tx) + cornerH[i + W + 1] * tx) * ty;
+  };
+  const heightAt = (x: number, y: number): number => Math.max(0, groundH(x, y));
   // How much of a kind of ground there is at a point, blended between tile centres so edges are soft.
   const amount = (kind: number, u: number, v: number): number => {
     const x = u - 0.5, y = v - 0.5, xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
@@ -47,16 +82,25 @@ export function buildScenery(N: number, T: Uint8Array): Scenery {
       const u = x / px, v = y / px;
       // Wander the borders so they do not follow the square tiles.
       const ju = u + (noise(u * 1.9 + 31, v * 1.9) - 0.5) * 0.7, jv = v + (noise(u * 1.9, v * 1.9 + 17) - 0.5) * 0.7;
-      const water = amount(T_WATER, ju, jv), dirt = amount(T_DIRT, ju, jv);
+      const water = amount(T_WATER, ju, jv), dirt = amount(T_DIRT, ju, jv), rock = amount(T_ROCK, ju, jv), high = groundH(u, v);
       const broad = fbm(u * 0.16, v * 0.16), mid = fbm(u * 0.9 + 50, v * 0.9), grain = hash(x, y);
       // Grass: two greens in broad patches, dry tufts here and there, a fine grain over it all.
       let r = 74 + broad * 34 + mid * 14, g = 122 + broad * 30 + mid * 20, b = 52 + broad * 14 + mid * 8;
       const dry = smooth(0.62, 0.8, fbm(u * 0.35 + 7, v * 0.35 + 90));
       r += dry * 34; g += dry * 14; b -= dry * 4;
       if (hash(x >> 1, (y >> 1) + 999) > 0.93) { r -= 16; g -= 14; b -= 10; } // blades in shadow
+      // Hill grass is paler and drier the higher it grows.
+      const up = smooth(0.3, 1.5, high) * (1 - smooth(0.3, 0.6, rock));
+      r += up * 30; g += up * 16; b += up * 4;
       // Bare earth, trodden paler in the middle.
       const earth = smooth(0.3, 0.7, dirt + (mid - 0.5) * 0.35);
       r += (150 + mid * 26 - r) * earth; g += (128 + mid * 22 - g) * earth; b += (84 + mid * 14 - b) * earth;
+      // Mountain rock in bands, scree at its foot, snow on the heights.
+      const crag = smooth(0.35, 0.6, rock + (mid - 0.5) * 0.3);
+      const band = noise(u * 0.5 + v * 1.3, high * 3.1) * 0.6 + grain * 0.4;
+      r += (112 + band * 46 - r) * crag; g += (106 + band * 42 - g) * crag; b += (100 + band * 40 - b) * crag;
+      const snow = smooth(3.7, 4.5, high + (mid - 0.5) * 1.4) * crag;
+      r += (238 - r) * snow; g += (242 - g) * snow; b += (248 - b) * snow;
       // Sand along the shore, wet and darker at the waterline.
       const sand = smooth(0.14, 0.4, water);
       const wet = smooth(0.4, 0.55, water);
@@ -77,11 +121,9 @@ export function buildScenery(N: number, T: Uint8Array): Scenery {
 
   // The ground is flat where anyone can walk and drops away under open water, leaving a bank at the shore.
   const pos: number[] = [], uv: number[] = [], idx: number[] = [];
-  const W = N + 1;
   for (let y = 0; y <= N; y++) {
     for (let x = 0; x <= N; x++) {
-      const wet = tAt(x - 1, y - 1) === T_WATER && tAt(x, y - 1) === T_WATER && tAt(x - 1, y) === T_WATER && tAt(x, y) === T_WATER;
-      pos.push(x, wet ? -0.55 : 0, y);
+      pos.push(x, cornerH[y * W + x], y);
       uv.push(x / N, 1 - y / N);
     }
   }
@@ -91,8 +133,9 @@ export function buildScenery(N: number, T: Uint8Array): Scenery {
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
-  const ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex }));
+  const ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex, flatShading: true }));
   ground.receiveShadow = true;
+  ground.castShadow = true; // hills and peaks throw shadows of their own
   group.add(ground);
 
   // ---- water ----
@@ -142,7 +185,7 @@ export function buildScenery(N: number, T: Uint8Array): Scenery {
   const PETALS = [0xf4e9b0, 0xf0c8d8, 0xd8d0ff, 0xffd060, 0xffffff];
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
-      if (T[y * N + x] === T_WATER) continue;
+      if (T[y * N + x] === T_WATER || T[y * N + x] === T_ROCK) continue;
       const shore = tAt(x - 1, y) === T_WATER || tAt(x + 1, y) === T_WATER || tAt(x, y - 1) === T_WATER || tAt(x, y + 1) === T_WATER;
       const grass = T[y * N + x] !== T_DIRT && !shore;
       for (let k = 0; k < 3; k++) {
@@ -151,14 +194,14 @@ export function buildScenery(N: number, T: Uint8Array): Scenery {
         q.setFromAxisAngle(up, h * 6.28);
         if (grass && h < 0.22) {
           const s = 0.55 + h2 * 0.6;
-          tufts.push(m.compose(new THREE.Vector3(px2, 0, py2), q, new THREE.Vector3(s, s * (0.8 + h3 * 0.7), s)).clone());
+          tufts.push(m.compose(new THREE.Vector3(px2, heightAt(px2, py2), py2), q, new THREE.Vector3(s, s * (0.8 + h3 * 0.7), s)).clone());
           tuftCol.push(new THREE.Color().setHSL(0.25 + h3 * 0.07, 0.55 + h2 * 0.15, 0.13 + h * 0.3));
         } else if (grass && h > 0.975) {
-          blooms.push(m.compose(new THREE.Vector3(px2, 0.07, py2), q, new THREE.Vector3(1, 1, 1)).clone());
+          blooms.push(m.compose(new THREE.Vector3(px2, heightAt(px2, py2) + 0.07, py2), q, new THREE.Vector3(1, 1, 1)).clone());
           bloomCol.push(new THREE.Color(PETALS[Math.floor(h2 * PETALS.length)]));
         } else if (h > 0.955 && h <= 0.975 && k === 0) {
           const s = 0.5 + h2 * 0.9;
-          stones.push(m.compose(new THREE.Vector3(px2, 0.02, py2), q, new THREE.Vector3(s, s * 0.6, s)).clone());
+          stones.push(m.compose(new THREE.Vector3(px2, heightAt(px2, py2) + 0.02, py2), q, new THREE.Vector3(s, s * 0.6, s)).clone());
         }
       }
     }
@@ -210,12 +253,13 @@ export function buildScenery(N: number, T: Uint8Array): Scenery {
   const cg = new THREE.PlaneGeometry(N, N);
   cg.rotateX(-Math.PI / 2);
   cg.translate(N / 2, 0.03, N / 2);
-  const clouds = new THREE.Mesh(cg, new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, opacity: 0.2, depthWrite: false, fog: false }));
+  const clouds = new THREE.Mesh(cg, new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, opacity: 0.2, depthWrite: false, depthTest: false, fog: false }));
   clouds.renderOrder = 2;
   group.add(clouds);
 
   return {
     group,
+    heightAt,
     update(clock: number): void {
       waterMat.uniforms.time.value = clock;
       cloudTex.offset.set(clock * 0.004, clock * 0.0025);

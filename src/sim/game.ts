@@ -5,7 +5,7 @@ import {
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
-import { generateMap, MapSpec, NodeType, T_WATER } from './map';
+import { generateMap, MapSpec, NodeType, T_ROCK, T_WATER } from './map';
 import { leaningWith } from './temper';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
@@ -13,6 +13,8 @@ import { Pathfinder, rectDist } from './path';
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
 export const SAVE_VERSION = 11;
+/** A difference in height, in tiles, that counts as holding the high ground. */
+export const HIGH_GROUND = 0.45;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -299,15 +301,15 @@ export class Game {
    * @param field A field battle: no towns or villagers, just each side's army. A side is beaten
    *   when it has no soldiers left.
    */
-  constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false) {
+  constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false) {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
-    this.spec = generateMap(seed, size, setups.length, sea);
+    this.spec = generateMap(seed, size, setups.length, sea, relief);
     this.size = size;
     this.terrain = this.spec.terrain;
     this.blocked = new Uint8Array(size * size);
     this.occupied = new Uint8Array(size * size);
     this.vis = new Uint8Array(size * size);
-    for (let i = 0; i < size * size; i++) if (this.terrain[i] === T_WATER) { this.blocked[i] = 1; this.occupied[i] = 1; }
+    for (let i = 0; i < size * size; i++) if (this.terrain[i] === T_WATER || this.terrain[i] === T_ROCK) { this.blocked[i] = 1; this.occupied[i] = 1; }
     this.pf = this.landPf = new Pathfinder(size, this.blocked);
     // Ships see the world the other way round: water is open, everything else is solid.
     const seaBlocked = new Uint8Array(size * size);
@@ -540,9 +542,37 @@ export class Game {
     return u.def.cls !== 'villager' && u.def.cls !== 'support';
   }
 
+  /** Height of the land at a point, blended between tile centres. Zero everywhere on a map without relief. */
+  heightAt(x: number, y: number): number {
+    if (!this.relief) return 0;
+    const N = this.size, h = this.spec.height;
+    const fx = Math.min(N - 1.001, Math.max(0, x - 0.5)), fy = Math.min(N - 1.001, Math.max(0, y - 0.5));
+    const xi = Math.floor(fx), yi = Math.floor(fy), tx = fx - xi, ty = fy - yi, i = yi * N + xi;
+    return (h[i] * (1 - tx) + h[i + 1] * tx) * (1 - ty) + (h[i + N] * (1 - tx) + h[i + N + 1] * tx) * ty;
+  }
+
+  /**
+   * What the lie of the land does to a blow: struck from clearly higher ground it lands harder,
+   * struck uphill it lands softer.
+   */
+  highGround(fromX: number, fromY: number, t: { x: number; y: number }): number {
+    if (!this.relief) return 1;
+    const d = this.heightAt(fromX, fromY) - this.heightAt(t.x, t.y);
+    return d > HIGH_GROUND ? 1.25 : d < -HIGH_GROUND ? 0.85 : 1;
+  }
+
+  /** Too steep to build on: the ground under a building must be nearly level. */
+  private tooSteep(cx: number, cy: number, s: number): boolean {
+    if (!this.relief) return false;
+    let lo = Infinity, hi = -Infinity;
+    for (let y = cy; y < cy + s; y++) for (let x = cx; x < cx + s; x++) { const h = this.spec.height[y * this.size + x]; lo = Math.min(lo, h); hi = Math.max(hi, h); }
+    return hi - lo > (s > 1 ? 0.4 : 0.6);
+  }
+
   canPlace(type: string, cx: number, cy: number, forHuman = false): boolean {
     const s = BUILDINGS[type].size;
     if (cx < 1 || cy < 1 || cx + s > this.size - 1 || cy + s > this.size - 1) return false;
+    if (this.tooSteep(cx, cy, s)) return false;
     for (let y = cy; y < cy + s; y++)
       for (let x = cx; x < cx + s; x++) {
         const i = y * this.size + x;
@@ -860,7 +890,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, sea: this.sea, vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -870,11 +900,11 @@ export class Game {
   static restore(json: string): Game {
     const d = JSON.parse(json);
     if (d.v !== SAVE_VERSION) throw new Error('Incompatible save');
-    const g = new Game(d.seed, d.setups, d.size, d.field, d.sea); // regenerates the same terrain from the seed
+    const g = new Game(d.seed, d.setups, d.size, d.field, d.sea, !!d.relief); // regenerates the same terrain from the seed
     g.entities.clear();
     g.blocked.fill(0);
     g.occupied.fill(0);
-    for (let i = 0; i < g.terrain.length; i++) if (g.terrain[i] === T_WATER) { g.blocked[i] = 1; g.occupied[i] = 1; }
+    for (let i = 0; i < g.terrain.length; i++) if (g.terrain[i] === T_WATER || g.terrain[i] === T_ROCK) { g.blocked[i] = 1; g.occupied[i] = 1; }
     g.resources = d.resources;
     for (const r of g.resources) if (r.type !== 'carcass' && r.type !== 'fish') g.setCells(r.cx, r.cy, r.size, 1, true);
     g.buildings = d.buildings;
@@ -1777,7 +1807,8 @@ export class Game {
           if (o.auto || o.then) this.setOrder(u, o.then ?? null);
           break;
         }
-        const r = this.approach(u, t, u.def.range + 0.3);
+        // Archers and engines on the high ground reach a little farther.
+        const r = this.approach(u, t, u.def.range + 0.3 + (u.def.range >= 3 && this.highGround(u.x, u.y, t) > 1 ? 1 : 0));
         if (r === 'there') {
           u.anchored = true;
           u.facing = Math.atan2(t.x - u.x, t.y - u.y);
@@ -2129,6 +2160,7 @@ export class Game {
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
     if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
+    atk *= this.highGround(u.x, u.y, t);
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);

@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 35 systems, 53 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 13 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:13"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 35 systems, 56 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 14 Working, rough, 7 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:14"></span><span class="thin" style="flex:7"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
       <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">35</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">13</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">14</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">7</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
     </div>
   </div>
 
@@ -99,7 +99,7 @@ footer { color: var(--dim); font-size: 13px; }
   <header><h3>Building and walls</h3><span class="pill solid">Working</span></header>
   <p class="what">Raise a town and fortify it.</p>
   <ul class="has"><li>19 buildings across two build pages</li><li>Palisades, stone walls, gates and towers; drag to draw walls</li><li>A Wonder that wins the game if it stands</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>Nations differ in roofs and colours only</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Nations differ in roofs and colours only</li><li>Buildings need nearly level ground, but nothing tells you why a spot is refused</li></ul>
 </article><article class="sys solid" data-status="solid">
   <header><h3>Ages and research</h3><span class="pill solid">Working</span></header>
   <p class="what">Advance through five ages and buy upgrades.</p>
@@ -156,8 +156,8 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>War <span class="n">3</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Land battle</h3><span class="pill solid">Working</span></header>
   <p class="what">Train an army and fight with it.</p>
-  <ul class="has"><li>58 kinds of unit, with strengths against each other</li><li>Attack-move, patrol, stances, control groups, queued orders</li><li>Siege engines; units can shelter in Town Centers and towers</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>No formations</li><li>Unit strengths are untested guesses</li></ul>
+  <ul class="has"><li>58 kinds of unit, with strengths against each other</li><li>Attack-move, patrol, stances, control groups, queued orders</li><li>Siege engines; units can shelter in Town Centers and towers</li><li>High ground: blows from above land a quarter harder, and archers reach farther</li><li>Mountains that cannot be crossed, with a pass always left open</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No formations</li><li>Unit strengths are untested guesses</li><li>The computer does not seek high ground or hold passes</li><li>Going uphill is no slower than going down</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Navy</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Ships on great-lake maps.</p>
@@ -250,13 +250,13 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Look and sound <span class="n">3</span></h2><div class="grid"><article class="sys rough" data-status="rough">
   <header><h3>3D world</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">The battlefield, its units and buildings.</p>
-  <ul class="has"><li>Painted ground with soft shorelines, moving water, scattered grass and stones</li><li>Low warm sunlight, soft shadows, haze and drifting cloud shadows</li><li>Each nation roofs and colours its buildings its own way</li><li>Units lean into a walk, lunge to strike, breathe at rest; ships ride the swell</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>No generated models installed: units and buildings are still simple built-in figures</li><li>The land is flat: no hills or cliffs</li><li>Nations differ in roofs and colours only, not in whole building shapes</li></ul>
-</article><article class="sys thin" data-status="thin">
-  <header><h3>Icons and screens</h3><span class="pill thin">First pass</span></header>
+  <ul class="has"><li>Painted ground with soft shorelines, moving water, scattered grass and stones</li><li>Hills that rise and fall and mountain ranges with snow on the peaks</li><li>Low warm sunlight, soft shadows, haze and drifting cloud shadows</li><li>Each nation roofs and colours its buildings its own way</li><li>Units lean into a walk, lunge to strike, breathe at rest; ships ride the swell</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No generated models installed: units and buildings are still simple built-in figures</li><li>Nations differ in roofs and colours only, not in whole building shapes</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Icons and screens</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Buttons, resource icons and menus.</p>
-  <ul class="has"><li>Every button and resource has an icon</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>All icons are emoji: No painted icons installed</li><li>No title art</li></ul>
+  <ul class="has"><li>145 woodcut-style icons: every unit, building, upgrade, command and resource</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Emoji remain in messages, the creed marker and some menus</li><li>No title art</li><li>The campaign map has no painted backdrop</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sound and music</h3><span class="pill thin">First pass</span></header>
   <p class="what">What you hear.</p>
@@ -266,7 +266,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>96 tests, all passing</li></ul>
+  <ul class="has"><li>98 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>

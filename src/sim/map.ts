@@ -3,12 +3,18 @@
 export const T_GRASS = 0;
 export const T_WATER = 1;
 export const T_DIRT = 2;
+/** Mountain: nothing walks, sails or builds here. */
+export const T_ROCK = 3;
+/** How high the hills rise, in tiles. */
+export const HILL_HEIGHT = 1.6;
 
 export type NodeType = 'tree' | 'berries' | 'gold' | 'stone' | 'carcass' | 'fish';
 
 export interface MapSpec {
   size: number;
   terrain: Uint8Array;
+  /** Height of the land at each tile, 0 on the flat. All zero unless the map was made with relief. */
+  height: Float32Array;
   starts: { x: number; y: number }[];
   nodes: { type: NodeType; cx: number; cy: number }[];
   animals: { type: 'deer' | 'wolf'; x: number; y: number }[];
@@ -40,8 +46,11 @@ function valueNoise(rng: () => number, size: number, scale: number): (x: number,
   };
 }
 
-/** @param sea Put a great lake in the middle of the map, for fishing and warships. */
-export function generateMap(seed: number, size = 96, players = 2, sea = false): MapSpec {
+/**
+ * @param sea Put a great lake in the middle of the map, for fishing and warships.
+ * @param relief Raise hills and mountain ranges. Mountains cannot be crossed; hills can, and give the high ground.
+ */
+export function generateMap(seed: number, size = 96, players = 2, sea = false, relief = false): MapSpec {
   const rng = mulberry32(seed);
   const N = size;
   const terrain = new Uint8Array(N * N);
@@ -79,11 +88,40 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false): 
     }
   }
 
+  // Hills and mountains use their own dice, so the rest of the land is laid out by the same rolls with or without them.
+  const height = new Float32Array(N * N);
+  if (relief) {
+    const rr = mulberry32(seed ^ 0x7e11ef);
+    const hillN = valueNoise(rr, N, 17), ridgeN = valueNoise(rr, N, 10), roughN = valueNoise(rr, N, 5);
+    const step = (a: number, b: number, v: number) => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const i = y * N + x, d = startDist(x, y);
+        if (terrain[i] === T_WATER) continue;
+        // A range runs where two fields of noise both run high, well away from anyone's home.
+        const ridge = sym(ridgeN, x, y) * 0.75 + sym(roughN, x, y) * 0.25;
+        if (d > 21 && ridge > 0.66 && x > 1 && y > 1 && x < N - 2 && y < N - 2) { terrain[i] = T_ROCK; continue; }
+        // Hills swell up between the homes; the land by each Town Center stays level.
+        height[i] = step(0.5, 0.8, sym(hillN, x, y)) * step(13, 22, d) * HILL_HEIGHT;
+      }
+    }
+    // The land comes down to meet the water: nothing stands high at the shore.
+    for (let pass = 0; pass < 3; pass++) {
+      for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) {
+        const i = y * N + x;
+        if (!height[i]) continue;
+        let lo = height[i];
+        for (const j of [i - 1, i + 1, i - N, i + N]) lo = Math.min(lo, terrain[j] === T_WATER ? 0 : height[j] + 0.45);
+        height[i] = lo;
+      }
+    }
+  }
+
   const free = (cx: number, cy: number, s = 1) => {
     for (let y = cy; y < cy + s; y++)
       for (let x = cx; x < cx + s; x++) {
         if (x < 1 || y < 1 || x >= N - 1 || y >= N - 1) return false;
-        if (terrain[y * N + x] === T_WATER || taken[y * N + x]) return false;
+        if (terrain[y * N + x] === T_WATER || terrain[y * N + x] === T_ROCK || taken[y * N + x]) return false;
       }
     return true;
   };
@@ -150,7 +188,7 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false): 
       const sz = n.type === 'gold' || n.type === 'stone' ? 2 : 1;
       for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) blocked[(n.cy + y) * N + n.cx + x] = 1;
     }
-    for (let i = 0; i < N * N; i++) if (terrain[i] === T_WATER) blocked[i] = 1;
+    for (let i = 0; i < N * N; i++) if (terrain[i] === T_WATER || terrain[i] === T_ROCK) blocked[i] = 1;
     if (connected(N, blocked, starts[0], target)) continue;
     const carve = new Uint8Array(N * N);
     const steps = N * 3;
@@ -165,7 +203,7 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false): 
           if (cx >= 0 && cy >= 0 && cx < N && cy < N) carve[cy * N + cx] = 1;
         }
     }
-    for (let i = 0; i < N * N; i++) if (carve[i] && terrain[i] === T_WATER) terrain[i] = T_GRASS;
+    for (let i = 0; i < N * N; i++) if (carve[i] && (terrain[i] === T_WATER || terrain[i] === T_ROCK)) terrain[i] = T_GRASS; // a ford, or a pass through the mountains
     for (let k = nodes.length - 1; k >= 0; k--) {
       const n = nodes[k];
       if (n.type === 'tree' && carve[n.cy * N + n.cx]) { taken[n.cy * N + n.cx] = 0; nodes.splice(k, 1); }
@@ -209,7 +247,7 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false): 
     if (startDist(x, y) > 27 && herd('wolf', x, y, 2 + Math.floor(rng() * 2)) > 0) k++;
   }
 
-  return { size: N, terrain, starts, nodes, animals };
+  return { size: N, terrain, height, starts, nodes, animals };
 }
 
 export function connected(N: number, blocked: Uint8Array, a: { x: number; y: number }, b: { x: number; y: number }): boolean {

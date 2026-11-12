@@ -261,6 +261,18 @@ Rivals take their turns after yours and fight each other too. The campaign is sa
 | `L` | Call allies to the spot under the cursor |
 | `Del` `Esc` `P` `M` | Destroy selected, cancel, pause, mute |
 
+## Hills, mountains and icons
+
+Skirmishes and campaign battles are fought over hills and mountain ranges (`?flat=1` gives level
+ground; missions stay flat). A blow struck from clearly higher ground lands a quarter harder and one
+struck uphill lands softer; archers and engines above their target reach one tile farther. Mountains
+cannot be crossed or built on, and a pass is always left between the homes. Buildings need nearly
+level ground.
+
+The interface icons are woodcut-style pictures in `public/assets/icons/`, cut from generated sheets.
+`scripts/icon-sheets.json` lists every icon and the prompt used; `node scripts/slice-icons.cjs <folder>`
+cuts new sheets (`sheet0.png` … `sheet8.png`) into icons.
+
 ## Systems board
 
 [docs/systems-board.html](docs/systems-board.html) shows every system in the game, how far along it
