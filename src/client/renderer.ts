@@ -7,6 +7,7 @@ import { buildScenery, Scenery } from './scenery';
 import { makeBuilding, makeResource, makeUnit, mat, RES_COLOR, Rig, rigBiped } from './models';
 import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
+import { Roads } from './roads';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, wobble } from './shapes';
 
@@ -58,6 +59,7 @@ export class Renderer {
   private shake = 0;
   private dying: { g: THREE.Group; t: number }[] = [];
   private rubble: Rubble[] = [];
+  private roads!: Roads;
   private dust: Dust[] = [];
   /** Draws the ink edge around everything standing in the world. Off with ?outline=0. */
   private ink: OutlineEffect | null = null;
@@ -95,6 +97,7 @@ export class Renderer {
     this.fogAlpha = new Float32Array(game.size * game.size).fill(1);
     this.scenery = buildScenery(game.size, game.terrain, game.spec.height);
     this.scene.add(this.scenery.group);
+    this.roads = new Roads(game, this.scenery, this.scene);
     this.buildTrees();
     this.buildFog();
 
@@ -285,7 +288,7 @@ export class Renderer {
         this.unitViews.delete(ev.id);
       }
       const b = this.buildingViews.get(ev.id);
-      if (b) { if (b.visible && b.scale.y > 0.5) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); }
+      if (b) { if (b.visible && b.scale.y > 0.5) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); this.roads.relay(); }
       const r = this.resViews.get(ev.id);
       if (r) { this.scene.remove(r); this.resViews.delete(ev.id); }
       const ti = this.treeIndex.get(ev.id);
@@ -295,6 +298,7 @@ export class Renderer {
         this.treeIndex.delete(ev.id);
       }
     } else if (ev.t === 'age') {
+      this.roads.relay(); // dirt tracks are paved as a people advances
       // Buildings change appearance with their owner's age.
       for (const [id, g] of this.buildingViews) {
         const b = this.game.entities.get(id);
@@ -548,6 +552,8 @@ export class Renderer {
       g.position.set(b.x, Math.min(hh(b.x, b.y), hh(b.x - k, b.y - k), hh(b.x + k, b.y - k), hh(b.x - k, b.y + k), hh(b.x + k, b.y + k)), b.y);
       this.buildingViews.set(b.id, g);
       this.scene.add(g);
+      // A path is worn to the town centre as soon as the building is placed. A new town centre redraws them all.
+      if (b.type === 'towncenter') this.roads.relay(); else this.roads.add(b);
     }
     g.visible = this.isVisible(b);
     if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
@@ -666,6 +672,7 @@ export class Renderer {
     for (let i = this.floaters.length - 1; i >= 0; i--) if ((this.floaters[i].t += dt) > 2) this.floaters.splice(i, 1);
 
     this.stepRubble(dt);
+    this.roads.update(dt, (b) => this.isVisible(b));
     if (this.ink) {
       // Only what is made of the drawn materials takes an outline; the ground, water, rings and fog never do.
       if (this.inked++ % 12 === 0) this.scene.traverse((o) => {
