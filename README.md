@@ -284,7 +284,9 @@ title and a portrait (one of 30 stock museum portraits, credited in
 [docs/PORTRAIT_CREDITS.md](docs/PORTRAIT_CREDITS.md), or any picture of their own), and rewrite any line in their own words; the zip then carries a
 `character_<nation>.json` and the campaign shows and speaks the character they made. Anything
 they leave alone stays as written. The nation, and whether the leader is a man or a woman, come
-from the leader they picked. They can also send a character with no recordings at all.
+from the leader they picked. They can also send a character with no recordings at all: the booth is laid out in three steps (who
+they are, how they rule, words and voice), any of which can be sent on its own, and a saved file can
+be opened in the booth again to carry on later.
 
 The booth also asks eight questions about how the leader rules. The answers make a temperament
 (warlike or peaceable, pious or worldly, digs in or roams, grasping or open-handed) that travels in

@@ -46,6 +46,13 @@
   .meter { position: relative; height: 6px; border-radius: 3px; background: #100d09; border: 1px solid var(--edge); margin: 5px 0 3px; }
   .meter i { position: absolute; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--gold); }
   .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); }
+  .steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
+  .steps a { color: var(--fg); text-decoration: none; border: 1px solid var(--edge); border-radius: 999px; padding: 5px 12px; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; }
+  .steps a:hover { border-color: var(--gold); } .steps a.done { border-color: #3f6a3c; }
+  .tick { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--dim); display: inline-grid; place-items: center; font-size: 10px; line-height: 1; }
+  .done .tick { background: var(--good); border-color: var(--good); color: #10200f; } .done .tick::after { content: '✓'; }
+  .part .tick { border-color: var(--gold); background: #6a4e16; }
+  h2 small { font: 400 14px system-ui, sans-serif; }
   .link { background: none; border: none; padding: 0; color: var(--gold); text-decoration: underline; font-size: 14px; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0e0b08ee; border-top: 1px solid var(--edge); padding: 10px max(16px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .bar .in { max-width: 820px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
@@ -61,14 +68,20 @@
   <p class="dim">Hearth &amp; Empire, a 3D strategy game of rival nations — become the voice of one nation's leader.</p>
 
   <section id="choose">
-    <p>You have been asked to voice a leader in the game. It takes about fifteen minutes.</p>
+    <p>You have been asked to become a leader in the game. Pick one below, then work through three steps. You can stop after any of them and send what you have; the voice can come later, or never.</p>
     <ol>
-      <li>Pick your leader below. Most nations can be led by a man or by a woman; choose whichever you will voice.</li>
-      <li>Make them yours: give them your own name, title and portrait, and rewrite any line into something you would rather say.</li>
-      <li>Read each line aloud and record it. You can listen back and redo any line.</li>
-      <li>Press <b>Download my recordings</b> and send that one file back to whoever invited you.</li>
+      <li><b>Who they are</b>: a name, a title and a portrait. A couple of minutes.</li>
+      <li><b>How they rule</b>: eight questions that decide how the computer plays your nation. A couple of minutes.</li>
+      <li><b>Their words and voice</b>: rewrite any line, and record them with your microphone. About fifteen minutes.</li>
     </ol>
-    <div class="note">Nothing is uploaded anywhere. Your recordings stay in this browser tab until you download them, and are lost if you close it first.</div>
+    <p>Whenever you stop, press <b>Download</b> and send that one file back to whoever invited you.</p>
+    <div class="note">Nothing is uploaded anywhere. Your work stays in this browser tab until you download it, and is lost if you close the tab first.</div>
+    <div class="card">
+      <b>Already started?</b>
+      <p class="dim" style="margin:4px 0 8px">Open the file you downloaded last time and carry on where you stopped, for example to add your voice.</p>
+      <div class="row"><label for="resume">Continue from a saved file:</label><input type="file" id="resume" accept=".zip,application/zip"></div>
+      <p id="resumeerr" class="err" hidden style="margin:8px 0 0"></p>
+    </div>
     <h2>Choose your leader</h2>
     <div class="grid" id="leaders"></div>
   </section>
@@ -76,6 +89,12 @@
   <section id="booth" hidden>
     <p><button id="back">← Choose a different leader</button></p>
     <div class="head"><span class="seal big" id="seal"></span><div><h2 id="who"></h2><p id="title" class="dim"></p></div></div>
+    <nav class="steps" id="steps" aria-label="Your progress">
+      <a href="#step1" id="s1"><span class="tick"></span>1. Who they are</a>
+      <a href="#step2" id="s2"><span class="tick"></span>2. How they rule</a>
+      <a href="#step3" id="s3"><span class="tick"></span>3. Words and voice</a>
+    </nav>
+    <h2 id="step1">Step 1 · Who they are</h2>
     <div class="card">
       <b>Make this character your own</b>
       <p class="dim">The leader below is only a starting point. Rename them, change their title, give them a portrait, and rewrite any of their lines; in the campaign they will appear and speak as you made them. Leave anything as it is to keep it.</p>
@@ -88,6 +107,7 @@
       <div class="row"><label class="dim" style="font-size:14px" for="pic">Or your own picture:</label><input type="file" id="pic" accept="image/*"><button class="link" id="nopic" hidden>Remove the portrait</button></div>
       <p class="dim" style="font-size:12px;margin:8px 0 0">Portraits shown are public-domain works from The Metropolitan Museum of Art, Open Access.</p>
     </div>
+    <h2 id="step2">Step 2 · How they rule</h2>
     <div class="card">
       <b>How do they rule?</b>
       <p class="dim">Answer as your leader would. When you are not the one playing this nation, the computer plays it the way you answer: how readily it goes to war, whether its towns turn to the church or the tavern, whether it walls itself in or rides out, and how it bargains. Skip any question, or all of them, to leave the nation as it was written.</p>
@@ -95,6 +115,11 @@
       <div class="traits" id="traits" hidden></div>
       <p style="margin:10px 0 0"><button class="link" id="noanswers" hidden>Clear my answers</button></p>
     </div>
+    <div class="note stop">
+      <b>You can stop here.</b> Steps 1 and 2 are enough for your leader to appear in the campaign as you made them, with their lines shown as text. Download and send the file now, and come back to add your voice whenever you like: open this page again and choose <i>Continue from a saved file</i>.
+      <p style="margin:10px 0 0"><button id="save2" class="primary" disabled>Download what I have so far</button></p>
+    </div>
+    <h2 id="step3">Step 3 · Their words and voice <small>(optional)</small></h2>
     <div class="note"><b>How they were written</b> (play them your own way if you prefer): <span id="direction"></span></div>
     <p><label for="actor">Your name, for the credits <small>(optional)</small></label><br><input type="text" id="actor" maxlength="60" autocomplete="name"></p>
     <p class="dim">Tips: a quiet room, the microphone a hand's width from your mouth, and leave half a second of silence before you speak. Each line should run two to six seconds. Record as many or as few as you like; unrecorded lines stay as text in the game. Each box says when the leader speaks the line: keep your own version to that moment, and to one or two sentences.</p>
@@ -312,13 +337,17 @@ function character() {
   }
   if (Object.keys(lines).length) c.lines = lines;
   const t = temper();
-  if (t) c.temper = t;
+  if (t) { c.temper = t; c.answers = { ...answers }; }
   return Object.keys(c).length ? c : null;
 }
 function refresh() {
   const c = character(), own = c && c.lines ? Object.values(c.lines).flat().filter(Boolean).length : 0;
-  $('count').textContent = takes.size + ' of ' + leader.lines.length + ' lines recorded' + (own ? ' · ' + own + ' in your own words' : '');
-  $('save').disabled = (takes.size === 0 && !c && !picture) || !!active;
+  const who = !!(picture || (c && (c.name || c.title))), rule = Object.keys(answers).length;
+  const mark = (id, done, part) => { $(id).classList.toggle('done', !!done); $(id).classList.toggle('part', !done && !!part); };
+  mark('s1', who); mark('s2', rule === QUESTIONS.length, rule); mark('s3', takes.size === leader.lines.length, takes.size || own);
+  $('count').textContent = [who ? 'Character made' : 'Character as written', rule ? rule + ' of ' + QUESTIONS.length + ' questions answered' : 'no questions answered',
+    takes.size + ' of ' + leader.lines.length + ' lines recorded' + (own ? ', ' + own + ' in your own words' : '')].join(' · ');
+  $('save').disabled = $('save2').disabled = (takes.size === 0 && !c && !picture) || !!active;
   $('save').textContent = takes.size ? 'Download my recordings' : 'Download my character';
 }
 
@@ -419,6 +448,7 @@ function zip(files) {
   return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
 }
 
+$('save2').addEventListener('click', () => $('save').click());
 $('save').addEventListener('click', () => {
   const who = $('actor').value.trim();
   const files = [...takes].map(([key, t]) => ({ name: key + '.wav', data: t.wav }));
@@ -426,7 +456,8 @@ $('save').addEventListener('click', () => {
   const shown = (made && made.name) || leader.name;
   const readme = 'Recordings for ' + shown + ' (' + leader.nation + ') in Hearth & Empire.\n' + (who ? 'Voiced by ' + who + '.\n' : '') +
     (made ? 'A character of their own making, based on ' + leader.name + '.\n' : '') +
-    takes.size + ' of ' + leader.lines.length + ' lines.\n\nTo use them: copy every file in this folder into public/assets/voice/ in the game and restart it.\n';
+    'In this file: ' + [made && (made.name || made.title) ? 'name and title' : '', picture ? 'portrait' : '', made && made.temper ? 'how they rule' : '', made && made.lines ? 'rewritten lines' : '',
+      takes.size ? takes.size + ' of ' + leader.lines.length + ' lines recorded' : 'no recordings yet'].filter(Boolean).join(', ') + '.\n\nTo use them: copy every file in this folder into public/assets/voice/ in the game and restart it.\n';
   files.push({ name: 'README.txt', data: new TextEncoder().encode(readme) });
   if (who) files.push({ name: 'credit_' + leader.civ + '.txt', data: new TextEncoder().encode(who) });
   // Tells the game which of the nation's two leaders these recordings are of.
@@ -440,7 +471,67 @@ $('save').addEventListener('click', () => {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  $('count').textContent = 'Downloaded. Send that file back to whoever invited you.';
+  $('count').textContent = 'Downloaded. Send that file back to whoever invited you. Keep a copy if you want to add more later.';
+});
+// ---- carrying on from a file saved earlier ----
+// Reads the plain zip this page writes. A zip that another program has compressed cannot be read here.
+function unzip(buf) {
+  const v = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder(), files = {};
+  let o = 0;
+  while (o + 30 <= u8.length && v.getUint32(o, true) === 0x04034b50) {
+    const method = v.getUint16(o + 8, true), size = v.getUint32(o + 18, true), nlen = v.getUint16(o + 26, true), xlen = v.getUint16(o + 28, true);
+    if (method !== 0) throw new Error('compressed');
+    const name = dec.decode(u8.subarray(o + 30, o + 30 + nlen)), start = o + 30 + nlen + xlen;
+    files[name.split('/').pop()] = u8.slice(start, start + size);
+    o = start + size;
+  }
+  return files;
+}
+$('resume').addEventListener('change', async () => {
+  const f = $('resume').files[0], err = $('resumeerr');
+  err.hidden = true;
+  if (!f) return;
+  try {
+    const files = unzip(await f.arrayBuffer()), text = (n) => (files[n] ? new TextDecoder().decode(files[n]).trim() : '');
+    const pn = Object.keys(files).find((n) => /^persona_[a-z]+\.txt$/.test(n));
+    if (!pn) throw new Error('not ours');
+    const civ = pn.slice(8, -4), l = LEADERS.find((x) => x.civ === civ && x.persona === (text(pn) === 'alt' ? 'alt' : 'main')) || LEADERS.find((x) => x.civ === civ);
+    if (!l) throw new Error('not ours');
+    open(l);
+    let c = {};
+    try { c = JSON.parse(text('character_' + civ + '.json') || '{}') || {}; } catch (e) { c = {}; }
+    if (typeof c.name === 'string') $('cname').value = c.name.slice(0, 40);
+    if (typeof c.title === 'string') $('ctitle').value = c.title.slice(0, 60);
+    $('actor').value = text('credit_' + civ + '.txt').slice(0, 60);
+    for (const ln of l.lines) {
+      const own = c.lines && Array.isArray(c.lines[ln.ev]) ? c.lines[ln.ev][ln.i] : null;
+      if (typeof own === 'string' && own) { const ta = $('card-' + ln.key).querySelector('.line'); ta.value = own.slice(0, 160); ta.dispatchEvent(new Event('input')); }
+    }
+    for (const q of QUESTIONS) {
+      const i = c.answers ? c.answers[q.id] : undefined, r = Number.isInteger(i) ? $('q-' + q.id + '-' + i) : null;
+      if (r) { r.checked = true; answers[q.id] = i; }
+    }
+    temperShow();
+    const pic = Object.keys(files).find((n) => /^portrait_[a-z]+\.(png|jpe?g|webp)$/.test(n));
+    if (pic) { const ext = pic.split('.').pop(); setPicture({ data: files[pic], ext, url: URL.createObjectURL(new Blob([files[pic]], { type: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg' })) }); }
+    for (const ln of l.lines) {
+      const wav = files[ln.key + '.wav'];
+      if (!wav) continue;
+      const card = $('card-' + ln.key), state = card.querySelector('.state');
+      takes.set(ln.key, { wav, text: said(card.querySelector('.line').value), url: URL.createObjectURL(new Blob([wav], { type: 'audio/wav' })) });
+      card.classList.add('done');
+      card.querySelector('.play').disabled = false;
+      card.querySelector('.rec').textContent = '● Record again';
+      state.textContent = '✓ Recorded, ' + ((wav.length - 44) / 2 / RATE).toFixed(1) + ' s';
+      state.className = 'state ok';
+    }
+    heading();
+    refresh();
+  } catch (e) {
+    err.textContent = e.message === 'compressed' ? 'That zip was repacked by another program and cannot be read here. Use the file exactly as this page saved it.' : 'That is not a file this page saved. Choose the voice-….zip you downloaded before.';
+    err.hidden = false;
+  }
+  $('resume').value = '';
 });
 window.addEventListener('beforeunload', (e) => { if (takes.size || (leader && !$('booth').hidden && (character() || picture))) { e.preventDefault(); e.returnValue = ''; } });
 </script>
