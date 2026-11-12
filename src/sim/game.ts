@@ -6,7 +6,7 @@ import {
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { generateMap, MapSpec, NodeType, T_WATER } from './map';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
@@ -42,8 +42,13 @@ export type Order =
   | { t: 'shelter'; id: number; then?: Order | null }
   | { t: 'board'; id: number }
   | { t: 'staff'; id: number }
+  | { t: 'capture'; id: number; t0?: number }
+  | { t: 'deliver'; id: number }
   | { t: 'unload'; x: number; y: number; started?: boolean; tries?: number }
   | { t: 'cast'; ability: string; x: number; y: number; started?: boolean; tries?: number };
+
+/** A villager held against their will: enough to give them back as they were. */
+export interface Captive { from: number; name: string; family: string; gender: Gender; trait: string; trait2: string; age: number; lifespan: number }
 
 export interface Unit extends Base {
   kind: 'unit';
@@ -87,6 +92,7 @@ export interface Unit extends Base {
   homeY: number;
   inside: number; // building this unit is sheltering in, or ship it is aboard
   cargo?: number[]; // a transport ship's passengers
+  captive?: Captive | null; // a Slaver's prisoner, being led to a camp
   merc?: boolean; // hired at a tavern: fights for wages and leaves when they stop
   resume: Order | null; // job to return to after sheltering
 }
@@ -126,6 +132,8 @@ export interface Building extends Base {
   doneAt: number; // game time construction finished (0 if not yet)
   burnT: number; // seconds of fire left after a flame attack
   sheltered: number[]; // villagers hiding inside
+  captives?: Captive[]; // a work camp's prisoners
+  campT?: number; // progress towards the camp's next villager
   staff?: number[]; // villagers stationed here to work: clergy or tavern maids
   morale: number; // town centers: number of houses nearby (capped)
   seen: boolean; // has the human player ever seen this building
@@ -192,6 +200,7 @@ export interface Player {
   virtue: number;
   /** Villagers stationed in churches and in taverns, counted once a second. */
   clergy: number;
+  captives: number; // prisoners in work camps
   maids: number; // everyone in the taverns
   patrons: number; // the men among them
   /** When plague last broke out in this people's taverns. */
@@ -311,7 +320,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i, civ: s.civ && CIVS[s.civ] ? s.civ : CIV_IDS[i % CIV_IDS.length],
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, clergy: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, clergy: 0, captives: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
       this.heroes.push([]);
@@ -351,7 +360,7 @@ export class Game {
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, civ: '', res: { food: 0, wood: 0, gold: 0, stone: 0 },
       upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, clergy: 0, maids: 0, patrons: 0, plagueAt: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+      defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false, virtue: 0, clergy: 0, captives: 0, maids: 0, patrons: 0, plagueAt: 0, dilemma: null, dilemmaT: Infinity, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
     });
     this.heroes.push([]);
     this.tcs.push([]);
@@ -459,6 +468,7 @@ export class Game {
       if (shelter && shelter.kind === 'building') { shelter.sheltered = shelter.sheltered.filter((id) => id !== e.id); if (shelter.staff) shelter.staff = shelter.staff.filter((id) => id !== e.id); }
       if (shelter && shelter.kind === 'unit' && shelter.cargo) shelter.cargo = shelter.cargo.filter((id) => id !== e.id);
       // Everyone aboard a sinking ship goes down with it.
+      if (e.captive) { this.freeCaptive(e.captive, e.x, e.y); e.captive = null; }
       for (const id of e.cargo ?? []) { const c = this.entities.get(id); if (c && c.kind === 'unit') { c.inside = 0; this.kill(c); } }
       if (e.type === 'deer') {
         // The hunters carve up what they killed.
@@ -472,6 +482,9 @@ export class Game {
       }
     } else if (e.kind === 'building') {
       this.unstaff(e, e.staff?.length ?? 0);
+      // A fallen camp's prisoners go home.
+      (e.captives ?? []).forEach((c, i) => this.freeCaptive(c, e.x - 1.5 + (i % 4), e.y + e.size / 2 + 0.6 + Math.floor(i / 4) * 0.6));
+      e.captives = [];
       this.buildings.splice(this.buildings.indexOf(e), 1);
       this.setCells(e.cx, e.cy, e.size, 0, true);
       this.release(e);
@@ -746,6 +759,12 @@ export class Game {
       if (t.kind === 'resource') {
         if (t.type === 'fish' ? u.def.fisher : villager) this.orderGather(u, t);
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
+      } else if (u.def.slaver && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && this.hostile(t.owner, owner) && t.owner !== this.wild) {
+        if (u.captive) this.msg(owner, 'He already has a captive to lead home.');
+        else if (!this.campWithRoom(u)) this.msg(owner, 'There is no Work Camp with room for a captive.');
+        else this.setOrder(u, { t: 'capture', id: t.id });
+      } else if (u.def.slaver && u.captive && t.kind === 'building' && t.owner === owner && t.def.camp) {
+        this.setOrder(u, { t: 'deliver', id: t.id });
       } else if (this.hostile(t.owner, owner)) {
         if (u.def.atk > 0) this.setOrder(u, { t: 'attack', id: t.id });
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
@@ -799,6 +818,8 @@ export class Game {
     const p = this.players[owner];
     const def = BUILDINGS[type];
     if (!def || def.age > p.age) return null;
+    const bar = this.creedBar(owner, def);
+    if (bar) { this.msg(owner, bar); return null; }
     if (!this.canPlace(type, cx, cy, owner === this.humanId && !p.isAI)) { this.msg(owner, 'Cannot build there.'); return null; }
     if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return null; }
     this.pay(p, def.cost);
@@ -885,6 +906,8 @@ export class Game {
     const def = UNITS[type];
     if (def.civ && def.civ !== p.civ) return false;
     if (def.age > p.age) { this.msg(owner, `Requires the ${AGES[def.age].name}.`); return false; }
+    const bar = this.creedBar(owner, def);
+    if (bar) { this.msg(owner, bar); return false; }
     if (b.queue.length >= 8) { this.msg(owner, 'Queue is full.'); return false; }
     if (def.limit && this.countUnits(owner, type) >= def.limit) { this.msg(owner, `You can only have ${def.limit} ${def.name}.`); return false; }
     const cost = this.unitCost(owner, type);
@@ -984,6 +1007,53 @@ export class Game {
     return true;
   }
 
+  /** Why this player's creed forbids a unit or building, or null if it does not. */
+  creedBar(owner: number, def: { name: string; pagan?: boolean; needs?: 'holy' | 'decadent' }): string | null {
+    const v = this.players[owner].virtue;
+    if (def.pagan && isHoly(v)) return `A town that keeps the faith will not have a ${def.name}.`;
+    if (def.needs === 'holy' && !isHoly(v)) return `Only a Devout town can call a ${def.name}.`;
+    if (def.needs === 'decadent' && !isDecadent(v)) return `Only a Decadent town would have a ${def.name}.`;
+    return null;
+  }
+
+  /** The nearest of a Slaver's own work camps that can take another captive. */
+  private campWithRoom(u: Unit): Building | null {
+    let best: Building | null = null, bd = Infinity;
+    for (const b of this.buildings) {
+      if (b.owner !== u.owner || !b.def.camp || !b.complete || (b.captives?.length ?? 0) >= b.def.camp) continue;
+      const d = Math.hypot(b.x - u.x, b.y - u.y);
+      if (d < bd) { bd = d; best = b; }
+    }
+    return best;
+  }
+
+  /** A captive set free returns to their own people as they were, if those people still stand. */
+  private freeCaptive(c: Captive, x: number, y: number): void {
+    const home = this.players[c.from];
+    if (!home || home.defeated) return;
+    const at = this.landPf.nearestFree(x, y);
+    const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
+    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
+    this.msg(c.from, `${c.name} is free and has come home.`);
+  }
+
+  /** Captives drive the town's work and, held together, still raise children for their captors. */
+  private updateCamps(p: Player): void {
+    p.captives = 0;
+    for (const b of this.buildings) {
+      if (b.owner !== p.id || !b.captives?.length) continue;
+      p.captives += b.captives.length;
+      b.campT = (b.campT ?? 0) + b.captives.length / CAMP_BIRTH;
+      if (b.campT >= 1 && p.pop + 1 <= p.popCap) {
+        b.campT = 0;
+        this.spawnFrom(b, 'villager', this.rng() < 0.5 ? 'm' : 'f');
+        p.stats.born++;
+        this.events.push({ t: 'birth', player: p.id, x: b.x, y: b.y });
+      } else if (b.campT > 1) b.campT = 1;
+    }
+    if (p.captives) this.shiftVirtue(p.id, (-Math.min(CAPTIVE_CAP, p.captives) * CAPTIVE_VIRTUE) / 60);
+  }
+
   /** What a tavern asks, in gold, for a hired sword of this kind (as this player would field it). */
   hireCost(owner: number, type: string): number {
     const c = this.unitCost(owner, this.trainedAs(owner, type));
@@ -1078,6 +1148,7 @@ export class Game {
         this.tavernPlague(p, b);
       }
       this.payMercenaries(p);
+      this.updateCamps(p);
       const clergy = Math.min(STAFF_CAP, p.clergy), maids = Math.min(STAFF_CAP, p.maids);
       const pull = (clergy * CLERGY_VIRTUE - maids * MAID_VIRTUE) / 60;
       if (pull) this.shiftVirtue(p.id, pull);
@@ -1704,6 +1775,46 @@ export class Game {
         if (this.walkTo(u, o)) { this.setOrder(u, null); this.unload(u); }
         break;
 
+      case 'capture': {
+        const v = this.entities.get(o.id);
+        if (!v || v.kind !== 'unit' || v.dead || v.inside || !this.hostile(v.owner, u.owner)) { this.setOrder(u, null); break; }
+        const r = this.approach(u, v, 0.9);
+        if (r === 'fail') { this.setOrder(u, null); break; }
+        if (r !== 'there') { o.t0 = 0; break; }
+        u.anchored = true;
+        u.attackAnim = 0.3;
+        o.t0 = (o.t0 ?? 0) + DT;
+        // A man being bound does not go on with his work.
+        if (v.order) this.setOrder(v, null);
+        if (o.t0 < CAPTURE_TIME) break;
+        u.captive = { from: v.owner, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan };
+        this.msg(v.owner, `${v.name} has been carried off by slavers!`);
+        this.players[v.owner].lastAttacked = { x: v.x, y: v.y, t: this.time };
+        this.events.push({ t: 'alert', player: v.owner, x: v.x, y: v.y });
+        this.players[v.owner].stats.lost++;
+        this.kill(v);
+        this.shiftVirtue(u.owner, -3);
+        const camp = this.campWithRoom(u);
+        this.setOrder(u, camp ? { t: 'deliver', id: camp.id } : null);
+        break;
+      }
+
+      case 'deliver': {
+        const camp = this.entities.get(o.id);
+        if (!u.captive || !camp || camp.kind !== 'building' || camp.dead || !camp.complete || (camp.captives?.length ?? 0) >= (camp.def.camp ?? 0)) {
+          const other = u.captive ? this.campWithRoom(u) : null;
+          this.setOrder(u, other && other.id !== o.id ? { t: 'deliver', id: other.id } : null);
+          break;
+        }
+        const r = this.approach(u, camp, REACH);
+        if (r === 'there') {
+          (camp.captives ??= []).push(u.captive);
+          u.captive = null;
+          this.setOrder(u, null);
+        } else if (r === 'fail') this.setOrder(u, null);
+        break;
+      }
+
       case 'staff': {
         const b = this.entities.get(o.id);
         if (!b || b.kind !== 'building' || b.dead || !b.complete || (b.staff?.length ?? 0) >= (b.def.staff ?? 0)) { this.setOrder(u, null); break; }
@@ -1918,7 +2029,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.creed(u.owner).work * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captives)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;

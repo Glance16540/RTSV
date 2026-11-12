@@ -271,6 +271,27 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       g.add(r);
       break;
     }
+    case 'priest': {
+      cyl(g, 0.1, 0.24, 0.62, 0x2a2a30, 0, 0.31, 0, 10);
+      cyl(g, 0.2, 0.25, 0.1, color, 0, 0.06, 0, 10);
+      box(g, 0.08, 0.5, 0.02, 0xf0e8d0, 0, 0.36, 0.13);
+      ball(g, 0.12, SKIN, 0, 0.74, 0);
+      const a = arm(g);
+      cyl(a, 0.018, 0.018, 0.9, DARKWOOD, 0, 0, 0.12, 5);
+      box(a, 0.03, 0.2, 0.03, 0xe8c860, 0, 0.5, 0.12);
+      g.userData.glow = box(a, 0.14, 0.03, 0.03, 0xe8c860, 0, 0.52, 0.12, 0x886620);
+      break;
+    }
+    case 'slaver': {
+      humanoid(g, 0x3a2a2a, 0x2a2020, hair);
+      box(g, 0.31, 0.08, 0.19, color, 0, 0.56, 0);
+      box(g, 0.26, 0.1, 0.24, 0x1e1a18, 0, 0.84, 0);
+      const a = arm(g);
+      cyl(a, 0.015, 0.015, 0.5, 0x4a3a2a, 0, -0.3, 0.2, 5).rotation.x = 0.9;
+      const ring = add(g, geo('shackle', () => new THREE.TorusGeometry(0.07, 0.018, 4, 8)), IRON, -0.14, 0.42, 0.1);
+      ring.rotation.y = Math.PI / 2;
+      break;
+    }
     case 'shaman': {
       cyl(g, 0.1, 0.25, 0.6, 0xe8e2d0, 0, 0.3, 0, 10);
       cyl(g, 0.2, 0.26, 0.14, color, 0, 0.08, 0, 10);
@@ -832,6 +853,25 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
       box(g, 0.9, 0.12, 0.8, st, 0, 0.06, 2.2);
       box(g, 0.8, 0.6, 0.06, color, 0, 0.9, 1.92);
       flag(g, color, 1.5, 0.5, 1.5, 1.6);
+      break;
+    }
+    case 'workcamp': {
+      // A stockade: a ring of sharpened stakes round a bare yard, a guard platform and a barred hut.
+      box(g, 2.8, 0.06, 2.8, 0x6a5a44, 0, 0.03, 0).castShadow = false;
+      for (let i = 0; i < 28; i++) {
+        const side = Math.floor(i / 7), k = (i % 7) / 6 - 0.5;
+        const x = side === 0 ? k * 2.7 : side === 1 ? 1.35 : side === 2 ? -k * 2.7 : -1.35;
+        const z = side === 0 ? -1.35 : side === 1 ? k * 2.7 : side === 2 ? 1.35 : -k * 2.7;
+        if (side === 2 && Math.abs(k) < 0.12) continue; // the gate
+        cyl(g, 0.02, 0.08, 0.9 + (i % 3) * 0.08, DARKWOOD, x, 0.45, z, 5);
+      }
+      box(g, 1.2, 0.6, 0.9, 0x5a4a3a, -0.5, 0.33, -0.6);
+      box(g, 1.3, 0.08, 1.0, 0x3e3226, -0.5, 0.67, -0.6);
+      for (const x of [-0.9, -0.7, -0.5, -0.3, -0.1]) box(g, 0.03, 0.4, 0.03, IRON, x, 0.35, -0.14);
+      for (const [x, z] of [[0.6, 0.3], [1.1, 0.3], [0.6, 0.8], [1.1, 0.8]]) cyl(g, 0.04, 0.04, 1.3, WOOD, x, 0.65, z, 5);
+      box(g, 0.7, 0.06, 0.7, WOOD, 0.85, 1.3, 0.55);
+      box(g, 0.74, 0.3, 0.05, color, 0.85, 1.48, 0.9);
+      flag(g, color, 0.85, 1.3, 0.55, 0.9);
       break;
     }
     case 'tavern': {

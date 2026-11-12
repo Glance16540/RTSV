@@ -4,7 +4,7 @@ import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
-import { MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
+import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_WATER } from '../sim/map';
 import { ico } from './assets';
@@ -233,7 +233,7 @@ export class Hud {
           const d = BUILDINGS[type];
           out.push({
             id: 'b:' + type, icon: ico(type, d.icon), name: 'Build ' + d.name, desc: d.desc, cost: d.cost,
-            locked: d.age > p.age ? `Requires the ${AGES[d.age].name}.` : undefined,
+            locked: d.age > p.age ? `Requires the ${AGES[d.age].name}.` : game.creedBar(pid, d) ?? undefined,
             active: this.app.placing === type,
             act: () => { this.app.select(this.app.sel); this.app.placing = type; },
           });
@@ -310,7 +310,7 @@ export class Hud {
     for (const type of [...new Set(b.def.trains.map((t) => game.trainedAs(pid, t)))]) {
       const d = UNITS[type];
       if (d.civ && d.civ !== p.civ) continue; // another people's unit
-      const locked = d.age > p.age ? `Requires the ${AGES[d.age].name}.` : undefined;
+      const locked = d.age > p.age ? `Requires the ${AGES[d.age].name}.` : game.creedBar(pid, d) ?? undefined;
       if (type === 'villager') {
         out.push({ id: 't:vm', icon: MAN(), name: 'Train Villager (man)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'm') });
         out.push({ id: 't:vf', icon: WOMAN(), name: 'Train Villager (woman)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'f') });
@@ -454,6 +454,8 @@ export class Hud {
         extra += `<div>${e.homeId ? '🏠 Lives in a house' : '⛺ Homeless — right-click a house to move in'}</div>`;
         if (e.carryAmt > 0) extra += `<div>Carrying ${RI(e.carryType)} ${e.carryAmt}</div>`;
       }
+      if (e.captive) extra += `<div class="hint">⛓️ Leading ${e.captive.name} to a Work Camp</div>`;
+      else if (d.slaver) extra += '<div class="hint">Right-click an enemy villager to seize him.</div>';
       if (e.merc) extra += `<div class="hint">💰 Mercenary: ${(MERC_WAGE * 60).toFixed(1)} gold a minute, or he leaves</div>`;
       if (d.carry) extra += `<div class="${e.cargo?.length ? 'good' : 'hint'}">Aboard: ${e.cargo?.length ?? 0}/${d.carry} — right-click the ship with land units to board</div>`;
       if (d.mana) extra += `<div>Faith ${Math.floor(e.mana)} / ${d.mana}</div>${this.bar(e.mana / d.mana, 'faith')}`;
@@ -500,6 +502,11 @@ export class Hud {
         body += `<div class="${b.morale ? 'good' : 'hint'}">🏠 Houses nearby: ${b.morale}/${MORALE_MAX_HOUSES} — defenders take ${Math.round(b.morale * MORALE_PER_HOUSE * 100)}% less damage</div>`;
       }
       if (b.def.shelter) body += `<div class="${b.sheltered.length ? 'good' : 'hint'}">🔔 Inside: ${b.sheltered.length}/${b.def.shelter} — Alt+right-click to send units in</div>`;
+      if (b.def.camp) {
+        const n = b.captives?.length ?? 0;
+        body += `<div class="${n ? 'good' : 'hint'}">⛓️ Captives: ${n}/${b.def.camp}${n ? ` <small>(${b.captives!.map((c) => c.name).join(', ')})</small>` : ' — send Slavers after enemy villagers'}</div>` +
+          `<div class="hint">Each captive makes the whole town gather ${(CAPTIVE_WORK * 100).toFixed(0)}% faster and adds ${CAPTIVE_VIRTUE} decadence a minute. The camp turns out a new villager about every ${Math.round(CAMP_BIRTH / Math.max(1, n))} seconds. If it falls, they go home.</div>`;
+      }
       if (b.def.staff) {
         const tav = b.type === 'tavern';
         const who = (b.staff ?? []).map((id) => game.entities.get(id)).filter((u): u is Unit => !!u && u.kind === 'unit');
@@ -658,7 +665,7 @@ export class Hud {
     const c = creedOf(virtue);
     const where = virtue > 0 ? `Piety ${Math.round(virtue)}` : virtue < 0 ? `Decadence ${Math.round(-virtue)}` : 'In balance';
     const p = this.app.game.players[this.app.pid];
-    return `${where} of 100 (${p.clergy} in the church, ${p.maids} in the tavern). ${c.desc}` + (c.boons.length ? ` Boons: ${c.boons.join('; ')}. Banes: ${c.banes.join('; ')}.` : ' No boons or banes.');
+    return `${where} of 100 (${p.clergy} in the church, ${p.maids} in the tavern${p.captives ? `, ${p.captives} captives` : ''}). ${c.desc}` + (c.boons.length ? ` Boons: ${c.boons.join('; ')}. Banes: ${c.banes.join('; ')}.` : ' No boons or banes.');
   }
 
   /** Put the dilemma awaiting the player's answer on screen, or take it away once answered. */

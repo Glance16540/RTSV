@@ -2052,3 +2052,87 @@ describe('the tavern\'s other trade', () => {
     expect(outbreak(90)).toBe(false);
   });
 });
+
+describe('the holy town and the work camp', () => {
+  const town = () => {
+    const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
+    const p = g.players[0];
+    p.age = 2; p.dilemmaT = 1e9; g.players[1].dilemmaT = 1e9;
+    for (const r of ['food', 'wood', 'gold', 'stone'] as const) p.res[r] = 3000;
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    return { g, p, tc };
+  };
+
+  it('a town that keeps the faith trains no shamans or berserkers, but may call a priest', () => {
+    const { g, p, tc } = town();
+    const church = g.spawnBuilding('temple', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) + 3, true);
+    const barracks = g.spawnBuilding('barracks', 0, Math.floor(tc.x) - 9, Math.floor(tc.y) + 3, true);
+    expect(g.cmdTrain(0, church.id, 'priest')).toBe(false); // not yet devout
+    expect(g.cmdTrain(0, church.id, 'shaman')).toBe(true);
+    expect(g.cmdTrain(0, barracks.id, 'berserker')).toBe(true);
+    p.virtue = 40;
+    expect(g.cmdTrain(0, church.id, 'shaman')).toBe(false);
+    expect(g.cmdTrain(0, barracks.id, 'berserker')).toBe(false);
+    expect(g.cmdTrain(0, church.id, 'priest')).toBe(true);
+    expect(g.cmdTrain(0, barracks.id, 'spearman')).toBe(true); // honest soldiers are fine
+    expect(UNITS.priest.heal!).toBeGreaterThan(UNITS.shaman.heal!);
+    // Neither will it keep slaves.
+    expect(g.creedBar(0, UNITS.slaver)).toBeTruthy();
+    const v = g.units.find((u) => u.owner === 0 && u.type === 'villager')!;
+    expect(g.cmdPlace(0, 'workcamp', Math.floor(tc.x) + 6, Math.floor(tc.y) - 6, [v.id])).toBeNull();
+  });
+
+  it('a decadent town\'s slavers carry off villagers to a work camp, which drives the town and can be broken open', () => {
+    const { g, p, tc } = town();
+    p.virtue = -80;
+    const tavern = g.spawnBuilding('tavern', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) + 3, true);
+    expect(g.cmdTrain(0, tavern.id, 'slaver')).toBe(true);
+    const slaver = g.spawnUnit('slaver', 0, tc.x - 2, tc.y + 5);
+    const victim = g.spawnUnit('villager', 1, tc.x - 1, tc.y + 5, 'f');
+    victim.name = 'Ruth'; victim.trait = 'strong';
+    const theirs = g.units.filter((u) => u.owner === 1 && u.type === 'villager').length;
+    // No camp, no capture.
+    g.cmdTarget(0, [slaver.id], victim.id);
+    expect(slaver.order).toBeNull();
+    const camp = g.spawnBuilding('workcamp', 0, Math.floor(tc.x) - 9, Math.floor(tc.y) + 3, true);
+    g.cmdTarget(0, [slaver.id], victim.id);
+    expect(slaver.order?.t).toBe('capture');
+    run(g, 6);
+    expect(victim.dead).toBe(true);
+    expect(g.units.filter((u) => u.owner === 1 && u.type === 'villager').length).toBe(theirs - 1);
+    run(g, 12);
+    expect(slaver.captive ?? null).toBeNull();
+    expect(camp.captives!.map((c) => c.name)).toEqual(['Ruth']);
+    run(g, 2);
+    expect(p.captives).toBe(1);
+    // Saved and restored, she is still held.
+    expect(Game.restore(g.serialize()).buildings.find((b) => b.type === 'workcamp')!.captives!.length).toBe(1);
+    // The camp turns out villagers for its owners in time.
+    const mine = g.units.filter((u) => u.owner === 0 && u.type === 'villager').length;
+    p.popCap = 200;
+    run(g, 160);
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'villager').length).toBeGreaterThan(mine);
+    // Break the camp and Ruth goes home, still herself.
+    g.cmdDelete(0, [camp.id]);
+    const ruth = g.units.find((u) => u.owner === 1 && u.name === 'Ruth');
+    expect(ruth).toBeTruthy();
+    expect(ruth!.trait).toBe('strong');
+    expect(ruth!.gender).toBe('f');
+  });
+
+  it('a slaver killed on the road loses his captive', () => {
+    const { g, p } = town();
+    p.virtue = -80;
+    g.spawnBuilding('workcamp', 0, 20, 60, true);
+    const slaver = g.spawnUnit('slaver', 0, 46, 46), victim = g.spawnUnit('villager', 1, 47, 46, 'm');
+    victim.name = 'Boaz';
+    g.cmdTarget(0, [slaver.id], victim.id);
+    run(g, 5);
+    expect(slaver.captive?.name).toBe('Boaz');
+    const guard = g.spawnUnit('swordsman', 1, slaver.x + 1, slaver.y);
+    g.cmdTarget(1, [guard.id], slaver.id);
+    run(g, 20);
+    expect(slaver.dead).toBe(true);
+    expect(g.units.some((u) => u.owner === 1 && u.name === 'Boaz')).toBe(true);
+  });
+});

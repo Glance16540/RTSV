@@ -70,6 +70,17 @@ out.
 - *Plague.* In a Worldly or Decadent town a crowded tavern is where plague breaks out, striking
   everyone nearby. It never starts in a town that has kept the faith.
 
+What a town believes also decides what it will raise:
+
+- *A holy town* (Devout or Righteous) trains no pagan units: no Shamans and no Berserkers. In
+  their place the Church can call a **Priest**, who heals faster than a Shaman and cures plague.
+  Nor will it train Slavers or build Work Camps.
+- *A Decadent town* can train the **Slaver** at its Tavern and build the **Work Camp**. Right-click
+  an enemy villager with a Slaver and he binds them in three seconds and leads them back to a camp
+  with room. Every captive makes the whole town gather 7% faster, and the camp still turns out new
+  villagers for its owners. Kill the Slaver on the road, or break the camp, and the captives go
+  home as they were, name and all.
+
 Where your people stand on the scale between piety and decadence sets their creed:
 
 - **Devout**, then **Righteous**: children come sooner, faith gathers faster, healing and morale

@@ -176,7 +176,9 @@ export class AIController {
       const own2 = CIVS[p.civ]?.unique2;
       const mix = [...ARMY_MIX[p.age], ...(own && UNITS[own].age <= p.age ? [own, own, own] : []), ...(own2 && UNITS[own2].age <= p.age ? [own2, own2] : [])];
       for (let k = 0; k < mix.length; k++) {
-        const type = mix[(this.mixI + k) % mix.length];
+        let type = mix[(this.mixI + k) % mix.length];
+        // A people that keeps the faith calls a priest where others would call a shaman, and has no berserkers.
+        if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; }
         const def = UNITS[type];
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;

@@ -115,6 +115,12 @@ export interface UnitDef {
   civ?: string;
   /** A ship: moves on water only. */
   naval?: boolean;
+  /** A pagan unit: a town that keeps the faith (Devout or Righteous) will not train it. */
+  pagan?: boolean;
+  /** Only a holy town, or only a decadent one, can train it. */
+  needs?: 'holy' | 'decadent';
+  /** Can seize enemy villagers and lead them to a Work Camp. */
+  slaver?: boolean;
   /** How many land units it can carry across water. */
   carry?: number;
   /** Can work fish shoals, bringing the catch to a Dock. */
@@ -191,7 +197,7 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   berserker: U({
     id: 'berserker', name: 'Berserker', icon: '🪓',
-    desc: 'Unarmoured shock infantry. The more wounded a Berserker is, the faster it strikes.',
+    desc: 'Unarmoured shock infantry. The more wounded a Berserker is, the faster it strikes. Pagan: a town that keeps the faith will not train him.', pagan: true,
     cost: { food: 70, gold: 25 }, time: 16, age: 2, hp: 95, atk: 12, armor: 0, range: 0.5, speed: 2.5,
     cooldown: 1.5, sight: 7, pop: 1, cls: 'infantry', radius: 0.3, frenzy: true,
   }),
@@ -394,9 +400,21 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   shaman: U({
     id: 'shaman', name: 'Shaman', icon: '🪄',
-    desc: 'Unique support unit. Heals wounded allies nearby and cures plague. Cannot attack.',
+    desc: 'Heals wounded allies nearby and cures plague. Cannot attack. Pagan: a town that keeps the faith will not train him.', pagan: true,
     cost: { food: 40, gold: 60 }, time: 22, age: 1, hp: 40, atk: 0, armor: 0, range: 5, speed: 2.0,
     cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 5,
+  }),
+  priest: U({
+    id: 'priest', name: 'Priest', icon: '✝️',
+    desc: 'Only a Devout or Righteous town can call him. Heals the wounded faster than a Shaman and cures plague. Cannot attack.',
+    cost: { food: 50, gold: 40 }, time: 20, age: 1, hp: 50, atk: 0, armor: 0, range: 5.5, speed: 2.1,
+    cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 7, needs: 'holy',
+  }),
+  slaver: U({
+    id: 'slaver', name: 'Slaver', icon: '⛓️',
+    desc: 'Only a Decadent town will train him. Right-click an enemy villager to seize him and lead him back to a Work Camp. If the Slaver is killed on the way, the captive goes free.',
+    cost: { food: 60, gold: 60 }, time: 20, age: 1, hp: 75, atk: 4, armor: 0, range: 0.5, speed: 2.6,
+    cooldown: 1.5, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, needs: 'decadent', slaver: true,
   }),
   prophet: U({
     id: 'prophet', name: 'Prophet', icon: '🔮',
@@ -442,6 +460,10 @@ export interface BuildingDef {
   shelter?: number;
   dropoff?: boolean;
   walkable?: boolean;
+  /** Only a decadent town can build it. */
+  needs?: 'decadent';
+  /** A work camp: how many captives it holds. */
+  camp?: number;
   /** How many villagers can be stationed inside to work there (clergy in a church, maids in a tavern). */
   staff?: number;
   atk?: number;
@@ -504,13 +526,19 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'temple', name: 'Church', icon: '⛪',
     desc: 'Station up to four villagers here as monks (men) and nuns (women): each makes your people more pious and brings the town\'s children sooner. Those who enter leave their own house. Also trains shamans and prophets and researches blessings.',
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
-    trains: ['shaman', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
+    trains: ['shaman', 'priest', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',
     desc: 'Station up to four villagers here. Milkmaids (women) bring in gold; patrons (men) drink your food away but speed up the training of soldiers. With anyone inside you can hire mercenaries for gold. All of it makes your people more decadent, slows the town\'s work, empties their own cradles, and in a worldly town invites plague.',
     cost: { wood: 110 }, time: 26, age: 1, hp: 600, size: 3, pop: 0, sight: 5,
-    trains: [], techs: [], staff: 4,
+    trains: ['slaver'], techs: [], staff: 4,
+  }),
+  workcamp: B({
+    id: 'workcamp', name: 'Work Camp', icon: '⛓️',
+    desc: 'Only a Decadent town can build it. Holds up to eight captives seized by Slavers. Every captive makes the whole town gather faster, and the camp still turns out new villagers. If it falls, the captives go home.',
+    cost: { wood: 150 }, time: 30, age: 1, hp: 700, size: 3, pop: 0, sight: 5,
+    trains: [], techs: [], needs: 'decadent', camp: 8,
   }),
   blacksmith: B({
     id: 'blacksmith', name: 'Blacksmith', icon: '⚒️',
@@ -561,7 +589,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
 /** Villager build menu, in two pages: settlement and military. */
 export const BUILD_PAGES = [
   ['house', 'storehouse', 'farm', 'dock', 'market', 'towncenter', 'temple', 'tavern', 'blacksmith', 'palisade', 'gate', 'stonewall', 'wonder'],
-  ['barracks', 'range', 'stable', 'workshop', 'tower'],
+  ['barracks', 'range', 'stable', 'workshop', 'tower', 'workcamp'],
 ];
 
 /** Market prices for 100 of a resource, in gold. */

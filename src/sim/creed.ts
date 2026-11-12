@@ -20,6 +20,14 @@ export const MERC_WAGE = 0.06; // gold a second each; unpaid, they walk away
 export const MERC_TYPES = ['clubman', 'slinger', 'spearman', 'rider'];
 /** Chance each second, per person in the tavern, that plague breaks out in a worldly town (doubled in a decadent one). */
 export const TAVERN_PLAGUE = 0.0012;
+/** A holy town is Devout or better; a town given over to decadence is Decadent. */
+export const isHoly = (virtue: number): boolean => virtue >= 30;
+export const isDecadent = (virtue: number): boolean => virtue <= -70;
+export const CAPTURE_TIME = 3; // seconds a Slaver needs to bind a villager
+export const CAPTIVE_WORK = 0.07; // the whole town gathers this much faster, per captive
+export const CAPTIVE_VIRTUE = 2; // decadence a minute, per captive
+export const CAMP_BIRTH = 150; // seconds for one captive to add a villager; more captives, sooner
+export const CAPTIVE_CAP = 16; // captives beyond this add nothing
 export const STAFF_CAP = 8; // more than this many clergy or maids add nothing
 
 export interface Creed {
