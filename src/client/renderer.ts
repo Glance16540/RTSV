@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
-import { makeBuilding, makeResource, makeUnit, mat, RES_COLOR, Rig, rigBiped } from './models';
+import { Job, makeBuilding, makeResource, makeStaff, makeUnit, mat, RES_COLOR, Rig, rigBiped } from './models';
 import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
@@ -15,7 +15,7 @@ const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job }
 /** Recorded motions (walking, working, striking…), as turns of a figure's few joints. See scripts/motions.cjs. */
 const motions = MOTIONS as unknown as Record<string, { dur: number; frames: number[][] }>;
 const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
@@ -60,6 +60,7 @@ export class Renderer {
   private dying: { g: THREE.Group; t: number }[] = [];
   private rubble: Rubble[] = [];
   private roads!: Roads;
+  private staffViews = new Map<number, { key: string; g: THREE.Group }>();
   private dust: Dust[] = [];
   /** Draws the ink edge around everything standing in the world. Off with ?outline=0. */
   private ink: OutlineEffect | null = null;
@@ -288,7 +289,7 @@ export class Renderer {
         this.unitViews.delete(ev.id);
       }
       const b = this.buildingViews.get(ev.id);
-      if (b) { if (b.visible && b.scale.y > 0.5) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); this.roads.relay(); }
+      if (b) { if (b.visible && b.scale.y > 0.5) this.collapse(b); else this.scene.remove(b); this.buildingViews.delete(ev.id); this.roads.relay(); const sv = this.staffViews.get(ev.id); if (sv) { this.scene.remove(sv.g); this.staffViews.delete(ev.id); } }
       const r = this.resViews.get(ev.id);
       if (r) { this.scene.remove(r); this.resViews.delete(ev.id); }
       const ti = this.treeIndex.get(ev.id);
@@ -359,13 +360,17 @@ export class Renderer {
 
   private syncUnit(u: Unit, alpha: number, dt: number): void {
     let v = this.unitViews.get(u.id);
-    if (v && v.type !== u.type) {
-      // Re-equipped by an upgrade: swap the model.
+    const job = u.type === 'villager' ? this.jobOf(u) : '';
+    let turned: number | null = null;
+    if (v && (v.type !== u.type || v.job !== job)) {
+      // Re-equipped by an upgrade, or set to a new trade: swap the model.
+      turned = v.g.rotation.y;
       this.scene.remove(v.g);
       v = undefined;
     }
     if (!v) {
-      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0 };
+      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job };
+      if (turned !== null) v.g.rotation.y = turned;
       v.rig = new URLSearchParams(location.search).get('motion') === '0' ? null : rigBiped(v.g);
       v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
       v.g.rotation.order = 'YXZ'; // so leaning forward and rocking are in the unit's own frame, whichever way it faces
@@ -418,6 +423,46 @@ export class Renderer {
     }
     const glow = g.userData.glow as THREE.Mesh | undefined;
     if (glow) glow.scale.setScalar(u.healTarget ? 1.3 + Math.sin(this.clock * 10) * 0.4 : 1);
+  }
+
+  /** The trade a villager is plying, from the order in hand. Idle or merely walking, they wear their own clothes. */
+  private jobOf(u: Unit): Job {
+    const o = u.order;
+    if (!o) return '';
+    if (o.t === 'build') return 'build';
+    if (o.t === 'attack') { const e = this.game.entities.get(o.id); return e && e.kind === 'unit' && e.owner === this.game.wild ? 'hunt' : ''; }
+    if (o.t !== 'gather') return '';
+    const e = this.game.entities.get(o.id);
+    if (!e) return o.res === 'wood' ? 'wood' : o.res === 'food' ? 'forage' : 'mine';
+    if (e.kind === 'building') return 'farm';
+    return e.type === 'tree' ? 'wood' : e.type === 'carcass' ? 'hunt' : e.type === 'berries' ? 'forage' : e.type === 'fish' ? '' : 'mine';
+  }
+
+  /** Milkmaids and patrons at the tavern, monks and nuns at the church: those inside are shown standing at the front. */
+  private syncStaff(b: Building, shown: boolean, lean: '' | 'holy' | 'low'): void {
+    let women = 0, men = 0;
+    for (const id of b.staff ?? []) { const s = this.game.entities.get(id) as Unit | undefined; if (s) { if (s.gender === 'f') women++; else men++; } }
+    const key = `${women}:${men}:${lean}`;
+    let sv = this.staffViews.get(b.id);
+    if (sv && sv.key !== key) { this.scene.remove(sv.g); sv = undefined; this.staffViews.delete(b.id); }
+    if (!sv && women + men > 0) {
+      const g = new THREE.Group(), tav = b.type === 'tavern', half = b.size / 2;
+      for (let i = 0; i < women + men; i++) {
+        const f = i < women;
+        const fig = makeStaff(tav ? (f ? 'milkmaid' : 'patron') : f ? 'nun' : 'monk', b.id + i * 7, lean);
+        // Along the front and round the near corner, where the camera sees them.
+        const k = i - (women + men - 1) / 2;
+        const x = i % 2 ? half - 0.12 : k * 0.42 + 0.3, z = i % 2 ? k * 0.42 + 0.2 : half - 0.12;
+        fig.position.set(b.x + x, this.scenery.heightAt(b.x + x, b.y + z), b.y + z);
+        fig.rotation.y = Math.PI / 4 + Math.sin(b.id + i * 3.1) * 0.5;
+        fig.scale.setScalar(0.92);
+        g.add(fig);
+      }
+      sv = { key, g };
+      this.staffViews.set(b.id, sv);
+      this.scene.add(g);
+    }
+    if (sv) sv.g.visible = shown;
   }
 
   /** Sets a figure's joints from the recorded motion that fits what it is doing. */
@@ -556,6 +601,7 @@ export class Renderer {
       if (b.type === 'towncenter') this.roads.relay(); else this.roads.add(b);
     }
     g.visible = this.isVisible(b);
+    if (b.def.staff) this.syncStaff(b, g.visible && b.complete, lean);
     if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
     g.userData.hurt = hurt;
     g.scale.y = b.complete ? 1 : 0.12 + 0.88 * b.progress;
