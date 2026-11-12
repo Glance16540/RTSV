@@ -1,6 +1,6 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
-import { ABILITIES, AGES, BUILDINGS, ResType, TECHS, UNITS } from './data';
+import { ABILITIES, AGES, BUILDINGS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
 
 const VILLAGER_TARGET = [16, 26, 34, 40];
@@ -9,8 +9,8 @@ const ARMY_TARGET = [4, 10, 18, 26];
 const ARMY_MIX: string[][] = [
   ['clubman', 'clubman', 'slinger'],
   ['spearman', 'bowman', 'rider', 'bowman', 'spearman', 'mammoth', 'shaman'],
-  ['swordsman', 'bowman', 'rider', 'prophet', 'swordsman', 'catapult', 'mammoth', 'shaman'],
-  ['swordsman', 'crossbowman', 'knight', 'prophet', 'crossbowman', 'catapult', 'knight', 'shaman'],
+  ['swordsman', 'bowman', 'rider', 'prophet', 'swordsman', 'catapult', 'mammoth', 'shaman', 'spearman'],
+  ['swordsman', 'crossbowman', 'knight', 'prophet', 'crossbowman', 'catapult', 'knight', 'shaman', 'spearman', 'bowman'],
 ];
 const BUILD_ORDER: { type: string; age: number; villagers: number; count: number }[] = [
   { type: 'barracks', age: 0, villagers: 8, count: 1 },
@@ -18,6 +18,7 @@ const BUILD_ORDER: { type: string; age: number; villagers: number; count: number
   { type: 'range', age: 1, villagers: 0, count: 1 },
   { type: 'stable', age: 1, villagers: 0, count: 1 },
   { type: 'blacksmith', age: 1, villagers: 0, count: 1 },
+  { type: 'market', age: 1, villagers: 0, count: 1 },
   { type: 'temple', age: 1, villagers: 0, count: 1 },
   { type: 'tower', age: 1, villagers: 0, count: 2 },
   { type: 'workshop', age: 2, villagers: 0, count: 1 },
@@ -34,6 +35,8 @@ export class AIController {
   private ring: { cx: number; cy: number }[] | null = null;
   private ringI = 0;
   private wallT = 0;
+  /** Building the army is currently marching on. */
+  private targetId = 0;
   /** Seconds before the first attack may launch. */
   firstAttack = 420;
   /** Multiplier on how large an army the AI wants. */
@@ -123,6 +126,16 @@ export class AIController {
 
     this.assignWorkers(villagers, mine, home);
 
+    // Market: turn whatever is piling up into whatever has run out.
+    const market = mine.find((b) => b.type === 'market' && b.complete);
+    if (market) {
+      for (const r of ['wood', 'food', 'stone'] as ResType[]) {
+        if (p.res.gold < 200 && p.res[r] > (r === 'food' ? 900 : 600)) g.cmdTrade(pid, market.id, r, 'sell');
+      }
+      if (p.res.food < 100 && p.res.gold > 450) g.cmdTrade(pid, market.id, 'food', 'buy');
+      if (p.res.wood < 60 && p.res.gold > 450) g.cmdTrade(pid, market.id, 'wood', 'buy');
+    }
+
     // Technologies.
     if (!saving) {
       for (const b of mine) {
@@ -179,9 +192,9 @@ export class AIController {
       if (fighters.length < 3) this.state = 'build';
       else if ((this.attackT -= 1) <= 0) {
         this.attackT = 5;
-        const target = this.pickTarget(home);
+        const idle = army.filter((u) => !u.order);
+        const target = idle.length ? this.pickTarget(idle[0]) : null;
         if (target) {
-          const idle = army.filter((u) => !u.order);
           if (idle.length) g.cmdMove(pid, idle.map((u) => u.id), target.x, target.y, true);
         }
       }
@@ -206,7 +219,7 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {
@@ -238,18 +251,26 @@ export class AIController {
 
   private route(from: Unit, to: Entity): { partial: boolean } {
     this.game.pf.pass = 2 + this.pid;
-    return this.game.pf.find(from.x, from.y, to.x, to.y, to.x, to.y, 1);
+    const h = to.kind === 'unit' ? 0 : to.size / 2;
+    return this.game.pf.find(from.x, from.y, to.x - h, to.y - h, to.x + h, to.y + h, 1);
   }
 
-  private pickTarget(home: Entity): Entity | null {
-    let best: Entity | null = null;
-    let bestD = Infinity;
-    for (const b of this.game.buildings) {
-      if (b.owner === this.pid || b.def.wall) continue;
-      const d = Math.hypot(b.x - home.x, b.y - home.y);
-      if (d < bestD) { bestD = d; best = b; }
-    }
-    return best;
+  /**
+   * Building for the army to march on. It sticks with one target until that falls, prefers
+   * finished buildings over foundations, and picks the nearest one it can actually walk to. If
+   * none can be reached (the enemy is walled in) it takes the nearest: the army walks up to the
+   * wall and breaks through.
+   */
+  private pickTarget(from: Unit): Entity | null {
+    const cur = this.game.entities.get(this.targetId);
+    if (cur && !cur.dead) return cur;
+    const d = (b: Entity) => Math.hypot(b.x - from.x, b.y - from.y);
+    const enemy = this.game.buildings.filter((b) => b.owner !== this.pid && !b.def.wall);
+    const done = enemy.filter((b) => b.complete);
+    const list = (done.length ? done : enemy).sort((a, b) => d(a) - d(b));
+    const pick = list.slice(0, 10).find((b) => !this.route(from, b).partial) ?? list[0] ?? null;
+    this.targetId = pick ? pick.id : 0;
+    return pick;
   }
 
   private pickBuilder(villagers: Unit[], x: number, y: number): Unit | null {
@@ -356,7 +377,8 @@ export class AIController {
         if (t.kind === 'resource') {
           const drop = g.nearestDropoff(v);
           const far = !mine.some((b) => b.def.dropoff && Math.hypot(b.x - t!.x, b.y - t!.y) < 9);
-          if (drop && far && p.res.wood >= 60 && !mine.some((b) => b.type === 'storehouse' && !b.complete)) {
+          const near = Math.hypot(t.x - home.x, t.y - home.y) < 32; // do not plant outposts in the enemy's yard
+          if (drop && far && near && p.res.wood >= 60 && mine.filter((b) => b.type === 'storehouse').length < 6 && !mine.some((b) => b.type === 'storehouse' && !b.complete)) {
             const spot = this.findSpot('storehouse', t.x, t.y, 2.5, 6);
             if (spot) g.cmdPlace(pid, 'storehouse', spot.cx, spot.cy, [v.id]);
           }

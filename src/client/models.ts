@@ -462,6 +462,19 @@ export function makeBuilding(type: string, color: number, age: number): THREE.Gr
       box(g, 0.5, 0.3, 1.06, color, 0, 1.3, 0);
       break;
     }
+    case 'market': {
+      box(g, 2.8, 0.1, 2.8, 0x9a8a68, 0, 0.05, 0).castShadow = false;
+      const cloth = [color, 0xe8dcc0, 0xc0392b, color];
+      [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]].forEach(([x, z], i) => {
+        box(g, 0.9, 0.5, 0.7, WOOD, x, 0.3, z);
+        for (const [px, pz] of [[-0.45, -0.35], [0.45, -0.35], [-0.45, 0.35], [0.45, 0.35]]) box(g, 0.06, 1.1, 0.06, DARKWOOD, x + px, 0.55, z + pz);
+        roof(g, 0.62, 0.4, cloth[i], x, 1.1, z);
+        box(g, 0.3, 0.2, 0.3, [0xd8c060, 0xc0392b, 0x8aa838, 0xf2c230][i], x, 0.62, z);
+      });
+      cyl(g, 0.3, 0.34, 0.3, STONE, 0, 0.15, 0, 10);
+      flag(g, color, 0, 0.3, 0, 1.4);
+      break;
+    }
     case 'tower': {
       const st = age >= 2 ? STONE : wall;
       box(g, 1.2, 2.4, 1.2, st, 0, 1.2, 0);

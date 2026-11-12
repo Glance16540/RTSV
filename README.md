@@ -54,6 +54,9 @@ block everyone; a Gate lets only your own units through, so enemies have to brea
 **Garrison.** Alt+right-click a Town Center or Watch Tower to send foot units inside; each one
 speeds up its arrow fire. On Normal and Hard the AI walls its base with a palisade and gates.
 
+**Market.** From the Bronze Age, sell surplus food, wood or stone for gold, or buy what you are
+short of. The villager build menu has two pages, settlement and military.
+
 **Map size.** Small, Medium or Large, chosen on the start screen.
 
 **Saving.** The 💾 button stores the game in your browser, and it autosaves every two minutes.

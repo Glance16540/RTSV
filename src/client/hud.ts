@@ -1,7 +1,7 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import {
-  ABILITIES, AGES, BIRTH_COST, BUILD_MENU, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType,
+  ABILITIES, AGES, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE,
   TECHS, UNITS, costText,
 } from '../sim/data';
 import { Building, Entity, GameEvent, Unit } from '../sim/game';
@@ -44,6 +44,7 @@ export class Hud {
   private miniT = 0;
   private alerts: { x: number; y: number; t: number }[] = [];
   private hoverBtn = -1;
+  private buildPage = 0;
 
   constructor(private app: App) {
     const N = app.game.size;
@@ -155,7 +156,7 @@ export class Hud {
       const units = ents.filter((e): e is Unit => e.kind === 'unit');
       const ids = units.map((u) => u.id);
       if (units.every((u) => u.type === 'villager')) {
-        for (const type of BUILD_MENU) {
+        for (const type of BUILD_PAGES[this.buildPage]) {
           const d = BUILDINGS[type];
           out.push({
             id: 'b:' + type, icon: ico(type, d.icon), name: 'Build ' + d.name, desc: d.desc, cost: d.cost,
@@ -164,6 +165,12 @@ export class Hud {
             act: () => { this.app.select(this.app.sel); this.app.placing = type; },
           });
         }
+        while (out.length < 13) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
+        out.push({
+          id: 'page' + this.buildPage, icon: this.buildPage ? ico('page_settlement', '🏘️') : ico('page_military', '⚔️'),
+          name: this.buildPage ? 'Settlement buildings' : 'Military buildings', desc: 'Show the other page of the build menu.',
+          act: () => { this.buildPage = 1 - this.buildPage; this.app.select(this.app.sel); },
+        });
       } else {
         out.push({
           id: 'atk', icon: ico('attackmove', '⚔️'), name: 'Attack-move', desc: 'Click a location: units march there and fight anything they meet on the way.',
@@ -229,6 +236,17 @@ export class Hud {
           : 'Villagers run to shelter in Town Centers and Watch Towers, where they cannot be hurt and help shoot arrows.',
         act: () => { game.cmdBell(pid, !p.bell); sfx.play('alert'); },
       });
+    }
+    if (b.type === 'market') {
+      for (const dir of ['sell', 'buy'] as const) {
+        for (const r of ['food', 'wood', 'stone'] as ResType[]) {
+          const rate = TRADE[r]!;
+          out.push(dir === 'sell'
+            ? { id: 'sell' + r, icon: RI(r) + '→', name: `Sell 100 ${r}`, desc: `Receive ${RI('gold')}${rate.sell}.`, cost: { [r]: 100 }, act: () => game.cmdTrade(pid, b.id, r, 'sell') }
+            : { id: 'buy' + r, icon: '→' + RI(r), name: `Buy 100 ${r}`, desc: `Receive ${RI(r)}100.`, cost: { gold: rate.buy }, act: () => game.cmdTrade(pid, b.id, r, 'buy') });
+        }
+        out.push({ id: '', icon: '', name: '', desc: '', act: () => {} }, { id: '', icon: '', name: '', desc: '', act: () => {} });
+      }
     }
     if (b.def.shelter && same.some((s) => s.sheltered.length)) {
       out.push({

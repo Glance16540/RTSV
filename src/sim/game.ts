@@ -1,7 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import {
-  ABILITIES, AGES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
+  ABILITIES, AGES, TRADE, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
@@ -710,6 +710,20 @@ export class Game {
     this.refund(p, q.cost);
     if (q.kind === 'tech') p.pending.delete(q.id);
     if (q.kind === 'age') p.agingUp = false;
+  }
+
+  /** Sell 100 of a resource for gold, or buy 100 with gold, at a Market. */
+  cmdTrade(owner: number, bid: number, res: ResType, dir: 'sell' | 'buy'): boolean {
+    const b = this.entities.get(bid);
+    const p = this.players[owner];
+    const rate = TRADE[res];
+    if (!b || b.kind !== 'building' || b.owner !== owner || b.type !== 'market' || !b.complete || !rate) return false;
+    const cost: Cost = dir === 'sell' ? { [res]: 100 } : { gold: rate.buy };
+    if (!this.canAfford(p, cost)) { this.msg(owner, dir === 'sell' ? `Not enough ${res} to sell.` : 'Not enough gold.'); return false; }
+    this.pay(p, cost);
+    if (dir === 'sell') p.res.gold += rate.sell;
+    else p.res[res] += 100;
+    return true;
   }
 
   cmdRally(owner: number, bid: number, x: number, y: number, targetId = 0): void {

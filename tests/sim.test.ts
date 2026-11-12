@@ -223,6 +223,15 @@ describe('ai', () => {
     const best = Math.max(...g.players.map((p) => p.age));
     expect(best).toBeGreaterThanOrEqual(2);
   }, 120000);
+
+  it('a Hard AI defeats an Easy AI', () => {
+    const g = new Game(23, [{ ...setups[0], isAI: true }, setups[1]]);
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    ais[0].setLevel(0);
+    ais[1].setLevel(2);
+    run(g, 60 * 45, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
+    expect(g.winner).toBe(1);
+  }, 120000);
 });
 
 describe('wildlife and shelter', () => {
@@ -312,6 +321,23 @@ describe('walls and gates', () => {
     g.cmdDelete(1, g.buildings.filter((b) => b.owner === 1 && !b.def.wall).map((b) => b.id));
     run(g, 2);
     expect(g.winner).toBe(0);
+  });
+});
+
+describe('market', () => {
+  it('trades surplus for gold and gold for what is short', () => {
+    const g = new Game(7, setups);
+    const p = g.players[0];
+    const market = g.spawnBuilding('market', 0, 40, 40, true);
+    Object.assign(p.res, { food: 50, wood: 250, gold: 0, stone: 0 });
+    expect(g.cmdTrade(0, market.id, 'food', 'buy')).toBe(false); // no gold yet
+    expect(g.cmdTrade(0, market.id, 'wood', 'sell')).toBe(true);
+    expect(g.cmdTrade(0, market.id, 'wood', 'sell')).toBe(true);
+    expect(g.cmdTrade(0, market.id, 'wood', 'sell')).toBe(false); // only 50 wood left
+    expect(p.res).toMatchObject({ wood: 50, gold: 80 });
+    Object.assign(p.res, { gold: 100 });
+    expect(g.cmdTrade(0, market.id, 'food', 'buy')).toBe(true);
+    expect(p.res).toMatchObject({ food: 150, gold: 15 });
   });
 });
 

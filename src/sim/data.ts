@@ -286,6 +286,11 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 180, gold: 80 }, time: 34, age: 2, hp: 900, size: 3, pop: 0, sight: 6,
     trains: ['catapult'], techs: [],
   }),
+  market: B({
+    id: 'market', name: 'Market', icon: '⚖️',
+    desc: 'Trade food, wood and stone for gold, or gold for what you are short of.',
+    cost: { wood: 150 }, time: 26, age: 1, hp: 800, size: 3, pop: 0, sight: 6, trains: [], techs: [],
+  }),
   palisade: B({
     id: 'palisade', name: 'Palisade', icon: '🪵',
     desc: 'Cheap wooden wall. Drag to build a line. Blocks everyone, so leave a gate.',
@@ -310,11 +315,18 @@ export const BUILDINGS: Record<string, BuildingDef> = {
 };
 
 /** Order in which buildings appear in the villager build menu. */
-export const BUILD_MENU = [
-  'house', 'storehouse', 'farm', 'barracks', 'towncenter',
-  'range', 'stable', 'temple', 'blacksmith', 'tower',
-  'workshop', 'palisade', 'gate', 'stonewall',
+/** Villager build menu, in two pages: settlement and military. */
+export const BUILD_PAGES = [
+  ['house', 'storehouse', 'farm', 'market', 'towncenter', 'temple', 'blacksmith', 'palisade', 'gate', 'stonewall'],
+  ['barracks', 'range', 'stable', 'workshop', 'tower'],
 ];
+
+/** Market prices for 100 of a resource, in gold. */
+export const TRADE: Partial<Record<ResType, { sell: number; buy: number }>> = {
+  food: { sell: 45, buy: 85 },
+  wood: { sell: 40, buy: 80 },
+  stone: { sell: 60, buy: 115 },
+};
 
 export interface TechDef {
   id: string;
