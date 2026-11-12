@@ -261,6 +261,17 @@ Rivals take their turns after yours and fight each other too. The campaign is sa
 | `L` | Call allies to the spot under the cursor |
 | `Del` `Esc` `P` `M` | Destroy selected, cancel, pause, mute |
 
+## Voicing the leaders
+
+Send [docs/voice-booth.html](docs/voice-booth.html) to whoever is voicing a leader. It is one
+self-contained file: they open it in a browser, pick a leader, record each line with their
+microphone (listening back and redoing any they like), and download a single zip. Nothing is
+uploaded anywhere.
+
+Unzip what they send back into `public/assets/voice/` and restart the game. The recordings play
+whenever those lines appear, and if they gave their name the leader is shown as "voiced by" them.
+Run `npm run voice-booth` to regenerate the page after changing any lines.
+
 ## Generated art
 
 The game runs with built-in procedural models and emoji icons. To replace them, drop icons,

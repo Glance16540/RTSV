@@ -2,7 +2,7 @@
 
 import { CIV_COLOR, CIVS } from '../sim/data';
 import { LEADERS, Speech, lineKey, speechText } from '../sim/leaders';
-import { ico, voiceUrl } from './assets';
+import { ico, voiceCredit, voiceUrl } from './assets';
 import { sfx } from './sfx';
 
 let playing: HTMLAudioElement | null = null;
@@ -22,5 +22,5 @@ export function speechHtml(s: Speech): string {
   if (!l) return '';
   const color = '#' + CIV_COLOR[s.civ].toString(16).padStart(6, '0');
   return `<div class="speech"><span class="portrait" style="border-color:${color}">${ico('leader_' + s.civ, l.icon)}</span>` +
-    `<div><b style="color:${color}">${l.name}</b> <small>${s.event.startsWith('p_') ? 'your leader' : CIVS[s.civ].name}</small><p>\u201c${speechText(s)}\u201d</p></div></div>`;
+    `<div><b style="color:${color}">${l.name}</b> <small>${s.event.startsWith('p_') ? 'your leader' : CIVS[s.civ].name}${voiceCredit(s.civ) ? ` · voiced by ${voiceCredit(s.civ).replace(/[<>&]/g, '')}` : ''}</small><p>\u201c${speechText(s)}\u201d</p></div></div>`;
 }

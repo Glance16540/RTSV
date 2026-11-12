@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string> }
+interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string>; credits?: Record<string, string> }
 /** Optional per-model corrections in public/assets/tweaks.json, keyed by model name. */
 interface Tweak { scale?: number; yaw?: number; y?: number }
 
@@ -55,6 +55,9 @@ export function ico(key: string, emoji: string): string {
   const file = manifest.icons[key] ?? (key === 'villager' ? manifest.icons.villager_m : undefined);
   return file ? `<img class="ico" src="${BASE}icons/${file}" alt="" draggable="false">` : emoji;
 }
+
+/** Who voiced a nation's leader, if their recordings came with a credit. */
+export const voiceCredit = (civ: string): string => manifest.credits?.[civ] ?? '';
 
 /** Recording of a leader's line, if one has been added. */
 export function voiceUrl(key: string): string | null {
