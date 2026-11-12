@@ -261,6 +261,13 @@ Rivals take their turns after yours and fight each other too. The campaign is sa
 | `L` | Call allies to the spot under the cursor |
 | `Del` `Esc` `P` `M` | Destroy selected, cancel, pause, mute |
 
+## Systems board
+
+[docs/systems-board.html](docs/systems-board.html) shows every system in the game, how far along it
+is and what it still lacks, with rosters of nations, units, buildings and research read from the
+game's data. What each system has and lacks is written in `scripts/systems.mjs`; edit it and run
+`npm run board` to regenerate the page.
+
 ## Voicing the leaders
 
 Send [docs/voice-booth.html](docs/voice-booth.html) to whoever is voicing a leader. It is one

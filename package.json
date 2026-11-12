@@ -7,6 +7,7 @@
     "assets": "node scripts/assets.mjs",
     "voice-script": "node --experimental-strip-types scripts/voice-script.mjs",
     "voice-booth": "node --experimental-strip-types scripts/voice-booth.mjs",
+    "board": "node scripts/board.mjs",
     "predev": "node scripts/assets.mjs",
     "prebuild": "node scripts/assets.mjs",
     "dev": "vite",

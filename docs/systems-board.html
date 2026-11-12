@@ -1,0 +1,389 @@
+<title>Hearth &amp; Empire Systems Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: a wall of system cards grouped by area, status carried by a coloured top edge and pill; rosters below. */
+:root {
+  --bg: #f3f4f1; --panel: #ffffff; --line: #d9dcd4; --fg: #1d221c; --dim: #5d665a; --accent: #2f5d50;
+  --solid: #2e7d4f; --rough: #b07a12; --thin: #c2562a; --none: #7a7f78;
+  --solid-bg: #e3f1e7; --rough-bg: #f7ecd2; --thin-bg: #f8e2d8; --none-bg: #e9eae6;
+  --display: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif; --body: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141714; --panel: #1d211d; --line: #343a33; --fg: #e8ebe4; --dim: #a0a89b; --accent: #7fc2ad;
+  --solid: #6cc48d; --rough: #e0b354; --thin: #ee8f66; --none: #9aa097;
+  --solid-bg: #1d3326; --rough-bg: #3a2f14; --thin-bg: #40251a; --none-bg: #2a2e29; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141714; --panel: #1d211d; --line: #343a33; --fg: #e8ebe4; --dim: #a0a89b; --accent: #7fc2ad;
+  --solid: #6cc48d; --rough: #e0b354; --thin: #ee8f66; --none: #9aa097;
+  --solid-bg: #1d3326; --rough-bg: #3a2f14; --thin-bg: #40251a; --none-bg: #2a2e29; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); padding-block: 28px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1, h2, h3, h4 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: 30px; font-weight: 600; }
+h2 { font-size: 20px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; }
+h2 .n, h4 .n { font: 500 13px var(--body); color: var(--dim); font-variant-numeric: tabular-nums; }
+p { margin: 0; }
+.dim { color: var(--dim); }
+.top { display: flex; flex-direction: column; gap: 14px; }
+.top p { max-width: 70ch; color: var(--dim); }
+.bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--none-bg); }
+.bar span.solid { background: var(--solid); } .bar span.rough { background: var(--rough); } .bar span.thin { background: var(--thin); } .bar span.none { background: var(--none); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters button { font: 500 14px var(--body); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.filters button:hover { border-color: var(--accent); }
+.filters button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.dot.solid { background: var(--solid); } .dot.rough { background: var(--rough); } .dot.thin { background: var(--thin); } .dot.none { background: var(--none); }
+.filters .n { font-variant-numeric: tabular-nums; opacity: 0.75; }
+.area { display: flex; flex-direction: column; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+.sys { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--none); border-radius: 6px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sys.solid { border-top-color: var(--solid); } .sys.rough { border-top-color: var(--rough); } .sys.thin { border-top-color: var(--thin); }
+.sys.none { border-style: dashed; border-top-style: solid; }
+.sys header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.sys h3 { font-size: 17px; font-weight: 600; }
+.pill { flex: none; font: 600 11px var(--body); letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+.pill.solid { background: var(--solid-bg); color: var(--solid); } .pill.rough { background: var(--rough-bg); color: var(--rough); }
+.pill.thin { background: var(--thin-bg); color: var(--thin); } .pill.none { background: var(--none-bg); color: var(--none); }
+.what { color: var(--dim); }
+.sys ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+.sys h4 { font: 600 11px var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--thin); margin-top: 4px; }
+.gaps li::marker { color: var(--thin); }
+.nogap { font-size: 13px; color: var(--solid); }
+.ages { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: start; }
+.ages section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.ages h4 { font-size: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.roster { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.roster li { display: flex; flex-wrap: wrap; gap: 3px 6px; align-items: baseline; min-width: 0; }
+.roster b { font-weight: 500; }
+.roster .empty { color: var(--dim); }
+.cls { color: var(--dim); font-size: 12px; }
+.t { font: 500 11px var(--body); font-style: normal; padding: 1px 6px; border-radius: 3px; background: var(--none-bg); color: var(--dim); }
+.t.nation { background: var(--solid-bg); color: var(--accent); } .t.warn { background: var(--rough-bg); color: var(--rough); } .t.gap { background: var(--thin-bg); color: var(--thin); }
+.scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; min-width: 880px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+thead th { font: 600 11px var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
+tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+tbody th { font-weight: 600; white-space: nowrap; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.zero { color: var(--thin); }
+.lean { display: block; width: 90px; height: 6px; border-radius: 3px; background: var(--none-bg); overflow: hidden; margin: 6px 0 3px; }
+.lean span { display: block; height: 100%; background: var(--accent); }
+.lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; align-items: start; }
+.lists section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.lists h4 { font-size: 15px; font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: baseline; }
+footer { color: var(--dim); font-size: 13px; }
+</style>
+<div class="wrap">
+  <div class="top">
+    <h1>Hearth &amp; Empire Systems Board</h1>
+    <p>Every system in the game, how far along it is, and what it still lacks. 35 systems, 51 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 13 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:13"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
+    <div class="filters" id="filters">
+      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">35</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">13</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+    </div>
+  </div>
+
+  <section class="area"><h2>Town and economy <span class="n">4</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <header><h3>Gathering</h3><span class="pill solid">Working</span></header>
+  <p class="what">Villagers bring in food, wood, gold and stone.</p>
+  <ul class="has"><li>Berries, farms, hunting and fishing for food</li><li>Trees, gold and stone to work</li><li>Storehouses as drop-off points</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Every rate and cost is a guess: nobody has played it for balance</li></ul>
+</article><article class="sys solid" data-status="solid">
+  <header><h3>Building and walls</h3><span class="pill solid">Working</span></header>
+  <p class="what">Raise a town and fortify it.</p>
+  <ul class="has"><li>19 buildings across two build pages</li><li>Palisades, stone walls, gates and towers; drag to draw walls</li><li>A Wonder that wins the game if it stands</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Every nation builds identical-looking buildings</li></ul>
+</article><article class="sys solid" data-status="solid">
+  <header><h3>Ages and research</h3><span class="pill solid">Working</span></header>
+  <p class="what">Advance through five ages and buy upgrades.</p>
+  <ul class="has"><li>5 ages from Stone to Gunpowder</li><li>21 upgrades: tools, weapons, armour, unit lines</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The research list is short and the same for every nation</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Market</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Buy and sell resources for gold.</p>
+  <ul class="has"><li>Buying and selling at the Market</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No trade routes, caravans or trade between players</li></ul>
+</article></div></section>
+  <section class="area"><h2>People and family <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <header><h3>Families</h3><span class="pill solid">Working</span></header>
+  <p class="what">Men and women marry into houses and raise children.</p>
+  <ul class="has"><li>A man and a woman in a house raise villagers for half the food</li><li>Children must grow up before they work</li><li>Family names, renown for large families, four villager traits</li><li>Villagers grow old and die</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Nothing happens to a widow, a widower or an orphan</li><li>Children cannot be seized by Slavers</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Morale and heroes</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Homes steady the defenders; a hero leads the army.</p>
+  <ul class="has"><li>Houses near the Town Center harden its defenders</li><li>Warlord and Strategist heroes with an aura</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Your nation's leader never appears on the battlefield: heroes are generic</li></ul>
+</article></div></section>
+  <section class="area"><h2>Faith and vice <span class="n">6</span></h2><div class="grid"><article class="sys rough" data-status="rough">
+  <header><h3>Piety and decadence</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">A town drifts between Righteous and Decadent, with boons and banes each way.</p>
+  <ul class="has"><li>Five standings, each changing births, plague, gold, work and more</li><li>9 dilemmas that ask you to choose</li><li>Each nation starts with its own leaning</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Only 9 dilemmas, so they repeat</li><li>The numbers behind every boon and bane are guesses</li><li>Which way each nation leans is my guess, not yours</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Church</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Villagers serve as monks and nuns; the town grows pious.</p>
+  <ul class="has"><li>Up to four clergy per Church</li><li>More children, shorter plagues, some plagues prevented</li><li>A holy town trains Priests and refuses pagan units</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Monks and nuns do the same thing: no difference between men and women here, unlike the Tavern</li><li>No feast days</li><li>A Church near a Tavern has no effect on it</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Tavern</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Milkmaids bring gold, patrons drink; the town grows decadent.</p>
+  <ul class="has"><li>Women become milkmaids (gold), men become patrons (faster soldiers)</li><li>Mercenaries for hire, who leave if unpaid</li><li>Slower work, fewer children, plague in a worldly town</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No rumours about rival towns</li><li>No brawls or debts</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Slavers and work camps</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">A decadent town steals villagers from others.</p>
+  <ul class="has"><li>Slavers seize enemy villagers and march them to a Work Camp</li><li>Captive men raise the whole town's output</li><li>Captive women add villagers</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The computer never uses Slavers and never guards against them</li><li>Captives cannot be rescued by the town that lost them</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Pagan units</h3><span class="pill thin">First pass</span></header>
+  <p class="what">A holy town cannot train them.</p>
+  <ul class="has"><li>2 units are marked pagan</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Which units count as pagan is my guess</li><li>The Prophet is not treated as pagan</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Plague and calamity</h3><span class="pill thin">First pass</span></header>
+  <p class="what">Disasters that strike a town.</p>
+  <ul class="has"><li>Plague and Earthquake, called down by a Prophet</li><li>Plague rising from a worldly town's Tavern</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No famine, fire, flood or drought</li><li>Plague has only those two sources</li></ul>
+</article></div></section>
+  <section class="area"><h2>War <span class="n">3</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <header><h3>Land battle</h3><span class="pill solid">Working</span></header>
+  <p class="what">Train an army and fight with it.</p>
+  <ul class="has"><li>58 kinds of unit, with strengths against each other</li><li>Attack-move, patrol, stances, control groups, queued orders</li><li>Siege engines; units can shelter in Town Centers and towers</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No formations</li><li>Unit strengths are untested guesses</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Navy</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Ships on great-lake maps.</p>
+  <ul class="has"><li>Docks, fishing boats, transports, Galleys and Frigates</li><li>Armies carried over water and landed</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>One water map only: no islands, rivers or coastline</li><li>Two warships, the same for every nation</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Allies</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Fight alongside a friendly nation.</p>
+  <ul class="has"><li>Teams in a skirmish; call your ally to a spot</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Sides are fixed at the start: no diplomacy during a battle</li></ul>
+</article></div></section>
+  <section class="area"><h2>Nations and leaders <span class="n">3</span></h2><div class="grid"><article class="sys rough" data-status="rough">
+  <header><h3>Nations</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Thirteen peoples, each with bonuses and two units of their own.</p>
+  <ul class="has"><li>13 nations, each with two bonuses</li><li>Two unique units for every nation</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>14 unique units borrow another unit's figure with a plume and sash</li><li>Recording file names still use old internal ids (stonekin, dawn…)</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Leaders</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Every nation has a leader who speaks in the campaign.</p>
+  <ul class="has"><li>25 leaders: a man and a woman for each nation, one man for the Israelites</li><li>520 written lines across 20 moments</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>You have not reviewed the lines</li><li>Each nation's second leader speaks lines written for the first</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Voices and portraits</h3><span class="pill thin">First pass</span></header>
+  <p class="what">Friends voice a leader and make the character their own.</p>
+  <ul class="has"><li>A Voice Booth file to send to friends</li><li>They can rename the leader, rewrite lines, and pick or add a portrait</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No of 520 lines recorded</li><li>No of 13 nations have a portrait; the rest show a seal</li><li>The booth is untested with a real microphone, Safari or a phone</li></ul>
+</article></div></section>
+  <section class="area"><h2>Campaign <span class="n">6</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <header><h3>World map</h3><span class="pill solid">Working</span></header>
+  <p class="what">A new map of territories each time, taken turn by turn.</p>
+  <ul class="has"><li>Territories with traits and 6 kinds of site to build</li><li>Coasts, harbours and sea landings</li><li>Supplies as income</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The map is drawn flat, not in 3D</li></ul>
+</article><article class="sys solid" data-status="solid">
+  <header><h3>Armies and battles</h3><span class="pill solid">Working</span></header>
+  <p class="what">Raise companies, march, and fight the battle yourself or let it resolve.</p>
+  <ul class="has"><li>Infantry, archers and cavalry companies that counter each other</li><li>Veterans, a hero, survivors carried forward</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Only three kinds of company; unique units do not appear on the map</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Diplomacy</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Deal with rival leaders.</p>
+  <ul class="has"><li>Truces, one alliance, gifts and demands for tribute</li><li>Breaking your word is remembered</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No trade, marriage or shared wars</li></ul>
+</article><article class="sys solid" data-status="solid">
+  <header><h3>Ages and victory</h3><span class="pill solid">Working</span></header>
+  <p class="what">Advance your nation and win the world.</p>
+  <ul class="has"><li>Campaign ages that strengthen armies</li><li>Win by conquest or by holding most of the map</li></ul>
+  <p class="nogap">No known gaps</p>
+</article><article class="sys none" data-status="none">
+  <header><h3>Faith on the world map</h3><span class="pill none">Not built</span></header>
+  <p class="what">Piety and decadence across a whole campaign.</p>
+  
+  <h4>Gaps</h4><ul class="gaps"><li>A town's standing, churches, taverns and captives are forgotten after each battle</li><li>No holy or decadent nations on the map</li></ul>
+</article><article class="sys none" data-status="none">
+  <header><h3>Story and events</h3><span class="pill none">Not built</span></header>
+  <p class="what">Things that happen to the world.</p>
+  
+  <h4>Gaps</h4><ul class="gaps"><li>No story, no world events, no named places</li></ul>
+</article></div></section>
+  <section class="area"><h2>Ways to play <span class="n">6</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <header><h3>Skirmish</h3><span class="pill solid">Working</span></header>
+  <p class="what">One battle against one to three rivals.</p>
+  <ul class="has"><li>Three difficulties, three map sizes, inland or great lake</li><li>Free-for-all, an ally, or all against you</li></ul>
+  <p class="nogap">No known gaps</p>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Computer opponent</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Rivals that build, fight and sail.</p>
+  <ul class="has"><li>Builds a town, advances, attacks and defends</li><li>Builds a navy, raids by sea, lands armies</li><li>Staffs its Church and Tavern, hires mercenaries</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Never uses Slavers or Work Camps</li><li>Has never been played against by a person</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Missions</h3><span class="pill thin">First pass</span></header>
+  <p class="what">Set scenarios with objectives.</p>
+  <ul class="has"><li>3 missions</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Only 3; none use ships, faith or the newer nations</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Teaching the game</h3><span class="pill thin">First pass</span></header>
+  <p class="what">Helping a new player start.</p>
+  <ul class="has"><li>A seven-step first-steps guide and a controls sheet</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Nothing teaches faith, taverns, ships or the campaign</li></ul>
+</article><article class="sys solid" data-status="solid">
+  <header><h3>Saving</h3><span class="pill solid">Working</span></header>
+  <p class="what">Keep a game and come back.</p>
+  <ul class="has"><li>Save button and autosave every two minutes</li><li>Campaigns are saved between turns</li></ul>
+  <p class="nogap">No known gaps</p>
+</article><article class="sys none" data-status="none">
+  <header><h3>Playing with friends</h3><span class="pill none">Not built</span></header>
+  <p class="what">Two people in one game.</p>
+  
+  <h4>Gaps</h4><ul class="gaps"><li>No multiplayer of any kind</li></ul>
+</article></div></section>
+  <section class="area"><h2>Look and sound <span class="n">3</span></h2><div class="grid"><article class="sys rough" data-status="rough">
+  <header><h3>3D world</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">The battlefield, its units and buildings.</p>
+  <ul class="has"><li>Simple built-in 3D figures for every unit and building</li><li>Generated 3D models can be dropped in to replace them</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No generated models installed</li><li>No animation beyond simple movement</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Icons and screens</h3><span class="pill thin">First pass</span></header>
+  <p class="what">Buttons, resource icons and menus.</p>
+  <ul class="has"><li>Every button and resource has an icon</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>All icons are emoji: No painted icons installed</li><li>No title art</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Sound and music</h3><span class="pill thin">First pass</span></header>
+  <p class="what">What you hear.</p>
+  <ul class="has"><li>Synthesised sound effects</li><li>Quiet generated background music</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No recorded sounds or composed music</li></ul>
+</article></div></section>
+  <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
+  <p class="what">Checks that the rules still work after each change.</p>
+  <ul class="has"><li>95 tests, all passing</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>
+  <p class="what">How anyone else gets to play.</p>
+  <ul class="has"><li>A private page only you can open</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Not hosted publicly: friends cannot play it yet</li></ul>
+</article></div></section>
+
+  <section class="area"><h2>Nations <span class="n">13</span></h2>
+    <div class="scroll"><table><thead><tr><th>Nation</th><th>Leader</th><th>Their own units</th><th>Bonuses</th><th>Leaning</th><th>Lines voiced</th><th>Portrait</th></tr></thead>
+    <tbody><tr><th><span class="sw" style="background:#6f8fb0"></span>Romans</th>
+    <td>Consul Marcus Valerius Saxa<br><span class="dim">or Augusta Livia Valeria Saxa</span></td>
+    <td>Legionary<br>Trebuchet</td>
+    <td>Buildings have 25% more health<br>Villagers build 25% faster<br>Towers and Town Centers shoot 1 tile further</td>
+    <td><span class="lean"><span style="width:50%"></span></span><span class="dim">between</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#e0452f"></span>Mongols</th>
+    <td>Khatun Sarnai<br><span class="dim">or Khan Temur</span></td>
+    <td>Lancer<br>Horse Archer</td>
+    <td>Cavalry costs 15% less<br>Cavalry moves 10% faster</td>
+    <td><span class="lean"><span style="width:30%"></span></span><span class="dim">worldly</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#3aa648"></span>Franks</th>
+    <td>Lady Aldegund of the Marches<br><span class="dim">or Count Odo of the Marches</span></td>
+    <td>Hearthguard<br>Herbwife</td>
+    <td>Farms yield 25% more<br>Families raise children 25% faster<br>Houses hold 1 more person</td>
+    <td><span class="lean"><span style="width:70%"></span></span><span class="dim">pious</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#e0902a"></span>Chinese</th>
+    <td>Master Lu Wen<br><span class="dim">or Lady Shen Yue</span></td>
+    <td>Fire Lancer<br>Organ Gun</td>
+    <td>Research is 30% faster and 15% cheaper<br>Siege engines have 25% more health</td>
+    <td><span class="lean"><span style="width:45%"></span></span><span class="dim">between</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#d8b46a"></span>Egyptians</th>
+    <td>Pharaoh Khenemet<br><span class="dim">or Pharaoh Merit-Neith</span></td>
+    <td>Khopesh Guard <i class="t gap">borrowed figure</i><br>War Chariot <i class="t gap">borrowed figure</i></td>
+    <td>Farms yield 20% more<br>Villagers build 15% faster</td>
+    <td><span class="lean"><span style="width:45%"></span></span><span class="dim">between</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#3a8fa8"></span>Babylonians</th>
+    <td>King Nabu-Shar<br><span class="dim">or Queen Ninsuna</span></td>
+    <td>Sapper <i class="t gap">borrowed figure</i><br>Gate Guard <i class="t gap">borrowed figure</i></td>
+    <td>Research is 15% faster<br>Buildings have 15% more health</td>
+    <td><span class="lean"><span style="width:40%"></span></span><span class="dim">worldly</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#b03a6a"></span>Persians</th>
+    <td>Shahbanu Roshanak<br><span class="dim">or Shah Ardashir</span></td>
+    <td>Immortal <i class="t gap">borrowed figure</i><br>War Elephant <i class="t gap">borrowed figure</i></td>
+    <td>Villagers carry 3 more<br>War beasts cost 20% less</td>
+    <td><span class="lean"><span style="width:50%"></span></span><span class="dim">between</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#4a78d8"></span>Greeks</th>
+    <td>Strategos Kallias<br><span class="dim">or Archon Xanthe</span></td>
+    <td>Hoplite <i class="t gap">borrowed figure</i><br>Companion Cavalry <i class="t gap">borrowed figure</i></td>
+    <td>Research costs 20% less<br>Soldiers have 1 more armour</td>
+    <td><span class="lean"><span style="width:50%"></span></span><span class="dim">between</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#c83a3a"></span>English</th>
+    <td>Earl Godric of Wessex<br><span class="dim">or Countess Edith of Wessex</span></td>
+    <td>Longbowman <i class="t gap">borrowed figure</i><br>Billman <i class="t gap">borrowed figure</i></td>
+    <td>Farms yield 10% more<br>Towers and Town Centers hit harder</td>
+    <td><span class="lean"><span style="width:65%"></span></span><span class="dim">pious</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#2f9a6a"></span>Arabs</th>
+    <td>Emir Rashid ibn Tariq<br><span class="dim">or Emira Zaynab bint Tariq</span></td>
+    <td>Camel Rider <i class="t gap">borrowed figure</i><br>Mameluke <i class="t gap">borrowed figure</i></td>
+    <td>Cavalry moves 10% faster<br>Research costs 10% less</td>
+    <td><span class="lean"><span style="width:60%"></span></span><span class="dim">pious</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#d8d8e8"></span>Japanese</th>
+    <td>Lord Akiyama Tadanobu<br><span class="dim">or Lady Akiyama Tomoko</span></td>
+    <td>Samurai <i class="t gap">borrowed figure</i><br>Ashigaru Gunner <i class="t gap">borrowed figure</i></td>
+    <td>Soldiers have 1 more attack<br>Villagers gather 5% faster</td>
+    <td><span class="lean"><span style="width:55%"></span></span><span class="dim">between</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#e0c020"></span>Israelites</th>
+    <td>Eliab the Seer<br><span class="dim">one leader only</span></td>
+    <td>Zealot<br>Temple Guard</td>
+    <td>Priests, Prophets and other healers cost 25% less<br>Prophets regain faith 50% faster<br>Healers mend 30% faster</td>
+    <td><span class="lean"><span style="width:85%"></span></span><span class="dim">pious</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#8a5ad0"></span>Norse</th>
+    <td>Jarl Hroth Wolf-Father<br><span class="dim">or Jarl Sigrun Wolf-Mother</span></td>
+    <td>Wolf Rider<br>War Bear</td>
+    <td>Game yields 50% more food<br>War Hounds and Mammoths cost 25% less<br>Wild wolves never attack them</td>
+    <td><span class="lean"><span style="width:30%"></span></span><span class="dim">worldly</span></td>
+    <td class="num zero">0 / 40</td>
+    <td class="zero">Seal only</td></tr></tbody></table></div>
+  </section>
+
+  <section class="area"><h2>Units by age <span class="n">58</span></h2><div class="ages"><section><h4>Stone Age <span class="n">7</span></h4><ul class="roster"><li><b>Villager</b> <span class="cls">Villager</span></li><li><b>Clubman</b> <span class="cls">Infantry</span></li><li><b>Slinger</b> <span class="cls">Ranged</span></li><li><b>Javelin Thrower</b> <span class="cls">Ranged</span></li><li><b>War Hound</b> <span class="cls">Beast</span></li><li><b>Hearthguard</b> <span class="cls">Infantry</span><i class="t nation">Franks</i></li><li><b>Fishing Boat</b> <span class="cls">Ship</span></li></ul></section><section><h4>Bronze Age <span class="n">19</span></h4><ul class="roster"><li><b>Chariot Archer</b> <span class="cls">Cavalry</span></li><li><b>Zealot</b> <span class="cls">Infantry</span><i class="t nation">Israelites</i></li><li><b>Wolf Rider</b> <span class="cls">Cavalry</span><i class="t nation">Norse</i></li><li><b>Legionary</b> <span class="cls">Infantry</span><i class="t nation">Romans</i></li><li><b>Khopesh Guard</b> <span class="cls">Infantry</span><i class="t nation">Egyptians</i><i class="t gap">borrows Swordsman figure</i></li><li><b>Sapper</b> <span class="cls">Infantry</span><i class="t nation">Babylonians</i><i class="t gap">borrows Spearman figure</i></li><li><b>Hoplite</b> <span class="cls">Infantry</span><i class="t nation">Greeks</i><i class="t gap">borrows Legionary figure</i></li><li><b>Camel Rider</b> <span class="cls">Cavalry</span><i class="t nation">Arabs</i><i class="t gap">borrows Scout Rider figure</i></li><li><b>Lancer</b> <span class="cls">Cavalry</span><i class="t nation">Mongols</i></li><li><b>Spearman</b> <span class="cls">Infantry</span></li><li><b>Bowman</b> <span class="cls">Ranged</span></li><li><b>Transport Ship</b> <span class="cls">Ship</span></li><li><b>War Galley</b> <span class="cls">Ship</span></li><li><b>Scout Rider</b> <span class="cls">Cavalry</span></li><li><b>War Mammoth</b> <span class="cls">Beast</span></li><li><b>Shaman</b> <span class="cls">Support</span><i class="t warn">pagan</i></li><li><b>Priest</b> <span class="cls">Support</span><i class="t">holy town</i></li><li><b>Slaver</b> <span class="cls">Infantry</span><i class="t warn">decadent town</i></li><li><b>Warlord</b> <span class="cls">Hero</span></li></ul></section><section><h4>Iron Age <span class="n">17</span></h4><ul class="roster"><li><b>Berserker</b> <span class="cls">Infantry</span><i class="t warn">pagan</i></li><li><b>Battering Ram</b> <span class="cls">Siege</span></li><li><b>Scorpion</b> <span class="cls">Siege</span></li><li><b>Strategist</b> <span class="cls">Hero</span></li><li><b>Horse Archer</b> <span class="cls">Cavalry</span><i class="t nation">Mongols</i></li><li><b>Herbwife</b> <span class="cls">Support</span><i class="t nation">Franks</i></li><li><b>War Bear</b> <span class="cls">Beast</span><i class="t nation">Norse</i></li><li><b>War Chariot</b> <span class="cls">Cavalry</span><i class="t nation">Egyptians</i><i class="t gap">borrows Chariot Archer figure</i></li><li><b>Gate Guard</b> <span class="cls">Infantry</span><i class="t nation">Babylonians</i><i class="t gap">borrows Legionary figure</i></li><li><b>Immortal</b> <span class="cls">Infantry</span><i class="t nation">Persians</i><i class="t gap">borrows Swordsman figure</i></li><li><b>Companion Cavalry</b> <span class="cls">Cavalry</span><i class="t nation">Greeks</i><i class="t gap">borrows Knight figure</i></li><li><b>Longbowman</b> <span class="cls">Ranged</span><i class="t nation">English</i><i class="t gap">borrows Bowman figure</i></li><li><b>Samurai</b> <span class="cls">Infantry</span><i class="t nation">Japanese</i><i class="t gap">borrows Swordsman figure</i></li><li><b>Fire Lancer</b> <span class="cls">Infantry</span><i class="t nation">Chinese</i></li><li><b>Swordsman</b> <span class="cls">Infantry</span></li><li><b>Prophet</b> <span class="cls">Support</span></li><li><b>Catapult</b> <span class="cls">Siege</span></li></ul></section><section><h4>Middle Ages <span class="n">8</span></h4><ul class="roster"><li><b>Pikeman</b> <span class="cls">Infantry</span></li><li><b>Trebuchet</b> <span class="cls">Siege</span><i class="t nation">Romans</i></li><li><b>Temple Guard</b> <span class="cls">Cavalry</span><i class="t nation">Israelites</i></li><li><b>War Elephant</b> <span class="cls">Beast</span><i class="t nation">Persians</i><i class="t gap">borrows War Mammoth figure</i></li><li><b>Billman</b> <span class="cls">Infantry</span><i class="t nation">English</i><i class="t gap">borrows Pikeman figure</i></li><li><b>Mameluke</b> <span class="cls">Cavalry</span><i class="t nation">Arabs</i><i class="t gap">borrows Horse Archer figure</i></li><li><b>Crossbowman</b> <span class="cls">Ranged</span></li><li><b>Knight</b> <span class="cls">Cavalry</span></li></ul></section><section><h4>Gunpowder Age <span class="n">7</span></h4><ul class="roster"><li><b>Grenadier</b> <span class="cls">Infantry</span></li><li><b>Hussar</b> <span class="cls">Cavalry</span></li><li><b>Organ Gun</b> <span class="cls">Siege</span><i class="t nation">Chinese</i></li><li><b>Ashigaru Gunner</b> <span class="cls">Ranged</span><i class="t nation">Japanese</i><i class="t gap">borrows Musketeer figure</i></li><li><b>Musketeer</b> <span class="cls">Ranged</span></li><li><b>Frigate</b> <span class="cls">Ship</span></li><li><b>Bombard</b> <span class="cls">Siege</span></li></ul></section></div></section>
+
+  <section class="area"><h2>Buildings by age <span class="n">19</span></h2><div class="ages"><section><h4>Stone Age <span class="n">7</span></h4><ul class="roster"><li><b>House</b></li><li><b>Storehouse</b></li><li><b>Dock</b></li><li><b>Farm</b></li><li><b>Barracks</b></li><li><b>Palisade</b></li><li><b>Gate</b></li></ul></section><section><h4>Bronze Age <span class="n">10</span></h4><ul class="roster"><li><b>Town Center</b></li><li><b>Archery Range</b></li><li><b>Stable</b></li><li><b>Church</b><i class="t">staffed</i></li><li><b>Tavern</b><i class="t">staffed</i></li><li><b>Work Camp</b><i class="t warn">decadent town</i></li><li><b>Blacksmith</b></li><li><b>Market</b></li><li><b>Stone Wall</b></li><li><b>Watch Tower</b></li></ul></section><section><h4>Iron Age <span class="n">1</span></h4><ul class="roster"><li><b>Siege Workshop</b></li></ul></section><section><h4>Middle Ages <span class="n">1</span></h4><ul class="roster"><li><b>Wonder</b></li></ul></section><section><h4>Gunpowder Age <span class="n">0</span></h4><ul class="roster"><li class="empty">Nothing</li></ul></section></div></section>
+
+  <section class="area"><h2>Research by age <span class="n">21</span></h2><div class="ages"><section><h4>Stone Age <span class="n">1</span></h4><ul class="roster"><li><b>Flint Tools</b> <span class="cls">Villagers gather 15% faster.</span></li></ul></section><section><h4>Bronze Age <span class="n">6</span></h4><ul class="roster"><li><b>Bronze Tools</b> <span class="cls">Villagers gather a further 15% faster.</span></li><li><b>Fertility Rites</b> <span class="cls">Families raise children 35% faster.</span></li><li><b>Herbalism</b> <span class="cls">Shamans heal 60% faster.</span></li><li><b>Bronze Weapons</b> <span class="cls">Military units +2 attack.</span></li><li><b>Hide Armor</b> <span class="cls">Military units +1 armor.</span></li><li><b>Bows for Slingers</b> <span class="cls">All Slingers become Bowmen, and Slingers are trained as Bowmen from now on.</span></li></ul></section><section><h4>Iron Age <span class="n">6</span></h4><ul class="roster"><li><b>Wheelbarrow</b> <span class="cls">Villagers carry +8 resources per trip.</span></li><li><b>Extended Family</b> <span class="cls">Each house supports +2 population.</span></li><li><b>Iron Weapons</b> <span class="cls">Military units +2 attack.</span></li><li><b>Scale Armor</b> <span class="cls">Military units +1 armor.</span></li><li><b>Fortified Arrows</b> <span class="cls">Towers and Town Centers +4 attack.</span></li><li><b>Swords for Clubmen</b> <span class="cls">All Clubmen become Swordsmen, and Clubmen are trained as Swordsmen from now on.</span></li></ul></section><section><h4>Middle Ages <span class="n">5</span></h4><ul class="roster"><li><b>Steel Weapons</b> <span class="cls">Military units +3 attack.</span></li><li><b>Plate Armor</b> <span class="cls">Military units +2 armor.</span></li><li><b>Pike Drill</b> <span class="cls">All Spearmen become Pikemen.</span></li><li><b>Crossbows</b> <span class="cls">All Bowmen become Crossbowmen.</span></li><li><b>Knighthood</b> <span class="cls">All Scout Riders become Knights.</span></li></ul></section><section><h4>Gunpowder Age <span class="n">3</span></h4><ul class="roster"><li><b>Ships of the Line</b> <span class="cls">All War Galleys become Frigates, and Galleys are built as Frigates from now on.</span></li><li><b>Matchlocks</b> <span class="cls">All Crossbowmen become Musketeers.</span></li><li><b>Cannon Founding</b> <span class="cls">All Catapults become Bombards.</span></li></ul></section></div></section>
+
+  <section class="area"><h2>Smaller lists</h2><div class="lists">
+    <section><h4>Standings of a town <span class="n">5</span></h4><ul class="roster"><li><b>Righteous</b></li><li><b>Devout</b></li><li><b>Temperate</b></li><li><b>Worldly</b></li><li><b>Decadent</b></li></ul></section>
+    <section><h4>Dilemmas <span class="n">9</span></h4><ul class="roster"><li><b>The harvest is in</b></li><li><b>Strangers at the gate</b></li><li><b>The gambling den</b></li><li><b>The prophet calls a fast</b></li><li><b>A rich widow dies</b></li><li><b>A deserter is caught</b></li><li><b>The festival of masks</b></li><li><b>A pedlar with a relic</b></li><li><b>The priests ask for a tithe</b></li></ul></section>
+    <section><h4>Calamities <span class="n">2</span></h4><ul class="roster"><li><b>Plague</b></li><li><b>Earthquake</b></li></ul></section>
+    <section><h4>Villager traits <span class="n">4</span></h4><ul class="roster"><li><b>Strong</b> <span class="cls">Gathers 25% faster.</span></li><li><b>Swift</b> <span class="cls">Moves 20% faster.</span></li><li><b>Hardy</b> <span class="cls">Has 50% more health.</span></li><li><b>Skilled</b> <span class="cls">Builds 60% faster.</span></li></ul></section>
+    <section><h4>Campaign sites <span class="n">6</span></h4><ul class="roster"><li><b>Farmland</b></li><li><b>Barracks</b></li><li><b>Archery Range</b></li><li><b>Stable</b></li><li><b>Harbour</b></li><li><b>Fortress</b></li></ul></section>
+    <section><h4>Territory traits <span class="n">5</span></h4><ul class="roster"><li><b>Gold hills</b></li><li><b>Rich soil</b></li><li><b>High ground</b></li><li><b>Horse plains</b></li><li><b>Coast</b></li></ul></section>
+    <section><h4>Campaign companies <span class="n">3</span></h4><ul class="roster"><li><b>Infantry</b></li><li><b>Archers</b></li><li><b>Cavalry</b></li></ul></section>
+    <section><h4>Missions <span class="n">3</span></h4><ul class="roster"><li><b>First Hearth</b></li><li><b>Hold the Line</b></li><li><b>Race for the Wonder</b></li></ul></section>
+    <section><h4>Moments a leader speaks <span class="n">20</span></h4><ul class="roster"><li>First meeting on the campaign map</li><li>Marching on the player's land</li><li>The player marches on their land</li><li>After beating the player in battle</li><li>After losing a battle to the player</li><li>Their last territory falls</li><li>A real-time battle against them begins</li><li>They advance to a new age</li><li>They complete a Wonder</li><li>They accept the player's offer of a truce</li><li>They turn down a truce</li><li>They demand tribute from the player</li><li>The player breaks a truce with them</li><li>They accept an alliance with the player</li><li>The alliance ends because only they and the player are left; regretful, not hostile yet</li><li>As the player's own leader: a campaign or match begins</li><li>As the player's own leader: a battle is won</li><li>As the player's own leader: a battle is lost</li><li>As the player's own leader: the town is under attack</li><li>As the player's own leader: a new age is reached</li></ul></section>
+  </div></section>
+
+  <footer>Rosters and counts are read from the game's data. Statuses and gaps are written by hand and reflect what has been built and checked so far.</footer>
+</div>
+<script>
+const buttons = [...document.querySelectorAll('#filters button')];
+function show(f) {
+  for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.f === f));
+  for (const s of document.querySelectorAll('.sys')) s.hidden = f !== 'all' && s.dataset.status !== f;
+  for (const a of document.querySelectorAll('.area')) if (a.querySelector('.sys')) a.hidden = ![...a.querySelectorAll('.sys')].some((s) => !s.hidden);
+}
+for (const b of buttons) b.addEventListener('click', () => show(b.dataset.f));
+</script>
