@@ -665,9 +665,10 @@ export class Renderer {
       o.quaternion.slerp(qa.slerp(qb, k), ease);
     };
     rig.root.position.y += (0.3 * (1 + (a[0] + (b[0] - a[0]) * k) * 0.8) - rig.root.position.y) * ease;
-    turn(rig.root, 1); turn(rig.torso, 5); turn(rig.head, 9); turn(rig.armR, 13); turn(rig.armL, 17);
-    if (rig.legs[0]) turn(rig.legs[0], 21);
-    if (rig.legs[1]) turn(rig.legs[1], 25);
+    turn(rig.root, 1); turn(rig.torso, 5); turn(rig.head, 9);
+    turn(rig.armR, 13); turn(rig.elbows[0], 17); turn(rig.armL, 21); turn(rig.elbows[1], 25);
+    if (rig.legs[0]) { turn(rig.legs[0], 29); turn(rig.knees[0], 33); }
+    if (rig.legs[1]) { turn(rig.legs[1], 37); turn(rig.knees[1], 41); }
   }
 
   /** Loose things on the body take each footfall and each blow, and go on swinging after. */
@@ -898,7 +899,7 @@ export class Renderer {
         if (!d.dropped && d.t > 0.25) {
           d.dropped = true;
           d.g.updateMatrixWorld(true);
-          for (const w of [...rig.armR.children.slice(3), ...rig.gear.filter((p) => p.parent === rig.armL)]) this.throwPiece(w, d.g.position, 1, 0.5);
+          for (const w of [...rig.held, ...rig.gear.filter((p) => p.parent === rig.armL || p.parent === rig.elbows[1])]) this.throwPiece(w, d.g.position, 1, 0.5);
         }
         if (d.t > 7) d.g.position.y -= dt * 0.12;
         if (d.t > 10) { this.scene.remove(d.g); this.dying.splice(i, 1); }

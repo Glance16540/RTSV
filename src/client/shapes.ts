@@ -610,9 +610,45 @@ function gate(o: Look): THREE.Group {
   return g;
 }
 
+/** The wonder: a great hall on a stepped platform, ringed with columns, under the grandest roof its people build. */
+function wonder(o: Look): THREE.Group {
+  const g = new THREE.Group();
+  const st = toon(0xe6dfcc, 'stone'), pale = toon(0xf2ede0, 'plaster'), gold = toon(0xf2c230, '', 0x6a5010);
+  for (let i = 0; i < 3; i++) walls(g, 3.8 - i * 0.36, 0.22, 3.8 - i * 0.36, st, 0, i * 0.22, 0);
+  // The colonnade and the hall within it.
+  for (let i = 0; i < 16; i++) {
+    const side = Math.floor(i / 4), k = (i % 4) / 4 - 0.5, r = 1.42;
+    const x = side === 0 ? k * 2 * r : side === 1 ? r : side === 2 ? -k * 2 * r : -r, z = side === 0 ? -r : side === 1 ? k * 2 * r : side === 2 ? r : -k * 2 * r;
+    mesh(g, new THREE.CylinderGeometry(0.1, 0.12, 1.7, 10), pale, x, 1.51, z);
+    bx(g, 0.3, 0.08, 0.3, st, x, 2.4, z); bx(g, 0.3, 0.08, 0.3, st, x, 0.7, z);
+  }
+  walls(g, 2.2, 1.9, 2.2, wallMat({ ...o, age: Math.max(3, o.age) }), 0, 0.66, 0);
+  bx(g, 3.2, 0.2, 3.2, st, 0, 2.54, 0);
+  top(g, { ...o, age: Math.max(3, o.age) }, 3.2, 3.0, 2.64, 1.3);
+  // A lantern tower over the middle, gilded at the top.
+  if (pitched(o)) {
+    walls(g, 0.9, 1.5, 0.9, pale, 0, 3.3, 0);
+    for (const [dx, dz, ry] of [[0, 0.46, 0], [0.46, 0, Math.PI / 2], [-0.46, 0, Math.PI / 2], [0, -0.46, 0]]) pane(g, 'arch', 0.3, 0.7, dx, 4.3, dz, ry, 0xc09a40);
+    mesh(g, new THREE.ConeGeometry(0.75, 1.3, 8), toon(o.roofColor, 'tiles'), 0, 5.45, 0);
+    mesh(g, new THREE.SphereGeometry(0.13, 10, 8), gold, 0, 6.2, 0);
+  } else mesh(g, new THREE.SphereGeometry(0.16, 10, 8), gold, 0, 4.5, 0);
+  // Great doors, a flight of steps, braziers burning at the corners, banners.
+  pane(g, 'door', 0.8, 1.3, 0, 1.3, 1.11);
+  pane(g, 'arch', 0.5, 0.9, 0.75, 1.5, 1.11, 0, 0xc09a40); pane(g, 'arch', 0.5, 0.9, -0.75, 1.5, 1.11, 0, 0xc09a40);
+  for (let i = 0; i < 3; i++) bx(g, 1.4 - i * 0.14, 0.2, 0.3, st, 0, 0.1 + i * 0.2, 2.2 - i * 0.26);
+  for (const [x, z] of [[-1.75, 1.75], [1.75, 1.75], [-1.75, -1.75], [1.75, -1.75]]) {
+    mesh(g, new THREE.CylinderGeometry(0.12, 0.16, 0.6, 8), st, x, 0.3, z);
+    mesh(g, new THREE.CylinderGeometry(0.2, 0.12, 0.14, 8), toon(0x3a3a40), x, 0.67, z);
+    mesh(g, new THREE.ConeGeometry(0.14, 0.36, 6), toon(0xffb040, '', 0xcc5500), x, 0.9, z).castShadow = false;
+  }
+  cloth(g, o.team, 0.5, 0.9, 0, 2.2, 1.13);
+  banner(g, o.team, -1.1, 0.66, 1.75, 1.6); banner(g, o.team, 1.1, 0.66, 1.75, 1.6);
+  return g;
+}
+
 /** Built to their plot exactly, since they stand shoulder to shoulder or lie flat: not resized to fit. */
 const AS_BUILT = new Set(['gate', 'farm']);
-const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
+const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, wonder, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
 /** A hand-shaped building, sized to fit `size` tiles, or null where there is none yet (or the old one is kept). */
 export function shapedBuilding(type: string, size: number, o: Look, seed: number): THREE.Group | null {
   const make = MAKERS[type];

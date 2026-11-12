@@ -140,6 +140,7 @@ function humanLeg(g: THREE.Object3D, color: number, x: number, side: number, y: 
   const hip = new THREE.Group();
   hip.position.set(x, y + 0.3, 0);
   hip.userData.leg = side;
+  hip.userData.limb = true;
   cap(hip, 0.058, 0.18, color, 0, -0.085, 0);
   add(hip, geo('shin', () => new THREE.CylinderGeometry(0.05, 0.036, 0.14, 8)), color, 0, -0.2, 0);
   box(hip, 0.075, 0.05, 0.14, 0x2e2218, 0, -0.275, 0.025);
@@ -225,6 +226,7 @@ function woman(g: THREE.Object3D, dress: number, hair: number, seed: number, tri
 function arm(g: THREE.Object3D, y = 0, sleeve = SKIN, slim = 1): THREE.Group {
   const a = new THREE.Group();
   a.position.set(0.19, y + 0.58, 0);
+  a.userData.limb = true;
   cap(a, 0.042 * slim, 0.19, sleeve, 0, -0.06, 0);
   cap(a, 0.035 * slim, 0.17, SKIN, 0, -0.19, 0.008);
   ball(a, 0.04 * slim, SKIN, 0, -0.285, 0.012);
@@ -247,7 +249,7 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
 }
 
 /** The joints of a figure on foot, turned by the recorded motions. */
-export interface Rig { root: THREE.Group; torso: THREE.Group; head: THREE.Group; armR: THREE.Object3D; armL: THREE.Group; legs: THREE.Object3D[]; loose: Loose[]; /** Armour, hats, shields and gear that can be knocked off, the first to go first. */ gear: THREE.Object3D[] }
+export interface Rig { root: THREE.Group; torso: THREE.Group; head: THREE.Group; armR: THREE.Object3D; armL: THREE.Group; legs: THREE.Object3D[]; /** Elbows (weapon arm, off arm) and knees (as legs), each hung below its upper limb. */ elbows: THREE.Group[]; knees: THREE.Group[]; /** What the weapon hand holds. */ held: THREE.Object3D[]; loose: Loose[]; /** Armour, hats, shields and gear that can be knocked off, the first to go first. */ gear: THREE.Object3D[] }
 /**
  * Something on a figure that is not held rigid: it lags, bounces and settles on a spring as the body moves.
  * `mode` y bobs it up and down; rx and rz swing it about where it hangs.
@@ -287,12 +289,19 @@ export function rigBiped(g: THREE.Group): Rig | null {
   }
   // Whatever is in the weapon hand lags behind the arm and swings on after it stops.
   armR.children.forEach((w, i) => { if (i > 2 && !w.userData.loose) free(w, { mode: 'rx', gain: 0.5, k: 110, c: 5 }); else if (w.userData.loose) free(w, w.userData.loose as Spring); });
-  for (const l of found) l.rest = l.mode === 'y' ? l.o.position.y : l.mode === 'rx' ? l.o.rotation.x : l.o.rotation.z;
   // The leg on the weapon side first, as the motions list it.
   legs.sort((a, b) => b.position.x - a.position.x);
   const keep = new Set<unknown>([g.userData.carry, g.userData.glow]);
   const gear = [...armL.children, ...head.children, ...torso.children].filter((p) => !p.userData.body && p !== armR && p !== head && p !== armL && !keep.has(p));
-  return { root, torso, head, armR, armL, legs, loose: found, gear };
+  // Elbows and knees: the lower half of each limb, and whatever the hand holds, hangs from a joint of its own.
+  const held = armR.children.slice(armR.userData.limb ? 3 : 1);
+  const hinge = (upper: THREE.Object3D, y: number, lower: THREE.Object3D[]): THREE.Group => { const j = joint(0, y, 0, upper); upper.updateMatrixWorld(true); for (const p of lower) j.attach(p); return j; };
+  const elbowR = hinge(armR, -0.13, armR.userData.limb ? armR.children.slice(1) : []);
+  const lowL = armL.children.filter((p) => { box.setFromObject(p, true); return box.getCenter(c).y < 0.445; });
+  const elbowL = hinge(armL, -0.145, lowL);
+  const knees = legs.map((l) => hinge(l, -0.17, l.userData.limb ? l.children.slice(1) : []));
+  for (const l of found) l.rest = l.mode === 'y' ? l.o.position.y : l.mode === 'rx' ? l.o.rotation.x : l.o.rotation.z;
+  return { root, torso, head, armR, armL, legs, elbows: [elbowR, elbowL], knees, held, loose: found, gear };
 }
 
 const UNIT_HEIGHT: Record<string, number> = {

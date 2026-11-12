@@ -10,7 +10,7 @@ const FPS = 24;
 const gltf = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('src'));
 const scene = gltf.scene;
 const bone = (n) => scene.getObjectByName(n.replace('.', '')) ?? scene.getObjectByName(n);
-const B = Object.fromEntries(['hips', 'chest', 'head', 'upperarm.l', 'upperarm.r', 'hand.l', 'hand.r', 'upperleg.l', 'upperleg.r', 'foot.l', 'foot.r'].map((n) => [n, bone(n)]));
+const B = Object.fromEntries(['hips', 'chest', 'head', 'upperarm.l', 'upperarm.r', 'lowerarm.l', 'lowerarm.r', 'hand.l', 'hand.r', 'upperleg.l', 'upperleg.r', 'lowerleg.l', 'lowerleg.r', 'foot.l', 'foot.r'].map((n) => [n, bone(n)]));
 for (const [k, v] of Object.entries(B)) if (!v) throw new Error('no bone ' + k);
 const wq = (o) => o.getWorldQuaternion(new THREE.Quaternion()), wp = (o) => o.getWorldPosition(new THREE.Vector3());
 // Left and right are swapped and the pose mirrored, so the weapon hand lands on the side this game's figures hold theirs.
@@ -35,18 +35,20 @@ for (const [key, name] of Object.entries(CLIPS)) {
     const Dh = mq(wq(B.hips)).multiply(rest.hips.clone().invert());
     const Dc = mq(wq(B.chest)).multiply(rest.chest.clone().invert());
     const Dhead = mq(wq(B.head)).multiply(rest.head.clone().invert());
-    const limb = (from, to, parent, splay) => {
-      const dir = mp(wp(to)).sub(mp(wp(from))); dir.x *= splay; dir.normalize(); // these characters hold their arms wide; ours are slimmer
-      return parent.clone().invert().multiply(new THREE.Quaternion().setFromUnitVectors(DOWN, dir));
+    // A limb is two turns: the upper part from its parent, and the lower part (below elbow or knee) from the upper.
+    const limb = (from, mid, to, parent, splay) => {
+      const dir = (a, b) => { const d = mp(wp(b)).sub(mp(wp(a))); d.x *= splay; return d.normalize(); }; // these characters hold their arms wide; ours are slimmer
+      const up = new THREE.Quaternion().setFromUnitVectors(DOWN, dir(from, mid)), low = new THREE.Quaternion().setFromUnitVectors(DOWN, dir(mid, to));
+      return [parent.clone().invert().multiply(up), up.clone().invert().multiply(low)];
     };
     const qs = [
       Dh,
       Dh.clone().invert().multiply(Dc),
       Dc.clone().invert().multiply(Dhead),
-      limb(B['upperarm.r'], B['hand.r'], Dc, 0.35), // the figure's weapon arm: its +x side once mirrored
-      limb(B['upperarm.l'], B['hand.l'], Dc, 0.35),
-      limb(B['upperleg.r'], B['foot.r'], Dh, 1),
-      limb(B['upperleg.l'], B['foot.l'], Dh, 1),
+      ...limb(B['upperarm.r'], B['lowerarm.r'], B['hand.r'], Dc, 0.35), // the figure's weapon arm: its +x side once mirrored
+      ...limb(B['upperarm.l'], B['lowerarm.l'], B['hand.l'], Dc, 0.35),
+      ...limb(B['upperleg.r'], B['lowerleg.r'], B['foot.r'], Dh, 1),
+      ...limb(B['upperleg.l'], B['lowerleg.l'], B['foot.l'], Dh, 1),
     ];
     frames.push([r3((wp(B.hips).y - rest.y) / rest.y), ...qs.flatMap((q) => [r3(q.x), r3(q.y), r3(q.z), r3(q.w)])]);
   }
