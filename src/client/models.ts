@@ -1853,13 +1853,19 @@ export function makeResource(type: string, seed: number): THREE.Group {
     body.rotation.y = r(1) * 6;
     box(g, 0.2, 0.06, 0.3, 0xb03a30, 0.05, 0.22, 0).rotation.y = r(1) * 6;
   } else if (type === 'fish') {
-    // A shoal: a ring of ripples and a few silver backs breaking the surface.
-    const ring = add(g, geo('ripple', () => new THREE.TorusGeometry(0.36, 0.025, 4, 16)), 0xbfe0ee, 0, 0.03, 0);
-    ring.rotation.x = Math.PI / 2; ring.castShadow = false;
-    for (let i = 0; i < 4; i++) {
-      const a = r(i) * 6.28, d = 0.08 + r(i + 5) * 0.2;
-      const f = ball(g, 0.08, 0xc8d4dc, Math.cos(a) * d, 0.03, Math.sin(a) * d);
-      f.scale.set(0.6, 0.5, 1.6); f.rotation.y = a; f.castShadow = false;
+    // A shoal: two rings of ripples, drawn without ink so they sit in the water, and silver backs breaking the surface.
+    for (const [rad, op] of [[0.36, 0.55], [0.22, 0.35]]) {
+      const mt = new THREE.MeshBasicMaterial({ color: 0xdff0f6, transparent: true, opacity: op, depthWrite: false });
+      mt.userData.outlineParameters = { visible: false };
+      const ring = new THREE.Mesh(geo(`ripple${rad}`, () => new THREE.TorusGeometry(rad, 0.014, 4, 20).rotateX(Math.PI / 2)), mt);
+      ring.position.y = 0.03;
+      g.add(ring);
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = r(i) * 6.28, d = 0.06 + r(i + 5) * 0.22;
+      const f = dot(g, geo('fishback', () => new THREE.SphereGeometry(0.06, 8, 5)), i % 2 ? 0xa8b8c4 : 0xc8d4dc, Math.cos(a) * d, 0.035, Math.sin(a) * d);
+      f.scale.set(0.5, 0.45, 1.7); f.rotation.y = a;
+      dot(f, geo('fishtail', () => new THREE.ConeGeometry(0.035, 0.07, 4).rotateX(-Math.PI / 2)), 0x8a9aa8, 0, 0, -0.07);
     }
   } else if (type === 'berries') {
     const b = ball(g, 0.36, 0x3e7a34, 0, 0.26, 0);

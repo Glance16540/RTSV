@@ -563,11 +563,29 @@ export class Renderer {
   /** A unit has died: how it falls depends on what it was. */
   private fall(v: UnitView): void {
     const g = v.g, at = g.position;
+    // The crew of an engine or a ship are thrown clear as she goes: whole men, not a scatter of parts.
+    const crew = (g.userData.crew as THREE.Group[] | undefined) ?? [];
+    for (const c of crew) {
+      c.updateMatrixWorld(true);
+      this.throwPiece(c, at, 1, 0.75);
+      if (!v.naval) { const p = c.getWorldPosition(this.v3); this.spray(p.x, p.y + 0.3, p.z, 5, true); }
+    }
+    g.userData.crew = [];
     if (v.cls === 'siege') {
       // An engine flies apart like a small building.
       this.spray(at.x, at.y + 0.5, at.z, 14, false);
       this.collapse(g);
       return;
+    }
+    if (v.naval) {
+      // A ship breaks up: her masts, yards and sails come down around her and the sea boils where she was.
+      g.updateMatrixWorld(true);
+      const aloft: THREE.Mesh[] = [], p = new THREE.Vector3();
+      g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && m.getWorldPosition(p).y > at.y + 0.55) aloft.push(m); });
+      for (const m of aloft) this.throwPiece(m, at, 1.6, 0.45);
+      const wake = g.userData.wake as THREE.Object3D | undefined;
+      if (wake) wake.visible = false;
+      for (let i = 0; i < 6; i++) this.cloud(at.x + (Math.random() - 0.5) * 1.2, at.y + 0.1, at.z + (Math.random() - 0.5) * 1.2, 0xf4f8fa, -i * 0.08);
     }
     if (v.flesh) { this.spray(at.x, at.y + 0.5, at.z, 16, true); this.stain(at.x, at.z, v.cls === 'beast' || v.cls === 'cavalry' ? 0.6 : 0.4, 3.5); }
     else this.spray(at.x, at.y + 0.4, at.z, 12, false);
@@ -786,6 +804,15 @@ export class Renderer {
     }
   }
 
+  /** One soft puff that swells, drifts up and fades: spray, foam, smoke. */
+  private cloud(x: number, y: number, z: number, color: number, delay: number): void {
+    const mt = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false });
+    mt.userData.outlineParameters = { visible: false };
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), mt);
+    m.position.set(x, y, z);
+    this.scene.add(m);
+    this.dust.push({ m, t: delay });
+  }
   /** A burst of powder smoke with a flash at its heart, where a gun has just gone off. */
   private puff(x: number, y: number, z: number): void {
     for (let i = 0; i < 3; i++) {
@@ -1218,11 +1245,13 @@ export class Renderer {
         if (d.t > 7) d.g.position.y -= dt * 0.12;
         if (d.t > 10) { this.scene.remove(d.g); this.dying.splice(i, 1); }
       } else if (d.v.naval) {
-        // A ship settles by the stern and goes down.
-        d.g.rotation.x += (-0.5 - d.g.rotation.x) * Math.min(1, dt * 1.5);
-        d.g.rotation.z += (0.25 - d.g.rotation.z) * Math.min(1, dt * 1.5);
-        d.g.position.y -= dt * (0.12 + d.t * 0.12);
-        if (d.t > 4) { this.scene.remove(d.g); this.dying.splice(i, 1); }
+        // Her hull rolls on its beam ends, settles by the stern and goes down in a welter of foam.
+        const side = d.v.phase > 3 ? 1 : -1;
+        d.g.rotation.x += (-0.55 - d.g.rotation.x) * Math.min(1, dt * 0.9);
+        d.g.rotation.z += (side * 0.95 - d.g.rotation.z) * Math.min(1, dt * 0.8);
+        d.g.position.y -= dt * (0.03 + d.t * 0.055);
+        if (d.t < 4.5 && Math.floor(d.t * 3) !== Math.floor((d.t - dt) * 3)) this.cloud(d.g.position.x + (Math.random() - 0.5) * 0.9, this.scenery.heightAt(d.g.position.x, d.g.position.z) + 0.08, d.g.position.z + (Math.random() - 0.5) * 0.9, 0xf4f8fa, 0);
+        if (d.t > 6.5) { this.scene.remove(d.g); this.dying.splice(i, 1); }
       } else {
         // Beasts and riders go over on their side, kick once, and lie.
         d.g.rotation.x = 0;
