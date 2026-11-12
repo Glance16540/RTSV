@@ -173,14 +173,18 @@ function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y
  */
 function woman(g: THREE.Object3D, dress: number, hair: number, seed: number, trim = 0xe8e2d4, bodice = dress, cut = 0): void {
   g.userData.biped = true;
-  lathe(g, 'skirt', [[0.21, 0], [0.2, 0.04], [0.155, 0.2], [0.13, 0.3], [0.086, 0.4]], dress).scale.z = 0.8;
+  // The skirt hangs from the waist, so it swings from there.
+  const skirt = new THREE.Group();
+  skirt.position.y = 0.4;
+  g.add(loose(skirt, 'rx', 0.3, 70, 4.5));
+  lathe(skirt, 'skirt', [[0.21, 0], [0.2, 0.04], [0.155, 0.2], [0.13, 0.3], [0.086, 0.4]], dress, 0, -0.4, 0).scale.z = 0.8;
   lathe(g, 'bodice', [[0.086, 0], [0.1, 0.06], [0.116, 0.11], [0.11, 0.16], [0.118, 0.2], [0.06, 0.245], [0.036, 0.27]], cut ? SKIN : bodice, 0, 0.4, 0).scale.z = 0.6;
-  for (const x of [-0.05, 0.05]) ball(g, cut ? 0.056 : 0.05, bodice, x, 0.512 - cut * 0.004, 0.048);
+  for (const x of [-0.05, 0.05]) loose(ball(g, cut ? 0.056 : 0.05, bodice, x, 0.512 - cut * 0.004, 0.048), 'y', 0.07 + cut * 0.015, 150, 5.5);
   if (cut) {
     // A laced bodice worn low over a white blouse off the shoulders: `cut` 2 sits lower still.
     const top = cut > 1 ? 0.12 : 0.15;
     lathe(g, `stays${cut}`, [[0.088, 0], [0.103, 0.06], [0.122, 0.11], [0.12, top]], bodice, 0, 0.4, 0).scale.z = 0.64;
-    for (const x of [-0.05, 0.05]) ball(g, 0.045, SKIN, x, 0.538, 0.05).scale.set(1, 0.7, 0.9);
+    for (const x of [-0.05, 0.05]) loose(ball(g, 0.045, SKIN, x, 0.538, 0.05), 'y', 0.07 + cut * 0.015, 150, 5.5).scale.set(1, 0.7, 0.9);
     for (const x of [-0.128, 0.128]) ball(g, 0.05, 0xf4eee0, x, 0.575, 0);
     for (let i = 0; i < 3; i++) box(g, 0.05, 0.008, 0.01, 0xf4eee0, 0, 0.42 + i * 0.03, 0.079);
   }
@@ -194,9 +198,23 @@ function woman(g: THREE.Object3D, dress: number, hair: number, seed: number, tri
   ball(g, 0.104, SKIN, 0, 0.76, 0).scale.y = 1.06;
   face(g, 0.762, 0.092);
   add(g, geo('hairf', () => new THREE.SphereGeometry(0.115, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55)), seed % 3 === 2 ? trim : hair, 0, 0.775, -0.014);
-  if (seed % 3 === 0) cap(g, 0.07, 0.34, hair, 0, 0.62, -0.085).scale.set(1.35, 1, 0.55); // worn long down the back
-  else if (seed % 3 === 1) ball(g, 0.062, hair, 0, 0.83, -0.085); // pinned up in a bun
-  else { cap(g, 0.03, 0.26, hair, 0, 0.6, -0.1); ball(g, 0.045, trim, 0, 0.7, -0.1); } // a scarf, and a braid below it
+  if (seed % 3 === 0) {
+    // Worn long down the back, swinging from the nape.
+    const fall = new THREE.Group();
+    fall.position.set(0, 0.76, -0.085);
+    fall.userData.joint = 'head';
+    g.add(loose(fall, 'rx', 1.0, 80, 4));
+    cap(fall, 0.07, 0.34, hair, 0, -0.14, 0).scale.set(1.35, 1, 0.55);
+  } else if (seed % 3 === 1) loose(ball(g, 0.062, hair, 0, 0.83, -0.085), 'y', 0.03, 240, 9); // pinned up in a bun
+  else {
+    // A scarf, and a braid below it.
+    const braid = new THREE.Group();
+    braid.position.set(0, 0.72, -0.1);
+    braid.userData.joint = 'head';
+    g.add(loose(braid, 'rx', 1.3, 70, 3.5));
+    cap(braid, 0.03, 0.26, hair, 0, -0.12, 0);
+    ball(braid, 0.045, trim, 0, -0.02, 0);
+  }
 }
 
 /** Right arm + weapon, pivoting at the shoulder so it can swing. A sleeve to the elbow if `sleeve` is given. */
@@ -225,7 +243,15 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
 }
 
 /** The joints of a figure on foot, turned by the recorded motions. */
-export interface Rig { root: THREE.Group; torso: THREE.Group; head: THREE.Group; armR: THREE.Object3D; armL: THREE.Group; legs: THREE.Object3D[] }
+export interface Rig { root: THREE.Group; torso: THREE.Group; head: THREE.Group; armR: THREE.Object3D; armL: THREE.Group; legs: THREE.Object3D[]; loose: Loose[] }
+/**
+ * Something on a figure that is not held rigid: it lags, bounces and settles on a spring as the body moves.
+ * `mode` y bobs it up and down; rx and rz swing it about where it hangs.
+ */
+export interface Loose { o: THREE.Object3D; mode: 'y' | 'rx' | 'rz'; gain: number; k: number; c: number; d: number; v: number; rest: number }
+type Spring = Pick<Loose, 'mode' | 'gain' | 'k' | 'c'>;
+/** Marks a part as loose. Parts not marked are judged by where they sit: hats, things on the back, shields, weapons. */
+const loose = <T extends THREE.Object3D>(o: T, mode: Loose['mode'], gain: number, k = 150, c = 6): T => { o.userData.loose = { mode, gain, k, c } as Spring; return o; };
 /**
  * Gives a figure on foot its joints. The figure is built standing still, as one flat group of parts;
  * here each part is hung on the joint it belongs to (by where it sits), so the whole figure can be posed.
@@ -239,15 +265,27 @@ export function rigBiped(g: THREE.Group): Rig | null {
   const armR = g.userData.arm as THREE.Object3D, legs: THREE.Object3D[] = [];
   g.updateMatrixWorld(true);
   const box = new THREE.Box3(), c = new THREE.Vector3(), s = new THREE.Vector3();
+  const found: Loose[] = [];
+  const free = (o: THREE.Object3D, sp: Spring): void => { found.push({ o, ...sp, d: 0, v: 0, rest: 0 }); };
   for (const p of parts) {
     if (p.userData.leg !== undefined) { root.attach(p); legs.push(p); continue; }
     if (p === armR) { torso.attach(p); continue; }
     box.setFromObject(p, true); box.getCenter(c); box.getSize(s);
-    (c.y > 0.67 ? head : c.x < -0.14 && s.x < 0.3 && c.y < 0.67 ? armL : torso).attach(p);
+    const to = p.userData.joint === 'head' || c.y > 0.67 ? head : c.x < -0.14 && s.x < 0.3 && c.y < 0.67 ? armL : torso;
+    to.attach(p);
+    const marked = p.userData.loose as Spring | undefined;
+    if (marked) free(p, marked);
+    // A hat, crest or plume nods; a shield on the arm rattles; a pack, quiver or cape on the back swings.
+    else if (to === head && c.y > 0.84) free(p, { mode: 'y', gain: 0.03, k: 220, c: 9 });
+    else if (to === armL && Math.max(s.x, s.y, s.z) > 0.2) free(p, { mode: 'rx', gain: 0.6, k: 120, c: 6 });
+    else if (to === torso && c.z < -0.09 && s.y < 0.5) free(p, { mode: 'rx', gain: 0.8, k: 90, c: 5 });
   }
+  // Whatever is in the weapon hand lags behind the arm and swings on after it stops.
+  armR.children.forEach((w, i) => { if (i > 2 && !w.userData.loose) free(w, { mode: 'rx', gain: 0.5, k: 110, c: 5 }); else if (w.userData.loose) free(w, w.userData.loose as Spring); });
+  for (const l of found) l.rest = l.mode === 'y' ? l.o.position.y : l.mode === 'rx' ? l.o.rotation.x : l.o.rotation.z;
   // The leg on the weapon side first, as the motions list it.
   legs.sort((a, b) => b.position.x - a.position.x);
-  return { root, torso, head, armR, armL, legs };
+  return { root, torso, head, armR, armL, legs, loose: found };
 }
 
 const UNIT_HEIGHT: Record<string, number> = {

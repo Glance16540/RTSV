@@ -499,6 +499,15 @@ export class Renderer {
     turn(rig.root, 1); turn(rig.torso, 5); turn(rig.head, 9); turn(rig.armR, 13); turn(rig.armL, 17);
     if (rig.legs[0]) turn(rig.legs[0], 21);
     if (rig.legs[1]) turn(rig.legs[1], 25);
+    // Loose things on the body take each footfall and each blow, and go on swinging after.
+    const jolt = (u.moving ? Math.sin(v.phase * 2) * (name === 'run' ? 34 : 26) : 0) + (u.attackAnim > 0 ? Math.cos((u.attackAnim / 0.35) * Math.PI) * 22 : 0);
+    const steps = Math.max(1, Math.ceil(Math.min(dt, 0.1) / 0.012)), h = Math.min(dt, 0.1) / steps;
+    for (const l of rig.loose) {
+      for (let s = 0; s < steps; s++) { l.v += (-l.k * l.d - l.c * l.v + jolt * l.gain) * h; l.d += l.v * h; }
+      const lim = l.mode === 'y' ? 0.035 : 0.7;
+      if (l.d > lim) { l.d = lim; l.v = 0; } else if (l.d < -lim) { l.d = -lim; l.v = 0; }
+      if (l.mode === 'y') l.o.position.y = l.rest + l.d; else if (l.mode === 'rx') l.o.rotation.x = l.rest + l.d; else l.o.rotation.z = l.rest + l.d;
+    }
   }
 
   /** A building that falls comes apart: every piece is thrown clear, tumbles, settles and sinks away. */
