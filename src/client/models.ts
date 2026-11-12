@@ -629,6 +629,25 @@ export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 
   return g;
 }
 
+/** What flies through the air: an arrow or bolt, a slung or thrown stone, a great boulder, a cannon ball. Built pointing along +z. */
+export function makeShot(kind: 'arrow' | 'stone' | 'boulder' | 'shot'): THREE.Group {
+  made.clear();
+  figure = true;
+  const g = new THREE.Group();
+  if (kind === 'arrow') {
+    cyl(g, 0.012, 0.012, 0.5, 0x8a6a44, 0, 0, 0, 5).rotation.x = Math.PI / 2;
+    add(g, geo('arrowhead', () => new THREE.ConeGeometry(0.03, 0.1, 5).rotateX(Math.PI / 2)), 0xc8ccd4, 0, 0, 0.29);
+    for (const r of [0, Math.PI / 2]) dot(g, geo('fletch', () => new THREE.BoxGeometry(0.07, 0.004, 0.12)), 0xe8e2d4, 0, 0, -0.2).rotation.z = r;
+  } else if (kind === 'shot') {
+    ball(g, 0.065, 0x2c2c30);
+  } else {
+    const r = kind === 'boulder' ? 0.2 : 0.085;
+    made.set(0x8a8680, 'stone');
+    add(g, geo(`rock${r}`, () => { const d = new THREE.DodecahedronGeometry(r, 0), pos = d.attributes.position; for (let i = 0; i < pos.count; i++) { const k = 0.85 + ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.3; pos.setXYZ(i, pos.getX(i) * k, pos.getY(i) * k, pos.getZ(i) * k); } d.computeVertexNormals(); return d; }), 0x8a8680, 0, 0, 0);
+  }
+  return g;
+}
+
 /** A length of rope or chain between two points. */
 function line(p: THREE.Object3D, a: number[], b: number[], color = 0x8a7250, r = 0.009): THREE.Mesh {
   const d = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = d.length();
@@ -992,6 +1011,10 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
       }
       // A merchant cog carrying troops: one broad sail and a deck full of cargo.
       mast(0, 1.3, 0.92, 0.62, true);
+      // The troops she carries stand in the waist, as many as are aboard (up to six shown).
+      const aboard: THREE.Group[] = [];
+      for (let i = 0; i < 6; i++) { const t = crewman(g, i % 2 ? 0x8a8f96 : color, seed + 11 + i * 3, -0.17 + (i % 3) * 0.17, deckY, 0.42 - Math.floor(i / 3) * 0.2, 0, 0.38); t.visible = false; aboard.push(t); }
+      g.userData.aboard = aboard;
       for (const [x, z, s] of [[-0.14, -0.05, 0.16], [0.12, -0.12, 0.14], [0.1, 0.16, 0.13], [-0.12, 0.2, 0.15]]) box(g, s, s, s, 0xb08850, x, deckY + s / 2 + 0.015, z).rotation.y = x * 4;
       cyl(g, 0.07, 0.07, 0.14, 0x7a5230, 0, deckY + 0.085, -0.22, 8);
       crewman(g, color, seed, 0, deckY + 0.22, -L * 0.34, 0, 0.4); crewman(g, dark, seed + 2, 0.16, deckY, 0.3, -1, 0.4);

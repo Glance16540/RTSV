@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
-import { Job, makeBuilding, makeCaptive, makeResource, makeStaff, makeUnit, ofPeople, mat, RES_COLOR, Rig, rigBiped } from './models';
+import { Job, makeBuilding, makeCaptive, makeResource, makeShot, makeStaff, makeUnit, ofPeople, mat, RES_COLOR, Rig, rigBiped } from './models';
 import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
@@ -55,7 +55,9 @@ export class Renderer {
   private fogTex!: THREE.DataTexture;
   private fogAlpha: Float32Array;
   private rings: THREE.Mesh[] = [];
-  private shots: THREE.Mesh[] = [];
+  /** What is in the air, each with its own shape, and where it will come down. */
+  private shots = new Map<object, { g: THREE.Group; kind: string; tx: number; ty: number; seen: number; spin: number }>();
+  private shotTick = 0;
   private pings: Ping[] = [];
   private ghost: THREE.Group | null = null;
   private ghostType = '';
@@ -536,6 +538,28 @@ export class Renderer {
       else if (u.moving && !u.def.naval) this.setPose(rig, 'walk', v.phase / (Math.PI * 2) + i * 0.37, 0.4);
       else this.setPose(rig, 'idle', t / motions.idle.dur, 0.2);
     }
+    // A troop ship shows who is aboard.
+    const aboard = g.userData.aboard as THREE.Group[] | undefined;
+    if (aboard) { const n = u.cargo?.length ?? 0; for (let i = 0; i < aboard.length; i++) aboard[i].visible = i < n; }
+    // An engine or a ship that has taken a beating burns, and smokes worse the nearer she is to going.
+    if (v.cls === 'siege' || v.naval) {
+      const hurt = u.hp < u.maxHp * 0.5;
+      let fire = g.userData.fire as THREE.Mesh | undefined;
+      if (hurt && !fire) {
+        fire = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 6), new THREE.MeshBasicMaterial({ color: 0xff8a20, transparent: true, opacity: 0.85 }));
+        (fire.material as THREE.Material).userData.outlineParameters = { visible: false };
+        fire.position.set(0.1, v.naval ? 0.55 : 0.75, -0.15);
+        g.add(fire);
+        g.userData.fire = fire;
+      }
+      if (fire) {
+        fire.visible = hurt;
+        const k = 0.8 + (1 - u.hp / (u.maxHp * 0.5)) * 1.3;
+        fire.scale.set(k, k * (0.85 + Math.sin(this.clock * 17 + u.id) * 0.25), k);
+        const slot = Math.floor(this.clock * (u.hp < u.maxHp * 0.25 ? 3 : 1.4) + u.id);
+        if (hurt && g.userData.smokeSlot !== slot) { g.userData.smokeSlot = slot; this.cloud(g.position.x + (Math.random() - 0.5) * 0.2, g.position.y + 1.0, g.position.z + (Math.random() - 0.5) * 0.2, 0x3e3a38, 0); }
+      }
+    }
     // Powder smoke and a flash at each muzzle as she fires.
     const muzzles = g.userData.muzzles as number[][] | undefined;
     if (muzzles?.length && u.attackAnim > 0 && !(g.userData.firing as boolean)) {
@@ -563,9 +587,15 @@ export class Renderer {
   /** A unit has died: how it falls depends on what it was. */
   private fall(v: UnitView): void {
     const g = v.g, at = g.position;
+    const flame = g.userData.fire as THREE.Object3D | undefined;
+    if (flame) flame.removeFromParent(); // the fire goes out with her; it is not a piece to be thrown
     // The crew of an engine or a ship are thrown clear as she goes: whole men, not a scatter of parts.
     const crew = (g.userData.crew as THREE.Group[] | undefined) ?? [];
     for (const c of crew) {
+      if (!c.visible) { c.removeFromParent(); continue; } // a place on deck no one was standing in
+      // They go as dead men: limp, not standing to attention in mid-air.
+      const rig = c.userData.crewRig as Rig | null;
+      if (rig) this.setPose(rig, 'death1', 0.93, 1);
       c.updateMatrixWorld(true);
       this.throwPiece(c, at, 1, 0.75);
       if (!v.naval) { const p = c.getWorldPosition(this.v3); this.spray(p.x, p.y + 0.3, p.z, 5, true); }
@@ -1201,26 +1231,35 @@ export class Renderer {
     }
     for (let i = n; i < this.rings.length; i++) this.rings[i].visible = false;
 
-    // Projectiles.
+    // Projectiles: arrows fly point first, stones and boulders tumble, and each ends in dust, a puff or a splash.
     const ps = game.projectiles;
-    for (let i = 0; i < ps.length; i++) {
-      const p = ps[i];
-      if (!this.shots[i]) {
-        this.shots[i] = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.5), mat(0x3a2a1a));
-        this.scene.add(this.shots[i]);
-      }
-      const m = this.shots[i];
+    this.shotTick++;
+    for (const p of ps) {
+      let sv = this.shots.get(p);
+      if (!sv) { sv = { g: makeShot(p.kind), kind: p.kind, tx: p.tx, ty: p.ty, seen: 0, spin: Math.random() * 6 }; this.scene.add(sv.g); this.shots.set(p, sv); }
+      sv.seen = this.shotTick; sv.tx = p.tx; sv.ty = p.ty;
+      const m = sv.g;
       const total = Math.hypot(p.tx - p.sx, p.ty - p.sy) || 1;
       const t = Math.min(1, Math.hypot(p.x - p.sx, p.y - p.sy) / total);
-      const arc = p.kind === 'boulder' ? total * 0.3 : p.kind === 'shot' ? 0 : total * 0.08;
-      const big = p.kind === 'boulder' ? 5 : p.kind === 'stone' ? 2 : p.kind === 'shot' ? 1.4 : 1;
-      m.scale.set(big, big, p.kind === 'arrow' ? 1 : 0.1 * big);
+      const arc = p.kind === 'boulder' ? total * 0.3 : p.kind === 'shot' ? total * 0.02 : p.kind === 'stone' ? total * 0.14 : total * 0.08;
       const gh = this.scenery.heightAt(p.sx, p.sy) * (1 - t) + this.scenery.heightAt(p.tx, p.ty) * t;
       m.position.set(p.x, gh + 0.8 + Math.sin(t * Math.PI) * arc, p.y);
-      m.lookAt(p.tx, this.scenery.heightAt(p.tx, p.ty) + 0.8 + Math.cos(t * Math.PI) * arc * -2, p.ty);
-      m.visible = game.vis[Math.floor(p.y) * game.size + Math.floor(p.x)] === 2;
+      if (p.kind === 'arrow') m.lookAt(p.tx, this.scenery.heightAt(p.tx, p.ty) + 0.8 + Math.cos(t * Math.PI) * arc * -2, p.ty);
+      else if (p.kind !== 'shot') m.rotation.set(sv.spin + this.clock * 7, sv.spin * 2 + this.clock * 4, 0);
+      m.visible = this.noFog || game.vis[Math.floor(p.y) * game.size + Math.floor(p.x)] === 2;
     }
-    for (let i = ps.length; i < this.shots.length; i++) this.shots[i].visible = false;
+    for (const [p, sv] of this.shots) {
+      if (sv.seen === this.shotTick) continue;
+      // It has landed.
+      if (sv.g.visible && sv.kind !== 'arrow') {
+        const N = game.size, cx = Math.min(N - 1, Math.max(0, Math.floor(sv.tx))), cy = Math.min(N - 1, Math.max(0, Math.floor(sv.ty)));
+        const wet = game.terrain[cy * N + cx] === 1, gy = this.scenery.heightAt(sv.tx, sv.ty), n = sv.kind === 'boulder' ? 4 : sv.kind === 'shot' ? 2 : 1;
+        for (let i = 0; i < n; i++) this.cloud(sv.tx + (Math.random() - 0.5) * 0.5 * (n - 1), gy + 0.15, sv.ty + (Math.random() - 0.5) * 0.5 * (n - 1), wet ? 0xf4f8fa : sv.kind === 'shot' ? 0x8a8680 : 0xb8ac98, -i * 0.05);
+        if (sv.kind === 'boulder' && Math.hypot(sv.tx - this.cx, sv.ty - this.cy) < this.dist) this.shake = Math.max(this.shake, 0.18);
+      }
+      this.scene.remove(sv.g);
+      this.shots.delete(p);
+    }
 
     for (let i = this.pings.length - 1; i >= 0; i--) {
       const p = this.pings[i];
