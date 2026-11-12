@@ -452,6 +452,7 @@ export class Renderer {
     }
     if (v.flesh) { this.spray(at.x, at.y + 0.5, at.z, 16, true); this.stain(at.x, at.z, v.cls === 'beast' || v.cls === 'cavalry' ? 0.6 : 0.4, 3.5); }
     else this.spray(at.x, at.y + 0.4, at.z, 12, false);
+    if (v.type === 'villager') this.tear(v, 3);
     this.dying.push({ g, t: 0, v, clip: (v.phase * 7) % 2 > 1 ? 'death1' : 'death2', dropped: false });
   }
 
@@ -517,20 +518,55 @@ export class Renderer {
     if (hurt <= v.hurt || !v.rig) { if (!v.rig) v.hurt = hurt; return; }
     const rig = v.rig;
     g.updateMatrixWorld(true);
-    // Armour and gear are knocked off: about half of it at the first stage, all of it at the second.
-    const on = rig.gear.filter((p) => p.parent && p.parent !== this.scene);
-    for (const p of on.slice(0, hurt === 2 ? on.length : Math.ceil(on.length / 2))) { if (g.visible) this.throwPiece(p, g.position, 1, 0.5); else p.removeFromParent(); }
-    if (this.gore) {
-      // Torn cloth shows skin; cuts show red. Placed over the chest, back and hem.
-      const seed = u.id * 31 + hurt * 7, r = (k: number): number => (((seed + k * 97) * 2654435761) >>> 0) / 4294967296;
-      for (let k = 0; k < (hurt === 2 ? 5 : 3); k++) {
-        const front = r(k) > 0.35 ? 1 : -1, patch = new THREE.Mesh(new THREE.BoxGeometry(0.035 + r(k + 9) * 0.05, 0.03 + r(k + 5) * 0.07, 0.012), mat(k % 2 || hurt === 2 ? BLOOD : 0xe0ac7e));
-        patch.position.set((r(k + 1) - 0.5) * 0.17, 0.08 + r(k + 2) * 0.3, front * (0.092 - Math.abs(r(k + 1) - 0.5) * 0.05));
-        patch.rotation.z = (r(k + 3) - 0.5) * 1.4;
-        rig.torso.add(patch);
-      }
+    if (u.type !== 'villager') {
+      // A fighter's armour and gear are knocked off: about half of it at the first stage, all of it at the second.
+      const on = rig.gear.filter((p) => p.parent && p.parent !== this.scene);
+      for (const p of on.slice(0, hurt === 2 ? on.length : Math.ceil(on.length / 2))) { if (g.visible) this.throwPiece(p, g.position, 1, 0.5); else p.removeFromParent(); }
     }
+    this.tear(v, hurt);
     v.hurt = hurt;
+  }
+
+  /**
+   * Torn clothes and cuts. Nothing falls to the ground: cloth that is gone simply shows the skin beneath.
+   * Fighters are mostly cut and bloodied; villagers' clothes tear, and at level 3 (in death) are in rags.
+   */
+  private tear(v: UnitView, level: number): void {
+    const rig = v.rig;
+    if (!rig || !this.gore) return;
+    const SKIN = 0xe0ac7e, villager = v.type === 'villager';
+    const seed = Math.round(v.phase * 1000) + level * 7, r = (k: number): number => (((seed + k * 97) * 2654435761) >>> 0) / 4294967296;
+    const n = villager ? [0, 3, 5, 9][level] : [0, 3, 5, 5][level];
+    for (let k = 0; k < n; k++) {
+      const skin = villager ? k % 4 !== 3 : k % 2 === 0 && level < 2;
+      const big = villager ? 1.5 + level * 0.25 : 1;
+      const front = r(k) > 0.35 ? 1 : -1;
+      const patch = new THREE.Mesh(new THREE.BoxGeometry((0.035 + r(k + 9) * 0.05) * big, (0.03 + r(k + 5) * 0.07) * big, 0.012), mat(skin ? SKIN : BLOOD));
+      patch.position.set((r(k + 1) - 0.5) * 0.17, 0.08 + r(k + 2) * 0.3, front * (0.094 - Math.abs(r(k + 1) - 0.5) * 0.05));
+      patch.rotation.z = (r(k + 3) - 0.5) * 1.4;
+      rig.torso.add(patch);
+    }
+    if (!villager || level < 2) return;
+    // A sleeve torn away, then both; in rags, a skirt split to the thigh or a tunic open across the chest.
+    const bare = (o: THREE.Object3D): void => o.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh && m.userData.body !== undefined || (m.isMesh && m.parent === rig.armR)) m.material = mat(SKIN); });
+    if (rig.armR.children[0]) bare(rig.armR.children[0]);
+    if (level < 3) return;
+    for (const c of rig.armL.children) if (c.userData.body) bare(c);
+    const skirt = rig.torso.children.find((c) => (c.userData.loose as { mode?: string } | undefined)?.mode === 'rx' && (c as THREE.Group).isGroup && c.position.y > -0.05 && c.position.y < 0.2);
+    if (skirt) {
+      const slit = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.26, 0.012), mat(SKIN));
+      slit.position.set(r(40) > 0.5 ? 0.07 : -0.07, -0.26, 0.118);
+      slit.rotation.x = -0.24;
+      skirt.add(slit);
+      const sh = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat(SKIN));
+      sh.position.set(r(41) > 0.5 ? 0.1 : -0.1, 0.305, 0.01);
+      rig.torso.add(sh);
+    } else {
+      const open = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.17, 0.012), mat(SKIN));
+      open.position.set(0, 0.24, 0.1);
+      open.rotation.z = (r(42) - 0.5) * 0.5;
+      rig.torso.add(open);
+    }
   }
 
   /** The trade a villager is plying, from the order in hand. Idle or merely walking, they wear their own clothes. */
