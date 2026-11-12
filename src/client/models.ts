@@ -641,15 +641,19 @@ function line(p: THREE.Object3D, a: number[], b: number[], color = 0x8a7250, r =
 /** One of the crew: a small figure standing at his post. */
 function crewman(g: THREE.Object3D, body: number, seed: number, x: number, y: number, z: number, ry = 0, s = 0.5): THREE.Group {
   const r = new THREE.Group();
-  r.position.set(x, y, z);
-  r.rotation.y = ry;
-  r.scale.setScalar(s);
   r.userData.stands = true;
   const was = who;
   who = seed;
   humanoid(r, body, 0x5b4630, hairOf(seed));
+  arm(r, 0, body);
   who = was;
+  // Given his joints here, standing at full size at the origin, which is how they are found; then set at his post.
+  r.userData.crewRig = rigBiped(r);
+  r.position.set(x, y, z);
+  r.rotation.y = ry;
+  r.scale.setScalar(s);
   g.add(r);
+  ((g.userData.crew ??= []) as THREE.Group[]).push(r);
   return r;
 }
 /** Cloth seen from both sides: sails, awnings, flags. One material a colour. */
@@ -694,6 +698,12 @@ const hullGeo = (key: string, w: number, h: number, len: number, sheer = 1.6): T
  */
 function machine(g: THREE.Group, type: string, color: number, seed: number): boolean {
   const TIM = 0x6e4c2c, PALE = 0x9a7448, ROPE = 0x8a7250, BLACK = 0x2c2c30, STONE_C = 0x8a8680, dark = shade(color, 0.6);
+  // Timber shows its grain and stone its face, as on the buildings.
+  for (const c of [TIM, PALE, DARKWOOD, WOOD, 0xb89466, 0x7a5a38]) made.set(c, 'planks');
+  made.set(STONE_C, 'stone');
+  /** Where smoke and flame come from when she fires, in her own space. */
+  const muzzles: number[][] = [];
+  g.userData.muzzles = muzzles;
   const frame = (w: number, len: number, y: number, r: number, axles: number[]): void => {
     // Two sills, cross-pieces, and a wheel at each end of every axle.
     for (const x of [-w / 2, w / 2]) box(g, 0.09, 0.1, len, TIM, x, y, 0);
@@ -837,6 +847,7 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
       tube.rotation.x = Math.PI / 2 - 0.2;
       for (const k of [0.22, 0.5, 0.78]) { const ring = add(a, geo('gunring', () => new THREE.TorusGeometry(0.118, 0.016, 5, 12)), 0x54585e, 0, 0.02 + Math.sin(0.2) * k * 1.0, -0.4 + Math.cos(0.2) * k * 1.0); ring.rotation.x = -0.2; }
       ball(a, 0.05, BLACK, 0, 0.01, -0.44);
+      muzzles.push([0, 0.78, 0.82]);
       cyl(a, 0.035, 0.035, 0.44, BLACK, 0, 0.1, -0.02, 6).rotation.z = Math.PI / 2; // the trunnions
       g.add(a);
       g.userData.recoil = a;
@@ -864,6 +875,7 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
         add(a, geo('muzzle', () => new THREE.TorusGeometry(0.03, 0.008, 4, 8)), 0x54585e, -0.25 + (i + row * 0.5) * 0.1, 0.06 + row * 0.07, 0.5);
       }
       for (const z of [-0.18, 0.18]) box(a, 0.62, 0.02, 0.05, 0x54585e, 0, 0.17, z);
+      for (const x of [-0.2, 0, 0.2]) muzzles.push([x, 0.52, 0.5]);
       g.add(a);
       g.userData.recoil = a;
       // A mantlet before the gunners, in her owner's colours.
@@ -886,6 +898,19 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
       add(g, hullGeo('strake', W * 1.03, H * 0.16, L * 0.99), DARKWOOD, 0, deckY - H * 0.34, 0);
       add(g, hullGeo('rail', W * 1.05, H * 0.14, L * 0.995), color, 0, deckY - H * 0.06, 0);
       add(g, hullGeo('deck', W * 0.84, 0.03, L * 0.9), 0xb89466, 0, deckY, -L * 0.02);
+      // The water she pushes aside: a bow wave and a wake, shown while she is under way.
+      const foam = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+      foam.userData.outlineParameters = { visible: false };
+      const wake = new THREE.Mesh(geo(`wake${W},${L}`, () => {
+        const sh = new THREE.Shape();
+        sh.moveTo(0, L * 0.56); sh.quadraticCurveTo(W * 0.75, L * 0.2, W * 1.15, -L * 0.75); sh.lineTo(W * 0.85, -L * 0.7); sh.quadraticCurveTo(W * 0.5, L * 0.1, 0, L * 0.44);
+        sh.quadraticCurveTo(-W * 0.5, L * 0.1, -W * 0.85, -L * 0.7); sh.lineTo(-W * 1.15, -L * 0.75); sh.quadraticCurveTo(-W * 0.75, L * 0.2, 0, L * 0.56);
+        return new THREE.ShapeGeometry(sh, 8).rotateX(Math.PI / 2);
+      }), foam);
+      wake.position.y = 0.075;
+      wake.renderOrder = 2;
+      g.add(wake);
+      g.userData.wake = wake;
       // Stem and stern posts rising out of the ends.
       const stem = cyl(g, 0.025, 0.04, H * 1.5, DARKWOOD, 0, deckY + H * 0.75, L * 0.5, 6); stem.rotation.x = 0.5;
       const stern = cyl(g, 0.025, 0.04, H * 1.2, DARKWOOD, 0, deckY + H * 0.5, -L * 0.47, 6); stern.rotation.x = -0.35;
@@ -960,6 +985,7 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
           const z = -L * 0.2 + i * L * 0.12;
           box(g, 0.012, 0.075, 0.085, 0x18140f, x * W * 0.43 * beamAt(z), deckY - H * 0.26, z).castShadow = false;
           cyl(g, 0.02, 0.026, 0.12, BLACK, x * W * 0.45 * beamAt(z), deckY - H * 0.26, z, 6).rotation.z = Math.PI / 2;
+          muzzles.push([x * (W * 0.45 * beamAt(z) + 0.1), deckY - H * 0.26, z]);
         }
         crewman(g, color, seed, 0, deckY + 0.26, -L * 0.34, 0, 0.4); crewman(g, dark, seed + 2, 0.1, deckY, 0, 1.2, 0.4); crewman(g, dark, seed + 6, -0.05, deckY + 0.16, L * 0.3, 0, 0.4);
         return true;

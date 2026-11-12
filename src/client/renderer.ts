@@ -526,6 +526,26 @@ export class Renderer {
     if (arm && !v.rig) {
       arm.rotation.x = u.type === 'catapult' ? swing * 1.2 : -swing * 1.3 + (u.moving ? Math.sin(v.phase) * 0.3 : 0);
     }
+    // The crew of an engine or a ship: walking beside her as she rolls, hauling as she looses, standing easy otherwise.
+    const crew = g.userData.crew as THREE.Group[] | undefined;
+    if (crew) for (let i = 0; i < crew.length; i++) {
+      const rig = crew[i].userData.crewRig as Rig | null;
+      if (!rig) continue;
+      const t = this.clock + i * 1.3 + v.phase;
+      if (u.attackAnim > 0) this.setPose(rig, 'work', 0.2 + (1 - Math.min(1, u.attackAnim / 0.35)) * 0.5, 0.5);
+      else if (u.moving && !u.def.naval) this.setPose(rig, 'walk', v.phase / (Math.PI * 2) + i * 0.37, 0.4);
+      else this.setPose(rig, 'idle', t / motions.idle.dur, 0.2);
+    }
+    // Powder smoke and a flash at each muzzle as she fires.
+    const muzzles = g.userData.muzzles as number[][] | undefined;
+    if (muzzles?.length && u.attackAnim > 0 && !(g.userData.firing as boolean)) {
+      g.updateMatrixWorld(true);
+      for (const m of muzzles) { const at = this.v3.set(m[0], m[1], m[2]); g.localToWorld(at); this.puff(at.x, at.y, at.z); }
+    }
+    g.userData.firing = u.attackAnim > 0;
+    // A ship under way throws a bow wave and leaves a wake.
+    const wake = g.userData.wake as THREE.Mesh | undefined;
+    if (wake) { const wm = wake.material as THREE.MeshBasicMaterial; wm.opacity += ((u.moving ? 0.42 + Math.sin(this.clock * 5 + v.phase) * 0.1 : 0) - wm.opacity) * Math.min(1, dt * 3); wake.visible = wm.opacity > 0.02; }
     // A gun or a bolt-thrower kicks back as it looses, and runs out again.
     const rec = g.userData.recoil as THREE.Object3D | undefined;
     if (rec) { rec.userData.z0 ??= rec.position.z; rec.position.z = (rec.userData.z0 as number) - swing * 0.16; }
@@ -763,6 +783,18 @@ export class Renderer {
       }
       f.g.position.y = this.scenery.heightAt(f.g.position.x, f.g.position.z);
       if (f.rig) { this.setPose(f.rig, pose, pt, 1); if (pose !== 'work') f.rig.head.rotation.x += 0.3; }
+    }
+  }
+
+  /** A burst of powder smoke with a flash at its heart, where a gun has just gone off. */
+  private puff(x: number, y: number, z: number): void {
+    for (let i = 0; i < 3; i++) {
+      const mt = new THREE.MeshBasicMaterial({ color: i === 0 ? 0xffd070 : 0xd8d4cc, transparent: true, opacity: i === 0 ? 0.95 : 0.6, depthWrite: false });
+      mt.userData.outlineParameters = { visible: false };
+      const m = new THREE.Mesh(new THREE.SphereGeometry(i === 0 ? 0.1 : 0.16, 8, 6), mt);
+      m.position.set(x + (Math.random() - 0.5) * 0.12 * i, y + i * 0.05, z + (Math.random() - 0.5) * 0.12 * i);
+      this.scene.add(m);
+      this.dust.push({ m, t: i === 0 ? 1.25 : -i * 0.04 }); // the flash is over almost at once; the smoke hangs
     }
   }
 
