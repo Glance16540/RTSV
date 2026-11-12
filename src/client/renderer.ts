@@ -63,6 +63,8 @@ export class Renderer {
   private v3 = new THREE.Vector3();
   private clock = 0;
   private wallTick = -1;
+  /** `?motion=0`: figures are not given joints and move the old simple way. */
+  private still = new URLSearchParams(location.search).get('motion') === '0';
   private shake = 0;
   private dying: Dying[] = [];
   private drops: Drop[] = [];
@@ -78,7 +80,7 @@ export class Renderer {
   private weather!: Weather;
   private sky!: THREE.HemisphereLight;
   private tintC = new THREE.Color();
-  private staffViews = new Map<number, { key: string; g: THREE.Group }>();
+  private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] }>();
   private dust: Dust[] = [];
   /** Draws the ink edge around everything standing in the world. Off with ?outline=0. */
   private ink: OutlineEffect | null = null;
@@ -408,7 +410,7 @@ export class Renderer {
     if (!v) {
       v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
-      v.rig = new URLSearchParams(location.search).get('motion') === '0' ? null : rigBiped(v.g);
+      v.rig = this.still ? null : rigBiped(v.g);
       v.g.traverse((o) => {
         if (o.userData.leg === undefined) return;
         // A rider's legs are not walked: they sit astride, knees out and feet forward.
@@ -643,10 +645,11 @@ export class Renderer {
     let sv = this.staffViews.get(b.id);
     if (sv && sv.key !== key) { this.scene.remove(sv.g); sv = undefined; this.staffViews.delete(b.id); }
     if (!sv && women + men > 0) {
-      const g = new THREE.Group(), tav = b.type === 'tavern', half = b.size / 2;
+      const g = new THREE.Group(), tav = b.type === 'tavern', half = b.size / 2, figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] = [];
       for (let i = 0; i < women + men; i++) {
         const f = i < women;
-        const fig = makeStaff(tav ? (f ? 'milkmaid' : 'patron') : f ? 'nun' : 'monk', b.id + i * 7, lean);
+        const role = tav ? (f ? 'milkmaid' : 'patron') : f ? 'nun' : 'monk';
+        const fig = makeStaff(role, b.id + i * 7, lean);
         // Along the front and round the near corner, where the camera sees them.
         const k = i - (women + men - 1) / 2;
         const x = i % 2 ? half - 0.12 : k * 0.42 + 0.3, z = i % 2 ? k * 0.42 + 0.2 : half - 0.12;
@@ -654,12 +657,27 @@ export class Renderer {
         fig.rotation.y = Math.PI / 4 + Math.sin(b.id + i * 3.1) * 0.5;
         fig.scale.setScalar(0.92);
         g.add(fig);
+        figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), role, seed: (b.id * 1.3 + i * 2.1) % 6.28, lean0: fig.rotation.z });
       }
-      sv = { key, g };
+      sv = { key, g, figs };
       this.staffViews.set(b.id, sv);
       this.scene.add(g);
     }
-    if (sv) sv.g.visible = shown;
+    if (!sv) return;
+    sv.g.visible = shown;
+    if (!shown) return;
+    // They are not statues: patrons drink and cheer, the maid serves, monks and nuns bow at their prayers.
+    const rowdy = lean === 'low' ? 0.55 : lean === 'holy' ? 0.08 : 0.3;
+    for (const f of sv.figs) {
+      const t = this.clock + f.seed * 3, beat = Math.floor(t / 2.6), busy = ((Math.sin(beat * 12.9898 + f.seed) * 43758.5453) % 1 + 1) % 1 < rowdy;
+      if (f.rig) {
+        const name = !busy ? 'idle' : f.role === 'patron' ? 'cheer' : 'reach';
+        this.setPose(f.rig, name, busy ? (t % 2.6) / 2.6 : t / motions.idle.dur, 0.12);
+        if (f.role === 'patron' && lean === 'low') f.g.rotation.z = f.lean0 + Math.sin(t * 1.3) * 0.08; // unsteady on his feet
+      } else {
+        f.g.rotation.x = busy || lean === 'holy' ? Math.max(0, Math.sin(t * 0.8)) * 0.28 : Math.sin(t * 0.9) * 0.03;
+      }
+    }
   }
 
   /** Sets a figure's joints from the recorded motion that fits what it is doing. */

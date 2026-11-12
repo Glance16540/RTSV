@@ -57,8 +57,8 @@ export class AIController {
     // A leader with a temperament of their own attacks sooner or later, with more or fewer, than the level alone says.
     const habits = battleHabits(this.game.players[this.pid].civ);
     this.firstAttack = [660, 420, 270][level] * habits.haste;
-    this.armyScale = [0.65, 1, 1.3][level] * habits.army;
-    this.game.players[this.pid].mods.gather += [-0.2, 0, 0.2][level];
+    this.armyScale = [0.5, 1, 1.3][level] * habits.army;
+    this.game.players[this.pid].mods.gather += [-0.35, 0, 0.2][level];
   }
 
   /** Called once per simulated second. */
