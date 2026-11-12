@@ -2,6 +2,7 @@
 // Run with `npm run voice-script` after changing src/sim/leaders.ts.
 import { writeFileSync } from 'node:fs';
 import { EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey } from '../src/sim/leaders.ts';
+import { CIVS } from '../src/sim/data.ts';
 
 let out = `# Voice script
 
@@ -18,7 +19,13 @@ This file is generated from \`src/sim/leaders.ts\`; edit the lines there and run
 `;
 let total = 0;
 for (const l of Object.values(LEADERS)) {
-  out += `\n## ${l.name} — ${l.title}\n\n**Direction:** ${l.voice}\n\n| File | When | Line |\n| --- | --- | --- |\n`;
+  out += `\n## ${CIVS[l.civ].name}: ${l.name} — ${l.title}\n\n**Direction:** ${l.voice}\n`;
+  if (l.alt) {
+    out += `\n**Or, as a ${l.alt.female ? 'woman' : 'man'}: ${l.alt.name} — ${l.alt.title}.** ${l.alt.voice} The same lines, except:\n\n`;
+    for (const ev of LEADER_EVENTS) (l.alt.lines[ev] ?? []).forEach((text, i) => { out += `- \`${lineKey(l.civ, ev, i)}\`: ${text}\n`; });
+    out += `\nPut a file named \`persona_${l.civ}.txt\` containing \`alt\` beside the recordings to have ${l.alt.name} lead in the game.\n`;
+  }
+  out += `\n| File | When | Line |\n| --- | --- | --- |\n`;
   for (const ev of LEADER_EVENTS) {
     l.lines[ev].forEach((text, i) => { out += `| \`${lineKey(l.civ, ev, i)}\` | ${EVENT_NOTES[ev]} | ${text} |\n`; total++; });
   }

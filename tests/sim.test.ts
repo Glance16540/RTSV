@@ -5,7 +5,7 @@ import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
-import { LEADERS, LEADER_EVENTS, lineKey, speechText } from '../src/sim/leaders';
+import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, personaLines, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { CIV_COLOR, CIV_IDS, CIVS, UNITS } from '../src/sim/data';
 import { ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
@@ -2232,5 +2232,34 @@ describe('the thirteen nations', () => {
     jp.factions[0].supplies = 20;
     raise(jp, 0, cap.id, 'infantry');
     expect(armyAt(jp, cap.id)!.vet).toBe(1);
+  });
+});
+
+describe('men and women as leaders', () => {
+  it('every nation but the Israelites offers a leader of each sex, and the game uses whichever is chosen', () => {
+    for (const id of CIV_IDS) {
+      const l = LEADERS[id];
+      if (id === 'dawn') { expect(l.female).toBe(false); expect(l.alt).toBeUndefined(); continue; }
+      expect(l.alt).toBeTruthy();
+      expect(l.alt!.female).toBe(!l.female);
+      expect(l.alt!.name).not.toBe(l.name);
+      // They speak every line; only the ones that name them differ.
+      const lines = personaLines(id, true);
+      for (const e of LEADER_EVENTS) expect(lines[e].length).toBe(2);
+      expect(lines.intro[0]).not.toBe(l.lines.intro[0]);
+      expect(lines.attack).toEqual(l.lines.attack);
+    }
+    expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(12);
+    expect(leaderOf('england')!.name).toBe('Earl Godric of Wessex');
+    setLeaderPersona('england', true);
+    expect(leaderOf('england')!.name).toBe('Countess Edith of Wessex');
+    expect(speechText({ civ: 'england', event: 'intro', index: 0 })).toContain('Edith');
+    expect(speechText({ civ: 'england', event: 'win', index: 0 })).toBe(LEADERS.england.lines.win[0]);
+    setLeaderPersona('england', false);
+    expect(speechText({ civ: 'england', event: 'intro', index: 0 })).toContain('Godric');
+    // The Israelites have one leader whatever is asked for.
+    setLeaderPersona('dawn', true);
+    expect(leaderOf('dawn')!.name).toBe('Eliab the Seer');
+    setLeaderPersona('dawn', false);
   });
 });

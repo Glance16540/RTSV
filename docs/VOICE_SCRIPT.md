@@ -11,9 +11,15 @@ Lines run two to six seconds. A portrait named `leader_<people>.png` in
 This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 `npm run voice-script`.
 
-## Consul Marcus Valerius Saxa — Consul of Rome
+## Romans: Consul Marcus Valerius Saxa — Consul of Rome
 
 **Direction:** Male, sixties. Deep, slow, gravelly. Never raises his voice; every word is laid like a foundation stone.
+
+**Or, as a woman: Augusta Livia Valeria Saxa — Augusta of Rome.** Female, fifties. Low, slow, patrician. Never raises her voice; every word is laid like a foundation stone. The same lines, except:
+
+- `stonekin_intro_1`: I am Livia Valeria. My fathers built these walls, and their fathers before them. Mind where you tread.
+
+Put a file named `persona_stonekin.txt` containing `alt` beside the recordings to have Augusta Livia Valeria Saxa lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -58,9 +64,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `stonekin_p_ageup_1` | As the player's own leader: a new age is reached | We have earned this, slowly, as we earn everything. |
 | `stonekin_p_ageup_2` | As the player's own leader: a new age is reached | A new age. See that we build it to last. |
 
-## Khatun Sarnai — Khatun of the Long Grass
+## Mongols: Khatun Sarnai — Khatun of the Long Grass
 
 **Direction:** Female, thirties. Quick, bright, amused. Speaks as if already riding away.
+
+**Or, as a man: Khan Temur — Khan of the Long Grass.** Male, thirties. Quick, bright, amused. Speaks as if already riding away. The same lines, except:
+
+- `steppe_intro_1`: I am Temur. Everything the wind touches is my road. You are standing on it.
+
+Put a file named `persona_steppe.txt` containing `alt` beside the recordings to have Khan Temur lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -105,9 +117,17 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `steppe_p_ageup_1` | As the player's own leader: a new age is reached | Faster. Always faster. I approve. |
 | `steppe_p_ageup_2` | As the player's own leader: a new age is reached | A new age, and we are first into it. |
 
-## Lady Aldegund of the Marches — Lady of the Franks
+## Franks: Lady Aldegund of the Marches — Lady of the Franks
 
 **Direction:** Female, fifties. Warm, unhurried, kind on the surface. The steel shows only when she is crossed.
+
+**Or, as a man: Count Odo of the Marches — Count of the Franks.** Male, sixties. Warm, unhurried, grandfatherly on the surface. The steel shows only when he is crossed. The same lines, except:
+
+- `hearth_intro_1`: Welcome, friend. I am Odo. There is room at our fire for those who come in peace.
+- `hearth_ally_1`: Then you are family, and we look after family.
+- `hearth_ally_2`: Pull up a chair, friend. Your enemies are ours now.
+
+Put a file named `persona_hearth.txt` containing `alt` beside the recordings to have Count Odo of the Marches lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -152,9 +172,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `hearth_p_ageup_1` | As the player's own leader: a new age is reached | Look how far we have come from that first fire. |
 | `hearth_p_ageup_2` | As the player's own leader: a new age is reached | A better world for the little ones. Good. |
 
-## Master Lu Wen — First Artificer of the Imperial Workshops
+## Chinese: Master Lu Wen — First Artificer of the Imperial Workshops
 
 **Direction:** Male, forties. Fast, precise, distracted. Sounds as though war is interrupting something more interesting.
+
+**Or, as a woman: Lady Shen Yue — First Artificer of the Imperial Workshops.** Female, forties. Fast, precise, distracted. Sounds as though war is interrupting something more interesting. The same lines, except:
+
+- `forge_intro_1`: Shen Yue. First Artificer. Yes, yes, a pleasure. Do not touch anything.
+
+Put a file named `persona_forge.txt` containing `alt` beside the recordings to have Lady Shen Yue lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -199,13 +225,13 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `forge_p_ageup_1` | As the player's own leader: a new age is reached | At last, proper tools. |
 | `forge_p_ageup_2` | As the player's own leader: a new age is reached | Progress. Throw out the old drawings. |
 
-## Hadassah the Seer — Judge over Israel
+## Israelites: Eliab the Seer — Judge over Israel
 
-**Direction:** Female, ageless. Calm, soft, certain. Speaks of the future in the past tense.
+**Direction:** Male, ageless. Calm, soft, certain. Speaks of the future in the past tense.
 
 | File | When | Line |
 | --- | --- | --- |
-| `dawn_intro_1` | First meeting on the campaign map | I am Hadassah. I have seen this meeting. You were taller in the vision. |
+| `dawn_intro_1` | First meeting on the campaign map | I am Eliab. I have seen this meeting. You were taller in the vision. |
 | `dawn_intro_2` | First meeting on the campaign map | The dawn showed me your face long ago. It did not show me how this ends for you. |
 | `dawn_attack_1` | Marching on the player's land | It is written. I am only turning the page. |
 | `dawn_attack_2` | Marching on the player's land | Do not be afraid. This has already happened. |
@@ -246,9 +272,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `dawn_p_ageup_1` | As the player's own leader: a new age is reached | A new light rises on our people. |
 | `dawn_p_ageup_2` | As the player's own leader: a new age is reached | The age turns. We turn with it. |
 
-## Jarl Hroth Wolf-Father — Jarl of the Northern Fjords
+## Norse: Jarl Hroth Wolf-Father — Jarl of the Northern Fjords
 
 **Direction:** Male, forties. Low, rough, close to a growl. Few words, long pauses. Laughs rarely and suddenly.
+
+**Or, as a woman: Jarl Sigrun Wolf-Mother — Jarl of the Northern Fjords.** Female, forties. Low, rough, close to a growl. Few words, long pauses. Laughs rarely and suddenly. The same lines, except:
+
+- `wild_intro_1`: Sigrun. The wolves know me. They will know you, soon.
+
+Put a file named `persona_wild.txt` containing `alt` beside the recordings to have Jarl Sigrun Wolf-Mother lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -293,9 +325,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `wild_p_ageup_1` | As the player's own leader: a new age is reached | We grow. Good. Stay hungry anyway. |
 | `wild_p_ageup_2` | As the player's own leader: a new age is reached | New claws. Use them. |
 
-## Pharaoh Khenemet — Lord of the Two Lands
+## Egyptians: Pharaoh Khenemet — Lord of the Two Lands
 
 **Direction:** Male, fifties. Measured, resonant, utterly assured. Speaks as if everything he says will be carved somewhere.
+
+**Or, as a woman: Pharaoh Merit-Neith — Lady of the Two Lands.** Female, fifties. Measured, resonant, utterly assured. Speaks as if everything she says will be carved somewhere. The same lines, except:
+
+- `egypt_intro_1`: I am Merit-Neith. The river rose for my fathers and it rises for me. What do you bring to it?
+
+Put a file named `persona_egypt.txt` containing `alt` beside the recordings to have Pharaoh Merit-Neith lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -340,9 +378,16 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `egypt_p_ageup_1` | As the player's own leader: a new age is reached | A new age of the kingdom. Let the builders rejoice. |
 | `egypt_p_ageup_2` | As the player's own leader: a new age is reached | We rise. Carefully, as one builds: level by level. |
 
-## King Nabu-Shar — King of Babylon, Keeper of the Law
+## Babylonians: King Nabu-Shar — King of Babylon, Keeper of the Law
 
 **Direction:** Male, sixties. Dry, exact, legal. Reads every sentence as though it were a clause; rarely amused, never hurried.
+
+**Or, as a woman: Queen Ninsuna — Queen of Babylon, Keeper of the Law.** Female, sixties. Dry, exact, legal. Reads every sentence as though it were a clause; rarely amused, never hurried. The same lines, except:
+
+- `babylon_intro_1`: Ninsuna, queen. State your name, your people and your business, in that order.
+- `babylon_eliminated_1`: Then let it be written that the law outlived the queen.
+
+Put a file named `persona_babylon.txt` containing `alt` beside the recordings to have Queen Ninsuna lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -387,9 +432,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `babylon_p_ageup_1` | As the player's own leader: a new age is reached | A new age. Let the scribes begin the new tablets. |
 | `babylon_p_ageup_2` | As the player's own leader: a new age is reached | We advance. Keep the old records; we shall want them. |
 
-## Shahbanu Roshanak — Queen of Kings
+## Persians: Shahbanu Roshanak — Queen of Kings
 
 **Direction:** Female, forties. Gracious, warm, expansive; a perfect host. The threat is always in what she offers, never in her tone.
+
+**Or, as a man: Shah Ardashir — King of Kings.** Male, forties. Gracious, warm, expansive; a perfect host. The threat is always in what he offers, never in his tone. The same lines, except:
+
+- `persia_intro_1`: I am Ardashir. Sit, be welcome. Half the world already eats at my table; there is room for you.
+
+Put a file named `persona_persia.txt` containing `alt` beside the recordings to have Shah Ardashir lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -434,9 +485,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `persia_p_ageup_1` | As the player's own leader: a new age is reached | A new age for all my peoples. Proclaim it. |
 | `persia_p_ageup_2` | As the player's own leader: a new age is reached | We advance. I should like the roads improved to match. |
 
-## Strategos Kallias — General of the League
+## Greeks: Strategos Kallias — General of the League
 
 **Direction:** Male, forties. Quick, argumentative, fond of his own wit. Cannot resist making a point even while losing.
+
+**Or, as a woman: Archon Xanthe — First Citizen of the League.** Female, forties. Quick, argumentative, fond of her own wit. Cannot resist making a point even while losing. The same lines, except:
+
+- `greece_intro_1`: Xanthe, elected to lead. Elected, mark you. And who chose you?
+
+Put a file named `persona_greece.txt` containing `alt` beside the recordings to have Archon Xanthe lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -481,9 +538,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `greece_p_ageup_1` | As the player's own leader: a new age is reached | A new age of the city. Let us use it better than the last. |
 | `greece_p_ageup_2` | As the player's own leader: a new age is reached | We advance. Someone write it all down this time. |
 
-## Earl Godric of Wessex — Earl and Marshal of the Realm
+## English: Earl Godric of Wessex — Earl and Marshal of the Realm
 
 **Direction:** Male, fifties. Dry, understated, unhurried. Describes catastrophes as inconveniences and victories as "not bad".
+
+**Or, as a woman: Countess Edith of Wessex — Countess and Marshal of the Realm.** Female, fifties. Dry, understated, unhurried. Describes catastrophes as inconveniences and victories as "not bad". The same lines, except:
+
+- `england_intro_1`: Edith. Countess of this and that. You will forgive me if I do not get up; the weather.
+
+Put a file named `persona_england.txt` containing `alt` beside the recordings to have Countess Edith of Wessex lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -528,9 +591,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `england_p_ageup_1` | As the player's own leader: a new age is reached | A new age. Let us hope it is drier than the last. |
 | `england_p_ageup_2` | As the player's own leader: a new age is reached | We move with the times. Reluctantly, but we move. |
 
-## Emir Rashid ibn Tariq — Emir of the Caravan Cities
+## Arabs: Emir Rashid ibn Tariq — Emir of the Caravan Cities
 
 **Direction:** Male, forties. Courteous, musical, patient: a merchant and a poet. Compliments you while he takes your measure.
+
+**Or, as a woman: Emira Zaynab bint Tariq — Emira of the Caravan Cities.** Female, forties. Courteous, musical, patient: a merchant and a poet. Compliments you while she takes your measure. The same lines, except:
+
+- `arabs_intro_1`: Peace upon you. I am Zaynab, daughter of Tariq. A guest has three days before I ask his business.
+
+Put a file named `persona_arabs.txt` containing `alt` beside the recordings to have Emira Zaynab bint Tariq lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |
@@ -575,9 +644,15 @@ This file is generated from `src/sim/leaders.ts`; edit the lines there and run
 | `arabs_p_ageup_1` | As the player's own leader: a new age is reached | A new age opens. Let us be worthy of it. |
 | `arabs_p_ageup_2` | As the player's own leader: a new age is reached | We advance. Build schools as well as walls. |
 
-## Lord Akiyama Tadanobu — Lord of the Eastern Provinces
+## Japanese: Lord Akiyama Tadanobu — Lord of the Eastern Provinces
 
 **Direction:** Male, fifties. Formal, quiet, very still. Short sentences with long silences; courtesy that never bends.
+
+**Or, as a woman: Lady Akiyama Tomoko — Lady of the Eastern Provinces.** Female, fifties. Formal, quiet, very still. Short sentences with long silences; courtesy that never bends. The same lines, except:
+
+- `japan_intro_1`: I am Akiyama Tomoko. You stand on my border. State your purpose.
+
+Put a file named `persona_japan.txt` containing `alt` beside the recordings to have Lady Akiyama Tomoko lead in the game.
 
 | File | When | Line |
 | --- | --- | --- |

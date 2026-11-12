@@ -24,5 +24,12 @@ if (existsSync(join(root, 'voice'))) {
     if (m && name) manifest.credits[m[1]] = name;
   }
 }
+manifest.personas = {};
+if (existsSync(join(root, 'voice'))) {
+  for (const file of readdirSync(join(root, 'voice')).sort()) {
+    const m = /^persona_([a-z]+)\.txt$/.exec(file);
+    if (m && readFileSync(join(root, 'voice', file), 'utf8').trim() === 'alt') manifest.personas[m[1]] = 'alt';
+  }
+}
 writeFileSync(join(root, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 console.log(`assets: ${Object.entries(manifest).map(([k, v]) => `${Object.keys(v).length} ${k}`).join(', ')}`);

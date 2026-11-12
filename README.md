@@ -268,6 +268,10 @@ self-contained file: they open it in a browser, pick a leader, record each line 
 microphone (listening back and redoing any they like), and download a single zip. Nothing is
 uploaded anywhere.
 
+Every nation but the Israelites offers two leaders, a man and a woman, who speak the same lines
+apart from the ones that name them. The booth lists both, and the zip records which was voiced, so
+the game is led by whichever leader your friend played.
+
 Unzip what they send back into `public/assets/voice/` and restart the game. The recordings play
 whenever those lines appear, and if they gave their name the leader is shown as "voiced by" them.
 Run `npm run voice-booth` to regenerate the page after changing any lines.

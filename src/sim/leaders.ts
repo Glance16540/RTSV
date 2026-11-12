@@ -51,20 +51,31 @@ export const EVENT_NOTES: Record<LeaderEvent, string> = {
   p_ageup: 'As the player\'s own leader: a new age is reached',
 };
 
-export interface Leader {
-  civ: string;
+/** Who a nation's leader is: the name, the face and how the part is played. */
+export interface Persona {
   name: string;
   title: string;
   icon: string;
+  female: boolean;
   /** Direction for whoever voices the part. */
   voice: string;
+}
+
+export interface Leader extends Persona {
+  civ: string;
   lines: Record<LeaderEvent, string[]>;
+  /**
+   * The same leader as a person of the other sex, where a nation has one, so that more people can voice it. They speak
+   * the same lines, except the first line of any event given here (lines that name the leader).
+   */
+  alt?: Persona & { lines: Partial<Record<LeaderEvent, string[]>> };
 }
 
 export const LEADERS: Record<string, Leader> = {
   stonekin: {
-    civ: 'stonekin', name: 'Consul Marcus Valerius Saxa', title: 'Consul of Rome', icon: '🧔',
+    civ: 'stonekin', female: false, name: 'Consul Marcus Valerius Saxa', title: 'Consul of Rome', icon: '🧔',
     voice: 'Male, sixties. Deep, slow, gravelly. Never raises his voice; every word is laid like a foundation stone.',
+    alt: { name: "Augusta Livia Valeria Saxa", title: "Augusta of Rome", icon: '👩', female: true, voice: "Female, fifties. Low, slow, patrician. Never raises her voice; every word is laid like a foundation stone.", lines: {"intro": ["I am Livia Valeria. My fathers built these walls, and their fathers before them. Mind where you tread."]} },
     lines: {
       intro: ['I am Marcus Valerius. My fathers built these walls, and their fathers before them. Mind where you tread.', 'Stone remembers, stranger. Give it something good to remember you by.'],
       attack: ['I do not hurry to war. But I have arrived.', 'You built on ground that was not yours. I have come to correct it.'],
@@ -89,8 +100,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   steppe: {
-    civ: 'steppe', name: 'Khatun Sarnai', title: 'Khatun of the Long Grass', icon: '👸',
+    civ: 'steppe', female: true, name: 'Khatun Sarnai', title: 'Khatun of the Long Grass', icon: '👸',
     voice: 'Female, thirties. Quick, bright, amused. Speaks as if already riding away.',
+    alt: { name: "Khan Temur", title: "Khan of the Long Grass", icon: '🧔🏻', female: false, voice: "Male, thirties. Quick, bright, amused. Speaks as if already riding away.", lines: {"intro": ["I am Temur. Everything the wind touches is my road. You are standing on it."]} },
     lines: {
       intro: ['I am Sarnai. Everything the wind touches is my road. You are standing on it.', 'New faces! I do hope you ride better than the last ones.'],
       attack: ['Did you hear hooves? No? You will.', 'I was passing, and your fields looked so unguarded.'],
@@ -115,8 +127,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   hearth: {
-    civ: 'hearth', name: 'Lady Aldegund of the Marches', title: 'Lady of the Franks', icon: '👵',
+    civ: 'hearth', female: true, name: 'Lady Aldegund of the Marches', title: 'Lady of the Franks', icon: '👵',
     voice: 'Female, fifties. Warm, unhurried, kind on the surface. The steel shows only when she is crossed.',
+    alt: { name: "Count Odo of the Marches", title: "Count of the Franks", icon: '👴', female: false, voice: "Male, sixties. Warm, unhurried, grandfatherly on the surface. The steel shows only when he is crossed.", lines: {"intro": ["Welcome, friend. I am Odo. There is room at our fire for those who come in peace."], "ally": ["Then you are family, and we look after family.", "Pull up a chair, friend. Your enemies are ours now."]} },
     lines: {
       intro: ['Welcome, dear. I am Aldegund. There is room at our fire for those who come in peace.', 'Sit, eat. And then tell me honestly what you want with my valley.'],
       attack: ['I did not want this. But my children need the land, and you have it.', 'Every one of these is somebody\'s son. See that you make it worth his while.'],
@@ -141,8 +154,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   forge: {
-    civ: 'forge', name: 'Master Lu Wen', title: 'First Artificer of the Imperial Workshops', icon: '🧑‍🔬',
+    civ: 'forge', female: false, name: 'Master Lu Wen', title: 'First Artificer of the Imperial Workshops', icon: '🧑‍🔬',
     voice: 'Male, forties. Fast, precise, distracted. Sounds as though war is interrupting something more interesting.',
+    alt: { name: "Lady Shen Yue", title: "First Artificer of the Imperial Workshops", icon: '👩‍🔬', female: true, voice: "Female, forties. Fast, precise, distracted. Sounds as though war is interrupting something more interesting.", lines: {"intro": ["Shen Yue. First Artificer. Yes, yes, a pleasure. Do not touch anything."]} },
     lines: {
       intro: ['Lu Wen. First Artificer. Yes, yes, a pleasure. Do not touch anything.', 'Ah, neighbours. I had calculated you would arrive later. No matter.'],
       attack: ['I need your hills for the ore. Nothing personal. Stand clear of the engines.', 'This is a field test. You are the field.'],
@@ -167,10 +181,10 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   dawn: {
-    civ: 'dawn', name: 'Hadassah the Seer', title: 'Judge over Israel', icon: '🧕',
-    voice: 'Female, ageless. Calm, soft, certain. Speaks of the future in the past tense.',
+    civ: 'dawn', female: false, name: 'Eliab the Seer', title: 'Judge over Israel', icon: '🧔🏽‍♂️',
+    voice: 'Male, ageless. Calm, soft, certain. Speaks of the future in the past tense.',
     lines: {
-      intro: ['I am Hadassah. I have seen this meeting. You were taller in the vision.', 'The dawn showed me your face long ago. It did not show me how this ends for you.'],
+      intro: ['I am Eliab. I have seen this meeting. You were taller in the vision.', 'The dawn showed me your face long ago. It did not show me how this ends for you.'],
       attack: ['It is written. I am only turning the page.', 'Do not be afraid. This has already happened.'],
       defend: ['You come to put out the sun with spears. I pity you.', 'I watched you arrive in a dream. I watched you leave, too. Fewer.'],
       win: ['As it was shown.', 'Take comfort. You could not have done otherwise.'],
@@ -193,8 +207,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   wild: {
-    civ: 'wild', name: 'Jarl Hroth Wolf-Father', title: 'Jarl of the Northern Fjords', icon: '🧔‍♂️',
+    civ: 'wild', female: false, name: 'Jarl Hroth Wolf-Father', title: 'Jarl of the Northern Fjords', icon: '🧔‍♂️',
     voice: 'Male, forties. Low, rough, close to a growl. Few words, long pauses. Laughs rarely and suddenly.',
+    alt: { name: "Jarl Sigrun Wolf-Mother", title: "Jarl of the Northern Fjords", icon: '👩‍🦰', female: true, voice: "Female, forties. Low, rough, close to a growl. Few words, long pauses. Laughs rarely and suddenly.", lines: {"intro": ["Sigrun. The wolves know me. They will know you, soon."]} },
     lines: {
       intro: ['Hroth. The wolves know me. They will know you, soon.', 'You smell of smoke and fences. This is not that kind of country.'],
       attack: ['The pack is hungry. You are near.', 'I gave you a season to leave. The season is over.'],
@@ -219,8 +234,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   egypt: {
-    civ: 'egypt', name: "Pharaoh Khenemet", title: "Lord of the Two Lands", icon: '👑',
+    civ: 'egypt', female: false, name: "Pharaoh Khenemet", title: "Lord of the Two Lands", icon: '👑',
     voice: "Male, fifties. Measured, resonant, utterly assured. Speaks as if everything he says will be carved somewhere.",
+    alt: { name: "Pharaoh Merit-Neith", title: "Lady of the Two Lands", icon: '👸🏾', female: true, voice: "Female, fifties. Measured, resonant, utterly assured. Speaks as if everything she says will be carved somewhere.", lines: {"intro": ["I am Merit-Neith. The river rose for my fathers and it rises for me. What do you bring to it?"]} },
     lines: {
       intro: ["I am Khenemet. The river rose for my fathers and it rises for me. What do you bring to it?", "A stranger. Come no nearer than the shade; we will speak from there."],
       attack: ["The river does not hurry, and it drowns whole towns. I have come as the river comes.", "You have lived well on my border. That is over."],
@@ -245,8 +261,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   babylon: {
-    civ: 'babylon', name: "King Nabu-Shar", title: "King of Babylon, Keeper of the Law", icon: '🧔🏽',
+    civ: 'babylon', female: false, name: "King Nabu-Shar", title: "King of Babylon, Keeper of the Law", icon: '🧔🏽',
     voice: "Male, sixties. Dry, exact, legal. Reads every sentence as though it were a clause; rarely amused, never hurried.",
+    alt: { name: "Queen Ninsuna", title: "Queen of Babylon, Keeper of the Law", icon: '👩🏽', female: true, voice: "Female, sixties. Dry, exact, legal. Reads every sentence as though it were a clause; rarely amused, never hurried.", lines: {"intro": ["Ninsuna, queen. State your name, your people and your business, in that order."], "eliminated": ["Then let it be written that the law outlived the queen."]} },
     lines: {
       intro: ["Nabu-Shar, king. State your name, your people and your business, in that order.", "You are new. The law here is written at the gate. Read it before you speak."],
       attack: ["You were given notice. This is the consequence set down for it.", "By the forty-first article I am entitled to your city. I have come to collect."],
@@ -271,8 +288,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   persia: {
-    civ: 'persia', name: "Shahbanu Roshanak", title: "Queen of Kings", icon: '👸🏽',
+    civ: 'persia', female: true, name: "Shahbanu Roshanak", title: "Queen of Kings", icon: '👸🏽',
     voice: "Female, forties. Gracious, warm, expansive; a perfect host. The threat is always in what she offers, never in her tone.",
+    alt: { name: "Shah Ardashir", title: "King of Kings", icon: '🤴🏽', female: false, voice: "Male, forties. Gracious, warm, expansive; a perfect host. The threat is always in what he offers, never in his tone.", lines: {"intro": ["I am Ardashir. Sit, be welcome. Half the world already eats at my table; there is room for you."]} },
     lines: {
       intro: ["I am Roshanak. Sit, be welcome. Half the world already eats at my table; there is room for you.", "A new guest! Bring them water and shade, and then tell me who they are."],
       attack: ["I asked so politely. Now I must come in person, and I do not travel light.", "My armies are so many that I have never seen them all. You are about to."],
@@ -297,8 +315,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   greece: {
-    civ: 'greece', name: "Strategos Kallias", title: "General of the League", icon: '🧔🏻',
+    civ: 'greece', female: false, name: "Strategos Kallias", title: "General of the League", icon: '🧔🏻',
     voice: "Male, forties. Quick, argumentative, fond of his own wit. Cannot resist making a point even while losing.",
+    alt: { name: "Archon Xanthe", title: "First Citizen of the League", icon: '👩🏻', female: true, voice: "Female, forties. Quick, argumentative, fond of her own wit. Cannot resist making a point even while losing.", lines: {"intro": ["Xanthe, elected to lead. Elected, mark you. And who chose you?"]} },
     lines: {
       intro: ["Kallias, elected general. Elected, mark you. And who chose you?", "Ah, a stranger. Good. We had run out of people to argue with."],
       attack: ["We debated this for three days. The vote was for war. Narrowly.", "I come with ten thousand free men. That is a different thing from ten thousand soldiers."],
@@ -323,8 +342,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   england: {
-    civ: 'england', name: "Earl Godric of Wessex", title: "Earl and Marshal of the Realm", icon: '🧔🏼',
+    civ: 'england', female: false, name: "Earl Godric of Wessex", title: "Earl and Marshal of the Realm", icon: '🧔🏼',
     voice: "Male, fifties. Dry, understated, unhurried. Describes catastrophes as inconveniences and victories as \"not bad\".",
+    alt: { name: "Countess Edith of Wessex", title: "Countess and Marshal of the Realm", icon: '👩🏼', female: true, voice: "Female, fifties. Dry, understated, unhurried. Describes catastrophes as inconveniences and victories as \"not bad\".", lines: {"intro": ["Edith. Countess of this and that. You will forgive me if I do not get up; the weather."]} },
     lines: {
       intro: ["Godric. Earl of this and that. You will forgive me if I do not get up; the weather.", "New neighbours. Well. I suppose we had better be civil about it."],
       attack: ["I am afraid it has come to blows. I did write.", "We have come over to settle the matter. It should not take long."],
@@ -349,8 +369,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   arabs: {
-    civ: 'arabs', name: "Emir Rashid ibn Tariq", title: "Emir of the Caravan Cities", icon: '👳🏽‍♂️',
+    civ: 'arabs', female: false, name: "Emir Rashid ibn Tariq", title: "Emir of the Caravan Cities", icon: '👳🏽‍♂️',
     voice: "Male, forties. Courteous, musical, patient: a merchant and a poet. Compliments you while he takes your measure.",
+    alt: { name: "Emira Zaynab bint Tariq", title: "Emira of the Caravan Cities", icon: '🧕🏽', female: true, voice: "Female, forties. Courteous, musical, patient: a merchant and a poet. Compliments you while she takes your measure.", lines: {"intro": ["Peace upon you. I am Zaynab, daughter of Tariq. A guest has three days before I ask his business."]} },
     lines: {
       intro: ["Peace upon you. I am Rashid, son of Tariq. A guest has three days before I ask his business.", "A stranger on the road. Come, there is coffee, and then we shall see what kind of man you are."],
       attack: ["I offered trade and you chose otherwise. I am sorry for it.", "The desert teaches patience. Mine is finished."],
@@ -375,8 +396,9 @@ export const LEADERS: Record<string, Leader> = {
     },
   },
   japan: {
-    civ: 'japan', name: "Lord Akiyama Tadanobu", title: "Lord of the Eastern Provinces", icon: '🧑🏻',
+    civ: 'japan', female: false, name: "Lord Akiyama Tadanobu", title: "Lord of the Eastern Provinces", icon: '🧑🏻',
     voice: "Male, fifties. Formal, quiet, very still. Short sentences with long silences; courtesy that never bends.",
+    alt: { name: "Lady Akiyama Tomoko", title: "Lady of the Eastern Provinces", icon: '👩🏻‍🦱', female: true, voice: "Female, fifties. Formal, quiet, very still. Short sentences with long silences; courtesy that never bends.", lines: {"intro": ["I am Akiyama Tomoko. You stand on my border. State your purpose."]} },
     lines: {
       intro: ["I am Akiyama Tadanobu. You stand on my border. State your purpose.", "A visitor. You are received. Do not mistake courtesy for welcome."],
       attack: ["I have given this thought. I am here. There is nothing more to say.", "The blossom falls when it is time. It is time."],
@@ -406,4 +428,29 @@ export const LEADERS: Record<string, Leader> = {
 export const lineKey = (civ: string, event: LeaderEvent, index: number): string => `${civ}_${event}_${index + 1}`;
 
 export interface Speech { civ: string; event: LeaderEvent; index: number }
-export const speechText = (s: Speech): string => LEADERS[s.civ]?.lines[s.event][s.index] ?? '';
+
+/** Nations whose leader is played by the second persona (set from the recordings that are installed). */
+const useAlt = new Set<string>();
+export function setLeaderPersona(civ: string, alt: boolean): void {
+  if (alt) useAlt.add(civ); else useAlt.delete(civ);
+}
+/** The lines a persona speaks: the nation's lines, with their own versions of the ones that name them. */
+export function personaLines(civ: string, alt: boolean): Record<LeaderEvent, string[]> {
+  const l = LEADERS[civ];
+  if (!alt || !l.alt) return l.lines;
+  const out = { ...l.lines };
+  for (const ev of LEADER_EVENTS) {
+    const own = l.alt.lines[ev];
+    if (own) out[ev] = l.lines[ev].map((line, i) => own[i] ?? line);
+  }
+  return out;
+}
+/** The leader of a nation as they appear in this game: the first persona unless the second has been chosen. */
+export function leaderOf(civ: string): (Persona & { civ: string; lines: Record<LeaderEvent, string[]> }) | undefined {
+  const l = LEADERS[civ];
+  if (!l) return undefined;
+  if (!useAlt.has(civ) || !l.alt) return l;
+  const { lines: _own, ...who } = l.alt;
+  return { ...who, civ, lines: personaLines(civ, true) };
+}
+export const speechText = (s: Speech): string => leaderOf(s.civ)?.lines[s.event][s.index] ?? '';

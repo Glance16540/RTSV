@@ -1,7 +1,7 @@
 // Leaders speaking: the words on screen, and the recording of them once one exists.
 
 import { CIV_COLOR, CIVS } from '../sim/data';
-import { LEADERS, Speech, lineKey, speechText } from '../sim/leaders';
+import { Speech, leaderOf, lineKey, speechText } from '../sim/leaders';
 import { ico, voiceCredit, voiceUrl } from './assets';
 import { sfx } from './sfx';
 
@@ -18,7 +18,7 @@ export function playLine(s: Speech): void {
 
 /** A leader's portrait, name and line as HTML. A portrait image named `leader_<civ>` replaces the emoji. */
 export function speechHtml(s: Speech): string {
-  const l = LEADERS[s.civ];
+  const l = leaderOf(s.civ);
   if (!l) return '';
   const color = '#' + CIV_COLOR[s.civ].toString(16).padStart(6, '0');
   return `<div class="speech"><span class="portrait" style="border-color:${color}">${ico('leader_' + s.civ, l.icon)}</span>` +

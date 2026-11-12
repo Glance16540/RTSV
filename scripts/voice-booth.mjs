@@ -2,13 +2,17 @@
 // They pick a leader, record each line with their microphone, and download a zip of recordings
 // named exactly as the game expects. Run with `npm run voice-booth` after changing the lines.
 import { writeFileSync } from 'node:fs';
-import { EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey } from '../src/sim/leaders.ts';
+import { EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
 import { CIVS, CIV_COLOR } from '../src/sim/data.ts';
 
-const leaders = Object.values(LEADERS).map((l) => ({
-  civ: l.civ, nation: CIVS[l.civ].name, icon: l.icon, name: l.name, title: l.title, voice: l.voice,
-  color: '#' + CIV_COLOR[l.civ].toString(16).padStart(6, '0'),
-  lines: LEADER_EVENTS.flatMap((ev) => l.lines[ev].map((text, i) => ({ key: lineKey(l.civ, ev, i), when: EVENT_NOTES[ev], text }))),
+// Most nations can be led by a man or by a woman: both are offered, and the recordings say which was voiced.
+const leaders = Object.values(LEADERS).flatMap((l) => [[l, false], ...(l.alt ? [[l.alt, true]] : [])].map(([who, alt]) => {
+  const lines = personaLines(l.civ, alt);
+  return {
+    civ: l.civ, persona: alt ? 'alt' : 'main', nation: CIVS[l.civ].name, icon: who.icon, name: who.name, title: who.title, voice: who.voice, female: who.female,
+    color: '#' + CIV_COLOR[l.civ].toString(16).padStart(6, '0'),
+    lines: LEADER_EVENTS.flatMap((ev) => lines[ev].map((text, i) => ({ key: lineKey(l.civ, ev, i), when: EVENT_NOTES[ev], text }))),
+  };
 }));
 
 const page = `<!doctype html>
@@ -56,7 +60,7 @@ const page = `<!doctype html>
   <section id="choose">
     <p>You have been asked to voice a leader in the game. It takes about fifteen minutes.</p>
     <ol>
-      <li>Pick your leader below.</li>
+      <li>Pick your leader below. Most nations can be led by a man or by a woman; choose whichever you will voice.</li>
       <li>Read each line aloud and record it. You can listen back and redo any line.</li>
       <li>Press <b>Download my recordings</b> and send that one file back to whoever invited you.</li>
     </ol>
@@ -97,7 +101,7 @@ for (const l of LEADERS) {
   b.style.borderLeftColor = l.color;
   b.innerHTML = '<span class="face">' + l.icon + '</span><span><b></b><small></small></span>';
   b.querySelector('b').textContent = l.name;
-  b.querySelector('small').textContent = l.nation + ' · ' + l.lines.length + ' lines';
+  b.querySelector('small').textContent = l.nation + ' · ' + (l.female ? 'a woman' : 'a man') + ' · ' + l.lines.length + ' lines';
   b.addEventListener('click', () => open(l));
   $('leaders').appendChild(b);
 }
@@ -244,9 +248,11 @@ $('save').addEventListener('click', () => {
     takes.size + ' of ' + leader.lines.length + ' lines.\\n\\nTo use them: copy every file in this folder into public/assets/voice/ in the game and restart it.\\n';
   files.push({ name: 'README.txt', data: new TextEncoder().encode(readme) });
   if (who) files.push({ name: 'credit_' + leader.civ + '.txt', data: new TextEncoder().encode(who) });
+  // Tells the game which of the nation's two leaders these recordings are of.
+  files.push({ name: 'persona_' + leader.civ + '.txt', data: new TextEncoder().encode(leader.persona) });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(zip(files));
-  a.download = 'voice-' + leader.civ + (who ? '-' + who.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : '') + '.zip';
+  a.download = 'voice-' + leader.civ + (leader.persona === 'alt' ? '-alt' : '') + (who ? '-' + who.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : '') + '.zip';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -258,4 +264,4 @@ window.addEventListener('beforeunload', (e) => { if (takes.size) { e.preventDefa
 </html>
 `;
 writeFileSync('docs/voice-booth.html', page);
-console.log(`voice booth: ${leaders.length} leaders, ${leaders.reduce((n, l) => n + l.lines.length, 0)} lines`);
+console.log(`voice booth: ${leaders.length} leaders to choose from, ${leaders.reduce((n, l) => n + l.lines.length, 0)} lines`);
