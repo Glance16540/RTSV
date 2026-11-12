@@ -10,7 +10,7 @@ const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[] }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string }
 interface Floater { x: number; y: number; text: string; t: number }
 interface Ping { mesh: THREE.Mesh; t: number }
 
@@ -340,8 +340,13 @@ export class Renderer {
 
   private syncUnit(u: Unit, alpha: number, dt: number): void {
     let v = this.unitViews.get(u.id);
+    if (v && v.type !== u.type) {
+      // Re-equipped by an upgrade: swap the model.
+      this.scene.remove(v.g);
+      v = undefined;
+    }
     if (!v) {
-      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id), phase: (u.id * 1.7) % 6.28, legs: [] };
+      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type };
       v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
       this.unitViews.set(u.id, v);
       this.scene.add(v.g);
@@ -466,8 +471,8 @@ export class Renderer {
       const m = this.shots[i];
       const total = Math.hypot(p.tx - p.sx, p.ty - p.sy) || 1;
       const t = Math.min(1, Math.hypot(p.x - p.sx, p.y - p.sy) / total);
-      const arc = p.kind === 'boulder' ? total * 0.3 : total * 0.08;
-      const big = p.kind === 'boulder' ? 5 : p.kind === 'stone' ? 2 : 1;
+      const arc = p.kind === 'boulder' ? total * 0.3 : p.kind === 'shot' ? 0 : total * 0.08;
+      const big = p.kind === 'boulder' ? 5 : p.kind === 'stone' ? 2 : p.kind === 'shot' ? 1.4 : 1;
       m.scale.set(big, big, p.kind === 'arrow' ? 1 : 0.1 * big);
       m.position.set(p.x, 0.8 + Math.sin(t * Math.PI) * arc, p.y);
       m.lookAt(p.tx, 0.8 + Math.cos(t * Math.PI) * arc * -2, p.ty);

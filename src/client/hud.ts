@@ -1,7 +1,7 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import {
-  ABILITIES, AGES, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE,
+  ABILITIES, AGES, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
@@ -228,7 +228,8 @@ export class Hud {
     /** Send the order to the selected building with the shortest queue. */
     const least = () => same.slice().sort((x, y) => x.queue.length - y.queue.length)[0];
 
-    for (const type of b.def.trains) {
+    // Upgraded types are trained in place of the ones they replaced, so list each result once.
+    for (const type of [...new Set(b.def.trains.map((t) => game.trainedAs(pid, t)))]) {
       const d = UNITS[type];
       const locked = d.age > p.age ? `Requires the ${AGES[d.age].name}.` : undefined;
       if (type === 'villager') {
@@ -369,7 +370,9 @@ export class Hud {
       const morale = game.moraleAt(e.owner, e.x, e.y);
       if (morale > 0) extra += `<div class="good">🏠 Home morale: takes ${Math.round(morale * 100)}% less damage</div>`;
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
-      const name = (e.growT > 0 ? 'Child' : d.name) + (e.gender ? ` ${GENDER[e.gender]}` : '');
+      if (e.trait) extra = `<div class="good">${VILLAGER_TRAITS[e.trait].icon} ${VILLAGER_TRAITS[e.trait].name}: ${VILLAGER_TRAITS[e.trait].desc}</div>` + extra;
+      const role = (e.growT > 0 ? 'Child' : d.name) + (e.gender ? ` ${GENDER[e.gender]}` : '');
+      const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
       return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>
         <div class="stat">⚔ ${d.atk + (mil ? mods.atk : 0)} · 🛡 ${d.armor + (mil ? mods.armor : 0)}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
@@ -387,7 +390,9 @@ export class Hud {
       }
       if (b.type === 'house') {
         const r = b.residents;
-        body += `<div class="family"><span class="${r.m ? 'in m' : ''}">♂ ${r.m ? 'Man' : 'empty'}</span><span class="${r.f ? 'in f' : ''}">♀ ${r.f ? 'Woman' : 'empty'}</span></div>`;
+        const nameOf = (id: number) => { const u = game.entities.get(id); return u && u.kind === 'unit' ? u.name + (u.trait ? ' ' + VILLAGER_TRAITS[u.trait].icon : '') : ''; };
+        body += `<div class="family"><span class="${r.m ? 'in m' : ''}">♂ ${nameOf(r.m) || 'empty'}</span><span class="${r.f ? 'in f' : ''}">♀ ${nameOf(r.f) || 'empty'}</span></div>`;
+        if (b.family) body += `<div>The ${b.family} family</div>`;
         if (r.m && r.f) {
           body += b.birthsPaused ? '<div>Not raising children (paused)</div>'
             : `<div>Raising a child${b.children ? ` · ${b.children} raised` : ''}</div>${this.bar(b.birthProgress, 'love')}` +

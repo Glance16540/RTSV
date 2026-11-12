@@ -3,14 +3,15 @@
 import { ABILITIES, AGES, BUILDINGS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
 
-const VILLAGER_TARGET = [16, 26, 34, 40];
-const AGE_VILLAGERS = [12, 18, 24];
-const ARMY_TARGET = [4, 10, 18, 26];
+const VILLAGER_TARGET = [16, 26, 34, 40, 44];
+const AGE_VILLAGERS = [12, 18, 24, 30];
+const ARMY_TARGET = [4, 10, 18, 26, 32];
 const ARMY_MIX: string[][] = [
   ['clubman', 'clubman', 'slinger'],
   ['spearman', 'bowman', 'rider', 'bowman', 'spearman', 'mammoth', 'shaman'],
   ['swordsman', 'bowman', 'rider', 'prophet', 'swordsman', 'catapult', 'mammoth', 'shaman', 'spearman'],
   ['swordsman', 'crossbowman', 'knight', 'prophet', 'crossbowman', 'catapult', 'knight', 'shaman', 'spearman', 'bowman'],
+  ['musketeer', 'knight', 'bombard', 'prophet', 'musketeer', 'swordsman', 'knight', 'shaman', 'spearman', 'bowman'],
 ];
 const BUILD_ORDER: { type: string; age: number; villagers: number; count: number }[] = [
   { type: 'barracks', age: 0, villagers: 8, count: 1 },

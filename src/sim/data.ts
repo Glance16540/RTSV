@@ -27,6 +27,7 @@ export const AGES: AgeDef[] = [
   { name: 'Bronze Age', cost: { food: 400, wood: 200 }, time: 45 },
   { name: 'Iron Age', cost: { food: 700, gold: 350 }, time: 60 },
   { name: 'Middle Ages', cost: { food: 1000, gold: 650, stone: 250 }, time: 75 },
+  { name: 'Gunpowder Age', cost: { food: 1400, gold: 1000, stone: 400 }, time: 90 },
 ];
 
 /** Per-player modifiers changed by technologies. */
@@ -81,7 +82,7 @@ export interface UnitDef {
   auraRange?: number;
   /** Max simultaneously alive per player. */
   limit?: number;
-  projectile?: 'arrow' | 'stone' | 'boulder';
+  projectile?: 'arrow' | 'stone' | 'boulder' | 'shot';
   /** Harmless wild animal: never targeted automatically. */
   docile?: boolean;
   /** Maximum faith, spent on calamities (prophets). */
@@ -146,6 +147,19 @@ export const UNITS: Record<string, UnitDef> = {
     cost: { food: 40, gold: 45 }, time: 18, age: 3, hp: 58, atk: 13, armor: 1, range: 7.5, speed: 2.1,
     cooldown: 2.1, sight: 10, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'arrow',
     bonus: { infantry: 1.3 },
+  }),
+  musketeer: U({
+    id: 'musketeer', name: 'Musketeer', icon: '🔫',
+    desc: 'Gunpowder infantry. Slow to reload, but each shot hits hard at range.',
+    cost: { food: 50, gold: 60 }, time: 20, age: 4, hp: 70, atk: 24, armor: 1, range: 7.5, speed: 2.0,
+    cooldown: 3.2, sight: 10, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'shot',
+  }),
+  bombard: U({
+    id: 'bombard', name: 'Bombard', icon: '💣',
+    desc: 'Gunpowder siege gun. Outranges everything and levels buildings. Helpless up close.',
+    cost: { wood: 200, gold: 220 }, time: 38, age: 4, hp: 110, atk: 70, armor: 2, range: 11.5, minRange: 3,
+    speed: 1.1, cooldown: 6, sight: 12, pop: 3, cls: 'siege', radius: 0.5, splash: 1.6,
+    projectile: 'boulder', bonus: { building: 3.5 },
   }),
   rider: U({
     id: 'rider', name: 'Scout Rider', icon: '🐎',
@@ -254,19 +268,19 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'barracks', name: 'Barracks', icon: '🗡️',
     desc: 'Trains infantry.',
     cost: { wood: 120 }, time: 28, age: 0, hp: 1000, size: 3, pop: 0, sight: 6,
-    trains: ['clubman', 'slinger', 'spearman', 'swordsman'], techs: [],
+    trains: ['clubman', 'slinger', 'spearman', 'swordsman'], techs: ['up_bowman', 'up_swordsman'],
   }),
   range: B({
     id: 'range', name: 'Archery Range', icon: '🏹',
     desc: 'Trains archers.',
     cost: { wood: 140 }, time: 28, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['bowman', 'crossbowman'], techs: [],
+    trains: ['bowman', 'crossbowman', 'musketeer'], techs: ['up_crossbow', 'up_musket'],
   }),
   stable: B({
     id: 'stable', name: 'Stable', icon: '🐴',
     desc: 'Trains cavalry and war beasts.',
     cost: { wood: 150 }, time: 30, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['rider', 'mammoth', 'knight'], techs: [],
+    trains: ['rider', 'mammoth', 'knight'], techs: ['up_knight'],
   }),
   temple: B({
     id: 'temple', name: 'Temple', icon: '⛩️',
@@ -284,7 +298,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'workshop', name: 'Siege Workshop', icon: '🛠️',
     desc: 'Builds siege engines.',
     cost: { wood: 180, gold: 80 }, time: 34, age: 2, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['catapult'], techs: [],
+    trains: ['catapult', 'bombard'], techs: ['up_bombard'],
   }),
   wonder: B({
     id: 'wonder', name: 'Wonder', icon: '🗿',
@@ -342,6 +356,8 @@ export interface TechDef {
   time: number;
   age: number;
   requires?: string;
+  /** Re-equips every unit of the first type as the second, now and in future training. */
+  upgrade?: [string, string];
   apply: (m: Mods) => void;
 }
 
@@ -400,6 +416,30 @@ export const TECHS: Record<string, TechDef> = {
     id: 'ballistics', name: 'Fortified Arrows', icon: '🏰', desc: 'Towers and Town Centers +4 attack.',
     cost: { wood: 150, stone: 100 }, time: 35, age: 2, apply: (m) => { m.towerAtk += 4; },
   }),
+  up_bowman: T({
+    id: 'up_bowman', name: 'Bows for Slingers', icon: '🏹', desc: 'All Slingers become Bowmen, and Slingers are trained as Bowmen from now on.',
+    cost: { food: 120, wood: 100 }, time: 30, age: 1, upgrade: ['slinger', 'bowman'], apply: () => {},
+  }),
+  up_swordsman: T({
+    id: 'up_swordsman', name: 'Swords for Clubmen', icon: '⚔️', desc: 'All Clubmen become Swordsmen, and Clubmen are trained as Swordsmen from now on.',
+    cost: { food: 200, gold: 120 }, time: 40, age: 2, upgrade: ['clubman', 'swordsman'], apply: () => {},
+  }),
+  up_crossbow: T({
+    id: 'up_crossbow', name: 'Crossbows', icon: '🎯', desc: 'All Bowmen become Crossbowmen.',
+    cost: { food: 250, gold: 200 }, time: 45, age: 3, upgrade: ['bowman', 'crossbowman'], apply: () => {},
+  }),
+  up_knight: T({
+    id: 'up_knight', name: 'Knighthood', icon: '🛡️', desc: 'All Scout Riders become Knights.',
+    cost: { food: 300, gold: 250 }, time: 50, age: 3, upgrade: ['rider', 'knight'], apply: () => {},
+  }),
+  up_musket: T({
+    id: 'up_musket', name: 'Matchlocks', icon: '🔫', desc: 'All Crossbowmen become Musketeers.',
+    cost: { food: 350, gold: 300 }, time: 55, age: 4, upgrade: ['crossbowman', 'musketeer'], apply: () => {},
+  }),
+  up_bombard: T({
+    id: 'up_bombard', name: 'Cannon Founding', icon: '💣', desc: 'All Catapults become Bombards.',
+    cost: { wood: 300, gold: 300 }, time: 55, age: 4, upgrade: ['catapult', 'bombard'], apply: () => {},
+  }),
 };
 
 export interface AbilityDef { id: string; name: string; icon: string; desc: string; cost: number; radius: number }
@@ -413,6 +453,18 @@ export const ABILITIES: Record<string, AbilityDef> = {
     desc: 'The ground shakes for 5 seconds, heavily damaging enemy buildings in the area.',
   },
 };
+
+/** Traits a villager can be born with. Children tend to inherit one from a parent. */
+export interface VillagerTrait { name: string; icon: string; desc: string }
+export const VILLAGER_TRAITS: Record<string, VillagerTrait> = {
+  strong: { name: 'Strong', icon: '💪', desc: 'Gathers 25% faster.' },
+  swift: { name: 'Swift', icon: '🏃', desc: 'Moves 20% faster.' },
+  hardy: { name: 'Hardy', icon: '❤️', desc: 'Has 50% more health.' },
+  skilled: { name: 'Skilled', icon: '🔨', desc: 'Builds 60% faster.' },
+};
+export const NAMES_M = ['Alder', 'Bram', 'Corin', 'Dunn', 'Edric', 'Fenn', 'Garrick', 'Holt', 'Ivo', 'Joss', 'Kell', 'Loric', 'Marn', 'Ned', 'Osric', 'Perrin', 'Rolf', 'Soren', 'Tam', 'Wend'];
+export const NAMES_F = ['Ada', 'Brea', 'Cyra', 'Dara', 'Elin', 'Faye', 'Gwen', 'Hild', 'Isa', 'Jora', 'Kira', 'Lena', 'Mira', 'Nell', 'Orla', 'Pia', 'Rhea', 'Sela', 'Tess', 'Wyn'];
+export const FAMILY_NAMES = ['Ashdown', 'Barrow', 'Coldwell', 'Dunmere', 'Elmsley', 'Fairwind', 'Greyfell', 'Harrow', 'Ironwood', 'Kestrel', 'Longmeadow', 'Marsh', 'Northcott', 'Oakes', 'Pike', 'Redfern', 'Stoneham', 'Thorne', 'Underhill', 'Wolfe'];
 
 // ---- Tunable constants ----
 export const POP_LIMIT = 150;

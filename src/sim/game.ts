@@ -1,7 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import {
-  ABILITIES, AGES, TRADE, WONDER_TIME, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
+  ABILITIES, AGES, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
@@ -10,7 +10,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 const HASH = 4; // spatial hash bucket size in tiles
 const REACH = 0.8; // interaction distance for gathering / building
 
@@ -68,6 +68,9 @@ export interface Unit extends Base {
   attackAnim: number; // counts down after each swing, for rendering
   healTarget: number;
   stance: Stance;
+  name: string; // villagers have names
+  family: string; // family a villager was born into, if any
+  trait: string; // key of VILLAGER_TRAITS, or ''
   growT: number; // seconds until a child becomes a working adult (0 for adults)
   bornAt: number; // house a child was born in
   plagueT: number; // seconds of plague remaining
@@ -105,6 +108,7 @@ export interface Building extends Base {
   birthProgress: number;
   birthBlocked: boolean;
   birthsPaused: boolean;
+  family: string; // name of the family living in a house
   children: number; // villagers this house has raised
   cooldown: number;
   scanT: number;
@@ -139,7 +143,7 @@ export interface Projectile {
   cls: ArmorClass;
   bonus?: Partial<Record<ArmorClass, number>>;
   splash: number;
-  kind: 'arrow' | 'stone' | 'boulder';
+  kind: 'arrow' | 'stone' | 'boulder' | 'shot';
   done: boolean;
 }
 
@@ -149,6 +153,8 @@ export interface Player {
   color: number;
   isAI: boolean;
   res: Record<ResType, number>;
+  /** Unit types that have been re-equipped: training the key now produces the value. */
+  upgrades: Record<string, string>;
   age: number;
   agingUp: boolean;
   pop: number;
@@ -241,7 +247,7 @@ export class Game {
       this.players.push({
         id: i, name: s.name, color: s.color, isAI: s.isAI,
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
-        age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
+        upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
         defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false,
       });
       this.heroes.push([]);
@@ -272,7 +278,7 @@ export class Game {
     this.wild = this.players.length;
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, res: { food: 0, wood: 0, gold: 0, stone: 0 },
-      age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
+      upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
       defeated: false, lastAttacked: null, alertT: -100, neutral: true, bell: false,
     });
     this.heroes.push([]);
@@ -305,13 +311,26 @@ export class Game {
       facing: 0, gender: type === 'villager' ? gender ?? (this.rng() < 0.5 ? 'm' : 'f') : null,
       order: null, queue: [], path: null, pathI: 0, pathFor: 0, pathPartial: false, goalX: 0, goalY: 0, repathT: 0,
       cooldown: 0, scanT: this.rng() * 0.4, carryType: 'food', carryAmt: 0, gatherT: 0, homeId: 0,
-      moving: false, anchored: false, attackAnim: 0, healTarget: 0, stance: 'aggressive', growT: 0, bornAt: 0, plagueT: 0,
+      moving: false, anchored: false, attackAnim: 0, healTarget: 0, stance: 'aggressive', name: '', family: '', trait: '', growT: 0, bornAt: 0, plagueT: 0,
       mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
     };
+    if (type === 'villager') {
+      const names = u.gender === 'm' ? NAMES_M : NAMES_F;
+      u.name = names[Math.floor(this.rng() * names.length)];
+      if (this.rng() < 0.3) this.setTrait(u, Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)]);
+    }
     this.entities.set(u.id, u);
     this.units.push(u);
     this.players[owner].pop += def.pop;
     return u;
+  }
+
+  /** Give a villager a trait (or none), keeping its health in step. */
+  setTrait(u: Unit, trait: string): void {
+    u.trait = trait;
+    const max = Math.round(u.def.hp * (trait === 'hardy' ? 1.5 : 1) * (u.growT > 0 ? 0.4 : 1));
+    u.hp = (u.hp / u.maxHp) * max;
+    u.maxHp = max;
   }
 
   spawnBuilding(type: string, owner: number, cx: number, cy: number, complete: boolean): Building {
@@ -320,7 +339,7 @@ export class Game {
       id: this.nextId++, kind: 'building', type, def, owner, cx, cy, size: def.size,
       x: cx + def.size / 2, y: cy + def.size / 2, hp: complete ? def.hp : 1, maxHp: def.hp, dead: false,
       progress: complete ? 1 : 0, complete, queue: [], rallyX: 0, rallyY: 0, rallyId: 0, hasRally: false,
-      residents: { m: 0, f: 0 }, birthProgress: 0, birthBlocked: false, birthsPaused: false, children: 0, cooldown: 0, scanT: 0, workerId: 0, sheltered: [], doneAt: 0,
+      residents: { m: 0, f: 0 }, birthProgress: 0, birthBlocked: false, birthsPaused: false, family: '', children: 0, cooldown: 0, scanT: 0, workerId: 0, sheltered: [], doneAt: 0,
       morale: 0, seen: owner === this.humanId,
     };
     this.entities.set(b.id, b);
@@ -730,8 +749,9 @@ export class Game {
   cmdTrain(owner: number, bid: number, type: string, gender?: Gender): boolean {
     const b = this.entities.get(bid);
     const p = this.players[owner];
+    if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || !UNITS[type] || !b.def.trains.includes(type)) return false;
+    type = this.trainedAs(owner, type);
     const def = UNITS[type];
-    if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || !def || !b.def.trains.includes(type)) return false;
     if (def.age > p.age) { this.msg(owner, `Requires the ${AGES[def.age].name}.`); return false; }
     if (b.queue.length >= 8) { this.msg(owner, 'Queue is full.'); return false; }
     if (def.limit && this.countUnits(owner, type) >= def.limit) { this.msg(owner, `You can only have ${def.limit} ${def.name}.`); return false; }
@@ -1069,7 +1089,7 @@ export class Game {
 
   private moveAlong(u: Unit): 'done' | 'moving' | 'blocked' {
     if (!u.path) return 'done';
-    let step = u.def.speed * DT;
+    let step = u.def.speed * (u.trait === 'swift' ? 1.2 : 1) * DT;
     const ox = u.x, oy = u.y;
     while (step > 0 && u.pathI < u.path.length) {
       const tx = u.path[u.pathI], ty = u.path[u.pathI + 1];
@@ -1312,8 +1332,9 @@ export class Game {
           u.facing = Math.atan2(b.x - u.x, b.y - u.y);
           u.attackAnim = 0.3;
           if (!b.complete) {
-            b.progress += DT / b.def.time;
-            b.hp = Math.min(b.maxHp, b.hp + (b.maxHp * DT) / b.def.time);
+            const work = (DT / b.def.time) * (u.trait === 'skilled' ? 1.6 : 1);
+            b.progress += work;
+            b.hp = Math.min(b.maxHp, b.hp + b.maxHp * work);
             if (b.progress >= 1) {
               b.progress = 1;
               b.complete = true;
@@ -1349,8 +1370,7 @@ export class Game {
   /** A child grows up: it can now work, and takes up a parent's trade unless the house has a rally point. */
   private comeOfAge(u: Unit): void {
     u.growT = 0;
-    u.hp = (u.hp / u.maxHp) * u.def.hp;
-    u.maxHp = u.def.hp;
+    this.setTrait(u, u.trait); // full adult health
     this.events.push({ t: 'grown', player: u.owner, x: u.x, y: u.y });
     if (u.order || u.inside) return;
     const home = this.entities.get(u.bornAt);
@@ -1425,7 +1445,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather;
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * (u.trait === 'strong' ? 1.25 : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -1507,7 +1527,7 @@ export class Game {
     if (u.def.projectile) {
       this.projectiles.push({
         x: u.x, y: u.y, sx: u.x, sy: u.y, tx: t.x, ty: t.y, targetId: t.id,
-        speed: u.def.projectile === 'boulder' ? 7 : 13, owner: u.owner, atk, aura, cls: u.def.cls,
+        speed: u.def.projectile === 'boulder' ? 7 : u.def.projectile === 'shot' ? 26 : 13, owner: u.owner, atk, aura, cls: u.def.cls,
         bonus: u.def.bonus, splash: u.def.splash ?? 0, kind: u.def.projectile, done: false,
       });
     } else {
@@ -1574,6 +1594,23 @@ export class Game {
 
   // ---- Buildings ----
 
+  /** Turn a unit into another type, keeping its place, orders and share of health. */
+  private reequip(u: Unit, type: string): void {
+    const def = UNITS[type];
+    this.players[u.owner].pop += def.pop - u.def.pop;
+    u.hp = (u.hp / u.maxHp) * def.hp;
+    u.maxHp = def.hp;
+    u.type = type;
+    u.def = def;
+  }
+
+  /** What training `type` produces for this player once upgrades are taken into account. */
+  trainedAs(owner: number, type: string): string {
+    const up = this.players[owner].upgrades;
+    while (up[type]) type = up[type];
+    return type;
+  }
+
   /** Free cell next to a building, closest to a desired point. */
   private exitSpot(b: Building, tx: number, ty: number): { x: number; y: number } {
     this.pf.pass = 2 + b.owner;
@@ -1621,6 +1658,11 @@ export class Game {
           p.pending.delete(q.id);
           p.techs.add(q.id);
           TECHS[q.id].apply(p.mods);
+          const up = TECHS[q.id].upgrade;
+          if (up) {
+            p.upgrades[up[0]] = up[1];
+            for (const u of this.units) if (u.owner === b.owner && u.type === up[0]) this.reequip(u, up[1]);
+          }
           this.msg(b.owner, `${TECHS[q.id].name} researched.`);
           this.upkeep();
         } else {
@@ -1649,7 +1691,14 @@ export class Game {
             this.setOrder(child, null);
             child.growT = GROW_TIME;
             child.bornAt = b.id;
+            // Children take after their parents: usually one of their traits, now and then something new.
+            const mother = this.entities.get(b.residents.f) as Unit, father = this.entities.get(b.residents.m) as Unit;
+            const roll = this.rng();
+            const trait = roll < 0.45 ? mother.trait : roll < 0.9 ? father.trait : Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)];
+            if (!b.family) b.family = FAMILY_NAMES[Math.floor(this.rng() * FAMILY_NAMES.length)];
+            child.family = b.family;
             child.maxHp = child.hp = Math.round(child.def.hp * 0.4);
+            this.setTrait(child, trait);
             this.events.push({ t: 'birth', player: b.owner, x: child.x, y: child.y });
           } else b.birthBlocked = true;
         }

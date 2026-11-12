@@ -204,6 +204,31 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       box(g, 0.1, 0.3, 0.08, 0x6a4a2a, 0.06, 0.5, -0.14);
       break;
     }
+    case 'musketeer': {
+      humanoid(g, color, 0x3a3a40, hair);
+      box(g, 0.31, 0.06, 0.19, 0xe8e2d0, 0, 0.52, 0);
+      cyl(g, 0.2, 0.2, 0.03, 0x2c2c30, 0, 0.86, 0, 10);
+      cyl(g, 0.11, 0.13, 0.12, 0x2c2c30, 0, 0.92, 0, 10);
+      const a = arm(g);
+      box(a, 0.045, 0.06, 0.85, DARKWOOD, 0, -0.24, 0.3);
+      box(a, 0.03, 0.03, 0.4, 0x2c2c30, 0, -0.21, 0.62);
+      break;
+    }
+    case 'bombard': {
+      box(g, 0.5, 0.14, 0.9, WOOD, 0, 0.3, -0.1);
+      for (const x of [-0.34, 0.34]) {
+        const w = cyl(g, 0.3, 0.3, 0.09, DARKWOOD, x, 0.3, 0, 12);
+        w.rotation.z = Math.PI / 2;
+      }
+      const a = new THREE.Group();
+      a.position.set(0, 0.48, -0.1);
+      const barrel = cyl(a, 0.13, 0.18, 1.2, 0x2c2c30, 0, 0.12, 0.35, 10);
+      barrel.rotation.x = Math.PI / 2 - 0.25;
+      g.add(a);
+      box(g, 0.56, 0.08, 0.2, color, 0, 0.42, -0.4);
+      box(g, 0.1, 0.1, 0.5, DARKWOOD, 0, 0.18, -0.75);
+      break;
+    }
     case 'rider':
     case 'knight': {
       const k = type === 'knight';
@@ -305,8 +330,8 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   return g;
 }
 
-const WALL = [0xb89a6a, 0xa98458, 0xb3aea2, 0xd9d2c0];
-const ROOF = [0xc9b458, 0xb08c40, 0x7d5a40, 0xa8432f];
+const WALL = [0xb89a6a, 0xa98458, 0xb3aea2, 0xd9d2c0, 0xe8e2d4];
+const ROOF = [0xc9b458, 0xb08c40, 0x7d5a40, 0xa8432f, 0x4a5874];
 const STONE = 0x9d9a92;
 
 function flag(g: THREE.Object3D, color: number, x: number, y: number, z: number, h = 0.9): void {

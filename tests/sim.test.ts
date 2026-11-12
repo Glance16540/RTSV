@@ -394,6 +394,85 @@ describe('queued orders', () => {
   });
 });
 
+describe('upgrades, gunpowder and traits', () => {
+  it('an upgrade re-equips existing units and changes what is trained', () => {
+    const g = new Game(7, setups);
+    const p = g.players[0];
+    p.age = 4;
+    Object.assign(p.res, { food: 9000, wood: 9000, gold: 9000, stone: 9000 });
+    const barracks = g.spawnBuilding('barracks', 0, 40, 40, true);
+    const range = g.spawnBuilding('range', 0, 46, 40, true);
+    const slinger = g.spawnUnit('slinger', 0, 42, 45);
+    slinger.hp = slinger.maxHp / 2;
+    g.cmdMove(0, [slinger.id], 44, 46);
+    expect(g.cmdResearch(0, barracks.id, 'up_bowman')).toBe(true);
+    run(g, 31);
+    expect(slinger.type).toBe('bowman');
+    expect(slinger.hp).toBeCloseTo(slinger.maxHp / 2);
+    expect(g.trainedAs(0, 'slinger')).toBe('bowman');
+    // Chained upgrades: slinger -> bowman -> crossbowman -> musketeer.
+    g.cmdResearch(0, range.id, 'up_crossbow');
+    g.cmdResearch(0, range.id, 'up_musket');
+    run(g, 105);
+    expect(slinger.type).toBe('musketeer');
+    expect(g.cmdTrain(0, barracks.id, 'slinger')).toBe(true);
+    expect(barracks.queue[0].id).toBe('musketeer');
+    // Guns out-range and out-hit the bows they replace.
+    const foe = g.spawnUnit('knight', 1, slinger.x + 6, slinger.y);
+    g.cmdStop(1, [foe.id]);
+    run(g, 1.5);
+    expect(foe.maxHp - foe.hp).toBeGreaterThanOrEqual(19);
+  });
+
+  it('the fifth age can be reached', () => {
+    const g = new Game(7, setups);
+    const p = g.players[0];
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    p.age = 3;
+    Object.assign(p.res, { food: 9000, wood: 9000, gold: 9000, stone: 9000 });
+    expect(g.cmdAgeUp(0, tc.id)).toBe(true);
+    run(g, 95);
+    expect(p.age).toBe(4);
+    expect(g.cmdAgeUp(0, tc.id)).toBe(false); // nothing beyond
+  });
+
+  it('villagers have names and traits, and children take after their parents', () => {
+    const g = new Game(5, setups);
+    const vs = villagers(g, 0);
+    expect(vs.every((v) => v.name.length > 0)).toBe(true);
+    const man = vs.find((v) => v.gender === 'm')!, woman = vs.find((v) => v.gender === 'f')!;
+    g.setTrait(man, 'strong');
+    g.setTrait(woman, 'hardy');
+    expect(woman.maxHp).toBe(60);
+    const hs = spot(g, 'house', 0);
+    const house = g.spawnBuilding('house', 0, hs.cx, hs.cy, true);
+    house.residents = { m: man.id, f: woman.id };
+    g.players[0].res.food = 99999;
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < 80; i++) {
+      house.birthProgress = 1;
+      g.step();
+      const child = villagers(g, 0).find((v) => v.growT > 0)!;
+      expect(child.family).toBe(house.family);
+      counts[child.trait || 'none'] = (counts[child.trait || 'none'] ?? 0) + 1;
+      if (child.trait === 'hardy') expect(child.maxHp).toBe(Math.round(40 * 1.5 * 0.4));
+      g.cmdDelete(0, [child.id]);
+    }
+    expect(house.family.length).toBeGreaterThan(0);
+    expect(counts.strong + counts.hardy).toBeGreaterThan(60); // about nine in ten inherit
+    expect(counts.strong).toBeGreaterThan(20);
+    expect(counts.hardy).toBeGreaterThan(20);
+    // Traits do what they say.
+    const fast = g.spawnUnit('villager', 0, 40.5, 60.5, 'm'), slow = g.spawnUnit('villager', 0, 40.5, 62.5, 'm');
+    g.setTrait(fast, 'swift');
+    g.setTrait(slow, '');
+    g.cmdMove(0, [fast.id], 52.5, 60.5);
+    g.cmdMove(0, [slow.id], 52.5, 62.5);
+    run(g, 3);
+    expect(fast.x).toBeGreaterThan(slow.x + 0.8);
+  });
+});
+
 describe('stances, patrol and wonder', () => {
   it('stances decide how far a unit chases', () => {
     const g = new Game(7, setups);

@@ -1,7 +1,7 @@
 # Hearth & Empire (RTSV)
 
 A browser real-time strategy game with a classic angled RTS camera. Raise a village from the
-Stone Age to the Middle Ages, one family at a time, and destroy the rival tribe.
+Stone Age to the Gunpowder Age, one family at a time, and destroy the rival tribe.
 
 Built with TypeScript, Three.js and Vite. All art is procedural, so there are no assets to download.
 
@@ -27,8 +27,17 @@ raises new villagers on their own for half the usual food. Each child takes a li
 the last, and you can pause a family when the village is big enough. Newborns are children: small,
 fragile and unable to work until they grow up, when they take up a parent's trade.
 
-**Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages. Each age unlocks buildings, units and
+**Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
+
+**Names, families and traits.** Every villager has a name, and about a third are Strong (gather
+faster), Swift, Hardy (more health) or Skilled (build faster). Children usually inherit a trait
+from their mother or father and carry the family name of the house they were born in, so who you
+house together matters.
+
+**Unit upgrades.** Research re-equips whole lines at once: Slingers become Bowmen, then
+Crossbowmen, then Musketeers; Clubmen become Swordsmen; Scout Riders become Knights; Catapults
+become Bombards. Existing units change on the spot and new ones are trained in the better form.
 
 **Empire Earth-style touches.**
 - *Morale:* up to five houses near a Town Center make its defenders take up to 25% less damage.
