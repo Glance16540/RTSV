@@ -169,11 +169,18 @@ const HORSE = [0x6b4a2e, 0x8a6a48, 0x3e2e24];
 export const RES_COLOR: Record<string, number> = { food: 0xc0392b, wood: 0x8a5a2b, gold: 0xf2c230, stone: 0x9a9a9a };
 
 /** A leg hinged at the hip so it can swing while walking. `side` alternates the stride. */
+/** An animal's leg: hinged at the hip or shoulder, and again half way down, with a hoof or paw at the foot. */
 function leg(g: THREE.Object3D, w: number, h: number, color: number, x: number, z: number, side: number, y = 0): void {
   const hip = new THREE.Group();
   hip.position.set(x, y + h, z);
   hip.userData.leg = side;
-  cap(hip, w * 0.56, h, color, 0, -h / 2, 0);
+  cap(hip, w * 0.6, h * 0.58, color, 0, -h * 0.26, 0);
+  const knee = new THREE.Group();
+  knee.position.y = -h * 0.5;
+  cap(knee, w * 0.46, h * 0.54, color, 0, -h * 0.24, 0);
+  if (w < 0.2) cyl(knee, w * 0.5, w * 0.6, h * 0.1, 0x2a2018, 0, -h * 0.46, 0, 7);
+  hip.add(knee);
+  hip.userData.knee = knee;
   g.add(hip);
 }
 
@@ -278,16 +285,32 @@ function arm(g: THREE.Object3D, y = 0, sleeve = SKIN, slim = 1): THREE.Group {
 }
 
 function horse(g: THREE.Object3D, color: number, armor = 0): void {
+  const dark = 0x2a1e16;
   cap(g, 0.17, 0.88, color, 0, 0.56, 0).rotation.x = Math.PI / 2;
-  if (armor) box(g, 0.36, 0.2, 0.6, armor, 0, 0.6, -0.02);
-  const neck = cap(g, 0.1, 0.5, color, 0, 0.84, 0.4);
-  neck.rotation.x = 0.5;
-  cap(g, 0.085, 0.36, color, 0, 0.99, 0.6).rotation.x = Math.PI / 2 + 0.25;
-  for (const x of [-0.06, 0.06]) add(g, geo('ear', () => new THREE.ConeGeometry(0.03, 0.09, 4)), color, x, 1.1, 0.5);
-  box(g, 0.03, 0.26, 0.2, 0x2a1e16, 0, 0.93, 0.3).rotation.x = 0.5;
+  ball(g, 0.185, color, 0, 0.58, -0.26); // the quarters
+  ball(g, 0.175, color, 0, 0.57, 0.27); // the chest
+  // A saddle cloth in every case; barding over it for the heavy horse.
+  const cloth = add(g, geo('saddle', () => new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12, 1, true, -1.3, 2.6).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)), armor || 0x6a3a2a, 0, 0.57, -0.02);
+  cloth.scale.set(0.37, 0.36, 1);
+  if (armor) { const b = cap(g, 0.185, 0.8, armor, 0, 0.585, 0.02); b.rotation.x = Math.PI / 2; b.scale.set(1, 1, 0.9); }
+  // Neck, head, ears and mane move together, nodding with the stride.
+  const n = new THREE.Group();
+  n.position.set(0, 0.68, 0.34);
+  cap(n, 0.1, 0.5, color, 0, 0.16, 0.06).rotation.x = 0.5;
+  cap(n, 0.085, 0.36, color, 0, 0.31, 0.26).rotation.x = Math.PI / 2 + 0.25;
+  ball(n, 0.06, color, 0, 0.27, 0.4).scale.set(0.9, 0.8, 1);
+  for (const x of [-0.06, 0.06]) add(n, geo('ear', () => new THREE.ConeGeometry(0.03, 0.09, 4)), color, x, 0.42, 0.16);
+  for (const x of [-0.075, 0.075]) add(n, geo('eye', () => new THREE.SphereGeometry(0.015, 6, 5)), 0x1e1a18, x, 0.34, 0.28);
+  box(n, 0.03, 0.26, 0.2, dark, 0, 0.25, -0.04).rotation.x = 0.5;
+  if (armor) cap(n, 0.092, 0.2, 0xb8bcc4, 0, 0.33, 0.3).rotation.x = Math.PI / 2 + 0.25;
+  g.add(n);
+  g.userData.nod = n;
   [[-0.1, 0.3], [0.1, 0.3], [-0.1, -0.3], [0.1, -0.3]].forEach(([x, z], i) => leg(g, 0.08, 0.42, color, x, z, i % 3 ? Math.PI : 0));
-  const tail = box(g, 0.06, 0.3, 0.06, 0x2a1e16, 0, 0.52, -0.44);
-  tail.rotation.x = -0.4;
+  const t = new THREE.Group();
+  t.position.set(0, 0.66, -0.42);
+  cap(t, 0.035, 0.34, dark, 0, -0.15, -0.03).rotation.x = -0.25;
+  g.add(t);
+  g.userData.tail = t;
 }
 
 /** The joints of a figure on foot, turned by the recorded motions. */
@@ -646,8 +669,13 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     }
     case 'mammoth': {
       const fur = 0x6a4a30;
-      box(g, 0.85, 0.8, 1.25, fur, 0, 0.95, -0.05);
-      box(g, 0.6, 0.6, 0.5, fur, 0, 1.05, 0.72);
+      const bod = cap(g, 0.44, 1.35, fur, 0, 0.98, -0.05);
+      bod.rotation.x = Math.PI / 2;
+      bod.scale.set(1, 1, 0.95);
+      ball(g, 0.46, fur, 0, 1.12, 0.3); // the high shoulders
+      ball(g, 0.34, fur, 0, 1.2, 0.74).scale.set(0.95, 1.1, 0.9); // the domed head
+      for (const x of [-0.07, 0.07]) add(g, geo('eye', () => new THREE.SphereGeometry(0.015, 6, 5)), 0x1e1a18, x * 3.4, 1.22, 1.0).scale.setScalar(2);
+      for (const x of [-1, 1]) { const e = ball(g, 0.2, 0x5a3e28, x * 0.36, 1.16, 0.62); e.scale.set(0.25, 1.1, 0.9); e.rotation.y = x * 0.5; }
       [[-0.28, 0.4], [0.28, 0.4], [-0.28, -0.45], [0.28, -0.45]].forEach(([x, z], i) => leg(g, 0.3, 0.6, 0x5a3e28, x, z, i % 3 ? Math.PI : 0));
       const trunk = cyl(g, 0.1, 0.06, 0.7, fur, 0, 0.62, 1.0);
       trunk.rotation.x = 0.25;
@@ -655,7 +683,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
         const t = cyl(g, 0.015, 0.06, 0.7, 0xf2ead8, x, 0.72, 1.12, 6);
         t.rotation.x = -1.15;
       }
-      box(g, 0.9, 0.08, 0.7, color, 0, 1.38, -0.1);
+      { const c = add(g, geo('saddle', () => new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12, 1, true, -1.3, 2.6).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)), color, 0, 0.98, -0.1); c.scale.set(0.93, 0.9, 2.2); }
       const r = new THREE.Group();
       r.position.set(0, 1.36, -0.1);
       r.scale.setScalar(0.8);
@@ -804,13 +832,18 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     }
     case 'warbear': {
       const fur = 0x5a4030;
-      box(g, 0.46, 0.44, 0.9, fur, 0, 0.5, 0);
-      box(g, 0.4, 0.2, 0.4, 0x6a4c38, 0, 0.76, -0.1);
-      box(g, 0.3, 0.3, 0.3, fur, 0, 0.6, 0.58);
-      box(g, 0.16, 0.14, 0.16, 0x3a2a20, 0, 0.54, 0.78);
-      for (const x of [-0.11, 0.11]) box(g, 0.08, 0.08, 0.05, 0x3a2a20, x, 0.78, 0.5);
+      cap(g, 0.25, 0.95, fur, 0, 0.5, 0).rotation.x = Math.PI / 2;
+      ball(g, 0.27, 0x6a4c38, 0, 0.6, 0.2).scale.y = 1.05; // the hump of the shoulders
+      const bn = new THREE.Group();
+      bn.position.set(0, 0.56, 0.46);
+      ball(bn, 0.17, fur, 0, 0.04, 0.12);
+      cap(bn, 0.08, 0.22, 0x3a2a20, 0, -0.02, 0.3).rotation.x = Math.PI / 2;
+      for (const x of [-0.12, 0.12]) ball(bn, 0.05, 0x3a2a20, x, 0.18, 0.08);
+      for (const x of [-0.07, 0.07]) add(bn, geo('eye', () => new THREE.SphereGeometry(0.015, 6, 5)), 0x1e1a18, x, 0.09, 0.26);
+      g.add(bn);
+      g.userData.nod = bn;
       [[-0.16, 0.3], [0.16, 0.3], [-0.16, -0.3], [0.16, -0.3]].forEach(([x, z], i) => leg(g, 0.13, 0.32, 0x4a3426, x, z, i % 3 ? Math.PI : 0));
-      box(g, 0.48, 0.06, 0.3, color, 0, 0.74, -0.1);
+      { const c = add(g, geo('saddle', () => new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12, 1, true, -1.3, 2.6).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)), color, 0, 0.5, -0.1); c.scale.set(0.53, 0.53, 1); }
       break;
     }
     case 'herbwife': {
@@ -889,13 +922,23 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     }
     case 'hound': {
       const fur = 0x8a6238;
-      box(g, 0.18, 0.2, 0.5, fur, 0, 0.32, 0);
-      box(g, 0.15, 0.16, 0.2, fur, 0, 0.42, 0.32);
-      box(g, 0.08, 0.08, 0.14, 0x4a3420, 0, 0.38, 0.46);
-      for (const x of [-0.05, 0.05]) box(g, 0.04, 0.09, 0.03, 0x4a3420, x, 0.54, 0.28);
+      cap(g, 0.1, 0.54, fur, 0, 0.32, 0).rotation.x = Math.PI / 2;
+      ball(g, 0.115, fur, 0, 0.34, 0.14);
+      const hn = new THREE.Group();
+      hn.position.set(0, 0.38, 0.24);
+      ball(hn, 0.09, fur, 0, 0.05, 0.08);
+      cap(hn, 0.045, 0.16, 0x4a3420, 0, 0.02, 0.2).rotation.x = Math.PI / 2;
+      for (const x of [-0.055, 0.055]) add(hn, geo('ear', () => new THREE.ConeGeometry(0.03, 0.09, 4)), 0x4a3420, x, 0.15, 0.05);
+      for (const x of [-0.045, 0.045]) add(hn, geo('eye', () => new THREE.SphereGeometry(0.015, 6, 5)), 0x1e1a18, x, 0.08, 0.155);
+      g.add(hn);
+      g.userData.nod = hn;
       [[-0.06, 0.18], [0.06, 0.18], [-0.06, -0.18], [0.06, -0.18]].forEach(([x, z], i) => leg(g, 0.05, 0.24, 0x6e4c2a, x, z, i % 3 ? Math.PI : 0));
-      box(g, 0.2, 0.05, 0.12, color, 0, 0.42, 0.05);
-      box(g, 0.04, 0.04, 0.22, fur, 0, 0.42, -0.34).rotation.x = -0.6;
+      add(g, geo('collar', () => new THREE.TorusGeometry(0.085, 0.022, 5, 12)), color, 0, 0.36, 0.2);
+      const ht = new THREE.Group();
+      ht.position.set(0, 0.38, -0.26);
+      cap(ht, 0.025, 0.24, fur, 0, 0.06, -0.08).rotation.x = -0.9;
+      g.add(ht);
+      g.userData.tail = ht;
       break;
     }
     case 'chariot': {

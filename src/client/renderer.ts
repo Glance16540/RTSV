@@ -16,7 +16,7 @@ const PITCH = (50 * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number }
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
 interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
@@ -409,7 +409,13 @@ export class Renderer {
       v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
       v.rig = new URLSearchParams(location.search).get('motion') === '0' ? null : rigBiped(v.g);
-      v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
+      v.g.traverse((o) => {
+        if (o.userData.leg === undefined) return;
+        // A rider's legs are not walked: they sit astride, knees out and feet forward.
+        const seat = o.parent && o.parent !== v!.g && o.parent.userData.biped ? o.parent : null;
+        if (seat) { o.rotation.set(-0.75, 0, o.position.x > 0 ? 0.5 : -0.5); v!.seat = seat; v!.seatY = seat.userData.seatY ??= seat.position.y; }
+        else v!.legs.push(o);
+      });
       v.g.rotation.order = 'YXZ'; // so leaning forward and rocking are in the unit's own frame, whichever way it faces
       this.unitViews.set(u.id, v);
       this.scene.add(v.g);
@@ -430,7 +436,7 @@ export class Renderer {
       pitch = Math.sin(this.clock * 0.9 + v.phase * 2) * 0.03;
     } else if (u.moving) {
       v.phase += dt * u.def.speed * 5;
-      bob = v.rig ? 0 : Math.abs(Math.sin(v.phase)) * (mounted ? 0.09 : 0.06);
+      bob = v.rig ? 0 : mounted ? (0.5 - 0.5 * Math.cos(v.phase * 2)) * 0.05 : Math.abs(Math.sin(v.phase)) * 0.06;
       pitch = mounted ? Math.sin(v.phase * 2) * 0.06 : 0.07; // riders rock at the gallop; walkers lean into their stride
       roll = mounted || v.rig ? 0 : Math.sin(v.phase) * 0.05;
     } else {
@@ -438,7 +444,7 @@ export class Renderer {
     }
     // A blow is struck with the whole body: a lunge forward and back.
     const lunge = u.def.naval || u.def.cls === 'siege' ? 0 : swing * 0.14;
-    pitch += u.def.naval || u.def.cls === 'siege' ? 0 : swing * 0.16;
+    pitch += u.def.naval || u.def.cls === 'siege' ? 0 : u.def.cls === 'cavalry' ? -swing * 0.3 : swing * 0.16; // a horse rears to the blow
     g.position.set(x + Math.sin(g.rotation.y) * lunge, bob + this.scenery.heightAt(x, y), y + Math.cos(g.rotation.y) * lunge);
     g.scale.set(size, size * breathe, size);
     g.rotation.x += (pitch - g.rotation.x) * Math.min(1, dt * 14);
@@ -447,7 +453,18 @@ export class Renderer {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
     if (v.rig) { this.pose(u, v, dt); }
-    else for (const l of v.legs) l.rotation.x = u.moving ? Math.sin(v.phase + (l.userData.leg as number)) * 0.65 : l.rotation.x * 0.8;
+    else for (const l of v.legs) {
+      // Four legs at a trot: each swings from the shoulder or hip and folds half way down as it comes forward.
+      const ph = v.phase + (l.userData.leg as number), knee = l.userData.knee as THREE.Object3D | undefined;
+      l.rotation.x = u.moving ? Math.sin(ph) * 0.6 : l.rotation.x * 0.8;
+      if (knee) knee.rotation.x = u.moving ? Math.max(0, -Math.cos(ph)) * 1.0 : knee.rotation.x * 0.8;
+    }
+    const nod = g.userData.nod as THREE.Object3D | undefined, tail = g.userData.tail as THREE.Object3D | undefined;
+    // The head nods with the stride, or dips now and then while standing; the tail streams or flicks.
+    if (nod) nod.rotation.x += ((u.moving ? 0.1 + Math.sin(v.phase * 2 + 0.8) * 0.1 : Math.max(0, Math.sin(this.clock * 0.5 + v.phase) - 0.7) * 1.6) - swing * 0.35 - nod.rotation.x) * Math.min(1, dt * 8);
+    if (tail) { tail.rotation.x = u.moving ? -0.7 + Math.sin(v.phase * 2) * 0.15 : 0; tail.rotation.z = Math.sin(this.clock * (u.moving ? 6 : 2.3) + v.phase) * (u.moving ? 0.12 : 0.3); }
+    // The rider rises and sits to the stride, a beat behind the horse.
+    if (v.seat) { v.seat.position.y = v.seatY! + (u.moving ? Math.max(0, Math.sin(v.phase * 2 - 0.9)) * 0.035 : 0); v.seat.rotation.x = u.moving ? 0.12 : 0; }
     const arm = g.userData.arm as THREE.Object3D | undefined;
     if (arm && !v.rig) {
       arm.rotation.x = u.type === 'catapult' ? swing * 1.2 : -swing * 1.3 + (u.moving ? Math.sin(v.phase) * 0.3 : 0);
