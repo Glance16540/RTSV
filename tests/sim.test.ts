@@ -3,6 +3,7 @@ import { AIController } from '../src/sim/ai';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, Game, Unit } from '../src/sim/game';
 import { connected, generateMap, T_WATER } from '../src/sim/map';
+import { armyAt, battleConfig, canRecruit, continueAI, endTurn, finishBattle, income, moveArmy, newCampaign, reinforce, resolvePending } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -439,5 +440,78 @@ describe('save and load', () => {
     for (let i = 0; i < 600; i++) { g.step(); copy.step(); }
     expect(copy.serialize()).toBe(g.serialize());
     expect(() => Game.restore(g.serialize().replace(/"v":\d+/, '"v":0'))).toThrow();
+  });
+});
+
+describe('conquest campaign', () => {
+  it('builds a connected map with a capital and an army for each faction', () => {
+    for (const rivals of [1, 2, 3]) {
+      const c = newCampaign(42 + rivals, rivals);
+      expect(c.territories.length).toBe(15);
+      expect(c.factions.length).toBe(rivals + 1);
+      for (const f of c.factions) {
+        const cap = c.territories.find((t) => t.capital === f.id)!;
+        expect(cap.owner).toBe(f.id);
+        expect(armyAt(c, cap.id)?.owner).toBe(f.id);
+      }
+      // Every territory can be reached from the first.
+      const seen = new Set([0]);
+      const q = [0];
+      while (q.length) for (const n of c.territories[q.pop()!].adj) if (!seen.has(n)) { seen.add(n); q.push(n); }
+      expect(seen.size).toBe(15);
+      expect(c.territories.every((t) => t.adj.every((n) => c.territories[n].adj.includes(t.id)))).toBe(true);
+    }
+  });
+
+  it('spending, marching, and battles follow the rules', () => {
+    const c = newCampaign(7);
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const army = armyAt(c, home.id)!;
+    expect(income(c, 0)).toBe(6); // 2 + development 2 + capital 2
+    expect(canRecruit(c, 0, home.id)).toBe(false); // an army is already here
+    expect(reinforce(c, 0, home.id)).toBe(true);
+    expect(army.size).toBe(4);
+    expect(c.factions[0].supplies).toBe(4);
+    const target = c.territories[home.adj[0]];
+    expect(moveArmy(c, army.id, target.id)).toBe('battle');
+    expect(c.pending).toMatchObject({ attacker: 0, defender: -1, aStr: 4, dStr: target.militia });
+    const cfg = battleConfig(c)!;
+    expect(cfg.setups[0].bonus!.units!.clubman).toBe(4);
+    expect(cfg.setups[1].name).toBe('Local Tribe');
+    expect(cfg.level).toBe(0);
+    expect(endTurn(c)).toBe(undefined);
+    expect(c.phase).toBe('player'); // cannot end the turn with a battle outstanding
+    finishBattle(c, true);
+    expect(target.owner).toBe(0);
+    expect(army.at).toBe(target.id);
+    expect(moveArmy(c, army.id, home.id)).toBe('invalid'); // already moved this turn
+    endTurn(c);
+    expect(c.turn === 2 || c.pending !== null).toBe(true);
+  });
+
+  it('a lost defence costs the territory, and rivals fight the campaign to a finish', () => {
+    const c = newCampaign(3, 2, 2);
+    let guard = 0;
+    while (c.phase !== 'over' && guard++ < 400) {
+      if (c.pending) resolvePending(c, 'auto'); // the player never fights in person here
+      else if (c.phase === 'player') endTurn(c);
+      else continueAI(c);
+    }
+    expect(c.phase).toBe('over');
+    expect(c.winner).toBeGreaterThan(0); // a passive player is eventually conquered
+    expect(c.factions[0].alive).toBe(false);
+    expect(c.territories.every((t) => t.dev >= 0 && t.dev <= 3)).toBe(true);
+  });
+
+  it('battle bonuses give each side its army in the real-time game', () => {
+    const c = newCampaign(7);
+    const home = c.territories.find((t) => t.capital === 0)!;
+    moveArmy(c, armyAt(c, home.id)!.id, home.adj[0]);
+    const cfg = battleConfig(c)!;
+    const g = new Game(cfg.seed, cfg.setups, cfg.size);
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'clubman').length).toBe(3);
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'slinger').length).toBe(2);
+    expect(g.players[0].res.food).toBe(200 + 120);
+    run(g, 5);
   });
 });

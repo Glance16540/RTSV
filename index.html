@@ -88,7 +88,23 @@
           <button data-level="1" class="resume">Resume</button>
         </div>
         <button id="continue-btn" class="hidden secondary">Continue saved game</button>
+        <button id="conquest-btn" class="secondary">Conquest campaign</button>
+        <button id="concede-btn" class="hidden secondary">Concede the battle</button>
       </div>
+    </div>
+
+    <div id="overworld" class="hidden">
+      <div class="ow-map"><canvas id="ow-canvas" width="1000" height="600"></canvas></div>
+      <aside class="ow-side">
+        <h2>Conquest</h2>
+        <div id="ow-status"></div>
+        <div id="ow-sel"></div>
+        <div id="ow-actions"></div>
+        <button id="ow-end">End turn</button>
+        <div id="ow-log"></div>
+        <div class="ow-foot"><button id="ow-new">New campaign</button><button id="ow-exit">Main menu</button></div>
+      </aside>
+      <div id="ow-dialog" class="screen hidden"></div>
     </div>
 
     <div id="end" class="screen hidden">

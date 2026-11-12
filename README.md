@@ -67,6 +67,18 @@ start screen. With several rivals it is a free-for-all: they fight each other as
 research, control groups, rally points, synthesised sound, and an AI opponent with three
 difficulty levels that plays by the same rules.
 
+## Conquest campaign
+
+*Conquest campaign* on the start screen opens a turn-based map of fifteen territories. Each turn
+you collect supplies from the land you hold and spend them to raise armies, reinforce them or
+develop territories, then march armies into neighbouring land. When an army enters land held by
+someone else there is a battle: fight it yourself as a real-time match, or auto-resolve it.
+
+In a real-time battle each side starts with soldiers and resources in proportion to its strength
+on the map, and a developed territory gives its defender a head start. Rivals take their turns
+after yours and fight each other too. Hold the last territory standing to win. The campaign is
+saved in your browser after every action.
+
 ## Controls
 
 | Input | Action |
@@ -91,6 +103,8 @@ for filenames and a ready-made generation prompt.
 
 ## Code layout
 
+- `src/sim/campaign.ts` — Conquest rules: territories, armies, turns, battle set-up
+- `src/client/overworld.ts` — the Conquest map screen
 - `src/sim/` — the game simulation. No DOM or rendering, runs headless at 20 ticks per second.
   - `data.ts` — every unit, building, technology and balance number
   - `game.ts` — entities, orders, economy, combat, families

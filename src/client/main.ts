@@ -1,7 +1,9 @@
 import { AIController } from '../sim/ai';
 import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets } from './assets';
+import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Hud } from './hud';
+import { Overworld } from './overworld';
 import { Input } from './input';
 import { Renderer } from './renderer';
 import { sfx } from './sfx';
@@ -26,6 +28,9 @@ export class App {
   private idleI = 0;
 
   private saveT = 0;
+  /** Identifies which Conquest battle a save belongs to. */
+  saveTag = '';
+  onGameOver: ((won: boolean) => void) | null = null;
 
   constructor(game: Game) {
     this.game = game;
@@ -77,7 +82,7 @@ export class App {
   save(announce = true): boolean {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        game: this.game.serialize(), ai: this.ai.map((a) => a.save()), cam: { x: this.r.cx, y: this.r.cy, d: this.r.dist },
+        game: this.game.serialize(), ai: this.ai.map((a) => a.save()), cam: { x: this.r.cx, y: this.r.cy, d: this.r.dist }, tag: this.saveTag,
       }));
       if (announce) this.hud.toast('Game saved.');
       return true;
@@ -115,6 +120,7 @@ export class App {
       this.r.handle(ev);
       this.hud.handle(ev);
       this.sound(ev);
+      if (ev.t === 'gameover') this.onGameOver?.(ev.winner === this.pid);
     }
     // Weapon sounds for fights the player can see.
     for (const u of game.units) {
@@ -133,8 +139,12 @@ export class App {
 
 const params = new URLSearchParams(location.search);
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
-const SAVE_KEY = 'rtsv-save';
-interface Saved { game: string; ai: object[]; cam: { x: number; y: number; d: number } }
+/** skirmish: a single match. campaign: the Conquest map. battle: a Conquest battle fought in real time. */
+const mode = params.has('battle') ? 'battle' : params.has('campaign') ? 'campaign' : 'skirmish';
+const SAVE_KEY = mode === 'battle' ? 'rtsv-battle-save' : 'rtsv-save';
+const CAMPAIGN_KEY = 'rtsv-campaign';
+const RESULT_KEY = 'rtsv-battle-result';
+interface Saved { game: string; ai: object[]; cam: { x: number; y: number; d: number }; tag?: string }
 
 function readSave(): Saved | null {
   try {
@@ -145,43 +155,66 @@ function readSave(): Saved | null {
   }
 }
 
+function readCampaign(): Campaign | null {
+  try {
+    const c = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) ?? 'null') as Campaign | null;
+    return c && c.v === CAMPAIGN_VERSION ? c : null;
+  } catch {
+    return null;
+  }
+}
+const writeCampaign = (c: Campaign) => { try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(c)); } catch { /* storage unavailable */ } };
+const go = (query: string) => { location.href = location.pathname + query; };
+
 loadAssets().then(() => {
-  let saved = params.has('load') ? readSave() : null;
+  const el = (id: string) => document.getElementById(id)!;
+  const startScreen = el('start');
+  const rivals = [1, 2, 3].includes(Number(params.get('ai'))) ? Number(params.get('ai')) : 1;
+  const size = [72, 96, 128].includes(Number(params.get('size'))) ? Number(params.get('size')) : 96;
+
+  const campaign = mode === 'skirmish' ? null : readCampaign();
+  const cfg = mode === 'battle' && campaign ? battleConfig(campaign) : null;
+  if (mode === 'battle' && !cfg) { go('?campaign=1'); return; }
+  const tag = cfg && campaign ? `${campaign.seed}:${campaign.turn}:${campaign.pending!.armyId}:${campaign.pending!.to}` : '';
+
+  let saved = params.has('load') || mode === 'battle' ? readSave() : null;
+  if (mode === 'battle' && saved && saved.tag !== tag) saved = null; // a save from some earlier battle
   let game: Game | null = null;
   if (saved) {
     try { game = Game.restore(saved.game); } catch { saved = null; }
   }
-  const rivals = [1, 2, 3].includes(Number(params.get('ai'))) ? Number(params.get('ai')) : 1;
-  const size = [72, 96, 128].includes(Number(params.get('size'))) ? Number(params.get('size')) : 96;
-  game ??= new Game(seed, [
+  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
   ].slice(0, 1 + rivals), size);
+
   // The map is generated before the menu appears, so a different size means a fresh page.
-  const sizeSel = document.getElementById('map-size') as HTMLSelectElement;
+  const sizeSel = el('map-size') as HTMLSelectElement;
   sizeSel.value = String(game.size);
-  const aiSel = document.getElementById('rivals') as HTMLSelectElement;
+  const aiSel = el('rivals') as HTMLSelectElement;
   aiSel.value = String(game.players.filter((p) => p.isAI).length);
-  const regenerate = () => { location.search = `?size=${sizeSel.value}&ai=${aiSel.value}`; };
+  const regenerate = () => go(`?size=${sizeSel.value}&ai=${aiSel.value}`);
   sizeSel.addEventListener('change', regenerate);
   aiSel.addEventListener('change', regenerate);
+  el('conquest-btn').addEventListener('click', () => go(`?campaign=1&ai=${aiSel.value}`));
+
   const app = new App(game);
+  app.saveTag = tag;
   if (saved) {
     app.ai.forEach((a, i) => a.load(saved!.ai[i] ?? {}));
     app.r.cx = saved.cam.x; app.r.cy = saved.cam.y; app.r.dist = saved.cam.d;
-    document.getElementById('start')!.classList.add('started');
-  } else if (readSave()) {
-    const cont = document.getElementById('continue-btn')!;
+    startScreen.classList.add('started');
+  } else if (mode === 'skirmish' && readSave()) {
+    const cont = el('continue-btn');
     cont.classList.remove('hidden');
-    cont.addEventListener('click', () => { location.search = '?load=1'; });
+    cont.addEventListener('click', () => go('?load=1'));
   }
-  document.getElementById('save')!.addEventListener('pointerdown', () => app.save());
+  el('save').addEventListener('pointerdown', () => app.save());
   (window as unknown as { app: App }).app = app;
   const title = artUrl('title');
-  if (title) document.getElementById('start')!.style.backgroundImage = `linear-gradient(rgba(6,6,8,0.55), rgba(6,6,8,0.8)), url(${title})`;
-  const startScreen = document.getElementById('start')!;
+  if (title) startScreen.style.backgroundImage = `linear-gradient(rgba(6,6,8,0.55), rgba(6,6,8,0.8)), url(${title})`;
   for (const btn of startScreen.querySelectorAll<HTMLButtonElement>('[data-level]')) {
     btn.addEventListener('click', () => {
       // The first click picks the difficulty; afterwards the same screen is just the help page.
@@ -191,5 +224,42 @@ loadAssets().then(() => {
       app.paused = false;
     });
   }
+
+  if (cfg) {
+    // A Conquest battle: difficulty and armies come from the campaign, and the result goes back to it.
+    if (!saved) for (const a of app.ai) a.setLevel(cfg.level);
+    startScreen.classList.add('started', 'battle');
+    startScreen.querySelector('h1')!.textContent = cfg.title;
+    startScreen.querySelector('.lead')!.textContent = cfg.humanAttacks
+      ? 'Your army has made camp. Destroy every enemy building to take this land.'
+      : 'The enemy is at the gates. Destroy every enemy building to hold this land.';
+    startScreen.querySelector<HTMLButtonElement>('.levels .resume')!.textContent = saved ? 'Resume the battle' : 'To battle';
+    const finish = (won: boolean) => {
+      try { localStorage.setItem(RESULT_KEY, won ? 'win' : 'loss'); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+    };
+    app.onGameOver = finish;
+    el('again-btn').textContent = 'Return to the map';
+    el('concede-btn').classList.remove('hidden');
+    el('concede-btn').addEventListener('click', () => { finish(false); go('?campaign=1'); });
+  }
+
+  if (mode === 'campaign') {
+    let c = campaign;
+    let result: string | null = null;
+    try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
+    if (c && c.pending && result) {
+      finishBattle(c, result === 'win');
+      if (c.phase === 'ai') continueAI(c);
+    }
+    c ??= newCampaign(seed, Math.max(2, rivals), 1);
+    const state = c;
+    startScreen.classList.add('hidden');
+    new Overworld(state, {
+      save: () => writeCampaign(state),
+      fight: () => { writeCampaign(state); go('?battle=1'); },
+      newCampaign: (r, l) => { writeCampaign(newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l)); go('?campaign=1'); },
+      exit: () => go(''),
+    });
+  }
 });
-document.getElementById('again-btn')!.addEventListener('click', () => { location.href = location.pathname; });
+document.getElementById('again-btn')!.addEventListener('click', () => go(mode === 'battle' ? '?campaign=1' : ''));

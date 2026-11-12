@@ -170,7 +170,8 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 }
 .sheet button:hover { filter: brightness(1.1); }
 .sheet button.secondary { margin-top: 12px; padding: 7px 22px; font-size: 15px; background: none; color: var(--gold); border-color: var(--edge); }
-.started #continue-btn { display: none; }
+.started #continue-btn, .started #conquest-btn { display: none; }
+.sheet button.secondary { margin-left: 6px; margin-right: 6px; }
 .mapsize { display: inline-block; margin: 18px 12px 0; color: var(--muted); }
 .mapsize select { margin-left: 8px; padding: 4px 8px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; }
 .started .mapsize { display: none; }
@@ -184,3 +185,27 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
   .sheet .cols { grid-template-columns: 1fr; }
   #bottom { grid-template-columns: 180px 1fr 250px; }
 }
+
+/* ---- Conquest map ---- */
+#overworld { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 320px; background: #14110d; }
+.ow-map { display: grid; place-items: center; padding: 16px; min-width: 0; }
+#ow-canvas { max-width: 100%; max-height: calc(100vh - 32px); border: 3px solid var(--edge); border-radius: 4px; box-shadow: 0 10px 40px #000; cursor: pointer; }
+.ow-side { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: linear-gradient(#2a231a, #17130f); border-left: 2px solid var(--edge); overflow: auto; }
+.ow-side h2 { margin: 0; font: 600 26px Georgia, serif; color: var(--gold); }
+.ow-side h3 { margin: 0; font: 600 18px Georgia, serif; color: var(--gold); }
+.ow-side small { color: var(--muted); }
+.ow-factions { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-weight: 600; }
+#ow-sel { padding: 10px; background: rgba(0, 0, 0, 0.25); border: 1px solid #3c3122; border-radius: 4px; min-height: 118px; }
+#ow-sel .hint { color: var(--muted); margin-top: 4px; }
+#ow-actions { display: flex; flex-direction: column; gap: 6px; min-height: 120px; }
+.ow-side button { padding: 8px 10px; text-align: left; background: linear-gradient(#3a3024, #241d15); border: 1px solid var(--edge); border-radius: 4px; }
+.ow-side button small { float: right; }
+.ow-side button:hover:not(:disabled) { border-color: var(--gold); }
+.ow-side button:disabled { opacity: 0.4; cursor: default; }
+#ow-end { text-align: center; font: 600 17px Georgia, serif; color: #1c1813; background: linear-gradient(#f0d48a, #c99a3c); border-color: #f6e3ac; }
+#ow-log { flex: 1; min-height: 60px; font-size: 13px; color: var(--muted); overflow: hidden; }
+#ow-log div:first-child { color: var(--text); }
+.ow-foot { display: flex; gap: 6px; }
+.ow-foot button { flex: 1; text-align: center; }
+#ow-dialog .levels button { margin-top: 12px; padding: 10px 18px; font-size: 16px; }
+@media (max-width: 760px) { #overworld { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } }

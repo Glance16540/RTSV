@@ -170,7 +170,13 @@ export type GameEvent =
   | { t: 'defeated'; player: number }
   | { t: 'gameover'; winner: number };
 
-export interface PlayerSetup { name: string; color: number; isAI: boolean }
+export interface PlayerSetup {
+  name: string;
+  color: number;
+  isAI: boolean;
+  /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
+  bonus?: { units?: Record<string, number>; res?: number; age?: number };
+}
 
 export class Game {
   size: number;
@@ -240,6 +246,15 @@ export class Game {
       this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
       this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
       this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
+      if (s.bonus) {
+        const p = this.players[i];
+        p.age = s.bonus.age ?? 0;
+        for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
+        let k = 0;
+        for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
+          for (let j = 0; j < n; j++, k++) this.spawnUnit(type, i, st.x - 3.5 + (k % 8), st.y + (5 + Math.floor(k / 8)) * dir);
+        }
+      }
     });
     this.wild = this.players.length;
     this.players.push({
