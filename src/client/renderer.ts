@@ -10,7 +10,7 @@ import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
-import { Outfit, RealPerson, astride, bear, embrace, drawnReal, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
+import { Outfit, RealPerson, astride, bear, embrace, drawnReal, sprawl, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
@@ -85,6 +85,8 @@ export class Renderer {
   private bloodMat = new THREE.MeshBasicMaterial({ color: BLOOD });
   private chipMat = new THREE.MeshBasicMaterial({ color: 0x8a6238 });
   private rubble: Rubble[] = [];
+  /** Gear knocked off someone, by the piece it is a copy of, so it can be taken up again if they are healed. */
+  private dropped = new WeakMap<THREE.Object3D, THREE.Object3D>();
   private roads!: Roads;
   private weather!: Weather;
   private sky!: THREE.HemisphereLight;
@@ -599,7 +601,13 @@ export class Renderer {
   /** A unit has died: how it falls depends on what it was. */
   private fall(v: UnitView): void {
     const g = v.g, at = g.position;
-    if (v.real) this.mark(v, 3);
+    if (v.real) {
+      this.mark(v, 3);
+      // They fall to one side or the other, and not all square to the way they faced.
+      const way = Math.floor(v.phase * 100);
+      if (way % 2) g.scale.x = -Math.abs(g.scale.x);
+      g.rotation.y += ((way % 7) - 3) * 0.22;
+    }
     const flame = g.userData.fire as THREE.Object3D | undefined;
     if (flame) flame.removeFromParent(); // the fire goes out with her; it is not a piece to be thrown
     // The crew of an engine or a ship are thrown clear as she goes: whole men, not a scatter of parts.
@@ -701,7 +709,17 @@ export class Renderer {
     const g = v.g;
     for (const p of [v.real, ...(v.riders ?? []).map((r) => r.p)]) {
       if (!p || p.hurt === hurt) continue;
-      for (const piece of wounds(p, hurt, this.gore)) {
+      const off = wounds(p, hurt, this.gore);
+      // Gear they have back is no longer lying on the ground.
+      for (const piece of p.gear.flat()) {
+        const lying = this.dropped.get(piece);
+        if (!lying || !piece.visible) continue;
+        this.scene.remove(lying);
+        const at = this.rubble.findIndex((r) => r.m === lying);
+        if (at >= 0) this.rubble.splice(at, 1);
+        this.dropped.delete(piece);
+      }
+      for (const piece of off) {
         if (!g.visible || !piece.parent) continue;
         // The piece itself stays on the figure, hidden, to be put back if they are healed; a copy of it falls.
         const copy = piece.clone();
@@ -709,6 +727,7 @@ export class Renderer {
         copy.visible = true;
         copy.updateMatrixWorld(true);
         this.throwPiece(copy, g.position, 1, 0.5);
+        this.dropped.set(piece, copy);
       }
     }
   }
@@ -1344,8 +1363,11 @@ export class Renderer {
         if (d.t > 9) { this.scene.remove(d.g); this.dying.splice(i, 1); }
       } else if (d.v.real) {
         // The recorded fall, then the body lies a while and sinks into the ground.
-        play(d.v.real, 'Death01', 1, true);
+        // One recorded fall, made several: quicker or slower, mirrored, and ending in one of three sprawls.
+        const way = Math.floor(d.v.phase * 100);
+        play(d.v.real, 'Death01', 0.85 + (way % 5) * 0.09, true);
         d.v.real.mixer.update(dt);
+        sprawl(d.v.real, way % 3, Math.min(1, Math.max(0, (d.t - 0.5) / 0.9)));
         d.g.rotation.x = d.g.rotation.z = 0;
         if (d.t > 7) d.g.position.y -= dt * 0.12;
         if (d.t > 10) { this.scene.remove(d.g); this.dying.splice(i, 1); }

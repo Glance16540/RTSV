@@ -961,6 +961,33 @@ export function wounds(p: RealPerson, level: number, marks: boolean): THREE.Obje
   return off;
 }
 
+const along = new THREE.Vector3(), aside = new THREE.Vector3(), h1 = new THREE.Vector3(), h2 = new THREE.Vector3();
+/**
+ * The dead do not all lie alike. Over the recorded fall, `kind` 1 lays both legs out flat and a little apart, and
+ * `kind` 2 throws one arm up past the head and the other across the body; 0 leaves the fall as recorded. `w` is how
+ * far to bring it in, 0 to 1. Call after the motion has been advanced.
+ */
+export function sprawl(p: RealPerson, kind: number, w: number): void {
+  if (kind === 0 || w <= 0) return;
+  const hips = p.bones.get('DEF-hips'), head = p.bones.get('DEF-head');
+  if (!hips || !head) return;
+  hips.updateWorldMatrix(true, false); head.updateWorldMatrix(true, false);
+  along.copy(head.getWorldPosition(h1)).sub(hips.getWorldPosition(h2)).setY(0);
+  if (along.lengthSq() < 1e-6) return;
+  along.normalize();
+  aside.set(along.z, 0, -along.x);
+  const to = (f: number, l: number, u: number): THREE.Vector3 => dir.set(along.x * f + aside.x * l, u, along.z * f + aside.z * l).normalize();
+  if (kind === 1) {
+    for (const [side, sign] of [['L', 1], ['R', -1]] as const) {
+      point(p.bones.get('DEF-thigh' + side), to(-1, sign * 0.28, -0.03), w);
+      point(p.bones.get('DEF-shin' + side), to(-1, sign * 0.2, 0), w);
+    }
+  } else {
+    point(p.bones.get('DEF-upper_armL'), to(0.8, 0.55, 0), w); point(p.bones.get('DEF-forearmL'), to(1, 0.1, 0.02), w);
+    point(p.bones.get('DEF-upper_armR'), to(-0.5, -0.7, 0.1), w); point(p.bones.get('DEF-forearmR'), to(-0.2, 0.9, 0.25), w);
+  }
+}
+
 /** Put a figure's arms round someone standing close in front of them: `high` round the neck, otherwise round the waist. Call after the motion has been advanced. */
 export function embrace(p: RealPerson, yaw: number, high: boolean): void {
   const fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw), up = high ? 0.32 : -0.42;
