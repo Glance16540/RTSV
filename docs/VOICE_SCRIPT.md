@@ -225,7 +225,7 @@ Put a file named `persona_forge.txt` containing `alt` beside the recordings to h
 | `forge_p_ageup_1` | As the player's own leader: a new age is reached | At last, proper tools. |
 | `forge_p_ageup_2` | As the player's own leader: a new age is reached | Progress. Throw out the old drawings. |
 
-## Israelites: Eliab the Seer — Judge over Israel
+## Hebrews: Eliab the Seer — Judge of the Tribes
 
 **Direction:** Male, ageless. Calm, soft, certain. Speaks of the future in the past tense.
 
@@ -591,7 +591,7 @@ Put a file named `persona_england.txt` containing `alt` beside the recordings to
 | `england_p_ageup_1` | As the player's own leader: a new age is reached | A new age. Let us hope it is drier than the last. |
 | `england_p_ageup_2` | As the player's own leader: a new age is reached | We move with the times. Reluctantly, but we move. |
 
-## Arabs: Emir Rashid ibn Tariq — Emir of the Caravan Cities
+## Abbasids: Emir Rashid ibn Tariq — Emir of the Caravan Cities
 
 **Direction:** Male, forties. Courteous, musical, patient: a merchant and a poet. Compliments you while he takes your measure.
 
