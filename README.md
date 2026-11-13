@@ -250,6 +250,14 @@ neighbouring land.
 - **Ages.** Spend supplies to bring your whole people into the next age. Every age makes your
   armies a tenth stronger on the map, and your real-time battles begin in that age with its weapons
   already in hand (swordsmen in place of clubmen, and so on). Rivals advance too.
+- **Towns stay built.** A land's battlefield is one piece of ground, laid out the same whoever comes
+  to fight there, with the holder in the town's corner and the attacker camped opposite. What the map
+  says is built on a land (Farmland, Barracks, Archery Range, Stable, Harbour) stands in its town when
+  a siege begins. What the victor has standing when a siege ends is kept (`Territory.town`) and is
+  there the next time that land is fought over: hold a land and you defend the town you built; take
+  one and your camp becomes its town. A Barracks, Range, Stable, Farm or Dock you built in a siege you
+  won also goes up on the map, where the land has a free slot. A land taken by auto-resolve changes
+  hands as it stands, less its towers and walls. Field battles are fought away from the town.
 - **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
   Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
   fought around a great lake with docks and ships. Build a Harbour on a coast or at a sea crossing and an army

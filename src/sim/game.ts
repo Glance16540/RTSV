@@ -266,7 +266,14 @@ export interface PlayerSetup {
   civ?: string;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
   /** `armed`: the side already has every weapon upgrade of its starting age. */
-  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean };
+  /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
+  /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
+  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: [string, number, number][] };
+  /**
+   * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
+   * four, whoever is there, so the same ground is the same every time it is fought over.
+   */
+  start?: number;
 }
 
 /** How a raider's taking of someone is set down in their record. */
@@ -348,7 +355,14 @@ export class Game {
 
   constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false, public climate: Climate = '') {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
-    this.spec = generateMap(seed, size, setups.length, sea, relief, climate);
+    const placed = setups.some((s) => s.start !== undefined);
+    this.spec = generateMap(seed, size, placed ? 4 : setups.length, sea, relief, climate);
+    if (placed) {
+      // Corners named by the players are theirs; the rest take what is left, in order.
+      const free = [0, 1, 2, 3].filter((k) => !setups.some((s) => s.start === k));
+      const corners = this.spec.starts;
+      this.spec.starts = setups.map((s) => corners[s.start !== undefined && s.start >= 0 && s.start < 4 ? s.start : free.shift() ?? 0]);
+    }
     this.wxSeed = (seed * 2654435761 + 97) >>> 0;
     this.weatherT = 70 + (this.wxSeed % 80);
     this.size = size;
@@ -417,10 +431,25 @@ export class Game {
           for (const t of Object.values(TECHS)) if (t.upgrade && t.age <= p.age) { p.techs.add(t.id); p.upgrades[t.upgrade[0]] = t.upgrade[1]; }
         }
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
-        // Defensive works stand at the corners of the town.
-        (s.bonus.buildings ?? []).forEach((type, j) => {
-          const cx = st.x + (j % 2 ? -6 : 4), cy = st.y + (j % 2 ? 4 : -6) * (j > 1 ? -1 : 1);
+        // What was left standing here after the last battle still stands, unless another camp is pitched on it.
+        for (const [type, cx, cy] of s.bonus.town ?? []) {
+          const def = BUILDINGS[type];
+          if (!def || !Number.isInteger(cx) || !Number.isInteger(cy)) continue;
+          if (this.spec.starts.some((o, k) => k !== i && Math.hypot(o.x - cx - def.size / 2, o.y - cy - def.size / 2) < 10)) continue;
+          // It was built on ground cleared of wood or stone, and that ground is still clear.
+          for (const r of this.resources.filter((r) => r.cx < cx + def.size && r.cx + r.size > cx && r.cy < cy + def.size && r.cy + r.size > cy)) this.kill(r);
           if (this.canPlace(type, cx, cy)) this.spawnBuilding(type, i, cx, cy, true);
+        }
+        // Works the land is known for are raised if they are not there already.
+        const have: Record<string, number> = {};
+        for (const b of this.buildings) if (b.owner === i) have[b.type] = (have[b.type] ?? 0) + 1;
+        (s.bonus.buildings ?? []).forEach((type, j) => {
+          if (!BUILDINGS[type]) return;
+          if (have[type]) { have[type]--; return; }
+          // Defensive works stand at the corners of the town.
+          const cx = st.x + (j % 2 ? -6 : 4), cy = st.y + (j % 2 ? 4 : -6) * (j > 1 ? -1 : 1);
+          const at = type === 'tower' && this.canPlace(type, cx, cy) ? { cx, cy } : this.siteNear(type, st, dir);
+          if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
@@ -676,6 +705,27 @@ export class Game {
     let lo = Infinity, hi = -Infinity;
     for (let y = cy; y < cy + s; y++) for (let x = cx; x < cx + s; x++) { const h = this.spec.height[y * this.size + x]; lo = Math.min(lo, h); hi = Math.max(hi, h); }
     return hi - lo > (s > 1 ? 0.4 : 0.6);
+  }
+
+  /** The nearest free ground to a start for a building, with room to walk round it and clear of where the people muster. */
+  private siteNear(type: string, st: { x: number; y: number }, dir: number): { cx: number; cy: number } | null {
+    const s = BUILDINGS[type].size, far = type === 'dock' ? this.size / 2 : 16;
+    let best: { cx: number; cy: number } | null = null, bestD = Infinity;
+    for (let cy = Math.max(2, Math.floor(st.y - far)); cy <= Math.min(this.size - s - 2, st.y + far); cy++)
+      for (let cx = Math.max(2, Math.floor(st.x - far)); cx <= Math.min(this.size - s - 2, st.x + far); cx++) {
+        const dx = cx + s / 2 - st.x, dy = cy + s / 2 - st.y, d = Math.hypot(dx, dy);
+        if (d >= bestD || d < 5 + s / 2 || d > far) continue;
+        if (Math.abs(dx) < 5 + s / 2 && dy * dir > 0 && dy * dir < 9 + s / 2) continue; // the muster ground
+        if (!this.canPlace(type, cx, cy)) continue;
+        let room = true;
+        for (let y = cy - 1; y <= cy + s && room; y++)
+          for (let x = cx - 1; x <= cx + s; x++) {
+            const k = y * this.size + x;
+            if (this.occupied[k] && !(type === 'dock' && this.terrain[k] === T_WATER)) { room = false; break; }
+          }
+        if (room) { best = { cx, cy }; bestD = d; }
+      }
+    return best;
   }
 
   canPlace(type: string, cx: number, cy: number, forHuman = false): boolean {

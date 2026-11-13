@@ -329,7 +329,10 @@ loadAssets().then(() => {
       // Who is still standing decides what is left of the army on the campaign map.
       const survivors: Record<string, number> = {};
       for (const u of app.game.units) if (u.owner === app.pid) survivors[u.type] = (survivors[u.type] ?? 0) + 1;
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      // What the victor has standing stays standing: it is that land's town the next time it is fought over.
+      const holder = won ? app.pid : 1;
+      const town = cfg.field ? undefined : app.game.buildings.filter((b) => b.owner === holder && b.complete && !b.dead).map((b) => [b.type, b.cx, b.cy]);
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, town })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -385,8 +388,8 @@ loadAssets().then(() => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number> };
-      finishBattle(c, r.won, r.survivors);
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; town?: [string, number, number][] };
+      finishBattle(c, r.won, r.survivors, r.town);
       if (c.phase === 'ai') continueAI(c);
     }
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);
