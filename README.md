@@ -291,7 +291,7 @@ neighbouring land.
 - **Towns stay built.** A land's battlefield is one piece of ground, laid out the same whoever comes
   to fight there, with the holder in the town's corner and the attacker camped opposite. What the map
   says is built on a land (Farmland, Barracks, Archery Range, Stable, Harbour) stands in its town when
-  a siege begins. What the victor has standing when a siege ends is kept (`Territory.town`) and is
+  a siege begins. What the victor has standing when a siege ends, finished or half built, is kept (`Territory.town`) and is
   there the next time that land is fought over: damage and all, so a battered
   wall or hall is still battered, though the people mend a tenth of each building every turn (`TOWN_MEND`): hold a land and you defend the town you built; take
   one and your camp becomes its town. A Barracks, Range, Stable, Farm or Dock you built in a siege you

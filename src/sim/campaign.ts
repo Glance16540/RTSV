@@ -225,12 +225,12 @@ export const homeCorner = (t: Territory): number => t.town?.at ?? 2;
 const MAX_TOWN = 240;
 /** The share of a building's full health that the people of a land mend in a turn. */
 export const TOWN_MEND = 0.1;
-/** A turn's mending: every damaged building in every town is a little nearer whole. Marauders mend nothing. */
+/** A turn's mending: every damaged building in every town is a little nearer whole. Marauders mend nothing, and no one builds. */
 export function mendTowns(c: Campaign): void {
   for (const t of c.territories) {
     if (!t.town || t.horde) continue;
     t.town.b = t.town.b.map((b): Standing => {
-      if (b[3] === undefined) return b;
+      if (b[3] === undefined || b[4] !== undefined) return b; // whole, or never finished: that waits for its builders
       const health = Math.round((b[3] + TOWN_MEND) * 100) / 100;
       return health >= 1 ? [b[0], b[1], b[2]] : [b[0], b[1], b[2], health];
     });
@@ -1641,14 +1641,18 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   if (standing && p.mode !== 'field') {
     // The victor's buildings are the town now, where they stand: a camp that took the land becomes its town.
     const b = standing.filter((x) => Array.isArray(x) && BUILDINGS[x[0]] && x[0] !== 'wonder' && Number.isInteger(x[1]) && Number.isInteger(x[2]))
-      .map((x): Standing => (typeof x[3] === 'number' && x[3] > 0 && x[3] < 1 ? [x[0], x[1], x[2], x[3]] : [x[0], x[1], x[2]])).slice(0, MAX_TOWN);
+      .map((x): Standing => {
+        const health = typeof x[3] === 'number' && x[3] > 0 && x[3] < 1 ? x[3] : undefined;
+        if (typeof x[4] === 'number' && x[4] >= 0 && x[4] < 1) return [x[0], x[1], x[2], health ?? 0.01, x[4]]; // never finished
+        return health === undefined ? [x[0], x[1], x[2]] : [x[0], x[1], x[2], health];
+      }).slice(0, MAX_TOWN);
     land.town = { at: playerWon === humanAttacks ? (home + 2) % 4 : home, b };
     // What the player built in the fighting stands on the map as well, where the land has room for it.
     if (playerWon && land.owner === 0) {
       for (const [site, type] of Object.entries(SITE_BUILDING)) {
         if (site === 'fortress' || land.buildings.includes(site) || land.buildings.length >= slots(land)) continue;
         if (site === 'harbour' && !onSea(c, land.id)) continue;
-        if (!b.some((x) => x[0] === type)) continue;
+        if (!b.some((x) => x[0] === type && x[4] === undefined)) continue; // a finished one
         land.buildings.push(site);
         c.log.push(`The ${SITES[site].name} you built in the fighting stands in ${land.name}.`);
       }

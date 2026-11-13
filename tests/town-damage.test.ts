@@ -22,11 +22,11 @@ describe('damage to a land\'s town carries over', () => {
     hurt.hp = Math.round(hurt.maxHp * 0.25);
     const whole = spot(g, 'house', 0);
     g.spawnBuilding('house', 0, whole.cx, whole.cy, true);
-    const half = g.spawnBuilding('house', 0, ...Object.values(spot(g, 'house', 0)) as [number, number], false); // never finished
+    const half = g.spawnBuilding('house', 0, ...Object.values(spot(g, 'house', 0)) as [number, number], false); // never finished: tests/unfinished.test.ts follows these
     const stood = g.standing(0);
     expect(stood.find((b) => b[0] === 'barracks')).toEqual(['barracks', at.cx, at.cy, 0.25]);
     expect(stood.find((b) => b[0] === 'house')).toEqual(['house', whole.cx, whole.cy]);
-    expect(stood.some((b) => b[1] === half.cx && b[2] === half.cy)).toBe(false);
+    expect(stood.find((b) => b[1] === half.cx && b[2] === half.cy)![4]).toBe(0);
     finishBattle(c, true, { clubman: 12 }, { town: stood });
     expect(t.town!.b.find((b) => b[0] === 'barracks')![3]).toBe(0.25);
 
