@@ -347,8 +347,10 @@ for filenames and a ready-made generation prompt.
   The camel, the elephant, the mammoth and the bear are made over from the alpaca, the bull and the wolf. The older
   figures built of blocks are gone; until the figure files arrive, people are simply not drawn.
 - Buildings shed pieces as they are damaged and fall apart when destroyed.
-- Blows draw blood and make a figure flinch, and the fallen drop with a recorded death. Engines fly apart and
-  ships sink. `?gore=0` turns the blood off.
+- Blows draw blood and make a figure flinch. Wounds show (`wounds` in `src/client/person.ts`): below two thirds
+  strength a fighter is cut and bloodied and has lost a shield or a helmet, below one third the rest of the armour
+  is gone; villagers' clothes tear. Healing puts it all back. The fallen drop with a recorded death; engines fly
+  apart and ships sink. `?gore=0` turns the blood and the torn clothes off.
 
 ## Roads, rough ground and the country
 

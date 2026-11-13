@@ -114,6 +114,16 @@ export interface RealPerson {
   strike: number;
   struck: boolean;
   soldier: boolean;
+  /** For wounds: the skinned parts and their whole, unmarked surfaces; the skin colour; gear a blow can knock off. */
+  skins: THREE.SkinnedMesh[];
+  whole: THREE.BufferGeometry[];
+  skin: number;
+  gear: THREE.Object3D[][];
+  /** Hair kept under a helmet, shown when the helmet is gone. */
+  spare: THREE.Object3D | null;
+  hurt: number;
+  female: boolean;
+  seed: number;
 }
 
 export type Weapon = '' | 'club' | 'spear' | 'javelin' | 'sword' | 'pike' | 'axe' | 'bill' | 'bow' | 'crossbow' | 'musket' | 'sling' | 'staff' | 'firetube' | 'grenade' | 'whip';
@@ -684,7 +694,13 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     b.scale.set(hr.x * 0.86, hr.y * 0.62, hr.z * 0.72);
     head.add(b);
   }
+  const gearHead: THREE.Object3D[] = [], gearPlate: THREE.Object3D[] = [], gearShield: THREE.Object3D[] = [];
+  let spare: THREE.Object3D | null = null;
+  const h0 = head.children.length;
   if (o.helmet) {
+    spare = crown(hairM, 1.08);
+    spare.visible = false;
+    head.add(spare);
     const metal = o.helmet === 'leather' ? solid(0x6a4a2c) : solid(o.metal ?? (o.helmet === 'bronze' ? BRONZE : 0x9a9ea6), 0.8);
     head.add(crown(metal, 1.16, hr.y * 0.05));
     if (o.helmet === 'kettle') {
@@ -702,6 +718,8 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       for (const sx of [-1, 1]) head.add(part(geo('cheek', () => new THREE.BoxGeometry(0.012, 0.09, 0.07)), metal, sx * hr.x * 1.08, hc.y - hr.y * 0.2, hc.z + hr.z * 0.25));
     }
   }
+  if (o.helmet) gearHead.push(...head.children.slice(h0 + 1));
+  const h1 = head.children.length;
   if (!o.helmet && o.hat) {
     const hm = solid(o.hatColor);
     if (o.hat === 'straw') {
@@ -740,6 +758,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       head.add(ring);
     }
   }
+  if (!o.helmet && (o.hat === 'straw' || o.hat === 'turban')) gearHead.push(...head.children.slice(h1));
   fit('DEF-head', head);
   if (o.mantle) {
     const sh = at('DEF-spine.003');
@@ -756,9 +775,12 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     const gk = 1 + [-0.05, 0.02, 0.13][o.girth];
     cuirass.scale.set(0.2 * gk, 0.21, 0.155 * gk);
     fit('DEF-spine.002', cuirass);
+    gearPlate.push(cuirass);
     for (const side of ['L', 'R']) {
       const s = at(`DEF-upper_arm.${side}`);
-      fit(`DEF-upper_arm.${side}`, part(geo('pauldron', () => new THREE.SphereGeometry(0.085, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.6)), steel, s.x * 1.04, s.y - 0.01, s.z));
+      const pd = part(geo('pauldron', () => new THREE.SphereGeometry(0.085, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.6)), steel, s.x * 1.04, s.y - 0.01, s.z);
+      fit(`DEF-upper_arm.${side}`, pd);
+      gearPlate.push(pd);
     }
   }
   // ---- a shield on the left forearm: its face is up while the arm is out, so it faces outward when the arm hangs ----
@@ -770,6 +792,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     sh.add(part(geo('boss', () => new THREE.SphereGeometry(0.06, 9, 6, 0, Math.PI * 2, 0, Math.PI / 2)), solid(0x9a9ea6, 0.8), 0, 0.01, 0));
     sh.position.set((e.x + h.x) / 2, e.y + 0.065, e.z);
     fit('DEF-forearm.L', sh);
+    gearShield.push(sh);
   }
 
   // ---- what is held and borne: each thing is fitted once, while the figure stands at rest, and shown when wanted ----
@@ -802,10 +825,11 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   }
   if (o.child) bones.get('DEF-head')?.scale.multiplyScalar(1.28);
 
-  const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(), props, toolKind: '', strike: 0, struck: false, soldier: !!o.weapon, aim: o.weapon === 'bow' ? 'bow' : o.weapon === 'crossbow' || o.weapon === 'musket' || o.weapon === 'firetube' ? 'gun' : '', aimW: 0, flinch: 0, weapon: o.weapon, child: o.child };
+  const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(), props, toolKind: '', skins: [], whole: [], skin: o.skin, gear: [gearShield, gearHead, gearPlate].filter((l) => l.length > 0), spare, hurt: 0, female: o.female, seed: o.seed, strike: 0, struck: false, soldier: !!o.weapon, aim: o.weapon === 'bow' ? 'bow' : o.weapon === 'crossbow' || o.weapon === 'musket' || o.weapon === 'firetube' ? 'gun' : '', aimW: 0, flinch: 0, weapon: o.weapon, child: o.child };
   for (const [name, clip] of source.clips) real.actions.set(name, real.mixer.clipAction(clip));
 
   body.scale.setScalar(SCALE * (o.female ? 0.91 : 1.01) * (0.97 + (o.seed % 7) * 0.01)); // people are not all one height
+  body.traverse((m) => { if ((m as THREE.SkinnedMesh).isSkinnedMesh && (m as THREE.SkinnedMesh).geometry.getAttribute('color')) { real.skins.push(m as THREE.SkinnedMesh); real.whole.push((m as THREE.SkinnedMesh).geometry); } });
   const g = new THREE.Group();
   g.add(body);
   real.actions.get('Idle_Loop')!.play();
@@ -875,6 +899,66 @@ export function level(p: RealPerson, yaw: number, want: number, dt: number): voi
     point(B('DEF-upper_armR'), to(0.5, -0.25, -0.7), w); point(B('DEF-forearmR'), to(1, 0.08, 0.1), w);
     point(B('DEF-upper_armL'), to(0.75, 0.1, -0.5), w); point(B('DEF-forearmL'), to(0.8, -0.5, 0.12), w);
   }
+}
+
+const BLOOD = new THREE.Color(0x7a1010);
+/**
+ * Show how badly someone is hurt. 0 whole; 1 cut and bloodied, with half their gear knocked off; 2 worse, the rest
+ * of the gear gone; 3 as they die. A villager's clothes tear to show the skin beneath. Blood and tears are painted
+ * onto a copy of the figure's own surface, so the whole one is there to go back to when they are healed. Returns
+ * the pieces of gear this change knocked off (now hidden), for the game to throw to the ground. `marks` false
+ * leaves the blood and the torn clothes out.
+ */
+export function wounds(p: RealPerson, level: number, marks: boolean): THREE.Object3D[] {
+  const was = p.hurt, off: THREE.Object3D[] = [];
+  p.hurt = level;
+  // Gear: a shield or a helmet first, everything by the second stage. A villager keeps his hat until he is badly hurt.
+  const lose = level <= 0 ? 0 : level === 1 ? (p.soldier ? Math.ceil(p.gear.length / 2) : 0) : p.gear.length;
+  p.gear.forEach((list, i) => { for (const piece of list) { if (i < lose && piece.visible && level > was) off.push(piece); piece.visible = i >= lose; } });
+  if (p.spare) p.spare.visible = p.gear.some((list, i) => i < lose && list.some((q) => q.parent === p.spare!.parent));
+  for (let n = 0; n < p.skins.length; n++) if (p.skins[n].geometry !== p.whole[n]) { p.skins[n].geometry.dispose(); p.skins[n].geometry = p.whole[n]; }
+  if (level <= 0 || !marks || !p.skins.length) return off;
+  // Where the cuts fall: points on the body between the knees and the neck, the same ones each time for this person.
+  const base = p.whole[0].getAttribute('position'), box = new THREE.Box3().setFromBufferAttribute(base as THREE.BufferAttribute);
+  const H = box.max.y - box.min.y, mid = (box.min.x + box.max.x) / 2;
+  const rnd = (k: number): number => (((p.seed * 7919 + k * 104729) * 2654435761) >>> 0) / 4294967296;
+  const cuts: THREE.Vector3[] = [], tears: THREE.Vector3[] = [], v = new THREE.Vector3();
+  const wantCuts = [0, 3, 6, 9][Math.min(3, level)], wantTears = p.soldier ? 0 : [0, 2, 4, 6][Math.min(3, level)];
+  for (let k = 0; k < 400 && (cuts.length < wantCuts || tears.length < wantTears); k++) {
+    v.fromBufferAttribute(base, Math.floor(rnd(k) * base.count));
+    const t = (v.y - box.min.y) / H, ax = Math.abs(v.x - mid) / H;
+    if (t < 0.3 || t > 0.86) continue;
+    // Hands and forearms are thick with points; keep most of the marks to the trunk, the upper arms and the thighs.
+    if (ax > 0.3 || (ax > 0.12 && t > 0.6 && k % 3 !== 0)) continue;
+    // Clothes do not tear open over the chest or the loins.
+    const modest = (t > 0.64 && t < 0.82 && ax < 0.13) || (t > 0.42 && t < 0.58 && ax < 0.1);
+    if (k % 2 === 0 && tears.length < wantTears && !modest) tears.push(v.clone());
+    else if (cuts.length < wantCuts) cuts.push(v.clone());
+  }
+  const rc = H * (0.03 + 0.007 * level), rt = H * (0.055 + 0.012 * level), skin = new THREE.Color(p.skin), c = new THREE.Color();
+  for (let n = 0; n < p.skins.length; n++) {
+    const src = p.whole[n], g = new THREE.BufferGeometry();
+    for (const name of Object.keys(src.attributes)) g.setAttribute(name, name === 'color' ? src.getAttribute(name).clone() : src.getAttribute(name));
+    g.setIndex(src.getIndex());
+    g.boundingBox = src.boundingBox; g.boundingSphere = src.boundingSphere;
+    const pos = g.getAttribute('position'), col = g.getAttribute('color');
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const rag = 0.75 + ((((i * 2654435761) >>> 0) % 1000) / 1000) * 0.5; // a ragged edge
+      let torn = false, bled = 0;
+      for (const q of tears) if (v.distanceTo(q) < rt * rag) { torn = true; break; }
+      for (const q of cuts) { const d = v.distanceTo(q) / (rc * rag); if (d < 1) bled = Math.max(bled, d < 0.6 ? 1 : 1 - (d - 0.6) / 0.4); }
+      // The middle of a tear is cut as well.
+      for (const q of tears) { const d = v.distanceTo(q) / (rc * 0.7 * rag); if (d < 1) bled = Math.max(bled, 0.85); }
+      if (!torn && bled === 0) continue;
+      c.fromBufferAttribute(col as THREE.BufferAttribute, i);
+      if (torn) c.copy(skin);
+      if (bled > 0) c.lerp(BLOOD, bled);
+      col.setXYZ(i, c.r, c.g, c.b);
+    }
+    p.skins[n].geometry = g;
+  }
+  return off;
 }
 
 /** Put a figure's arms round someone standing close in front of them: `high` round the neck, otherwise round the waist. Call after the motion has been advanced. */

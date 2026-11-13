@@ -10,7 +10,7 @@ import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
-import { Outfit, RealPerson, astride, bear, embrace, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
+import { Outfit, RealPerson, astride, bear, embrace, drawnReal, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
@@ -599,6 +599,7 @@ export class Renderer {
   /** A unit has died: how it falls depends on what it was. */
   private fall(v: UnitView): void {
     const g = v.g, at = g.position;
+    if (v.real) this.mark(v, 3);
     const flame = g.userData.fire as THREE.Object3D | undefined;
     if (flame) flame.removeFromParent(); // the fire goes out with her; it is not a piece to be thrown
     // The crew of an engine or a ship are thrown clear as she goes: whole men, not a scatter of parts.
@@ -690,6 +691,26 @@ export class Renderer {
     if (lost > 0.5 && g.visible) this.spray(g.position.x, g.position.y + (v.real ? 0.55 : 0.7), g.position.z, Math.min(6, 1 + Math.round((lost / u.maxHp) * 22)), v.flesh);
     v.hp = u.hp;
     if (v.real && lost > 0.5) v.real.flinch = 0.45;
+    // Wounds show on the figure, and on any riders or crew: cuts and blood, torn clothes, gear knocked to the ground.
+    const hurt = u.hp <= 0 ? 3 : u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0;
+    this.mark(v, hurt);
+  }
+
+  /** Bring the wounds drawn on a unit's people to a stage, throwing down whatever gear that knocks off. */
+  private mark(v: UnitView, hurt: number): void {
+    const g = v.g;
+    for (const p of [v.real, ...(v.riders ?? []).map((r) => r.p)]) {
+      if (!p || p.hurt === hurt) continue;
+      for (const piece of wounds(p, hurt, this.gore)) {
+        if (!g.visible || !piece.parent) continue;
+        // The piece itself stays on the figure, hidden, to be put back if they are healed; a copy of it falls.
+        const copy = piece.clone();
+        piece.parent.add(copy);
+        copy.visible = true;
+        copy.updateMatrixWorld(true);
+        this.throwPiece(copy, g.position, 1, 0.5);
+      }
+    }
   }
 
   /** The trade a villager is plying, from the order in hand. Idle or merely walking, they wear their own clothes. */
