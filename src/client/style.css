@@ -92,7 +92,7 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
   box-shadow: 0 0 0 3px #14110d, 0 4px 14px #000;
 }
 
-#info { padding: 4px 10px; overflow: hidden; background: rgba(0, 0, 0, 0.25); border: 1px solid #3c3122; border-radius: 4px; }
+#info { padding: 4px 10px; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; background: rgba(0, 0, 0, 0.25); border: 1px solid #3c3122; border-radius: 4px; }
 #info .head { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
 #info .head > div { flex: 1; max-width: 300px; }
 #info .head b { font: 600 17px Georgia, serif; color: var(--gold); }
