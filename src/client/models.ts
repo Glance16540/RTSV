@@ -79,22 +79,9 @@ function wheel(g: THREE.Object3D, r: number, x: number, y: number, z: number): T
   return w;
 }
 
-/** A round shield carried on the off arm: dished, with a rim and a boss. */
-function shield(g: THREE.Object3D, r: number, color: number, x: number, y: number, z: number): THREE.Group {
-  const s = new THREE.Group();
-  s.position.set(x, y, z);
-  add(s, geo('dish', () => new THREE.SphereGeometry(1, 14, 5, 0, Math.PI * 2, 0, Math.PI * 0.32).rotateZ(Math.PI / 2).translate(0.8, 0, 0)), color, 0, 0, 0).scale.set(r * 0.5, r * 1.18, r * 1.18);
-  add(s, geo('rim', () => new THREE.TorusGeometry(1, 0.07, 5, 16).rotateY(Math.PI / 2)), 0x6a5a40, 0.02, 0, 0).scale.setScalar(r);
-  add(s, geo('boss', () => new THREE.SphereGeometry(1, 8, 6)), 0xb8b8c0, -0.05 - r * 0.08, 0, 0).scale.setScalar(r * 0.24);
-  g.add(s);
-  return s;
-}
 /** A rounded limb or body: a capsule r thick and len long overall, standing upright. */
 const cap = (p: THREE.Object3D, r: number, len: number, color: number, x = 0, y = 0, z = 0) =>
   add(p, geo(`k${r},${len}`, () => new THREE.CapsuleGeometry(r, Math.max(0.001, len - r * 2), 3, 8)), color, x, y, z);
-/** A shape turned on a lathe from a profile of [radius, height] points: tunics, skirts, pots. */
-const lathe = (p: THREE.Object3D, key: string, pts: number[][], color: number, x = 0, y = 0, z = 0) =>
-  add(p, geo(`l${key}`, () => new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), 12)), color, x, y, z);
 const cyl = (p: THREE.Object3D, rt: number, rb: number, h: number, color: number, x = 0, y = 0, z = 0, seg = 8) =>
   add(p, geo(`c${rt},${rb},${h},${seg}`, () => new THREE.CylinderGeometry(rt, rb, h, seg)), color, x, y, z);
 const ball = (p: THREE.Object3D, r: number, color: number, x = 0, y = 0, z = 0, em = 0) =>
@@ -259,158 +246,20 @@ function leg(g: THREE.Object3D, w: number, h: number, color: number, x: number, 
   g.add(hip);
 }
 
-/** A man's or woman's leg: thigh, a narrower shin and a boot, hinged at the hip. */
-function humanLeg(g: THREE.Object3D, color: number, x: number, side: number, y: number): void {
-  const hip = new THREE.Group();
-  hip.position.set(x, y + 0.3, 0);
-  hip.userData.leg = side;
-  hip.userData.limb = true;
-  cap(hip, 0.058, 0.18, color, 0, -0.085, 0);
-  add(hip, geo('shin', () => new THREE.CylinderGeometry(0.05, 0.036, 0.14, 8)), color, 0, -0.2, 0);
-  // A boot: a rounded foot with a sole under it and a turned-down cuff at the calf.
-  const leather = 0x3a2a1c;
-  const foot = cap(hip, 0.036, 0.15, leather, 0, -0.268, 0.03);
-  foot.rotation.x = Math.PI / 2;
-  foot.scale.set(1.05, 1, 0.8);
-  foot.userData.boot = 1;
-  box(hip, 0.078, 0.014, 0.15, 0x1e1610, 0, -0.293, 0.03).userData.boot = 2;
-  add(hip, geo('bootcuff', () => new THREE.CylinderGeometry(0.047, 0.043, 0.04, 8)), shade(leather, 1.25), 0, -0.225, 0).userData.boot = 2;
-  g.add(hip);
-}
-/** A face: two dark eyes are enough at this size to make a head read as a person. */
-function face(g: THREE.Object3D, y: number, z = 0.098, brow = 0x2a2018, f = false): void {
-  for (const x of [-0.042, 0.042]) {
-    add(g, geo('eye', () => new THREE.SphereGeometry(0.015, 6, 5)), 0x1e1a18, x, y, z).castShadow = false;
-    // A brow over each eye, set a little lower toward the nose; a woman's finer and higher.
-    dot(g, geo(f ? 'browf' : 'brow', () => new THREE.BoxGeometry(f ? 0.03 : 0.036, f ? 0.006 : 0.009, 0.008)), brow, x, y + (f ? 0.03 : 0.026), z - 0.004).rotation.z = (x > 0 ? -1 : 1) * (f ? 0.1 : 0.2);
-  }
-  dot(g, geo('nose', () => new THREE.SphereGeometry(0.017, 6, 5)), shade(SKIN, 0.92), 0, y - 0.026, z + 0.008).scale.set(0.8, 1.15, 1);
-  dot(g, geo('mouth', () => new THREE.BoxGeometry(0.036, 0.008, 0.006)), f ? 0xb04a4a : shade(SKIN, 0.6), 0, y - 0.058, z - 0.006);
-  for (const x of [-0.104, 0.104]) dot(g, geo('ear', () => new THREE.SphereGeometry(0.022, 6, 5)), SKIN, x, y - 0.012, z - 0.1).scale.set(0.55, 1, 0.8);
-  if (f) for (const x of [-0.06, 0.06]) dot(g, geo('cheek', () => new THREE.SphereGeometry(0.018, 6, 5)), 0xe89a8a, x, y - 0.034, z - 0.012).scale.set(1, 0.7, 0.4);
-}
 
 /** A man on foot (or in the saddle, with y raised): broad in the shoulder, belted at the waist. */
 function humanoid(g: THREE.Object3D, body: number, legs: number, hair: number, y = 0): void {
+  // The figure itself is drawn from the real model: this only marks where a rider or a crewman is.
+  void body; void legs; void hair;
   if (y === 0) g.userData.biped = true;
-  humanLeg(g, legs, -0.065, 0, y);
-  humanLeg(g, legs, 0.065, Math.PI, y);
-  // A belted tunic: flared at the hem, wide at the chest and shoulders, drawn in at the neck.
-  lathe(g, 'tunic', [[0.135, 0], [0.125, 0.06], [0.108, 0.17], [0.112, 0.2], [0.142, 0.31], [0.152, 0.37], [0.1, 0.41], [0.045, 0.44]], body, 0, y + 0.24, 0).scale.z = 0.66;
-  add(g, geo('belt', () => new THREE.TorusGeometry(0.112, 0.016, 5, 12).rotateX(Math.PI / 2)), 0x2e2218, 0, y + 0.43, 0).scale.z = 0.68;
-  for (const x of [-0.155, 0.155]) ball(g, 0.055, body, x, y + 0.6, 0);
-  cyl(g, 0.04, 0.046, 0.08, SKIN, 0, y + 0.67, 0, 8);
-  // The off arm: a sleeve to the elbow, a bare forearm and a hand.
-  const offSleeve = cap(g, 0.042, 0.19, body, -0.185, y + 0.52, 0);
-  offSleeve.rotation.z = -0.12;
-  cap(g, 0.035, 0.17, SKIN, -0.205, y + 0.385, 0.01).rotation.z = -0.06;
-  const offHand = ball(g, 0.04, SKIN, -0.213, y + 0.295, 0.015);
-  dot(offHand, geo('thumb', () => new THREE.SphereGeometry(0.016, 5, 4)), SKIN, 0.028, 0.006, 0.02);
-  dot(offHand, geo('fingers', () => new THREE.SphereGeometry(0.026, 6, 4)), SKIN, 0, -0.026, 0.006).scale.set(1, 0.8, 0.7);
-  if (body !== SKIN) {
-    // What makes it clothing: a cuff, a collar, a stitched hem, a buckle on the belt, lacing at the throat.
-    dot(offSleeve, geo('cuff', () => new THREE.CylinderGeometry(0.046, 0.046, 0.022, 8)), shade(body, 0.72), 0, -0.088, 0);
-    dot(g, geo('collar', () => new THREE.TorusGeometry(0.05, 0.014, 5, 10).rotateX(Math.PI / 2)), shade(body, 0.72), 0, y + 0.655, 0.004).scale.z = 0.85;
-    dot(g, geo('hem', () => new THREE.TorusGeometry(0.133, 0.009, 4, 14).rotateX(Math.PI / 2)), shade(body, 0.72), 0, y + 0.246, 0).scale.z = 0.66;
-    dot(g, geo('buckle', () => new THREE.BoxGeometry(0.034, 0.03, 0.012)), 0xc8a040, 0, y + 0.43, 0.079);
-    for (let i = 0; i < 2; i++) dot(g, geo('lace', () => new THREE.BoxGeometry(0.03, 0.006, 0.006)), shade(body, 1.35), 0, y + 0.6 - i * 0.03, 0.093 - i * 0.004);
-  }
-  ball(g, 0.11, SKIN, 0, y + 0.76, 0).scale.y = 1.08;
-  const own = HAIR.includes(hair) || hair === GREY; // his own hair, as against a helmet or a hood given as its colour
-  const worn = own ? who % 5 : -1;
-  if (worn === 3) {
-    // Going bald: a fringe round the back and sides.
-    add(g, geo('fringe', () => new THREE.SphereGeometry(0.118, 12, 6, 0, Math.PI * 2, Math.PI * 0.28, Math.PI * 0.26)), hair, 0, y + 0.772, -0.016);
-  } else add(g, geo('hair', () => new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)), hair, 0, y + 0.778, -0.012);
-  if (worn === 1) cap(g, 0.07, 0.2, hair, 0, y + 0.72, -0.075).scale.set(1.4, 1, 0.6); // worn long to the collar
-  if (worn === 4) ball(g, 0.045, hair, 0, y + 0.895, -0.03); // tied up in a knot
-  face(g, y + 0.765, 0.098, own ? shade(hair, 0.8) : 0x2a2018);
-  if (own && who % 4 === 1) {
-    // A full beard.
-    const beard = add(g, geo('beard', () => new THREE.SphereGeometry(0.1, 10, 6, 0, Math.PI * 2, Math.PI * 0.56, Math.PI * 0.44)), hair, 0, y + 0.765, 0.022);
-    beard.scale.set(1, 1.15, 0.95);
-    beard.userData.joint = 'head';
-  } else if (own && who % 4 === 3) dot(g, geo('tache', () => new THREE.BoxGeometry(0.06, 0.014, 0.012)), hair, 0, y + 0.722, 0.098);
-  for (const c of g.children) c.userData.body ??= true; // the person, as against what they wear and carry
 }
 
-/**
- * A woman in a long dress: a full skirt from the hips, a narrow waist, a fitted bodice,
- * and her hair worn long, pinned up or under a scarf.
- */
-function woman(g: THREE.Object3D, dress: number, hair: number, seed: number, trim = 0xe8e2d4, bodice = dress, cut = 0): void {
-  g.userData.biped = true;
-  // The skirt hangs from the waist, so it swings from there.
-  const skirt = new THREE.Group();
-  skirt.position.y = 0.4;
-  g.add(loose(skirt, 'rx', 0.3, 70, 4.5));
-  lathe(skirt, 'skirt', [[0.21, 0], [0.2, 0.04], [0.155, 0.2], [0.13, 0.3], [0.086, 0.4]], dress, 0, -0.4, 0).scale.z = 0.8;
-  lathe(g, 'bodice', [[0.086, 0], [0.1, 0.06], [0.116, 0.11], [0.11, 0.16], [0.118, 0.2], [0.06, 0.245], [0.036, 0.27]], cut ? SKIN : bodice, 0, 0.4, 0).scale.z = 0.6;
-  for (const x of [-0.05, 0.05]) loose(ball(g, cut ? 0.056 : 0.05, bodice, x, 0.512 - cut * 0.004, 0.048), 'y', 0.07 + cut * 0.015, 150, 5.5);
-  if (cut) {
-    // A laced bodice worn low over a white blouse off the shoulders: `cut` 2 sits lower still.
-    const top = cut > 1 ? 0.12 : 0.15;
-    lathe(g, `stays${cut}`, [[0.088, 0], [0.103, 0.06], [0.122, 0.11], [0.12, top]], bodice, 0, 0.4, 0).scale.z = 0.64;
-    for (const x of [-0.05, 0.05]) loose(ball(g, 0.045, SKIN, x, 0.538, 0.05), 'y', 0.07 + cut * 0.015, 150, 5.5).scale.set(1, 0.7, 0.9);
-    for (const x of [-0.128, 0.128]) ball(g, 0.05, 0xf4eee0, x, 0.575, 0);
-    for (let i = 0; i < 3; i++) box(g, 0.05, 0.008, 0.01, 0xf4eee0, 0, 0.42 + i * 0.03, 0.079);
-  }
-  add(g, geo('sash', () => new THREE.TorusGeometry(0.086, 0.014, 5, 12).rotateX(Math.PI / 2)), trim, 0, 0.405, 0).scale.z = 0.72;
-  for (const x of [-0.05, 0.05]) { const sh = cap(g, 0.026, 0.1, 0x3a2a1c, x, 0.024, 0.135); sh.rotation.x = Math.PI / 2; sh.scale.set(1.1, 1, 0.75); }
-  cyl(g, 0.033, 0.038, 0.08, SKIN, 0, 0.67, 0, 8);
-  // The off arm, slimmer than a man's.
-  const offSleeve = cap(g, 0.034, 0.18, dress, -0.15, 0.53, 0);
-  offSleeve.rotation.z = -0.14;
-  dot(offSleeve, geo('cufff', () => new THREE.CylinderGeometry(0.038, 0.038, 0.02, 8)), trim, 0, -0.084, 0);
-  cap(g, 0.029, 0.16, SKIN, -0.172, 0.4, 0.01).rotation.z = -0.06;
-  const offHand = ball(g, 0.033, SKIN, -0.18, 0.315, 0.015);
-  dot(offHand, geo('thumbf', () => new THREE.SphereGeometry(0.013, 5, 4)), SKIN, 0.023, 0.005, 0.017);
-  dot(offHand, geo('fingersf', () => new THREE.SphereGeometry(0.021, 6, 4)), SKIN, 0, -0.022, 0.005).scale.set(1, 0.8, 0.7);
-  ball(g, 0.104, SKIN, 0, 0.76, 0).scale.y = 1.06;
-  face(g, 0.762, 0.092, shade(hair, 0.8), true);
-  // A band stitched round the hem, cuffs, and at the throat a collar (or, worn low, a ribbon and a pendant).
-  dot(skirt, geo('hemf', () => new THREE.TorusGeometry(0.207, 0.011, 4, 16).rotateX(Math.PI / 2)), trim, 0, -0.385, 0).scale.z = 0.8;
-  dot(skirt, geo('hemf2', () => new THREE.TorusGeometry(0.196, 0.006, 4, 16).rotateX(Math.PI / 2)), shade(dress, 0.7), 0, -0.34, 0).scale.z = 0.8;
-  if (cut) {
-    dot(g, geo('ribbon', () => new THREE.TorusGeometry(0.036, 0.007, 4, 10).rotateX(Math.PI / 2)), 0x2a1a1e, 0, 0.672, 0);
-    dot(g, geo('pendant', () => new THREE.SphereGeometry(0.012, 6, 5)), 0xe8c860, 0, 0.6, 0.066);
-  } else dot(g, geo('collarf', () => new THREE.TorusGeometry(0.042, 0.012, 5, 10).rotateX(Math.PI / 2)), trim, 0, 0.652, 0.004).scale.z = 0.85;
-  add(g, geo('hairf', () => new THREE.SphereGeometry(0.115, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55)), seed % 3 === 2 ? trim : hair, 0, 0.775, -0.014);
-  if (seed % 3 === 0) {
-    // Worn long down the back, swinging from the nape.
-    const fall = new THREE.Group();
-    fall.position.set(0, 0.76, -0.085);
-    fall.userData.joint = 'head';
-    g.add(loose(fall, 'rx', 1.0, 80, 4));
-    cap(fall, 0.07, 0.34, hair, 0, -0.14, 0).scale.set(1.35, 1, 0.55);
-  } else if (seed % 3 === 1) loose(ball(g, 0.062, hair, 0, 0.83, -0.085), 'y', 0.03, 240, 9); // pinned up in a bun
-  else {
-    // A scarf, and a braid below it.
-    const braid = new THREE.Group();
-    braid.position.set(0, 0.72, -0.1);
-    braid.userData.joint = 'head';
-    g.add(loose(braid, 'rx', 1.3, 70, 3.5));
-    cap(braid, 0.03, 0.26, hair, 0, -0.12, 0);
-    ball(braid, 0.045, trim, 0, -0.02, 0);
-  }
-  for (const c of g.children) c.userData.body ??= true;
-}
 
 /** Right arm + weapon, pivoting at the shoulder so it can swing. A sleeve to the elbow if `sleeve` is given. */
 function arm(g: THREE.Object3D, y = 0, sleeve = SKIN, slim = 1): THREE.Group {
-  const a = new THREE.Group();
-  a.position.set(0.19, y + 0.58, 0);
-  a.userData.limb = true;
-  const up = cap(a, 0.042 * slim, 0.19, sleeve, 0, -0.06, 0);
-  cap(a, 0.035 * slim, 0.17, SKIN, 0, -0.19, 0.008);
-  const hand = ball(a, 0.04 * slim, SKIN, 0, -0.285, 0.012);
-  // Hung on the sleeve and the hand, so they bend with the elbow and keep the arm's own parts in their order.
-  if (sleeve !== SKIN) dot(up, geo('cuff', () => new THREE.CylinderGeometry(0.046, 0.046, 0.022, 8)), shade(sleeve, 0.72), 0, -0.088, 0).scale.setScalar(slim);
-  dot(hand, geo('thumb', () => new THREE.SphereGeometry(0.016, 5, 4)), SKIN, -0.028 * slim, 0.006, 0.02);
-  dot(hand, geo('fingers', () => new THREE.SphereGeometry(0.026, 6, 4)), SKIN, 0, -0.026, 0.006).scale.set(1, 0.8, 0.7);
-  g.add(a);
-  g.userData.arm = a;
-  return a;
+  // A place to hang what the block figure held; nothing on it is drawn.
+  void g; void y; void sleeve; void slim;
+  return new THREE.Group();
 }
 
 function horse(g: THREE.Object3D, color: number, armor = 0): void {
@@ -444,62 +293,6 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
   for (const c of g.children.slice(from)) if (c !== cloth) c.userData.steed = 'horse';
 }
 
-/** The joints of a figure on foot, turned by the recorded motions. */
-export interface Rig { root: THREE.Group; torso: THREE.Group; head: THREE.Group; armR: THREE.Object3D; armL: THREE.Group; legs: THREE.Object3D[]; /** Elbows (weapon arm, off arm) and knees (as legs), each hung below its upper limb. */ elbows: THREE.Group[]; knees: THREE.Group[]; /** What the weapon hand holds. */ held: THREE.Object3D[]; loose: Loose[]; /** Armour, hats, shields and gear that can be knocked off, the first to go first. */ gear: THREE.Object3D[] }
-/**
- * Something on a figure that is not held rigid: it lags, bounces and settles on a spring as the body moves.
- * `mode` y bobs it up and down; rx and rz swing it about where it hangs.
- */
-export interface Loose { o: THREE.Object3D; mode: 'y' | 'rx' | 'rz'; gain: number; k: number; c: number; d: number; v: number; rest: number }
-type Spring = Pick<Loose, 'mode' | 'gain' | 'k' | 'c'>;
-/** Marks a part as loose. Parts not marked are judged by where they sit: hats, things on the back, shields, weapons. */
-const loose = <T extends THREE.Object3D>(o: T, mode: Loose['mode'], gain: number, k = 150, c = 6): T => { o.userData.loose = { mode, gain, k, c } as Spring; return o; };
-/**
- * Gives a figure on foot its joints. The figure is built standing still, as one flat group of parts;
- * here each part is hung on the joint it belongs to (by where it sits), so the whole figure can be posed.
- */
-export function rigBiped(g: THREE.Group): Rig | null {
-  if (!g.userData.biped || !g.userData.arm) return null;
-  g.updateMatrixWorld(true);
-  const parts = [...g.children];
-  const joint = (x: number, y: number, z: number, parent: THREE.Object3D): THREE.Group => { const j = new THREE.Group(); j.position.set(x, y, z); parent.add(j); return j; };
-  const root = joint(0, 0.3, 0, g), torso = joint(0, 0, 0, root), head = joint(0, 0.37, 0, torso), armL = joint(-0.19, 0.28, 0, torso);
-  const armR = g.userData.arm as THREE.Object3D, legs: THREE.Object3D[] = [];
-  g.updateMatrixWorld(true);
-  const box = new THREE.Box3(), c = new THREE.Vector3(), s = new THREE.Vector3();
-  const found: Loose[] = [];
-  const free = (o: THREE.Object3D, sp: Spring): void => { found.push({ o, ...sp, d: 0, v: 0, rest: 0 }); };
-  for (const p of parts) {
-    if (p.userData.leg !== undefined) { root.attach(p); legs.push(p); continue; }
-    if (p === armR) { torso.attach(p); continue; }
-    box.setFromObject(p, true); box.getCenter(c); box.getSize(s);
-    const to = p.userData.joint === 'head' || c.y > 0.67 ? head : c.x < -0.14 && s.x < 0.3 && c.y < 0.67 ? armL : torso;
-    to.attach(p);
-    const marked = p.userData.loose as Spring | undefined;
-    if (marked) free(p, marked);
-    // A hat, crest or plume nods; a shield on the arm rattles; a pack, quiver or cape on the back swings.
-    else if (p.userData.body) continue;
-    else if (to === head && c.y > 0.84) free(p, { mode: 'y', gain: 0.03, k: 220, c: 9 });
-    else if (to === armL && Math.max(s.x, s.y, s.z) > 0.2) free(p, { mode: 'rx', gain: 0.6, k: 120, c: 6 });
-    else if (to === torso && c.z < -0.09 && s.y < 0.5) free(p, { mode: 'rx', gain: 0.8, k: 90, c: 5 });
-  }
-  // Whatever is in the weapon hand lags behind the arm and swings on after it stops.
-  armR.children.forEach((w, i) => { if (i > 2 && !w.userData.loose) free(w, { mode: 'rx', gain: 0.5, k: 110, c: 5 }); else if (w.userData.loose) free(w, w.userData.loose as Spring); });
-  // The leg on the weapon side first, as the motions list it.
-  legs.sort((a, b) => b.position.x - a.position.x);
-  const keep = new Set<unknown>([g.userData.carry, g.userData.glow]);
-  const gear = [...armL.children, ...head.children, ...torso.children].filter((p) => !p.userData.body && p !== armR && p !== head && p !== armL && !keep.has(p));
-  // Elbows and knees: the lower half of each limb, and whatever the hand holds, hangs from a joint of its own.
-  const held = armR.children.slice(armR.userData.limb ? 3 : 1);
-  const hinge = (upper: THREE.Object3D, y: number, lower: THREE.Object3D[]): THREE.Group => { const j = joint(0, y, 0, upper); upper.updateMatrixWorld(true); for (const p of lower) j.attach(p); return j; };
-  const elbowR = hinge(armR, -0.13, armR.userData.limb ? armR.children.slice(1) : []);
-  const lowL = armL.children.filter((p) => { box.setFromObject(p, true); return box.getCenter(c).y < 0.445; });
-  const elbowL = hinge(armL, -0.145, lowL);
-  const knees = legs.map((l) => hinge(l, -0.17, l.userData.limb ? l.children.slice(1) : []));
-  for (const l of found) l.rest = l.mode === 'y' ? l.o.position.y : l.mode === 'rx' ? l.o.rotation.x : l.o.rotation.z;
-  return { root, torso, head, armR, armL, legs, elbows: [elbowR, elbowL], knees, held, loose: found, gear };
-}
-
 const UNIT_HEIGHT: Record<string, number> = {
   warchariot: 1.4, warelephant: 1.9, companion: 1.5, camelrider: 1.45, mameluke: 1.45, horsearcher: 1.45, templar: 1.5, warbear: 0.9, trebuchet: 1.6, organgun: 0.8, rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, wolfrider: 1.4, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
 };
@@ -515,127 +308,7 @@ const MODEL_ALIAS: Record<string, [string, number]> = {
 /** What a villager is busy with, which decides what they wear and carry. */
 export type Job = '' | 'wood' | 'farm' | 'hunt' | 'forage' | 'mine' | 'build';
 
-/** Dresses a villager for their work: the tool in hand, and the clothes that go with the trade. */
-function outfit(g: THREE.Object3D, a: THREE.Group, f: boolean, job: Job): void {
-  const STRAW = 0xd8c070, LEATHER = 0x6a4a2c;
-  const haft = (len: number, color = WOOD): THREE.Mesh => { const h = cyl(a, 0.014, 0.014, len, color, 0, -0.28, len / 2 - 0.08, 5); h.rotation.x = Math.PI / 2; return h; };
-  const apron = (color: number): void => {
-    if (f) box(g, 0.15, 0.28, 0.02, color, 0, 0.25, 0.135).rotation.x = -0.22;
-    else { box(g, 0.17, 0.2, 0.02, color, 0, 0.36, 0.09).rotation.x = -0.1; box(g, 0.15, 0.14, 0.02, color, 0, 0.53, 0.1); }
-  };
-  const strawHat = (): void => { cyl(g, 0.2, 0.21, 0.02, STRAW, 0, 0.855, 0, 12); cyl(g, 0.1, 0.115, 0.08, STRAW, 0, 0.9, 0, 10); };
-  switch (job) {
-    case 'wood': {
-      // A woodcutter: felling axe, leather jerkin, a cap or a kerchief.
-      haft(0.46);
-      box(a, 0.03, 0.12, 0.1, IRON, 0, -0.3, 0.34);
-      if (f) add(g, geo('kerchief', () => new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.45)), 0xa8432f, 0, 0.785, -0.012);
-      else { cyl(g, 0.132, 0.118, 0.2, LEATHER, 0, 0.54, 0, 10).scale.z = 0.7; add(g, geo('cap', () => new THREE.SphereGeometry(0.124, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.42)), 0x4a6a3a, 0, 0.785, -0.008); }
-      break;
-    }
-    case 'farm': {
-      // A farmer: bib overalls (an apron on a woman), a straw hat and a hoe.
-      haft(0.6);
-      box(a, 0.1, 0.1, 0.02, IRON, 0, -0.33, 0.5);
-      if (f) apron(0xe8e2d4);
-      else {
-        box(g, 0.17, 0.17, 0.02, 0x4a6488, 0, 0.53, 0.098);
-        for (const x of [-0.065, 0.065]) { box(g, 0.03, 0.14, 0.02, 0x4a6488, x, 0.635, 0.085).rotation.x = -0.35; box(g, 0.03, 0.2, 0.02, 0x4a6488, x, 0.58, -0.1); }
-        lathe(g, 'bibwaist', [[0.128, 0], [0.114, 0.12], [0.117, 0.17]], 0x4a6488, 0, 0.27, 0).scale.z = 0.7;
-      }
-      strawHat();
-      break;
-    }
-    case 'hunt': {
-      // A hunter: bow in hand, quiver on the back, a green hood and short cape.
-      const bow = add(a, geo('bow', () => new THREE.TorusGeometry(0.24, 0.013, 4, 12, Math.PI)), LEATHER, 0, -0.28, 0.07);
-      bow.rotation.set(0, Math.PI / 2, -Math.PI / 2);
-      box(a, 0.005, 0.48, 0.005, 0xe8e2d0, 0, -0.28, 0.07);
-      const q = cyl(g, 0.04, 0.035, 0.28, LEATHER, 0.07, 0.56, -0.13, 7);
-      q.rotation.z = -0.4;
-      for (const d of [-0.012, 0.012]) box(g, 0.012, 0.1, 0.012, 0xe8dcc0, 0.14 + d, 0.72, -0.13 + d).rotation.z = -0.4;
-      add(g, geo('hood', () => new THREE.SphereGeometry(0.128, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.62)), 0x3f6a36, 0, 0.775, -0.02);
-      cyl(g, 0.09, 0.18, 0.13, 0x3f6a36, 0, 0.6, 0, 10).scale.z = 0.72;
-      break;
-    }
-    case 'forage': {
-      // A forager: a basket of berries on the arm, an apron.
-      cyl(a, 0.085, 0.065, 0.09, 0xa8783e, 0, -0.34, 0.07, 9);
-      for (const [x, z] of [[-0.03, 0.05], [0.03, 0.08], [0, 0.1]]) ball(a, 0.028, 0xc0392b, x, -0.295, z);
-      apron(0xe8e2d4);
-      break;
-    }
-    case 'mine': {
-      // A miner: pick, a heavy leather apron, a close cap.
-      haft(0.5);
-      const head = box(a, 0.3, 0.035, 0.035, IRON, 0, -0.28, 0.42);
-      head.rotation.y = 0.12;
-      apron(0x4a3a2a);
-      add(g, geo('mcap', () => new THREE.SphereGeometry(0.124, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.45)), 0x3a2e24, 0, 0.785, -0.008);
-      break;
-    }
-    case 'build': {
-      // A builder: mallet, a tan work apron with a tool loop.
-      haft(0.3);
-      box(a, 0.07, 0.07, 0.12, 0x8a6238, 0, -0.28, 0.22).rotation.y = Math.PI / 2;
-      apron(0xc8a878);
-      box(g, 0.03, 0.09, 0.03, IRON, f ? 0.1 : 0.12, 0.38, 0.06);
-      break;
-    }
-  }
-}
 
-/** Those who work inside the tavern and the church, shown standing by the door. */
-export type StaffRole = 'milkmaid' | 'patron' | 'monk' | 'nun';
-export function makeStaff(role: StaffRole, seed: number, leaning: '' | 'holy' | 'low'): THREE.Group {
-  made.clear();
-  figure = true;
-  const g = new THREE.Group();
-  person(g, seed);
-  const hair = hairOf(seed), GOLD = 0xe8c860;
-  const mug = (p: THREE.Object3D, x: number, y: number, z: number): void => { cyl(p, 0.04, 0.035, 0.08, 0xd8a838, x, y, z, 8); cyl(p, 0.042, 0.042, 0.02, 0xfff4d8, x, y + 0.05, z, 8); };
-  const robe = (color: number, fat = 1): void => {
-    const r = lathe(g, 'robe', [[0.18, 0], [0.165, 0.1], [0.12, 0.4], [0.135, 0.56], [0.14, 0.6], [0.05, 0.67]], color);
-    r.scale.set(fat, 1, 0.78 * fat);
-    for (const x of [-0.14, 0.14]) { const s = cap(g, 0.05, 0.3, color, x * fat, 0.5, 0.05); s.rotation.set(-0.7, 0, x > 0 ? 0.3 : -0.3); }
-    ball(g, 0.045, SKIN, 0, 0.44, 0.15 * fat);
-    cyl(g, 0.036, 0.04, 0.07, SKIN, 0, 0.67, 0, 8);
-    ball(g, 0.105, SKIN, 0, 0.76, 0);
-    face(g, 0.762, 0.093);
-  };
-  if (role === 'milkmaid') {
-    // In a pious town a plain dairymaid with her pails; otherwise a tavern maid in a laced bodice, lower-cut the more decadent the town.
-    const holy = leaning === 'holy', low = leaning === 'low';
-    woman(g, holy ? 0x6a7a94 : low ? 0xb02a3a : [0x3f6a4a, 0x8a4a6a, 0x4a5a8a][seed % 3], hair, holy ? 2 : seed % 2, 0xf4eee0, holy ? 0x6a7a94 : low ? 0x3a1a1e : 0x5a3424, holy ? 0 : low ? 2 : 1);
-    const a = arm(g, -0.02, holy ? 0x6a7a94 : SKIN, 0.82);
-    a.position.x = 0.15;
-    if (holy) { for (const x of [-0.19, 0.19]) { cyl(g, 0.06, 0.05, 0.1, 0x9a6a3e, x, 0.2, 0.03, 9); cyl(g, 0.052, 0.052, 0.01, 0xf4f4f0, x, 0.25, 0.03, 9); } }
-    else { a.rotation.x = -1.2; mug(a, 0, -0.33, 0.04); if (low) mug(g, -0.2, 0.33, 0.06); }
-    if (!holy) box(g, 0.13, 0.2, 0.02, 0xf4eee0, 0, 0.27, 0.132).rotation.x = -0.22;
-  } else if (role === 'patron') {
-    const low = leaning === 'low';
-    humanoid(g, [0x7a5a3a, 0x5a6a4a, 0x6a4a5a][seed % 3], 0x4a3a2a, hair);
-    const a = arm(g, 0, SKIN);
-    a.rotation.x = -1.1;
-    if (leaning === 'holy') cyl(a, 0.07, 0.04, 0.05, 0xb08850, 0, -0.33, 0.03, 9); // a bowl of soup
-    else mug(a, 0, -0.33, 0.04);
-    if (low) { ball(g, 0.03, 0xc04a3a, 0, 0.745, 0.105); g.rotation.z = 0.22; cyl(g, 0.03, 0.035, 0.14, 0x3a5a2a, -0.24, 0.3, 0.05, 7); }
-  } else if (role === 'monk') {
-    const low = leaning === 'low';
-    robe(0x5a4634, low ? 1.3 : 1);
-    add(g, geo('rope', () => new THREE.TorusGeometry(0.118, 0.012, 5, 12).rotateX(Math.PI / 2)), 0xd8c8a0, 0, 0.42, 0).scale.set(low ? 1.3 : 1, 1, 0.8 * (low ? 1.3 : 1));
-    add(g, geo('tonsure', () => new THREE.TorusGeometry(0.085, 0.03, 5, 12).rotateX(Math.PI / 2)), hair, 0, 0.8, -0.01);
-    if (low) { cyl(g, 0.06, 0.07, 0.14, 0x8a5a3a, 0.17, 0.42, 0.14, 8); ball(g, 0.03, 0xc04a3a, 0, 0.745, 0.1); }
-    else { box(g, 0.025, 0.1, 0.015, GOLD, 0, 0.56, 0.115); box(g, 0.065, 0.025, 0.015, GOLD, 0, 0.58, 0.115); }
-  } else {
-    robe(0x26242a);
-    add(g, geo('wimple', () => new THREE.SphereGeometry(0.115, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.6)), 0xf4f4f0, 0, 0.768, -0.008);
-    add(g, geo('veil', () => new THREE.SphereGeometry(0.125, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.75)), 0x26242a, 0, 0.775, -0.04).scale.z = 0.85;
-    cyl(g, 0.075, 0.1, 0.06, 0xf4f4f0, 0, 0.645, 0.01, 10);
-    box(g, 0.022, 0.08, 0.012, GOLD, 0, 0.53, 0.11); box(g, 0.055, 0.022, 0.012, GOLD, 0, 0.545, 0.11);
-  }
-  return g;
-}
 
 /** What flies through the air: an arrow or bolt, a slung or thrown stone, a great boulder, a cannon ball. Built pointing along +z. */
 export function makeShot(kind: 'arrow' | 'stone' | 'boulder' | 'shot'): THREE.Group {
@@ -674,8 +347,6 @@ function crewman(g: THREE.Object3D, body: number, seed: number, x: number, y: nu
   humanoid(r, body, 0x5b4630, hairOf(seed));
   arm(r, 0, body);
   who = was;
-  // Given his joints here, standing at full size at the origin, which is how they are found; then set at his post.
-  r.userData.crewRig = rigBiped(r);
   r.position.set(x, y, z);
   r.rotation.y = ry;
   r.scale.setScalar(s);
@@ -1032,40 +703,6 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
   return false;
 }
 
-/**
- * A villager taken by a Slaver: stripped to a loincloth (a woman keeps a band of cloth across the chest as well),
- * barefoot, a rope about the neck and the wrists tied.
- */
-export function makeCaptive(gender: Gender, seed: number): THREE.Group {
-  made.clear();
-  figure = true;
-  const g = new THREE.Group();
-  person(g, seed);
-  const hair = hairOf(seed), rag = [0xb8a888, 0xa89878, 0xc4b494][seed % 3], rope = 0x8a7250, f = gender === 'f';
-  humanoid(g, SKIN, SKIN, hair);
-  // Bare feet: the boots a free villager wears are gone.
-  g.traverse((o) => { const m = o as THREE.Mesh; if (o.userData.boot === 1) m.material = mat(SKIN); else if (o.userData.boot === 2) o.visible = false; });
-  // The loincloth: a wrap about the hips, a flap before and behind.
-  box(g, 0.275, 0.08, 0.2, rag, 0, 0.4, 0);
-  box(g, 0.13, 0.17, 0.018, rag, 0, 0.3, 0.098).rotation.x = -0.08;
-  box(g, 0.13, 0.15, 0.018, rag, 0, 0.31, -0.098).rotation.x = 0.08;
-  if (f) {
-    box(g, 0.29, 0.085, 0.2, rag, 0, 0.555, 0);
-    for (const x of [-0.05, 0.05]) loose(ball(g, 0.05, rag, x, 0.552, 0.07), 'y', 0.07, 150, 5.5);
-    // Her hair, loose down her back.
-    const fall = new THREE.Group();
-    fall.position.set(0, 0.76, -0.085);
-    fall.userData.joint = 'head';
-    g.add(loose(fall, 'rx', 1.0, 80, 4));
-    cap(fall, 0.07, 0.34, hair, 0, -0.14, 0).scale.set(1.35, 1, 0.55);
-    g.scale.set(0.9, 0.96, 0.9);
-  }
-  add(g, geo('noose', () => new THREE.TorusGeometry(0.052, 0.012, 5, 10).rotateX(Math.PI / 2)), rope, 0, 0.675, 0);
-  const a = arm(g, 0, SKIN, f ? 0.85 : 1);
-  add(a, geo('cuff', () => new THREE.TorusGeometry(0.04, 0.011, 5, 10).rotateX(Math.PI / 2)), rope, 0, -0.25, 0.01);
-  add(g, geo('cuff', () => new THREE.TorusGeometry(0.04, 0.011, 5, 10).rotateX(Math.PI / 2)), rope, -0.21, 0.33, 0.012);
-  return g;
-}
 
 /** `wear` is how the town's standing shows in a village woman's dress: 0 as usual, 1 pious (covered, a scarf), 2 decadent (a laced bodice worn low), 3 more so. */
 export function makeUnit(type: string, color: number, gender: Gender | null, seed: number, job: Job = '', wear = 0): THREE.Group {
@@ -1074,6 +711,9 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   const alias = MODEL_ALIAS[type];
   if (alias && !generatedModel(type, 0, 1, 'height')) {
     const g = makeUnit(alias[0], color, gender, seed, job, wear);
+    // The camel and the elephant are their own animals when drawn from the real figures.
+    const beast = type === 'camelrider' ? 'camel' : type === 'warelephant' ? 'elephant' : '';
+    if (beast) g.traverse((o) => { if (o.userData.steed) o.userData.steed = beast; });
     const h = UNIT_HEIGHT[alias[0]] ?? 0.95;
     // A plume and a shoulder sash mark them out from the unit they are drawn from.
     const plume = add(g, geo('plume', () => new THREE.ConeGeometry(0.07, 0.26, 5)), alias[1], 0, h + 0.14, 0, 0x101010);
@@ -1098,25 +738,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
   if (machine(g, type, color, seed)) return g;
   const hair = hairOf(seed);
   switch (type) {
-    case 'villager': {
-      let a: THREE.Group;
-      if (gender === 'f') {
-        // Hair under a scarf for field work or in a pious town; let down or pinned up, never covered, in a decadent one.
-        const hairdo = wear >= 2 ? (seed % 3 === 2 ? seed + 1 : seed) : wear === 1 || job === 'farm' || job === 'forage' ? 2 : seed;
-        if (wear >= 2) woman(g, color, hair, hairdo, 0xf4eee0, new THREE.Color(color).multiplyScalar(0.45).getHex(), wear - 1);
-        else woman(g, color, hair, hairdo);
-        a = arm(g, -0.02, color, 0.82);
-        a.position.x = 0.15;
-      } else {
-        humanoid(g, color, job === 'farm' ? 0x4a6488 : job === 'mine' ? 0x3e3a36 : 0x5b4630, hair);
-        a = arm(g, 0, color);
-      }
-      outfit(g, a, gender === 'f', job);
-      const carry = box(g, 0.2, 0.2, 0.16, RES_COLOR.wood, 0, 0.5, -0.19);
-      carry.visible = false;
-      g.userData.carry = carry;
-      break;
-    }
     case 'deer': {
       const fur = 0xa8743e;
       cap(g, 0.135, 0.64, fur, 0, 0.5, 0).rotation.x = Math.PI / 2;
@@ -1138,66 +759,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       for (const x of [-0.07, 0.07]) add(g, geo('ear', () => new THREE.ConeGeometry(0.03, 0.09, 4)), 0x3a3a40, x, 0.66, 0.36);
       [[-0.08, 0.24], [0.08, 0.24], [-0.08, -0.24], [0.08, -0.24]].forEach(([x, z], i) => leg(g, 0.06, 0.3, 0x4a4a50, x, z, i % 3 ? Math.PI : 0));
       cap(g, 0.045, 0.36, fur, 0, 0.42, -0.46).rotation.x = Math.PI / 2 - 0.5;
-      break;
-    }
-    case 'clubman': {
-      humanoid(g, 0x9a7a4e, 0x6b5236, hair);
-      box(g, 0.32, 0.1, 0.2, color, 0, 0.42, 0);
-      const a = arm(g);
-      const club = cyl(a, 0.07, 0.035, 0.5, WOOD, 0, -0.26, 0.2);
-      club.rotation.x = Math.PI / 2;
-      break;
-    }
-    case 'slinger': {
-      humanoid(g, color, 0x6b5236, hair);
-      const a = arm(g);
-      box(a, 0.03, 0.03, 0.34, 0xd8c8a0, 0, -0.26, 0.15);
-      ball(a, 0.05, 0x888888, 0, -0.26, 0.34);
-      break;
-    }
-    case 'spearman': {
-      humanoid(g, color, 0x5b4630, hair);
-      const a = arm(g);
-      const s = cyl(a, 0.02, 0.02, 1.3, WOOD, 0, -0.24, 0.3, 5);
-      s.rotation.x = Math.PI / 2 - 0.15;
-      const tip = cyl(a, 0, 0.045, 0.16, IRON, 0, -0.14, 1.0, 5);
-      tip.rotation.x = Math.PI / 2 - 0.15;
-      shield(g, 0.17, 0x8a6a3a, -0.22, 0.46, 0.1);
-      break;
-    }
-    case 'swordsman': {
-      humanoid(g, IRON, 0x54585e, 0x777c84);
-      box(g, 0.31, 0.12, 0.19, color, 0, 0.5, 0);
-      const a = arm(g);
-      box(a, 0.04, 0.06, 0.5, 0xd0d4da, 0, -0.26, 0.28);
-      shield(g, 0.2, color, -0.23, 0.46, 0.08);
-      break;
-    }
-    case 'bowman':
-    case 'crossbowman': {
-      const cross = type === 'crossbowman';
-      humanoid(g, cross ? 0x5e6a4a : 0x4f7a3a, 0x4a3a28, hair);
-      box(g, 0.31, 0.08, 0.19, color, 0, 0.56, 0);
-      if (cross) box(g, 0.28, 0.1, 0.24, IRON, 0, 0.82, 0);
-      const a = arm(g);
-      if (cross) {
-        box(a, 0.05, 0.05, 0.4, DARKWOOD, 0, -0.24, 0.2);
-        box(a, 0.4, 0.04, 0.04, DARKWOOD, 0, -0.24, 0.36);
-      } else {
-        const bow = add(a, geo('bow', () => new THREE.TorusGeometry(0.24, 0.018, 4, 10, Math.PI)), WOOD, 0, -0.24, 0.22);
-        bow.rotation.set(0, Math.PI / 2, -Math.PI / 2);
-      }
-      box(g, 0.1, 0.3, 0.08, 0x6a4a2a, 0.06, 0.5, -0.14);
-      break;
-    }
-    case 'musketeer': {
-      humanoid(g, color, 0x3a3a40, hair);
-      box(g, 0.31, 0.06, 0.19, 0xe8e2d0, 0, 0.52, 0);
-      cyl(g, 0.2, 0.2, 0.03, 0x2c2c30, 0, 0.86, 0, 10);
-      cyl(g, 0.11, 0.13, 0.12, 0x2c2c30, 0, 0.92, 0, 10);
-      const a = arm(g);
-      box(a, 0.045, 0.06, 0.85, DARKWOOD, 0, -0.24, 0.3);
-      box(a, 0.03, 0.03, 0.4, 0x2c2c30, 0, -0.21, 0.62);
       break;
     }
     case 'rider':
@@ -1237,83 +798,13 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
         const t = cyl(g, 0.015, 0.06, 0.7, 0xf2ead8, x, 0.72, 1.12, 6);
         t.rotation.x = -1.15;
       }
-      { const c = add(g, geo('saddle', () => new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12, 1, true, -1.3, 2.6).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)), color, 0, 0.98, -0.1); c.scale.set(0.93, 0.9, 2.2); }
+      for (const c of g.children) c.userData.steed = 'mammoth';
+      { const c = add(g, geo('saddle', () => new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12, 1, true, -1.3, 2.6).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)), color, 0, 1.0, -0.1); c.scale.set(1.0, 1.02, 2.0); }
       const r = new THREE.Group();
       r.position.set(0, 1.36, -0.1);
       r.scale.setScalar(0.8);
       humanoid(r, color, 0x5b4630, hair);
       g.add(r);
-      break;
-    }
-    case 'priest': {
-      cyl(g, 0.1, 0.24, 0.62, 0x2a2a30, 0, 0.31, 0, 10);
-      cyl(g, 0.2, 0.25, 0.1, color, 0, 0.06, 0, 10);
-      box(g, 0.08, 0.5, 0.02, 0xf0e8d0, 0, 0.36, 0.13);
-      ball(g, 0.12, SKIN, 0, 0.74, 0);
-      const a = arm(g);
-      cyl(a, 0.018, 0.018, 0.9, DARKWOOD, 0, 0, 0.12, 5);
-      box(a, 0.03, 0.2, 0.03, 0xe8c860, 0, 0.5, 0.12);
-      g.userData.glow = box(a, 0.14, 0.03, 0.03, 0xe8c860, 0, 0.52, 0.12, 0x886620);
-      break;
-    }
-    case 'slaver': {
-      humanoid(g, 0x3a2a2a, 0x2a2020, hair);
-      box(g, 0.31, 0.08, 0.19, color, 0, 0.56, 0);
-      box(g, 0.26, 0.1, 0.24, 0x1e1a18, 0, 0.84, 0);
-      const a = arm(g);
-      cyl(a, 0.015, 0.015, 0.5, 0x4a3a2a, 0, -0.3, 0.2, 5).rotation.x = 0.9;
-      const ring = add(g, geo('shackle', () => new THREE.TorusGeometry(0.07, 0.018, 4, 8)), IRON, -0.14, 0.42, 0.1);
-      ring.rotation.y = Math.PI / 2;
-      break;
-    }
-    case 'shaman': {
-      cyl(g, 0.1, 0.25, 0.6, 0xe8e2d0, 0, 0.3, 0, 10);
-      cyl(g, 0.2, 0.26, 0.14, color, 0, 0.08, 0, 10);
-      ball(g, 0.12, SKIN, 0, 0.72, 0);
-      cyl(g, 0.02, 0.15, 0.24, 0x7a3a8a, 0, 0.9, 0, 8);
-      const a = arm(g);
-      cyl(a, 0.02, 0.02, 0.95, DARKWOOD, 0, 0.02, 0.12, 5);
-      g.userData.glow = ball(a, 0.07, 0x7dffb0, 0, 0.52, 0.12, 0x2faa66);
-      break;
-    }
-    case 'prophet': {
-      cyl(g, 0.1, 0.26, 0.64, 0x3c2a5a, 0, 0.32, 0, 10);
-      cyl(g, 0.21, 0.27, 0.14, color, 0, 0.08, 0, 10);
-      ball(g, 0.12, SKIN, 0, 0.76, 0);
-      cyl(g, 0.16, 0.14, 0.12, 0x3c2a5a, 0, 0.84, -0.02, 8);
-      box(g, 0.12, 0.2, 0.06, 0xe8e2d0, 0, 0.62, 0.11);
-      const a = arm(g);
-      cyl(a, 0.02, 0.02, 1.1, DARKWOOD, 0, 0.06, 0.12, 5);
-      ball(a, 0.09, 0xc9a4ff, 0, 0.66, 0.12, 0x6a3ad0);
-      break;
-    }
-    case 'warlord': {
-      const body = new THREE.Group();
-      body.scale.setScalar(1.25);
-      humanoid(body, 0x54585e, 0x3a3a40, hair);
-      box(body, 0.34, 0.5, 0.04, color, 0, 0.42, -0.12);
-      box(body, 0.31, 0.1, 0.19, color, 0, 0.5, 0);
-      cyl(body, 0.12, 0.11, 0.07, 0xf2c230, 0, 0.87, 0, 8);
-      const a = arm(body);
-      box(a, 0.05, 0.08, 0.66, 0xe4e8ee, 0, -0.26, 0.36);
-      g.add(body);
-      g.userData.arm = a;
-      const ring = add(g, geo('aura', () => new THREE.RingGeometry(0.5, 0.58, 24)), 0xf2c230, 0, 0.03, 0, 0x8a6a10);
-      ring.rotation.x = -Math.PI / 2;
-      ring.castShadow = false;
-      break;
-    }
-    case 'zealot': {
-      cyl(g, 0.1, 0.22, 0.5, 0xf0e8d0, 0, 0.3, 0, 10);
-      box(g, 0.1, 0.3, 0.12, 0xf0e8d0, -0.07, 0.15, 0);
-      box(g, 0.1, 0.3, 0.12, 0xf0e8d0, 0.07, 0.15, 0);
-      box(g, 0.31, 0.1, 0.19, color, 0, 0.5, 0);
-      box(g, 0.08, 0.26, 0.1, SKIN, -0.19, 0.46, 0);
-      ball(g, 0.12, SKIN, 0, 0.74, 0);
-      cyl(g, 0.16, 0.16, 0.02, 0xf2c230, 0, 0.9, -0.04, 12).rotation.x = Math.PI / 2;
-      const a = arm(g);
-      cyl(a, 0.02, 0.02, 0.6, WOOD, 0, -0.22, 0.2, 5).rotation.x = Math.PI / 2;
-      ball(a, 0.08, 0xf2c230, 0, -0.22, 0.5, 0x8a6a10);
       break;
     }
     case 'wolfrider': {
@@ -1334,23 +825,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       cyl(a, 0.02, 0.02, 0.9, WOOD, 0, -0.22, 0.3, 5).rotation.x = Math.PI / 2;
       g.add(r);
       g.userData.arm = a;
-      break;
-    }
-    case 'shieldbearer': {
-      humanoid(g, 0x8a8f96, 0x54585e, 0x777c84);
-      box(g, 0.31, 0.12, 0.19, color, 0, 0.5, 0);
-      // A tall curved shield held across the front: bowed round the body, bound in iron, with a boss.
-      const ts = new THREE.Group();
-      ts.position.set(-0.05, 0.42, 0.06);
-      const arc = (key: string, h: number, r: number): THREE.BufferGeometry => geo(key, () => new THREE.CylinderGeometry(r, r, h, 10, 1, true, -0.85, 1.7));
-      const face = add(ts, arc('tshield', 0.72, 0.3), color, 0, 0, 0);
-      face.material = (face.material as THREE.Material).clone(); // its own, so only the shield is drawn on both faces
-      (face.material as THREE.Material).side = THREE.DoubleSide;
-      for (const y of [-0.33, 0.33]) add(ts, arc('tband', 0.06, 0.305), IRON, 0, y, 0);
-      add(ts, geo('tboss', () => new THREE.SphereGeometry(0.07, 8, 6)), 0xb8b8c0, 0, 0, 0.3);
-      g.add(ts);
-      const a = arm(g);
-      box(a, 0.04, 0.05, 0.4, 0xd0d4da, 0, -0.26, 0.22);
       break;
     }
     case 'horsearcher': {
@@ -1398,15 +872,8 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       g.add(bn);
       g.userData.nod = bn;
       [[-0.16, 0.3], [0.16, 0.3], [-0.16, -0.3], [0.16, -0.3]].forEach(([x, z], i) => leg(g, 0.13, 0.32, 0x4a3426, x, z, i % 3 ? Math.PI : 0));
+      for (const c of g.children) c.userData.steed = 'bear';
       { const c = add(g, geo('saddle', () => new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12, 1, true, -1.3, 2.6).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)), color, 0, 0.5, -0.1); c.scale.set(0.53, 0.53, 1); }
-      break;
-    }
-    case 'herbwife': {
-      woman(g, 0x5a8a4a, hair, 2, color);
-      const a = arm(g, -0.02, 0x5a8a4a, 0.82);
-      a.position.x = 0.15;
-      box(a, 0.2, 0.14, 0.16, 0x9a7a4a, 0, -0.26, 0.14);
-      g.userData.glow = ball(a, 0.06, 0x9dff90, 0, -0.16, 0.14, 0x2f8a3a);
       break;
     }
     case 'lancer': {
@@ -1422,33 +889,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       box(a, 0.02, 0.18, 0.3, color, 0, -0.1, 1.3);
       g.add(r);
       g.userData.arm = a;
-      break;
-    }
-    case 'hearthguard': {
-      humanoid(g, 0xa87a4e, 0x6b5236, hair);
-      box(g, 0.32, 0.16, 0.2, color, 0, 0.44, 0);
-      const a = arm(g);
-      cyl(a, 0.02, 0.02, 0.9, WOOD, 0, -0.1, 0.2, 5).rotation.x = Math.PI / 2 - 0.9;
-      ball(a, 0.07, 0xffb040, 0, 0.26, 0.5, 0xcc5500).castShadow = false;
-      shield(g, 0.18, 0x8a6a3a, -0.22, 0.46, 0.1);
-      break;
-    }
-    case 'firethrower': {
-      humanoid(g, 0x4a4642, 0x2c2c30, 0x2c2c30);
-      box(g, 0.31, 0.1, 0.19, color, 0, 0.5, 0);
-      cyl(g, 0.11, 0.11, 0.34, 0x8a5a2a, 0, 0.5, -0.17, 8);
-      const a = arm(g);
-      cyl(a, 0.035, 0.035, 0.6, 0x2c2c30, 0, -0.24, 0.26, 6).rotation.x = Math.PI / 2;
-      ball(a, 0.06, 0xff8a20, 0, -0.24, 0.6, 0xcc4400).castShadow = false;
-      break;
-    }
-    case 'javelineer': {
-      humanoid(g, 0xb08c58, 0x6b5236, hair);
-      box(g, 0.31, 0.08, 0.19, color, 0, 0.56, 0);
-      const a = arm(g);
-      const j = cyl(a, 0.015, 0.015, 0.9, WOOD, 0, -0.1, 0.1, 5);
-      j.rotation.x = Math.PI / 2 - 0.5;
-      for (const x of [-0.04, 0.04]) cyl(g, 0.012, 0.012, 0.7, WOOD, x, 0.55, -0.16, 4);
       break;
     }
     case 'hound': {
@@ -1497,35 +937,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       g.userData.arm = a;
       break;
     }
-    case 'berserker': {
-      humanoid(g, SKIN, 0x5a4028, 0xb8562a);
-      box(g, 0.32, 0.1, 0.2, color, 0, 0.34, 0);
-      box(g, 0.34, 0.07, 0.2, 0x5a4028, 0, 0.6, 0);
-      const a = arm(g);
-      cyl(a, 0.02, 0.02, 0.6, WOOD, 0, -0.22, 0.22, 5).rotation.x = Math.PI / 2;
-      box(a, 0.03, 0.22, 0.18, IRON, 0, -0.22, 0.48);
-      break;
-    }
-    case 'pikeman': {
-      humanoid(g, IRON, 0x54585e, 0x777c84);
-      box(g, 0.31, 0.14, 0.19, color, 0, 0.5, 0);
-      cyl(g, 0.15, 0.13, 0.08, IRON, 0, 0.86, 0, 8);
-      const a = arm(g);
-      const s = cyl(a, 0.02, 0.02, 2.0, WOOD, 0, -0.2, 0.55, 5);
-      s.rotation.x = Math.PI / 2 - 0.12;
-      const tip = cyl(a, 0, 0.045, 0.2, IRON, 0, -0.07, 1.6, 5);
-      tip.rotation.x = Math.PI / 2 - 0.12;
-      break;
-    }
-    case 'grenadier': {
-      humanoid(g, color, 0xe8e2d0, hair);
-      box(g, 0.08, 0.34, 0.2, 0xe8e2d0, 0, 0.46, 0);
-      cyl(g, 0.11, 0.13, 0.22, 0x2c2c30, 0, 0.95, 0, 8);
-      const a = arm(g);
-      ball(a, 0.07, 0x2c2c30, 0, -0.28, 0.06);
-      box(g, 0.14, 0.16, 0.1, 0x6a4a2a, 0.12, 0.42, -0.14);
-      break;
-    }
     case 'hussar': {
       horse(g, HORSE[(seed + 1) % HORSE.length]);
       box(g, 0.34, 0.06, 0.4, color, 0, 0.72, -0.05);
@@ -1540,20 +951,6 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       sabre.rotation.x = -0.2;
       g.add(r);
       g.userData.arm = a;
-      break;
-    }
-    case 'strategist': {
-      cyl(g, 0.11, 0.27, 0.66, 0xe8e2d0, 0, 0.33, 0, 10);
-      cyl(g, 0.22, 0.28, 0.16, color, 0, 0.09, 0, 10);
-      box(g, 0.1, 0.5, 0.3, color, 0, 0.42, 0);
-      ball(g, 0.12, SKIN, 0, 0.78, 0);
-      box(g, 0.14, 0.12, 0.04, 0xd8d8d8, 0, 0.7, 0.1);
-      cyl(g, 0.13, 0.12, 0.06, 0xf2c230, 0, 0.9, 0, 8);
-      const a = arm(g);
-      cyl(a, 0.05, 0.05, 0.34, 0xf0e8d0, 0, -0.24, 0.12, 8).rotation.x = Math.PI / 2;
-      const ring = add(g, geo('aura2', () => new THREE.RingGeometry(0.5, 0.56, 24)), 0x8ad0ff, 0, 0.03, 0, 0x2a6a9a);
-      ring.rotation.x = -Math.PI / 2;
-      ring.castShadow = false;
       break;
     }
   }

@@ -877,6 +877,16 @@ export function level(p: RealPerson, yaw: number, want: number, dt: number): voi
   }
 }
 
+/** Put a figure's arms round someone standing close in front of them: `high` round the neck, otherwise round the waist. Call after the motion has been advanced. */
+export function embrace(p: RealPerson, yaw: number, high: boolean): void {
+  const fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw), up = high ? 0.32 : -0.42;
+  const to = (f: number, l: number, u: number): THREE.Vector3 => dir.set(fx * f + lx * l, u, fz * f + lz * l).normalize();
+  for (const [side, sign] of [['L', 1], ['R', -1]] as const) {
+    point(p.bones.get('DEF-upper_arm' + side), to(0.85, sign * 0.34, up), 1);
+    point(p.bones.get('DEF-forearm' + side), to(0.55, sign * -0.8, up * 0.4 + 0.05), 1);
+  }
+}
+
 /** Seat a figure astride: thighs out round the animal's barrel and forward, shins hanging. Call after the motion has been advanced. */
 export function astride(p: RealPerson, yaw: number): void {
   const fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw);

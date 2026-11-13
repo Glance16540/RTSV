@@ -4,17 +4,16 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
-import { Job, lookOf, makeBuilding, makeCaptive, makeResource, makeShot, makeStaff, makeUnit, ofPeople, mat, RES_COLOR, Rig, rigBiped } from './models';
-import MOTIONS from './motions.json';
+import { Job, lookOf, makeBuilding, makeResource, makeShot, makeUnit, ofPeople, mat, RES_COLOR } from './models';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
-import { Outfit, RealPerson, astride, bear, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
+import { Outfit, RealPerson, astride, bear, embrace, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
-import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
+import { INK, RAMP, WALL_DIRS } from './shapes';
 
 /** How steeply the camera looks down. `?pitch=20` (degrees) lowers it, for looking at figures from the side. */
 const PITCH = ((Number(new URLSearchParams(location.search).get('pitch')) || 50) * Math.PI) / 180;
@@ -22,16 +21,13 @@ const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isome
 const FOV = 30;
 
 /** One figure in a work camp's yard: a captive on their round, or a Slaver on guard. */
-interface CampFig { real?: RealPerson; g: THREE.Group; rig: Rig | null; woman: boolean; guard: boolean; i: number; goal: 'out' | 'work' | 'in'; wait: number; in: boolean }
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh; real?: RealPerson }; /** Drawn from the real human figure, not from blocks. */ real?: RealPerson; /** Riders and drivers drawn from the real figure, on a mount or car that is still built of blocks. */ riders?: { p: RealPerson; astride: boolean }[]; /** Animals drawn from the real figures: a mount under its rider, or the unit itself. */ beasts?: Beast[]; /** The whole unit is one such animal. */ wildlife?: boolean }
+interface CampFig { real?: RealPerson; g: THREE.Group; woman: boolean; guard: boolean; i: number; goal: 'out' | 'work' | 'in'; wait: number; in: boolean }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; work: number; job: Job; wear: number; hp: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rope: THREE.Mesh; real: RealPerson }; /** Drawn from the real human figure, not from blocks. */ real?: RealPerson; /** Riders and drivers drawn from the real figure, on a mount or car that is still built of blocks. */ riders?: { p: RealPerson; astride: boolean }[]; /** Animals drawn from the real figures: a mount under its rider, or the unit itself. */ beasts?: Beast[]; /** The whole unit is one such animal. */ wildlife?: boolean }
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
 interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
-interface Dying { g: THREE.Group; t: number; v: UnitView; clip: string; dropped: boolean }
+interface Dying { g: THREE.Group; t: number; v: UnitView }
 const BLOOD = 0x7a0c10;
-/** Recorded motions (walking, working, striking…), as turns of a figure's few joints. See scripts/motions.cjs. */
-const motions = MOTIONS as unknown as Record<string, { dur: number; frames: number[][] }>;
-const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
 interface Floater { x: number; y: number; text: string; t: number }
 interface Ping { mesh: THREE.Mesh; t: number }
 /** A piece of a fallen building, thrown clear and left to tumble. */
@@ -76,7 +72,7 @@ export class Renderer {
   private moonC = new THREE.Color(0x8fa8ff);
   /** `?fog=0`: the whole map is shown, for looking at the game rather than playing it. */
   private noFog = new URLSearchParams(location.search).get('fog') === '0';
-  /** `?motion=0`: figures are not given joints and move the old simple way. */
+  /** `?motion=0`: the wildlife and the hearth smoke are left out, for quicker still pictures. */
   private still = new URLSearchParams(location.search).get('motion') === '0';
   private shake = 0;
   private dying: Dying[] = [];
@@ -93,11 +89,9 @@ export class Renderer {
   private weather!: Weather;
   private sky!: THREE.HemisphereLight;
   private tintC = new THREE.Color();
-  private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number; real?: RealPerson }[] }>();
+  private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; role: string; seed: number; real: RealPerson }[] }>();
   private dust: Dust[] = [];
   private life!: Life;
-  /** The trial of realistic people: grown village men are drawn from a real human figure. `?people=0` turns it off. */
-  private realPeople = new URLSearchParams(location.search).get('people') !== '0';
   private hearthT = 0;
   private campViews = new Map<number, { key: string; g: THREE.Group; figs: CampFig[] }>();
   /** How far into night it is, 0 by day to 1 in full dark, eased through dusk and dawn. */
@@ -147,7 +141,7 @@ export class Renderer {
     this.weather = new Weather(this.scene, game.climate);
     this.life = new Life(this.scene, game, (x, y) => this.scenery.heightAt(x, y));
     this.life.fogged = !this.noFog;
-    if (this.realPeople) { loadPeople(); loadBeasts(); }
+    loadPeople(); loadBeasts();
     this.buildTrees();
     this.buildFog();
 
@@ -438,15 +432,13 @@ export class Renderer {
     // A village woman dresses as her town lives: covered where it is pious, laced low where it is decadent.
     const virtue = this.game.players[u.owner].virtue ?? 0, wear = u.type !== 'villager' || u.gender !== 'f' ? 0 : virtue >= 30 ? 1 : virtue <= -70 ? 3 : virtue <= -30 ? 2 : 0;
     let turned: number | null = null;
-    // Healed back past a stage, they are made whole again: gear restored, clothes mended.
-    const mended = !!v && !!v.rig && v.hurt > (u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0);
-    const real = this.realPeople && peopleReady() && drawnReal(u.def.cls);
+    const afoot = drawnReal(u.def.cls), real = peopleReady() && afoot;
     const child = u.growT > 0;
-    const ridden = this.realPeople && peopleReady() && (u.def.cls === 'cavalry' || u.def.cls === 'beast' || u.def.cls === 'siege');
+    const ridden = peopleReady() && (u.def.cls === 'cavalry' || u.def.cls === 'beast' || u.def.cls === 'siege');
     // Wolves, deer and hounds are each one animal, drawn whole from the real figure.
-    const animal: BeastKind | null = !this.realPeople ? null : u.type === 'wolf' ? 'wolf' : u.type === 'hound' ? 'husky' : u.type === 'deer' ? (u.id % 3 === 0 ? 'stag' : 'deer') : null;
+    const animal: BeastKind | null = u.type === 'wolf' ? 'wolf' : u.type === 'hound' ? 'husky' : u.type === 'deer' ? (u.id % 3 === 0 ? 'stag' : 'deer') : null;
     const wild = !!animal && beastReady(animal);
-    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real || (!!v.real && v.real.child !== child) || (ridden && !v.riders) || (wild && !v.wildlife) || (ridden && !v.beasts && beastReady('horse') && beastReady('wolf')))) {
+    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || real !== !!v.real || (!!v.real && v.real.child !== child) || (ridden && !v.riders) || (wild && !v.wildlife) || (ridden && !v.beasts && beastReady('horse') && beastReady('wolf') && beastReady('camel') && beastReady('elephant')))) {
       // Re-equipped by an upgrade, or set to a new trade: swap the model.
       turned = v.g.rotation.y;
       this.scene.remove(v.g);
@@ -456,19 +448,11 @@ export class Renderer {
       ofPeople(this.game.players[u.owner].civ);
       const made = real ? makePerson(outfitFor(u.type, u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child })) : null;
       const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
-      v = { g: made?.g ?? creature?.g ?? makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, wear, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
+      v = { g: made?.g ?? creature?.g ?? (afoot ? new THREE.Group() : makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear)), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, work: 0, job, wear, hp: u.hp, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
-      v.rig = this.still || made || creature ? null : rigBiped(v.g);
       if (creature) { v.beasts = [creature]; v.wildlife = true; }
       v.real = made?.real;
-      v.g.traverse((o) => {
-        if (o.userData.leg === undefined) return;
-        // A rider's legs are not walked: they sit astride, knees out and feet forward.
-        const seat = o.parent && o.parent !== v!.g && o.parent.userData.biped ? o.parent : null;
-        if (seat?.userData.stands) return;
-        if (seat) { o.rotation.set(-0.75, 0, o.position.x > 0 ? 0.5 : -0.5); v!.seat = seat; v!.seatY = seat.userData.seatY ??= seat.position.y; }
-        else v!.legs.push(o);
-      });
+      v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
       if (ridden) this.mount(u, v);
       if (ridden && !creature) this.steeds(u, v);
       v.g.rotation.order = 'YXZ'; // so leaning forward and rocking are in the unit's own frame, whichever way it faces
@@ -493,9 +477,9 @@ export class Renderer {
       roll = (sw(fz * 0.4, -fx * 0.4) - sw(-fz * 0.4, fx * 0.4)) * 0.11;
     } else if (u.moving) {
       v.phase += dt * u.def.speed * 5;
-      bob = v.rig || v.real || v.wildlife ? 0 : mounted ? (0.5 - 0.5 * Math.cos(v.phase * 2)) * 0.05 : Math.abs(Math.sin(v.phase)) * 0.06;
+      bob = v.real || v.wildlife ? 0 : mounted ? (0.5 - 0.5 * Math.cos(v.phase * 2)) * 0.05 : Math.abs(Math.sin(v.phase)) * 0.06;
       pitch = v.wildlife ? 0 : mounted ? Math.sin(v.phase * 2) * 0.06 : v.real ? 0 : 0.07; // riders rock at the gallop; walkers lean into their stride
-      roll = mounted || v.rig || v.real || v.wildlife ? 0 : Math.sin(v.phase) * 0.05;
+      roll = mounted || v.real || v.wildlife ? 0 : Math.sin(v.phase) * 0.05;
     } else {
       breathe = 1 + Math.sin(this.clock * 2.2 + v.phase) * 0.012; // standing, they still breathe
     }
@@ -509,7 +493,6 @@ export class Renderer {
     let d = u.facing - g.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
-    if (v.rig) { this.pose(u, v, dt); }
     for (const b of v.beasts ?? []) this.poseBeast(u, b, dt);
     for (const r of v.riders ?? []) this.poseReal(u, r.p, '', dt, 1, g.rotation.y, true, r.astride);
     if (v.real) {
@@ -517,20 +500,20 @@ export class Renderer {
       this.poseReal(u, v.real, job, dt, size, g.rotation.y);
     }
     // A Slaver's prisoner walks behind him on a rope, stripped to a loincloth.
-    if (u.captive && !v.led) {
+    if (u.captive && !v.led && peopleReady()) {
       ofPeople(this.game.players[u.captive.from]?.civ ?? ''); // a captive is still one of the people they were taken from
       const cseed = (u.captive.name.length * 7 + u.captive.age) | 0;
-      const creal = this.realPeople && peopleReady() ? makePerson(roleOutfit('captive', u.captive.gender === 'f', 0, lookOf(this.game.players[u.captive.from]?.civ ?? '', cseed), cseed)) : null;
-      const cg = creal?.g ?? makeCaptive(u.captive.gender, cseed);
+      const creal = makePerson(roleOutfit('captive', u.captive.gender === 'f', 0, lookOf(this.game.players[u.captive.from]?.civ ?? '', cseed), cseed))!;
+      const cg = creal.g;
       cg.position.set(-0.05, 0, -0.62);
       cg.rotation.y = 0.15;
       const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.55, 4).rotateX(Math.PI / 2), mat(0x8a7250, 0, true));
       rope.position.set(0.04, 0.6, -0.33);
       rope.rotation.x = 0.18;
       g.add(cg, rope);
-      v.led = { g: cg, rig: this.still || creal ? null : rigBiped(cg), rope, real: creal?.real };
+      v.led = { g: cg, rope, real: creal.real };
     } else if (!u.captive && v.led) { g.remove(v.led.g, v.led.rope); v.led = undefined; }
-    if (v.led?.real) {
+    if (v.led) {
       // Led at the captor's pace, head down.
       const lp = v.led.real;
       if (u.moving) play(lp, u.def.speed < 1.25 ? 'Walk_Loop' : 'Jog_Fwd_Loop', Math.max(0.75, Math.min(1.6, u.def.speed / (u.def.speed < 1.25 ? 0.78 : 1.78)))); else play(lp, 'Idle_Loop', 1);
@@ -538,12 +521,7 @@ export class Renderer {
       const hd = lp.bones.get('DEF-head');
       if (hd) hd.rotation.x += 0.35;
     }
-    if (v.led?.rig) {
-      // Head down, a step behind the pace.
-      this.setPose(v.led.rig, u.moving ? 'walk' : 'idle', u.moving ? v.phase / (Math.PI * 2) + 0.3 : (this.clock + v.phase) / motions.idle.dur, 1); // set outright, so the bowed head below is not added twice
-      v.led.rig.head.rotation.x += 0.35;
-    }
-    else for (const l of v.legs) {
+    for (const l of v.legs) {
       // Four legs at a trot: each swings from the shoulder or hip and folds half way down as it comes forward.
       const ph = v.phase + (l.userData.leg as number), knee = l.userData.knee as THREE.Object3D | undefined;
       l.rotation.x = u.moving ? Math.sin(ph) * 0.6 : l.rotation.x * 0.8;
@@ -569,18 +547,8 @@ export class Renderer {
     // The rider rises and sits to the stride, a beat behind the horse.
     if (v.seat) { v.seat.position.y = v.seatY! + (u.moving ? Math.max(0, Math.sin(v.phase * 2 - 0.9)) * 0.035 : 0); v.seat.rotation.x = u.moving ? 0.12 : 0; }
     const arm = g.userData.arm as THREE.Object3D | undefined;
-    if (arm && !v.rig) {
+    if (arm) {
       arm.rotation.x = u.type === 'catapult' ? swing * 1.2 : -swing * 1.3 + (u.moving ? Math.sin(v.phase) * 0.3 : 0);
-    }
-    // The crew of an engine or a ship: walking beside her as she rolls, hauling as she looses, standing easy otherwise.
-    const crew = g.userData.crew as THREE.Group[] | undefined;
-    if (crew) for (let i = 0; i < crew.length; i++) {
-      const rig = crew[i].userData.crewRig as Rig | null;
-      if (!rig) continue;
-      const t = this.clock + i * 1.3 + v.phase;
-      if (u.attackAnim > 0) this.setPose(rig, 'work', 0.2 + (1 - Math.min(1, u.attackAnim / 0.35)) * 0.5, 0.5);
-      else if (u.moving && !u.def.naval) this.setPose(rig, 'walk', v.phase / (Math.PI * 2) + i * 0.37, 0.4);
-      else this.setPose(rig, 'idle', t / motions.idle.dur, 0.2);
     }
     // A troop ship shows who is aboard.
     const aboard = g.userData.aboard as THREE.Group[] | undefined;
@@ -637,9 +605,6 @@ export class Renderer {
     const crew = (g.userData.crew as THREE.Group[] | undefined) ?? [];
     for (const c of crew) {
       if (!c.visible) { c.removeFromParent(); continue; } // a place on deck no one was standing in
-      // They go as dead men: limp, not standing to attention in mid-air.
-      const rig = c.userData.crewRig as Rig | null;
-      if (rig) this.setPose(rig, 'death1', 0.93, 1);
       c.updateMatrixWorld(true);
       this.throwPiece(c, at, 1, 0.75);
       if (!v.naval) { const p = c.getWorldPosition(this.v3); this.spray(p.x, p.y + 0.3, p.z, 5, true); }
@@ -663,8 +628,7 @@ export class Renderer {
     }
     if (v.flesh) { this.spray(at.x, at.y + 0.5, at.z, 16, true); this.stain(at.x, at.z, v.cls === 'beast' || v.cls === 'cavalry' ? 0.6 : 0.4, 3.5); }
     else this.spray(at.x, at.y + 0.4, at.z, 12, false);
-    if (v.type === 'villager' && !v.real) this.tear(v, 3);
-    this.dying.push({ g, t: 0, v, clip: (v.phase * 7) % 2 > 1 ? 'death1' : 'death2', dropped: false });
+    this.dying.push({ g, t: 0, v });
   }
 
   /** Drops of blood (or chips of wood) thrown up from a blow. */
@@ -723,62 +687,9 @@ export class Renderer {
    */
   private wound(u: Unit, v: UnitView): void {
     const g = v.g, lost = v.hp - u.hp;
-    if (lost > 0.5 && g.visible) this.spray(g.position.x, g.position.y + (v.rig ? 0.55 : 0.7), g.position.z, Math.min(6, 1 + Math.round((lost / u.maxHp) * 22)), v.flesh);
+    if (lost > 0.5 && g.visible) this.spray(g.position.x, g.position.y + (v.real ? 0.55 : 0.7), g.position.z, Math.min(6, 1 + Math.round((lost / u.maxHp) * 22)), v.flesh);
     v.hp = u.hp;
     if (v.real && lost > 0.5) v.real.flinch = 0.45;
-    const hurt = u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0;
-    if (hurt <= v.hurt || !v.rig) { if (!v.rig) v.hurt = hurt; return; }
-    const rig = v.rig;
-    g.updateMatrixWorld(true);
-    if (u.type !== 'villager') {
-      // A fighter's armour and gear are knocked off: about half of it at the first stage, all of it at the second.
-      const on = rig.gear.filter((p) => p.parent && p.parent !== this.scene);
-      for (const p of on.slice(0, hurt === 2 ? on.length : Math.ceil(on.length / 2))) { if (g.visible) this.throwPiece(p, g.position, 1, 0.5); else p.removeFromParent(); }
-    }
-    this.tear(v, hurt);
-    v.hurt = hurt;
-  }
-
-  /**
-   * Torn clothes and cuts. Nothing falls to the ground: cloth that is gone simply shows the skin beneath.
-   * Fighters are mostly cut and bloodied; villagers' clothes tear, and at level 3 (in death) are in rags.
-   */
-  private tear(v: UnitView, level: number): void {
-    const rig = v.rig;
-    if (!rig || !this.gore) return;
-    const SKIN = (v.g.userData.skin as number | undefined) ?? 0xe0ac7e, villager = v.type === 'villager';
-    const seed = Math.round(v.phase * 1000) + level * 7, r = (k: number): number => (((seed + k * 97) * 2654435761) >>> 0) / 4294967296;
-    const n = villager ? [0, 3, 5, 9][level] : [0, 3, 5, 5][level];
-    for (let k = 0; k < n; k++) {
-      const skin = villager ? k % 4 !== 3 : k % 2 === 0 && level < 2;
-      const big = villager ? 1.5 + level * 0.25 : 1;
-      const front = r(k) > 0.35 ? 1 : -1;
-      const patch = new THREE.Mesh(new THREE.BoxGeometry((0.035 + r(k + 9) * 0.05) * big, (0.03 + r(k + 5) * 0.07) * big, 0.012), mat(skin ? SKIN : BLOOD, 0, true));
-      patch.position.set((r(k + 1) - 0.5) * 0.17, 0.08 + r(k + 2) * 0.3, front * (0.094 - Math.abs(r(k + 1) - 0.5) * 0.05));
-      patch.rotation.z = (r(k + 3) - 0.5) * 1.4;
-      rig.torso.add(patch);
-    }
-    if (!villager || level < 2) return;
-    // A sleeve torn away, then both; in rags, a skirt split to the thigh or a tunic open across the chest.
-    const bare = (o: THREE.Object3D): void => o.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh && m.userData.body !== undefined || (m.isMesh && m.parent === rig.armR)) m.material = mat(SKIN, 0, true); });
-    if (rig.armR.children[0]) bare(rig.armR.children[0]);
-    if (level < 3) return;
-    for (const c of rig.armL.children) if (c.userData.body) bare(c);
-    const skirt = rig.torso.children.find((c) => (c.userData.loose as { mode?: string } | undefined)?.mode === 'rx' && (c as THREE.Group).isGroup && c.position.y > -0.05 && c.position.y < 0.2);
-    if (skirt) {
-      const slit = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.26, 0.012), mat(SKIN, 0, true));
-      slit.position.set(r(40) > 0.5 ? 0.07 : -0.07, -0.26, 0.118);
-      slit.rotation.x = -0.24;
-      skirt.add(slit);
-      const sh = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat(SKIN, 0, true));
-      sh.position.set(r(41) > 0.5 ? 0.1 : -0.1, 0.305, 0.01);
-      rig.torso.add(sh);
-    } else {
-      const open = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.17, 0.012), mat(SKIN, 0, true));
-      open.position.set(0, 0.24, 0.1);
-      open.rotation.z = (r(42) - 0.5) * 0.5;
-      rig.torso.add(open);
-    }
   }
 
   /** The trade a villager is plying, from the order in hand. Idle or merely walking, they wear their own clothes. */
@@ -803,34 +714,34 @@ export class Renderer {
   private syncCamp(b: Building, g: THREE.Group, shown: boolean): void {
     const spots = g.userData.camp as { bunk: number[]; work: number[][]; heap: number[][]; post: number[][]; k: number; ox: number; oz: number } | undefined;
     if (!spots) return;
-    const held = b.captives ?? [], guards = b.staff?.length ?? 0, key = held.map((c) => c.gender).join('') + ':' + guards + ':' + (this.realPeople && peopleReady());
+    const held = b.captives ?? [], guards = b.staff?.length ?? 0, key = held.map((c) => c.gender).join('') + ':' + guards;
     const at = (p: number[]): [number, number] => [b.x + spots.ox + p[0] * spots.k, b.y + spots.oz + p[1] * spots.k];
     let cv = this.campViews.get(b.id);
     if (cv && cv.key !== key) { this.scene.remove(cv.g); cv = undefined; this.campViews.delete(b.id); }
-    if (!cv && (held.length || guards)) {
+    if (!cv && peopleReady() && (held.length || guards)) {
       const grp = new THREE.Group(), figs: CampFig[] = [], door = at(spots.bunk);
       held.slice(0, 10).forEach((c, i) => {
         ofPeople(this.game.players[c.from]?.civ ?? '');
         const cs = (c.name.length * 7 + c.age + i) | 0;
-        const made = this.realPeople && peopleReady() ? makePerson(roleOutfit('captive', c.gender === 'f', 0, lookOf(this.game.players[c.from]?.civ ?? '', cs), cs)) : null;
-        const fig = made?.g ?? makeCaptive(c.gender, cs);
+        const made = makePerson(roleOutfit('captive', c.gender === 'f', 0, lookOf(this.game.players[c.from]?.civ ?? '', cs), cs))!;
+        const fig = made.g;
         fig.scale.multiplyScalar(0.88 * spots.k);
         fig.rotation.order = 'YXZ';
         fig.position.set(door[0], 0, door[1]);
         grp.add(fig);
-        figs.push({ g: fig, rig: this.still || made ? null : rigBiped(fig), real: made?.real, woman: c.gender === 'f', guard: false, i, goal: 'out', wait: i * 0.9, in: true });
+        figs.push({ g: fig, real: made.real, woman: c.gender === 'f', guard: false, i, goal: 'out', wait: i * 0.9, in: true });
       });
       const color = this.game.players[b.owner].color;
       for (let i = 0; i < guards; i++) {
         ofPeople(this.game.players[b.owner].civ);
         const gp = this.game.players[b.owner];
-        const gmade = this.realPeople && peopleReady() ? makePerson(outfitFor('slaver', false, color, lookOf(gp.civ, b.id + i * 13), b.id + i * 13, 0, { cls: 'infantry', age: 1 })) : null;
-        const fig = gmade?.g ?? makeUnit('slaver', color, null, b.id + i * 13), [x, z] = at(spots.post[i % spots.post.length]);
+        const gmade = makePerson(outfitFor('slaver', false, color, lookOf(gp.civ, b.id + i * 13), b.id + i * 13, 0, { cls: 'infantry', age: 1 }))!;
+        const fig = gmade.g, [x, z] = at(spots.post[i % spots.post.length]);
         fig.scale.multiplyScalar(0.9 * spots.k);
         fig.position.set(x, this.scenery.heightAt(x, z) + (i % spots.post.length === 0 ? 0 : 0), z);
         fig.rotation.y = Math.PI / 4 + i * 1.7;
         grp.add(fig);
-        figs.push({ g: fig, rig: this.still || gmade ? null : rigBiped(fig), real: gmade?.real, woman: false, guard: true, i, goal: 'out', wait: 0, in: false });
+        figs.push({ g: fig, real: gmade.real, woman: false, guard: true, i, goal: 'out', wait: 0, in: false });
       }
       cv = { key, g: grp, figs };
       this.campViews.set(b.id, cv);
@@ -843,8 +754,7 @@ export class Renderer {
     if (!shown) return;
     const dt = Math.min(0.1, this.frameDt), door = at(spots.bunk);
     for (const f of cv.figs) {
-      const t = this.clock + f.i * 1.9;
-      if (f.guard) { if (f.real) { play(f.real, 'Idle_Loop', 1); f.real.mixer.update(dt); } else if (f.rig) this.setPose(f.rig, 'idle', t / motions.idle.dur, 1); continue; }
+      if (f.guard) { if (f.real) { play(f.real, 'Idle_Loop', 1); f.real.mixer.update(dt); } continue; }
       // Where this one should be now: shut in at night; by day a woman at her place in the workroom, a man at the stone or on his way back in.
       const place = f.woman ? at(spots.work[f.i % spots.work.length]) : at(spots.heap[f.i % spots.heap.length]);
       const goIn = night || (!f.woman && f.goal === 'in');
@@ -857,13 +767,13 @@ export class Renderer {
       }
       f.g.visible = true;
       const dx = target[0] - f.g.position.x, dz = target[1] - f.g.position.z, d = Math.hypot(dx, dz);
-      let pose = 'idle', pt = t / motions.idle.dur;
+      let pose = 'idle';
       if (d > 0.06) {
         const step = Math.min(d, dt * 0.55 * (night ? 1.3 : 1));
         f.g.position.x += (dx / d) * step; f.g.position.z += (dz / d) * step;
         const want = Math.atan2(dx, dz), turn = Math.atan2(Math.sin(want - f.g.rotation.y), Math.cos(want - f.g.rotation.y));
         f.g.rotation.y += turn * Math.min(1, dt * 8);
-        pose = 'walk'; pt = t * 1.1;
+        pose = 'walk';
       } else if (goIn) {
         f.in = true; f.wait = 2.5 + (f.i % 3); f.goal = 'out';
         f.g.visible = false;
@@ -871,10 +781,10 @@ export class Renderer {
       } else if (f.woman) {
         // At the quern: bent to it, turning the stone.
         f.g.rotation.y += Math.atan2(Math.sin(-Math.PI / 2 - f.g.rotation.y), Math.cos(-Math.PI / 2 - f.g.rotation.y)) * Math.min(1, dt * 6);
-        pose = 'reach'; pt = (t % 2.2) / 2.2;
+        pose = 'reach';
       } else {
         // At the heap: a spell of breaking stone, then back inside with it.
-        pose = 'work'; pt = (t % 1.5) / 1.5;
+        pose = 'work';
         if (f.goal === 'out') { f.goal = 'work'; f.wait = 7 + (f.i % 4) * 1.5; }
         if ((f.wait -= dt) <= 0) f.goal = 'in';
       }
@@ -886,7 +796,7 @@ export class Renderer {
         f.real.mixer.update(dt);
         const hd = f.real.bones.get('DEF-head');
         if (hd && pose !== 'work') hd.rotation.x += 0.3;
-      } else if (f.rig) { this.setPose(f.rig, pose, pt, 1); if (pose !== 'work') f.rig.head.rotation.x += 0.3; }
+      }
     }
   }
 
@@ -957,34 +867,32 @@ export class Renderer {
   private syncStaff(b: Building, shown: boolean, lean: '' | 'holy' | 'low'): void {
     let women = 0, men = 0;
     for (const id of b.staff ?? []) { const s = this.game.entities.get(id) as Unit | undefined; if (s) { if (s.gender === 'f') women++; else men++; } }
-    const live = this.realPeople && peopleReady();
-    const key = `${women}:${men}:${lean}:${live}`;
+    const key = `${women}:${men}:${lean}`;
     let sv = this.staffViews.get(b.id);
     if (sv && sv.key !== key) { this.scene.remove(sv.g); sv = undefined; this.staffViews.delete(b.id); }
-    if (!sv && women + men > 0) {
-      const g = new THREE.Group(), tav = b.type === 'tavern', half = b.size / 2, figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number; real?: RealPerson }[] = [];
+    if (!sv && peopleReady() && women + men > 0) {
+      const g = new THREE.Group(), tav = b.type === 'tavern', half = b.size / 2, figs: { g: THREE.Group; role: string; seed: number; real: RealPerson }[] = [];
       for (let i = 0; i < women + men; i++) {
         const f = i < women;
         const role = tav ? (f ? 'milkmaid' : 'patron') : f ? 'nun' : 'monk';
         ofPeople(this.game.players[b.owner].civ);
         const pl = this.game.players[b.owner];
-        const made = live ? makePerson(roleOutfit(role as 'monk' | 'nun' | 'milkmaid' | 'patron', f, pl.color, lookOf(pl.civ, b.id + i * 7), b.id + i * 7, lean)) : null;
-        const fig = made?.g ?? makeStaff(role, b.id + i * 7, lean);
+        const made = makePerson(roleOutfit(role as 'monk' | 'nun' | 'milkmaid' | 'patron', f, pl.color, lookOf(pl.civ, b.id + i * 7), b.id + i * 7, lean))!;
+        const fig = made.g;
         // Along the front and round the near corner, where the camera sees them.
         const k = i - (women + men - 1) / 2;
         const x = i % 2 ? half - 0.12 : k * 0.42 + 0.3, z = i % 2 ? k * 0.42 + 0.2 : half - 0.12;
         fig.position.set(b.x + x, this.scenery.heightAt(b.x + x, b.y + z), b.y + z);
         fig.rotation.y = Math.PI / 4 + Math.sin(b.id + i * 3.1) * 0.5;
-        if (!made) fig.scale.setScalar(0.92);
         // In a town that has let itself go, the first maid and the first patron are found in each other's arms round the side.
         if (tav && lean === 'low' && women > 0 && men > 0 && (i === 0 || i === women)) {
           const sx = b.x - half - 0.22, sz = b.y + half * 0.35, side = i === 0 ? -1 : 1;
-          fig.position.set(sx, this.scenery.heightAt(sx, sz), sz + side * 0.13);
-          fig.rotation.set(0.1, side < 0 ? 0 : Math.PI, 0);
+          fig.position.set(sx, this.scenery.heightAt(sx, sz), sz + side * 0.15);
+          fig.rotation.set(0.04, side < 0 ? 0 : Math.PI, 0);
           fig.userData.pair = true;
         }
         g.add(fig);
-        figs.push({ g: fig, rig: this.still || made ? null : rigBiped(fig), role, seed: (b.id * 1.3 + i * 2.1) % 6.28, lean0: fig.rotation.z, real: made?.real });
+        figs.push({ g: fig, role, seed: (b.id * 1.3 + i * 2.1) % 6.28, real: made.real });
       }
       sv = { key, g, figs };
       this.staffViews.set(b.id, sv);
@@ -997,22 +905,14 @@ export class Renderer {
     const rowdy = lean === 'low' ? 0.55 : lean === 'holy' ? 0.08 : 0.3;
     for (const f of sv.figs) {
       const t = this.clock + f.seed * 3, beat = Math.floor(t / 2.6), busy = ((Math.sin(beat * 12.9898 + f.seed) * 43758.5453) % 1 + 1) % 1 < rowdy;
-      if (f.real) {
-        // Patrons talk, and cheer when the mood takes them; the maid serves; monks and nuns stand at their prayers.
-        const clip = f.g.userData.pair ? 'Idle_Talking_Loop' : f.role === 'patron' ? (busy ? 'Dance_Loop' : 'Idle_Talking_Loop') : f.role === 'milkmaid' ? (busy ? 'Interact' : 'Idle_Loop') : busy || lean === 'holy' ? 'Spell_Simple_Idle_Loop' : 'Idle_Loop';
-        play(f.real, clip, 1);
-        f.real.mixer.update(Math.min(0.1, this.frameDt));
-      } else if (f.rig) {
-        const name = f.g.userData.pair ? 'reach' : !busy ? 'idle' : f.role === 'patron' ? 'cheer' : 'reach';
-        this.setPose(f.rig, name, busy ? (t % 2.6) / 2.6 : t / motions.idle.dur, 0.12);
-        if (f.role === 'patron' && lean === 'low' && !f.g.userData.pair) f.g.rotation.z = f.lean0 + Math.sin(t * 1.3) * 0.08; // unsteady on his feet
-      } else {
-        f.g.rotation.x = busy || lean === 'holy' ? Math.max(0, Math.sin(t * 0.8)) * 0.28 : Math.sin(t * 0.9) * 0.03;
-      }
+      // Patrons talk, and cheer when the mood takes them; the maid serves; monks and nuns stand at their prayers.
+      const clip = f.g.userData.pair ? 'Idle_Loop' : f.role === 'patron' ? (busy ? 'Dance_Loop' : 'Idle_Talking_Loop') : f.role === 'milkmaid' ? (busy ? 'Interact' : 'Idle_Loop') : busy || lean === 'holy' ? 'Spell_Simple_Idle_Loop' : 'Idle_Loop';
+      play(f.real, clip, 1);
+      f.real.mixer.update(Math.min(0.1, this.frameDt));
+      if (f.g.userData.pair) embrace(f.real, f.g.rotation.y, f.role === 'milkmaid');
     }
   }
 
-  /** Sets a figure's joints from the recorded motion that fits what it is doing. */
   private models: RealPerson[] = [];
   /**
    * Stands a row of figures at a spot, each in the outfit given, facing the camera: a way to look at clothes without
@@ -1083,12 +983,12 @@ export class Renderer {
   private poseBeast(u: Unit, b: Beast, dt: number): void {
     const striking = u.attackAnim > 0 && !!this.game.entities.get(u.id);
     // Only an animal that fights with its own body plays an attack: a horse leaves the fighting to its rider.
-    const fights = b.kind === 'wolf' || b.kind === 'husky';
+    const fights = b.kind === 'wolf' || b.kind === 'husky' || b.kind === 'bear' || b.kind === 'elephant' || b.kind === 'mammoth';
     if (fights && striking && !b.struck) { b.strike = 0.6; b.now = ''; }
     b.struck = striking;
     b.strike -= dt;
     if (fights && b.strike > 0) gait(b, 'Attack', 1.6, true);
-    else if (u.moving) (u.def.speed < 1.5 ? gait(b, 'Walk', Math.max(0.7, u.def.speed / 1.1)) : gait(b, 'Gallop', Math.max(0.7, Math.min(1.6, u.def.speed / 3.2))));
+    else if (u.moving) (u.def.speed < 1.5 || b.kind === 'elephant' || b.kind === 'mammoth' ? gait(b, 'Walk', Math.max(0.7, u.def.speed / 1.1)) : gait(b, 'Gallop', Math.max(0.7, Math.min(1.6, u.def.speed / 3.2))));
     // A deer left alone puts its head down to graze from time to time.
     else gait(b, (b.kind === 'deer' || b.kind === 'stag') && (Math.floor(this.clock / 6) + u.id) % 3 === 0 ? 'Eating' : (Math.floor(this.clock / 9) + u.id) % 4 === 0 ? 'Idle_2' : 'Idle', 1);
     b.mixer.update(dt);
@@ -1098,14 +998,17 @@ export class Renderer {
   private steeds(u: Unit, v: UnitView): void {
     const at = new Map<THREE.Object3D, string>();
     v.g.traverse((o) => { if (o.userData.steed && o.parent) at.set(o.parent, o.userData.steed as string); });
-    if (!at.size) { v.beasts = []; return; } // a camel, a mammoth: no real animal for these yet
+    if (!at.size) { v.beasts = []; return; }
     for (const kind of at.values()) if (!beastReady(kind as BeastKind)) return; // not arrived yet: keep the blocks for now
     v.beasts = [];
     let i = 0;
     for (const [parent, kind] of at) {
-      const b = makeBeast(kind as BeastKind, kind === 'wolf' ? 0.5 : 0.7, u.id + i++, kind === 'wolf' ? 0x4a4a52 : null);
+      const back = kind === 'wolf' ? 0.5 : kind === 'camel' ? 0.9 : kind === 'elephant' ? 1.08 : kind === 'mammoth' ? 1.12 : kind === 'bear' ? 0.62 : 0.7;
+      const b = makeBeast(kind as BeastKind, back, u.id + i++, kind === 'wolf' ? 0x4a4a52 : null);
       if (!b) continue;
       for (const c of parent.children) if (c.userData.steed) c.visible = false;
+      // A camel's rider sits higher than a horseman, behind the hump.
+      if (kind === 'camel' && v.seat) { v.seatY = v.seat.userData.seatY = (v.seat.userData.seat0 ??= v.seat.userData.seatY as number) + 0.47; v.seat.position.z = -0.3; }
       // The old mount was built about its own middle with its back near 0.76 up: sit the new one to match.
       b.g.position.set(0, 0, 0.06);
       parent.add(b.g);
@@ -1125,61 +1028,9 @@ export class Renderer {
       for (const c of seat.children) c.visible = false; // the block figure and its gear give way
       seat.add(made.g);
       made.g.position.y = seat.userData.stands ? 0 : -0.07;
+      if (!seat.userData.stands && u.def.cls !== 'siege') { v.seat = seat; v.seatY = seat.userData.seatY ??= seat.position.y; }
       v.riders!.push({ p: made.real, astride: !seat.userData.stands });
     });
-  }
-
-  private pose(u: Unit, v: UnitView, dt: number): void {
-    const rig = v.rig!;
-    let name = 'idle', t = (this.clock + v.phase) / motions.idle.dur;
-    if (u.attackAnim > 0) {
-      name = u.type === 'villager' ? 'work' : u.def.range >= 3 ? 'shoot' : /spear|pike|lancer|hoplite|javelin|bill/.test(u.type) ? 'stab' : u.healTarget ? 'cast' : 'strike';
-      // The blow lands in the middle of the recorded swing; play that part across the time the blow takes.
-      t = 0.2 + (1 - Math.min(1, u.attackAnim / 0.35)) * 0.5;
-      v.work = 0.5;
-    } else if (u.moving) {
-      name = u.def.speed > 1.25 ? 'run' : 'walk';
-      t = v.phase / (Math.PI * 2);
-    } else if (u.healTarget) {
-      name = 'cast';
-      t = this.clock / motions.cast.dur;
-    } else if ((v.work -= dt) > 0 && u.type === 'villager') {
-      // Between strokes a worker draws back for the next one instead of dropping to rest.
-      name = 'work';
-      t = 0.15;
-    }
-    this.setPose(rig, name, t, Math.min(1, dt * 16));
-    this.swing(u, v, name === 'run', dt);
-  }
-
-  /** Turns the joints toward frame `t` (0 to 1, wrapping) of a recorded motion. `ease` lets one motion flow into the next. */
-  private setPose(rig: Rig, name: string, t: number, ease: number): void {
-    const m = motions[name], n = m.frames.length;
-    const f = (((t % 1) + 1) % 1) * n, i = Math.floor(f) % n, k = f - Math.floor(f);
-    const a = m.frames[i], b = m.frames[(i + 1) % n];
-    const turn = (o: THREE.Object3D, at: number): void => {
-      qa.set(a[at], a[at + 1], a[at + 2], a[at + 3]);
-      qb.set(b[at], b[at + 1], b[at + 2], b[at + 3]);
-      o.quaternion.slerp(qa.slerp(qb, k), ease);
-    };
-    rig.root.position.y += (0.3 * (1 + (a[0] + (b[0] - a[0]) * k) * 0.8) - rig.root.position.y) * ease;
-    turn(rig.root, 1); turn(rig.torso, 5); turn(rig.head, 9);
-    turn(rig.armR, 13); turn(rig.elbows[0], 17); turn(rig.armL, 21); turn(rig.elbows[1], 25);
-    if (rig.legs[0]) { turn(rig.legs[0], 29); turn(rig.knees[0], 33); }
-    if (rig.legs[1]) { turn(rig.legs[1], 37); turn(rig.knees[1], 41); }
-  }
-
-  /** Loose things on the body take each footfall and each blow, and go on swinging after. */
-  private swing(u: Unit, v: UnitView, running: boolean, dt: number): void {
-    const rig = v.rig!;
-    const jolt = (u.moving ? Math.sin(v.phase * 2) * (running ? 34 : 26) : 0) + (u.attackAnim > 0 ? Math.cos((u.attackAnim / 0.35) * Math.PI) * 22 : 0);
-    const steps = Math.max(1, Math.ceil(Math.min(dt, 0.1) / 0.012)), h = Math.min(dt, 0.1) / steps;
-    for (const l of rig.loose) {
-      for (let s = 0; s < steps; s++) { l.v += (-l.k * l.d - l.c * l.v + jolt * l.gain) * h; l.d += l.v * h; }
-      const lim = l.mode === 'y' ? 0.035 : 0.7;
-      if (l.d > lim) { l.d = lim; l.v = 0; } else if (l.d < -lim) { l.d = -lim; l.v = 0; }
-      if (l.mode === 'y') l.o.position.y = l.rest + l.d; else if (l.mode === 'rx') l.o.rotation.x = l.rest + l.d; else l.o.rotation.z = l.rest + l.d;
-    }
   }
 
   /** A building that falls comes apart: every piece is thrown clear, tumbles, settles and sinks away. */
@@ -1461,7 +1312,6 @@ export class Renderer {
     for (let i = this.dying.length - 1; i >= 0; i--) {
       const d = this.dying[i];
       d.t += dt;
-      const rig = d.v.rig;
       if (d.v.wildlife && d.v.beasts?.length) {
         // The animal's own fall.
         gait(d.v.beasts[0], 'Death', 1, true);
@@ -1474,17 +1324,6 @@ export class Renderer {
         play(d.v.real, 'Death01', 1, true);
         d.v.real.mixer.update(dt);
         d.g.rotation.x = d.g.rotation.z = 0;
-        if (d.t > 7) d.g.position.y -= dt * 0.12;
-        if (d.t > 10) { this.scene.remove(d.g); this.dying.splice(i, 1); }
-      } else if (rig) {
-        // Struck down: the recorded fall, weapon and shield dropping from the hands, then the body lies a while.
-        const m = motions[d.clip];
-        this.setPose(rig, d.clip, Math.min(0.999, d.t / m.dur) * (1 - 1 / m.frames.length), Math.min(1, dt * 18));
-        if (!d.dropped && d.t > 0.25) {
-          d.dropped = true;
-          d.g.updateMatrixWorld(true);
-          for (const w of [...rig.held, ...rig.gear.filter((p) => p.parent === rig.armL || p.parent === rig.elbows[1])]) this.throwPiece(w, d.g.position, 1, 0.5);
-        }
         if (d.t > 7) d.g.position.y -= dt * 0.12;
         if (d.t > 10) { this.scene.remove(d.g); this.dying.splice(i, 1); }
       } else if (d.v.naval) {

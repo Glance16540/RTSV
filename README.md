@@ -341,14 +341,14 @@ for filenames and a ready-made generation prompt.
 ## The drawn look, motion and destruction
 
 - `src/client/shapes.ts` holds the look: banded shade with an ink outline, painted surfaces, and the hand-shaped
-  buildings. Add `?outline=0` to the address to turn the outline off, `?motion=0` for the old simple walk.
-- Figures on foot move with recorded motions (walk, run, work, strike, stab, shoot, cast). They come from the
-  KayKit Adventurers character pack by Kay Lousberg (public domain, CC0), reduced to the few joints our figures
-  have and stored in `src/client/motions.json`. To rebuild that file: `node scripts/motions.cjs <path to Knight.glb>`.
+  buildings. Add `?outline=0` to the address to turn the outline off.
+- Every person is drawn from one rigged human figure with recorded motions, and animals from rigged four-legged
+  figures (`src/client/person.ts`, `src/client/beast.ts`; the files are in `public/models/`, all public domain, CC0).
+  The camel, the elephant, the mammoth and the bear are made over from the alpaca, the bull and the wolf. The older
+  figures built of blocks are gone; until the figure files arrive, people are simply not drawn.
 - Buildings shed pieces as they are damaged and fall apart when destroyed.
-- Wounds show: blows draw blood, gear is knocked off and clothes tear as a fighter weakens, and the fallen
-  drop with a recorded death, their weapons beside them. Engines fly apart and ships sink. `?gore=0` turns
-  the blood and wounds off.
+- Blows draw blood and make a figure flinch, and the fallen drop with a recorded death. Engines fly apart and
+  ships sink. `?gore=0` turns the blood off.
 
 ## Roads, rough ground and the country
 
