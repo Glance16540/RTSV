@@ -3,6 +3,7 @@
 import { AGES, CIVS, CIV_IDS } from '../sim/data';
 import { Speech, leaderOf } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
+import { WorldMap } from './worldmap';
 import {
   EVENTS, WEATHER, eventsAt, frontsOf, weatherAt,
   Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, ageCost, truceCost, giftCost, AGE_COST, AGE_EDGE, ageOf, canAdvance, advanceAge, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
@@ -19,6 +20,7 @@ export interface OverworldHooks {
 
 const PAPER = [205, 186, 140];
 let lastTicker = 0;
+let lastMap: WorldMap | null = null;
 const rgb = (c: number) => [c >> 16, (c >> 8) & 255, c & 255];
 const css = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const $ = (id: string) => document.getElementById(id)!;
@@ -33,6 +35,8 @@ export class Overworld {
   /** Where the signs for hills, woods, fields and sea are inked, worked out once from the lie of each land. */
   private glyphs: { kind: string; x: number; y: number; s: number }[] = [];
   private ticker = 0;
+  /** The map in three dimensions, when the machine can draw it; otherwise the flat chart is shown. */
+  private map3d: WorldMap | null = null;
   private sel: number;
   private speaking: Speech | null = null;
   private speakT = 0;
@@ -74,7 +78,18 @@ export class Overworld {
     this.glyphs.sort((p, q) => p.y - q.y);
     // The weather moves while the map is being looked at.
     window.clearInterval(lastTicker); // a map made earlier stops drawing
-    lastTicker = this.ticker = window.setInterval(() => { if ($('overworld').offsetParent !== null && !document.hidden) this.frame(); }, 90);
+    lastMap?.dispose();
+    lastMap = null;
+    if (new URLSearchParams(location.search).get('map') !== '2d') {
+      try {
+        const host = canvas.parentElement!;
+        this.map3d = lastMap = new WorldMap(host, c, this.cell, this.edge, this.glyphs, (tid) => this.click(tid));
+        host.classList.add('ow-3d');
+        canvas.style.display = 'none';
+      } catch { this.map3d = null; } // no 3D here: the flat chart will do
+    }
+    if (!this.map3d) { canvas.style.display = ''; canvas.parentElement!.classList.remove('ow-3d'); }
+    lastTicker = this.ticker = window.setInterval(() => { if (!this.map3d && $('overworld').offsetParent !== null && !document.hidden) this.frame(); }, 90);
 
     canvas.addEventListener('click', (e) => {
       const r = canvas.getBoundingClientRect();
@@ -230,8 +245,10 @@ export class Overworld {
     const c = this.c;
     const army = armyAt(c, this.sel);
     const canMarch = c.phase === 'player' && !!army && army.owner === 0 && !army.moved;
-    this.paint(new Set(canMarch ? reachOf(c, this.sel) : []));
-    this.frame();
+    const reach = new Set(canMarch ? reachOf(c, this.sel) : []);
+    this.paint(reach, !!this.map3d);
+    if (this.map3d) { this.map3d.setSheet(this.sheet); this.map3d.sync(c, this.sel, reach); }
+    else this.frame();
     this.renderSide(canMarch);
   }
 
@@ -240,7 +257,7 @@ export class Overworld {
    * its colour along the borders, hills and woods and fields inked in, roads between neighbours, towns, armies as
    * standards, and a mark where something has happened. The weather is drawn over it afresh many times a second.
    */
-  private paint(reach: Set<number>): void {
+  private paint(reach: Set<number>, bare = false): void {
     const c = this.c, ctx = this.sheet.getContext('2d')!, cell = this.cell, edge = this.edge;
     const img = ctx.createImageData(MAP_W, MAP_H);
     const wash = c.territories.map((t) => (t.owner < 0 ? null : rgb(c.factions[t.owner].color)));
@@ -281,7 +298,9 @@ export class Overworld {
     ctx.setLineDash([]);
 
     // The lie of the land, inked in: mountains, woods, fields, grass, waves.
-    for (const g of this.glyphs) this.glyph(ctx, g.kind, g.x, g.y, g.s);
+    // In three dimensions the mountains, woods and sea are really there; only what lies flat is painted.
+    for (const g of this.glyphs) if (!bare || g.kind === 'field' || g.kind === 'grass' || g.kind === 'ore') this.glyph(ctx, g.kind, g.x, g.y, g.s * (bare ? 1.3 : 1));
+    if (bare) return;
 
     // The sheet's own furniture: a ruled frame, a compass rose, and the year.
     ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(7, 7, MAP_W - 14, MAP_H - 14);

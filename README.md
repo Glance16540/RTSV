@@ -225,7 +225,10 @@ neighbouring land.
   to agree to a truce or an alliance. An ally who loses land asks you to strike at whoever took it
   and thanks you if you do, and an ally with full stores shares with you when yours run low.
 - **Two ways to win.** Take every territory, or hold six in every ten for three turns running.
-- **Weather and events on the map.** The campaign map is drawn as an old chart (`src/client/overworld.ts`). Three
+- **Weather and events on the map.** The campaign map is a country in three dimensions (`src/client/worldmap.ts`):
+  land out of a sea, mountains, woods, towns, armies as figures under a standard, cloud overhead. Drag to move,
+  wheel to zoom, click a land to choose it. The chart drawn by `src/client/overworld.ts` is its ground paint, and
+  is shown flat where 3D is not available or with `?map=2d`. Three
   weather fronts cross it turn by turn (`frontsOf`, `weatherAt` in `src/sim/campaign.ts`): an army attacking into
   rain, snow or dust fights at 85 to 90% strength, snow costs a land a supply, and the battle itself is fought in
   that weather. Events are marked where they happen. Unrest ends in revolt unless the holder has an army there
