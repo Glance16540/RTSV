@@ -15,8 +15,6 @@ interface Marks { head: THREE.Box3; /** The middle of the flesh each bone carrie
 let source: { scene: THREE.Object3D; clips: Map<string, THREE.AnimationClip>; marks: Marks } | null = null;
 let failed = false;
 const waiting: (() => void)[] = [];
-/** Each bone as the figure stands at rest. */
-const rest = new Map<string, { p: THREE.Vector3; q: THREE.Quaternion; s: THREE.Vector3 }>();
 
 /** Starts fetching the figure. `then` runs once it can be used. */
 export function loadPeople(then?: () => void): void {
@@ -27,13 +25,14 @@ export function loadPeople(then?: () => void): void {
     const clips = new Map<string, THREE.AnimationClip>();
     for (const c of g.animations) {
       // The figure is moved over the ground by the game, not by the recording.
-      c.tracks = c.tracks.filter((t) => !(t.name.startsWith('root.') && t.name.endsWith('.position')));
+      // And only the turning of each joint is taken from it (with the rise and fall of the hips), so the bones'
+      // lengths and places are free to be set per person: narrow shoulders, small hands and so on.
+      c.tracks = c.tracks.filter((t) => t.name.endsWith('.quaternion') || t.name === 'DEF-hips.position');
       clips.set(c.name, c);
     }
     // Where the head is, to fit hair, a face and helmets to it.
     const head = new THREE.Box3(), p = new THREE.Vector3(), sums = new Map<string, { v: THREE.Vector3; n: number }>();
     g.scene.traverse((o) => {
-      if ((o as THREE.Bone).isBone) rest.set(o.name, { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() });
       const m = o as THREE.SkinnedMesh;
       if (!m.isSkinnedMesh) return;
       const pos = m.geometry.getAttribute('position'), si = m.geometry.getAttribute('skinIndex'), sw = m.geometry.getAttribute('skinWeight');
@@ -58,6 +57,8 @@ export interface RealPerson {
   now: string;
   body: THREE.Object3D;
   bones: Map<string, THREE.Object3D>;
+  /** Each bone as this person stands at rest, with their own proportions. */
+  rest: Map<string, { p: THREE.Vector3; q: THREE.Quaternion; s: THREE.Vector3 }>;
   palm: THREE.Vector3;
   tool: THREE.Object3D | null;
   toolKind: string;
@@ -140,7 +141,7 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
   const col = new Float32Array(pos.count * 3), c = new THREE.Color();
   const skin = new THREE.Color(o.skin), hair = new THREE.Color(o.hair), top = new THREE.Color(o.mail ? 0x8a8f96 : o.top), legs = new THREE.Color(o.legs);
   const boot = new THREE.Color(0x4a3222), belt = new THREE.Color(0x3a2616), lip = skin.clone().lerp(new THREE.Color(0xb04a48), 0.45);
-  const mids = source!.marks.mid;
+  const mids = source!.marks.mid, headMid = source!.marks.head.getCenter(new THREE.Vector3()).y, headHalf = source!.marks.head.getSize(new THREE.Vector3()).y / 2;
   const collar = o.neck === 2 ? 1.34 : o.neck === 1 ? 1.42 : 1.5; // how high the cloth comes on the chest
   for (let i = 0; i < pos.count; i++) {
     // The bone with the most say over this point.
@@ -153,13 +154,13 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
     const fat = [-0.07, 0, 0.13][o.girth]; // how much thicker than the bare figure
     if (/spine|hips/.test(bone) || (/thigh/.test(bone) && y > 0.8)) {
       if (o.female) {
-        // A woman's trunk: drawn in at the waist, fuller at the hip and the breast.
-        const waist = bump(y, 1.13, 0.16), hip = bump(y, 0.93, 0.16);
-        x *= 1 - waist * 0.13 + hip * 0.07; z *= 1 - waist * 0.1 + hip * 0.05;
+        // A woman's trunk: a smaller ribcage, drawn well in at the waist, wide at the hip, fuller at the breast.
+        const waist = bump(y, 1.13, 0.16), hip = bump(y, 0.9, 0.2), ribs = Math.min(1, Math.max(0, (y - 1.18) / 0.12));
+        x *= 1 - waist * 0.2 + hip * 0.14 - ribs * 0.1; z *= 1 - waist * 0.14 + hip * 0.1 - ribs * 0.06;
         if (z > 0.02) z += [0.022, 0.04, 0.06][o.chest] * bump(y, 1.33, 0.085) * bump(Math.abs(x), 0.07, 0.078);
       } else {
         // A man's: from narrow to deep-chested and broad across the back.
-        const k = [-0.04, 0.02, 0.08][o.chest] * bump(y, 1.36, 0.2);
+        const k = 0.04 + [-0.04, 0.02, 0.08][o.chest] * bump(y, 1.36, 0.2);
         x *= 1 + k; z *= 1 + k * 1.2;
       }
       // Weight is carried round the middle, and most in front.
@@ -167,10 +168,17 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
       if (z > 0 && fat > 0) z += fat * 0.45 * bump(y, 1.1, 0.2) * bump(x, 0, 0.2);
     } else if (/upper_arm|forearm|thigh|shin/.test(bone)) {
       // Limbs thicken about their own middle line: arms lie along x at rest, legs stand along y.
-      const m = mids.get(bone), k = 1 + fat * (/forearm|shin/.test(bone) ? 0.55 : 0.9) + (!o.female && /upper_arm/.test(bone) ? [-0.03, 0.02, 0.07][o.chest] : 0);
+      const m = mids.get(bone), k = 1 + fat * (/forearm|shin/.test(bone) ? 0.55 : 0.9) + (o.female ? (/arm/.test(bone) ? -0.16 : /shin/.test(bone) ? -0.08 : 0.04) : /upper_arm/.test(bone) ? 0.05 + [-0.03, 0.02, 0.07][o.chest] : 0.03);
       if (m && /arm/.test(bone)) { ny = m.y + (y - m.y) * k; z = m.z + (z - m.z) * k; }
       else if (m) { x = m.x + (x - m.x) * k; z = m.z + (z - m.z) * k; }
-    } else if (/neck/.test(bone)) { x *= 1 + fat * 0.6; z *= 1 + fat * 0.6; }
+    } else if (/neck/.test(bone)) { const k = 1 + fat * 0.6 + (o.female ? -0.14 : 0.08); x *= k; z *= k; }
+    else if (/shoulder/.test(bone)) x *= o.female ? 0.88 : 1.03;
+    else if (/head/.test(bone)) {
+      // The jaw: tapered to a small chin on a woman, square on a man.
+      const t = Math.min(1, Math.max(0, (headMid - y) / headHalf));
+      x *= o.female ? 1 - t * 0.16 : 1 + t * 0.05;
+      if (o.female && z > 0) z *= 1 - t * 0.05;
+    }
     pos.setXYZ(i, x, ny, z);
     let mailed = false;
     if (/head/.test(bone)) c.copy(y > 1.72 || (z < 0.0 && y > 1.6) ? hair : o.female && z > 0.06 && y > 1.615 && y < 1.632 && Math.abs(x) < 0.025 ? lip : skin);
@@ -201,24 +209,25 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
  * A skirt hung from the hips: the top of it moves with the hips, and each side further down swings with the thigh
  * behind it, so it parts and closes as the legs stride.
  */
-function skirt(body: THREE.SkinnedMesh, long: boolean, female: boolean, color: number, girth: number): THREE.SkinnedMesh {
+function skirt(body: THREE.SkinnedMesh, long: boolean, female: boolean, color: number, girth: number, apron: boolean): THREE.SkinnedMesh {
+  const linen = new THREE.Color(0xe2d8c0);
   const wide = 1 + [-0.06, 0, 0.13][girth];
   const names = body.skeleton.bones.map((b) => b.name);
   const hips = names.indexOf('DEF-hips'), tl = names.indexOf('DEF-thighL'), tr = names.indexOf('DEF-thighR');
-  const top = 1.06, hem = long ? 0.13 : 0.6, rings = long ? 9 : 5, seg = 18;
+  const top = 1.06, hem = long ? 0.13 : 0.68, rings = long ? 9 : 5, seg = 18;
   const P: number[] = [], C: number[] = [], SI: number[] = [], SW: number[] = [], I: number[] = [];
   const base = new THREE.Color(color), trim = base.clone().multiplyScalar(0.68);
   for (let r = 0; r <= rings; r++) {
     const f = r / rings, y = top + (hem - top) * f;
     // Close at the waist, over the hips, then flaring to the hem.
     const hipK = bump(y, 0.9, 0.2) * Math.min(1, f * (long ? 9 : 5)); // the waistband sits close; the cloth stands off below it
-    const rx = (female ? 0.132 : 0.15) + hipK * (female ? 0.085 : 0.06) + f * (long ? 0.15 : 0.035), rz = (female ? 0.1 : 0.112) + hipK * 0.06 + f * (long ? 0.15 : 0.03);
+    const rx = (female ? 0.118 : 0.156) + hipK * (female ? 0.115 : 0.055) + f * (long ? 0.15 : 0.035), rz = (female ? 0.1 : 0.112) + hipK * 0.06 + f * (long ? 0.15 : 0.03);
     const leg = Math.min(1, Math.max(0, (0.98 - y) / 0.22)) * (long ? 0.6 : 0.85); // how much of this ring the legs carry
     for (let s = 0; s < seg; s++) {
       const a = (s / seg) * Math.PI * 2, fold = 1 + (long ? Math.sin(a * 7) * 0.035 * f : 0);
       const x = Math.cos(a) * rx * fold * wide, z = 0.012 + Math.sin(a) * rz * fold * wide * (Math.sin(a) > 0 && girth === 2 ? 1.28 : 1);
       P.push(x, y, z);
-      const c = r === rings ? trim : base, n = 0.92 + ((s * 7 + r * 3) % 5) * 0.03;
+      const c = apron && Math.sin(a) > 0.62 && r > 0 && r < rings - 1 ? linen : r === rings ? trim : base, n = 0.92 + ((s * 7 + r * 3) % 5) * 0.03;
       C.push(c.r * n, c.g * n, c.b * n);
       const wl = Math.min(1, Math.max(0, 0.5 + x / 0.14));
       SI.push(hips, tl, tr, 0); SW.push(1 - leg, leg * wl, leg * (1 - wl), 0);
@@ -293,14 +302,31 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   };
   const at = (bone: string): THREE.Vector3 => bones.get(bone.replace(/\./g, ''))?.getWorldPosition(new THREE.Vector3()) ?? new THREE.Vector3();
 
-  if (o.skirt !== 'none') meshes[0].parent!.add(skirt(meshes[0], o.skirt === 'long', o.female, o.skirtColor, o.girth));
+  // ---- proportions set on the skeleton itself: where the shoulders sit, the size of hands, feet and head ----
+  {
+    const out = o.female ? -0.045 : [0, 0.014, 0.03][o.chest], w = new THREE.Vector3();
+    for (const [side, sign] of [['L', 1], ['R', -1]] as const) {
+      const b = bones.get('DEF-upper_arm' + side);
+      if (b?.parent) { b.getWorldPosition(w); w.x += sign * out; b.parent.worldToLocal(w); b.position.copy(w); }
+      bones.get('DEF-hand' + side)?.scale.multiplyScalar(o.female ? 0.86 : 1.04);
+      bones.get('DEF-foot' + side)?.scale.multiplyScalar(o.female ? 0.9 : 1.03);
+    }
+    bones.get('DEF-head')?.scale.multiplyScalar(o.female ? 0.96 : 1.02);
+    body.updateMatrixWorld(true);
+  }
+  const mine = new Map<string, { p: THREE.Vector3; q: THREE.Quaternion; s: THREE.Vector3 }>();
+  body.traverse((b) => { if ((b as THREE.Bone).isBone) mine.set(b.name, { p: b.position.clone(), q: b.quaternion.clone(), s: b.scale.clone() }); });
+
+  if (o.skirt !== 'none') meshes[0].parent!.add(skirt(meshes[0], o.skirt === 'long', o.female, o.skirtColor, o.girth, o.female && o.neck < 2));
 
   // ---- the head: a face, hair, and whatever is worn on it ----
   const hb = source.marks.head, hc = hb.getCenter(new THREE.Vector3()), hr = hb.getSize(new THREE.Vector3()).multiplyScalar(0.5);
   const head = new THREE.Group();
   const eye = geo('eye', () => new THREE.SphereGeometry(0.011, 6, 5)), dark = solid(0x1c1612), hairM = solid(o.hair);
   for (const sx of [-1, 1]) {
-    head.add(part(eye, dark, sx * hr.x * 0.4, hc.y + hr.y * 0.12, hb.max.z - hr.z * 0.2));
+    const e = part(eye, dark, sx * hr.x * (o.female ? 0.36 : 0.4), hc.y + hr.y * 0.12, hb.max.z - hr.z * 0.2);
+    if (o.female) e.scale.set(1.35, 1.2, 1);
+    head.add(e);
     const brow = part(geo('brow', () => new THREE.BoxGeometry(0.036, 0.007, 0.012)), hairM, sx * hr.x * 0.4, hc.y + hr.y * 0.3, hb.max.z - hr.z * 0.19);
     brow.rotation.z = sx * -0.12;
     head.add(brow);
@@ -312,12 +338,12 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     d.rotation.x = -0.22; // set back off the brow
     return d;
   };
-  if (!o.helmet && o.hairStyle !== 'covered') head.add(crown(hairM, 1.09));
+  if (!o.helmet && o.hairStyle !== 'covered') head.add(crown(hairM, o.female ? 1.16 : 1.08));
   if (o.female && !o.helmet) {
     if (o.hairStyle === 'long') {
       // Worn loose down the back.
       const fall = part(geo('fall', () => new THREE.SphereGeometry(1, 10, 8)), hairM, 0, hc.y - hr.y * 0.75, hc.z - hr.z * 0.72);
-      fall.scale.set(hr.x * 0.98, hr.y * 1.45, hr.z * 0.42);
+      fall.scale.set(hr.x * 1.12, hr.y * 1.7, hr.z * 0.5);
       head.add(fall);
     } else if (o.hairStyle === 'bun') {
       head.add(part(geo('bun', () => new THREE.SphereGeometry(0.052, 9, 7)), hairM, 0, hc.y + hr.y * 0.35, hc.z - hr.z * 1.05));
@@ -379,11 +405,11 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   }
 
   const wrist = at('DEF-hand.R');
-  const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, palm: new THREE.Vector3(wrist.x - 0.075, wrist.y - 0.02, wrist.z), tool: null, toolKind: '', strike: 0, struck: false, soldier: !!o.weapon };
+  const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(wrist.x - 0.075, wrist.y - 0.02, wrist.z), tool: null, toolKind: '', strike: 0, struck: false, soldier: !!o.weapon };
   for (const [name, clip] of source.clips) real.actions.set(name, real.mixer.clipAction(clip));
   if (o.weapon) hold(real, o.weapon);
 
-  body.scale.setScalar(SCALE * (o.female ? 0.93 : 1) * (0.97 + (o.seed % 7) * 0.01)); // people are not all one height
+  body.scale.setScalar(SCALE * (o.female ? 0.91 : 1.01) * (0.97 + (o.seed % 7) * 0.01)); // people are not all one height
   const g = new THREE.Group();
   g.add(body);
   real.actions.get('Idle_Loop')!.play();
@@ -419,8 +445,7 @@ export function hold(p: RealPerson, kind: string): void {
   p.toolKind = kind;
   if (!p.tool) return;
   p.mixer.stopAllAction();
-  for (const [name, b] of p.bones) { const r = rest.get(name); if (r) { b.position.copy(r.p); b.quaternion.copy(r.q); b.scale.copy(r.s); } }
-  p.body.traverse((o) => { if (o.name === 'root') { const r = rest.get('root'); if (r) { o.position.copy(r.p); o.quaternion.copy(r.q); } } });
+  p.body.traverse((o) => { const r = p.rest.get(o.name); if (r && (o as THREE.Bone).isBone) { o.position.copy(r.p); o.quaternion.copy(r.q); o.scale.copy(r.s); } });
   // The body's own space is the figure's space whatever the unit's place or size in the world.
   p.body.add(p.tool);
   p.tool.position.copy(p.palm);
