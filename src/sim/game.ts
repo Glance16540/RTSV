@@ -271,6 +271,10 @@ export type GameEvent =
   | { t: 'signal'; player: number; x: number; y: number }
   | { t: 'gameover'; winner: number };
 
+/** What has been taken from a battlefield for good: see `Game.ground`. */
+export interface Ground { gone: number[]; left: [number, number][] }
+const LASTING = new Set(['tree', 'stone', 'gold']);
+
 export interface PlayerSetup {
   name: string;
   color: number;
@@ -792,6 +796,35 @@ export class Game {
     let lo = Infinity, hi = -Infinity;
     for (let y = cy; y < cy + s; y++) for (let x = cx; x < cx + s; x++) { const h = this.spec.height[y * this.size + x]; lo = Math.min(lo, h); hi = Math.max(hi, h); }
     return hi - lo > (s > 1 ? 0.4 : 0.6);
+  }
+
+  /**
+   * What has been taken from this ground for good: wood felled, and stone and gold dug. `gone` is the cell
+   * (cy * size + cx) of every such node the land began with that is no longer there, and `left` what remains
+   * in each one that has been worked. Berries grow back and are not counted.
+   */
+  ground(): Ground {
+    const now = new Map<number, number>();
+    for (const r of this.resources) if (LASTING.has(r.type)) now.set(r.cy * this.size + r.cx, r.amount);
+    const g: Ground = { gone: [], left: [] };
+    for (const n of this.spec.nodes) {
+      if (!LASTING.has(n.type)) continue;
+      const k = n.cy * this.size + n.cx, amount = now.get(k);
+      if (amount === undefined) g.gone.push(k);
+      else if (amount < RESOURCE_AMOUNT[n.type]) g.left.push([k, Math.ceil(amount)]);
+    }
+    return g;
+  }
+
+  /** Begin on ground that has been worked before: call on a new game, before anything is drawn. */
+  wear(ground: Ground): void {
+    const gone = new Set(ground.gone ?? []), left = new Map(ground.left ?? []);
+    for (const r of this.resources.filter((r) => LASTING.has(r.type))) {
+      const k = r.cy * this.size + r.cx, amount = left.get(k);
+      if (gone.has(k)) this.kill(r);
+      else if (amount !== undefined && amount > 0 && amount < r.amount) r.amount = amount;
+    }
+    this.updateVision();
   }
 
   /** The nearest free ground to a start for a building, with room to walk round it and clear of where the people muster. */

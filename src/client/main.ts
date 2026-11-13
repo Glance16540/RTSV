@@ -263,6 +263,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i), ...(i === 0 && savedHero(myCiv) ? { hero: savedHero(myCiv) } : {}) })), size, false, params.get('land') === 'lake', relief, climateOf(myCiv));
 
   // A band of marauders makes camp in the wilds of every skirmish and every siege (`?marauders=0` leaves them out).
+  // Ground that has been fought over before is as those battles left it.
+  if (cfg?.ground && !saved) game.wear(cfg.ground);
   if (!saved && params.get('marauders') !== '0' && !(cfg?.field)) game.marauders = true;
   // A battle is fought in the weather that lies over that land on the campaign map.
   if (cfg?.weather && !saved) { game.weather = cfg.weather; game.weatherWant = 0.9; game.weatherT = 240; }
@@ -363,7 +365,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // What the victor has standing stays standing: it is that land's town the next time it is fought over.
       const holder = won ? app.pid : 1;
       const town = cfg.field ? undefined : app.game.buildings.filter((b) => b.owner === holder && b.complete && !b.dead).map((b) => [b.type, b.cx, b.cy]);
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, town, virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -418,8 +420,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; town?: [string, number, number][] };
-      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, town: r.town });
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; town?: [string, number, number][]; ground?: { gone: number[]; left: [number, number][] } };
+      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, town: r.town, ground: r.ground });
       if (c.phase === 'ai') continueAI(c);
     }
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);
