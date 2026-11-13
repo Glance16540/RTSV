@@ -6,6 +6,7 @@ import type { PlayerSetup } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
+import { COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
 
 export const MAP_W = 1300;
 export const MAP_H = 800;
@@ -61,7 +62,7 @@ export const faithOf = (c: Campaign, f: number): FaithDef => FAITH[creedOf(virtu
 export function virtueDrift(c: Campaign, f: number): number {
   let n = 0;
   for (const t of c.territories) if (t.owner === f) n += (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0);
-  return n;
+  return n + placeGood(c, f, 'virtue');
 }
 function shiftVirtue(c: Campaign, f: number, by: number): void {
   const x = c.factions[f];
@@ -69,8 +70,43 @@ function shiftVirtue(c: Campaign, f: number, by: number): void {
   const was = creedOf(x.virtue ?? 0);
   x.virtue = Math.max(-100, Math.min(100, Math.round((x.virtue ?? 0) + by)));
   const now = creedOf(x.virtue);
-  if (now.id !== was.id) c.log.push(`${x.id === 0 ? 'Your people are' : `${x.name} are`} now ${now.name}. ${FAITH[now.id].desc}`);
+  if (now.id !== was.id) {
+    c.log.push(`${x.id === 0 ? 'Your people are' : `${x.name} are`} now ${now.name}. ${FAITH[now.id].desc}`);
+    if (now.id === 'zealous' || now.id === 'decadent') tell(c, `${x.id === 0 ? 'Your people' : x.name} became ${now.name}.`);
+  }
 }
+/** Write a line of the campaign's story. */
+function tell(c: Campaign, text: string): void {
+  (c.chronicle ??= []).push({ turn: c.turn, text });
+}
+const hash = (a: number, b: number): number => {
+  let t = (Math.imul(a | 0, 2654435761) ^ Math.imul(b + 17, 40503)) >>> 0;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  return ((t ^ (t >>> 13)) >>> 0) / 4294967296;
+};
+/** The named places of this world: a few lands that are not capitals, chosen and named by the seed. */
+export function placesOf(c: Campaign): Place[] {
+  if (c.places) return c.places;
+  const open = c.territories.filter((t) => t.capital < 0).sort((a, b) => hash(c.seed, a.id) - hash(c.seed, b.id));
+  const kinds = (Object.keys(PLACES) as PlaceKind[]).sort((a, b) => hash(c.seed + 1, a.length * 7 + a.charCodeAt(0)) - hash(c.seed + 1, b.length * 7 + b.charCodeAt(0)));
+  const n = Math.min(open.length, 3 + Math.floor(c.territories.length / 6));
+  c.places = [];
+  for (let i = 0; i < n; i++) {
+    const kind = kinds[i % kinds.length], def = PLACES[kind];
+    const k = Math.floor(hash(c.seed + 2, i % kinds.length) * def.names.length) + Math.floor(i / kinds.length); // a second of its kind takes the next name
+    c.places.push({ at: open[i].id, kind, name: def.names[k % def.names.length], legend: def.legends[Math.floor(hash(c.seed + 3, i) * def.legends.length)] });
+  }
+  return c.places;
+}
+export const placeAt = (c: Campaign, tid: number): Place | undefined => placesOf(c).find((p) => p.at === tid);
+/** Add up one kind of good from every named place a people holds. */
+const placeGood = (c: Campaign, f: number, what: 'virtue' | 'supplies' | 'age'): number =>
+  placesOf(c).reduce((n, p) => n + (c.territories[p.at].owner === f ? PLACES[p.kind][what] ?? 0 : 0), 0);
+/** What is befalling the world this turn, if anything. */
+export const worldNow = (c: Campaign): WorldKind | '' => (c.world && c.world.until >= c.turn ? c.world.kind : '');
+/** Supplies off a company raised by this people in this land: swords for hire, iron in the ground, a season of iron. */
+export const hireOff = (c: Campaign, f: number, tid: number): number =>
+  faithOf(c, f).raise + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.raise ?? 0) + (worldNow(c) === 'iron' ? 1 : 0);
 export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
 
 /** What each troop type is good against: its companies fight up to 30% harder against that type. */
@@ -237,6 +273,16 @@ export interface Campaign {
   fronts?: Front[];
   /** Things that have happened, or are happening, in particular lands: shown on the map where they are. */
   events?: MapEvent[];
+  /** Places with names of their own (see story.ts): made once from the seed, and the same in every telling. */
+  places?: Place[];
+  /** What is befalling the whole world, until the turn given; and the turn before which nothing new will. */
+  world?: { kind: WorldKind; until: number } | null;
+  worldRest?: number;
+  /** A tale waiting for the player's answer this turn, with the names that fill it in. */
+  tale?: { id: string; land: number; rival: number; tribe: number } | null;
+  lastTale?: string;
+  /** The story so far: what will still matter when the campaign is over. */
+  chronicle?: { turn: number; text: string }[];
 }
 
 export type Sky = 'rain' | 'snow' | 'dust';
@@ -607,6 +653,7 @@ function mapTurn(c: Campaign): void {
       else if (a && a.owner === t.owner && !(faith.restless && armySize(a) < 2)) { mark(c, 'calm', t.id); c.log.push(`The garrison keeps order in ${t.name}.`); }
       else {
         c.log.push(`${t.name} has risen and thrown off ${f.id === 0 ? 'your' : `${f.name}'s`} rule.`);
+        if (placeAt(c, t.id)) tell(c, `${t.name} rose and threw off ${f.id === 0 ? 'your' : `${f.name}'s`} rule, and ${placeAt(c, t.id)!.name} with it.`);
         t.owner = -1; t.militia = 2;
         mark(c, 'revolt', t.id);
       }
@@ -787,6 +834,8 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
   }
   raiseBarriers(c);
   c.log.push(`Turn 1. You lead the ${CIVS[mine].name}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
+  tell(c, `The ${[CIVS[mine].name, ...c.factions.slice(1).map((f) => `the ${f.name}`)].join(', ').replace(/, ([^,]*)$/, ' and $1')} came into a country of ${c.territories.length} lands, and each meant to have all of it.`);
+  placesOf(c);
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');
   return c;
@@ -803,7 +852,7 @@ export function reach(c: Campaign, tid: number): number[] {
 }
 export const SEA_LANDING = 0.8;
 /** What the next age costs this people. */
-export const ageCost = (c: Campaign, f: number): number => Math.max(1, (AGE_COST[ageOf(c, f)] ?? Infinity) + faithOf(c, f).age - (c.factions[f].civ === 'babylon' ? 3 : 0));
+export const ageCost = (c: Campaign, f: number): number => Math.max(1, (AGE_COST[ageOf(c, f)] ?? Infinity) + faithOf(c, f).age - placeGood(c, f, 'age') - (c.factions[f].civ === 'babylon' ? 3 : 0));
 export const truceCost = (civ: string): number => (civ === 'arabs' ? 1 : TRUCE_COST);
 export const giftCost = (civ: string): number => (civ === 'arabs' ? 3 : GIFT_COST);
 export const ageOf = (c: Campaign, f: number): number => (f < 0 ? 0 : c.factions[f].age ?? 0);
@@ -838,8 +887,9 @@ export const armyStrength = (a: Army): number => strengthVs(a);
 export function income(c: Campaign, f: number): number {
   let n = 0;
   let held = 0;
-  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0)); held++; }
-  return n + (c.factions[f].civ === 'persia' ? Math.floor(held / 3) : 0);
+  const world = worldNow(c);
+  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0)); held++; }
+  return n + placeGood(c, f, 'supplies') + (c.factions[f].civ === 'persia' ? Math.floor(held / 3) : 0);
 }
 export function territoryIncome(t: Territory, civ = ''): number {
   const hearth = civ === 'hearth' ? 1 : 0;
@@ -857,7 +907,7 @@ export function defenders(c: Campaign, tid: number): Record<string, number> {
 /** Everything that defends a territory, optionally against a particular mix of attackers. */
 export function defence(c: Campaign, tid: number, vs: Record<string, number> = {}, attackerCiv = ''): number {
   const t = c.territories[tid];
-  const ground = t.trait === 'hills' ? 2 : 0;
+  const ground = (t.trait === 'hills' ? 2 : 0) + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.defence ?? 0);
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
@@ -892,7 +942,7 @@ export function canBuild(c: Campaign, f: number, tid: number, site: string): boo
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && c.factions[f].supplies >= companyCost(t, type, c.factions[f].civ, faithOf(c, f).raise) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
+  return t.owner === f && !!def && t.buildings.includes(def.needs) && c.factions[f].supplies >= companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid)) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
   const a = armyAt(c, tid);
@@ -911,7 +961,7 @@ export function build(c: Campaign, f: number, tid: number, site: string): boolea
 /** Raise one company. It joins the army standing in the territory, or forms a new one. */
 export function raise(c: Campaign, f: number, tid: number, type: string): boolean {
   if (!canRaise(c, f, tid, type)) return false;
-  c.factions[f].supplies -= companyCost(c.territories[tid], type, c.factions[f].civ, faithOf(c, f).raise);
+  c.factions[f].supplies -= companyCost(c.territories[tid], type, c.factions[f].civ, hireOff(c, f, tid));
   let a = armyAt(c, tid);
   if (!a) {
     a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, vet: c.factions[f].civ === 'japan' ? 1 : 0, moved: true }; // fresh troops march next turn
@@ -985,6 +1035,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
     c.honor -= sworn ? 2 : 1;
     say(c, t.owner, 'betray');
     c.log.push(`You have broken your ${sworn ? 'alliance' : 'truce'} with ${c.factions[t.owner].name}.`);
+    tell(c, `You broke your ${sworn ? 'alliance' : 'truce'} with ${c.factions[t.owner].name}. It was remembered.`);
   }
   const lend = (f: number, skip: number) => (f < 0 ? 0 : reserves(c, f, to, skip).reduce((n, r) => n + armyStrength(r) * 0.3, 0));
   const support = (f: number, skip: number) => lend(f, skip) + lend(f < 0 ? -1 : allyOf(c, f), skip);
@@ -1120,6 +1171,9 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       army.moved = true;
     }
     c.log.push(`${fname(c, p.attacker, true)} took ${t.name} from ${fname(c, p.defender)}.`);
+    const place = placeAt(c, t.id);
+    if (place) tell(c, `${fname(c, p.attacker, true)} took ${place.name} in ${t.name} from ${fname(c, p.defender)}.`);
+    if (t.capital >= 0 && t.capital !== p.attacker) tell(c, `${t.name}, chief town of ${fname(c, t.capital)}, fell to ${fname(c, p.attacker)}.`);
     if (p.defender < 0 && c.factions[p.attacker].civ === 'wild') c.factions[p.attacker].supplies += 2; // plunder
     if (t.capital >= 0 && t.capital !== p.attacker) {
       // Sacking a capital carries off its stores.
@@ -1161,6 +1215,7 @@ function checkElimination(c: Campaign): void {
       say(c, f.id, 'eliminated');
       c.armies = c.armies.filter((a) => a.owner !== f.id);
       c.log.push(`${f.name} ${f.isAI ? 'has' : 'have'} been wiped from the map.`);
+      tell(c, f.id === 0 ? 'Your people were driven from their last land.' : `The ${f.name} were driven from their last land and are heard of no more.`);
     }
   }
   const alive = c.factions.filter((f) => f.alive);
@@ -1188,6 +1243,7 @@ function checkDominion(c: Campaign): void {
   if (left <= 0) {
     c.phase = 'over';
     c.winner = lead.id;
+    tell(c, lead.id === 0 ? 'No one was left who could challenge your rule.' : `No one was left who could challenge the ${lead.name}.`);
     c.log.push(lead.id === 0 ? 'Your rule is beyond challenge.' : `${lead.name} rule beyond challenge.`);
   } else {
     c.log.push(`${lead.id === 0 ? 'You hold' : `${lead.name} hold`} most of the land. ${left} more turn${left > 1 ? 's' : ''} and ${lead.id === 0 ? 'your' : 'their'} rule is beyond challenge.`);
@@ -1199,6 +1255,7 @@ function checkDominion(c: Campaign): void {
 /** Finish the player's turn and play the rivals' turns. Stops early if one of them attacks the player. */
 export function endTurn(c: Campaign): void {
   if (c.phase !== 'player' || c.pending) return;
+  if (c.tale) { c.tale = null; c.log.push('The matter before you was left to settle itself.'); }
   c.phase = 'ai';
   c.cursor = 1;
   c.spent = false;
@@ -1229,6 +1286,7 @@ export function continueAI(c: Campaign): void {
       }
       mapTurn(c);
       turnEvent(c);
+      storyTurn(c);
       checkDominion(c);
       return;
     }
@@ -1236,6 +1294,79 @@ export function continueAI(c: Campaign): void {
     c.cursor++;
     c.spent = false;
   }
+}
+
+/** The words of a tale with its names filled in. */
+export function taleText(c: Campaign, text: string): string {
+  const t = c.tale;
+  if (!t) return text;
+  return text.replace(/\{land\}/g, c.territories[t.land]?.name ?? 'your land').replace(/\{rival\}/g, t.rival > 0 ? `the ${c.factions[t.rival].name}` : 'a rival').replace(/\{tribe\}/g, c.territories[t.tribe]?.name ?? 'the next valley')
+    .replace(/(^|[.!?] )the /g, (_, lead: string) => `${lead}The `);
+}
+export const taleNow = (c: Campaign): Tale | undefined => (c.tale ? TALES.find((x) => x.id === c.tale!.id) : undefined);
+/** Can the player afford this answer to the tale before them? */
+export function canAnswer(c: Campaign, choice: 'a' | 'b'): boolean {
+  const tale = taleNow(c);
+  return !!tale && c.phase === 'player' && c.factions[0].supplies + tale[choice].supplies >= 0;
+}
+/** The player answers the tale before them. */
+export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
+  const tale = taleNow(c), t = c.tale;
+  if (!tale || !t || !canAnswer(c, choice)) return false;
+  const ch: TaleChoice = tale[choice], me = c.factions[0];
+  const result = taleText(c, ch.result);
+  c.tale = null;
+  me.supplies += ch.supplies;
+  if (ch.favor && t.rival > 0) c.factions[t.rival].favor = Math.max(-MAX_FAVOR, Math.min(MAX_FAVOR, (c.factions[t.rival].favor ?? 0) + ch.favor));
+  if (ch.militia && c.territories[t.tribe]?.owner < 0) c.territories[t.tribe].militia = Math.max(1, c.territories[t.tribe].militia + ch.militia);
+  if (ch.company) {
+    const home = c.territories.find((x) => x.capital === 0 && x.owner === 0) ?? c.territories[t.land];
+    const a = armyAt(c, home.id);
+    if (a && a.owner === 0) { if (armySize(a) < MAX_ARMY) a.units.infantry = (a.units.infantry ?? 0) + 1; }
+    else if (!a) c.armies.push({ id: c.nextArmy++, owner: 0, at: home.id, units: { infantry: 1 }, hero: false, vet: 0, moved: true });
+  }
+  c.log.push(result);
+  tell(c, `${tale.title}: ${result}`);
+  shiftVirtue(c, 0, ch.virtue);
+  return true;
+}
+
+/** The world's own events, and the tales that come before each people in turn. */
+function storyTurn(c: Campaign): void {
+  // Something that befalls everyone.
+  if (c.world && c.world.until < c.turn) { c.log.push(`${WORLD_EVENTS[c.world.kind].name} is over.`); c.world = null; c.worldRest = c.turn + WORLD_REST; }
+  if (!c.world && c.turn >= Math.max(WORLD_FROM, c.worldRest ?? 0) && luck(c, 70) < WORLD_CHANCE) {
+    const kinds = Object.keys(WORLD_EVENTS) as WorldKind[];
+    const kind = kinds[Math.floor(luck(c, 71) * kinds.length)], def = WORLD_EVENTS[kind];
+    c.log.push(`${def.icon} ${def.name}. ${def.desc}${def.turns ? ` It will last ${def.turns} turns.` : ''}`);
+    tell(c, def.tell);
+    if (def.turns) c.world = { kind, until: c.turn + def.turns - 1 };
+    else {
+      c.worldRest = c.turn + WORLD_REST;
+      if (kind === 'comet') for (const f of c.factions) if (f.alive) shiftVirtue(c, f.id, COMET_VIRTUE);
+      if (kind === 'pestilence') for (const a of c.armies.slice()) if (armySize(a) >= 3 && !faithOf(c, a.owner).steadfast) casualties(a, 1);
+    }
+  }
+  // A tale for the player, and each rival answers one of its own as its people lean.
+  if (c.turn < TALE_FROM || (c.turn - TALE_FROM) % TALE_EVERY) return;
+  c.factions.forEach((f) => {
+    if (!f.alive || !f.isAI) return;
+    shiftVirtue(c, f.id, luck(c, 80 + f.id) < leaningWith(f.civ, LEANING[f.civ] ?? 0.5) ? TALE_RIVAL : -TALE_RIVAL);
+  });
+  const mine = c.territories.filter((t) => t.owner === 0);
+  if (!mine.length || c.phase === 'over') return;
+  const rivals = c.factions.filter((f) => f.alive && f.id > 0);
+  const tribes = mine.flatMap((t) => t.adj).filter((n) => c.territories[n].owner < 0 && !c.territories[n].horde);
+  const open = TALES.filter((x) => x.id !== c.lastTale && (x.needs !== 'rival' || rivals.length) && (x.needs !== 'tribe' || tribes.length));
+  const tale = open[Math.floor(luck(c, 90) * open.length)];
+  if (!tale) return;
+  c.lastTale = tale.id;
+  c.tale = {
+    id: tale.id, land: mine[Math.floor(luck(c, 91) * mine.length)].id,
+    rival: rivals.length ? rivals[Math.floor(luck(c, 92) * rivals.length)].id : -1,
+    tribe: tribes.length ? tribes[Math.floor(luck(c, 93) * tribes.length)] : -1,
+  };
+  c.log.push(`${tale.title}: a matter is brought before you.`);
 }
 
 /** Now and then something happens that nobody planned. */

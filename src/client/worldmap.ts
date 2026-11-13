@@ -9,7 +9,8 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { Campaign, EVENTS, LAND_STEP, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots, terrainOf } from '../sim/campaign';
+import { PLACES } from '../sim/story';
+import { Campaign, placeAt, EVENTS, LAND_STEP, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots, terrainOf } from '../sim/campaign';
 import { lookOf } from './models';
 import { RealPerson, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 
@@ -1051,6 +1052,15 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       this.pieces.add(pips);
 
       // What has happened here, on seals that hang in the air above it; what is still to be settled beats on the ground.
+      const place = placeAt(c, t.id);
+      if (place) {
+        const seal = this.sprite((x, w, h) => {
+          x.beginPath(); x.arc(w / 2, h / 2, w / 2 - 5, 0, 6.3); x.fillStyle = '#e6dcc0'; x.fill(); x.lineWidth = 5; x.strokeStyle = '#3a2a16'; x.stroke();
+          x.font = '54px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(PLACES[place.kind].icon, w / 2, h / 2 + 4);
+        }, 96, 96, 2.2);
+        seal.position.set(X - 4.6, y + 4.2, Z - 0.4);
+        this.pieces.add(seal);
+      }
       const marks = eventsAt(c, t.id).slice(0, 2);
       marks.forEach((e, k) => {
         const bad = e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun';

@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 48 systems, 168 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 29 Working, rough, 6 First pass, 2 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:29"></span><span class="thin" style="flex:6"></span><span class="none" style="flex:2"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 48 systems, 174 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 30 Working, rough, 6 First pass, 1 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:30"></span><span class="thin" style="flex:6"></span><span class="none" style="flex:1"></span></div>
     <div class="filters" id="filters">
       <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">48</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">29</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">6</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">2</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">30</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">6</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">1</span></button>
     </div>
   </div>
 
@@ -234,12 +234,12 @@ footer { color: var(--dim); font-size: 13px; }
   <header><h3>Faith on the world map</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Piety and decadence across a whole campaign.</p>
   <ul class="has"><li>Every people has a standing on the same scale as a town in battle, and the same five creeds</li><li>Two new things to build on a land: a Church (more pious every turn) and a Tavern (a supply a turn, more decadent every turn)</li><li>The creed tells on the map: the pious are harder to dislodge and the Righteous never lose a land to unrest, but each new age costs them more; the worldly are paid more by their taverns; the Decadent hire every company for 1 less, defend badly and lose a restless land unless two companies hold it</li><li>A town begins every battle in the creed its people hold on the map, rivals and their reserves included</li><li>After a battle fought in person, half of how far the town moved under your hand goes home with your people</li><li>Rival peoples build what they believe in: the pious a church, the worldly a tavern, in the capital first and one more for every five lands</li><li>Your creed, where it is heading and what it does are shown on the campaign screen; each rival's creed is marked beside its name</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>Churches, taverns and captives themselves are still not carried between battles: only the standing is</li><li>Rival leaders take no account of anyone's creed when they bargain or pick a fight</li><li>No dilemmas on the map: the scale moves only by buildings and by battles fought in person</li><li>On the 3D map a Church or Tavern is drawn as a plain house, and the flat chart does not draw them at all</li><li>The numbers are first guesses and no campaign has been played with them</li><li>Auto-resolved and field battles do not move the scale</li></ul>
-</article><article class="sys none" data-status="none">
-  <header><h3>Story and events</h3><span class="pill none">Not built</span></header>
-  <p class="what">Things that happen to the world.</p>
-  
-  <h4>Gaps</h4><ul class="gaps"><li>No story, no world events, no named places</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Churches, taverns and captives themselves are still not carried between battles: only the standing is</li><li>Rival leaders take no account of anyone's creed when they bargain or pick a fight</li><li>The tales put to you every four turns move the scale, but there are only 7 of them</li><li>On the 3D map a Church or Tavern is drawn as a plain house, and the flat chart does not draw them at all</li><li>The numbers are first guesses and no campaign has been played with them</li><li>Auto-resolved and field battles do not move the scale</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Story and events</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">Named places, things that befall the whole world, tales put to you to decide, and a chronicle of it all.</p>
+  <ul class="has"><li>5 kinds of named place (a holy place, a meeting of roads, an old stronghold, iron in the ground, a house of learning), five to seven in every world, each with a name and a legend, chosen by the seed and never in a capital</li><li>Whoever holds the land has the good of the place: piety, supplies, defence, cheaper companies or a cheaper age</li><li>5 world events that befall every people at once: the Long Winter, Years of Plenty, the Season of Iron, a Comet, the Great Pestilence</li><li>7 tales: every four turns a matter is brought before you with a pious answer and a worldly one, each with its price in supplies, standing, a rival's goodwill or a company of sellswords</li><li>A tale left unanswered settles itself when the turn ends; rivals answer tales of their own as their people lean</li><li>A chronicle keeps what will still matter at the end: the coming of the peoples, named places and capitals changing hands, peoples driven out, oaths broken, world events, your answers; it is read from the campaign screen with the places of note</li><li>Named places are marked on both maps and described on the land's panel; a world event is shown at the top of the campaign screen</li><li>Campaigns saved before this are given their places on loading</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No story with a beginning and an end: nothing that happens leads to anything else</li><li>A place's legend is drawn at random and does not always suit its name</li><li>Rival leaders do not value a named place, plan for a world event or speak of either</li><li>Only 7 tales, so they come round again in a long campaign, and none of them turns on a named place or on what has gone before</li><li>The chronicle is not shown when a campaign ends, and the leaders' victories and defeats in battle are not written into it</li><li>Places have no look of their own on the 3D map: a seal only</li><li>The numbers are first guesses and no campaign has been played with them</li></ul>
 </article></div></section>
   <section class="area"><h2>Ways to play <span class="n">11</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Skirmish</h3><span class="pill solid">Working</span></header>
@@ -331,7 +331,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>139 tests, all passing</li></ul>
+  <ul class="has"><li>143 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>

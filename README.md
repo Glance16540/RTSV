@@ -257,6 +257,12 @@ neighbouring land.
   defend badly, and lose a restless land unless two companies hold it. Your town begins every battle in that creed,
   and half of how far you move it in a battle you fight yourself goes home with your people. Rivals build what
   they believe in.
+- **Story.** Every world has five to seven named places, each with a legend (a holy place, a meeting of roads, an
+  old stronghold, iron in the ground, a house of learning); whoever holds the land has the good of it. Now and then
+  something befalls every people at once: the Long Winter, Years of Plenty, the Season of Iron, a Comet, the Great
+  Pestilence. Every four turns a tale is brought before you with a pious answer and a worldly one, each with its
+  price; leave it and it settles itself. The 📜 Chronicle button shows the story so far and the places of note.
+  The words and numbers are in `src/sim/story.ts`.
 - **Armies** are made of companies of infantry, archers and cavalry, up to twelve. Cavalry
   rides down archers, archers wear down infantry, infantry stops cavalry. An army that wins a
   battle becomes veteran: stronger on the map and harder-hitting in real-time battles.
@@ -361,6 +367,7 @@ for filenames and a ready-made generation prompt.
 - `src/sim/scenario.ts` — scripted missions and their objectives
 - `src/sim/leaders.ts` — each people's leader and their lines
 - `src/sim/campaign.ts` — Conquest rules: territories, armies, turns, battle set-up
+- `src/sim/story.ts` — named places, world events and tales of the campaign
 - `src/client/overworld.ts` — the Conquest map screen
 - `src/sim/` — the game simulation. No DOM or rendering, runs headless at 20 ticks per second.
   - `data.ts` — every unit, building, technology and balance number

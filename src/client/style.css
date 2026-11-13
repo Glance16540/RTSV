@@ -283,3 +283,8 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 @media (min-width: 1100px) { .record { position: absolute; top: 4px; right: 6px; width: 44%; background: #1f1a13; max-height: calc(100% - 8px); overflow-y: auto; scrollbar-width: thin; box-sizing: border-box; } }
 .record { margin: 4px 0; padding: 5px 7px; border-left: 3px solid var(--edge); background: rgba(255, 240, 200, 0.06); font-size: 12px; line-height: 1.45; }
 .record small { opacity: 0.7; }
+
+.ow-chronicle { display: block; text-align: left; max-height: 55vh; overflow-y: auto; font-size: 14px; }
+.ow-chronicle div { margin: 0 0 6px; }
+.ow-chronicle h3 { margin: 14px 0 6px; }
+#ow-dialog .levels button { white-space: normal; flex: 1 1 160px; }

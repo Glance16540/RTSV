@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PLACES, TALES, TALE_FROM, TALE_EVERY, WORLD_EVENTS, WORLD_FROM, COMET_VIRTUE } from '../src/sim/story';
 import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
 import { AIController } from '../src/sim/ai';
 import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
@@ -9,7 +10,7 @@ import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
-import { Campaign, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, answerTale, Campaign, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -2358,6 +2359,7 @@ describe('the thirteen nations', () => {
     const bab = newCampaign(7, 1, 1, 'babylon'), rome = newCampaign(7, 1, 1, 'stonekin');
     expect(ageCost(bab, 0)).toBe(ageCost(rome, 0) - 3);
     const per = newCampaign(7, 1, 1, 'persia');
+    per.places = []; // plain land: no named places
     const base = income(per, 0);
     for (const t of per.territories.filter((x) => x.owner < 0).slice(0, 2)) { t.owner = 0; t.buildings = []; t.trait = ''; }
     expect(income(per, 0)).toBe(base + 2 * 2 + 1); // two plain territories, and one more for holding three
@@ -3357,5 +3359,162 @@ describe('fire, blight and the weather on the harvest', () => {
     expect(haul('rain')).toBeGreaterThan(fair);
     expect(haul('dust')).toBeLessThan(fair);
     expect(haul('snow')).toBeLessThan(fair);
+  });
+});
+
+describe('the story of a campaign', () => {
+  const turn = (c: Campaign) => {
+    endTurn(c);
+    for (let i = 0; i < 40 && c.phase === 'ai'; i++) {
+      if (c.demand) answerDemand(c, true);
+      else if (c.pending) resolvePending(c, 'auto');
+      continueAI(c);
+    }
+  };
+
+  it('every world has named places of its own, never in a capital, the same in every telling', () => {
+    const names = new Set<string>();
+    for (let seed = 1; seed <= 12; seed++) {
+      const c = newCampaign(seed, 2);
+      const ps = placesOf(c);
+      expect(ps.length).toBeGreaterThanOrEqual(3);
+      expect(new Set(ps.map((p) => p.at)).size).toBe(ps.length);
+      expect(new Set(ps.map((p) => p.name)).size).toBe(ps.length);
+      for (const p of ps) { expect(c.territories[p.at].capital).toBe(-1); expect(PLACES[p.kind].names).toContain(p.name); expect(p.legend.length).toBeGreaterThan(10); }
+      expect(JSON.stringify(placesOf(newCampaign(seed, 2)))).toBe(JSON.stringify(ps));
+      names.add(ps.map((p) => p.name + p.at).join());
+      // A campaign saved before there were places is given the same ones.
+      const old: Campaign = JSON.parse(JSON.stringify(c));
+      delete old.places;
+      expect(placesOf(old)).toEqual(ps);
+    }
+    expect(names.size).toBeGreaterThan(8);
+  });
+
+  it('whoever holds a named place has the good of it', () => {
+    const c = newCampaign(7, 1, 1, 'steppe');
+    c.fronts = [];
+    const lands = c.territories.filter((t) => t.capital < 0).slice(0, 5);
+    c.places = (['shrine', 'fair', 'keep', 'forge', 'library'] as const).map((kind, i) => ({ at: lands[i].id, kind, name: PLACES[kind].names[0], legend: PLACES[kind].legends[0] }));
+    const [shrine, fair, keep, forge, library] = lands;
+    const before = { income: income(c, 0), drift: virtueDrift(c, 0), age: ageCost(c, 0), keep: defence(c, keep.id) };
+    for (const t of lands) { t.owner = 0; t.buildings = []; t.trait = ''; t.taken = 0; t.horde = false; }
+    c.armies = c.armies.filter((a) => !lands.some((t) => t.id === a.at));
+    expect(income(c, 0)).toBe(before.income + 5 * 2 + PLACES.fair.supplies!);
+    expect(virtueDrift(c, 0)).toBe(before.drift + PLACES.shrine.virtue!);
+    expect(ageCost(c, 0)).toBe(before.age - PLACES.library.age!);
+    expect(defence(c, keep.id)).toBe(defence(c, fair.id) + PLACES.keep.defence!);
+    expect(hireOff(c, 0, forge.id)).toBe(1);
+    expect(hireOff(c, 0, shrine.id)).toBe(0);
+    forge.buildings = ['barracks'];
+    c.factions[0].supplies = companyCost(forge, 'infantry', 'steppe') - 1;
+    expect(raise(c, 0, forge.id, 'infantry')).toBe(true);
+    expect(c.factions[0].supplies).toBe(0);
+    expect(placeAt(c, library.id)!.kind).toBe('library');
+    // Taking one is written into the chronicle.
+    const d = newCampaign(7, 1);
+    const cap = d.territories.find((t) => t.capital === 0)!;
+    const next = d.territories[cap.adj[0]];
+    d.places = [{ at: next.id, kind: 'keep', name: 'the Broken Keep', legend: 'x' }];
+    d.armies = d.armies.filter((a) => a.at !== next.id);
+    d.armies.push({ id: 77, owner: 0, at: cap.id === next.id ? 0 : cap.id, units: { cavalry: 12 }, hero: false, vet: 0, moved: false });
+    d.armies = d.armies.filter((a) => a.id === 77 || a.at !== cap.id);
+    expect(d.chronicle!.length).toBe(1);
+    moveArmy(d, 77, next.id);
+    resolvePending(d, 'attacker');
+    expect(d.chronicle!.some((l) => l.text.includes('took the Broken Keep in ' + next.name))).toBe(true);
+  });
+
+  it('what befalls the world befalls everyone, lasts its time and is written down', () => {
+    const c = newCampaign(7, 2, 1, 'steppe');
+    c.fronts = [];
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const base = income(c, 0), cost = companyCost(home, 'infantry', 'steppe', hireOff(c, 0, home.id));
+    expect(worldNow(c)).toBe('');
+    c.world = { kind: 'winter', until: c.turn + 1 };
+    expect(income(c, 0)).toBe(base - 1);
+    c.world = { kind: 'plenty', until: c.turn };
+    expect(income(c, 0)).toBe(base + 1); // the capital's farmland
+    c.world = { kind: 'iron', until: c.turn };
+    expect(companyCost(home, 'infantry', 'steppe', hireOff(c, 0, home.id))).toBe(Math.max(1, cost - 1));
+    c.world = { kind: 'winter', until: c.turn - 1 };
+    expect(worldNow(c)).toBe('');
+    expect(income(c, 0)).toBe(base);
+    // Left to themselves, worlds have their events: never before the turn set, and each is told.
+    let seen = 0;
+    const kinds = new Set<string>();
+    for (let seed = 1; seed <= 10; seed++) {
+      const w = newCampaign(seed, 2);
+      for (let i = 0; i < 16 && w.phase !== 'over'; i++) {
+        turn(w);
+        if (w.turn < WORLD_FROM) expect(w.world ?? null).toBe(null);
+        w.tale = null;
+      }
+      for (const def of Object.values(WORLD_EVENTS)) if (w.chronicle!.some((l) => l.text === def.tell)) { seen++; kinds.add(def.name); }
+    }
+    expect(seen).toBeGreaterThan(8);
+    expect(kinds.size).toBeGreaterThanOrEqual(4);
+    expect(COMET_VIRTUE).toBeGreaterThan(0);
+  });
+
+  it('tales come before the player in their turn, are answered at a price, and lapse if left', () => {
+    const c = newCampaign(7, 2, 1, 'steppe');
+    while (c.turn < TALE_FROM) { expect(c.tale ?? null).toBe(null); turn(c); }
+    expect(c.turn).toBe(TALE_FROM);
+    const tale = taleNow(c)!;
+    expect(tale).toBeTruthy();
+    expect(taleText(c, tale.text)).not.toMatch(/[{}]/);
+    expect(taleText(c, tale.a.result + tale.b.result + tale.a.label)).not.toMatch(/[{}]/);
+    // The pious answer costs and raises; with nothing in store it cannot be given at all.
+    const me = c.factions[0];
+    me.supplies = 20; me.virtue = 0;
+    const told = c.chronicle!.length;
+    expect(answerTale(c, 'a')).toBe(true);
+    expect(me.supplies).toBe(20 + tale.a.supplies);
+    expect(virtueOf(c, 0)).toBe(tale.a.virtue);
+    expect(c.tale).toBe(null);
+    expect(c.chronicle!.length).toBe(told + 1);
+    expect(answerTale(c, 'b')).toBe(false); // already settled
+    // Each kind of answer does what it says.
+    const put = (id: string) => {
+      const d = newCampaign(7, 2, 1, 'steppe');
+      const cap = d.territories.find((t) => t.capital === 0)!;
+      const tribe = cap.adj.map((n) => d.territories[n]).find((t) => t.owner < 0)!;
+      tribe.militia = 3;
+      d.factions[0].supplies = 10;
+      d.tale = { id, land: cap.id, rival: 1, tribe: tribe.id };
+      return { d, cap, tribe };
+    };
+    const hired = put('sellswords');
+    const size = armySize(armyAt(hired.d, hired.cap.id)!);
+    answerTale(hired.d, 'b');
+    expect(armySize(armyAt(hired.d, hired.cap.id)!)).toBe(size + 1);
+    expect(virtueOf(hired.d, 0)).toBeLessThan(0);
+    const fed = put('hunger');
+    answerTale(fed.d, 'a');
+    expect(fed.tribe.militia).toBe(2);
+    const exile = put('exile');
+    answerTale(exile.d, 'b');
+    expect(exile.d.factions[1].favor).toBe(1);
+    expect(exile.d.factions[0].supplies).toBe(14);
+    const poor = put('relics');
+    poor.d.factions[0].supplies = 1;
+    expect(canAnswer(poor.d, 'a')).toBe(false);
+    expect(answerTale(poor.d, 'a')).toBe(false);
+    expect(canAnswer(poor.d, 'b')).toBe(true);
+    // Left unanswered, it settles itself when the turn ends, and another comes round in its time.
+    let total = 0;
+    for (const seed of [3, 5, 11, 12]) {
+      const e = newCampaign(seed, 2);
+      const asked: string[] = [];
+      for (let i = 0; i < 14 && e.phase !== 'over'; i++) {
+        turn(e);
+        if (e.tale) { expect((e.turn - TALE_FROM) % TALE_EVERY).toBe(0); asked.push(e.tale.id); }
+      }
+      for (let i = 1; i < asked.length; i++) expect(asked[i]).not.toBe(asked[i - 1]);
+      total += asked.length;
+    }
+    expect(total).toBeGreaterThanOrEqual(8);
+    for (const t of TALES) { expect(t.a.virtue).toBeGreaterThan(0); expect(t.b.virtue).toBeLessThan(0); }
   });
 });
