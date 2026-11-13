@@ -252,7 +252,7 @@ neighbouring land.
   already in hand (swordsmen in place of clubmen, and so on). Rivals advance too.
 - **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
   Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
-  fought around a great lake with docks and ships. Build a Harbour on a coast and an army
+  fought around a great lake with docks and ships. Build a Harbour on a coast or at a sea crossing and an army
   there can sail to any other coast in one march; troops landing from the sea fight at four-fifths
   strength. Rivals build harbours and make landings too. Harbours are marked ⚓ on the map, and a coast of
   yours within reach of a rival's harbour says so.

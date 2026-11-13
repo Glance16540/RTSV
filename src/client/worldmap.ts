@@ -70,6 +70,7 @@ export class WorldMap {
   private paintTex: THREE.CanvasTexture;
   private seaTex: THREE.CanvasTexture;
   private seaTime = { value: 0 };
+  private lanes: { a: number; b: number; mat: THREE.MeshBasicMaterial }[] = [];
   private shadeTex: THREE.Texture | null = null;
   /** Everything that is rebuilt when the campaign changes: towns, armies, names, marks. */
   private pieces = new THREE.Group();
@@ -392,6 +393,29 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     const bed = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x0c2638, roughness: 1 }));
     bed.position.y = -1.7;
     this.scene.add(sea, bed);
+
+    // ---- sea lanes: where a march goes by water, the crossing is marked on the sea in pale dashes, shore to shore ----
+    // Faint until one shore or the other has a harbour to sail from.
+    const dm = new THREE.Matrix4(), dq = new THREE.Quaternion(), dv = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), yUp = new THREE.Vector3(0, 1, 0);
+    const dash = new THREE.PlaneGeometry(0.8, 0.3).rotateX(-Math.PI / 2);
+    for (const l of c.lanes ?? []) {
+      const t = c.territories[l.a], u = c.territories[l.b], mx = (t.x + u.x) / 2 + (u.y - t.y) * 0.08, my = (t.y + u.y) / 2 - (u.x - t.x) * 0.08;
+      const n = Math.max(8, Math.round(Math.hypot(u.x - t.x, u.y - t.y) / 9)), dashes: THREE.Matrix4[] = [];
+      const at = (k: number): [number, number] => { const f = k / n, g = 1 - f; return [g * g * t.x + 2 * g * f * mx + f * f * u.x, g * g * (t.y + 8) + 2 * g * f * (my + 8) + f * f * (u.y + 8)]; };
+      for (let k = 1; k < n; k += 2) {
+        const [x, y] = at(k), [x2, y2] = at(k + 0.5);
+        if (this.heightAt(x, y) > -0.04 || this.heightAt(x2, y2) > -0.04) continue;
+        dq.setFromAxisAngle(yUp, -Math.atan2(y2 - y, x2 - x));
+        dashes.push(dm.compose(dv.set(WX(x), 0.05, WZ(y)), dq, one).clone());
+      }
+      if (!dashes.length) continue;
+      const mat = new THREE.MeshBasicMaterial({ color: 0xf6ecc8, transparent: true, opacity: 0.4, depthWrite: false });
+      const lane = new THREE.InstancedMesh(dash, mat, dashes.length);
+      dashes.forEach((m, i) => lane.setMatrixAt(i, m));
+      lane.renderOrder = 1; // over the sea, which is see-through
+      this.scene.add(lane);
+      this.lanes.push({ a: l.a, b: l.b, mat });
+    }
 
     // ---- what grows: fir in the cold and the high wet, broadleaf in green country, palm in the heat, stone in the dry ----
     const lists: Record<string, { m: THREE.Matrix4; c: THREE.Color }[]> = { fir: [], round: [], birch: [], palm: [], cactus: [], bush: [], rock: [] };
@@ -882,7 +906,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     this.camera.updateProjectionMatrix();
     // Far enough back to take in the whole country, the first time and whenever the window changes shape.
     const half = Math.tan((this.camera.fov * Math.PI) / 360);
-    this.fit = Math.max((56 * S * UX) / (half * this.camera.aspect), (33 * S * UZ) / half);
+    this.fit = Math.max((60 * S * UX) / (half * this.camera.aspect), (33 * S * UZ) / half);
     if (!this.moved) this.dist = this.fit;
     if (!this.cd) this.cd = this.fit * 1.7; // the eye comes down out of the sky the first time
   }
@@ -932,6 +956,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
   sync(c: Campaign, sel: number, reach: Set<number>): void {
     this.c = c;
     this.last = { sel, reach };
+    for (const l of this.lanes) l.mat.opacity = c.territories[l.a].buildings.includes('harbour') || c.territories[l.b].buildings.includes('harbour') ? 0.95 : 0.4;
     for (const t of this.textures) t.dispose();
     this.textures = [];
     this.pieces.clear();

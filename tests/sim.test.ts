@@ -9,7 +9,7 @@ import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, UNITS, styleOf } from '../src/sim/data';
-import { Campaign, BIOMES, biomeOf, terrainOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { Campaign, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -668,8 +668,9 @@ describe('conquest campaign', () => {
       // Every territory can be reached from the first.
       const seen = new Set([0]);
       const q = [0];
-      while (q.length) for (const t of c.territories[q.pop()!].adj) if (!seen.has(t)) { seen.add(t); q.push(t); }
+      while (q.length) { const at = q.pop()!; for (const t of [...c.territories[at].adj, ...lanesOf(c, at)]) if (!seen.has(t)) { seen.add(t); q.push(t); } }
       expect(seen.size).toBe(n);
+      for (const t of c.territories) if (t.capital >= 0) expect(t.adj.length).toBeGreaterThan(0); // a capital is never alone on its island
       expect(c.territories.every((t) => t.adj.every((a) => c.territories[a].adj.includes(t.id)))).toBe(true);
       // Capitals are never next door to each other.
       const caps = c.territories.filter((t) => t.capital >= 0);
@@ -1639,7 +1640,7 @@ describe('coastal land', () => {
         expect(t.capital).toBe(-1);
         expect(territoryIncome(t)).toBe(territoryIncome({ ...t, trait: '' }) + 1);
       }
-      const coast = c.territories.find((t) => t.trait === 'coast' && t.owner < 0);
+      const coast = c.territories.find((t) => t.trait === 'coast' && t.owner < 0 && t.adj.length > 0);
       if (!coast) continue;
       const a = c.armies.find((x) => x.owner === 0)!;
       const from = c.territories[coast.adj[0]];
@@ -1707,9 +1708,10 @@ describe('harbours', () => {
       const c = newCampaign(seed, 2);
       const coasts = c.territories.filter((t) => t.trait === 'coast');
       const from = coasts[0], to = coasts.find((t) => t !== from && !from.adj.includes(t.id) && t.owner < 0);
+      if (from && lanesOf(c, from.id).length) continue;
       if (!from || !to) continue;
       done = true;
-      const inland = c.territories.find((t) => t.trait !== 'coast' && t.capital < 0)!;
+      const inland = c.territories.find((t) => t.trait !== 'coast' && t.capital < 0 && !lanesOf(c, t.id).length)!;
       inland.owner = 0; from.owner = 0; from.buildings = [];
       c.factions[0].supplies = 30;
       expect(canBuild(c, 0, inland.id, 'harbour')).toBe(false);
@@ -2942,7 +2944,7 @@ describe('the worlds of the campaign', () => {
 
 describe('mountains and rivers on the campaign map', () => {
   it('close the border they lie across, and never cut the world in two', () => {
-    let closed = 0;
+    let closed = 0, lanes = 0;
     const kinds = new Set<string>(), all: Record<string, number> = {};
     for (let seed = 1; seed <= 12; seed++) {
       const c = newCampaign(seed, 2, 1, 'hearth'), T = terrainOf(c);
@@ -2956,10 +2958,20 @@ describe('mountains and rivers on the campaign map', () => {
         expect(reach(c, w.a)).not.toContain(w.b);
       }
       // Every land can still be reached from every other, and none is left with a single way in.
+      // (by land or by a sea lane, which wants a harbour)
       const seen = new Set([0]), q = [0];
-      while (q.length) for (const n of c.territories[q.pop()!].adj) if (!seen.has(n)) { seen.add(n); q.push(n); }
+      while (q.length) { const at = q.pop()!; for (const n of [...c.territories[at].adj, ...lanesOf(c, at)]) if (!seen.has(n)) { seen.add(n); q.push(n); } }
       expect(seen.size).toBe(c.territories.length);
-      for (const t of c.territories) expect(t.adj.length).toBeGreaterThanOrEqual(2);
+      for (const t of c.territories) expect(t.adj.length + lanesOf(c, t.id).length).toBeGreaterThanOrEqual(2);
+      for (const l of c.lanes!) {
+        lanes++;
+        expect(c.territories[l.a].adj).not.toContain(l.b);
+        expect(reach(c, l.a)).not.toContain(l.b);
+        const twin = JSON.parse(JSON.stringify(c)) as typeof c;
+        twin.territories[l.a].owner = 0; twin.territories[l.a].buildings = []; twin.factions[0].supplies = 30;
+        expect(build(twin, 0, l.a, 'harbour')).toBe(true);
+        expect(reach(twin, l.a)).toContain(l.b);
+      }
       for (const t of c.territories) expect(t.name, `a name for every land of world ${seed}`).toBeTruthy();
       // Every town stands on dry land, and the world has water round it.
       for (const t of c.territories) expect(T.H[Math.round(t.y / 3) * T.gw + Math.round(t.x / 3)]).toBeGreaterThan(0);
