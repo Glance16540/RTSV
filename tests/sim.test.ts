@@ -2379,7 +2379,9 @@ describe('men and women as leaders', () => {
       const lines = personaLines(id, true);
       for (const e of LEADER_EVENTS) expect(lines[e].length).toBe(2);
       expect(lines.intro[0]).not.toBe(l.lines.intro[0]);
-      expect(lines.attack).toEqual(l.lines.attack);
+      // Marta of the Arameans has every line her own; the rest share all but the ones that name them.
+      if (id === 'dawn') for (const e of LEADER_EVENTS) expect(lines[e]).not.toEqual(l.lines[e]);
+      else expect(lines.attack).toEqual(l.lines.attack);
     }
     expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(13);
     expect(leaderOf('england')!.name).toBe('Earl Godric of Wessex');

@@ -229,9 +229,48 @@ Put a file named `persona_forge.txt` containing `alt` beside the recordings to h
 
 **Direction:** Male, ageless. Calm, soft, certain. Speaks of the future in the past tense.
 
-**Or, as a woman: Marta the Seer — Judge of the Tribes.** Female, ageless. Calm, soft, certain. Speaks of the future in the past tense. The same lines, except:
+**Or, as a woman: Marta the Seer — Judge of the Tribes.** Female, ageless. Warm, grave, motherly; a judge who already knows the verdict and is sorry about it. Speaks of the future in the past tense. The same lines, except:
 
 - `dawn_intro_1`: I am Marta. I have seen this meeting. You were taller in the vision.
+- `dawn_intro_2`: Sit. I judged your case before you were born. I would still like to hear you plead it.
+- `dawn_attack_1`: The verdict was given long ago. Today I only carry it out.
+- `dawn_attack_2`: I wept for you last night. This morning I sharpened the spears.
+- `dawn_defend_1`: You have walked into a judgment, child, not a battle.
+- `dawn_defend_2`: I dreamed your campfires. I counted them going out, one by one.
+- `dawn_win_1`: It is finished, as I was shown. Bury them gently.
+- `dawn_win_2`: Do not hate yourself. The scales were set before you came.
+- `dawn_lose_1`: The vision showed me a door. I did not see that it was shut.
+- `dawn_lose_2`: So I am to be humbled. Good. A seer should be, now and then.
+- `dawn_eliminated_1`: My tribes scatter like seed. Seed is patient.
+- `dawn_eliminated_2`: I saw this ending. I walked to it anyway. That is what faith is.
+- `dawn_battle_1`: Stand, my children. I have seen your faces at sundown, and they were smiling.
+- `dawn_battle_2`: Pray first. Then strike once, and strike true.
+- `dawn_ageup_1`: A new morning. I told you it would come.
+- `dawn_ageup_2`: The old age closes like a scroll. Open the next.
+- `dawn_wonder_1`: Stone enough to hold a promise. Let the dawn come and live in it.
+- `dawn_wonder_2`: Our daughters' daughters will pray here. I have heard them.
+- `dawn_truce_1`: Peace, then. I saw it in the water this morning.
+- `dawn_truce_2`: Let the spears rest. Even judges are glad to adjourn.
+- `dawn_refuse_1`: No. I have seen what that bargain costs, and who pays it.
+- `dawn_refuse_2`: The answer was written before you asked. It is no.
+- `dawn_demand_1`: A tithe is owed. Pay it and sleep soundly.
+- `dawn_demand_2`: I have weighed what you have. A fair share, and the matter is closed.
+- `dawn_betray_1`: You swore before me. I do not forget an oath, and neither does heaven.
+- `dawn_betray_2`: I saw your knife in the vision. I hoped it was for someone else.
+- `dawn_ally_1`: Our tents will stand together. I have seen the smoke of one fire.
+- `dawn_ally_2`: Come under our roof. Your quarrel is my case now.
+- `dawn_rivalry_1`: Two judges cannot sit on one bench. I am sorry, old friend.
+- `dawn_rivalry_2`: We walked the road together. The vision shows only one of us arriving.
+- `dawn_p_start_1`: Here. This is the hill I was shown. Unpack.
+- `dawn_p_start_2`: We have arrived where we were always going. Begin.
+- `dawn_p_win_1`: Judgment is given. Give thanks, and tend the wounded.
+- `dawn_p_win_2`: It fell as I foresaw. Be merciful in it.
+- `dawn_p_loss_1`: We grieve tonight. I have seen the morning after, and we are in it.
+- `dawn_p_loss_2`: A hard ruling. It is not the final one.
+- `dawn_p_alert_1`: They are at the tents! Gather the little ones, and stand!
+- `dawn_p_alert_2`: The hour I warned of. To your posts, without fear.
+- `dawn_p_ageup_1`: A new day for the tribes. Walk into it.
+- `dawn_p_ageup_2`: The age turns, and we are still here. As promised.
 
 Put a file named `persona_dawn.txt` containing `alt` beside the recordings to have Marta the Seer lead in the game.
 
