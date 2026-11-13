@@ -2217,7 +2217,7 @@ describe('the holy town and the work camp', () => {
       const posted = Array.from({ length: guards }, (_, i) => g.spawnUnit('slaver', 0, camp.x - 1 + i, camp.y + 3));
       if (guards) g.cmdTarget(0, posted.map((s) => s.id), camp.id);
       const said: string[] = [];
-      const through = (seconds: number) => run(g, seconds, () => { for (const e of g.events) if (e.t === 'msg') said.push(e.text); g.events.length = 0; });
+      const through = (seconds: number, each?: () => void) => run(g, seconds, () => { for (const e of g.events) if (e.t === 'msg') said.push(e.text); g.events.length = 0; each?.(); });
       return { g, camp, said, through };
     };
     // By day no one gets out, guarded or not.
@@ -2243,10 +2243,14 @@ describe('the holy town and the work camp', () => {
     expect(held.camp.captives!.length).toBe(6);
     // A camp full of unwatched men rises sooner or later: it burns and half of them are gone at a stroke.
     const risen = camped(10, 0, 0);
-    risen.through(1500);
+    // (Watched as it happens, not counted up afterwards: a people who mend their own walls have it whole again by the end.)
+    let burned = false, least = risen.camp.maxHp;
+    risen.through(1500, () => { burned ||= risen.camp.burnT > 0; least = Math.min(least, risen.camp.hp); });
     expect(risen.said.some((t) => t.includes('risen'))).toBe(true);
-    expect(risen.camp.dead || risen.camp.hp < risen.camp.maxHp).toBe(true);
-  });
+    expect(burned).toBe(true);
+    expect(least).toBeLessThanOrEqual(risen.camp.maxHp * 0.75);
+    expect(risen.camp.captives!.length).toBeLessThanOrEqual(5);
+  }, 30000); // four towns through 3,500 seconds between them: more than the default five seconds allows on a busy machine
 
   it('a slaver killed on the road loses his captive', () => {
     const { g, p } = town();
