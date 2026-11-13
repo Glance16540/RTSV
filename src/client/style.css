@@ -276,5 +276,8 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 #dilemma button small { display: block; opacity: 0.8; margin-top: 2px; }
 @media (max-width: 720px) { #dilemma { left: 8px; right: 8px; width: auto; top: 84px; } }
 
+#info { position: relative; }
+/* The record sits beside the villager, not under them, so the whole of it shows at once. */
+@media (min-width: 1100px) { .record { position: absolute; top: 4px; right: 6px; width: 44%; background: #1f1a13; max-height: calc(100% - 8px); overflow-y: auto; scrollbar-width: thin; box-sizing: border-box; } }
 .record { margin: 4px 0; padding: 5px 7px; border-left: 3px solid var(--edge); background: rgba(255, 240, 200, 0.06); font-size: 12px; line-height: 1.45; }
 .record small { opacity: 0.7; }
