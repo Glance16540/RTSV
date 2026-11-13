@@ -207,12 +207,26 @@ export function outfitFor(type: string, female: boolean, color: number, look: { 
     billman: { mail: true, sleeves: 'long', helmet: 'kettle', weapon: 'bill' },
     samurai: { plate: true, metal: 0x7a2028, helmet: 'kettle', sleeves: 'long', top: 0x2a2a30, skirtColor: color, weapon: 'sword', legs: 0x2a2a30 },
     firethrower: { top: leather, sleeves: 'long', hat: 'hood', hatColor: 0x4a3222, apron: 0x4a3222, weapon: 'firetube' },
+    // ---- riders and drivers ----
+    rider: { top: leather, helmet: 'leather', weapon: 'spear', skirt: 'none' },
+    knight: { mail: true, sleeves: 'long', plate: true, helmet: 'iron', shield: color, weapon: 'pike', skirt: 'none', cloak: color },
+    hussar: { sleeves: 'long', hat: 'fur', hatColor: 0x2a2a30, cloak: color, trim: 0xd8b040, weapon: 'sword', skirt: 'none', legs: 0xd8d0c0 },
+    lancer: { top: leather, sleeves: 'long', hat: 'fur', hatColor: 0x7a3a2a, weapon: 'spear', skirt: 'none', trim: 0xc8a040 },
+    horsearcher: { top: 0x8a5a34, sleeves: 'long', hat: 'fur', hatColor: 0x7a3a2a, weapon: 'bow', skirt: 'none', mantle: true },
+    wolfrider: { top: hide, sleeves: 'bare', mantle: true, weapon: 'axe', skirt: 'none', beard: true },
+    templar: { mail: true, sleeves: 'long', helmet: 'iron', shield: linen, weapon: 'sword', cloak: linen, skirt: 'none' },
+    companion: { plate: true, metal: BRONZE, helmet: 'bronze', weapon: 'spear', sleeves: 'bare', legs: look.skin, skirt: 'none', cloak: color },
+    camelrider: { top: linen, sleeves: 'long', hat: 'turban', hatColor: 0xf0ece0, weapon: 'sword', skirt: 'long', skirtColor: linen, trim: color },
+    mameluke: { mail: true, sleeves: 'long', hat: 'turban', hatColor: color, weapon: 'javelin', shield: color, skirt: 'none' },
+    chariot: { top: leather, sleeves: 'bare', helmet: 'leather', weapon: 'bow' },
+    warchariot: { top: look.skin, sleeves: 'bare', neck: 2, skirtColor: linen, hat: 'cap', hatColor: 0xd8b040, weapon: 'spear', legs: look.skin },
     longbowman: { top: 0x4a6a3a, sleeves: 'long', hat: 'cap', hatColor: 0x4a6a3a, weapon: 'bow', trim: color },
     ashigaru: { plate: true, metal: 0x2a2a30, hat: 'straw', hatColor: 0x2a2a30, sleeves: 'long', weapon: 'musket', legs: 0x2a2a30 },
   } as Record<string, Partial<Outfit>>)[type];
   if (o) return { ...base, ...o };
   // Anyone not named above is dressed by trade and by the age they belong to.
   const tier = info.age;
+  if (info.cls === 'cavalry' || info.cls === 'beast') return { ...base, top: leather, sleeves: 'long', helmet: info.age >= 2 ? 'iron' : 'leather', weapon: 'spear', skirt: 'none' };
   if (info.cls === 'ranged') return { ...base, top: leather, sleeves: 'long', helmet: tier >= 3 ? 'kettle' : tier >= 1 ? 'leather' : '', weapon: tier >= 4 ? 'musket' : 'bow' };
   if (info.cls === 'support') return { ...base, skirt: 'long', sleeves: 'long', hat: 'hood', hatColor: color, weapon: 'staff' };
   return { ...base, top: tier >= 2 ? base.top : leather, mail: tier >= 2, sleeves: tier >= 2 ? 'long' : 'short', plate: tier >= 3, helmet: tier >= 3 ? 'kettle' : tier >= 2 ? 'iron' : tier >= 1 ? 'bronze' : '', metal: tier === 1 ? BRONZE : null, shield: tier >= 1 && tier < 3 ? color : null, weapon: tier >= 3 ? 'pike' : tier >= 2 ? 'sword' : tier >= 1 ? 'spear' : 'club' };
@@ -842,5 +856,15 @@ export function level(p: RealPerson, yaw: number, want: number, dt: number): voi
   } else {
     point(B('DEF-upper_armR'), to(0.5, -0.25, -0.7), w); point(B('DEF-forearmR'), to(1, 0.08, 0.1), w);
     point(B('DEF-upper_armL'), to(0.75, 0.1, -0.5), w); point(B('DEF-forearmL'), to(0.8, -0.5, 0.12), w);
+  }
+}
+
+/** Seat a figure astride: thighs out round the animal's barrel and forward, shins hanging. Call after the motion has been advanced. */
+export function astride(p: RealPerson, yaw: number): void {
+  const fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw);
+  const to = (f: number, l: number, u: number): THREE.Vector3 => dir.set(fx * f + lx * l, u, fz * f + lz * l).normalize();
+  for (const [side, sign] of [['L', 1], ['R', -1]] as const) {
+    point(p.bones.get('DEF-thigh' + side), to(0.5, sign * 0.62, -0.6), 1);
+    point(p.bones.get('DEF-shin' + side), to(-0.12, sign * 0.1, -1), 1);
   }
 }

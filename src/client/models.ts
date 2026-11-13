@@ -1078,6 +1078,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     plume.castShadow = false;
     const sash = add(g, geo('sash', () => new THREE.BoxGeometry(0.36, 0.05, 0.22)), alias[1], 0, h * 0.62, 0);
     sash.rotation.z = 0.5;
+    plume.userData.mark = sash.userData.mark = true;
     return g;
   }
   const key = type === 'villager' ? `villager_${gender}` : type;

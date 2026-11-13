@@ -10,7 +10,7 @@ import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
-import { Outfit, RealPerson, bear, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
+import { Outfit, RealPerson, astride, bear, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
@@ -22,7 +22,7 @@ const FOV = 30;
 
 /** One figure in a work camp's yard: a captive on their round, or a Slaver on guard. */
 interface CampFig { g: THREE.Group; rig: Rig | null; woman: boolean; guard: boolean; i: number; goal: 'out' | 'work' | 'in'; wait: number; in: boolean }
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh }; /** Drawn from the real human figure (the trial), not from blocks. */ real?: RealPerson }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh }; /** Drawn from the real human figure, not from blocks. */ real?: RealPerson; /** Riders and drivers drawn from the real figure, on a mount or car that is still built of blocks. */ riders?: { p: RealPerson; astride: boolean }[] }
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
 interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
@@ -441,7 +441,8 @@ export class Renderer {
     const mended = !!v && !!v.rig && v.hurt > (u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0);
     const real = this.realPeople && peopleReady() && drawnReal(u.def.cls);
     const child = u.growT > 0;
-    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real || (!!v.real && v.real.child !== child))) {
+    const ridden = this.realPeople && peopleReady() && (u.def.cls === 'cavalry' || u.def.cls === 'beast');
+    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real || (!!v.real && v.real.child !== child) || (ridden && !v.riders))) {
       // Re-equipped by an upgrade, or set to a new trade: swap the model.
       turned = v.g.rotation.y;
       this.scene.remove(v.g);
@@ -462,6 +463,7 @@ export class Renderer {
         if (seat) { o.rotation.set(-0.75, 0, o.position.x > 0 ? 0.5 : -0.5); v!.seat = seat; v!.seatY = seat.userData.seatY ??= seat.position.y; }
         else v!.legs.push(o);
       });
+      if (ridden) this.mount(u, v);
       v.g.rotation.order = 'YXZ'; // so leaning forward and rocking are in the unit's own frame, whichever way it faces
       this.unitViews.set(u.id, v);
       this.scene.add(v.g);
@@ -501,6 +503,7 @@ export class Renderer {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
     if (v.rig) { this.pose(u, v, dt); }
+    for (const r of v.riders ?? []) this.poseReal(u, r.p, '', dt, 1, g.rotation.y, true, r.astride);
     if (v.real) {
       v.job = job;
       this.poseReal(u, v.real, job, dt, size, g.rotation.y);
@@ -1000,10 +1003,10 @@ export class Renderer {
    * moves, so feet do not skate; a blow, a shot or a spell is played through once from the moment it is loosed; a hit
    * makes them flinch; bows and guns are levelled over whatever else is playing.
    */
-  private poseReal(u: Unit, p: RealPerson, job: Job, dt: number, size: number, yaw: number): void {
+  private poseReal(u: Unit, p: RealPerson, job: Job, dt: number, size: number, yaw: number, mounted = false, seated = false): void {
     // The figure's own stride covers about 0.78 of a tile a second at a walk and 1.78 at a run, at full size.
     const pace = u.def.speed / size;
-    const move = (): void => (pace < 1.25 ? play(p, 'Walk_Loop', Math.max(0.7, Math.min(1.7, pace / 0.78))) : play(p, 'Jog_Fwd_Loop', Math.max(0.75, Math.min(1.6, pace / 1.78))));
+    const move = (): void => (mounted ? play(p, 'Idle_Loop', 1.4) : pace < 1.25 ? play(p, 'Walk_Loop', Math.max(0.7, Math.min(1.7, pace / 0.78))) : play(p, 'Jog_Fwd_Loop', Math.max(0.75, Math.min(1.6, pace / 1.78))));
     p.flinch = Math.max(0, p.flinch - dt);
     let aim = 0;
     if (p.soldier) {
@@ -1036,6 +1039,23 @@ export class Renderer {
     }
     p.mixer.update(dt);
     level(p, yaw, aim, dt);
+    if (seated) astride(p, yaw);
+  }
+
+  /** Put real figures in the place of the block riders and drivers of a mount or a car. */
+  private mount(u: Unit, v: UnitView): void {
+    const seats: THREE.Object3D[] = [];
+    v.g.traverse((o) => { if (o !== v.g && o.userData.biped) seats.push(o); if (o.userData.mark) o.visible = false; }); // the real riders are told apart by their own dress
+    v.riders = [];
+    const pl = this.game.players[u.owner];
+    seats.forEach((seat, i) => {
+      const made = makePerson(outfitFor(u.type, false, pl.color, lookOf(pl.civ, u.id + i * 5), u.id + i * 5, 0, { cls: u.def.cls, age: u.def.age }));
+      if (!made) return;
+      for (const c of seat.children) c.visible = false; // the block figure and its gear give way
+      seat.add(made.g);
+      made.g.position.y = seat.userData.stands ? 0 : -0.07;
+      v.riders!.push({ p: made.real, astride: !seat.userData.stands });
+    });
   }
 
   private pose(u: Unit, v: UnitView, dt: number): void {
