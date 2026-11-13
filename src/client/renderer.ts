@@ -1009,6 +1009,8 @@ export class Renderer {
       for (const c of parent.children) if (c.userData.steed) c.visible = false;
       // A camel's rider sits higher than a horseman, behind the hump.
       if (kind === 'camel' && v.seat) { v.seatY = v.seat.userData.seatY = (v.seat.userData.seat0 ??= v.seat.userData.seatY as number) + 0.47; v.seat.position.z = -0.3; }
+      // The saddle cloth goes up with him.
+      if (kind === 'camel') for (const c of parent.children) if (!c.userData.steed && !c.userData.biped && !c.userData.lifted) { c.userData.lifted = true; c.position.y += 0.22; }
       // The old mount was built about its own middle with its back near 0.76 up: sit the new one to match.
       b.g.position.set(0, 0, 0.06);
       parent.add(b.g);

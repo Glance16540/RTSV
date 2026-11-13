@@ -799,7 +799,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
         t.rotation.x = -1.15;
       }
       for (const c of g.children) c.userData.steed = 'mammoth';
-      { const c = add(g, geo('saddle', () => new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12, 1, true, -1.3, 2.6).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)), color, 0, 1.0, -0.1); c.scale.set(1.0, 1.02, 2.0); }
+      { const c = add(g, geo('saddle', () => new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12, 1, true, -1.3, 2.6).rotateX(Math.PI / 2).rotateZ(Math.PI / 2)), color, 0, 1.0, -0.1); c.scale.set(1.0, 1.02, 1.3); }
       const r = new THREE.Group();
       r.position.set(0, 1.36, -0.1);
       r.scale.setScalar(0.8);
