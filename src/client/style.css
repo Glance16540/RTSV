@@ -432,3 +432,4 @@ body.at-title #hud, body.at-title #overlay { visibility: hidden; }
 }
 @media (max-height: 620px) { .t-brand p, .t-rule { display: none; } }
 @media (prefers-reduced-motion: reduce) { .t-art, .t-brand, #t-menu button, #t-panel { animation: none; } }
+#missions i { display: block; font-size: 12px; color: var(--text); opacity: 0.8; margin: 1px 0 3px; }

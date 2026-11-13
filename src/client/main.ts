@@ -240,7 +240,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   const team = (i: number) => (sides === 'ffa' ? i : i === 0 || (sides === 'ally' && i === 1) ? 0 : 1);
   const mission = mode === 'mission' ? missionById(params.get('mission')!)! : null;
   if (mission) {
-    game = new Game(mission.seed, mission.setups, mission.size);
+    game = new Game(mission.seed, mission.setups, mission.size, false, !!mission.sea);
     mission.init(game);
   }
   // The country a battle is fought in: chosen, or the homeland of whoever holds the ground.
@@ -393,7 +393,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   applyPrefs();
 
   // ---- Missions ----
-  el('missions').innerHTML = MISSIONS.map((m) => `<button data-mission="${m.id}"><b>${m.name}</b><small>${m.brief}</small></button>`).join('');
+  el('missions').innerHTML = MISSIONS.map((m) => `<button data-mission="${m.id}"><b>${m.name}</b>${m.about ? `<i>${m.about}</i>` : ''}<small>${m.brief}</small></button>`).join('');
   el('missions').addEventListener('click', (e) => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-mission]')?.dataset.mission;
     if (id) go(`?mission=${id}`);

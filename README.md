@@ -190,12 +190,18 @@ difficulty levels that plays by the same rules.
 
 ## Missions
 
-*Missions* on the start screen offers three scripted scenarios with objectives shown as you play:
+*Missions* on the start screen offers six scripted scenarios with objectives shown as you play:
 
 - **First Hearth** — a gentle tutorial: gather, found a family, grow, raise soldiers and drive off
   a wolf pack. Nobody attacks you.
 - **Hold the Line** — defend a walled town against eight growing waves of raiders for ten minutes.
 - **Race for the Wonder** — two rich kingdoms each try to build a Wonder and keep it standing.
+- **Two Doors** — build a Church and a Tavern, fill them, answer what your people ask, and become Devout or
+  Worldly. Teaches faith and vice; nobody attacks you.
+- **The Far Shore** — on the great lake: a Dock, fishing boats, War Galleys to sink the pirates, then a Transport
+  to carry your soldiers over and burn out their stronghold.
+- **Wolves of the North** — play the Norse war band: carry off the Franks' villagers, raise a hall where you
+  choose, and grow the tribe.
 
 **How it opens.** A loading screen with the game's seal, then *Press any key*, a few opening words
 over black, and the main menu: the title and a column of choices over the player's own town, with the
