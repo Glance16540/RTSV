@@ -184,6 +184,12 @@ function part(g: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0): 
 }
 const bump = (v: number, at: number, wide: number): number => Math.max(0, 1 - ((v - at) / wide) ** 2);
 
+/** How high the cloth comes on the chest at a point across it: a scoop, lowest in the middle and rising to the shoulders. */
+function neckline(o: Outfit, x: number): number {
+  const low = o.neck === 2 ? 1.385 : o.neck === 1 ? 1.44 : 1.51, k = Math.min(1, Math.abs(x) / 0.115);
+  return low + (1.53 - low) * k * k;
+}
+
 /** How this person's trunk differs from the bare figure's at a height: across, front to back, and the belly carried in front. */
 function trunk(o: Outfit, y: number): { kx: number; kz: number; belly: number } {
   const fat = [-0.07, 0, 0.13][o.girth];
@@ -216,7 +222,7 @@ function bust(o: Outfit, x: number, y: number): number {
 
 const painted = new Map<string, THREE.BufferGeometry[]>();
 /** Shape one piece of the body as a man's or a woman's, and colour it by which bone moves each point. */
-function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.BufferGeometry {
+function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit, joints: boolean): THREE.BufferGeometry {
   const g = src.clone();
   const pos = g.getAttribute('position'), si = g.getAttribute('skinIndex'), sw = g.getAttribute('skinWeight');
   const col = new Float32Array(pos.count * 3), c = new THREE.Color();
@@ -224,7 +230,6 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
   const skirtC = new THREE.Color(o.skirtColor).multiplyScalar(0.8);
   const boot = new THREE.Color(0x4a3222), belt = new THREE.Color(0x3a2616);
   const mids = source!.marks.mid, headMid = source!.marks.head.getCenter(new THREE.Vector3()).y, headHalf = source!.marks.head.getSize(new THREE.Vector3()).y / 2;
-  const collar = o.neck === 2 ? 1.34 : o.neck === 1 ? 1.42 : 1.5; // how high the cloth comes on the chest
   for (let i = 0; i < pos.count; i++) {
     // The bone with the most say over this point.
     let best = 0, bw = -1;
@@ -240,9 +245,12 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
       if (z > 0) z += t.belly * bump(x, 0, 0.2);
       // The body under the bodice follows it, a little inside, so skin at an open neck is the right shape.
       if (o.female && z > 0.02) z += bust(o, x, y) * 0.8;
+      // Under the garment the body is drawn in a little, so none of it shows through the cloth.
+      if (y > 1.0 && y < neckline(o, x) - 0.03) { x *= 0.94; z *= 0.93; }
     } else if (/upper_arm|forearm|thigh|shin/.test(bone)) {
       // Limbs thicken about their own middle line: arms lie along x at rest, legs stand along y.
-      const m = mids.get(bone), k = 1 + fat * (/forearm|shin/.test(bone) ? 0.55 : 0.9) + (o.female ? (/arm/.test(bone) ? -0.16 : /shin/.test(bone) ? -0.08 : 0.04) : /upper_arm/.test(bone) ? 0.05 + [-0.03, 0.02, 0.07][o.chest] : 0.03);
+      // The base figure's separate joint pieces are tucked just inside the limb, so an elbow or knee is not a ball.
+      const m = mids.get(bone), k = (joints ? 0.93 : 1) + fat * (/forearm|shin/.test(bone) ? 0.55 : 0.9) + (o.female ? (/arm/.test(bone) ? -0.16 : /shin/.test(bone) ? -0.08 : 0.04) : /upper_arm/.test(bone) ? 0.05 + [-0.03, 0.02, 0.07][o.chest] : 0.03);
       if (m && /arm/.test(bone)) { ny = m.y + (y - m.y) * k; z = m.z + (z - m.z) * k; }
       else if (m) { x = m.x + (x - m.x) * k; z = m.z + (z - m.z) * k; }
     } else if (/neck/.test(bone)) { const k = 1 + fat * 0.6 + (o.female ? -0.14 : 0.08); x *= k; z *= k; }
@@ -262,7 +270,7 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
     else if (/upper_arm/.test(bone)) { c.copy(o.sleeves === 'bare' ? skin : top); mailed = o.sleeves !== 'bare'; }
     else if (/spine|hips|shoulder/.test(bone)) {
       // The neckline dips in the middle of the chest and shows skin above it.
-      const bare = y > collar + Math.min(0.1, Math.abs(x) * 0.9) && z > -0.02 && !/shoulder/.test(bone);
+      const bare = y > neckline(o, x) && z > -0.02 && (!/shoulder/.test(bone) || Math.abs(x) < 0.125);
       c.copy(bare ? skin : y > 1.0 && y < 1.05 ? belt : top);
       mailed = !bare;
     }
@@ -338,8 +346,8 @@ function bodice(body: THREE.SkinnedMesh, o: Outfit, heights: number[]): THREE.Sk
   };
   const rows = 30, seg = 36, y0 = 1.02, y1 = 1.535, off = 0.022;
   const P: number[] = [], C: number[] = [], SI: number[] = [], SW: number[] = [], I: number[] = [];
+  const cut: boolean[] = [], rowH = (y1 - y0) / rows;
   const top = new THREE.Color(o.mail ? 0x8a8f96 : o.top), trim = o.trim !== null ? new THREE.Color(o.trim) : top.clone().multiplyScalar(0.7), belt = new THREE.Color(0x3a2616);
-  const collar = o.neck === 2 ? 1.36 : o.neck === 1 ? 1.43 : 1.51;
   for (let r = 0; r <= rows; r++) {
     const yr = y0 + ((y1 - y0) * r) / rows, pr = at(Math.min(1.46, yr)), t = trunk(o, yr);
     // Above the armpit the cloth closes in over the shoulders to the neck.
@@ -355,9 +363,10 @@ function bodice(body: THREE.SkinnedMesh, o: Outfit, heights: number[]): THREE.Sk
         if (o.female) z += bust(o, x, y);
       }
       // The neckline: cut down in front to a curve, with nothing above it.
-      const line = collar + Math.min(0.11, Math.abs(x) * 0.95);
+      const line = neckline(o, x);
       let edge = false;
-      if (sa > 0.15 && y > line) { y = line; edge = true; z -= 0.004; }
+      // The first row above the line is brought down to it for a clean edge; cloth higher than that is cut away.
+      if (sa > 0.15 && y > line) { cut.push(yr > line + rowH); y = line; edge = true; } else cut.push(false);
       P.push(x, y, z);
       const c = yr < 1.058 ? belt : edge || (sa > 0.15 && y > line - 0.016) ? trim : top;
       const h = (((s * 131 + r * 71) * 2654435761) >>> 0) % 100 / 100, n = o.mail && c === top ? 0.78 + h * 0.44 : 0.95 + h * 0.08;
@@ -376,6 +385,7 @@ function bodice(body: THREE.SkinnedMesh, o: Outfit, heights: number[]): THREE.Sk
   }
   for (let r = 0; r < rows; r++) for (let s = 0; s < seg; s++) {
     const a = r * seg + s, b2 = r * seg + ((s + 1) % seg), c2 = a + seg, d = b2 + seg;
+    if (cut[a] || cut[b2] || cut[c2] || cut[d]) continue;
     I.push(a, b2, c2, b2, d, c2);
   }
   const g = new THREE.BufferGeometry();
@@ -460,7 +470,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     meshes.push(m);
     let set = painted.get(key);
     if (!set) painted.set(key, (set = []));
-    set[n] ??= paint(m.geometry, m.skeleton.bones.map((q) => q.name), o);
+    set[n] ??= paint(m.geometry, m.skeleton.bones.map((q) => q.name), o, (m.material as THREE.Material).name === 'M_Joints');
     m.geometry = set[n++];
     m.material = cloth;
     m.castShadow = true;
@@ -511,13 +521,14 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     head.add(part(geo('iris', () => new THREE.SphereGeometry(0.01, 8, 6)), iris, ex, eyeY, ez + 0.0035));
     head.add(part(geo('pupil', () => new THREE.SphereGeometry(0.005, 6, 5)), dark, ex, eyeY, ez + 0.0105));
     // The upper lid, darker on a woman as if lashed.
-    const lid = part(geo('lid', () => new THREE.BoxGeometry(0.046, 0.006, 0.012)), o.female ? dark : skinD, ex, eyeY + (o.female ? 0.016 : 0.013), ez + 0.004);
-    lid.rotation.z = sx * -0.08;
+    const lid = part(geo('lid', () => new THREE.BoxGeometry(0.046, o.female ? 0.0035 : 0.005, 0.01)), o.female ? dark : skinD, ex, eyeY + (o.female ? 0.021 : 0.018), ez + 0.002);
+    lid.rotation.z = sx * -0.04;
     head.add(lid);
-    const by = eyeY + (o.female ? 0.034 : 0.029);
+    const under = !!o.helmet || o.hat === 'hood' || o.hat === 'cap' || o.hat === 'fur' || o.hairStyle === 'covered'; // a brim sits low: keep the brow beneath it
+    const by = eyeY + (under ? 0.027 : o.female ? 0.046 : 0.038); // otherwise set well clear of the eye, so the look is open
     const brow = part(geo('brow', () => new THREE.BoxGeometry(0.046, 1, 0.012)), hairM, ex, by, faceAt(by, 'eye') + 0.003);
     brow.scale.y = o.female ? 0.007 : 0.012;
-    brow.rotation.z = sx * (o.female ? -0.2 : -0.08);
+    brow.rotation.z = sx * (o.female ? -0.07 : -0.02); // the outer end a little lower: a soft arch, not a frown
     head.add(brow);
     const ear = part(geo('ear', () => new THREE.SphereGeometry(0.022, 8, 6)), skinM, sx * hr.x * 0.98, eyeY - 0.012, hc.z - hr.z * 0.05);
     ear.scale.set(0.45, 1.15, 0.8);
@@ -536,6 +547,8 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const lower = part(geo('lip', () => new THREE.SphereGeometry(0.02, 9, 5)), solid(lipC), 0, mouthY - 0.006, mz - 0.005);
   lower.scale.set(o.female ? 0.86 : 0.95, o.female ? 0.38 : 0.22, 0.5);
   head.add(upper, lower);
+  // The corners of the mouth turn up a little.
+  for (const sx of [-1, 1]) { const corner = part(geo('corner', () => new THREE.SphereGeometry(0.005, 5, 4)), solid(lipC), sx * 0.02, mouthY + 0.004, mz - 0.006); head.add(corner); }
   const dome = geo('dome', () => new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.56));
   const crown = (m: THREE.Material, k: number, lift = 0): THREE.Mesh => {
     const d = part(dome, m, 0, hc.y + hr.y * 0.22 + lift, hc.z - hr.z * 0.08);
@@ -601,8 +614,8 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       // Its sides come down past the ears to the cape.
       for (const sx of [-1, 1]) { const side = part(geo('hoodside', () => new THREE.BoxGeometry(0.02, 0.17, 0.11)), hm, sx * hr.x * 1.1, hc.y - hr.y * 0.55, hc.z - hr.z * 0.1); head.add(side); }
       const sh = at('DEF-spine.003');
-      const cape = part(geo('cape', () => new THREE.CylinderGeometry(0.1, 0.27, 0.2, 14, 1, true)), hm, 0, sh.y + 0.13, 0.005);
-      cape.scale.z = 0.72;
+      const cape = part(geo('cape', () => new THREE.CylinderGeometry(0.1, 0.33, 0.24, 14, 1, true)), hm, 0, sh.y + 0.12, 0.005);
+      cape.scale.z = 0.8;
       fit('DEF-spine.003', cape);
     } else if (o.hat === 'cap') {
       head.add(crown(hm, 1.14, hr.y * 0.1));
