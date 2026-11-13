@@ -12,7 +12,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-import { HeroSpec, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
+import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
@@ -655,8 +655,9 @@ export class Game {
       this.units.splice(this.units.indexOf(e), 1);
       this.players[e.owner].pop -= e.def.pop;
       if (e.hero) {
-        // They can be raised again, but not as the veteran they were.
+        // The dead stay dead: whoever is raised in their place is their heir, with a rank less to their name.
         this.players[e.owner].heroRank = Math.max(0, e.hero.rank - 1);
+        this.players[e.owner].hero = { ...this.heroOf(e.owner), name: heirName(e.name) };
         this.leaders[e.owner] = null;
         this.msg(e.owner, `${e.name} has fallen.`);
       }

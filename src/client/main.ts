@@ -9,6 +9,8 @@ import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, new
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
 import { openHeroCreator, savedHero } from './herocreator';
+import { HeroSpec, defaultHero } from '../sim/hero';
+import { LEADERS } from '../sim/leaders';
 import { Overworld } from './overworld';
 import { Input } from './input';
 import { Renderer } from './renderer';
@@ -205,7 +207,13 @@ function readCampaign(): Campaign | null {
     return null;
   }
 }
-const withHero = (c: Campaign): Campaign => { c.factions[0].hero = savedHero(c.factions[0].civ); return c; };
+/** The leader a campaign begins under: the nation's own as written, that leader's other self, or the player's making. */
+const chosenLeader = (civ: string, pick: string): HeroSpec | undefined => {
+  const L = LEADERS[civ];
+  if (pick === 'own') return savedHero(civ);
+  const who = pick === 'b' && L?.alt ? L.alt : L;
+  return who ? { ...defaultHero(civ), name: who.name, female: who.female } : undefined;
+};
 const writeCampaign = (c: Campaign) => { try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(c)); } catch { /* storage unavailable */ } };
 const go = (query: string) => {
   try {
@@ -424,17 +432,24 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, town: r.town, ground: r.ground });
       if (c.phase === 'ai') continueAI(c);
     }
+    const fresh = !c;
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);
     const state = c;
     // The leader you have made for this people leads them here too; change them and the change holds from the next battle.
     state.factions[0].hero ??= savedHero(state.factions[0].civ);
     el('ow-hero').addEventListener('click', () => openHeroCreator(state.factions[0].civ, (h) => { state.factions[0].hero = h ?? undefined; writeCampaign(state); }));
-    new Overworld(state, {
+    const ow = new Overworld(state, {
       save: () => writeCampaign(state),
       fight: () => { writeCampaign(state); go('?battle=1'); },
-      newCampaign: (r, l, civ) => { writeCampaign(withHero(newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined))); go('?campaign=1'); },
+      newCampaign: (r, l, civ, leader) => {
+        const made = newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined);
+        made.factions[0].hero = chosenLeader(made.factions[0].civ, civ ? leader : 'a');
+        writeCampaign(made); go('?campaign=1');
+      },
       exit: () => go(''),
     });
+    // No campaign yet: first choose a people and who leads them.
+    if (fresh) ow.askNew(true);
   }
 
   // ---- What is on screen when the loading is done ----
