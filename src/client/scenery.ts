@@ -57,13 +57,46 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       let sum = 0, n = 0, rock = 0;
       for (const [tx, ty] of [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]]) if (tx >= 0 && ty >= 0 && tx < N && ty < N) { sum += tileH[ty * N + tx]; n++; if (T[ty * N + tx] === T_ROCK) rock++; }
       // A crag is jagged; a hill is smooth.
-      cornerH[y * W + x] = wet ? -0.55 : (n ? sum / n : 0) + (rock === 4 ? (hash(x * 5, y * 7) - 0.5) * 1.7 : rock >= 2 ? (hash(x * 5, y * 7) - 0.5) * 0.5 : 0);
+      cornerH[y * W + x] = wet ? 0 : (n ? sum / n : 0) + (rock === 4 ? (hash(x * 5, y * 7) - 0.5) * 1.7 : rock >= 2 ? (hash(x * 5, y * 7) - 0.5) * 0.5 : 0);
     }
   }
+  // How wet a point is, 0 on dry land to 1 in open water, as a smooth field: the tiles' hard corners are rounded
+  // off, so a shore runs in curves and not in steps. Sampled four times to the tile and blurred over about a tile.
+  const FINE = 4, F = N * FINE + 1;
+  let wet = new Float32Array(F * F);
+  {
+    const raw = (u: number, v: number): number => {
+      const x = u - 0.5, y = v - 0.5, xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+      const k = (a: number, b: number) => (tAt(a, b) === T_WATER ? 1 : 0);
+      return (k(xi, yi) * (1 - fx) + k(xi + 1, yi) * fx) * (1 - fy) + (k(xi, yi + 1) * (1 - fx) + k(xi + 1, yi + 1) * fx) * fy;
+    };
+    for (let j = 0; j < F; j++) for (let i = 0; i < F; i++) wet[j * F + i] = raw(i / FINE, j / FINE);
+    const R = 3;
+    for (let pass = 0; pass < 2; pass++) {
+      for (const along of [1, F]) {
+        const out = new Float32Array(F * F);
+        for (let j = 0; j < F; j++) for (let i = 0; i < F; i++) {
+          let sum = 0, n = 0;
+          for (let d = -R; d <= R; d++) { const a = (along === 1 ? i : j) + d; if (a < 0 || a >= F) { sum += 1; n++; continue; } sum += wet[j * F + i + d * along]; n++; } // beyond the map is sea
+          out[j * F + i] = sum / n;
+        }
+        wet = out;
+      }
+    }
+  }
+  const wetAt = (x: number, y: number): number => {
+    const fx = Math.min(F - 1.001, Math.max(0, x * FINE)), fy = Math.min(F - 1.001, Math.max(0, y * FINE));
+    const xi = Math.floor(fx), yi = Math.floor(fy), tx = fx - xi, ty = fy - yi, i = yi * F + xi;
+    return (wet[i] * (1 - tx) + wet[i + 1] * tx) * (1 - ty) + (wet[i + F] * (1 - tx) + wet[i + F + 1] * tx) * ty;
+  };
+  // The ground: the land's own height, falling away smoothly into a bed under open water. Land tiles stay dry to
+  // their edge (wetness one half), so no one who can walk there is drawn wading.
   const groundH = (x: number, y: number): number => {
     const fx = Math.min(N - 0.001, Math.max(0, x)), fy = Math.min(N - 0.001, Math.max(0, y));
     const xi = Math.floor(fx), yi = Math.floor(fy), tx = fx - xi, ty = fy - yi, i = yi * W + xi;
-    return (cornerH[i] * (1 - tx) + cornerH[i + 1] * tx) * (1 - ty) + (cornerH[i + W] * (1 - tx) + cornerH[i + W + 1] * tx) * ty;
+    const dry = (cornerH[i] * (1 - tx) + cornerH[i + 1] * tx) * (1 - ty) + (cornerH[i + W] * (1 - tx) + cornerH[i + W + 1] * tx) * ty;
+    const w = wetAt(x, y);
+    return dry * (1 - smooth(0.3, 0.6, w)) - smooth(0.5, 0.92, w) * 0.62;
   };
   const heightAt = (x: number, y: number): number => Math.max(0, groundH(x, y));
   // How much of a kind of ground there is at a point, blended between tile centres so edges are soft.
@@ -84,7 +117,7 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       const u = x / px, v = y / px;
       // Wander the borders so they do not follow the square tiles.
       const ju = u + (noise(u * 1.9 + 31, v * 1.9) - 0.5) * 0.7, jv = v + (noise(u * 1.9, v * 1.9 + 17) - 0.5) * 0.7;
-      const water = amount(T_WATER, ju, jv), dirt = amount(T_DIRT, ju, jv), rock = amount(T_ROCK, ju, jv), high = groundH(u, v);
+      const water = wetAt(ju, jv), dirt = amount(T_DIRT, ju, jv), rock = amount(T_ROCK, ju, jv), high = groundH(u, v);
       const dune = amount(T_SAND, ju, jv), bog = amount(T_MARSH, ju, jv), white = amount(T_SNOW, ju, jv);
       const broad = fbm(u * 0.16, v * 0.16), mid = fbm(u * 0.9 + 50, v * 0.9), grain = hash(x, y);
       // Grass: two greens in broad patches, dry tufts here and there, a fine grain over it all.
@@ -145,13 +178,15 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
 
   // The ground is flat where anyone can walk and drops away under open water, leaving a bank at the shore.
   const pos: number[] = [], uv: number[] = [], idx: number[] = [];
-  for (let y = 0; y <= N; y++) {
-    for (let x = 0; x <= N; x++) {
-      pos.push(x, cornerH[y * W + x], y);
-      uv.push(x / N, 1 - y / N);
+  // Two steps to the tile, so the bank can follow the curve of the shore.
+  const M = N * 2, MW = M + 1;
+  for (let y = 0; y <= M; y++) {
+    for (let x = 0; x <= M; x++) {
+      pos.push(x / 2, groundH(x / 2, y / 2), y / 2);
+      uv.push(x / M, 1 - y / M);
     }
   }
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const a = y * W + x; idx.push(a, a + W, a + 1, a + 1, a + W, a + W + 1); }
+  for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) { const a = y * MW + x; idx.push(a, a + MW, a + 1, a + 1, a + MW, a + MW + 1); }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
@@ -164,8 +199,7 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
 
   // ---- water ----
   let hasWater = false;
-  const land = new Uint8Array(N * N * 4);
-  for (let i = 0; i < N * N; i++) { const l = T[i] === T_WATER ? 0 : 255; if (!l) hasWater = true; land[i * 4] = l; land[i * 4 + 3] = 255; }
+  for (let i = 0; i < N * N; i++) if (T[i] === T_WATER) hasWater = true;
   // How far each stretch of water is from the nearest land, out to FAR tiles, so it can deepen gradually and
   // send its waves in toward the shore. Found by spreading outward from the land a ring at a time.
   const FAR = 7, far = new Float32Array(N * N).fill(FAR);
@@ -184,19 +218,34 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
     }
     ring = next;
   }
-  for (let i = 0; i < N * N; i++) land[i * 4 + 1] = Math.round((Math.min(FAR, far[i]) / FAR) * 255);
-  const landTex = new THREE.DataTexture(land, N, N, THREE.RGBAFormat);
+  // What the water is told about where it is, at the fine grain: how dry (red) and how far out (green).
+  const farAt = (x: number, y: number): number => {
+    const u = Math.min(N - 1.001, Math.max(0, x - 0.5)), v = Math.min(N - 1.001, Math.max(0, y - 0.5)), xi = Math.floor(u), yi = Math.floor(v), tx = u - xi, ty = v - yi, i = yi * N + xi;
+    return (far[i] * (1 - tx) + far[i + 1] * tx) * (1 - ty) + (far[i + N] * (1 - tx) + far[i + N + 1] * tx) * ty;
+  };
+  const land = new Uint8Array(F * F * 4);
+  for (let j = 0; j < F; j++) for (let i = 0; i < F; i++) {
+    const k = (j * F + i) * 4, w = wet[j * F + i];
+    land[k] = Math.round((1 - w) * 255);
+    // Distance out, eased in from the smooth shore so it starts at nothing exactly where the water does.
+    land[k + 1] = Math.round(Math.min(1, (farAt(i / FINE, j / FINE) / FAR) * smooth(0.45, 0.9, w) + Math.max(0, w - 0.5) * 0.12) * 255);
+    land[k + 3] = 255;
+  }
+  const landTex = new THREE.DataTexture(land, F, F, THREE.RGBAFormat);
   landTex.magFilter = landTex.minFilter = THREE.LinearFilter;
   landTex.needsUpdate = true;
   // Water: a moving surface with its own small waves, that mirrors the sky at a low angle and lets the bed show
   // through looking down, catches the sun in glitter, breaks white along the shore, and goes dark at night.
+  // The colour of water differs with the country: clear and bright under a desert sun, green over a temperate
+  // shelf, grey-green and cold in the north, a little muddy on the steppe.
+  const tone = ({ desert: [[0.26, 0.70, 0.66], [0.04, 0.27, 0.45], 1], snow: [[0.33, 0.50, 0.50], [0.05, 0.17, 0.25], 0.35], steppe: [[0.34, 0.56, 0.50], [0.07, 0.23, 0.33], 0.6] } as Record<string, [number[], number[], number]>)[climate] ?? [[0.24, 0.66, 0.63], [0.05, 0.25, 0.40], 0.85];
   const waterMat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    uniforms: { time: { value: 0 }, land: { value: landTex }, size: { value: N }, sunDir: { value: new THREE.Vector3(-38, 44, 20).normalize() }, day: { value: 1 }, grey: { value: 0 } },
+    uniforms: { time: { value: 0 }, land: { value: landTex }, size: { value: N }, fine: { value: new THREE.Vector2(FINE, F) }, shallowC: { value: new THREE.Vector3(...tone[0]) }, deepC: { value: new THREE.Vector3(...tone[1]) }, clear: { value: tone[2] }, sunDir: { value: new THREE.Vector3(-38, 44, 20).normalize() }, day: { value: 1 }, grey: { value: 0 } },
     vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
     fragmentShader: `
-      uniform float time; uniform sampler2D land; uniform float size; uniform vec3 sunDir; uniform float day; uniform float grey;
+      uniform float time; uniform sampler2D land; uniform float size; uniform vec2 fine; uniform vec3 shallowC; uniform vec3 deepC; uniform float clear; uniform vec3 sunDir; uniform float day; uniform float grey;
       varying vec3 vW;
       float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float noise(vec2 p) {
@@ -213,9 +262,9 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       void main() {
         vec2 P = vW.xz;
         vec2 wob = vec2(noise(P * 0.9 + time * 0.2), noise(P * 0.9 + 7.0 - time * 0.2)) * 0.3 - 0.15;
-        vec4 where = texture2D(land, (P + wob) / size);
+        vec4 where = texture2D(land, ((P + wob * 0.6) * fine.x + 0.5) / fine.y);
         float l = where.r;
-        if (l > 0.62) discard;
+        if (l > 0.4) discard; // it thins to nothing just short of where the surface would cut the bank, so the edge is its own soft line
         // Tiles from the shore (out to seven), and from that how deep it is: shelving gently, then dropping away.
         float out7 = where.g * 7.0 + (0.5 - l) * 0.8;
         float depth = smoothstep(0.2, 4.6, out7);
@@ -226,7 +275,7 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
         vec3 V = normalize(cameraPosition - vW);
         // Looked at steeply, water shows what is in it; at a glancing angle it shows the sky.
         float fres = 0.07 + 0.93 * pow(1.0 - max(dot(n, V), 0.0), 4.0);
-        vec3 body = mix(vec3(0.24, 0.66, 0.63), vec3(0.05, 0.25, 0.40), smoothstep(0.0, 1.0, depth));
+        vec3 body = mix(shallowC, deepC, smoothstep(0.0, 1.0, depth));
         // Lit by the sun on the faces turned to it, lighter on the crests, and patched with slow drifts of colour.
         body *= 0.72 + 0.5 * max(dot(n, sunDir), 0.0);
         body += (h0 - 1.0) * 0.05;
@@ -245,9 +294,17 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
         col += vec3(1.0, 0.95, 0.82) * (pow(nh, 420.0) * 2.2 * sparkle + pow(nh, 30.0) * 0.07) * (1.0 - grey * 0.8);
         // Light dancing on the bed in the shallows.
         float ca = pow(abs(sin(fbm(P * 2.6 + vec2(time * 0.3, time * 0.22)) * 9.4)), 8.0);
-        col += vec3(0.9, 1.0, 0.9) * ca * 0.2 * (1.0 - depth) * (1.0 - grey);
+        col += vec3(0.9, 1.0, 0.9) * ca * 0.2 * clear * (1.0 - depth) * (1.0 - grey);
+        // Rain on the surface: rings spreading from where each drop lands.
+        if (grey > 0.05) {
+          vec2 cell = floor(P * 2.2), in2 = fract(P * 2.2) - 0.5;
+          float born = hash(cell), age = fract(time * 0.9 + born * 7.0);
+          vec2 at = (vec2(hash(cell + 3.1), hash(cell + 9.7)) - 0.5) * 0.5;
+          float ringD = abs(length(in2 - at) - age * 0.42);
+          col += smoothstep(0.035, 0.0, ringD) * (1.0 - age) * 0.35 * grey;
+        }
         // Foam: a broken white edge where it meets the land, lines of it running in to the shore, and a few caps far out.
-        float edge = smoothstep(0.2, 0.5, l + (noise(P * 3.0 + time * 0.3) - 0.5) * 0.24 + sin(time * 0.9 + P.x * 0.6 + P.y * 0.8) * 0.05); // the wash runs up the sand and draws back
+        float edge = smoothstep(0.1, 0.33, l + (noise(P * 3.0 + time * 0.3) - 0.5) * 0.24 + sin(time * 0.9 + P.x * 0.6 + P.y * 0.8) * 0.05); // the wash runs up the sand and draws back
         // Wave after wave coming in: each a thin white line that sharpens and brightens as it nears the beach.
         float coming = sin(out7 * 4.2 + time * 1.5 + noise(P * 0.7) * 4.0);
         float lines = smoothstep(0.7, 1.0, coming) * (1.0 - smoothstep(0.4, 3.4, out7)) * (0.5 + 0.5 * noise(P * 2.3 - time * 0.2));
@@ -255,9 +312,10 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
         foam = max(foam, smoothstep(1.7, 2.0, h0) * 0.22 * depth);
         col = mix(col, vec3(0.95, 0.98, 1.0), foam);
         col *= mix(0.2, 1.0, day);
+        col += vec3(0.55, 0.65, 0.9) * pow(nh, 90.0) * 0.5 * (1.0 - day) * sparkle; // moonlight on it at night
         // Clear enough in the shallows to see the sand; nearly opaque where it is deep or seen at a glancing angle.
         // The bed shows through the shallows, but veiled: its own flat facets should not read through the surface.
-        float a = max(max(mix(0.55, 0.96, smoothstep(0.0, 0.5, depth)), foam), fres * 0.9) * (1.0 - smoothstep(0.54, 0.62, l));
+        float a = max(max(mix(0.55, 0.96, smoothstep(0.0, 0.5, depth)), foam), fres * 0.9) * (1.0 - smoothstep(0.27, 0.385, l + (noise(P * 2.1 - time * 0.15) - 0.5) * 0.05));
         gl_FragColor = vec4(col, a);
       }`,
   });
