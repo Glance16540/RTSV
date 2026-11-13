@@ -1101,7 +1101,7 @@ describe('generations', () => {
 });
 
 describe('missions', () => {
-  const start = (id: string) => { const m = missionById(id)!; const g = new Game(m.seed, m.setups, m.size); m.init(g); return { m, g }; };
+  const start = (id: string) => { const m = missionById(id)!; const g = new Game(m.seed, m.setups, m.size, false, !!m.sea); m.init(g); return { m, g }; };
 
   it('every mission sets up cleanly and reports objectives', () => {
     for (const mission of MISSIONS) {
@@ -1112,6 +1112,109 @@ describe('missions', () => {
       run(g, 5);
       expect(Game.restore(g.serialize()).scenario!.id).toBe(m.id);
     }
+  });
+
+  it('Two Doors teaches the church, the tavern and the creed, and is won either way', () => {
+    for (const way of ['pious', 'worldly']) {
+      const { m, g } = start('doors');
+      const done = () => runMission(g, m).objectives.map((o) => o.done);
+      expect(villagers(g, 0).length).toBe(10);
+      expect(done().every((d) => !d)).toBe(true);
+      const a = spot(g, 'temple', 0);
+      const church = g.spawnBuilding('temple', 0, a.cx, a.cy, true);
+      const b = spot(g, 'tavern', 0);
+      const tavern = g.spawnBuilding('tavern', 0, b.cx, b.cy, true);
+      const vs = villagers(g, 0);
+      g.cmdTarget(0, vs.slice(0, 2).map((v) => v.id), church.id);
+      g.cmdTarget(0, vs.slice(2, 4).map((v) => v.id), tavern.id);
+      run(g, 30, () => runMission(g, m));
+      expect(done().slice(0, 4)).toEqual([true, true, true, true]);
+      // Called out again, the lesson is still learned.
+      g.cmdUnstaff(0, way === 'pious' ? tavern.id : church.id, true);
+      g.cmdTarget(0, vs.slice(4, 8).map((v) => v.id), way === 'pious' ? church.id : tavern.id);
+      expect(done()[way === 'pious' ? 3 : 1]).toBe(true);
+      // The question comes early, and the answer counts.
+      run(g, 60, () => runMission(g, m));
+      expect(g.players[0].dilemma).toBeTruthy();
+      expect(done()[4]).toBe(false);
+      expect(g.cmdDecide(0, way === 'pious' ? 'a' : 'b')).toBe(true);
+      expect(done()[4]).toBe(true);
+      let result: string | null = null;
+      run(g, 400, () => { if (!result) result = runMission(g, m).result; if (g.players[0].dilemma) g.cmdDecide(0, way === 'pious' ? 'a' : 'b'); });
+      expect(result).toBe('win');
+      expect(creedOf(g.players[0].virtue).id).toBe(way === 'pious' ? 'devout' : 'worldly');
+    }
+  });
+
+  it('The Far Shore is fought on the water: boats, pirates, a landing', () => {
+    const { m, g } = start('shore');
+    expect(g.sea).toBe(true);
+    const done = () => runMission(g, m).objectives.map((o) => o.done);
+    expect(done().every((d) => !d)).toBe(true);
+    const hold = g.buildings.find((b) => b.owner === 1 && b.type === 'towncenter')!;
+    expect(hold).toBeTruthy();
+    expect(g.units.some((u) => u.type === 'galley')).toBe(false);
+    const at = spot(g, 'dock', 0);
+    const dock = g.spawnBuilding('dock', 0, at.cx, at.cy, true);
+    expect(done()[0]).toBe(true);
+    const water = (dx: number) => g.seaPf.nearestFree(dock.x + dx, dock.y);
+    for (let i = 0; i < 2; i++) { const w = water(i); g.spawnUnit('fishboat', 0, w.x, w.y); }
+    // With boats on the water the pirates put out.
+    expect(done()[1]).toBe(true);
+    const pirates = g.units.filter((u) => u.owner === 1 && u.type === 'galley');
+    expect(pirates.length).toBe(3);
+    expect(done()[2]).toBe(false);
+    for (const p of pirates) expect(g.seaPf.blocked[Math.floor(p.y) * g.size + Math.floor(p.x)]).toBe(0);
+    g.cmdDelete(1, pirates.map((p) => p.id));
+    expect(done()[2]).toBe(true);
+    // Four soldiers aboard a transport.
+    const w = water(2);
+    const ship = g.spawnUnit('transport', 0, w.x, w.y);
+    ship.cargo = g.units.filter((u) => u.owner === 0 && g.isMilitary(u)).slice(0, 4).map((u) => u.id);
+    expect(ship.cargo.length).toBe(4);
+    expect(done()[3]).toBe(true);
+    ship.cargo = [];
+    expect(done()[3]).toBe(true);
+    expect(runMission(g, m).result).toBe(null);
+    (g as any).kill(hold);
+    expect(runMission(g, m).result).toBe('win');
+    // Lose your own town and it is over.
+    const lost = start('shore');
+    for (const b of lost.g.buildings.filter((b) => b.owner === 0)) (lost.g as any).kill(b);
+    expect(runMission(lost.g, lost.m).result).toBe('lose');
+  });
+
+  it('Wolves of the North is played as a Norse war band and won by taking people and settling', () => {
+    const { m, g } = start('wolves');
+    const done = () => runMission(g, m).objectives.map((o) => o.done);
+    expect(g.raider(0)).toBe(true);
+    expect(g.buildings.filter((b) => b.owner === 0).length).toBe(0);
+    expect(done().every((d) => !d)).toBe(true);
+    // Three villagers carried off, each counted once.
+    const fighters = g.units.filter((u) => u.owner === 0 && g.isMilitary(u));
+    for (let i = 0; i < 3; i++) {
+      const v = g.spawnUnit('villager', 1, fighters[i].x + 1.5, fighters[i].y + 2, i % 2 ? 'm' : 'f');
+      g.cmdTarget(0, [fighters[i].id], v.id);
+    }
+    run(g, 15, () => runMission(g, m));
+    expect(done()[0]).toBe(true);
+    expect(g.scenario!.n).toBe(3);
+    const st = g.spec.starts[0];
+    let at = { cx: 0, cy: 0 };
+    for (let d = 3; d < 16 && !at.cx; d++) for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) if (!at.cx && g.canPlace('towncenter', Math.floor(st.x) + dx, Math.floor(st.y) + dy)) at = { cx: Math.floor(st.x) + dx, cy: Math.floor(st.y) + dy };
+    g.spawnBuilding('towncenter', 0, at.cx, at.cy, true);
+    const hs = spot(g, 'house', 0);
+    const house = g.spawnBuilding('house', 0, hs.cx, hs.cy, true);
+    const vs = villagers(g, 0);
+    house.residents = { m: vs.find((v) => v.gender === 'm')!.id, f: vs.find((v) => v.gender === 'f')!.id };
+    expect(done().slice(0, 3)).toEqual([true, true, true]);
+    expect(runMission(g, m).result).toBe(null);
+    while (g.units.filter((u) => u.owner === 0).length < 18) g.spawnUnit('villager', 0, st.x, st.y + 4, 'f');
+    expect(runMission(g, m).result).toBe('win');
+    // A band cut down to the last man has lost.
+    const lost = start('wolves');
+    for (const u of lost.g.units.filter((u) => u.owner === 0)) (lost.g as any).kill(u);
+    expect(runMission(lost.g, lost.m).result).toBe('lose');
   });
 
   it('First Hearth is won by doing what it asks', () => {
