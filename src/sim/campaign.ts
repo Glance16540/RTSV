@@ -161,6 +161,8 @@ export interface Pending {
 export interface Campaign {
   v: number;
   seed: number;
+  /** Borders closed by mountains, a river or open water: the lands either side are not neighbours. */
+  barriers?: Barrier[];
   rngState: number;
   level: number; // 0 easy, 1 normal, 2 hard
   turn: number;
@@ -280,6 +282,132 @@ export function biomeAt(seed: number, x: number, y: number): Biome {
   return 'grass';
 }
 export const biomeOf = (c: Campaign, tid: number): Biome => biomeAt(c.seed, c.territories[tid].x, c.territories[tid].y);
+
+/** Map points between the heights of the land. */
+export const LAND_STEP = 3;
+export interface Terrain { gw: number; gh: number; /** Height at every few points: at or under 0 is water. */ H: Float32Array; /** Each river, as the points it runs through from spring to mouth. */ rivers: number[][]; /** 1 where a river runs. */ wet: Uint8Array }
+const terrains = new Map<string, Terrain>();
+const ease = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+/**
+ * The lie of a world's land, grown from its seed: a ragged coast with bays, lakes between the lands, mountain
+ * ranges, and rivers that run from the high ground by the lowest way to the sea. The same for everyone who
+ * looks at the same world; the map draws it, and it decides where an army cannot march.
+ */
+export function terrainOf(c: Campaign): Terrain {
+  const key = c.seed + ':' + c.territories.map((t) => `${Math.round(t.x)},${Math.round(t.y)},${t.trait}`).join(';');
+  const had = terrains.get(key);
+  if (had) return had;
+  const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
+  const gw = Math.floor(MAP_W / LAND_STEP) + 1, gh = Math.floor(MAP_H / LAND_STEP) + 1, ts = c.territories;
+  const H = new Float32Array(gw * gh);
+  for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
+    const px = Math.min(MAP_W - 1, i * LAND_STEP), py = Math.min(MAP_H - 1, j * LAND_STEP);
+    // Whose land this is, and how far inside it (half the difference between the nearest town and the next).
+    const wx = px + 16 * Math.sin(py / 37), wy = py + 16 * Math.sin(px / 43);
+    let best = 0, d1 = Infinity, d2 = Infinity;
+    for (let k = 0; k < ts.length; k++) { const d = Math.hypot(ts[k].x - wx, ts[k].y - wy); if (d < d1) { d2 = d1; d1 = d; best = k; } else if (d < d2) d2 = d; }
+    const t = ts[best], inside = (d2 - d1) / 2, dC = Math.hypot(px - t.x, py - t.y);
+    // The coast: a ragged shore with deep bays, though every land keeps firm ground under its town.
+    const rim = Math.min(px, py, MAP_W - 1 - px, MAP_H - 1 - py);
+    const shore = ease(4, 44, rim + (N(px / 150, py / 150, 2) - 0.5) * 130 + (N(px / 40, py / 40, 3) - 0.5) * 26 - 18 - (t.trait === 'coast' ? 14 : 0));
+    const keep = (1 - ease(34, 70, dC)) * ease(2, 24, rim);
+    // Lakes and inland seas lie between the lands, never on a town.
+    const lake = ease(0.7, 0.8, N(px / 110, py / 110, 5)) * ease(50, 85, dC);
+    const land = Math.max(shore, keep) * (1 - lake) * ease(0, 9, rim); // and the sea lies all round
+    const { warm, wet } = climateAt(c.seed, px, py);
+    const hot = ease(0.62, 0.72, warm) * (1 - ease(0.5, 0.6, wet)), marsh = ease(0.76, 0.84, wet) * ease(0.4, 0.46, warm);
+    let roll = 0.5 + N(px / 85, py / 85, 6) * 0.75 + N(px / 20, py / 20, 8) * 0.16;
+    roll += hot * Math.abs(Math.sin((px + py * 0.6) / 13 + N(px / 50, py / 50, 12) * 5)) * 0.3; // dunes
+    roll += (0.2 - roll) * marsh; // fen lies flat and low
+    // Mountain ranges cross the world where the seed puts them, and stand on high ground and gold hills; clear of the towns.
+    const range = Math.min(1.25, ease(0.56, 0.72, N(px / 170, py / 170, 7)) + (t.trait === 'hills' ? 0.85 : t.trait === 'gold' ? 0.55 : 0) * ease(4, 34, inside));
+    let m = 0;
+    if (range > 0) {
+      const ridge = 1 - Math.abs(N(px / 38 + 7, py / 38 + 3, 9) * 2 - 1);
+      m = range * ease(30, 74, Math.hypot(px - t.x, py - (t.y + 6))) * (ridge * ridge * ridge * 5.6 + (1 - Math.abs(N(px / 15, py / 15, 13) * 2 - 1)) * ridge * 1.6 + N(px / 9, py / 9, 10) * 0.7);
+    }
+    H[j * gw + i] = land * (roll + m) - (1 - land) * 1.6;
+  }
+  // Rivers: flood the land from the sea upward, so every point knows its lowest way down.
+  const parent = new Int32Array(gw * gh).fill(-1), level = new Float32Array(gw * gh), seen = new Uint8Array(gw * gh);
+  const heap: number[] = [];
+  const push = (n: number): void => { heap.push(n); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (level[heap[p]] <= level[heap[k]]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+  const pop = (): number => {
+    const top = heap[0], end = heap.pop()!;
+    if (heap.length) { heap[0] = end; let k = 0; for (;;) { const l = k * 2 + 1, r = l + 1; let b = k; if (l < heap.length && level[heap[l]] < level[heap[b]]) b = l; if (r < heap.length && level[heap[r]] < level[heap[b]]) b = r; if (b === k) break; [heap[b], heap[k]] = [heap[k], heap[b]]; k = b; } }
+    return top;
+  };
+  for (let n = 0; n < H.length; n++) if (H[n] <= 0) { seen[n] = 1; level[n] = 0; push(n); }
+  while (heap.length) {
+    const n = pop(), i = n % gw, j = (n - i) / gw;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= gw || b >= gh) continue;
+      const q = b * gw + a;
+      if (seen[q]) continue;
+      seen[q] = 1; parent[q] = n; level[q] = Math.max(level[n], H[q]) + (di && dj ? 0.004 : 0); push(q);
+    }
+  }
+  const rivers: number[][] = [], wet = new Uint8Array(gw * gh);
+  for (let k = 0; k < 60 && rivers.length < 7; k++) {
+    const i = 4 + Math.floor(N(k * 3, 1, 60) * (gw - 8)), j = 4 + Math.floor(N(k * 3, 2, 61) * (gh - 8));
+    let n = j * gw + i;
+    if (H[n] < 1.7 || rivers.some((r) => Math.hypot((r[0] % gw) - i, Math.floor(r[0] / gw) - j) < 26)) continue;
+    const path: number[] = [];
+    while (n >= 0 && H[n] > 0 && path.length < 900 && !wet[n]) { path.push(n); n = parent[n]; }
+    if (n >= 0) path.push(n); // the mouth, or the river it runs into
+    if (path.length < 14) continue;
+    for (const q of path) { wet[q] = 1; if (H[q] > 0.12) H[q] = Math.max(0.1, H[q] - 0.22); }
+    rivers.push(path);
+  }
+  const made = { gw, gh, H, rivers, wet };
+  if (terrains.size > 12) terrains.delete(terrains.keys().next().value as string);
+  terrains.set(key, made);
+  return made;
+}
+
+/** What lies across the straight road between two towns: mountains, a river, open water, or nothing. */
+export type BarrierKind = 'mountains' | 'river' | 'water';
+export const BARRIERS: Record<BarrierKind, { icon: string; by: string }> = { mountains: { icon: '⛰️', by: 'the mountains' }, river: { icon: '🏞️', by: 'the river' }, water: { icon: '🌊', by: 'open water' } };
+export interface Barrier { a: number; b: number; kind: BarrierKind }
+function crossing(c: Campaign, a: number, b: number): { kind: BarrierKind; n: number } | null {
+  const T = terrainOf(c), A = c.territories[a], B = c.territories[b], len = Math.hypot(B.x - A.x, B.y - A.y);
+  const count: Record<BarrierKind, number> = { mountains: 0, river: 0, water: 0 };
+  for (let d = 26; d < len - 26; d += 2) {
+    const i = Math.round((A.x + ((B.x - A.x) * d) / len) / LAND_STEP), j = Math.round((A.y + ((B.y - A.y) * d) / len) / LAND_STEP), n = j * T.gw + i;
+    if (T.H[n] > 2.3) count.mountains++;
+    else if (T.H[n] <= 0) count.water++;
+    else if (T.wet[n] || T.wet[n + 1] || T.wet[n - 1] || T.wet[n + T.gw] || T.wet[n - T.gw]) count.river++;
+  }
+  // A ridge or a stretch of water has to be some twenty points across to stop an army; any river does.
+  const kind: BarrierKind | '' = count.mountains >= 9 ? 'mountains' : count.water >= 10 ? 'water' : count.river >= 1 ? 'river' : '';
+  return kind ? { kind, n: kind === 'river' ? 14 + count.river : count[kind] } : null; // a river counts as a ridge some thirty points deep
+}
+/**
+ * Close the borders an army cannot cross. A march goes by the straight road from town to town; where mountains, a
+ * river or open water lie across it, the two lands are no longer neighbours. Passes and fords are left wherever
+ * closing a border would cut the world in two, leave a land with a single way in, or close more than a quarter of all borders.
+ */
+function raiseBarriers(c: Campaign): void {
+  const ts = c.territories, found: (Barrier & { n: number })[] = [];
+  for (const t of ts) for (const o of t.adj) if (o > t.id) { const x = crossing(c, t.id, o); if (x) found.push({ a: t.id, b: o, kind: x.kind, n: x.n }); }
+  found.sort((p, q) => q.n - p.n || p.a - q.a || p.b - q.b); // the greatest barriers first
+  const links = ts.reduce((n, t) => n + t.adj.length, 0) / 2;
+  const whole = (): boolean => {
+    const seen = new Set([0]), q = [0];
+    while (q.length) for (const n of ts[q.pop()!].adj) if (!seen.has(n)) { seen.add(n); q.push(n); }
+    return seen.size === ts.length;
+  };
+  c.barriers = [];
+  for (const f of found) {
+    if (c.barriers.length >= links / 4) break;
+    const A = ts[f.a], B = ts[f.b];
+    if (A.adj.length <= 2 || B.adj.length <= 2) continue;
+    A.adj = A.adj.filter((n) => n !== f.b); B.adj = B.adj.filter((n) => n !== f.a);
+    if (whole()) c.barriers.push({ a: f.a, b: f.b, kind: f.kind });
+    else { A.adj.push(f.b); B.adj.push(f.a); }
+  }
+}
 
 /** A front of the kind that suits the country it starts over: snow in the cold lands, dust in the dry, rain elsewhere. */
 function newFront(c: Campaign, k: number, edge: boolean): Front {
@@ -424,7 +552,8 @@ const NAMES = [
   'Ashford Vale', 'Stonereach', 'Greenmere', 'Highmoor', 'Riverbend', 'Wolfwood', 'Sunfields', 'Ironcrag',
   'Mistfen', 'Eastmarch', 'Goldwater', 'Thornhold', 'Westshore', 'Redcliff', 'Oakhollow', 'Harrowdale',
   'Saltmarsh', 'Kingsbarrow', 'Emberfell', 'Windscar', 'Lowmere', 'Frosthollow', 'Amberfield', 'Ravenmoor',
-  'Greywater', 'Brackenridge',
+  'Greywater', 'Brackenridge', 'Hollowmere', 'Stagsford', 'Blackfen', 'Whitepeak', 'Dunmarrow', 'Larkfield',
+  'Cinderholt', 'Marrowdeep', 'Silverrun', 'Heronwick', 'Drystone', 'Fallowmead', 'Gullhaven', 'Thistledown',
 ];
 export const LOCALS = { name: 'Local Tribe', color: 0x9a8a6a };
 
@@ -533,6 +662,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     const rim = t.x < MAP_W * 0.14 || t.x > MAP_W * 0.86 || t.y < MAP_H * 0.16 || t.y > MAP_H * 0.84;
     if (rim && !t.trait && t.capital < 0 && t.seed % 2 === 0) t.trait = 'coast';
   }
+  raiseBarriers(c);
   c.log.push(`Turn 1. You lead the ${CIVS[mine].name}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');

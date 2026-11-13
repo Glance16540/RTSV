@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { Campaign, EVENTS, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots } from '../sim/campaign';
+import { Campaign, EVENTS, LAND_STEP, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots, terrainOf } from '../sim/campaign';
 import { lookOf } from './models';
 import { RealPerson, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 
@@ -18,7 +18,7 @@ const K = 0.13;
 const S = K / 0.1;
 const WX = (px: number): number => px * K - (MAP_W * K) / 2;
 const WZ = (py: number): number => py * K - (MAP_H * K) / 2;
-const STEP = 3; // map points between heights
+const STEP = LAND_STEP;
 
 const hash = (x: number, y: number): number => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
 const smooth = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -102,67 +102,9 @@ export class WorldMap {
     sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.06;
     this.scene.add(sun, sun.target);
 
-    // ---- the lie of the land, grown from the campaign's seed ----
+    // ---- the lie of the land, grown from the campaign's seed (the rules know it too: it decides where a march is barred) ----
     const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
-    const gw = (this.gw = Math.floor(MAP_W / STEP) + 1), gh = (this.gh = Math.floor(MAP_H / STEP) + 1);
-    const H = (this.heights = new Float32Array(gw * gh));
-    for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
-      const px = Math.min(MAP_W - 1, i * STEP), py = Math.min(MAP_H - 1, j * STEP), ci = py * MAP_W + px;
-      const t = c.territories[cell[ci]], dC = Math.hypot(px - t.x, py - t.y);
-      // The coast: a ragged shore with deep bays, though every land keeps firm ground under its town.
-      const rim = Math.min(px, py, MAP_W - 1 - px, MAP_H - 1 - py);
-      const shore = smooth(4, 44, rim + (N(px / 150, py / 150, 2) - 0.5) * 130 + (N(px / 40, py / 40, 3) - 0.5) * 26 - 18 - (t.trait === 'coast' ? 14 : 0));
-      const keep = (1 - smooth(34, 70, dC)) * smooth(2, 24, rim);
-      // Lakes and inland seas lie between the lands, never on a town.
-      const lake = smooth(0.7, 0.8, N(px / 110, py / 110, 5)) * smooth(50, 85, dC);
-      const land = Math.max(shore, keep) * (1 - lake);
-      const { warm, wet } = climateAt(c.seed, px, py);
-      const hot = smooth(0.62, 0.72, warm) * (1 - smooth(0.5, 0.6, wet)), marsh = smooth(0.76, 0.84, wet) * smooth(0.4, 0.46, warm);
-      let roll = 0.5 + N(px / 85, py / 85, 6) * 0.75 + N(px / 20, py / 20, 8) * 0.16;
-      roll += hot * Math.abs(Math.sin((px + py * 0.6) / 13 + N(px / 50, py / 50, 12) * 5)) * 0.3; // dunes
-      roll += (0.2 - roll) * marsh; // fen lies flat and low
-      // Mountain ranges cross the world where the seed puts them, and stand on high ground and gold hills; clear of the towns.
-      const range = Math.min(1.25, smooth(0.56, 0.72, N(px / 170, py / 170, 7)) + (t.trait === 'hills' ? 0.85 : t.trait === 'gold' ? 0.55 : 0) * smooth(4, 34, edge[ci]));
-      let m = 0;
-      if (range > 0) {
-        const ridge = 1 - Math.abs(N(px / 38 + 7, py / 38 + 3, 9) * 2 - 1);
-        m = range * smooth(30, 74, Math.hypot(px - t.x, py - (t.y + 6))) * (ridge * ridge * ridge * 5.6 + (1 - Math.abs(N(px / 15, py / 15, 13) * 2 - 1)) * ridge * 1.6 + N(px / 9, py / 9, 10) * 0.7);
-      }
-      H[j * gw + i] = land * (roll + m) - (1 - land) * 1.6;
-    }
-
-    // ---- rivers: from the high ground, by the lowest way, to the sea ----
-    const parent = new Int32Array(gw * gh).fill(-1), level = new Float32Array(gw * gh), seen = new Uint8Array(gw * gh);
-    const heap: number[] = [];
-    const push = (n: number): void => { heap.push(n); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (level[heap[p]] <= level[heap[k]]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
-    const pop = (): number => {
-      const top = heap[0], end = heap.pop()!;
-      if (heap.length) { heap[0] = end; let k = 0; for (;;) { const l = k * 2 + 1, r = l + 1; let b = k; if (l < heap.length && level[heap[l]] < level[heap[b]]) b = l; if (r < heap.length && level[heap[r]] < level[heap[b]]) b = r; if (b === k) break; [heap[b], heap[k]] = [heap[k], heap[b]]; k = b; } }
-      return top;
-    };
-    for (let n = 0; n < H.length; n++) if (H[n] <= 0) { seen[n] = 1; level[n] = 0; push(n); }
-    while (heap.length) {
-      const n = pop(), i = n % gw, j = (n - i) / gw;
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        const a = i + di, b = j + dj;
-        if (a < 0 || b < 0 || a >= gw || b >= gh) continue;
-        const q = b * gw + a;
-        if (seen[q]) continue;
-        seen[q] = 1; parent[q] = n; level[q] = Math.max(level[n], H[q]) + ((di && dj) ? 0.004 : 0); push(q);
-      }
-    }
-    const rivers: number[][] = [], wetGrid = new Uint8Array(gw * gh);
-    for (let k = 0; k < 60 && rivers.length < 7; k++) {
-      const i = 4 + Math.floor(N(k * 3, 1, 60) * (gw - 8)), j = 4 + Math.floor(N(k * 3, 2, 61) * (gh - 8));
-      let n = j * gw + i;
-      if (H[n] < 1.7 || rivers.some((r) => Math.hypot((r[0] % gw) - i, Math.floor(r[0] / gw) - j) < 26)) continue;
-      const path: number[] = [];
-      while (n >= 0 && H[n] > 0 && path.length < 900 && !wetGrid[n]) { path.push(n); n = parent[n]; }
-      if (n >= 0) path.push(n); // the mouth, or the river it runs into
-      if (path.length < 14) continue;
-      for (const q of path) { wetGrid[q] = 1; if (H[q] > 0.12) H[q] = Math.max(0.1, H[q] - 0.22); }
-      rivers.push(path);
-    }
+    const land = terrainOf(c), gw = (this.gw = land.gw), gh = (this.gh = land.gh), H = (this.heights = land.H), rivers = land.rivers, wetGrid = land.wet;
 
     const geo = new THREE.PlaneGeometry(MAP_W * K, MAP_H * K, gw - 1, gh - 1).rotateX(-Math.PI / 2);
     const pos = geo.getAttribute('position');
@@ -217,6 +159,16 @@ export class WorldMap {
         }
       }
     }
+    // Roads: a dotted way between every two towns an army can march between. Where there is none, the way is barred.
+    ctx.setLineDash([5, 6]);
+    for (const [tone, wide] of [['rgba(60,40,20,0.35)', 3.6], ['rgba(238,220,170,0.9)', 1.8]] as [string, number][]) {
+      ctx.strokeStyle = tone; ctx.lineWidth = wide;
+      for (const t of c.territories) for (const o of t.adj) if (o > t.id) {
+        const u = c.territories[o], mx = (t.x + u.x) / 2 + (u.y - t.y) * 0.08, my = (t.y + u.y) / 2 - (u.x - t.x) * 0.08;
+        ctx.beginPath(); ctx.moveTo(t.x, t.y + 8); ctx.quadraticCurveTo(mx, my + 8, u.x, u.y + 8); ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
     this.base = ctx.getImageData(0, 0, MAP_W, MAP_H).data;
     this.paintTex = new THREE.CanvasTexture(this.sheet);
     this.paintTex.colorSpace = THREE.SRGBColorSpace;

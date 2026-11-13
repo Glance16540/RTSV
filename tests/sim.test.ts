@@ -8,7 +8,7 @@ import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, UNITS, styleOf } from '../src/sim/data';
-import { Campaign, BIOMES, biomeOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { Campaign, BIOMES, biomeOf, terrainOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -835,6 +835,7 @@ describe('conquest campaign', () => {
 
   it('battle bonuses give each side its army in the real-time game', () => {
     const c = newCampaign(7);
+    c.fronts = [];
     const home = c.territories.find((t) => t.capital === 0)!;
     moveArmy(c, armyAt(c, home.id)!.id, home.adj[0]);
     const cfg = battleConfig(c)!;
@@ -966,6 +967,7 @@ describe('fighting as a side', () => {
 describe('conquest reserves', () => {
   it('armies next door support a battle and join it as allies', () => {
     const c = newCampaign(7);
+    c.fronts = [];
     const home = c.territories.find((t) => t.capital === 0)!;
     const army = armyAt(c, home.id)!;
     const target = c.territories[home.adj[0]];
@@ -2903,6 +2905,48 @@ describe('the worlds of the campaign', () => {
     moveArmy(c, a.id, target.id);
     c.pending!.mode = 'siege';
     expect(battleConfig(c)!.climate).toBe(BIOMES[biomeOf(c, target.id)].climate);
+  });
+});
+
+describe('mountains and rivers on the campaign map', () => {
+  it('close the border they lie across, and never cut the world in two', () => {
+    let closed = 0;
+    const kinds = new Set<string>(), all: Record<string, number> = {};
+    for (let seed = 1; seed <= 12; seed++) {
+      const c = newCampaign(seed, 2, 1, 'hearth'), T = terrainOf(c);
+      const links = c.territories.reduce((n, t) => n + t.adj.length, 0) / 2;
+      expect(c.barriers!.length).toBeLessThanOrEqual(Math.ceil((links + c.barriers!.length) / 4));
+      for (const w of c.barriers!) {
+        kinds.add(w.kind); closed++; all[w.kind] = (all[w.kind] ?? 0) + 1;
+        // Neither land counts the other a neighbour, so no army marches across and none lends support.
+        expect(c.territories[w.a].adj).not.toContain(w.b);
+        expect(c.territories[w.b].adj).not.toContain(w.a);
+        expect(reach(c, w.a)).not.toContain(w.b);
+      }
+      // Every land can still be reached from every other, and none is left with a single way in.
+      const seen = new Set([0]), q = [0];
+      while (q.length) for (const n of c.territories[q.pop()!].adj) if (!seen.has(n)) { seen.add(n); q.push(n); }
+      expect(seen.size).toBe(c.territories.length);
+      for (const t of c.territories) expect(t.adj.length).toBeGreaterThanOrEqual(2);
+      for (const t of c.territories) expect(t.name, `a name for every land of world ${seed}`).toBeTruthy();
+      // Every town stands on dry land, and the world has water round it.
+      for (const t of c.territories) expect(T.H[Math.round(t.y / 3) * T.gw + Math.round(t.x / 3)]).toBeGreaterThan(0);
+      expect(T.H[0]).toBeLessThan(0);
+    }
+    console.log(`borders closed in 12 worlds: ${closed} ${JSON.stringify(all)}`);
+    expect(closed).toBeGreaterThan(12);
+    expect(kinds.has('mountains')).toBe(true);
+    expect(kinds.has('river')).toBe(true);
+  });
+
+  it('an army ordered across a closed border does not move', () => {
+    const c = newCampaign(3, 2, 1, 'hearth');
+    const w = c.barriers![0];
+    c.armies = [{ id: 99, owner: 0, at: w.a, units: { infantry: 3 }, hero: false, vet: 0, moved: false }];
+    c.territories[w.a].owner = 0;
+    moveArmy(c, 99, w.b);
+    expect(c.armies[0].at).toBe(w.a);
+    expect(c.pending).toBeNull();
   });
 });
 
