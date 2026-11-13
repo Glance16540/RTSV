@@ -411,6 +411,11 @@ body.at-title #hud, body.at-title #overlay { visibility: hidden; }
 #t-panel #civ-info small { color: var(--sepia); font-size: 14px; }
 .t-pick { margin: 16px 0 0 !important; font-style: italic; }
 #t-panel .levels { justify-content: flex-start; margin-top: 8px; gap: 10px; }
+/* The leader's name is a line of the page, underlined like the fields above it, with a red pilcrow to mark it. */
+#t-panel .hero-row { margin: 10px 0 0; }
+#t-panel .hero-row button { margin: 0; padding: 2px 2px 3px; font: 400 19px var(--caps); text-transform: lowercase; letter-spacing: 0.03em; color: var(--ink); background: none; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; transition: color 0.15s, border-color 0.15s; }
+#t-panel .hero-row button::before { content: '¶ '; color: var(--rubric); }
+#t-panel .hero-row button:hover, #t-panel .hero-row button:focus-visible { color: var(--rubric); border-bottom-color: var(--rubric); outline: 0; }
 /* Buttons are blocks of type: outlined, and the one to press inked solid. */
 #t-panel .levels button { margin: 0; padding: 7px 30px 9px; font: 400 22px var(--caps); text-transform: lowercase; letter-spacing: 0.04em; color: var(--ink); background: none; border: 2px solid var(--ink); border-radius: 0; transition: background 0.15s, color 0.15s, border-color 0.15s; }
 #t-panel .levels #start-btn { color: var(--vellum); background: var(--ink); }
