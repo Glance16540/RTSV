@@ -89,7 +89,8 @@ export class WorldMap {
   private cloudMats: THREE.Material[] = [];
   /** Each land's town, kept until what stands there changes. */
   private towns = new Map<number, { sig: string; mesh: THREE.Mesh }>();
-  private townMat = new THREE.MeshStandardMaterial({ roughness: 0.88, flatShading: true, vertexColors: true });
+  private townMat = this.detailed(true);
+  private campMat = this.detailed(false);
   /** Camps and plinths, made once for each kind and reused. */
   private camps = new Map<string, THREE.BufferGeometry>();
   private fires: THREE.Mesh[] = [];
@@ -613,6 +614,14 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       if (L.house === 'yurt') { cyl(d * 0.62, h * 0.7, L.plaster, x, by, z, 10); cyl(d * 0.64, 0.04, banner, x, by + h * 0.45, z, 10); cone(d * 0.68, h * 0.55, white(L.roof), x, by + h * 0.7, z, 10); return; }
       if (L.house === 'long') { box(w * 1.5, h * 0.5, d, L.plaster, x, by, z, ry); pitched(w * 1.5 + 0.06, h * 1.3, d + 0.16, roofTone, x, by + h * 0.3, z, ry); door(); return; }
       box(w, h, d, L.plaster, x, by, z, ry);
+      // Windows either side of the door and along the flanks, some with a lamp lit; a timber band on a framed house.
+      const fx = Math.sin(ry), fz = Math.cos(ry), sx = Math.cos(ry), sz = -Math.sin(ry), lit = (q: number): number => (rnd(x * 13 + z * 7 + q) > 0.62 ? 0xf6cf6a : 0x27303c);
+      for (const q of [-1, 1]) {
+        box(0.055, 0.065, 0.016, lit(q), x + fx * (d / 2) + sx * w * 0.3 * q, by + h * 0.48, z + fz * (d / 2) + sz * w * 0.3 * q, ry, 1);
+        box(0.05, 0.06, 0.016, lit(q + 5), x + sx * (w / 2) * q + fx * d * 0.12, by + h * 0.48, z + sz * (w / 2) * q + fz * d * 0.12, ry + 1.5708, 1);
+      }
+      box(0.09, 0.02, 0.03, L.dark, x + fx * (d / 2), by + 0.13, z + fz * (d / 2), ry, 1); // lintel over the door
+      if (L.house === 'gable') { box(w + 0.012, 0.02, d + 0.012, TIMBER, x, by + h * 0.34, z, ry, 1); for (const qx of [-1, 1]) for (const qz of [-1, 1]) box(0.022, h, 0.022, TIMBER, x + sx * (w / 2) * qx + fx * (d / 2) * qz, by, z + sz * (w / 2) * qx + fz * (d / 2) * qz, ry, 1); }
       if (L.house === 'flat') { box(w + 0.05, 0.05, d + 0.05, L.dark, x, by + h, z, ry, 1); if (L.trim && rnd(x * 9 + z) > 0.55) dome(d * 0.36, L.trim, x, by + h + 0.04, z); }
       else if (L.house === 'hip') { hip(w + 0.2, h * 0.7, d + 0.2, roofTone, x, by + h, z, ry); }
       else { pitched(w + 0.08, h * 0.85, d + 0.1, roofTone, x, by + h, z, ry); box(0.05, 0.16, 0.05, L.dark, x + Math.cos(ry) * w * 0.25, by + h + 0.06, z - Math.sin(ry) * w * 0.25, ry, 1); }
@@ -723,7 +732,21 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       keep(0, -0.25);
       // Streets of houses inside, a well in the square.
       for (let k = 0; k < 11; k++) { const a = 0.5 + (k / 11) * 5.6, d = 1.15 + rnd(k) * 0.42; house(Math.cos(a) * d, 0.05, Math.sin(a) * d * 0.82 + 0.1, a + 1.57 + (rnd(k + 20) - 0.5), 0.3 + rnd(k + 40) * 0.14, 0.26, 0.2 + rnd(k + 60) * 0.1); }
-      cyl(0.09, 0.1, L.dark, 0.1, 0.05, 0.75, 8);
+      // The square: paving, a roofed well, market stalls under coloured awnings, barrels and a cart.
+      cyl(0.62, 0.012, L.dark, 0.1, 0.05, 0.78, 14, 0.62);
+      cyl(0.09, 0.1, L.stone, 0.1, 0.06, 0.75, 9); cyl(0.065, 0.02, 0x2a3a4a, 0.1, 0.15, 0.75, 9);
+      for (const dx of [-0.085, 0.085]) box(0.02, 0.22, 0.02, TIMBER, 0.1 + dx, 0.06, 0.75, 0, 1);
+      pitched(0.24, 0.07, 0.14, ROOF, 0.1, 0.28, 0.75);
+      [[-0.32, 0.92, 0xb0402c], [0.5, 0.98, 0x2f6a8a], [0.42, 0.56, 0xd8b040], [-0.28, 0.55, banner]].forEach(([sx, sz, tone], k) => {
+        for (const dx of [-0.09, 0.09]) for (const dz of [-0.06, 0.06]) box(0.014, 0.16, 0.014, TIMBER, sx + dx, 0.06, sz + dz, 0, 1);
+        pitched(0.24, 0.05, 0.17, tone, sx, 0.22, sz, k * 0.3);
+        box(0.18, 0.07, 0.09, 0x8a6a40, sx, 0.06, sz, 0, 1);
+        box(0.05, 0.03, 0.05, k % 2 ? 0xc0452f : 0x7fa246, sx - 0.04, 0.13, sz, 0, 1); box(0.05, 0.03, 0.05, 0xe0b040, sx + 0.04, 0.13, sz, 0, 1);
+      });
+      for (const [bx, bz] of [[0.72, 0.72], [0.78, 0.8], [-0.5, 0.7]]) cyl(0.035, 0.08, 0x74522f, bx, 0.06, bz, 8);
+      box(0.2, 0.04, 0.11, 0x7a5c36, -0.05, 0.1, 1.12, 0.4, 1); for (const q of [-1, 1]) cyl(0.045, 0.02, 0x4a3420, -0.05 + q * 0.07, 0.07, 1.12 + q * 0.03, 8);
+      // A few trees in the gardens behind the houses.
+      if (style !== 'desert') for (let k = 0; k < 5; k++) { const a = 0.9 + k * 1.2, d = 1.55 + rnd(k + 90) * 0.2; cyl(0.02, 0.12, TIMBER, Math.cos(a) * d, 0.05, Math.sin(a) * d * 0.8 + 0.1, 5); parts.push(put(tinted(new THREE.IcosahedronGeometry(0.11, 1), snow ? 0xdfe6ea : 0x4d7a36, 0.6), Math.cos(a) * d, 0.2, Math.sin(a) * d * 0.8 + 0.1)); }
     } else if (t.buildings.includes('fortress')) {
       // A stronghold: four walls, four towers, and a smaller keep of the people's own kind.
       const c4: [number, number][] = [[-0.95, -0.8], [0.95, -0.8], [0.95, 0.8], [-0.95, 0.8]];
@@ -734,6 +757,10 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       // A hamlet: a few homes, a haystack.
       for (let k = 0; k < 3; k++) house(-0.45 + k * 0.5 + (rnd(k) - 0.5) * 0.2, 0, -0.2 + (rnd(k + 5) - 0.5) * 0.6, (rnd(k + 9) - 0.5) * 1.6, 0.36, 0.28, 0.2);
       if (L.house === 'gable' || L.house === 'long') cone(0.13, 0.2, 0xd8b85a, 0.55, 0, 0.35, 8);
+      // A well, a woodpile, a fenced garden in rows.
+      cyl(0.07, 0.08, L.stone, -0.1, 0, 0.42, 8); cyl(0.05, 0.02, 0x2a3a4a, -0.1, 0.07, 0.42, 8);
+      for (let k = 0; k < 4; k++) parts.push(put(tinted(new THREE.CylinderGeometry(0.02, 0.02, 0.16, 5).rotateZ(1.5708), k % 2 ? 0x8a6a40 : TIMBER, 1), -0.6 + (k % 2) * 0.02, 0.03 + Math.floor(k / 2) * 0.04, 0.4 + (k % 2) * 0.045));
+      if (style !== 'desert' && !snow) { for (let k = 0; k < 4; k++) box(0.3, 0.015, 0.035, k % 2 ? 0x6f8f3a : 0x7a5a36, 0.25, 0, 0.62 + k * 0.05, 0.15, 1); for (let k = 0; k < 5; k++) box(0.012, 0.07, 0.012, TIMBER, 0.07 + k * 0.09, 0, 0.86, 0.15, 1); box(0.4, 0.012, 0.012, TIMBER, 0.25, 0.05, 0.86, 0.15, 1); }
     }
     // What has been built on the land stands round it.
     t.buildings.filter((b) => b !== 'fortress').forEach((b, k) => {
@@ -912,6 +939,47 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     return g;
   }
 
+  /**
+   * What towns and camps are made of. The shapes are plain, so the surface is worked as it is drawn: stone and plaster
+   * are laid in courses with mortar between, timber runs in planks, roofs are rows of overlapping tile or thatch,
+   * cloth has a weave, and everything has a grain. Close to, a wall reads as a wall.
+   */
+  private detailed(tiles: boolean): THREE.MeshStandardMaterial {
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.88, flatShading: true, vertexColors: true });
+    mat.customProgramCacheKey = (): string => 'detailed' + tiles;
+    mat.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLPos;').replace('#include <begin_vertex>', '#include <begin_vertex>\n  vLPos = position;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', `#include <common>
+varying vec3 vLPos;
+float dh( vec2 p ) { p = fract( p * vec2( 123.34, 456.21 ) ); p += dot( p, p + 45.32 ); return fract( p.x * p.y ); }
+float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f ); return mix( mix( dh( i ), dh( i + vec2( 1.0, 0.0 ) ), f.x ), mix( dh( i + vec2( 0.0, 1.0 ) ), dh( i + vec2( 1.0, 1.0 ) ), f.x ), f.y ); }`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+  vec3 fn = normalize( cross( dFdx( vLPos ), dFdy( vLPos ) ) );
+  float up = abs( fn.y );
+  vec3 base = diffuseColor.rgb;
+  float mx = max( base.r, max( base.g, base.b ) ), mn = min( base.r, min( base.g, base.b ) ), sat = ( mx - mn ) / max( mx, 0.001 );
+  float along = dot( vLPos.xz, normalize( vec2( -fn.z, fn.x ) + 0.00001 ) );
+  float k = 0.9 + 0.1 * dn( vLPos.xz * 46.0 + vLPos.y * 23.0 ) + 0.1 * dn( vLPos.xz * 120.0 + vLPos.y * 71.0 );
+  if ( up < 0.35 ) {
+    if ( sat < 0.45 ) {
+      float row = floor( vLPos.y * 16.0 ), by = fract( vLPos.y * 16.0 ), sx = along * 8.0 + mod( row, 2.0 ) * 0.5, bx = fract( sx );
+      float face = smoothstep( 0.0, 0.12, by ) * smoothstep( 0.0, 0.07, bx );
+      float soft = smoothstep( 0.35, 0.75, mx ) * 0.6;
+      k *= mix( 1.0, mix( 0.7, 0.92 + 0.16 * dh( vec2( floor( sx ), row ) ), face ), 1.0 - soft );
+    } else {
+      float px = fract( along * 14.0 );
+      k *= mix( 0.74, 1.0, smoothstep( 0.0, 0.14, px ) ) * ( 0.9 + 0.2 * dn( vec2( floor( along * 14.0 ) * 7.0, vLPos.y * 34.0 ) ) );
+    }
+  } else if ( up < 0.96 ) {
+    ${tiles ? `float row = vLPos.y * 26.0, sx = along * 14.0 + mod( floor( row ), 2.0 ) * 0.5;
+    k *= ( 0.76 + 0.32 * fract( row ) ) * mix( 0.84, 1.0, smoothstep( 0.0, 0.14, fract( sx ) ) ) * ( 0.92 + 0.16 * dh( vec2( floor( sx ), floor( row ) ) ) );` : `k *= 0.93 + 0.07 * sin( along * 110.0 ) + 0.05 * sin( vLPos.y * 90.0 );`}
+  }
+  diffuseColor.rgb = base * k;`);
+    };
+    return mat;
+  }
+
   /** A shadow that fades out to nothing at its edge, as cloud shadow does. */
   private softShade(): THREE.Texture {
     if (this.shadeTex) return this.shadeTex;
@@ -936,6 +1004,12 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     this.fit = Math.max((60 * S * UX) / (half * this.camera.aspect), (33 * S * UZ) / half);
     if (!this.moved) this.dist = this.fit;
     if (!this.cd) this.cd = this.fit * 1.7; // the eye comes down out of the sky the first time
+    // `?look=cap`, `?look=tribe`, `?look=foe` or a land's number opens the map close in on that place (`&near=` sets how close): for looking at towns.
+    const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null, look = q?.get('look');
+    if (look && !this.moved) {
+      const ts = this.c.territories, t = look === 'cap' ? ts.find((x) => x.capital === 0) : look === 'foe' ? ts.find((x) => x.capital === 1) : look === 'tribe' ? ts.find((x) => x.owner < 0 && !x.horde) : ts[+look];
+      if (t) { this.tx = this.cx = WX(t.x) + 1.2; this.tz = this.cz = WZ(t.y) + 1.6; this.dist = this.cd = +(q!.get('near') ?? 24) || 24; this.moved = true; }
+    }
   }
 
   private sprite(draw: (x: CanvasRenderingContext2D, w: number, h: number) => void, w: number, h: number, scale: number): THREE.Sprite {
@@ -974,7 +1048,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     else { const rg = dx.createRadialGradient(8, 32, 0, 8, 32, 8); rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); dx.fillStyle = rg; dx.fillRect(0, 24, 16, 16); }
     const dotTex = new THREE.CanvasTexture(dot);
     this.textures.push(dotTex);
-    const fall = new THREE.Points(fg, new THREE.PointsMaterial({ map: dotTex, color: kind === 'rain' ? 0xbcd2ee : kind === 'snow' ? 0xffffff : 0xd8b47c, size: kind === 'rain' ? 1.5 : kind === 'snow' ? 0.9 : 0.7, transparent: true, opacity: kind === 'rain' ? 0.5 : 0.7, depthWrite: false }));
+    const fall = new THREE.Points(fg, new THREE.PointsMaterial({ map: dotTex, color: kind === 'rain' ? 0xbcd2ee : kind === 'snow' ? 0xffffff : 0xd8b47c, size: kind === 'rain' ? 0.55 : kind === 'snow' ? 0.32 : 0.28, transparent: true, opacity: kind === 'rain' ? 0.5 : 0.7, depthWrite: false }));
     g.add(fall);
     g.position.set(x, 14.5, z);
     this.scene.add(g);
@@ -985,7 +1059,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
   sync(c: Campaign, sel: number, reach: Set<number>): void {
     this.c = c;
     this.last = { sel, reach };
-    for (const l of this.lanes) { const open = c.territories[l.a].buildings.includes('harbour') || c.territories[l.b].buildings.includes('harbour'); l.mat.opacity = open ? 1 : 0.6; l.rim.opacity = open ? 0.6 : 0.35; }
+    for (const l of this.lanes) { const open = c.territories[l.a].buildings.includes('harbour') || c.territories[l.b].buildings.includes('harbour'); l.mat.userData.full = open ? 1 : 0.6; l.rim.userData.full = open ? 0.6 : 0.35; }
     for (const t of this.textures) t.dispose();
     this.textures = [];
     this.pieces.clear();
@@ -1080,7 +1154,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       const campKey = [a ? 'army' : t.horde ? 'horde' : 'tribe', style, color, Math.min(5, Math.ceil(n / 3))].join('|');
       let campGeo = this.camps.get(campKey);
       if (!campGeo) this.camps.set(campKey, (campGeo = this.buildCamp(a ? 'army' : t.horde ? 'horde' : 'tribe', style, color, n)));
-      const camp = new THREE.Mesh(campGeo, a?.moved && c.phase === 'player' ? this.townMat.clone() : this.townMat);
+      const camp = new THREE.Mesh(campGeo, a?.moved && c.phase === 'player' ? this.detailed(false) : this.campMat);
       camp.castShadow = true; camp.receiveShadow = true;
       piece.add(camp);
       // A fire burns in every camp.
@@ -1177,6 +1251,9 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     // Cloud thins as the eye comes down through it, so it never hides the ground being looked at.
     const thin = 0.25 + 0.75 * smooth(30, 80, this.cd);
     for (const m of this.cloudMats) m.opacity = (m.userData.full as number) * thin;
+    // Sea lanes are a mark for the far view: close to, they sink back so they do not lie on the water like planks.
+    const far = 0.3 + 0.7 * smooth(0.25, 0.6, this.cd / this.fit);
+    for (const l of this.lanes) { l.mat.opacity = ((l.mat.userData.full as number) ?? 0.6) * far; l.rim.opacity = ((l.rim.userData.full as number) ?? 0.35) * far; }
     const wide = MAP_W * K * 0.75;
     for (const p of this.puffs) { p.g.position.x += p.v * dt; if (p.g.position.x > wide) p.g.position.x = -wide; for (const o of p.g.children) if (o.userData.shade) o.position.y = 1.6 - p.g.position.y; }
     for (const f of this.flocks) {
