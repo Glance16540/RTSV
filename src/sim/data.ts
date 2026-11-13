@@ -242,7 +242,7 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   zealot: U({
     id: 'zealot', name: 'Zealot', icon: '☀️', civ: 'dawn',
-    desc: 'Canaanites only. Fast, fervent infantry that mends its own wounds with every blow it lands.',
+    desc: 'Arameans only. Fast, fervent infantry that mends its own wounds with every blow it lands.',
     cost: { food: 55, gold: 20 }, time: 15, age: 1, hp: 85, atk: 9, armor: 1, range: 0.5, speed: 2.6,
     cooldown: 1.3, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, drain: 4,
   }),
@@ -286,7 +286,7 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   templar: U({
     id: 'templar', name: 'Temple Guard', icon: '🌅', civ: 'dawn',
-    desc: 'Canaanites only. Armoured horseman who mends his own wounds with every blow.',
+    desc: 'Arameans only. Armoured horseman who mends his own wounds with every blow.',
     cost: { food: 110, gold: 70 }, time: 26, age: 3, hp: 150, atk: 13, armor: 3, range: 0.7, speed: 3.2,
     cooldown: 1.5, sight: 9, pop: 2, cls: 'cavalry', radius: 0.45, drain: 5, bonus: { ranged: 1.3 },
   }),
@@ -863,7 +863,7 @@ export const CIVS: Record<string, CivDef> = {
 };
 Object.assign(CIVS, {
   dawn: {
-    id: 'dawn', name: 'Canaanites', icon: '🌅', desc: 'A people of priests and prophets.', unique: 'zealot', unique2: 'templar',
+    id: 'dawn', name: 'Arameans', icon: '🌅', desc: 'A people of priests and prophets.', unique: 'zealot', unique2: 'templar',
     bonuses: ['Priests, Prophets and other healers cost 25% less', 'Prophets regain faith 50% faster', 'Healers mend 30% faster'],
     apply: (m: Mods) => { m.clergyCost = 0.75; m.faith = 1.5; m.heal += 0.3; },
   },
