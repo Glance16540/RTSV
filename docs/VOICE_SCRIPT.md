@@ -225,7 +225,7 @@ Put a file named `persona_forge.txt` containing `alt` beside the recordings to h
 | `forge_p_ageup_1` | As the player's own leader: a new age is reached | At last, proper tools. |
 | `forge_p_ageup_2` | As the player's own leader: a new age is reached | Progress. Throw out the old drawings. |
 
-## Dawnsworn: Eliab the Seer — Judge of the Tribes
+## Canaanites: Eliab the Seer — Judge of the Tribes
 
 **Direction:** Male, ageless. Calm, soft, certain. Speaks of the future in the past tense.
 

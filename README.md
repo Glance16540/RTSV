@@ -43,7 +43,7 @@ pious or decadent: that is decided by how they are ruled, not by who they are.
 | Mongols | Cavalry 15% cheaper and 10% faster | Lancer: a crushing first blow after a run-up; Horse Archer (Iron Age): shoots from the saddle |
 | Franks | Farms +25%, children 25% sooner, bigger houses | Hearthguard: fights harder near its own houses; Herbwife (Iron Age): quick, cheap healer |
 | Chinese | Research 30% faster and 15% cheaper, tougher siege | Fire Lancer: scorches a group and sets buildings alight; Organ Gun (Gunpowder Age): tears up packed infantry |
-| Dawnsworn | Cheaper priests, prophets and healers, faster faith, stronger healing | Zealot: mends itself with every blow; Temple Guard (Middle Ages): armoured horseman who does the same |
+| Canaanites | Cheaper priests, prophets and healers, faster faith, stronger healing | Zealot: mends itself with every blow; Temple Guard (Middle Ages): armoured horseman who does the same |
 | Norse | Game, berries and fish gathered 50% faster, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf; War Bear (Iron Age): strikes faster as it is wounded |
 | Egyptians | Farms +20%, 15% faster building | Khopesh Guard: cuts down infantry; War Chariot (Iron Age): a heavy charge |
 | Babylonians | Research 15% faster, buildings +15% health | Sapper: ruinous against buildings; Gate Guard (Iron Age): shrugs off missiles, fights harder at home |
@@ -313,7 +313,7 @@ for a holy town, an ordinary one and a decadent one. The booth's "Or speak for t
 three voices to a part; a recording named by `folkKey` in `public/assets/voice/` is played when one of them is
 clicked on, ordered, or caught in a raid (`bark` in `src/client/voice.ts`).
 
-Every nation but the Dawnsworn offers two leaders, a man and a woman, who speak the same lines
+Every nation but the Canaanites offers two leaders, a man and a woman, who speak the same lines
 apart from the ones that name them. The booth lists both, and the zip records which was voiced, so
 the game is led by whichever leader your friend played.
 
