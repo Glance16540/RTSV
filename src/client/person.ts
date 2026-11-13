@@ -165,6 +165,18 @@ export interface Outfit {
   trim: number | null;
 }
 
+/** A nation's leader as their maker dressed them: a man or a woman, and whatever of their look was chosen. */
+export function leaderOutfit(o: Outfit, female: boolean, look: { hair?: number; beard?: boolean; helmet?: string; cloak?: number; build?: number } = {}): Outfit {
+  const out: Outfit = { ...o, female, beard: !female && (look.beard ?? o.beard), hairStyle: female ? 'long' : o.hairStyle };
+  if (look.hair != null) out.hair = look.hair;
+  if (look.cloak != null) out.cloak = look.cloak;
+  if (look.build === 0 || look.build === 1 || look.build === 2) out.girth = look.build;
+  if (look.helmet === 'none') { out.helmet = ''; out.hat = ''; }
+  else if (look.helmet === 'circlet') { out.helmet = ''; out.hat = 'circlet'; out.hatColor = 0xd8b040; }
+  else if (look.helmet === 'leather' || look.helmet === 'bronze' || look.helmet === 'iron' || look.helmet === 'kettle') { out.helmet = look.helmet; out.hat = ''; out.metal = look.helmet === 'bronze' ? 0xb08a3a : null; }
+  return out;
+}
+
 /** Is this kind of unit drawn from the real figure? Everyone who goes on foot is. */
 export const drawnReal = (cls: string): boolean => cls === 'villager' || cls === 'infantry' || cls === 'ranged' || cls === 'support' || cls === 'hero';
 

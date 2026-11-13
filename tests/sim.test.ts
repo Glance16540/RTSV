@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { HeroSpec, HERO_POINTS, HERO_MIN_HURT, HOLY_GUARD, MIGHT_ATK, GUARD_ARMOR, VIGOUR_HP, RANK_ATK, RANK_ARMOR, RANK_HP, RANK_XP, TYRANT_BIND, cleanHero, heroBonus, rankOf } from '../src/sim/hero';
 import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
 import { AIController } from '../src/sim/ai';
-import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
+import { CAPTURE_TIME, MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, DAY_LENGTH, Game, LAIR_AT, LAIR_BIRTH, NIGHT_SIGHT, Unit } from '../src/sim/game';
 import { connected, generateMap, T_GRASS, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
-import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, UNITS, styleOf } from '../src/sim/data';
-import { Campaign, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
+import { Campaign, heroFor, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -3031,5 +3032,471 @@ describe('marauders on the campaign map', () => {
     }
     expect(seen).toBe(true);
     expect(grew).toBe(true);
+  });
+});
+
+describe('the leader on the field', () => {
+  const two = (hero?: Partial<HeroSpec>) => {
+    const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'hearth', hero }, { name: 'B', color: 2, isAI: false, civ: 'forge' }]);
+    g.players[0].dilemmaT = g.players[1].dilemmaT = 1e9;
+    return g;
+  };
+
+  it('the first hero of their calling is the nation\'s leader, by name, with the points spent on them', () => {
+    const g = two();
+    const w = g.spawnUnit('warlord', 0, 46.5, 46.5), s = g.spawnUnit('strategist', 0, 47.5, 46.5);
+    expect(w.name).toBe(LEADERS.hearth.name);
+    expect(w.hero).toEqual({ xp: 0, rank: 0 });
+    expect(s.hero).toBeUndefined(); // a lieutenant, not the leader
+    expect(g.leaderBonus(w)).toEqual({ atk: 2 * MIGHT_ATK, armor: 2 * GUARD_ARMOR, hp: 1 + 2 * VIGOUR_HP });
+    expect(w.maxHp).toBe(Math.round(UNITS.warlord.hp * (1 + 2 * VIGOUR_HP)));
+    // Someone's own making of them: a woman, a Strategist, everything on the arm.
+    const h = two({ name: 'Mathilde <b>the Bold</b>', female: true, calling: 'strategist', bent: 'strength', might: 9, guard: 3, vigour: 3 });
+    const lead = h.spawnUnit('strategist', 0, 46.5, 46.5);
+    expect(h.spawnUnit('warlord', 0, 47.5, 46.5).hero).toBeUndefined();
+    expect(lead.name).toBe('Mathilde bthe Bold/b'); // nothing that could be markup
+    expect(h.heroOf(0)).toMatchObject({ female: true, might: HERO_POINTS, guard: 0, vigour: 0 }); // no more points than there are
+    expect(cleanHero({ might: 2, guard: 2, vigour: 5 }, 'hearth')).toMatchObject({ might: 2, guard: 2, vigour: 2 });
+  });
+
+  it('veterancy comes from enemies felled where the leader stands, and adds strength or armour by their bent', () => {
+    expect(RANK_XP.map(rankOf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(rankOf(RANK_XP[1] - 1)).toBe(0);
+    const base = { name: 'x', female: false, calling: 'warlord' as const, might: 0, guard: 0, vigour: 0 };
+    expect(heroBonus({ ...base, bent: 'strength' }, 4)).toEqual({ atk: 4 * RANK_ATK, armor: 0, hp: 1 + 4 * RANK_HP });
+    expect(heroBonus({ ...base, bent: 'armour' }, 4).armor).toBeCloseTo(4 * RANK_ARMOR);
+    expect(heroBonus({ ...base, bent: 'both' }, 3)).toMatchObject({ atk: 2 * RANK_ATK, armor: RANK_ARMOR });
+    const g = two({ bent: 'strength', might: 6 });
+    const w = g.spawnUnit('warlord', 0, 46.5, 46.5);
+    for (let i = 0; i < RANK_XP[1]; i++) g.spawnUnit('villager', 1, 47.2 + (i % 3) * 0.4, 46.2 + Math.floor(i / 3) * 0.4);
+    const far = g.spawnUnit('clubman', 0, 20.5, 20.5), prey = g.spawnUnit('villager', 1, 21.2, 20.5);
+    g.cmdTarget(0, [far.id], prey.id);
+    run(g, 40);
+    expect(prey.dead).toBe(true);
+    expect(w.hero).toEqual({ xp: RANK_XP[1], rank: 1 }); // the one killed far from them is no deed of theirs
+    expect(g.players[0].heroRank).toBe(1);
+    expect(g.leaderBonus(w).atk).toBe(6 * MIGHT_ATK + RANK_ATK);
+    expect(w.maxHp).toBe(Math.round(UNITS.warlord.hp * (1 + RANK_HP)));
+  });
+
+  it('a leader is still flesh: armour never turns a blow altogether, and one who falls comes back the less for it', () => {
+    const hurt = (leader: boolean) => {
+      const g = two({ bent: 'armour', guard: 6, rank: 5 });
+      const w = g.spawnUnit(leader ? 'warlord' : 'strategist', 0, 46.5, 46.5);
+      w.stance = 'hold'; (w.def as unknown) = { ...w.def, atk: 0, heal: 0, aura: 0 };
+      const foe = g.spawnUnit('clubman', 1, 47.3, 46.5);
+      g.cmdTarget(1, [foe.id], w.id);
+      run(g, 12);
+      return { g, w, lost: w.maxHp - w.hp, atk: foe.def.atk };
+    };
+    const { g, w, lost, atk } = hurt(true);
+    expect(w.hero!.rank).toBe(5);
+    expect(g.leaderBonus(w).armor + w.def.armor).toBeGreaterThan(atk); // a club would otherwise only scratch
+    expect(lost).toBeGreaterThan(atk * HERO_MIN_HURT * 4);
+    w.hp = 1;
+    run(g, 6);
+    expect(w.dead).toBe(true);
+    expect(g.players[0].heroRank).toBe(4);
+    const again = g.spawnUnit('warlord', 0, 40.5, 40.5);
+    expect(again.hero).toEqual({ xp: RANK_XP[4], rank: 4 });
+  });
+
+  it('a holy town\'s leader lends armour to those near; a decadent one takes captives and fills the town from the camp', () => {
+    const blows = (virtue: number, near: boolean) => {
+      const g = two();
+      g.players[0].virtue = virtue;
+      const w = g.spawnUnit('warlord', 0, near ? 46.5 : 20.5, near ? 42.5 : 20.5);
+      w.stance = 'hold'; (w.def as unknown) = { ...w.def, aura: 0 };
+      const victim = g.spawnUnit('knight', 0, 46.5, 46.5);
+      victim.stance = 'hold'; (victim.def as unknown) = { ...victim.def, atk: 0 };
+      const foe = g.spawnUnit('swordsman', 1, 47.3, 46.5);
+      g.cmdTarget(1, [foe.id], victim.id);
+      run(g, 10);
+      return victim.maxHp - victim.hp;
+    };
+    const plain = blows(0, true);
+    expect(blows(40, false)).toBe(plain); // too far off to help
+    expect(blows(40, true)).toBeLessThan(plain);
+    expect(blows(80, true)).toBeLessThan(blows(40, true));
+    expect(HOLY_GUARD).toEqual([1, 2]);
+
+    const g = two();
+    const p = g.players[0], tc = g.buildings.find((b) => b.owner === 0)!;
+    const w = g.spawnUnit('warlord', 0, tc.x - 2, tc.y + 5);
+    const v = g.spawnUnit('villager', 1, tc.x - 1, tc.y + 6, 'f');
+    expect(g.tyrant(w)).toBe(false);
+    expect(g.canSeize(w)).toBe(false);
+    p.virtue = -80;
+    expect(g.tyrant(w)).toBe(true);
+    const camp = g.spawnBuilding('workcamp', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) - 6, true);
+    g.cmdTarget(0, [w.id], v.id);
+    run(g, CAPTURE_TIME * TYRANT_BIND + 2);
+    expect(v.dead).toBe(true);
+    expect(w.captive?.name).toBe(v.name);
+    run(g, 30);
+    expect(camp.captives!.map((c) => c.name)).toEqual([v.name]);
+    // With the leader standing in the town, the camp's women fill it far faster.
+    const fill = (withLeader: boolean) => {
+      const h = two();
+      const q = h.players[0], hall = h.buildings.find((b) => b.owner === 0)!;
+      q.virtue = -80; q.popCap = 50;
+      if (withLeader) h.spawnUnit('warlord', 0, hall.x - 2, hall.y + 5).stance = 'hold';
+      const c2 = h.spawnBuilding('workcamp', 0, Math.floor(hall.x) + 6, Math.floor(hall.y) - 6, true);
+      c2.captives = [0, 1, 2].map((i) => ({ from: 1, name: 'W' + i, family: '', gender: 'f' as const, trait: '', trait2: '', age: 0, lifespan: 9e9 }));
+      h.spawnUnit('slaver', 0, c2.x, c2.y + 3); // someone to watch them
+      const before = h.units.filter((u) => u.owner === 0 && u.type === 'villager').length;
+      run(h, 30);
+      return h.units.filter((u) => u.owner === 0 && u.type === 'villager').length - before + c2.campT!;
+    };
+    expect(fill(true)).toBeGreaterThan(fill(false) * 2);
+  });
+
+  it('in the campaign the leader takes the field as they were made, and keeps the veterancy they earn', () => {
+    const c = newCampaign(3);
+    c.factions[0].hero = { name: 'Brunhild', calling: 'strategist', bent: 'armour', might: 1, guard: 4, vigour: 1 };
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const army = armyAt(c, home.id)!;
+    expect(moveArmy(c, army.id, home.adj[0])).toBe('battle');
+    const cfg = battleConfig(c)!;
+    expect(cfg.setups[0].bonus!.units).toMatchObject({ strategist: 1 });
+    expect(cfg.setups[0].hero).toMatchObject({ name: 'Brunhild', calling: 'strategist', guard: 4, rank: 0 });
+    finishBattle(c, true, { clubman: 6, strategist: 1 }, undefined, 3);
+    expect(c.factions[0].heroRank).toBe(3);
+    expect(heroFor(c, 0).rank).toBe(3);
+    // They fall in the next: raised again, they are a rank the less.
+    const d = newCampaign(3);
+    d.factions[0].hero = c.factions[0].hero; d.factions[0].heroRank = 3;
+    const dHome = d.territories.find((t) => t.capital === 0)!;
+    expect(moveArmy(d, armyAt(d, dHome.id)!.id, dHome.adj[0])).toBe('battle');
+    finishBattle(d, true, { clubman: 6 }, undefined, 4);
+    expect(d.factions[0].heroAlive).toBe(false);
+    expect(d.factions[0].heroRank).toBe(2);
+    expect(d.log.at(-1)).toBe('Brunhild fell in the fighting.');
+  });
+});
+
+describe('a rule of its own for every play style', () => {
+  const two = (a: string, b = 'hearth', seed = 7) => new Game(seed, [{ name: 'A', color: 1, isAI: false, civ: a }, { name: 'B', color: 2, isAI: false, civ: b }]);
+  const R = STYLE_RULES;
+
+  it('every style states its rule', () => {
+    for (const s of Object.values(STYLES)) expect(s.rule.length, s.id).toBeGreaterThan(20);
+  });
+
+  it('the Builders\' buildings mend themselves in peace, and nobody else\'s do', () => {
+    const g = two('stonekin');
+    const mine = g.buildings.find((b) => b.owner === 0)!, theirs = g.buildings.find((b) => b.owner === 1)!;
+    mine.hp = mine.maxHp * 0.5; theirs.hp = theirs.maxHp * 0.5;
+    run(g, 20);
+    expect(mine.hp).toBeCloseTo(mine.maxHp * (0.5 + R.mend * 20), 0);
+    expect(theirs.hp).toBe(theirs.maxHp * 0.5);
+    // Not while the town is under attack.
+    g.players[0].lastAttacked = { x: mine.x, y: mine.y, t: g.time };
+    const hp = mine.hp;
+    run(g, R.peace - 2);
+    expect(mine.hp).toBe(hp);
+    run(g, 4);
+    expect(mine.hp).toBeGreaterThan(hp);
+  });
+
+  it('the Farmers\' farms make room for more people, up to a limit', () => {
+    const g = two('hearth', 'stonekin');
+    run(g, 1);
+    const cap = [g.players[0].popCap, g.players[1].popCap];
+    for (const o of [0, 1]) for (let i = 0; i < 3; i++) { const at = spot(g, 'farm', o); g.spawnBuilding('farm', o, at.cx, at.cy, true); }
+    run(g, 1);
+    expect(g.players[0].popCap).toBe(cap[0] + 3 * R.farmPop);
+    expect(g.players[1].popCap).toBe(cap[1]);
+    for (let i = 0; i < R.farmPopMax + 2; i++) { const at = spot(g, 'farm', 0); g.spawnBuilding('farm', 0, at.cx, at.cy, true); }
+    run(g, 1);
+    expect(g.players[0].popCap).toBe(cap[0] + R.farmPopMax);
+  });
+
+  it('the Scholars gather faster for everything they have learned', () => {
+    const g = two('greece');
+    expect(g.lore(0)).toBe(1);
+    g.players[0].techs.add('stonetools'); g.players[0].techs.add('bronzetools');
+    g.players[1].techs.add('stonetools');
+    expect(g.lore(0)).toBeCloseTo(1 + 2 * R.lore);
+    expect(g.lore(1)).toBe(1);
+    for (let i = 0; i < 40; i++) g.players[0].techs.add('t' + i);
+    expect(g.lore(0)).toBeCloseTo(1 + R.loreMax);
+    // And it shows in the stores: two towns alike but for their learning.
+    const haul = (learned: boolean) => {
+      const h = two('greece');
+      if (learned) for (let i = 0; i < 15; i++) h.players[0].techs.add('t' + i);
+      for (const v of villagers(h, 0)) h.cmdTarget(0, [v.id], h.findResourceNear(v.x, v.y, 'wood', 0, 30)!.id);
+      run(h, 120);
+      return h.players[0].stats.gathered;
+    };
+    expect(haul(true)).toBeGreaterThan(haul(false));
+  });
+
+  it('the Faithful are healed and cured round their Church', () => {
+    const g = two('dawn');
+    const at = spot(g, 'temple', 0), far = spot(g, 'temple', 1);
+    const church = g.spawnBuilding('temple', 0, at.cx, at.cy, true);
+    const other = g.spawnBuilding('temple', 1, far.cx, far.cy, true);
+    const near = g.spawnUnit('clubman', 0, church.x + 2.5, church.y), away = g.spawnUnit('clubman', 0, church.x + R.sanctuary + 6, church.y);
+    const stranger = g.spawnUnit('clubman', 1, other.x + 2.5, other.y);
+    for (const u of [near, away, stranger]) { g.cmdStance(u.owner, [u.id], 'hold'); u.hp = 10; }
+    near.plagueT = 0.5;
+    run(g, 5);
+    expect(near.hp).toBeGreaterThan(10 + R.sanctuaryHeal * 2);
+    expect(near.plagueT).toBe(0);
+    if (Math.hypot(away.x - church.x, away.y - church.y) > R.sanctuary) expect(away.hp).toBe(10);
+    expect(stranger.hp).toBe(10);
+  });
+
+  it('the Traders\' markets earn by themselves, and more when others keep markets too', () => {
+    const earn = (abroad: boolean, civ = 'persia') => {
+      const g = two(civ);
+      for (const u of g.units.slice()) if (u.owner < 2) (g as any).kill(u); // nobody at work: only the market earns
+      const at = spot(g, 'market', 0);
+      g.spawnBuilding('market', 0, at.cx, at.cy, true);
+      if (abroad) { const b = spot(g, 'market', 1); g.spawnBuilding('market', 1, b.cx, b.cy, true); }
+      const gold = g.players[0].res.gold;
+      run(g, R.caravanEvery * 3);
+      return g.players[0].res.gold - gold;
+    };
+    expect(earn(false)).toBe(3 * R.caravan);
+    expect(earn(true)).toBe(3 * (R.caravan + R.caravanAbroad));
+    expect(earn(true, 'hearth')).toBe(0);
+  });
+
+  it('a soldier\'s kills are counted, and among the Warriors they make him strike harder', () => {
+    const g = two('japan');
+    const tc = g.buildings.find((b) => b.owner === 0)!;
+    const s = g.spawnUnit('clubman', 0, tc.x + 6, tc.y + 6);
+    expect(g.veteran(s)).toBe(1);
+    for (let i = 0; i < 2; i++) {
+      const foe = g.spawnUnit('villager', 1, s.x + 1, s.y, 'm');
+      foe.hp = 1;
+      g.cmdTarget(0, [s.id], foe.id);
+      run(g, 4);
+      expect(foe.dead).toBe(true);
+    }
+    expect(s.kills).toBe(2);
+    expect(g.veteran(s)).toBeCloseTo(1 + 2 * R.veteran);
+    s.kills = 50;
+    expect(g.veteran(s)).toBeCloseTo(1 + R.veteranKills * R.veteran);
+    // Counted for any people, but only the Warriors strike harder for it; an archer's arrow counts for the archer.
+    const bow = g.spawnUnit('slinger', 1, tc.x - 8, tc.y + 8), mark = g.spawnUnit('villager', 0, tc.x - 6, tc.y + 8, 'm');
+    mark.hp = 1;
+    g.cmdTarget(1, [bow.id], mark.id);
+    run(g, 5);
+    expect(bow.kills).toBe(1);
+    expect(g.veteran(bow)).toBe(1);
+    const v = g.spawnUnit('villager', 0, 40, 40, 'm');
+    v.kills = 3;
+    expect(g.veteran(v)).toBe(1);
+  });
+});
+
+describe('faith on the campaign map', () => {
+  /** End the turn, refusing any demand and settling any battle without fighting it. */
+  const turn = (c: Campaign) => {
+    endTurn(c);
+    for (let i = 0; i < 40 && c.phase === 'ai'; i++) {
+      if (c.demand) answerDemand(c, true);
+      else if (c.pending) resolvePending(c, 'auto');
+      continueAI(c);
+    }
+  };
+
+  it('churches and taverns move a people along the scale turn by turn, and a tavern pays more the worldlier they are', () => {
+    const c = newCampaign(7, 1, 1, 'steppe');
+    const home = c.territories.find((t) => t.capital === 0)!;
+    expect(virtueOf(c, 0)).toBe(0);
+    expect(SITES.church && SITES.tavern).toBeTruthy();
+    c.factions[0].supplies = 50;
+    const before = income(c, 0);
+    expect(build(c, 0, home.id, 'tavern')).toBe(true);
+    expect(income(c, 0)).toBe(before + FAITH.temperate.tavern);
+    expect(virtueDrift(c, 0)).toBe(-TAVERN_VIRTUE);
+    turn(c);
+    expect(virtueOf(c, 0)).toBe(-TAVERN_VIRTUE);
+    c.factions[0].virtue = -40;
+    expect(income(c, 0)).toBe(before + FAITH.worldly.tavern);
+    c.factions[0].virtue = -80;
+    expect(income(c, 0)).toBe(before + FAITH.decadent.tavern);
+    c.factions[0].virtue = 80;
+    expect(income(c, 0)).toBe(before);
+    // A church pulls the other way; one of each cancels out. Crossing into a new creed is told.
+    expect(build(c, 0, home.id, 'church')).toBe(true);
+    expect(virtueDrift(c, 0)).toBe(CHURCH_VIRTUE - TAVERN_VIRTUE);
+    home.buildings.splice(home.buildings.indexOf('tavern'), 1);
+    c.factions[0].virtue = 28;
+    c.log.length = 0;
+    turn(c);
+    expect(virtueOf(c, 0)).toBe(28 + CHURCH_VIRTUE);
+    expect(c.log.some((l) => l.includes('Your people are now Devout'))).toBe(true);
+    c.factions[0].virtue = 99;
+    turn(c);
+    expect(virtueOf(c, 0)).toBe(100);
+  });
+
+  it('the creed tells on defence, on what troops and ages cost, and on whether a land rises', () => {
+    const c = newCampaign(7, 1, 1, 'steppe');
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const plain = defence(c, home.id), age = ageCost(c, 0);
+    c.factions[0].virtue = 80;
+    expect(defence(c, home.id)).toBeCloseTo(plain * FAITH.zealous.defence, 1);
+    expect(ageCost(c, 0)).toBe(age + FAITH.zealous.age);
+    c.factions[0].virtue = -80;
+    expect(defence(c, home.id)).toBeCloseTo(plain * FAITH.decadent.defence, 1);
+    expect(ageCost(c, 0)).toBe(age);
+    // Swords for hire: a decadent people pays one less for every company.
+    home.buildings = ['barracks'];
+    c.factions[0].supplies = companyCost(home, 'infantry', 'steppe') - 1;
+    expect(canRaise(c, 0, home.id, 'infantry')).toBe(true);
+    expect(raise(c, 0, home.id, 'infantry')).toBe(true);
+    expect(c.factions[0].supplies).toBe(0);
+    c.factions[0].virtue = 0;
+    c.factions[0].supplies = companyCost(home, 'infantry', 'steppe') - 1;
+    expect(canRaise(c, 0, home.id, 'infantry')).toBe(false);
+    // Unrest: the Righteous keep their land with no garrison; the Decadent lose it even with one company there.
+    const rising = (virtue: number, garrison: number) => {
+      const d = newCampaign(7, 1, 1, 'steppe');
+      const cap = d.territories.find((t) => t.capital === 0)!;
+      const land = d.territories[cap.adj[0]];
+      land.owner = 0;
+      d.armies = d.armies.filter((a) => a.at !== land.id);
+      if (garrison) d.armies.push({ id: 90, owner: 0, at: land.id, units: { infantry: garrison }, hero: false, vet: 0, moved: false });
+      d.factions[0].virtue = virtue;
+      d.events = [{ kind: 'unrest', at: land.id, turn: d.turn, until: d.turn }];
+      turn(d);
+      return land.owner;
+    };
+    expect(rising(0, 0)).toBe(-1);
+    expect(rising(80, 0)).toBe(0);
+    expect(rising(0, 1)).toBe(0);
+    expect(rising(-80, 1)).toBe(-1);
+    expect(rising(-80, 2)).toBe(0);
+  });
+
+  it('a town begins a battle as its people stand on the map, and what it becomes goes home with them', () => {
+    const c = newCampaign(7, 1);
+    const foeCap = c.territories.find((t) => t.capital === 1)!;
+    const next = c.territories[foeCap.adj[0]];
+    next.owner = 0;
+    c.armies = c.armies.filter((a) => a.owner !== 0 && a.at !== next.id);
+    c.armies.push({ id: 77, owner: 0, at: next.id, units: { cavalry: 10 }, hero: false, vet: 0, moved: false });
+    c.factions[0].virtue = 40;
+    c.factions[1].virtue = -75;
+    moveArmy(c, 77, foeCap.id);
+    const cfg = battleConfig(c)!;
+    expect(cfg.setups[0].virtue).toBe(40);
+    expect(cfg.setups[1].virtue).toBe(-75);
+    const g = new Game(cfg.seed, cfg.setups, cfg.size);
+    expect(g.creed(0).id).toBe('devout');
+    expect(g.creed(1).id).toBe('decadent');
+    // The player ran a tavern town in that battle: the people come home worldlier, by half of how far it went.
+    finishBattle(c, true, undefined, -20);
+    expect(virtueOf(c, 0)).toBe(40 + (-20 - 40) * BATTLE_VIRTUE);
+    expect(faithOf(c, 0).defence).toBe(1);
+  });
+
+  it('rival peoples build what they believe in', () => {
+    const built = (civ: string) => {
+      let n = { church: 0, tavern: 0 };
+      for (const seed of [3, 5, 8]) {
+        const c = newCampaign(seed, 2, 1, civ === 'hearth' ? 'greece' : 'hearth');
+        c.factions[1].civ = civ;
+        for (let i = 0; i < 14 && c.phase !== 'over'; i++) { c.factions[1].supplies += 6; turn(c); }
+        for (const t of c.territories) if (t.owner === 1) { if (t.buildings.includes('church')) n.church++; if (t.buildings.includes('tavern')) n.tavern++; }
+        if (n.church) expect(virtueOf(c, 1)).toBeGreaterThan(0);
+        if (n.tavern) expect(virtueOf(c, 1)).toBeLessThan(0);
+      }
+      return n;
+    };
+    const pious = built('dawn'), worldly = built('steppe'), middling = built('greece');
+    expect(pious.church).toBeGreaterThan(0); expect(pious.tavern).toBe(0);
+    expect(worldly.tavern).toBeGreaterThan(0); expect(worldly.church).toBe(0);
+    expect(middling.church + middling.tavern).toBe(0);
+  });
+});
+
+describe('fire, blight and the weather on the harvest', () => {
+  const two = () => { const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'hearth' }, { name: 'B', color: 2, isAI: false, civ: 'england' }]); g.weatherT = 1e6; return g; };
+  const prophetBy = (g: Game, x: number, y: number) => { const u = g.spawnUnit('prophet', 0, x, y); u.mana = 100; return u; };
+
+  it('a Prophet sets enemy buildings alight; fire leaps to what stands close, burns through and dies; rain stops it', () => {
+    const burn = (rain: boolean) => {
+      const g = two();
+      if (rain) { g.weather = 'rain'; g.weatherAmt = g.weatherWant = 1; }
+      const tc = g.buildings.find((b) => b.owner === 1)!;
+      const at = spot(g, 'house', 1);
+      const a = g.spawnBuilding('house', 1, at.cx, at.cy, true), b = g.spawnBuilding('house', 1, at.cx + 3, at.cy, true), c = g.spawnBuilding('house', 1, at.cx + 6, at.cy, true);
+      const far = g.spawnBuilding('house', 1, at.cx + 6, at.cy + 12 < g.size - 3 ? at.cy + 12 : at.cy - 12, true);
+      const p = prophetBy(g, a.x - 4, a.y);
+      // Aimed so that only the first house is inside the fire.
+      expect(g.cmdCast(0, [p.id], 'fire', a.x - ABILITIES.fire.radius + 0.5, a.y)).toBe(true);
+      run(g, 2);
+      expect(p.mana).toBeLessThan(100 - ABILITIES.fire.cost + 5);
+      expect(a.burnT).toBeGreaterThan(0);
+      const lit = new Set<number>();
+      let said = false;
+      run(g, 150, () => {
+        for (const x of [b, c, far, tc]) if (x.burnT > 0) lit.add(x.id);
+        for (const e of g.events) if (e.t === 'msg' && e.player === 1 && e.text.includes('Fire has spread')) said = true;
+        g.events.length = 0;
+      });
+      return { a, b, c, far, lit, said, g };
+    };
+    const dry = burn(false);
+    expect(dry.a.hp).toBeLessThan(dry.a.maxHp);
+    expect(dry.lit.has(dry.b.id)).toBe(true); // a house two tiles off catches
+    expect(dry.said).toBe(true);
+    expect(dry.lit.has(dry.far.id)).toBe(false); // one across the town does not
+    expect(dry.g.buildings.every((x) => x.burnT <= 0)).toBe(true); // and in the end it is out
+    const wet = burn(true);
+    expect(wet.lit.size).toBe(0);
+    expect(wet.a.maxHp - wet.a.hp).toBeLessThan(dry.a.maxHp - dry.a.hp);
+  });
+
+  it('blight empties a rival\'s farms for a while and strips the berries', () => {
+    const g = two();
+    const at = spot(g, 'farm', 1);
+    const farm = g.spawnBuilding('farm', 1, at.cx, at.cy, true);
+    const mine = spot(g, 'farm', 0);
+    const own = g.spawnBuilding('farm', 0, mine.cx, mine.cy, true);
+    const bush = g.resources.find((r) => r.type === 'berries')!;
+    const p = prophetBy(g, farm.x - 3, farm.y), q = prophetBy(g, bush.x - 2, bush.y);
+    const fruit = bush.amount;
+    g.cmdCast(0, [p.id], 'blight', farm.x, farm.y);
+    g.cmdCast(0, [q.id], 'blight', bush.x, bush.y);
+    run(g, 3);
+    expect(farm.blightT).toBeGreaterThan(CALAMITY.blight - 5);
+    expect(own.blightT ?? 0).toBe(0);
+    expect(bush.amount).toBeLessThanOrEqual(Math.ceil(fruit * (1 - CALAMITY.berries)));
+    // Nothing comes off a blighted field; when it lifts the farmer brings food in again.
+    for (const u of g.units.slice()) if (u.type === 'prophet') (g as any).kill(u);
+    const w = villagers(g, 1)[0];
+    g.cmdTarget(1, [w.id], farm.id);
+    const before = g.players[1].stats.gathered;
+    run(g, CALAMITY.blight - 10);
+    expect(g.players[1].stats.gathered).toBe(before);
+    run(g, 60);
+    expect(farm.blightT).toBe(0);
+    expect(g.players[1].stats.gathered).toBeGreaterThan(before);
+  });
+
+  it('farms do well in rain and badly in dust and snow', () => {
+    const haul = (sky: '' | 'rain' | 'snow' | 'dust') => {
+      const g = two();
+      if (sky) { g.weather = sky; g.weatherAmt = g.weatherWant = 1; }
+      const tc = g.buildings.find((b) => b.owner === 0)!;
+      const farm = g.spawnBuilding('farm', 0, tc.cx + 5, tc.cy, true);
+      const w = villagers(g, 0)[0];
+      g.cmdTarget(0, [w.id], farm.id);
+      run(g, 150);
+      return g.players[0].stats.gathered;
+    };
+    const fair = haul('');
+    expect(fair).toBeGreaterThan(0);
+    expect(haul('rain')).toBeGreaterThan(fair);
+    expect(haul('dust')).toBeLessThan(fair);
+    expect(haul('snow')).toBeLessThan(fair);
   });
 });
