@@ -77,7 +77,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
   cam.position.set(0, 0.62, 2.3); cam.lookAt(0, 0.44, 0);
   scene.add(new THREE.HemisphereLight(0xfff2dc, 0x5a4a58, 1.1));
   const sun = new THREE.DirectionalLight(0xffe8c8, 2.2); sun.position.set(2, 4, 3); scene.add(sun);
-  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.47, 0.06, 32), new THREE.MeshStandardMaterial({ color: 0x4a3f30, roughness: 0.9 }));
+  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.47, 0.06, 32), new THREE.MeshStandardMaterial({ color: 0x8a6f48, roughness: 0.95 }));
   stand.position.y = -0.03; scene.add(stand);
   if (gl) { gl.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); gl.setSize(300, 420, false); gl.toneMapping = THREE.NeutralToneMapping; }
   let figure: { g: THREE.Group; real: RealPerson } | null = null, turn = 0.5, alive = true, last = performance.now();

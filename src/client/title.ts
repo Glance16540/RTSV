@@ -65,7 +65,7 @@ export const loader = {
 const OPENING = [
   'Before the kingdoms, there was the hearth.',
   'A fire, a family, and the dark beyond it.',
-  'From such small lights, empires are raised.',
+  'From such small lights empires rise, and fall to ruin.',
 ];
 
 /** The opening words, set down a line at a time on the page that covers the screen. Any key or click passes on. */
