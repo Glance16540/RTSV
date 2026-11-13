@@ -24,12 +24,28 @@ const hash = (x: number, y: number): number => { const s = Math.sin(x * 127.1 + 
 const smooth = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
 const mix3 = (o: number[], c: number[], k: number): void => { o[0] += (c[0] - o[0]) * k; o[1] += (c[1] - o[1]) * k; o[2] += (c[2] - o[2]) * k; };
 /** A shape in one colour, ready to be joined to others and still take a tint of its own. */
-const tinted = (g: THREE.BufferGeometry, hex: number): THREE.BufferGeometry => {
-  const n = g.index ? g.toNonIndexed() : g, c = new THREE.Color(hex), a = new Float32Array(n.getAttribute('position').count * 3);
-  for (let i = 0; i < a.length; i += 3) { a[i] = c.r; a[i + 1] = c.g; a[i + 2] = c.b; }
+const tinted = (g: THREE.BufferGeometry, hex: number, low = 1): THREE.BufferGeometry => {
+  const n = g.index ? g.toNonIndexed() : g, c = new THREE.Color(hex), p = n.getAttribute('position'), a = new Float32Array(p.count * 3);
+  n.computeBoundingBox();
+  const y0 = n.boundingBox!.min.y, span = Math.max(0.001, n.boundingBox!.max.y - y0);
+  // Darker toward the foot, as leaves and walls are where the light does not reach.
+  for (let i = 0; i < p.count; i++) { const k = low + (1 - low) * ((p.getY(i) - y0) / span); a[i * 3] = c.r * k; a[i * 3 + 1] = c.g * k; a[i * 3 + 2] = c.b * k; }
   n.setAttribute('color', new THREE.BufferAttribute(a, 3));
   n.deleteAttribute('uv');
   return n;
+};
+/** A shape set down somewhere, turned and stretched. */
+const put = (g: THREE.BufferGeometry, x: number, y: number, z: number, ry = 0, rz = 0, rx = 0): THREE.BufferGeometry => g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, 'YXZ')), new THREE.Vector3(1, 1, 1)));
+/** A pitched roof: a ridge along its length, eaves at its foot. */
+const gable = (w: number, h: number, d: number): THREE.BufferGeometry => {
+  const a = w / 2, b = d / 2, g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    -a, 0, b, a, 0, b, a, h, 0, -a, 0, b, a, h, 0, -a, h, 0, // front slope
+    a, 0, -b, -a, 0, -b, -a, h, 0, a, 0, -b, -a, h, 0, a, h, 0, // back slope
+    -a, 0, -b, -a, 0, b, -a, h, 0, a, 0, b, a, 0, -b, a, h, 0, // the two ends
+  ]), 3));
+  g.computeVertexNormals();
+  return g;
 };
 
 export class WorldMap {
@@ -62,6 +78,9 @@ export class WorldMap {
   private labels: { s: THREE.Sprite; w: number; h: number }[] = [];
   private clouds: { g: THREE.Group; fall: THREE.Points; kind: string; r: number }[] = [];
   private cloudMats: THREE.Material[] = [];
+  /** Each land's town, kept until what stands there changes. */
+  private towns = new Map<number, { sig: string; mesh: THREE.Mesh }>();
+  private townMat = new THREE.MeshStandardMaterial({ roughness: 0.88, flatShading: true, vertexColors: true });
   private puffs: { g: THREE.Group; v: number }[] = [];
   private flocks: { g: THREE.Group; cx: number; cz: number; r: number; v: number; ph: number }[] = [];
   private ships: { g: THREE.Group; ph: number; v: number }[] = [];
@@ -269,7 +288,7 @@ export class WorldMap {
     this.scene.add(sea, bed);
 
     // ---- what grows: fir in the cold and the high wet, broadleaf in green country, palm in the heat, stone in the dry ----
-    const lists: Record<string, { m: THREE.Matrix4; c: THREE.Color }[]> = { fir: [], round: [], palm: [], rock: [] };
+    const lists: Record<string, { m: THREE.Matrix4; c: THREE.Color }[]> = { fir: [], round: [], birch: [], palm: [], cactus: [], bush: [], rock: [] };
     const mt = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sv = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
     for (let gy = 5; gy < MAP_H - 4; gy += 7) for (let gx = 5; gx < MAP_W - 4; gx += 7) {
       const r = (k: number): number => landNoise(gx, gy, sd + 70 + k); // whole numbers in: plain chance out
@@ -285,23 +304,34 @@ export class WorldMap {
       const s = 0.55 + r(3) * 0.55;
       q.setFromAxisAngle(up, r(4) * 6.28);
       if (r(2) < trees) {
-        const kind = hot > 0.5 ? 'palm' : cold > 0.4 || warm < 0.46 || (h > 1.5 && r(5) < 0.6) ? 'fir' : 'round';
+        const kind = hot > 0.5 ? (h < 0.75 || r(5) < 0.3 ? 'palm' : 'cactus') : cold > 0.4 || warm < 0.46 || (h > 1.5 && r(5) < 0.6) ? 'fir' : r(5) > 0.86 ? 'birch' : r(5) < 0.1 ? 'bush' : 'round';
         mt.compose(v.set(WX(px), h - 0.03, WZ(py)), q, sv.set(s, s * (0.9 + r(6) * 0.5), s));
         const tone = new THREE.Color(1, 1, 1).multiplyScalar(0.8 + r(7) * 0.35);
         if (kind === 'fir' && cold > 0.5) tone.lerp(new THREE.Color(2.4, 2.6, 2.7), 0.45 + r(8) * 0.3); // snow on the boughs
-        if (kind === 'round' && r(8) < 0.07) tone.multiply(new THREE.Color(1.7, 0.9, 0.4)); // one turning early
+        if ((kind === 'round' || kind === 'birch') && r(8) < 0.07) tone.multiply(new THREE.Color(1.7, 0.9, 0.4)); // one turning early
         lists[kind].push({ m: mt.clone(), c: tone });
       } else if (r(2) > 1 - (dry * 0.05 + hot * 0.05 + smooth(1.6, 2.4, h) * 0.2)) {
         mt.compose(v.set(WX(px), h, WZ(py)), q, sv.set(s * 0.8, s * 0.55, s * 0.7));
         lists.rock.push({ m: mt.clone(), c: new THREE.Color(1, 1, 1).multiplyScalar(0.75 + r(7) * 0.4) });
       }
     }
-    const trunk = (hgt: number, rad: number): THREE.BufferGeometry => tinted(new THREE.CylinderGeometry(rad * 0.7, rad, hgt, 5).translate(0, hgt / 2, 0), 0x5a4028);
+    const trunk = (hgt: number, rad: number, tone = 0x5a4028): THREE.BufferGeometry => tinted(new THREE.CylinderGeometry(rad * 0.65, rad, hgt, 6).translate(0, hgt / 2, 0), tone, 0.8);
+    const leaf = (r: number, x: number, y: number, z: number, tone: number, squash = 0.86): THREE.BufferGeometry => tinted(new THREE.IcosahedronGeometry(r, r > 0.4 ? 1 : 0).scale(1, squash, 1).translate(x, y, z), tone, 0.58);
+    const tier = (r: number, hgt: number, y: number, tone: number): THREE.BufferGeometry => tinted(new THREE.ConeGeometry(r, hgt, 8).translate(0, y + hgt / 2, 0), tone, 0.55);
+    const frond = (k: number): THREE.BufferGeometry => put(tinted(new THREE.BoxGeometry(0.62, 0.025, 0.17).translate(0.31, 0, 0), k % 2 ? 0x5d8f3a : 0x4c7c32, 1), 0.06, 1.42, 0, (k / 7) * 6.283, -0.42 - (k % 3) * 0.12);
     const shapes: Record<string, THREE.BufferGeometry> = {
-      fir: mergeGeometries([trunk(0.4, 0.08), tinted(new THREE.ConeGeometry(0.44, 0.9, 6).translate(0, 0.8, 0), 0x35583a), tinted(new THREE.ConeGeometry(0.3, 0.75, 6).translate(0, 1.35, 0), 0x3d6240)])!,
-      round: mergeGeometries([trunk(0.55, 0.09), tinted(new THREE.IcosahedronGeometry(0.52, 0).translate(0, 0.95, 0), 0x55803a), tinted(new THREE.IcosahedronGeometry(0.34, 0).translate(0.26, 1.3, 0.1), 0x5f8c40)])!,
-      palm: mergeGeometries([trunk(1.3, 0.07), tinted(new THREE.IcosahedronGeometry(0.5, 0).scale(1, 0.28, 1).translate(0, 1.36, 0), 0x5d8a3a), tinted(new THREE.ConeGeometry(0.62, 0.3, 6).translate(0, 1.22, 0), 0x4f7a34)])!,
-      rock: tinted(new THREE.DodecahedronGeometry(0.42, 0).translate(0, 0.14, 0), 0x8f8674),
+      // Fir: four tiers of boughs, narrowing to a point.
+      fir: mergeGeometries([trunk(0.35, 0.07), tier(0.5, 0.55, 0.22, 0x2f5236), tier(0.4, 0.5, 0.55, 0x35593a), tier(0.29, 0.48, 0.86, 0x3c6240), tier(0.17, 0.42, 1.18, 0x446b46)])!,
+      // Broadleaf: a full, uneven crown of several masses of leaf.
+      round: mergeGeometries([trunk(0.6, 0.09), leaf(0.46, 0, 0.95, 0, 0x4d7a36), leaf(0.34, 0.3, 0.86, 0.12, 0x58853a), leaf(0.32, -0.26, 0.9, -0.14, 0x46722f), leaf(0.3, 0.05, 1.28, -0.05, 0x629040), leaf(0.24, -0.1, 0.8, 0.3, 0x5a883c)])!,
+      // Birch or poplar: tall and slim on a pale stem.
+      birch: mergeGeometries([trunk(0.9, 0.05, 0xd8d2c0), leaf(0.26, 0, 0.95, 0, 0x7fa246, 1.5), leaf(0.2, 0.05, 1.42, 0, 0x8fb04e, 1.5)])!,
+      // Palm: a leaning stem and a head of drooping fronds.
+      palm: mergeGeometries([put(trunk(0.75, 0.065, 0x8a6a42), 0, 0, 0, 0, -0.08), put(trunk(0.72, 0.05, 0x8a6a42), 0.06, 0.72, 0, 0, 0.06), ...[0, 1, 2, 3, 4, 5, 6].map(frond), tinted(new THREE.SphereGeometry(0.07, 6, 5).translate(0.06, 1.38, 0), 0x6a5030)])!,
+      cactus: mergeGeometries([tinted(new THREE.CapsuleGeometry(0.09, 0.6, 3, 7).translate(0, 0.4, 0), 0x5c8a4a, 0.7), tinted(new THREE.CapsuleGeometry(0.055, 0.22, 3, 6).translate(0.2, 0.5, 0), 0x66944f, 0.8), tinted(new THREE.CapsuleGeometry(0.055, 0.07, 3, 6).rotateZ(1.5708).translate(0.12, 0.38, 0), 0x5c8a4a), tinted(new THREE.CapsuleGeometry(0.05, 0.16, 3, 6).translate(-0.18, 0.36, 0), 0x66944f, 0.8), tinted(new THREE.CapsuleGeometry(0.05, 0.06, 3, 6).rotateZ(1.5708).translate(-0.1, 0.27, 0), 0x5c8a4a)])!,
+      bush: mergeGeometries([leaf(0.24, 0, 0.2, 0, 0x55803a), leaf(0.18, 0.22, 0.15, 0.06, 0x629040), leaf(0.16, -0.18, 0.13, -0.1, 0x4b7534)])!,
+      // Rock: a tumble of three boulders.
+      rock: mergeGeometries([tinted(new THREE.DodecahedronGeometry(0.4, 0).scale(1, 0.75, 0.9).translate(0, 0.16, 0), 0x938a78, 0.6), tinted(new THREE.DodecahedronGeometry(0.24, 0).rotateY(1).translate(0.36, 0.08, 0.14), 0x847c6e, 0.65), tinted(new THREE.IcosahedronGeometry(0.17, 0).translate(-0.3, 0.05, -0.2), 0x9c9484, 0.65)])!,
     };
     for (const [kind, list] of Object.entries(lists)) {
       if (!list.length) continue;
@@ -388,6 +418,85 @@ export class WorldMap {
     const x = Math.min(this.gw - 1.001, Math.max(0, px / STEP)), y = Math.min(this.gh - 1.001, Math.max(0, py / STEP));
     const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, H = this.heights, w = this.gw;
     return (H[j * w + i] * (1 - fx) + H[j * w + i + 1] * fx) * (1 - fy) + (H[(j + 1) * w + i] * (1 - fx) + H[(j + 1) * w + i + 1] * fx) * fy;
+  }
+
+  /** The buildings of one land, as a single shape: walls, towers, houses with pitched roofs, and whatever has been built there. */
+  private buildTown(t: Campaign['territories'][number], style: string, banner: number, y: number): THREE.BufferGeometry {
+    const parts: THREE.BufferGeometry[] = [], rnd = (k: number): number => hash(t.id * 7.3 + k, t.seed % 97);
+    const desert = style === 'desert', snow = style === 'snow';
+    const STONE = desert ? 0xd8c090 : 0xbcb39e, DARK = desert ? 0xb89868 : 0x8e8676, PLASTER = desert ? 0xe2cc9c : snow ? 0x8a6a48 : 0xe8dcc0, TIMBER = 0x6a4a2c;
+    const ROOF = snow ? 0xe6ecf0 : desert ? 0xcfb482 : 0xa8502f, THATCH = snow ? 0xdfe6ea : 0xc9a85a, EARTH = desert ? 0xcdb07a : snow ? 0xd8dcdc : 0xa89468;
+    const box = (w: number, h: number, d: number, tone: number, x: number, by: number, z: number, ry = 0, low = 0.72): void => { parts.push(put(tinted(new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0), tone, low), x, by, z, ry)); };
+    const cyl = (r: number, h: number, tone: number, x: number, by: number, z: number, seg = 10, top = r): void => { parts.push(put(tinted(new THREE.CylinderGeometry(top, r, h, seg).translate(0, h / 2, 0), tone, 0.7), x, by, z)); };
+    const cone = (r: number, h: number, tone: number, x: number, by: number, z: number, seg = 10, ry = 0): void => { parts.push(put(tinted(new THREE.ConeGeometry(r, h, seg).translate(0, h / 2, 0), tone, 0.75), x, by, z, ry)); };
+    const house = (x: number, by: number, z: number, ry: number, w = 0.42, d = 0.32, h = 0.24, roofTone = ROOF): void => {
+      box(w, h, d, PLASTER, x, by, z, ry);
+      if (desert) { box(w + 0.05, 0.05, d + 0.05, DARK, x, by + h, z, ry, 1); if (rnd(x * 9 + z) > 0.6) parts.push(put(tinted(new THREE.SphereGeometry(d * 0.38, 8, 5, 0, 6.283, 0, 1.5708), 0xe8dcc0, 0.8), x, by + h + 0.04, z)); }
+      else { parts.push(put(tinted(gable(w + 0.08, h * 0.85, d + 0.1), roofTone, 0.8), x, by + h, z, ry)); box(0.05, 0.16, 0.05, DARK, x + Math.cos(ry) * w * 0.25, by + h + 0.06, z - Math.sin(ry) * w * 0.25, ry, 1); }
+      box(0.07, 0.13, 0.02, 0x3a2a1a, x + Math.sin(ry) * (d / 2), by, z + Math.cos(ry) * (d / 2), ry, 1); // a door
+    };
+    const tower = (x: number, z: number, r: number, h: number, roofTone: number): void => {
+      cyl(r * 1.08, h, STONE, x, 0, z, 10, r);
+      cyl(r * 1.2, 0.1, DARK, x, h, z, 10, r * 1.2);
+      if (desert) for (let k = 0; k < 6; k++) box(0.07, 0.09, 0.07, STONE, x + Math.cos(k * 1.047) * r * 1.05, h + 0.1, z + Math.sin(k * 1.047) * r * 1.05, -k * 1.047, 1);
+      else cone(r * 1.3, r * 2, roofTone, x, h + 0.1, z);
+    };
+    const wall = (x0: number, z0: number, x1: number, z1: number, h: number): void => {
+      const len = Math.hypot(x1 - x0, z1 - z0), ry = -Math.atan2(z1 - z0, x1 - x0), mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+      box(len, h, 0.13, STONE, mx, 0, mz, ry);
+      for (let k = 0; k < 4; k++) { const f = (k + 0.5) / 4 - 0.5; box(len / 9, 0.08, 0.15, STONE, mx + (x1 - x0) * f, h, mz + (z1 - z0) * f, ry, 1); } // battlements
+    };
+    if (t.capital >= 0) {
+      cyl(2.05, 0.05, EARTH, 0, 0, 0, 22);
+      // A ring of wall with a tower at every other corner and a gatehouse facing the road.
+      const n = 10, R = 1.95, pt = (k: number): [number, number] => [Math.cos((k / n) * 6.283 + 0.314) * R, Math.sin((k / n) * 6.283 + 0.314) * R * 0.86];
+      for (let k = 0; k < n; k++) { const [ax, az] = pt(k), [bx, bz] = pt(k + 1); if (k !== 1) wall(ax, az, bx, bz, 0.5); if (k % 2 === 0) tower(ax, az, 0.2, 0.82, ROOF); }
+      const [gx0, gz0] = pt(1), [gx1, gz1] = pt(2), gx = (gx0 + gx1) / 2, gz = (gz0 + gz1) / 2;
+      box(0.62, 0.8, 0.3, STONE, gx, 0, gz); box(0.26, 0.42, 0.32, 0x2a2018, gx, 0, gz, 0, 1); box(0.7, 0.09, 0.36, DARK, gx, 0.8, gz, 0, 1);
+      // The keep: a great hall with corner turrets under a roof in the people's colour.
+      box(0.95, 0.95, 0.8, STONE, 0, 0.05, -0.25);
+      for (const [dx, dz] of [[-0.48, -0.65], [0.48, -0.65], [-0.48, 0.15], [0.48, 0.15]]) tower(dx, dz, 0.14, 1.25, banner);
+      if (desert) parts.push(put(tinted(new THREE.SphereGeometry(0.42, 12, 7, 0, 6.283, 0, 1.5708), banner, 0.75), 0, 1.0, -0.25));
+      else parts.push(put(tinted(gable(1.05, 0.5, 0.92), banner, 0.75), 0, 1.0, -0.25));
+      cyl(0.03, 0.75, TIMBER, 0, 1.4, -0.25, 5);
+      // Streets of houses inside the wall, a well in the square.
+      for (let k = 0; k < 11; k++) { const a = 0.5 + (k / 11) * 5.6, d = 1.05 + rnd(k) * 0.5; house(Math.cos(a) * d, 0.05, Math.sin(a) * d * 0.82 + 0.1, a + 1.57 + (rnd(k + 20) - 0.5), 0.3 + rnd(k + 40) * 0.14, 0.26, 0.2 + rnd(k + 60) * 0.1, k % 4 === 0 ? THATCH : ROOF); }
+      cyl(0.09, 0.1, DARK, 0.1, 0.05, 0.75, 8);
+    } else if (t.buildings.includes('fortress')) {
+      // A castle: four walls, four towers, a keep.
+      const c4: [number, number][] = [[-0.85, -0.7], [0.85, -0.7], [0.85, 0.7], [-0.85, 0.7]];
+      c4.forEach(([ax, az], k) => { const [bx, bz] = c4[(k + 1) % 4]; wall(ax, az, bx, bz, 0.5); tower(ax, az, 0.2, 0.85, ROOF); });
+      box(0.7, 1.05, 0.6, STONE, 0, 0, -0.1); if (desert) box(0.78, 0.08, 0.68, DARK, 0, 1.05, -0.1, 0, 1); else parts.push(put(tinted(gable(0.8, 0.4, 0.7), ROOF, 0.75), 0, 1.05, -0.1));
+      box(0.24, 0.36, 0.14, 0x2a2018, 0, 0, 0.7, 0, 1);
+    } else {
+      // A hamlet: a few cottages, a haystack, a fence.
+      for (let k = 0; k < 3; k++) house(-0.45 + k * 0.5 + (rnd(k) - 0.5) * 0.2, 0, -0.2 + (rnd(k + 5) - 0.5) * 0.6, (rnd(k + 9) - 0.5) * 1.6, 0.36, 0.28, 0.2, THATCH);
+      if (!desert) cone(0.13, 0.2, 0xd8b85a, 0.55, 0, 0.35, 8);
+    }
+    // What has been built on the land stands round it.
+    t.buildings.filter((b) => b !== 'fortress').forEach((b, k) => {
+      const a = 2.2 + k * 1.15, hx = Math.cos(a) * 2.75 + (t.capital >= 0 ? 0 : -0.9), hz = Math.sin(a) * 2.2 + 1.2;
+      const by = Math.max(0.2, this.heightAt(t.x - 26 + (hx * 1.6) / K, t.y - 6 + (hz * 1.6) / K)) / 1.6 - y / 1.6;
+      if (b === 'farm') {
+        house(hx, by, hz, 0.5, 0.5, 0.34, 0.26, 0x8a3a2a); // the barn
+        for (let f = 0; f < 3; f++) cone(0.1, 0.16, 0xd8b85a, hx + 0.45 + f * 0.2, by, hz + 0.2 - f * 0.12, 7);
+        for (let f = 0; f < 5; f++) box(0.02, 0.1, 0.02, TIMBER, hx - 0.5 + f * 0.25, by, hz + 0.45, 0, 1);
+        box(1.05, 0.02, 0.02, TIMBER, hx, by + 0.07, hz + 0.45, 0, 1);
+      } else if (b === 'barracks') {
+        house(hx, by, hz, 0.2, 0.75, 0.34, 0.28, ROOF);
+        for (let f = 0; f < 6; f++) cone(0.035, 0.3, TIMBER, hx - 0.5 + f * 0.2, by, hz + 0.42, 5); // a palisade
+        box(0.05, 0.3, 0.05, TIMBER, hx + 0.55, by, hz + 0.1, 0, 1); box(0.3, 0.04, 0.04, TIMBER, hx + 0.55, by + 0.26, hz + 0.1, 0, 1); // a practice post
+      } else if (b === 'harbour') {
+        house(hx, by, hz, 0, 0.4, 0.3, 0.22, THATCH);
+        box(0.9, 0.05, 0.16, TIMBER, hx + 0.1, by + 0.02, hz + 0.4, 0.2, 1);
+        for (let f = 0; f < 3; f++) cyl(0.025, 0.2, 0x4a3420, hx - 0.25 + f * 0.35, by - 0.1, hz + 0.47 + f * 0.07, 5);
+        box(0.36, 0.09, 0.13, 0x5a3c22, hx + 0.55, by, hz + 0.62, 0.5, 1);
+      } else {
+        house(hx, by, hz, 0.3 + k, 0.55, 0.36, 0.3, b.includes('stable') ? THATCH : ROOF);
+        box(0.3, 0.16, 0.24, PLASTER, hx + 0.42, by, hz + 0.05, 0.3 + k); if (!desert) parts.push(put(tinted(gable(0.36, 0.14, 0.32), THATCH, 0.8), hx + 0.42, by + 0.16, hz + 0.05, 0.3 + k));
+      }
+    });
+    return mergeGeometries(parts)!;
   }
 
   /** Lay the borders over the painted ground: each land edged in the colour of whoever holds it, the chosen land lit, marauder country darkened. */
@@ -518,28 +627,21 @@ export class WorldMap {
       if (reach.has(t.id)) ring(X, y, Z, 4.4, t.owner === 0 ? 0xffffff : 0xc03020, true, 0.3);
       if (t.horde && t.owner < 0) ring(X, y, Z, 3.9, 0x181410, false, 0.5);
 
-      // The place itself: a walled town for a capital, a keep where it is fortified, a house for every other building.
-      const town = new THREE.Group();
-      town.position.set(X - 3.4, y, Z - 0.8);
-      town.scale.setScalar(1.6);
-      if (t.capital >= 0) {
-        add(new THREE.BoxGeometry(2.6, 0.9, 2.2), stone, 0, 0.45, 0, town);
-        for (const [dx, dz] of [[-1.3, -1.1], [1.3, -1.1], [-1.3, 1.1], [1.3, 1.1]]) tower(town, dx, dz, 0.36, 1.5);
-        tower(town, 0, 0, 0.55, 2.3);
-        flagOn(town, 0, 3.1, 0, c.factions[t.capital].color, 1);
-      } else if (t.buildings.includes('fortress')) {
-        tower(town, 0, 0, 0.5, 1.9);
-        add(new THREE.BoxGeometry(1.7, 0.6, 1.5), stone, 0, 0.3, 0, town);
+      // The place itself: a walled city for a capital, a castle where the land is fortified, a hamlet anywhere people live.
+      const { warm, wet } = climateAt(c.seed, t.x, t.y);
+      const style = warm < 0.31 ? 'snow' : warm > 0.66 && wet < 0.56 ? 'desert' : 'green';
+      const sig = [t.capital, t.owner >= 0 ? c.factions[t.owner].color : -1, t.buildings.join(), style].join('|');
+      let town = this.towns.get(t.id);
+      if (!town || town.sig !== sig) {
+        town?.mesh.geometry.dispose();
+        town = { sig, mesh: new THREE.Mesh(this.buildTown(t, style, t.capital >= 0 ? c.factions[t.capital].color : 0x9a4a34, y), this.townMat) };
+        town.mesh.castShadow = true; town.mesh.receiveShadow = true;
+        this.towns.set(t.id, town);
       }
-      const homes = t.buildings.filter((b) => b !== 'fortress');
-      homes.forEach((b, k) => {
-        const a = 2.2 + k * 1.15, hx = Math.cos(a) * 2.4 + (t.capital >= 0 ? 0 : 0.6), hz = Math.sin(a) * 1.9 + 1.2;
-        const hy = Math.max(0.2, this.heightAt(t.x - 26 + hx / K, t.y - 6 + hz / K)) - y;
-        if (b === 'farm') { const f = add(new THREE.BoxGeometry(1.5, 0.06, 1.1), solid(0xc9a644), hx, hy + 0.05, hz, town); f.rotation.y = 0.4; return; }
-        add(new THREE.BoxGeometry(0.75, 0.5, 0.6), b === 'harbour' ? wood : stone, hx, hy + 0.25, hz, town);
-        const r = add(new THREE.ConeGeometry(0.62, 0.42, 4), b === 'barracks' ? roof : thatch, hx, hy + 0.7, hz, town); r.rotation.y = Math.PI / 4;
-      });
-      this.pieces.add(town);
+      town.mesh.position.set(X - 3.4, y, Z - 0.8);
+      town.mesh.scale.setScalar(1.6);
+      this.pieces.add(town.mesh);
+      if (t.capital >= 0) { const pole = new THREE.Group(); pole.position.set(X - 3.4, y, Z - 0.8); pole.scale.setScalar(1.6); flagOn(pole, 0, 2.55, 0, c.factions[t.capital].color, 1); this.pieces.add(pole); }
       // Hearth-smoke over every place that is lived in.
       if (t.owner >= 0 && (t.capital >= 0 || t.buildings.length)) for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(smokeG, smokeM.clone()); this.pieces.add(m); this.smokes.push({ m, x: X - 3.4, y: y + (t.capital >= 0 ? 4.2 : 1.6), z: Z - 0.8, ph: k / 3 + t.id * 0.37 }); }
 
@@ -579,7 +681,7 @@ export class WorldMap {
       if (!n) continue;
       const color = a ? c.factions[a.owner].color : t.horde ? 0x2a2420 : LOCALS.color;
       const holder = new THREE.Group(), piece = new THREE.Group(), men: RealPerson[] = [];
-      holder.position.set(X + 0.8, y, Z + 1.8);
+      holder.position.set(X + 2.6, Math.max(0.2, this.heightAt(t.x + 2.6 / K, t.y + 2.4 / K)), Z + 2.4);
       holder.add(piece);
       piece.scale.setScalar(1.6);
       const base = add(new THREE.CylinderGeometry(a ? 1.25 : 0.95, a ? 1.38 : 1.05, 0.28, 28), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }), 0, 0.14, 0, piece);
