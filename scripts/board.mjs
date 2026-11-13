@@ -36,7 +36,11 @@ const all = AREAS.flatMap((a) => a.systems);
 const tally = Object.fromEntries(Object.keys(STATUS).map((k) => [k, all.filter((s) => s.status === k).length]));
 const gapCount = all.reduce((n, s) => n + s.gaps.length, 0);
 
-const card = (s) => `<article class="sys ${s.status}" data-status="${s.status}">
+// One bubble on the whiteboard: coloured by status, larger the more gaps the system has.
+const bubble = (s) => `<button class="bub ${s.status}" id="bub-${all.indexOf(s)}" data-status="${s.status}" data-i="${all.indexOf(s)}" style="--k:${Math.min(1, s.gaps.length / 8)}" aria-label="${esc(s.name)}: ${STATUS[s.status]}, ${s.gaps.length} gaps">${esc(s.name)}${s.gaps.length ? `<span class="g">${s.gaps.length}</span>` : ''}</button>`;
+const cloud = (a) => `<section class="cloud"><h3>${esc(a.name)}</h3><div class="bubs">${a.systems.map(bubble).join('')}</div></section>`;
+
+const card = (s) => `<article class="sys ${s.status}" id="sys-${all.indexOf(s)}" data-status="${s.status}">
   <header><h3>${esc(s.name)}</h3><span class="pill ${s.status}">${STATUS[s.status]}</span></header>
   <p class="what">${esc(fill(s.what))}</p>
   ${s.has.length ? `<ul class="has">${s.has.map((h) => `<li>${esc(fill(h))}</li>`).join('')}</ul>` : ''}
@@ -75,23 +79,27 @@ const nationRow = (c) => {
 
 const page = `<title>Hearth &amp; Empire Systems Board</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
-/* Layout: a wall of system cards grouped by area, status carried by a coloured top edge and pill; rosters below. */
+/* Layout: a whiteboard of clouds (one per area) holding a bubble per system, then a wall of system cards grouped by area, status carried by a coloured top edge and pill; rosters below. */
 :root {
   --bg: #f3f4f1; --panel: #ffffff; --line: #d9dcd4; --fg: #1d221c; --dim: #5d665a; --accent: #2f5d50;
   --solid: #2e7d4f; --rough: #b07a12; --thin: #c2562a; --none: #7a7f78;
   --solid-bg: #e3f1e7; --rough-bg: #f7ecd2; --thin-bg: #f8e2d8; --none-bg: #e9eae6;
+  --board: #ffffff; --dots: #d3d8d0; --cloud: #f2f6f8; --cloud-line: #b4c3cd; --shade: rgba(20, 26, 20, 0.45);
+  --marker: Caveat, 'Segoe Print', 'Bradley Hand', cursive;
   --display: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif; --body: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #141714; --panel: #1d211d; --line: #343a33; --fg: #e8ebe4; --dim: #a0a89b; --accent: #7fc2ad;
   --solid: #6cc48d; --rough: #e0b354; --thin: #ee8f66; --none: #9aa097;
-  --solid-bg: #1d3326; --rough-bg: #3a2f14; --thin-bg: #40251a; --none-bg: #2a2e29; color-scheme: dark } }
+  --solid-bg: #1d3326; --rough-bg: #3a2f14; --thin-bg: #40251a; --none-bg: #2a2e29;
+  --board: #191d1a; --dots: #2e352e; --cloud: #20272b; --cloud-line: #4a5a65; --shade: rgba(0, 0, 0, 0.6); color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #141714; --panel: #1d211d; --line: #343a33; --fg: #e8ebe4; --dim: #a0a89b; --accent: #7fc2ad;
   --solid: #6cc48d; --rough: #e0b354; --thin: #ee8f66; --none: #9aa097;
-  --solid-bg: #1d3326; --rough-bg: #3a2f14; --thin-bg: #40251a; --none-bg: #2a2e29; color-scheme: dark }
+  --solid-bg: #1d3326; --rough-bg: #3a2f14; --thin-bg: #40251a; --none-bg: #2a2e29;
+  --board: #191d1a; --dots: #2e352e; --cloud: #20272b; --cloud-line: #4a5a65; --shade: rgba(0, 0, 0, 0.6); color-scheme: dark }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); padding-block: 28px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
@@ -114,6 +122,26 @@ p { margin: 0; }
 .dot.solid { background: var(--solid); } .dot.rough { background: var(--rough); } .dot.thin { background: var(--thin); } .dot.none { background: var(--none); }
 .filters .n { font-variant-numeric: tabular-nums; opacity: 0.75; }
 .area { display: flex; flex-direction: column; gap: 12px; }
+.key { color: var(--dim); font-size: 14px; }
+.board { background-color: var(--board); background-image: radial-gradient(var(--dots) 1.2px, transparent 1.6px); background-size: 22px 22px; border: 1px solid var(--line); border-radius: 10px; padding: 22px 14px; display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: center; }
+.cloud { flex: 1 1 270px; max-width: 430px; min-width: 0; background: var(--cloud); border: 2px solid var(--cloud-line); border-radius: 60px 84px 70px 92px / 72px 60px 88px 66px; padding: 16px 26px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.cloud:nth-child(even) { border-radius: 88px 62px 94px 68px / 62px 84px 64px 90px; }
+.cloud h3 { font: 700 27px/1.1 var(--marker); color: var(--accent); text-align: center; }
+.bubs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+.bub { font: 500 calc(13px + 5px * var(--k)) / 1.2 var(--body); color: var(--fg); background: var(--none-bg); border: 2px solid var(--none); border-radius: 999px; padding: calc(6px + 5px * var(--k)) calc(12px + 6px * var(--k)); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; max-width: 100%; text-align: left; transition: opacity 0.15s, transform 0.15s; }
+.bub.solid { background: var(--solid-bg); border-color: var(--solid); } .bub.rough { background: var(--rough-bg); border-color: var(--rough); }
+.bub.thin { background: var(--thin-bg); border-color: var(--thin); } .bub.none { border-style: dashed; }
+.bub:hover { transform: scale(1.05); }
+.bub:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bub.off { opacity: 0.2; }
+.bub .g { flex: none; font: 600 11px/1 var(--body); font-variant-numeric: tabular-nums; background: var(--board); color: var(--fg); border-radius: 999px; min-width: 20px; padding: 4px 5px; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .bub { transition: none; } .bub:hover { transform: none; } }
+dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--fg); padding: 0; width: min(540px, calc(100vw - 32px)); max-height: min(80vh, 720px); overflow: auto; }
+dialog::backdrop { background: var(--shade); }
+dialog .sys { border-width: 4px 0 0; border-radius: 0; }
+dialog .foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 16px 16px; }
+dialog .foot button { font: 500 14px var(--body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+dialog .foot button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
 .sys { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--none); border-radius: 6px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .sys.solid { border-top-color: var(--solid); } .sys.rough { border-top-color: var(--rough); } .sys.thin { border-top-color: var(--thin); }
@@ -165,6 +193,11 @@ footer { color: var(--dim); font-size: 13px; }
     </div>
   </div>
 
+  <section class="area"><h2>Whiteboard</h2>
+    <p class="key">One cloud for each part of the game, one bubble for each system. Colour shows how far along it is, the number counts its known gaps, and a bigger bubble has more of them. Pick a bubble to read about it.</p>
+    <div class="board">${AREAS.map(cloud).join('')}</div>
+  </section>
+
   ${AREAS.map((a) => `<section class="area"><h2>${esc(a.name)} <span class="n">${a.systems.length}</span></h2><div class="grid">${a.systems.map(card).join('')}</div></section>`).join('\n  ')}
 
   <section class="area"><h2>Nations <span class="n">${N.civs}</span></h2>
@@ -192,14 +225,28 @@ footer { color: var(--dim); font-size: 13px; }
 
   <footer>Rosters and counts are read from the game's data. Statuses and gaps are written by hand and reflect what has been built and checked so far.</footer>
 </div>
+<dialog id="detail" aria-label="System details"><div id="detail-slot"></div><div class="foot"><button id="detail-jump" type="button">Show in the list below</button><button id="detail-close" type="button">Close</button></div></dialog>
 <script>
 const buttons = [...document.querySelectorAll('#filters button')];
 function show(f) {
   for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.f === f));
-  for (const s of document.querySelectorAll('.sys')) s.hidden = f !== 'all' && s.dataset.status !== f;
+  for (const b of document.querySelectorAll('.bub')) b.classList.toggle('off', f !== 'all' && b.dataset.status !== f);
+  for (const s of document.querySelectorAll('.wrap .sys')) s.hidden = f !== 'all' && s.dataset.status !== f;
   for (const a of document.querySelectorAll('.area')) if (a.querySelector('.sys')) a.hidden = ![...a.querySelectorAll('.sys')].some((s) => !s.hidden);
 }
 for (const b of buttons) b.addEventListener('click', () => show(b.dataset.f));
+const detail = document.getElementById('detail');
+let open = null;
+for (const b of document.querySelectorAll('.bub')) b.addEventListener('click', () => {
+  open = document.getElementById('sys-' + b.dataset.i);
+  const copy = open.cloneNode(true);
+  copy.removeAttribute('id'); copy.hidden = false;
+  document.getElementById('detail-slot').replaceChildren(copy);
+  detail.showModal(); detail.scrollTop = 0;
+});
+document.getElementById('detail-close').addEventListener('click', () => detail.close());
+document.getElementById('detail-jump').addEventListener('click', () => { detail.close(); show('all'); open.scrollIntoView({ block: 'center' }); });
+detail.addEventListener('click', (e) => { if (e.target === detail) detail.close(); });
 </script>
 `;
 writeFileSync('docs/systems-board.html', page);
