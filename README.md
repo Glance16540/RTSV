@@ -308,6 +308,11 @@ self-contained file: they open it in a browser, pick a leader, record each line 
 microphone (listening back and redoing any they like), and download a single zip. Nothing is
 uploaded anywhere.
 
+The common people speak too (`src/sim/folk.ts`): ten villager jobs and six kinds of warrior, every line written
+for a holy town, an ordinary one and a decadent one. The booth's "Or speak for the people" section records them,
+three voices to a part; a recording named by `folkKey` in `public/assets/voice/` is played when one of them is
+clicked on, ordered, or caught in a raid (`bark` in `src/client/voice.ts`).
+
 Every nation but the Dawnsworn offers two leaders, a man and a woman, who speak the same lines
 apart from the ones that name them. The booth lists both, and the zip records which was voiced, so
 the game is led by whichever leader your friend played.

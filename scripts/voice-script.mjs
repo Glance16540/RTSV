@@ -3,6 +3,7 @@
 import { writeFileSync } from 'node:fs';
 import { EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey } from '../src/sim/leaders.ts';
 import { CIVS } from '../src/sim/data.ts';
+import { FOLK, LEANS, MOMENT_NOTES } from '../src/sim/folk.ts';
 
 let out = `# Voice script
 
@@ -31,5 +32,12 @@ for (const l of Object.values(LEADERS)) {
   }
 }
 out += `\n${total} lines in all.\n`;
+// The common people: villagers at every job and warriors of every arm, each line in three tempers.
+out += `\n## The people: villagers and warriors\n\nShort calls, one to three seconds, said when a villager or soldier is clicked on, sent to work or to war, or caught in\na raid. Each is written three ways: for a holy town, an ordinary one and a decadent one. Name a recording\n\`folk_<part>_<pious|plain|decadent>_<moment>_<m|f><a|b|c>\`, for example \`folk_farmer_pious_ready_fa.wav\`: \`m\` or \`f\` for a\nman's or a woman's voice (warriors are men), and \`a\`, \`b\` or \`c\` for up to three voices the game picks among.\n`;
+let folkTotal = 0;
+for (const r of FOLK) {
+  out += `\n### ${r.name} (\`${r.id}\`)\n\n${r.about}\n\n| Moment | When | Holy town | Ordinary town | Decadent town |\n| --- | --- | --- | --- | --- |\n`;
+  for (const [m, three] of Object.entries(r.lines)) { out += `| \`${m}\` | ${MOMENT_NOTES[m]} | ${three.join(' | ')} |\n`; folkTotal += LEANS.length; }
+}
 writeFileSync('docs/VOICE_SCRIPT.md', out);
 console.log(`voice script: ${total} lines for ${Object.keys(LEADERS).length} leaders`);

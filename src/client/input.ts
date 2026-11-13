@@ -1,5 +1,6 @@
 // Mouse and keyboard: camera control, selection, orders and building placement.
 
+import { bark } from './voice';
 import { BUILDINGS } from '../sim/data';
 import { Entity, Unit } from '../sim/game';
 import { SLOT_KEYS } from './hud';
@@ -195,7 +196,7 @@ export class Input {
       // Prefer soldiers when a box holds both soldiers and villagers.
       const army = inBox.filter((u) => u.type !== 'villager');
       const pickd = army.length ? army : inBox;
-      if (pickd.length) { app.select([...new Set([...add, ...pickd.map((u) => u.id)])]); sfx.play('select'); }
+      if (pickd.length) { app.select([...new Set([...add, ...pickd.map((u) => u.id)])]); sfx.play('select'); bark(app.game, pickd[0], 'ready'); }
       return;
     }
     const hit = this.pick(e.clientX, e.clientY);
@@ -213,7 +214,7 @@ export class Input {
     } else if (e.shiftKey && hit.owner === app.pid) {
       app.select(add.includes(hit.id) ? add.filter((id) => id !== hit.id) : [...add, hit.id]);
     } else app.select([hit.id]);
-    if (hit.owner === app.pid) sfx.play('select');
+    if (hit.owner === app.pid) { sfx.play('select'); if (hit.kind === 'unit') bark(app.game, hit, 'ready'); }
     this.lastClick = { t: now, id: hit.id };
   }
 
@@ -224,6 +225,9 @@ export class Input {
     if (!ents.length) return;
     const units = ents.filter((e): e is Unit => e.kind === 'unit').map((u) => u.id);
     sfx.play('order');
+    // Whoever leads them answers, once the order has been given and they know what it is.
+    const first = ents.find((e): e is Unit => e.kind === 'unit');
+    if (first) setTimeout(() => bark(game, first, first.type === 'villager' ? 'go' : target && game.hostile(target.owner, pid) && target.kind !== 'resource' ? 'charge' : 'march'), 0);
     if (units.length) {
       if (garrison && target && target.kind === 'building' && target.owner === pid && target.def.shelter) {
         game.cmdShelter(pid, units, target.id);

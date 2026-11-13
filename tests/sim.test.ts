@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkKey, leanOf } from '../src/sim/folk';
 import { AIController } from '../src/sim/ai';
 import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
@@ -2886,6 +2887,32 @@ describe('marauders', () => {
     const g = new Game(3, setups);
     run(g, LAIR_AT + 5);
     expect(g.buildings.some((b) => b.type === 'lair')).toBe(false);
+  });
+});
+
+describe('the voices of the people', () => {
+  it('every villager job and every arm has a line for each moment in each temper, and every recording has its own name', () => {
+    const keys = new Set<string>();
+    let n = 0;
+    for (const r of FOLK) {
+      const moments = Object.keys(r.lines) as FolkMoment[];
+      expect(moments, r.id).toEqual(r.kind === 'villager' ? ['ready', 'go', 'fear'] : ['ready', 'march', 'charge', 'hurt']);
+      for (const m of moments) {
+        expect(r.lines[m]!.length).toBe(3);
+        r.lines[m]!.forEach((text, i) => {
+          expect(text.length, `${r.id} ${m}`).toBeGreaterThan(3);
+          expect(text.length, `${r.id} ${m}: short enough to call out`).toBeLessThan(60);
+          for (const sex of ['m', 'f'] as const) for (const v of FOLK_VOICES) { keys.add(folkKey(r.id, LEANS[i], m, sex, v)); n++; }
+        });
+        // The three tempers do not say the same thing.
+        expect(new Set(r.lines[m]).size).toBe(3);
+      }
+    }
+    expect(keys.size).toBe(n);
+    expect(FOLK.filter((r) => r.kind === 'villager').map((r) => r.id)).toEqual(['townsfolk', 'woodcutter', 'farmer', 'forager', 'hunter', 'fisher', 'miner', 'builder', 'cleric', 'taverner']);
+    expect(leanOf(40)).toBe('pious');
+    expect(leanOf(0)).toBe('plain');
+    expect(leanOf(-40)).toBe('decadent');
   });
 });
 

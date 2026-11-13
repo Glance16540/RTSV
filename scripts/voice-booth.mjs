@@ -5,6 +5,23 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { CHARACTER_LIMITS, EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
 import { CIVS, CIV_COLOR } from '../src/sim/data.ts';
 import { TEMPER_AXES, TEMPER_QUESTIONS, TEMPER_WORDS } from '../src/sim/temper.ts';
+import { FOLK, FOLK_VOICES, LEANS, LEAN_NOTES, MOMENT_NOTES, folkKey } from '../src/sim/folk.ts';
+
+// The common people: villagers at every job and warriors of every arm, each line in three tempers, from a holy town
+// to a decadent one. Up to three people can voice each part; the game picks among them.
+const PARTS = [
+  { kind: 'villager', sex: 'f', name: 'Village women', who: 'A woman of the village', color: '#7c9a5a', voice: 'Ordinary working women: farmers, foragers, builders, and those who serve in the church or the tavern. Short and natural, as if called to across a yard.' },
+  { kind: 'villager', sex: 'm', name: 'Village men', who: 'A man of the village', color: '#8a7a4a', voice: 'Ordinary working men: woodcutters, miners, hunters, builders. Short and natural, as if called to across a yard.' },
+  { kind: 'warrior', sex: 'm', name: 'Warriors', who: 'A soldier of the army', color: '#9a4a3a', voice: 'Fighting men of every arm: foot, archers, riders, siege crews, priests and sailors. Clipped and loud enough to carry over a field.' },
+];
+const SEATS = ['First voice', 'Second voice', 'Third voice'];
+const folk = PARTS.flatMap((p) => FOLK_VOICES.map((v, n) => ({
+  folk: true, civ: 'folk' + p.kind + p.sex + v, part: p.kind + p.sex, persona: 'main', nation: p.name, name: p.who, title: SEATS[n], voice: p.voice, female: p.sex === 'f', color: p.color,
+  lines: FOLK.filter((r) => r.kind === p.kind).flatMap((r) => Object.entries(r.lines).flatMap(([moment, three]) => three.map((text, li) => ({
+    key: folkKey(r.id, LEANS[li], moment, p.sex, v), ev: r.id + '_' + moment + '_' + LEANS[li], i: 0, group: r.name + ': ' + r.about,
+    when: r.name + ' · ' + MOMENT_NOTES[moment] + ' · ' + LEAN_NOTES[LEANS[li]], text,
+  })))),
+})));
 
 // Most nations can be led by a man or by a woman: both are offered, and the recordings say which was voiced.
 const leaders = Object.values(LEADERS).flatMap((l) => [[l, false], ...(l.alt ? [[l.alt, true]] : [])].map(([who, alt]) => {
@@ -42,6 +59,9 @@ const page = `<!doctype html>
   h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: 0.02em; margin: 0; text-wrap: balance; }
   p { margin: 0 0 12px; } .dim { color: var(--dim); } small { color: var(--dim); }
   [hidden] { display: none !important; }
+  /* Voicing the people: no character to make and no questions to answer, only lines. */
+  body.folk #steps, body.folk #step1, body.folk #step1 + .card, body.folk #step2, body.folk #step2 + .card, body.folk .note.stop, body.folk #step3 .num, body.folk #step3 small { display: none; }
+  h3.job { font: 700 18px var(--display); color: var(--gold); margin: 26px 0 10px; } h3.job small { display: block; font: 400 13px var(--ui); color: var(--dim); letter-spacing: 0; margin-top: 2px; }
   .err { color: var(--warn); }
 
   /* the world behind the page: paintings that drift and give way to one another, under sparks from a fire */
@@ -213,6 +233,9 @@ const page = `<!doctype html>
     <p id="resumeerr" class="err" hidden style="margin:8px 0 0"></p>
     <div class="sect" id="nations"><h2>Choose your nation</h2></div>
     <div class="grid" id="leaders"></div>
+    <div class="sect" id="people"><h2>Or speak for the people</h2></div>
+    <p class="dim">No throne, no questions: just short lines for the villagers and soldiers of every nation. Each line is written three ways, for a holy town, an ordinary one and a decadent one, so the people sound like the town they live in. Up to three people can voice each part and the game picks among them, so if someone has already taken the first voice, take the next.</p>
+    <div class="grid" id="folk"></div>
   </section>
 
   <section id="booth" hidden>
@@ -251,7 +274,7 @@ const page = `<!doctype html>
     <div class="step" id="step3"><span class="num">III</span><h2>Their words and voice<small>Optional. Do it now, later, or not at all.</small></h2></div>
     <div class="note"><b>How they were written</b> (play them your own way if you prefer): <span id="direction"></span></div>
     <p><label for="actor">Your name, for the credits <small>(optional)</small></label><br><input type="text" id="actor" maxlength="60" autocomplete="name"></p>
-    <p class="dim">Tips: a quiet room, the microphone a hand's width from your mouth, and leave half a second of silence before you speak. Each line should run two to six seconds. Record as many or as few as you like; unrecorded lines stay as text in the game. Each box says when the leader speaks the line: keep your own version to that moment, and to one or two sentences.</p>
+    <p class="dim" id="tips">Tips: a quiet room, the microphone a hand's width from your mouth, and leave half a second of silence before you speak. Each line should run two to six seconds. Record as many or as few as you like; unrecorded lines stay as text in the game. Each box says when the leader speaks the line: keep your own version to that moment, and to one or two sentences.</p>
     <p id="micerr" class="err" hidden></p>
     <div id="lines"></div>
   </section>
@@ -271,6 +294,8 @@ const page = `<!doctype html>
 
 <script>
 const LEADERS = ${JSON.stringify(leaders)};
+const FOLKPARTS = ${JSON.stringify(folk)};
+const ALL = LEADERS.concat(FOLKPARTS);
 const STOCK = ${JSON.stringify(STOCK)};
 const BACKDROPS = ${JSON.stringify(BACKDROPS)};
 const QUESTIONS = ${JSON.stringify(TEMPER_QUESTIONS)};
@@ -356,23 +381,49 @@ for (const n of nations) {
   }
   $('leaders').appendChild(card);
 }
+// One banner for each part the people play, with a seat for each of its three voices.
+for (const part of [...new Set(FOLKPARTS.map((f) => f.part))]) {
+  const seats = FOLKPARTS.filter((f) => f.part === part), f0 = seats[0];
+  const card = document.createElement('article');
+  card.className = 'nation';
+  card.style.setProperty('--c', f0.color);
+  card.innerHTML = '<header><h3></h3></header><p class="says"></p><div class="who"></div>';
+  card.querySelector('h3').textContent = f0.nation;
+  card.querySelector('.says').textContent = f0.lines[1].text + ' / ' + f0.lines[0].text + ' / ' + f0.lines[2].text;
+  for (const l of seats) {
+    const b = document.createElement('button');
+    b.className = 'pick';
+    b.innerHTML = '<span class="seal"></span><span><b></b><small></small></span><span class="go">Speak</span>';
+    b.querySelector('.seal').textContent = String(seats.indexOf(l) + 1);
+    b.querySelector('.seal').style.backgroundColor = l.color;
+    b.querySelector('b').textContent = l.title;
+    b.querySelector('small').textContent = l.lines.length + ' short lines';
+    b.addEventListener('click', () => open(l));
+    card.querySelector('.who').appendChild(b);
+  }
+  $('folk').appendChild(card);
+}
 $('crownedok').addEventListener('click', () => { $('crowned').hidden = true; });
 $('back').addEventListener('click', () => {
   if ((takes.size || character() || picture) && !window.confirmLeave) { $('back').textContent = 'Your work on this leader will be lost. Click again to go back.'; window.confirmLeave = true; return; }
   window.confirmLeave = false;
-  $('back').textContent = '← Choose a different leader';
   for (const t of takes.values()) URL.revokeObjectURL(t.url);
   takes.clear();
   $('booth').hidden = true; $('bar').hidden = true; $('choose').hidden = false;
-  document.body.classList.remove('inbooth');
+  document.body.classList.remove('inbooth', 'folk');
   window.scrollTo(0, 0);
 });
 
 function open(l) {
   leader = l;
   document.body.classList.add('inbooth');
+  document.body.classList.toggle('folk', !!l.folk);
   document.documentElement.style.setProperty('--nation', l.color);
-  $('realm').textContent = 'Ruler of the ' + l.nation;
+  $('realm').textContent = l.folk ? l.nation + ' of every nation' : 'Ruler of the ' + l.nation;
+  $('step3').querySelector('h2').firstChild.textContent = l.folk ? 'Their voice' : 'Their words and voice';
+  $('back').textContent = l.folk ? '← Choose a different part' : '← Choose a different leader';
+  window.tipsWere = window.tipsWere || $('tips').textContent;
+  $('tips').textContent = l.folk ? 'Tips: a quiet room, the microphone a hand\\'s width from your mouth, and leave half a second of silence before you speak. These are calls and answers, one to three seconds each: say them as someone busy would. The label over each line says who is speaking, when, and what kind of town they live in. Record as many or as few as you like; the game uses whatever you send.' : window.tipsWere;
   $('cname').value = l.name;
   $('ctitle').value = l.title;
   setPicture(null);
@@ -416,7 +467,9 @@ function open(l) {
   $('direction').textContent = l.voice;
   const box = $('lines');
   box.innerHTML = '';
+  let job = '';
   l.lines.forEach((ln, i) => {
+    if (ln.group && ln.group !== job) { job = ln.group; const h = document.createElement('h3'); h.className = 'job'; h.innerHTML = '<span></span><small></small>'; h.querySelector('span').textContent = job.split(': ')[0]; h.querySelector('small').textContent = job.split(': ')[1]; box.appendChild(h); }
     const c = document.createElement('div');
     c.className = 'card';
     c.id = 'card-' + ln.key;
@@ -425,6 +478,7 @@ function open(l) {
     c.querySelector('.when').textContent = (i + 1) + ' of ' + l.lines.length + ' · ' + ln.when;
     const ta = c.querySelector('.line'), reset = c.querySelector('.reset');
     ta.value = ln.text;
+    ta.readOnly = !!l.folk; // the people's lines are the same for everyone who voices them
     ta.setAttribute('aria-label', 'Line ' + (i + 1) + ': ' + ln.when);
     const changed = () => {
       const own = said(ta.value) !== ln.text && said(ta.value) !== '';
@@ -548,10 +602,11 @@ function refresh() {
   const who = !!(picture || (c && (c.name || c.title))), rule = Object.keys(answers).length;
   const mark = (id, done, part) => { $(id).classList.toggle('done', !!done); $(id).classList.toggle('part', !done && !!part); };
   mark('s1', who); mark('s2', rule === QUESTIONS.length, rule); mark('s3', takes.size === leader.lines.length, takes.size || own);
+  if (leader.folk) $('count').textContent = takes.size + ' of ' + leader.lines.length + ' lines recorded'; else
   $('count').textContent = [who ? 'Character made' : 'Character as written', rule ? rule + ' of ' + QUESTIONS.length + ' questions answered' : 'no questions answered',
     takes.size + ' of ' + leader.lines.length + ' lines recorded' + (own ? ', ' + own + ' in your own words' : '')].join(' · ');
   $('save').disabled = $('save2').disabled = (takes.size === 0 && !c && !picture) || !!active;
-  $('save').textContent = takes.size ? 'Download my recordings' : 'Download my character';
+  $('save').textContent = takes.size || leader.folk ? 'Download my recordings' : 'Download my character';
 }
 
 // ---- recording ----
@@ -657,7 +712,7 @@ $('save').addEventListener('click', () => {
   const files = [...takes].map(([key, t]) => ({ name: key + '.wav', data: t.wav }));
   const made = character();
   const shown = (made && made.name) || leader.name;
-  const readme = 'Recordings for ' + shown + ' (' + leader.nation + ') in Hearth & Empire.\\n' + (who ? 'Voiced by ' + who + '.\\n' : '') +
+  const readme = (leader.folk ? 'Recordings for the people (' + leader.nation + ', ' + leader.title.toLowerCase() + ') in Hearth & Empire.\\n' : 'Recordings for ' + shown + ' (' + leader.nation + ') in Hearth & Empire.\\n') + (who ? 'Voiced by ' + who + '.\\n' : '') +
     (made ? 'A character of their own making, based on ' + leader.name + '.\\n' : '') +
     'In this file: ' + [made && (made.name || made.title) ? 'name and title' : '', picture ? 'portrait' : '', made && made.temper ? 'how they rule' : '', made && made.lines ? 'rewritten lines' : '',
       takes.size ? takes.size + ' of ' + leader.lines.length + ' lines recorded' : 'no recordings yet'].filter(Boolean).join(', ') + '.\\n\\nTo use them: copy every file in this folder into public/assets/voice/ in the game and restart it.\\n';
@@ -679,7 +734,7 @@ $('save').addEventListener('click', () => {
   cs.textContent = picture ? '' : monogram(shown);
   cs.style.backgroundColor = leader.color;
   cs.style.backgroundImage = picture ? 'url(' + picture.url + ')' : '';
-  $('crownedh').textContent = 'Long may you reign, ' + shown + '.';
+  $('crownedh').textContent = leader.folk ? 'The people have a voice.' : 'Long may you reign, ' + shown + '.';
   $('crownedp').textContent = 'Your file is in your downloads. Send it back to whoever invited you' + (takes.size < leader.lines.length ? ', and keep a copy: you can open it here again to add ' + (takes.size ? 'more of ' : '') + 'your voice.' : '.');
   $('crowned').hidden = false;
   $('crownedok').focus();
@@ -706,7 +761,7 @@ $('resume').addEventListener('change', async () => {
     const files = unzip(await f.arrayBuffer()), text = (n) => (files[n] ? new TextDecoder().decode(files[n]).trim() : '');
     const pn = Object.keys(files).find((n) => /^persona_[a-z]+\\.txt$/.test(n));
     if (!pn) throw new Error('not ours');
-    const civ = pn.slice(8, -4), l = LEADERS.find((x) => x.civ === civ && x.persona === (text(pn) === 'alt' ? 'alt' : 'main')) || LEADERS.find((x) => x.civ === civ);
+    const civ = pn.slice(8, -4), l = ALL.find((x) => x.civ === civ && x.persona === (text(pn) === 'alt' ? 'alt' : 'main')) || ALL.find((x) => x.civ === civ);
     if (!l) throw new Error('not ours');
     open(l);
     let c = {};

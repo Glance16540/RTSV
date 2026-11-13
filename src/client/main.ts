@@ -1,3 +1,4 @@
+import { bark } from './voice';
 import { Climate } from '../sim/map';
 import { AIController } from '../sim/ai';
 import { CIVS, CIV_IDS, UNITS, AGES, styleOf } from '../sim/data';
@@ -82,7 +83,7 @@ export class App {
   private sound(ev: GameEvent): void {
     const mine = 'player' in ev && ev.player === this.pid;
     if (ev.t === 'age' && mine) sfx.play('age');
-    else if (ev.t === 'alert' && mine) sfx.play('alert');
+    else if (ev.t === 'alert' && mine) { sfx.play('alert'); const v = this.game.units.find((u) => u.owner === this.pid && u.type === 'villager' && u.growT <= 0 && !u.inside); if (v) bark(this.game, v, 'fear'); }
     else if (ev.t === 'wonder') sfx.play(mine ? 'age' : 'alert');
     else if (ev.t === 'birth' && mine) sfx.play('birth');
     else if (ev.t === 'grown' && mine) sfx.play('grown');

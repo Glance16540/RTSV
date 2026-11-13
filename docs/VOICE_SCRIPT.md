@@ -698,3 +698,176 @@ Put a file named `persona_japan.txt` containing `alt` beside the recordings to h
 | `japan_p_ageup_2` | As the player's own leader: a new age is reached | We advance. The old ways still apply. |
 
 520 lines in all.
+
+## The people: villagers and warriors
+
+Short calls, one to three seconds, said when a villager or soldier is clicked on, sent to work or to war, or caught in
+a raid. Each is written three ways: for a holy town, an ordinary one and a decadent one. Name a recording
+`folk_<part>_<pious|plain|decadent>_<moment>_<m|f><a|b|c>`, for example `folk_farmer_pious_ready_fa.wav`: `m` or `f` for a
+man's or a woman's voice (warriors are men), and `a`, `b` or `c` for up to three voices the game picks among.
+
+### Townsfolk (`townsfolk`)
+
+A villager with no task yet, waiting to be told.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | Here am I. Send me. | What do you need? | Can it wait till after supper? |
+| `go` | When you send them to their work | As you will, and as He wills. | On my way. | If I must. |
+| `fear` | When the town is attacked | Ring the bell! Pray! | Ring the bell! Get inside! | Save yourselves! |
+
+### Woodcutter (`woodcutter`)
+
+Fells trees and hauls timber.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | God give me strength for the axe. | Axe is sharp. What needs felling? | Trees, again? My head is splitting. |
+| `go` | When you send them to their work | Every tree a gift. I take it gladly. | Timber it is. | Fine. Wood. Then wine. |
+| `fear` | When the town is attacked | Lord, shield us! | Raiders! To the hall! | Not my hide! Run! |
+
+### Farmer (`farmer`)
+
+Works the fields.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | He sends the rain; I bring the plough. | Fields won't tend themselves. | Sun's too high for this. |
+| `go` | When you send them to their work | We sow in faith. | Off to the furrows. | I'll plough it. Crooked, but I'll plough it. |
+| `fear` | When the town is attacked | Mercy on our harvest! | They're burning the fields! | Let them have the turnips! |
+
+### Forager (`forager`)
+
+Gathers berries and whatever grows wild.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | He feeds the sparrows. He'll feed us. | Basket's empty. Where to? | Berries make good wine, you know. |
+| `go` | When you send them to their work | I'll gather what is given. | To the bushes. | Picking. Half for the basket. |
+| `fear` | When the town is attacked | Hide me, O Lord! | Someone's in the brush! | Drop the basket! Go! |
+
+### Hunter (`hunter`)
+
+Brings down game for the pot.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | I take only what we need. | Bow's strung. | Something fat and slow, I hope. |
+| `go` | When you send them to their work | Bless the beast that feeds us. | On the trail. | Meat tonight. The good cuts are mine. |
+| `fear` | When the town is attacked | The hunters are hunted. God help us! | That's no deer! | I hunt things that don't hit back! |
+
+### Fisher (`fisher`)
+
+Works the nets from the shore or a boat.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | The first fishers were holy men. | Nets are mended. | Fish don't mind if I'm late. |
+| `go` | When you send them to their work | Cast the net and trust. | Out on the water. | I'll fish. Where it's shady. |
+| `fear` | When the town is attacked | Save us from the deep and the sword! | Ships! Row for shore! | Take the catch! Take the boat! |
+
+### Miner (`miner`)
+
+Cuts stone and digs gold.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | Even the stones cry out His name. | Pick's ready. | Gold, is it? Now you have my ear. |
+| `go` | When you send them to their work | I dig for the house of God. | Down the pit. | Some for the town. Some for my pocket. |
+| `fear` | When the town is attacked | Rock of ages, hide me! | Out of the pit! Out! | They can have the stone. Not the gold! |
+
+### Builder (`builder`)
+
+Raises houses, walls and everything else.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | Unless He builds the house, we toil for nothing. | Hammer and line. What's the job? | It'll stand. Mostly. |
+| `go` | When you send them to their work | Stone on stone, to His glory. | I'll raise it. | Built by sundown. Don't lean on it. |
+| `fear` | When the town is attacked | Our walls are in His hands! | Drop the tools! To the walls! | I built the back door for this! |
+
+### Cleric (`cleric`)
+
+A villager who serves in the church: the holy end of town.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | Peace be on this house. | The church doors are open. | The collection plate first, if you please. |
+| `go` | When you send them to their work | I go to tend the flock. | To the altar. | Indulgences won't sell themselves. |
+| `fear` | When the town is attacked | Sanctuary! Sanctuary! | To the church, all of you! | Save the silver! |
+
+### Tavern-keeper (`taverner`)
+
+A villager who serves in the tavern: the low end of town.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | Water for the weary, and a kind word. | What'll it be? | First cup's free. The rest never are. |
+| `go` | When you send them to their work | I'll keep an honest house. | Back to the taps. | More wine! More dice! More coin! |
+| `fear` | When the town is attacked | Let them not find us drunk! | Bar the door! | Hide the good barrels! |
+
+### Foot soldier (`footman`)
+
+Club, spear or sword: the line of battle.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | My shield is my faith. | Ready. | Is there pay in it? |
+| `march` | When you order them to move | Where He leads, I follow. | Moving out. | Marching. Slowly. |
+| `charge` | When you order them to attack | For God and home! | Charge! | First to their purses! |
+| `hurt` | When they are badly wounded | Into Thy hands! | I'm hit! | Not worth the wage! |
+
+### Archer (`archer`)
+
+Sling, bow, crossbow or gun: fights from a distance.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | Guide my arrow true. | String's dry. | I shoot better with a drink. |
+| `march` | When you order them to move | We go with a blessing. | On the move. | Point me at something. |
+| `charge` | When you order them to attack | Loose, in His name! | Loose! | Ten coin says I drop him! |
+| `hurt` | When they are badly wounded | Forgive me! | Arrow in me! | They shoot back?! |
+
+### Rider (`rider`)
+
+Fights from horse, camel or elephant.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | My horse and I are His. | In the saddle. | Fastest horse, first to the spoils. |
+| `march` | When you order them to move | We ride with the dawn. | Riding. | Ride on. The inn's that way. |
+| `charge` | When you order them to attack | Ride them down, for the Lord! | Run them down! | Trample them! Take everything! |
+| `hurt` | When they are badly wounded | Carry me home, old friend! | Horse is down! | My good saddle! |
+
+### Siege crew (`engineer`)
+
+Hauls and works the rams, catapults and guns.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | Walls fall to the faithful. | Engine's ready. | Costly thing. Pay me before it breaks. |
+| `march` | When you order them to move | Haul, brothers, and sing. | Hauling. | Push it yourself. Fine, fine. |
+| `charge` | When you order them to attack | Let the stones judge them! | Let fly! | Knock it down! We'll loot the rubble! |
+| `hurt` | When they are badly wounded | The engine! God preserve it! | We're exposed! | Leave it! Run! |
+
+### Priest or shaman (`healer`)
+
+Marches with the army to heal, bless and curse.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | Bring me the wounded. | I am here. | Healing has its price. |
+| `march` | When you order them to move | I walk among the fallen. | Coming. | Coming. Don't rush a holy man. |
+| `charge` | When you order them to attack | Be whole, and sin no more. | Hold still. | This will cost you. |
+| `hurt` | When they are badly wounded | Father, receive me. | I am struck! | Me? You'd strike me? |
+
+### Sailor (`sailor`)
+
+Crews the fishing boats, transports and warships.
+
+| Moment | When | Holy town | Ordinary town | Decadent town |
+| --- | --- | --- | --- | --- |
+| `ready` | When you click on them | He stills the waters. | Decks are clear. | Rum first, then rowing. |
+| `march` | When you order them to move | We sail by His stars. | Making way. | Wherever the plunder is. |
+| `charge` | When you order them to attack | Ram them, and God defend the right! | Ram them! | Board her! Take the cargo! |
+| `hurt` | When they are badly wounded | The sea take me to Him! | We're holed! | Abandon ship! Me first! |
