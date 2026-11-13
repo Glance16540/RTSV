@@ -223,6 +223,19 @@ export const SITE_BUILDING: Record<string, string> = { farm: 'farm', barracks: '
 /** The corner of its battlefield a land's holder defends from. The attacker makes camp in the one opposite. */
 export const homeCorner = (t: Territory): number => t.town?.at ?? 2;
 const MAX_TOWN = 240;
+/** The share of a building's full health that the people of a land mend in a turn. */
+export const TOWN_MEND = 0.1;
+/** A turn's mending: every damaged building in every town is a little nearer whole. Marauders mend nothing. */
+export function mendTowns(c: Campaign): void {
+  for (const t of c.territories) {
+    if (!t.town || t.horde) continue;
+    t.town.b = t.town.b.map((b): Standing => {
+      if (b[3] === undefined) return b;
+      const health = Math.round((b[3] + TOWN_MEND) * 100) / 100;
+      return health >= 1 ? [b[0], b[1], b[2]] : [b[0], b[1], b[2], health];
+    });
+  }
+}
 
 export interface Army {
   id: number;
@@ -1306,6 +1319,7 @@ export function continueAI(c: Campaign): void {
         c.log.push(`${c.factions[c.ally].name} share 3 supplies with you.`);
       }
       mapTurn(c);
+      mendTowns(c);
       turnEvent(c);
       storyTurn(c);
       checkDominion(c);
