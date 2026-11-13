@@ -706,8 +706,9 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     }
   }
   if (o.beard) {
-    const b = part(geo('beard', () => new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55)), hairM, 0, hc.y - hr.y * 0.42, hc.z + hr.z * 0.3);
-    b.scale.set(hr.x * 0.86, hr.y * 0.62, hr.z * 0.72);
+    // A beard on the jaw and chin, its top edge just under the mouth so the mouth still shows.
+    const b = part(geo('beard', () => new THREE.SphereGeometry(1, 12, 7, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55)), hairM, 0, mouthY - 0.024, hc.z + hr.z * 0.28);
+    b.scale.set(hr.x * 1.03, 0.078, hr.z * 0.98);
     head.add(b);
   }
   const gearHead: THREE.Object3D[] = [], gearPlate: THREE.Object3D[] = [], gearShield: THREE.Object3D[] = [];
