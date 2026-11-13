@@ -428,6 +428,8 @@ export class Renderer {
       for (let i = 0; i < 5; i++) this.ping(ev.x + (Math.random() - 0.5) * 6, ev.y + (Math.random() - 0.5) * 6, 0xc8a070);
     } else if (ev.t === 'plague') {
       for (let i = 0; i < 4; i++) this.ping(ev.x + (Math.random() - 0.5) * 4, ev.y + (Math.random() - 0.5) * 4, 0x9ad04a);
+    } else if (ev.t === 'fire' || ev.t === 'blight') {
+      for (let i = 0; i < 5; i++) this.ping(ev.x + (Math.random() - 0.5) * 5, ev.y + (Math.random() - 0.5) * 5, ev.t === 'fire' ? 0xff7a2a : 0x8a7a3a);
     }
   }
 

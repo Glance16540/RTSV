@@ -510,7 +510,7 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   prophet: U({
     id: 'prophet', name: 'Prophet', icon: '🔮',
-    desc: 'Unique. Spends faith to call down calamities: Plague sickens enemy troops and spreads between them, Earthquake shatters buildings. Cannot attack.',
+    desc: 'Unique. Spends faith to call down calamities: Plague sickens enemy troops and spreads between them, Earthquake shatters buildings, Fire from Heaven sets a town alight, Blight empties its fields. Cannot attack.',
     cost: { food: 100, gold: 150 }, time: 35, age: 2, hp: 50, atk: 0, armor: 0, range: 9, speed: 1.9,
     cooldown: 1, sight: 10, pop: 2, cls: 'support', radius: 0.3, limit: 2, mana: 100,
   }),
@@ -933,6 +933,24 @@ export const ABILITIES: Record<string, AbilityDef> = {
     id: 'quake', name: 'Earthquake', icon: '🌋', cost: 100, radius: 4,
     desc: 'The ground shakes for 5 seconds, heavily damaging enemy buildings in the area.',
   },
+  fire: {
+    id: 'fire', name: 'Fire from Heaven', icon: '🔥', cost: 80, radius: 3,
+    desc: 'Enemy buildings in the area are set alight and burn for 20 seconds. Fire leaps to buildings standing close by, friend or foe; rain puts it out.',
+  },
+  blight: {
+    id: 'blight', name: 'Blight', icon: '🦗', cost: 50, radius: 4,
+    desc: 'Enemy farms in the area yield nothing for a minute, and the berry bushes there are stripped of half their fruit.',
+  },
+};
+/**
+ * Fire, famine and the weather's hand on the harvest.
+ * fire: seconds a building set alight by a Prophet burns. A burning building may set another alight each second
+ * (`spread`) if it stands within `reach` tiles, wall to wall; what catches burns `caught` seconds and cannot catch
+ * again for `scorched`. blight: seconds a blighted farm yields nothing. harvest: what farms yield in each weather.
+ */
+export const CALAMITY = {
+  fire: 20, spread: 0.07, reach: 1.5, caught: 10, scorched: 45, blight: 60, berries: 0.5,
+  harvest: { rain: 1.15, dust: 0.7, snow: 0.6 } as Record<string, number>,
 };
 
 /** Traits a villager can be born with. Children tend to inherit one from a parent. */

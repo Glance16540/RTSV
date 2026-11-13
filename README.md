@@ -131,7 +131,9 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   down infantry, siege flattens buildings.
 
 - *Prophets and calamities:* from the Iron Age, Prophets spend faith on Plague (sickens enemy
-  troops and spreads between them) and Earthquake (shatters buildings).
+  troops and spreads between them), Earthquake (shatters buildings), Fire from Heaven (sets buildings alight) and
+  Blight (empties a rival's farms for a minute). Fire spreads to buildings standing close by, whoever owns them,
+  until it burns out or rain comes (`CALAMITY` in `src/sim/data.ts`). Farms yield more in rain and less in dust and snow.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).

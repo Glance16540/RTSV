@@ -8,7 +8,7 @@ import { connected, generateMap, T_GRASS, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WAT
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
-import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
+import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
 import { Campaign, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
@@ -3273,5 +3273,89 @@ describe('faith on the campaign map', () => {
     expect(pious.church).toBeGreaterThan(0); expect(pious.tavern).toBe(0);
     expect(worldly.tavern).toBeGreaterThan(0); expect(worldly.church).toBe(0);
     expect(middling.church + middling.tavern).toBe(0);
+  });
+});
+
+describe('fire, blight and the weather on the harvest', () => {
+  const two = () => { const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'hearth' }, { name: 'B', color: 2, isAI: false, civ: 'england' }]); g.weatherT = 1e6; return g; };
+  const prophetBy = (g: Game, x: number, y: number) => { const u = g.spawnUnit('prophet', 0, x, y); u.mana = 100; return u; };
+
+  it('a Prophet sets enemy buildings alight; fire leaps to what stands close, burns through and dies; rain stops it', () => {
+    const burn = (rain: boolean) => {
+      const g = two();
+      if (rain) { g.weather = 'rain'; g.weatherAmt = g.weatherWant = 1; }
+      const tc = g.buildings.find((b) => b.owner === 1)!;
+      const at = spot(g, 'house', 1);
+      const a = g.spawnBuilding('house', 1, at.cx, at.cy, true), b = g.spawnBuilding('house', 1, at.cx + 3, at.cy, true), c = g.spawnBuilding('house', 1, at.cx + 6, at.cy, true);
+      const far = g.spawnBuilding('house', 1, at.cx + 6, at.cy + 12 < g.size - 3 ? at.cy + 12 : at.cy - 12, true);
+      const p = prophetBy(g, a.x - 4, a.y);
+      // Aimed so that only the first house is inside the fire.
+      expect(g.cmdCast(0, [p.id], 'fire', a.x - ABILITIES.fire.radius + 0.5, a.y)).toBe(true);
+      run(g, 2);
+      expect(p.mana).toBeLessThan(100 - ABILITIES.fire.cost + 5);
+      expect(a.burnT).toBeGreaterThan(0);
+      const lit = new Set<number>();
+      let said = false;
+      run(g, 150, () => {
+        for (const x of [b, c, far, tc]) if (x.burnT > 0) lit.add(x.id);
+        for (const e of g.events) if (e.t === 'msg' && e.player === 1 && e.text.includes('Fire has spread')) said = true;
+        g.events.length = 0;
+      });
+      return { a, b, c, far, lit, said, g };
+    };
+    const dry = burn(false);
+    expect(dry.a.hp).toBeLessThan(dry.a.maxHp);
+    expect(dry.lit.has(dry.b.id)).toBe(true); // a house two tiles off catches
+    expect(dry.said).toBe(true);
+    expect(dry.lit.has(dry.far.id)).toBe(false); // one across the town does not
+    expect(dry.g.buildings.every((x) => x.burnT <= 0)).toBe(true); // and in the end it is out
+    const wet = burn(true);
+    expect(wet.lit.size).toBe(0);
+    expect(wet.a.maxHp - wet.a.hp).toBeLessThan(dry.a.maxHp - dry.a.hp);
+  });
+
+  it('blight empties a rival\'s farms for a while and strips the berries', () => {
+    const g = two();
+    const at = spot(g, 'farm', 1);
+    const farm = g.spawnBuilding('farm', 1, at.cx, at.cy, true);
+    const mine = spot(g, 'farm', 0);
+    const own = g.spawnBuilding('farm', 0, mine.cx, mine.cy, true);
+    const bush = g.resources.find((r) => r.type === 'berries')!;
+    const p = prophetBy(g, farm.x - 3, farm.y), q = prophetBy(g, bush.x - 2, bush.y);
+    const fruit = bush.amount;
+    g.cmdCast(0, [p.id], 'blight', farm.x, farm.y);
+    g.cmdCast(0, [q.id], 'blight', bush.x, bush.y);
+    run(g, 3);
+    expect(farm.blightT).toBeGreaterThan(CALAMITY.blight - 5);
+    expect(own.blightT ?? 0).toBe(0);
+    expect(bush.amount).toBeLessThanOrEqual(Math.ceil(fruit * (1 - CALAMITY.berries)));
+    // Nothing comes off a blighted field; when it lifts the farmer brings food in again.
+    for (const u of g.units.slice()) if (u.type === 'prophet') (g as any).kill(u);
+    const w = villagers(g, 1)[0];
+    g.cmdTarget(1, [w.id], farm.id);
+    const before = g.players[1].stats.gathered;
+    run(g, CALAMITY.blight - 10);
+    expect(g.players[1].stats.gathered).toBe(before);
+    run(g, 60);
+    expect(farm.blightT).toBe(0);
+    expect(g.players[1].stats.gathered).toBeGreaterThan(before);
+  });
+
+  it('farms do well in rain and badly in dust and snow', () => {
+    const haul = (sky: '' | 'rain' | 'snow' | 'dust') => {
+      const g = two();
+      if (sky) { g.weather = sky; g.weatherAmt = g.weatherWant = 1; }
+      const tc = g.buildings.find((b) => b.owner === 0)!;
+      const farm = g.spawnBuilding('farm', 0, tc.cx + 5, tc.cy, true);
+      const w = villagers(g, 0)[0];
+      g.cmdTarget(0, [w.id], farm.id);
+      run(g, 150);
+      return g.players[0].stats.gathered;
+    };
+    const fair = haul('');
+    expect(fair).toBeGreaterThan(0);
+    expect(haul('rain')).toBeGreaterThan(fair);
+    expect(haul('dust')).toBeLessThan(fair);
+    expect(haul('snow')).toBeLessThan(fair);
   });
 });

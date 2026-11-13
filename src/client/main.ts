@@ -89,7 +89,8 @@ export class App {
     else if (ev.t === 'grown' && mine) sfx.play('grown');
     else if (ev.t === 'msg' && mine) sfx.play(/^(Not|Cannot|You can only|Queue|Requires)/.test(ev.text) ? 'error' : 'done');
     else if (ev.t === 'quake' && this.onScreen(ev.x, ev.y)) sfx.play('quake');
-    else if (ev.t === 'plague' && this.onScreen(ev.x, ev.y)) sfx.play('plague');
+    else if ((ev.t === 'plague' || ev.t === 'blight') && this.onScreen(ev.x, ev.y)) sfx.play('plague');
+    else if (ev.t === 'fire' && this.onScreen(ev.x, ev.y)) sfx.play('quake');
     else if (ev.t === 'remove' && ev.unit && this.onScreen(ev.x, ev.y) && this.game.vis[Math.floor(ev.y) * this.game.size + Math.floor(ev.x)] === 2) sfx.play('death');
   }
 

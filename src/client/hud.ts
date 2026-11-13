@@ -494,6 +494,9 @@ export class Hud {
         '<div class="hint">Every woman held bears the band children, and it grows. Destroy the camp and they all go free. A woman freed will bear no more children, but works a quarter harder.</div>';
     }
     if (!b.complete) body += `<div>Under construction</div>${this.bar(b.progress)}`;
+    if (b.burnT > 0) body += '<div class="warn">🔥 On fire: it may spread to buildings close by</div>';
+    if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
+    if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
     else if (mine) {
       if (b.queue.length) {
         body += '<div class="queue">' + b.queue.map((q, i) => {

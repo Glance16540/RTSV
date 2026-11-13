@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 48 systems, 165 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 28 Working, rough, 7 First pass, 2 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:28"></span><span class="thin" style="flex:7"></span><span class="none" style="flex:2"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 48 systems, 168 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 29 Working, rough, 6 First pass, 2 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:29"></span><span class="thin" style="flex:6"></span><span class="none" style="flex:2"></span></div>
     <div class="filters" id="filters">
       <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">48</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">28</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">7</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">2</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">29</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">6</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">2</span></button>
     </div>
   </div>
 
@@ -152,11 +152,11 @@ footer { color: var(--dim); font-size: 13px; }
   <p class="what">A holy town cannot train them.</p>
   <ul class="has"><li>2 units are marked pagan</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>Which units count as pagan is my guess</li><li>The Prophet is not treated as pagan</li></ul>
-</article><article class="sys thin" data-status="thin">
-  <header><h3>Plague and calamity</h3><span class="pill thin">First pass</span></header>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Plague and calamity</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Disasters that strike a town.</p>
-  <ul class="has"><li>Plague and Earthquake, called down by a Prophet</li><li>Plague rising from a worldly town's Tavern</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>No famine, fire, flood or drought</li><li>Plague has only those two sources</li></ul>
+  <ul class="has"><li>Plague and Earthquake, called down by a Prophet</li><li>Plague rising from a worldly town's Tavern</li><li>Fire from Heaven: a Prophet sets enemy buildings alight for 20 seconds</li><li>Fire spreads: any burning building (a Fire Lancer's work too) may set alight one standing within a tile and a half, friend or foe; what has caught once does not catch again for 45 seconds, walls do not burn, and rain stops it</li><li>Blight: a Prophet empties enemy farms for a minute and strips half the berries nearby</li><li>Weather tells on the harvest: farms yield 15% more in rain, 30% less in dust and 40% less in snow, and the farm's panel says so</li><li>The computer's Prophets use fire where buildings stand close and blight on a rival's fields</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>No flood, and no famine as such: a town with no food simply stops growing</li><li>Nothing but a Prophet or a flame weapon starts a fire: no lightning, no accident at the smithy</li><li>Villagers cannot fight a fire; it burns out or the rain takes it</li><li>Spreading fire was tried in tests only: how fast a real, crowded town burns has not been watched or measured</li><li>Plague has only those two sources</li><li>A blighted field and a spreading fire have no look of their own beyond the usual flames and a warning on the panel</li></ul>
 </article></div></section>
   <section class="area"><h2>War <span class="n">3</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Land battle</h3><span class="pill solid">Working</span></header>
@@ -301,7 +301,7 @@ footer { color: var(--dim); font-size: 13px; }
   <header><h3>3D world</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">The battlefield and its light.</p>
   <ul class="has"><li>Painted ground, scattered grass and stones</li><li>Shores run in smooth curves, not tile steps: the land falls away into the bed along a rounded line and the water thins to a soft edge of surf just short of it</li><li>Water takes its colour from the country: bright and clear in the desert, green over a temperate shelf, grey and cold in the north; rain rings its surface and the moon glints on it at night</li><li>Water with a moving surface of swell and chop: it mirrors the sky at a low angle and shows its depth looking down, catches the sun in points of glitter, shelves over several tiles from clear turquoise shallows with a net of light on the bed to deep blue, sends line after line of surf in to the beach, washes up and back along the sand, greys under weather and darkens at night</li><li>Hills that rise and fall and mountain ranges with snow on the peaks</li><li>Low warm sunlight, soft shadows, haze and drifting cloud shadows</li><li>A drawn finish: banded shade with an ink outline, heavy on buildings and fine on people</li><li>Weather that comes and goes: rain, snowfall in the north, dust in the desert</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>Weather tells on fighting and movement (rain shortens bows and puts out fires, snow slows travel off the roads, dust cuts sight and bows) but not on harvests</li><li>The computer opponent does not plan around the weather</li><li>No seasons, no thunder, no sound of rain</li><li>Water mirrors a sky with drifting cloud but not the land or ships; ships ride the long swell but not the small chop</li><li>The water costs more to draw than anything else on the ground and has not been measured on a phone</li><li>Rain rings on water and ships riding the swell run but have not been seen</li><li>How fast it runs on a phone or in a big battle has not been measured</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The computer opponent does not plan around the weather</li><li>No seasons, no thunder, no sound of rain</li><li>Water mirrors a sky with drifting cloud but not the land or ships; ships ride the long swell but not the small chop</li><li>The water costs more to draw than anything else on the ground and has not been measured on a phone</li><li>Rain rings on water and ships riding the swell run but have not been seen</li><li>How fast it runs on a phone or in a big battle has not been measured</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Buildings</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">What a town is made of.</p>
@@ -331,7 +331,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>136 tests, all passing</li></ul>
+  <ul class="has"><li>139 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>
@@ -432,7 +432,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Smaller lists</h2><div class="lists">
     <section><h4>Standings of a town <span class="n">5</span></h4><ul class="roster"><li><b>Righteous</b></li><li><b>Devout</b></li><li><b>Temperate</b></li><li><b>Worldly</b></li><li><b>Decadent</b></li></ul></section>
     <section><h4>Dilemmas <span class="n">9</span></h4><ul class="roster"><li><b>The harvest is in</b></li><li><b>Strangers at the gate</b></li><li><b>The gambling den</b></li><li><b>The prophet calls a fast</b></li><li><b>A rich widow dies</b></li><li><b>A deserter is caught</b></li><li><b>The festival of masks</b></li><li><b>A pedlar with a relic</b></li><li><b>The priests ask for a tithe</b></li></ul></section>
-    <section><h4>Calamities <span class="n">2</span></h4><ul class="roster"><li><b>Plague</b></li><li><b>Earthquake</b></li></ul></section>
+    <section><h4>Calamities <span class="n">4</span></h4><ul class="roster"><li><b>Plague</b></li><li><b>Earthquake</b></li><li><b>Fire from Heaven</b></li><li><b>Blight</b></li></ul></section>
     <section><h4>Villager traits <span class="n">4</span></h4><ul class="roster"><li><b>Strong</b> <span class="cls">Gathers 25% faster.</span></li><li><b>Swift</b> <span class="cls">Moves 20% faster.</span></li><li><b>Hardy</b> <span class="cls">Has 50% more health.</span></li><li><b>Skilled</b> <span class="cls">Builds 60% faster.</span></li></ul></section>
     <section><h4>Campaign sites <span class="n">8</span></h4><ul class="roster"><li><b>Farmland</b></li><li><b>Barracks</b></li><li><b>Archery Range</b></li><li><b>Stable</b></li><li><b>Harbour</b></li><li><b>Church</b></li><li><b>Tavern</b></li><li><b>Fortress</b></li></ul></section>
     <section><h4>Territory traits <span class="n">5</span></h4><ul class="roster"><li><b>Gold hills</b></li><li><b>Rich soil</b></li><li><b>High ground</b></li><li><b>Horse plains</b></li><li><b>Coast</b></li></ul></section>

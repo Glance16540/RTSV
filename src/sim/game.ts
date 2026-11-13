@@ -2,7 +2,7 @@
 
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
-  MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
+  MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, CALAMITY, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
@@ -155,6 +155,10 @@ export interface Building extends Base {
   workerId: number;
   doneAt: number; // game time construction finished (0 if not yet)
   burnT: number; // seconds of fire left after a flame attack
+  /** When this building last caught fire from a neighbour: it cannot catch again for a while. */
+  litAt?: number;
+  /** Seconds a blighted farm will go on yielding nothing. */
+  blightT?: number;
   sheltered: number[]; // villagers hiding inside
   captives?: Captive[]; // a work camp's prisoners
   campT?: number; // progress towards the camp's next villager
@@ -249,6 +253,8 @@ export type GameEvent =
   | { t: 'grown'; player: number; x: number; y: number }
   | { t: 'quake'; x: number; y: number }
   | { t: 'plague'; x: number; y: number }
+  | { t: 'fire'; x: number; y: number }
+  | { t: 'blight'; x: number; y: number }
   | { t: 'birth'; player: number; x: number; y: number }
   | { t: 'age'; player: number }
   | { t: 'alert'; player: number; x: number; y: number }
@@ -1882,7 +1888,7 @@ export class Game {
         this.weather = this.climate === 'snow' ? 'snow' : this.climate === 'desert' ? 'dust' : 'rain';
         this.weatherWant = 0.5 + r() * 0.5;
         this.weatherT = 50 + r() * 60;
-        const what = this.weather === 'rain' ? '🌧️ Rain is coming in: arrows will fall short and fires will not last.' : this.weather === 'snow' ? '🌨️ Snow is coming down: off the roads, everyone moves slower.' : '🌪️ A dust storm is rising: no one will see far, and arrows will fall short.';
+        const what = this.weather === 'rain' ? '🌧️ Rain is coming in: arrows will fall short and fires will not last, but the fields do well.' : this.weather === 'snow' ? '🌨️ Snow is coming down: off the roads, everyone moves slower, and the fields yield little.' : '🌪️ A dust storm is rising: no one will see far, arrows will fall short, and the fields dry up.';
         for (const p of this.players) if (!p.neutral) this.events.push({ t: 'msg', player: p.id, text: what });
       }
     }
@@ -2411,6 +2417,16 @@ export class Game {
                 }
               }
               this.events.push({ t: 'plague', x: o.x, y: o.y });
+            } else if (o.ability === 'fire' || o.ability === 'blight') {
+              for (const b of this.buildings) {
+                const h = b.size / 2;
+                if (!this.hostile(b.owner, u.owner) || rectDist(o.x, o.y, b.x - h, b.y - h, b.x + h, b.y + h) > a.radius) continue;
+                if (o.ability === 'fire') { if (!b.def.wall) b.burnT = Math.max(b.burnT, CALAMITY.fire); }
+                else if (b.type === 'farm') b.blightT = CALAMITY.blight;
+                this.players[b.owner].lastAttacked = { x: b.x, y: b.y, t: this.time };
+              }
+              if (o.ability === 'blight') for (const r of this.resources) if (r.type === 'berries' && Math.hypot(r.x - o.x, r.y - o.y) <= a.radius) r.amount = Math.ceil(r.amount * (1 - CALAMITY.berries));
+              this.events.push({ t: o.ability, x: o.x, y: o.y });
             } else {
               this.quakes.push({ x: o.x, y: o.y, r: a.radius, t: 5, owner: u.owner });
               this.events.push({ t: 'quake', x: o.x, y: o.y });
@@ -2559,7 +2575,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -2770,12 +2786,34 @@ export class Game {
     return u;
   }
 
+  /**
+   * Once a second a burning building may set a neighbour alight, whoever owns it. Never in rain, never a wall, and
+   * a building that has caught once does not catch again for a while, so a town burns through and the fire dies.
+   * (Decided without the game's dice, so that the rest of a match is not disturbed by it.)
+   */
+  private spreadFire(b: Building): void {
+    if (this.foul === 'rain') return;
+    const h = b.size / 2;
+    for (const n of this.buildings) {
+      if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && this.time - n.litAt < CALAMITY.scorched)) continue;
+      const k = n.size / 2;
+      if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
+      const roll = ((Math.imul(b.id * 31 + n.id, 2654435761) ^ Math.imul(this.tick + this.seed, 40503)) >>> 0) / 4294967296;
+      if (roll >= CALAMITY.spread) continue;
+      n.burnT = CALAMITY.caught;
+      n.litAt = this.time;
+      if (!this.players[n.owner].neutral) this.msg(n.owner, `Fire has spread to your ${n.def.name}!`);
+    }
+  }
+
   private updateBuilding(b: Building): void {
     if (b.burnT > 0) {
       b.burnT -= this.foul === 'rain' ? DT * 2.5 : DT; // rain puts fires out
       b.hp -= 5 * DT;
       if (b.hp <= 0) { this.kill(b); return; }
+      if ((this.tick + b.id) % 20 === 0) this.spreadFire(b);
     }
+    if (b.blightT) b.blightT = Math.max(0, b.blightT - DT);
     if (!b.complete) return;
     const p = this.players[b.owner];
     // The Builders' walls and halls mend themselves when the town is left in peace.
