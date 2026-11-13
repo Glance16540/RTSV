@@ -253,6 +253,7 @@ export class Input {
 
   private key(e: KeyboardEvent): void {
     const app = this.app;
+    if (app.menu) return; // the main menu has the keys
     if (e.ctrlKey && !/^[0-9]$/.test(e.key)) return;
     if (e.metaKey || e.altKey) return;
     this.keys.add(e.key);
@@ -319,6 +320,7 @@ export class Input {
 
   update(dt: number): void {
     const app = this.app, r = app.r;
+    if (app.menu) return;
     let dx = 0, dy = 0;
     if (this.keys.has('ArrowLeft')) dx -= 1;
     if (this.keys.has('ArrowRight')) dx += 1;

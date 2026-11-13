@@ -3,7 +3,8 @@ import { Climate } from '../sim/map';
 import { AIController } from '../sim/ai';
 import { CIVS, CIV_IDS, UNITS, AGES, styleOf } from '../sim/data';
 import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
-import { artUrl, loadAssets } from './assets';
+import { artUrl, loadAssets, musicUrl } from './assets';
+import { loader, playOpening, Title } from './title';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
@@ -27,6 +28,8 @@ export class App {
   /** Calamity waiting for a target click. */
   casting: string | null = null;
   paused = true;
+  /** The main menu is up: the game's own keys and scrolling are set aside. */
+  menu = false;
   speed = 1;
   private acc = 0;
   private last = 0;
@@ -206,7 +209,9 @@ const go = (query: string) => {
   }
 };
 
-loadAssets().then(() => {
+loader.tip();
+loader.bar(0.08);
+loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   const el = (id: string) => document.getElementById(id)!;
   const startScreen = el('start');
   const rivals = [1, 2, 3].includes(Number(params.get('ai'))) ? Number(params.get('ai')) : 1;
@@ -241,6 +246,7 @@ loadAssets().then(() => {
   const climateOf = (civ: string): Climate => (['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? (asked as Climate) : HOMELAND[civ] ?? 'temperate');
   // Skirmishes and campaign battles are fought over hills and mountains; `?flat=1` gives the old level ground.
   const relief = params.get('flat') !== '1';
+  await loader.step(0.55, mode === 'campaign' ? 'Unrolling the map' : 'Raising the land');
   game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, relief, cfg.climate && asked === 'auto' ? cfg.climate : climateOf(cfg.setups[cfg.humanAttacks ? 1 : 0].civ ?? '')) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
@@ -271,21 +277,29 @@ loadAssets().then(() => {
   const climateSel = el('map-climate') as HTMLSelectElement;
   climateSel.value = ['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? asked : 'auto';
   climateSel.addEventListener('change', () => regenerate());
-  const regenerate = () => go(`?size=${sizeSel.value}&land=${landSel.value}&climate=${climateSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
+  // A different map means a fresh page, and the menu should come back open where it was.
+  const regenerate = () => { try { sessionStorage.setItem('rtsv-panel', 'skirmish'); } catch { /* storage unavailable */ } reload(); };
+  const reload = () => go(`?size=${sizeSel.value}&land=${landSel.value}&climate=${climateSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
   civSel.addEventListener('change', regenerate);
   teamSel.addEventListener('change', regenerate);
   sizeSel.addEventListener('change', regenerate);
   landSel.addEventListener('change', regenerate);
   aiSel.addEventListener('change', regenerate);
-  if (mode === 'skirmish' && readCampaign()) el('conquest-btn').textContent = 'Continue the campaign';
+  if (mode === 'skirmish' && readCampaign()) el('conquest-btn').querySelector('b')!.textContent = 'Continue the campaign';
   el('conquest-btn').addEventListener('click', () => go(`?campaign=1&ai=${aiSel.value}&civ=${(el('civ') as HTMLSelectElement).value}`));
 
+  await loader.step(0.8, 'Building the world');
   const app = new App(game);
   app.saveTag = tag;
+  const title = new Title(app, artUrl('title'));
+  /** The difficulty has been chosen, so the page over the game is only the help page. */
+  let begun = false;
+  /** That page is the word before a battle or a mission, not yet read. */
+  let briefing = false;
   if (saved) {
     app.ai.forEach((a, i) => a.load(saved!.ai[i] ?? {}));
     app.r.cx = saved.cam.x; app.r.cy = saved.cam.y; app.r.dist = saved.cam.d;
-    startScreen.classList.add('started');
+    begun = true;
   } else if (mode === 'skirmish' && readSave()) {
     const cont = el('continue-btn');
     cont.classList.remove('hidden');
@@ -293,38 +307,41 @@ loadAssets().then(() => {
   }
   el('save').addEventListener('pointerdown', () => app.save());
   (window as unknown as { app: App }).app = app;
-  const title = artUrl('title');
-  if (title) startScreen.style.backgroundImage = `linear-gradient(rgba(6,6,8,0.55), rgba(6,6,8,0.8)), url(${title})`;
-  for (const btn of startScreen.querySelectorAll<HTMLButtonElement>('[data-level]')) {
-    btn.addEventListener('click', () => {
-      // The first click picks the difficulty; afterwards the same screen is just the help page.
-      if (!startScreen.classList.contains('started')) for (const a of app.ai) a.setLevel(Number(btn.dataset.level));
-      const first = !startScreen.classList.contains('started') || startScreen.classList.contains('battle');
-      startScreen.classList.add('hidden', 'started');
-      startScreen.classList.remove('battle');
-      sfx.unlock();
-      app.paused = false;
-      // The rival's leader has a word as the match begins.
-      const foe = app.game.players.find((p) => p.isAI && !p.neutral && app.game.hostile(p.id, app.pid) && !p.name.endsWith(' reserve'));
-      if (first && app.game.time < 1) {
-        app.hud.advisorSay('p_start');
-        if (foe && (!app.mission || app.mission.aiLevel !== null)) setTimeout(() => app.hud.leaderSay(foe.id, 'battle'), 3500);
-      }
-    });
-  }
+  const begin = (level: number | null): void => {
+    // The first click picks the difficulty; afterwards the same page is just the help page.
+    if (level !== null && !begun) for (const a of app.ai) a.setLevel(level);
+    const first = !begun || briefing;
+    begun = true;
+    briefing = false;
+    startScreen.classList.add('hidden');
+    title.leave();
+    sfx.unlock();
+    sfx.endTheme();
+    sfx.play('confirm');
+    app.paused = false;
+    // The rival's leader has a word as the match begins.
+    const foe = app.game.players.find((p) => p.isAI && !p.neutral && app.game.hostile(p.id, app.pid) && !p.name.endsWith(' reserve'));
+    if (first && app.game.time < 1) {
+      app.hud.advisorSay('p_start');
+      if (foe && (!app.mission || app.mission.aiLevel !== null)) setTimeout(() => app.hud.leaderSay(foe.id, 'battle'), 3500);
+    }
+  };
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('#title [data-level]')) btn.addEventListener('click', () => begin(Number(btn.dataset.level)));
+  const resume = startScreen.querySelector<HTMLButtonElement>('.levels .resume')!;
+  resume.addEventListener('click', () => begin(null));
 
   if (cfg) {
     // A Conquest battle: difficulty and armies come from the campaign, and the result goes back to it.
     if (!saved) for (const a of app.ai) a.setLevel(cfg.level);
     if (!saved) game.aging = false; // a battle is over long before anyone grows old
-    startScreen.classList.add('started', 'battle');
+    begun = briefing = true;
     startScreen.querySelector('h1')!.textContent = cfg.title;
     startScreen.querySelector('.lead')!.textContent = cfg.field
       ? 'The armies have met in open country. There is nothing to build: destroy every enemy soldier. Whoever is left standing marches on.'
       : cfg.humanAttacks
         ? 'Your army has made camp. Destroy every enemy building to take this land.'
         : 'The enemy is at the gates. Destroy every enemy building to hold this land.';
-    startScreen.querySelector<HTMLButtonElement>('.levels .resume')!.textContent = saved ? 'Resume the battle' : 'To battle';
+    resume.textContent = saved ? 'Resume the battle' : 'To battle';
     const finish = (won: boolean) => {
       // Who is still standing decides what is left of the army on the campaign map.
       const survivors: Record<string, number> = {};
@@ -369,14 +386,13 @@ loadAssets().then(() => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-mission]')?.dataset.mission;
     if (id) go(`?mission=${id}`);
   });
-  el('missions-btn').addEventListener('click', () => el('missions').classList.toggle('hidden'));
   if (mission) {
     for (const a of app.ai) a.setLevel(mission.aiLevel ?? 1);
     app.missionStatus = mission.tick(game);
-    startScreen.classList.add('started', 'battle');
+    begun = briefing = true;
     startScreen.querySelector('h1')!.textContent = mission.name;
     startScreen.querySelector('.lead')!.textContent = mission.brief;
-    startScreen.querySelector<HTMLButtonElement>('.levels .resume')!.textContent = 'Begin';
+    resume.textContent = 'Begin';
     el('again-btn').textContent = 'Back to the menu';
   }
 
@@ -391,13 +407,38 @@ loadAssets().then(() => {
     }
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);
     const state = c;
-    startScreen.classList.add('hidden');
     new Overworld(state, {
       save: () => writeCampaign(state),
       fight: () => { writeCampaign(state); go('?battle=1'); },
       newCampaign: (r, l, civ) => { writeCampaign(newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined)); go('?campaign=1'); },
       exit: () => go(''),
     });
+  }
+
+  // ---- What is on screen when the loading is done ----
+  await loader.step(1, 'Ready');
+  const atMenu = mode === 'skirmish' && !saved;
+  if (atMenu) {
+    // The opening is played once a visit: a refresh, or a return from the campaign, goes straight to the menu.
+    const seen = (() => { try { return sessionStorage.getItem('rtsv-seen'); } catch { return null; } })();
+    const asked = new URLSearchParams(location.search).get('intro');
+    const opening = asked === '1' || (asked !== '0' && !seen);
+    const panel = (() => { try { const p = sessionStorage.getItem('rtsv-panel'); sessionStorage.removeItem('rtsv-panel'); return p ?? ''; } catch { return ''; } })();
+    try { sessionStorage.setItem('rtsv-seen', '1'); } catch { /* storage unavailable */ }
+    sfx.theme(musicUrl('theme'));
+    if (opening) {
+      await loader.gate();
+      sfx.unlock();
+      title.enter(false);
+      loader.hide();
+      await playOpening();
+    } else {
+      title.enter(true, panel);
+      loader.hide();
+    }
+  } else {
+    if (mode !== 'campaign') startScreen.classList.remove('hidden');
+    loader.hide();
   }
 });
 document.getElementById('again-btn')!.addEventListener('click', () => go(mode === 'battle' ? '?campaign=1' : ''));

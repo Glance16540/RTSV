@@ -6,7 +6,7 @@ import { Character, setLeaderCharacter, setLeaderPersona } from '../sim/leaders'
 import { setTemperament } from '../sim/temper';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string>; credits?: Record<string, string>; personas?: Record<string, string>; characters?: Record<string, Character>; portraits?: Record<string, string> }
+interface Manifest { icons: Record<string, string>; models: Record<string, string>; art: Record<string, string>; voice: Record<string, string>; music?: Record<string, string>; credits?: Record<string, string>; personas?: Record<string, string>; characters?: Record<string, Character>; portraits?: Record<string, string> }
 /** Optional per-model corrections in public/assets/tweaks.json, keyed by model name. */
 interface Tweak { scale?: number; yaw?: number; y?: number }
 
@@ -24,7 +24,7 @@ async function json<T>(url: string, fallback: T): Promise<T> {
   }
 }
 
-export async function loadAssets(): Promise<void> {
+export async function loadAssets(progress: (done: number) => void = () => {}): Promise<void> {
   manifest = { ...manifest, ...(await json<Partial<Manifest>>(BASE + 'manifest.json', {})) };
   // A nation whose recordings are of its second leader is led by that leader in the game.
   for (const [civ, who] of Object.entries(manifest.personas ?? {})) setLeaderPersona(civ, who === 'alt');
@@ -32,6 +32,8 @@ export async function loadAssets(): Promise<void> {
   if (!Object.keys(manifest.models).length) return;
   tweaks = await json(BASE + 'tweaks.json', {});
   const loader = new GLTFLoader();
+  let loaded = 0;
+  const total = Object.keys(manifest.models).length;
   await Promise.all(Object.entries(manifest.models).map(async ([key, file]) => {
     try {
       const gltf = await loader.loadAsync(BASE + 'models/' + file);
@@ -52,6 +54,7 @@ export async function loadAssets(): Promise<void> {
     } catch (e) {
       console.warn(`Could not load model ${file}`, e);
     }
+    progress(++loaded / total);
   }));
 }
 
@@ -82,6 +85,12 @@ export const voiceCredit = (civ: string): string => manifest.credits?.[civ] ?? '
 export function voiceUrl(key: string): string | null {
   const file = manifest.voice[key];
   return file ? `${BASE}voice/${file}` : null;
+}
+
+/** A piece of music dropped into public/assets/music (`theme` is the main theme), if it is there. */
+export function musicUrl(key: string): string | null {
+  const file = manifest.music?.[key];
+  return file ? `${BASE}music/${file}` : null;
 }
 
 export function artUrl(key: string): string | null {
