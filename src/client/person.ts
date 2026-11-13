@@ -87,6 +87,17 @@ export interface Outfit {
   plate: boolean;
   shield: number | null;
   weapon: '' | 'club' | 'spear' | 'sword' | 'pike';
+  /** Worn on the head when there is no helmet. */
+  hat: '' | 'straw' | 'hood' | 'cap' | 'turban' | 'fur' | 'circlet';
+  hatColor: number;
+  /** A cloak down the back, by its colour. */
+  cloak: number | null;
+  /** A fur collar over the shoulders. */
+  mantle: boolean;
+  /** An apron over the front of the skirt, by its colour. */
+  apron: number | null;
+  /** The colour of hems, if not a darker shade of the cloth. */
+  trim: number | null;
 }
 
 const UNITS_DRAWN = new Set(['villager', 'clubman', 'spearman', 'swordsman', 'pikeman']);
@@ -98,10 +109,10 @@ export function outfitFor(type: string, female: boolean, color: number, look: { 
   const s = Math.abs(seed | 0);
   const pick = (k: number): 0 | 1 | 2 => ([1, 0, 1, 2, 1, 1, 2, 0, 1][(s >> k) % 9] as 0 | 1 | 2);
   const fighter = type !== 'villager';
-  const base: Outfit = { female, girth: fighter ? (Math.max(1, pick(2)) as 1 | 2) : pick(2), chest: fighter ? 2 : pick(5), skin: look.skin, hair: look.hair, seed: s, top: color, sleeves: 'short', neck: 0, legs: [0x6a5238, 0x54483c, 0x7a6a4c, 0x4a4238][s % 4], skirt: 'short', skirtColor: color, hairStyle: 'short', beard: !female && s % 3 === 0, helmet: '', plate: false, shield: null, weapon: '' };
+  const base: Outfit = { female, girth: fighter ? (Math.max(1, pick(2)) as 1 | 2) : pick(2), chest: fighter ? 2 : pick(5), skin: look.skin, hair: look.hair, seed: s, top: color, sleeves: 'short', neck: 0, legs: [0x6a5238, 0x54483c, 0x7a6a4c, 0x4a4238][s % 4], skirt: 'short', skirtColor: color, hairStyle: 'short', beard: !female && s % 3 === 0, helmet: '', plate: false, shield: null, weapon: '', hat: '', hatColor: 0x8a6a48, cloak: null, mantle: false, apron: null, trim: null };
   if (type === 'villager') {
     if (!female) return { ...base, sleeves: s % 3 === 1 ? 'long' : 'short', neck: 1 };
-    return { ...base, skirt: 'long', legs: 0xd8cdb8, sleeves: wear === 1 ? 'long' : wear >= 2 ? 'bare' : 'short', neck: wear === 3 ? 2 : wear === 2 ? 1 : 0, hairStyle: wear === 1 ? 'covered' : s % 2 ? 'long' : 'bun' };
+    return { ...base, skirt: 'long', apron: wear === 3 ? null : 0xe2d8c0, legs: 0xd8cdb8, sleeves: wear === 1 ? 'long' : wear >= 2 ? 'bare' : 'short', neck: wear === 3 ? 2 : wear === 2 ? 1 : 0, hairStyle: wear === 1 ? 'covered' : s % 2 ? 'long' : 'bun' };
   }
   if (type === 'clubman') return { ...base, top: 0x8a6a48, sleeves: 'bare', neck: 1, legs: look.skin, weapon: 'club', beard: s % 2 === 0 };
   if (type === 'spearman') return { ...base, top: 0x7a5232, sleeves: 'short', helmet: 'bronze', shield: color, weapon: 'spear' };
@@ -214,25 +225,25 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
  * A skirt hung from the hips: the top of it moves with the hips, and each side further down swings with the thigh
  * behind it, so it parts and closes as the legs stride.
  */
-function skirt(body: THREE.SkinnedMesh, long: boolean, female: boolean, color: number, girth: number, apron: boolean): THREE.SkinnedMesh {
-  const linen = new THREE.Color(0xe2d8c0);
+function skirt(body: THREE.SkinnedMesh, long: boolean, female: boolean, color: number, girth: number, apron: number | null, trimC: number | null): THREE.SkinnedMesh {
+  const linen = new THREE.Color(apron ?? 0);
   const wide = 1 + [-0.06, 0, 0.13][girth];
   const names = body.skeleton.bones.map((b) => b.name);
   const hips = names.indexOf('DEF-hips'), tl = names.indexOf('DEF-thighL'), tr = names.indexOf('DEF-thighR');
   const top = 1.06, hem = long ? 0.13 : 0.68, rings = long ? 9 : 5, seg = 18;
   const P: number[] = [], C: number[] = [], SI: number[] = [], SW: number[] = [], I: number[] = [];
-  const base = new THREE.Color(color), trim = base.clone().multiplyScalar(0.68);
+  const base = new THREE.Color(color), trim = trimC !== null ? new THREE.Color(trimC) : base.clone().multiplyScalar(0.68);
   for (let r = 0; r <= rings; r++) {
     const f = r / rings, y = top + (hem - top) * f;
     // Close at the waist, over the hips, then flaring to the hem.
     const hipK = bump(y, 0.9, 0.2) * Math.min(1, f * (long ? 9 : 5)); // the waistband sits close; the cloth stands off below it
-    const rx = (female ? 0.118 : 0.156) + hipK * (female ? 0.115 : 0.055) + f * (long ? 0.15 : 0.035), rz = (female ? 0.1 : 0.112) + hipK * 0.06 + f * (long ? 0.15 : 0.03);
+    const rx = (female ? 0.118 : 0.156) + hipK * (female ? 0.085 : 0.055) + f * (long ? 0.15 : 0.035), rz = (female ? 0.1 : 0.112) + hipK * 0.06 + f * (long ? 0.15 : 0.03);
     const leg = Math.min(1, Math.max(0, (0.98 - y) / 0.22)) * (long ? 0.6 : 0.85); // how much of this ring the legs carry
     for (let s = 0; s < seg; s++) {
       const a = (s / seg) * Math.PI * 2, fold = 1 + (long ? Math.sin(a * 7) * 0.035 * f : 0);
       const x = Math.cos(a) * rx * fold * wide, z = 0.012 + Math.sin(a) * rz * fold * wide * (Math.sin(a) > 0 && girth === 2 ? 1.28 : 1);
       P.push(x, y, z);
-      const c = apron && Math.sin(a) > 0.62 && r > 0 && r < rings - 1 ? linen : r === rings ? trim : base, n = 0.92 + ((s * 7 + r * 3) % 5) * 0.03;
+      const c = apron !== null && Math.sin(a) > 0.62 && r > 0 && r < rings - 1 ? linen : r === rings ? trim : base, n = 0.92 + ((s * 7 + r * 3) % 5) * 0.03;
       C.push(c.r * n, c.g * n, c.b * n);
       const wl = Math.min(1, Math.max(0, 0.5 + x / 0.14));
       SI.push(hips, tl, tr, 0); SW.push(1 - leg, leg * wl, leg * (1 - wl), 0);
@@ -242,6 +253,39 @@ function skirt(body: THREE.SkinnedMesh, long: boolean, female: boolean, color: n
     const a = r * seg + s, b = r * seg + ((s + 1) % seg), c2 = a + seg, d = b + seg;
     I.push(a, c2, b, b, c2, d);
   }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4));
+  g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
+  g.setIndex(I);
+  g.computeVertexNormals();
+  const m = new THREE.SkinnedMesh(g, drape);
+  m.bind(body.skeleton, body.bindMatrix);
+  m.castShadow = true;
+  m.frustumCulled = false;
+  return m;
+}
+
+/** A cloak pinned at the shoulders and hanging down the back to the calf: it follows the spine, then the hips. */
+function cloak(body: THREE.SkinnedMesh, color: number, girth: number): THREE.SkinnedMesh {
+  const names = body.skeleton.bones.map((b) => b.name);
+  const s3 = names.indexOf('DEF-spine003'), s1 = names.indexOf('DEF-spine001'), hips = names.indexOf('DEF-hips');
+  const rows = 8, seg = 10, P: number[] = [], C: number[] = [], SI: number[] = [], SW: number[] = [], I: number[] = [];
+  const base = new THREE.Color(color), wide = 1 + [-0.05, 0, 0.12][girth];
+  for (let r = 0; r <= rows; r++) {
+    const f = r / rows, y = 1.5 - f * 1.1;
+    for (let s = 0; s <= seg; s++) {
+      // Round the back from shoulder to shoulder, spreading and standing further off as it falls.
+      const a = Math.PI + (s / seg - 0.5) * Math.PI * 1.15, rx = (0.2 + f * 0.1) * wide, rz = (0.13 + f * 0.1) * wide;
+      P.push(Math.sin(a) * rx * (1 + Math.sin(s * 2.1) * 0.03 * f), y, 0.01 + Math.cos(a) * rz);
+      const n = 0.86 + ((s * 5 + r * 3) % 4) * 0.045;
+      C.push(base.r * n, base.g * n, base.b * n);
+      const up = Math.max(0, Math.min(1, (y - 1.25) / 0.2)), low = Math.max(0, Math.min(1, (1.05 - y) / 0.2));
+      SI.push(s3, s1, hips, 0); SW.push(up, 1 - up - low, low, 0);
+    }
+  }
+  for (let r = 0; r < rows; r++) for (let s = 0; s < seg; s++) { const a = r * (seg + 1) + s, b = a + 1, c = a + seg + 1, d = c + 1; I.push(a, c, b, b, c, d); }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
@@ -322,7 +366,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const mine = new Map<string, { p: THREE.Vector3; q: THREE.Quaternion; s: THREE.Vector3 }>();
   body.traverse((b) => { if ((b as THREE.Bone).isBone) mine.set(b.name, { p: b.position.clone(), q: b.quaternion.clone(), s: b.scale.clone() }); });
 
-  if (o.skirt !== 'none') meshes[0].parent!.add(skirt(meshes[0], o.skirt === 'long', o.female, o.skirtColor, o.girth, o.female && o.neck < 2));
+  if (o.skirt !== 'none') meshes[0].parent!.add(skirt(meshes[0], o.skirt === 'long', o.female, o.skirtColor, o.girth, o.apron, o.trim));
 
   // ---- the head: a face, hair, and whatever is worn on it ----
   const hb = source.marks.head, hc = hb.getCenter(new THREE.Vector3()), hr = hb.getSize(new THREE.Vector3()).multiplyScalar(0.5);
@@ -343,7 +387,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     d.rotation.x = -0.22; // set back off the brow
     return d;
   };
-  if (!o.helmet && o.hairStyle !== 'covered') head.add(crown(hairM, o.female ? 1.16 : 1.08));
+  if (!o.helmet && o.hairStyle !== 'covered' && o.hat !== 'hood' && o.hat !== 'cap' && o.hat !== 'fur') head.add(crown(hairM, o.female ? 1.16 : 1.08));
   if (o.female && !o.helmet) {
     if (o.hairStyle === 'long') {
       // Worn loose down the back.
@@ -384,7 +428,50 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       for (const sx of [-1, 1]) head.add(part(geo('cheek', () => new THREE.BoxGeometry(0.012, 0.09, 0.07)), metal, sx * hr.x * 1.08, hc.y - hr.y * 0.2, hc.z + hr.z * 0.25));
     }
   }
+  if (!o.helmet && o.hat) {
+    const hm = solid(o.hatColor);
+    if (o.hat === 'straw') {
+      // A wide straw hat with a low crown.
+      const straw = solid(0xd8b860);
+      const brim = part(geo('strawbrim', () => new THREE.ConeGeometry(0.26, 0.07, 16, 1, true)), straw, 0, hc.y + hr.y * 0.72, hc.z - hr.z * 0.05);
+      (brim.material as THREE.Material).side = THREE.DoubleSide;
+      head.add(brim, part(geo('strawtop', () => new THREE.CylinderGeometry(0.075, 0.095, 0.07, 12)), straw, 0, hc.y + hr.y * 0.95, hc.z - hr.z * 0.05));
+    } else if (o.hat === 'hood') {
+      // A hood drawn up, open at the face, with a cape over the shoulders.
+      const hood = part(geo('hood', () => new THREE.SphereGeometry(1, 14, 10, Math.PI * 0.68, Math.PI * 1.64)), hm, 0, hc.y + hr.y * 0.02, hc.z - hr.z * 0.1);
+      hood.scale.set(hr.x * 1.3, hr.y * 1.22, hr.z * 1.3);
+      (hood.material as THREE.Material).side = THREE.DoubleSide;
+      head.add(hood);
+      const sh = at('DEF-spine.003');
+      const cape = part(geo('cape', () => new THREE.CylinderGeometry(0.1, 0.27, 0.2, 14, 1, true)), hm, 0, sh.y + 0.13, 0.005);
+      cape.scale.z = 0.72;
+      fit('DEF-spine.003', cape);
+    } else if (o.hat === 'cap') {
+      head.add(crown(hm, 1.14, hr.y * 0.1));
+    } else if (o.hat === 'turban') {
+      const wrap = part(geo('turban', () => new THREE.SphereGeometry(1, 12, 8)), hm, 0, hc.y + hr.y * 0.62, hc.z - hr.z * 0.1);
+      wrap.scale.set(hr.x * 1.42, hr.y * 0.62, hr.z * 1.4);
+      head.add(wrap, part(geo('turbantail', () => new THREE.BoxGeometry(0.05, 0.2, 0.012)), hm, 0.03, hc.y - hr.y * 0.4, hc.z - hr.z * 1.05));
+    } else if (o.hat === 'fur') {
+      head.add(crown(hm, 1.18, hr.y * 0.12));
+      const band = part(geo('furband', () => new THREE.TorusGeometry(1, 0.26, 6, 14).rotateX(Math.PI / 2)), solid(0x5a4634), 0, hc.y + hr.y * 0.42, hc.z - hr.z * 0.06);
+      band.scale.set(hr.x * 1.12, hr.y * 0.75, hr.z * 1.12);
+      head.add(band);
+    } else {
+      const ring = part(geo('circlet', () => new THREE.TorusGeometry(1, 0.07, 5, 18).rotateX(Math.PI / 2)), solid(0xd8b040, 0.6), 0, hc.y + hr.y * 0.5, hc.z - hr.z * 0.05);
+      ring.scale.set(hr.x * 1.1, hr.y, hr.z * 1.12);
+      ring.rotation.x = -0.15;
+      head.add(ring);
+    }
+  }
   fit('DEF-head', head);
+  if (o.mantle) {
+    const sh = at('DEF-spine.003');
+    const fur = part(geo('mantle', () => new THREE.TorusGeometry(0.15, 0.06, 6, 14).rotateX(Math.PI / 2)), solid(0x6a5640), 0, sh.y + 0.2, 0);
+    fur.scale.set(1.25, 1, 0.85);
+    fit('DEF-spine.003', fur);
+  }
+  if (o.cloak !== null) meshes[0].parent!.add(cloak(meshes[0], o.cloak, o.girth));
 
   // ---- plate: a breast-and-back and a pair of pauldrons ----
   if (o.plate) {

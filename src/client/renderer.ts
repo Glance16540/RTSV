@@ -10,12 +10,13 @@ import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
-import { RealPerson, drawnReal, hold, lasts, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
+import { Outfit, RealPerson, drawnReal, hold, lasts, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
 
-const PITCH = (50 * Math.PI) / 180;
+/** How steeply the camera looks down. `?pitch=20` (degrees) lowers it, for looking at figures from the side. */
+const PITCH = ((Number(new URLSearchParams(location.search).get('pitch')) || 50) * Math.PI) / 180;
 const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
@@ -970,6 +971,28 @@ export class Renderer {
   }
 
   /** Sets a figure's joints from the recorded motion that fits what it is doing. */
+  private models: RealPerson[] = [];
+  /**
+   * Stands a row of figures at a spot, each in the outfit given, facing the camera: a way to look at clothes without
+   * playing for them. Each entry overrides the plain villager's dress. Returns where each stands.
+   */
+  wardrobe(list: (Partial<Outfit> & { civ?: string })[], x: number, y: number, gap = 0.85): { x: number; y: number }[] {
+    const at: { x: number; y: number }[] = [];
+    list.forEach((over, i) => {
+      const base = outfitFor('villager', !!over.female, over.top ?? this.game.players[this.game.humanId].color, lookOf(over.civ ?? this.game.players[this.game.humanId].civ, 31 + i * 17), 31 + i * 17, 0);
+      const made = makePerson({ ...base, ...over });
+      if (!made) return;
+      // A row across the screen: along the line at right angles to the way the camera looks.
+      const px = x + Math.cos(YAW) * (i - (list.length - 1) / 2) * gap, py = y - Math.sin(YAW) * (i - (list.length - 1) / 2) * gap;
+      made.g.position.set(px, this.scenery.heightAt(px, py), py);
+      made.g.rotation.y = YAW;
+      this.scene.add(made.g);
+      this.models.push(made.real);
+      at.push({ x: px, y: py });
+    });
+    return at;
+  }
+
   /** Chooses the recorded motion for what someone is doing, and puts the tool of the trade in a villager's hand. */
   private poseReal(u: Unit, p: RealPerson, job: Job, dt: number): void {
     const jog = Math.max(0.8, Math.min(1.5, u.def.speed / 1.9));
@@ -1253,6 +1276,7 @@ export class Renderer {
     for (const r of game.resources) this.syncResource(r);
     this.updateFog(dt);
     this.scenery.update(this.clock, 1 - this.nightAmt, this.weather.amount);
+    for (const m of this.models) m.mixer.update(dt);
     if (!this.still) this.life.update(dt, this.clock, 1 - this.nightAmt, this.weather.amount, this.cx, this.cy);
     // Smoke from the hearths of lived-in houses and the town's hall, thicker in the cold and after dark.
     if ((this.hearthT -= dt) <= 0 && !this.still) {
