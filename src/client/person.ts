@@ -650,7 +650,8 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     const ex = sx * 0.033;
     // One dark almond with a point of light: no white to stare with, and nothing set in front of anything else to slide about as the head turns.
     const eye = part(geo('eye', () => new THREE.SphereGeometry(0.0128, 12, 8)), iris, ex, eyeY - 0.0004, ez - 0.0042);
-    eye.scale.set(o.female ? 1.2 : 1.4, o.female ? 0.92 : 1.02, 0.42);
+    const big = o.child ? 1.22 : 1; // a child's eyes are large in the face
+    eye.scale.set((o.female ? 1.2 : 1.4) * big, (o.female ? 0.92 : 1.02) * big, 0.42);
     // On dark skin a dark eye would be lost, leaving only its point of light: a pale rim round it, even all the way round, keeps it an eye.
     if (rimT > 0.4) { const rim = part(geo('eyerim', () => new THREE.SphereGeometry(0.0128, 12, 8)), rimM, ex, eyeY - 0.0004, ez - 0.0052); rim.scale.set(o.female ? 1.5 : 1.7, o.female ? 1.2 : 1.22, 0.42); head.add(rim); }
     head.add(eye, part(geo('glint', () => new THREE.SphereGeometry(0.0025, 6, 5)), glint, ex + 0.0036, eyeY + 0.003, ez + 0.0002));
@@ -840,7 +841,9 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     logs.position.set(0, s3.y + 0.08, -0.19);
     for (const [k, piece] of [['sack', sack], ['logs', logs]] as const) { fit('DEF-spine.003', piece); piece.visible = false; props.set(k, piece); }
   }
-  if (o.child) bones.get('DEF-head')?.scale.multiplyScalar(1.28);
+  // A child's head is large for the body. A boy's is also made rounder: the man's head it is cut from is long in the jaw,
+  // and at a child's size that left a tall mask with the features small in the middle of it.
+  if (o.child) { const hb2 = bones.get('DEF-head'); if (hb2) { if (o.female) hb2.scale.multiplyScalar(1.28); else hb2.scale.set(hb2.scale.x * 1.2, hb2.scale.y * 1.08, hb2.scale.z * 1.2); } }
 
   const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(), props, toolKind: '', skins: [], whole: [], skin: o.skin, gear: [gearShield, gearHead, gearPlate].filter((l) => l.length > 0), spare, hurt: 0, female: o.female, seed: o.seed, strike: 0, struck: false, soldier: !!o.weapon, aim: o.weapon === 'bow' ? 'bow' : o.weapon === 'crossbow' || o.weapon === 'musket' || o.weapon === 'firetube' ? 'gun' : '', aimW: 0, flinch: 0, weapon: o.weapon, child: o.child };
   for (const [name, clip] of source.clips) real.actions.set(name, real.mixer.clipAction(clip));
