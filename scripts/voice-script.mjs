@@ -38,6 +38,7 @@ let folkTotal = 0;
 for (const r of FOLK) {
   out += `\n### ${r.name} (\`${r.id}\`)\n\n${r.about}\n\n| Moment | When | Holy town | Ordinary town | Decadent town |\n| --- | --- | --- | --- | --- |\n`;
   for (const [m, three] of Object.entries(r.lines)) { out += `| \`${m}\` | ${MOMENT_NOTES[m]} | ${three.join(' | ')} |\n`; folkTotal += LEANS.length; }
+  if (r.her) { out += `\nAs a woman she is the **${r.herName}**: ${r.herAbout} Same file names, with \`f\`.\n\n| Moment | When | Holy town | Ordinary town | Decadent town |\n| --- | --- | --- | --- | --- |\n`; for (const [m, three] of Object.entries(r.her)) out += `| \`${m}\` | ${MOMENT_NOTES[m]} | ${three.join(' | ')} |\n`; }
 }
 writeFileSync('docs/VOICE_SCRIPT.md', out);
 console.log(`voice script: ${total} lines for ${Object.keys(LEADERS).length} leaders`);

@@ -5,22 +5,22 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { CHARACTER_LIMITS, EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
 import { CIVS, CIV_COLOR } from '../src/sim/data.ts';
 import { TEMPER_AXES, TEMPER_QUESTIONS, TEMPER_WORDS } from '../src/sim/temper.ts';
-import { FOLK, FOLK_VOICES, LEANS, LEAN_NOTES, MOMENT_NOTES, folkKey } from '../src/sim/folk.ts';
+import { FOLK, FOLK_VOICES, LEANS, LEAN_NOTES, MOMENT_NOTES, folkAs, folkKey } from '../src/sim/folk.ts';
 
 // The common people: villagers at every job and warriors of every arm, each line in three tempers, from a holy town
 // to a decadent one. Up to three people can voice each part; the game picks among them.
 const PARTS = [
-  { kind: 'villager', sex: 'f', name: 'Village women', who: 'A woman of the village', color: '#7c9a5a', voice: 'Ordinary working women: farmers, foragers, builders, and those who serve in the church or the tavern. Short and natural, as if called to across a yard.' },
-  { kind: 'villager', sex: 'm', name: 'Village men', who: 'A man of the village', color: '#8a7a4a', voice: 'Ordinary working men: woodcutters, miners, hunters, builders. Short and natural, as if called to across a yard.' },
-  { kind: 'warrior', sex: 'm', name: 'Warriors', who: 'A soldier of the army', color: '#9a4a3a', voice: 'Fighting men of every arm: foot, archers, riders, siege crews, priests and sailors. Clipped and loud enough to carry over a field.' },
+  { kind: 'villager', sex: 'f', name: 'Village women', who: 'A woman of the village', color: '#7c9a5a', voice: 'Ordinary working women: farmers, foragers, builders, and those who serve in the church or the tavern. Short and natural, as if called to across a yard. Let the town show in the voice: warm and motherly in a holy town, brisk in an ordinary one, sly, bawdy and flirtatious in a decadent one.' },
+  { kind: 'villager', sex: 'm', name: 'Village men', who: 'A man of the village', color: '#8a7a4a', voice: 'Ordinary working men: woodcutters, miners, hunters, builders. Short and natural, as if called to across a yard. Let the town show in the voice: gentle and generous in a holy town, brisk in an ordinary one, lazy, leering and grasping in a decadent one.' },
+  { kind: 'warrior', sex: 'm', name: 'Warriors', who: 'A soldier of the army', color: '#9a4a3a', voice: 'Fighting men of every arm: foot, archers, riders, siege crews, priests and sailors. Clipped and loud enough to carry over a field. The town shows in them most of all: in a holy town they fight to protect the innocent and spare those who yield; in a decadent one they have a lust for blood. Play that one savage and gleeful.' },
 ];
 const SEATS = ['First voice', 'Second voice', 'Third voice'];
 const folk = PARTS.flatMap((p) => FOLK_VOICES.map((v, n) => ({
   folk: true, civ: 'folk' + p.kind + p.sex + v, part: p.kind + p.sex, persona: 'main', nation: p.name, name: p.who, title: SEATS[n], voice: p.voice, female: p.sex === 'f', color: p.color,
-  lines: FOLK.filter((r) => r.kind === p.kind).flatMap((r) => Object.entries(r.lines).flatMap(([moment, three]) => three.map((text, li) => ({
-    key: folkKey(r.id, LEANS[li], moment, p.sex, v), ev: r.id + '_' + moment + '_' + LEANS[li], i: 0, group: r.name + ': ' + r.about,
-    when: r.name + ' · ' + MOMENT_NOTES[moment] + ' · ' + LEAN_NOTES[LEANS[li]], text,
-  })))),
+  lines: FOLK.filter((r) => r.kind === p.kind).flatMap((r) => { const as = folkAs(r, p.sex); return Object.entries(as.lines).flatMap(([moment, three]) => three.map((text, li) => ({
+    key: folkKey(r.id, LEANS[li], moment, p.sex, v), ev: r.id + '_' + moment + '_' + LEANS[li], i: 0, group: as.name + ': ' + as.about,
+    when: as.name + ' · ' + MOMENT_NOTES[moment] + ' · ' + LEAN_NOTES[LEANS[li]], text,
+  }))); }),
 })));
 
 // Most nations can be led by a man or by a woman: both are offered, and the recordings say which was voiced.
@@ -234,7 +234,7 @@ const page = `<!doctype html>
     <div class="sect" id="nations"><h2>Choose your nation</h2></div>
     <div class="grid" id="leaders"></div>
     <div class="sect" id="people"><h2>Or speak for the people</h2></div>
-    <p class="dim">No throne, no questions: just short lines for the villagers and soldiers of every nation. Each line is written three ways, for a holy town, an ordinary one and a decadent one, so the people sound like the town they live in. Up to three people can voice each part and the game picks among them, so if someone has already taken the first voice, take the next.</p>
+    <p class="dim">No throne, no questions: just short lines for the villagers and soldiers of every nation. Each line is written three ways, so the people sound like the town they live in: caring and kind in a holy town, plain in an ordinary one, corrupt and bawdy in a decadent one. The barmaid who fetches a tired traveller soup in one town is all winks and wandering hands in another. Soldiers who guard the innocent in one are hungry for blood in the other. Up to three people can voice each part and the game picks among them, so if someone has already taken the first voice, take the next.</p>
     <div class="grid" id="folk"></div>
   </section>
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkKey, leanOf } from '../src/sim/folk';
+import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
 import { AIController } from '../src/sim/ai';
 import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
@@ -2901,7 +2901,7 @@ describe('the voices of the people', () => {
         expect(r.lines[m]!.length).toBe(3);
         r.lines[m]!.forEach((text, i) => {
           expect(text.length, `${r.id} ${m}`).toBeGreaterThan(3);
-          expect(text.length, `${r.id} ${m}: short enough to call out`).toBeLessThan(60);
+          expect(text.length, `${r.id} ${m}: short enough to call out`).toBeLessThan(80);
           for (const sex of ['m', 'f'] as const) for (const v of FOLK_VOICES) { keys.add(folkKey(r.id, LEANS[i], m, sex, v)); n++; }
         });
         // The three tempers do not say the same thing.
@@ -2909,6 +2909,13 @@ describe('the voices of the people', () => {
       }
     }
     expect(keys.size).toBe(n);
+    // The woman who serves in the tavern is a person of her own, with her own words for each kind of town.
+    const maid = folkAs(FOLK.find((r) => r.id === 'taverner')!, 'f'), host = folkAs(FOLK.find((r) => r.id === 'taverner')!, 'm');
+    expect(maid.name).toBe('Barmaid');
+    expect(host.name).toBe('Tavern-keeper');
+    expect(Object.keys(maid.lines)).toEqual(['ready', 'go', 'fear']);
+    for (const m of ['ready', 'go', 'fear'] as const) { expect(maid.lines[m]![0]).not.toBe(host.lines[m]![0]); expect(new Set(maid.lines[m]).size).toBe(3); }
+    expect(folkAs(FOLK[1], 'f').lines).toBe(FOLK[1].lines);
     expect(FOLK.filter((r) => r.kind === 'villager').map((r) => r.id)).toEqual(['townsfolk', 'woodcutter', 'farmer', 'forager', 'hunter', 'fisher', 'miner', 'builder', 'cleric', 'taverner']);
     expect(leanOf(40)).toBe('pious');
     expect(leanOf(0)).toBe('plain');
