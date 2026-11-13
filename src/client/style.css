@@ -425,6 +425,7 @@ body.at-title #hud, body.at-title #overlay { visibility: hidden; }
 #t-panel #missions b { font: 400 23px var(--caps); text-transform: lowercase; color: var(--ink); }
 #t-panel #missions small { font: italic 16px var(--book); color: #4a3823; }
 #t-panel #missions button:hover b { color: var(--rubric); }
+#t-panel #missions i { font: italic 14px var(--book); color: var(--rubric); opacity: 1; margin: 0 0 2px; }
 #t-panel #settings { margin: 0; max-width: none; font-size: 17px; color: var(--ink); }
 #t-panel #settings summary { display: none; }
 #t-panel #settings label { display: flex; justify-content: space-between; align-items: center; margin: 0; padding: 9px 2px; border-bottom: 1px dotted rgba(36, 24, 15, 0.42); }
