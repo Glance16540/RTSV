@@ -232,6 +232,7 @@ neighbouring land.
   towns smoke, and armies march from land to land. A battle is fought in the country of the land (`BattleConfig.climate`).
   Mountains, rivers and open water bar a march (`terrainOf`, `raiseBarriers`, `Campaign.barriers`): lands whose
   straight road is crossed by one are not neighbours. Roads on the map show where an army can go.
+  `?detail=low` draws it plainer (coarser ground, simpler trees, smaller textures) for a weak machine.
   Drag to move, wheel to zoom, click a land to choose it. The flat chart of `src/client/overworld.ts` is shown
   where 3D is not available or with `?map=2d`. Three
   weather fronts cross it turn by turn (`frontsOf`, `weatherAt` in `src/sim/campaign.ts`): an army attacking into

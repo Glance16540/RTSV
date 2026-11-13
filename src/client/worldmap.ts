@@ -7,7 +7,8 @@
 // shadow, weather fronts pass with rain, snow or dust, birds wheel, ships go by, and smoke rises from the towns.
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Campaign, EVENTS, LAND_STEP, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots, terrainOf } from '../sim/campaign';
 import { lookOf } from './models';
 import { RealPerson, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
@@ -19,6 +20,8 @@ const S = K / 0.1;
 const WX = (px: number): number => px * K - (MAP_W * K) / 2;
 const WZ = (py: number): number => py * K - (MAP_H * K) / 2;
 const STEP = LAND_STEP;
+/** `?detail=low` draws a plainer map for a machine that struggles with the full one. */
+const LOW = typeof location !== 'undefined' && new URLSearchParams(location.search).get('detail') === 'low';
 
 const hash = (x: number, y: number): number => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
 const smooth = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -119,11 +122,16 @@ export class WorldMap {
     skyTex.colorSpace = THREE.SRGBColorSpace;
     this.scene.background = skyTex;
     this.scene.fog = new THREE.Fog(0xb4c6d2, 150 * S, 420 * S);
-    this.scene.add(new THREE.HemisphereLight(0xfff2dc, 0x6a5a48, 1.15));
+    // Soft light from all round, as under an open sky, so that nothing in shade goes flat.
+    const pm = new THREE.PMREMGenerator(this.gl);
+    this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.45;
+    pm.dispose();
+    this.scene.add(new THREE.HemisphereLight(0xfff2dc, 0x6a5a48, 0.85));
     const sun = new THREE.DirectionalLight(0xffe8c8, 2.7);
     sun.position.set(-46 * S, 70 * S, 34 * S);
     sun.castShadow = true;
-    const fine = Math.min(4096, this.gl.capabilities.maxTextureSize);
+    const fine = Math.min(LOW ? 2048 : 4096, this.gl.capabilities.maxTextureSize);
     sun.shadow.mapSize.set(fine, fine);
     sun.shadow.radius = 2.2;
     const sc = sun.shadow.camera;
@@ -135,17 +143,28 @@ export class WorldMap {
     const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
     const land = terrainOf(c), gw = (this.gw = land.gw), gh = (this.gh = land.gh), H = (this.heights = land.H), rivers = land.rivers, wetGrid = land.wet;
 
-    const geo = new THREE.PlaneGeometry(MAP_W * K, MAP_H * K, gw - 1, gh - 1).rotateX(-Math.PI / 2);
+    // The ground is modelled twice as finely as the rules know it, and the high country is broken into crag and gully.
+    const FINE = LOW ? 1 : 2, fw = (gw - 1) * FINE + 1, fh = (gh - 1) * FINE + 1;
+    const geo = new THREE.PlaneGeometry(MAP_W * K, MAP_H * K, fw - 1, fh - 1).rotateX(-Math.PI / 2);
     const pos = geo.getAttribute('position');
-    for (let n = 0; n < pos.count; n++) pos.setY(n, H[n]);
+    for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) {
+      const px = (i * STEP) / FINE, py = (j * STEP) / FINE, h = this.heightAt(px, py);
+      const high = smooth(1.3, 2.6, h), crag = ((1 - Math.abs(N(px / 6, py / 6, 51) * 2 - 1)) - 0.5) * 0.7 + (N(px / 2.4, py / 2.4, 52) - 0.5) * 0.3;
+      pos.setY(j * fw + i, h + high * crag + smooth(0.3, 0.6, h) * (N(px / 3.5, py / 3.5, 53) - 0.5) * 0.07);
+    }
     geo.computeVertexNormals();
 
     // ---- the paint: what grows on each stretch of ground, the rock and snow of the heights, sand at the shore ----
     // Painted at twice the fineness of the map's own points, with a grain laid over it in the shader for close looking.
     const R = 2, PW = MAP_W * R, PH = MAP_H * R;
+    const lowSheet = document.createElement('canvas');
+    lowSheet.width = PW; lowSheet.height = PH;
+    const lowCtx = lowSheet.getContext('2d')!, img = lowCtx.createImageData(PW, PH), D = img.data, col = [0, 0, 0];
+    // Fields, rivers and roads are drawn finer still, as fine as the graphics card will hold.
+    const RV = !LOW && this.gl.capabilities.maxTextureSize >= 4096 ? 4 : 2;
     this.sheet = document.createElement('canvas');
-    this.sheet.width = PW; this.sheet.height = PH;
-    const ctx = this.sheet.getContext('2d')!, img = ctx.createImageData(PW, PH), D = img.data, col = [0, 0, 0];
+    this.sheet.width = MAP_W * RV; this.sheet.height = MAP_H * RV;
+    const ctx = this.sheet.getContext('2d')!;
     // Warmth and wet are worked out once for every few points and read off between them.
     const warmG = new Float32Array(gw * gh), wetG = new Float32Array(gw * gh);
     for (let gj = 0; gj < gh; gj++) for (let gi = 0; gi < gw; gi++) { const cl = climateAt(c.seed, gi * STEP, gj * STEP); warmG[gj * gw + gi] = cl.warm; wetG[gj * gw + gi] = cl.wet; }
@@ -192,8 +211,10 @@ export class WorldMap {
       }
       D[o] = col[0]; D[o + 1] = col[1]; D[o + 2] = col[2]; D[o + 3] = 255;
     }
-    ctx.putImageData(img, 0, 0);
-    ctx.scale(R, R);
+    lowCtx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(lowSheet, 0, 0, MAP_W * RV, MAP_H * RV);
+    ctx.scale(RV, RV);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     // Ploughland and pasture round every town in green country: a quilt of small fields.
     for (const t of c.territories) {
@@ -263,10 +284,30 @@ export class WorldMap {
     const overTex = this.overTex;
     earth.onBeforeCompile = (sh) => {
       sh.uniforms.overMap = { value: overTex };
-      sh.uniforms.grainMap = { value: grain };
+      // Detail is worked out point by point as the picture is drawn, so the ground stays sharp however close the eye comes:
+      // grain in the soil at three scales, and bare banded rock wherever the land is steep.
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWN;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWPos = position;\n  vWN = normal;');
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform sampler2D overMap;\nuniform sampler2D grainMap;')
-        .replace('#include <map_fragment>', '#include <map_fragment>\n  float grainV = texture2D( grainMap, vMapUv * vec2( 96.0, 58.0 ) ).r;\n  diffuseColor.rgb *= 0.84 + 0.32 * grainV;\n  vec4 overC = texture2D( overMap, vMapUv );\n  diffuseColor.rgb = mix( diffuseColor.rgb, overC.rgb, overC.a );');
+        .replace('#include <common>', `#include <common>
+uniform sampler2D overMap;
+varying vec3 vWPos;
+varying vec3 vWN;
+float hash21( vec2 p ) { p = fract( p * vec2( 123.34, 456.21 ) ); p += dot( p, p + 45.32 ); return fract( p.x * p.y ); }
+float vnoise( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f ); return mix( mix( hash21( i ), hash21( i + vec2( 1.0, 0.0 ) ), f.x ), mix( hash21( i + vec2( 0.0, 1.0 ) ), hash21( i + vec2( 1.0, 1.0 ) ), f.x ), f.y ); }`)
+        .replace('#include <map_fragment>', `#include <map_fragment>
+  vec2 wp = vWPos.xz;
+  float d1 = vnoise( wp * 1.7 ), d2 = vnoise( wp * 6.3 ), d3 = vnoise( wp * 21.0 ), d4 = vnoise( wp * 60.0 );
+  float land = step( 0.0, vWPos.y );
+  diffuseColor.rgb *= mix( 1.0, 0.74 + 0.2 * d1 + 0.16 * d2 + 0.12 * d3 + 0.1 * d4, land );
+  float steep = smoothstep( 0.8, 0.55, normalize( vWN ).y ) * smoothstep( 0.7, 1.4, vWPos.y );
+  float band = vnoise( vec2( wp.x * 0.8 + wp.y * 0.5, vWPos.y * 11.0 ) );
+  vec3 rock = mix( vec3( 0.20, 0.18, 0.16 ), vec3( 0.42, 0.38, 0.33 ), band ) * ( 0.75 + 0.5 * d3 );
+  float lum = dot( diffuseColor.rgb, vec3( 0.3, 0.6, 0.1 ) );
+  diffuseColor.rgb = mix( diffuseColor.rgb, rock, steep * 0.8 * ( 1.0 - smoothstep( 0.55, 0.8, lum ) * 0.7 ) );
+  vec4 overC = texture2D( overMap, vMapUv );
+  diffuseColor.rgb = mix( diffuseColor.rgb, overC.rgb, overC.a );`);
     };
     this.ground = new THREE.Mesh(geo, earth);
     this.ground.receiveShadow = true;
@@ -286,7 +327,7 @@ export class WorldMap {
     this.seaTex = new THREE.CanvasTexture(wave);
     this.seaTex.wrapS = this.seaTex.wrapT = THREE.RepeatWrapping;
     this.seaTex.repeat.set(70, 70);
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2c6f8e, roughness: 0.28, metalness: 0.15, transparent: true, opacity: 0.84, bumpMap: this.seaTex, bumpScale: 0.9 }));
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x286a8a, roughness: 0.16, metalness: 0.3, transparent: true, opacity: 0.86, bumpMap: this.seaTex, bumpScale: 1.4, envMapIntensity: 1.6 }));
     sea.receiveShadow = true;
     const bed = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1c3e52, roughness: 1 }));
     bed.position.y = -1.7;
@@ -320,9 +361,23 @@ export class WorldMap {
         lists.rock.push({ m: mt.clone(), c: new THREE.Color(1, 1, 1).multiplyScalar(0.75 + r(7) * 0.4) });
       }
     }
-    const trunk = (hgt: number, rad: number, tone = 0x5a4028): THREE.BufferGeometry => tinted(new THREE.CylinderGeometry(rad * 0.65, rad, hgt, 6).translate(0, hgt / 2, 0), tone, 0.8);
-    const leaf = (r: number, x: number, y: number, z: number, tone: number, squash = 0.86): THREE.BufferGeometry => tinted(new THREE.IcosahedronGeometry(r, r > 0.4 ? 1 : 0).scale(1, squash, 1).translate(x, y, z), tone, 0.58);
-    const tier = (r: number, hgt: number, y: number, tone: number): THREE.BufferGeometry => tinted(new THREE.ConeGeometry(r, hgt, 8).translate(0, y + hgt / 2, 0), tone, 0.55);
+    const trunk = (hgt: number, rad: number, tone = 0x5a4028): THREE.BufferGeometry => tinted(new THREE.CylinderGeometry(rad * 0.65, rad, hgt, 9).translate(0, hgt / 2, 0), tone, 0.8);
+    // A mass of leaf: rounded, but lumpy as foliage is, and shaded smoothly.
+    const leaf = (r: number, x: number, y: number, z: number, tone: number, squash = 0.86): THREE.BufferGeometry => {
+      const g = new THREE.IcosahedronGeometry(r, LOW ? (r > 0.4 ? 1 : 0) : r > 0.4 ? 3 : 2);
+      g.deleteAttribute('uv'); g.deleteAttribute('normal');
+      const m = mergeVertices(g), p = m.getAttribute('position');
+      for (let i = 0; i < p.count; i++) { const k = 1 + (hash(p.getX(i) * 31 + x * 7, p.getY(i) * 17 + p.getZ(i) * 53) - 0.5) * 0.34; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); }
+      m.computeVertexNormals();
+      return tinted(m.scale(1, squash, 1).translate(x, y, z), tone, 0.5);
+    };
+    // A tier of fir boughs: a cone whose skirt is ragged.
+    const tier = (r: number, hgt: number, y: number, tone: number): THREE.BufferGeometry => {
+      const g = new THREE.ConeGeometry(r, hgt, 14, 2), p = g.getAttribute('position');
+      for (let i = 0; i < p.count; i++) if (p.getY(i) < -hgt * 0.2) { const k = 1 + (hash(p.getX(i) * 91 + y, p.getZ(i) * 37) - 0.5) * 0.36; p.setXYZ(i, p.getX(i) * k, p.getY(i) - (k - 1) * hgt * 0.4, p.getZ(i) * k); }
+      g.computeVertexNormals();
+      return tinted(g.translate(0, y + hgt / 2, 0), tone, 0.5);
+    };
     const frond = (k: number): THREE.BufferGeometry => put(tinted(new THREE.BoxGeometry(0.62, 0.025, 0.17).translate(0.31, 0, 0), k % 2 ? 0x5d8f3a : 0x4c7c32, 1), 0.06, 1.42, 0, (k / 7) * 6.283, -0.42 - (k % 3) * 0.12);
     const shapes: Record<string, THREE.BufferGeometry> = {
       // Fir: four tiers of boughs, narrowing to a point.
@@ -340,7 +395,7 @@ export class WorldMap {
     };
     for (const [kind, list] of Object.entries(lists)) {
       if (!list.length) continue;
-      const im = new THREE.InstancedMesh(shapes[kind], new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true, vertexColors: true }), list.length);
+      const im = new THREE.InstancedMesh(shapes[kind], new THREE.MeshStandardMaterial({ roughness: 0.92, flatShading: kind === 'rock', vertexColors: true }), list.length);
       list.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
       im.castShadow = true; im.receiveShadow = true;
       this.scene.add(im);
