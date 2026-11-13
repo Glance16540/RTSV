@@ -13,6 +13,11 @@ import { Overworld } from './overworld';
 import { Input } from './input';
 import { Renderer } from './renderer';
 import { sfx } from './sfx';
+import '@fontsource/im-fell-english/400.css';
+import '@fontsource/im-fell-english/400-italic.css';
+import '@fontsource/im-fell-english-sc/400.css';
+import '@fontsource/im-fell-french-canon/400.css';
+import '@fontsource/im-fell-french-canon/400-italic.css';
 import './style.css';
 
 export class App {
@@ -444,9 +449,10 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     if (opening) {
       await loader.gate();
       sfx.unlock();
-      title.enter(false);
+      title.enter(false, '', true);
       loader.hide();
       await playOpening();
+      title.uncover();
     } else {
       title.enter(true, panel);
       loader.hide();

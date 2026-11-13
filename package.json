@@ -19,6 +19,9 @@
     "sync": "node scripts/sync.mjs"
   },
   "dependencies": {
+    "@fontsource/im-fell-english": "^5.3.0",
+    "@fontsource/im-fell-english-sc": "^5.3.0",
+    "@fontsource/im-fell-french-canon": "^5.3.0",
     "three": "^0.170.0"
   },
   "devDependencies": {
