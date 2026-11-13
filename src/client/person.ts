@@ -157,7 +157,12 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
         // A woman's trunk: a smaller ribcage, drawn well in at the waist, wide at the hip, fuller at the breast.
         const waist = bump(y, 1.13, 0.16), hip = bump(y, 0.9, 0.2), ribs = Math.min(1, Math.max(0, (y - 1.18) / 0.12));
         x *= 1 - waist * 0.2 + hip * 0.14 - ribs * 0.1; z *= 1 - waist * 0.14 + hip * 0.1 - ribs * 0.06;
-        if (z > 0.02) z += [0.022, 0.04, 0.06][o.chest] * bump(y, 1.33, 0.085) * bump(Math.abs(x), 0.07, 0.078);
+        if (z > 0.02) {
+          // Two rounded forms, not one shelf: each swells about its own centre.
+          const b = bump(y, 1.32, 0.1) * bump(Math.abs(x), 0.075, 0.085);
+          z += [0.045, 0.07, 0.095][o.chest] * b;
+          x += Math.sign(x) * [0.006, 0.012, 0.018][o.chest] * b;
+        }
       } else {
         // A man's: from narrow to deep-chested and broad across the back.
         const k = 0.04 + [-0.04, 0.02, 0.08][o.chest] * bump(y, 1.36, 0.2);
