@@ -41,7 +41,10 @@ export class WorldMap {
   private heights: Float32Array;
   private gw: number; private gh: number;
   /** The ground as it is painted before anyone holds it, and the sheet the borders are laid over it on. */
-  private base: Uint8ClampedArray;
+  private over!: HTMLCanvasElement;
+  private overTex!: THREE.CanvasTexture;
+  /** 1 where a point of the map is water. */
+  private water!: Uint8Array;
   private sheet: HTMLCanvasElement;
   private paintTex: THREE.CanvasTexture;
   private seaTex: THREE.CanvasTexture;
@@ -96,7 +99,9 @@ export class WorldMap {
     const sun = new THREE.DirectionalLight(0xffe8c8, 2.7);
     sun.position.set(-46 * S, 70 * S, 34 * S);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    const fine = Math.min(4096, this.gl.capabilities.maxTextureSize);
+    sun.shadow.mapSize.set(fine, fine);
+    sun.shadow.radius = 2.2;
     const sc = sun.shadow.camera;
     sc.left = -64 * S; sc.right = 64 * S; sc.top = 46 * S; sc.bottom = -46 * S; sc.near = 5; sc.far = 240 * S;
     sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.06;
@@ -112,56 +117,94 @@ export class WorldMap {
     geo.computeVertexNormals();
 
     // ---- the paint: what grows on each stretch of ground, the rock and snow of the heights, sand at the shore ----
+    // Painted at twice the fineness of the map's own points, with a grain laid over it in the shader for close looking.
+    const R = 2, PW = MAP_W * R, PH = MAP_H * R;
     this.sheet = document.createElement('canvas');
-    this.sheet.width = MAP_W; this.sheet.height = MAP_H;
-    const ctx = this.sheet.getContext('2d')!, img = ctx.createImageData(MAP_W, MAP_H), D = img.data, col = [0, 0, 0];
-    const GRASS = [112, 150, 72], FOREST = [74, 114, 60], MARSH = [84, 108, 84], STEPPE = [178, 166, 100], DESERT = [224, 198, 142], SNOW = [238, 242, 246], ROCK = [126, 118, 106], SAND = [216, 202, 152], POOL = [70, 118, 132];
-    for (let py = 0; py < MAP_H; py++) for (let px = 0; px < MAP_W; px++) {
-      const h = this.heightAt(px, py), o = (py * MAP_W + px) * 4;
+    this.sheet.width = PW; this.sheet.height = PH;
+    const ctx = this.sheet.getContext('2d')!, img = ctx.createImageData(PW, PH), D = img.data, col = [0, 0, 0];
+    // Warmth and wet are worked out once for every few points and read off between them.
+    const warmG = new Float32Array(gw * gh), wetG = new Float32Array(gw * gh);
+    for (let gj = 0; gj < gh; gj++) for (let gi = 0; gi < gw; gi++) { const cl = climateAt(c.seed, gi * STEP, gj * STEP); warmG[gj * gw + gi] = cl.warm; wetG[gj * gw + gi] = cl.wet; }
+    const read = (A: Float32Array, px: number, py: number): number => {
+      const x = Math.min(gw - 1.001, Math.max(0, px / STEP)), y = Math.min(gh - 1.001, Math.max(0, py / STEP)), a = Math.floor(x), b = Math.floor(y), fx = x - a, fy = y - b, n = b * gw + a;
+      return (A[n] * (1 - fx) + A[n + 1] * fx) * (1 - fy) + (A[n + gw] * (1 - fx) + A[n + gw + 1] * fx) * fy;
+    };
+    const GRASS = [106, 148, 66], MEADOW = [134, 164, 76], FOREST = [62, 104, 54], MARSH = [80, 106, 82], STEPPE = [182, 168, 98], DESERT = [228, 200, 140], REDSAND = [208, 160, 108], SNOW = [240, 244, 248], ROCK = [124, 116, 106], DARKROCK = [92, 86, 82], SAND = [222, 208, 158], POOL = [70, 118, 132];
+    this.water = new Uint8Array(MAP_W * MAP_H);
+    for (let Y = 0; Y < PH; Y++) for (let X = 0; X < PW; X++) {
+      const px = X / R, py = Y / R, h = this.heightAt(px, py), o = (Y * PW + X) * 4;
       if (h <= 0) {
-        const d = smooth(0, -1.5, h);
-        col[0] = 96 - d * 66; col[1] = 150 - d * 82; col[2] = 158 - d * 66;
+        if (X % R === 0 && Y % R === 0) this.water[py * MAP_W + px] = 1;
+        // Shallows pale and green over the sand, deep water dark; a line of surf where it meets the land.
+        const d = smooth(0, -1.5, h), reef = N(px / 9, py / 9, 35);
+        col[0] = 112 - d * 84 + reef * 10; col[1] = 172 - d * 106 + reef * 8; col[2] = 170 - d * 80;
+        if (h > -0.06) mix3(col, [240, 246, 242], 0.75 * smooth(-0.06, 0, h));
       } else {
-        const { warm, wet } = climateAt(c.seed, px, py);
+        const warm = read(warmG, px, py), wet = read(wetG, px, py);
         const cold = 1 - smooth(0.27, 0.35, warm), hot = smooth(0.62, 0.72, warm) * (1 - smooth(0.5, 0.6, wet)), dry = 1 - smooth(0.4, 0.5, wet);
         const marsh = smooth(0.76, 0.84, wet) * smooth(0.4, 0.46, warm);
+        const patch = N(px / 26, py / 26, 36), fine = N(px / 2.2, py / 2.2, 33), mid = N(px / 9, py / 9, 34);
         col[0] = GRASS[0]; col[1] = GRASS[1]; col[2] = GRASS[2];
+        mix3(col, MEADOW, smooth(0.45, 0.7, patch) * 0.7); // lighter meadow among the darker grass
         mix3(col, FOREST, smooth(0.56, 0.68, wet) * 0.85);
         mix3(col, MARSH, marsh);
         if (marsh > 0.5 && N(px / 7, py / 7, 31) > 0.66) mix3(col, POOL, 0.8);
         mix3(col, STEPPE, dry);
         mix3(col, DESERT, hot);
+        mix3(col, REDSAND, hot * smooth(0.5, 0.75, patch) * 0.6);
         mix3(col, SNOW, cold);
-        const hx = this.heightAt(px + 3, py) - this.heightAt(px - 3, py), hy = this.heightAt(px, py + 3) - this.heightAt(px, py - 3);
-        const slope = Math.hypot(hx, hy);
-        mix3(col, ROCK, Math.max(smooth(2.1, 3.2, h), smooth(0.55, 1.0, slope)) * smooth(0.5, 0.9, h));
-        const line = 4.5 - cold * 3.2 - (1 - warm) * 0.8; // the snow lies lower in cold country
-        mix3(col, SNOW, smooth(line, line + 0.8, h));
+        const hx = this.heightAt(px + 1.5, py) - this.heightAt(px - 1.5, py), hy = this.heightAt(px, py + 1.5) - this.heightAt(px, py - 1.5);
+        const slope = Math.hypot(hx, hy) * 2;
+        const rock = Math.max(smooth(2.1, 3.2, h + (mid - 0.5) * 0.8), smooth(0.55, 1.0, slope)) * smooth(0.5, 0.9, h);
+        mix3(col, ROCK, rock);
+        mix3(col, DARKROCK, rock * smooth(0.5, 0.8, N(px / 4, py / 14, 37)) * 0.6); // strata down the faces
+        const line = 4.5 - cold * 3.2 - (1 - warm) * 0.8 + (mid - 0.5) * 0.9; // the snow lies lower in cold country, and raggedly
+        mix3(col, SNOW, smooth(line, line + 0.6, h) * (1 - smooth(1.1, 1.6, slope) * 0.6));
         mix3(col, SAND, (1 - smooth(0.08, 0.42, h)) * (1 - cold));
-        if (h < 0.07) mix3(col, [236, 240, 236], 0.5); // surf
-        // Light from the north-west picks out every slope.
-        const k = (0.93 + N(px / 6, py / 6, 33) * 0.14) * Math.min(1.25, Math.max(0.62, 1 - (hx + hy) * 0.3));
-        col[0] *= k; col[1] *= k; col[2] *= k;
+        // Light from the north-west picks out every slope; hollows lie a little in shade.
+        const lit = Math.min(1.32, Math.max(0.55, 1 - (hx + hy) * 0.62));
+        const k = (0.88 + fine * 0.12 + mid * 0.12) * lit;
+        col[0] *= k * (lit > 1 ? 1.03 : 0.97); col[1] *= k; col[2] *= k * (lit > 1 ? 0.96 : 1.06); // warm where the sun falls, cool in shadow
       }
       D[o] = col[0]; D[o + 1] = col[1]; D[o + 2] = col[2]; D[o + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
-    // Rivers, widening as they run down.
+    ctx.scale(R, R);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // Ploughland and pasture round every town in green country: a quilt of small fields.
+    for (const t of c.territories) {
+      const warm = read(warmG, t.x, t.y), wet = read(wetG, t.x, t.y);
+      if (warm < 0.36 || wet < 0.46 || (warm > 0.66 && wet < 0.56)) continue;
+      for (let k = 0; k < 16; k++) {
+        const a = hash(t.id, k) * 6.283, d = 14 + hash(k, t.id + 9) * 30, fx = t.x - 6 + Math.cos(a) * d, fy = t.y + 6 + Math.sin(a) * d * 0.8;
+        const h = this.heightAt(fx, fy);
+        if (h < 0.35 || h > 1.5) continue;
+        const w = 7 + hash(k, t.id + 3) * 7, hh = 5 + hash(k, t.id + 5) * 5, turn = (hash(t.id, 40) - 0.5) * 0.9 + (k % 2) * 1.5708;
+        ctx.save(); ctx.translate(fx, fy); ctx.rotate(turn);
+        ctx.fillStyle = ['rgba(216,190,104,0.8)', 'rgba(150,178,84,0.8)', 'rgba(152,120,76,0.75)', 'rgba(196,204,112,0.8)'][Math.floor(hash(k, t.id + 7) * 4)];
+        ctx.fillRect(-w / 2, -hh / 2, w, hh);
+        ctx.strokeStyle = 'rgba(70,56,30,0.28)'; ctx.lineWidth = 0.35;
+        for (let f = -hh / 2 + 0.8; f < hh / 2; f += 1.1) { ctx.beginPath(); ctx.moveTo(-w / 2, f); ctx.lineTo(w / 2, f); ctx.stroke(); }
+        ctx.strokeStyle = 'rgba(60,80,40,0.5)'; ctx.lineWidth = 0.5; ctx.strokeRect(-w / 2, -hh / 2, w, hh); // hedges
+        ctx.restore();
+      }
+    }
+    // Rivers, widening as they run down: a dark bank, the water, and a thread of light on it.
     for (const path of rivers) {
-      for (const [tone, extra] of [['rgba(40,70,60,0.35)', 2.4], ['#5c9cb8', 0]] as [string, number][]) {
+      const raw = path.map((q) => [(q % gw) * STEP, Math.floor(q / gw) * STEP]);
+      const pts = raw.map((_, k) => { let x = 0, y = 0, n = 0; for (let d = -3; d <= 3; d++) { const e = raw[k + d]; if (e) { x += e[0]; y += e[1]; n++; } } return [x / n, y / n]; });
+      for (const [tone, extra, part] of [['rgba(34,60,50,0.4)', 2.2, 1], ['#4f93b4', 0, 1], ['rgba(190,226,236,0.7)', -1.2, 0.35]] as [string, number, number][]) {
         ctx.strokeStyle = tone;
-        for (let k = 1; k < path.length - 1; k++) {
-          const p = (q: number): [number, number] => [(path[q] % gw) * STEP, Math.floor(path[q] / gw) * STEP];
-          const [ax, ay] = p(k - 1), [bx, by] = p(k), [cx2, cy2] = p(k + 1);
-          ctx.lineWidth = 1.4 + (k / path.length) * 3.4 + extra;
+        for (let k = 1; k < pts.length - 1; k++) {
+          const [ax, ay] = pts[k - 1], [bx, by] = pts[k], [cx2, cy2] = pts[k + 1];
+          ctx.lineWidth = Math.max(0.3, (1.3 + (k / pts.length) * 3.4) * part + extra);
           ctx.beginPath(); ctx.moveTo((ax + bx) / 2, (ay + by) / 2); ctx.quadraticCurveTo(bx, by, (bx + cx2) / 2, (by + cy2) / 2); ctx.stroke();
         }
       }
     }
     // Roads: a dotted way between every two towns an army can march between. Where there is none, the way is barred.
-    ctx.setLineDash([5, 6]);
-    for (const [tone, wide] of [['rgba(60,40,20,0.35)', 3.6], ['rgba(238,220,170,0.9)', 1.8]] as [string, number][]) {
+    ctx.setLineDash([4, 4.5]);
+    for (const [tone, wide] of [['rgba(60,40,20,0.4)', 2.6], ['rgba(240,224,176,0.95)', 1.3]] as [string, number][]) {
       ctx.strokeStyle = tone; ctx.lineWidth = wide;
       for (const t of c.territories) for (const o of t.adj) if (o > t.id) {
         const u = c.territories[o], mx = (t.x + u.x) / 2 + (u.y - t.y) * 0.08, my = (t.y + u.y) / 2 - (u.x - t.x) * 0.08;
@@ -169,11 +212,39 @@ export class WorldMap {
       }
     }
     ctx.setLineDash([]);
-    this.base = ctx.getImageData(0, 0, MAP_W, MAP_H).data;
     this.paintTex = new THREE.CanvasTexture(this.sheet);
     this.paintTex.colorSpace = THREE.SRGBColorSpace;
-    this.paintTex.anisotropy = 8;
-    this.ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, map: this.paintTex }));
+    this.paintTex.anisotropy = this.gl.capabilities.getMaxAnisotropy();
+    // The borders are a sheet of their own, laid over the paint, so that choosing a land redraws only that.
+    this.over = document.createElement('canvas');
+    this.over.width = MAP_W; this.over.height = MAP_H;
+    this.overTex = new THREE.CanvasTexture(this.over);
+    this.overTex.colorSpace = THREE.SRGBColorSpace;
+    this.overTex.anisotropy = 4;
+    // A grain that repeats across the land: it roughens the colour and the light close to.
+    const grainC = document.createElement('canvas');
+    grainC.width = grainC.height = 256;
+    const gx = grainC.getContext('2d')!, gimg = gx.createImageData(256, 256);
+    const gv = (x: number, y: number): number => hash(x & 255, y & 255);
+    for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
+      const v = (gv(x, y) * 2 + gv(x + 1, y) + gv(x - 1, y) + gv(x, y + 1) + gv(x, y - 1) + (gv(x >> 2, (y >> 2) + 300) + gv((x + 2) >> 2, ((y + 2) >> 2) + 300)) * 2) / 10;
+      gimg.data.set([v * 255, v * 255, v * 255, 255], (y * 256 + x) * 4);
+    }
+    gx.putImageData(gimg, 0, 0);
+    const grain = new THREE.CanvasTexture(grainC);
+    grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
+    grain.repeat.set(96, 58);
+    grain.anisotropy = 4;
+    const earth = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.93, metalness: 0, map: this.paintTex, bumpMap: grain, bumpScale: 0.55 });
+    const overTex = this.overTex;
+    earth.onBeforeCompile = (sh) => {
+      sh.uniforms.overMap = { value: overTex };
+      sh.uniforms.grainMap = { value: grain };
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform sampler2D overMap;\nuniform sampler2D grainMap;')
+        .replace('#include <map_fragment>', '#include <map_fragment>\n  float grainV = texture2D( grainMap, vMapUv * vec2( 96.0, 58.0 ) ).r;\n  diffuseColor.rgb *= 0.84 + 0.32 * grainV;\n  vec4 overC = texture2D( overMap, vMapUv );\n  diffuseColor.rgb = mix( diffuseColor.rgb, overC.rgb, overC.a );');
+    };
+    this.ground = new THREE.Mesh(geo, earth);
     this.ground.receiveShadow = true;
     this.ground.castShadow = true;
     this.scene.add(this.ground);
@@ -321,22 +392,24 @@ export class WorldMap {
 
   /** Lay the borders over the painted ground: each land edged in the colour of whoever holds it, the chosen land lit, marauder country darkened. */
   private repaint(c: Campaign, sel: number, reach: Set<number>): void {
-    const ctx = this.sheet.getContext('2d')!, img = ctx.createImageData(MAP_W, MAP_H), D = img.data, B = this.base, cell = this.cell, edge = this.edge;
+    const ctx = this.over.getContext('2d')!, img = ctx.createImageData(MAP_W, MAP_H), D = img.data, cell = this.cell, edge = this.edge, W = this.water;
     const tint = c.territories.map((t) => { const col = t.owner >= 0 ? c.factions[t.owner].color : -1; return [col >> 16 & 255, col >> 8 & 255, col & 255, col < 0 ? 0 : 1, t.horde && t.owner < 0 ? 1 : 0, t.id === sel ? 1 : 0, reach.has(t.id) ? (t.owner === 0 ? 1 : 2) : 0]; });
+    let r = 0, g = 0, b = 0, a = 0;
+    const lay = (cr: number, cg: number, cb: number, ca: number): void => { const n = ca + a * (1 - ca); if (n > 0) { r = (cr * ca + r * a * (1 - ca)) / n; g = (cg * ca + g * a * (1 - ca)) / n; b = (cb * ca + b * a * (1 - ca)) / n; } a = n; };
     for (let i = 0, o = 0; i < cell.length; i++, o += 4) {
-      let r = B[o], g = B[o + 1], b = B[o + 2];
-      const t = tint[cell[i]], e = edge[i], seaHere = b > g && b > r + 30; // open water keeps its own colour
-      if (!seaHere) {
-        if (t[4]) { r *= 0.5; g *= 0.47; b *= 0.45; }
-        if (t[5]) { r += (255 - r) * 0.13; g += (255 - g) * 0.13; b += (255 - b) * 0.1; }
-        if (t[6] === 1) { r += (255 - r) * 0.1; g += (255 - g) * 0.1; b += (255 - b) * 0.1; } else if (t[6] === 2) { r += (230 - r) * 0.12; g *= 0.93; b *= 0.92; }
-        if (t[3]) { const k = 0.05 + 0.62 * (1 - Math.min(1, e / 15)) ** 1.6; r += (t[0] - r) * k; g += (t[1] - g) * k; b += (t[2] - b) * k; }
-        if (e < 1.7) { const k = t[3] ? 0.55 : 0.72; r *= k; g *= k; b *= k; }
-      } else if (e < 1.2) { r *= 0.9; g *= 0.9; b *= 0.9; }
-      D[o] = r; D[o + 1] = g; D[o + 2] = b; D[o + 3] = 255;
+      const t = tint[cell[i]], e = edge[i];
+      r = g = b = a = 0;
+      if (!W[i]) {
+        if (t[4]) lay(10, 8, 6, 0.5);
+        if (t[5]) lay(255, 250, 230, 0.14);
+        if (t[6] === 1) lay(255, 255, 255, 0.1); else if (t[6] === 2) lay(220, 40, 30, 0.13);
+        if (t[3]) lay(t[0], t[1], t[2], 0.05 + 0.62 * (1 - Math.min(1, e / 15)) ** 1.6);
+        if (e < 2.2) lay(t[3] ? t[0] * 0.4 : 20, t[3] ? t[1] * 0.4 : 16, t[3] ? t[2] * 0.4 : 10, (t[3] ? 0.7 : 0.42) * (1 - smooth(1.1, 2.2, e)));
+      } else if (e < 1.6) lay(10, 30, 40, 0.14 * (1 - smooth(0.8, 1.6, e)));
+      D[o] = r; D[o + 1] = g; D[o + 2] = b; D[o + 3] = a * 255;
     }
     ctx.putImageData(img, 0, 0);
-    this.paintTex.needsUpdate = true;
+    this.overTex.needsUpdate = true;
   }
 
   /** A bank of cloud, with the shadow it throws. */
