@@ -636,27 +636,30 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const hb = source.marks.head, hc = hb.getCenter(new THREE.Vector3()), hr = hb.getSize(new THREE.Vector3()).multiplyScalar(0.5);
   const head = new THREE.Group();
   const dark = solid(0x1c1612), hairM = solid(o.hair), skinM = solid(o.skin), skinD = solid(new THREE.Color(o.skin).multiplyScalar(0.82).getHex());
-  // A face, drawn a little larger than life so it can be read from where the game is watched: eyes with their
-  // whites, lids and brows, a nose that stands out from the face, a mouth, and ears.
+  // A face, drawn simply so that it reads as friendly from where the game is watched and is not a stare close to:
+  // dark, soft eyes set into the head with only a sliver of white and a point of light, a relaxed lid over each, low
+  // easy brows, a nose that stands out, and a mouth that is one gentle curved line.
   const mk = source.marks, faceAt = (y: number, line: 'mid' | 'eye'): number => mk.face[Math.min(mk.face.length - 1, Math.max(0, Math.round((mk.crown - y) / 0.01)))][line];
-  const eyeY = mk.crown - 0.118, white = solid(0xf2ede4), iris = solid([0x3a2a1a, 0x4a3a22, 0x2a4a6a, 0x3a5a3a][o.seed % 4]);
+  const eyeY = mk.crown - 0.118, white = solid(0xddd3c6), glint = solid(0xfffaf0);
+  const iris = solid(new THREE.Color([0x3a2a1a, 0x4a3a22, 0x2a4a6a, 0x3a5a3a][o.seed % 4]).multiplyScalar(0.62).getHex());
   const ez = faceAt(eyeY, 'eye');
   for (const sx of [-1, 1]) {
     const ex = sx * 0.033;
-    const ball = part(geo('eyeball', () => new THREE.SphereGeometry(0.019, 10, 8)), white, ex, eyeY, ez - 0.004);
-    ball.scale.set(1.2, o.female ? 0.9 : 0.72, 0.6);
-    head.add(ball);
-    head.add(part(geo('iris', () => new THREE.SphereGeometry(0.01, 8, 6)), iris, ex, eyeY, ez + 0.0035));
-    head.add(part(geo('pupil', () => new THREE.SphereGeometry(0.005, 6, 5)), dark, ex, eyeY, ez + 0.0105));
-    // The upper lid, darker on a woman as if lashed.
-    const lid = part(geo('lid', () => new THREE.BoxGeometry(0.046, o.female ? 0.0035 : 0.005, 0.01)), o.female ? dark : skinD, ex, eyeY + (o.female ? 0.021 : 0.018), ez + 0.002);
-    lid.rotation.z = sx * -0.04;
+    const ball = part(geo('eyewhite', () => new THREE.SphereGeometry(0.0125, 10, 8)), white, ex, eyeY, ez - 0.0045);
+    ball.scale.set(1.3, 0.62, 0.5);
+    const eye = part(geo('eye', () => new THREE.SphereGeometry(0.0092, 10, 8)), iris, ex, eyeY - 0.0004, ez - 0.0022);
+    eye.scale.set(1, o.female ? 0.98 : 0.9, 0.5);
+    head.add(ball, eye, part(geo('glint', () => new THREE.SphereGeometry(0.0022, 6, 5)), glint, ex + 0.003, eyeY + 0.003, ez + 0.0022));
+    // The upper lid rests on the eye, so the look is easy; a woman's is a dark line of lashes.
+    const lid = part(geo('eyelid', () => new THREE.SphereGeometry(0.014, 10, 6)), o.female ? dark : skinD, ex, eyeY + (o.female ? 0.0078 : 0.0074), ez - 0.003);
+    lid.scale.set(1.25, o.female ? 0.16 : 0.3, 0.55);
+    lid.rotation.z = sx * -0.06;
     head.add(lid);
     const under = !!o.helmet || o.hat === 'hood' || o.hat === 'cap' || o.hat === 'fur' || o.hairStyle === 'covered'; // a brim sits low: keep the brow beneath it
-    const by = eyeY + (under ? 0.027 : o.female ? 0.046 : 0.038); // otherwise set well clear of the eye, so the look is open
-    const brow = part(geo('brow', () => new THREE.BoxGeometry(0.046, 1, 0.012)), hairM, ex, by, faceAt(by, 'eye') + 0.003);
-    brow.scale.y = o.female ? 0.007 : 0.012;
-    brow.rotation.z = sx * (o.female ? -0.07 : -0.02); // the outer end a little lower: a soft arch, not a frown
+    const by = eyeY + (under ? 0.022 : o.female ? 0.029 : 0.026);
+    const brow = part(geo('eyebrow', () => new THREE.SphereGeometry(0.012, 10, 6)), hairM, ex, by, faceAt(by, 'eye') - 0.002);
+    brow.scale.set(1.75, o.female ? 0.13 : 0.22, 0.5);
+    brow.rotation.z = sx * (o.female ? -0.12 : -0.06); // the outer end a little lower: a soft arch, not a frown
     head.add(brow);
     const ear = part(geo('ear', () => new THREE.SphereGeometry(0.022, 8, 6)), skinM, sx * hr.x * 0.98, eyeY - 0.012, hc.z - hr.z * 0.05);
     ear.scale.set(0.45, 1.15, 0.8);
@@ -667,16 +670,13 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const nose = part(geo('nose', () => new THREE.ConeGeometry(0.017, 0.05, 4).rotateX(-0.38)), skinM, 0, noseY + 0.014, nz - 0.002);
   nose.scale.set(o.female ? 0.8 : 1.05, 1, o.female ? 0.9 : 1.15);
   head.add(nose, part(geo('nosetip', () => new THREE.SphereGeometry(0.012, 7, 5)), skinM, 0, noseY - 0.006, nz + 0.006));
-  // Lips: fuller and redder on a woman; a plainer line on a man.
-  const lipC = new THREE.Color(o.skin).lerp(new THREE.Color(0xa83a40), o.female ? 0.6 : 0.3).getHex();
-  const mouthY = eyeY - 0.072, mz = faceAt(mouthY, 'mid');
-  const upper = part(geo('lip', () => new THREE.SphereGeometry(0.02, 9, 5)), solid(lipC), 0, mouthY + 0.004, mz - 0.004);
-  upper.scale.set(o.female ? 1.0 : 1.1, o.female ? 0.3 : 0.2, 0.5);
-  const lower = part(geo('lip', () => new THREE.SphereGeometry(0.02, 9, 5)), solid(lipC), 0, mouthY - 0.006, mz - 0.005);
-  lower.scale.set(o.female ? 0.86 : 0.95, o.female ? 0.38 : 0.22, 0.5);
-  head.add(upper, lower);
-  // The corners of the mouth turn up a little.
-  for (const sx of [-1, 1]) { const corner = part(geo('corner', () => new THREE.SphereGeometry(0.005, 5, 4)), solid(lipC), sx * 0.02, mouthY + 0.004, mz - 0.006); head.add(corner); }
+  // The mouth: one soft line, turned up a little at the ends; a woman's a touch fuller and redder.
+  const lipC = new THREE.Color(o.skin).lerp(new THREE.Color(0x8a3038), o.female ? 0.5 : 0.34).getHex();
+  const mouthY = eyeY - 0.072, mz = faceAt(mouthY, 'mid'), ARC = 0.86, MR = 0.036;
+  const mouth = part(geo('smile', () => new THREE.TorusGeometry(MR, 0.0026, 6, 12, ARC).rotateZ(-Math.PI / 2 - ARC / 2)), solid(lipC), 0, mouthY + MR * Math.cos(ARC / 2) + 0.001, mz - 0.0035);
+  mouth.scale.set(o.female ? 0.86 : 1, 1, o.female ? 1.5 : 1.1);
+  head.add(mouth);
+  if (o.female) { const lower = part(geo('lowerlip', () => new THREE.SphereGeometry(0.011, 9, 5)), solid(lipC), 0, mouthY - 0.004, mz - 0.006); lower.scale.set(0.95, 0.3, 0.5); head.add(lower); }
   const dome = geo('dome', () => new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.56));
   const crown = (m: THREE.Material, k: number, lift = 0): THREE.Mesh => {
     const d = part(dome, m, 0, hc.y + hr.y * 0.22 + lift, hc.z - hr.z * 0.08);
