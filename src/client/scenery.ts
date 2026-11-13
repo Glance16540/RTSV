@@ -24,8 +24,8 @@ export interface Scenery {
   group: THREE.Group;
   /** Height of the ground at a point: hills, mountains, and never below the waterline. */
   heightAt(x: number, y: number): number;
-  /** Advance the water and the cloud shadows. */
-  update(clock: number): void;
+  /** Advance the water and the cloud shadows. `day` is 1 in daylight down to 0 at night; `grey` is how overcast it is, 0 to 1. */
+  update(clock: number, day?: number, grey?: number): void;
 }
 
 export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, climate: Climate = ''): Scenery {
@@ -167,28 +167,67 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
   const landTex = new THREE.DataTexture(land, N, N, THREE.RGBAFormat);
   landTex.magFilter = landTex.minFilter = THREE.LinearFilter;
   landTex.needsUpdate = true;
+  // Water: a moving surface with its own small waves, that mirrors the sky at a low angle and lets the bed show
+  // through looking down, catches the sun in glitter, breaks white along the shore, and goes dark at night.
   const waterMat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    uniforms: { time: { value: 0 }, land: { value: landTex }, size: { value: N } },
-    vertexShader: 'varying vec2 vP; void main() { vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    uniforms: { time: { value: 0 }, land: { value: landTex }, size: { value: N }, sunDir: { value: new THREE.Vector3(-38, 44, 20).normalize() }, day: { value: 1 }, grey: { value: 0 } },
+    vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
     fragmentShader: `
-      uniform float time; uniform sampler2D land; uniform float size; varying vec2 vP;
+      uniform float time; uniform sampler2D land; uniform float size; uniform vec3 sunDir; uniform float day; uniform float grey;
+      varying vec3 vW;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      float fbm(vec2 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 3; i++) { s += a * noise(p); p = p * 2.03 + vec2(17.0, 9.0); a *= 0.5; } return s; }
+      // The height of the surface: two long swells crossing, and wind chop on top of them.
+      float height(vec2 p) {
+        float h = sin(dot(p, vec2(0.8, 0.6)) * 0.9 + time * 0.9) * 0.45 + sin(dot(p, vec2(-0.5, 0.86)) * 1.4 - time * 1.1) * 0.28;
+        h += fbm(p * 1.6 + vec2(time * 0.25, -time * 0.18)) * 0.9 + fbm(p * 4.3 - vec2(time * 0.4, time * 0.3)) * 0.34;
+        return h;
+      }
       void main() {
-        vec2 wob = vec2(sin(vP.y * 1.7 + time * 0.8), cos(vP.x * 1.5 - time * 0.7)) * 0.12;
-        float l = texture2D(land, (vP + wob) / size).r;
+        vec2 P = vW.xz;
+        vec2 wob = vec2(noise(P * 0.9 + time * 0.2), noise(P * 0.9 + 7.0 - time * 0.2)) * 0.3 - 0.15;
+        float l = texture2D(land, (P + wob) / size).r;
         if (l > 0.62) discard;
-        float w = (sin(vP.x * 1.3 + time * 1.1) + sin(vP.y * 1.7 - time * 0.9) + sin((vP.x + vP.y) * 0.9 + time * 0.6)) / 6.0 + 0.5;
-        float depth = clamp(1.0 - l * 2.4, 0.0, 1.0);
-        vec3 col = mix(vec3(0.33, 0.62, 0.66), vec3(0.09, 0.27, 0.45), depth);
-        col += (w - 0.5) * 0.09;
-        // Light on the swell: long soft streaks that drift, never a pattern.
-        float s1 = sin(dot(vP, vec2(0.83, 0.56)) * 2.3 + time * 1.2 + sin(vP.y * 0.7 + time * 0.3) * 2.0);
-        float s2 = sin(dot(vP, vec2(-0.42, 0.91)) * 3.1 - time * 0.9 + sin(vP.x * 0.6 - time * 0.2) * 2.4);
-        col += pow(max(0.0, s1 * s2), 6.0) * 0.16;
-        float foam = smoothstep(0.3, 0.5, l + (w - 0.5) * 0.16) * (0.55 + 0.45 * sin(time * 1.3 + vP.x * 1.7 + vP.y * 2.1));
-        col = mix(col, vec3(0.93, 0.97, 0.98), foam * 0.75);
-        float a = max(mix(0.5, 0.88, depth), foam * 0.85) * (1.0 - smoothstep(0.52, 0.62, l));
+        float depth = clamp(1.0 - l * 2.2, 0.0, 1.0);
+        // Which way the surface faces here, from the slope of the waves; calmer in the shallows.
+        float e = 0.12, h0 = height(P);
+        vec3 n = normalize(vec3(h0 - height(P + vec2(e, 0.0)), e * 1.7, h0 - height(P + vec2(0.0, e))));
+        n = normalize(mix(vec3(0.0, 1.0, 0.0), n, 0.3 + 0.7 * depth));
+        vec3 V = normalize(cameraPosition - vW);
+        // Looked at steeply, water shows what is in it; at a glancing angle it shows the sky.
+        float fres = 0.07 + 0.93 * pow(1.0 - max(dot(n, V), 0.0), 4.0);
+        vec3 body = mix(vec3(0.24, 0.66, 0.63), vec3(0.05, 0.25, 0.40), smoothstep(0.0, 1.0, depth));
+        // Lit by the sun on the faces turned to it, lighter on the crests, and patched with slow drifts of colour.
+        body *= 0.72 + 0.5 * max(dot(n, sunDir), 0.0);
+        body += (h0 - 1.0) * 0.05;
+        body += (fbm(P * 0.22 + vec2(time * 0.02, 0.0)) - 0.5) * vec3(0.03, 0.07, 0.06);
+        vec3 R = reflect(-V, n);
+        vec3 sky = mix(vec3(0.66, 0.77, 0.88), vec3(0.30, 0.50, 0.80), clamp(R.y, 0.0, 1.0));
+        sky = mix(sky, vec3(0.50, 0.54, 0.58), grey);
+        vec3 col = mix(body, sky, fres * 0.8);
+        // The sun on the water: a hard glitter on the facets turned to it, and a soft sheen round that.
+        vec3 H = normalize(sunDir + V);
+        float nh = max(dot(n, H), 0.0);
+        float sparkle = smoothstep(0.45, 0.8, noise(P * 11.0 + vec2(time * 1.7, -time * 1.3))); // broken into points, not sheets
+        col += vec3(1.0, 0.95, 0.82) * (pow(nh, 420.0) * 2.2 * sparkle + pow(nh, 30.0) * 0.07) * (1.0 - grey * 0.8);
+        // Light dancing on the bed in the shallows.
+        float ca = pow(abs(sin(fbm(P * 2.6 + vec2(time * 0.3, time * 0.22)) * 9.4)), 8.0);
+        col += vec3(0.9, 1.0, 0.9) * ca * 0.12 * (1.0 - depth) * (1.0 - grey);
+        // Foam: a broken white edge where it meets the land, lines of it running in to the shore, and a few caps far out.
+        float edge = smoothstep(0.30, 0.54, l + (noise(P * 3.0 + time * 0.3) - 0.5) * 0.2);
+        float lines = smoothstep(0.6, 1.0, sin(l * 15.0 - time * 1.3 + noise(P * 1.3) * 3.0)) * smoothstep(0.08, 0.34, l) * (1.0 - smoothstep(0.5, 0.6, l));
+        float foam = clamp(edge * 1.0 + lines * 0.6, 0.0, 1.0) * (0.55 + 0.45 * noise(P * 7.0 + time * 0.5));
+        foam = max(foam, smoothstep(1.7, 2.0, h0) * 0.22 * depth);
+        col = mix(col, vec3(0.95, 0.98, 1.0), foam);
+        col *= mix(0.2, 1.0, day);
+        // Clear enough in the shallows to see the sand; nearly opaque where it is deep or seen at a glancing angle.
+        float a = max(max(mix(0.38, 0.94, depth), foam), fres * 0.9) * (1.0 - smoothstep(0.54, 0.62, l));
         gl_FragColor = vec4(col, a);
       }`,
   });
@@ -283,8 +322,10 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
   return {
     group,
     heightAt,
-    update(clock: number): void {
+    update(clock: number, day = 1, grey = 0): void {
       waterMat.uniforms.time.value = clock;
+      waterMat.uniforms.day.value = day;
+      waterMat.uniforms.grey.value = grey;
       cloudTex.offset.set(clock * 0.004, clock * 0.0025);
     },
   };

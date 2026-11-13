@@ -701,8 +701,8 @@ const sailGeo = (w: number, h: number, taper = 1): THREE.BufferGeometry => geo(`
 const hullGeo = (key: string, w: number, h: number, len: number, sheer = 1.6): THREE.BufferGeometry => geo(`${key}${w},${h},${len}`, () => {
   const b = new THREE.BoxGeometry(w, h, len, 4, 3, 12), pos = b.attributes.position;
   for (let i = 0; i < pos.count; i++) {
-    const t = pos.getZ(i) / len + 0.5, up = pos.getY(i) / h + 0.5; // t: stern 0 to bow 1
-    const beam = Math.sin(Math.min(1, t * 1.2 + 0.24) * Math.PI) ** 0.6 * (0.5 + 0.5 * up ** 0.7);
+    const t = pos.getZ(i) / len + 0.5, up = Math.max(0, pos.getY(i) / h + 0.5); // t: stern 0 to bow 1 (and never a hair below the keel, which has no root)
+    const beam = Math.max(0, Math.sin(Math.min(1, t * 1.2 + 0.24) * Math.PI)) ** 0.6 * (0.5 + 0.5 * up ** 0.7);
     pos.setX(i, pos.getX(i) * Math.max(0.03, beam));
     pos.setY(i, pos.getY(i) + Math.abs(t - 0.45) ** 2 * h * sheer * up);
   }
@@ -911,7 +911,7 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
       const L = big ? 1.9 : cog ? 1.6 : gal ? 1.75 : 1.05, W = big ? 0.6 : cog ? 0.66 : gal ? 0.42 : 0.4, H = big ? 0.36 : cog ? 0.34 : gal ? 0.24 : 0.22;
       const deckY = 0.02 + H * 0.62;
       /** How wide the hull is at z, as a share of its full beam: things on the rail must follow it in toward the ends. */
-      const beamAt = (z: number): number => Math.sin(Math.min(1, (z / L + 0.5) * 1.2 + 0.24) * Math.PI) ** 0.6;
+      const beamAt = (z: number): number => Math.max(0, Math.sin(Math.min(1, (z / L + 0.5) * 1.2 + 0.24) * Math.PI)) ** 0.6;
       // The hull, a darker strake along it, her owner's colour on the rail, and the deck.
       add(g, hullGeo('hull', W, H, L), small ? 0x9a7448 : TIM, 0, 0.02 + H / 2 - 0.06, 0);
       add(g, hullGeo('strake', W * 1.03, H * 0.16, L * 0.99), DARKWOOD, 0, deckY - H * 0.34, 0);

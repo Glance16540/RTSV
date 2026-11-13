@@ -1204,7 +1204,7 @@ export class Renderer {
     if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
     this.updateFog(dt);
-    this.scenery.update(this.clock);
+    this.scenery.update(this.clock, 1 - this.nightAmt, this.weather.amount);
 
     // Selection rings.
     let n = 0;
