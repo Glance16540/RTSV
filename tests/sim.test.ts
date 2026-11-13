@@ -11,7 +11,7 @@ import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
-import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, answerTale, Campaign, heroFor, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, answerTale, Campaign, heroFor, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, homeCorner, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -807,7 +807,8 @@ describe('conquest campaign', () => {
     c.armies.push(raiders);
     moveArmy(c, 99, foe.id);
     const cfg = battleConfig(c)!;
-    expect(cfg.setups[1].bonus).toMatchObject({ age: 1, buildings: ['tower', 'tower'] });
+    expect(cfg.setups[1].bonus).toMatchObject({ age: 1 });
+    expect(cfg.setups[1].bonus!.buildings!.slice(0, 2)).toEqual(['tower', 'tower']);
     expect(cfg.setups[0].bonus!.atk).toBe(2);
     // Infantry is the answer to cavalry: the defenders count for more against this army.
     expect(c.pending!.dStr).toBeGreaterThan(defence(c, foe.id));
@@ -3166,7 +3167,7 @@ describe('the leader on the field', () => {
     const cfg = battleConfig(c)!;
     expect(cfg.setups[0].bonus!.units).toMatchObject({ strategist: 1 });
     expect(cfg.setups[0].hero).toMatchObject({ name: 'Brunhild', calling: 'strategist', guard: 4, rank: 0 });
-    finishBattle(c, true, { clubman: 6, strategist: 1 }, undefined, 3);
+    finishBattle(c, true, { clubman: 6, strategist: 1 }, { heroRank: 3 });
     expect(c.factions[0].heroRank).toBe(3);
     expect(heroFor(c, 0).rank).toBe(3);
     // They fall in the next: raised again, they are a rank the less.
@@ -3174,7 +3175,7 @@ describe('the leader on the field', () => {
     d.factions[0].hero = c.factions[0].hero; d.factions[0].heroRank = 3;
     const dHome = d.territories.find((t) => t.capital === 0)!;
     expect(moveArmy(d, armyAt(d, dHome.id)!.id, dHome.adj[0])).toBe('battle');
-    finishBattle(d, true, { clubman: 6 }, undefined, 4);
+    finishBattle(d, true, { clubman: 6 }, { heroRank: 4 });
     expect(d.factions[0].heroAlive).toBe(false);
     expect(d.factions[0].heroRank).toBe(2);
     expect(d.log.at(-1)).toBe('Brunhild fell in the fighting.');
@@ -3398,7 +3399,7 @@ describe('faith on the campaign map', () => {
     expect(g.creed(0).id).toBe('devout');
     expect(g.creed(1).id).toBe('decadent');
     // The player ran a tavern town in that battle: the people come home worldlier, by half of how far it went.
-    finishBattle(c, true, undefined, -20);
+    finishBattle(c, true, undefined, { virtue: -20 });
     expect(virtueOf(c, 0)).toBe(40 + (-20 - 40) * BATTLE_VIRTUE);
     expect(faithOf(c, 0).defence).toBe(1);
   });
@@ -3661,5 +3662,97 @@ describe('the story of a campaign', () => {
     }
     expect(total).toBeGreaterThanOrEqual(8);
     for (const t of TALES) { expect(t.a.virtue).toBeGreaterThan(0); expect(t.b.virtue).toBeLessThan(0); }
+  });
+});
+
+describe('a land keeps its town between the map and its battles', () => {
+  const siege = (c: Campaign, tid: number, units: Record<string, number> = { infantry: 6 }) => {
+    const t = c.territories[tid], from = c.territories[t.adj[0]];
+    from.owner = 0;
+    c.armies = c.armies.filter((a) => a.at !== from.id);
+    c.armies.push({ id: 500 + c.nextArmy++, owner: 0, at: from.id, units, hero: false, vet: 0, moved: false });
+    expect(moveArmy(c, c.armies[c.armies.length - 1].id, tid)).toBe('battle');
+    c.pending!.mode = 'siege';
+    return battleConfig(c)!;
+  };
+  const play = (cfg: NonNullable<ReturnType<typeof battleConfig>>) => new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate);
+  const standing = (g: Game, pid: number) => g.buildings.filter((b) => b.owner === pid && b.complete).map((b) => [b.type, b.cx, b.cy] as [string, number, number]);
+
+  it('what the map says is built there stands in the defender\'s town', () => {
+    const c = newCampaign(11, 1);
+    const t = c.territories.find((x) => x.owner === 1 && x.capital < 0) ?? c.territories.find((x) => x.owner === 1)!;
+    t.buildings = ['barracks', 'stable', 'farm'];
+    const g = play(siege(c, t.id));
+    const types = g.buildings.filter((b) => b.owner === 1).map((b) => b.type);
+    for (const type of ['barracks', 'stable', 'farm']) expect(types).toContain(type);
+    expect(g.buildings.filter((b) => b.owner === 0).map((b) => b.type)).toEqual(['towncenter']);
+  });
+
+  it('the ground is the same whoever joins the fight, and the holder keeps the corner of the town', () => {
+    const c = newCampaign(11, 2);
+    const t = c.territories.find((x) => x.owner === 1)!;
+    const two = siege(c, t.id);
+    const g2 = play(two), g3 = play({ ...two, setups: [...two.setups, { name: 'Reserve', color: 1, isAI: true, team: 0 }] });
+    expect(Array.from(g3.terrain)).toEqual(Array.from(g2.terrain));
+    expect(g3.spec.starts.slice(0, 2)).toEqual(g2.spec.starts);
+    expect(two.setups[1].start).toBe(homeCorner(t));
+    expect(two.setups[0].start).toBe((homeCorner(t) + 2) % 4);
+  });
+
+  it('what the player builds in a siege they win is there on the map and in the next battle', () => {
+    const c = newCampaign(11, 1);
+    const t = c.territories.find((x) => x.owner === 1 && x.capital < 0) ?? c.territories.find((x) => x.owner === 1)!;
+    t.buildings = [];
+    const cfg = siege(c, t.id);
+    const g = play(cfg);
+    const camp = g.spec.starts[0];
+    // Built where a wood stood, as towns are.
+    const tree = g.resources.filter((r) => r.type === 'tree' && g.canPlace('barracks', r.cx + 1, r.cy) === false).sort((a, b) => Math.hypot(a.x - camp.x, a.y - camp.y) - Math.hypot(b.x - camp.x, b.y - camp.y))
+      .find((r) => { const others = g.resources.filter((o) => o !== r && o.cx >= r.cx - 3 && o.cx <= r.cx + 3 && o.cy >= r.cy - 3 && o.cy <= r.cy + 3); return Math.hypot(r.x - camp.x, r.y - camp.y) > 8 && others.length < 20; })!;
+    for (const r of g.resources.filter((o) => o.cx >= tree.cx - 3 && o.cx <= tree.cx + 3 && o.cy >= tree.cy - 3 && o.cy <= tree.cy + 3)) { r.amount = 0; (g as unknown as { kill(e: unknown): void }).kill(r); }
+    expect(g.canPlace('barracks', tree.cx, tree.cy)).toBe(true);
+    const built = g.spawnBuilding('barracks', 0, tree.cx, tree.cy, true);
+    const mine = standing(g, 0);
+    finishBattle(c, true, { clubman: 12 }, { town: mine });
+    expect(t.owner).toBe(0);
+    expect(t.buildings).toContain('barracks');
+    expect(t.town!.at).toBe(cfg.setups[0].start);
+    // A rival comes for it: the player defends from the very town they left.
+    const foe = c.territories[t.adj.find((n) => c.territories[n].owner !== 0) ?? t.adj[0]];
+    foe.owner = 1;
+    c.armies = c.armies.filter((a) => a.at !== foe.id);
+    c.armies.push({ id: 900, owner: 1, at: foe.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false });
+    c.phase = 'ai';
+    expect(moveArmy(c, 900, t.id)).toBe('battle');
+    c.pending!.mode = 'siege';
+    const again = battleConfig(c)!;
+    expect(again.setups[0].start).toBe(cfg.setups[0].start);
+    const h = play(again);
+    expect(h.spec.starts[0]).toEqual(camp);
+    const there = h.buildings.find((b) => b.owner === 0 && b.type === 'barracks')!;
+    expect([there.cx, there.cy]).toEqual([built.cx, built.cy]);
+    expect(h.buildings.filter((b) => b.owner === 0 && b.type === 'barracks')).toHaveLength(1);
+    expect(h.buildings.filter((b) => b.owner === 0 && b.type === 'towncenter')).toHaveLength(1);
+    // Held again, with a house more: the town is as the second battle left it.
+    h.spawnBuilding('house', 0, camp.x - 8, camp.y - 2, true);
+    finishBattle(c, true, {}, { town: standing(h, 0) });
+    expect(t.town!.b.some((b) => b[0] === 'house')).toBe(true);
+    expect(t.town!.at).toBe(cfg.setups[0].start);
+  });
+
+  it('a town taken without a fight in person changes hands as it stands, less its walls', () => {
+    const c = newCampaign(11, 1);
+    const t = c.territories.find((x) => x.owner === 1 && x.capital < 0) ?? c.territories.find((x) => x.owner === 1)!;
+    t.town = { at: 1, b: [['house', 30, 30], ['tower', 34, 30], ['wonder', 40, 40]] };
+    siege(c, t.id, { cavalry: 12 });
+    resolvePending(c, 'attacker');
+    expect(t.town.b).toEqual([['house', 30, 30], ['wonder', 40, 40]]);
+    expect(homeCorner(t)).toBe(1);
+    // A field battle is fought away from the town and leaves it be; a wonder is never carried over.
+    const u = c.territories.find((x) => x.owner !== 0 && x.id !== t.id && x.adj.some((n) => n !== t.id))!;
+    siege(c, u.id, { cavalry: 12 });
+    c.pending!.mode = 'field';
+    finishBattle(c, true, {}, { town: [['house', 1, 1]] });
+    expect(u.town).toBeUndefined();
   });
 });

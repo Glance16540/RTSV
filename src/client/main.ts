@@ -338,7 +338,10 @@ loadAssets().then(() => {
       const survivors: Record<string, number> = {};
       for (const u of app.game.units) if (u.owner === app.pid) survivors[u.type] = (survivors[u.type] ?? 0) + 1;
       const heroRank = app.game.units.find((u) => u.owner === app.pid && u.hero)?.hero!.rank;
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      // What the victor has standing stays standing: it is that land's town the next time it is fought over.
+      const holder = won ? app.pid : 1;
+      const town = cfg.field ? undefined : app.game.buildings.filter((b) => b.owner === holder && b.complete && !b.dead).map((b) => [b.type, b.cx, b.cy]);
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, town, virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -394,8 +397,8 @@ loadAssets().then(() => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number };
-      finishBattle(c, r.won, r.survivors, r.virtue, r.heroRank);
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; town?: [string, number, number][] };
+      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, town: r.town });
       if (c.phase === 'ai') continueAI(c);
     }
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);

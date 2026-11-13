@@ -1,7 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
-import { AGES, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
+import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import type { PlayerSetup } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
@@ -206,11 +206,21 @@ export interface Territory {
   militia: number; // defenders of an independent territory
   adj: number[];
   seed: number; // battles here are always fought on the same ground
+  /** The town on this land's battlefield, as the last battle fought there in person left it. */
+  town?: Town;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
   horde?: boolean;
   /** Women carried off from here by marauders: each costs the land a supply a turn until they are freed. */
   taken?: number;
 }
+
+/** What stands on a land's battlefield between battles: the holder's corner of it, and each building as [type, cx, cy]. */
+export interface Town { at: number; b: [string, number, number][] }
+/** The building that stands on the battlefield for each building of the campaign map. */
+export const SITE_BUILDING: Record<string, string> = { farm: 'farm', barracks: 'barracks', range: 'range', stable: 'stable', harbour: 'dock', fortress: 'tower' };
+/** The corner of its battlefield a land's holder defends from. The attacker makes camp in the one opposite. */
+export const homeCorner = (t: Territory): number => t.town?.at ?? 2;
+const MAX_TOWN = 240;
 
 export interface Army {
   id: number;
@@ -1206,6 +1216,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       }
     }
     t.buildings = t.buildings.filter((b) => b !== 'fortress'); // the walls do not survive the assault
+    if (t.town) t.town.b = t.town.b.filter(([type]) => type !== 'tower' && !BUILDINGS[type]?.wall); // nor do the town's own
   } else {
     if (army) destroyArmy(c, army);
     if (defArmy) { casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
@@ -1536,11 +1547,17 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     }
     if (defending) add('clubman', t.owner < 0 ? t.militia * 2 : 2); // the people of the land turn out too
     const fort = defending && t.buildings.includes('fortress');
+    // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
+    const works = defending && !field ? t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]) : [];
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
-      age: Math.max(fort ? 1 : 0, age), armed: true, buildings: fort ? ['tower', 'tower'] : [], atk: army ? army.vet : 0,
+      age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
+      ...(defending && !field && t.town?.b.length ? { town: t.town.b } : {}),
     };
   };
+  // A siege is always fought over the same ground: the holder in the town's corner, the attacker opposite.
+  const home = homeCorner(t), camp = (home + 2) % 4;
+  const corner = (mine: boolean) => (field ? {} : { start: mine === humanAttacks ? camp : home });
   // The locals of a territory are always the same people, one that is not the player's.
   const localCiv = CIV_IDS.filter((id) => id !== c.factions[0].civ)[t.seed % (CIV_IDS.length - 1)];
   const myReserve = reserves(c, 0, p.to, p.armyId)[0];
@@ -1553,9 +1570,9 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, hero: heroFor(c, 0), virtue: virtueOf(c, 0), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), hero: heroFor(c, 0), virtue: virtueOf(c, 0), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...(foe < 0 ? {} : { hero: heroFor(c, foe) }), virtue: virtueOf(c, foe),
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(foe < 0 ? {} : { hero: heroFor(c, foe) }), virtue: virtueOf(c, foe),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
@@ -1566,25 +1583,50 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   };
 }
 
-/** Record the outcome of a battle the player fought in person. */
 /** Units that fight in person for each company type, e.g. two clubmen for an infantry company. */
 const unitsOf = (type: string): [string, number] => Object.entries(COMPANIES[type].units)[0];
 
 /**
  * Record the outcome of a battle the player fought in person. If the player won and `survivors`
  * (their remaining units, by type) is given, their army keeps only the companies that lived
- * through it, in place of the usual estimate of losses.
+ * through it, in place of the usual estimate of losses. Anything else a battle sends home goes in
+ * `after`, by name, so that two features adding to it never fight over an argument's place.
  */
-export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, virtue?: number, heroRank?: number): void {
+export interface BattleAfter {
+  /** Where the town's standing ended, to carry half the change home. */
+  virtue?: number;
+  /** The rank the leader ended the battle at. */
+  heroRank?: number;
+  /** The victor's buildings as they stood, each [type, cx, cy]: the land's town from now on. */
+  town?: [string, number, number][];
+}
+export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, after: BattleAfter = {}): void {
+  const { virtue, heroRank, town: standing } = after;
   const p = c.pending;
   if (!p) return;
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   if (virtue !== undefined && Number.isFinite(virtue)) shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE);
   const humanAttacks = p.attacker === 0;
+  const land = c.territories[p.to], home = homeCorner(land);
   const mine = humanAttacks ? c.armies.find((a) => a.id === p.armyId) : armyAt(c, p.to);
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   const rankBefore = c.factions[0].heroRank ?? 0;
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
+  if (standing && p.mode !== 'field') {
+    // The victor's buildings are the town now, where they stand: a camp that took the land becomes its town.
+    const b = standing.filter((x) => Array.isArray(x) && BUILDINGS[x[0]] && x[0] !== 'wonder' && Number.isInteger(x[1]) && Number.isInteger(x[2])).slice(0, MAX_TOWN);
+    land.town = { at: playerWon === humanAttacks ? (home + 2) % 4 : home, b };
+    // What the player built in the fighting stands on the map as well, where the land has room for it.
+    if (playerWon && land.owner === 0) {
+      for (const [site, type] of Object.entries(SITE_BUILDING)) {
+        if (site === 'fortress' || land.buildings.includes(site) || land.buildings.length >= slots(land)) continue;
+        if (site === 'harbour' && !onSea(c, land.id)) continue;
+        if (!b.some((x) => x[0] === type)) continue;
+        land.buildings.push(site);
+        c.log.push(`The ${SITES[site].name} you built in the fighting stands in ${land.name}.`);
+      }
+    }
+  }
   if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) return;
   const units: Record<string, number> = {};
   for (const [type, had] of Object.entries(before.units)) {
