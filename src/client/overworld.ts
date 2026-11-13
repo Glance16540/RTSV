@@ -1,13 +1,14 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
 import { creedOf } from '../sim/creed';
+import { PLACES, WORLD_EVENTS } from '../sim/story';
 import { AGES, CIVS, CIV_IDS } from '../sim/data';
 import { Speech, leaderOf } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
 import { WorldMap } from './worldmap';
 import {
   EVENTS, WEATHER, eventsAt, frontsOf, weatherAt,
-  Army, FAITH, faithOf, virtueOf, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, ageCost, truceCost, giftCost, AGE_COST, AGE_EDGE, ageOf, canAdvance, advanceAge, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  Army, FAITH, faithOf, virtueOf, placeAt, placesOf, worldNow, taleNow, taleText, canAnswer, answerTale, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, ageCost, truceCost, giftCost, AGE_COST, AGE_EDGE, ageOf, canAdvance, advanceAge, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
   canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
   WORLD_SHAPES, worldOf, lanesOf, onSea,
 } from '../sim/campaign';
@@ -117,6 +118,7 @@ export class Overworld {
     });
     $('ow-exit').addEventListener('click', () => hooks.exit());
     $('ow-new').addEventListener('click', () => this.askNew());
+    $('ow-chronicle').addEventListener('click', () => this.showChronicle());
     $('ow-speech').addEventListener('click', () => { this.speakT = 0; this.nextSpeech(); });
     $('overworld').classList.remove('hidden');
     this.changed();
@@ -150,6 +152,7 @@ export class Overworld {
         [['New campaign', () => this.askNew()], ['Main menu', () => this.hooks.exit()]]);
     } else if (c.demand) this.askDemand();
     else if (c.pending) this.askBattle();
+    else if (c.tale && c.phase === 'player' && taleNow(c)) this.askTale();
     else $('ow-dialog').classList.add('hidden');
   }
 
@@ -205,6 +208,28 @@ export class Overworld {
       [['Field battle', () => { p.mode = 'field'; this.hooks.fight(); }], ['Siege battle', () => { p.mode = 'siege'; this.hooks.fight(); }], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);
+  }
+
+  /** A tale is put to the player: two answers, the pious and the worldly, each with its price. */
+  private askTale(): void {
+    const c = this.c, tale = taleNow(c)!;
+    const price = (k: 'a' | 'b') => {
+      const ch = tale[k];
+      const parts = [ch.supplies ? `${ch.supplies > 0 ? '+' : ''}${ch.supplies} supplies` : '', ch.virtue > 0 ? `piety +${ch.virtue}` : `decadence +${-ch.virtue}`, ch.company ? 'a company of infantry' : ''].filter(Boolean);
+      return `${taleText(c, ch.label)} (${parts.join(', ')})`;
+    };
+    const answer = (k: 'a' | 'b') => { answerTale(c, k); this.changed(); };
+    this.dialog(tale.title, taleText(c, tale.text) + (canAnswer(c, 'a') && canAnswer(c, 'b') ? '' : ' You have not the supplies for every answer.'),
+      [...(['a', 'b'] as const).filter((k) => canAnswer(c, k)).map((k) => [price(k), () => answer(k)] as [string, () => void]),
+        ['Let it settle itself', () => { c.tale = null; this.changed(); }]]);
+  }
+
+  /** The story so far, oldest first. */
+  private showChronicle(): void {
+    const c = this.c;
+    const lines = (c.chronicle ?? []).map((l) => `<div><small>Turn ${l.turn}.</small> ${l.text}</div>`).join('');
+    const places = placesOf(c).map((p) => { const t = c.territories[p.at]; return `<div>${PLACES[p.kind].icon} <b>${p.name[0].toUpperCase() + p.name.slice(1)}</b>, in ${t.name} <small>(${t.owner < 0 ? 'the local tribes' : t.owner === 0 ? 'yours' : c.factions[t.owner].name})</small>. ${p.legend}</div>`; }).join('');
+    this.dialog('The chronicle', `<span class="ow-chronicle">${lines || 'Nothing is written yet.'}<h3>Places of note</h3>${places}</span>`, [['Close', () => this.changed()]]);
   }
 
   private askDemand(): void {
@@ -339,6 +364,8 @@ export class Overworld {
       const seals: [string, string][] = [];
       const sky = weatherAt(c, t.id);
       if (sky) seals.push([WEATHER[sky].icon, '#dfe6ee']);
+      const place = placeAt(c, t.id);
+      if (place) seals.push([PLACES[place.kind].icon, '#e6dcc0']);
       for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun' ? '#e8c0b0' : '#f0e2a8']);
       seals.forEach(([icon, paper], k) => {
         const sx = t.x + 40 + (k % 2) * 4, sy = t.y + 12 + k * 24;
@@ -506,6 +533,7 @@ export class Overworld {
       '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${leaderOf(f.civ)!.name}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
       `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
       `<div class="hint">${creedOf(virtueOf(c, 0)).icon} Your people are <b>${creedOf(virtueOf(c, 0)).name}</b> <small>(${virtueOf(c, 0) > 0 ? 'piety ' + virtueOf(c, 0) : virtueOf(c, 0) < 0 ? 'decadence ' + -virtueOf(c, 0) : 'in the middle'}${virtueDrift(c, 0) ? `, ${virtueDrift(c, 0) > 0 ? 'growing more pious' : 'growing more decadent'} by ${Math.abs(virtueDrift(c, 0))} a turn` : ''})</small>. ${FAITH[creedOf(virtueOf(c, 0)).id].desc} Your towns begin each battle as they stand here.</div>` +
+      (worldNow(c) ? `<div class="hint">${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].icon} <b>${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].name}.</b> ${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].desc} <small>(${c.world!.until - c.turn + 1} turns left)</small></div>` : '') +
       `<div class="hint">🌍 ${WORLD_SHAPES[worldOf(c.seed).shape]}; ${worldOf(c.seed).temper}.</div>` +
       `<div class="hint">👑 Win by taking every land, or by holding ${dominionNeed(c)} of ${c.territories.length} for ${DOMINION_TURNS} turns <small>(you hold ${landOf(c, 0)})</small>.` +
       (c.dominion.f >= 0 ? ` <b class="${c.dominion.f === 0 ? 'good' : 'bad'}">${c.dominion.f === 0 ? 'You have' : c.factions[c.dominion.f].name + ' have'} held it for ${c.dominion.turns}.</b>` : '') + '</div>' +
@@ -518,6 +546,7 @@ export class Overworld {
       ${lanesOf(c, t.id).map((n) => `<div class="hint">⛵ Sea crossing to ${c.territories[n].name}${t.buildings.includes('harbour') ? '' : t.owner === 0 ? ': build a Harbour here to make it' : ': made from a Harbour'}.</div>`).join('')}
       ${(c.barriers ?? []).filter((w) => w.a === t.id || w.b === t.id).map((w) => `<div class="hint">${BARRIERS[w.kind].icon} No march to ${c.territories[w.a === t.id ? w.b : w.a].name}: ${BARRIERS[w.kind].by} lie${w.kind === 'mountains' ? '' : 's'} between.</div>`).join('')}
       ${t.trait ? `<div class="good">${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}: ${traitOf(t.trait)!.desc}</div>` : ''}
+      ${placeAt(c, t.id) ? `<div class="hint">${PLACES[placeAt(c, t.id)!.kind].icon} <b>${placeAt(c, t.id)!.name[0].toUpperCase() + placeAt(c, t.id)!.name.slice(1)}.</b> ${placeAt(c, t.id)!.legend} <i>${PLACES[placeAt(c, t.id)!.kind].desc}</i></div>` : ''}
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
       ${t.taken ? `<div class="bad">⛓️ Women carried off from here: ${t.taken} supply less each turn until the marauders' camp next door is broken.</div>` : ''}
       ${weatherAt(c, t.id) ? `<div class="bad">${WEATHER[weatherAt(c, t.id) as 'rain'].icon} ${WEATHER[weatherAt(c, t.id) as 'rain'].name}: ${WEATHER[weatherAt(c, t.id) as 'rain'].desc}</div>` : ''}
@@ -529,7 +558,7 @@ export class Overworld {
     const btn = (act: string, label: string, cost: number, ok: boolean, tip = '') => `<button data-act="${act}" title="${tip}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label} <small>${cost}</small></button>`;
     let html = '';
     if (t.owner === 0) {
-      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, faithOf(c, 0).raise), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
+      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
       if (ageOf(c, 0) < AGE_COST.length) html += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Summon a new Warlord', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital');
       if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);

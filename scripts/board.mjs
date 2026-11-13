@@ -7,7 +7,7 @@ import { AREAS } from './systems.mjs';
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 const load = (m) => vite.ssrLoadModule('/src/sim/' + m + '.ts');
-const [D, C, K, S, L] = await Promise.all(['data', 'campaign', 'creed', 'scenario', 'leaders'].map(load));
+const [D, C, K, S, L, ST] = await Promise.all(['data', 'campaign', 'creed', 'scenario', 'leaders', 'story'].map(load));
 await vite.close();
 
 const manifest = existsSync('public/assets/manifest.json') ? JSON.parse(readFileSync('public/assets/manifest.json', 'utf8')) : {};
@@ -23,6 +23,7 @@ const personas = Object.values(L.LEADERS).reduce((n, l) => n + (l.alt ? 2 : 1), 
 const lines = Object.values(L.LEADERS).reduce((n, l) => n + Object.values(l.lines).flat().length, 0);
 const N = {
   buildings: Object.keys(D.BUILDINGS).length, ages: D.AGES.length, techs: Object.keys(D.TECHS).length, units: units.length,
+  places: Object.keys(ST.PLACES).length, worlds: Object.keys(ST.WORLD_EVENTS).length, tales: ST.TALES.length,
   dilemmas: K.DILEMMAS.length, pagan: units.filter((u) => u.pagan).length, civs: D.CIV_IDS.length, alias: Object.keys(ALIAS).length,
   personas, lines, events: L.LEADER_EVENTS.length, voiced: count('voice'), portraits: count('portraits') + Object.keys(manifest.icons ?? {}).filter((k) => k.startsWith('leader_')).length,
   sites: Object.keys(C.SITES).length, missions: S.MISSIONS.length, models: count('models'), icons: count('icons'), tests,
