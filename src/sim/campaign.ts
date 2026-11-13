@@ -2,7 +2,7 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
-import type { PlayerSetup } from './game';
+import type { Ground, PlayerSetup } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
@@ -208,6 +208,8 @@ export interface Territory {
   seed: number; // battles here are always fought on the same ground
   /** The town on this land's battlefield, as the last battle fought there in person left it. */
   town?: Town;
+  /** Wood felled and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
+  ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
   horde?: boolean;
   /** Women carried off from here by marauders: each costs the land a supply a turn until they are freed. */
@@ -1525,7 +1527,7 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
 
 // ---- Real-time battles ----
 
-export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky; /** The country it lies in. */ climate?: 'temperate' | 'desert' | 'steppe' | 'snow' }
+export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky; /** The country it lies in. */ climate?: 'temperate' | 'desert' | 'steppe' | 'snow'; /** Wood and stone already taken from this ground in earlier sieges. */ ground?: Ground }
 
 /** Turn the pending battle into a real-time match: each side fields the troops it has on the map. */
 export function battleConfig(c: Campaign): BattleConfig | null {
@@ -1567,6 +1569,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   return {
     ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
     climate: BIOMES[biomeOf(c, p.to)].climate,
+    ...(!field && t.ground ? { ground: t.ground } : {}),
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
@@ -1599,9 +1602,11 @@ export interface BattleAfter {
   heroRank?: number;
   /** The victor's buildings as they stood, each [type, cx, cy]: the land's town from now on. */
   town?: [string, number, number][];
+  /** What has been taken from the battlefield for good (`Game.ground()`), whoever won. */
+  ground?: Ground;
 }
 export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, after: BattleAfter = {}): void {
-  const { virtue, heroRank, town: standing } = after;
+  const { virtue, heroRank, town: standing, ground } = after;
   const p = c.pending;
   if (!p) return;
   // What the town became under the player's hand goes home with the army: half of how far it moved.
@@ -1612,6 +1617,13 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   const rankBefore = c.factions[0].heroRank ?? 0;
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
+  // Felled wood and dug stone are gone whoever won. A field battle is fought on other ground.
+  if (ground && p.mode !== 'field' && Array.isArray(ground.gone) && Array.isArray(ground.left)) {
+    land.ground = {
+      gone: ground.gone.filter((k) => Number.isInteger(k) && k >= 0).slice(0, 20000),
+      left: ground.left.filter((x) => Array.isArray(x) && Number.isInteger(x[0]) && x[1] > 0).slice(0, 20000),
+    };
+  }
   if (standing && p.mode !== 'field') {
     // The victor's buildings are the town now, where they stand: a camp that took the land becomes its town.
     const b = standing.filter((x) => Array.isArray(x) && BUILDINGS[x[0]] && x[0] !== 'wonder' && Number.isInteger(x[1]) && Number.isInteger(x[2])).slice(0, MAX_TOWN);
