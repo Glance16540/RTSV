@@ -20,7 +20,7 @@ If a model comes out facing the wrong way or the wrong size, add an entry to
 > style for everything: hand-painted, warm earthy palette, readable at small size, in the
 > spirit of classic late-90s historical strategy games (no logos, no text, no existing game's
 > characters). Save every file with the exact filename given, put them in a Google Drive
-> folder called "RTSV assets" with subfolders `icons`, `models` and `art`, and tell me which
+> folder called "Rise and Ruin assets" with subfolders `icons`, `models` and `art`, and tell me which
 > ones failed.
 >
 > **1. Title art** — `art/title.jpg`, 16:9: a Stone Age village of thatched huts at dawn
