@@ -17,6 +17,8 @@ import { RealPerson, loadPeople, makePerson, outfitFor, peopleReady, play } from
 const K = 0.13;
 /** How much larger the world is than the one the pieces were first sized for. */
 const S = K / 0.1;
+// The map's reach each way, against the hundred by sixty it was first drawn for.
+const UX = MAP_W / 1000, UZ = MAP_H / 600;
 const WX = (px: number): number => px * K - (MAP_W * K) / 2;
 const WZ = (py: number): number => py * K - (MAP_H * K) / 2;
 const STEP = LAND_STEP;
@@ -123,7 +125,7 @@ export class WorldMap {
     const skyTex = new THREE.CanvasTexture(sky);
     skyTex.colorSpace = THREE.SRGBColorSpace;
     this.scene.background = skyTex;
-    this.scene.fog = new THREE.Fog(0xb4c6d2, 150 * S, 420 * S);
+    this.scene.fog = new THREE.Fog(0xb4c6d2, 150 * S * UX, 420 * S * UX);
     // Soft light from all round, as under an open sky, so that nothing in shade goes flat.
     const pm = new THREE.PMREMGenerator(this.gl);
     this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -131,13 +133,13 @@ export class WorldMap {
     pm.dispose();
     this.scene.add(new THREE.HemisphereLight(0xfff2dc, 0x5a4a58, 0.7));
     const sun = new THREE.DirectionalLight(0xffe2b8, 2.25);
-    sun.position.set(-46 * S, 70 * S, 34 * S);
+    sun.position.set(-46 * S * UX, 70 * S * UX, 34 * S * UX);
     sun.castShadow = true;
     const fine = Math.min(LOW ? 2048 : 4096, this.gl.capabilities.maxTextureSize);
     sun.shadow.mapSize.set(fine, fine);
     sun.shadow.radius = 2.2;
     const sc = sun.shadow.camera;
-    sc.left = -64 * S; sc.right = 64 * S; sc.top = 46 * S; sc.bottom = -46 * S; sc.near = 5; sc.far = 240 * S;
+    sc.left = -64 * S * UX; sc.right = 64 * S * UX; sc.top = 46 * S * UZ; sc.bottom = -46 * S * UZ; sc.near = 5; sc.far = 240 * S * UX;
     sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.06;
     this.scene.add(sun, sun.target);
 
@@ -163,7 +165,7 @@ export class WorldMap {
     lowSheet.width = PW; lowSheet.height = PH;
     const lowCtx = lowSheet.getContext('2d')!, img = lowCtx.createImageData(PW, PH), D = img.data, col = [0, 0, 0];
     // Fields, rivers and roads are drawn finer still, as fine as the graphics card will hold.
-    const RV = !LOW && this.gl.capabilities.maxTextureSize >= 4096 ? 4 : 2;
+    const RV = LOW ? 2 : Math.max(2, Math.min(3, Math.floor(this.gl.capabilities.maxTextureSize / MAP_W)));
     this.sheet = document.createElement('canvas');
     this.sheet.width = MAP_W * RV; this.sheet.height = MAP_H * RV;
     const ctx = this.sheet.getContext('2d')!;
@@ -292,7 +294,7 @@ export class WorldMap {
     gx.putImageData(gimg, 0, 0);
     const grain = new THREE.CanvasTexture(grainC);
     grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
-    grain.repeat.set(96, 58);
+    grain.repeat.set(96 * UX, 58 * UZ);
     grain.anisotropy = 4;
     const earth = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.93, metalness: 0, map: this.paintTex, bumpMap: grain, bumpScale: 0.55 });
     const overTex = this.overTex;
@@ -504,8 +506,8 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       if (Math.hypot(dx, dy) > 5) { dragged = true; this.moved = true; }
       if (!dragged) return;
       const k = (this.dist * 1.25) / Math.max(200, this.canvas.clientHeight);
-      this.tx = Math.min(56 * S, Math.max(-56 * S, down.tx - dx * k));
-      this.tz = Math.min(38 * S, Math.max(-32 * S, down.tz - dy * k * 1.3));
+      this.tx = Math.min(56 * S * UX, Math.max(-56 * S * UX, down.tx - dx * k));
+      this.tz = Math.min(38 * S * UZ, Math.max(-32 * S * UZ, down.tz - dy * k * 1.3));
     });
     this.canvas.addEventListener('pointerup', (e) => {
       const was = down; down = null;
@@ -880,7 +882,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     this.camera.updateProjectionMatrix();
     // Far enough back to take in the whole country, the first time and whenever the window changes shape.
     const half = Math.tan((this.camera.fov * Math.PI) / 360);
-    this.fit = Math.max((59 * S) / (half * this.camera.aspect), (34 * S) / half);
+    this.fit = Math.max((56 * S * UX) / (half * this.camera.aspect), (33 * S * UZ) / half);
     if (!this.moved) this.dist = this.fit;
     if (!this.cd) this.cd = this.fit * 1.7; // the eye comes down out of the sky the first time
   }

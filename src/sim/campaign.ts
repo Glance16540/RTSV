@@ -6,9 +6,9 @@ import type { PlayerSetup } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith } from './temper';
 
-export const MAP_W = 1000;
-export const MAP_H = 600;
-export const CAMPAIGN_VERSION = 7;
+export const MAP_W = 1300;
+export const MAP_H = 800;
+export const CAMPAIGN_VERSION = 8;
 
 export const MAX_ARMY = 12; // companies in one army
 export const HERO_COST = 8;
@@ -264,12 +264,33 @@ export const BIOMES: Record<Biome, { name: string; icon: string; desc: string; c
   snow: { name: 'The frozen north', icon: '❄️', desc: 'Snow and fir.', climate: 'snow' },
 };
 /** How warm (0 cold to 1 hot) and how wet (0 dry to 1 wet) a point of a world is. Which end is cold, and where the dry lands lie, differ from world to world. */
+/** The broad make of a world: how its land is broken up by the sea, and its temper. Every seed has its own. */
+export type WorldShape = 'continent' | 'continents' | 'twin' | 'innersea' | 'archipelago';
+export const WORLD_SHAPES: Record<WorldShape, string> = {
+  continent: 'One great continent', continents: 'Several continents, parted by straits', twin: 'Two lands with a sea between',
+  innersea: 'Lands round an inner sea', archipelago: 'An archipelago of many islands',
+};
+export interface World { shape: WorldShape; temper: string; warm: number; wet: number; band: number; peaks: number; lakes: number; turn: number; cut: number }
+const worlds = new Map<number, World>();
+export function worldOf(seed: number): World {
+  const had = worlds.get(seed);
+  if (had) return had;
+  const r = (k: number): number => landNoise(k * 3 + 1, seed % 9973, (seed % 100000) + 500 + k);
+  const pick = r(0);
+  const shape: WorldShape = pick < 0.16 ? 'continent' : pick < 0.44 ? 'continents' : pick < 0.62 ? 'twin' : pick < 0.8 ? 'innersea' : 'archipelago';
+  const warm = (r(1) - 0.5) * 0.3, wet = (r(2) - 0.5) * 0.3, band = 0.6 + r(3) * 0.45;
+  const temper = warm < -0.08 ? 'a cold world' : warm > 0.08 ? (wet < -0.04 ? 'a parched world' : 'a hot world') : wet > 0.08 ? 'a green, rainy world' : wet < -0.08 ? 'a dry world' : 'a mild world';
+  const w: World = { shape, temper, warm, wet, band, peaks: (r(4) - 0.5) * 0.14, lakes: (r(5) - 0.5) * 0.12, turn: r(6) * Math.PI, cut: 0.8 + r(7) * 0.5 };
+  worlds.set(seed, w);
+  return w;
+}
 export function climateAt(seed: number, x: number, y: number): { warm: number; wet: number } {
+  const W = worldOf(seed);
   const flip = (seed >>> 1) % 2 === 1, turn = ((seed >>> 3) % 5) / 5 - 0.4; // cold in the south for half of all worlds; the cold line tilts
   const lat = y / MAP_H + (x / MAP_W - 0.5) * turn;
-  const warm = (flip ? 1 - lat : lat) * 0.85 + 0.08 + (landNoise(x / 190, y / 190, seed + 11) - 0.5) * 0.26;
+  const warm = 0.5 + ((flip ? 1 - lat : lat) - 0.5) * 0.85 * W.band + 0.005 + W.warm + (landNoise(x / 190, y / 190, seed + 11) - 0.5) * 0.26;
   const side = (seed >>> 6) % 2 === 1 ? x / MAP_W : 1 - x / MAP_W; // the rain comes from one side
-  const wet = 0.2 + side * 0.3 + landNoise(x / 150, y / 150, seed + 23) * 0.6;
+  const wet = 0.2 + W.wet + side * 0.3 + landNoise(x / 150, y / 150, seed + 23) * 0.6;
   return { warm, wet };
 }
 export function biomeAt(seed: number, x: number, y: number): Biome {
@@ -299,7 +320,7 @@ export function terrainOf(c: Campaign): Terrain {
   if (had) return had;
   const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
   const gw = Math.floor(MAP_W / LAND_STEP) + 1, gh = Math.floor(MAP_H / LAND_STEP) + 1, ts = c.territories;
-  const H = new Float32Array(gw * gh);
+  const H = new Float32Array(gw * gh), W = worldOf(c.seed), ca = Math.cos(W.turn), sa = Math.sin(W.turn);
   for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
     const px = Math.min(MAP_W - 1, i * LAND_STEP), py = Math.min(MAP_H - 1, j * LAND_STEP);
     // Whose land this is, and how far inside it (half the difference between the nearest town and the next).
@@ -309,21 +330,30 @@ export function terrainOf(c: Campaign): Terrain {
     const t = ts[best], inside = (d2 - d1) / 2, dC = Math.hypot(px - t.x, py - t.y);
     // The coast: a ragged shore with deep bays, though every land keeps firm ground under its town.
     const rim = Math.min(px, py, MAP_W - 1 - px, MAP_H - 1 - py);
-    const shore = ease(4, 44, rim + (N(px / 150, py / 150, 2) - 0.5) * 130 + (N(px / 40, py / 40, 3) - 0.5) * 26 - 18 - (t.trait === 'coast' ? 14 : 0));
+    // Land rises round the towns and nowhere else: a ragged shore with deep bays, though every land keeps firm ground under its town.
+    const shore = 1 - ease(84, 132, dC + (N(px / 150, py / 150, 2) - 0.5) * 110 + (N(px / 40, py / 40, 3) - 0.5) * 30 + (t.trait === 'coast' ? 12 : 0));
     // The world's edge is ragged too, so no shore runs straight, and small isles stand off it.
-    const rag = rim + (N(px / 30, py / 30, 14) - 0.5) * 30 + (N(px / 10, py / 10, 15) - 0.5) * 9;
-    const isle = ease(0.7, 0.78, N(px / 20, py / 20, 16)) * ease(6, 16, rim) * 0.7;
-    const keep = Math.max((1 - ease(30, 66, dC)) * ease(6, 30, rag), (1 - ease(10, 22, dC)));
+    const rag = rim + (N(px / 115, py / 115, 17) - 0.5) * 110 + (N(px / 30, py / 30, 14) - 0.5) * 34 + (N(px / 10, py / 10, 15) - 0.5) * 9 - 12;
+    const isle = ease(0.7, 0.78, N(px / 20, py / 20, 16)) * ease(6, 16, rim) * 0.7 * ease(W.shape === 'archipelago' ? 0.3 : 0.52, 0.62, N(px / 130, py / 130, 18));
+    const keep = (1 - ease(30, 66, dC)), firm = 1 - ease(22, 40, dC), edge = ease(6, 36, rag);
+    // The sea breaks the world up after its own fashion: straits between continents, one sea down the middle, a sea at the heart, or islands.
+    const bend = (N(px / 120, py / 120, 22) - 0.5) * 150, cx = px - MAP_W / 2, cy = py - MAP_H / 2;
+    const vein = (sc: number, k: number, wide: number): number => 1 - ease(wide, wide + 0.06, Math.abs(N(px / sc, py / sc, k) * 2 - 1));
+    let cut = 0;
+    if (W.shape === 'continents') cut = vein(230, 20, 0.1 * W.cut);
+    else if (W.shape === 'archipelago') cut = Math.max(vein(170, 20, 0.13 * W.cut), vein(140, 21, 0.11 * W.cut));
+    else if (W.shape === 'twin') cut = 1 - ease(34 * W.cut, 34 * W.cut + 30, Math.abs(cx * ca * 0.6 + cy * sa + bend));
+    else if (W.shape === 'innersea') cut = 1 - ease(0.75, 1.05, Math.hypot(cx / (250 * W.cut), cy / (140 * W.cut)) + (N(px / 90, py / 90, 22) - 0.5) * 0.7);
     // Lakes and inland seas lie between the lands, never on a town.
-    const lake = ease(0.7, 0.8, N(px / 110, py / 110, 5)) * ease(50, 85, dC);
-    const land = Math.max(shore, keep, isle * (1 - ease(40, 70, rim))) * (1 - lake) * ease(0, 9, rim); // and the sea lies all round
+    const lake = ease(0.7 + W.lakes, 0.8 + W.lakes, N(px / 110, py / 110, 5)) * ease(50, 85, dC);
+    const land = Math.max(Math.max(shore, keep) * (1 - cut) * edge, firm, isle) * (1 - lake * (1 - firm)) * ease(0, 9, rim); // and the sea lies all round
     const { warm, wet } = climateAt(c.seed, px, py);
     const hot = ease(0.62, 0.72, warm) * (1 - ease(0.5, 0.6, wet)), marsh = ease(0.76, 0.84, wet) * ease(0.4, 0.46, warm);
     let roll = 0.5 + N(px / 85, py / 85, 6) * 0.75 + N(px / 20, py / 20, 8) * 0.16;
     roll += hot * Math.abs(Math.sin((px + py * 0.6) / 13 + N(px / 50, py / 50, 12) * 5)) * 0.3; // dunes
     roll += (0.2 - roll) * marsh; // fen lies flat and low
     // Mountain ranges cross the world where the seed puts them, and stand on high ground and gold hills; clear of the towns.
-    const range = Math.min(1.25, ease(0.56, 0.72, N(px / 170, py / 170, 7)) + (t.trait === 'hills' ? 0.85 : t.trait === 'gold' ? 0.55 : 0) * ease(4, 34, inside));
+    const range = Math.min(1.25, ease(0.56 + W.peaks, 0.72 + W.peaks, N(px / 170, py / 170, 7)) + (t.trait === 'hills' ? 0.85 : t.trait === 'gold' ? 0.55 : 0) * ease(4, 34, inside));
     let m = 0;
     if (range > 0) {
       const ridge = 1 - Math.abs(N(px / 38 + 7, py / 38 + 3, 9) * 2 - 1);
@@ -602,20 +632,34 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [], truces: [], honor: 0, demand: null, ally: -1, dominion: { f: -1, turns: 0 },
   };
   const pick = <T>(list: T[]): T => list.splice(Math.floor(rand(c) * list.length), 1)[0];
-  const [cols, rows] = pick([[5, 3], [6, 3], [5, 4], [6, 4], [7, 4], [6, 5]]);
-  const names = NAMES.slice();
+  // The world is a wide sea, and land rises only where there are towns: of forty places a town might stand, between
+  // fifteen and thirty are taken, chosen after the fashion of this world, so that its lands lie as continents, a ring, two shores or islands.
+  const cols = 8, rows = 5, want = 15 + Math.floor(rand(c) * 16), W = worldOf(seed), sd = seed % 100000;
+  const spots: { x: number; y: number; score: number }[] = [];
   for (let j = 0; j < rows; j++)
     for (let i = 0; i < cols; i++) {
-      c.territories.push({
-        id: j * cols + i, name: pick(names), owner: -1, capital: -1, adj: [],
-        x: ((i + 0.5) * MAP_W) / cols + (rand(c) - 0.5) * (MAP_W / cols) * 0.5, y: ((j + 0.5) * MAP_H) / rows + (rand(c) - 0.5) * (MAP_H / rows) * 0.4,
-        buildings: rand(c) < 0.35 ? ['farm'] : [], trait: rand(c) < 0.45 ? Object.keys(TRAITS)[Math.floor(rand(c) * 4)] : '', militia: 2 + Math.floor(rand(c) * 3), seed: 1 + Math.floor(rand(c) * 1e6),
-      });
+      const x = ((i + 0.5) * MAP_W) / cols + (rand(c) - 0.5) * (MAP_W / cols) * 0.55, y = ((j + 0.5) * MAP_H) / rows + (rand(c) - 0.5) * (MAP_H / rows) * 0.5;
+      const cx = (x - MAP_W / 2) / (MAP_W / 2), cy = (y - MAP_H / 2) / (MAP_H / 2), far = Math.hypot(cx, cy);
+      let score = landNoise(x / 330, y / 330, sd + 31) + rand(c) * 0.12;
+      if (W.shape === 'continent') score = score * 0.5 - Math.hypot(cx - (landNoise(1, 2, sd + 32) - 0.5), cy - (landNoise(3, 4, sd + 32) - 0.5)) * 0.9;
+      else if (W.shape === 'twin') score = score * 0.4 + Math.min(0.5, Math.abs(cx * Math.cos(W.turn) + cy * Math.sin(W.turn) * 0.7)) * 1.6;
+      else if (W.shape === 'innersea') score = score * 0.3 + Math.min(far, 0.8) * 1.4 - Math.max(0, far - 0.95) * 2;
+      else if (W.shape === 'archipelago') score = landNoise(x / 120, y / 120, sd + 31) + rand(c) * 0.3;
+      spots.push({ x, y, score });
     }
-  // Neighbours are whichever territories share a border.
-  const step = 5;
+  const taken = spots.slice().sort((a, b) => b.score - a.score).slice(0, want).sort((a, b) => a.y * 0.02 + a.x * 0.0001 - (b.y * 0.02 + b.x * 0.0001));
+  const names = NAMES.slice();
+  for (const sp of taken) {
+    c.territories.push({
+      id: c.territories.length, name: pick(names), owner: -1, capital: -1, adj: [], x: sp.x, y: sp.y,
+      buildings: rand(c) < 0.35 ? ['farm'] : [], trait: rand(c) < 0.45 ? Object.keys(TRAITS)[Math.floor(rand(c) * 4)] : '', militia: 2 + Math.floor(rand(c) * 3), seed: 1 + Math.floor(rand(c) * 1e6),
+    });
+  }
+  // Neighbours are whichever territories share a border and lie near enough to march or make a short crossing.
+  const step = 5, near = (MAP_W / cols) * 1.8;
   const link = (a: number, b: number) => {
-    if (a !== b && !c.territories[a].adj.includes(b)) { c.territories[a].adj.push(b); c.territories[b].adj.push(a); }
+    const A = c.territories[a], B = c.territories[b];
+    if (a !== b && !A.adj.includes(b) && Math.hypot(A.x - B.x, A.y - B.y) < near) { A.adj.push(b); B.adj.push(a); }
   };
   for (let y = 0; y < MAP_H; y += step)
     for (let x = 0; x < MAP_W; x += step) {
@@ -623,6 +667,21 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
       if (x + step < MAP_W) link(t, territoryAt(c.territories, x + step, y));
       if (y + step < MAP_H) link(t, territoryAt(c.territories, x, y + step));
     }
+  // No land is cut off for good: where the sea parts two shores, the shortest crossing between them is a sea lane.
+  for (;;) {
+    const group = c.territories.map(() => -1);
+    let groups = 0;
+    for (const t of c.territories) if (group[t.id] < 0) { const q = [t.id]; group[t.id] = groups; while (q.length) for (const n of c.territories[q.pop()!].adj) if (group[n] < 0) { group[n] = groups; q.push(n); } groups++; }
+    if (groups < 2) break;
+    let ba = -1, bb = -1, bd = Infinity;
+    for (const a of c.territories) for (const b of c.territories) if (group[a.id] === 0 && group[b.id] !== 0) { const d = Math.hypot(a.x - b.x, a.y - b.y); if (d < bd) { bd = d; ba = a.id; bb = b.id; } }
+    c.territories[ba].adj.push(bb); c.territories[bb].adj.push(ba);
+  }
+  // And none hangs by a single thread: a land with one neighbour gets a lane to the next nearest shore.
+  for (const t of c.territories) if (t.adj.length < 2) {
+    const o = c.territories.filter((u) => u !== t && !t.adj.includes(u.id)).sort((a, b) => Math.hypot(a.x - t.x, a.y - t.y) - Math.hypot(b.x - t.x, b.y - t.y))[0];
+    t.adj.push(o.id); o.adj.push(t.id);
+  }
 
   // Peoples: the player's choice (or luck), then a different one for every rival.
   const pool = CIV_IDS.slice();
@@ -639,7 +698,8 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     while (q.length) { const cur = q.shift()!; for (const n of c.territories[cur].adj) if (d[n] === Infinity) { d[n] = d[cur] + 1; q.push(n); } }
     return d;
   };
-  const rim = c.territories.filter((t) => t.id % cols === 0 || t.id % cols === cols - 1 || t.id < cols || t.id >= cols * (rows - 1));
+  const mx = c.territories.reduce((n, t) => n + t.x, 0) / c.territories.length, my = c.territories.reduce((n, t) => n + t.y, 0) / c.territories.length;
+  const rim = c.territories.slice().sort((a, b) => Math.hypot(b.x - mx, b.y - my) - Math.hypot(a.x - mx, a.y - my)).slice(0, Math.ceil(c.territories.length / 2));
   const homes = [rim[Math.floor(rand(c) * rim.length)].id];
   while (homes.length <= count) {
     const dist = homes.map(steps);

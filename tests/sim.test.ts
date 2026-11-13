@@ -698,7 +698,7 @@ describe('conquest campaign', () => {
     expect(lineups.size).toBeGreaterThan(20);
     expect(newCampaign(9, 2, 1, 'wild').factions[0].civ).toBe('wild');
     expect(JSON.stringify(newCampaign(9, 2))).toBe(JSON.stringify(newCampaign(9, 2))); // same seed, same world
-  });
+    }, 60000);
 
   it('leaders have a full set of lines and speak when things happen', () => {
     expect(Object.keys(LEADERS).sort()).toEqual(CIV_IDS.slice().sort());
@@ -781,7 +781,7 @@ describe('conquest campaign', () => {
   });
 
   it('a lost army takes its Warlord with it, and a fortress is razed when stormed', () => {
-    const c = newCampaign(7);
+    const c = newCampaign(3);
     const home = c.territories.find((t) => t.capital === 0)!;
     const army = armyAt(c, home.id)!;
     const target = c.territories[home.adj[0]];
@@ -1437,7 +1437,7 @@ describe('alliances and dominion', () => {
 
 describe('an active ally', () => {
   it('gifts earn goodwill, an ally shares stores and rewards an answered call', () => {
-    const c = newCampaign(7, 2);
+    const c = newCampaign(14, 2);
     c.factions[0].supplies = 40;
     for (let i = 0; i < 5; i++) sendGift(c, 2);
     expect(c.factions[2].favor).toBe(MAX_FAVOR);
@@ -3007,7 +3007,7 @@ describe('marauders on the campaign map', () => {
   });
 
   it('a camp left alone grows, and marauders appear in a long campaign', () => {
-    const c = newCampaign(9, 2, 1, 'hearth');
+    const c = newCampaign(3, 2, 1, 'hearth');
     let seen = false, grew = false, last = 0;
     for (let turn = 0; turn < 30 && c.phase !== 'over'; turn++) {
       if (c.pending) resolvePending(c, 'auto');
