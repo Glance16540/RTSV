@@ -84,6 +84,8 @@ export class WorldMap {
   /** Camps and plinths, made once for each kind and reused. */
   private camps = new Map<string, THREE.BufferGeometry>();
   private fires: THREE.Mesh[] = [];
+  /** The people standing in each tribe's camp. */
+  private folk = new Map<number, { key: string; g: THREE.Group; reals: RealPerson[] }>();
   private puffs: { g: THREE.Group; v: number }[] = [];
   private flocks: { g: THREE.Group; cx: number; cz: number; r: number; v: number; ph: number }[] = [];
   private ships: { g: THREE.Group; ph: number; v: number }[] = [];
@@ -898,7 +900,7 @@ export class WorldMap {
       camp.castShadow = true; camp.receiveShadow = true;
       piece.add(camp);
       // A fire burns in every camp.
-      const fire = new THREE.Mesh(new THREE.SphereGeometry(0.1, 7, 5), new THREE.MeshBasicMaterial({ color: 0xff9a3a }));
+      const fire = new THREE.Mesh(new THREE.SphereGeometry(0.065, 7, 5), new THREE.MeshBasicMaterial({ color: 0xff9a3a }));
       fire.position.set(a ? -1.55 : 0.05, a ? 0.16 : 0.2, a ? 0.75 : 0.3); fire.userData.ph = t.id;
       piece.add(fire); this.fires.push(fire);
       if (a) {
@@ -923,7 +925,36 @@ export class WorldMap {
           }
         });
         if (a.moved && c.phase === 'player') piece.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined; if (m && m.color && (o as THREE.Mesh).isMesh && !(o as THREE.SkinnedMesh).isSkinnedMesh) { m.transparent = true; m.opacity = 0.55; } });
-      } else if (t.horde) flagOn(piece, -0.8, 0.05, -0.4, 0x121010, 1.4);
+      } else {
+        if (t.horde) flagOn(piece, -0.8, 0.05, -0.4, 0x121010, 1.4);
+        // The people of the camp: one on watch at its edge, one tending the fire, one talking across it. Kept from
+        // one redrawing to the next, since nothing about them changes.
+        if (peopleReady()) {
+          const key = (t.horde ? 'h' : 't') + style;
+          let folk = this.folk.get(t.id);
+          if (!folk || folk.key !== key) {
+            folk = { key, g: new THREE.Group(), reals: [] };
+            const kin = style === 'snow' ? 'wild' : style === 'desert' ? 'arabs' : 'hearth';
+            const cast: [string, boolean, number, number, number, string][] = t.horde
+              ? [['marauder', false, 0.82, 0.62, 0.9, 'Idle_Loop'], ['marauder', false, 0.42, 0.3, -1.57, 'Idle_Torch_Loop'], ['marauder', false, -0.32, 0.42, 1.2, 'Idle_Talking_Loop']]
+              : [['clubman', false, 0.8, 0.6, 0.9, 'Idle_Loop'], ['villager', true, 0.4, 0.32, -1.57, 'Crouch_Idle_Loop'], ['villager', false, -0.3, 0.42, 1.2, 'Idle_Talking_Loop']];
+            cast.slice(0, n >= 3 ? 3 : 2).forEach(([type, female, px, pz, ry, clip], k) => {
+              const seed = t.id * 13 + k * 5 + 1;
+              const made = makePerson(outfitFor(type, female, t.horde ? 0x2a2420 : [0x8a6a48, 0x9a7a52, 0x7a6a4c][k], lookOf(kin, seed), seed, 0, { cls: type === 'villager' ? 'villager' : 'infantry', age: 0 }));
+              if (!made) return;
+              made.g.scale.setScalar(0.62);
+              made.g.position.set(px, 0.045, pz);
+              made.g.rotation.y = ry;
+              made.g.traverse((o) => { o.castShadow = true; });
+              play(made.real, clip, 1);
+              folk!.g.add(made.g); folk!.reals.push(made.real);
+            });
+            this.folk.set(t.id, folk);
+          }
+          piece.add(folk.g);
+          this.people.push(...folk.reals);
+        }
+      }
       this.pieces.add(holder);
       // An army that stood elsewhere a moment ago marches here over the ground.
       if (a) {
