@@ -36,6 +36,7 @@ export class AIController {
   private mixI = 0;
   private attackT = 0;
   private rebalanceT = 0;
+  private holdWood = false;
   /** Cells of the planned wall around the base, and how far along it construction has got. */
   private ring: { cx: number; cy: number }[] | null = null;
   private ringI = 0;
@@ -115,6 +116,8 @@ export class AIController {
       }
     }
 
+    // Gold lying idle while the larder or the woodpile is bare: wood is kept back for a market before more fields.
+    this.holdWood = p.age >= 1 && count('market') === 0 && !building.some((b) => b.type === 'market') && p.res.gold > 400 && (p.res.food < 100 || p.res.wood < 100);
     // Houses: keep population headroom, and fill them with couples.
     const housesBuilding = building.filter((b) => b.type === 'house').length;
     if (p.popCap - p.pop < 5 && p.popCap < 150 && housesBuilding < (p.age > 0 ? 2 : 1)) this.build('house', home, villagers, 5, 12);
@@ -128,7 +131,9 @@ export class AIController {
 
     // Other buildings, one at a time.
     if (!building.some((b) => b.type !== 'house' && b.type !== 'farm')) {
+      const marketFirst = this.holdWood;
       for (const step of BUILD_ORDER) {
+        if (marketFirst && step.type !== 'market') continue;
         if (step.age > p.age || villagers.length < step.villagers || count(step.type) >= step.count) continue;
         if (saving && step.type !== 'barracks') continue;
         // A Wonder is for an AI that is rich and not on the easy setting.
@@ -157,8 +162,13 @@ export class AIController {
       for (const r of ['wood', 'food', 'stone'] as ResType[]) {
         if (p.res.gold < 200 && p.res[r] > (r === 'food' ? 900 : 600)) g.cmdTrade(pid, market.id, r, 'sell');
       }
-      if (p.res.food < 100 && p.res.gold > 450) g.cmdTrade(pid, market.id, 'food', 'buy');
-      if (p.res.wood < 60 && p.res.gold > 450) g.cmdTrade(pid, market.id, 'wood', 'buy');
+      // The more gold is lying idle, the more is bought at once.
+      const lots = p.res.gold > 900 ? 3 : p.res.gold > 600 ? 2 : 1;
+      for (let k = 0; k < lots; k++) {
+        if (p.res.food < 150 && p.res.gold > 300) g.cmdTrade(pid, market.id, 'food', 'buy');
+        if (p.res.wood < 100 && p.res.gold > 300) g.cmdTrade(pid, market.id, 'wood', 'buy');
+      }
+      if (p.res.food < 100 && p.res.gold <= 300 && p.res.wood > 500) g.cmdTrade(pid, market.id, 'wood', 'sell');
       // Share a surplus with an ally who has run dry.
       for (const ally of g.allies(pid)) {
         for (const r of ['food', 'wood', 'gold', 'stone'] as ResType[]) if (ally.res[r] < 150 && p.res[r] > 1500) g.cmdTribute(pid, ally.id, r);
@@ -195,6 +205,8 @@ export class AIController {
         // A people that keeps the faith calls a priest where others would call a shaman, and has no berserkers.
         if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; }
         const def = UNITS[type];
+        // Yesterday's soldiers are only raised in need: an army of bowmen is no use against knights.
+        if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && army.length >= armyTarget / 2 && def.atk > 0 && def.cls !== 'siege') continue;
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
         if (type === 'shaman' && g.countUnits(pid, 'shaman') >= 2) continue;
@@ -244,7 +256,7 @@ export class AIController {
       const ready = fighters.length >= attackSize && g.time > this.firstAttack && !underAttack;
       if (!ready) this.readyT = -1; else if (this.readyT < 0) this.readyT = g.time;
       const foe = this.nearestFoe(home);
-      const outweighs = this.level < 1 || foe < 0 || this.weight(pid, false) >= this.weight(foe, true) * 1.15 || g.time - this.readyT > 200;
+      const outweighs = this.level < 1 || foe < 0 || this.weight(pid, false) >= this.weight(foe, true) * 1.4 || g.time - this.readyT > 360;
       if ((ready && outweighs) || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
@@ -443,18 +455,34 @@ export class AIController {
   private raiding(army: Unit[], home: Building): void {
     const g = this.game, pid = this.pid, p = g.players[pid];
     if (!g.raider(pid) || Math.floor(g.time) % 4 || p.pop >= p.popCap) return;
-    const want = this.level === 0 ? 1 : this.level === 1 ? 2 : 3;
+    // While the nearest rival has next to no soldiers the whole band goes for its people: this is the raiders'
+    // hour, before walls and towers. After that only a few slip out at a time, and they keep clear of towers.
+    const foe = this.nearestFoe(home);
+    const open = this.level >= 1 && foe >= 0 && this.weight(foe, false) < this.weight(pid, false) * 0.6;
+    const able = army.filter((u) => g.canSeize(u) && !u.inside);
+    const want = open ? Math.max(2, able.length - 1) : this.level === 0 ? 1 : this.level === 1 ? 2 : 3;
+    const towers = g.buildings.filter((b) => g.hostile(b.owner, pid) && b.complete && (b.type === 'tower' || (!open && b.type === 'towncenter')));
+    // A raider who is badly hurt gives it up and comes home: a live man raids again tomorrow.
+    for (const u of army) if (u.order?.t === 'capture' && u.hp < u.maxHp * 0.45) g.cmdMove(pid, [u.id], home.x, home.y + 5, false);
+    const marked = new Set<number>();
+    for (const u of army) if (u.order?.t === 'capture') marked.add(u.order.id);
     let out = army.filter((u) => u.order?.t === 'capture' || u.captive).length;
-    for (const s of army) {
+    for (const s of able) {
       if (out >= want) break;
-      if (s.order || s.captive || s.inside || !g.canSeize(s)) continue;
-      let best: Unit | null = null, bestD = 60;
+      if (s.order || s.captive || s.hp < s.maxHp * 0.7) continue;
+      let best: Unit | null = null, bestD = open ? 110 : 60;
       for (const v of g.units) {
-        if (v.type !== 'villager' || v.growT > 0 || v.inside || v.owner === g.wild || !g.hostile(v.owner, pid)) continue;
-        const d = Math.hypot(v.x - home.x, v.y - home.y);
+        if (v.type !== 'villager' || v.growT > 0 || v.inside || v.owner === g.wild || !g.hostile(v.owner, pid) || marked.has(v.id)) continue;
+        if (towers.some((b) => Math.hypot(b.x - v.x, b.y - v.y) < (b.type === 'tower' ? 9 : 10))) continue;
+        const d = open ? Math.hypot(v.x - s.x, v.y - s.y) : Math.hypot(v.x - home.x, v.y - home.y);
         if (d < bestD) { bestD = d; best = v; }
       }
-      if (!best) return;
+      if (!best) {
+        // Nobody to take (they have rung the bell and gone indoors): do not stand about under their arrows.
+        if (Math.hypot(s.x - home.x, s.y - home.y) > 26) g.cmdMove(pid, [s.id], home.x, home.y + 5, false);
+        continue;
+      }
+      marked.add(best.id);
       g.cmdTarget(pid, [s.id], best.id);
       out++;
     }
@@ -637,7 +665,7 @@ export class AIController {
       const c = u.def.cost;
       w += ((c.food ?? 0) + (c.wood ?? 0) + (c.gold ?? 0)) * (u.hp / u.maxHp);
     }
-    if (defending) for (const b of this.game.buildings) if (b.owner === pid && b.complete && (b.type === 'tower' || b.type === 'towncenter')) w += b.type === 'tower' ? 120 : 200;
+    if (defending) for (const b of this.game.buildings) if (b.owner === pid && b.complete && (b.type === 'tower' || b.type === 'towncenter')) w += b.type === 'tower' ? 200 : 300;
     return w;
   }
 
@@ -760,7 +788,7 @@ export class AIController {
           const deer = hunters < 3 ? g.units.find((u) => u.type === 'deer' && Math.hypot(u.x - home.x, u.y - home.y) < 18
             && !this.route(v, u).partial) : undefined;
           if (deer) { g.cmdTarget(pid, [v.id], deer.id); have.food++; hunters++; break; }
-          if (farmCount < want.food * total + 3 && farms.filter((f) => !f.complete).length < 3 && p.res.wood >= BUILDINGS.farm.cost.wood!) {
+          if (farmCount < want.food * total + 3 && farms.filter((f) => !f.complete).length < 3 && p.res.wood >= BUILDINGS.farm.cost.wood! && !this.holdWood) {
             // Fields can spread well beyond the crowded town centre (and outside its wall).
             const spot = this.findSpot('farm', home.x, home.y, 5, 26);
             if (spot && g.cmdPlace(pid, 'farm', spot.cx, spot.cy, [v.id])) { have.food++; farmCount++; break; }

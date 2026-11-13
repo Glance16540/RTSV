@@ -2721,6 +2721,28 @@ describe('pathing and the computer player under load', () => {
     expect(Math.hypot(u.x - (s.cx + size + 4.5), u.y - (s.cy + size / 2))).toBeLessThan(2.5);
   });
 
+  it('a raider fights the armed man before he takes the villager beside him', () => {
+    const g = new Game(3, [{ name: 'A', color: 1, isAI: false, civ: 'wild' }, { name: 'B', color: 2, isAI: true, civ: 'hearth' }]);
+    // A clear stretch of open ground to stand them on.
+    const st = g.spec.starts[0];
+    let at = { x: 0, y: 0 };
+    search: for (let r = 5; r < 20; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const cx = Math.floor(st.x) + dx, cy = Math.floor(st.y) + dy;
+      let clear = true;
+      for (let k = -4; k <= 3 && clear; k++) for (let m = -1; m <= 1; m++) if (g.landPf.isBlocked(cx + k, cy + m)) { clear = false; break; }
+      if (clear) { at = { x: cx + 0.5, y: cy + 0.5 }; break search; }
+    }
+    const raider = g.spawnUnit('clubman', 0, at.x, at.y);
+    const villager = g.spawnUnit('villager', 1, at.x + 1.5, at.y, 'm');
+    const guard = g.spawnUnit('spearman', 1, at.x - 3, at.y);
+    guard.stance = 'hold';
+    let fought = false;
+    run(g, 6, () => { if (raider.order?.t === 'attack' && (raider.order as { id: number }).id === guard.id) fought = true; });
+    console.log('raider: fought ' + fought + ', guard hp ' + guard.hp + '/' + guard.maxHp + ', order ' + raider.order?.t);
+    expect(fought || guard.hp < guard.maxHp).toBe(true);
+    expect(villager.dead).toBeFalsy();
+  });
+
   it('no second of a long game between two computer players stalls, and the game is won', () => {
     // Seed 13 between these two once froze for half a minute laying a road to a house outside the walls.
     const g = new Game(13, [{ name: 'a', color: 1, isAI: true, civ: 'greece' }, { name: 'b', color: 2, isAI: true, civ: 'dawn' }]);

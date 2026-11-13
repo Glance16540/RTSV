@@ -376,7 +376,7 @@ export class Game {
         // A war band: a man and a woman to found the hall when they choose to settle, and fighters to feed it.
         this.spawnUnit('villager', i, st.x - 0.5, st.y + 1.5 * dir, 'm');
         this.spawnUnit('villager', i, st.x + 0.5, st.y + 1.5 * dir, 'f');
-        for (let k = 0; k < BAND.fighters; k++) this.spawnUnit(this.trainedAs(i, 'clubman'), i, st.x - 2.5 + k, st.y + 3 * dir);
+        for (let k = 0; k < BAND.fighters; k++) this.spawnUnit(this.trainedAs(i, 'clubman'), i, st.x - (BAND.fighters - 1) / 2 + k, st.y + 3 * dir);
         this.players[i].res.wood += BAND.wood;
         this.players[i].res.stone += BAND.stone;
       } else if (!field) {
@@ -727,11 +727,11 @@ export class Game {
 
   private scratch: Unit[] = [];
 
-  private findEnemy(owner: number, x: number, y: number, radius: number, minRange = 0, buildingsOnly = false, noShips = false): Entity | null {
+  private findEnemy(owner: number, x: number, y: number, radius: number, minRange = 0, buildingsOnly = false, noShips = false, noVillagers = false): Entity | null {
     let best: Entity | null = null;
     let bestD = Infinity;
     for (const v of buildingsOnly ? [] : this.unitsNear(x, y, radius, this.scratch)) {
-      if (!this.hostile(v.owner, owner) || v.def.docile || (noShips && v.def.naval)) continue;
+      if (!this.hostile(v.owner, owner) || v.def.docile || (noShips && v.def.naval) || (noVillagers && v.type === 'villager')) continue;
       // Wolves and the Norse leave each other alone.
       if ((owner === this.wild && this.players[v.owner].civ === 'wild') || (v.owner === this.wild && this.players[owner].civ === 'wild')) continue;
       const d = Math.hypot(v.x - x, v.y - y);
@@ -751,6 +751,20 @@ export class Game {
       if (score < bestD) { bestD = score; best = b; }
     }
     return best;
+  }
+
+  /**
+   * Whom a unit should go for. A raider takes villagers alive, but not while there are armed men about: those he
+   * fights first, and a villager he cannot take (his hands are full, or a comrade is at it) he leaves for something
+   * he can do.
+   */
+  private foeFor(u: Unit, radius: number): Entity | null {
+    const noShips = !u.def.naval && u.def.range < 1.5;
+    const e = this.findEnemy(u.owner, u.x, u.y, radius, u.def.minRange, u.def.siegeOnly, noShips);
+    if (!e || !this.spared(u, e)) return e;
+    const other = this.findEnemy(u.owner, u.x, u.y, radius, u.def.minRange, u.def.siegeOnly, noShips, true);
+    if (other && other.kind === 'unit') return other;
+    return this.takes(u, e) ? e : other;
   }
 
   nearestDropoff(u: Unit): Building | null {
@@ -2064,7 +2078,7 @@ export class Game {
           u.scanT = 0.4;
           // Units holding their ground only strike what is already within reach.
           const hold = u.stance === 'hold';
-          const e = this.findEnemy(u.owner, u.x, u.y, hold ? this.reachOf(u) + 1.2 : this.sightOf(u), u.def.minRange, u.def.siegeOnly, !u.def.naval && u.def.range < 1.5);
+          const e = this.foeFor(u, hold ? this.reachOf(u) + 1.2 : this.sightOf(u));
           if (e && this.spared(u, e)) { if (!hold && this.takes(u, e)) this.setOrder(u, { t: 'capture', id: e.id }); }
           else if (e && (!hold || this.dist(u, e) <= this.reachOf(u) + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
         }
@@ -2082,7 +2096,7 @@ export class Game {
         u.scanT -= DT;
         if (u.scanT <= 0) {
           u.scanT = 0.4;
-          const e = this.findEnemy(u.owner, u.x, u.y, u.def.sight, u.def.minRange, u.def.siegeOnly, !u.def.naval && u.def.range < 1.5);
+          const e = this.foeFor(u, u.def.sight);
           if (e && this.spared(u, e)) { if (this.takes(u, e)) { this.setOrder(u, { t: 'capture', id: e.id }); break; } }
           else if (e) {
             o.started = false;

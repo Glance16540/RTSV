@@ -34,7 +34,7 @@ it.skipIf(!process.env.TRIALS)('AI trial games', () => {
         }
       }
       if ((s + 1) % 300 === 0) {
-        lines.push(`  ${(s + 1) / 60}m ` + g.players.slice(0, 2).map((p, i) => { const us = g.units.filter((u) => u.owner === i); const v = us.filter((u) => u.type === 'villager'); return `${p.civ}[age ${p.age} vil ${v.length} idle ${v.filter((u) => !u.order && !u.inside && u.growT <= 0).length} in ${v.filter((u) => u.inside).length} kid ${v.filter((u) => u.growT > 0).length} army ${us.length - v.length} bld ${g.buildings.filter((q) => q.owner === i).length} res ${Math.round(p.res.food)}/${Math.round(p.res.wood)}/${Math.round(p.res.gold)}/${Math.round(p.res.stone)}${p.defeated ? ' OUT' : ''}]`; }).join(' '));
+        lines.push(`  ${(s + 1) / 60}m ` + g.players.slice(0, 2).map((p, i) => { const us = g.units.filter((u) => u.owner === i); const v = us.filter((u) => u.type === 'villager'); return `${p.civ}[age ${p.age} vil ${v.length} idle ${v.filter((u) => !u.order && !u.inside && u.growT <= 0).length} in ${v.filter((u) => u.inside).length} kid ${v.filter((u) => u.growT > 0).length} army ${us.length - v.length} bld ${g.buildings.filter((q) => q.owner === i).length} cap ${p.popCap} pop ${p.pop} hs ${g.buildings.filter((q) => q.owner === i && q.type === 'house' && q.complete).length} got ${Math.round(p.stats.gathered)} born ${p.stats.born} lost ${p.stats.lost} res ${Math.round(p.res.food)}/${Math.round(p.res.wood)}/${Math.round(p.res.gold)}/${Math.round(p.res.stone)}${p.defeated ? ' OUT' : ''}]`; }).join(' '));
       }
     }
     const top = [...stuckSeen].sort((x, y) => y[1] - x[1]).slice(0, 6).map(([k, n]) => `${k}=${n}`).join(' ');

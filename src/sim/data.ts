@@ -891,7 +891,7 @@ export const CIV_STYLE: Record<string, StyleId> = {
 };
 export const styleOf = (civ: string): StyleDef => STYLES[CIV_STYLE[civ] ?? 'farmer'];
 /** A raiding band: what it starts with instead of a town, and how it lives. */
-export const BAND = { fighters: 6, pop: 12, wood: 150, stone: 200, settle: 1.5, virtue: -1 };
+export const BAND = { fighters: 7, pop: 12, wood: 150, stone: 200, settle: 1.25, virtue: -1 };
 /** Banner colour of each people on the campaign map and in battle. */
 export const CIV_COLOR: Record<string, number> = { stonekin: 0x6f8fb0, steppe: 0xe0452f, hearth: 0x3aa648, forge: 0xe0902a, dawn: 0xe0c020, wild: 0x8a5ad0, egypt: 0xd8b46a, babylon: 0x3a8fa8, persia: 0xb03a6a, greece: 0x4a78d8, england: 0xc83a3a, arabs: 0x2f9a6a, japan: 0xd8d8e8 };
 
