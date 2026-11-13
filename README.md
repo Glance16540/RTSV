@@ -294,6 +294,17 @@ The interface icons are woodcut-style pictures in `public/assets/icons/`, cut fr
 `scripts/icon-sheets.json` lists every icon and the prompt used; `node scripts/slice-icons.cjs <folder>`
 cuts new sheets (`sheet0.png` … `sheet8.png`) into icons.
 
+## Your leader
+
+*Your leader* on the menu (and on the campaign map) opens the hero creator: name them, choose a man or a
+woman, a calling (Warlord or Strategist), where six points go (Might, Guard, Vigour), what veterancy
+hardens (strength, armour, or both by turns) and how they look. One leader is kept per nation on your
+device. In battle the first hero of that calling you raise is your leader: enemies felled near them are
+their deeds, and deeds raise them through five ranks. A holy town's leader lends armour to those near;
+a decadent town's leader binds enemy villagers for the Work Camp and makes the camp fill the town
+faster. They are still flesh: a blow always tells, and one who falls comes back a rank lower. The rules
+are in `src/sim/hero.ts`.
+
 ## Systems board
 
 [docs/systems-board.html](docs/systems-board.html) shows every system in the game, how far along it

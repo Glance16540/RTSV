@@ -10,7 +10,7 @@ import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
-import { Outfit, RealPerson, astride, bear, embrace, drawnReal, sprawl, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
+import { Outfit, RealPerson, leaderOutfit, astride, bear, embrace, drawnReal, sprawl, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
@@ -490,7 +490,10 @@ export class Renderer {
     }
     if (!v) {
       ofPeople(this.game.players[u.owner].civ);
-      const made = real ? makePerson(outfitFor(u.type, u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child })) : null;
+      // The leader is dressed as whoever made them chose; everyone else by their kind.
+      const lead = u.hero ? this.game.heroOf(u.owner) : null;
+      const fit = real ? outfitFor(u.type, lead ? lead.female : u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child }) : null;
+      const made = fit ? makePerson(lead ? leaderOutfit(fit, lead.female, lead.look) : fit) : null;
       const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
       v = { g: made?.g ?? creature?.g ?? (afoot ? new THREE.Group() : makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear)), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, work: 0, job, wear, hp: u.hp, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;

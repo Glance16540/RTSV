@@ -1,5 +1,7 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { isHoly } from '../sim/creed';
+import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -480,10 +482,19 @@ export class Hud {
         const years = Math.floor(16 + (e.age / e.lifespan) * 54);
         extra += game.isElder(e) ? `<div class="hint">🧓 Elder, ${years} years old: works and walks more slowly</div>` : `<div class="hint">${years} years old</div>`;
       }
+      // The nation's leader: their veterancy, what it has added, and what their town makes of them.
+      const lead = e.hero ? game.leaderBonus(e) : null;
+      if (e.hero && lead) {
+        const r = e.hero.rank, virtue = game.players[e.owner].virtue;
+        const top = r >= MAX_RANK;
+        extra = `<div class="good">⭐ ${RANK_NAMES[r]}${top ? '' : ` · ${e.hero.xp - RANK_XP[r]} of ${RANK_XP[r + 1] - RANK_XP[r]} deeds to ${RANK_NAMES[r + 1]}`}</div>${top ? '' : this.bar((e.hero.xp - RANK_XP[r]) / (RANK_XP[r + 1] - RANK_XP[r]), 'faith')}` +
+          (isHoly(virtue) ? `<div class="good">🕯️ Holy town: those near them wear ${HOLY_GUARD[virtue >= 70 ? 1 : 0]} more armour</div>` : '') +
+          (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the camp fills the town faster while they are in the field</div>' : '') + extra;
+      }
       const role = (e.growT > 0 ? 'Child' : d.name) + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
       return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>
-        <div class="stat">⚔ ${d.atk + (mil ? mods.atk : 0)} · 🛡 ${d.armor + (mil ? mods.armor : 0)}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
+        <div class="stat">⚔ ${Math.round((d.atk + (mil ? mods.atk : 0) + (lead?.atk ?? 0)) * 10) / 10} · 🛡 ${Math.round((d.armor + (mil ? mods.armor : 0) + (lead?.armor ?? 0) + game.guardAt(e.owner, e.x, e.y)) * 10) / 10}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
     const b = e;
     let body = '';

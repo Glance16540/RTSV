@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { HeroSpec, HERO_POINTS, HERO_MIN_HURT, HOLY_GUARD, MIGHT_ATK, GUARD_ARMOR, VIGOUR_HP, RANK_ATK, RANK_ARMOR, RANK_HP, RANK_XP, TYRANT_BIND, cleanHero, heroBonus, rankOf } from '../src/sim/hero';
 import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
 import { AIController } from '../src/sim/ai';
-import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
+import { CAPTURE_TIME, MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
 import { Building, DAY_LENGTH, Game, LAIR_AT, LAIR_BIRTH, NIGHT_SIGHT, Unit } from '../src/sim/game';
 import { connected, generateMap, T_GRASS, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../src/sim/map';
@@ -9,7 +10,7 @@ import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, UNITS, styleOf } from '../src/sim/data';
-import { Campaign, BIOMES, biomeOf, terrainOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { Campaign, heroFor, BIOMES, biomeOf, terrainOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -3019,5 +3020,144 @@ describe('marauders on the campaign map', () => {
     }
     expect(seen).toBe(true);
     expect(grew).toBe(true);
+  });
+});
+
+describe('the leader on the field', () => {
+  const two = (hero?: Partial<HeroSpec>) => {
+    const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'hearth', hero }, { name: 'B', color: 2, isAI: false, civ: 'forge' }]);
+    g.players[0].dilemmaT = g.players[1].dilemmaT = 1e9;
+    return g;
+  };
+
+  it('the first hero of their calling is the nation\'s leader, by name, with the points spent on them', () => {
+    const g = two();
+    const w = g.spawnUnit('warlord', 0, 46.5, 46.5), s = g.spawnUnit('strategist', 0, 47.5, 46.5);
+    expect(w.name).toBe(LEADERS.hearth.name);
+    expect(w.hero).toEqual({ xp: 0, rank: 0 });
+    expect(s.hero).toBeUndefined(); // a lieutenant, not the leader
+    expect(g.leaderBonus(w)).toEqual({ atk: 2 * MIGHT_ATK, armor: 2 * GUARD_ARMOR, hp: 1 + 2 * VIGOUR_HP });
+    expect(w.maxHp).toBe(Math.round(UNITS.warlord.hp * (1 + 2 * VIGOUR_HP)));
+    // Someone's own making of them: a woman, a Strategist, everything on the arm.
+    const h = two({ name: 'Mathilde <b>the Bold</b>', female: true, calling: 'strategist', bent: 'strength', might: 9, guard: 3, vigour: 3 });
+    const lead = h.spawnUnit('strategist', 0, 46.5, 46.5);
+    expect(h.spawnUnit('warlord', 0, 47.5, 46.5).hero).toBeUndefined();
+    expect(lead.name).toBe('Mathilde bthe Bold/b'); // nothing that could be markup
+    expect(h.heroOf(0)).toMatchObject({ female: true, might: HERO_POINTS, guard: 0, vigour: 0 }); // no more points than there are
+    expect(cleanHero({ might: 2, guard: 2, vigour: 5 }, 'hearth')).toMatchObject({ might: 2, guard: 2, vigour: 2 });
+  });
+
+  it('veterancy comes from enemies felled where the leader stands, and adds strength or armour by their bent', () => {
+    expect(RANK_XP.map(rankOf)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(rankOf(RANK_XP[1] - 1)).toBe(0);
+    const base = { name: 'x', female: false, calling: 'warlord' as const, might: 0, guard: 0, vigour: 0 };
+    expect(heroBonus({ ...base, bent: 'strength' }, 4)).toEqual({ atk: 4 * RANK_ATK, armor: 0, hp: 1 + 4 * RANK_HP });
+    expect(heroBonus({ ...base, bent: 'armour' }, 4).armor).toBeCloseTo(4 * RANK_ARMOR);
+    expect(heroBonus({ ...base, bent: 'both' }, 3)).toMatchObject({ atk: 2 * RANK_ATK, armor: RANK_ARMOR });
+    const g = two({ bent: 'strength', might: 6 });
+    const w = g.spawnUnit('warlord', 0, 46.5, 46.5);
+    for (let i = 0; i < RANK_XP[1]; i++) g.spawnUnit('villager', 1, 47.2 + (i % 3) * 0.4, 46.2 + Math.floor(i / 3) * 0.4);
+    const far = g.spawnUnit('clubman', 0, 20.5, 20.5), prey = g.spawnUnit('villager', 1, 21.2, 20.5);
+    g.cmdTarget(0, [far.id], prey.id);
+    run(g, 40);
+    expect(prey.dead).toBe(true);
+    expect(w.hero).toEqual({ xp: RANK_XP[1], rank: 1 }); // the one killed far from them is no deed of theirs
+    expect(g.players[0].heroRank).toBe(1);
+    expect(g.leaderBonus(w).atk).toBe(6 * MIGHT_ATK + RANK_ATK);
+    expect(w.maxHp).toBe(Math.round(UNITS.warlord.hp * (1 + RANK_HP)));
+  });
+
+  it('a leader is still flesh: armour never turns a blow altogether, and one who falls comes back the less for it', () => {
+    const hurt = (leader: boolean) => {
+      const g = two({ bent: 'armour', guard: 6, rank: 5 });
+      const w = g.spawnUnit(leader ? 'warlord' : 'strategist', 0, 46.5, 46.5);
+      w.stance = 'hold'; (w.def as unknown) = { ...w.def, atk: 0, heal: 0, aura: 0 };
+      const foe = g.spawnUnit('clubman', 1, 47.3, 46.5);
+      g.cmdTarget(1, [foe.id], w.id);
+      run(g, 12);
+      return { g, w, lost: w.maxHp - w.hp, atk: foe.def.atk };
+    };
+    const { g, w, lost, atk } = hurt(true);
+    expect(w.hero!.rank).toBe(5);
+    expect(g.leaderBonus(w).armor + w.def.armor).toBeGreaterThan(atk); // a club would otherwise only scratch
+    expect(lost).toBeGreaterThan(atk * HERO_MIN_HURT * 4);
+    w.hp = 1;
+    run(g, 6);
+    expect(w.dead).toBe(true);
+    expect(g.players[0].heroRank).toBe(4);
+    const again = g.spawnUnit('warlord', 0, 40.5, 40.5);
+    expect(again.hero).toEqual({ xp: RANK_XP[4], rank: 4 });
+  });
+
+  it('a holy town\'s leader lends armour to those near; a decadent one takes captives and fills the town from the camp', () => {
+    const blows = (virtue: number, near: boolean) => {
+      const g = two();
+      g.players[0].virtue = virtue;
+      const w = g.spawnUnit('warlord', 0, near ? 46.5 : 20.5, near ? 42.5 : 20.5);
+      w.stance = 'hold'; (w.def as unknown) = { ...w.def, aura: 0 };
+      const victim = g.spawnUnit('knight', 0, 46.5, 46.5);
+      victim.stance = 'hold'; (victim.def as unknown) = { ...victim.def, atk: 0 };
+      const foe = g.spawnUnit('swordsman', 1, 47.3, 46.5);
+      g.cmdTarget(1, [foe.id], victim.id);
+      run(g, 10);
+      return victim.maxHp - victim.hp;
+    };
+    const plain = blows(0, true);
+    expect(blows(40, false)).toBe(plain); // too far off to help
+    expect(blows(40, true)).toBeLessThan(plain);
+    expect(blows(80, true)).toBeLessThan(blows(40, true));
+    expect(HOLY_GUARD).toEqual([1, 2]);
+
+    const g = two();
+    const p = g.players[0], tc = g.buildings.find((b) => b.owner === 0)!;
+    const w = g.spawnUnit('warlord', 0, tc.x - 2, tc.y + 5);
+    const v = g.spawnUnit('villager', 1, tc.x - 1, tc.y + 6, 'f');
+    expect(g.tyrant(w)).toBe(false);
+    expect(g.canSeize(w)).toBe(false);
+    p.virtue = -80;
+    expect(g.tyrant(w)).toBe(true);
+    const camp = g.spawnBuilding('workcamp', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) - 6, true);
+    g.cmdTarget(0, [w.id], v.id);
+    run(g, CAPTURE_TIME * TYRANT_BIND + 2);
+    expect(v.dead).toBe(true);
+    expect(w.captive?.name).toBe(v.name);
+    run(g, 30);
+    expect(camp.captives!.map((c) => c.name)).toEqual([v.name]);
+    // With the leader standing in the town, the camp's women fill it far faster.
+    const fill = (withLeader: boolean) => {
+      const h = two();
+      const q = h.players[0], hall = h.buildings.find((b) => b.owner === 0)!;
+      q.virtue = -80; q.popCap = 50;
+      if (withLeader) h.spawnUnit('warlord', 0, hall.x - 2, hall.y + 5).stance = 'hold';
+      const c2 = h.spawnBuilding('workcamp', 0, Math.floor(hall.x) + 6, Math.floor(hall.y) - 6, true);
+      c2.captives = [0, 1, 2].map((i) => ({ from: 1, name: 'W' + i, family: '', gender: 'f' as const, trait: '', trait2: '', age: 0, lifespan: 9e9 }));
+      h.spawnUnit('slaver', 0, c2.x, c2.y + 3); // someone to watch them
+      const before = h.units.filter((u) => u.owner === 0 && u.type === 'villager').length;
+      run(h, 30);
+      return h.units.filter((u) => u.owner === 0 && u.type === 'villager').length - before + c2.campT!;
+    };
+    expect(fill(true)).toBeGreaterThan(fill(false) * 2);
+  });
+
+  it('in the campaign the leader takes the field as they were made, and keeps the veterancy they earn', () => {
+    const c = newCampaign(3);
+    c.factions[0].hero = { name: 'Brunhild', calling: 'strategist', bent: 'armour', might: 1, guard: 4, vigour: 1 };
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const army = armyAt(c, home.id)!;
+    expect(moveArmy(c, army.id, home.adj[0])).toBe('battle');
+    const cfg = battleConfig(c)!;
+    expect(cfg.setups[0].bonus!.units).toMatchObject({ strategist: 1 });
+    expect(cfg.setups[0].hero).toMatchObject({ name: 'Brunhild', calling: 'strategist', guard: 4, rank: 0 });
+    finishBattle(c, true, { clubman: 6, strategist: 1 }, 3);
+    expect(c.factions[0].heroRank).toBe(3);
+    expect(heroFor(c, 0).rank).toBe(3);
+    // They fall in the next: raised again, they are a rank the less.
+    c.pending = null; army.moved = false;
+    const next = c.territories[army.at].adj.map((id) => c.territories[id]).find((t) => t.owner !== 0)!;
+    expect(moveArmy(c, army.id, next.id)).toBe('battle');
+    finishBattle(c, true, { clubman: 6 }, 4);
+    expect(c.factions[0].heroAlive).toBe(false);
+    expect(c.factions[0].heroRank).toBe(2);
+    expect(c.log.at(-1)).toBe('Brunhild fell in the fighting.');
   });
 });

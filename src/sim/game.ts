@@ -12,6 +12,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
+import { HeroSpec, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
@@ -115,6 +116,8 @@ export interface Unit extends Base {
   kids?: number; captiveKids?: number; story?: Deed[];
   /** Freed from the marauders: she will bear no more children, and works a quarter harder. */
   freed?: boolean;
+  /** The nation's leader: deeds done in this battle and the veterancy they have earned. */
+  hero?: { xp: number; rank: number };
   merc?: boolean; // hired at a tavern: fights for wages and leaves when they stop
   resume: Order | null; // job to return to after sheltering
 }
@@ -194,6 +197,8 @@ export interface Stats { gathered: number; trained: number; born: number; kills:
 const newStats = (): Stats => ({ gathered: 0, trained: 0, born: 0, kills: 0, lost: 0, razed: 0, buildingsLost: 0 });
 
 export interface Player {
+  /** The nation's leader as made in the creator, and the veterancy they will take the field with next. */
+  hero?: HeroSpec; heroRank?: number;
   id: number;
   name: string;
   color: number;
@@ -264,6 +269,8 @@ export interface PlayerSetup {
   team?: number;
   /** Civilisation id. Defaults to a different one for each player. */
   civ?: string;
+  /** The nation's leader, where someone has made their own of them. */
+  hero?: Partial<HeroSpec>;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
   /** `armed`: the side already has every weapon upgrade of its starting age. */
   bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean };
@@ -320,6 +327,8 @@ export class Game {
   private hashN: number;
   private heroes: Unit[][] = [];
   private strategists: Unit[] = [];
+  /** Each player's leader, while they are alive and in the open. */
+  private leaders: (Unit | null)[] = [];
   private tcs: Building[][] = [];
 
   /**
@@ -390,6 +399,8 @@ export class Game {
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
       this.heroes.push([]);
+      this.leaders.push(null);
+      if (s.hero) { this.players[i].hero = cleanHero(s.hero, this.players[i].civ); this.players[i].heroRank = this.players[i].hero!.rank ?? 0; }
       this.tcs.push([]);
       const st = this.spec.starts[i];
       const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
@@ -476,10 +487,58 @@ export class Game {
       u.lifespan = LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]);
     }
     if (def.cls === 'siege') u.hp = u.maxHp = Math.round(def.hp * this.players[owner].mods.siegeHp);
+    // The first hero of their calling a people raises is their leader in person.
+    if (def.cls === 'hero' && this.players[owner] && type === this.heroOf(owner).calling && !this.units.some((o) => o.owner === owner && o.hero)) {
+      const rank = this.players[owner].heroRank ?? 0;
+      u.name = this.heroOf(owner).name;
+      u.hero = { xp: RANK_XP[rank], rank };
+      this.fitLeader(u);
+    }
     this.entities.set(u.id, u);
     this.units.push(u);
     this.players[owner].pop += def.pop;
     return u;
+  }
+
+  /** The leader a player's nation follows: their own making of them, or the leader as written. */
+  heroOf(owner: number): HeroSpec {
+    const p = this.players[owner];
+    return (p.hero ??= cleanHero(undefined, p.civ));
+  }
+  /** What a leader's making and veterancy add to their arm, armour and health. */
+  leaderBonus(u: Unit): { atk: number; armor: number; hp: number } {
+    return heroBonus(this.heroOf(u.owner), u.hero?.rank ?? 0);
+  }
+  private fitLeader(u: Unit): void {
+    const max = Math.round(u.def.hp * this.leaderBonus(u).hp);
+    u.hp = (u.hp / u.maxHp) * max;
+    u.maxHp = max;
+  }
+  /** A decadent town's leader takes people as a Slaver does. Raiders' leaders carry them off into the tribe instead. */
+  tyrant(u: Unit): boolean {
+    return !!u.hero && !this.raider(u.owner) && isDecadent(this.players[u.owner].virtue);
+  }
+  private slaves(u: Unit): boolean { return !!u.def.slaver || this.tyrant(u); }
+  /** Whoever this unit carries off joins its own people, not a camp. */
+  private adopts(u: Unit): boolean { return !u.def.slaver && (!u.hero || this.raider(u.owner)); }
+  /** Armour lent by a holy town's leader to those of theirs who stand near. */
+  guardAt(owner: number, x: number, y: number): number {
+    const l = this.leaders[owner], v = this.players[owner]?.virtue ?? 0;
+    if (!l || l.dead || !isHoly(v) || Math.hypot(l.x - x, l.y - y) > (l.def.auraRange ?? 0)) return 0;
+    return HOLY_GUARD[v >= 70 ? 1 : 0];
+  }
+  /** An enemy has fallen: if the leader was there to see it, it is set down among their deeds. */
+  private deed(owner: number, t: Entity): void {
+    const l = this.leaders[owner];
+    if (!l || l.dead || !l.hero || t.kind === 'resource' || !this.hostile(owner, t.owner) || (t.kind === 'unit' && t.def.cls === 'prey')) return;
+    if (Math.hypot(l.x - t.x, l.y - t.y) > (l.def.auraRange ?? 0)) return;
+    l.hero.xp += t.kind === 'unit' ? Math.max(1, t.def.pop) : 2;
+    const rank = rankOf(l.hero.xp);
+    if (rank > l.hero.rank) {
+      l.hero.rank = this.players[owner].heroRank = rank;
+      this.fitLeader(l);
+      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}.`);
+    }
   }
 
   /** Give a villager a trait (or none), keeping its health in step. */
@@ -540,6 +599,12 @@ export class Game {
     if (e.kind === 'unit') {
       this.units.splice(this.units.indexOf(e), 1);
       this.players[e.owner].pop -= e.def.pop;
+      if (e.hero) {
+        // They can be raised again, but not as the veteran they were.
+        this.players[e.owner].heroRank = Math.max(0, e.hero.rank - 1);
+        this.leaders[e.owner] = null;
+        this.msg(e.owner, `${e.name} has fallen.`);
+      }
       const shelter = this.entities.get(e.inside);
       if (shelter && shelter.kind === 'building') { shelter.sheltered = shelter.sheltered.filter((id) => id !== e.id); if (shelter.staff) shelter.staff = shelter.staff.filter((id) => id !== e.id); }
       if (shelter && shelter.kind === 'unit' && shelter.cargo) shelter.cargo = shelter.cargo.filter((id) => id !== e.id);
@@ -616,11 +681,11 @@ export class Game {
   ageFor(owner: number, def: BuildingDef): number { return def.id === 'towncenter' && this.raider(owner) ? 0 : def.age; }
   /** Can this unit carry a villager off? Slavers always; among raiders, any fighter on foot or horse. */
   canSeize(u: Unit): boolean {
-    return !!u.def.slaver || (this.raider(u.owner) && !u.def.naval && (u.def.cls === 'infantry' || u.def.cls === 'cavalry' || u.def.cls === 'ranged' || u.def.cls === 'hero'));
+    return this.slaves(u) || (this.raider(u.owner) && !u.def.naval && (u.def.cls === 'infantry' || u.def.cls === 'cavalry' || u.def.cls === 'ranged' || u.def.cls === 'hero'));
   }
   /** Raiders do not cut down a grown villager on sight: they are worth more alive. */
   private spared(u: Unit, e: Entity): boolean {
-    return e.kind === 'unit' && e.type === 'villager' && e.growT <= 0 && !u.def.slaver && this.canSeize(u) && e.owner !== this.wild;
+    return e.kind === 'unit' && e.type === 'villager' && e.growT <= 0 && !this.slaves(u) && this.canSeize(u) && e.owner !== this.wild;
   }
   /** Is this villager free for this raider to take: he has his hands free, there is room, and no comrade is already at it. */
   private takes(u: Unit, e: Entity): boolean {
@@ -915,14 +980,14 @@ export class Game {
       if (t.kind === 'resource') {
         if (t.type === 'fish' ? u.def.fisher : villager) this.orderGather(u, t);
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
-      } else if (u.def.slaver && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && this.hostile(t.owner, owner) && t.owner !== this.wild) {
+      } else if (this.slaves(u) && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && this.hostile(t.owner, owner) && t.owner !== this.wild) {
         if (u.captive) this.msg(owner, 'He already has a captive to lead home.');
         else if (!this.campWithRoom(u)) this.msg(owner, 'There is no Work Camp with room for a captive.');
         else this.setOrder(u, { t: 'capture', id: t.id });
-      } else if (!u.def.slaver && this.canSeize(u) && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && !u.captive && this.hostile(t.owner, owner) && t.owner !== this.wild && this.players[owner].pop < POP_LIMIT) {
+      } else if (!this.slaves(u) && this.canSeize(u) && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && !u.captive && this.hostile(t.owner, owner) && t.owner !== this.wild && this.players[owner].pop < POP_LIMIT) {
         // Raiders take people alive. A fighter already leading one home fights instead.
         this.setOrder(u, { t: 'capture', id: t.id });
-      } else if (u.def.slaver && u.captive && t.kind === 'building' && t.owner === owner && t.def.camp) {
+      } else if (this.slaves(u) && u.captive && t.kind === 'building' && t.owner === owner && t.def.camp) {
         this.setOrder(u, { t: 'deliver', id: t.id });
       } else if (u.def.slaver && t.kind === 'building' && t.owner === owner && t.def.guards && t.complete) {
         // With no one to deliver, he is posted there as a guard.
@@ -1397,7 +1462,8 @@ export class Game {
       p.captives += b.captives.length;
       // Men under a guard's eye are driven harder.
       p.captiveMen += men * (1 + GUARD_DRIVE * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0));
-      b.campT = (b.campT ?? 0) + women / CAMP_BIRTH;
+      // Under a decadent leader's eye the camps are made to fill the town far faster.
+      b.campT = (b.campT ?? 0) + (women / CAMP_BIRTH) * (this.leaders[p.id] && !this.leaders[p.id]!.dead && isDecadent(p.virtue) ? TYRANT_BIRTH : 1);
       if (b.campT >= 1 && p.pop + 1 <= p.popCap) {
         b.campT = 0;
         this.spawnFrom(b, 'villager', this.rng() < 0.5 ? 'm' : 'f');
@@ -1868,6 +1934,7 @@ export class Game {
     for (const bucket of this.hash) bucket.length = 0;
     for (const h of this.heroes) h.length = 0;
     this.strategists.length = 0;
+    this.leaders.fill(null);
     for (const u of this.units) {
       if (u.inside) continue; // sheltered units cannot be seen, hit or bumped
       const hx = Math.min(this.hashN - 1, Math.max(0, Math.floor(u.x / HASH)));
@@ -1875,6 +1942,7 @@ export class Game {
       this.hash[hy * this.hashN + hx].push(u);
       if (u.def.aura) this.heroes[u.owner].push(u);
       if (u.def.weaken) this.strategists.push(u);
+      if (u.hero) this.leaders[u.owner] = u;
     }
 
     for (let i = this.units.length - 1; i >= 0; i--) {
@@ -2253,9 +2321,9 @@ export class Game {
         o.t0 = (o.t0 ?? 0) + DT;
         // A man being bound does not go on with his work.
         if (v.order) this.setOrder(v, null);
-        if (o.t0 < CAPTURE_TIME) break;
+        if (o.t0 < CAPTURE_TIME * (this.tyrant(u) ? TYRANT_BIND : 1)) break;
         u.captive = { from: v.owner, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan, kids: v.kids, born: v.captiveKids, story: [...(v.story ?? []), { t: this.time, s: u.def.marauder ? 'Carried off by marauders' : raidWord(u) }] };
-        const raid = !u.def.slaver;
+        const raid = this.adopts(u);
         this.msg(v.owner, `${v.name} has been carried off by ${u.def.marauder ? 'marauders' : raid ? 'raiders' : 'slavers'}!`);
         this.players[v.owner].lastAttacked = { x: v.x, y: v.y, t: this.time };
         this.events.push({ t: 'alert', player: v.owner, x: v.x, y: v.y });
@@ -2271,7 +2339,7 @@ export class Game {
 
       case 'deliver': {
         const camp = this.entities.get(o.id);
-        if (u.captive && !u.def.slaver) {
+        if (u.captive && this.adopts(u)) {
           const r = camp && camp.kind === 'building' && !camp.dead ? this.approach(u, camp, REACH) : 'fail';
           if (r === 'moving') break;
           this.adopt(u.owner, u.captive, u.x, u.y);
@@ -2588,7 +2656,7 @@ export class Game {
     const p = this.players[u.owner];
     u.cooldown = u.def.cooldown * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1);
     u.attackAnim = 0.35;
-    let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0);
+    let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
     if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
     atk *= this.highGround(u.x, u.y, t);
@@ -2624,10 +2692,12 @@ export class Game {
     let armor = 0;
     let morale = 0;
     if (t.kind === 'unit') {
-      armor = t.def.armor + (this.isMilitary(t) ? tp.mods.armor : 0);
+      armor = t.def.armor + (this.isMilitary(t) ? tp.mods.armor : 0) + (t.hero ? this.leaderBonus(t).armor : 0) + this.guardAt(t.owner, t.x, t.y);
       morale = this.moraleAt(t.owner, t.x, t.y);
     } else armor = 1;
-    const dmg = Math.max(1, atk * mult * aura - armor) * (1 - morale) * scale;
+    // A leader is still flesh: however armoured, a blow tells on them.
+    const raw = atk * mult * aura;
+    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale;
     t.hp -= dmg;
     tp.lastAttacked = { x: t.x, y: t.y, t: this.time };
     if (this.time - tp.alertT > 12) {
@@ -2637,6 +2707,7 @@ export class Game {
     if (t.hp <= 0) {
       const s = this.players[owner].stats, ts = tp.stats;
       if (t.kind === 'unit') { s.kills++; ts.lost++; } else { s.razed++; ts.buildingsLost++; }
+      this.deed(owner, t);
       this.kill(t);
     }
   }

@@ -37,6 +37,7 @@ export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
 /** What each troop type is good against: its companies fight up to 30% harder against that type. */
 export const BEATS: Record<string, string> = { cavalry: 'archers', archers: 'infantry', infantry: 'cavalry' };
 export const MAX_VETERAN = 3;
+import { HeroSpec, cleanHero, MAX_RANK } from './hero';
 
 /** Some land is special. */
 export interface TraitDef { name: string; icon: string; desc: string }
@@ -108,6 +109,8 @@ export const heroCost = (civ: string): number => (civ === 'dawn' ? HERO_COST / 2
 export interface Faction {
   id: number; name: string; civ: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean;
   lastDemand: number; // turn this rival last demanded tribute
+  /** The leader as someone has made them, and the veterancy they have earned across the campaign's battles. */
+  hero?: Partial<HeroSpec>; heroRank?: number;
   age?: number; // the age this people has reached on the campaign map, 0 to 4
   favor?: number; // goodwill earned with gifts and help, up to MAX_FAVOR: makes them readier to deal
   refused?: number; // turn they last turned the player down: they will not be asked twice in a turn
@@ -759,6 +762,10 @@ export function advanceAge(c: Campaign, f: number): boolean {
   else say(c, f, 'ageup');
   return true;
 }
+/** A leader who comes through a battle won is the more seasoned for it. */
+const seasonHero = (c: Campaign, f: number): void => { c.factions[f].heroRank = Math.min(MAX_RANK, (c.factions[f].heroRank ?? 0) + 1); };
+/** A faction's leader as they take the field: their making, and the veterancy the campaign has given them. */
+export const heroFor = (c: Campaign, f: number): HeroSpec => ({ ...cleanHero(c.factions[f].hero, c.factions[f].civ), rank: c.factions[f].heroRank ?? 0 });
 export const armyAt = (c: Campaign, tid: number): Army | undefined => c.armies.find((a) => a.at === tid);
 /** Number of companies in an army. */
 export const armySize = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
@@ -877,7 +884,7 @@ function casualties(a: Army, n: number): void {
 }
 
 function destroyArmy(c: Campaign, a: Army): void {
-  if (a.hero) c.factions[a.owner].heroAlive = false;
+  if (a.hero) { c.factions[a.owner].heroAlive = false; c.factions[a.owner].heroRank = Math.max(0, (c.factions[a.owner].heroRank ?? 0) - 1); }
   c.armies.splice(c.armies.indexOf(a), 1);
 }
 
@@ -1055,6 +1062,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     if (army) {
       casualties(army, Math.ceil(p.dStr * 0.4));
       army.vet = Math.min(MAX_VETERAN, army.vet + 1);
+      if (army.hero) seasonHero(c, army.owner);
       army.at = p.to;
       army.moved = true;
     }
@@ -1085,7 +1093,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     t.buildings = t.buildings.filter((b) => b !== 'fortress'); // the walls do not survive the assault
   } else {
     if (army) destroyArmy(c, army);
-    if (defArmy) { casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); }
+    if (defArmy) { casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
     else if (t.owner < 0) t.militia = Math.max(1, t.militia - Math.floor(p.aStr * 0.3));
     c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and ${p.attacker === 0 ? 'were' : 'was'} thrown back.`);
   }
@@ -1316,11 +1324,12 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const attackers = c.armies.find((a) => a.id === p.armyId);
   const defenders = armyAt(c, p.to);
   const side = (army: Army | undefined, defending: boolean, str: number, age = 0) => {
+    const calling = army && c.factions[army.owner] ? heroFor(c, army.owner).calling : 'warlord';
     const units: Record<string, number> = {};
     const add = (type: string, n: number) => { units[type] = (units[type] ?? 0) + n; };
     if (army) {
       for (const [type, n] of Object.entries(army.units)) for (const [u, k] of Object.entries(COMPANIES[type].units)) add(u, k * n);
-      if (army.hero) add('warlord', 1);
+      if (army.hero) add(calling, 1);
     }
     if (defending) add('clubman', t.owner < 0 ? t.militia * 2 : 2); // the people of the land turn out too
     const fort = defending && t.buildings.includes('fortress');
@@ -1341,15 +1350,15 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, hero: heroFor(c, 0), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ,
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...(foe < 0 ? {} : { hero: heroFor(c, foe) }),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
-      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
-      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
-      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
+      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, hero: heroFor(c, foe), bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
+      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, hero: heroFor(c, 0), bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
+      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, hero: heroFor(c, c.ally), bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
     ].slice(0, 4),
   };
 }
@@ -1363,12 +1372,13 @@ const unitsOf = (type: string): [string, number] => Object.entries(COMPANIES[typ
  * (their remaining units, by type) is given, their army keeps only the companies that lived
  * through it, in place of the usual estimate of losses.
  */
-export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>): void {
+export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, heroRank?: number): void {
   const p = c.pending;
   if (!p) return;
   const humanAttacks = p.attacker === 0;
   const mine = humanAttacks ? c.armies.find((a) => a.id === p.armyId) : armyAt(c, p.to);
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
+  const rankBefore = c.factions[0].heroRank ?? 0;
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
   if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) return;
   const units: Record<string, number> = {};
@@ -1383,9 +1393,14 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   // An army is never wiped out by a battle it won: its last company limps home.
   if (!Object.keys(units).length) units[Object.keys(before.units)[0] ?? 'infantry'] = 1;
   mine.units = units;
-  if (before.hero && !(survivors.warlord > 0)) {
+  const hero = heroFor(c, 0);
+  if (before.hero && !(survivors[hero.calling] > 0)) {
     mine.hero = false;
     c.factions[0].heroAlive = false;
-    c.log.push('Your Warlord fell in the fighting.');
+    c.factions[0].heroRank = Math.max(0, rankBefore - 1);
+    c.log.push(`${hero.name} fell in the fighting.`);
+  } else if (before.hero && heroRank != null) {
+    // The veterancy earned on the field itself stands in place of the usual step for a battle won.
+    c.factions[0].heroRank = Math.max(0, Math.min(MAX_RANK, Math.round(heroRank)));
   }
 }

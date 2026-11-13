@@ -7,6 +7,7 @@ import { artUrl, loadAssets } from './assets';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
+import { openHeroCreator, savedHero } from './herocreator';
 import { Overworld } from './overworld';
 import { Input } from './input';
 import { Renderer } from './renderer';
@@ -195,6 +196,7 @@ function readCampaign(): Campaign | null {
     return null;
   }
 }
+const withHero = (c: Campaign): Campaign => { c.factions[0].hero = savedHero(c.factions[0].civ); return c; };
 const writeCampaign = (c: Campaign) => { try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(c)); } catch { /* storage unavailable */ } };
 const go = (query: string) => {
   try {
@@ -246,7 +248,7 @@ loadAssets().then(() => {
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
-  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake', relief, climateOf(myCiv));
+  ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i), ...(i === 0 && savedHero(myCiv) ? { hero: savedHero(myCiv) } : {}) })), size, false, params.get('land') === 'lake', relief, climateOf(myCiv));
 
   // A band of marauders makes camp in the wilds of every skirmish and every siege (`?marauders=0` leaves them out).
   if (!saved && params.get('marauders') !== '0' && !(cfg?.field)) game.marauders = true;
@@ -273,6 +275,10 @@ loadAssets().then(() => {
   climateSel.addEventListener('change', () => regenerate());
   const regenerate = () => go(`?size=${sizeSel.value}&land=${landSel.value}&climate=${climateSel.value}&ai=${aiSel.value}&civ=${civSel.value}&teams=${Number(aiSel.value) > 1 ? teamSel.value : 'ffa'}`);
   civSel.addEventListener('change', regenerate);
+  // Your leader, as you have made them: the battle is set up afresh so that they are in it.
+  const heroBtn = el('hero-btn');
+  const nameHero = () => { heroBtn.textContent = `Your leader: ${(savedHero(civSel.value) ?? app.game.heroOf(0)).name}`; };
+  heroBtn.addEventListener('click', () => openHeroCreator(civSel.value, () => regenerate()));
   teamSel.addEventListener('change', regenerate);
   sizeSel.addEventListener('change', regenerate);
   landSel.addEventListener('change', regenerate);
@@ -282,6 +288,7 @@ loadAssets().then(() => {
 
   const app = new App(game);
   app.saveTag = tag;
+  nameHero();
   if (saved) {
     app.ai.forEach((a, i) => a.load(saved!.ai[i] ?? {}));
     app.r.cx = saved.cam.x; app.r.cy = saved.cam.y; app.r.dist = saved.cam.d;
@@ -329,7 +336,8 @@ loadAssets().then(() => {
       // Who is still standing decides what is left of the army on the campaign map.
       const survivors: Record<string, number> = {};
       for (const u of app.game.units) if (u.owner === app.pid) survivors[u.type] = (survivors[u.type] ?? 0) + 1;
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      const heroRank = app.game.units.find((u) => u.owner === app.pid && u.hero)?.hero!.rank;
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -385,17 +393,20 @@ loadAssets().then(() => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number> };
-      finishBattle(c, r.won, r.survivors);
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; heroRank?: number };
+      finishBattle(c, r.won, r.survivors, r.heroRank);
       if (c.phase === 'ai') continueAI(c);
     }
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);
     const state = c;
+    // The leader you have made for this people leads them here too; change them and the change holds from the next battle.
+    state.factions[0].hero ??= savedHero(state.factions[0].civ);
+    el('ow-hero').addEventListener('click', () => openHeroCreator(state.factions[0].civ, (h) => { state.factions[0].hero = h ?? undefined; writeCampaign(state); }));
     startScreen.classList.add('hidden');
     new Overworld(state, {
       save: () => writeCampaign(state),
       fight: () => { writeCampaign(state); go('?battle=1'); },
-      newCampaign: (r, l, civ) => { writeCampaign(newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined)); go('?campaign=1'); },
+      newCampaign: (r, l, civ) => { writeCampaign(withHero(newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined))); go('?campaign=1'); },
       exit: () => go(''),
     });
   }
