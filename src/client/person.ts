@@ -100,14 +100,23 @@ export interface RealPerson {
   /** Each bone as this person stands at rest, with their own proportions. */
   rest: Map<string, { p: THREE.Vector3; q: THREE.Quaternion; s: THREE.Vector3 }>;
   palm: THREE.Vector3;
-  tool: THREE.Object3D | null;
+  /** What a villager may hold or bear, each fitted once and shown when wanted. */
+  props: Map<string, THREE.Object3D>;
   toolKind: string;
+  /** How ranged weapons are levelled: a bow drawn, or a gun or crossbow at the shoulder. */
+  aim: '' | 'bow' | 'gun';
+  aimW: number;
+  /** Seconds left of flinching from a blow. */
+  flinch: number;
+  weapon: Weapon;
+  child: boolean;
   /** Seconds of a blow still to play, and whether a blow was under way last frame. */
   strike: number;
   struck: boolean;
   soldier: boolean;
 }
 
+export type Weapon = '' | 'club' | 'spear' | 'javelin' | 'sword' | 'pike' | 'axe' | 'bill' | 'bow' | 'crossbow' | 'musket' | 'sling' | 'staff' | 'firetube' | 'grenade' | 'whip';
 /** What someone wears and carries. */
 export interface Outfit {
   female: boolean;
@@ -126,7 +135,11 @@ export interface Outfit {
   helmet: '' | 'leather' | 'bronze' | 'iron' | 'kettle';
   plate: boolean;
   shield: number | null;
-  weapon: '' | 'club' | 'spear' | 'sword' | 'pike';
+  weapon: Weapon;
+  /** The colour of helmet and plate, if not steel: bronze, or lacquer. */
+  metal: number | null;
+  /** A child: small, with a child's large head. */
+  child: boolean;
   /** Worn on the head when there is no helmet. */
   hat: '' | 'straw' | 'hood' | 'cap' | 'turban' | 'fur' | 'circlet';
   hatColor: number;
@@ -140,24 +153,69 @@ export interface Outfit {
   trim: number | null;
 }
 
-const UNITS_DRAWN = new Set(['villager', 'clubman', 'spearman', 'swordsman', 'pikeman']);
-/** Is this kind of unit drawn from the real figure yet? */
-export const drawnReal = (type: string): boolean => UNITS_DRAWN.has(type);
+/** Is this kind of unit drawn from the real figure? Everyone who goes on foot is. */
+export const drawnReal = (cls: string): boolean => cls === 'villager' || cls === 'infantry' || cls === 'ranged' || cls === 'support' || cls === 'hero';
 
-/** The dress of each unit drawn this way. `wear` is how a village woman's town dresses her: 1 covered, 2 and 3 freer. */
-export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number): Outfit {
+const BRONZE = 0xb08a3a;
+/**
+ * The dress of every unit that goes on foot. `wear` is how a village woman's town dresses her: 1 covered, 2 and 3
+ * freer. `age` is the age the unit belongs to, which sets how well a plain soldier is armoured.
+ */
+export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; child?: boolean } = { cls: 'villager', age: 0 }): Outfit {
   const s = Math.abs(seed | 0);
   const pick = (k: number): 0 | 1 | 2 => ([1, 0, 1, 2, 1, 1, 2, 0, 1][(s >> k) % 9] as 0 | 1 | 2);
-  const fighter = type !== 'villager';
-  const base: Outfit = { female, girth: fighter ? (Math.max(1, pick(2)) as 1 | 2) : pick(2), chest: fighter ? 2 : pick(5), skin: look.skin, hair: look.hair, seed: s, top: color, sleeves: 'short', neck: 0, legs: [0x6a5238, 0x54483c, 0x7a6a4c, 0x4a4238][s % 4], skirt: 'short', skirtColor: color, hairStyle: 'short', beard: !female && s % 3 === 0, helmet: '', plate: false, shield: null, weapon: '', hat: '', hatColor: 0x8a6a48, cloak: null, mantle: false, apron: null, trim: null };
+  const fighter = info.cls === 'infantry' || info.cls === 'hero';
+  const base: Outfit = { female, girth: fighter ? (Math.max(1, pick(2)) as 1 | 2) : pick(2), chest: fighter ? 2 : pick(5), skin: look.skin, hair: look.hair, seed: s, top: color, sleeves: 'short', neck: 0, legs: [0x6a5238, 0x54483c, 0x7a6a4c, 0x4a4238][s % 4], skirt: 'short', skirtColor: color, hairStyle: 'short', beard: !female && s % 3 === 0, helmet: '', plate: false, shield: null, weapon: '', metal: null, child: false, hat: '', hatColor: 0x8a6a48, cloak: null, mantle: false, apron: null, trim: null };
+  const leather = 0x7a5232, hide = 0x8a6a48, linen = 0xe8e0cc;
   if (type === 'villager') {
-    if (!female) return { ...base, sleeves: s % 3 === 1 ? 'long' : 'short', neck: 1 };
+    if (info.child) return { ...base, child: true, girth: 0, chest: 0, beard: false, skirt: female ? 'long' : 'short', hairStyle: female ? 'long' : 'short', legs: female ? 0xd8cdb8 : base.legs };
+    if (!female) return { ...base, sleeves: s % 3 === 1 ? 'long' : 'short', neck: 1, hat: s % 5 === 2 ? 'straw' : '' };
     return { ...base, skirt: 'long', apron: wear === 3 ? null : 0xe2d8c0, legs: 0xd8cdb8, sleeves: wear === 1 ? 'long' : wear >= 2 ? 'bare' : 'short', neck: wear === 3 ? 2 : wear === 2 ? 1 : 0, hairStyle: wear === 1 ? 'covered' : s % 2 ? 'long' : 'bun' };
   }
-  if (type === 'clubman') return { ...base, top: 0x8a6a48, sleeves: 'bare', neck: 1, legs: look.skin, weapon: 'club', beard: s % 2 === 0 };
-  if (type === 'spearman') return { ...base, top: 0x7a5232, sleeves: 'short', helmet: 'bronze', shield: color, weapon: 'spear' };
-  if (type === 'swordsman') return { ...base, mail: true, sleeves: 'long', helmet: 'iron', shield: color, weapon: 'sword' };
-  return { ...base, mail: true, sleeves: 'long', helmet: 'kettle', plate: true, weapon: 'pike' };
+  const o: Partial<Outfit> | undefined = ({
+    // ---- the plain line of foot ----
+    clubman: { top: hide, sleeves: 'bare', neck: 1, legs: look.skin, weapon: 'club', beard: s % 2 === 0 },
+    spearman: { top: leather, helmet: 'bronze', metal: BRONZE, shield: color, weapon: 'spear' },
+    swordsman: { mail: true, sleeves: 'long', helmet: 'iron', shield: color, weapon: 'sword' },
+    pikeman: { mail: true, sleeves: 'long', helmet: 'kettle', plate: true, weapon: 'pike' },
+    berserker: { top: hide, sleeves: 'bare', neck: 2, mantle: true, weapon: 'axe', beard: true, girth: 2 },
+    grenadier: { sleeves: 'long', hat: 'cap', hatColor: 0x2a2a30, trim: 0xd8b040, weapon: 'grenade', legs: 0xd8d0c0 },
+    slaver: { top: 0x4a3a30, sleeves: 'long', hat: 'hood', hatColor: 0x3a2e28, skirtColor: 0x4a3a30, weapon: 'whip', beard: true },
+    // ---- shot ----
+    slinger: { top: hide, sleeves: 'bare', neck: 1, weapon: 'sling' },
+    javelineer: { top: leather, sleeves: 'bare', helmet: 'leather', weapon: 'javelin' },
+    bowman: { top: 0x4a6a3a, skirtColor: 0x4a6a3a, sleeves: 'long', hat: 'hood', hatColor: 0x3f5a34, weapon: 'bow', trim: color, cloak: color },
+    crossbowman: { mail: true, sleeves: 'long', helmet: 'kettle', weapon: 'crossbow' },
+    musketeer: { sleeves: 'long', hat: 'straw', hatColor: 0x2a2a30, trim: 0xd8b040, weapon: 'musket', legs: 0xd8d0c0, cloak: 0x2a2a30 },
+    // ---- holy men and healers ----
+    shaman: { top: hide, sleeves: 'bare', neck: 2, mantle: true, hat: 'fur', hatColor: 0x5a4634, skirt: 'long', skirtColor: hide, weapon: 'staff', beard: true },
+    priest: { top: 0x2e2a2a, skirtColor: 0x2e2a2a, skirt: 'long', sleeves: 'long', hat: 'cap', hatColor: 0x2e2a2a, trim: linen, weapon: 'staff' },
+    prophet: { top: linen, skirtColor: linen, skirt: 'long', sleeves: 'long', hat: 'hood', hatColor: 0x8a7a5a, cloak: 0x8a7a5a, weapon: 'staff', beard: true, trim: color },
+    herbwife: { female: true, top: 0x4a7a4a, skirtColor: 0x4a7a4a, skirt: 'long', sleeves: 'long', hairStyle: 'covered', apron: 0xe2d8c0, weapon: 'staff', legs: 0xd8cdb8 },
+    // ---- leaders ----
+    warlord: { mail: true, sleeves: 'long', plate: true, helmet: 'iron', shield: color, weapon: 'sword', cloak: color, trim: 0xd8b040, girth: 2, beard: true },
+    strategist: { skirt: 'long', sleeves: 'long', hat: 'cap', hatColor: 0x2a2a3a, cloak: 0x2a2a3a, trim: 0xd8b040, weapon: 'staff' },
+    // ---- each nation's own ----
+    hearthguard: { top: leather, helmet: 'leather', shield: color, weapon: 'spear', mantle: s % 2 === 0 },
+    zealot: { top: linen, skirt: 'long', skirtColor: linen, sleeves: 'long', hat: 'hood', hatColor: linen, trim: color, weapon: 'sword', beard: true },
+    shieldbearer: { mail: true, plate: true, helmet: 'bronze', metal: 0xa6aab2, shield: color, weapon: 'sword', cloak: color },
+    khopesh: { top: look.skin, sleeves: 'bare', neck: 2, skirtColor: linen, hat: 'cap', hatColor: 0xd8b040, trim: 0x2f6ab0, legs: look.skin, weapon: 'sword', beard: false },
+    sapper: { top: leather, helmet: 'leather', weapon: 'axe', apron: 0x4a3222 },
+    gateguard: { mail: true, sleeves: 'long', helmet: 'iron', metal: BRONZE, shield: color, weapon: 'spear', skirt: 'long', beard: true },
+    immortal: { top: 0x6a3a7a, skirt: 'long', skirtColor: 0x6a3a7a, sleeves: 'long', hat: 'cap', hatColor: 0xd8b040, trim: 0xd8b040, shield: color, weapon: 'spear', beard: true },
+    hoplite: { plate: true, metal: BRONZE, helmet: 'bronze', shield: color, weapon: 'spear', legs: look.skin, sleeves: 'bare' },
+    billman: { mail: true, sleeves: 'long', helmet: 'kettle', weapon: 'bill' },
+    samurai: { plate: true, metal: 0x7a2028, helmet: 'kettle', sleeves: 'long', top: 0x2a2a30, skirtColor: color, weapon: 'sword', legs: 0x2a2a30 },
+    firethrower: { top: leather, sleeves: 'long', hat: 'hood', hatColor: 0x4a3222, apron: 0x4a3222, weapon: 'firetube' },
+    longbowman: { top: 0x4a6a3a, sleeves: 'long', hat: 'cap', hatColor: 0x4a6a3a, weapon: 'bow', trim: color },
+    ashigaru: { plate: true, metal: 0x2a2a30, hat: 'straw', hatColor: 0x2a2a30, sleeves: 'long', weapon: 'musket', legs: 0x2a2a30 },
+  } as Record<string, Partial<Outfit>>)[type];
+  if (o) return { ...base, ...o };
+  // Anyone not named above is dressed by trade and by the age they belong to.
+  const tier = info.age;
+  if (info.cls === 'ranged') return { ...base, top: leather, sleeves: 'long', helmet: tier >= 3 ? 'kettle' : tier >= 1 ? 'leather' : '', weapon: tier >= 4 ? 'musket' : 'bow' };
+  if (info.cls === 'support') return { ...base, skirt: 'long', sleeves: 'long', hat: 'hood', hatColor: color, weapon: 'staff' };
+  return { ...base, top: tier >= 2 ? base.top : leather, mail: tier >= 2, sleeves: tier >= 2 ? 'long' : 'short', plate: tier >= 3, helmet: tier >= 3 ? 'kettle' : tier >= 2 ? 'iron' : tier >= 1 ? 'bronze' : '', metal: tier === 1 ? BRONZE : null, shield: tier >= 1 && tier < 3 ? color : null, weapon: tier >= 3 ? 'pike' : tier >= 2 ? 'sword' : tier >= 1 ? 'spear' : 'club' };
 }
 
 const cloth = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
@@ -194,7 +252,7 @@ function neckline(o: Outfit, x: number): number {
 function trunk(o: Outfit, y: number): { kx: number; kz: number; belly: number } {
   const fat = [-0.07, 0, 0.13][o.girth];
   let kx = 1, kz = 1;
-  if (o.female) {
+  if (o.female && !o.child) {
     // A smaller ribcage, drawn well in at the waist, wide at the hip.
     const waist = bump(y, 1.13, 0.16), hip = bump(y, 0.9, 0.2), ribs = Math.min(1, Math.max(0, (y - 1.18) / 0.12));
     kx = 1 - waist * 0.2 + hip * 0.14 - ribs * 0.1; kz = 1 - waist * 0.14 + hip * 0.1 - ribs * 0.06;
@@ -211,6 +269,7 @@ function trunk(o: Outfit, y: number): { kx: number; kz: number; belly: number } 
  * across the breastbone so there is no cleft cut between them.
  */
 function bust(o: Outfit, x: number, y: number): number {
+  if (o.child) return 0;
   const size = [0.048, 0.068, 0.09][o.chest], at = 1.325 - size * 0.22;
   const dy = (y - at) / (y < at ? 0.055 + size * 0.2 : 0.12), dx = (Math.abs(x) - 0.07) / (0.062 + size * 0.2);
   // A dome, not a peak: full across its middle and falling away at its edge.
@@ -441,7 +500,7 @@ function held(kind: string): THREE.Object3D | null {
   const wood = solid(0x7a5a36), iron = solid(0x9a9ea6, 0.7);
   const rod = (len: number, r: number, from: number, m: THREE.Material) => part(geo(`rod${len}|${r}`, () => new THREE.CylinderGeometry(r, r, len, 6).rotateX(Math.PI / 2)), m, 0, 0, from + len / 2);
   const block = (w: number, h: number, d: number, z: number, m: THREE.Material, y = 0) => part(geo(`blk${w}|${h}|${d}`, () => new THREE.BoxGeometry(w, h, d)), m, 0, y, z);
-  if (kind === 'axe') g.add(rod(0.62, 0.014, -0.1, wood), block(0.02, 0.16, 0.1, 0.46, iron, -0.05));
+  if (kind === 'hatchet') g.add(rod(0.62, 0.014, -0.1, wood), block(0.02, 0.16, 0.1, 0.46, iron, -0.05));
   else if (kind === 'pick') g.add(rod(0.64, 0.014, -0.1, wood), block(0.03, 0.36, 0.035, 0.52, iron));
   else if (kind === 'hammer') g.add(rod(0.4, 0.013, -0.08, wood), block(0.07, 0.12, 0.07, 0.3, iron));
   else if (kind === 'hoe') g.add(rod(0.9, 0.013, -0.2, wood), block(0.11, 0.1, 0.015, 0.7, iron, -0.05));
@@ -450,6 +509,20 @@ function held(kind: string): THREE.Object3D | null {
   else if (kind === 'spear' || kind === 'pike') {
     const len = kind === 'pike' ? 2.5 : 1.7;
     g.add(rod(len, 0.013, -len * 0.3, wood), part(geo('spearhead', () => new THREE.ConeGeometry(0.03, 0.2, 5).rotateX(Math.PI / 2)), iron, 0, 0, len * 0.7 + 0.1));
+  } else if (kind === 'javelin') g.add(rod(1.15, 0.011, -0.4, wood), part(geo('spearhead', () => new THREE.ConeGeometry(0.03, 0.2, 5).rotateX(Math.PI / 2)), iron, 0, 0, 0.83));
+  else if (kind === 'axe') g.add(rod(0.95, 0.016, -0.25, wood), block(0.02, 0.26, 0.17, 0.62, iron, -0.07));
+  else if (kind === 'bill') g.add(rod(2.0, 0.014, -0.6, wood), block(0.015, 0.2, 0.3, 1.32, iron, -0.06), part(geo('spearhead', () => new THREE.ConeGeometry(0.03, 0.2, 5).rotateX(Math.PI / 2)), iron, 0, 0, 1.5));
+  else if (kind === 'staff') g.add(rod(1.75, 0.016, -0.95, wood), part(geo('knob', () => new THREE.SphereGeometry(0.035, 7, 5)), wood, 0, 0, 0.82));
+  else if (kind === 'whip') g.add(rod(0.3, 0.014, -0.06, solid(0x3a2616)), rod(0.6, 0.006, 0.24, solid(0x3a2616)));
+  else if (kind === 'grenade') g.add(part(geo('grenade', () => new THREE.SphereGeometry(0.045, 8, 6)), solid(0x2a2a2e, 0.5), 0, 0, 0.02));
+  else if (kind === 'sling') g.add(rod(0.42, 0.005, 0, solid(0x8a7250)), part(geo('slingstone', () => new THREE.SphereGeometry(0.025, 6, 5)), solid(0x8a8a86), 0, 0, 0.44));
+  else if (kind === 'firetube') g.add(rod(0.85, 0.03, -0.25, solid(0xb08a3a, 0.7)), part(geo('flame', () => new THREE.ConeGeometry(0.04, 0.14, 6).rotateX(Math.PI / 2)), solid(0xf08a2c), 0, 0, 0.66));
+  else if (kind === 'crossbow') g.add(rod(0.6, 0.02, -0.12, wood), block(0.56, 0.02, 0.03, 0.4, iron));
+  else if (kind === 'musket') g.add(rod(0.5, 0.022, -0.3, wood), rod(0.75, 0.012, 0.2, iron));
+  else if (kind === 'bow') {
+    // A bow stands upright in the hand: a curved stave and its string.
+    const stave = part(geo('bow', () => new THREE.TorusGeometry(0.42, 0.012, 5, 14, Math.PI * 0.72).rotateZ(-Math.PI * 0.36).rotateY(Math.PI / 2)), wood, 0, 0, -0.34);
+    g.add(stave, part(geo('bowstring', () => new THREE.CylinderGeometry(0.003, 0.003, 0.76, 3)), solid(0xe8e0cc), 0, 0, -0.068));
   } else return null;
   return g;
 }
@@ -459,7 +532,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   if (!source) return null;
   const body = cloneSkinned(source.scene);
   body.updateMatrixWorld(true);
-  const key = [o.female, o.girth, o.chest, o.skirt, o.skirtColor, o.skin, o.hair, o.top, o.mail, o.sleeves, o.neck, o.legs].join('|');
+  const key = [o.female, o.child, o.girth, o.chest, o.skirt, o.skirtColor, o.skin, o.hair, o.top, o.mail, o.sleeves, o.neck, o.legs].join('|');
   let n = 0;
   const meshes: THREE.SkinnedMesh[] = [];
   const bones = new Map<string, THREE.Object3D>();
@@ -580,7 +653,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     head.add(b);
   }
   if (o.helmet) {
-    const metal = o.helmet === 'leather' ? solid(0x6a4a2c) : o.helmet === 'bronze' ? solid(0xb08a3a, 0.75) : solid(0x9a9ea6, 0.8);
+    const metal = o.helmet === 'leather' ? solid(0x6a4a2c) : solid(o.metal ?? (o.helmet === 'bronze' ? BRONZE : 0x9a9ea6), 0.8);
     head.add(crown(metal, 1.16, hr.y * 0.05));
     if (o.helmet === 'kettle') {
       // A wide brim all round.
@@ -646,7 +719,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
 
   // ---- plate: a breast-and-back and a pair of pauldrons ----
   if (o.plate) {
-    const steel = solid(0xa6aab2, 0.85), p2 = at('DEF-spine.002'), p3 = at('DEF-spine.003');
+    const steel = solid(o.metal ?? 0xa6aab2, 0.85), p2 = at('DEF-spine.002'), p3 = at('DEF-spine.003');
     const cuirass = part(geo('cuirass', () => new THREE.SphereGeometry(1, 14, 10)), steel, 0, (p2.y + p3.y) / 2 + 0.05, 0.012);
     const gk = 1 + [-0.05, 0.02, 0.13][o.girth];
     cuirass.scale.set(0.2 * gk, 0.21, 0.155 * gk);
@@ -667,10 +740,38 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     fit('DEF-forearm.L', sh);
   }
 
-  const wrist = at('DEF-hand.R');
-  const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(wrist.x - 0.075, wrist.y - 0.02, wrist.z), tool: null, toolKind: '', strike: 0, struck: false, soldier: !!o.weapon };
+  // ---- what is held and borne: each thing is fitted once, while the figure stands at rest, and shown when wanted ----
+  const wristR = at('DEF-hand.R'), wristL = at('DEF-hand.L'), props = new Map<string, THREE.Object3D>();
+  const grip = (kind: string, show: boolean): void => {
+    const t = held(kind);
+    if (!t) return;
+    if (kind === 'bow') { t.position.set(wristL.x + 0.075, wristL.y - 0.02, wristL.z); fit('DEF-hand.L', t); } // upright in the left hand
+    else {
+      t.position.set(wristR.x - 0.075, wristR.y - 0.02, wristR.z + (kind === 'staff' ? 0.05 : 0));
+      // A sword lies forward from the grip; a gun, a crossbow or a staff lies along the arm, so that it points where
+      // the arm is levelled and stands upright when the arm hangs.
+      t.rotation.y = kind === 'crossbow' || kind === 'musket' || kind === 'staff' || kind === 'firetube' ? -Math.PI / 2 : Math.PI;
+      fit('DEF-hand.R', t);
+    }
+    t.visible = show;
+    props.set(kind, t);
+  };
+  if (o.weapon) grip(o.weapon, true);
+  else if (!o.child) {
+    for (const k of ['hatchet', 'pick', 'hammer', 'hoe']) grip(k, false);
+    // A load on the back: a sack of grain, ore or stone, or a bundle of cut wood.
+    const s3 = at('DEF-spine.003');
+    const sack = part(geo('sack', () => new THREE.SphereGeometry(0.15, 9, 7)), solid(0xb8a274), 0, s3.y + 0.04, -0.2);
+    sack.scale.set(1.1, 1.25, 0.8);
+    const logs = new THREE.Group();
+    for (let k = 0; k < 3; k++) logs.add(part(geo('log', () => new THREE.CylinderGeometry(0.04, 0.04, 0.62, 6).rotateZ(Math.PI / 2)), solid(k === 1 ? 0x7a5a36 : 0x6a4c30), 0, (k === 1 ? 0.07 : 0), (k - 1) * 0.07));
+    logs.position.set(0, s3.y + 0.08, -0.19);
+    for (const [k, piece] of [['sack', sack], ['logs', logs]] as const) { fit('DEF-spine.003', piece); piece.visible = false; props.set(k, piece); }
+  }
+  if (o.child) bones.get('DEF-head')?.scale.multiplyScalar(1.28);
+
+  const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(), props, toolKind: '', strike: 0, struck: false, soldier: !!o.weapon, aim: o.weapon === 'bow' ? 'bow' : o.weapon === 'crossbow' || o.weapon === 'musket' || o.weapon === 'firetube' ? 'gun' : '', aimW: 0, flinch: 0, weapon: o.weapon, child: o.child };
   for (const [name, clip] of source.clips) real.actions.set(name, real.mixer.clipAction(clip));
-  if (o.weapon) hold(real, o.weapon);
 
   body.scale.setScalar(SCALE * (o.female ? 0.91 : 1.01) * (0.97 + (o.seed % 7) * 0.01)); // people are not all one height
   const g = new THREE.Group();
@@ -697,24 +798,49 @@ export function play(p: RealPerson, name: string, speed = 1, once = false): void
 /** How long a motion lasts, in seconds. */
 export const lasts = (p: RealPerson, name: string): number => p.actions.get(name)?.getClip().duration ?? 1;
 
-/**
- * Put something in the right hand, or take it away with ''. A thing can only be fitted to the hand while the figure
- * stands at rest with its arms out, so the skeleton is put back there for the moment it takes.
- */
+/** Show one of a villager's tools in his hand, or none with ''. */
 export function hold(p: RealPerson, kind: string): void {
   if (p.toolKind === kind) return;
-  p.tool?.removeFromParent();
-  p.tool = held(kind);
+  p.props.get(p.toolKind)?.traverse((o) => { o.visible = false; });
+  const t = p.props.get(kind);
+  if (t) t.traverse((o) => { o.visible = true; });
   p.toolKind = kind;
-  if (!p.tool) return;
-  p.mixer.stopAllAction();
-  p.body.traverse((o) => { const r = p.rest.get(o.name); if (r && (o as THREE.Bone).isBone) { o.position.copy(r.p); o.quaternion.copy(r.q); o.scale.copy(r.s); } });
-  // The body's own space is the figure's space whatever the unit's place or size in the world.
-  p.body.add(p.tool);
-  p.tool.position.copy(p.palm);
-  p.tool.rotation.y = Math.PI; // at rest the palm faces back, so what it grips points behind until turned
-  p.body.updateWorldMatrix(true, true);
-  p.bones.get('DEF-handR')?.attach(p.tool);
-  const a = p.actions.get(p.now);
-  if (a) { a.reset(); a.play(); }
+}
+/** Show a load on a villager's back: 'sack', 'logs', or '' for none. */
+export function bear(p: RealPerson, kind: string): void {
+  for (const k of ['sack', 'logs']) { const t = p.props.get(k); if (t && t.visible !== (k === kind)) t.traverse((o) => { o.visible = k === kind; }); }
+}
+
+const UP = new THREE.Vector3(0, 1, 0), q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion(), q3 = new THREE.Quaternion(), q4 = new THREE.Quaternion(), v1 = new THREE.Vector3(), dir = new THREE.Vector3();
+/** Turn a bone so that it lies along a direction in the world, by a share `w` of the way from where the motion left it. */
+function point(b: THREE.Object3D | undefined, d: THREE.Vector3, w: number): void {
+  if (!b?.parent) return;
+  b.updateWorldMatrix(true, false);
+  b.getWorldQuaternion(q1);
+  v1.copy(UP).applyQuaternion(q1).normalize(); // a bone lies along its own y
+  q2.setFromUnitVectors(v1, d);
+  q3.identity().slerp(q2, w).multiply(q1);
+  b.parent.getWorldQuaternion(q4).invert();
+  b.quaternion.copy(q4.multiply(q3));
+}
+/**
+ * Level a ranged weapon over whatever motion is playing: a bow held out in the left hand with the right drawn back
+ * to the cheek, or a gun or crossbow brought up to the shoulder. `yaw` is the way the figure faces; `want` is how
+ * far to bring it up, 0 to 1. Call after the motion has been advanced.
+ */
+export function level(p: RealPerson, yaw: number, want: number, dt: number): void {
+  p.aimW += (want - p.aimW) * Math.min(1, dt * 9);
+  if (!p.aim || p.aimW < 0.02) return;
+  const fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw), w = p.aimW;
+  // A direction given as so much forward, so much to the figure's left, so much up.
+  const to = (f: number, l: number, u: number): THREE.Vector3 => dir.set(fx * f + lx * l, u, fz * f + lz * l).normalize();
+  const B = (n: string) => p.bones.get(n);
+  if (p.aim === 'bow') {
+    point(B('DEF-upper_armL'), to(1, 0.22, 0.02), w); point(B('DEF-forearmL'), to(1, 0.06, 0.04), w);
+    // The drawing arm: elbow back and level, the hand brought forward again to the jaw.
+    point(B('DEF-upper_armR'), to(-0.75, -0.55, 0.08), w); point(B('DEF-forearmR'), to(0.95, 0.25, 0.12), w);
+  } else {
+    point(B('DEF-upper_armR'), to(0.5, -0.25, -0.7), w); point(B('DEF-forearmR'), to(1, 0.08, 0.1), w);
+    point(B('DEF-upper_armL'), to(0.75, 0.1, -0.5), w); point(B('DEF-forearmL'), to(0.8, -0.5, 0.12), w);
+  }
 }

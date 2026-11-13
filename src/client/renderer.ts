@@ -10,7 +10,7 @@ import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
-import { Outfit, RealPerson, drawnReal, hold, lasts, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
+import { Outfit, RealPerson, bear, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
@@ -439,8 +439,9 @@ export class Renderer {
     let turned: number | null = null;
     // Healed back past a stage, they are made whole again: gear restored, clothes mended.
     const mended = !!v && !!v.rig && v.hurt > (u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0);
-    const real = this.realPeople && peopleReady() && drawnReal(u.type) && u.growT <= 0;
-    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real)) {
+    const real = this.realPeople && peopleReady() && drawnReal(u.def.cls);
+    const child = u.growT > 0;
+    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real || (!!v.real && v.real.child !== child))) {
       // Re-equipped by an upgrade, or set to a new trade: swap the model.
       turned = v.g.rotation.y;
       this.scene.remove(v.g);
@@ -448,7 +449,7 @@ export class Renderer {
     }
     if (!v) {
       ofPeople(this.game.players[u.owner].civ);
-      const made = real ? makePerson(outfitFor(u.type, u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear)) : null;
+      const made = real ? makePerson(outfitFor(u.type, u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child })) : null;
       v = { g: made?.g ?? makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, wear, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
       v.rig = this.still || made ? null : rigBiped(v.g);
@@ -502,7 +503,7 @@ export class Renderer {
     if (v.rig) { this.pose(u, v, dt); }
     if (v.real) {
       v.job = job;
-      this.poseReal(u, v.real, job, dt);
+      this.poseReal(u, v.real, job, dt, size, g.rotation.y);
     }
     // A Slaver's prisoner walks behind him on a rope, stripped to a loincloth.
     if (u.captive && !v.led) {
@@ -703,6 +704,7 @@ export class Renderer {
     const g = v.g, lost = v.hp - u.hp;
     if (lost > 0.5 && g.visible) this.spray(g.position.x, g.position.y + (v.rig ? 0.55 : 0.7), g.position.z, Math.min(6, 1 + Math.round((lost / u.maxHp) * 22)), v.flesh);
     v.hp = u.hp;
+    if (v.real && lost > 0.5) v.real.flinch = 0.45;
     const hurt = u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0;
     if (hurt <= v.hurt || !v.rig) { if (!v.rig) v.hurt = hurt; return; }
     const rig = v.rig;
@@ -993,30 +995,47 @@ export class Renderer {
     return at;
   }
 
-  /** Chooses the recorded motion for what someone is doing, and puts the tool of the trade in a villager's hand. */
-  private poseReal(u: Unit, p: RealPerson, job: Job, dt: number): void {
-    const jog = Math.max(0.8, Math.min(1.5, u.def.speed / 1.9));
+  /**
+   * Chooses the recorded motion for what someone is doing. Walking and running are played at the pace the unit really
+   * moves, so feet do not skate; a blow, a shot or a spell is played through once from the moment it is loosed; a hit
+   * makes them flinch; bows and guns are levelled over whatever else is playing.
+   */
+  private poseReal(u: Unit, p: RealPerson, job: Job, dt: number, size: number, yaw: number): void {
+    // The figure's own stride covers about 0.78 of a tile a second at a walk and 1.78 at a run, at full size.
+    const pace = u.def.speed / size;
+    const move = (): void => (pace < 1.25 ? play(p, 'Walk_Loop', Math.max(0.7, Math.min(1.7, pace / 0.78))) : play(p, 'Jog_Fwd_Loop', Math.max(0.75, Math.min(1.6, pace / 1.78))));
+    p.flinch = Math.max(0, p.flinch - dt);
+    let aim = 0;
     if (p.soldier) {
-      // A blow is played through once from the moment it is struck, whatever the sim's own short timer says.
       const striking = u.attackAnim > 0;
-      if (striking && !p.struck) { p.strike = lasts(p, 'Sword_Attack') / 1.5; p.now = ''; }
+      const thrust = p.weapon === 'spear' || p.weapon === 'pike' || p.weapon === 'javelin' || p.weapon === 'bill' || p.weapon === 'sling' || p.weapon === 'grenade';
+      const clip = p.weapon === 'staff' ? 'Spell_Simple_Shoot' : thrust ? 'Punch_Cross' : 'Sword_Attack', rate = p.weapon === 'staff' ? 1.2 : 1.5;
+      if (striking && !p.struck) { p.strike = p.aim ? 0.7 : lasts(p, clip) / rate; p.now = ''; }
       p.struck = striking;
       p.strike -= dt;
-      if (p.strike > 0) play(p, 'Sword_Attack', 1.5, true);
-      else if (u.moving) play(p, 'Jog_Fwd_Loop', jog);
-      else play(p, u.order?.t === 'attack' ? 'Sword_Idle' : 'Idle_Loop', 1);
+      if (p.aim) {
+        // Shot: the weapon stays levelled while there is someone to shoot at, and comes down to move.
+        aim = p.strike > 0 ? 1 : u.order?.t === 'attack' && !u.moving ? 0.85 : 0;
+        if (u.moving && p.strike <= 0) move(); else play(p, 'Idle_Loop', 1);
+      } else if (p.strike > 0) play(p, clip, rate, true);
+      else if (p.flinch > 0) play(p, 'Hit_Chest', 1.3, true);
+      else if (u.moving) move();
+      else play(p, u.order?.t === 'attack' && (p.weapon === 'sword' || p.weapon === 'club' || p.weapon === 'axe') ? 'Sword_Idle' : 'Idle_Loop', 1);
     } else {
-      hold(p, job === 'wood' ? 'axe' : job === 'mine' ? 'pick' : job === 'build' ? 'hammer' : job === 'farm' ? 'hoe' : '');
+      hold(p, job === 'wood' ? 'hatchet' : job === 'mine' ? 'pick' : job === 'build' ? 'hammer' : job === 'farm' ? 'hoe' : '');
+      bear(p, u.carryAmt > 0 && u.moving ? (u.carryType === 'wood' ? 'logs' : 'sack') : '');
       if (u.attackAnim > 0 && !u.moving) {
         if (job === 'wood' || job === 'mine') play(p, 'Sword_Attack', 1.1);
         else if (job === 'build') play(p, 'Fixing_Kneeling', 1);
         else if (job === 'farm' || job === 'forage' || job === 'hunt') play(p, 'PickUp_Table', 1);
         else play(p, 'Punch_Jab', 1.2);
-      } else if (u.moving) play(p, 'Jog_Fwd_Loop', jog);
+      } else if (p.flinch > 0) play(p, 'Hit_Chest', 1.3, true);
+      else if (u.moving) move();
       // Standing about, some of them pass the time of day.
       else play(p, (Math.floor(this.clock / 7) + u.id) % 4 === 0 ? 'Idle_Talking_Loop' : 'Idle_Loop', 1);
     }
     p.mixer.update(dt);
+    level(p, yaw, aim, dt);
   }
 
   private pose(u: Unit, v: UnitView, dt: number): void {
