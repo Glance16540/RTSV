@@ -1,4 +1,4 @@
-# Asset brief for Hearth & Empire
+# Asset brief for Rise and Ruin
 
 The game loads generated assets automatically. Drop files into `public/assets/` using the
 exact names below and restart `npm run dev`. Anything missing keeps its built-in emoji icon
