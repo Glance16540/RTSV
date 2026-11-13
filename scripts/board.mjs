@@ -78,7 +78,7 @@ const nationRow = (c) => {
     <td class="${manifest.portraits?.[c.id] || manifest.icons?.['leader_' + c.id] ? '' : 'zero'}">${manifest.portraits?.[c.id] || manifest.icons?.['leader_' + c.id] ? 'Yes' : 'Seal only'}</td></tr>`;
 };
 
-const page = `<title>Hearth &amp; Empire Systems Board</title>
+const page = `<title>Rise and Ruin Systems Board</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
@@ -185,7 +185,7 @@ footer { color: var(--dim); font-size: 13px; }
 </style>
 <div class="wrap">
   <div class="top">
-    <h1>Hearth &amp; Empire Systems Board</h1>
+    <h1>Rise and Ruin Systems Board</h1>
     <p>Every system in the game, how far along it is, and what it still lacks. ${all.length} systems, ${gapCount} known gaps. Pick a status to see only those.</p>
     <div class="bar" role="img" aria-label="${Object.entries(tally).map(([k, n]) => `${n} ${STATUS[k]}`).join(', ')}">${Object.entries(tally).map(([k, n]) => `<span class="${k}" style="flex:${n}"></span>`).join('')}</div>
     <div class="filters" id="filters">

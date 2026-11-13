@@ -45,7 +45,7 @@ const page = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hearth &amp; Empire — Take the Throne</title>
+<title>Rise and Ruin — Take the Throne</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap">
 <style>
@@ -213,7 +213,7 @@ const page = `<!doctype html>
   <section id="choose">
     <div class="hero">
       <div>
-        <div class="eyebrow">Hearth &amp; Empire · a 3D strategy game of rival nations</div>
+        <div class="eyebrow">Rise and Ruin · a 3D strategy game of rival nations</div>
         <h1>A throne stands empty.</h1>
         <p class="lede">Thirteen nations need a ruler. Give one your name, your judgement and your voice, then meet yourself in the campaign.</p>
         <a class="cta" href="#nations">Choose your nation</a>
@@ -712,7 +712,7 @@ $('save').addEventListener('click', () => {
   const files = [...takes].map(([key, t]) => ({ name: key + '.wav', data: t.wav }));
   const made = character();
   const shown = (made && made.name) || leader.name;
-  const readme = (leader.folk ? 'Recordings for the people (' + leader.nation + ', ' + leader.title.toLowerCase() + ') in Hearth & Empire.\\n' : 'Recordings for ' + shown + ' (' + leader.nation + ') in Hearth & Empire.\\n') + (who ? 'Voiced by ' + who + '.\\n' : '') +
+  const readme = (leader.folk ? 'Recordings for the people (' + leader.nation + ', ' + leader.title.toLowerCase() + ') in Rise and Ruin.\\n' : 'Recordings for ' + shown + ' (' + leader.nation + ') in Rise and Ruin.\\n') + (who ? 'Voiced by ' + who + '.\\n' : '') +
     (made ? 'A character of their own making, based on ' + leader.name + '.\\n' : '') +
     'In this file: ' + [made && (made.name || made.title) ? 'name and title' : '', picture ? 'portrait' : '', made && made.temper ? 'how they rule' : '', made && made.lines ? 'rewritten lines' : '',
       takes.size ? takes.size + ' of ' + leader.lines.length + ' lines recorded' : 'no recordings yet'].filter(Boolean).join(', ') + '.\\n\\nTo use them: copy every file in this folder into public/assets/voice/ in the game and restart it.\\n';
