@@ -465,3 +465,135 @@ body.at-title #hud, body.at-title #overlay { visibility: hidden; }
 @media (max-height: 600px) { .t-brand p, .t-foot { display: none; } }
 @media (prefers-reduced-motion: reduce) { .t-art, .t-brand, #t-menu button, #t-panel, .i-text p { animation: none; } .t-leaf { transition: none; } }
 #missions i { display: block; font-size: 12px; color: var(--text); opacity: 0.8; margin: 1px 0 3px; }
+
+/* ---- The paper look everywhere else ---- */
+/* The bars around the battlefield, the slips that come up over it, the sheets (the word before a battle, the
+   end of one, the making of a leader) and the campaign's side page, all on the same vellum as the main menu.
+   The old dark panels are restyled from here rather than at each rule above: the names they were coloured by
+   are given paper values, and what was painted dark by hand is repainted below. Running figures stay in a
+   plain face, where they are read at a glance; names and headings are in Fell. */
+:root {
+  --panel: #f8e9c9; --panel-2: #f8e9c9; --edge: #7a6442; --gold: #24180f; --text: #24180f; --muted: #6b5637;
+  --warn: #a3271a; --good: #2c6a2a; --slip: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+kbd { color: var(--sepia); }
+
+/* The two bars are strips of the leaf with a torn edge toward the field. The paper is a layer of its own
+   behind the bar, so what changes on the bar does not redraw it. */
+#top, #bottom { background: none; border: 0; isolation: isolate; }
+#top::before, #bottom::before { content: ''; position: absolute; z-index: -1; background: var(--paper); pointer-events: none; }
+#top { position: relative; }
+#top::before { inset: -20px -20px -5px; filter: url(#deckle-s) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5)); }
+#bottom::before { inset: -5px -20px -20px; filter: url(#deckle-s) drop-shadow(0 -3px 6px rgba(0, 0, 0, 0.5)); }
+#res { font-weight: 700; }
+#age { font: 400 19px var(--caps); text-transform: lowercase; letter-spacing: 0.03em; }
+#age .creed { color: #4a3823; }
+#top-right button { background: var(--panel); border: 1px solid var(--ink); border-radius: 0; }
+#top-right button:hover { background: var(--ink); color: var(--vellum); }
+
+#minimap { border: 2px solid var(--ink); box-shadow: 0 0 0 4px var(--vellum), 0 0 0 5px var(--ink), 0 4px 12px rgba(0, 0, 0, 0.5); }
+#info { background: none; border: 0; border-left: 1px solid rgba(36, 24, 15, 0.35); border-right: 1px solid rgba(36, 24, 15, 0.35); border-radius: 0; scrollbar-color: var(--sepia) transparent; }
+#info .head b { font: 400 22px/1.1 var(--caps); text-transform: lowercase; }
+#info .icon { background: var(--panel); border: 1px solid var(--ink); border-radius: 0; }
+#info .bad, #ow-status .bad, #ow-sel .bad { color: var(--rubric); }
+.bar { background: rgba(36, 24, 15, 0.14); border: 1px solid var(--ink); border-radius: 0; }
+.bar > div { background: #b3862c; }
+.bar.hp > div { background: #4c9a3c; }
+.bar.love > div { background: #c9477f; }
+.bar.faith > div { background: #6f55c4; }
+.queue button, .multi button { border: 1px solid var(--ink); border-radius: 0; }
+.queue button:hover { border-color: var(--rubric); box-shadow: inset 0 0 0 1px var(--rubric); }
+.family span { border-color: var(--sepia); }
+.family .in.m { border-color: #2f6fb8; background: rgba(47, 111, 184, 0.16); }
+.family .in.f { border-color: #c9477f; background: rgba(201, 71, 127, 0.16); }
+.record { background: rgba(36, 24, 15, 0.06); border-left-color: var(--rubric); }
+@media (min-width: 1100px) { .record { background: #efdbb3; box-shadow: 0 0 0 1px rgba(36, 24, 15, 0.25); } }
+
+/* The command card: each order is a small woodcut block. */
+#card button, #card i { border-radius: 0; border: 1px dotted rgba(36, 24, 15, 0.3); background: none; }
+#card button { background: var(--panel); border: 1px solid var(--ink); box-shadow: 1px 1px 0 rgba(36, 24, 15, 0.35); }
+#card button:hover { filter: none; background: #fff6de; box-shadow: 2px 2px 0 var(--ink); transform: translate(-1px, -1px); }
+#card button.active { border-color: var(--rubric); box-shadow: inset 0 0 0 2px var(--rubric); }
+#card kbd { color: var(--ink); text-shadow: 0 0 2px var(--vellum), 0 0 2px var(--vellum), 0 0 3px var(--vellum); }
+
+/* Slips of paper over the field: messages, the first steps, what a button does, a choice to be made. */
+.toast, #guide, #tip, #dilemma { background: var(--paper); border: 1px solid var(--ink); border-radius: 0; box-shadow: var(--slip); text-shadow: none; }
+.toast { font: 17px/1.3 var(--book); }
+.toast.big { font: 400 26px/1.1 'IM Fell French Canon', var(--book); padding: 9px 24px 11px; }
+.toast.warn { border-color: var(--rubric); color: var(--rubric); box-shadow: inset 0 0 0 1px var(--rubric), var(--slip); }
+.toast.leader { border-color: var(--ink); }
+#guide h4, #tip b, #dilemma h3 { font: 400 19px/1.15 var(--caps); text-transform: lowercase; }
+#guide h4 { border-bottom: 1px solid var(--ink); padding-bottom: 3px; margin-bottom: 6px; }
+#guide .now b::before { content: '¶ '; color: var(--rubric); font-weight: 400; }
+#dilemma p { font: 16px/1.35 var(--book); }
+#dilemma button { background: var(--panel); color: var(--ink); border: 1px solid var(--ink); border-radius: 0; }
+#dilemma button:hover { background: var(--ink); color: var(--vellum); border-color: var(--ink); }
+
+/* Leaders speak in the book hand; their portraits are ringed in ink. */
+.speech .portrait { border: 2px solid var(--ink); }
+.speech p { font: italic 17px/1.3 var(--book); }
+#ow-speech, #ow-sel { background: rgba(255, 250, 235, 0.3); border: 1px solid rgba(36, 24, 15, 0.4); border-radius: 0; }
+/* A people's own colour is kept for its name, darkened so that it reads on paper. */
+.ow-factions span[style], #ow-sel div[style], #end-stats td[style], #info span[style] { filter: brightness(0.62) saturate(1.5); font-weight: 600; }
+
+/* Sheets are leaves laid over the field, torn at the edges like the menu's. */
+.screen { background-color: rgba(8, 6, 3, 0.66); }
+.sheet { position: relative; isolation: isolate; background: none; border: 0; border-radius: 0; box-shadow: none; color: var(--ink); font: 16px/1.4 var(--book); }
+.sheet::before { content: ''; position: absolute; z-index: -1; inset: -6px; background: var(--paper); box-shadow: inset 0 0 70px rgba(110, 74, 26, 0.35); filter: url(#deckle-s) drop-shadow(0 14px 24px rgba(0, 0, 0, 0.65)); }
+.sheet h1 { font: 400 46px/1 'IM Fell French Canon', var(--book); letter-spacing: 0; color: var(--ink); padding-bottom: 8px; border-bottom: 3px double var(--ink); }
+.sheet h1::first-letter { color: var(--rubric); }
+.sheet .lead { margin: 10px 0 16px; font: italic 18px/1.35 var(--book); color: #3d2c1a; }
+.sheet h3, .ow-side h3 { font: 400 19px var(--caps); text-transform: lowercase; color: var(--rubric); }
+.sheet table { font-size: 15px; line-height: 1.25; }
+.sheet .cols td { border-bottom: 1px dotted rgba(36, 24, 15, 0.3); }
+.sheet td:first-child { color: var(--ink); font-style: italic; }
+/* Buttons are blocks of type: the one to press inked solid, the lesser ones outlined. */
+.sheet button { padding: 7px 34px 9px; font: 400 22px var(--caps); text-transform: lowercase; letter-spacing: 0.04em; color: var(--vellum); background: var(--ink); border: 2px solid var(--ink); border-radius: 0; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.sheet button:hover { filter: none; color: var(--vellum); background: var(--rubric); border-color: var(--rubric); }
+.sheet button.secondary, .sheet .levels .new { padding: 5px 20px 7px; font-size: 18px; color: var(--ink); background: none; border: 1px solid var(--ink); }
+.sheet button.secondary:hover, .sheet .levels .new:hover { color: var(--vellum); background: var(--rubric); border-color: var(--rubric); }
+.sheet #settings { color: var(--ink); font-size: 16px; }
+.sheet #settings summary { font: 19px var(--caps); text-transform: lowercase; color: var(--rubric); }
+.sheet input[type='checkbox'], .sheet input[type='range'] { accent-color: var(--rubric); }
+.sheet .mapsize { font: 15px var(--caps); text-transform: lowercase; letter-spacing: 0.04em; color: var(--sepia); }
+.sheet .mapsize select { font: 17px var(--book); text-transform: none; letter-spacing: 0; color: var(--ink); background: rgba(255, 250, 235, 0.35); border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; }
+#end-stats table { font: 14px/1.3 system-ui, sans-serif; }
+#end-stats td { border-top: 1px dotted rgba(36, 24, 15, 0.4); }
+#end-stats svg { background: rgba(255, 250, 235, 0.35); border: 1px solid var(--ink); border-radius: 0; }
+#end-stats svg polyline { filter: brightness(0.75) saturate(1.4); }
+
+/* The making of a leader. */
+.hm-view canvas { background: radial-gradient(#fdf1d4 20%, #dcc292 100%); border: 1px solid var(--ink); border-radius: 0; box-shadow: inset 0 0 0 4px var(--vellum), inset 0 0 0 5px rgba(36, 24, 15, 0.5); }
+.hm-view table { font: 14px/1.3 system-ui, sans-serif; }
+.hm-view td:first-child { font: italic 16px var(--book); }
+.hm-form h3 small { font: italic 15px var(--book); text-transform: none; }
+.hm-row { font: 16px var(--caps); text-transform: lowercase; color: var(--sepia); }
+.hm-row > span:first-child { width: 62px; }
+.hm-row input[type='text'], .hm-row select { font: 18px var(--book); text-transform: none; color: var(--ink); background: rgba(255, 250, 235, 0.4); border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; }
+.hm-note { font: 16px/1.35 var(--book); color: #3d2c1a; }
+.hm-note b { color: var(--ink); }
+.hero-maker .hm-form button { padding: 3px 14px 5px; font: 400 17px var(--caps); text-transform: lowercase; letter-spacing: 0.02em; color: var(--ink); background: none; border: 1px solid var(--ink); border-radius: 0; }
+.hero-maker .hm-form button:hover:not(:disabled) { background: rgba(36, 24, 15, 0.1); color: var(--ink); border-color: var(--ink); }
+.hero-maker .hm-form button[aria-pressed='true'], .hero-maker .hm-form button[aria-pressed='true']:hover { background: var(--ink); color: var(--vellum); border-color: var(--ink); }
+.hero-maker .hm-swatches button, .hero-maker .hm-swatches button:hover:not(:disabled) { color: var(--ink); border-color: var(--ink); }
+.hero-maker .hm-swatches button[data-v=''] { background: none; }
+.hero-maker .hm-swatches button[aria-pressed='true'] { outline: 2px solid var(--rubric); outline-offset: 2px; }
+.hero-maker .hm-swatches button[data-v=''][aria-pressed='true'] { background: var(--ink); color: var(--vellum); outline: 0; }
+.hero-maker button:focus-visible, .hero-maker input:focus-visible, .hero-maker select:focus-visible { outline: 2px solid var(--rubric); }
+.hm-stat b, .hm-stat > span:first-child { font: 400 18px var(--caps); text-transform: lowercase; }
+.hm-stat small { font: italic 15px var(--book); }
+.hm-pips { color: var(--rubric); }
+
+/* The campaign's side page. */
+#overworld { background: #14110d; }
+.ow-side { background: var(--paper); border-left: 0; box-shadow: inset 5px 0 0 -3px var(--ink), inset 9px 0 0 -8px var(--ink), -6px 0 16px rgba(0, 0, 0, 0.5); padding-left: 22px; scrollbar-color: var(--sepia) transparent; }
+.ow-side h2 { font: 400 38px/1 'IM Fell French Canon', var(--book); padding-bottom: 6px; border-bottom: 3px double var(--ink); }
+.ow-side h2::first-letter { color: var(--rubric); }
+.ow-side button { background: var(--panel); border: 1px solid var(--ink); border-radius: 0; box-shadow: 1px 1px 0 rgba(36, 24, 15, 0.35); }
+.ow-side button:hover:not(:disabled) { background: var(--ink); color: var(--vellum); }
+.ow-side button:hover:not(:disabled) small { color: inherit; }
+#ow-end { font: 400 22px var(--caps); text-transform: lowercase; letter-spacing: 0.04em; color: var(--vellum); background: var(--ink); border-color: var(--ink); }
+#ow-end:hover:not(:disabled) { background: var(--rubric); border-color: var(--rubric); }
+#ow-canvas { border: 2px solid var(--ink); border-radius: 0; }
+/* Key names are read letter by letter, so they are set upright in small capitals, not in the swash italic. */
+.sheet .cols td:first-child, #t-panel .cols td:first-child { font: 400 16px var(--caps); font-style: normal; letter-spacing: 0.03em; }
