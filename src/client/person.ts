@@ -11,7 +11,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 /** How tall a man stands in the game's units; the model is 1.83 of its own. */
 const SCALE = 1.02 / 1.83;
 
-interface Marks { head: THREE.Box3; /** The middle of the flesh each bone carries: the line a limb is thickened about. */ mid: Map<string, THREE.Vector3> }
+interface Marks { /** The top of the skull, and how far forward the face stands at each height below it (steps of 0.01): down the middle, and down the line of the eyes. */ crown: number; face: { mid: number; eye: number }[]; /** The trunk's half-width, and how far it stands forward and back of the middle, at each height (steps of 0.02 from 0.9). */ trunk: { w: number; f: number; b: number }[]; head: THREE.Box3; /** The middle of the flesh each bone carries: the line a limb is thickened about. */ mid: Map<string, THREE.Vector3> }
 let source: { scene: THREE.Object3D; clips: Map<string, THREE.AnimationClip>; marks: Marks } | null = null;
 let failed = false;
 const waiting: (() => void)[] = [];
@@ -43,9 +43,49 @@ export function loadPeople(then?: () => void): void {
         if (w > 0.6) { const name = m.skeleton.bones[bi].name; let t = sums.get(name); if (!t) sums.set(name, (t = { v: new THREE.Vector3(), n: 0 })); t.v.add(p.fromBufferAttribute(pos, i)); t.n++; }
       }
     });
+    // The outline of the trunk, to cut clothes that sit just outside it.
+    const trunkAt: { w: number; f: number; b: number }[] = [];
+    for (let i = 0; i < 34; i++) trunkAt.push({ w: 0, f: 0, b: 0 });
+    g.scene.traverse((o) => {
+      const m = o as THREE.SkinnedMesh;
+      if (!m.isSkinnedMesh) return;
+      const pos = m.geometry.getAttribute('position'), si = m.geometry.getAttribute('skinIndex'), sw = m.geometry.getAttribute('skinWeight');
+      for (let i = 0; i < pos.count; i++) {
+        let best = 0, bw = -1;
+        for (let k = 0; k < 4; k++) if (sw.getComponent(i, k) > bw) { bw = sw.getComponent(i, k); best = si.getComponent(i, k); }
+        if (!/spine|hips/.test(m.skeleton.bones[best].name)) continue;
+        const t = trunkAt[Math.round((pos.getY(i) - 0.9) / 0.02)];
+        if (t) { t.w = Math.max(t.w, Math.abs(pos.getX(i))); t.f = Math.max(t.f, pos.getZ(i)); t.b = Math.max(t.b, -pos.getZ(i)); }
+      }
+    });
+    let crownY = 0;
+    const scan = (fn: (x: number, y: number, z: number) => void): void => g.scene.traverse((o) => {
+      const m = o as THREE.SkinnedMesh;
+      if (!m.isSkinnedMesh) return;
+      const pos = m.geometry.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) fn(pos.getX(i), pos.getY(i), pos.getZ(i));
+    });
+    scan((_x, y) => { crownY = Math.max(crownY, y); });
+    const face: { mid: number; eye: number }[] = [];
+    for (let i = 0; i < 30; i++) face.push({ mid: -1, eye: -1 });
+    scan((x, y, z) => {
+      const f = face[Math.round((crownY - y) / 0.01)], ax = Math.abs(x);
+      if (!f) return;
+      if (ax < 0.018) f.mid = Math.max(f.mid, z); else if (ax > 0.022 && ax < 0.046) f.eye = Math.max(f.eye, z);
+    });
+    for (let i = 1; i < face.length; i++) { if (face[i].mid < 0) face[i].mid = face[i - 1].mid; if (face[i].eye < 0) face[i].eye = face[i - 1].eye; }
+    // Smoothed, so the figure's separate joint pieces do not show through as ridges.
+    for (let pass = 0; pass < 3; pass++) {
+      const was = trunkAt.map((t) => ({ ...t }));
+      for (let i = 0; i < trunkAt.length; i++) for (const k of ['w', 'f', 'b'] as const) {
+        let sum = 0, n = 0;
+        for (let d = -2; d <= 2; d++) { const q = was[i + d]; if (q && q[k] > 0) { const wt = 3 - Math.abs(d); sum += q[k] * wt; n += wt; } }
+        if (n) trunkAt[i][k] = sum / n;
+      }
+    }
     const mid = new Map<string, THREE.Vector3>();
     for (const [name, t] of sums) mid.set(name, t.v.divideScalar(t.n));
-    source = { scene: g.scene, clips, marks: { head, mid } };
+    source = { scene: g.scene, clips, marks: { head, mid, trunk: trunkAt, crown: crownY, face } };
     for (const w of waiting.splice(0)) w();
   }, undefined, () => { failed = true; });
 }
@@ -144,6 +184,36 @@ function part(g: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0): 
 }
 const bump = (v: number, at: number, wide: number): number => Math.max(0, 1 - ((v - at) / wide) ** 2);
 
+/** How this person's trunk differs from the bare figure's at a height: across, front to back, and the belly carried in front. */
+function trunk(o: Outfit, y: number): { kx: number; kz: number; belly: number } {
+  const fat = [-0.07, 0, 0.13][o.girth];
+  let kx = 1, kz = 1;
+  if (o.female) {
+    // A smaller ribcage, drawn well in at the waist, wide at the hip.
+    const waist = bump(y, 1.13, 0.16), hip = bump(y, 0.9, 0.2), ribs = Math.min(1, Math.max(0, (y - 1.18) / 0.12));
+    kx = 1 - waist * 0.2 + hip * 0.14 - ribs * 0.1; kz = 1 - waist * 0.14 + hip * 0.1 - ribs * 0.06;
+  } else {
+    // From narrow to deep-chested and broad across the back.
+    const k = 0.04 + [-0.04, 0.02, 0.08][o.chest] * bump(y, 1.36, 0.2);
+    kx = 1 + k; kz = 1 + k * 1.2;
+  }
+  return { kx: kx * (1 + fat * 0.8), kz: kz * (1 + fat * 0.8), belly: fat > 0 ? fat * 0.45 * bump(y, 1.1, 0.2) : 0 };
+}
+/**
+ * A woman's breast as it lies under cloth, as how far forward of the ribs a point stands: two rounded forms, each
+ * fuller below its middle than above, sloping gently from the collarbone and turning under sharply, and joined
+ * across the breastbone so there is no cleft cut between them.
+ */
+function bust(o: Outfit, x: number, y: number): number {
+  const size = [0.048, 0.068, 0.09][o.chest], at = 1.325 - size * 0.22;
+  const dy = (y - at) / (y < at ? 0.055 + size * 0.2 : 0.12), dx = (Math.abs(x) - 0.07) / (0.062 + size * 0.2);
+  // A dome, not a peak: full across its middle and falling away at its edge.
+  const round = (d2: number): number => Math.max(0, 1 - d2 * 0.42) ** 1.35;
+  const each = round(dx * dx + dy * dy);
+  const between = 0.4 * Math.exp(-((x / 0.07) ** 2)) * round(dy * dy);
+  return size * Math.max(each, between);
+}
+
 const painted = new Map<string, THREE.BufferGeometry[]>();
 /** Shape one piece of the body as a man's or a woman's, and colour it by which bone moves each point. */
 function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.BufferGeometry {
@@ -151,7 +221,8 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
   const pos = g.getAttribute('position'), si = g.getAttribute('skinIndex'), sw = g.getAttribute('skinWeight');
   const col = new Float32Array(pos.count * 3), c = new THREE.Color();
   const skin = new THREE.Color(o.skin), hair = new THREE.Color(o.hair), top = new THREE.Color(o.mail ? 0x8a8f96 : o.top), legs = new THREE.Color(o.legs);
-  const boot = new THREE.Color(0x4a3222), belt = new THREE.Color(0x3a2616), lip = skin.clone().lerp(new THREE.Color(0xb04a48), 0.45);
+  const skirtC = new THREE.Color(o.skirtColor).multiplyScalar(0.8);
+  const boot = new THREE.Color(0x4a3222), belt = new THREE.Color(0x3a2616);
   const mids = source!.marks.mid, headMid = source!.marks.head.getCenter(new THREE.Vector3()).y, headHalf = source!.marks.head.getSize(new THREE.Vector3()).y / 2;
   const collar = o.neck === 2 ? 1.34 : o.neck === 1 ? 1.42 : 1.5; // how high the cloth comes on the chest
   for (let i = 0; i < pos.count; i++) {
@@ -164,24 +235,11 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
     let ny = y;
     const fat = [-0.07, 0, 0.13][o.girth]; // how much thicker than the bare figure
     if (/spine|hips/.test(bone) || (/thigh/.test(bone) && y > 0.8)) {
-      if (o.female) {
-        // A woman's trunk: a smaller ribcage, drawn well in at the waist, wide at the hip, fuller at the breast.
-        const waist = bump(y, 1.13, 0.16), hip = bump(y, 0.9, 0.2), ribs = Math.min(1, Math.max(0, (y - 1.18) / 0.12));
-        x *= 1 - waist * 0.2 + hip * 0.14 - ribs * 0.1; z *= 1 - waist * 0.14 + hip * 0.1 - ribs * 0.06;
-        if (z > 0.02) {
-          // Two rounded forms, not one shelf: each swells about its own centre.
-          const b = bump(y, 1.32, 0.1) * bump(Math.abs(x), 0.075, 0.085);
-          z += [0.045, 0.07, 0.095][o.chest] * b;
-          x += Math.sign(x) * [0.006, 0.012, 0.018][o.chest] * b;
-        }
-      } else {
-        // A man's: from narrow to deep-chested and broad across the back.
-        const k = 0.04 + [-0.04, 0.02, 0.08][o.chest] * bump(y, 1.36, 0.2);
-        x *= 1 + k; z *= 1 + k * 1.2;
-      }
-      // Weight is carried round the middle, and most in front.
-      x *= 1 + fat * 0.8; z *= 1 + fat * 0.8;
-      if (z > 0 && fat > 0) z += fat * 0.45 * bump(y, 1.1, 0.2) * bump(x, 0, 0.2);
+      const t = trunk(o, y);
+      x *= t.kx; z *= t.kz;
+      if (z > 0) z += t.belly * bump(x, 0, 0.2);
+      // The body under the bodice follows it, a little inside, so skin at an open neck is the right shape.
+      if (o.female && z > 0.02) z += bust(o, x, y) * 0.8;
     } else if (/upper_arm|forearm|thigh|shin/.test(bone)) {
       // Limbs thicken about their own middle line: arms lie along x at rest, legs stand along y.
       const m = mids.get(bone), k = 1 + fat * (/forearm|shin/.test(bone) ? 0.55 : 0.9) + (o.female ? (/arm/.test(bone) ? -0.16 : /shin/.test(bone) ? -0.08 : 0.04) : /upper_arm/.test(bone) ? 0.05 + [-0.03, 0.02, 0.07][o.chest] : 0.03);
@@ -197,7 +255,7 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
     }
     pos.setXYZ(i, x, ny, z);
     let mailed = false;
-    if (/head/.test(bone)) c.copy(y > 1.72 || (z < 0.0 && y > 1.6) ? hair : o.female && z > 0.06 && y > 1.615 && y < 1.632 && Math.abs(x) < 0.025 ? lip : skin);
+    if (/head/.test(bone)) c.copy(y > 1.72 || (z < 0.0 && y > 1.6) ? hair : skin);
     else if (/neck/.test(bone)) c.copy(skin);
     else if (/hand|thumb|f_/.test(bone)) c.copy(skin);
     else if (/forearm/.test(bone)) { c.copy(o.sleeves === 'long' ? top : skin); mailed = o.sleeves === 'long'; }
@@ -208,7 +266,7 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit): THREE.Buf
       c.copy(bare ? skin : y > 1.0 && y < 1.05 ? belt : top);
       mailed = !bare;
     }
-    else if (/thigh/.test(bone)) c.copy(legs);
+    else if (/thigh/.test(bone)) c.copy(o.skirt !== 'none' && y > 0.72 ? skirtC : legs); // under a skirt, the top of the leg is lost in its shadow
     else if (/shin/.test(bone)) c.copy(y < 0.26 ? boot : legs);
     else if (/foot|toe/.test(bone)) c.copy(boot);
     else c.copy(top);
@@ -236,8 +294,8 @@ function skirt(body: THREE.SkinnedMesh, long: boolean, female: boolean, color: n
   for (let r = 0; r <= rings; r++) {
     const f = r / rings, y = top + (hem - top) * f;
     // Close at the waist, over the hips, then flaring to the hem.
-    const hipK = bump(y, 0.9, 0.2) * Math.min(1, f * (long ? 9 : 5)); // the waistband sits close; the cloth stands off below it
-    const rx = (female ? 0.118 : 0.156) + hipK * (female ? 0.085 : 0.055) + f * (long ? 0.15 : 0.035), rz = (female ? 0.1 : 0.112) + hipK * 0.06 + f * (long ? 0.15 : 0.03);
+    const hk = Math.min(1, Math.max(0, (top - y) / 0.17)), hipK = hk * hk * (3 - 2 * hk); // out over the hip, then straight down: no bell
+    const rx = (female ? 0.118 : 0.156) + hipK * (female ? 0.092 : 0.055) + f * (long ? 0.085 : 0.03), rz = (female ? 0.1 : 0.112) + hipK * 0.055 + f * (long ? 0.1 : 0.028);
     const leg = Math.min(1, Math.max(0, (0.98 - y) / 0.22)) * (long ? 0.6 : 0.85); // how much of this ring the legs carry
     for (let s = 0; s < seg; s++) {
       const a = (s / seg) * Math.PI * 2, fold = 1 + (long ? Math.sin(a * 7) * 0.035 * f : 0);
@@ -252,6 +310,73 @@ function skirt(body: THREE.SkinnedMesh, long: boolean, female: boolean, color: n
   for (let r = 0; r < rings; r++) for (let s = 0; s < seg; s++) {
     const a = r * seg + s, b = r * seg + ((s + 1) % seg), c2 = a + seg, d = b + seg;
     I.push(a, c2, b, b, c2, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4));
+  g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
+  g.setIndex(I);
+  g.computeVertexNormals();
+  const m = new THREE.SkinnedMesh(g, drape);
+  m.bind(body.skeleton, body.bindMatrix);
+  m.castShadow = true;
+  m.frustumCulled = false;
+  return m;
+}
+
+/**
+ * The upper garment: a fitted shell cut just outside the trunk from the belt to the collar, finely made so its
+ * curves are smooth where the bare figure's are coarse. It bends with the spine.
+ */
+function bodice(body: THREE.SkinnedMesh, o: Outfit, heights: number[]): THREE.SkinnedMesh {
+  const names = body.skeleton.bones.map((b) => b.name), prof = source!.marks.trunk;
+  const idx = [names.indexOf('DEF-hips'), names.indexOf('DEF-spine001'), names.indexOf('DEF-spine002'), names.indexOf('DEF-spine003')];
+  const at = (y: number): { w: number; f: number; b: number } => {
+    const k = Math.min(prof.length - 1.001, Math.max(0, (y - 0.9) / 0.02)), i = Math.floor(k), t = k - i, a = prof[i], c = prof[i + 1];
+    return { w: a.w + (c.w - a.w) * t, f: a.f + (c.f - a.f) * t, b: a.b + (c.b - a.b) * t };
+  };
+  const rows = 30, seg = 36, y0 = 1.02, y1 = 1.535, off = 0.022;
+  const P: number[] = [], C: number[] = [], SI: number[] = [], SW: number[] = [], I: number[] = [];
+  const top = new THREE.Color(o.mail ? 0x8a8f96 : o.top), trim = o.trim !== null ? new THREE.Color(o.trim) : top.clone().multiplyScalar(0.7), belt = new THREE.Color(0x3a2616);
+  const collar = o.neck === 2 ? 1.36 : o.neck === 1 ? 1.43 : 1.51;
+  for (let r = 0; r <= rows; r++) {
+    const yr = y0 + ((y1 - y0) * r) / rows, pr = at(Math.min(1.46, yr)), t = trunk(o, yr);
+    // Above the armpit the cloth closes in over the shoulders to the neck.
+    const yoke = Math.min(1, Math.max(0, (yr - 1.45) / 0.085)), close = yoke * yoke * (3 - 2 * yoke);
+    const w = (pr.w * t.kx + off) * (1 - close) + 0.066 * close, f = (pr.f * t.kz + off) * (1 - close) + 0.07 * close, b = (pr.b * t.kz + off) * (1 - close) + 0.066 * close;
+    for (let s = 0; s < seg; s++) {
+      const a = (s / seg) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+      // Squarer than a circle, as a ribcage is.
+      const x = w * Math.sign(ca) * Math.abs(ca) ** 0.8;
+      let z = (sa > 0 ? f : b) * Math.sign(sa) * Math.abs(sa) ** 0.8, y = yr;
+      if (sa > 0) {
+        z += t.belly * bump(x, 0, 0.2) * (1 - close);
+        if (o.female) z += bust(o, x, y);
+      }
+      // The neckline: cut down in front to a curve, with nothing above it.
+      const line = collar + Math.min(0.11, Math.abs(x) * 0.95);
+      let edge = false;
+      if (sa > 0.15 && y > line) { y = line; edge = true; z -= 0.004; }
+      P.push(x, y, z);
+      const c = yr < 1.058 ? belt : edge || (sa > 0.15 && y > line - 0.016) ? trim : top;
+      const h = (((s * 131 + r * 71) * 2654435761) >>> 0) % 100 / 100, n = o.mail && c === top ? 0.78 + h * 0.44 : 0.95 + h * 0.08;
+      C.push(c.r * n, c.g * n, c.b * n);
+      // Each stretch of the trunk goes with the bone it lies along, eased over a hand's breadth at each joint.
+      let lo = 0;
+      for (let k = 1; k < 4; k++) if (yr >= heights[k]) lo = k;
+      const w4 = [0, 0, 0, 0];
+      const up = lo < 3 ? Math.min(1, Math.max(0, (yr - (heights[lo + 1] - 0.05)) / 0.1)) * 0.5 : 0;
+      const down = lo > 0 ? Math.min(1, Math.max(0, ((heights[lo] + 0.05) - yr) / 0.1)) * 0.5 : 0;
+      w4[lo] = 1 - up - down;
+      if (lo < 3) w4[lo + 1] += up;
+      if (lo > 0) w4[lo - 1] += down;
+      SI.push(idx[0], idx[1], idx[2], idx[3]); SW.push(w4[0], w4[1], w4[2], w4[3]);
+    }
+  }
+  for (let r = 0; r < rows; r++) for (let s = 0; s < seg; s++) {
+    const a = r * seg + s, b2 = r * seg + ((s + 1) % seg), c2 = a + seg, d = b2 + seg;
+    I.push(a, b2, c2, b2, d, c2);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
@@ -324,7 +449,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   if (!source) return null;
   const body = cloneSkinned(source.scene);
   body.updateMatrixWorld(true);
-  const key = [o.female, o.girth, o.chest, o.skin, o.hair, o.top, o.mail, o.sleeves, o.neck, o.legs].join('|');
+  const key = [o.female, o.girth, o.chest, o.skirt, o.skirtColor, o.skin, o.hair, o.top, o.mail, o.sleeves, o.neck, o.legs].join('|');
   let n = 0;
   const meshes: THREE.SkinnedMesh[] = [];
   const bones = new Map<string, THREE.Object3D>();
@@ -360,26 +485,57 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       bones.get('DEF-hand' + side)?.scale.multiplyScalar(o.female ? 0.86 : 1.04);
       bones.get('DEF-foot' + side)?.scale.multiplyScalar(o.female ? 0.9 : 1.03);
     }
-    bones.get('DEF-head')?.scale.multiplyScalar(o.female ? 0.96 : 1.02);
+    bones.get('DEF-head')?.scale.multiplyScalar(o.female ? 1.04 : 1.07); // a touch large, so a face can be read from above
     body.updateMatrixWorld(true);
   }
   const mine = new Map<string, { p: THREE.Vector3; q: THREE.Quaternion; s: THREE.Vector3 }>();
   body.traverse((b) => { if ((b as THREE.Bone).isBone) mine.set(b.name, { p: b.position.clone(), q: b.quaternion.clone(), s: b.scale.clone() }); });
 
+  meshes[0].parent!.add(bodice(meshes[0], o, [at('DEF-hips').y, at('DEF-spine.001').y, at('DEF-spine.002').y, at('DEF-spine.003').y]));
   if (o.skirt !== 'none') meshes[0].parent!.add(skirt(meshes[0], o.skirt === 'long', o.female, o.skirtColor, o.girth, o.apron, o.trim));
 
   // ---- the head: a face, hair, and whatever is worn on it ----
   const hb = source.marks.head, hc = hb.getCenter(new THREE.Vector3()), hr = hb.getSize(new THREE.Vector3()).multiplyScalar(0.5);
   const head = new THREE.Group();
-  const eye = geo('eye', () => new THREE.SphereGeometry(0.011, 6, 5)), dark = solid(0x1c1612), hairM = solid(o.hair);
+  const dark = solid(0x1c1612), hairM = solid(o.hair), skinM = solid(o.skin), skinD = solid(new THREE.Color(o.skin).multiplyScalar(0.82).getHex());
+  // A face, drawn a little larger than life so it can be read from where the game is watched: eyes with their
+  // whites, lids and brows, a nose that stands out from the face, a mouth, and ears.
+  const mk = source.marks, faceAt = (y: number, line: 'mid' | 'eye'): number => mk.face[Math.min(mk.face.length - 1, Math.max(0, Math.round((mk.crown - y) / 0.01)))][line];
+  const eyeY = mk.crown - 0.118, white = solid(0xf2ede4), iris = solid([0x3a2a1a, 0x4a3a22, 0x2a4a6a, 0x3a5a3a][o.seed % 4]);
+  const ez = faceAt(eyeY, 'eye');
   for (const sx of [-1, 1]) {
-    const e = part(eye, dark, sx * hr.x * (o.female ? 0.36 : 0.4), hc.y + hr.y * 0.12, hb.max.z - hr.z * 0.2);
-    if (o.female) e.scale.set(1.35, 1.2, 1);
-    head.add(e);
-    const brow = part(geo('brow', () => new THREE.BoxGeometry(0.036, 0.007, 0.012)), hairM, sx * hr.x * 0.4, hc.y + hr.y * 0.3, hb.max.z - hr.z * 0.19);
-    brow.rotation.z = sx * -0.12;
+    const ex = sx * 0.033;
+    const ball = part(geo('eyeball', () => new THREE.SphereGeometry(0.019, 10, 8)), white, ex, eyeY, ez - 0.004);
+    ball.scale.set(1.2, o.female ? 0.9 : 0.72, 0.6);
+    head.add(ball);
+    head.add(part(geo('iris', () => new THREE.SphereGeometry(0.01, 8, 6)), iris, ex, eyeY, ez + 0.0035));
+    head.add(part(geo('pupil', () => new THREE.SphereGeometry(0.005, 6, 5)), dark, ex, eyeY, ez + 0.0105));
+    // The upper lid, darker on a woman as if lashed.
+    const lid = part(geo('lid', () => new THREE.BoxGeometry(0.046, 0.006, 0.012)), o.female ? dark : skinD, ex, eyeY + (o.female ? 0.016 : 0.013), ez + 0.004);
+    lid.rotation.z = sx * -0.08;
+    head.add(lid);
+    const by = eyeY + (o.female ? 0.034 : 0.029);
+    const brow = part(geo('brow', () => new THREE.BoxGeometry(0.046, 1, 0.012)), hairM, ex, by, faceAt(by, 'eye') + 0.003);
+    brow.scale.y = o.female ? 0.007 : 0.012;
+    brow.rotation.z = sx * (o.female ? -0.2 : -0.08);
     head.add(brow);
+    const ear = part(geo('ear', () => new THREE.SphereGeometry(0.022, 8, 6)), skinM, sx * hr.x * 0.98, eyeY - 0.012, hc.z - hr.z * 0.05);
+    ear.scale.set(0.45, 1.15, 0.8);
+    head.add(ear);
   }
+  // The nose runs down from between the eyes and stands out at its tip.
+  const noseY = eyeY - 0.038, nz = faceAt(noseY, 'mid');
+  const nose = part(geo('nose', () => new THREE.ConeGeometry(0.017, 0.05, 4).rotateX(-0.38)), skinM, 0, noseY + 0.014, nz - 0.002);
+  nose.scale.set(o.female ? 0.8 : 1.05, 1, o.female ? 0.9 : 1.15);
+  head.add(nose, part(geo('nosetip', () => new THREE.SphereGeometry(0.012, 7, 5)), skinM, 0, noseY - 0.006, nz + 0.006));
+  // Lips: fuller and redder on a woman; a plainer line on a man.
+  const lipC = new THREE.Color(o.skin).lerp(new THREE.Color(0xa83a40), o.female ? 0.6 : 0.3).getHex();
+  const mouthY = eyeY - 0.072, mz = faceAt(mouthY, 'mid');
+  const upper = part(geo('lip', () => new THREE.SphereGeometry(0.02, 9, 5)), solid(lipC), 0, mouthY + 0.004, mz - 0.004);
+  upper.scale.set(o.female ? 1.0 : 1.1, o.female ? 0.3 : 0.2, 0.5);
+  const lower = part(geo('lip', () => new THREE.SphereGeometry(0.02, 9, 5)), solid(lipC), 0, mouthY - 0.006, mz - 0.005);
+  lower.scale.set(o.female ? 0.86 : 0.95, o.female ? 0.38 : 0.22, 0.5);
+  head.add(upper, lower);
   const dome = geo('dome', () => new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.56));
   const crown = (m: THREE.Material, k: number, lift = 0): THREE.Mesh => {
     const d = part(dome, m, 0, hc.y + hr.y * 0.22 + lift, hc.z - hr.z * 0.08);
@@ -419,7 +575,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       brim.rotation.x = -0.12;
       head.add(brim);
     } else if (o.helmet === 'iron') {
-      head.add(part(geo('nasal', () => new THREE.BoxGeometry(0.02, 0.1, 0.014)), metal, 0, hc.y + hr.y * 0.12, hb.max.z - hr.z * 0.02));
+      head.add(part(geo('nasal', () => new THREE.BoxGeometry(0.02, 0.1, 0.014)), metal, 0, hc.y + hr.y * 0.12, faceAt(eyeY - 0.02, 'mid') + 0.012));
     } else if (o.helmet === 'bronze') {
       // A crest fore and aft.
       const crest = part(geo('crest', () => new THREE.BoxGeometry(0.022, 0.07, 0.24)), solid(o.skirtColor), 0, hc.y + hr.y * 1.06, hc.z - hr.z * 0.15);
@@ -438,10 +594,12 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       head.add(brim, part(geo('strawtop', () => new THREE.CylinderGeometry(0.075, 0.095, 0.07, 12)), straw, 0, hc.y + hr.y * 0.95, hc.z - hr.z * 0.05));
     } else if (o.hat === 'hood') {
       // A hood drawn up, open at the face, with a cape over the shoulders.
-      const hood = part(geo('hood', () => new THREE.SphereGeometry(1, 14, 10, Math.PI * 0.68, Math.PI * 1.64)), hm, 0, hc.y + hr.y * 0.02, hc.z - hr.z * 0.1);
-      hood.scale.set(hr.x * 1.3, hr.y * 1.22, hr.z * 1.3);
-      (hood.material as THREE.Material).side = THREE.DoubleSide;
-      head.add(hood);
+      head.add(crown(hm, 1.2, hr.y * 0.02));
+      const back = part(geo('fall', () => new THREE.SphereGeometry(1, 10, 8)), hm, 0, hc.y - hr.y * 0.5, hc.z - hr.z * 0.55);
+      back.scale.set(hr.x * 1.16, hr.y * 1.25, hr.z * 0.62);
+      head.add(back);
+      // Its sides come down past the ears to the cape.
+      for (const sx of [-1, 1]) { const side = part(geo('hoodside', () => new THREE.BoxGeometry(0.02, 0.17, 0.11)), hm, sx * hr.x * 1.1, hc.y - hr.y * 0.55, hc.z - hr.z * 0.1); head.add(side); }
       const sh = at('DEF-spine.003');
       const cape = part(geo('cape', () => new THREE.CylinderGeometry(0.1, 0.27, 0.2, 14, 1, true)), hm, 0, sh.y + 0.13, 0.005);
       cape.scale.z = 0.72;
