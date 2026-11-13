@@ -238,10 +238,54 @@ function luck(c: Campaign, k: number): number {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-/** A front of the kind that suits where on the map it starts: snow from the north, dust from the south, rain between. */
+/** Smooth noise that comes out the same on every machine (whole-number hashing, no sines). */
+export function landNoise(x: number, y: number, seed: number): number {
+  const h = (i: number, j: number): number => {
+    let t = (Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(seed | 0, 1274126177)) | 0;
+    t = Math.imul(t ^ (t >>> 13), 1103515245);
+    return ((t ^ (t >>> 16)) >>> 0) / 4294967296;
+  };
+  const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
+/** The kinds of country a world is made of. Every campaign lays them out differently. */
+export type Biome = 'grass' | 'forest' | 'marsh' | 'steppe' | 'desert' | 'snow';
+export const BIOMES: Record<Biome, { name: string; icon: string; desc: string; climate: 'temperate' | 'desert' | 'steppe' | 'snow' }> = {
+  grass: { name: 'Green country', icon: '🌾', desc: 'Meadow and scattered woods.', climate: 'temperate' },
+  forest: { name: 'Deep forest', icon: '🌲', desc: 'Old woods, thick with timber.', climate: 'temperate' },
+  marsh: { name: 'Marshland', icon: '🪷', desc: 'Low, wet ground and reeds.', climate: 'temperate' },
+  steppe: { name: 'Steppe', icon: '🐎', desc: 'Dry grass under a wide sky.', climate: 'steppe' },
+  desert: { name: 'Desert', icon: '🏜️', desc: 'Sand, rock and the odd oasis.', climate: 'desert' },
+  snow: { name: 'The frozen north', icon: '❄️', desc: 'Snow and fir.', climate: 'snow' },
+};
+/** How warm (0 cold to 1 hot) and how wet (0 dry to 1 wet) a point of a world is. Which end is cold, and where the dry lands lie, differ from world to world. */
+export function climateAt(seed: number, x: number, y: number): { warm: number; wet: number } {
+  const flip = (seed >>> 1) % 2 === 1, turn = ((seed >>> 3) % 5) / 5 - 0.4; // cold in the south for half of all worlds; the cold line tilts
+  const lat = y / MAP_H + (x / MAP_W - 0.5) * turn;
+  const warm = (flip ? 1 - lat : lat) * 0.85 + 0.08 + (landNoise(x / 190, y / 190, seed + 11) - 0.5) * 0.26;
+  const side = (seed >>> 6) % 2 === 1 ? x / MAP_W : 1 - x / MAP_W; // the rain comes from one side
+  const wet = 0.2 + side * 0.3 + landNoise(x / 150, y / 150, seed + 23) * 0.6;
+  return { warm, wet };
+}
+export function biomeAt(seed: number, x: number, y: number): Biome {
+  const { warm, wet } = climateAt(seed, x, y);
+  if (warm < 0.3) return 'snow';
+  if (warm > 0.68 && wet < 0.55) return 'desert';
+  if (wet < 0.44) return 'steppe';
+  if (wet > 0.8 && warm > 0.42) return 'marsh';
+  if (wet > 0.62) return 'forest';
+  return 'grass';
+}
+export const biomeOf = (c: Campaign, tid: number): Biome => biomeAt(c.seed, c.territories[tid].x, c.territories[tid].y);
+
+/** A front of the kind that suits the country it starts over: snow in the cold lands, dust in the dry, rain elsewhere. */
 function newFront(c: Campaign, k: number, edge: boolean): Front {
   const y = MAP_H * (0.1 + luck(c, k) * 0.8);
-  const kind: Sky = y < MAP_H * 0.3 ? 'snow' : y > MAP_H * 0.72 ? 'dust' : 'rain';
+  const b = biomeAt(c.seed, MAP_W / 2, y);
+  const kind: Sky = b === 'snow' ? 'snow' : b === 'desert' || b === 'steppe' ? 'dust' : 'rain';
   const east = luck(c, k + 1) < 0.75; // most weather comes out of the west
   return { kind, x: edge ? (east ? -80 : MAP_W + 80) : MAP_W * luck(c, k + 2), y, r: 95 + luck(c, k + 3) * 45, vx: (east ? 1 : -1) * (70 + luck(c, k + 4) * 50), vy: (luck(c, k + 5) - 0.5) * 50 };
 }
@@ -426,7 +470,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [], truces: [], honor: 0, demand: null, ally: -1, dominion: { f: -1, turns: 0 },
   };
   const pick = <T>(list: T[]): T => list.splice(Math.floor(rand(c) * list.length), 1)[0];
-  const [cols, rows] = pick([[4, 3], [5, 3], [5, 3], [6, 3], [5, 4], [6, 4]]);
+  const [cols, rows] = pick([[5, 3], [6, 3], [5, 4], [6, 4], [7, 4], [6, 5]]);
   const names = NAMES.slice();
   for (let j = 0; j < rows; j++)
     for (let i = 0; i < cols; i++) {
@@ -1066,7 +1110,7 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
 
 // ---- Real-time battles ----
 
-export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky }
+export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky; /** The country it lies in. */ climate?: 'temperate' | 'desert' | 'steppe' | 'snow' }
 
 /** Turn the pending battle into a real-time match: each side fields the troops it has on the map. */
 export function battleConfig(c: Campaign): BattleConfig | null {
@@ -1100,6 +1144,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
     ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
+    climate: BIOMES[biomeOf(c, p.to)].climate,
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [

@@ -6,7 +6,7 @@ import { playLine, speechHtml } from './voice';
 import { WorldMap } from './worldmap';
 import {
   EVENTS, WEATHER, eventsAt, frontsOf, weatherAt,
-  Army, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, ageCost, truceCost, giftCost, AGE_COST, AGE_EDGE, ageOf, canAdvance, advanceAge, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
+  Army, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, ageCost, truceCost, giftCost, AGE_COST, AGE_EDGE, ageOf, canAdvance, advanceAge, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
   canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
 } from '../sim/campaign';
 
@@ -83,7 +83,7 @@ export class Overworld {
     if (new URLSearchParams(location.search).get('map') !== '2d') {
       try {
         const host = canvas.parentElement!;
-        this.map3d = lastMap = new WorldMap(host, c, this.cell, this.edge, this.glyphs, (tid) => this.click(tid));
+        this.map3d = lastMap = new WorldMap(host, c, this.cell, this.edge, (tid) => this.click(tid));
         host.classList.add('ow-3d');
         canvas.style.display = 'none';
       } catch { this.map3d = null; } // no 3D here: the flat chart will do
@@ -246,9 +246,8 @@ export class Overworld {
     const army = armyAt(c, this.sel);
     const canMarch = c.phase === 'player' && !!army && army.owner === 0 && !army.moved;
     const reach = new Set(canMarch ? reachOf(c, this.sel) : []);
-    this.paint(reach, !!this.map3d);
-    if (this.map3d) { this.map3d.setSheet(this.sheet); this.map3d.sync(c, this.sel, reach); }
-    else this.frame();
+    if (this.map3d) this.map3d.sync(c, this.sel, reach);
+    else { this.paint(reach, false); this.frame(); }
     this.renderSide(canMarch);
   }
 
@@ -511,6 +510,7 @@ export class Overworld {
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
       <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '')} · Defence ${defence(c, t.id)}</div>
+      <div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc}</div>
       ${t.trait ? `<div class="good">${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}: ${traitOf(t.trait)!.desc}</div>` : ''}
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
       ${t.taken ? `<div class="bad">⛓️ Women carried off from here: ${t.taken} supply less each turn until the marauders' camp next door is broken.</div>` : ''}

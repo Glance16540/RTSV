@@ -8,7 +8,7 @@ import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, UNITS, styleOf } from '../src/sim/data';
-import { Campaign, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { Campaign, BIOMES, biomeOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -657,7 +657,7 @@ describe('conquest campaign', () => {
       const c = newCampaign(42 + rivals, rivals);
       const n = c.territories.length;
       expect(n).toBeGreaterThanOrEqual(12);
-      expect(n).toBeLessThanOrEqual(24);
+      expect(n).toBeLessThanOrEqual(30);
       expect(c.factions.length).toBe(rivals + 1);
       for (const f of c.factions) {
         const cap = c.territories.find((t) => t.capital === f.id)!;
@@ -1732,7 +1732,7 @@ describe('harbours', () => {
 
 describe('ages on the campaign map', () => {
   it('advancing costs supplies, strengthens armies and starts battles in that age with its weapons', () => {
-    const c = newCampaign(7, 1);
+    const c = newCampaign(7, 1, 1, 'hearth');
     expect(canAdvance(c, 0)).toBe(false);
     c.factions[0].supplies = AGE_COST[0] + AGE_COST[1];
     expect(advanceAge(c, 0)).toBe(true);
@@ -2884,6 +2884,25 @@ describe('marauders', () => {
     const g = new Game(3, setups);
     run(g, LAIR_AT + 5);
     expect(g.buildings.some((b) => b.type === 'lair')).toBe(false);
+  });
+});
+
+describe('the worlds of the campaign', () => {
+  it('each world lays out its country differently, and a battle is fought in the country of the land', () => {
+    const kinds = (seed: number) => { const c = newCampaign(seed, 2, 1, 'hearth'); return c.territories.map((t) => biomeOf(c, t.id)); };
+    const all = new Set<string>(), shapes = new Set<string>(), sizes = new Set<number>();
+    for (let seed = 1; seed <= 14; seed++) { const k = kinds(seed); k.forEach((b) => all.add(b)); shapes.add(k.join()); sizes.add(k.length); }
+    expect(shapes.size).toBe(14);
+    expect(sizes.size).toBeGreaterThan(2);
+    for (const b of ['grass', 'forest', 'steppe', 'desert', 'snow']) expect(all.has(b), b).toBe(true);
+    expect(kinds(4)).toEqual(kinds(4));
+    // The same point is always the same country in the same world.
+    const c = newCampaign(6, 1, 1, 'hearth');
+    const a = c.armies.find((x) => x.owner === 0)!;
+    const target = c.territories.find((t) => t.owner < 0 && c.territories[a.at].adj.includes(t.id))!;
+    moveArmy(c, a.id, target.id);
+    c.pending!.mode = 'siege';
+    expect(battleConfig(c)!.climate).toBe(BIOMES[biomeOf(c, target.id)].climate);
   });
 });
 

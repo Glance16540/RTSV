@@ -240,7 +240,7 @@ loadAssets().then(() => {
   const climateOf = (civ: string): Climate => (['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? (asked as Climate) : HOMELAND[civ] ?? 'temperate');
   // Skirmishes and campaign battles are fought over hills and mountains; `?flat=1` gives the old level ground.
   const relief = params.get('flat') !== '1';
-  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, relief, climateOf(cfg.setups[cfg.humanAttacks ? 1 : 0].civ ?? '')) : new Game(seed, [
+  game ??= cfg ? new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, relief, cfg.climate && asked === 'auto' ? cfg.climate : climateOf(cfg.setups[cfg.humanAttacks ? 1 : 0].civ ?? '')) : new Game(seed, [
     { name: 'You', color: 0x2f7bff, isAI: false },
     { name: 'Red Tribe', color: 0xe0452f, isAI: true },
     { name: 'Golden Horde', color: 0xe0b020, isAI: true },

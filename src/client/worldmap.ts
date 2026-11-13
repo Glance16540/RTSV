@@ -1,50 +1,69 @@
-// The campaign map in three dimensions: a table-top country seen from above and to one side. The land rises out
-// of a sea, mountains stand up where the ground is high, woods are stands of small trees, capitals are walled
-// towns, armies are figures under a standard, and weather passes overhead as cloud with rain, snow or dust
-// falling from it. The chart drawn by the map screen (borders, washes of colour, roads) is laid over the ground
-// as its paint.
+// The campaign map in three dimensions: a living country seen from above and to one side, in the manner of the
+// great war-maps of strategy games. Every campaign grows its own world from its seed: its own coastline, bays and
+// lakes, mountain ranges, rivers running down to the sea, and its own lie of cold, wet and dry country, so one
+// world has snow in the north and desert in the south-east and the next the other way about. The ground is painted
+// by what grows there; borders glow in the colour of whoever holds the land. Capitals are walled towns, armies are
+// figures under a standard that march from land to land, and the map moves: the sea runs, cloud drifts and throws
+// shadow, weather fronts pass with rain, snow or dust, birds wheel, ships go by, and smoke rises from the towns.
 
 import * as THREE from 'three';
-import { Campaign, EVENTS, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, eventsAt, frontsOf, slots } from '../sim/campaign';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { Campaign, EVENTS, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots } from '../sim/campaign';
 import { lookOf } from './models';
 import { RealPerson, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 
 /** Map points to a unit of the world. */
-const K = 0.1;
+const K = 0.13;
+/** How much larger the world is than the one the pieces were first sized for. */
+const S = K / 0.1;
 const WX = (px: number): number => px * K - (MAP_W * K) / 2;
 const WZ = (py: number): number => py * K - (MAP_H * K) / 2;
-const STEP = 4; // map points between heights
+const STEP = 3; // map points between heights
 
 const hash = (x: number, y: number): number => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
-function noise(x: number, y: number): number {
-  const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
-  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-  const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
-  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
-}
 const smooth = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
-
-export interface Glyph { kind: string; x: number; y: number; s: number }
+const mix3 = (o: number[], c: number[], k: number): void => { o[0] += (c[0] - o[0]) * k; o[1] += (c[1] - o[1]) * k; o[2] += (c[2] - o[2]) * k; };
+/** A shape in one colour, ready to be joined to others and still take a tint of its own. */
+const tinted = (g: THREE.BufferGeometry, hex: number): THREE.BufferGeometry => {
+  const n = g.index ? g.toNonIndexed() : g, c = new THREE.Color(hex), a = new Float32Array(n.getAttribute('position').count * 3);
+  for (let i = 0; i < a.length; i += 3) { a[i] = c.r; a[i + 1] = c.g; a[i + 2] = c.b; }
+  n.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  n.deleteAttribute('uv');
+  return n;
+};
 
 export class WorldMap {
   readonly canvas: HTMLCanvasElement;
   private gl: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(36, 1, 0.5, 600);
+  private camera = new THREE.PerspectiveCamera(36, 1, 0.5, 900);
   private ground: THREE.Mesh;
-  private paintTex: THREE.CanvasTexture | null = null;
   private heights: Float32Array;
   private gw: number; private gh: number;
+  /** The ground as it is painted before anyone holds it, and the sheet the borders are laid over it on. */
+  private base: Uint8ClampedArray;
+  private sheet: HTMLCanvasElement;
+  private paintTex: THREE.CanvasTexture;
+  private seaTex: THREE.CanvasTexture;
   /** Everything that is rebuilt when the campaign changes: towns, armies, names, marks. */
   private pieces = new THREE.Group();
   private people: RealPerson[] = [];
   private flags: THREE.Object3D[] = [];
   private rings: { m: THREE.Mesh; live: boolean }[] = [];
   private bobs: THREE.Object3D[] = [];
+  private smokes: { m: THREE.Mesh; x: number; y: number; z: number; ph: number }[] = [];
+  /** Armies on the march from where they stood to where they now stand. */
+  private movers: { g: THREE.Group; fx: number; fz: number; tx: number; tz: number; t0: number; men: RealPerson[] }[] = [];
+  private stood = new Map<number, { x: number; z: number }>();
   /** Names and numbers, which are drawn larger the farther back the eye stands, so they can still be read. */
   private labels: { s: THREE.Sprite; w: number; h: number }[] = [];
   private clouds: { g: THREE.Group; fall: THREE.Points; kind: string; r: number }[] = [];
+  private cloudMats: THREE.Material[] = [];
+  private puffs: { g: THREE.Group; v: number }[] = [];
+  private flocks: { g: THREE.Group; cx: number; cz: number; r: number; v: number; ph: number }[] = [];
+  private ships: { g: THREE.Group; ph: number; v: number }[] = [];
   private tx = 0; private tz = -2; private dist = 110;
+  private cx = 0; private cz = -2; private cd = 0;
   private clock = new THREE.Clock();
   private fit = 110;
   private moved = false;
@@ -53,7 +72,7 @@ export class WorldMap {
   private last: { sel: number; reach: Set<number> } = { sel: -1, reach: new Set() };
   private textures: THREE.Texture[] = [];
 
-  constructor(private host: HTMLElement, c: Campaign, private cell: Uint8Array, edge: Float32Array, glyphs: Glyph[], private onPick: (tid: number) => void) {
+  constructor(private host: HTMLElement, c: Campaign, private cell: Uint8Array, private edge: Float32Array, private onPick: (tid: number) => void) {
     this.c = c;
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'ow-gl';
@@ -63,89 +82,242 @@ export class WorldMap {
     this.gl.toneMappingExposure = 1.05;
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.scene.background = new THREE.Color(0x101820);
-    this.scene.fog = new THREE.Fog(0x1a2a38, 150, 320);
-    this.scene.add(new THREE.HemisphereLight(0xfff2dc, 0x6a5a48, 1.25));
-    const sun = new THREE.DirectionalLight(0xffe8c8, 2.6);
-    sun.position.set(-46, 70, 34);
+    // A sky that pales to haze at the world's edge, and the same haze over the far sea.
+    const sky = document.createElement('canvas');
+    sky.width = 4; sky.height = 256;
+    const sx = sky.getContext('2d')!, grad = sx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, '#3f6f9c'); grad.addColorStop(0.45, '#8fb2cc'); grad.addColorStop(0.62, '#c3d3dc'); grad.addColorStop(1, '#c3d3dc');
+    sx.fillStyle = grad; sx.fillRect(0, 0, 4, 256);
+    const skyTex = new THREE.CanvasTexture(sky);
+    skyTex.colorSpace = THREE.SRGBColorSpace;
+    this.scene.background = skyTex;
+    this.scene.fog = new THREE.Fog(0xb4c6d2, 150 * S, 420 * S);
+    this.scene.add(new THREE.HemisphereLight(0xfff2dc, 0x6a5a48, 1.15));
+    const sun = new THREE.DirectionalLight(0xffe8c8, 2.7);
+    sun.position.set(-46 * S, 70 * S, 34 * S);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     const sc = sun.shadow.camera;
-    sc.left = -62; sc.right = 62; sc.top = 44; sc.bottom = -44; sc.near = 5; sc.far = 220;
+    sc.left = -64 * S; sc.right = 64 * S; sc.top = 46 * S; sc.bottom = -46 * S; sc.near = 5; sc.far = 240 * S;
     sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.06;
     this.scene.add(sun, sun.target);
 
-    // ---- the lie of the land: a height for every few points of the map ----
+    // ---- the lie of the land, grown from the campaign's seed ----
+    const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
     const gw = (this.gw = Math.floor(MAP_W / STEP) + 1), gh = (this.gh = Math.floor(MAP_H / STEP) + 1);
     const H = (this.heights = new Float32Array(gw * gh));
     for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
       const px = Math.min(MAP_W - 1, i * STEP), py = Math.min(MAP_H - 1, j * STEP), ci = py * MAP_W + px;
-      const t = c.territories[cell[ci]];
-      // The country stands out of the sea: its edge is a ragged shore.
+      const t = c.territories[cell[ci]], dC = Math.hypot(px - t.x, py - t.y);
+      // The coast: a ragged shore with deep bays, though every land keeps firm ground under its town.
       const rim = Math.min(px, py, MAP_W - 1 - px, MAP_H - 1 - py);
-      const shore = smooth(10, 46, rim + (noise(px * 0.02, py * 0.02) - 0.5) * 44 - (t.trait === 'coast' ? 16 : 0));
-      const roll = 0.55 + noise(px * 0.012, py * 0.012) * 0.7 + noise(px * 0.05, py * 0.05) * 0.18;
-      // Mountains where the land is high, clear of the middle where its town and its army stand.
-      const high = t.trait === 'hills' ? 6.2 : t.trait === 'gold' ? 4.2 : 0;
+      const shore = smooth(4, 44, rim + (N(px / 150, py / 150, 2) - 0.5) * 130 + (N(px / 40, py / 40, 3) - 0.5) * 26 - 18 - (t.trait === 'coast' ? 14 : 0));
+      const keep = (1 - smooth(34, 70, dC)) * smooth(2, 24, rim);
+      // Lakes and inland seas lie between the lands, never on a town.
+      const lake = smooth(0.7, 0.8, N(px / 110, py / 110, 5)) * smooth(50, 85, dC);
+      const land = Math.max(shore, keep) * (1 - lake);
+      const { warm, wet } = climateAt(c.seed, px, py);
+      const hot = smooth(0.62, 0.72, warm) * (1 - smooth(0.5, 0.6, wet)), marsh = smooth(0.76, 0.84, wet) * smooth(0.4, 0.46, warm);
+      let roll = 0.5 + N(px / 85, py / 85, 6) * 0.75 + N(px / 20, py / 20, 8) * 0.16;
+      roll += hot * Math.abs(Math.sin((px + py * 0.6) / 13 + N(px / 50, py / 50, 12) * 5)) * 0.3; // dunes
+      roll += (0.2 - roll) * marsh; // fen lies flat and low
+      // Mountain ranges cross the world where the seed puts them, and stand on high ground and gold hills; clear of the towns.
+      const range = Math.min(1.25, smooth(0.56, 0.72, N(px / 170, py / 170, 7)) + (t.trait === 'hills' ? 0.85 : t.trait === 'gold' ? 0.55 : 0) * smooth(4, 34, edge[ci]));
       let m = 0;
-      if (high) {
-        const ridge = 1 - Math.abs(noise(px * 0.035 + 7, py * 0.035 + 3) * 2 - 1);
-        const inside = smooth(5, 34, edge[ci]) * smooth(34, 78, Math.hypot(px - t.x, py - (t.y + 6)));
-        m = inside * (ridge * ridge * high + noise(px * 0.09, py * 0.09) * 0.9);
+      if (range > 0) {
+        const ridge = 1 - Math.abs(N(px / 38 + 7, py / 38 + 3, 9) * 2 - 1);
+        m = range * smooth(30, 74, Math.hypot(px - t.x, py - (t.y + 6))) * (ridge * ridge * ridge * 5.6 + (1 - Math.abs(N(px / 15, py / 15, 13) * 2 - 1)) * ridge * 1.6 + N(px / 9, py / 9, 10) * 0.7);
       }
-      H[j * gw + i] = shore * (roll + m) - (1 - shore) * 1.6;
+      H[j * gw + i] = land * (roll + m) - (1 - land) * 1.6;
     }
+
+    // ---- rivers: from the high ground, by the lowest way, to the sea ----
+    const parent = new Int32Array(gw * gh).fill(-1), level = new Float32Array(gw * gh), seen = new Uint8Array(gw * gh);
+    const heap: number[] = [];
+    const push = (n: number): void => { heap.push(n); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (level[heap[p]] <= level[heap[k]]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+    const pop = (): number => {
+      const top = heap[0], end = heap.pop()!;
+      if (heap.length) { heap[0] = end; let k = 0; for (;;) { const l = k * 2 + 1, r = l + 1; let b = k; if (l < heap.length && level[heap[l]] < level[heap[b]]) b = l; if (r < heap.length && level[heap[r]] < level[heap[b]]) b = r; if (b === k) break; [heap[b], heap[k]] = [heap[k], heap[b]]; k = b; } }
+      return top;
+    };
+    for (let n = 0; n < H.length; n++) if (H[n] <= 0) { seen[n] = 1; level[n] = 0; push(n); }
+    while (heap.length) {
+      const n = pop(), i = n % gw, j = (n - i) / gw;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const a = i + di, b = j + dj;
+        if (a < 0 || b < 0 || a >= gw || b >= gh) continue;
+        const q = b * gw + a;
+        if (seen[q]) continue;
+        seen[q] = 1; parent[q] = n; level[q] = Math.max(level[n], H[q]) + ((di && dj) ? 0.004 : 0); push(q);
+      }
+    }
+    const rivers: number[][] = [], wetGrid = new Uint8Array(gw * gh);
+    for (let k = 0; k < 60 && rivers.length < 7; k++) {
+      const i = 4 + Math.floor(N(k * 3, 1, 60) * (gw - 8)), j = 4 + Math.floor(N(k * 3, 2, 61) * (gh - 8));
+      let n = j * gw + i;
+      if (H[n] < 1.7 || rivers.some((r) => Math.hypot((r[0] % gw) - i, Math.floor(r[0] / gw) - j) < 26)) continue;
+      const path: number[] = [];
+      while (n >= 0 && H[n] > 0 && path.length < 900 && !wetGrid[n]) { path.push(n); n = parent[n]; }
+      if (n >= 0) path.push(n); // the mouth, or the river it runs into
+      if (path.length < 14) continue;
+      for (const q of path) { wetGrid[q] = 1; if (H[q] > 0.12) H[q] = Math.max(0.1, H[q] - 0.22); }
+      rivers.push(path);
+    }
+
     const geo = new THREE.PlaneGeometry(MAP_W * K, MAP_H * K, gw - 1, gh - 1).rotateX(-Math.PI / 2);
-    const pos = geo.getAttribute('position'), col = new Float32Array(pos.count * 3);
-    for (let n = 0; n < pos.count; n++) {
-      const h = H[n];
-      pos.setY(n, h);
-      // Bare rock on the steep high ground, snow on the heads of the mountains, wet sand at the shore.
-      const rock = smooth(2.3, 3.4, h), snow = smooth(4.3, 5.2, h), sand = 1 - smooth(-0.2, 0.5, h);
-      const grass = (1 - rock) * (1 - sand) * 0.14; // a breath of green on the low country
-      const r = 1 + rock * -0.24 + snow * 0.62 - sand * 0.1 - grass, g = 1 + rock * -0.25 + snow * 0.66 - sand * 0.06 + grass * 0.1, b = 1 + rock * -0.22 + snow * 0.8 + sand * 0.02 - grass * 1.3;
-      col[n * 3] = r; col[n * 3 + 1] = g; col[n * 3 + 2] = b;
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const pos = geo.getAttribute('position');
+    for (let n = 0; n < pos.count; n++) pos.setY(n, H[n]);
     geo.computeVertexNormals();
-    this.ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, vertexColors: true }));
+
+    // ---- the paint: what grows on each stretch of ground, the rock and snow of the heights, sand at the shore ----
+    this.sheet = document.createElement('canvas');
+    this.sheet.width = MAP_W; this.sheet.height = MAP_H;
+    const ctx = this.sheet.getContext('2d')!, img = ctx.createImageData(MAP_W, MAP_H), D = img.data, col = [0, 0, 0];
+    const GRASS = [112, 150, 72], FOREST = [74, 114, 60], MARSH = [84, 108, 84], STEPPE = [178, 166, 100], DESERT = [224, 198, 142], SNOW = [238, 242, 246], ROCK = [126, 118, 106], SAND = [216, 202, 152], POOL = [70, 118, 132];
+    for (let py = 0; py < MAP_H; py++) for (let px = 0; px < MAP_W; px++) {
+      const h = this.heightAt(px, py), o = (py * MAP_W + px) * 4;
+      if (h <= 0) {
+        const d = smooth(0, -1.5, h);
+        col[0] = 96 - d * 66; col[1] = 150 - d * 82; col[2] = 158 - d * 66;
+      } else {
+        const { warm, wet } = climateAt(c.seed, px, py);
+        const cold = 1 - smooth(0.27, 0.35, warm), hot = smooth(0.62, 0.72, warm) * (1 - smooth(0.5, 0.6, wet)), dry = 1 - smooth(0.4, 0.5, wet);
+        const marsh = smooth(0.76, 0.84, wet) * smooth(0.4, 0.46, warm);
+        col[0] = GRASS[0]; col[1] = GRASS[1]; col[2] = GRASS[2];
+        mix3(col, FOREST, smooth(0.56, 0.68, wet) * 0.85);
+        mix3(col, MARSH, marsh);
+        if (marsh > 0.5 && N(px / 7, py / 7, 31) > 0.66) mix3(col, POOL, 0.8);
+        mix3(col, STEPPE, dry);
+        mix3(col, DESERT, hot);
+        mix3(col, SNOW, cold);
+        const hx = this.heightAt(px + 3, py) - this.heightAt(px - 3, py), hy = this.heightAt(px, py + 3) - this.heightAt(px, py - 3);
+        const slope = Math.hypot(hx, hy);
+        mix3(col, ROCK, Math.max(smooth(2.1, 3.2, h), smooth(0.55, 1.0, slope)) * smooth(0.5, 0.9, h));
+        const line = 4.5 - cold * 3.2 - (1 - warm) * 0.8; // the snow lies lower in cold country
+        mix3(col, SNOW, smooth(line, line + 0.8, h));
+        mix3(col, SAND, (1 - smooth(0.08, 0.42, h)) * (1 - cold));
+        if (h < 0.07) mix3(col, [236, 240, 236], 0.5); // surf
+        // Light from the north-west picks out every slope.
+        const k = (0.93 + N(px / 6, py / 6, 33) * 0.14) * Math.min(1.25, Math.max(0.62, 1 - (hx + hy) * 0.3));
+        col[0] *= k; col[1] *= k; col[2] *= k;
+      }
+      D[o] = col[0]; D[o + 1] = col[1]; D[o + 2] = col[2]; D[o + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    // Rivers, widening as they run down.
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const path of rivers) {
+      for (const [tone, extra] of [['rgba(40,70,60,0.35)', 2.4], ['#5c9cb8', 0]] as [string, number][]) {
+        ctx.strokeStyle = tone;
+        for (let k = 1; k < path.length - 1; k++) {
+          const p = (q: number): [number, number] => [(path[q] % gw) * STEP, Math.floor(path[q] / gw) * STEP];
+          const [ax, ay] = p(k - 1), [bx, by] = p(k), [cx2, cy2] = p(k + 1);
+          ctx.lineWidth = 1.4 + (k / path.length) * 3.4 + extra;
+          ctx.beginPath(); ctx.moveTo((ax + bx) / 2, (ay + by) / 2); ctx.quadraticCurveTo(bx, by, (bx + cx2) / 2, (by + cy2) / 2); ctx.stroke();
+        }
+      }
+    }
+    this.base = ctx.getImageData(0, 0, MAP_W, MAP_H).data;
+    this.paintTex = new THREE.CanvasTexture(this.sheet);
+    this.paintTex.colorSpace = THREE.SRGBColorSpace;
+    this.paintTex.anisotropy = 8;
+    this.ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, map: this.paintTex }));
     this.ground.receiveShadow = true;
     this.ground.castShadow = true;
     this.scene.add(this.ground);
-    // The sea all round, and the table it lies on far below.
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(520, 420).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2f6a86, roughness: 0.35, metalness: 0.1, transparent: true, opacity: 0.95 }));
-    sea.position.y = 0;
+
+    // ---- the sea, running; and its bed far below ----
+    const wave = document.createElement('canvas');
+    wave.width = wave.height = 128;
+    const wx = wave.getContext('2d')!, wimg = wx.createImageData(128, 128);
+    for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+      const a = (x / 128) * 6.2832, b = (y / 128) * 6.2832;
+      const v = 128 + 60 * Math.sin(a * 3 + Math.sin(b * 2) * 1.6) + 50 * Math.sin(b * 5 + Math.sin(a * 2) * 1.2) + 17 * Math.sin((a + b) * 9);
+      wimg.data.set([v, v, v, 255], (y * 128 + x) * 4);
+    }
+    wx.putImageData(wimg, 0, 0);
+    this.seaTex = new THREE.CanvasTexture(wave);
+    this.seaTex.wrapS = this.seaTex.wrapT = THREE.RepeatWrapping;
+    this.seaTex.repeat.set(70, 70);
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2c6f8e, roughness: 0.28, metalness: 0.15, transparent: true, opacity: 0.84, bumpMap: this.seaTex, bumpScale: 0.9 }));
     sea.receiveShadow = true;
-    const bed = new THREE.Mesh(new THREE.PlaneGeometry(520, 420).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1c3e52, roughness: 1 }));
+    const bed = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1c3e52, roughness: 1 }));
     bed.position.y = -1.7;
     this.scene.add(sea, bed);
 
-    // ---- woods: small trees wherever the chart marks them ----
-    const firs: THREE.Matrix4[] = [], rounds: THREE.Matrix4[] = [], mt = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sv = new THREE.Vector3();
-    for (const gph of glyphs) {
-      if (gph.kind !== 'tree' && gph.kind !== 'fir') continue;
-      for (let k = 0; k < 7; k++) {
-        const px = gph.x + (hash(gph.x + k, gph.y) - 0.5) * 34, py = gph.y + (hash(gph.x, gph.y + k * 3) - 0.5) * 30;
-        if (px < 4 || py < 4 || px > MAP_W - 4 || py > MAP_H - 4) continue;
-        const h = this.heightAt(px, py);
-        if (h < 0.35 || h > 2.4) continue;
-        const s = 0.55 + hash(px, py) * 0.5;
-        mt.compose(v.set(WX(px), h, WZ(py)), q, sv.set(s, s * (0.9 + hash(py, px) * 0.5), s));
-        (gph.kind === 'fir' ? firs : rounds).push(mt.clone());
+    // ---- what grows: fir in the cold and the high wet, broadleaf in green country, palm in the heat, stone in the dry ----
+    const lists: Record<string, { m: THREE.Matrix4; c: THREE.Color }[]> = { fir: [], round: [], palm: [], rock: [] };
+    const mt = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sv = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    for (let gy = 5; gy < MAP_H - 4; gy += 7) for (let gx = 5; gx < MAP_W - 4; gx += 7) {
+      const r = (k: number): number => landNoise(gx, gy, sd + 70 + k); // whole numbers in: plain chance out
+      const px = gx + (r(0) - 0.5) * 6, py = gy + (r(1) - 0.5) * 6, h = this.heightAt(px, py);
+      if (h < 0.3 || h > 2.7) continue;
+      const t = c.territories[cell[Math.floor(py) * MAP_W + Math.floor(px)]];
+      if (Math.hypot(px - (t.x - 6), py - (t.y + 4)) < 44) continue; // room for the town, the army and their names
+      if (wetGrid[Math.round(py / STEP) * gw + Math.round(px / STEP)]) continue;
+      const { warm, wet } = climateAt(c.seed, px, py);
+      const cold = 1 - smooth(0.27, 0.35, warm), hot = smooth(0.62, 0.72, warm) * (1 - smooth(0.5, 0.6, wet)), dry = (1 - smooth(0.4, 0.5, wet)) * (1 - cold), woods = smooth(0.56, 0.68, wet);
+      const clump = smooth(0.52, 0.66, N(px / 55, py / 55, 41));
+      const trees = Math.max(0.1 + clump * 0.5, woods * 0.92) * (1 - dry * 0.94) * (1 - hot) + hot * 0.02 + cold * 0.12 * clump;
+      const s = 0.55 + r(3) * 0.55;
+      q.setFromAxisAngle(up, r(4) * 6.28);
+      if (r(2) < trees) {
+        const kind = hot > 0.5 ? 'palm' : cold > 0.4 || warm < 0.46 || (h > 1.5 && r(5) < 0.6) ? 'fir' : 'round';
+        mt.compose(v.set(WX(px), h - 0.03, WZ(py)), q, sv.set(s, s * (0.9 + r(6) * 0.5), s));
+        const tone = new THREE.Color(1, 1, 1).multiplyScalar(0.8 + r(7) * 0.35);
+        if (kind === 'fir' && cold > 0.5) tone.lerp(new THREE.Color(2.4, 2.6, 2.7), 0.45 + r(8) * 0.3); // snow on the boughs
+        if (kind === 'round' && r(8) < 0.07) tone.multiply(new THREE.Color(1.7, 0.9, 0.4)); // one turning early
+        lists[kind].push({ m: mt.clone(), c: tone });
+      } else if (r(2) > 1 - (dry * 0.05 + hot * 0.05 + smooth(1.6, 2.4, h) * 0.2)) {
+        mt.compose(v.set(WX(px), h, WZ(py)), q, sv.set(s * 0.8, s * 0.55, s * 0.7));
+        lists.rock.push({ m: mt.clone(), c: new THREE.Color(1, 1, 1).multiplyScalar(0.75 + r(7) * 0.4) });
       }
     }
-    const stand = (g: THREE.BufferGeometry, color: number, list: THREE.Matrix4[]): void => {
-      if (!list.length) return;
-      const im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true }), list.length);
-      list.forEach((m, i) => im.setMatrixAt(i, m));
+    const trunk = (hgt: number, rad: number): THREE.BufferGeometry => tinted(new THREE.CylinderGeometry(rad * 0.7, rad, hgt, 5).translate(0, hgt / 2, 0), 0x5a4028);
+    const shapes: Record<string, THREE.BufferGeometry> = {
+      fir: mergeGeometries([trunk(0.4, 0.08), tinted(new THREE.ConeGeometry(0.44, 0.9, 6).translate(0, 0.8, 0), 0x35583a), tinted(new THREE.ConeGeometry(0.3, 0.75, 6).translate(0, 1.35, 0), 0x3d6240)])!,
+      round: mergeGeometries([trunk(0.55, 0.09), tinted(new THREE.IcosahedronGeometry(0.52, 0).translate(0, 0.95, 0), 0x55803a), tinted(new THREE.IcosahedronGeometry(0.34, 0).translate(0.26, 1.3, 0.1), 0x5f8c40)])!,
+      palm: mergeGeometries([trunk(1.3, 0.07), tinted(new THREE.IcosahedronGeometry(0.5, 0).scale(1, 0.28, 1).translate(0, 1.36, 0), 0x5d8a3a), tinted(new THREE.ConeGeometry(0.62, 0.3, 6).translate(0, 1.22, 0), 0x4f7a34)])!,
+      rock: tinted(new THREE.DodecahedronGeometry(0.42, 0).translate(0, 0.14, 0), 0x8f8674),
+    };
+    for (const [kind, list] of Object.entries(lists)) {
+      if (!list.length) continue;
+      const im = new THREE.InstancedMesh(shapes[kind], new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true, vertexColors: true }), list.length);
+      list.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
       im.castShadow = true; im.receiveShadow = true;
       this.scene.add(im);
-    };
-    stand(new THREE.ConeGeometry(0.42, 1.5, 6).translate(0, 0.85, 0), 0x3f5e3a, firs);
-    stand(new THREE.IcosahedronGeometry(0.55, 0).translate(0, 0.75, 0), 0x5c7a3c, rounds);
+    }
 
-    // ---- the weather: a bank of cloud for each front, and what falls from it ----
+    // ---- the sky: fair-weather cloud that drifts over and shades the land, and a bank for each weather front ----
+    for (let k = 0; k < 9; k++) {
+      const g = this.puff(0xffffff, 0.8, (3.5 + hash(k, 5) * 4) * S);
+      g.position.set((hash(k, 6) - 0.5) * MAP_W * K * 1.3, (15 + hash(k, 7) * 4) * S, (hash(k, 8) - 0.5) * MAP_H * K * 1.2);
+      this.scene.add(g);
+      this.puffs.push({ g, v: 0.5 + hash(k, 9) * 0.7 });
+    }
     for (const f of frontsOf(c)) this.addCloud(f.kind, f.r * K, WX(f.x), WZ(f.y));
+
+    // ---- life: birds wheeling over the land, ships passing on the sea ----
+    const wing = new THREE.BufferGeometry();
+    wing.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0.12, -0.5, 0.2, 0, 0, 0, -0.12, 0, 0, 0.12, 0, 0, -0.12, 0.5, 0.2, 0]), 3));
+    const feather = new THREE.MeshBasicMaterial({ color: 0x1c1c22, side: THREE.DoubleSide });
+    for (let k = 0; k < 4; k++) {
+      const g = new THREE.Group();
+      for (let b = 0; b < 5; b++) { const m = new THREE.Mesh(wing, feather); m.position.set(Math.abs(b - 2) * -0.9, 0, (b - 2) * 0.8); m.rotation.y = Math.PI / 2; m.userData.ph = b * 1.3; g.add(m); }
+      this.scene.add(g);
+      this.flocks.push({ g, cx: (hash(k, 11) - 0.5) * MAP_W * K * 0.7, cz: (hash(k, 12) - 0.5) * MAP_H * K * 0.6, r: (7 + hash(k, 13) * 9) * S, v: (0.16 + hash(k, 14) * 0.1) * (k % 2 ? 1 : -1), ph: k * 1.7 });
+    }
+    const hullM = new THREE.MeshStandardMaterial({ color: 0x5a3c22, roughness: 0.9, flatShading: true }), sailM = new THREE.MeshStandardMaterial({ color: 0xf2e8d0, roughness: 0.9, side: THREE.DoubleSide });
+    for (let k = 0; k < 4; k++) {
+      const g = new THREE.Group();
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.5), hullM); hull.position.y = 0.12;
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 5), hullM); mast.position.y = 0.85;
+      const sail = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.8), sailM); sail.position.set(0.02, 0.95, 0); sail.rotation.y = Math.PI / 2 - 0.5;
+      g.add(hull, mast, sail);
+      g.traverse((o) => { o.castShadow = true; });
+      this.scene.add(g);
+      this.ships.push({ g, ph: k * 1.57 + hash(k, 21), v: (0.012 + hash(k, 22) * 0.01) * (k % 2 ? 1 : -1) });
+    }
 
     this.scene.add(this.pieces);
     loadPeople(() => this.sync(this.c, this.last.sel, this.last.reach));
@@ -159,8 +331,8 @@ export class WorldMap {
       if (Math.hypot(dx, dy) > 5) { dragged = true; this.moved = true; }
       if (!dragged) return;
       const k = (this.dist * 1.25) / Math.max(200, this.canvas.clientHeight);
-      this.tx = Math.min(50, Math.max(-50, down.tx - dx * k));
-      this.tz = Math.min(30, Math.max(-30, down.tz - dy * k * 1.3));
+      this.tx = Math.min(56 * S, Math.max(-56 * S, down.tx - dx * k));
+      this.tz = Math.min(38 * S, Math.max(-32 * S, down.tz - dy * k * 1.3));
     });
     this.canvas.addEventListener('pointerup', (e) => {
       const was = down; down = null;
@@ -173,7 +345,7 @@ export class WorldMap {
       const px = Math.round((hit.point.x + (MAP_W * K) / 2) / K), py = Math.round((hit.point.z + (MAP_H * K) / 2) / K);
       if (px >= 0 && py >= 0 && px < MAP_W && py < MAP_H) this.onPick(this.cell[py * MAP_W + px]);
     });
-    this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); this.moved = true; this.dist = Math.min(this.fit * 1.1, Math.max(22, this.dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: false });
+    this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); this.moved = true; this.dist = Math.min(this.fit * 1.1, Math.max(20, this.dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: false });
     host.appendChild(this.canvas);
     new ResizeObserver(() => this.resize()).observe(host);
     this.resize();
@@ -195,16 +367,41 @@ export class WorldMap {
     return (H[j * w + i] * (1 - fx) + H[j * w + i + 1] * fx) * (1 - fy) + (H[(j + 1) * w + i] * (1 - fx) + H[(j + 1) * w + i + 1] * fx) * fy;
   }
 
-  /** Lay the painted chart over the ground. */
-  setSheet(sheet: HTMLCanvasElement): void {
-    if (!this.paintTex) {
-      this.paintTex = new THREE.CanvasTexture(sheet);
-      this.paintTex.colorSpace = THREE.SRGBColorSpace;
-      this.paintTex.anisotropy = 8;
-      (this.ground.material as THREE.MeshStandardMaterial).map = this.paintTex;
-      (this.ground.material as THREE.MeshStandardMaterial).needsUpdate = true;
+  /** Lay the borders over the painted ground: each land edged in the colour of whoever holds it, the chosen land lit, marauder country darkened. */
+  private repaint(c: Campaign, sel: number, reach: Set<number>): void {
+    const ctx = this.sheet.getContext('2d')!, img = ctx.createImageData(MAP_W, MAP_H), D = img.data, B = this.base, cell = this.cell, edge = this.edge;
+    const tint = c.territories.map((t) => { const col = t.owner >= 0 ? c.factions[t.owner].color : -1; return [col >> 16 & 255, col >> 8 & 255, col & 255, col < 0 ? 0 : 1, t.horde && t.owner < 0 ? 1 : 0, t.id === sel ? 1 : 0, reach.has(t.id) ? (t.owner === 0 ? 1 : 2) : 0]; });
+    for (let i = 0, o = 0; i < cell.length; i++, o += 4) {
+      let r = B[o], g = B[o + 1], b = B[o + 2];
+      const t = tint[cell[i]], e = edge[i], seaHere = b > g && b > r + 30; // open water keeps its own colour
+      if (!seaHere) {
+        if (t[4]) { r *= 0.5; g *= 0.47; b *= 0.45; }
+        if (t[5]) { r += (255 - r) * 0.13; g += (255 - g) * 0.13; b += (255 - b) * 0.1; }
+        if (t[6] === 1) { r += (255 - r) * 0.1; g += (255 - g) * 0.1; b += (255 - b) * 0.1; } else if (t[6] === 2) { r += (230 - r) * 0.12; g *= 0.93; b *= 0.92; }
+        if (t[3]) { const k = 0.05 + 0.62 * (1 - Math.min(1, e / 15)) ** 1.6; r += (t[0] - r) * k; g += (t[1] - g) * k; b += (t[2] - b) * k; }
+        if (e < 1.7) { const k = t[3] ? 0.55 : 0.72; r *= k; g *= k; b *= k; }
+      } else if (e < 1.2) { r *= 0.9; g *= 0.9; b *= 0.9; }
+      D[o] = r; D[o + 1] = g; D[o + 2] = b; D[o + 3] = 255;
     }
+    ctx.putImageData(img, 0, 0);
     this.paintTex.needsUpdate = true;
+  }
+
+  /** A bank of cloud, with the shadow it throws. */
+  private puff(tone: number, opacity: number, r: number): THREE.Group {
+    const mat = new THREE.MeshLambertMaterial({ color: tone, transparent: true, opacity, depthWrite: false });
+    mat.userData.full = opacity; this.cloudMats.push(mat);
+    const g = new THREE.Group(), lobe = new THREE.IcosahedronGeometry(1, 2);
+    for (let k = 0; k < 7; k++) {
+      const m = new THREE.Mesh(lobe, mat), a = k * 0.9, d = r * (0.1 + (k % 4) * 0.2);
+      m.position.set(Math.cos(a) * d, (k % 3) * 0.4, Math.sin(a) * d * 0.7);
+      m.scale.set(r * 0.42, r * 0.16, r * 0.34);
+      g.add(m);
+    }
+    const shade = new THREE.Mesh(new THREE.CircleGeometry(r * 1.1, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0a1018, transparent: true, opacity: 0.16, depthWrite: false }));
+    shade.position.set(r * 0.6, 0, -r * 0.3); shade.renderOrder = 2; shade.userData.shade = true;
+    g.add(shade);
+    return g;
   }
 
   private resize(): void {
@@ -215,8 +412,9 @@ export class WorldMap {
     this.camera.updateProjectionMatrix();
     // Far enough back to take in the whole country, the first time and whenever the window changes shape.
     const half = Math.tan((this.camera.fov * Math.PI) / 360);
-    this.fit = Math.max(63 / (half * this.camera.aspect), 38 / half);
+    this.fit = Math.max((60 * S) / (half * this.camera.aspect), (36 * S) / half);
     if (!this.moved) this.dist = this.fit;
+    if (!this.cd) this.cd = this.fit * 1.7; // the eye comes down out of the sky the first time
   }
 
   private sprite(draw: (x: CanvasRenderingContext2D, w: number, h: number) => void, w: number, h: number, scale: number): THREE.Sprite {
@@ -236,6 +434,7 @@ export class WorldMap {
   private addCloud(kind: string, r: number, x: number, z: number): void {
     const tone = kind === 'rain' ? 0x8a94a6 : kind === 'snow' ? 0xf2f5fa : 0xc09a66;
     const mat = new THREE.MeshLambertMaterial({ color: tone, transparent: true, opacity: 0.72, depthWrite: false });
+    mat.userData.full = 0.72; this.cloudMats.push(mat);
     const g = new THREE.Group(), lobe = new THREE.IcosahedronGeometry(1, 2);
     for (let k = 0; k < 11; k++) {
       const m = new THREE.Mesh(lobe, mat), a = k * 0.9;
@@ -266,7 +465,10 @@ export class WorldMap {
     for (const t of this.textures) t.dispose();
     this.textures = [];
     this.pieces.clear();
-    this.people = []; this.flags = []; this.rings = []; this.bobs = []; this.labels = [];
+    this.people = []; this.flags = []; this.rings = []; this.bobs = []; this.labels = []; this.smokes = []; this.movers = [];
+    this.repaint(c, sel, reach);
+    const smokeM = new THREE.MeshBasicMaterial({ color: 0xe8e4dc, transparent: true, opacity: 0.5, depthWrite: false }), smokeG = new THREE.SphereGeometry(0.3, 7, 5);
+    const live = new Set<number>();
     const solid = (color: number): THREE.MeshStandardMaterial => new THREE.MeshStandardMaterial({ color, roughness: 0.85, flatShading: true });
     const stone = solid(0xd9cdb2), roof = solid(0x9a4a34), wood = solid(0x6a4a2c), thatch = solid(0xc8a858);
     const add = (g: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D): THREE.Mesh => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o; };
@@ -313,6 +515,8 @@ export class WorldMap {
         const r = add(new THREE.ConeGeometry(0.62, 0.42, 4), b === 'barracks' ? roof : thatch, hx, hy + 0.7, hz, town); r.rotation.y = Math.PI / 4;
       });
       this.pieces.add(town);
+      // Hearth-smoke over every place that is lived in.
+      if (t.owner >= 0 && (t.capital >= 0 || t.buildings.length)) for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(smokeG, smokeM.clone()); this.pieces.add(m); this.smokes.push({ m, x: X - 3.4, y: y + (t.capital >= 0 ? 4.2 : 1.6), z: Z - 0.8, ph: k / 3 + t.id * 0.37 }); }
 
       // Its name, standing over it.
       const big = t.capital >= 0;
@@ -349,8 +553,9 @@ export class WorldMap {
       const n = a ? armySize(a) : t.owner < 0 ? t.militia : 0;
       if (!n) continue;
       const color = a ? c.factions[a.owner].color : t.horde ? 0x2a2420 : LOCALS.color;
-      const piece = new THREE.Group();
-      piece.position.set(X + 0.8, y, Z + 1.8);
+      const holder = new THREE.Group(), piece = new THREE.Group(), men: RealPerson[] = [];
+      holder.position.set(X + 0.8, y, Z + 1.8);
+      holder.add(piece);
       piece.scale.setScalar(1.6);
       const base = add(new THREE.CylinderGeometry(a ? 1.25 : 0.95, a ? 1.38 : 1.05, 0.28, 28), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }), 0, 0.14, 0, piece);
       base.receiveShadow = true;
@@ -370,7 +575,7 @@ export class WorldMap {
             made.g.traverse((o) => { o.castShadow = true; });
             piece.add(made.g);
             play(made.real, 'Idle_Loop', 1);
-            this.people.push(made.real);
+            this.people.push(made.real); men.push(made.real);
           } else {
             add(new THREE.CylinderGeometry(0.16, 0.26, 1.2, 8), solid(color), px, 0.88, pz, piece);
             add(new THREE.SphereGeometry(0.2, 10, 8), solid(0xe0b890), px, 1.66, pz, piece);
@@ -386,7 +591,14 @@ export class WorldMap {
           flagOn(piece, -0.75, 0.28, -0.35, 0x121010, 1.4);
         }
       }
-      this.pieces.add(piece);
+      this.pieces.add(holder);
+      // An army that stood elsewhere a moment ago marches here over the ground.
+      if (a) {
+        live.add(a.id);
+        const was = this.stood.get(a.id), tx = holder.position.x, tz = holder.position.z;
+        if (was && Math.hypot(was.x - tx, was.z - tz) > 1) { this.movers.push({ g: holder, fx: was.x, fz: was.z, tx, tz, t0: this.clock.elapsedTime, men }); holder.position.set(was.x, holder.position.y, was.z); holder.rotation.y = Math.atan2(tx - was.x, tz - was.z); for (const m of men) play(m, 'Walk_Loop', 1); }
+        this.stood.set(a.id, { x: tx, z: tz });
+      }
       // Its numbers, on a shield in its colour that always faces whoever is looking.
       const shield = this.sprite((x, w, h) => {
         x.beginPath(); x.moveTo(8, 8); x.lineTo(w - 8, 8); x.lineTo(w - 8, h * 0.5); x.quadraticCurveTo(w - 12, h * 0.82, w / 2, h - 6); x.quadraticCurveTo(12, h * 0.82, 8, h * 0.5); x.closePath();
@@ -394,18 +606,53 @@ export class WorldMap {
         x.font = '700 50px Georgia, serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 7; x.strokeStyle = 'rgba(0,0,0,0.6)'; x.strokeText(String(n), w / 2, h * 0.45); x.fillStyle = '#fff'; x.fillText(String(n), w / 2, h * 0.45);
         if (a?.hero) { x.font = '34px serif'; x.fillStyle = '#f6d860'; x.strokeStyle = '#3a2c18'; x.lineWidth = 5; x.strokeText('♛', w / 2, 2); }
       }, 96, 112, a ? 2.5 : 1.9);
-      shield.position.set(X + 3.9, y + (a ? 2.2 : 1.6), Z + 2.8);
-      this.pieces.add(shield);
+      shield.position.set(3.1, a ? 2.2 : 1.6, 1);
+      shield.userData.keep = true;
+      holder.add(shield);
     }
+    for (const id of [...this.stood.keys()]) if (!live.has(id)) this.stood.delete(id);
   }
 
   private frame(): void {
     const dt = Math.min(0.1, this.clock.getDelta()), now = this.clock.elapsedTime;
-    const pitch = 0.92;
-    this.camera.position.set(this.tx, Math.sin(pitch) * this.dist, this.tz + Math.cos(pitch) * this.dist);
-    this.camera.lookAt(this.tx, 0, this.tz);
-    const grow = Math.min(1.6, Math.max(1, this.dist / 62));
+    // The eye follows the hand smoothly, and looks more across the land the closer it comes.
+    const ease = Math.min(1, dt * 6);
+    this.cx += (this.tx - this.cx) * ease; this.cz += (this.tz - this.cz) * ease; this.cd += (this.dist - this.cd) * Math.min(1, dt * 3.2);
+    const pitch = 0.6 + 0.36 * smooth(30, this.fit, this.cd);
+    this.camera.position.set(this.cx, Math.sin(pitch) * this.cd, this.cz + Math.cos(pitch) * this.cd);
+    this.camera.lookAt(this.cx, 0, this.cz);
+    const grow = Math.min(1.9, Math.max(0.8, this.cd / 62));
     for (const l of this.labels) l.s.scale.set(l.w * grow, l.h * grow, 1);
+    // The sea runs; cloud drifts east; birds wheel; ships go round the coast; smoke rises.
+    this.seaTex.offset.set(now * 0.006, now * 0.004);
+    // Cloud thins as the eye comes down through it, so it never hides the ground being looked at.
+    const thin = 0.25 + 0.75 * smooth(30, 80, this.cd);
+    for (const m of this.cloudMats) m.opacity = (m.userData.full as number) * thin;
+    const wide = MAP_W * K * 0.75;
+    for (const p of this.puffs) { p.g.position.x += p.v * dt; if (p.g.position.x > wide) p.g.position.x = -wide; for (const o of p.g.children) if (o.userData.shade) o.position.y = 1.6 - p.g.position.y; }
+    for (const f of this.flocks) {
+      const a = now * f.v + f.ph;
+      f.g.position.set(f.cx + Math.cos(a) * f.r, 9 + Math.sin(now * 0.4 + f.ph) * 1.2, f.cz + Math.sin(a) * f.r);
+      f.g.rotation.y = -a + (f.v > 0 ? -Math.PI / 2 : Math.PI / 2) + Math.PI / 2;
+      for (const b of f.g.children) b.scale.y = Math.sin(now * 7 + (b.userData.ph as number)) * 1.4;
+    }
+    for (const sh of this.ships) {
+      const a = now * sh.v + sh.ph;
+      sh.g.position.set(Math.cos(a) * (MAP_W * K * 0.5 + 5), Math.sin(now * 1.4 + sh.ph) * 0.04, Math.sin(a) * (MAP_H * K * 0.5 + 4));
+      sh.g.rotation.y = -a + (sh.v > 0 ? -Math.PI / 2 : Math.PI / 2);
+    }
+    for (const sm of this.smokes) {
+      const k = (now * 0.22 + sm.ph) % 1;
+      sm.m.position.set(sm.x + k * 1.1, sm.y + k * 3.4, sm.z);
+      sm.m.scale.setScalar(0.6 + k * 1.6);
+      (sm.m.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - k) * Math.min(1, k * 6);
+    }
+    for (let i = this.movers.length - 1; i >= 0; i--) {
+      const m = this.movers[i], k = Math.min(1, (now - m.t0) / 1.6), e = k * k * (3 - 2 * k);
+      const x = m.fx + (m.tx - m.fx) * e, z = m.fz + (m.tz - m.fz) * e;
+      m.g.position.set(x, Math.max(0.2, this.heightAt((x + (MAP_W * K) / 2) / K, (z + (MAP_H * K) / 2) / K)), z);
+      if (k >= 1) { m.g.rotation.y = 0; for (const p of m.men) play(p, 'Idle_Loop', 1); this.movers.splice(i, 1); }
+    }
     for (const p of this.people) p.mixer.update(dt);
     for (const f of this.flags) f.rotation.y = Math.sin(now * 2.2 + f.position.x) * 0.35 - 0.2;
     for (const r of this.rings) if (r.live) { const k = (now * 0.8) % 1; r.m.scale.setScalar(0.85 + k * 0.45); (r.m.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - k); }
