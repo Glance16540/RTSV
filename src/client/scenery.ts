@@ -2,6 +2,7 @@
 // falls away under moving water, scattered grass, stones and flowers, and cloud shadows drifting over.
 
 import * as THREE from 'three';
+import { bush } from './flora';
 import { Climate, T_DIRT, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../sim/map';
 
 /** Repeatable noise in [0, 1): the same land is drawn the same way every time. */
@@ -454,8 +455,9 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
   blade.translate(0, 0.1, 0);
   const tuft = new THREE.BufferGeometry();
   const bp: number[] = [], bn: number[] = [];
-  for (const [ox, oz, lean] of [[0, 0, 0], [0.06, 0.03, 0.4], [-0.05, 0.05, -0.45]]) {
+  for (const [ox, oz, lean, tall] of [[0, 0, 0, 1.25], [0.06, 0.03, 0.4, 1], [-0.05, 0.05, -0.45, 0.9], [0.02, -0.06, 0.25, 0.7], [-0.03, -0.04, -0.3, 1.1]]) {
     const b2 = blade.clone().toNonIndexed();
+    b2.scale(1, tall, 1); b2.rotateY(ox * 40);
     b2.rotateZ(lean); b2.translate(ox, 0, oz);
     bp.push(...(b2.getAttribute('position').array as Float32Array));
     bn.push(...(b2.getAttribute('normal').array as Float32Array).map((_, i) => (i % 3 === 1 ? 1 : 0))); // lit from above, like the ground
@@ -519,7 +521,7 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
           if (h < (climate === 'steppe' ? 0.03 : 0.045)) {
             const s2 = 1 + h3 * 1.1;
             put(bushes, px2, py2, 0.06 * s2, h2 * 6.28, s2, s2 * (0.6 + h2 * 0.35), s2 * (0.8 + h * 4));
-            bushCol.push(climate === 'steppe' ? new THREE.Color().setHSL(0.13 + h3 * 0.05, 0.45, 0.2 + h2 * 0.08) : climate === 'snow' ? new THREE.Color().setHSL(0.3, 0.3, 0.14 + h2 * 0.06) : new THREE.Color().setHSL(0.28 + h3 * 0.07, 0.62, 0.1 + h2 * 0.07));
+            bushCol.push(climate === 'desert' ? new THREE.Color().setHSL(0.17 + h3 * 0.05, 0.4, 0.17 + h2 * 0.07) : climate === 'steppe' ? new THREE.Color().setHSL(0.13 + h3 * 0.05, 0.45, 0.2 + h2 * 0.08) : climate === 'snow' ? new THREE.Color().setHSL(0.3, 0.3, 0.14 + h2 * 0.06) : new THREE.Color().setHSL(0.27 + h3 * 0.05, 0.62, 0.12 + h2 * 0.06));
           } else if (!climate || climate === 'temperate') {
             if (h > 0.992) { q.setFromAxisAngle(up, h2 * 6.28); logs.push(new THREE.Matrix4().compose(v3.set(px2, heightAt(px2, py2) + 0.06, py2), q, sc.set(1, 1, 0.8 + h3 * 0.8))); }
             else if (h > 0.98 && field(shade, x + 0.5, y + 0.5) > 0.1) for (let k = 0; k < 4; k++) put(caps, px2 + Math.cos(k * 1.7 + h * 6) * 0.14, py2 + Math.sin(k * 1.7 + h * 6) * 0.14, 0, 0, 0.7 + k * 0.15, 0.7 + k * 0.15, 0.7 + k * 0.15);
@@ -542,9 +544,7 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       out.setAttribute('normal', new THREE.Float32BufferAttribute(nn, 3));
       return out;
     };
-    const bushG = jag(new THREE.IcosahedronGeometry(0.2, 1), 0.35, 3);
-    bushG.scale(1, 0.8, 1); bushG.translate(0, 0.1, 0);
-    scatter(bushG, lamb(0xffffff), bushes, bushCol, true);
+    scatter(bush(3), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true, vertexColors: true }), bushes, bushCol, true);
     scatter(jag(new THREE.IcosahedronGeometry(0.24, 1), 0.4, 9), lamb(0xffffff), boulders, boulderCol, true);
     // A clump of reeds: five stems leaning apart, two with a dark head.
     const stems: THREE.BufferGeometry[] = [];

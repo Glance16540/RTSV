@@ -1,6 +1,7 @@
 // Procedural low-poly models for units, buildings and resources.
 
 import * as THREE from 'three';
+import { bush } from './flora';
 import { BUILDINGS } from '../sim/data';
 import { Gender } from '../sim/game';
 import { generatedModel } from './assets';
@@ -1891,8 +1892,12 @@ export function makeResource(type: string, seed: number): THREE.Group {
       dot(f, geo('fishtail', () => new THREE.ConeGeometry(0.035, 0.07, 4).rotateX(-Math.PI / 2)), 0x8a9aa8, 0, 0, -0.07);
     }
   } else if (type === 'berries') {
-    const b = ball(g, 0.36, 0x3e7a34, 0, 0.26, 0);
-    b.scale.y = 0.75;
+    // A thicket of leaf clusters, with the fruit showing among them.
+    const bm = new THREE.MeshToonMaterial({ color: 0x3e8a38, vertexColors: true });
+    const b = new THREE.Mesh(geo('berrybush' + (seed % 3), () => bush(20 + (seed % 3)).scale(2.1, 2.0, 2.1)), bm);
+    b.castShadow = b.receiveShadow = true;
+    b.rotation.y = r(3) * 6.28;
+    g.add(b);
     for (let i = 0; i < 6; i++) {
       const a = r(i) * 6.28;
       ball(g, 0.06, 0xd0304a, Math.cos(a) * 0.26, 0.3 + r(i + 9) * 0.18, Math.sin(a) * 0.26).castShadow = false;

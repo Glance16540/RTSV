@@ -10,6 +10,7 @@ import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
+import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
 
@@ -48,7 +49,7 @@ export class Renderer {
   private unitViews = new Map<number, UnitView>();
   private buildingViews = new Map<number, THREE.Group>();
   private resViews = new Map<number, THREE.Group>();
-  private treeIndex = new Map<number, number>();
+  private treeIndex = new Map<number, { ims: THREE.InstancedMesh[]; i: number }>();
   /** Every instanced part of the forest; a felled tree is hidden in each. */
   private forest: THREE.InstancedMesh[] = [];
   private scenery!: Scenery;
@@ -174,57 +175,59 @@ export class Renderer {
 
   private buildTrees(): void {
     const trees = this.game.resources.filter((r) => r.type === 'tree');
-    const trunkG = new THREE.CylinderGeometry(0.06, 0.11, 0.6, 6);
-    trunkG.translate(0, 0.3, 0);
-    const skirtG = new THREE.ConeGeometry(0.5, 0.9, 7);
-    skirtG.translate(0, 0.8, 0);
-    const topG = new THREE.ConeGeometry(0.34, 0.85, 7);
-    topG.translate(0, 1.4, 0);
-    wobble(skirtG, 0.14, 1); wobble(topG, 0.14, 2);
-    const crownG = wobble(new THREE.IcosahedronGeometry(0.52, 2), 0.2, 3);
-    crownG.scale(1, 0.85, 1);
-    crownG.translate(0, 0.95, 0);
-    const puffG = wobble(new THREE.IcosahedronGeometry(0.34, 2), 0.2, 5);
-    puffG.translate(0.24, 1.25, 0.1);
-    const inked = (color: number): THREE.Material => { const mt = new THREE.MeshToonMaterial({ color, gradientMap: RAMP }); mt.userData.outlineParameters = INK; return mt; };
-    const leaf = () => inked(0xa4a4a4);
-    const make = (g: THREE.BufferGeometry, mt: THREE.Material) => {
-      const im = new THREE.InstancedMesh(g, mt, trees.length);
+    const cl = this.game.climate;
+    const inked = (color: number): THREE.Material => { const mt = new THREE.MeshToonMaterial({ color, gradientMap: RAMP, vertexColors: true }); mt.userData.outlineParameters = INK; return mt; };
+    const make = (g: THREE.BufferGeometry, mt: THREE.Material, n: number) => {
+      const im = new THREE.InstancedMesh(g, mt, Math.max(1, n));
+      im.count = n;
       im.castShadow = im.receiveShadow = true;
       this.forest.push(im);
       return im;
     };
-    const trunks = make(trunkG, inked(0x5c4028));
-    const skirt = make(skirtG, leaf()), top = make(topG, leaf()), crown = make(crownG, leaf()), puff = make(puffG, leaf());
-    const m = new THREE.Matrix4(), none = new THREE.Matrix4().makeScale(0, 0, 0), q = new THREE.Quaternion(), col = new THREE.Color();
-    trees.forEach((t, i) => {
+    // Two shapes of each kind, so no two neighbours are quite alike.
+    const kinds = { oak: [oak(1), oak(2)], birch: [birch(3), birch(4)], fir: [fir(5), fir(6)], palm: [palm(7), palm(8)], acacia: [acacia(9), acacia(10)] };
+    const mesh: Record<string, { trunk: THREE.InstancedMesh; leaf: THREE.InstancedMesh; snow?: THREE.InstancedMesh }[]> = {};
+    const leafM = new THREE.MeshToonMaterial({ color: 0xa0a0a0, gradientMap: RAMP, vertexColors: true, side: THREE.DoubleSide });
+    leafM.userData.outlineParameters = { visible: false }; // fronds are thin: an inked edge would swallow them
+    // Stands of one kind with others among them, more of one or the other from grove to grove.
+    const kindOf = (t: { id: number; x: number; y: number }): string => {
+      const h3 = ((t.id * 7919) % 1000) / 1000, h4 = ((t.id * 104729) % 1000) / 1000, grove = 0.5 + 0.35 * Math.sin(t.x * 0.13 + t.y * 0.09);
+      return cl === 'desert' ? (h3 < 0.55 + (grove - 0.5) * 0.6 ? 'palm' : 'acacia')
+        : cl === 'snow' ? (h3 < 0.85 ? 'fir' : 'birch')
+          : cl === 'steppe' ? (h3 < 0.12 ? 'fir' : h3 < 0.5 ? 'acacia' : h3 < 0.8 ? 'oak' : 'birch')
+            : h3 < grove ? 'fir' : h4 < 0.7 ? 'oak' : 'birch';
+    };
+    // Each shape is drawn only as many times as there are trees of it.
+    const tally: Record<string, number> = {};
+    for (const t of trees) { const key = kindOf(t) + (t.id % 2); tally[key] = (tally[key] ?? 0) + 1; }
+    for (const [name, list] of Object.entries(kinds)) mesh[name] = list.map((t, v) => { const n = tally[name + v] ?? 0; return { trunk: make(t.trunk, inked(0x9a9a9a), n), leaf: make(t.leaf, name === 'palm' ? leafM : inked(0xa0a0a0), n), snow: t.snow && cl === 'snow' ? make(t.snow, inked(0xffffff), n) : undefined }; });
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color();
+    const next: Record<string, number> = {};
+    trees.forEach((t) => {
       const h = ((t.id * 2654435761) >>> 0) / 4294967296;
       const h2 = ((t.id * 40503) % 1000) / 1000;
-      const h3 = ((t.id * 7919) % 1000) / 1000;
-      const sc = 0.85 + h * 0.5;
+      const h4 = ((t.id * 104729) % 1000) / 1000;
+      const kind = kindOf(t), key = kind + (t.id % 2), i = (next[key] = (next[key] ?? -1) + 1);
+      const sc = (kind === 'fir' ? 0.95 : kind === 'birch' ? 0.9 : 1) * (0.85 + h * 0.5);
       q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, h * 6.28);
       const tx = t.x + (h2 - 0.5) * 0.3, tz = t.y + (h - 0.5) * 0.3;
       m.compose(new THREE.Vector3(tx, this.scenery.heightAt(tx, tz), tz), q, new THREE.Vector3(sc, sc * (0.9 + h2 * 0.3), sc));
-      // Stands of fir with broadleaves among them, more of one or the other from grove to grove.
-      const fir = this.game.climate === 'desert' ? false : this.game.climate === 'snow' ? h3 < 0.85 : h3 < 0.5 + 0.35 * Math.sin(t.x * 0.13 + t.y * 0.09);
-      trunks.setMatrixAt(i, m);
-      skirt.setMatrixAt(i, fir ? m : none); top.setMatrixAt(i, fir ? m : none);
-      crown.setMatrixAt(i, fir ? none : m); puff.setMatrixAt(i, fir ? none : m);
-      // Woods take the colour of the country: snow on the boughs in the cold, dusty olive in the dry.
-      const cl = this.game.climate;
-      if (cl === 'snow') {
-        skirt.setColorAt(i, col.setHSL(0.4, 0.3, 0.22 + h * 0.06));
-        top.setColorAt(i, col.setHSL(0.55, 0.12, 0.8 + h * 0.1));
-        crown.setColorAt(i, col.setHSL(0.5, 0.1, 0.62 + h * 0.1));
-        puff.setColorAt(i, col.setHSL(0.55, 0.12, 0.86));
-      } else {
-        const dry = cl === 'desert' ? 1 : cl === 'steppe' ? 0.6 : 0;
-        skirt.setColorAt(i, col.setHSL(0.37 - dry * 0.1 + h2 * 0.04, 0.5 - dry * 0.15, 0.13 + h * 0.06 + dry * 0.05));
-        top.setColorAt(i, col.setHSL(0.36 - dry * 0.1 + h2 * 0.04, 0.5 - dry * 0.15, 0.16 + h * 0.07 + dry * 0.05));
-        crown.setColorAt(i, col.setHSL(0.26 - dry * 0.08 + h2 * 0.07, 0.62 - dry * 0.25, 0.2 + h * 0.08 + dry * 0.04));
-        puff.setColorAt(i, col.setHSL(0.25 - dry * 0.08 + h2 * 0.07, 0.64 - dry * 0.25, 0.24 + h * 0.08 + dry * 0.04));
-      }
-      this.treeIndex.set(t.id, i);
+      const part = mesh[kind][t.id % 2];
+      part.trunk.setMatrixAt(i, m); part.leaf.setMatrixAt(i, m); part.snow?.setMatrixAt(i, m);
+      part.snow?.setColorAt(i, col.setHSL(0.58, 0.2, 0.9 + h * 0.06));
+      // Bark: brown, grey on a fir, white on a birch, fibrous tan on a palm.
+      part.trunk.setColorAt(i, kind === 'birch' ? col.setHSL(0.1, 0.06, 0.86 + h * 0.08) : kind === 'palm' ? col.setHSL(0.08, 0.3, 0.3 + h * 0.06) : kind === 'fir' ? col.setHSL(0.06, 0.25, 0.17 + h * 0.05) : col.setHSL(0.07, 0.35, 0.2 + h * 0.06));
+      // Leaves take the colour of the country, and here and there one has turned early.
+      const dry = cl === 'steppe' ? 0.5 : 0;
+      if (kind === 'fir') col.setHSL(0.38 + h2 * 0.04, cl === 'snow' ? 0.35 : 0.5, 0.15 + h * 0.06);
+      else if (kind === 'palm') col.setHSL(0.26 + h2 * 0.05, 0.55, 0.24 + h * 0.07);
+      else if (kind === 'acacia') col.setHSL(0.2 + h2 * 0.05, 0.42, 0.25 + h * 0.07);
+      else if (cl === 'snow') col.setHSL(0.58, 0.14, 0.8 + h * 0.08); // boughs loaded with snow
+      else if (!dry && h4 > 0.95) col.setHSL(0.1 + h2 * 0.05, 0.75, 0.36); // turned gold
+      else if (kind === 'birch') col.setHSL(0.24 - dry * 0.06 + h2 * 0.05, 0.6 - dry * 0.2, 0.3 + h * 0.08);
+      else col.setHSL(0.29 - dry * 0.08 + h2 * 0.06, 0.6 - dry * 0.2, 0.2 + h * 0.08);
+      part.leaf.setColorAt(i, col);
+      this.treeIndex.set(t.id, { ims: [part.trunk, part.leaf, ...(part.snow ? [part.snow] : [])], i });
     });
     this.scene.add(...this.forest);
   }
@@ -360,7 +363,7 @@ export class Renderer {
       const ti = this.treeIndex.get(ev.id);
       if (ti !== undefined) {
         const m = new THREE.Matrix4().makeScale(0, 0, 0);
-        for (const im of this.forest) { im.setMatrixAt(ti, m); im.instanceMatrix.needsUpdate = true; }
+        for (const im of ti.ims) { im.setMatrixAt(ti.i, m); im.instanceMatrix.needsUpdate = true; }
         this.treeIndex.delete(ev.id);
       }
     } else if (ev.t === 'age') {
