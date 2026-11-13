@@ -16,8 +16,8 @@ import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
 
 /** How steeply the camera looks down. `?pitch=20` (degrees) lowers it, for looking at figures from the side. */
-const PITCH = ((Number(new URLSearchParams(location.search).get('pitch')) || 50) * Math.PI) / 180;
-const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
+export const PITCH = ((Number(new URLSearchParams(location.search).get('pitch')) || 50) * Math.PI) / 180;
+export const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isometric RTS view
 const FOV = 30;
 
 /** One figure in a work camp's yard: a captive on their round, or a Slaver on guard. */
@@ -42,6 +42,11 @@ export class Renderer {
   cx: number;
   cy: number;
   dist = 30;
+  /** The main menu's camera: it circles low over the town, where the game's own looks down from a fixed quarter. */
+  cine: { yaw: number; pitch: number } | null = null;
+  /** How dark the unexplored land is drawn, 1 in play. The main menu lifts it so the country can be seen. */
+  fogScale = 1;
+  private skyC = new THREE.Color(0x0b0d10);
   floaters: Floater[] = [];
 
   private sun: THREE.DirectionalLight;
@@ -264,7 +269,7 @@ export class Renderer {
     for (let i = 0; i < vis.length; i++) {
       const target = vis[i] === 2 ? 0 : vis[i] === 1 ? 0.45 : 1;
       a[i] += (target - a[i]) * k;
-      d[i * 4 + 3] = a[i] * 255;
+      d[i * 4 + 3] = a[i] * 255 * this.fogScale;
     }
     this.fogTex.needsUpdate = true;
   }
@@ -287,8 +292,9 @@ export class Renderer {
   }
 
   private placeCamera(): void {
-    const h = Math.cos(PITCH) * this.dist;
-    this.camera.position.set(this.cx + h * Math.sin(YAW), Math.sin(PITCH) * this.dist, this.cy + h * Math.cos(YAW));
+    const yaw = this.cine?.yaw ?? YAW, pitch = this.cine?.pitch ?? PITCH;
+    const h = Math.cos(pitch) * this.dist;
+    this.camera.position.set(this.cx + h * Math.sin(yaw), Math.sin(pitch) * this.dist, this.cy + h * Math.cos(yaw));
     const sh = this.shake > 0 ? Math.min(1, this.shake) * 0.12 : 0;
     this.camera.position.x += Math.sin(this.clock * 61) * sh;
     this.camera.position.y += Math.sin(this.clock * 47) * sh;
@@ -316,6 +322,9 @@ export class Renderer {
     this.sky.color.set(0xd6e6ff).lerp(this.duskC, warm * 0.45).lerp(this.moonC, n * 0.5);
     this.sky.intensity = 1.55 * (1 - w * 0.18) * (1 - n * 0.6);
     this.gl.toneMappingExposure = 1.02 - n * 0.2;
+    // Seen from low down the land runs out to a horizon, so it is lost in mist there and the sky takes the mist's colour.
+    if (this.cine) { this.haze.near = this.dist * 0.9; this.haze.far = this.dist * 2.7; }
+    (this.scene.background as THREE.Color).copy(this.cine ? this.haze.color : this.skyC);
     this.sun.target.position.set(this.cx, 0, this.cy);
     const sc = this.sun.shadow.camera;
     sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 160;

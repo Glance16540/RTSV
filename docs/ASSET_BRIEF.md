@@ -9,6 +9,11 @@ or procedural model, so assets can arrive in any order.
 | Icons | `public/assets/icons/` | square PNG, 256×256, transparent or dark background |
 | 3D models | `public/assets/models/` | `.glb`, static (no rig), textured, under ~15k triangles |
 | Title art | `public/assets/art/title.jpg` | 16:9 |
+| Main theme | `public/assets/music/theme.mp3` | `.mp3`, `.ogg`, `.m4a` or `.wav`; it loops, so it should end where it can begin again |
+
+Title art, when it is there, becomes the picture behind the main menu, in place of the view over
+the town. The main theme plays at the main menu from the first key press and dies away as a match
+begins; until a recording is added, a short synthesised piece stands in for it.
 
 If a model comes out facing the wrong way or the wrong size, add an entry to
 `public/assets/tweaks.json`, for example `{ "knight": { "yaw": 3.14, "scale": 1.2, "y": 0 } }`.

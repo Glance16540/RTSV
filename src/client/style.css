@@ -178,32 +178,22 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 }
 .sheet button:hover { filter: brightness(1.1); }
 .sheet button.secondary { margin-top: 12px; padding: 7px 22px; font-size: 15px; background: none; color: var(--gold); border-color: var(--edge); }
-.started #continue-btn, .started .mainplay, .started .skirmish-h, .started #missions-btn, .started #missions { display: none; }
-.mainplay { margin-top: 6px; padding-bottom: 16px; border-bottom: 1px solid #3c3122; }
-.mainplay button { margin-top: 14px; padding: 12px 56px; font-size: 20px; }
-.mainplay p { margin: 8px auto 0; max-width: 520px; color: var(--muted); font-size: 13px; }
-.sheet h3.skirmish-h { margin: 14px 0 0; text-align: center; }
-.sheet .levels .new { background: linear-gradient(#3a3024, #241d15); color: var(--gold); border-color: var(--edge); }
+.levels .new { background: linear-gradient(#3a3024, #241d15); color: var(--gold); border-color: var(--edge); }
 #missions { display: grid; gap: 8px; margin: 12px auto 0; max-width: 640px; }
-#missions.hidden { display: none; }
-.sheet #missions button { margin: 0; padding: 10px 14px; text-align: left; font: inherit; color: var(--text); background: rgba(0, 0, 0, 0.3); border: 1px solid var(--edge); }
+#missions button { margin: 0; padding: 10px 14px; text-align: left; font: inherit; color: var(--text); background: rgba(0, 0, 0, 0.3); border: 1px solid var(--edge); }
 #missions b { display: block; font: 600 16px Georgia, serif; color: var(--gold); }
 #missions small { color: var(--muted); }
 #settings { margin: 14px auto 0; max-width: 640px; color: var(--muted); font-size: 13px; }
 #settings summary { cursor: pointer; color: var(--gold); }
 #settings label { display: inline-flex; align-items: center; gap: 6px; margin: 8px 10px 0; }
 .mapsize.check { cursor: pointer; }
-.battle .mapsize.check { display: none; }
 .sheet button.secondary { margin-left: 6px; margin-right: 6px; }
 .mapsize { display: inline-block; margin: 18px 12px 0; color: var(--muted); }
 .mapsize select { margin-left: 8px; padding: 4px 8px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: 4px; }
-.started .mapsize, .started #civ-info { display: none; }
 #civ-info { margin: 10px auto 0; max-width: 640px; color: var(--muted); font-size: 13px; }
 #civ-info b { color: var(--text); }
 .sheet .levels button { margin-top: 12px; }
 .levels { display: flex; justify-content: center; gap: 12px; }
-.levels .resume, .started .levels .new { display: none; }
-.started .levels .resume { display: inline-block; }
 .levels button { padding: 10px 30px; }
 
 @media (max-width: 760px) {
@@ -325,3 +315,120 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 .ow-chronicle div { margin: 0 0 6px; }
 .ow-chronicle h3 { margin: 14px 0 6px; }
 #ow-dialog .levels button { white-space: normal; flex: 1 1 160px; }
+
+/* ---- The opening and the main menu ---- */
+:root { --display: 'Trajan Pro', 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif; }
+body.at-title #hud, body.at-title #overlay { visibility: hidden; }
+
+#intro { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: #050403; transition: opacity 2.4s ease-in; }
+#intro.gone { opacity: 0; pointer-events: none; }
+#intro p { margin: 0; max-width: 900px; text-align: center; font: italic 400 clamp(20px, 2.6vw, 34px)/1.4 Georgia, 'Times New Roman', serif; color: #e9dcc0; letter-spacing: 0.03em; opacity: 0; transform: translateY(6px); transition: opacity 0.9s ease, transform 3.6s ease-out; }
+#intro p.on { opacity: 1; transform: none; }
+#intro small { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center; font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: #5d5240; }
+#intro.gone small { opacity: 0; }
+
+#title { position: fixed; inset: 0; z-index: 10; overflow: hidden; color: var(--text); transition: opacity 1.2s ease; }
+#title.gone { opacity: 0; pointer-events: none; }
+.t-art { position: absolute; inset: -4%; display: none; background: center / cover no-repeat; animation: t-drift 70s ease-in-out infinite alternate; }
+#title.art { background: #0b0906; }
+#title.art .t-art { display: block; }
+@keyframes t-drift { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.09) translate(-1.6%, -1%); } }
+#t-embers { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* Dark where the words stand, dark at the top and bottom as on a cinema screen, clear over the town. */
+.t-shade {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(9, 7, 4, 0.94) 0%, rgba(9, 7, 4, 0.8) 24%, rgba(9, 7, 4, 0.28) 48%, rgba(9, 7, 4, 0) 68%),
+    linear-gradient(180deg, rgba(5, 4, 3, 0.85) 0%, rgba(5, 4, 3, 0) 16%, rgba(5, 4, 3, 0) 80%, rgba(5, 4, 3, 0.9) 100%),
+    radial-gradient(ellipse at 66% 50%, rgba(255, 170, 80, 0.07) 0%, rgba(0, 0, 0, 0) 55%);
+  transition: background-color 0.5s;
+}
+#title.paneled .t-shade { background-color: rgba(6, 5, 3, 0.45); }
+
+.t-col { position: absolute; left: clamp(20px, 5.5vw, 96px); top: 0; bottom: 0; width: min(440px, calc(100vw - 40px)); display: flex; flex-direction: column; gap: clamp(14px, 4vh, 44px); padding: clamp(28px, 12vh, 120px) 0 44px; }
+.t-brand { animation: t-rise 2.6s 0.5s both cubic-bezier(0.2, 0.7, 0.2, 1); }
+.t-brand .sigil { width: clamp(54px, 9vh, 84px); height: clamp(54px, 9vh, 84px); margin-left: 2px; filter: drop-shadow(0 0 18px rgba(240, 160, 60, 0.45)); }
+.t-brand h1 {
+  margin: 10px 0 0; font: 500 clamp(40px, 8.4vh, 78px)/0.98 var(--display); letter-spacing: 0.07em; text-transform: uppercase;
+  background: linear-gradient(180deg, #fff6d6 4%, #ecc977 42%, #b98a35 64%, #7c5519 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 0 #24170a) drop-shadow(0 10px 26px rgba(0, 0, 0, 0.85));
+}
+.t-brand h1 span { display: block; white-space: nowrap; }
+.t-brand h1 i { font: italic 400 0.62em Georgia, serif; letter-spacing: 0; margin-right: 0.08em; }
+.t-rule { position: relative; height: 1px; margin: 18px 0 12px; width: 88%; background: linear-gradient(90deg, var(--gold), rgba(220, 184, 102, 0)); }
+.t-rule b { position: absolute; left: 0; top: -4px; width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg); }
+.t-brand p { margin: 0; max-width: 380px; font: italic 15px/1.45 Georgia, serif; color: #c9bb9c; text-shadow: 0 1px 3px #000; }
+
+#t-menu { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+#t-menu button {
+  position: relative; display: block; width: 100%; padding: 7px 0 7px 22px; text-align: left; background: none; border: 0; outline: 0;
+  animation: t-rise 1.4s both cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+#t-menu button:nth-child(1) { animation-delay: 2.0s; }
+#t-menu button:nth-child(2) { animation-delay: 2.15s; }
+#t-menu button:nth-child(3) { animation-delay: 2.3s; }
+#t-menu button:nth-child(4) { animation-delay: 2.45s; }
+#t-menu button:nth-child(5) { animation-delay: 2.6s; }
+#t-menu button:nth-child(6) { animation-delay: 2.75s; }
+#title.quick .t-brand { animation-duration: 0.9s; animation-delay: 0s; }
+#title.quick #t-menu button { animation-duration: 0.6s; animation-delay: 0.15s; }
+@keyframes t-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+#t-menu b { display: block; font: 500 clamp(19px, 3.1vh, 25px)/1.2 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: #d9cdb2; text-shadow: 0 2px 6px #000; transition: color 0.2s, letter-spacing 0.35s, transform 0.25s; }
+#t-menu small { display: block; max-height: 0; overflow: hidden; opacity: 0; font: italic 13px/1.4 Georgia, serif; color: #b3a586; text-shadow: 0 1px 3px #000; transition: max-height 0.3s, opacity 0.3s; }
+/* A gold blade slides in beside the choice under the hand. */
+#t-menu button::before { content: ''; position: absolute; left: 0; top: 0.95em; width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg) scale(0); transition: transform 0.2s; box-shadow: 0 0 12px rgba(240, 190, 90, 0.8); }
+#t-menu button:hover b, #t-menu button:focus-visible b, #t-menu button.on b { color: #ffe9ae; letter-spacing: 0.19em; transform: translateX(4px); }
+#t-menu button:hover::before, #t-menu button:focus-visible::before, #t-menu button.on::before { transform: rotate(45deg) scale(1); }
+#t-menu button:hover small, #t-menu button:focus-visible small, #t-menu button.on small { max-height: 3em; opacity: 1; }
+#t-menu #conquest-btn b { color: #f0d48a; }
+
+/* The panel beside the menu: a dark board with a gold line let into its edge. */
+#t-panel {
+  position: absolute; top: 50%; left: clamp(380px, 38vw, 640px); right: clamp(16px, 4vw, 72px); max-width: 780px; max-height: 86vh; transform: translateY(-50%);
+  overflow: auto; scrollbar-width: thin; padding: 26px 30px 28px;
+  background: linear-gradient(rgba(38, 31, 22, 0.96), rgba(19, 15, 11, 0.97)); border: 1px solid #8a7140; outline: 1px solid rgba(220, 184, 102, 0.28); outline-offset: -7px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75); animation: t-panel 0.35s ease-out;
+}
+@keyframes t-panel { from { opacity: 0; transform: translateY(-50%) translateX(18px); } }
+#t-panel h2 { margin: 0 0 14px; padding-bottom: 10px; font: 500 24px/1 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); border-bottom: 1px solid #4a3d28; }
+#t-panel h3 { margin: 12px 0 2px; font: 600 15px Georgia, serif; color: var(--gold); }
+#t-panel p { margin: 0; }
+#t-panel .cols { display: grid; grid-template-columns: 1fr 1.25fr; gap: 26px; }
+#t-panel table { border-collapse: collapse; width: 100%; font-size: 13px; }
+#t-panel td { padding: 3px 0; vertical-align: top; }
+#t-panel td:first-child { color: var(--gold); padding-right: 12px; white-space: nowrap; }
+.t-close { position: absolute; top: 14px; right: 16px; width: 30px; height: 30px; background: none; border: 1px solid transparent; border-radius: 3px; color: var(--muted); font-size: 15px; }
+.t-close:hover { color: var(--gold); border-color: var(--edge); }
+#t-panel .mapsize { display: inline-flex; flex-direction: column; gap: 4px; margin: 0 14px 12px 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+#t-panel .mapsize select { margin: 0; padding: 6px 8px; min-width: 150px; font-size: 14px; letter-spacing: 0; text-transform: none; }
+#t-panel .mapsize.check { flex-direction: row; align-items: center; gap: 8px; margin-top: 2px; }
+#t-panel #civ-info { margin: 4px 0 0; max-width: none; padding: 10px 12px; background: rgba(0, 0, 0, 0.28); border-left: 3px solid var(--edge); }
+.t-pick { margin: 18px 0 0 !important; font: italic 14px Georgia, serif; color: var(--muted); }
+#t-panel .levels { justify-content: flex-start; margin-top: 10px; }
+#t-panel .levels button {
+  padding: 11px 34px; font: 500 16px var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold);
+  background: linear-gradient(#3a3024, #211a12); border: 1px solid var(--edge); border-radius: 2px; transition: filter 0.15s, border-color 0.15s;
+}
+#t-panel .levels button:hover { border-color: var(--gold); filter: brightness(1.25); }
+#t-panel .levels #start-btn { color: #1c1813; background: linear-gradient(#f0d48a, #c99a3c); border-color: #f6e3ac; }
+#t-panel #missions { margin: 0; max-width: none; }
+#t-panel #settings { margin: 0; max-width: none; font-size: 14px; }
+#t-panel #settings summary { display: none; }
+#t-panel #settings label { display: flex; justify-content: space-between; align-items: center; margin: 0; padding: 10px 2px; border-bottom: 1px solid #3c3122; color: var(--text); }
+#t-panel #settings input[type='checkbox'] { order: 2; width: 18px; height: 18px; accent-color: #c99a3c; }
+#t-panel #settings input[type='range'] { width: 46%; accent-color: #c99a3c; }
+
+.t-foot { position: absolute; left: clamp(20px, 5.5vw, 96px); right: clamp(16px, 4vw, 72px); bottom: 14px; display: flex; justify-content: space-between; gap: 16px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #6f6450; pointer-events: none; }
+
+/* The word before a battle, and the help page, in the same hand as the menu. */
+.sheet { outline: 1px solid rgba(220, 184, 102, 0.22); outline-offset: -8px; }
+.sheet h1 { font-family: var(--display); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
+
+@media (max-width: 900px) {
+  #t-panel { left: 12px; right: 12px; max-height: 92vh; padding: 20px 18px; }
+  #t-panel .cols { grid-template-columns: 1fr; }
+  #title.paneled .t-col { visibility: hidden; }
+  .t-foot span:last-child { display: none; }
+}
+@media (max-height: 620px) { .t-brand p, .t-rule { display: none; } }
+@media (prefers-reduced-motion: reduce) { .t-art, .t-brand, #t-menu button, #t-panel { animation: none; } }
