@@ -2859,6 +2859,27 @@ describe('marauders', () => {
     expect(home.story!.map((d) => d.s)).toEqual(['Carried off by marauders', 'Freed, and came home']);
   }, 60000);
 
+  it('a computer player that has lost a woman to the camp marches on it and burns it', () => {
+    const g = new Game(3, setups);
+    g.marauders = true;
+    const ai = new AIController(g, 1);
+    let found = 0, burnt = 0, taken = 0;
+    for (let s = 0; s < 60 * 35 && !burnt; s++) {
+      run(g, 1);
+      ai.update();
+      const lair = g.buildings.find((b) => b.type === 'lair');
+      if (lair && !found) found = g.time;
+      if (lair) taken = Math.max(taken, (lair.captives ?? []).filter((c) => c.from === 1).length);
+      if (found && !lair) burnt = g.time;
+    }
+    console.log(`camp at ${Math.round(found)}s, burnt at ${Math.round(burnt)}s, most held from the AI ${taken}`);
+    expect(found).toBeGreaterThan(0);
+    expect(burnt).toBeGreaterThan(0);
+    // Left to chance it took half an hour and the camp filled; hunted, it falls well before that.
+    expect(burnt).toBeLessThan(60 * 25);
+    expect(taken).toBeLessThan(8);
+  }, 240000);
+
   it('do not appear unless the match asks for them', () => {
     const g = new Game(3, setups);
     run(g, LAIR_AT + 5);

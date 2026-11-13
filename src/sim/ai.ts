@@ -48,6 +48,9 @@ export class AIController {
   /** How many fighters set out on the present attack, and when the army was first large enough to go. */
   private launched = 0;
   private readyT = -1;
+  /** Marching on the marauders' camp, not on a rival. */
+  private hunt = false;
+  private knowsLair = false;
   /** Seconds before the first attack may launch. */
   firstAttack = 420;
   /** Multiplier on how large an army the AI wants. */
@@ -256,6 +259,36 @@ export class AIController {
     const push = allies.length ? this.allyPush(allies) : null;
     p.attackTarget = this.state === 'attack' ? this.targetId : 0; // tell allies what we are marching on
 
+    // ---- Marauders ----
+    const lair = g.marauders ? g.buildings.find((b) => b.type === 'lair') : undefined;
+    if (!lair) {
+      // The camp is burnt (or was never there): the men who went after it come home.
+      if (this.hunt) {
+        this.hunt = false; this.state = 'build'; this.targetId = 0;
+        const mid = g.size / 2, d = Math.hypot(mid - home.x, mid - home.y) || 1;
+        g.cmdMove(pid, army.map((u) => u.id), home.x + ((mid - home.x) / d) * 9, home.y + ((mid - home.y) / d) * 9, false);
+      }
+      this.knowsLair = false;
+    } else {
+      // A raiding party in the village is run down by whoever is standing about: a man killed drops the woman he leads.
+      const party = g.units.filter((u) => u.def.marauder && Math.hypot(u.x - home.x, u.y - home.y) < 18);
+      if (party.length && this.state === 'build') {
+        const free = fighters.filter((u) => !u.order && !u.inside);
+        if (free.length) g.cmdMove(pid, free.map((u) => u.id), party[0].x, party[0].y, true);
+      }
+      // It learns where the camp is by losing a woman to it, or by one of its own coming in sight of it.
+      const lost = (lair.captives ?? []).some((c) => c.from === pid);
+      if (!this.knowsLair) this.knowsLair = lost || g.units.some((u) => u.owner === pid && Math.hypot(u.x - lair.x, u.y - lair.y) < u.def.sight + 2);
+      if (this.knowsLair && this.state === 'build' && !underAttack && fighters.length >= 4) {
+        // It marches when it can beat the band: sooner if its own women are held there.
+        const band = g.units.filter((u) => u.def.marauder).length;
+        if (this.weight(pid, false) >= (band * 70 + 250) * (lost ? 1 : 1.3)) {
+          this.state = 'attack'; this.attackT = 0; this.launched = fighters.length; this.readyT = -1;
+          this.targetId = lair.id; this.hunt = true;
+        }
+      }
+    }
+
     // How many make an army worth sending is set by the age, not by the treasury: a rich people keeps more men, it does not wait for more.
     const attackSize = Math.max(4, Math.floor(Math.round(ARMY_TARGET[p.age] * this.armyScale) * 0.8));
     if (this.state === 'build') {
@@ -289,8 +322,9 @@ export class AIController {
     } else {
       // In a long war there is no more going home: after half an hour an attack is fought to the finish.
       const beaten = this.level >= 1 && g.time < 1800 && fighters.length < Math.max(3, this.launched * 0.35) && this.weight(this.nearestFoe(home), false) > 0;
-      if (fighters.length < 3) this.state = 'build';
+      if (fighters.length < 3) { this.state = 'build'; this.hunt = false; }
       else if (beaten) {
+        this.hunt = false;
         // The attack has failed: what is left comes home to fight another day instead of dying to the last man.
         this.state = 'build';
         const mid = g.size / 2, d = Math.hypot(mid - home.x, mid - home.y) || 1;
@@ -365,7 +399,7 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, raid: this.raid, raidT: this.raidT };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, hunt: this.hunt, knowsLair: this.knowsLair, raid: this.raid, raidT: this.raidT };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {

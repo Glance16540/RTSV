@@ -368,6 +368,9 @@ for filenames and a ready-made generation prompt.
   camp in the wilds, raid the nearest town for women, and grow for every woman they hold. Destroy the camp
   (`lair`) and everyone held goes free; a woman who was held bears no more children but works a quarter harder.
   They are on in skirmishes and sieges; `?marauders=0` leaves them out.
+- Computer players hunt the camp (`hunt`, `knowsLair` in `src/sim/ai.ts`): one learns of it by losing a woman or
+  coming in sight of it, marches when its army outweighs the band, and comes home once it burns. Idle soldiers
+  run down a raiding party near their town.
 - On the campaign map (`hordeTurn` in `src/sim/campaign.ts`) marauders take root in a tribal land, grow each turn,
   carry off women from the lands around (costing those lands supplies) and overrun neighbours. Taking their land
   breaks the camp.
