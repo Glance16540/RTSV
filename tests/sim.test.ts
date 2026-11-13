@@ -1676,9 +1676,9 @@ describe('landings', () => {
     let landedFar = false, carried = 0;
     for (const seed of [23, 11, 40, 5]) {
       if (landedFar) break;
-      const g = new Game(seed, [{ name: 'A', color: 1, isAI: true }, { name: 'B', color: 2, isAI: true }], 96, false, true);
+      const g = new Game(seed, [{ name: 'A', color: 1, isAI: true, civ: 'hearth' }, { name: 'B', color: 2, isAI: true, civ: 'forge' }], 96, false, true);
       const ais = [new AIController(g, 0), new AIController(g, 1)];
-      const home = g.buildings.filter((b) => b.type === 'towncenter').map((b) => ({ x: b.x, y: b.y }));
+      const home = g.spec.starts.map((p) => ({ x: p.x, y: p.y }));
       let most = 0;
       for (let t = 0; t < 20 * 60 * 16 && g.winner < 0 && !landedFar; t++) {
         g.step();
@@ -1691,6 +1691,7 @@ describe('landings', () => {
       }
       carried = Math.max(carried, most);
     }
+    console.log('landing: carried ' + carried + ' landedFar ' + landedFar);
     expect(carried).toBeGreaterThanOrEqual(3);
     expect(landedFar).toBe(true);
   }, 120000);
@@ -2704,4 +2705,36 @@ describe('play styles and raiders', () => {
     expect(g.buildings.some((b) => b.owner === 1 && b.type === 'towncenter' && b.complete)).toBe(true);
     expect(g.players[1].defeated).toBe(false);
   });
+});
+
+describe('pathing and the computer player under load', () => {
+  it('a unit that is built over walks out to open ground and carries on', () => {
+    const g = new Game(3, setups);
+    const s = spot(g, 'barracks', 0);
+    const size = BUILDINGS.barracks.size;
+    const u = g.spawnUnit('clubman', 0, s.cx + size / 2, s.cy + size / 2);
+    g.spawnBuilding('barracks', 0, s.cx, s.cy, true);
+    g.cmdMove(0, [u.id], s.cx + size + 4.5, s.cy + size / 2);
+    run(g, 20);
+    const inside = u.x >= s.cx && u.x < s.cx + size && u.y >= s.cy && u.y < s.cy + size;
+    expect(inside).toBe(false);
+    expect(Math.hypot(u.x - (s.cx + size + 4.5), u.y - (s.cy + size / 2))).toBeLessThan(2.5);
+  });
+
+  it('no second of a long game between two computer players stalls, and the game is won', () => {
+    // Seed 13 between these two once froze for half a minute laying a road to a house outside the walls.
+    const g = new Game(13, [{ name: 'a', color: 1, isAI: true, civ: 'greece' }, { name: 'b', color: 2, isAI: true, civ: 'dawn' }]);
+    const ais = [0, 1].map((i) => { const c = new AIController(g, i); c.setLevel(1); return c; });
+    let worst = 0;
+    for (let sec = 0; sec < 50 * 60 && g.winner < 0; sec++) {
+      const t0 = Date.now();
+      for (let i = 0; i < 20; i++) g.step();
+      g.events.length = 0;
+      ais.forEach((c) => c.update());
+      worst = Math.max(worst, Date.now() - t0);
+    }
+    console.log(`long AI game: winner ${g.winner} at ${(g.time / 60).toFixed(1)}m, worst second ${worst}ms`);
+    expect(worst).toBeLessThan(3000);
+    expect(g.winner).toBeGreaterThanOrEqual(0);
+  }, 240000);
 });

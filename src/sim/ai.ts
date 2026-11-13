@@ -44,6 +44,9 @@ export class AIController {
   private targetId = 0;
   /** Time of the last ally signal this AI answered. */
   private signalT = -1;
+  /** How many fighters set out on the present attack, and when the army was first large enough to go. */
+  private launched = 0;
+  private readyT = -1;
   /** Seconds before the first attack may launch. */
   firstAttack = 420;
   /** Multiplier on how large an army the AI wants. */
@@ -178,7 +181,9 @@ export class AIController {
 
     // ---- Military ----
     const fighters = army.filter((u) => u.def.atk > 0);
-    const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale);
+    // Wealth lying idle is turned into soldiers: the richer the treasury, the larger the army it keeps.
+    const spare = Math.max(0, Math.min(p.res.food, p.res.wood, p.res.gold) - 300);
+    const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale) + (this.level >= 1 ? Math.min(24, Math.floor(spare / 110)) : 0);
     this.castCalamities(army);
     if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0)) {
       // The civilisation's own unit turns up often once its age is reached.
@@ -235,13 +240,21 @@ export class AIController {
     const attackSize = Math.max(4, Math.floor(armyTarget * 0.8));
     if (this.state === 'build') {
       const clock = g.buildings.some((b) => g.hostile(b.owner, pid) && b.type === 'wonder'); // no time to wait for a full army
-      if ((fighters.length >= attackSize && g.time > this.firstAttack && !underAttack) || (clock && fighters.length >= 3)) {
+      // It does not march into an army it cannot beat: it waits to outweigh the defenders, though not for ever.
+      const ready = fighters.length >= attackSize && g.time > this.firstAttack && !underAttack;
+      if (!ready) this.readyT = -1; else if (this.readyT < 0) this.readyT = g.time;
+      const foe = this.nearestFoe(home);
+      const outweighs = this.level < 1 || foe < 0 || this.weight(pid, false) >= this.weight(foe, true) * 1.15 || g.time - this.readyT > 200;
+      if ((ready && outweighs) || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
+        this.launched = fighters.length;
+        this.readyT = -1;
       } else if (push && fighters.length >= Math.max(3, attackSize / 2) && !underAttack) {
         // An ally is on the offensive: join with what we have rather than attack alone later.
         this.state = 'attack';
         this.attackT = 0;
+        this.launched = fighters.length;
         this.targetId = push.id;
       } else {
         // Keep idle troops gathered in front of the base.
@@ -252,14 +265,21 @@ export class AIController {
         if (stray.length) g.cmdMove(pid, stray.map((u) => u.id), rx, ry, false);
       }
     } else {
+      const beaten = this.level >= 1 && fighters.length < Math.max(3, this.launched * 0.35) && this.weight(this.nearestFoe(home), false) > 0;
       if (fighters.length < 3) this.state = 'build';
-      else if ((this.attackT -= 1) <= 0) {
+      else if (beaten) {
+        // The attack has failed: what is left comes home to fight another day instead of dying to the last man.
+        this.state = 'build';
+        const mid = g.size / 2, d = Math.hypot(mid - home.x, mid - home.y) || 1;
+        g.cmdMove(pid, army.map((u) => u.id), home.x + ((mid - home.x) / d) * 9, home.y + ((mid - home.y) / d) * 9, false);
+      } else if ((this.attackT -= 1) <= 0) {
         this.attackT = 5;
         const idle = army.filter((u) => !u.order);
-        const target = idle.length ? this.pickTarget(idle[0]) : null;
-        if (target) {
-          if (idle.length) g.cmdMove(pid, idle.map((u) => u.id), target.x, target.y, true);
-        }
+        // Men fresh from the barracks wait until there are enough of them to go up together, not one by one.
+        const fresh = idle.filter((u) => Math.hypot(u.x - home.x, u.y - home.y) < 16), afield = idle.filter((u) => !fresh.includes(u));
+        const go = fresh.length >= Math.max(3, Math.floor(attackSize / 3)) || fresh.length === fighters.length ? idle : afield;
+        const target = go.length ? this.pickTarget(go[0]) : null;
+        if (target) g.cmdMove(pid, go.map((u) => u.id), target.x, target.y, true);
       }
     }
   }
@@ -322,7 +342,7 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, raid: this.raid, raidT: this.raidT };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, raid: this.raid, raidT: this.raidT };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {
@@ -595,6 +615,30 @@ export class AIController {
         if (idle.length) g.cmdMove(pid, idle, raider.x, raider.y, true);
       }
     }
+  }
+
+  /** The nearest rival still in the game, by where its buildings stand; -1 if there is none. */
+  private nearestFoe(home: Building): number {
+    let best = -1, bd = Infinity;
+    for (const b of this.game.buildings) {
+      if (!this.game.hostile(b.owner, this.pid) || b.owner === this.game.wild) continue;
+      const d = Math.hypot(b.x - home.x, b.y - home.y);
+      if (d < bd) { bd = d; best = b.owner; }
+    }
+    return best;
+  }
+
+  /** How much fighting strength a player has, by what it cost: soldiers, and for one standing on the defence its towers and town centre too. */
+  private weight(pid: number, defending: boolean): number {
+    if (pid < 0) return 0;
+    let w = 0;
+    for (const u of this.game.units) {
+      if (u.owner !== pid || u.type === 'villager' || u.def.atk <= 0 || u.def.naval) continue;
+      const c = u.def.cost;
+      w += ((c.food ?? 0) + (c.wood ?? 0) + (c.gold ?? 0)) * (u.hp / u.maxHp);
+    }
+    if (defending) for (const b of this.game.buildings) if (b.owner === pid && b.complete && (b.type === 'tower' || b.type === 'towncenter')) w += b.type === 'tower' ? 120 : 200;
+    return w;
   }
 
   private route(from: Unit, to: Entity): { partial: boolean } {

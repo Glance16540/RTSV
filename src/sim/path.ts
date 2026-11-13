@@ -20,6 +20,8 @@ export class Pathfinder {
   private closed: Uint32Array;
   private version = 0;
   private heap: number[] = [];
+  /** Which stretch of open ground each cell belongs to, for each side's gates; worked out afresh after the map changes. */
+  private regions = new Map<number, Int32Array>();
 
   /**
    * Whose units are being routed. Cells hold 0 (open), 1 (solid) or 2 + owner id (a gate,
@@ -42,6 +44,38 @@ export class Pathfinder {
     this.from = new Int32Array(size);
     this.stamp = new Uint32Array(size);
     this.closed = new Uint32Array(size);
+  }
+
+  /** The map has changed (something built, felled or destroyed): what can be reached from where must be worked out again. */
+  touch(): void {
+    this.regions.clear();
+  }
+
+  /** Label every open cell with the stretch of connected ground it lies in, as the present side's units can walk it. */
+  private region(): Int32Array {
+    let lab = this.regions.get(this.pass);
+    if (lab) return lab;
+    const n = this.n, blocked = this.blocked, pass = this.pass;
+    lab = new Int32Array(n * n);
+    const stack: number[] = [];
+    let next = 0;
+    for (let s = 0; s < n * n; s++) {
+      if (lab[s] !== 0 || (blocked[s] !== 0 && blocked[s] !== pass)) continue;
+      lab[s] = ++next;
+      stack.push(s);
+      while (stack.length) {
+        const c = stack.pop()!, cx = c % n;
+        for (const d of [-1, 1, -n, n]) {
+          const q = c + d;
+          if (q < 0 || q >= n * n || (d === -1 && cx === 0) || (d === 1 && cx === n - 1)) continue;
+          if (lab[q] !== 0 || (blocked[q] !== 0 && blocked[q] !== pass)) continue;
+          lab[q] = next;
+          stack.push(q);
+        }
+      }
+    }
+    this.regions.set(this.pass, lab);
+    return lab;
   }
 
   isBlocked(cx: number, cy: number): boolean {
@@ -88,6 +122,18 @@ export class Pathfinder {
     const far = (c: number) => rectDist((c % n) + 0.5, ((c / n) | 0) + 0.5, x0, y0, x1, y1);
     const h = (c: number) => far(c) * hk;
 
+    // If nowhere near the goal can be walked to from here, there is no use searching the whole country to learn
+    // it: look only a little way, for the nearest spot that can be reached.
+    let limit = 0;
+    if (!solid(start)) {
+      const lab = this.region(), mine = lab[start];
+      let can = false;
+      const bx0 = Math.max(0, Math.floor(x0 - reach - 1)), bx1 = Math.min(n - 1, Math.ceil(x1 + reach + 1));
+      const by0 = Math.max(0, Math.floor(y0 - reach - 1)), by1 = Math.min(n - 1, Math.ceil(y1 + reach + 1));
+      for (let y = by0; y <= by1 && !can; y++) for (let x = bx0; x <= bx1; x++) { const c = y * n + x; if (lab[c] === mine && far(c) <= reach) { can = true; break; } }
+      if (!can) limit = 900;
+    }
+    let seen = 0;
     g[start] = 0;
     f[start] = h(start);
     from[start] = -1;
@@ -100,6 +146,7 @@ export class Pathfinder {
       const c = this.pop();
       if (closed[c] === v) continue;
       closed[c] = v;
+      if (limit && ++seen > limit) break;
       const hc = cost ? far(c) : f[c] - g[c];
       if (hc < bestH) { bestH = hc; best = c; }
       if (hc <= reach && !solid(c)) { goal = c; break; }

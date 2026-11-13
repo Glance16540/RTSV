@@ -508,6 +508,7 @@ export class Game {
         this.occupied[y * this.size + x] = v ? 1 : 0;
         if (block) this.blocked[y * this.size + x] = v;
       }
+    if (block) this.landPf.touch();
   }
 
   private kill(e: Entity): void {
@@ -776,7 +777,7 @@ export class Game {
     for (const r of this.resources) {
       if (r.resType !== res || r.id === exclude || (r.type === 'fish') !== fish) continue;
       const d = Math.hypot(r.x - x, r.y - y);
-      if (d < bestD && this.exposed(r)) { bestD = d; best = r; }
+      if (d < bestD && this.exposed(r) && !((r as { shun?: number }).shun! > this.time)) { bestD = d; best = r; }
     }
     if (!best && res === 'food' && !fish) {
       for (const b of this.buildings) {
@@ -1023,7 +1024,8 @@ export class Game {
     };
     const goal = new Uint8Array(N * N);
     for (const i of ring(tc)) goal[i] = 1;
-    const cost = new Float32Array(N * N).fill(Infinity), from = new Int32Array(N * N).fill(-1);
+    // Whole doubles: with shorter numbers a cost can round up as it is stored, look beaten by itself, and be tried over and over.
+    const cost = new Float64Array(N * N).fill(Infinity), from = new Int32Array(N * N).fill(-1);
     // A small binary heap of [cost, tile] pairs.
     const heap: number[] = [];
     const swap = (p: number, q: number): void => { for (const d of [0, 1]) { const t = heap[p * 2 + d]; heap[p * 2 + d] = heap[q * 2 + d]; heap[q * 2 + d] = t; } };
@@ -2024,6 +2026,21 @@ export class Game {
       }
     }
 
+    // Built over, or caught inside a footprint some other way: no route starts from in here, so step straight out
+    // to the nearest open ground and take up whatever they were doing from there.
+    if (!u.def.naval && this.pf.isBlocked(Math.floor(u.x), Math.floor(u.y))) {
+      const p = this.pf.nearestFree(u.x, u.y), dx = p.x - u.x, dy = p.y - u.y, d = Math.hypot(dx, dy);
+      if (d > 1e-4) {
+        const step = Math.min(d, Math.max(1.2, u.def.speed) * DT);
+        u.x += (dx / d) * step; u.y += (dy / d) * step;
+        u.facing = Math.atan2(dx, dy);
+        u.moving = true;
+        u.path = null; u.pathFor = 0;
+        const held = u.order as { started?: boolean } | null;
+        if (held && held.started) held.started = false;
+        return;
+      }
+    }
     const o = u.order;
     if (!o) {
       if (this.pf.isBlocked(Math.floor(u.x), Math.floor(u.y))) {
@@ -2363,8 +2380,10 @@ export class Game {
 
     const r = this.approach(u, t, REACH);
     if (r === 'fail') {
-      // Unreachable (e.g. a tree deep inside a forest): try something closer to where we ended up.
+      // Unreachable (e.g. a tree deep inside a forest): try something closer to where we ended up, and let
+      // nobody else be sent after it for a while.
       o.fails++;
+      if (t.kind === 'resource') (t as { shun?: number }).shun = this.time + 60;
       const alt = o.fails <= 3 ? this.findResourceNear(u.x, u.y, o.res, u.owner, 14, t.id, !!u.def.fisher) : null;
       if (!alt) { this.setOrder(u, null); return; }
       if (t.kind === 'building') t.workerId = 0;

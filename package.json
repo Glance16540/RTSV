@@ -13,7 +13,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "trials": "TRIALS=1 OUT=trials.txt vitest run scripts/trials.test.ts"
   },
   "dependencies": {
     "three": "^0.170.0"

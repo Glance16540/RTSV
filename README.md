@@ -352,6 +352,12 @@ for filenames and a ready-made generation prompt.
   is gone; villagers' clothes tear. Healing puts it all back. The fallen drop with a recorded death; engines fly
   apart and ships sink. `?gore=0` turns the blood and the torn clothes off.
 
+## Trial games
+
+`npm run trials` plays computer players against each other and writes `trials.txt`: who won and when, how much of
+the time units stood stuck with somewhere to go, and the slowest second. Set `PAIRS=wild:hearth:5,greece:dawn:13`
+(people:people:seed) and `MIN=40` to choose the games. It is how the pathing and the computer player are measured.
+
 ## Roads, rough ground and the country
 
 - A building is joined to its owner's nearest town centre by a road as soon as it is placed (`layRoad` in

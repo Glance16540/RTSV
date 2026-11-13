@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 43 systems, 112 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 21 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:21"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 44 systems, 116 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 22 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:22"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
-      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">43</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">21</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">44</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">22</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
     </div>
   </div>
 
@@ -236,7 +236,7 @@ footer { color: var(--dim); font-size: 13px; }
   
   <h4>Gaps</h4><ul class="gaps"><li>No story, no world events, no named places</li></ul>
 </article></div></section>
-  <section class="area"><h2>Ways to play <span class="n">7</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <section class="area"><h2>Ways to play <span class="n">8</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Skirmish</h3><span class="pill solid">Working</span></header>
   <p class="what">One battle against one to three rivals.</p>
   <ul class="has"><li>Three difficulties, three map sizes, inland or great lake</li><li>Free-for-all, an ally, or all against you</li></ul>
@@ -247,10 +247,15 @@ footer { color: var(--dim); font-size: 13px; }
   <ul class="has"><li>Four countries: green (woods, marsh, beaches), desert, steppe, the snowy north</li><li>Chosen in the skirmish menu, or the homeland of a people</li><li>Sand, snow, marsh and slopes slow a march; routes go round bad ground</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>The computer opponent keeps its buildings out of bogs, but builds across its own roads and does not otherwise plan around ground</li><li>Levels were measured over 12 computer-against-computer games each: Hard beat Easy 10-0 and Normal 10-1, and Normal beat Easy 8-1 after Easy was weakened (it had been 6-5); none of this is covered by a test, and none of it says how the levels feel to a person</li><li>Two computer opponents were run against each other in each country and both grew at a similar pace everywhere; that is four games per country, not a proof of fairness</li><li>No palms or cacti in the desert</li><li>Missions are all green country</li></ul>
 </article><article class="sys rough" data-status="rough">
+  <header><h3>Finding the way</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">How units get from one place to another.</p>
+  <ul class="has"><li>Routes go round buildings, water, rock and woods, prefer roads and avoid bad ground</li><li>A unit that is built over, or caught inside a footprint, walks straight out to open ground and carries on</li><li>A goal that cannot be reached is recognised at once, and the unit goes as near as it can without searching the whole map</li><li>A resource nobody can get to is left alone for a minute, so villagers are not sent after it one by one</li><li>Measured in trial games between computer players: units with somewhere to go stand stuck about a quarter of one percent of the time (it was up to 3.7%)</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Units still pass through one another on the march and are only nudged apart when they stop</li><li>No formations: a group ordered to a point arrives in a loose square</li><li>A few villagers still wait at a crowded mine</li><li>Only tried with computer players; never watched by a person for odd routes</li></ul>
+</article><article class="sys rough" data-status="rough">
   <header><h3>Computer opponent</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Rivals that build, fight and sail.</p>
-  <ul class="has"><li>Builds a town, advances, attacks and defends</li><li>Builds a navy, raids by sea, lands armies</li><li>Staffs its Church and Tavern, hires mercenaries</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>Never uses Slavers or Work Camps</li><li>A leader's temperament changes four things only: when it attacks, army size, walls, and church or tavern</li><li>Has never been played against by a person</li></ul>
+  <ul class="has"><li>Builds a town, advances, attacks and defends</li><li>Builds a navy, raids by sea, lands armies</li><li>Staffs its Church and Tavern, hires mercenaries</li><li>Turns idle wealth into soldiers: the richer the treasury, the larger the army it keeps</li><li>Does not march into an army it cannot beat: it waits to outweigh the defenders, though not for ever</li><li>Calls a failed attack home instead of dying to the last man, and sends reinforcements up together, not one by one</li><li>In nine trial games between computer players every one ended with a winner, in 26 to 39 minutes (before, one in five ended inside 25)</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The raiding peoples lose to settled ones when the computer plays them: four trial games out of four</li><li>A leader's temperament changes four things only: when it attacks, army size, walls, and church or tavern</li><li>Has never been played against by a person</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Missions</h3><span class="pill thin">First pass</span></header>
   <p class="what">Set scenarios with objectives.</p>
@@ -306,7 +311,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>110 tests, all passing</li></ul>
+  <ul class="has"><li>112 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>
