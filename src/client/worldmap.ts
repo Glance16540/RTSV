@@ -1008,7 +1008,7 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
     const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null, look = q?.get('look');
     if (look && !this.moved) {
       const ts = this.c.territories, t = look === 'cap' ? ts.find((x) => x.capital === 0) : look === 'foe' ? ts.find((x) => x.capital === 1) : look === 'tribe' ? ts.find((x) => x.owner < 0 && !x.horde) : ts[+look];
-      if (t) { this.tx = this.cx = WX(t.x) + 1.2; this.tz = this.cz = WZ(t.y) + 1.6; this.dist = this.cd = +(q!.get('near') ?? 24) || 24; this.moved = true; }
+      if (t) { this.tx = this.cx = WX(t.x) + 1.2 + (+(q!.get('dx') ?? 0) || 0); this.tz = this.cz = WZ(t.y) + 1.6 + (+(q!.get('dz') ?? 0) || 0); this.dist = this.cd = +(q!.get('near') ?? 24) || 24; this.moved = true; }
     }
   }
 
