@@ -132,9 +132,13 @@ export class AIController {
     // Other buildings, one at a time.
     if (!building.some((b) => b.type !== 'house' && b.type !== 'farm')) {
       const marketFirst = this.holdWood;
+      // A full treasury and too few places to spend it: more barracks, ranges and stables, so an army lost can be raised again quickly.
+      const idleWealth = Math.min((p.res.food + p.res.wood + p.res.gold) / 3, Math.max(p.res.food, p.res.wood) / 2);
+      const more = this.level >= 1 && p.age >= 2 ? Math.min(3, Math.floor(idleWealth / 900)) : 0;
       for (const step of BUILD_ORDER) {
         if (marketFirst && step.type !== 'market') continue;
-        if (step.age > p.age || villagers.length < step.villagers || count(step.type) >= step.count) continue;
+        const extra = step.type === 'barracks' || step.type === 'range' || step.type === 'stable' ? more : 0;
+        if (step.age > p.age || villagers.length < step.villagers || count(step.type) >= step.count + extra) continue;
         if (saving && step.type !== 'barracks') continue;
         // A Wonder is for an AI that is rich and not on the easy setting.
         if (step.type === 'wonder' && (this.level < 1 || p.res.wood < 1600 || !g.canAfford(p, BUILDINGS.wonder.cost))) continue;
@@ -161,6 +165,8 @@ export class AIController {
     if (market) {
       for (const r of ['wood', 'food', 'stone'] as ResType[]) {
         if (p.res.gold < 200 && p.res[r] > (r === 'food' ? 900 : 600)) g.cmdTrade(pid, market.id, r, 'sell');
+        // A great heap of one thing and no gold: sell faster.
+        if (p.res.gold < 1200 && p.res[r] > 2000) { g.cmdTrade(pid, market.id, r, 'sell'); g.cmdTrade(pid, market.id, r, 'sell'); }
       }
       // The more gold is lying idle, the more is bought at once.
       const lots = p.res.gold > 900 ? 3 : p.res.gold > 600 ? 2 : 1;
@@ -192,7 +198,8 @@ export class AIController {
     // ---- Military ----
     const fighters = army.filter((u) => u.def.atk > 0);
     // Wealth lying idle is turned into soldiers: the richer the treasury, the larger the army it keeps.
-    const spare = Math.max(0, Math.min(p.res.food, p.res.wood, p.res.gold) - 300);
+    // Counted across all three stores, so a mountain of timber is not left to rot for want of gold.
+    const spare = Math.max(0, Math.min((p.res.food + p.res.wood + p.res.gold) / 3, Math.max(p.res.food, p.res.wood) / 2) - 300);
     const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale) + (this.level >= 1 ? Math.min(24, Math.floor(spare / 110)) : 0);
     this.castCalamities(army);
     if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0)) {
@@ -206,10 +213,10 @@ export class AIController {
         if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; }
         const def = UNITS[type];
         // Yesterday's soldiers are only raised in need: an army of bowmen is no use against knights.
-        if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && army.length >= armyTarget / 2 && def.atk > 0 && def.cls !== 'siege') continue;
+        if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && army.length >= armyTarget / 2 && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
-        if (type === 'shaman' && g.countUnits(pid, 'shaman') >= 2) continue;
+        if ((type === 'shaman' || type === 'priest') && g.countUnits(pid, type) >= 2) continue;
         if (type === 'prophet' && g.countUnits(pid, 'prophet') >= 1) continue;
         if (g.cmdTrain(pid, src.id, type)) { this.mixI = (this.mixI + k + 1) % mix.length; break; }
       }
@@ -249,14 +256,17 @@ export class AIController {
     const push = allies.length ? this.allyPush(allies) : null;
     p.attackTarget = this.state === 'attack' ? this.targetId : 0; // tell allies what we are marching on
 
-    const attackSize = Math.max(4, Math.floor(armyTarget * 0.8));
+    // How many make an army worth sending is set by the age, not by the treasury: a rich people keeps more men, it does not wait for more.
+    const attackSize = Math.max(4, Math.floor(Math.round(ARMY_TARGET[p.age] * this.armyScale) * 0.8));
     if (this.state === 'build') {
       const clock = g.buildings.some((b) => g.hostile(b.owner, pid) && b.type === 'wonder'); // no time to wait for a full army
       // It does not march into an army it cannot beat: it waits to outweigh the defenders, though not for ever.
       const ready = fighters.length >= attackSize && g.time > this.firstAttack && !underAttack;
       if (!ready) this.readyT = -1; else if (this.readyT < 0) this.readyT = g.time;
       const foe = this.nearestFoe(home);
-      const outweighs = this.level < 1 || foe < 0 || this.weight(pid, false) >= this.weight(foe, true) * 1.4 || g.time - this.readyT > 360;
+      // A long war makes everyone bolder: the margin it waits for shrinks from the twenty-fifth minute.
+      const margin = Math.max(1, 1.4 - Math.max(0, g.time - 1500) / 2250);
+      const outweighs = this.level < 1 || foe < 0 || this.weight(pid, false) >= this.weight(foe, true) * margin || g.time - this.readyT > (g.time > 1800 ? 150 : 360);
       if ((ready && outweighs) || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
@@ -277,7 +287,8 @@ export class AIController {
         if (stray.length) g.cmdMove(pid, stray.map((u) => u.id), rx, ry, false);
       }
     } else {
-      const beaten = this.level >= 1 && fighters.length < Math.max(3, this.launched * 0.35) && this.weight(this.nearestFoe(home), false) > 0;
+      // In a long war there is no more going home: after half an hour an attack is fought to the finish.
+      const beaten = this.level >= 1 && g.time < 1800 && fighters.length < Math.max(3, this.launched * 0.35) && this.weight(this.nearestFoe(home), false) > 0;
       if (fighters.length < 3) this.state = 'build';
       else if (beaten) {
         // The attack has failed: what is left comes home to fight another day instead of dying to the last man.
@@ -289,7 +300,7 @@ export class AIController {
         const idle = army.filter((u) => !u.order);
         // Men fresh from the barracks wait until there are enough of them to go up together, not one by one.
         const fresh = idle.filter((u) => Math.hypot(u.x - home.x, u.y - home.y) < 16), afield = idle.filter((u) => !fresh.includes(u));
-        const go = fresh.length >= Math.max(3, Math.floor(attackSize / 3)) || fresh.length === fighters.length ? idle : afield;
+        const go = g.time >= 1800 || fresh.length >= Math.max(3, Math.floor(attackSize / 3)) || fresh.length === fighters.length ? idle : afield;
         const target = go.length ? this.pickTarget(go[0]) : null;
         if (target) g.cmdMove(pid, go.map((u) => u.id), target.x, target.y, true);
       }
