@@ -310,10 +310,13 @@ export function terrainOf(c: Campaign): Terrain {
     // The coast: a ragged shore with deep bays, though every land keeps firm ground under its town.
     const rim = Math.min(px, py, MAP_W - 1 - px, MAP_H - 1 - py);
     const shore = ease(4, 44, rim + (N(px / 150, py / 150, 2) - 0.5) * 130 + (N(px / 40, py / 40, 3) - 0.5) * 26 - 18 - (t.trait === 'coast' ? 14 : 0));
-    const keep = (1 - ease(34, 70, dC)) * ease(2, 24, rim);
+    // The world's edge is ragged too, so no shore runs straight, and small isles stand off it.
+    const rag = rim + (N(px / 30, py / 30, 14) - 0.5) * 30 + (N(px / 10, py / 10, 15) - 0.5) * 9;
+    const isle = ease(0.7, 0.78, N(px / 20, py / 20, 16)) * ease(6, 16, rim) * 0.7;
+    const keep = Math.max((1 - ease(30, 66, dC)) * ease(6, 30, rag), (1 - ease(10, 22, dC)));
     // Lakes and inland seas lie between the lands, never on a town.
     const lake = ease(0.7, 0.8, N(px / 110, py / 110, 5)) * ease(50, 85, dC);
-    const land = Math.max(shore, keep) * (1 - lake) * ease(0, 9, rim); // and the sea lies all round
+    const land = Math.max(shore, keep, isle * (1 - ease(40, 70, rim))) * (1 - lake) * ease(0, 9, rim); // and the sea lies all round
     const { warm, wet } = climateAt(c.seed, px, py);
     const hot = ease(0.62, 0.72, warm) * (1 - ease(0.5, 0.6, wet)), marsh = ease(0.76, 0.84, wet) * ease(0.4, 0.46, warm);
     let roll = 0.5 + N(px / 85, py / 85, 6) * 0.75 + N(px / 20, py / 20, 8) * 0.16;
