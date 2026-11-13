@@ -56,6 +56,8 @@ export class AIController {
   /** Multiplier on how large an army the AI wants. */
   armyScale = 1;
 
+  /** No hall stands: every hand and every log goes to raising one. */
+  private founding = false;
   constructor(private game: Game, private pid: number) {}
 
   /** 0 easy, 1 normal, 2 hard. */
@@ -90,6 +92,15 @@ export class AIController {
       // A raiding band with no roof yet: settle where it stands.
       if (g.raider(pid) && villagers.length && Math.floor(g.time) % 2 === 0) this.build('towncenter', g.spec.starts[pid], villagers, 0, 9);
       return;
+    }
+    // A settled people whose hall is gone (razed in an earlier siege of this land) raise it again before anything
+    // else: without it there are no new villagers and no new age. Until it is begun, nothing else is built.
+    this.founding = !tc && !g.raider(pid);
+    if (this.founding && villagers.length) this.build('towncenter', g.spec.starts[pid], villagers, 0, 12);
+    // With nowhere to bring wood and stone, there will never be enough for a hall: a storehouse comes first.
+    if (this.founding && villagers.length && !g.canAfford(p, BUILDINGS.towncenter.cost) && !mine.some((b) => b.def.dropoff) && g.canAfford(p, BUILDINGS.storehouse.cost)) {
+      const at = this.findSpot('storehouse', g.spec.starts[pid].x, g.spec.starts[pid].y, 3, 10), v = at && this.pickBuilder(villagers, at.cx, at.cy);
+      if (at && v) g.cmdPlace(pid, 'storehouse', at.cx, at.cy, [v.id]);
     }
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
 
@@ -790,6 +801,7 @@ export class AIController {
 
   private build(type: string, near: { x: number; y: number }, villagers: Unit[], minR: number, maxR: number): Building | null {
     const g = this.game;
+    if (this.founding && type !== 'towncenter') return null;
     if (!g.canAfford(g.players[this.pid], BUILDINGS[type].cost)) return null;
     const spot = this.findSpot(type, near.x, near.y, minR, maxR);
     if (!spot) return null;
@@ -801,8 +813,11 @@ export class AIController {
   private assignWorkers(villagers: Unit[], mine: Building[], home: Building): void {
     const g = this.game, pid = this.pid;
     const p = g.players[pid];
+    // With no hall to raise yet, the hands go to what a hall is made of.
+    const cost = BUILDINGS.towncenter.cost, short = (r: ResType) => (this.founding && p.res[r] < (cost[r] ?? 0) ? 1 : 0);
     const want: Record<ResType, number> =
-      p.age === 0 ? { food: 0.5, wood: 0.4, gold: 0.07, stone: 0.03 }
+      short('wood') || short('stone') ? { food: 0.2, wood: short('wood') ? (short('stone') ? 0.4 : 0.8) : 0, gold: 0, stone: short('stone') ? (short('wood') ? 0.4 : 0.8) : 0 }
+        : p.age === 0 ? { food: 0.5, wood: 0.4, gold: 0.07, stone: 0.03 }
         : p.age === 1 ? { food: 0.42, wood: 0.3, gold: 0.2, stone: 0.08 }
           : { food: 0.38, wood: 0.24, gold: 0.3, stone: 0.08 };
     const order: ResType[] = ['food', 'wood', 'gold', 'stone'];
