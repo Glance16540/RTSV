@@ -9,7 +9,7 @@ A one-off: run it only to rebuild those files from the kit. It needs Python with
     python3 scripts/heads.py "/path/to/Universal Base Characters[Standard]"
 
 What is kept of each of the two figures (a man and a woman): the skin of the head and upper neck, the eyes, and
-the eyebrows; and the kit's beard. Everything stays in the kit's own space (metres, +y up, +z the way the face
+the eyebrows; and the kit's beard and five heads of hair. Everything stays in the kit's own space (metres, +y up, +z the way the face
 looks); the game fits each head to its own figure. The skin's picture is divided by the face's average colour,
 so that in the game it can be multiplied by any skin colour at all.
 """
@@ -62,7 +62,7 @@ def figure(sex, gltf, skin_png, tag):
     eyes = next(m for m in g['meshes'] if g['materials'][m['primitives'][0]['material']]['name'] == 'MI_Eyes')
     brows = next(m for m in g['meshes'] if m is not body and m is not eyes)
     skin, P = piece(g, acc, body, of_head)
-    e, EP = piece(g, acc, eyes); b, _ = piece(g, acc, brows, uv=False)
+    e, EP = piece(g, acc, eyes); b, _ = piece(g, acc, brows)
     # The skin's picture, made a matter of light and shade and blush only: divided by the colour of the face, and halved so nothing clips.
     im = np.asarray(Image.open(os.path.join(KIT, 'Base Characters', 'Textures', skin_png)).convert('RGB').resize((1024, 1024), Image.LANCZOS)).astype(float) / 255
     lin = np.where(im <= 0.04045, im / 12.92, ((im + 0.055) / 1.055) ** 2.4)
@@ -74,8 +74,21 @@ def figure(sex, gltf, skin_png, tag):
 
 
 out = {'m': figure('m', 'Superhero_Male_FullBody.gltf', 'T_Superhero_Male_Ligh.png', 'm'), 'f': figure('f', 'Superhero_Female_FullBody.gltf', 'T_Superhero_Female_Light_BaseColor.png', 'f')}
-g, acc = load(os.path.join(KIT, 'Hairstyles', 'Rigged to Head Bone', 'glTF (Godot -Unreal)', 'Hair_Beard.gltf'))
-out['beard'], _ = piece(g, acc, max(g['meshes'], key=lambda m: len(acc(m['primitives'][0]['attributes']['POSITION']))), uv=False)
+def hair(name):
+    g, acc = load(os.path.join(KIT, 'Hairstyles', 'Rigged to Head Bone', 'glTF (Godot -Unreal)', name + '.gltf'))
+    return piece(g, acc, max(g['meshes'], key=lambda m: len(acc(m['primitives'][0]['attributes']['POSITION']))))[0]
+
+
+# The beard and the two short cuts are fitted to the man's head; the long hair, the buns and the other short cut to the woman's.
+out['beard'] = hair('Hair_Beard')
+out['hair'] = {'parted': hair('Hair_SimpleParted'), 'buzzed': hair('Hair_Buzzed'), 'buzzedF': hair('Hair_BuzzedFemale'), 'long': hair('Hair_Long'), 'buns': hair('Hair_Buns')}
+# The hair's two pictures, kept as light and shade only (the strands), so the game can give hair any colour.
+for k in (1, 2):
+    im = np.asarray(Image.open(os.path.join(KIT, 'Hairstyles', 'Textures', 'T_Hair_%d_BaseColor.png' % k)).convert('RGB').resize((512, 512), Image.LANCZOS)).astype(float) / 255
+    lin = np.where(im <= 0.04045, im / 12.92, ((im + 0.055) / 1.055) ** 2.4) @ np.array([0.2126, 0.7152, 0.0722])
+    rel = np.clip(lin / lin.mean() * 0.5, 0, 1)
+    srgb = np.where(rel <= 0.0031308, rel * 12.92, 1.055 * rel ** (1 / 2.4) - 0.055)
+    Image.fromarray((srgb * 255 + 0.5).astype(np.uint8), 'L').convert('RGB').save(os.path.join(OUT, 'hair_%d.webp' % k), quality=80, method=6)
 Image.open(os.path.join(KIT, 'Base Characters', 'Textures', 'T_Eye_Brown.png')).convert('RGB').save(os.path.join(OUT, 'eye.webp'), quality=90)
 json.dump(out, open(os.path.join(OUT, 'heads.json'), 'w'), separators=(',', ':'))
-print({k: {q: (len(v[q]['p']) // 3 if isinstance(v.get(q), dict) else v.get(q)) for q in v} if k != 'beard' else len(v['p']) // 3 for k, v in out.items()})
+print({k: len(v['p']) // 3 for k, v in out['hair'].items()}, len(out['beard']['p']) // 3)

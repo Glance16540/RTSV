@@ -653,7 +653,10 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const sk = new THREE.Color(o.skin), rimT = Math.min(1, Math.max(0, (0.24 - (sk.r * 0.3 + sk.g * 0.6 + sk.b * 0.1)) / 0.2)), rimM = solid(sk.clone().lerp(new THREE.Color(0xe6dccc), 0.2 + rimT * 0.45).getHex());
   const mouthY = eyeY - 0.072;
   // A sculpted head, where there is one: set so its crown and its eyes fall where this figure's are, and a touch large.
-  const sculpt = sculptedHead(o.female || o.child, o.skin, hairM, o.beard); // a child of either sex has the smoother face: the man's is drawn with a shadow of beard
+  // Hair of the kit's own goes with it, unless the head is covered. A boy wears the short cut made for the smoother head.
+  const bare = !o.helmet && o.hairStyle !== 'covered' && o.hat !== 'hood' && o.hat !== 'cap' && o.hat !== 'fur';
+  const cut = !bare ? null : o.female ? (o.hairStyle === 'long' ? 'long' : o.hairStyle === 'bun' ? 'buns' : 'buzzedF') : o.child ? 'buzzedF' : o.seed % 3 === 0 || o.hat === 'straw' || o.hat === 'turban' ? 'buzzed' : 'parted'; // cropped under a hat, which the fuller cut would stand up through
+  const sculpt = sculptedHead(o.female || o.child, o.skin, o.hair, o.beard, cut); // a child of either sex has the smoother face: the man's is drawn with a shadow of beard
   if (sculpt) {
     const F = sculpt.fig, sc = (0.118 / (F.crown - F.eyeY)) * HEAD_FIT;
     sculpt.g.scale.setScalar(sc);
@@ -705,9 +708,11 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     d.rotation.x = -0.22; // set back off the brow
     return d;
   };
-  if (!o.helmet && o.hairStyle !== 'covered' && o.hat !== 'hood' && o.hat !== 'cap' && o.hat !== 'fur') head.add(crown(hairM, o.female ? 1.16 : 1.08));
+  if (bare && !sculpt) head.add(crown(hairM, o.female ? 1.16 : 1.08));
   if (o.female && !o.helmet) {
-    if (o.hairStyle === 'long') {
+    if (sculpt && o.hairStyle !== 'covered') {
+      // Her hair came with her head.
+    } else if (o.hairStyle === 'long') {
       // Worn loose down the back.
       const fall = part(geo('fall', () => new THREE.SphereGeometry(1, 10, 8)), hairM, 0, hc.y - hr.y * 0.75, hc.z - hr.z * 0.72);
       fall.scale.set(hr.x * 1.12, hr.y * 1.7, hr.z * 0.5);

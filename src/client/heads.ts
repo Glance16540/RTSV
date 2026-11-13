@@ -9,7 +9,10 @@ interface Piece { p: number[]; n: number[]; i: number[]; uv?: number[] }
 /** One head, in the kit's own space: metres, +y up, +z the way the face looks. */
 export interface Sculpt { skin: Piece; eyes: Piece; brows: Piece; /** The top of the skull. */ crown: number; /** The height of the eyes, and how far forward they stand. */ eyeY: number; eyeZ: number; half: number }
 
-let kit: { m: Sculpt; f: Sculpt; beard: Piece } | null = null;
+/** The heads of hair there are: two short cuts fitted to the man's head, and a short cut, long hair and buns fitted to the woman's. */
+export type HairCut = 'parted' | 'buzzed' | 'buzzedF' | 'long' | 'buns';
+let kit: { m: Sculpt; f: Sculpt; beard: Piece; hair: Record<HairCut, Piece> } | null = null;
+const hairs = new Map<string, THREE.Material>();
 let asked = false, settled = false;
 const waiting: (() => void)[] = [];
 const pics = new Map<string, THREE.Texture>();
@@ -29,7 +32,7 @@ export function loadHeads(then: () => void): void {
   const loader = new THREE.TextureLoader();
   Promise.all([
     fetch(base + 'heads.json').then((r) => (r.ok ? r.json() : Promise.reject(new Error('no heads')))),
-    ...['head_m', 'head_f', 'eye'].map((k) => loader.loadAsync(`${base}${k}.webp`).then((t) => { t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; pics.set(k, t); })),
+    ...['head_m', 'head_f', 'eye', 'hair_1', 'hair_2'].map((k) => loader.loadAsync(`${base}${k}.webp`).then((t) => { t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; pics.set(k, t); })),
   ]).then(([j]) => { kit = j; done(); }).catch(done);
 }
 export const headsReady = (): boolean => !!kit;
@@ -48,21 +51,30 @@ function geo(key: string, piece: Piece): THREE.BufferGeometry {
 }
 
 /**
- * A head for one person: its skin in their colour, eyes, brows in the colour of their hair, and a beard if they
- * wear one. Returned in the kit's space with the measures needed to set it on a figure, or null if the heads never came.
+ * A head for one person: its skin in their colour, eyes, brows and hair in the colour of their hair, and a beard if
+ * they wear one. `cut` is how the hair is worn, or null for none (under a helmet or a hood). Returned in the kit's
+ * space with the measures needed to set it on a figure, or null if the heads never came.
  */
-export function sculptedHead(female: boolean, skin: number, hair: THREE.Material, beard: boolean): { g: THREE.Group; fig: Sculpt } | null {
+export function sculptedHead(female: boolean, skin: number, hair: number, beard: boolean, cut: HairCut | null): { g: THREE.Group; fig: Sculpt } | null {
   if (!kit) return null;
   const tag = female ? 'f' : 'm', fig = kit[tag], key = tag + skin;
   let sm = skins.get(key);
   // The picture is the face at half strength over its own average, so twice the person's colour gives it back in that colour.
   if (!sm) skins.set(key, (sm = new THREE.MeshStandardMaterial({ map: pics.get('head_' + tag), color: new THREE.Color(skin).multiply(new THREE.Color(2.2, 2.08, 2.0)), roughness: 0.85 })));
   eyeMat ??= new THREE.MeshStandardMaterial({ map: pics.get('eye'), roughness: 0.25 });
+  // Hair is the same: a picture of the strands in light and shade, under the person's own colour. There are two sheets of it.
+  const strands = (sheet: 1 | 2): THREE.Material => {
+    const k = sheet + '|' + hair;
+    let m = hairs.get(k);
+    if (!m) hairs.set(k, (m = new THREE.MeshStandardMaterial({ map: pics.get('hair_' + sheet), color: new THREE.Color(hair).multiplyScalar(2), roughness: 0.8, side: THREE.DoubleSide })));
+    return m;
+  };
   const g = new THREE.Group();
   const add = (k: string, piece: Piece, m: THREE.Material): void => { const mesh = new THREE.Mesh(geo(k, piece), m); mesh.castShadow = true; g.add(mesh); };
   add('skin' + tag, fig.skin, sm);
   add('eyes' + tag, fig.eyes, eyeMat);
-  add('brows' + tag, fig.brows, hair);
-  if (beard && !female) add('beard', kit.beard, hair);
+  add('brows' + tag, fig.brows, strands(female ? 2 : 1));
+  if (beard && !female) add('beard', kit.beard, strands(1));
+  if (cut) add('hair' + cut, kit.hair[cut], strands(cut === 'long' || cut === 'buns' ? 2 : 1));
   return { g, fig };
 }
