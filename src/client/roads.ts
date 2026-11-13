@@ -75,6 +75,7 @@ export class Roads {
         for (let k = 1; k < cells.length; k++) way.push([(cells[k] % N) + 0.5, ((cells[k] / N) | 0) + 0.5]);
         way.push([b.x, b.y]);
         const mesh = this.ribbon(way, g.players[b.owner].age >= 2);
+        for (const [wx, wy] of way) this.scenery.clearAt(wx, wy, 0.75);
         this.laid.set(id, mesh);
         this.scene.add(mesh);
       }

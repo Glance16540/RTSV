@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 41 systems, 97 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 19 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:19"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 42 systems, 103 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 20 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:20"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
-      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">41</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">19</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">42</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">20</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
     </div>
   </div>
 
@@ -174,11 +174,16 @@ footer { color: var(--dim); font-size: 13px; }
   <ul class="has"><li>Teams in a skirmish; call your ally to a spot</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>Sides are fixed at the start: no diplomacy during a battle</li></ul>
 </article></div></section>
-  <section class="area"><h2>Nations and leaders <span class="n">4</span></h2><div class="grid"><article class="sys rough" data-status="rough">
+  <section class="area"><h2>Nations and leaders <span class="n">5</span></h2><div class="grid"><article class="sys rough" data-status="rough">
   <header><h3>Nations</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Thirteen peoples, each with bonuses and two units of their own.</p>
   <ul class="has"><li>13 nations, each with two bonuses</li><li>Two unique units for every nation</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>14 unique units borrow another unit's figure with a plume and sash</li><li>Recording file names still use old internal ids (stonekin, dawn…)</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Land and wildlife</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">The ground of each country, what grows on it, and the animals that live there. Drawn only: none of it changes the rules.</p>
+  <ul class="has"><li>Ground painted per country: green only near water in the desert, frosted grass and a shingle shore in the north, long dunes, snow drifts, flower meadows, dark leaf litter under trees, marsh pools</li><li>Bushes, boulders, reeds, cacti, fallen logs, mushrooms and lily pads, cleared away where you build or a road is laid</li><li>Grass and reeds sway in the wind</li><li>Flocks of birds with shadows, gulls over water, vultures over desert and steppe</li><li>Butterflies by day and fireflies by night in green country</li><li>Rabbits (white hares in the north) that bolt when a unit comes near</li><li>Fish leaping in open water, tumbleweed in dry country, pollen and dust in the air</li><li>Smoke from the Town Center and lived-in houses, thicker at night and in the cold</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Motion checked in still frames only</li><li>Desert trees are still broadleaf: no palms</li><li>Trees do not sway</li><li>Wildlife cost unmeasured on a phone</li><li>Fireflies are faint</li><li>No sounds for any of it</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Play styles</h3><span class="pill thin">First pass</span></header>
   <p class="what">Every nation belongs to a group that says how it plays. Only the raiders change the rules so far.</p>

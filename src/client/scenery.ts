@@ -28,9 +28,11 @@ export interface Scenery {
   swellAt(x: number, y: number, clock: number): number;
   /** Advance the water and the cloud shadows. `day` is 1 in daylight down to 0 at night; `grey` is how overcast it is, 0 to 1. */
   update(clock: number, day?: number, grey?: number): void;
+  /** Take away the bushes, rocks and reeds within `r` of a point: something has been built there. */
+  clearAt(x: number, y: number, r: number): void;
 }
 
-export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, climate: Climate = ''): Scenery {
+export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, climate: Climate = '', woods: { x: number; y: number }[] = []): Scenery {
   const group = new THREE.Group();
   const tAt = (x: number, y: number): number => (x < 0 || y < 0 || x >= N || y >= N ? T_WATER : T[y * N + x]);
 
@@ -106,6 +108,32 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
     return (k(xi, yi) * (1 - fx) + k(xi + 1, yi) * fx) * (1 - fy) + (k(xi, yi + 1) * (1 - fx) + k(xi + 1, yi + 1) * fx) * fy;
   };
 
+  // How near water the land is, 0 far off to 1 at the bank: grass is lusher there, and in the desert it is the
+  // only place anything green grows.
+  const moist = new Float32Array(N * N);
+  {
+    const d = new Float32Array(N * N).fill(99);
+    let front: number[] = [];
+    for (let i = 0; i < N * N; i++) if (T[i] === T_WATER || T[i] === T_MARSH) { d[i] = 0; front.push(i); }
+    for (let k = 1; k <= 8 && front.length; k++) {
+      const next: number[] = [];
+      for (const i of front) for (const j of [i - 1, i + 1, i - N, i + N]) if (j >= 0 && j < N * N && d[j] > k) { d[j] = k; next.push(j); }
+      front = next;
+    }
+    for (let i = 0; i < N * N; i++) moist[i] = Math.max(0, 1 - d[i] / 8);
+  }
+  // Where trees stand close, the ground under them is dark and littered.
+  const shade = new Float32Array(N * N);
+  for (const w of woods) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const x = Math.floor(w.x) + dx, y = Math.floor(w.y) + dy;
+    if (x >= 0 && y >= 0 && x < N && y < N) shade[y * N + x] = Math.min(1, shade[y * N + x] + (dx || dy ? 0.14 : 0.5));
+  }
+  const field = (f: Float32Array, u: number, v: number): number => {
+    const x = Math.min(N - 1.001, Math.max(0, u - 0.5)), y = Math.min(N - 1.001, Math.max(0, v - 0.5)), xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, i = yi * N + xi;
+    return (f[i] * (1 - fx) + f[i + 1] * fx) * (1 - fy) + (f[i + N] * (1 - fx) + f[i + N + 1] * fx) * fy;
+  };
+  const MEADOW = [[244, 233, 176], [240, 200, 216], [216, 208, 255], [255, 208, 96], [255, 255, 255], [220, 70, 60]];
+
   // ---- the painted ground ----
   const px = N * 16 <= 2048 ? 16 : Math.floor(2048 / N);
   const c = document.createElement('canvas');
@@ -119,7 +147,8 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       const ju = u + (noise(u * 1.9 + 31, v * 1.9) - 0.5) * 0.7, jv = v + (noise(u * 1.9, v * 1.9 + 17) - 0.5) * 0.7;
       const water = wetAt(ju, jv), dirt = amount(T_DIRT, ju, jv), rock = amount(T_ROCK, ju, jv), high = groundH(u, v);
       const dune = amount(T_SAND, ju, jv), bog = amount(T_MARSH, ju, jv), white = amount(T_SNOW, ju, jv);
-      const broad = fbm(u * 0.16, v * 0.16), mid = fbm(u * 0.9 + 50, v * 0.9), grain = hash(x, y);
+      const broad = fbm(u * 0.16, v * 0.16), mid = fbm(u * 0.9 + 50, v * 0.9), grain = hash(x, y), fine = noise(u * 5.3 + 1, v * 5.3 + 2);
+      const wetLand = field(moist, ju, jv), wood = field(shade, ju, jv);
       // Grass: two greens in broad patches, dry tufts here and there, a fine grain over it all.
       let r = 74 + broad * 34 + mid * 14, g = 122 + broad * 30 + mid * 20, b = 52 + broad * 14 + mid * 8;
       const dry = smooth(0.62, 0.8, fbm(u * 0.35 + 7, v * 0.35 + 90));
@@ -127,31 +156,62 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       if (hash(x >> 1, (y >> 1) + 999) > 0.93) { r -= 16; g -= 14; b -= 10; } // blades in shadow
       // The grass of the country: sun-bleached on the steppe, thin and grey-green in the cold, sparse scrub in the desert.
       if (climate === 'steppe') { r += 46 + dry * 10; g += 26; b += 2; }
-      else if (climate === 'snow') { r -= 6; g -= 14; b += 8; }
-      else if (climate === 'desert') { r += 26; g += 6; b -= 6; }
+      else if (climate === 'snow') {
+        // Frost-bitten: grey-green, with snow lying in it in patches.
+        r += (150 + mid * 16 - r) * 0.5; g += (166 + mid * 14 - g) * 0.5; b += (146 + mid * 10 - b) * 0.5;
+        const fr = smooth(0.42, 0.72, fbm(u * 1.7 + 3, v * 1.7 + 9)) * 0.75;
+        r += (228 - r) * fr; g += (234 - g) * fr; b += (242 - b) * fr;
+      } else if (climate === 'desert') {
+        // Only the banks are green. Away from water it is dry scrub earth with a dark bush here and there.
+        const lush = smooth(0.35, 0.85, wetLand + (mid - 0.5) * 0.35);
+        r += 26; g += 6; b -= 6;
+        r += (178 + broad * 18 + mid * 12 - r) * (1 - lush); g += (154 + broad * 14 + mid * 12 - g) * (1 - lush); b += (98 + broad * 8 + mid * 8 - b) * (1 - lush);
+        if (hash(x >> 1, (y >> 1) + 411) > 0.9 + lush * 0.1) { r -= 34; g -= 22; b -= 26; }
+      } else {
+        // Lusher toward water; meadows of flowers in the open.
+        r -= wetLand * 10; g += wetLand * 8;
+        const meadow = smooth(0.55, 0.7, fbm(u * 0.22 + 40, v * 0.22 + 3)) * (1 - wood);
+        if (meadow > 0 && hash(x, y + 31) > 1 - meadow * 0.03) { const c = MEADOW[Math.floor(hash(x >> 3, y >> 3) * MEADOW.length)]; r = c[0]; g = c[1]; b = c[2]; }
+        else if (meadow > 0) { r += meadow * 6; g += meadow * 10; }
+      }
+      // Under trees: shade, moss and fallen leaves.
+      r -= wood * 26; g -= wood * 22; b -= wood * 12;
+      if (wood > 0.2 && hash(x >> 1, (y >> 1) + 77) > 0.82) { r += 30 * wood; g += 12 * wood; b -= 4; }
       // Hill grass is paler and drier the higher it grows.
       const up = smooth(0.3, 1.5, high) * (1 - smooth(0.3, 0.6, rock));
       r += up * 30; g += up * 16; b += up * 4;
       // Sand: pale, rippled by the wind, a shade redder in the desert.
       if (dune > 0) {
-        const k = smooth(0.3, 0.7, dune + (mid - 0.5) * 0.35), ripple = Math.sin((u * 0.9 + v * 2.6 + broad * 5) * 3.2) * 6;
+        const k = smooth(0.2, 0.8, dune + (mid - 0.5) * 0.45 + (fine - 0.5) * 0.3);
         const red = climate === 'desert' ? 10 : 0;
+        // Wind ripples everywhere; in the desert, long dunes with a lit face and a shadowed one.
+        const crest = climate === 'desert' ? Math.sin(u * 0.5 + v * 0.28 + broad * 7 + noise(u * 0.2, v * 0.2 + 9) * 5) : 0;
+        const ripple = Math.sin((u * 0.9 + v * 2.6 + broad * 5) * 3.2) * 5 + crest * 13 + smooth(0.6, 1, crest) * 8;
         r += (188 + red + broad * 18 + ripple - r) * k; g += (156 + broad * 15 + ripple - g) * k; b += (98 - red + broad * 12 + ripple * 0.6 - b) * k; // kept well short of white: the sun is strong
       }
       // Marsh: dark wet green, with pools of standing water.
       if (bog > 0) {
         const k = smooth(0.3, 0.7, bog + (mid - 0.5) * 0.35), pool = smooth(0.56, 0.7, fbm(u * 1.4 + 11, v * 1.4 + 5));
-        r += (58 + mid * 18 - r) * k; g += (86 + mid * 22 - g) * k; b += (50 + mid * 12 - b) * k;
-        r += (44 - r) * pool * k; g += (70 - g) * pool * k; b += (74 - b) * pool * k;
+        r += (74 + mid * 22 - r) * k; g += (108 + mid * 24 - g) * k; b += (58 + mid * 12 - b) * k;
+        // Pools catch the sky, with a dark muddy rim.
+        const rim = smooth(0.5, 0.58, fbm(u * 1.4 + 11, v * 1.4 + 5)) * (1 - pool);
+        r -= rim * 22 * k; g -= rim * 22 * k; b -= rim * 10 * k;
+        r += (70 - r) * pool * k; g += (112 - g) * pool * k; b += (128 - b) * pool * k;
       }
       // Lying snow, blue in the hollows, with grass showing through at its edges.
       if (white > 0) {
-        const k = smooth(0.3, 0.72, white + (mid - 0.5) * 0.45);
-        r += (232 + broad * 14 - r) * k; g += (238 + broad * 12 - g) * k; b += (246 + broad * 6 - b) * k;
+        const k = smooth(0.2, 0.8, white + (mid - 0.5) * 0.5 + (fine - 0.5) * 0.3);
+        // Drifts: bright on the windward side, blue in the lee, and a glitter of ice.
+        const drift = Math.sin(u * 0.7 + v * 0.33 + broad * 6 + noise(u * 0.25 + 4, v * 0.25) * 4);
+        const sr = 226 + broad * 12 + drift * 9, sg = 233 + broad * 10 + drift * 7, sb = 245 + broad * 4 + drift * 2;
+        r += (sr - r) * k; g += (sg - g) * k; b += (sb - b) * k;
+        if (hash(x, y + 5) > 0.992) { r += 14 * k; g += 12 * k; b += 8 * k; }
       }
       // Bare earth, trodden paler in the middle.
       const earth = smooth(0.3, 0.7, dirt + (mid - 0.5) * 0.35);
-      r += (150 + mid * 26 - r) * earth; g += (128 + mid * 22 - g) * earth; b += (84 + mid * 14 - b) * earth;
+      const stone = hash(x >> 1, (y >> 1) + 222) > 0.95 ? 18 : 0;
+      const [er, eg, eb] = climate === 'desert' ? [172, 142, 98] : climate === 'snow' ? [132, 118, 96] : [150, 128, 84];
+      r += (er + mid * 26 + stone - r) * earth; g += (eg + mid * 22 + stone - g) * earth; b += (eb + mid * 14 + stone - b) * earth;
       // Mountain rock in bands, scree at its foot, snow on the heights.
       const crag = smooth(0.35, 0.6, rock + (mid - 0.5) * 0.3);
       const band = noise(u * 0.5 + v * 1.3, high * 3.1) * 0.6 + grain * 0.4;
@@ -161,7 +221,10 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       // Sand along the shore, wet and darker at the waterline.
       const sand = smooth(0.14, 0.4, water);
       const wet = smooth(0.4, 0.55, water);
-      r += (192 + mid * 14 - r) * sand; g += (166 + mid * 12 - g) * sand; b += (112 + mid * 10 - b) * sand;
+      // A shingle strand in the north, mud on the steppe, sand elsewhere.
+      const [br, bg, bb] = climate === 'snow' ? [150, 154, 160] : climate === 'steppe' ? [164, 146, 104] : [192, 166, 112];
+      const pebble = climate === 'snow' && hash(x >> 1, (y >> 1) + 9) > 0.7 ? (hash(x >> 1, y >> 1) - 0.5) * 50 : 0;
+      r += (br + mid * 14 + pebble - r) * sand; g += (bg + mid * 12 + pebble - g) * sand; b += (bb + mid * 10 + pebble - b) * sand;
       r -= wet * 46; g -= wet * 34; b -= wet * 18;
       // The lake bed: sand going down into green-blue dark.
       const deep = smooth(0.5, 1, water);
@@ -346,7 +409,12 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
           const s = 0.55 + h2 * 0.6;
           tufts.push(m.compose(new THREE.Vector3(px2, heightAt(px2, py2), py2), q, new THREE.Vector3(s, s * (0.8 + h3 * 0.7), s)).clone());
           tuftCol.push(new THREE.Color().setHSL(climate === 'steppe' ? 0.14 + h3 * 0.05 : kind === T_MARSH ? 0.2 + h3 * 0.05 : 0.25 + h3 * 0.07, 0.55 + h2 * 0.15, 0.13 + h * 0.3 + (climate === 'steppe' ? 0.12 : 0)));
-        } else if (grass && h > 0.975) {
+        } else if ((kind === T_SNOW || kind === T_SAND) && !shore && h < 0.05) {
+          // Dead stalks standing out of the snow; dry grass on the sand.
+          const s = 0.5 + h2 * 0.5;
+          tufts.push(m.compose(new THREE.Vector3(px2, heightAt(px2, py2), py2), q, new THREE.Vector3(s, s * (0.9 + h3 * 0.8), s)).clone());
+          tuftCol.push(new THREE.Color().setHSL(0.11 + h3 * 0.03, 0.4, kind === T_SNOW ? 0.34 + h * 2 : 0.3 + h * 2));
+        } else if (grass && climate !== 'snow' && h > 0.975) {
           blooms.push(m.compose(new THREE.Vector3(px2, heightAt(px2, py2) + 0.07, py2), q, new THREE.Vector3(1, 1, 1)).clone());
           bloomCol.push(new THREE.Color(PETALS[Math.floor(h2 * PETALS.length)]));
         } else if (h > 0.955 && h <= 0.975 && k === 0) {
@@ -356,12 +424,30 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       }
     }
   }
-  const scatter = (g: THREE.BufferGeometry, mat: THREE.Material, list: THREE.Matrix4[], cols?: THREE.Color[]): void => {
+  /** Things big enough to poke through a floor: each is taken away when something is built over it. */
+  const standing: { im: THREE.InstancedMesh; i: number; x: number; y: number }[] = [];
+  const scatter = (g: THREE.BufferGeometry, mat: THREE.Material, list: THREE.Matrix4[], cols?: THREE.Color[], big = false): void => {
     if (!list.length) return;
     const im = new THREE.InstancedMesh(g, mat, list.length);
-    list.forEach((mm, i) => { im.setMatrixAt(i, mm); if (cols) im.setColorAt(i, cols[i]); });
+    list.forEach((mm, i) => { im.setMatrixAt(i, mm); if (cols) im.setColorAt(i, cols[i]); if (big) standing.push({ im, i, x: mm.elements[12], y: mm.elements[14] }); });
     im.receiveShadow = true;
+    im.castShadow = big;
     group.add(im);
+  };
+  // Grass and reeds lean with the wind.
+  const wind = { value: 0 };
+  const swaying = <M extends THREE.Material>(mt: M, reach: number): M => {
+    mt.onBeforeCompile = (sh) => {
+      sh.uniforms.uWind = wind;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uWind;').replace('#include <begin_vertex>', `#include <begin_vertex>
+        #ifdef USE_INSTANCING
+          float ph = instanceMatrix[3].x * 0.9 + instanceMatrix[3].z * 0.7;
+          float gust = sin(uWind * 1.7 + ph) * 0.6 + sin(uWind * 0.55 + ph * 0.31) * 0.8 + 0.5;
+          transformed.x += gust * position.y * ${reach.toFixed(2)};
+          transformed.z += gust * position.y * ${(reach * 0.4).toFixed(2)};
+        #endif`);
+    };
+    return mt;
   };
   // A tuft is three blades leaning apart.
   const blade = new THREE.ConeGeometry(0.035, 0.2, 3);
@@ -376,9 +462,112 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
   }
   tuft.setAttribute('position', new THREE.Float32BufferAttribute(bp, 3));
   tuft.setAttribute('normal', new THREE.Float32BufferAttribute(bn, 3));
-  scatter(tuft, new THREE.MeshLambertMaterial({ color: 0xffffff }), tufts, tuftCol);
+  scatter(tuft, swaying(new THREE.MeshLambertMaterial({ color: 0xffffff }), 0.3), tufts, tuftCol);
   scatter(new THREE.IcosahedronGeometry(0.12, 0), new THREE.MeshLambertMaterial({ color: 0x9a968c, flatShading: true }), stones);
   scatter(new THREE.OctahedronGeometry(0.045, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), blooms, bloomCol);
+
+  // ---- what grows and lies in each country ----
+  {
+    const bushes: THREE.Matrix4[] = [], bushCol: THREE.Color[] = [], boulders: THREE.Matrix4[] = [], boulderCol: THREE.Color[] = [], reeds: THREE.Matrix4[] = [], reedCol: THREE.Color[] = [];
+    const cacti: THREE.Matrix4[] = [], logs: THREE.Matrix4[] = [], pads: THREE.Matrix4[] = [], caps: THREE.Matrix4[] = [];
+    const v3 = new THREE.Vector3(), sc = new THREE.Vector3(), tilt = new THREE.Quaternion(), ax = new THREE.Vector3();
+    const put = (list: THREE.Matrix4[], x: number, y: number, lift: number, turn: number, sx: number, sy: number, sz: number): void => {
+      q.setFromAxisAngle(up, turn);
+      list.push(new THREE.Matrix4().compose(v3.set(x, heightAt(x, y) + lift, y), q, sc.set(sx, sy, sz)));
+    };
+    const rockC = climate === 'desert' ? 0xb89468 : climate === 'snow' ? 0xa8aeb8 : climate === 'steppe' ? 0x9c917c : 0x8f8f88;
+    for (let y = 1; y < N - 1; y++) {
+      for (let x = 1; x < N - 1; x++) {
+        const kind = T[y * N + x];
+        if (kind === T_ROCK || kind === T_DIRT) continue;
+        const h = hash(x * 17 + 3, y * 29 + 11), h2 = hash(x * 5 + 91, y * 3 + 7), h3 = hash(x * 13 + 5, y * 7 + 41), h4 = hash(x * 3 + 17, y * 11 + 2);
+        const px2 = x + 0.15 + h2 * 0.7, py2 = y + 0.15 + h3 * 0.7;
+        const shore = kind !== T_WATER && (tAt(x - 1, y) === T_WATER || tAt(x + 1, y) === T_WATER || tAt(x, y - 1) === T_WATER || tAt(x, y + 1) === T_WATER);
+        if (kind === T_WATER) {
+          // Lily pads in the still shallows of green country.
+          const w = wetAt(px2, py2);
+          if (climate !== 'snow' && climate !== 'desert' && w > 0.62 && w < 0.86 && h < 0.3) for (let k = 0; k < 3; k++) {
+            const a = hash(x + k * 7, y + k * 3) * 6.28, d = 0.1 + k * 0.16, s2 = 0.7 + hash(x * 3 + k, y) * 0.7;
+            q.setFromAxisAngle(up, a * 3);
+            pads.push(new THREE.Matrix4().compose(v3.set(px2 + Math.cos(a) * d, -0.06, py2 + Math.sin(a) * d), q, sc.set(s2, 1, s2)));
+          }
+          continue;
+        }
+        // Reeds: thick in the marsh, a fringe along green and steppe shores.
+        if (kind === T_MARSH || (shore && climate !== 'snow' && climate !== 'desert' && h < 0.45) || (shore && climate === 'desert' && h < 0.2)) {
+          for (let k = 0; k < (kind === T_MARSH ? 2 : 1); k++) {
+            const rx = x + hash(x * 7 + k * 3, y * 5) * 0.9, ry = y + hash(x * 3, y * 9 + k * 5) * 0.9, s2 = 0.7 + hash(x + k, y * 3) * 0.7;
+            put(reeds, rx, ry, 0, h * 6.28 + k, s2, s2 * (0.8 + h4 * 0.6), s2);
+            reedCol.push(new THREE.Color().setHSL(0.19 + h4 * 0.06, 0.42, 0.3 + h2 * 0.14));
+          }
+          continue;
+        }
+        if (shore) continue;
+        if (h4 > 0.985) {
+          // A boulder, half sunk.
+          const s2 = 0.6 + h2 * 1.1;
+          ax.set(h - 0.5, 0.2, h3 - 0.5).normalize(); tilt.setFromAxisAngle(ax, h * 2);
+          boulders.push(new THREE.Matrix4().compose(v3.set(px2, heightAt(px2, py2) + 0.04 * s2, py2), tilt, sc.set(s2, s2 * (0.55 + h3 * 0.4), s2 * (0.8 + h * 0.5))));
+          boulderCol.push(new THREE.Color(rockC).multiplyScalar(0.85 + h * 0.3));
+        } else if (kind === T_SAND && climate === 'desert') {
+          if (h > 0.975) put(cacti, px2, py2, 0, h2 * 6.28, 0.7 + h3 * 0.7, 0.7 + h2 * 0.8, 0.7 + h3 * 0.7);
+          else if (h < 0.035) { put(bushes, px2, py2, 0.05, h2 * 6.28, 0.7 + h3 * 0.5, 0.5 + h2 * 0.3, 0.7 + h3 * 0.5); bushCol.push(new THREE.Color().setHSL(0.11 + h3 * 0.05, 0.4, 0.16 + h2 * 0.08)); }
+        } else if (kind === T_SNOW || kind === T_SAND) {
+          if (h < 0.012 && kind === T_SNOW) { put(bushes, px2, py2, 0.04, h2 * 6.28, 0.7, 0.45, 0.7); bushCol.push(new THREE.Color(0xe6ecf4)); } // a bush under snow
+        } else {
+          // Grass: bushes, and in green country the odd fallen log and ring of mushrooms.
+          if (h < (climate === 'steppe' ? 0.03 : 0.045)) {
+            const s2 = 1 + h3 * 1.1;
+            put(bushes, px2, py2, 0.06 * s2, h2 * 6.28, s2, s2 * (0.6 + h2 * 0.35), s2 * (0.8 + h * 4));
+            bushCol.push(climate === 'steppe' ? new THREE.Color().setHSL(0.13 + h3 * 0.05, 0.45, 0.2 + h2 * 0.08) : climate === 'snow' ? new THREE.Color().setHSL(0.3, 0.3, 0.14 + h2 * 0.06) : new THREE.Color().setHSL(0.28 + h3 * 0.07, 0.62, 0.1 + h2 * 0.07));
+          } else if (!climate || climate === 'temperate') {
+            if (h > 0.992) { q.setFromAxisAngle(up, h2 * 6.28); logs.push(new THREE.Matrix4().compose(v3.set(px2, heightAt(px2, py2) + 0.06, py2), q, sc.set(1, 1, 0.8 + h3 * 0.8))); }
+            else if (h > 0.98 && field(shade, x + 0.5, y + 0.5) > 0.1) for (let k = 0; k < 4; k++) put(caps, px2 + Math.cos(k * 1.7 + h * 6) * 0.14, py2 + Math.sin(k * 1.7 + h * 6) * 0.14, 0, 0, 0.7 + k * 0.15, 0.7 + k * 0.15, 0.7 + k * 0.15);
+          }
+        }
+      }
+    }
+    const lamb = (color: number, flat = true) => new THREE.MeshLambertMaterial({ color, flatShading: flat });
+    const jag = (g: THREE.BufferGeometry, amt: number, seed: number): THREE.BufferGeometry => {
+      const p = g.getAttribute('position');
+      for (let i = 0; i < p.count; i++) { const k = 1 + (hash(Math.round(p.getX(i) * 50) + seed, Math.round(p.getY(i) * 50 + p.getZ(i) * 91)) - 0.5) * amt; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); }
+      g.computeVertexNormals();
+      return g;
+    };
+    const merge = (parts: THREE.BufferGeometry[]): THREE.BufferGeometry => {
+      const pp: number[] = [], nn: number[] = [];
+      for (const part of parts) { const g2 = part.toNonIndexed(); g2.computeVertexNormals(); pp.push(...(g2.getAttribute('position').array as Float32Array)); nn.push(...(g2.getAttribute('normal').array as Float32Array)); }
+      const out = new THREE.BufferGeometry();
+      out.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3));
+      out.setAttribute('normal', new THREE.Float32BufferAttribute(nn, 3));
+      return out;
+    };
+    const bushG = jag(new THREE.IcosahedronGeometry(0.2, 1), 0.35, 3);
+    bushG.scale(1, 0.8, 1); bushG.translate(0, 0.1, 0);
+    scatter(bushG, lamb(0xffffff), bushes, bushCol, true);
+    scatter(jag(new THREE.IcosahedronGeometry(0.24, 1), 0.4, 9), lamb(0xffffff), boulders, boulderCol, true);
+    // A clump of reeds: five stems leaning apart, two with a dark head.
+    const stems: THREE.BufferGeometry[] = [];
+    for (let k = 0; k < 5; k++) {
+      const hgt = 0.34 + (k % 3) * 0.09, st = new THREE.ConeGeometry(0.014, hgt, 3);
+      st.translate(0, hgt / 2, 0); st.rotateZ((k - 2) * 0.13); st.rotateY(k * 1.9); st.translate(Math.cos(k * 2.4) * 0.06, 0, Math.sin(k * 2.4) * 0.06);
+      stems.push(st);
+      if (k % 2 === 0) { const hd = new THREE.CylinderGeometry(0.022, 0.022, 0.09, 5); hd.translate(0, hgt - 0.02, 0); hd.rotateZ((k - 2) * 0.13); hd.rotateY(k * 1.9); hd.translate(Math.cos(k * 2.4) * 0.06, 0, Math.sin(k * 2.4) * 0.06); stems.push(hd); }
+    }
+    scatter(merge(stems), swaying(lamb(0xffffff, false), 0.22), reeds, reedCol, true);
+    // A cactus: a trunk and two arms that turn up.
+    const arm = (side: number, at: number, len: number): THREE.BufferGeometry[] => {
+      const out2 = new THREE.CylinderGeometry(0.035, 0.035, 0.12, 6); out2.rotateZ(Math.PI / 2); out2.translate(side * 0.09, at, 0);
+      const rise = new THREE.CylinderGeometry(0.032, 0.036, len, 6); rise.translate(side * 0.15, at + len / 2, 0);
+      return [out2, rise];
+    };
+    scatter(merge([new THREE.CylinderGeometry(0.05, 0.058, 0.5, 7).translate(0, 0.25, 0), new THREE.SphereGeometry(0.05, 7, 4).translate(0, 0.5, 0), ...arm(1, 0.2, 0.2), ...arm(-1, 0.28, 0.14)]), lamb(0x5f8a4a), cacti, undefined, true);
+    scatter(merge([new THREE.CylinderGeometry(0.07, 0.08, 0.6, 7).rotateX(Math.PI / 2), new THREE.CylinderGeometry(0.025, 0.03, 0.14, 5).translate(0.03, 0.1, 0.1)]), lamb(0x6a4c30), logs, undefined, true);
+    scatter(merge([new THREE.CylinderGeometry(0.012, 0.016, 0.06, 5).translate(0, 0.03, 0), new THREE.SphereGeometry(0.035, 7, 4, 0, 6.3, 0, 1.6).translate(0, 0.055, 0)]), lamb(0xc8553a, false), caps);
+    // A lily pad is a disc with a bite out of it.
+    const pad = new THREE.CircleGeometry(0.09, 9, 0.4, 5.6); pad.rotateX(-Math.PI / 2);
+    scatter(pad, new THREE.MeshLambertMaterial({ color: 0x4f8a3c, side: THREE.DoubleSide }), pads);
+  }
 
   // ---- cloud shadows ----
   const cc = document.createElement('canvas');
@@ -418,6 +607,11 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       waterMat.uniforms.day.value = day;
       waterMat.uniforms.grey.value = grey;
       cloudTex.offset.set(clock * 0.004, clock * 0.0025);
+      wind.value = clock;
+    },
+    clearAt(x: number, y: number, r: number): void {
+      const none = new THREE.Matrix4().makeScale(0, 0, 0);
+      for (const s of standing) if (Math.abs(s.x - x) < r && Math.abs(s.y - y) < r) { s.im.setMatrixAt(s.i, none); s.im.instanceMatrix.needsUpdate = true; s.x = -99; }
     },
   };
 }

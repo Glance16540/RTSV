@@ -9,6 +9,7 @@ import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
+import { Life } from './life';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
 
@@ -90,6 +91,8 @@ export class Renderer {
   private tintC = new THREE.Color();
   private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] }>();
   private dust: Dust[] = [];
+  private life!: Life;
+  private hearthT = 0;
   private campViews = new Map<number, { key: string; g: THREE.Group; figs: CampFig[] }>();
   /** How far into night it is, 0 by day to 1 in full dark, eased through dusk and dawn. */
   private nightAmt = 0;
@@ -132,10 +135,12 @@ export class Renderer {
     this.scene.add(this.sun, this.sun.target);
 
     this.fogAlpha = new Float32Array(game.size * game.size).fill(1);
-    this.scenery = buildScenery(game.size, game.terrain, game.spec.height, game.climate);
+    this.scenery = buildScenery(game.size, game.terrain, game.spec.height, game.climate, game.resources.filter((r) => r.type === 'tree'));
     this.scene.add(this.scenery.group);
     this.roads = new Roads(game, this.scenery, this.scene);
     this.weather = new Weather(this.scene, game.climate);
+    this.life = new Life(this.scene, game, (x, y) => this.scenery.heightAt(x, y));
+    this.life.fogged = !this.noFog;
     this.buildTrees();
     this.buildFog();
 
@@ -1118,6 +1123,7 @@ export class Renderer {
     // Rebuilt whole when it is repaired, or when the town's leaning changes.
     if (g && (g.userData.lean !== lean || hurt < ((g.userData.hurt as number) ?? 0))) { if (g.userData.site) this.scene.remove(g.userData.site as THREE.Object3D); this.scene.remove(g); g = undefined; }
     if (!g) {
+      this.scenery.clearAt(b.x, b.y, b.size / 2 + 0.2);
       g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ, lean, (b.id * 7 + 3) % 97); // the same plot always gets the same house
       g.userData.lean = lean;
       // A building sits on the lowest corner of its plot, so no wall hangs in the air.
@@ -1207,6 +1213,14 @@ export class Renderer {
     for (const r of game.resources) this.syncResource(r);
     this.updateFog(dt);
     this.scenery.update(this.clock, 1 - this.nightAmt, this.weather.amount);
+    if (!this.still) this.life.update(dt, this.clock, 1 - this.nightAmt, this.weather.amount, this.cx, this.cy);
+    // Smoke from the hearths of lived-in houses and the town's hall, thicker in the cold and after dark.
+    if ((this.hearthT -= dt) <= 0 && !this.still) {
+      this.hearthT = game.climate === 'snow' || this.nightAmt > 0.5 ? 0.35 : 0.6;
+      const homes = game.buildings.filter((b) => b.complete && (b.type === 'towncenter' || (b.type === 'house' && (b.residents.m !== 0 || b.residents.f !== 0))) && Math.abs(b.x - this.cx) < 18 && Math.abs(b.y - this.cy) < 16 && (this.noFog || game.vis[Math.floor(b.y) * game.size + Math.floor(b.x)] === 2));
+      const b = homes[Math.floor(Math.random() * homes.length)];
+      if (b) this.cloud(b.x + b.size * 0.18 + (Math.random() - 0.5) * 0.1, this.scenery.heightAt(b.x, b.y) + (b.type === 'house' ? 1.25 : 2.3), b.y - b.size * 0.12, 0xb8b4ae, 0);
+    }
 
     // Selection rings.
     let n = 0;
