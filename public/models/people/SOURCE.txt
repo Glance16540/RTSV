@@ -1,1 +1,3 @@
 human.json (a glTF file with its data embedded): the mannequin and a selection of motions from the Universal Animation Library (standard edition) by Quaternius, https://quaternius.com, released under CC0 1.0. Trimmed to the motions the game uses.
+
+heads.json, head_m.webp, head_f.webp, eye.webp: the heads, eyes, eyebrows and beard of the Universal Base Characters kit (standard edition) by Quaternius, https://quaternius.com, released under CC0 1.0. Cut out and repacked by scripts/heads.py; the skin pictures are divided by the face's average colour so the game can give them any skin colour.

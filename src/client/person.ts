@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { headsReady, loadHeads, sculptedHead } from './heads';
 
 /** How tall a man stands in the game's units; the model is 1.83 of its own. */
 const SCALE = 1.02 / 1.83;
@@ -15,6 +16,8 @@ interface Marks { /** The top of the skull, and how far forward the face stands 
 let source: { scene: THREE.Object3D; clips: Map<string, THREE.AnimationClip>; marks: Marks } | null = null;
 let failed = false;
 const waiting: (() => void)[] = [];
+/** How a sculpted head is set on the figure: its size against the figure's own head, and how far up and forward it is moved. */
+const HEAD_FIT = 1.05, HEAD_UP = 0, HEAD_OUT = 0;
 
 /** Starts fetching the figure. `then` runs once it can be used. */
 export function loadPeople(then?: () => void): void {
@@ -86,7 +89,8 @@ export function loadPeople(then?: () => void): void {
     const mid = new Map<string, THREE.Vector3>();
     for (const [name, t] of sums) mid.set(name, t.v.divideScalar(t.n));
     source = { scene: g.scene, clips, marks: { head, mid, trunk: trunkAt, crown: crownY, face } };
-    for (const w of waiting.splice(0)) w();
+    // The sculpted heads come too, if they can; people are made without them if not.
+    loadHeads(() => { for (const w of waiting.splice(0)) w(); });
   }, undefined, () => { failed = true; });
 }
 export const peopleReady = (): boolean => !!source;
@@ -623,7 +627,8 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       bones.get('DEF-hand' + side)?.scale.multiplyScalar(o.female ? 0.86 : 1.04);
       bones.get('DEF-foot' + side)?.scale.multiplyScalar(o.female ? 0.9 : 1.03);
     }
-    bones.get('DEF-head')?.scale.multiplyScalar(o.female ? 1.04 : 1.07); // a touch large, so a face can be read from above
+    // A touch large, so a face can be read from above. Under a sculpted head the mannequin's own blank one is drawn in small, out of sight inside it.
+    bones.get('DEF-head')?.scale.multiplyScalar(headsReady() ? 0.55 : o.female ? 1.04 : 1.07);
     body.updateMatrixWorld(true);
   }
   const mine = new Map<string, { p: THREE.Vector3; q: THREE.Quaternion; s: THREE.Vector3 }>();
@@ -646,6 +651,17 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   // A man's lid is a fine line a shade darker than his skin; the nose a touch darker than the face, since it catches the light from above.
   const lidM = solid(new THREE.Color(o.skin).multiplyScalar(0.5).getHex()), noseM = solid(new THREE.Color(o.skin).multiplyScalar(0.9).getHex());
   const sk = new THREE.Color(o.skin), rimT = Math.min(1, Math.max(0, (0.24 - (sk.r * 0.3 + sk.g * 0.6 + sk.b * 0.1)) / 0.2)), rimM = solid(sk.clone().lerp(new THREE.Color(0xe6dccc), 0.2 + rimT * 0.45).getHex());
+  const mouthY = eyeY - 0.072;
+  // A sculpted head, where there is one: set so its crown and its eyes fall where this figure's are, and a touch large.
+  const sculpt = sculptedHead(o.female || o.child, o.skin, hairM, o.beard); // a child of either sex has the smoother face: the man's is drawn with a shadow of beard
+  if (sculpt) {
+    const F = sculpt.fig, sc = (0.118 / (F.crown - F.eyeY)) * HEAD_FIT;
+    sculpt.g.scale.setScalar(sc);
+    sculpt.g.position.set(0, mk.crown + HEAD_UP - F.crown * sc, ez + HEAD_OUT - F.eyeZ * sc);
+    head.add(sculpt.g);
+  }
+  // Otherwise a face made of simple shapes.
+  if (!sculpt) {
   for (const sx of [-1, 1]) {
     const ex = sx * 0.033;
     // One dark almond with a point of light: no white to stare with, and nothing set in front of anything else to slide about as the head turns.
@@ -676,11 +692,12 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   head.add(nose, part(geo('nosetip', () => new THREE.SphereGeometry(0.0105, 9, 7)), noseM, 0, noseY - 0.006, nz + 0.0045));
   // The mouth: one soft line, turned up a little at the ends; a woman's a touch fuller and redder.
   const lipC = new THREE.Color(o.skin).lerp(new THREE.Color(0x7a2c30), o.female ? 0.58 : 0.5).getHex();
-  const mouthY = eyeY - 0.072, mz = faceAt(mouthY, 'mid'), ARC = 0.86, MR = 0.036;
+  const mz = faceAt(mouthY, 'mid'), ARC = 0.86, MR = 0.036;
   const mouth = part(geo('smile', () => new THREE.TorusGeometry(MR, 0.0034, 6, 12, ARC).rotateZ(-Math.PI / 2 - ARC / 2)), solid(lipC), 0, mouthY + MR * Math.cos(ARC / 2) + 0.001, mz + (o.female ? -0.0012 : 0.0025)); // a man's lips stand further out on this figure, and would bury the line
   mouth.scale.set(o.female ? 0.95 : 1.08, 1, o.female ? 1.5 : 1.9);
   head.add(mouth);
   if (o.female) { const lower = part(geo('lowerlip', () => new THREE.SphereGeometry(0.011, 9, 5)), solid(lipC), 0, mouthY - 0.004, mz - 0.006); lower.scale.set(0.95, 0.3, 0.5); head.add(lower); }
+  }
   const dome = geo('dome', () => new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.56));
   const crown = (m: THREE.Material, k: number, lift = 0): THREE.Mesh => {
     const d = part(dome, m, 0, hc.y + hr.y * 0.22 + lift, hc.z - hr.z * 0.08);
@@ -706,7 +723,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       head.add(tail);
     }
   }
-  if (o.beard) {
+  if (o.beard && !sculpt) {
     // A beard on the jaw and chin, its top edge just under the mouth so the mouth still shows.
     const b = part(geo('beard', () => new THREE.SphereGeometry(1, 12, 7, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55)), hairM, 0, mouthY - 0.024, hc.z + hr.z * 0.28);
     b.scale.set(hr.x * 1.03, 0.078, hr.z * 0.98);
@@ -843,7 +860,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   }
   // A child's head is large for the body. A boy's is also made rounder: the man's head it is cut from is long in the jaw,
   // and at a child's size that left a tall mask with the features small in the middle of it.
-  if (o.child) { const hb2 = bones.get('DEF-head'); if (hb2) { if (o.female) hb2.scale.multiplyScalar(1.28); else hb2.scale.set(hb2.scale.x * 1.2, hb2.scale.y * 1.08, hb2.scale.z * 1.2); } }
+  if (o.child) { const hb2 = bones.get('DEF-head'); if (hb2) { if (o.female || headsReady()) hb2.scale.multiplyScalar(1.28); else hb2.scale.set(hb2.scale.x * 1.2, hb2.scale.y * 1.08, hb2.scale.z * 1.2); } }
 
   const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(), props, toolKind: '', skins: [], whole: [], skin: o.skin, gear: [gearShield, gearHead, gearPlate].filter((l) => l.length > 0), spare, hurt: 0, female: o.female, seed: o.seed, strike: 0, struck: false, soldier: !!o.weapon, aim: o.weapon === 'bow' ? 'bow' : o.weapon === 'crossbow' || o.weapon === 'musket' || o.weapon === 'firetube' ? 'gun' : '', aimW: 0, flinch: 0, weapon: o.weapon, child: o.child };
   for (const [name, clip] of source.clips) real.actions.set(name, real.mixer.clipAction(clip));
