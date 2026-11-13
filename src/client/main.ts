@@ -266,7 +266,7 @@ loadAssets().then(() => {
   civSel.innerHTML = CIV_IDS.map((id) => `<option value="${id}">${CIVS[id].icon} ${CIVS[id].name}</option>`).join('');
   civSel.value = game.players[0].civ;
   const civ = CIVS[game.players[0].civ];
-  el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} <i>${styleOf(civ.id).icon} ${styleOf(civ.id).name}: ${styleOf(civ.id).desc}</i> ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b> and, from the ${AGES[UNITS[civ.unique2].age].name}, the <b>${UNITS[civ.unique2].name}</b>.` +
+  el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} <i>${styleOf(civ.id).icon} ${styleOf(civ.id).name}: ${styleOf(civ.id).desc} ${styleOf(civ.id).rule}</i> ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b> and, from the ${AGES[UNITS[civ.unique2].age].name}, the <b>${UNITS[civ.unique2].name}</b>.` +
     `<br><small>Rivals: ${game.players.filter((p) => p.isAI).map((p) => `${CIVS[p.civ].icon} ${p.name}`).join(', ')}</small>`;
   const climateSel = el('map-climate') as HTMLSelectElement;
   climateSel.value = ['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? asked : 'auto';
@@ -329,7 +329,7 @@ loadAssets().then(() => {
       // Who is still standing decides what is left of the army on the campaign map.
       const survivors: Record<string, number> = {};
       for (const u of app.game.units) if (u.owner === app.pid) survivors[u.type] = (survivors[u.type] ?? 0) + 1;
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -385,8 +385,8 @@ loadAssets().then(() => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number> };
-      finishBattle(c, r.won, r.survivors);
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number };
+      finishBattle(c, r.won, r.survivors, r.virtue);
       if (c.phase === 'ai') continueAI(c);
     }
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);

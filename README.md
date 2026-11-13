@@ -33,6 +33,10 @@ technologies, and changes how your settlement looks.
 **Play styles.** Each nation belongs to a group (raiders, builders, farmers, scholars, the faithful, traders,
 warriors; see `STYLES` in `src/sim/data.ts`). The Norse and Mongols are raiders: they start as a war band with no
 Town Center, settle when they choose, and their fighters carry off enemy villagers, who join the tribe.
+Every group has one rule that is its own (`STYLE_RULES`): the builders' buildings mend themselves when the town is
+left in peace, each farm of the farmers makes room for one more villager, the scholars gather faster for every
+technology they learn, the faithful are healed and cured round their Church, the traders' Markets earn gold by
+themselves, and a warrior strikes harder for every foe he has killed (every soldier's kills are shown on his panel).
 
 **Thirteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
 pious or decadent: that is decided by how they are ruled, not by who they are.
@@ -243,7 +247,14 @@ neighbouring land.
 - **Each people plays differently on the map**, and each leader has a temperament: some are
   cautious builders, some raid at poor odds, some are quick to make peace.
 - **Buildings.** Each territory has three slots (four in a capital): Farmland for income, a
-  Barracks, Archery Range or Stable to raise troops there, and a Fortress for defence.
+  Barracks, Archery Range or Stable to raise troops there, a Church or a Tavern, and a Fortress for defence.
+- **Faith on the map.** Your people stand somewhere between piety and decadence for the whole campaign (`FAITH`,
+  `Faction.virtue` in `src/sim/campaign.ts`). A Church on a land makes them more pious every turn and a Tavern more
+  decadent, while paying a supply. The pious hold their own land harder and the Righteous never lose one to unrest,
+  but each new age costs them more; the worldly earn more from taverns; the Decadent hire every company for 1 less,
+  defend badly, and lose a restless land unless two companies hold it. Your town begins every battle in that creed,
+  and half of how far you move it in a battle you fight yourself goes home with your people. Rivals build what
+  they believe in.
 - **Armies** are made of companies of infantry, archers and cavalry, up to twelve. Cavalry
   rides down archers, archers wear down infantry, infantry stops cavalry. An army that wins a
   battle becomes veteran: stronger on the map and harder-hitting in real-time battles.

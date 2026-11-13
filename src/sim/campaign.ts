@@ -4,7 +4,8 @@
 import { AGES, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import type { PlayerSetup } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
-import { habitsWith } from './temper';
+import { habitsWith, leaningWith } from './temper';
+import { LEANING, creedOf } from './creed';
 
 export const MAP_W = 1300;
 export const MAP_H = 800;
@@ -30,8 +31,46 @@ export const SITES: Record<string, SiteDef> = {
   range: { name: 'Archery Range', icon: '🏹', cost: 5, desc: 'Raise archers here.' },
   stable: { name: 'Stable', icon: '🐴', cost: 7, desc: 'Raise cavalry here.' },
   harbour: { name: 'Harbour', icon: '⚓', cost: 6, desc: 'On the sea only. An army here can make the sea crossings from this land, and from an open coast can sail to any other. Troops landing from the sea fight at four-fifths strength.' },
+  church: { name: 'Church', icon: '⛪', cost: 5, desc: 'Your people grow more pious every turn.' },
+  tavern: { name: 'Tavern', icon: '🍺', cost: 4, desc: '+1 supply each turn, more among a worldly people. Your people grow more decadent every turn.' },
   fortress: { name: 'Fortress', icon: '🏰', cost: 9, desc: '+3 defence. In battle the defender starts in the Bronze Age with towers.' },
 };
+/**
+ * Piety and decadence on the campaign map. A people's standing (`Faction.virtue`, the same scale as a town's in
+ * battle, -100 to 100) is moved each turn by its churches and taverns, sets the creed its towns begin every battle
+ * in, and is moved in turn by how the player ruled the town in a battle fought in person.
+ * `defence`: how hard its own land is to take. `tavern`: supplies a Tavern pays. `raise`: taken off the cost of a
+ * company (swords for hire). `age`: added to the cost of the next age. `steadfast`: its lands never rise in revolt.
+ * `restless`: a land of theirs in unrest rises even with a garrison in it if that garrison is a single company.
+ */
+export const CHURCH_VIRTUE = 6;
+export const TAVERN_VIRTUE = 6;
+/** How much of what a town became in a battle the whole people takes home with it. */
+export const BATTLE_VIRTUE = 0.5;
+export interface FaithDef { defence: number; tavern: number; raise: number; age: number; steadfast?: boolean; restless?: boolean; desc: string }
+export const FAITH: Record<string, FaithDef> = {
+  zealous: { defence: 1.2, tavern: 0, raise: 0, age: 3, steadfast: true, desc: 'Their own land is a fifth harder to take and never rises in revolt. Taverns pay nothing, and each new age costs 3 more.' },
+  devout: { defence: 1.1, tavern: 1, raise: 0, age: 1, desc: 'Their own land is a tenth harder to take. Each new age costs 1 more.' },
+  temperate: { defence: 1, tavern: 1, raise: 0, age: 0, desc: 'Neither saints nor sinners: nothing is changed.' },
+  worldly: { defence: 0.95, tavern: 2, raise: 0, age: 0, desc: 'Taverns pay double. Their own land is a little easier to take.' },
+  decadent: { defence: 0.85, tavern: 3, raise: 1, age: 0, restless: true, desc: 'Taverns pay threefold and every company costs 1 less. Their own land is easier to take, and a land in unrest rises unless two companies or more hold it down.' },
+};
+export const virtueOf = (c: Campaign, f: number): number => (f < 0 ? 0 : c.factions[f]?.virtue ?? 0);
+export const faithOf = (c: Campaign, f: number): FaithDef => FAITH[creedOf(virtueOf(c, f)).id];
+/** How far a people's churches and taverns will move it next turn. */
+export function virtueDrift(c: Campaign, f: number): number {
+  let n = 0;
+  for (const t of c.territories) if (t.owner === f) n += (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0);
+  return n;
+}
+function shiftVirtue(c: Campaign, f: number, by: number): void {
+  const x = c.factions[f];
+  if (!x || !by) return;
+  const was = creedOf(x.virtue ?? 0);
+  x.virtue = Math.max(-100, Math.min(100, Math.round((x.virtue ?? 0) + by)));
+  const now = creedOf(x.virtue);
+  if (now.id !== was.id) c.log.push(`${x.id === 0 ? 'Your people are' : `${x.name} are`} now ${now.name}. ${FAITH[now.id].desc}`);
+}
 export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
 
 /** What each troop type is good against: its companies fight up to 30% harder against that type. */
@@ -100,14 +139,16 @@ export function siteCost(t: Territory, site: string, civ = ''): number {
   if (site === 'farm' && civ === 'egypt') return 2;
   return Math.max(2, SITES[site].cost - (site === 'stable' && t.trait === 'horses' ? 2 : 0) - (civ === 'forge' ? 1 : 0));
 }
-export function companyCost(t: Territory, type: string, civ = ''): number {
-  return Math.max(1, COMPANIES[type].cost - (type === 'cavalry' && t.trait === 'horses' ? 1 : 0) - (type === 'cavalry' && civ === 'steppe' ? 1 : 0) - ((type === 'infantry' && civ === 'greece') || (type === 'archers' && civ === 'england') ? 1 : 0));
+export function companyCost(t: Territory, type: string, civ = '', hire = 0): number {
+  return Math.max(1, COMPANIES[type].cost - hire - (type === 'cavalry' && t.trait === 'horses' ? 1 : 0) - (type === 'cavalry' && civ === 'steppe' ? 1 : 0) - ((type === 'infantry' && civ === 'greece') || (type === 'archers' && civ === 'england') ? 1 : 0));
 }
 export const heroCost = (civ: string): number => (civ === 'dawn' ? HERO_COST / 2 : HERO_COST);
 
 export interface Faction {
   id: number; name: string; civ: string; color: number; isAI: boolean; supplies: number; alive: boolean; heroAlive: boolean;
   lastDemand: number; // turn this rival last demanded tribute
+  /** Where this people stands between piety (100) and decadence (-100): see FAITH. */
+  virtue?: number;
   age?: number; // the age this people has reached on the campaign map, 0 to 4
   favor?: number; // goodwill earned with gifts and help, up to MAX_FAVOR: makes them readier to deal
   refused?: number; // turn they last turned the player down: they will not be asked twice in a turn
@@ -561,7 +602,9 @@ function mapTurn(c: Campaign): void {
     const t = c.territories[e.at];
     if (e.kind === 'unrest' && t.owner >= 0) {
       const a = armyAt(c, t.id), f = c.factions[t.owner];
-      if (a && a.owner === t.owner) { mark(c, 'calm', t.id); c.log.push(`The garrison keeps order in ${t.name}.`); }
+      const faith = faithOf(c, t.owner);
+      if (faith.steadfast) { mark(c, 'calm', t.id); c.log.push(`${t.name} keeps faith with ${f.id === 0 ? 'you' : f.name}: the unrest passes.`); }
+      else if (a && a.owner === t.owner && !(faith.restless && armySize(a) < 2)) { mark(c, 'calm', t.id); c.log.push(`The garrison keeps order in ${t.name}.`); }
       else {
         c.log.push(`${t.name} has risen and thrown off ${f.id === 0 ? 'your' : `${f.name}'s`} rule.`);
         t.owner = -1; t.militia = 2;
@@ -760,7 +803,7 @@ export function reach(c: Campaign, tid: number): number[] {
 }
 export const SEA_LANDING = 0.8;
 /** What the next age costs this people. */
-export const ageCost = (c: Campaign, f: number): number => Math.max(1, (AGE_COST[ageOf(c, f)] ?? Infinity) - (c.factions[f].civ === 'babylon' ? 3 : 0));
+export const ageCost = (c: Campaign, f: number): number => Math.max(1, (AGE_COST[ageOf(c, f)] ?? Infinity) + faithOf(c, f).age - (c.factions[f].civ === 'babylon' ? 3 : 0));
 export const truceCost = (civ: string): number => (civ === 'arabs' ? 1 : TRUCE_COST);
 export const giftCost = (civ: string): number => (civ === 'arabs' ? 3 : GIFT_COST);
 export const ageOf = (c: Campaign, f: number): number => (f < 0 ? 0 : c.factions[f].age ?? 0);
@@ -795,7 +838,7 @@ export const armyStrength = (a: Army): number => strengthVs(a);
 export function income(c: Campaign, f: number): number {
   let n = 0;
   let held = 0;
-  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0)); held++; }
+  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0)); held++; }
   return n + (c.factions[f].civ === 'persia' ? Math.floor(held / 3) : 0);
 }
 export function territoryIncome(t: Territory, civ = ''): number {
@@ -818,7 +861,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs) : 0) + 1 + fort + ground) * 10) / 10;
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs) : 0) + 1 + fort + ground) * faithOf(c, t.owner).defence * 10) / 10;
 }
 
 /** True while the player and a rival are bound by a truce. */
@@ -849,7 +892,7 @@ export function canBuild(c: Campaign, f: number, tid: number, site: string): boo
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && c.factions[f].supplies >= companyCost(t, type, c.factions[f].civ) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
+  return t.owner === f && !!def && t.buildings.includes(def.needs) && c.factions[f].supplies >= companyCost(t, type, c.factions[f].civ, faithOf(c, f).raise) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
   const a = armyAt(c, tid);
@@ -868,7 +911,7 @@ export function build(c: Campaign, f: number, tid: number, site: string): boolea
 /** Raise one company. It joins the army standing in the territory, or forms a new one. */
 export function raise(c: Campaign, f: number, tid: number, type: string): boolean {
   if (!canRaise(c, f, tid, type)) return false;
-  c.factions[f].supplies -= companyCost(c.territories[tid], type, c.factions[f].civ);
+  c.factions[f].supplies -= companyCost(c.territories[tid], type, c.factions[f].civ, faithOf(c, f).raise);
   let a = armyAt(c, tid);
   if (!a) {
     a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, vet: c.factions[f].civ === 'japan' ? 1 : 0, moved: true }; // fresh troops march next turn
@@ -1174,6 +1217,7 @@ export function continueAI(c: Campaign): void {
       for (const x of c.factions) x.angry = false;
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
       c.truces = c.truces.filter((tr) => tr.until >= c.turn);
+      for (const x of c.factions) if (x.alive) shiftVirtue(c, x.id, virtueDrift(c, x.id));
       for (const x of c.factions) if (x.alive) x.supplies += Math.round(income(c, x.id) * (x.isAI ? [0.8, 1, 1.25][c.level] : 1));
       c.log.push(`Turn ${c.turn}.`);
       if (c.request && (c.request.until < c.turn || c.ally < 0 || !c.factions[c.request.foe].alive)) c.request = null;
@@ -1249,6 +1293,13 @@ function aiStep(c: Campaign, f: Faction): boolean {
     // A people shut in by the sea builds a harbour before anything else.
     const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
     if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }
+    // A people builds what it believes in: the pious a church, the worldly a tavern, each in its chief town first.
+    const lean = leaningWith(civ, LEANING[civ] ?? 0.5);
+    const house = lean >= 0.6 ? 'church' : lean <= 0.4 ? 'tavern' : '';
+    if (house && c.turn >= 3 && f.supplies >= siteCost(own[0] ?? c.territories[0], house, civ) + 6 && own.filter((t) => t.buildings.includes(house)).length < 1 + Math.floor(own.length / 5)) {
+      const at = own.find((t) => t.capital === f.id && canBuild(c, f.id, t.id, house)) ?? own.find((t) => !t.adj.some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, house));
+      if (at) build(c, f.id, at.id, house);
+    }
     for (const t of own) {
       const border = t.adj.some((n) => c.territories[n].owner !== f.id);
       if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');
@@ -1362,15 +1413,15 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, virtue: virtueOf(c, 0), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ,
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, virtue: virtueOf(c, foe),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
-      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
-      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
-      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
+      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, virtue: virtueOf(c, foe), bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
+      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, virtue: virtueOf(c, 0), bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
+      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, virtue: virtueOf(c, c.ally), bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
     ].slice(0, 4),
   };
 }
@@ -1384,9 +1435,11 @@ const unitsOf = (type: string): [string, number] => Object.entries(COMPANIES[typ
  * (their remaining units, by type) is given, their army keeps only the companies that lived
  * through it, in place of the usual estimate of losses.
  */
-export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>): void {
+export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, virtue?: number): void {
   const p = c.pending;
   if (!p) return;
+  // What the town became under the player's hand goes home with the army: half of how far it moved.
+  if (virtue !== undefined && Number.isFinite(virtue)) shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE);
   const humanAttacks = p.attacker === 0;
   const mine = humanAttacks ? c.armies.find((a) => a.id === p.armyId) : armyAt(c, p.to);
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;

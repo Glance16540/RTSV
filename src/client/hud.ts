@@ -465,6 +465,7 @@ export class Hud {
       if (morale > 0) extra += `<div class="good">🏠 Home morale: takes ${Math.round(morale * 100)}% less damage</div>`;
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
       if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
+      if (e.kills) extra += `<div${game.veteran(e) > 1 ? ' class="good"' : ''}>⚔️ ${e.kills} ${e.kills === 1 ? 'kill' : 'kills'}${game.veteran(e) > 1 ? `: a veteran, +${Math.round((game.veteran(e) - 1) * 100)}% damage` : ''}</div>`;
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
       // A villager's record: who they are and what has befallen them, set down like the entries on a form.

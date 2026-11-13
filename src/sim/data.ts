@@ -882,17 +882,19 @@ export const CIV_IDS = Object.keys(CIVS);
 export type StyleId = 'raider' | 'builder' | 'farmer' | 'scholar' | 'faithful' | 'trader' | 'warrior';
 export interface StyleDef {
   id: StyleId; name: string; icon: string; desc: string; /** How a game with them tends to go. */ plan: string;
+  /** The rule that is theirs alone, in a sentence. The numbers behind it are in STYLE_RULES. */
+  rule: string;
   /** Starts as a war band with no Town Center, and its fighters carry villagers off to join the tribe. */
   raid?: boolean;
 }
 export const STYLES: Record<StyleId, StyleDef> = {
-  raider: { id: 'raider', name: 'Raiders', icon: '🪓', raid: true, desc: 'A war band on the move. They start with fighters and no Town Center, and they grow by carrying off other peoples\' villagers, who join the tribe.', plan: 'Strike early, take people, settle late.' },
-  builder: { id: 'builder', name: 'Builders', icon: '🧱', desc: 'They wall in, build high and are hard to shift.', plan: 'Fortify, outlast, then march.' },
-  farmer: { id: 'farmer', name: 'Farmers', icon: '🌾', desc: 'Their strength is fields and families: they outgrow their rivals.', plan: 'Grow fast, win by numbers.' },
-  scholar: { id: 'scholar', name: 'Scholars', icon: '📜', desc: 'They learn faster and cheaper, and fight with better tools.', plan: 'Reach the next age first.' },
-  faithful: { id: 'faithful', name: 'The Faithful', icon: '🕯️', desc: 'Priests and prophets are their strength.', plan: 'Hold with healers, strike with faith.' },
-  trader: { id: 'trader', name: 'Traders', icon: '⚖️', desc: 'Rich in goods and beasts, quick across open ground.', plan: 'Get rich, field what others cannot afford.' },
-  warrior: { id: 'warrior', name: 'Warriors', icon: '⚔️', desc: 'Man for man, their soldiers are the best.', plan: 'Fewer, better troops.' },
+  raider: { id: 'raider', rule: 'Their fighters carry off enemy villagers, who join the tribe.', name: 'Raiders', icon: '🪓', raid: true, desc: 'A war band on the move. They start with fighters and no Town Center, and they grow by carrying off other peoples\' villagers, who join the tribe.', plan: 'Strike early, take people, settle late.' },
+  builder: { id: 'builder', rule: 'Their buildings mend themselves once the town has had fifteen seconds of peace.', name: 'Builders', icon: '🧱', desc: 'They wall in, build high and are hard to shift.', plan: 'Fortify, outlast, then march.' },
+  farmer: { id: 'farmer', rule: 'Every farm makes room for one more villager, up to twelve.', name: 'Farmers', icon: '🌾', desc: 'Their strength is fields and families: they outgrow their rivals.', plan: 'Grow fast, win by numbers.' },
+  scholar: { id: 'scholar', rule: 'Every technology they learn makes their villagers gather 2% faster, up to 30%.', name: 'Scholars', icon: '📜', desc: 'They learn faster and cheaper, and fight with better tools.', plan: 'Reach the next age first.' },
+  faithful: { id: 'faithful', rule: 'Their people are healed and cured of plague within six tiles of a Church.', name: 'The Faithful', icon: '🕯️', desc: 'Priests and prophets are their strength.', plan: 'Hold with healers, strike with faith.' },
+  trader: { id: 'trader', rule: 'Each Market earns gold by itself, and more for every other people that keeps a market.', name: 'Traders', icon: '⚖️', desc: 'Rich in goods and beasts, quick across open ground.', plan: 'Get rich, field what others cannot afford.' },
+  warrior: { id: 'warrior', rule: 'A soldier strikes 5% harder for each foe he has killed, up to 20%.', name: 'Warriors', icon: '⚔️', desc: 'Man for man, their soldiers are the best.', plan: 'Fewer, better troops.' },
 };
 export const CIV_STYLE: Record<string, StyleId> = {
   wild: 'raider', steppe: 'raider',
@@ -904,6 +906,18 @@ export const CIV_STYLE: Record<string, StyleId> = {
   japan: 'warrior',
 };
 export const styleOf = (civ: string): StyleDef => STYLES[CIV_STYLE[civ] ?? 'farmer'];
+/**
+ * The numbers behind each play style's own rule (`StyleDef.rule`).
+ * mend: share of a building's health regained each second, after `peace` seconds without an attack on the town.
+ * farmPop: room for villagers per finished farm, up to farmPopMax. lore: gathering gained per technology, up to loreMax.
+ * sanctuary: tiles round a Church in which the Faithful are healed `sanctuaryHeal` health a second and cured.
+ * caravan: gold a Market earns every `caravanEvery` seconds (up to caravanMarkets markets), and caravanAbroad more
+ * for each other people that keeps a market. veteran: damage gained per kill, up to veteranKills kills.
+ */
+export const STYLE_RULES = {
+  mend: 0.004, peace: 15, farmPop: 1, farmPopMax: 12, lore: 0.02, loreMax: 0.3, sanctuary: 6, sanctuaryHeal: 1.2,
+  caravan: 3, caravanEvery: 10, caravanMarkets: 3, caravanAbroad: 2, veteran: 0.05, veteranKills: 4,
+};
 /** A raiding band: what it starts with instead of a town, and how it lives. */
 export const BAND = { fighters: 7, pop: 12, wood: 150, stone: 200, settle: 1.25, virtue: -1 };
 /** Banner colour of each people on the campaign map and in battle. */
