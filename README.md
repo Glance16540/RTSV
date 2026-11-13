@@ -1,4 +1,4 @@
-# Rise and Ruin (RTSV)
+# Rise and Ruin
 
 A browser real-time strategy game with a classic angled RTS camera. Raise a village from the
 Stone Age to the Gunpowder Age, one family at a time, and destroy the rival nation.
