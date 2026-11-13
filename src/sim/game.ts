@@ -2,7 +2,7 @@
 
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
-  MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
+  MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
@@ -372,7 +372,14 @@ export class Game {
       this.tcs.push([]);
       const st = this.spec.starts[i];
       const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
-      if (!field) {
+      if (!field && this.raider(i)) {
+        // A war band: a man and a woman to found the hall when they choose to settle, and fighters to feed it.
+        this.spawnUnit('villager', i, st.x - 0.5, st.y + 1.5 * dir, 'm');
+        this.spawnUnit('villager', i, st.x + 0.5, st.y + 1.5 * dir, 'f');
+        for (let k = 0; k < BAND.fighters; k++) this.spawnUnit(this.trainedAs(i, 'clubman'), i, st.x - 2.5 + k, st.y + 3 * dir);
+        this.players[i].res.wood += BAND.wood;
+        this.players[i].res.stone += BAND.stone;
+      } else if (!field) {
         this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
         this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
         this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
@@ -579,6 +586,42 @@ export class Game {
     if (e.kind === 'unit') return Math.max(0, Math.hypot(e.x - u.x, e.y - u.y) - e.def.radius);
     const h = e.size / 2;
     return rectDist(u.x, u.y, e.x - h, e.y - h, e.x + h, e.y + h);
+  }
+
+  /** A people who live by raiding: see STYLES.raider. */
+  raider(owner: number): boolean { return !!this.players[owner] && !!styleOf(this.players[owner].civ).raid; }
+  /** The age a building needs. A raiding band may raise its hall whenever it chooses to settle. */
+  ageFor(owner: number, def: BuildingDef): number { return def.id === 'towncenter' && this.raider(owner) ? 0 : def.age; }
+  /** Can this unit carry a villager off? Slavers always; among raiders, any fighter on foot or horse. */
+  canSeize(u: Unit): boolean {
+    return !!u.def.slaver || (this.raider(u.owner) && !u.def.naval && (u.def.cls === 'infantry' || u.def.cls === 'cavalry' || u.def.cls === 'ranged' || u.def.cls === 'hero'));
+  }
+  /** Raiders do not cut down a grown villager on sight: they are worth more alive. */
+  private spared(u: Unit, e: Entity): boolean {
+    return e.kind === 'unit' && e.type === 'villager' && e.growT <= 0 && !u.def.slaver && this.canSeize(u) && e.owner !== this.wild;
+  }
+  /** Is this villager free for this raider to take: he has his hands free, there is room, and no comrade is already at it. */
+  private takes(u: Unit, e: Entity): boolean {
+    if (u.captive || this.players[u.owner].pop >= POP_LIMIT) return false;
+    for (const o of this.units) if (o !== u && o.owner === u.owner && o.order?.t === 'capture' && o.order.id === e.id) return false;
+    return true;
+  }
+  /** Where a raider takes a captive to join the tribe: the nearest hall, else any roof of theirs. */
+  private hearthOf(u: Unit): Building | null {
+    let best: Building | null = null, bd = Infinity;
+    for (const b of this.buildings) {
+      if (b.owner !== u.owner || !b.complete || b.def.wall || b.type === 'farm') continue;
+      const d = Math.hypot(b.x - u.x, b.y - u.y) + (b.type === 'towncenter' ? 0 : b.type === 'house' ? 6 : 14);
+      if (d < bd) { bd = d; best = b; }
+    }
+    return best;
+  }
+  /** A captive taken into a raiding tribe becomes one of its own villagers. */
+  private adopt(owner: number, c: Captive, x: number, y: number): void {
+    const at = this.landPf.nearestFree(x, y);
+    const v = this.spawnUnit('villager', owner, at.x, at.y, c.gender);
+    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
+    this.msg(owner, `${c.name} has been taken into the tribe.`);
   }
 
   isMilitary(u: Unit): boolean {
@@ -839,6 +882,9 @@ export class Game {
         if (u.captive) this.msg(owner, 'He already has a captive to lead home.');
         else if (!this.campWithRoom(u)) this.msg(owner, 'There is no Work Camp with room for a captive.');
         else this.setOrder(u, { t: 'capture', id: t.id });
+      } else if (!u.def.slaver && this.canSeize(u) && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && !u.captive && this.hostile(t.owner, owner) && t.owner !== this.wild && this.players[owner].pop < POP_LIMIT) {
+        // Raiders take people alive. A fighter already leading one home fights instead.
+        this.setOrder(u, { t: 'capture', id: t.id });
       } else if (u.def.slaver && u.captive && t.kind === 'building' && t.owner === owner && t.def.camp) {
         this.setOrder(u, { t: 'deliver', id: t.id });
       } else if (u.def.slaver && t.kind === 'building' && t.owner === owner && t.def.guards && t.complete) {
@@ -897,7 +943,7 @@ export class Game {
   cmdPlace(owner: number, type: string, cx: number, cy: number, builderIds: number[], queue = false): Building | null {
     const p = this.players[owner];
     const def = BUILDINGS[type];
-    if (!def || def.age > p.age) return null;
+    if (!def || this.ageFor(owner, def) > p.age) return null;
     const bar = this.creedBar(owner, def);
     if (bar) { this.msg(owner, bar); return null; }
     if (!this.canPlace(type, cx, cy, owner === this.humanId && !p.isAI)) { this.msg(owner, 'Cannot build there.'); return null; }
@@ -916,7 +962,7 @@ export class Game {
   cmdPlaceLine(owner: number, type: string, cells: { cx: number; cy: number }[], builderIds: number[]): number {
     const p = this.players[owner];
     const def = BUILDINGS[type];
-    if (!def || def.age > p.age) return 0;
+    if (!def || this.ageFor(owner, def) > p.age) return 0;
     let first: Building | null = null;
     let n = 0;
     for (const c of cells) {
@@ -1084,7 +1130,7 @@ export class Game {
       gender = m <= f ? 'm' : 'f';
     }
     this.pay(p, cost);
-    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train * (1 - PATRON_MUSTER * Math.min(STAFF_CAP, p.patrons)) : type === 'villager' ? this.creed(owner).settle : 1), cost });
+    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train * (1 - PATRON_MUSTER * Math.min(STAFF_CAP, p.patrons)) : type === 'villager' ? this.creed(owner).settle * (this.raider(owner) ? BAND.settle : 1) : 1), cost });
     return true;
   }
 
@@ -1773,6 +1819,7 @@ export class Game {
       if (b.type === 'towncenter') this.tcs[b.owner].push(b);
     }
     for (const p of this.players) {
+      if (!p.neutral && this.raider(p.id)) p.popCap += BAND.pop; // the band itself, before it has a roof
       p.popCap = Math.min(POP_LIMIT, p.popCap);
       for (const tc of this.tcs[p.id]) {
         let n = 0;
@@ -1814,7 +1861,11 @@ export class Game {
     }
     const alive = new Set<number>();
     if (this.field) { for (const u of this.units) if (this.isMilitary(u)) alive.add(u.owner); }
-    else for (const b of this.buildings) if (!b.def.wall) alive.add(b.owner);
+    else {
+      for (const b of this.buildings) if (!b.def.wall) alive.add(b.owner);
+      // A raiding band has no town to lose: it is beaten when its last fighter or villager falls.
+      for (const u of this.units) if (!alive.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
+    }
     for (const p of this.players) {
       if (!p.defeated && !p.neutral && !alive.has(p.id)) {
         p.defeated = true;
@@ -1997,7 +2048,8 @@ export class Game {
           // Units holding their ground only strike what is already within reach.
           const hold = u.stance === 'hold';
           const e = this.findEnemy(u.owner, u.x, u.y, hold ? this.reachOf(u) + 1.2 : this.sightOf(u), u.def.minRange, u.def.siegeOnly, !u.def.naval && u.def.range < 1.5);
-          if (e && (!hold || this.dist(u, e) <= this.reachOf(u) + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
+          if (e && this.spared(u, e)) { if (!hold && this.takes(u, e)) this.setOrder(u, { t: 'capture', id: e.id }); }
+          else if (e && (!hold || this.dist(u, e) <= this.reachOf(u) + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
         }
       }
       return;
@@ -2014,7 +2066,8 @@ export class Game {
         if (u.scanT <= 0) {
           u.scanT = 0.4;
           const e = this.findEnemy(u.owner, u.x, u.y, u.def.sight, u.def.minRange, u.def.siegeOnly, !u.def.naval && u.def.range < 1.5);
-          if (e) {
+          if (e && this.spared(u, e)) { if (this.takes(u, e)) { this.setOrder(u, { t: 'capture', id: e.id }); break; } }
+          else if (e) {
             o.started = false;
             this.setOrder(u, { t: 'attack', id: e.id, then: o });
             break;
@@ -2074,19 +2127,30 @@ export class Game {
         if (v.order) this.setOrder(v, null);
         if (o.t0 < CAPTURE_TIME) break;
         u.captive = { from: v.owner, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan };
-        this.msg(v.owner, `${v.name} has been carried off by slavers!`);
+        const raid = !u.def.slaver;
+        this.msg(v.owner, `${v.name} has been carried off by ${raid ? 'raiders' : 'slavers'}!`);
         this.players[v.owner].lastAttacked = { x: v.x, y: v.y, t: this.time };
         this.events.push({ t: 'alert', player: v.owner, x: v.x, y: v.y });
         this.players[v.owner].stats.lost++;
         this.kill(v);
-        this.shiftVirtue(u.owner, -3);
-        const camp = this.campWithRoom(u);
+        this.shiftVirtue(u.owner, raid ? BAND.virtue : -3);
+        const camp = raid ? this.hearthOf(u) : this.campWithRoom(u);
+        // A band with no roof of its own takes them in where it stands.
+        if (raid && !camp) { this.adopt(u.owner, u.captive, u.x, u.y); u.captive = null; }
         this.setOrder(u, camp ? { t: 'deliver', id: camp.id } : null);
         break;
       }
 
       case 'deliver': {
         const camp = this.entities.get(o.id);
+        if (u.captive && !u.def.slaver) {
+          const r = camp && camp.kind === 'building' && !camp.dead ? this.approach(u, camp, REACH) : 'fail';
+          if (r === 'moving') break;
+          this.adopt(u.owner, u.captive, u.x, u.y);
+          u.captive = null;
+          this.setOrder(u, null);
+          break;
+        }
         if (!u.captive || !camp || camp.kind !== 'building' || camp.dead || !camp.complete || (camp.captives?.length ?? 0) >= (camp.def.camp ?? 0)) {
           const other = u.captive ? this.campWithRoom(u) : null;
           this.setOrder(u, other && other.id !== o.id ? { t: 'deliver', id: other.id } : null);

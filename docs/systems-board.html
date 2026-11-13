@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 40 systems, 91 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 19 Working, rough, 7 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:19"></span><span class="thin" style="flex:7"></span><span class="none" style="flex:3"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 41 systems, 97 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 19 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:19"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
-      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">40</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">19</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">7</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">41</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">19</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
     </div>
   </div>
 
@@ -174,11 +174,16 @@ footer { color: var(--dim); font-size: 13px; }
   <ul class="has"><li>Teams in a skirmish; call your ally to a spot</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>Sides are fixed at the start: no diplomacy during a battle</li></ul>
 </article></div></section>
-  <section class="area"><h2>Nations and leaders <span class="n">3</span></h2><div class="grid"><article class="sys rough" data-status="rough">
+  <section class="area"><h2>Nations and leaders <span class="n">4</span></h2><div class="grid"><article class="sys rough" data-status="rough">
   <header><h3>Nations</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Thirteen peoples, each with bonuses and two units of their own.</p>
   <ul class="has"><li>13 nations, each with two bonuses</li><li>Two unique units for every nation</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>14 unique units borrow another unit's figure with a plume and sash</li><li>Recording file names still use old internal ids (stonekin, dawn…)</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Play styles</h3><span class="pill thin">First pass</span></header>
+  <p class="what">Every nation belongs to a group that says how it plays. Only the raiders change the rules so far.</p>
+  <ul class="has"><li>Seven groups: raiders (Norse, Mongols), builders (Romans, Babylonians, Egyptians), farmers (Franks, English), scholars (Chinese, Greeks), the faithful (Israelites), traders (Persians, Arabs), warriors (Japanese)</li><li>Raiders start as a war band: six fighters, a man and a woman, and no Town Center</li><li>They may raise a Town Center in the Stone Age, wherever they choose to settle</li><li>Any raider fighter on foot or horse carries off an enemy villager, who joins the tribe as a villager; men and women alike</li><li>Idle raiders take villagers alive on sight instead of killing them</li><li>A captive is freed if the raider leading them home is killed</li><li>A band with no buildings is beaten only when its last person falls</li><li>Raiders train their own villagers half again as slowly, so they must take people to grow</li><li>The computer settles its band and sends one to three fighters out to take people</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The other six groups are labels only: they have no rules of their own yet</li><li>A raiding computer opponent lost 3 of 4 test games to a settled one</li><li>No drop-off point until the band settles</li><li>Raiders cannot be told to kill a villager while their hands are free</li><li>Not played by hand</li><li>No campaign-map version of raiding</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Leaders</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Every nation has a leader who speaks in the campaign.</p>
@@ -291,7 +296,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>106 tests, all passing</li></ul>
+  <ul class="has"><li>110 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>
@@ -311,7 +316,7 @@ footer { color: var(--dim); font-size: 13px; }
     <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#e0452f"></span>Mongols</th>
     <td>Khatun Sarnai<br><span class="dim">or Khan Temur</span></td>
     <td>Lancer<br>Horse Archer</td>
-    <td>Cavalry costs 15% less<br>Cavalry moves 10% faster</td>
+    <td>Raiders: start as a war band with no Town Center<br>Fighters carry off enemy villagers, who join the tribe<br>Cavalry costs 15% less<br>Cavalry moves 10% faster</td>
     <td><span class="lean"><span style="width:30%"></span></span><span class="dim">worldly</span></td>
     <td class="num zero">0 / 40</td>
     <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#3aa648"></span>Franks</th>
@@ -377,7 +382,7 @@ footer { color: var(--dim); font-size: 13px; }
     <td class="zero">Seal only</td></tr><tr><th><span class="sw" style="background:#8a5ad0"></span>Norse</th>
     <td>Jarl Hroth Wolf-Father<br><span class="dim">or Jarl Sigrun Wolf-Mother</span></td>
     <td>Wolf Rider<br>War Bear</td>
-    <td>Game yields 50% more food<br>War Hounds and Mammoths cost 25% less<br>Wild wolves never attack them</td>
+    <td>Raiders: start as a war band with no Town Center<br>Fighters carry off enemy villagers, who join the tribe<br>Game yields 50% more food<br>War Hounds and Mammoths cost 25% less<br>Wild wolves never attack them</td>
     <td><span class="lean"><span style="width:30%"></span></span><span class="dim">worldly</span></td>
     <td class="num zero">0 / 40</td>
     <td class="zero">Seal only</td></tr></tbody></table></div>

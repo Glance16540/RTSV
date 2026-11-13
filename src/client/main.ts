@@ -1,6 +1,6 @@
 import { Climate } from '../sim/map';
 import { AIController } from '../sim/ai';
-import { CIVS, CIV_IDS, UNITS, AGES } from '../sim/data';
+import { CIVS, CIV_IDS, UNITS, AGES, styleOf } from '../sim/data';
 import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets } from './assets';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
@@ -261,7 +261,7 @@ loadAssets().then(() => {
   civSel.innerHTML = CIV_IDS.map((id) => `<option value="${id}">${CIVS[id].icon} ${CIVS[id].name}</option>`).join('');
   civSel.value = game.players[0].civ;
   const civ = CIVS[game.players[0].civ];
-  el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b> and, from the ${AGES[UNITS[civ.unique2].age].name}, the <b>${UNITS[civ.unique2].name}</b>.` +
+  el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} <i>${styleOf(civ.id).icon} ${styleOf(civ.id).name}: ${styleOf(civ.id).desc}</i> ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b> and, from the ${AGES[UNITS[civ.unique2].age].name}, the <b>${UNITS[civ.unique2].name}</b>.` +
     `<br><small>Rivals: ${game.players.filter((p) => p.isAI).map((p) => `${CIVS[p.civ].icon} ${p.name}`).join(', ')}</small>`;
   const climateSel = el('map-climate') as HTMLSelectElement;
   climateSel.value = ['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? asked : 'auto';

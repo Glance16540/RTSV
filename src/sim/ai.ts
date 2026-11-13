@@ -79,7 +79,11 @@ export class AIController {
     const count = (type: string) => mine.filter((b) => b.type === type).length;
     const tc = mine.find((b) => b.type === 'towncenter' && b.complete) ?? mine.find((b) => b.type === 'towncenter');
     const home = tc ?? mine[0];
-    if (!home) return;
+    if (!home) {
+      // A raiding band with no roof yet: settle where it stands.
+      if (g.raider(pid) && villagers.length && Math.floor(g.time) % 2 === 0) this.build('towncenter', g.spec.starts[pid], villagers, 0, 9);
+      return;
+    }
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
 
     // Town bell: hide the villagers while raiders are in the village.
@@ -140,6 +144,7 @@ export class AIController {
     this.assignWorkers(villagers, mine, home);
     if (!underAttack) this.staffHouses(mine, villagers, home);
     if (!underAttack) this.slaving(mine, villagers, home);
+    if (!underAttack) this.raiding(army, home);
     if (g.sea && !saving) this.navy(mine, ships, villagers, home);
     if (g.sea && this.level >= 1) this.seaRaid(mine, ships, army, !!underAttack);
 
@@ -408,6 +413,30 @@ export class AIController {
         if (d < bestD) { bestD = d; best = v; }
       }
       if (best) g.cmdTarget(pid, [s.id], best.id);
+    }
+  }
+
+  /**
+   * A raiding people sends a few idle fighters after the nearest rival villagers, to bring them home alive.
+   * Only a handful go at a time, so the band is never all away at once.
+   */
+  private raiding(army: Unit[], home: Building): void {
+    const g = this.game, pid = this.pid, p = g.players[pid];
+    if (!g.raider(pid) || Math.floor(g.time) % 4 || p.pop >= p.popCap) return;
+    const want = this.level === 0 ? 1 : this.level === 1 ? 2 : 3;
+    let out = army.filter((u) => u.order?.t === 'capture' || u.captive).length;
+    for (const s of army) {
+      if (out >= want) break;
+      if (s.order || s.captive || s.inside || !g.canSeize(s)) continue;
+      let best: Unit | null = null, bestD = 60;
+      for (const v of g.units) {
+        if (v.type !== 'villager' || v.growT > 0 || v.inside || v.owner === g.wild || !g.hostile(v.owner, pid)) continue;
+        const d = Math.hypot(v.x - home.x, v.y - home.y);
+        if (d < bestD) { bestD = d; best = v; }
+      }
+      if (!best) return;
+      g.cmdTarget(pid, [s.id], best.id);
+      out++;
     }
   }
 

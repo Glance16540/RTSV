@@ -233,7 +233,7 @@ export class Hud {
           const d = BUILDINGS[type];
           out.push({
             id: 'b:' + type, icon: ico(type, d.icon), name: 'Build ' + d.name, desc: d.desc, cost: d.cost,
-            locked: d.age > p.age ? `Requires the ${AGES[d.age].name}.` : game.creedBar(pid, d) ?? undefined,
+            locked: game.ageFor(pid, d) > p.age ? `Requires the ${AGES[d.age].name}.` : game.creedBar(pid, d) ?? undefined,
             active: this.app.placing === type,
             act: () => { this.app.select(this.app.sel); this.app.placing = type; },
           });
@@ -454,7 +454,8 @@ export class Hud {
         extra += `<div>${e.homeId ? '🏠 Lives in a house' : '⛺ Homeless — right-click a house to move in'}</div>`;
         if (e.carryAmt > 0) extra += `<div>Carrying ${RI(e.carryType)} ${e.carryAmt}</div>`;
       }
-      if (e.captive) extra += `<div class="hint">⛓️ Leading ${e.captive.name} to a Work Camp</div>`;
+      if (e.captive) extra += `<div class="hint">⛓️ Leading ${e.captive.name} ${d.slaver ? 'to a Work Camp' : 'home to join the tribe'}</div>`;
+      else if (mine && !d.slaver && game.canSeize(e)) extra += '<div class="hint">🪓 Right-click an enemy villager to carry them off; they join your tribe.</div>';
       else if (d.slaver) extra += '<div class="hint">Right-click an enemy villager to seize him.</div>';
       if (e.merc) extra += `<div class="hint">💰 Mercenary: ${(MERC_WAGE * 60).toFixed(1)} gold a minute, or he leaves</div>`;
       if (d.carry) extra += `<div class="${e.cargo?.length ? 'good' : 'hint'}">Aboard: ${e.cargo?.length ?? 0}/${d.carry} — right-click the ship with land units to board</div>`;

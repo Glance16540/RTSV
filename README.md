@@ -30,6 +30,10 @@ fragile and unable to work until they grow up, when they take up a parent's trad
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
 
+**Play styles.** Each nation belongs to a group (raiders, builders, farmers, scholars, the faithful, traders,
+warriors; see `STYLES` in `src/sim/data.ts`). The Norse and Mongols are raiders: they start as a war band with no
+Town Center, settle when they choose, and their fighters carry off enemy villagers, who join the tribe.
+
 **Thirteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
 pious or decadent: that is decided by how they are ruled, not by who they are.
 

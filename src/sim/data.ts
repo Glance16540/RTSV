@@ -798,7 +798,7 @@ export const CIVS: Record<string, CivDef> = {
   },
   steppe: {
     id: 'steppe', name: 'Mongols', icon: '🐎', desc: 'Horsemen of the steppe, born in the saddle.', unique: 'lancer', unique2: 'horsearcher',
-    bonuses: ['Cavalry costs 15% less', 'Cavalry moves 10% faster'],
+    bonuses: ['Raiders: start as a war band with no Town Center', 'Fighters carry off enemy villagers, who join the tribe', 'Cavalry costs 15% less', 'Cavalry moves 10% faster'],
     apply: (m) => { m.cavCost = 0.85; m.cavSpeed = 1.1; },
   },
   hearth: {
@@ -855,11 +855,43 @@ Object.assign(CIVS, {
   },
   wild: {
     id: 'wild', name: 'Norse', icon: '🪓', desc: 'Hunters and sea-raiders of the north.', unique: 'wolfrider', unique2: 'warbear',
-    bonuses: ['Game yields 50% more food', 'War Hounds and Mammoths cost 25% less', 'Wild wolves never attack them'],
+    bonuses: ['Raiders: start as a war band with no Town Center', 'Fighters carry off enemy villagers, who join the tribe', 'Game yields 50% more food', 'War Hounds and Mammoths cost 25% less', 'Wild wolves never attack them'],
     apply: (m: Mods) => { m.hunt = 1.5; m.beastCost = 0.75; },
   },
 } satisfies Record<string, CivDef>);
 export const CIV_IDS = Object.keys(CIVS);
+
+/**
+ * How a people plays. Every nation belongs to one group, so rules, the computer opponent and the balance sheet
+ * can reason about "the raiders" or "the builders" rather than thirteen separate names.
+ */
+export type StyleId = 'raider' | 'builder' | 'farmer' | 'scholar' | 'faithful' | 'trader' | 'warrior';
+export interface StyleDef {
+  id: StyleId; name: string; icon: string; desc: string; /** How a game with them tends to go. */ plan: string;
+  /** Starts as a war band with no Town Center, and its fighters carry villagers off to join the tribe. */
+  raid?: boolean;
+}
+export const STYLES: Record<StyleId, StyleDef> = {
+  raider: { id: 'raider', name: 'Raiders', icon: '🪓', raid: true, desc: 'A war band on the move. They start with fighters and no Town Center, and they grow by carrying off other peoples\' villagers, who join the tribe.', plan: 'Strike early, take people, settle late.' },
+  builder: { id: 'builder', name: 'Builders', icon: '🧱', desc: 'They wall in, build high and are hard to shift.', plan: 'Fortify, outlast, then march.' },
+  farmer: { id: 'farmer', name: 'Farmers', icon: '🌾', desc: 'Their strength is fields and families: they outgrow their rivals.', plan: 'Grow fast, win by numbers.' },
+  scholar: { id: 'scholar', name: 'Scholars', icon: '📜', desc: 'They learn faster and cheaper, and fight with better tools.', plan: 'Reach the next age first.' },
+  faithful: { id: 'faithful', name: 'The Faithful', icon: '🕯️', desc: 'Priests and prophets are their strength.', plan: 'Hold with healers, strike with faith.' },
+  trader: { id: 'trader', name: 'Traders', icon: '⚖️', desc: 'Rich in goods and beasts, quick across open ground.', plan: 'Get rich, field what others cannot afford.' },
+  warrior: { id: 'warrior', name: 'Warriors', icon: '⚔️', desc: 'Man for man, their soldiers are the best.', plan: 'Fewer, better troops.' },
+};
+export const CIV_STYLE: Record<string, StyleId> = {
+  wild: 'raider', steppe: 'raider',
+  stonekin: 'builder', babylon: 'builder', egypt: 'builder',
+  hearth: 'farmer', england: 'farmer',
+  forge: 'scholar', greece: 'scholar',
+  dawn: 'faithful',
+  persia: 'trader', arabs: 'trader',
+  japan: 'warrior',
+};
+export const styleOf = (civ: string): StyleDef => STYLES[CIV_STYLE[civ] ?? 'farmer'];
+/** A raiding band: what it starts with instead of a town, and how it lives. */
+export const BAND = { fighters: 6, pop: 12, wood: 150, stone: 200, settle: 1.5, virtue: -1 };
 /** Banner colour of each people on the campaign map and in battle. */
 export const CIV_COLOR: Record<string, number> = { stonekin: 0x6f8fb0, steppe: 0xe0452f, hearth: 0x3aa648, forge: 0xe0902a, dawn: 0xe0c020, wild: 0x8a5ad0, egypt: 0xd8b46a, babylon: 0x3a8fa8, persia: 0xb03a6a, greece: 0x4a78d8, england: 0xc83a3a, arabs: 0x2f9a6a, japan: 0xd8d8e8 };
 

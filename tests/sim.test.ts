@@ -7,12 +7,12 @@ import { connected, generateMap, T_GRASS, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WAT
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
-import { CIV_COLOR, CIV_IDS, CIVS, UNITS } from '../src/sim/data';
+import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, UNITS, styleOf } from '../src/sim/data';
 import { ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
-  { name: 'B', color: 0xff3333, isAI: true },
+  { name: 'B', color: 0xff3333, isAI: true, civ: 'hearth' }, // a settled people: the raiders have tests of their own
 ];
 const run = (g: Game, seconds: number, each?: () => void) => {
   for (let i = 0; i < seconds * 20; i++) { g.step(); if (each && i % 20 === 0) each(); }
@@ -416,7 +416,7 @@ describe('queued orders', () => {
 });
 
 describe('teams', () => {
-  const four = (teams: number[]) => new Game(9, teams.map((team, i) => ({ name: 'P' + i, color: i + 1, isAI: i > 0, team })));
+  const four = (teams: number[]) => new Game(9, teams.map((team, i) => ({ name: 'P' + i, color: i + 1, isAI: i > 0, team, civ: ['stonekin', 'hearth', 'forge', 'egypt'][i] })));
 
   it('allies do not fight, share sight and gates, and win together', () => {
     const g = four([0, 0, 1, 1]);
@@ -933,7 +933,7 @@ describe('new units', () => {
 });
 
 describe('fighting as a side', () => {
-  const four = (teams: number[]) => new Game(9, teams.map((team, i) => ({ name: 'P' + i, color: i + 1, isAI: i > 0, team })));
+  const four = (teams: number[]) => new Game(9, teams.map((team, i) => ({ name: 'P' + i, color: i + 1, isAI: i > 0, team, civ: ['stonekin', 'hearth', 'forge', 'egypt'][i] })));
 
   it('tribute moves resources between allies only, and needs a market', () => {
     const g = four([0, 0, 1, 1]);
@@ -997,7 +997,7 @@ describe('civilisations', () => {
     const b1 = stone.spawnBuilding('barracks', 0, 40, 40, true), b2 = forge.spawnBuilding('barracks', 0, 40, 40, true);
     expect(stone.cmdTrain(0, b1.id, 'shieldbearer')).toBe(true);
     expect(forge.cmdTrain(0, b2.id, 'shieldbearer')).toBe(false);
-    expect(new Game(7, setups).players.map((p) => p.civ).slice(0, 2)).toEqual(['stonekin', 'steppe']);
+    expect(new Game(7, setups.map(({ name, color, isAI }) => ({ name, color, isAI }))).players.map((p) => p.civ).slice(0, 2)).toEqual(['stonekin', 'steppe']);
     // Steppe cavalry is cheaper; Forgeborn research is cheaper and quicker.
     expect(stone.unitCost(1, 'rider')).toEqual({ food: 60, gold: 26 });
     expect(stone.unitCost(0, 'rider')).toEqual({ food: 70, gold: 30 });
@@ -1781,7 +1781,7 @@ describe('second unique units', () => {
     const g = new Game(5, [{ name: 'A', color: 1, isAI: false, civ: 'steppe' }, { name: 'B', color: 2, isAI: false, civ: 'wild' }]);
     const p = g.players[0];
     p.age = 4; for (const r of ['food', 'wood', 'gold', 'stone'] as const) p.res[r] = 5000;
-    const tc = g.buildings.find((b) => b.owner === 0)!;
+    const tc = g.spec.starts[0];
     const stable = g.spawnBuilding('stable', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) + 6, true);
     expect(g.cmdTrain(0, stable.id, 'horsearcher')).toBe(true);
     expect(g.cmdTrain(0, stable.id, 'warbear')).toBe(false); // not theirs
@@ -2634,5 +2634,74 @@ describe('roads, rough ground and the country', () => {
       return Math.hypot(u.x - tc.x - 4, u.y - tc.y - 4);
     };
     expect(walk(true)).toBeLessThan(walk(false) * 0.95);
+  });
+});
+
+describe('play styles and raiders', () => {
+  const band = (civ = 'wild') => new Game(7, [{ name: 'A', color: 1, isAI: false, civ }, { name: 'B', color: 2, isAI: false, civ: 'hearth' }]);
+
+  it('every nation belongs to a play style, and only the raiders raid', () => {
+    for (const id of CIV_IDS) expect(STYLES[CIV_STYLE[id]], id).toBeTruthy();
+    expect(CIV_IDS.filter((c) => styleOf(c).raid).sort()).toEqual(['steppe', 'wild']);
+  });
+
+  it('raiders start as a war band with no Town Center, and may raise one when they settle', () => {
+    const g = band();
+    expect(g.buildings.filter((b) => b.owner === 0).length).toBe(0);
+    expect(g.units.filter((u) => u.owner === 0 && g.isMilitary(u)).length).toBe(BAND.fighters);
+    expect(villagers(g, 0).length).toBe(2);
+    run(g, 3);
+    expect(g.players[0].defeated).toBe(false); // no town to lose
+    expect(g.players[0].popCap).toBe(BAND.pop);
+    const st = g.spec.starts[0];
+    let at = { cx: 0, cy: 0 };
+    for (let d = 3; d < 14 && !at.cx; d++) for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) if (!at.cx && g.canPlace('towncenter', Math.floor(st.x) + dx, Math.floor(st.y) + dy)) at = { cx: Math.floor(st.x) + dx, cy: Math.floor(st.y) + dy };
+    const hall = g.cmdPlace(0, 'towncenter', at.cx, at.cy, villagers(g, 0).map((v) => v.id));
+    expect(hall).toBeTruthy(); // in the Stone Age, which a settled people could not
+    expect(g.cmdPlace(1, 'towncenter', 20, 20, villagers(g, 1).map((v) => v.id))).toBe(null);
+    // The band is beaten when the last of it falls.
+    for (const u of g.units.filter((u) => u.owner === 0)) (g as any).kill(u);
+    for (const b of g.buildings.filter((b) => b.owner === 0)) (g as any).kill(b);
+    run(g, 2);
+    expect(g.players[0].defeated).toBe(true);
+  });
+
+  it('a raider carries a villager off and they join the tribe; a settled soldier just attacks', () => {
+    const g = band();
+    const st = g.spec.starts[0];
+    const f = g.units.find((u) => u.owner === 0 && g.isMilitary(u))!;
+    const v = g.spawnUnit('villager', 1, f.x + 2, f.y, 'f');
+    v.name = 'Ada';
+    const before = villagers(g, 0).length;
+    g.cmdTarget(0, [f.id], v.id);
+    expect(f.order?.t).toBe('capture');
+    run(g, 12);
+    expect(v.dead).toBe(true);
+    // With no roof of their own, she is taken in where they stand.
+    expect(villagers(g, 0).length).toBe(before + 1);
+    expect(villagers(g, 0).some((u) => u.name === 'Ada' && u.gender === 'f')).toBe(true);
+    // With a hall, the captive is led home first, and is freed if the raider falls on the way.
+    g.spawnBuilding('towncenter', 0, Math.floor(st.x) - 2, Math.floor(st.y) - 8, true);
+    const far = g.spawnUnit('clubman', 0, st.x + 14, st.y + 8);
+    const v2 = g.spawnUnit('villager', 1, far.x + 1, far.y, 'm');
+    v2.name = 'Bram';
+    g.cmdTarget(0, [far.id], v2.id);
+    run(g, 5);
+    expect(far.captive?.name).toBe('Bram');
+    expect(far.order?.t).toBe('deliver');
+    (g as any).kill(far);
+    expect(villagers(g, 1).some((u) => u.name === 'Bram')).toBe(true);
+    // A settled people's soldier has no such order.
+    const s = g.spawnUnit('clubman', 1, 30, 30), t = g.spawnUnit('villager', 0, 31, 30, 'm');
+    g.cmdTarget(1, [s.id], t.id);
+    expect(s.order?.t).toBe('attack');
+  });
+
+  it('a raiding computer player settles, and brings people home', () => {
+    const g = new Game(11, [{ name: 'A', color: 1, isAI: true, civ: 'hearth' }, { name: 'B', color: 2, isAI: true, civ: 'wild' }]);
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    run(g, 60 * 12, () => ais.forEach((a) => a.update()));
+    expect(g.buildings.some((b) => b.owner === 1 && b.type === 'towncenter' && b.complete)).toBe(true);
+    expect(g.players[1].defeated).toBe(false);
   });
 });
