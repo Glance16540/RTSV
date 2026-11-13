@@ -212,7 +212,9 @@ circling slowly. Skirmish, missions, help and settings open as a second leaf. Ch
 swings the camera round to the game's view and play begins. The opening is played once a visit
 (`?intro=1` plays it again, `?intro=0` never). The main theme plays at the menu: drop a recording at
 `public/assets/music/theme.mp3` and it replaces the synthesised stand-in. The code is in
-`src/client/title.ts`.
+`src/client/title.ts`. The bars around the battlefield, the messages over it, the sheets (the word before
+a battle, the making of a leader) and the campaign's side page are on the same paper; their styles are
+the last block of `src/client/style.css`.
 
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.
@@ -290,13 +292,13 @@ neighbouring land.
   to fight there, with the holder in the town's corner and the attacker camped opposite. What the map
   says is built on a land (Farmland, Barracks, Archery Range, Stable, Harbour) stands in its town when
   a siege begins. What the victor has standing when a siege ends is kept (`Territory.town`) and is
-  there the next time that land is fought over: hold a land and you defend the town you built; take
+  there the next time that land is fought over: damage and all, so a battered
+  wall or hall is still battered and must be mended in the next fight: hold a land and you defend the town you built; take
   one and your camp becomes its town. A Barracks, Range, Stable, Farm or Dock you built in a siege you
   won also goes up on the map, where the land has a free slot. A land taken by auto-resolve changes
   hands as it stands, less its towers and walls. Field battles are fought away from the town.
-  The ground is kept as well (`Territory.ground`): trees felled and stone and gold dug in a siege are
-  gone, or as far worked as they were left, the next time that land is fought over, whoever won.
-  Berries grow back.
+  The ground is kept as well (`Territory.ground`): trees felled, berries picked and stone and gold dug in a siege
+  are gone, or as far worked as they were left, the next time that land is fought over, whoever won.
 - **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
   Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
   fought around a great lake with docks and ships. Build a Harbour on a coast or at a sea crossing and an army

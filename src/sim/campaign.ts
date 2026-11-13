@@ -2,7 +2,7 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
-import type { Ground, PlayerSetup } from './game';
+import type { Ground, PlayerSetup, Standing } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
@@ -208,7 +208,7 @@ export interface Territory {
   seed: number; // battles here are always fought on the same ground
   /** The town on this land's battlefield, as the last battle fought there in person left it. */
   town?: Town;
-  /** Wood felled and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
+  /** Wood felled, berries picked and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
   horde?: boolean;
@@ -216,8 +216,8 @@ export interface Territory {
   taken?: number;
 }
 
-/** What stands on a land's battlefield between battles: the holder's corner of it, and each building as [type, cx, cy]. */
-export interface Town { at: number; b: [string, number, number][] }
+/** What stands on a land's battlefield between battles: the holder's corner of it, and each building with the damage it has taken. */
+export interface Town { at: number; b: Standing[] }
 /** The building that stands on the battlefield for each building of the campaign map. */
 export const SITE_BUILDING: Record<string, string> = { farm: 'farm', barracks: 'barracks', range: 'range', stable: 'stable', harbour: 'dock', fortress: 'tower' };
 /** The corner of its battlefield a land's holder defends from. The attacker makes camp in the one opposite. */
@@ -1600,8 +1600,8 @@ export interface BattleAfter {
   virtue?: number;
   /** The rank the leader ended the battle at. */
   heroRank?: number;
-  /** The victor's buildings as they stood, each [type, cx, cy]: the land's town from now on. */
-  town?: [string, number, number][];
+  /** The victor's buildings as they stood (`Game.standing()`), damage and all: the land's town from now on. */
+  town?: Standing[];
   /** What has been taken from the battlefield for good (`Game.ground()`), whoever won. */
   ground?: Ground;
 }
@@ -1617,7 +1617,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   const rankBefore = c.factions[0].heroRank ?? 0;
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
-  // Felled wood and dug stone are gone whoever won. A field battle is fought on other ground.
+  // Felled wood, picked berries and dug stone are gone whoever won. A field battle is fought on other ground.
   if (ground && p.mode !== 'field' && Array.isArray(ground.gone) && Array.isArray(ground.left)) {
     land.ground = {
       gone: ground.gone.filter((k) => Number.isInteger(k) && k >= 0).slice(0, 20000),
@@ -1626,7 +1626,8 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   }
   if (standing && p.mode !== 'field') {
     // The victor's buildings are the town now, where they stand: a camp that took the land becomes its town.
-    const b = standing.filter((x) => Array.isArray(x) && BUILDINGS[x[0]] && x[0] !== 'wonder' && Number.isInteger(x[1]) && Number.isInteger(x[2])).slice(0, MAX_TOWN);
+    const b = standing.filter((x) => Array.isArray(x) && BUILDINGS[x[0]] && x[0] !== 'wonder' && Number.isInteger(x[1]) && Number.isInteger(x[2]))
+      .map((x): Standing => (typeof x[3] === 'number' && x[3] > 0 && x[3] < 1 ? [x[0], x[1], x[2], x[3]] : [x[0], x[1], x[2]])).slice(0, MAX_TOWN);
     land.town = { at: playerWon === humanAttacks ? (home + 2) % 4 : home, b };
     // What the player built in the fighting stands on the map as well, where the land has room for it.
     if (playerWon && land.owner === 0) {
