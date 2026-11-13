@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 44 systems, 119 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 22 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:22"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 45 systems, 124 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 23 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:23"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
-      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">44</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">22</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">45</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">23</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
     </div>
   </div>
 
@@ -236,7 +236,7 @@ footer { color: var(--dim); font-size: 13px; }
   
   <h4>Gaps</h4><ul class="gaps"><li>No story, no world events, no named places</li></ul>
 </article></div></section>
-  <section class="area"><h2>Ways to play <span class="n">8</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <section class="area"><h2>Ways to play <span class="n">9</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Skirmish</h3><span class="pill solid">Working</span></header>
   <p class="what">One battle against one to three rivals.</p>
   <ul class="has"><li>Three difficulties, three map sizes, inland or great lake</li><li>Free-for-all, an ally, or all against you</li></ul>
@@ -246,6 +246,11 @@ footer { color: var(--dim); font-size: 13px; }
   <p class="what">The kind of land a battle is fought over.</p>
   <ul class="has"><li>Four countries: green (woods, marsh, beaches), desert, steppe, the snowy north</li><li>Chosen in the skirmish menu, or the homeland of a people</li><li>Sand, snow, marsh and slopes slow a march; routes go round bad ground</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>The computer opponent keeps its buildings out of bogs, but builds across its own roads and does not otherwise plan around ground</li><li>Levels were measured over 12 computer-against-computer games each: Hard beat Easy 10-0 and Normal 10-1, and Normal beat Easy 8-1 after Easy was weakened (it had been 6-5); none of this is covered by a test, and none of it says how the levels feel to a person</li><li>Two computer opponents were run against each other in each country and both grew at a similar pace everywhere; that is four games per country, not a proof of fairness</li><li>No palms or cacti in the desert</li><li>Missions are all green country</li></ul>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>Day and night</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">The hours of the day, and what the dark changes.</p>
+  <ul class="has"><li>A day is five minutes, the last three tenths of it night</li><li>The sun crosses the sky from dawn to dusk: low and red at either end with long shadows, high and white at midday; by night a dim blue moonlight</li><li>Buildings show a lamp by the door and throw a pool of warm light by night, each guttering on its own</li><li>The top bar always names the hour: dawn, morning, midday, afternoon, dusk, night</li><li>In the dark units see two tiles less, so they are slower to notice an enemy and less of the map is lit up; buildings see as far as ever</li><li>Work camps shut their captives in at night, and that is when captives slip away or rise</li><li>Fireflies come out, and hearth smoke thickens</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>The computer player takes no account of the dark: it does not attack by night on purpose</li><li>No stars, and no sun or moon to be seen in the sky</li><li>Units carry no torches, and the lamps do not really light what stands near them</li><li>Nothing else changes by night: villagers work on, wolves are no bolder</li><li>The length of a day cannot be set, and night cannot be switched off</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Finding the way</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">How units get from one place to another.</p>
@@ -311,7 +316,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>113 tests, all passing</li></ul>
+  <ul class="has"><li>114 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>

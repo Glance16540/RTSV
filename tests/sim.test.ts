@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AIController } from '../src/sim/ai';
 import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
-import { Building, Game, Unit } from '../src/sim/game';
+import { Building, DAY_LENGTH, Game, NIGHT_SIGHT, Unit } from '../src/sim/game';
 import { connected, generateMap, T_GRASS, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
@@ -2759,4 +2759,18 @@ describe('pathing and the computer player under load', () => {
     expect(worst).toBeLessThan(3000);
     expect(g.winner).toBeGreaterThanOrEqual(0);
   }, 240000);
+});
+
+describe('day and night', () => {
+  it('units see two tiles less in the dark; buildings do not', () => {
+    const g = new Game(3, setups);
+    const u = g.units.find((q) => q.owner === 0)!;
+    expect(g.night).toBe(false);
+    const byDay = g.sightOf(u);
+    g.time = DAY_LENGTH * 0.8;
+    expect(g.night).toBe(true);
+    expect(g.sightOf(u)).toBe(Math.max(3, byDay - NIGHT_SIGHT));
+    g.time = DAY_LENGTH * 1.1;
+    expect(g.sightOf(u)).toBe(byDay);
+  });
 });

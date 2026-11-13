@@ -53,6 +53,8 @@ export type Order =
 /** A villager held against their will: enough to give them back as they were. */
 /** Seconds from one dawn to the next. */
 export const DAY_LENGTH = 300;
+/** Tiles of sight a unit loses in the dark. */
+export const NIGHT_SIGHT = 2;
 
 export interface Captive { from: number; name: string; family: string; gender: Gender; trait: string; trait2: string; age: number; lifespan: number }
 
@@ -1768,7 +1770,11 @@ export class Game {
   /** How far a unit can strike: bows and guns lose a little reach in rain or blowing dust. */
   reachOf(u: Unit): number { return u.def.range - (u.def.range >= 3 && !u.def.naval && (this.foul === 'rain' || this.foul === 'dust') ? 1 : 0); }
   /** How far a unit can see: not far in a dust storm. */
-  sightOf(u: Unit): number { return this.foul === 'dust' ? Math.max(2, u.def.sight - 2) : u.def.sight; }
+  /** How far a unit sees: two tiles less in a dust storm, and two less again in the dark. Buildings keep their lights and see as far by night as by day. */
+  sightOf(u: Unit): number {
+    const dark = this.night && !this.field ? NIGHT_SIGHT : 0;
+    return Math.max(3, u.def.sight - (this.foul === 'dust' ? 2 : 0) - dark);
+  }
 
   step(): void {
     if (this.winner >= 0) return;

@@ -69,6 +69,11 @@ export class Renderer {
   private clock = 0;
   private wallTick = -1;
   private nightC = new THREE.Color(0x1c2440);
+  private duskC = new THREE.Color(0xf0b088);
+  private lowSunC = new THREE.Color(0xff8a4a);
+  /** How red the light is, 0 at midday to 1 at dawn and dusk. */
+  dayWarm = 0;
+  private glowTex: THREE.Texture | null = null;
   private moonC = new THREE.Color(0x8fa8ff);
   /** `?fog=0`: the whole map is shown, for looking at the game rather than playing it. */
   private noFog = new URLSearchParams(location.search).get('fog') === '0';
@@ -290,7 +295,6 @@ export class Renderer {
     this.camera.lookAt(this.cx, 0, this.cy);
     this.camera.updateMatrixWorld();
     const r = this.dist * 0.72;
-    this.sun.position.set(this.cx - 38, 44, this.cy + 20);
     // Haze thickens toward the far edge of the view, and thins out when the camera is close in.
     // Weather draws the haze in, greys it, and takes the edge off the sun.
     const w = this.weather.amount;
@@ -300,15 +304,53 @@ export class Renderer {
     // Night: the sun gives way to a dim blue light, eased in over dusk and out over dawn. A pitched battle is fought by day.
     const dayT = this.game.field ? 0 : this.game.dayT, ramp = (a: number, b: number, v: number): number => Math.min(1, Math.max(0, (v - a) / (b - a)));
     const n = this.nightAmt = Math.min(ramp(0.66, 0.72, dayT), 1 - ramp(0.96, 1, dayT));
-    this.haze.color.lerp(this.nightC, n * 0.75);
-    this.sun.intensity = 3.0 * (1 - w * 0.6) * (1 - n * 0.78);
-    this.sun.color.set(0xffe2b4).lerp(this.moonC, n);
-    this.sky.intensity = 1.55 * (1 - w * 0.18) * (1 - n * 0.5);
+    // The sun crosses the sky from dawn to dusk: low and red at either end with long shadows, high and white at
+    // midday. By night the moon stands in another quarter.
+    const across = Math.min(1, dayT / 0.7), up = Math.sin(across * Math.PI), warm = (1 - up) * (1 - up) * (1 - n);
+    this.dayWarm = warm;
+    const sx = -Math.cos(across * Math.PI) * 46, sy = 13 + 34 * up;
+    this.sun.position.set(this.cx + sx + (30 - sx) * n, sy + (40 - sy) * n, this.cy + 20 + (-38) * n);
+    this.haze.color.lerp(this.duskC, warm * 0.5).lerp(this.nightC, n * 0.75);
+    this.sun.intensity = 3.0 * (1 - w * 0.6) * (0.6 + 0.4 * up) * (1 - n * 0.74);
+    this.sun.color.set(0xffe2b4).lerp(this.lowSunC, warm * 0.85).lerp(this.moonC, n);
+    this.sky.color.set(0xd6e6ff).lerp(this.duskC, warm * 0.45).lerp(this.moonC, n * 0.5);
+    this.sky.intensity = 1.55 * (1 - w * 0.18) * (1 - n * 0.6);
     this.gl.toneMappingExposure = 1.02 - n * 0.2;
     this.sun.target.position.set(this.cx, 0, this.cy);
     const sc = this.sun.shadow.camera;
     sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 160;
     sc.updateProjectionMatrix();
+  }
+
+  /** A soft round glow, made once. */
+  private glow(): THREE.Texture {
+    if (this.glowTex) return this.glowTex;
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const x = c.getContext('2d')!, gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+    return (this.glowTex = new THREE.CanvasTexture(c));
+  }
+
+  /** What a building shows by night: a lamp by the door and the warm light it throws on the ground. Each has its own material, so each can gutter on its own. */
+  private lights(g: THREE.Group, b: Building): void {
+    const mk = (color: number): THREE.MeshBasicMaterial => { const m = new THREE.MeshBasicMaterial({ map: this.glow(), color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }); m.userData.outlineParameters = { visible: false }; return m; };
+    const half = b.size / 2;
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mk(0xffa850));
+    pool.scale.setScalar(b.size * 1.9 + 1.6);
+    pool.position.set(half * 0.5, 0.06, half * 0.5);
+    pool.userData.k = 0.55;
+    pool.renderOrder = 3;
+    const lamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glow(), color: 0xffd080, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    lamp.material.userData.outlineParameters = { visible: false };
+    lamp.scale.setScalar(0.55 + b.size * 0.12);
+    lamp.position.set(half + 0.08, 0.62, half * 0.55);
+    lamp.userData.k = 1;
+    pool.visible = lamp.visible = false;
+    pool.castShadow = false;
+    g.add(pool, lamp);
+    g.userData.lit = [pool, lamp];
   }
 
   /** World ground position under a screen point, at an optional height. */
@@ -1079,6 +1121,7 @@ export class Renderer {
   private collapse(g: THREE.Group): void {
     g.updateMatrixWorld(true);
     const parts: THREE.Mesh[] = [];
+    for (const o of (g.userData.lit as THREE.Object3D[] | undefined) ?? []) o.removeFromParent(); // its lights go out with it
     g.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.visible && o.parent?.visible !== false) parts.push(o as THREE.Mesh); });
     const centre = g.position, box = new THREE.Box3().setFromObject(g), top = Math.max(0.5, box.max.y - centre.y);
     for (const m of parts) this.throwPiece(m, centre, top);
@@ -1197,6 +1240,13 @@ export class Renderer {
       g.position.set(b.x, Math.min(hh(b.x, b.y), hh(b.x - k, b.y - k), hh(b.x + k, b.y - k), hh(b.x - k, b.y + k), hh(b.x + k, b.y + k)), b.y);
       this.buildingViews.set(b.id, g);
       this.scene.add(g);
+      if (!b.def.wall && b.type !== 'farm') this.lights(g, b);
+    }
+    // Lit by night: the lamp at the door and the pool of light it throws come up at dusk and gutter a little.
+    const lit = g.userData.lit as THREE.Object3D[] | undefined;
+    if (lit) {
+      const on = b.complete ? this.nightAmt : 0, flick = 0.86 + 0.14 * Math.sin(this.clock * 7 + b.id * 1.7) * Math.sin(this.clock * 3.1 + b.id);
+      for (const o of lit) { o.visible = on > 0.02; ((o as THREE.Mesh).material as THREE.Material).opacity = on * flick * (o.userData.k as number); }
     }
     g.visible = this.isVisible(b);
     if (b.def.staff) this.syncStaff(b, g.visible && b.complete, lean);
