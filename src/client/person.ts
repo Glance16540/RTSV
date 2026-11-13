@@ -643,18 +643,20 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const eyeY = mk.crown - 0.118, glint = solid(0xfffaf0);
   const iris = solid(new THREE.Color([0x3a2a1a, 0x4a3a22, 0x2a4a6a, 0x3a5a3a][o.seed % 4]).multiplyScalar(0.55).getHex());
   const ez = faceAt(eyeY, 'eye');
+  // A man's lid is a fine line a shade darker than his skin; the nose a touch darker than the face, since it catches the light from above.
+  const lidM = solid(new THREE.Color(o.skin).multiplyScalar(0.5).getHex()), noseM = solid(new THREE.Color(o.skin).multiplyScalar(0.9).getHex());
   const sk = new THREE.Color(o.skin), rimT = Math.min(1, Math.max(0, (0.24 - (sk.r * 0.3 + sk.g * 0.6 + sk.b * 0.1)) / 0.2)), rimM = solid(sk.clone().lerp(new THREE.Color(0xe6dccc), 0.2 + rimT * 0.45).getHex());
   for (const sx of [-1, 1]) {
     const ex = sx * 0.033;
     // One dark almond with a point of light: no white to stare with, and nothing set in front of anything else to slide about as the head turns.
     const eye = part(geo('eye', () => new THREE.SphereGeometry(0.0128, 12, 8)), iris, ex, eyeY - 0.0004, ez - 0.0042);
-    eye.scale.set(1.2, o.female ? 0.92 : 0.84, 0.42);
+    eye.scale.set(o.female ? 1.2 : 1.4, o.female ? 0.92 : 1.02, 0.42);
     // On dark skin a dark eye would be lost, leaving only its point of light: a pale rim round it, even all the way round, keeps it an eye.
-    if (rimT > 0.05) { const rim = part(geo('eyerim', () => new THREE.SphereGeometry(0.0128, 12, 8)), rimM, ex, eyeY - 0.0004, ez - 0.0052); rim.scale.set(1.5, o.female ? 1.2 : 1.1, 0.42); head.add(rim); }
+    if (rimT > 0.4) { const rim = part(geo('eyerim', () => new THREE.SphereGeometry(0.0128, 12, 8)), rimM, ex, eyeY - 0.0004, ez - 0.0052); rim.scale.set(o.female ? 1.5 : 1.7, o.female ? 1.2 : 1.22, 0.42); head.add(rim); }
     head.add(eye, part(geo('glint', () => new THREE.SphereGeometry(0.0025, 6, 5)), glint, ex + 0.0036, eyeY + 0.003, ez + 0.0002));
     // The upper lid rests on the eye, so the look is easy; a woman's is a dark line of lashes.
-    const lid = part(geo('eyelid', () => new THREE.SphereGeometry(0.0165, 10, 6)), o.female ? dark : skinD, ex, eyeY + (o.female ? 0.0096 : 0.009), ez - 0.0034);
-    lid.scale.set(1.25, o.female ? 0.11 : 0.24, 0.55);
+    const lid = part(geo('eyelid', () => new THREE.SphereGeometry(0.0165, 10, 6)), o.female ? dark : lidM, ex, eyeY + (o.female ? 0.0096 : 0.0112), ez - 0.0034);
+    lid.scale.set(1.25, o.female ? 0.11 : 0.1, 0.55);
     head.add(lid);
     const under = !!o.helmet || o.hat === 'hood' || o.hat === 'cap' || o.hat === 'fur' || o.hairStyle === 'covered'; // a brim sits low: keep the brow beneath it
     const by = eyeY + (under ? 0.022 : o.female ? 0.029 : 0.026);
@@ -668,14 +670,14 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   }
   // The nose runs down from between the eyes and stands out at its tip.
   const noseY = eyeY - 0.038, nz = faceAt(noseY, 'mid');
-  const nose = part(geo('nose', () => new THREE.ConeGeometry(0.0135, 0.046, 9).rotateX(-0.34)), skinM, 0, noseY + 0.014, nz - 0.002);
+  const nose = part(geo('nose', () => new THREE.ConeGeometry(0.0135, 0.046, 9).rotateX(-0.34)), noseM, 0, noseY + 0.014, nz - 0.002);
   nose.scale.set(o.female ? 0.8 : 1.05, 1, o.female ? 0.9 : 1.15);
-  head.add(nose, part(geo('nosetip', () => new THREE.SphereGeometry(0.0105, 9, 7)), skinM, 0, noseY - 0.006, nz + 0.0045));
+  head.add(nose, part(geo('nosetip', () => new THREE.SphereGeometry(0.0105, 9, 7)), noseM, 0, noseY - 0.006, nz + 0.0045));
   // The mouth: one soft line, turned up a little at the ends; a woman's a touch fuller and redder.
   const lipC = new THREE.Color(o.skin).lerp(new THREE.Color(0x7a2c30), o.female ? 0.58 : 0.5).getHex();
   const mouthY = eyeY - 0.072, mz = faceAt(mouthY, 'mid'), ARC = 0.86, MR = 0.036;
-  const mouth = part(geo('smile', () => new THREE.TorusGeometry(MR, 0.0034, 6, 12, ARC).rotateZ(-Math.PI / 2 - ARC / 2)), solid(lipC), 0, mouthY + MR * Math.cos(ARC / 2) + 0.001, mz - 0.0012);
-  mouth.scale.set(o.female ? 0.95 : 1.08, 1, o.female ? 1.5 : 1.1);
+  const mouth = part(geo('smile', () => new THREE.TorusGeometry(MR, 0.0034, 6, 12, ARC).rotateZ(-Math.PI / 2 - ARC / 2)), solid(lipC), 0, mouthY + MR * Math.cos(ARC / 2) + 0.001, mz + (o.female ? -0.0012 : 0.0025)); // a man's lips stand further out on this figure, and would bury the line
+  mouth.scale.set(o.female ? 0.95 : 1.08, 1, o.female ? 1.5 : 1.9);
   head.add(mouth);
   if (o.female) { const lower = part(geo('lowerlip', () => new THREE.SphereGeometry(0.011, 9, 5)), solid(lipC), 0, mouthY - 0.004, mz - 0.006); lower.scale.set(0.95, 0.3, 0.5); head.add(lower); }
   const dome = geo('dome', () => new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.56));
