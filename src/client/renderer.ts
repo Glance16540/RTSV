@@ -11,7 +11,7 @@ import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
-import { Outfit, RealPerson, astride, bear, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
+import { Outfit, RealPerson, astride, bear, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
@@ -22,8 +22,8 @@ const YAW = Math.PI / 4; // the map appears as a diamond, like the classic isome
 const FOV = 30;
 
 /** One figure in a work camp's yard: a captive on their round, or a Slaver on guard. */
-interface CampFig { g: THREE.Group; rig: Rig | null; woman: boolean; guard: boolean; i: number; goal: 'out' | 'work' | 'in'; wait: number; in: boolean }
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh }; /** Drawn from the real human figure, not from blocks. */ real?: RealPerson; /** Riders and drivers drawn from the real figure, on a mount or car that is still built of blocks. */ riders?: { p: RealPerson; astride: boolean }[]; /** Animals drawn from the real figures: a mount under its rider, or the unit itself. */ beasts?: Beast[]; /** The whole unit is one such animal. */ wildlife?: boolean }
+interface CampFig { real?: RealPerson; g: THREE.Group; rig: Rig | null; woman: boolean; guard: boolean; i: number; goal: 'out' | 'work' | 'in'; wait: number; in: boolean }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh; real?: RealPerson }; /** Drawn from the real human figure, not from blocks. */ real?: RealPerson; /** Riders and drivers drawn from the real figure, on a mount or car that is still built of blocks. */ riders?: { p: RealPerson; astride: boolean }[]; /** Animals drawn from the real figures: a mount under its rider, or the unit itself. */ beasts?: Beast[]; /** The whole unit is one such animal. */ wildlife?: boolean }
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
 interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
@@ -93,7 +93,7 @@ export class Renderer {
   private weather!: Weather;
   private sky!: THREE.HemisphereLight;
   private tintC = new THREE.Color();
-  private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] }>();
+  private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number; real?: RealPerson }[] }>();
   private dust: Dust[] = [];
   private life!: Life;
   /** The trial of realistic people: grown village men are drawn from a real human figure. `?people=0` turns it off. */
@@ -442,7 +442,7 @@ export class Renderer {
     const mended = !!v && !!v.rig && v.hurt > (u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0);
     const real = this.realPeople && peopleReady() && drawnReal(u.def.cls);
     const child = u.growT > 0;
-    const ridden = this.realPeople && peopleReady() && (u.def.cls === 'cavalry' || u.def.cls === 'beast');
+    const ridden = this.realPeople && peopleReady() && (u.def.cls === 'cavalry' || u.def.cls === 'beast' || u.def.cls === 'siege');
     // Wolves, deer and hounds are each one animal, drawn whole from the real figure.
     const animal: BeastKind | null = !this.realPeople ? null : u.type === 'wolf' ? 'wolf' : u.type === 'hound' ? 'husky' : u.type === 'deer' ? (u.id % 3 === 0 ? 'stag' : 'deer') : null;
     const wild = !!animal && beastReady(animal);
@@ -519,15 +519,25 @@ export class Renderer {
     // A Slaver's prisoner walks behind him on a rope, stripped to a loincloth.
     if (u.captive && !v.led) {
       ofPeople(this.game.players[u.captive.from]?.civ ?? ''); // a captive is still one of the people they were taken from
-      const cg = makeCaptive(u.captive.gender, (u.captive.name.length * 7 + u.captive.age) | 0);
+      const cseed = (u.captive.name.length * 7 + u.captive.age) | 0;
+      const creal = this.realPeople && peopleReady() ? makePerson(roleOutfit('captive', u.captive.gender === 'f', 0, lookOf(this.game.players[u.captive.from]?.civ ?? '', cseed), cseed)) : null;
+      const cg = creal?.g ?? makeCaptive(u.captive.gender, cseed);
       cg.position.set(-0.05, 0, -0.62);
       cg.rotation.y = 0.15;
       const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.55, 4).rotateX(Math.PI / 2), mat(0x8a7250, 0, true));
       rope.position.set(0.04, 0.6, -0.33);
       rope.rotation.x = 0.18;
       g.add(cg, rope);
-      v.led = { g: cg, rig: this.still ? null : rigBiped(cg), rope };
+      v.led = { g: cg, rig: this.still || creal ? null : rigBiped(cg), rope, real: creal?.real };
     } else if (!u.captive && v.led) { g.remove(v.led.g, v.led.rope); v.led = undefined; }
+    if (v.led?.real) {
+      // Led at the captor's pace, head down.
+      const lp = v.led.real;
+      if (u.moving) play(lp, u.def.speed < 1.25 ? 'Walk_Loop' : 'Jog_Fwd_Loop', Math.max(0.75, Math.min(1.6, u.def.speed / (u.def.speed < 1.25 ? 0.78 : 1.78)))); else play(lp, 'Idle_Loop', 1);
+      lp.mixer.update(dt);
+      const hd = lp.bones.get('DEF-head');
+      if (hd) hd.rotation.x += 0.35;
+    }
     if (v.led?.rig) {
       // Head down, a step behind the pace.
       this.setPose(v.led.rig, u.moving ? 'walk' : 'idle', u.moving ? v.phase / (Math.PI * 2) + 0.3 : (this.clock + v.phase) / motions.idle.dur, 1); // set outright, so the bowed head below is not added twice
@@ -793,7 +803,7 @@ export class Renderer {
   private syncCamp(b: Building, g: THREE.Group, shown: boolean): void {
     const spots = g.userData.camp as { bunk: number[]; work: number[][]; heap: number[][]; post: number[][]; k: number; ox: number; oz: number } | undefined;
     if (!spots) return;
-    const held = b.captives ?? [], guards = b.staff?.length ?? 0, key = held.map((c) => c.gender).join('') + ':' + guards;
+    const held = b.captives ?? [], guards = b.staff?.length ?? 0, key = held.map((c) => c.gender).join('') + ':' + guards + ':' + (this.realPeople && peopleReady());
     const at = (p: number[]): [number, number] => [b.x + spots.ox + p[0] * spots.k, b.y + spots.oz + p[1] * spots.k];
     let cv = this.campViews.get(b.id);
     if (cv && cv.key !== key) { this.scene.remove(cv.g); cv = undefined; this.campViews.delete(b.id); }
@@ -801,22 +811,26 @@ export class Renderer {
       const grp = new THREE.Group(), figs: CampFig[] = [], door = at(spots.bunk);
       held.slice(0, 10).forEach((c, i) => {
         ofPeople(this.game.players[c.from]?.civ ?? '');
-        const fig = makeCaptive(c.gender, (c.name.length * 7 + c.age + i) | 0);
+        const cs = (c.name.length * 7 + c.age + i) | 0;
+        const made = this.realPeople && peopleReady() ? makePerson(roleOutfit('captive', c.gender === 'f', 0, lookOf(this.game.players[c.from]?.civ ?? '', cs), cs)) : null;
+        const fig = made?.g ?? makeCaptive(c.gender, cs);
         fig.scale.multiplyScalar(0.88 * spots.k);
         fig.rotation.order = 'YXZ';
         fig.position.set(door[0], 0, door[1]);
         grp.add(fig);
-        figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), woman: c.gender === 'f', guard: false, i, goal: 'out', wait: i * 0.9, in: true });
+        figs.push({ g: fig, rig: this.still || made ? null : rigBiped(fig), real: made?.real, woman: c.gender === 'f', guard: false, i, goal: 'out', wait: i * 0.9, in: true });
       });
       const color = this.game.players[b.owner].color;
       for (let i = 0; i < guards; i++) {
         ofPeople(this.game.players[b.owner].civ);
-        const fig = makeUnit('slaver', color, null, b.id + i * 13), [x, z] = at(spots.post[i % spots.post.length]);
+        const gp = this.game.players[b.owner];
+        const gmade = this.realPeople && peopleReady() ? makePerson(outfitFor('slaver', false, color, lookOf(gp.civ, b.id + i * 13), b.id + i * 13, 0, { cls: 'infantry', age: 1 })) : null;
+        const fig = gmade?.g ?? makeUnit('slaver', color, null, b.id + i * 13), [x, z] = at(spots.post[i % spots.post.length]);
         fig.scale.multiplyScalar(0.9 * spots.k);
         fig.position.set(x, this.scenery.heightAt(x, z) + (i % spots.post.length === 0 ? 0 : 0), z);
         fig.rotation.y = Math.PI / 4 + i * 1.7;
         grp.add(fig);
-        figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), woman: false, guard: true, i, goal: 'out', wait: 0, in: false });
+        figs.push({ g: fig, rig: this.still || gmade ? null : rigBiped(fig), real: gmade?.real, woman: false, guard: true, i, goal: 'out', wait: 0, in: false });
       }
       cv = { key, g: grp, figs };
       this.campViews.set(b.id, cv);
@@ -830,7 +844,7 @@ export class Renderer {
     const dt = Math.min(0.1, this.frameDt), door = at(spots.bunk);
     for (const f of cv.figs) {
       const t = this.clock + f.i * 1.9;
-      if (f.guard) { if (f.rig) this.setPose(f.rig, 'idle', t / motions.idle.dur, 1); continue; }
+      if (f.guard) { if (f.real) { play(f.real, 'Idle_Loop', 1); f.real.mixer.update(dt); } else if (f.rig) this.setPose(f.rig, 'idle', t / motions.idle.dur, 1); continue; }
       // Where this one should be now: shut in at night; by day a woman at her place in the workroom, a man at the stone or on his way back in.
       const place = f.woman ? at(spots.work[f.i % spots.work.length]) : at(spots.heap[f.i % spots.heap.length]);
       const goIn = night || (!f.woman && f.goal === 'in');
@@ -865,7 +879,14 @@ export class Renderer {
         if ((f.wait -= dt) <= 0) f.goal = 'in';
       }
       f.g.position.y = this.scenery.heightAt(f.g.position.x, f.g.position.z);
-      if (f.rig) { this.setPose(f.rig, pose, pt, 1); if (pose !== 'work') f.rig.head.rotation.x += 0.3; }
+      if (f.real) {
+        // The same day's round on the real figure: walking, bent to the quern, breaking stone with a pick.
+        hold(f.real, pose === 'work' ? 'pick' : '');
+        play(f.real, pose === 'walk' ? 'Walk_Loop' : pose === 'reach' ? 'Interact' : pose === 'work' ? 'Sword_Attack' : 'Idle_Loop', pose === 'walk' ? 0.9 : 1);
+        f.real.mixer.update(dt);
+        const hd = f.real.bones.get('DEF-head');
+        if (hd && pose !== 'work') hd.rotation.x += 0.3;
+      } else if (f.rig) { this.setPose(f.rig, pose, pt, 1); if (pose !== 'work') f.rig.head.rotation.x += 0.3; }
     }
   }
 
@@ -936,22 +957,25 @@ export class Renderer {
   private syncStaff(b: Building, shown: boolean, lean: '' | 'holy' | 'low'): void {
     let women = 0, men = 0;
     for (const id of b.staff ?? []) { const s = this.game.entities.get(id) as Unit | undefined; if (s) { if (s.gender === 'f') women++; else men++; } }
-    const key = `${women}:${men}:${lean}`;
+    const live = this.realPeople && peopleReady();
+    const key = `${women}:${men}:${lean}:${live}`;
     let sv = this.staffViews.get(b.id);
     if (sv && sv.key !== key) { this.scene.remove(sv.g); sv = undefined; this.staffViews.delete(b.id); }
     if (!sv && women + men > 0) {
-      const g = new THREE.Group(), tav = b.type === 'tavern', half = b.size / 2, figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] = [];
+      const g = new THREE.Group(), tav = b.type === 'tavern', half = b.size / 2, figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number; real?: RealPerson }[] = [];
       for (let i = 0; i < women + men; i++) {
         const f = i < women;
         const role = tav ? (f ? 'milkmaid' : 'patron') : f ? 'nun' : 'monk';
         ofPeople(this.game.players[b.owner].civ);
-        const fig = makeStaff(role, b.id + i * 7, lean);
+        const pl = this.game.players[b.owner];
+        const made = live ? makePerson(roleOutfit(role as 'monk' | 'nun' | 'milkmaid' | 'patron', f, pl.color, lookOf(pl.civ, b.id + i * 7), b.id + i * 7, lean)) : null;
+        const fig = made?.g ?? makeStaff(role, b.id + i * 7, lean);
         // Along the front and round the near corner, where the camera sees them.
         const k = i - (women + men - 1) / 2;
         const x = i % 2 ? half - 0.12 : k * 0.42 + 0.3, z = i % 2 ? k * 0.42 + 0.2 : half - 0.12;
         fig.position.set(b.x + x, this.scenery.heightAt(b.x + x, b.y + z), b.y + z);
         fig.rotation.y = Math.PI / 4 + Math.sin(b.id + i * 3.1) * 0.5;
-        fig.scale.setScalar(0.92);
+        if (!made) fig.scale.setScalar(0.92);
         // In a town that has let itself go, the first maid and the first patron are found in each other's arms round the side.
         if (tav && lean === 'low' && women > 0 && men > 0 && (i === 0 || i === women)) {
           const sx = b.x - half - 0.22, sz = b.y + half * 0.35, side = i === 0 ? -1 : 1;
@@ -960,7 +984,7 @@ export class Renderer {
           fig.userData.pair = true;
         }
         g.add(fig);
-        figs.push({ g: fig, rig: this.still ? null : rigBiped(fig), role, seed: (b.id * 1.3 + i * 2.1) % 6.28, lean0: fig.rotation.z });
+        figs.push({ g: fig, rig: this.still || made ? null : rigBiped(fig), role, seed: (b.id * 1.3 + i * 2.1) % 6.28, lean0: fig.rotation.z, real: made?.real });
       }
       sv = { key, g, figs };
       this.staffViews.set(b.id, sv);
@@ -973,7 +997,12 @@ export class Renderer {
     const rowdy = lean === 'low' ? 0.55 : lean === 'holy' ? 0.08 : 0.3;
     for (const f of sv.figs) {
       const t = this.clock + f.seed * 3, beat = Math.floor(t / 2.6), busy = ((Math.sin(beat * 12.9898 + f.seed) * 43758.5453) % 1 + 1) % 1 < rowdy;
-      if (f.rig) {
+      if (f.real) {
+        // Patrons talk, and cheer when the mood takes them; the maid serves; monks and nuns stand at their prayers.
+        const clip = f.g.userData.pair ? 'Idle_Talking_Loop' : f.role === 'patron' ? (busy ? 'Dance_Loop' : 'Idle_Talking_Loop') : f.role === 'milkmaid' ? (busy ? 'Interact' : 'Idle_Loop') : busy || lean === 'holy' ? 'Spell_Simple_Idle_Loop' : 'Idle_Loop';
+        play(f.real, clip, 1);
+        f.real.mixer.update(Math.min(0.1, this.frameDt));
+      } else if (f.rig) {
         const name = f.g.userData.pair ? 'reach' : !busy ? 'idle' : f.role === 'patron' ? 'cheer' : 'reach';
         this.setPose(f.rig, name, busy ? (t % 2.6) / 2.6 : t / motions.idle.dur, 0.12);
         if (f.role === 'patron' && lean === 'low' && !f.g.userData.pair) f.g.rotation.z = f.lean0 + Math.sin(t * 1.3) * 0.08; // unsteady on his feet
@@ -1039,7 +1068,7 @@ export class Renderer {
         if (job === 'wood' || job === 'mine') play(p, 'Sword_Attack', 1.1);
         else if (job === 'build') play(p, 'Fixing_Kneeling', 1);
         else if (job === 'farm' || job === 'forage' || job === 'hunt') play(p, 'PickUp_Table', 1);
-        else play(p, 'Punch_Jab', 1.2);
+        else play(p, mounted ? 'Interact' : 'Punch_Jab', 1.2); // a crew works its engine; a villager with nothing in hand uses his fists
       } else if (p.flinch > 0) play(p, 'Hit_Chest', 1.3, true);
       else if (u.moving) move();
       // Standing about, some of them pass the time of day.
@@ -1091,7 +1120,7 @@ export class Renderer {
     v.riders = [];
     const pl = this.game.players[u.owner];
     seats.forEach((seat, i) => {
-      const made = makePerson(outfitFor(u.type, false, pl.color, lookOf(pl.civ, u.id + i * 5), u.id + i * 5, 0, { cls: u.def.cls, age: u.def.age }));
+      const made = makePerson(outfitFor(u.type, false, pl.color, lookOf(pl.civ, u.id + i * 5), u.id + i * 5, 0, { cls: u.def.cls, age: u.def.age, naval: !!u.def.naval }));
       if (!made) return;
       for (const c of seat.children) c.visible = false; // the block figure and its gear give way
       seat.add(made.g);

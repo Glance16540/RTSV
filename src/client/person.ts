@@ -140,6 +140,8 @@ export interface Outfit {
   metal: number | null;
   /** A child: small, with a child's large head. */
   child: boolean;
+  /** No boots. */
+  barefoot?: boolean;
   /** Worn on the head when there is no helmet. */
   hat: '' | 'straw' | 'hood' | 'cap' | 'turban' | 'fur' | 'circlet';
   hatColor: number;
@@ -157,11 +159,26 @@ export interface Outfit {
 export const drawnReal = (cls: string): boolean => cls === 'villager' || cls === 'infantry' || cls === 'ranged' || cls === 'support' || cls === 'hero';
 
 const BRONZE = 0xb08a3a;
+
+/**
+ * The dress of those who are not units of their own: a captive stripped to a loincloth (and, for a woman, a band
+ * across the chest), the monks and nuns of a church, and the maids and patrons of a tavern. `lean` is how the town
+ * lives: 'holy', 'low', or ''.
+ */
+export function roleOutfit(role: 'captive' | 'monk' | 'nun' | 'milkmaid' | 'patron', female: boolean, color: number, look: { skin: number; hair: number }, seed: number, lean = ''): Outfit {
+  const base = outfitFor('villager', female, color, look, seed, 0);
+  const cloth = 0xd8cdb8;
+  if (role === 'captive') return { ...base, top: female ? cloth : look.skin, sleeves: 'bare', neck: female ? 1 : 2, skirt: 'short', skirtColor: cloth, legs: look.skin, barefoot: true, hat: '', apron: null, hairStyle: female ? 'long' : 'short', girth: 0 };
+  if (role === 'monk') return { ...base, top: 0x6a4e34, skirtColor: 0x6a4e34, skirt: 'long', sleeves: 'long', neck: 0, hat: 'hood', hatColor: 0x6a4e34, trim: 0xb8a274, beard: seed % 2 === 0 };
+  if (role === 'nun') return { ...base, top: 0x2e2c30, skirtColor: 0x2e2c30, skirt: 'long', sleeves: 'long', neck: 0, hairStyle: 'covered', apron: null, legs: 0x2e2c30 };
+  if (role === 'milkmaid') return { ...base, top: lean === 'low' ? 0xa03038 : 0x7a8a5a, skirt: 'long', skirtColor: cloth, sleeves: lean === 'holy' ? 'short' : 'bare', neck: lean === 'low' ? 2 : lean === 'holy' ? 0 : 1, apron: lean === 'low' ? null : 0xe2d8c0, hairStyle: lean === 'holy' ? 'bun' : 'long', trim: lean === 'low' ? 0xa03038 : null };
+  return { ...base, top: [0x7a5a3a, 0x5a6a4a, 0x6a4a5a][seed % 3], skirtColor: [0x7a5a3a, 0x5a6a4a, 0x6a4a5a][seed % 3], sleeves: 'short', neck: lean === 'low' ? 2 : 1, hat: seed % 3 === 0 ? 'cap' : '', hatColor: 0x4a3a30, girth: seed % 2 ? 2 : 1 };
+}
 /**
  * The dress of every unit that goes on foot. `wear` is how a village woman's town dresses her: 1 covered, 2 and 3
  * freer. `age` is the age the unit belongs to, which sets how well a plain soldier is armoured.
  */
-export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; child?: boolean } = { cls: 'villager', age: 0 }): Outfit {
+export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; child?: boolean; naval?: boolean } = { cls: 'villager', age: 0 }): Outfit {
   const s = Math.abs(seed | 0);
   const pick = (k: number): 0 | 1 | 2 => ([1, 0, 1, 2, 1, 1, 2, 0, 1][(s >> k) % 9] as 0 | 1 | 2);
   const fighter = info.cls === 'infantry' || info.cls === 'hero';
@@ -226,6 +243,7 @@ export function outfitFor(type: string, female: boolean, color: number, look: { 
   if (o) return { ...base, ...o };
   // Anyone not named above is dressed by trade and by the age they belong to.
   const tier = info.age;
+  if (info.cls === 'siege') return info.naval ? { ...base, top: linen, sleeves: 'bare', neck: 1, skirt: 'none', hat: s % 2 ? 'cap' : '', hatColor: color, barefoot: true, legs: 0x6a5a48 } : { ...base, top: leather, sleeves: 'short', apron: 0x4a3222, helmet: info.age >= 3 ? 'kettle' : 'leather' };
   if (info.cls === 'cavalry' || info.cls === 'beast') return { ...base, top: leather, sleeves: 'long', helmet: info.age >= 2 ? 'iron' : 'leather', weapon: 'spear', skirt: 'none' };
   if (info.cls === 'ranged') return { ...base, top: leather, sleeves: 'long', helmet: tier >= 3 ? 'kettle' : tier >= 1 ? 'leather' : '', weapon: tier >= 4 ? 'musket' : 'bow' };
   if (info.cls === 'support') return { ...base, skirt: 'long', sleeves: 'long', hat: 'hood', hatColor: color, weapon: 'staff' };
@@ -348,8 +366,8 @@ function paint(src: THREE.BufferGeometry, bones: string[], o: Outfit, joints: bo
       mailed = !bare;
     }
     else if (/thigh/.test(bone)) c.copy(o.skirt !== 'none' && y > 0.72 ? skirtC : legs); // under a skirt, the top of the leg is lost in its shadow
-    else if (/shin/.test(bone)) c.copy(y < 0.26 ? boot : legs);
-    else if (/foot|toe/.test(bone)) c.copy(boot);
+    else if (/shin/.test(bone)) c.copy(y < 0.26 && !o.barefoot ? boot : legs);
+    else if (/foot|toe/.test(bone)) c.copy(o.barefoot ? skin : boot);
     else c.copy(top);
     // Cloth is not one flat colour, and mail glints ring by ring.
     const h = (((i * 2654435761) >>> 0) % 100) / 100, n = o.mail && mailed ? 0.78 + h * 0.44 : 0.94 + h * 0.12;
@@ -546,7 +564,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   if (!source) return null;
   const body = cloneSkinned(source.scene);
   body.updateMatrixWorld(true);
-  const key = [o.female, o.child, o.girth, o.chest, o.skirt, o.skirtColor, o.skin, o.hair, o.top, o.mail, o.sleeves, o.neck, o.legs].join('|');
+  const key = [o.female, o.child, !!o.barefoot, o.girth, o.chest, o.skirt, o.skirtColor, o.skin, o.hair, o.top, o.mail, o.sleeves, o.neck, o.legs].join('|');
   let n = 0;
   const meshes: THREE.SkinnedMesh[] = [];
   const bones = new Map<string, THREE.Object3D>();
