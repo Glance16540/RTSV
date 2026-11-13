@@ -447,7 +447,8 @@ export class Game {
         this.players[i].res.wood += BAND.wood;
         this.players[i].res.stone += BAND.stone;
       } else if (!field) {
-        this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
+        if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
         this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
         this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
         this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
@@ -464,7 +465,7 @@ export class Game {
         }
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
         // What was left standing here after the last battle still stands, unless another camp is pitched on it.
-        for (const [type, cx, cy, health, built] of s.bonus.town ?? []) {
+        for (const [type, cx, cy, health, built] of [...(s.bonus.town ?? [])].sort((a, b) => Number(b[0] === 'towncenter') - Number(a[0] === 'towncenter'))) {
           const def = BUILDINGS[type];
           if (!def || !Number.isInteger(cx) || !Number.isInteger(cy)) continue;
           if (this.spec.starts.some((o, k) => k !== i && Math.hypot(o.x - cx - def.size / 2, o.y - cy - def.size / 2) < 10)) continue;
@@ -477,6 +478,8 @@ export class Game {
           if (half) b.progress = built;
           if (typeof health === 'number' && health > 0 && health < 1) b.hp = Math.max(1, Math.round(b.maxHp * health));
         }
+        // A people left with nothing but walls raise a hall again rather than fall without a blow.
+        if (!field && !this.raider(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && !b.def.wall)) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
         // Works the land is known for are raised if they are not there already.
         const have: Record<string, number> = {};
         for (const b of this.buildings) if (b.owner === i && b.complete) have[b.type] = (have[b.type] ?? 0) + 1;
@@ -743,7 +746,10 @@ export class Game {
   }
   raider(owner: number): boolean { return !!this.players[owner] && !!styleOf(this.players[owner].civ).raid; }
   /** The age a building needs. A raiding band may raise its hall whenever it chooses to settle. */
-  ageFor(owner: number, def: BuildingDef): number { return def.id === 'towncenter' && this.raider(owner) ? 0 : def.age; }
+  /** The age a building needs. A people with no hall at all may raise one in any age, so a razed town can be founded again. */
+  ageFor(owner: number, def: BuildingDef): number {
+    return def.id === 'towncenter' && (this.raider(owner) || !this.buildings.some((b) => b.owner === owner && b.type === 'towncenter' && !b.dead)) ? 0 : def.age;
+  }
   /** Can this unit carry a villager off? Slavers always; among raiders, any fighter on foot or horse. */
   canSeize(u: Unit): boolean {
     return this.slaves(u) || (this.raider(u.owner) && !u.def.naval && (u.def.cls === 'infantry' || u.def.cls === 'cavalry' || u.def.cls === 'ranged' || u.def.cls === 'hero'));
