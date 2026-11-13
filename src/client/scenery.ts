@@ -24,6 +24,8 @@ export interface Scenery {
   group: THREE.Group;
   /** Height of the ground at a point: hills, mountains, and never below the waterline. */
   heightAt(x: number, y: number): number;
+  /** How high the swell stands at a point just now, about -0.7 to 0.7: what a ship there rides on. Matches the water drawn. */
+  swellAt(x: number, y: number, clock: number): number;
   /** Advance the water and the cloud shadows. `day` is 1 in daylight down to 0 at night; `grey` is how overcast it is, 0 to 1. */
   update(clock: number, day?: number, grey?: number): void;
 }
@@ -164,6 +166,25 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
   let hasWater = false;
   const land = new Uint8Array(N * N * 4);
   for (let i = 0; i < N * N; i++) { const l = T[i] === T_WATER ? 0 : 255; if (!l) hasWater = true; land[i * 4] = l; land[i * 4 + 3] = 255; }
+  // How far each stretch of water is from the nearest land, out to FAR tiles, so it can deepen gradually and
+  // send its waves in toward the shore. Found by spreading outward from the land a ring at a time.
+  const FAR = 7, far = new Float32Array(N * N).fill(FAR);
+  let ring: number[] = [];
+  for (let i = 0; i < N * N; i++) if (T[i] !== T_WATER) { far[i] = 0; ring.push(i); }
+  for (let d = 1; d <= FAR && ring.length; d++) {
+    const next: number[] = [];
+    for (const i of ring) {
+      const x = i % N, y = (i / N) | 0;
+      for (const [dx, dy, w] of [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.41], [-1, 1, 1.41], [1, -1, 1.41], [-1, -1, 1.41]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+        const j = ny * N + nx, nd = far[i] + w;
+        if (nd < far[j]) { far[j] = nd; next.push(j); }
+      }
+    }
+    ring = next;
+  }
+  for (let i = 0; i < N * N; i++) land[i * 4 + 1] = Math.round((Math.min(FAR, far[i]) / FAR) * 255);
   const landTex = new THREE.DataTexture(land, N, N, THREE.RGBAFormat);
   landTex.magFilter = landTex.minFilter = THREE.LinearFilter;
   landTex.needsUpdate = true;
@@ -192,9 +213,12 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       void main() {
         vec2 P = vW.xz;
         vec2 wob = vec2(noise(P * 0.9 + time * 0.2), noise(P * 0.9 + 7.0 - time * 0.2)) * 0.3 - 0.15;
-        float l = texture2D(land, (P + wob) / size).r;
+        vec4 where = texture2D(land, (P + wob) / size);
+        float l = where.r;
         if (l > 0.62) discard;
-        float depth = clamp(1.0 - l * 2.2, 0.0, 1.0);
+        // Tiles from the shore (out to seven), and from that how deep it is: shelving gently, then dropping away.
+        float out7 = where.g * 7.0 + (0.5 - l) * 0.8;
+        float depth = smoothstep(0.2, 4.6, out7);
         // Which way the surface faces here, from the slope of the waves; calmer in the shallows.
         float e = 0.12, h0 = height(P);
         vec3 n = normalize(vec3(h0 - height(P + vec2(e, 0.0)), e * 1.7, h0 - height(P + vec2(0.0, e))));
@@ -209,6 +233,9 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
         body += (fbm(P * 0.22 + vec2(time * 0.02, 0.0)) - 0.5) * vec3(0.03, 0.07, 0.06);
         vec3 R = reflect(-V, n);
         vec3 sky = mix(vec3(0.66, 0.77, 0.88), vec3(0.30, 0.50, 0.80), clamp(R.y, 0.0, 1.0));
+        // Clouds drifting overhead show in it as slow pale patches.
+        float cloud = smoothstep(0.52, 0.78, fbm(P * 0.11 + R.xz * 1.8 + vec2(time * 0.012, time * 0.008)));
+        sky = mix(sky, vec3(0.93, 0.95, 0.97), cloud * 0.55);
         sky = mix(sky, vec3(0.50, 0.54, 0.58), grey);
         vec3 col = mix(body, sky, fres * 0.8);
         // The sun on the water: a hard glitter on the facets turned to it, and a soft sheen round that.
@@ -218,16 +245,19 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
         col += vec3(1.0, 0.95, 0.82) * (pow(nh, 420.0) * 2.2 * sparkle + pow(nh, 30.0) * 0.07) * (1.0 - grey * 0.8);
         // Light dancing on the bed in the shallows.
         float ca = pow(abs(sin(fbm(P * 2.6 + vec2(time * 0.3, time * 0.22)) * 9.4)), 8.0);
-        col += vec3(0.9, 1.0, 0.9) * ca * 0.12 * (1.0 - depth) * (1.0 - grey);
+        col += vec3(0.9, 1.0, 0.9) * ca * 0.2 * (1.0 - depth) * (1.0 - grey);
         // Foam: a broken white edge where it meets the land, lines of it running in to the shore, and a few caps far out.
-        float edge = smoothstep(0.30, 0.54, l + (noise(P * 3.0 + time * 0.3) - 0.5) * 0.2);
-        float lines = smoothstep(0.6, 1.0, sin(l * 15.0 - time * 1.3 + noise(P * 1.3) * 3.0)) * smoothstep(0.08, 0.34, l) * (1.0 - smoothstep(0.5, 0.6, l));
-        float foam = clamp(edge * 1.0 + lines * 0.6, 0.0, 1.0) * (0.55 + 0.45 * noise(P * 7.0 + time * 0.5));
+        float edge = smoothstep(0.2, 0.5, l + (noise(P * 3.0 + time * 0.3) - 0.5) * 0.24 + sin(time * 0.9 + P.x * 0.6 + P.y * 0.8) * 0.05); // the wash runs up the sand and draws back
+        // Wave after wave coming in: each a thin white line that sharpens and brightens as it nears the beach.
+        float coming = sin(out7 * 4.2 + time * 1.5 + noise(P * 0.7) * 4.0);
+        float lines = smoothstep(0.7, 1.0, coming) * (1.0 - smoothstep(0.4, 3.4, out7)) * (0.5 + 0.5 * noise(P * 2.3 - time * 0.2));
+        float foam = clamp(edge * 1.0 + lines * 0.9, 0.0, 1.0) * (0.55 + 0.45 * noise(P * 7.0 + time * 0.5));
         foam = max(foam, smoothstep(1.7, 2.0, h0) * 0.22 * depth);
         col = mix(col, vec3(0.95, 0.98, 1.0), foam);
         col *= mix(0.2, 1.0, day);
         // Clear enough in the shallows to see the sand; nearly opaque where it is deep or seen at a glancing angle.
-        float a = max(max(mix(0.38, 0.94, depth), foam), fres * 0.9) * (1.0 - smoothstep(0.54, 0.62, l));
+        // The bed shows through the shallows, but veiled: its own flat facets should not read through the surface.
+        float a = max(max(mix(0.55, 0.96, smoothstep(0.0, 0.5, depth)), foam), fres * 0.9) * (1.0 - smoothstep(0.54, 0.62, l));
         gl_FragColor = vec4(col, a);
       }`,
   });
@@ -322,6 +352,9 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
   return {
     group,
     heightAt,
+    swellAt(x: number, y: number, clock: number): number {
+      return Math.sin((x * 0.8 + y * 0.6) * 0.9 + clock * 0.9) * 0.45 + Math.sin((x * -0.5 + y * 0.86) * 1.4 - clock * 1.1) * 0.28;
+    },
     update(clock: number, day = 1, grey = 0): void {
       waterMat.uniforms.time.value = clock;
       waterMat.uniforms.day.value = day;

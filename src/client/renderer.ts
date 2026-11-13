@@ -459,10 +459,12 @@ export class Renderer {
     const size = u.growT > 0 ? 0.62 : 1;
     let bob = 0, pitch = 0, roll = 0, breathe = 1;
     if (u.def.naval) {
-      // Afloat: riding the swell, rolling a little.
-      bob = -0.05 + Math.sin(this.clock * 1.4 + v.phase) * 0.035;
-      roll = Math.sin(this.clock * 1.1 + v.phase) * 0.05;
-      pitch = Math.sin(this.clock * 0.9 + v.phase * 2) * 0.03;
+      // Afloat: she rides the swell that is drawn under her, lifting to each crest, pitching and rolling with its slope.
+      const sw = (dx: number, dz: number): number => this.scenery.swellAt(x + dx, y + dz, this.clock);
+      const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y), here = sw(0, 0);
+      bob = -0.05 + here * 0.07;
+      pitch = (sw(fx * 0.6, fz * 0.6) - sw(-fx * 0.6, -fz * 0.6)) * -0.09;
+      roll = (sw(fz * 0.4, -fx * 0.4) - sw(-fz * 0.4, fx * 0.4)) * 0.11;
     } else if (u.moving) {
       v.phase += dt * u.def.speed * 5;
       bob = v.rig ? 0 : mounted ? (0.5 - 0.5 * Math.cos(v.phase * 2)) * 0.05 : Math.abs(Math.sin(v.phase)) * 0.06;
