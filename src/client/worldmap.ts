@@ -420,80 +420,193 @@ export class WorldMap {
     return (H[j * w + i] * (1 - fx) + H[j * w + i + 1] * fx) * (1 - fy) + (H[(j + 1) * w + i] * (1 - fx) + H[(j + 1) * w + i + 1] * fx) * fy;
   }
 
-  /** The buildings of one land, as a single shape: walls, towers, houses with pitched roofs, and whatever has been built there. */
-  private buildTown(t: Campaign['territories'][number], style: string, banner: number, y: number): THREE.BufferGeometry {
+  /**
+   * The buildings of one land, as a single shape. Every people builds in its own way: Roman temples and tiled roofs,
+   * Mongol yurts round the khan's great tent, a Frankish castle, a Chinese pagoda behind grey walls, pyramids and
+   * pylons in Egypt, the blue gate and ziggurat of Babylon, a Persian pillared hall, a Greek temple on its rock, a
+   * Norman keep, domes and a minaret, a white Japanese castle, the Temple, and a Norse mead hall behind a palisade.
+   */
+  private buildTown(t: Campaign['territories'][number], style: string, civ: string, banner: number, y: number): THREE.BufferGeometry {
     const parts: THREE.BufferGeometry[] = [], rnd = (k: number): number => hash(t.id * 7.3 + k, t.seed % 97);
-    const desert = style === 'desert', snow = style === 'snow';
-    const STONE = desert ? 0xd8c090 : 0xbcb39e, DARK = desert ? 0xb89868 : 0x8e8676, PLASTER = desert ? 0xe2cc9c : snow ? 0x8a6a48 : 0xe8dcc0, TIMBER = 0x6a4a2c;
-    const ROOF = snow ? 0xe6ecf0 : desert ? 0xcfb482 : 0xa8502f, THATCH = snow ? 0xdfe6ea : 0xc9a85a, EARTH = desert ? 0xcdb07a : snow ? 0xd8dcdc : 0xa89468;
+    const snow = style === 'snow', white = (tone: number): number => (snow ? new THREE.Color(tone).lerp(new THREE.Color(0xeef2f5), 0.7).getHex() : tone);
+    type Look = { wall: 'stone' | 'mud' | 'wood' | 'none'; stone: number; dark: number; plaster: number; roof: number; house: 'gable' | 'flat' | 'yurt' | 'hip' | 'long'; tower: 'cone' | 'flat' | 'hip'; keep: string; trim?: number };
+    const LOOKS: Record<string, Look> = {
+      stonekin: { wall: 'stone', stone: 0xcfc6b0, dark: 0x9c917c, plaster: 0xe9dfc8, roof: 0xb5532f, house: 'gable', tower: 'flat', keep: 'temple' },
+      steppe: { wall: 'none', stone: 0xb0a48a, dark: 0x7a6a50, plaster: 0xe8e2d2, roof: 0xd8d0bc, house: 'yurt', tower: 'flat', keep: 'khan' },
+      hearth: { wall: 'stone', stone: 0xb4ad9c, dark: 0x878070, plaster: 0xe8dcc0, roof: 0x5f6f84, house: 'gable', tower: 'cone', keep: 'castle' },
+      forge: { wall: 'stone', stone: 0x94948e, dark: 0x6c6c68, plaster: 0xd8cfc0, roof: 0x3f4a4c, house: 'hip', tower: 'hip', keep: 'pagoda', trim: 0xa8322a },
+      egypt: { wall: 'mud', stone: 0xd8bf8a, dark: 0xb89a62, plaster: 0xe2cc9c, roof: 0xcfb482, house: 'flat', tower: 'flat', keep: 'pyramid' },
+      babylon: { wall: 'mud', stone: 0x3a66a8, dark: 0x2a4a80, plaster: 0xd0b888, roof: 0xc0a472, house: 'flat', tower: 'flat', keep: 'ziggurat', trim: 0xd8b040 },
+      persia: { wall: 'stone', stone: 0xd6c4a0, dark: 0xa8946c, plaster: 0xe4d4b0, roof: 0xcbb68a, house: 'flat', tower: 'flat', keep: 'apadana', trim: 0x3fa0a0 },
+      greece: { wall: 'stone', stone: 0xe6e2d6, dark: 0xb8b2a2, plaster: 0xf2efe6, roof: 0xb85a38, house: 'gable', tower: 'flat', keep: 'acropolis' },
+      england: { wall: 'stone', stone: 0xa8a498, dark: 0x7c786c, plaster: 0xe4d8bc, roof: 0xc9a85a, house: 'gable', tower: 'flat', keep: 'norman' },
+      arabs: { wall: 'mud', stone: 0xdcc79c, dark: 0xb89c6c, plaster: 0xeadcb8, roof: 0xd2bd92, house: 'flat', tower: 'flat', keep: 'mosque', trim: 0xf0ece0 },
+      japan: { wall: 'stone', stone: 0x8c8a84, dark: 0x64625e, plaster: 0xf0eee8, roof: 0x3a3f4a, house: 'hip', tower: 'hip', keep: 'tenshu', trim: 0xc83a2a },
+      dawn: { wall: 'stone', stone: 0xe4d8b8, dark: 0xb8aa84, plaster: 0xeee2c4, roof: 0xd8cba6, house: 'flat', tower: 'flat', keep: 'sanctuary', trim: 0xd8b040 },
+      wild: { wall: 'wood', stone: 0x6a4a2c, dark: 0x4a3420, plaster: 0x7a5a3a, roof: 0x6f7a44, house: 'long', tower: 'flat', keep: 'meadhall' },
+    };
+    // Land no people holds is built as its country builds: cottages in green country, flat roofs in the desert.
+    const L: Look = LOOKS[civ] ?? (style === 'desert' ? { wall: 'mud', stone: 0xd8c090, dark: 0xb89868, plaster: 0xe2cc9c, roof: 0xcfb482, house: 'flat', tower: 'flat', keep: 'castle' } : { wall: 'stone', stone: 0xbcb39e, dark: 0x8e8676, plaster: snow ? 0x8a6a48 : 0xe8dcc0, roof: 0xc9a85a, house: 'gable', tower: 'cone', keep: 'castle' });
+    const TIMBER = 0x6a4a2c, ROOF = white(L.roof), EARTH = style === 'desert' ? 0xcdb07a : snow ? 0xd8dcdc : 0xa89468, GOLD = 0xd8b040;
     const box = (w: number, h: number, d: number, tone: number, x: number, by: number, z: number, ry = 0, low = 0.72): void => { parts.push(put(tinted(new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0), tone, low), x, by, z, ry)); };
     const cyl = (r: number, h: number, tone: number, x: number, by: number, z: number, seg = 10, top = r): void => { parts.push(put(tinted(new THREE.CylinderGeometry(top, r, h, seg).translate(0, h / 2, 0), tone, 0.7), x, by, z)); };
     const cone = (r: number, h: number, tone: number, x: number, by: number, z: number, seg = 10, ry = 0): void => { parts.push(put(tinted(new THREE.ConeGeometry(r, h, seg).translate(0, h / 2, 0), tone, 0.75), x, by, z, ry)); };
+    const dome = (r: number, tone: number, x: number, by: number, z: number, tall = 1): void => { parts.push(put(tinted(new THREE.SphereGeometry(r, 12, 7, 0, 6.283, 0, 1.5708).scale(1, tall, 1), tone, 0.75), x, by, z)); };
+    const pitched = (w: number, h: number, d: number, tone: number, x: number, by: number, z: number, ry = 0): void => { parts.push(put(tinted(gable(w, h, d), tone, 0.8), x, by, z, ry)); };
+    /** A four-sided roof whose eaves stand out past the walls, as on a pagoda. */
+    const hip = (w: number, h: number, d: number, tone: number, x: number, by: number, z: number, ry = 0): void => { parts.push(put(tinted(new THREE.ConeGeometry(0.7071, h, 4).rotateY(Math.PI / 4).scale(w, 1, d).translate(0, h / 2, 0), tone, 0.7), x, by, z, ry)); };
+    const pillars = (x: number, by: number, z: number, w: number, d: number, h: number, nx: number, nz: number, tone: number): void => {
+      for (let a = 0; a < nx; a++) for (let b = 0; b < nz; b++) if (a === 0 || b === 0 || a === nx - 1 || b === nz - 1) cyl(0.035, h, tone, x - w / 2 + (w * a) / (nx - 1), by, z - d / 2 + (d * b) / (nz - 1), 6);
+    };
     const house = (x: number, by: number, z: number, ry: number, w = 0.42, d = 0.32, h = 0.24, roofTone = ROOF): void => {
-      box(w, h, d, PLASTER, x, by, z, ry);
-      if (desert) { box(w + 0.05, 0.05, d + 0.05, DARK, x, by + h, z, ry, 1); if (rnd(x * 9 + z) > 0.6) parts.push(put(tinted(new THREE.SphereGeometry(d * 0.38, 8, 5, 0, 6.283, 0, 1.5708), 0xe8dcc0, 0.8), x, by + h + 0.04, z)); }
-      else { parts.push(put(tinted(gable(w + 0.08, h * 0.85, d + 0.1), roofTone, 0.8), x, by + h, z, ry)); box(0.05, 0.16, 0.05, DARK, x + Math.cos(ry) * w * 0.25, by + h + 0.06, z - Math.sin(ry) * w * 0.25, ry, 1); }
-      box(0.07, 0.13, 0.02, 0x3a2a1a, x + Math.sin(ry) * (d / 2), by, z + Math.cos(ry) * (d / 2), ry, 1); // a door
+      const door = (): void => box(0.07, 0.13, 0.02, 0x3a2a1a, x + Math.sin(ry) * (d / 2), by, z + Math.cos(ry) * (d / 2), ry, 1);
+      if (L.house === 'yurt') { cyl(d * 0.62, h * 0.7, L.plaster, x, by, z, 10); cyl(d * 0.64, 0.04, banner, x, by + h * 0.45, z, 10); cone(d * 0.68, h * 0.55, white(L.roof), x, by + h * 0.7, z, 10); return; }
+      if (L.house === 'long') { box(w * 1.5, h * 0.5, d, L.plaster, x, by, z, ry); pitched(w * 1.5 + 0.06, h * 1.3, d + 0.16, roofTone, x, by + h * 0.3, z, ry); door(); return; }
+      box(w, h, d, L.plaster, x, by, z, ry);
+      if (L.house === 'flat') { box(w + 0.05, 0.05, d + 0.05, L.dark, x, by + h, z, ry, 1); if (L.trim && rnd(x * 9 + z) > 0.55) dome(d * 0.36, L.trim, x, by + h + 0.04, z); }
+      else if (L.house === 'hip') { hip(w + 0.2, h * 0.7, d + 0.2, roofTone, x, by + h, z, ry); }
+      else { pitched(w + 0.08, h * 0.85, d + 0.1, roofTone, x, by + h, z, ry); box(0.05, 0.16, 0.05, L.dark, x + Math.cos(ry) * w * 0.25, by + h + 0.06, z - Math.sin(ry) * w * 0.25, ry, 1); }
+      door();
     };
     const tower = (x: number, z: number, r: number, h: number, roofTone: number): void => {
-      cyl(r * 1.08, h, STONE, x, 0, z, 10, r);
-      cyl(r * 1.2, 0.1, DARK, x, h, z, 10, r * 1.2);
-      if (desert) for (let k = 0; k < 6; k++) box(0.07, 0.09, 0.07, STONE, x + Math.cos(k * 1.047) * r * 1.05, h + 0.1, z + Math.sin(k * 1.047) * r * 1.05, -k * 1.047, 1);
+      if (L.wall === 'wood') { box(r * 2, h, r * 2, L.stone, x, 0, z); box(r * 2.5, 0.06, r * 2.5, L.dark, x, h, z, 0, 1); pitched(r * 2.7, r * 1.4, r * 2.7, white(L.roof), x, h + 0.2, z); for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) box(0.03, 0.2, 0.03, L.dark, x + dx * r, h + 0.04, z + dz * r, 0, 1); return; }
+      if (L.tower === 'hip') { box(r * 2, h, r * 2, L.stone, x, 0, z); box(r * 1.7, 0.2, r * 1.7, L.plaster, x, h, z, 0, 1); hip(r * 3.2, r * 1.5, r * 3.2, roofTone, x, h + 0.2, z); return; }
+      cyl(r * 1.08, h, L.stone, x, 0, z, L.wall === 'mud' ? 4 : 10, r * (L.wall === 'mud' ? 0.8 : 1));
+      cyl(r * 1.2, 0.1, L.dark, x, h, z, 10, r * 1.2);
+      if (L.tower === 'flat') for (let k = 0; k < 6; k++) box(0.07, 0.09, 0.07, L.trim && L.wall === 'mud' ? L.trim : L.stone, x + Math.cos(k * 1.047) * r * 1.05, h + 0.1, z + Math.sin(k * 1.047) * r * 1.05, -k * 1.047, 1);
       else cone(r * 1.3, r * 2, roofTone, x, h + 0.1, z);
     };
     const wall = (x0: number, z0: number, x1: number, z1: number, h: number): void => {
       const len = Math.hypot(x1 - x0, z1 - z0), ry = -Math.atan2(z1 - z0, x1 - x0), mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
-      box(len, h, 0.13, STONE, mx, 0, mz, ry);
-      for (let k = 0; k < 4; k++) { const f = (k + 0.5) / 4 - 0.5; box(len / 9, 0.08, 0.15, STONE, mx + (x1 - x0) * f, h, mz + (z1 - z0) * f, ry, 1); } // battlements
+      if (L.wall === 'none') return;
+      if (L.wall === 'wood') { for (let k = 0; k < 7; k++) { const f = (k + 0.5) / 7 - 0.5; cone(0.05, h * (0.95 + (k % 2) * 0.12), k % 2 ? L.stone : L.dark, mx + (x1 - x0) * f, 0, mz + (z1 - z0) * f, 5); } return; }
+      box(len, h, L.wall === 'mud' ? 0.18 : 0.13, L.stone, mx, 0, mz, ry);
+      if (civ === 'japan') { box(len, 0.12, 0.1, L.plaster, mx, h, mz, ry, 1); pitched(len, 0.07, 0.2, ROOF, mx, h + 0.12, mz, ry); return; }
+      for (let k = 0; k < 4; k++) { const f = (k + 0.5) / 4 - 0.5; box(len / 9, 0.08, L.wall === 'mud' ? 0.2 : 0.15, L.trim && L.wall === 'mud' && civ === 'babylon' ? L.trim : L.stone, mx + (x1 - x0) * f, h, mz + (z1 - z0) * f, ry, 1); } // battlements
+    };
+    /** The great building of a people, standing in the middle of its capital. */
+    const keep = (x: number, z: number, k = 1): void => {
+      const B = 0.05;
+      switch (L.keep) {
+        case 'temple': case 'acropolis': case 'sanctuary': case 'apadana': {
+          const rock = L.keep === 'acropolis' ? 0.3 : 0.08, w = 1.0 * k, d = 0.7 * k, colH = L.keep === 'sanctuary' ? 0.62 : 0.5, col = L.keep === 'apadana' ? 0xe4d4b0 : 0xf2eee2;
+          if (L.keep === 'acropolis') cyl(0.85 * k, rock, 0xb0a890, x, B, z, 9, 0.72 * k); // the rock it stands on
+          box(w + 0.16, 0.08, d + 0.16, L.stone, x, B + rock - 0.08, z, 0, 0.85); box(w + 0.06, 0.06, d + 0.06, col, x, B + rock, z, 0, 1);
+          if (L.keep === 'sanctuary') { box(w * 0.55, colH + 0.2, d * 0.8, L.stone, x, B + rock + 0.06, z - 0.05); box(w * 0.57, 0.06, d * 0.82, GOLD, x, B + rock + 0.06 + colH + 0.2, z - 0.05, 0, 1); for (const dx of [-0.16, 0.16]) { cyl(0.045, colH, 0xb87a3a, x + dx * k, B + rock + 0.06, z + d * 0.42, 7); cyl(0.06, 0.06, GOLD, x + dx * k, B + rock + 0.06 + colH, z + d * 0.42, 7); } box(w * 1.1, 0.16, d * 1.2, L.stone, x, B + rock - 0.02, z, 0, 1); for (const dx of [-0.5, 0.5]) box(0.05, 0.26, d * 1.2, L.stone, x + dx * w * 1.1, B + rock, z); }
+          else { pillars(x, B + rock + 0.06, z, w, d, colH, L.keep === 'apadana' ? 6 : 6, L.keep === 'apadana' ? 5 : 4, col); box(w * 0.66, colH, d * 0.6, L.plaster, x, B + rock + 0.06, z); box(w + 0.08, 0.07, d + 0.08, col, x, B + rock + 0.06 + colH, z, 0, 1); if (L.keep === 'apadana') { box(w + 0.02, 0.05, d + 0.02, L.dark, x, B + rock + 0.13 + colH, z, 0, 1); dome(0.16, L.trim ?? GOLD, x, B + rock + 0.18 + colH, z); } else pitched(d + 0.1, 0.2, w + 0.1, ROOF, x, B + rock + 0.13 + colH, z, Math.PI / 2); }
+          break;
+        }
+        case 'khan': {
+          cyl(0.55 * k, 0.4, L.plaster, x, B, z, 14); cyl(0.57 * k, 0.07, banner, x, B + 0.24, z, 14); cone(0.6 * k, 0.36, white(L.roof), x, B + 0.4, z, 14); cyl(0.1, 0.06, GOLD, x, B + 0.74, z, 8);
+          for (const dx of [-0.75, 0.75]) { cyl(0.02, 0.9, TIMBER, x + dx * k, B, z + 0.35, 5); cone(0.07, 0.22, 0x2a2420, x + dx * k, B + 0.68, z + 0.35, 6); } // horse-tail standards
+          break;
+        }
+        case 'pagoda': {
+          let by = B; box(0.9 * k, 0.12, 0.9 * k, L.stone, x, by, z, 0, 0.85); by += 0.12;
+          for (let n = 0; n < 4; n++) { const w = (0.62 - n * 0.11) * k; box(w, 0.26, w, n % 2 ? L.plaster : L.trim!, x, by, z); hip(w + 0.42 * k, 0.16, w + 0.42 * k, ROOF, x, by + 0.24, z); by += 0.37; }
+          cyl(0.02, 0.24, GOLD, x, by, z, 5);
+          break;
+        }
+        case 'tenshu': {
+          parts.push(put(tinted(new THREE.CylinderGeometry(0.5 * k, 0.72 * k, 0.4, 4).rotateY(Math.PI / 4).translate(0, 0.2, 0), L.stone, 0.65), x, B, z)); // the stone footing, battered
+          let by = B + 0.4;
+          for (let n = 0; n < 3; n++) { const w = (0.66 - n * 0.14) * k; box(w, 0.24, w * 0.86, L.plaster, x, by, z); hip(w + 0.36 * k, 0.15, w * 0.86 + 0.36 * k, ROOF, x, by + 0.22, z); by += 0.34; }
+          pitched(0.34 * k, 0.16, 0.42 * k, ROOF, x, by - 0.03, z); for (const dx of [-0.17, 0.17]) cone(0.03, 0.08, GOLD, x + dx * k, by + 0.1, z, 4);
+          break;
+        }
+        case 'ziggurat': {
+          let by = B; const tones = [0xc8a878, 0xbf9c6a, 0xc8a878, 0xb8925e];
+          for (let n = 0; n < 4; n++) { const w = (1.15 - n * 0.25) * k; box(w, 0.2, w * 0.88, tones[n], x, by, z, 0, 0.8); by += 0.2; }
+          box(0.26 * k, 0.2, 0.22 * k, 0x3a66a8, x, by, z); box(0.3 * k, 0.04, 0.26 * k, GOLD, x, by + 0.2, z, 0, 1);
+          parts.push(put(tinted(new THREE.BoxGeometry(0.2 * k, 0.05, 0.75), 0xd8c090, 1), x, B + 0.4, z + 0.5 * k, 0, 0, -0.75)); // the great stair
+          break;
+        }
+        case 'pyramid': {
+          cone(0.62 * k, 0.78 * k, 0xe2cc98, x - 0.1, B, z - 0.15, 4, Math.PI / 4); cone(0.09, 0.11, GOLD, x - 0.1, B + 0.7 * k, z - 0.15, 4, Math.PI / 4);
+          cone(0.32 * k, 0.4 * k, 0xd8c08a, x + 0.55, B, z - 0.4, 4, Math.PI / 4);
+          for (const dx of [-0.22, 0.22]) parts.push(put(tinted(new THREE.CylinderGeometry(0.12, 0.17, 0.5, 4).rotateY(Math.PI / 4).scale(1.3, 1, 0.7).translate(0, 0.25, 0), L.stone, 0.75), x + 0.45 + dx, B, z + 0.45)); // pylons of the temple gate
+          cyl(0.035, 0.6, 0xd8c08a, x - 0.55, B, z + 0.5, 4, 0.02); cone(0.03, 0.06, GOLD, x - 0.55, B + 0.6, z + 0.5, 4);
+          break;
+        }
+        case 'mosque': {
+          box(0.9 * k, 0.4, 0.7 * k, L.plaster, x, B, z); box(0.94 * k, 0.05, 0.74 * k, L.dark, x, B + 0.4, z, 0, 1);
+          cyl(0.3 * k, 0.12, L.plaster, x, B + 0.45, z, 10); dome(0.3 * k, banner, x, B + 0.57, z, 1.15); cone(0.03, 0.12, GOLD, x, B + 0.9, z, 5);
+          for (const [dx, dz] of [[-0.62, 0.42], [0.62, -0.4]]) { cyl(0.065, 1.15, L.plaster, x + dx * k, B, z + dz * k, 8, 0.05); cyl(0.09, 0.05, L.dark, x + dx * k, B + 0.9, z + dz * k, 8); dome(0.06, L.trim ?? GOLD, x + dx * k, B + 1.15, z + dz * k, 1.4); } // minarets
+          box(0.2, 0.26, 0.04, 0x3a2a1a, x, B, z + 0.35 * k, 0, 1);
+          break;
+        }
+        case 'meadhall': {
+          box(1.25 * k, 0.22, 0.5 * k, L.plaster, x, B, z); pitched(1.35 * k, 0.6, 0.72 * k, white(L.roof), x, B + 0.14, z);
+          for (const dx of [-0.67, 0.67]) for (const s of [-1, 1]) parts.push(put(tinted(new THREE.BoxGeometry(0.04, 0.5, 0.04).translate(0, 0.25, 0), L.dark, 1), x + dx * k, B + 0.5, z, 0, 0, s * 0.5)); // crossed gable-beams
+          box(0.16, 0.2, 0.04, 0x2a1c10, x, B, z + 0.26 * k, 0, 1);
+          for (const dx of [-0.3, 0.3]) { cyl(0.03, 0.45, L.dark, x + dx, B, z + 0.55, 5); cone(0.05, 0.12, GOLD, x + dx, B + 0.45, z + 0.55, 5); } // carved posts
+          break;
+        }
+        case 'norman': {
+          box(0.8 * k, 1.05, 0.7 * k, L.stone, x, B, z);
+          for (const [dx, dz] of [[-0.4, -0.35], [0.4, -0.35], [-0.4, 0.35], [0.4, 0.35]]) { box(0.2, 1.25, 0.2, L.stone, x + dx * k, B, z + dz * k); box(0.24, 0.07, 0.24, L.dark, x + dx * k, B + 1.25, z + dz * k, 0, 1); }
+          for (let n = 0; n < 4; n++) box(0.09, 0.09, 0.09, L.stone, x - 0.2 + n * 0.135, B + 1.05, z + 0.33 * k, 0, 1);
+          box(0.3, 0.55, 0.3, L.stone, x + 0.95, B, z + 0.2); box(0.34, 0.06, 0.34, L.dark, x + 0.95, B + 0.55, z + 0.2, 0, 1); box(0.5, 0.3, 0.26, L.stone, x + 0.95, B, z + 0.48); pitched(0.26, 0.2, 0.5, 0x6a6258, x + 0.95, B + 0.3, z + 0.48, Math.PI / 2); // the parish church
+          break;
+        }
+        default: {
+          box(0.95 * k, 0.95, 0.8 * k, L.stone, x, B, z);
+          for (const [dx, dz] of [[-0.48, -0.4], [0.48, -0.4], [-0.48, 0.4], [0.48, 0.4]]) { cyl(0.15, 1.25, L.stone, x + dx * k, 0, z + dz * k, 10, 0.14); cone(0.19, 0.3, ROOF, x + dx * k, 1.25, z + dz * k); }
+          pitched(1.05 * k, 0.5, 0.92 * k, ROOF, x, B + 0.95, z);
+          if (civ === 'hearth') { box(0.24, 0.7, 0.24, L.stone, x + 0.9, B, z + 0.3); cone(0.19, 0.6, ROOF, x + 0.9, B + 0.7, z + 0.3, 4, Math.PI / 4); box(0.4, 0.3, 0.24, L.stone, x + 0.9, B, z + 0.56); pitched(0.24, 0.2, 0.42, ROOF, x + 0.9, B + 0.3, z + 0.56, Math.PI / 2); } // a church with a spire
+        }
+      }
     };
     if (t.capital >= 0) {
       cyl(2.05, 0.05, EARTH, 0, 0, 0, 22);
-      // A ring of wall with a tower at every other corner and a gatehouse facing the road.
+      // The wall round it, in whatever the people build walls of, with a gate facing the road.
       const n = 10, R = 1.95, pt = (k: number): [number, number] => [Math.cos((k / n) * 6.283 + 0.314) * R, Math.sin((k / n) * 6.283 + 0.314) * R * 0.86];
-      for (let k = 0; k < n; k++) { const [ax, az] = pt(k), [bx, bz] = pt(k + 1); if (k !== 1) wall(ax, az, bx, bz, 0.5); if (k % 2 === 0) tower(ax, az, 0.2, 0.82, ROOF); }
+      for (let k = 0; k < n; k++) { const [ax, az] = pt(k), [bx, bz] = pt(k + 1); if (k !== 1) wall(ax, az, bx, bz, 0.5); if (k % 2 === 0 && L.wall !== 'none') tower(ax, az, 0.2, 0.82, ROOF); }
       const [gx0, gz0] = pt(1), [gx1, gz1] = pt(2), gx = (gx0 + gx1) / 2, gz = (gz0 + gz1) / 2;
-      box(0.62, 0.8, 0.3, STONE, gx, 0, gz); box(0.26, 0.42, 0.32, 0x2a2018, gx, 0, gz, 0, 1); box(0.7, 0.09, 0.36, DARK, gx, 0.8, gz, 0, 1);
-      // The keep: a great hall with corner turrets under a roof in the people's colour.
-      box(0.95, 0.95, 0.8, STONE, 0, 0.05, -0.25);
-      for (const [dx, dz] of [[-0.48, -0.65], [0.48, -0.65], [-0.48, 0.15], [0.48, 0.15]]) tower(dx, dz, 0.14, 1.25, banner);
-      if (desert) parts.push(put(tinted(new THREE.SphereGeometry(0.42, 12, 7, 0, 6.283, 0, 1.5708), banner, 0.75), 0, 1.0, -0.25));
-      else parts.push(put(tinted(gable(1.05, 0.5, 0.92), banner, 0.75), 0, 1.0, -0.25));
-      cyl(0.03, 0.75, TIMBER, 0, 1.4, -0.25, 5);
-      // Streets of houses inside the wall, a well in the square.
-      for (let k = 0; k < 11; k++) { const a = 0.5 + (k / 11) * 5.6, d = 1.05 + rnd(k) * 0.5; house(Math.cos(a) * d, 0.05, Math.sin(a) * d * 0.82 + 0.1, a + 1.57 + (rnd(k + 20) - 0.5), 0.3 + rnd(k + 40) * 0.14, 0.26, 0.2 + rnd(k + 60) * 0.1, k % 4 === 0 ? THATCH : ROOF); }
-      cyl(0.09, 0.1, DARK, 0.1, 0.05, 0.75, 8);
+      if (civ === 'japan') { for (const dx of [-0.22, 0.22]) cyl(0.035, 0.62, L.trim!, gx + dx, 0, gz + 0.2, 6); box(0.66, 0.05, 0.07, L.trim!, gx, 0.6, gz + 0.2, 0, 1); box(0.52, 0.04, 0.05, L.trim!, gx, 0.48, gz + 0.2, 0, 1); } // a torii before the gate
+      if (L.wall !== 'none') {
+        const gateTone = civ === 'forge' ? L.trim! : L.stone;
+        box(0.62, 0.8, 0.3, gateTone, gx, 0, gz); box(0.26, 0.42, 0.32, 0x2a2018, gx, 0, gz, 0, 1);
+        if (L.tower === 'hip') hip(1.0, 0.24, 0.6, ROOF, gx, 0.8, gz); else if (L.wall === 'wood') pitched(0.8, 0.26, 0.46, white(L.roof), gx, 0.8, gz); else box(0.7, 0.09, 0.36, civ === 'babylon' ? GOLD : L.dark, gx, 0.8, gz, 0, 1);
+        for (const dx of [-0.2, 0.2]) box(0.1, 0.22, 0.02, banner, gx + dx, 0.5, gz + 0.16, 0, 1); // banners hung on the gate
+      }
+      keep(0, -0.25);
+      // Streets of houses inside, a well in the square.
+      for (let k = 0; k < 11; k++) { const a = 0.5 + (k / 11) * 5.6, d = 1.15 + rnd(k) * 0.42; house(Math.cos(a) * d, 0.05, Math.sin(a) * d * 0.82 + 0.1, a + 1.57 + (rnd(k + 20) - 0.5), 0.3 + rnd(k + 40) * 0.14, 0.26, 0.2 + rnd(k + 60) * 0.1); }
+      cyl(0.09, 0.1, L.dark, 0.1, 0.05, 0.75, 8);
     } else if (t.buildings.includes('fortress')) {
-      // A castle: four walls, four towers, a keep.
-      const c4: [number, number][] = [[-0.85, -0.7], [0.85, -0.7], [0.85, 0.7], [-0.85, 0.7]];
-      c4.forEach(([ax, az], k) => { const [bx, bz] = c4[(k + 1) % 4]; wall(ax, az, bx, bz, 0.5); tower(ax, az, 0.2, 0.85, ROOF); });
-      box(0.7, 1.05, 0.6, STONE, 0, 0, -0.1); if (desert) box(0.78, 0.08, 0.68, DARK, 0, 1.05, -0.1, 0, 1); else parts.push(put(tinted(gable(0.8, 0.4, 0.7), ROOF, 0.75), 0, 1.05, -0.1));
-      box(0.24, 0.36, 0.14, 0x2a2018, 0, 0, 0.7, 0, 1);
+      // A stronghold: four walls, four towers, and a smaller keep of the people's own kind.
+      const c4: [number, number][] = [[-0.95, -0.8], [0.95, -0.8], [0.95, 0.8], [-0.95, 0.8]];
+      c4.forEach(([ax, az], k) => { const [bx, bz] = c4[(k + 1) % 4]; wall(ax, az, bx, bz, 0.5); tower(ax, az, 0.18, 0.8, ROOF); });
+      if (L.wall === 'none') for (let k = 0; k < 14; k++) cone(0.04, 0.3, TIMBER, Math.cos(k * 0.449) * 1.1, 0, Math.sin(k * 0.449) * 0.95, 5);
+      keep(0, -0.1, 0.62);
     } else {
-      // A hamlet: a few cottages, a haystack, a fence.
-      for (let k = 0; k < 3; k++) house(-0.45 + k * 0.5 + (rnd(k) - 0.5) * 0.2, 0, -0.2 + (rnd(k + 5) - 0.5) * 0.6, (rnd(k + 9) - 0.5) * 1.6, 0.36, 0.28, 0.2, THATCH);
-      if (!desert) cone(0.13, 0.2, 0xd8b85a, 0.55, 0, 0.35, 8);
+      // A hamlet: a few homes, a haystack.
+      for (let k = 0; k < 3; k++) house(-0.45 + k * 0.5 + (rnd(k) - 0.5) * 0.2, 0, -0.2 + (rnd(k + 5) - 0.5) * 0.6, (rnd(k + 9) - 0.5) * 1.6, 0.36, 0.28, 0.2);
+      if (L.house === 'gable' || L.house === 'long') cone(0.13, 0.2, 0xd8b85a, 0.55, 0, 0.35, 8);
     }
     // What has been built on the land stands round it.
     t.buildings.filter((b) => b !== 'fortress').forEach((b, k) => {
       const a = 2.2 + k * 1.15, hx = Math.cos(a) * 2.75 + (t.capital >= 0 ? 0 : -0.9), hz = Math.sin(a) * 2.2 + 1.2;
       const by = Math.max(0.2, this.heightAt(t.x - 26 + (hx * 1.6) / K, t.y - 6 + (hz * 1.6) / K)) / 1.6 - y / 1.6;
       if (b === 'farm') {
-        house(hx, by, hz, 0.5, 0.5, 0.34, 0.26, 0x8a3a2a); // the barn
+        house(hx, by, hz, 0.5, 0.5, 0.34, 0.26, L.house === 'gable' ? 0x8a3a2a : ROOF); // the barn
         for (let f = 0; f < 3; f++) cone(0.1, 0.16, 0xd8b85a, hx + 0.45 + f * 0.2, by, hz + 0.2 - f * 0.12, 7);
         for (let f = 0; f < 5; f++) box(0.02, 0.1, 0.02, TIMBER, hx - 0.5 + f * 0.25, by, hz + 0.45, 0, 1);
         box(1.05, 0.02, 0.02, TIMBER, hx, by + 0.07, hz + 0.45, 0, 1);
       } else if (b === 'barracks') {
-        house(hx, by, hz, 0.2, 0.75, 0.34, 0.28, ROOF);
+        house(hx, by, hz, 0.2, 0.75, 0.34, 0.28);
         for (let f = 0; f < 6; f++) cone(0.035, 0.3, TIMBER, hx - 0.5 + f * 0.2, by, hz + 0.42, 5); // a palisade
         box(0.05, 0.3, 0.05, TIMBER, hx + 0.55, by, hz + 0.1, 0, 1); box(0.3, 0.04, 0.04, TIMBER, hx + 0.55, by + 0.26, hz + 0.1, 0, 1); // a practice post
+        box(0.12, 0.2, 0.02, banner, hx - 0.2, by + 0.3, hz + 0.19, 0.2, 1);
       } else if (b === 'harbour') {
-        house(hx, by, hz, 0, 0.4, 0.3, 0.22, THATCH);
+        house(hx, by, hz, 0, 0.4, 0.3, 0.22);
         box(0.9, 0.05, 0.16, TIMBER, hx + 0.1, by + 0.02, hz + 0.4, 0.2, 1);
         for (let f = 0; f < 3; f++) cyl(0.025, 0.2, 0x4a3420, hx - 0.25 + f * 0.35, by - 0.1, hz + 0.47 + f * 0.07, 5);
         box(0.36, 0.09, 0.13, 0x5a3c22, hx + 0.55, by, hz + 0.62, 0.5, 1);
       } else {
-        house(hx, by, hz, 0.3 + k, 0.55, 0.36, 0.3, b.includes('stable') ? THATCH : ROOF);
-        box(0.3, 0.16, 0.24, PLASTER, hx + 0.42, by, hz + 0.05, 0.3 + k); if (!desert) parts.push(put(tinted(gable(0.36, 0.14, 0.32), THATCH, 0.8), hx + 0.42, by + 0.16, hz + 0.05, 0.3 + k));
+        house(hx, by, hz, 0.3 + k, 0.55, 0.36, 0.3);
+        house(hx + 0.45, by, hz + 0.05, 0.3 + k, 0.3, 0.24, 0.16);
       }
     });
     return mergeGeometries(parts)!;
@@ -630,11 +743,13 @@ export class WorldMap {
       // The place itself: a walled city for a capital, a castle where the land is fortified, a hamlet anywhere people live.
       const { warm, wet } = climateAt(c.seed, t.x, t.y);
       const style = warm < 0.31 ? 'snow' : warm > 0.66 && wet < 0.56 ? 'desert' : 'green';
-      const sig = [t.capital, t.owner >= 0 ? c.factions[t.owner].color : -1, t.buildings.join(), style].join('|');
+      // A capital keeps the look of the people who built it; other land is built on by whoever holds it.
+      const builder = t.capital >= 0 ? c.factions[t.capital] : t.owner >= 0 ? c.factions[t.owner] : null;
+      const sig = [t.capital, builder ? builder.civ : '', builder ? builder.color : -1, t.buildings.join(), style].join('|');
       let town = this.towns.get(t.id);
       if (!town || town.sig !== sig) {
         town?.mesh.geometry.dispose();
-        town = { sig, mesh: new THREE.Mesh(this.buildTown(t, style, t.capital >= 0 ? c.factions[t.capital].color : 0x9a4a34, y), this.townMat) };
+        town = { sig, mesh: new THREE.Mesh(this.buildTown(t, style, builder ? builder.civ : '', builder ? builder.color : 0x9a4a34, y), this.townMat) };
         town.mesh.castShadow = true; town.mesh.receiveShadow = true;
         this.towns.set(t.id, town);
       }
