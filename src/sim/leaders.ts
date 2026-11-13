@@ -183,6 +183,7 @@ export const LEADERS: Record<string, Leader> = {
   dawn: {
     civ: 'dawn', female: false, name: 'Eliab the Seer', title: 'Judge of the Tribes', icon: '🧔🏽‍♂️',
     voice: 'Male, ageless. Calm, soft, certain. Speaks of the future in the past tense.',
+    alt: { name: "Marta the Seer", title: "Judge of the Tribes", icon: '🧕🏽', female: true, voice: "Female, ageless. Calm, soft, certain. Speaks of the future in the past tense.", lines: {"intro": ["I am Marta. I have seen this meeting. You were taller in the vision."]} },
     lines: {
       intro: ['I am Eliab. I have seen this meeting. You were taller in the vision.', 'The dawn showed me your face long ago. It did not show me how this ends for you.'],
       attack: ['It is written. I am only turning the page.', 'Do not be afraid. This has already happened.'],

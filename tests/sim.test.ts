@@ -2369,10 +2369,9 @@ describe('the thirteen nations', () => {
 });
 
 describe('men and women as leaders', () => {
-  it('every nation but the Arameans offers a leader of each sex, and the game uses whichever is chosen', () => {
+  it('every nation offers a leader of each sex, and the game uses whichever is chosen', () => {
     for (const id of CIV_IDS) {
       const l = LEADERS[id];
-      if (id === 'dawn') { expect(l.female).toBe(false); expect(l.alt).toBeUndefined(); continue; }
       expect(l.alt).toBeTruthy();
       expect(l.alt!.female).toBe(!l.female);
       expect(l.alt!.name).not.toBe(l.name);
@@ -2382,7 +2381,7 @@ describe('men and women as leaders', () => {
       expect(lines.intro[0]).not.toBe(l.lines.intro[0]);
       expect(lines.attack).toEqual(l.lines.attack);
     }
-    expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(12);
+    expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(13);
     expect(leaderOf('england')!.name).toBe('Earl Godric of Wessex');
     setLeaderPersona('england', true);
     expect(leaderOf('england')!.name).toBe('Countess Edith of Wessex');
@@ -2390,9 +2389,8 @@ describe('men and women as leaders', () => {
     expect(speechText({ civ: 'england', event: 'win', index: 0 })).toBe(LEADERS.england.lines.win[0]);
     setLeaderPersona('england', false);
     expect(speechText({ civ: 'england', event: 'intro', index: 0 })).toContain('Godric');
-    // The Arameans have one leader whatever is asked for.
     setLeaderPersona('dawn', true);
-    expect(leaderOf('dawn')!.name).toBe('Eliab the Seer');
+    expect(leaderOf('dawn')!.name).toBe('Marta the Seer');
     setLeaderPersona('dawn', false);
   });
 

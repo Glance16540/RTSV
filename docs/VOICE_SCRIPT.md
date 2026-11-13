@@ -229,6 +229,12 @@ Put a file named `persona_forge.txt` containing `alt` beside the recordings to h
 
 **Direction:** Male, ageless. Calm, soft, certain. Speaks of the future in the past tense.
 
+**Or, as a woman: Marta the Seer — Judge of the Tribes.** Female, ageless. Calm, soft, certain. Speaks of the future in the past tense. The same lines, except:
+
+- `dawn_intro_1`: I am Marta. I have seen this meeting. You were taller in the vision.
+
+Put a file named `persona_dawn.txt` containing `alt` beside the recordings to have Marta the Seer lead in the game.
+
 | File | When | Line |
 | --- | --- | --- |
 | `dawn_intro_1` | First meeting on the campaign map | I am Eliab. I have seen this meeting. You were taller in the vision. |
