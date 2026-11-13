@@ -70,7 +70,9 @@ export class WorldMap {
   private paintTex: THREE.CanvasTexture;
   private seaTex: THREE.CanvasTexture;
   private seaTime = { value: 0 };
+  private lanes: { a: number; b: number; mat: THREE.MeshBasicMaterial; rim: THREE.MeshBasicMaterial }[] = [];
   private shadeTex: THREE.Texture | null = null;
+  private cloudTex: THREE.Texture | null = null;
   /** Everything that is rebuilt when the campaign changes: towns, armies, names, marks. */
   private pieces = new THREE.Group();
   private people: RealPerson[] = [];
@@ -392,6 +394,32 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     const bed = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x0c2638, roughness: 1 }));
     bed.position.y = -1.7;
     this.scene.add(sea, bed);
+
+    // ---- sea lanes: where a march goes by water, the crossing is marked on the sea in pale dashes, shore to shore ----
+    // Faint until one shore or the other has a harbour to sail from.
+    const dm = new THREE.Matrix4(), dq = new THREE.Quaternion(), dv = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), yUp = new THREE.Vector3(0, 1, 0);
+    const dash = new THREE.PlaneGeometry(1.25, 0.42).rotateX(-Math.PI / 2), rimDash = new THREE.PlaneGeometry(1.55, 0.72).rotateX(-Math.PI / 2);
+    for (const l of c.lanes ?? []) {
+      const t = c.territories[l.a], u = c.territories[l.b], mx = (t.x + u.x) / 2 + (u.y - t.y) * 0.08, my = (t.y + u.y) / 2 - (u.x - t.x) * 0.08;
+      const n = Math.max(8, Math.round(Math.hypot(u.x - t.x, u.y - t.y) / 11)), dashes: THREE.Matrix4[] = [];
+      const at = (k: number): [number, number] => { const f = k / n, g = 1 - f; return [g * g * t.x + 2 * g * f * mx + f * f * u.x, g * g * (t.y + 8) + 2 * g * f * (my + 8) + f * f * (u.y + 8)]; };
+      for (let k = 1; k < n; k += 2) {
+        const [x, y] = at(k), [x2, y2] = at(k + 0.5);
+        if (this.heightAt(x, y) > -0.04 || this.heightAt(x2, y2) > -0.04) continue;
+        dq.setFromAxisAngle(yUp, -Math.atan2(y2 - y, x2 - x));
+        dashes.push(dm.compose(dv.set(WX(x), 0.05, WZ(y)), dq, one).clone());
+      }
+      if (!dashes.length) continue;
+      // Each dash is pale on a dark edge, so it reads on bright shallows and dark deeps alike.
+      const mat = new THREE.MeshBasicMaterial({ color: 0xfff4cc, transparent: true, opacity: 0.6, depthWrite: false, fog: false });
+      const rimMat = new THREE.MeshBasicMaterial({ color: 0x0c2030, transparent: true, opacity: 0.35, depthWrite: false, fog: false });
+      const rim = new THREE.InstancedMesh(rimDash, rimMat, dashes.length), lane = new THREE.InstancedMesh(dash, mat, dashes.length);
+      dashes.forEach((m, i) => { rim.setMatrixAt(i, m); lane.setMatrixAt(i, m); });
+      rim.renderOrder = 1; lane.renderOrder = 2; // over the sea, which is see-through
+      lane.position.y = 0.01;
+      this.scene.add(rim, lane);
+      this.lanes.push({ a: l.a, b: l.b, mat, rim: rimMat });
+    }
 
     // ---- what grows: fir in the cold and the high wet, broadleaf in green country, palm in the heat, stone in the dry ----
     const lists: Record<string, { m: THREE.Matrix4; c: THREE.Color }[]> = { fir: [], round: [], birch: [], palm: [], cactus: [], bush: [], rock: [] };
@@ -844,17 +872,40 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     this.overTex.needsUpdate = true;
   }
 
+  /** A soft heap of cloud, painted once: many round puffs run together, bright at the crown and thin at the edge. */
+  private cloudPaint(): THREE.Texture {
+    if (this.cloudTex) return this.cloudTex;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 256;
+    const x = cv.getContext('2d')!;
+    for (let k = 0; k < 46; k++) {
+      const a = hash(k, 71) * 6.283, d = Math.sqrt(hash(k, 72)) * 70, r = 26 + hash(k, 73) * 34, px = 128 + Math.cos(a) * d, py = 132 + Math.sin(a) * d * 0.7;
+      const g = x.createRadialGradient(px, py - r * 0.2, 0, px, py, r);
+      g.addColorStop(0, 'rgba(255,255,255,0.5)'); g.addColorStop(0.5, 'rgba(255,255,255,0.22)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
+    }
+    this.cloudTex = new THREE.CanvasTexture(cv);
+    this.cloudTex.colorSpace = THREE.SRGBColorSpace;
+    this.textures.push(this.cloudTex);
+    return this.cloudTex;
+  }
+
+  /** Billows of cloud set round a middle: each turns to face the eye, so the bank looks full from any height. */
+  private billows(g: THREE.Group, n: number, r: number, tone: number, opacity: number, y: number, seed: number): void {
+    const mat = new THREE.SpriteMaterial({ map: this.cloudPaint(), color: tone, transparent: true, opacity, depthWrite: false });
+    mat.userData.full = opacity; this.cloudMats.push(mat);
+    for (let k = 0; k < n; k++) {
+      const sp = new THREE.Sprite(mat), a = hash(k, seed) * 6.283, d = Math.sqrt(hash(k, seed + 1)) * r * 0.62, sc = r * (0.75 + hash(k, seed + 2) * 0.55);
+      sp.position.set(Math.cos(a) * d, y + hash(k, seed + 3) * r * 0.08, Math.sin(a) * d * 0.7);
+      sp.scale.set(sc, sc * 0.8, 1);
+      g.add(sp);
+    }
+  }
+
   /** A bank of cloud, with the shadow it throws. */
   private puff(tone: number, opacity: number, r: number): THREE.Group {
-    const mat = new THREE.MeshLambertMaterial({ color: tone, emissive: tone, emissiveIntensity: 0.5, transparent: true, opacity: opacity * 0.8, depthWrite: false });
-    mat.userData.full = opacity * 0.8; this.cloudMats.push(mat);
-    const g = new THREE.Group(), lobe = new THREE.IcosahedronGeometry(1, 2);
-    for (let k = 0; k < 7; k++) {
-      const m = new THREE.Mesh(lobe, mat), a = k * 0.9, d = r * (0.1 + (k % 4) * 0.2);
-      m.position.set(Math.cos(a) * d, (k % 3) * 0.4, Math.sin(a) * d * 0.7);
-      m.scale.set(r * 0.42, r * 0.16, r * 0.34);
-      g.add(m);
-    }
+    const g = new THREE.Group();
+    this.billows(g, 5, r, tone, opacity * 0.9, 0, 80 + this.cloudMats.length);
     const shade = new THREE.Mesh(new THREE.CircleGeometry(r * 1.5, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0a1028, map: this.softShade(), transparent: true, opacity: 0.34, depthWrite: false }));
     shade.position.set(r * 0.6, 0, -r * 0.3); shade.renderOrder = 2; shade.userData.shade = true;
     g.add(shade);
@@ -882,7 +933,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     this.camera.updateProjectionMatrix();
     // Far enough back to take in the whole country, the first time and whenever the window changes shape.
     const half = Math.tan((this.camera.fov * Math.PI) / 360);
-    this.fit = Math.max((56 * S * UX) / (half * this.camera.aspect), (33 * S * UZ) / half);
+    this.fit = Math.max((60 * S * UX) / (half * this.camera.aspect), (33 * S * UZ) / half);
     if (!this.moved) this.dist = this.fit;
     if (!this.cd) this.cd = this.fit * 1.7; // the eye comes down out of the sky the first time
   }
@@ -902,26 +953,28 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
   }
 
   private addCloud(kind: string, r: number, x: number, z: number): void {
-    const tone = kind === 'rain' ? 0xa4aec0 : kind === 'snow' ? 0xf2f5fa : 0xd0aa72;
-    const mat = new THREE.MeshLambertMaterial({ color: tone, emissive: tone, emissiveIntensity: 0.4, transparent: true, opacity: 0.5, depthWrite: false });
-    mat.userData.full = 0.5; this.cloudMats.push(mat);
-    const g = new THREE.Group(), lobe = new THREE.IcosahedronGeometry(1, 2);
-    for (let k = 0; k < 11; k++) {
-      const m = new THREE.Mesh(lobe, mat), a = k * 0.9;
-      const d = r * (0.1 + (k % 4) * 0.15);
-      m.position.set(Math.cos(a) * d, (k % 3) * 0.5, Math.sin(a) * d * 0.7);
-      m.scale.set(r * 0.3, r * 0.13, r * 0.26);
-      g.add(m);
-    }
+    const g = new THREE.Group();
+    // A storm is dark underneath and pale on top; snow cloud is white through; dust is a tawny haze.
+    if (kind === 'rain') { this.billows(g, 9, r, 0x6f7b90, 0.6, -0.9, 90); this.billows(g, 8, r * 0.92, 0xdfe5ee, 0.7, 0.4, 94); }
+    else if (kind === 'snow') { this.billows(g, 9, r, 0xc9d2de, 0.5, -0.7, 90); this.billows(g, 8, r * 0.92, 0xffffff, 0.75, 0.4, 94); }
+    else this.billows(g, 12, r, 0xd8b078, 0.42, -0.5, 90);
     // A shadow of its own on the land, since cloud lets the sun through.
-    const shade = new THREE.Mesh(new THREE.CircleGeometry(r * 1.4, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0a1028, map: this.softShade(), transparent: true, opacity: 0.42, depthWrite: false }));
+    const shade = new THREE.Mesh(new THREE.CircleGeometry(r * 1.4, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0a1028, map: this.softShade(), transparent: true, opacity: kind === 'dust' ? 0.2 : 0.42, depthWrite: false }));
     shade.position.y = -12.4; shade.renderOrder = 2;
     g.add(shade);
-    const n = 260, pts = new Float32Array(n * 3);
-    for (let k = 0; k < n; k++) { const a = hash(k, 1) * 6.283, d = Math.sqrt(hash(k, 2)) * r; pts[k * 3] = Math.cos(a) * d; pts[k * 3 + 1] = -hash(k, 3) * 14; pts[k * 3 + 2] = Math.sin(a) * d; }
+    // What falls from it: rain in fine slanting streaks, snow in soft flakes, dust in motes.
+    const n = kind === 'rain' ? 170 : 200, pts = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) { const a = hash(k, 1) * 6.283, d = Math.sqrt(hash(k, 2)) * r * 0.85; pts[k * 3] = Math.cos(a) * d; pts[k * 3 + 1] = -hash(k, 3) * 14; pts[k * 3 + 2] = Math.sin(a) * d; }
     const fg = new THREE.BufferGeometry();
     fg.setAttribute('position', new THREE.BufferAttribute(pts, 3));
-    const fall = new THREE.Points(fg, new THREE.PointsMaterial({ color: kind === 'rain' ? 0x9cc0f0 : kind === 'snow' ? 0xffffff : 0xd0a870, size: kind === 'snow' ? 0.2 : 0.11, transparent: true, opacity: 0.6, depthWrite: false }));
+    const dot = document.createElement('canvas');
+    dot.width = 16; dot.height = 64;
+    const dx = dot.getContext('2d')!;
+    if (kind === 'rain') { const lg = dx.createLinearGradient(0, 0, 0, 64); lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(0.5, 'rgba(255,255,255,0.9)'); lg.addColorStop(1, 'rgba(255,255,255,0)'); dx.strokeStyle = lg; dx.lineWidth = 2; dx.beginPath(); dx.moveTo(11, 2); dx.lineTo(5, 62); dx.stroke(); }
+    else { const rg = dx.createRadialGradient(8, 32, 0, 8, 32, 8); rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); dx.fillStyle = rg; dx.fillRect(0, 24, 16, 16); }
+    const dotTex = new THREE.CanvasTexture(dot);
+    this.textures.push(dotTex);
+    const fall = new THREE.Points(fg, new THREE.PointsMaterial({ map: dotTex, color: kind === 'rain' ? 0xbcd2ee : kind === 'snow' ? 0xffffff : 0xd8b47c, size: kind === 'rain' ? 1.5 : kind === 'snow' ? 0.9 : 0.7, transparent: true, opacity: kind === 'rain' ? 0.5 : 0.7, depthWrite: false }));
     g.add(fall);
     g.position.set(x, 14.5, z);
     this.scene.add(g);
@@ -932,6 +985,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
   sync(c: Campaign, sel: number, reach: Set<number>): void {
     this.c = c;
     this.last = { sel, reach };
+    for (const l of this.lanes) { const open = c.territories[l.a].buildings.includes('harbour') || c.territories[l.b].buildings.includes('harbour'); l.mat.opacity = open ? 1 : 0.6; l.rim.opacity = open ? 0.6 : 0.35; }
     for (const t of this.textures) t.dispose();
     this.textures = [];
     this.pieces.clear();

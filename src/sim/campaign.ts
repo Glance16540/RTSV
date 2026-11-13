@@ -29,7 +29,7 @@ export const SITES: Record<string, SiteDef> = {
   barracks: { name: 'Barracks', icon: '🗡️', cost: 5, desc: 'Raise infantry here.' },
   range: { name: 'Archery Range', icon: '🏹', cost: 5, desc: 'Raise archers here.' },
   stable: { name: 'Stable', icon: '🐴', cost: 7, desc: 'Raise cavalry here.' },
-  harbour: { name: 'Harbour', icon: '⚓', cost: 6, desc: 'Coast only. An army here can sail to any other coast. Troops landing from the sea fight at four-fifths strength.' },
+  harbour: { name: 'Harbour', icon: '⚓', cost: 6, desc: 'On the sea only. An army here can make the sea crossings from this land, and from an open coast can sail to any other. Troops landing from the sea fight at four-fifths strength.' },
   fortress: { name: 'Fortress', icon: '🏰', cost: 9, desc: '+3 defence. In battle the defender starts in the Bronze Age with towers.' },
 };
 export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
@@ -166,6 +166,8 @@ export interface Campaign {
   seed: number;
   /** Borders closed by mountains, a river or open water: the lands either side are not neighbours. */
   barriers?: Barrier[];
+  /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
+  lanes?: { a: number; b: number }[];
   rngState: number;
   level: number; // 0 easy, 1 normal, 2 hard
   turn: number;
@@ -424,21 +426,36 @@ function crossing(c: Campaign, a: number, b: number): { kind: BarrierKind; n: nu
  * river or open water lie across it, the two lands are no longer neighbours. Passes and fords are left wherever
  * closing a border would cut the world in two, leave a land with a single way in, or close more than a quarter of all borders.
  */
+/** The lands a sea lane runs to from this one. */
+export const lanesOf = (c: Campaign, tid: number): number[] => (c.lanes ?? []).filter((l) => l.a === tid || l.b === tid).map((l) => (l.a === tid ? l.b : l.a));
+/** Whether ships can put out from this land: it lies on the open coast, or a sea lane runs from it. */
+export const onSea = (c: Campaign, tid: number): boolean => c.territories[tid].trait === 'coast' || lanesOf(c, tid).length > 0;
 function raiseBarriers(c: Campaign): void {
   const ts = c.territories, found: (Barrier & { n: number })[] = [];
   for (const t of ts) for (const o of t.adj) if (o > t.id) { const x = crossing(c, t.id, o); if (x) found.push({ a: t.id, b: o, kind: x.kind, n: x.n }); }
   found.sort((p, q) => q.n - p.n || p.a - q.a || p.b - q.b); // the greatest barriers first
+  // Open water is no bar for good: it is a sea lane, crossed from a harbour.
+  c.lanes = [];
+  for (const f of found) if (f.kind === 'water') {
+    const A = ts[f.a], B = ts[f.b];
+    if ((A.capital >= 0 && A.adj.length <= 1) || (B.capital >= 0 && B.adj.length <= 1)) continue; // a capital always keeps one way out on foot: a ford at low water
+    A.adj = A.adj.filter((n) => n !== f.b); B.adj = B.adj.filter((n) => n !== f.a);
+    c.lanes.push({ a: f.a, b: f.b });
+  }
   const links = ts.reduce((n, t) => n + t.adj.length, 0) / 2;
+  const ways = (id: number): number[] => [...ts[id].adj, ...lanesOf(c, id)];
   const whole = (): boolean => {
     const seen = new Set([0]), q = [0];
-    while (q.length) for (const n of ts[q.pop()!].adj) if (!seen.has(n)) { seen.add(n); q.push(n); }
+    while (q.length) for (const n of ways(q.pop()!)) if (!seen.has(n)) { seen.add(n); q.push(n); }
     return seen.size === ts.length;
   };
   c.barriers = [];
   for (const f of found) {
+    if (f.kind === 'water') continue;
     if (c.barriers.length >= links / 4) break;
     const A = ts[f.a], B = ts[f.b];
-    if (A.adj.length <= 2 || B.adj.length <= 2) continue;
+    if (ways(f.a).length <= 2 || ways(f.b).length <= 2) continue;
+    if ((A.capital >= 0 && A.adj.length <= 1) || (B.capital >= 0 && B.adj.length <= 1)) continue;
     A.adj = A.adj.filter((n) => n !== f.b); B.adj = B.adj.filter((n) => n !== f.a);
     if (whole()) c.barriers.push({ a: f.a, b: f.b, kind: f.kind });
     else { A.adj.push(f.b); B.adj.push(f.a); }
@@ -737,11 +754,12 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
 
 // ---- Queries ----
 
-/** Where an army in this territory can go in one march: next door, or from a harbour to any other coast. */
+/** Where an army in this territory can go in one march: next door, or from a harbour along its sea lanes and to any other open coast. */
 export function reach(c: Campaign, tid: number): number[] {
   const t = c.territories[tid];
-  if (t.trait !== 'coast' || !t.buildings.includes('harbour')) return t.adj;
-  return [...t.adj, ...c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id)).map((x) => x.id)];
+  if (!t.buildings.includes('harbour')) return t.adj;
+  const lanes = lanesOf(c, tid);
+  return [...t.adj, ...lanes, ...(t.trait === 'coast' ? c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id) && !lanes.includes(x.id)).map((x) => x.id) : [])];
 }
 export const SEA_LANDING = 0.8;
 /** What the next age costs this people. */
@@ -833,7 +851,7 @@ export function winChance(aStr: number, dStr: number, home = 1.1): number {
 
 export function canBuild(c: Campaign, f: number, tid: number, site: string): boolean {
   const t = c.territories[tid];
-  return t.owner === f && !!SITES[site] && (site !== 'harbour' || t.trait === 'coast') && !t.buildings.includes(site) && t.buildings.length < slots(t) && c.factions[f].supplies >= siteCost(t, site, c.factions[f].civ);
+  return t.owner === f && !!SITES[site] && (site !== 'harbour' || onSea(c, tid)) && !t.buildings.includes(site) && t.buildings.length < slots(t) && c.factions[f].supplies >= siteCost(t, site, c.factions[f].civ);
 }
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
@@ -1236,10 +1254,13 @@ function aiStep(c: Campaign, f: Faction): boolean {
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     // A people with stores to spare moves with the times.
     if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8) advanceAge(c, f.id);
+    // A people shut in by the sea builds a harbour before anything else.
+    const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
+    if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }
     for (const t of own) {
       const border = t.adj.some((n) => c.territories[n].owner !== f.id);
       if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');
-      else if (t.trait === 'coast' && !t.buildings.includes('harbour') && f.supplies > 12 && rand(c) < 0.4) build(c, f.id, t.id, 'harbour');
+      else if (onSea(c, t.id) && !t.buildings.includes('harbour') && f.supplies > 12 && rand(c) < 0.4) build(c, f.id, t.id, 'harbour');
       else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
@@ -1280,7 +1301,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
       return false;
     }
   }
-  if (!here.adj.some((id) => c.territories[id].owner !== f.id)) {
+  if (!reach(c, here.id).some((id) => c.territories[id].owner !== f.id)) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
     if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
@@ -1294,7 +1315,7 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
   const queue = [from];
   while (queue.length) {
     const cur = queue.shift()!;
-    for (const n of c.territories[cur].adj) {
+    for (const n of reach(c, cur)) {
       if (prev.has(n)) continue;
       prev.set(n, cur);
       if (c.territories[n].owner !== f) {
