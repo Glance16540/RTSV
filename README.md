@@ -191,12 +191,16 @@ difficulty levels that plays by the same rules.
 - **Hold the Line** — defend a walled town against eight growing waves of raiders for ten minutes.
 - **Race for the Wonder** — two rich kingdoms each try to build a Wonder and keep it standing.
 
-**How it opens.** A loading screen with the game's seal, then *Press any key*, a few opening words
-over black, and the main menu: the title and a column of choices over the player's own town, with the
-camera circling it slowly. Choosing a difficulty swings the camera round to the game's view and play
-begins. The opening is played once a visit (`?intro=1` plays it again, `?intro=0` never). The main
-theme plays at the menu: drop a recording at `public/assets/music/theme.mp3` and it replaces the
-synthesised stand-in. The code is in `src/client/title.ts`.
+**How it opens.** The game opens as a printed chronicle, to go with its woodcut icons: vellum, black
+ink and a red for the rubrics, set in the Fell types (bundled from `@fontsource`, under the Open Font
+License). A loading page with a printer's rule that inks in, then *Press any key* and three opening
+lines set down on the page. The page is then drawn back to the left of the screen, and becomes the main
+menu: the title and a list of choices on a torn leaf, the player's own town behind it with the camera
+circling slowly. Skirmish, missions, help and settings open as a second leaf. Choosing a difficulty
+swings the camera round to the game's view and play begins. The opening is played once a visit
+(`?intro=1` plays it again, `?intro=0` never). The main theme plays at the menu: drop a recording at
+`public/assets/music/theme.mp3` and it replaces the synthesised stand-in. The code is in
+`src/client/title.ts`.
 
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.

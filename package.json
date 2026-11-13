@@ -17,6 +17,9 @@
     "trials": "TRIALS=1 OUT=trials.txt vitest run scripts/trials.test.ts"
   },
   "dependencies": {
+    "@fontsource/im-fell-english": "^5.3.0",
+    "@fontsource/im-fell-english-sc": "^5.3.0",
+    "@fontsource/im-fell-french-canon": "^5.3.0",
     "three": "^0.170.0"
   },
   "devDependencies": {

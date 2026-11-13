@@ -275,118 +275,123 @@ kbd { font: 600 10px/1 ui-monospace, Menlo, monospace; color: var(--gold); }
 .record small { opacity: 0.7; }
 
 /* ---- The opening and the main menu ---- */
-:root { --display: 'Trajan Pro', 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif; }
+/* A leaf from a printed chronicle: vellum, black ink, red rubrics, set in Fell's seventeenth-century types
+   to go with the woodcut icons. The colours and the paper are defined in index.html, with the loading screen. */
+:root { --leaf: clamp(350px, 35vw, 500px); }
 body.at-title #hud, body.at-title #overlay { visibility: hidden; }
 
-#intro { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: #050403; transition: opacity 2.4s ease-in; }
-#intro.gone { opacity: 0; pointer-events: none; }
-#intro p { margin: 0; max-width: 900px; text-align: center; font: italic 400 clamp(20px, 2.6vw, 34px)/1.4 Georgia, 'Times New Roman', serif; color: #e9dcc0; letter-spacing: 0.03em; opacity: 0; transform: translateY(6px); transition: opacity 0.9s ease, transform 3.6s ease-out; }
-#intro p.on { opacity: 1; transform: none; }
-#intro small { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center; font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: #5d5240; }
-#intro.gone small { opacity: 0; }
-
-#title { position: fixed; inset: 0; z-index: 10; overflow: hidden; color: var(--text); transition: opacity 1.2s ease; }
+#title { position: fixed; inset: 0; z-index: 10; overflow: hidden; color: var(--ink); font: 17px/1.45 var(--book); transition: opacity 1.2s ease; }
 #title.gone { opacity: 0; pointer-events: none; }
 .t-art { position: absolute; inset: -4%; display: none; background: center / cover no-repeat; animation: t-drift 70s ease-in-out infinite alternate; }
 #title.art { background: #0b0906; }
 #title.art .t-art { display: block; }
 @keyframes t-drift { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.09) translate(-1.6%, -1%); } }
-#t-embers { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-/* Dark where the words stand, dark at the top and bottom as on a cinema screen, clear over the town. */
-.t-shade {
-  position: absolute; inset: 0; pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(9, 7, 4, 0.94) 0%, rgba(9, 7, 4, 0.8) 24%, rgba(9, 7, 4, 0.28) 48%, rgba(9, 7, 4, 0) 68%),
-    linear-gradient(180deg, rgba(5, 4, 3, 0.85) 0%, rgba(5, 4, 3, 0) 16%, rgba(5, 4, 3, 0) 80%, rgba(5, 4, 3, 0.9) 100%),
-    radial-gradient(ellipse at 66% 50%, rgba(255, 170, 80, 0.07) 0%, rgba(0, 0, 0, 0) 55%);
-  transition: background-color 0.5s;
-}
-#title.paneled .t-shade { background-color: rgba(6, 5, 3, 0.45); }
+.t-shade { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 64% 48%, rgba(0, 0, 0, 0) 42%, rgba(10, 7, 3, 0.62) 100%); transition: background-color 0.5s; }
+#title.paneled .t-shade { background-color: rgba(10, 7, 3, 0.4); }
 
-.t-col { position: absolute; left: clamp(20px, 5.5vw, 96px); top: 0; bottom: 0; width: min(440px, calc(100vw - 40px)); display: flex; flex-direction: column; gap: clamp(14px, 4vh, 44px); padding: clamp(28px, 12vh, 120px) 0 44px; }
-.t-brand { animation: t-rise 2.6s 0.5s both cubic-bezier(0.2, 0.7, 0.2, 1); }
-.t-brand .sigil { width: clamp(54px, 9vh, 84px); height: clamp(54px, 9vh, 84px); margin-left: 2px; filter: drop-shadow(0 0 18px rgba(240, 160, 60, 0.45)); }
-.t-brand h1 {
-  margin: 10px 0 0; font: 500 clamp(40px, 8.4vh, 78px)/0.98 var(--display); letter-spacing: 0.07em; text-transform: uppercase;
-  background: linear-gradient(180deg, #fff6d6 4%, #ecc977 42%, #b98a35 64%, #7c5519 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 2px 0 #24170a) drop-shadow(0 10px 26px rgba(0, 0, 0, 0.85));
+/* The leaf is as wide as the screen and lies mostly off its left side, so that for the opening words it can
+   cover everything and then be drawn back. Only its torn right edge is ever seen. */
+.t-leaf {
+  position: absolute; top: -40px; bottom: -40px; left: -40px; width: calc(100vw + 90px);
+  background: var(--paper); box-shadow: inset -60px 0 90px -40px rgba(110, 74, 26, 0.5);
+  filter: url(#deckle) drop-shadow(10px 0 14px rgba(0, 0, 0, 0.6));
+  transform: translateX(calc(var(--leaf) - 100vw - 50px)); transition: transform 2.4s cubic-bezier(0.65, 0, 0.2, 1);
 }
+#title.full .t-leaf { transform: none; }
+#title.full .t-col { display: none; }
+
+#intro { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; color: var(--ink); transition: opacity 0.9s; }
+#intro.gone { opacity: 0; pointer-events: none; }
+.i-text { width: min(640px, 100%); min-height: 9em; font: 400 clamp(21px, 2.5vw, 31px)/1.5 var(--book); }
+.i-text p { margin: 0 0 0.35em; animation: i-ink 1.6s ease-out both; }
+/* Each line comes up as ink does on a pressed sheet: faint and spread, then sharp. */
+@keyframes i-ink { from { opacity: 0; filter: blur(3px); } }
+.i-text p:first-child::first-letter { float: left; margin: 0.06em 0.09em 0 0; font: 400 3.1em/0.8 'IM Fell French Canon', var(--book); color: var(--rubric); }
+#intro small { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center; font: 14px var(--caps); letter-spacing: 0.14em; text-transform: lowercase; color: var(--sepia); }
+
+.t-col { position: absolute; left: 0; top: 0; bottom: 0; width: var(--leaf); display: flex; flex-direction: column; padding: clamp(18px, 6vh, 60px) 46px 20px clamp(22px, 3.4vw, 54px); }
+.t-brand { animation: t-rise 1.6s 0.9s both; }
+.t-brand .cut { width: clamp(64px, 13vh, 112px); height: clamp(64px, 13vh, 112px); margin: 0 0 0 -8px; display: block; }
+.t-brand h1 { margin: 0; font: 400 clamp(46px, 9.2vh, 82px)/0.92 'IM Fell French Canon', var(--book); letter-spacing: -0.01em; color: var(--ink); text-shadow: 0 0 1px rgba(36, 24, 15, 0.5); }
 .t-brand h1 span { display: block; white-space: nowrap; }
-.t-brand h1 i { font: italic 400 0.62em Georgia, serif; letter-spacing: 0; margin-right: 0.08em; }
-.t-rule { position: relative; height: 1px; margin: 18px 0 12px; width: 88%; background: linear-gradient(90deg, var(--gold), rgba(220, 184, 102, 0)); }
-.t-rule b { position: absolute; left: 0; top: -4px; width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg); }
-.t-brand p { margin: 0; max-width: 380px; font: italic 15px/1.45 Georgia, serif; color: #c9bb9c; text-shadow: 0 1px 3px #000; }
+.t-brand h1 i { color: var(--rubric); margin-right: 0.04em; }
+/* A printer's double rule, thick over thin. */
+.t-rule { height: 6px; margin: clamp(10px, 2.2vh, 20px) 0 clamp(8px, 1.6vh, 14px); border-top: 3px solid var(--ink); border-bottom: 1px solid var(--ink); }
+.t-brand p { margin: 0; font-style: italic; line-height: 1.35; color: #3d2c1a; }
 
-#t-menu { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+#t-menu { display: flex; flex-direction: column; margin-top: clamp(10px, 3.4vh, 34px); }
 #t-menu button {
-  position: relative; display: block; width: 100%; padding: 7px 0 7px 22px; text-align: left; background: none; border: 0; outline: 0;
-  animation: t-rise 1.4s both cubic-bezier(0.2, 0.7, 0.2, 1);
+  display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; width: 100%; padding: clamp(3px, 0.9vh, 8px) 0; text-align: left;
+  background: none; border: 0; border-bottom: 1px dotted rgba(36, 24, 15, 0.42); outline: 0; color: var(--ink); animation: t-rise 1s both;
 }
-#t-menu button:nth-child(1) { animation-delay: 2.0s; }
-#t-menu button:nth-child(2) { animation-delay: 2.15s; }
-#t-menu button:nth-child(3) { animation-delay: 2.3s; }
-#t-menu button:nth-child(4) { animation-delay: 2.45s; }
-#t-menu button:nth-child(5) { animation-delay: 2.6s; }
-#t-menu button:nth-child(6) { animation-delay: 2.75s; }
-#title.quick .t-brand { animation-duration: 0.9s; animation-delay: 0s; }
-#title.quick #t-menu button { animation-duration: 0.6s; animation-delay: 0.15s; }
-@keyframes t-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-#t-menu b { display: block; font: 500 clamp(19px, 3.1vh, 25px)/1.2 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: #d9cdb2; text-shadow: 0 2px 6px #000; transition: color 0.2s, letter-spacing 0.35s, transform 0.25s; }
-#t-menu small { display: block; max-height: 0; overflow: hidden; opacity: 0; font: italic 13px/1.4 Georgia, serif; color: #b3a586; text-shadow: 0 1px 3px #000; transition: max-height 0.3s, opacity 0.3s; }
-/* A gold blade slides in beside the choice under the hand. */
-#t-menu button::before { content: ''; position: absolute; left: 0; top: 0.95em; width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg) scale(0); transition: transform 0.2s; box-shadow: 0 0 12px rgba(240, 190, 90, 0.8); }
-#t-menu button:hover b, #t-menu button:focus-visible b, #t-menu button.on b { color: #ffe9ae; letter-spacing: 0.19em; transform: translateX(4px); }
-#t-menu button:hover::before, #t-menu button:focus-visible::before, #t-menu button.on::before { transform: rotate(45deg) scale(1); }
-#t-menu button:hover small, #t-menu button:focus-visible small, #t-menu button.on small { max-height: 3em; opacity: 1; }
-#t-menu #conquest-btn b { color: #f0d48a; }
+#t-menu button:nth-child(1) { animation-delay: 1.5s; }
+#t-menu button:nth-child(2) { animation-delay: 1.6s; }
+#t-menu button:nth-child(3) { animation-delay: 1.7s; }
+#t-menu button:nth-child(4) { animation-delay: 1.8s; }
+#t-menu button:nth-child(5) { animation-delay: 1.9s; }
+#t-menu button:nth-child(6) { animation-delay: 2s; }
+#title.quick .t-brand, #title.quick #t-menu button { animation-duration: 0.5s; animation-delay: 0s; }
+#title.quick .t-leaf { transition: none; }
+@keyframes t-rise { from { opacity: 0; } }
+#t-menu img { width: 40px; height: 40px; -webkit-mask: radial-gradient(closest-side, #000 70%, transparent 100%); mask: radial-gradient(closest-side, #000 70%, transparent 100%); filter: grayscale(0.75) contrast(1.05); transition: filter 0.25s, transform 0.25s; }
+#t-menu b { display: block; font: 400 clamp(21px, 3.5vh, 29px)/1.15 var(--caps); letter-spacing: 0.02em; text-transform: lowercase; transition: color 0.15s; }
+#t-menu small { display: block; max-height: 0; overflow: hidden; font: italic 15px/1.3 var(--book); color: #4a3823; transition: max-height 0.25s; }
+/* The choice under the hand is rubricated, and its woodcut takes its colours. */
+#t-menu button:hover b, #t-menu button:focus-visible b, #t-menu button.on b { color: var(--rubric); }
+#t-menu button:hover img, #t-menu button:focus-visible img, #t-menu button.on img { filter: none; transform: scale(1.12) rotate(-2deg); }
+#t-menu button:hover small, #t-menu button:focus-visible small, #t-menu button.on small { max-height: 2.8em; }
+#t-menu button.on { border-bottom-style: solid; border-bottom-color: var(--rubric); }
+.t-foot { margin-top: auto; padding-top: 10px; font: 13px var(--caps); letter-spacing: 0.08em; text-transform: lowercase; color: var(--sepia); animation: t-rise 1s 2.2s both; }
 
-/* The panel beside the menu: a dark board with a gold line let into its edge. */
-#t-panel {
-  position: absolute; top: 50%; left: clamp(380px, 38vw, 640px); right: clamp(16px, 4vw, 72px); max-width: 780px; max-height: 86vh; transform: translateY(-50%);
-  overflow: auto; scrollbar-width: thin; padding: 26px 30px 28px;
-  background: linear-gradient(rgba(38, 31, 22, 0.96), rgba(19, 15, 11, 0.97)); border: 1px solid #8a7140; outline: 1px solid rgba(220, 184, 102, 0.28); outline-offset: -7px;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75); animation: t-panel 0.35s ease-out;
-}
-@keyframes t-panel { from { opacity: 0; transform: translateY(-50%) translateX(18px); } }
-#t-panel h2 { margin: 0 0 14px; padding-bottom: 10px; font: 500 24px/1 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); border-bottom: 1px solid #4a3d28; }
-#t-panel h3 { margin: 12px 0 2px; font: 600 15px Georgia, serif; color: var(--gold); }
+/* The second leaf, laid a little askew beside the first. */
+#t-panel { position: absolute; top: 50%; left: calc(var(--leaf) + clamp(18px, 3vw, 54px)); right: clamp(16px, 3.5vw, 60px); max-width: 760px; transform: translateY(-50%) rotate(0.35deg); animation: t-panel 0.3s ease-out; color: var(--ink); }
+#t-panel::before { content: ''; position: absolute; inset: -6px; background: var(--paper); box-shadow: inset 0 0 60px rgba(110, 74, 26, 0.35); filter: url(#deckle-s) drop-shadow(0 12px 22px rgba(0, 0, 0, 0.6)); }
+@keyframes t-panel { from { opacity: 0; transform: translateY(-48%) rotate(1.2deg); } }
+.t-scroll { position: relative; max-height: 88vh; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--sepia) transparent; padding: 24px 32px 26px; }
+#t-panel h2 { margin: 0 0 14px; padding-bottom: 6px; font: 400 34px/1 'IM Fell French Canon', var(--book); border-bottom: 3px double var(--ink); }
+#t-panel h2::first-letter { color: var(--rubric); }
+#t-panel h3 { margin: 12px 0 0; font: 400 19px var(--caps); text-transform: lowercase; color: var(--rubric); }
 #t-panel p { margin: 0; }
-#t-panel .cols { display: grid; grid-template-columns: 1fr 1.25fr; gap: 26px; }
-#t-panel table { border-collapse: collapse; width: 100%; font-size: 13px; }
-#t-panel td { padding: 3px 0; vertical-align: top; }
-#t-panel td:first-child { color: var(--gold); padding-right: 12px; white-space: nowrap; }
-.t-close { position: absolute; top: 14px; right: 16px; width: 30px; height: 30px; background: none; border: 1px solid transparent; border-radius: 3px; color: var(--muted); font-size: 15px; }
-.t-close:hover { color: var(--gold); border-color: var(--edge); }
-#t-panel .mapsize { display: inline-flex; flex-direction: column; gap: 4px; margin: 0 14px 12px 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
-#t-panel .mapsize select { margin: 0; padding: 6px 8px; min-width: 150px; font-size: 14px; letter-spacing: 0; text-transform: none; }
-#t-panel .mapsize.check { flex-direction: row; align-items: center; gap: 8px; margin-top: 2px; }
-#t-panel #civ-info { margin: 4px 0 0; max-width: none; padding: 10px 12px; background: rgba(0, 0, 0, 0.28); border-left: 3px solid var(--edge); }
-.t-pick { margin: 18px 0 0 !important; font: italic 14px Georgia, serif; color: var(--muted); }
-#t-panel .levels { justify-content: flex-start; margin-top: 10px; }
-#t-panel .levels button {
-  padding: 11px 34px; font: 500 16px var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold);
-  background: linear-gradient(#3a3024, #211a12); border: 1px solid var(--edge); border-radius: 2px; transition: filter 0.15s, border-color 0.15s;
-}
-#t-panel .levels button:hover { border-color: var(--gold); filter: brightness(1.25); }
-#t-panel .levels #start-btn { color: #1c1813; background: linear-gradient(#f0d48a, #c99a3c); border-color: #f6e3ac; }
-#t-panel #missions { margin: 0; max-width: none; }
-#t-panel #settings { margin: 0; max-width: none; font-size: 14px; }
+#t-panel .cols { display: grid; grid-template-columns: 1fr 1.25fr; gap: 26px; font-size: 16px; line-height: 1.35; }
+#t-panel table { border-collapse: collapse; width: 100%; font-size: 15px; line-height: 1.25; }
+#t-panel td { padding: 3px 0; vertical-align: top; border-bottom: 1px dotted rgba(36, 24, 15, 0.3); }
+#t-panel td:first-child { font-style: italic; padding-right: 12px; white-space: nowrap; }
+.t-close { position: absolute; z-index: 1; top: 16px; right: 20px; width: 30px; height: 30px; padding: 0; background: none; border: 0; color: var(--sepia); font: 18px var(--book); }
+.t-close:hover { color: var(--rubric); }
+#t-panel .mapsize { display: inline-flex; flex-direction: column; gap: 1px; margin: 0 16px 10px 0; font: 15px var(--caps); letter-spacing: 0.04em; text-transform: lowercase; color: var(--sepia); }
+#t-panel .mapsize select { margin: 0; padding: 3px 4px 4px; min-width: 150px; font: 17px var(--book); letter-spacing: 0; text-transform: none; color: var(--ink); background: rgba(255, 250, 235, 0.35); border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; cursor: pointer; }
+#t-panel .mapsize select:hover, #t-panel .mapsize select:focus { background: rgba(255, 250, 235, 0.7); outline: 0; border-bottom-color: var(--rubric); }
+#t-panel .mapsize.check { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); }
+#t-panel input[type='checkbox'] { width: 17px; height: 17px; accent-color: var(--rubric); }
+#t-panel input[type='range'] { accent-color: var(--rubric); }
+#t-panel #civ-info { margin: 6px 0 0; max-width: none; padding: 2px 0 2px 14px; border-left: 3px solid var(--rubric); font-size: 16px; line-height: 1.35; color: #3d2c1a; }
+#t-panel #civ-info b { color: var(--ink); }
+#t-panel #civ-info small { color: var(--sepia); font-size: 14px; }
+.t-pick { margin: 16px 0 0 !important; font-style: italic; }
+#t-panel .levels { justify-content: flex-start; margin-top: 8px; gap: 10px; }
+/* Buttons are blocks of type: outlined, and the one to press inked solid. */
+#t-panel .levels button { margin: 0; padding: 7px 30px 9px; font: 400 22px var(--caps); text-transform: lowercase; letter-spacing: 0.04em; color: var(--ink); background: none; border: 2px solid var(--ink); border-radius: 0; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+#t-panel .levels #start-btn { color: var(--vellum); background: var(--ink); }
+#t-panel .levels button:hover { color: var(--vellum); background: var(--rubric); border-color: var(--rubric); }
+#t-panel #missions { margin: 0; max-width: none; gap: 0; }
+#t-panel #missions button { padding: 10px 2px; font: inherit; color: var(--ink); background: none; border: 0; border-bottom: 1px dotted rgba(36, 24, 15, 0.42); border-radius: 0; }
+#t-panel #missions b { font: 400 23px var(--caps); text-transform: lowercase; color: var(--ink); }
+#t-panel #missions small { font: italic 16px var(--book); color: #4a3823; }
+#t-panel #missions button:hover b { color: var(--rubric); }
+#t-panel #settings { margin: 0; max-width: none; font-size: 17px; color: var(--ink); }
 #t-panel #settings summary { display: none; }
-#t-panel #settings label { display: flex; justify-content: space-between; align-items: center; margin: 0; padding: 10px 2px; border-bottom: 1px solid #3c3122; color: var(--text); }
-#t-panel #settings input[type='checkbox'] { order: 2; width: 18px; height: 18px; accent-color: #c99a3c; }
-#t-panel #settings input[type='range'] { width: 46%; accent-color: #c99a3c; }
+#t-panel #settings label { display: flex; justify-content: space-between; align-items: center; margin: 0; padding: 9px 2px; border-bottom: 1px dotted rgba(36, 24, 15, 0.42); }
+#t-panel #settings input[type='checkbox'] { order: 2; }
+#t-panel #settings input[type='range'] { width: 46%; }
 
-.t-foot { position: absolute; left: clamp(20px, 5.5vw, 96px); right: clamp(16px, 4vw, 72px); bottom: 14px; display: flex; justify-content: space-between; gap: 16px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #6f6450; pointer-events: none; }
-
-/* The word before a battle, and the help page, in the same hand as the menu. */
-.sheet { outline: 1px solid rgba(220, 184, 102, 0.22); outline-offset: -8px; }
-.sheet h1 { font-family: var(--display); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
+/* The word before a battle, and the help page, take their heading from the same fount. */
+.sheet h1 { font-family: 'IM Fell French Canon', Georgia, serif; font-weight: 400; }
 
 @media (max-width: 900px) {
-  #t-panel { left: 12px; right: 12px; max-height: 92vh; padding: 20px 18px; }
+  :root { --leaf: min(100vw, 420px); }
+  #t-panel { left: 12px; right: 12px; }
+  .t-scroll { padding: 20px 18px; max-height: 92vh; }
   #t-panel .cols { grid-template-columns: 1fr; }
-  #title.paneled .t-col { visibility: hidden; }
-  .t-foot span:last-child { display: none; }
 }
-@media (max-height: 620px) { .t-brand p, .t-rule { display: none; } }
-@media (prefers-reduced-motion: reduce) { .t-art, .t-brand, #t-menu button, #t-panel { animation: none; } }
+@media (max-height: 600px) { .t-brand p, .t-foot { display: none; } }
+@media (prefers-reduced-motion: reduce) { .t-art, .t-brand, #t-menu button, #t-panel, .i-text p { animation: none; } .t-leaf { transition: none; } }

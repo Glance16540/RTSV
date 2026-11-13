@@ -5,43 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RTSV — Hearth &amp; Empire</title>
     <style>
+      /* The game opens as a printed page: vellum, black ink and a red for the rubrics, like the woodcuts of its icons. */
+      :root { --vellum: #f3deb8; --ink: #24180f; --rubric: #a3271a; --sepia: #7a6442; --paper: var(--vellum) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .29 0 0 0 0 .12 0 0 0 .5 -.14'/%3E%3C/filter%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0045' numOctaves='3' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .33 0 0 0 0 .12 0 0 0 .75 -.3'/%3E%3C/filter%3E%3Crect width='900' height='900' filter='url(%23n)'/%3E%3Crect width='900' height='900' filter='url(%23f)'/%3E%3C/svg%3E"); --book: 'IM Fell English', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif; --caps: 'IM Fell English SC', 'IM Fell English', Georgia, serif; }
       html, body { margin: 0; height: 100%; background: #0b0906; }
-      #boot { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 42%, #2a1f12 0%, #120d08 55%, #060504 100%); color: #a89a80; font: 14px/1.5 Georgia, 'Times New Roman', serif; text-align: center; transition: opacity 0.7s; }
+      #boot { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--paper); box-shadow: inset 0 0 180px rgba(92, 62, 22, 0.45); color: var(--ink); font: 17px/1.5 var(--book); text-align: center; transition: opacity 0.7s; }
       #boot.gone { opacity: 0; pointer-events: none; }
-      .boot-in { width: min(520px, 86vw); }
-      #boot .sigil { width: 112px; height: 112px; filter: drop-shadow(0 0 22px rgba(240, 170, 70, 0.35)); animation: boot-glow 3.2s ease-in-out infinite; }
-      .boot-name { margin: 18px 0 26px; font: 500 30px/1 'Trajan Pro', 'Cinzel', 'Palatino Linotype', Palatino, Georgia, serif; letter-spacing: 0.22em; text-transform: uppercase; color: #dcb866; }
-      .boot-bar { height: 5px; border: 1px solid #6f5a36; background: #0a0806; padding: 1px; }
-      #boot-fill { display: block; height: 100%; background: linear-gradient(90deg, #8f6420, #f0d48a); transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.35s ease-out; }
-      #boot-label { margin-top: 10px; font-size: 12px; letter-spacing: 0.24em; text-transform: uppercase; color: #8c7c60; }
-      #boot.wait #boot-label { color: #f0d48a; animation: boot-glow 1.8s ease-in-out infinite; cursor: pointer; }
-      #boot-tip { min-height: 3em; margin: 26px 0 0; font-style: italic; font-size: 15px; color: #b9aa8c; }
-      @keyframes boot-glow { 50% { opacity: 0.62; } }
+      .boot-in { width: min(460px, 86vw); }
+      .cut { width: 112px; height: 112px; -webkit-mask: radial-gradient(closest-side, #000 72%, transparent 100%); mask: radial-gradient(closest-side, #000 72%, transparent 100%); }
+      .boot-name { margin: 4px 0 22px; font: 400 44px/1 'IM Fell French Canon', var(--book); }
+      .boot-name i { color: var(--rubric); }
+      /* The bar is a printer's rule that inks in from the left. */
+      .boot-bar { height: 7px; border-top: 3px solid rgba(36, 24, 15, 0.16); border-bottom: 1px solid rgba(36, 24, 15, 0.16); position: relative; }
+      #boot-fill { position: absolute; inset: -3px 0 -1px; border-top: 3px solid var(--ink); border-bottom: 1px solid var(--ink); transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.35s ease-out; }
+      #boot-label { margin-top: 12px; font: 15px var(--caps); letter-spacing: 0.14em; text-transform: lowercase; color: var(--sepia); }
+      #boot.wait #boot-label { color: var(--rubric); font-size: 19px; animation: boot-wait 1.8s ease-in-out infinite; cursor: pointer; }
+      #boot-tip { min-height: 3em; margin: 22px 0 0; font-style: italic; }
+      #boot-tip::before { content: '¶ '; font-style: normal; color: var(--rubric); }
+      @keyframes boot-wait { 50% { opacity: 0.45; } }
     </style>
   </head>
   <body>
-    <!-- The loading screen. It is styled here so it is on screen before anything else has arrived. -->
+    <!-- The loading screen. It is styled above so it is on screen before anything else has arrived. -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
       <defs>
-        <linearGradient id="sigil-gold" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#fff0bf" /><stop offset="0.5" stop-color="#dcb866" /><stop offset="1" stop-color="#8f6420" />
-        </linearGradient>
-        <symbol id="sigil" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="55" fill="none" stroke="url(#sigil-gold)" stroke-width="2.4" />
-          <circle cx="60" cy="60" r="49.5" fill="none" stroke="url(#sigil-gold)" stroke-width="0.8" />
-          <g fill="url(#sigil-gold)">
-            <path d="M60 0l5 5-5 5-5-5z M60 110l5 5-5 5-5-5z M0 60l5-5 5 5-5 5z M110 60l5-5 5 5-5 5z" />
-            <path d="M61 18c3 15 21 25 21 45 0 14-10 24-22 24s-22-10-22-24c0-11 6-17 10-25 2 6 4 9 8 11 3-9 3-20 5-31z" />
-            <path d="M33 92h54l-4 7H37z" />
-          </g>
-          <path d="M60 50c2 9 10 13 10 23 0 7-4 11-10 11s-10-4-10-11c0-5 3-8 5-12 1 3 2 4 4 5 1-5 0-11 1-16z" fill="#1a130b" opacity="0.82" />
-        </symbol>
+        <!-- The torn edge of a leaf of paper. -->
+        <filter id="deckle" x="-2%" y="-2%" width="104%" height="104%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02 0.045" numOctaves="4" seed="11" result="t" />
+          <feDisplacementMap in="SourceGraphic" in2="t" scale="16" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+        <filter id="deckle-s" x="-3%" y="-3%" width="106%" height="106%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="5" result="t" />
+          <feDisplacementMap in="SourceGraphic" in2="t" scale="7" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
       </defs>
     </svg>
     <div id="boot">
       <div class="boot-in">
-        <svg class="sigil" viewBox="0 0 120 120" aria-hidden="true"><use href="#sigil" /></svg>
-        <div class="boot-name">Hearth &amp; Empire</div>
+        <img class="cut" src="assets/icons/page_settlement.webp" alt="" onerror="this.remove()" />
+        <div class="boot-name">Hearth <i>&amp;</i> Empire</div>
         <div class="boot-bar"><i id="boot-fill"></i></div>
         <div id="boot-label">Loading</div>
         <p id="boot-tip"></p>
@@ -124,29 +125,31 @@
       </div>
     </div>
 
-    <!-- The main menu: the title over the living world, a column of choices, and a panel beside it. -->
+    <!-- The main menu: a leaf from a printed chronicle laid over the living world, and a second leaf beside it. -->
     <div id="title" class="hidden">
       <div class="t-art"></div>
-      <canvas id="t-embers"></canvas>
       <div class="t-shade"></div>
+      <div class="t-leaf"></div>
       <div class="t-col">
         <header class="t-brand">
-          <svg class="sigil" viewBox="0 0 120 120" aria-hidden="true"><use href="#sigil" /></svg>
-          <h1><span>Hearth</span><span><i>&amp;</i> Empire</span></h1>
-          <div class="t-rule"><b></b></div>
-          <p>Raise a people from the Stone Age to the Gunpowder Age, one family at a time.</p>
+          <img class="cut" src="assets/icons/page_settlement.webp" alt="" onerror="this.remove()" />
+          <h1>Hearth <span><i>&amp;</i> Empire</span></h1>
+          <div class="t-rule"></div>
+          <p>Being the raising of a people from the Stone Age to the Gunpowder Age, one family at a time.</p>
         </header>
         <nav id="t-menu">
-          <button id="conquest-btn"><b>Campaign</b><small>A new world each time: rival peoples, their leaders, and land to take.</small></button>
-          <button data-panel="skirmish"><b>Skirmish</b><small>A single battle on a map of your choosing.</small></button>
-          <button data-panel="missions"><b>Missions</b><small>Set-piece stories with their own rules.</small></button>
-          <button id="continue-btn" class="hidden"><b>Continue</b><small>Take up your saved game where you left it.</small></button>
-          <button data-panel="howto"><b>How to play</b><small>The game in brief, and the controls.</small></button>
-          <button data-panel="settings"><b>Settings</b><small>Sound, music and scrolling.</small></button>
+          <button id="conquest-btn"><img src="assets/icons/strategist.webp" alt="" onerror="this.remove()" /><span><b>Campaign</b><small>A new world each time: rival peoples, their leaders, and land to take.</small></span></button>
+          <button data-panel="skirmish"><img src="assets/icons/attackmove.webp" alt="" onerror="this.remove()" /><span><b>Skirmish</b><small>A single battle on a map of your choosing.</small></span></button>
+          <button data-panel="missions"><img src="assets/icons/warlord.webp" alt="" onerror="this.remove()" /><span><b>Missions</b><small>Set-piece stories with their own rules.</small></span></button>
+          <button id="continue-btn" class="hidden"><img src="assets/icons/ageup.webp" alt="" onerror="this.remove()" /><span><b>Continue</b><small>Take up your saved game where you left it.</small></span></button>
+          <button data-panel="howto"><img src="assets/icons/patrol.webp" alt="" onerror="this.remove()" /><span><b>How to play</b><small>The game in brief, and the controls.</small></span></button>
+          <button data-panel="settings"><img src="assets/icons/bell.webp" alt="" onerror="this.remove()" /><span><b>Settings</b><small>Sound, music and scrolling.</small></span></button>
         </nav>
+        <footer class="t-foot">Esc closes a page · M mutes</footer>
       </div>
       <section id="t-panel" class="hidden">
         <button class="t-close" title="Close (Esc)">✕</button>
+        <div class="t-scroll">
         <div data-for="skirmish">
           <h2>Skirmish</h2>
         <label class="mapsize">Your people
@@ -203,12 +206,12 @@
         </div>
         <div data-for="howto"><h2>How to play</h2></div>
         <div data-for="settings"><h2>Settings</h2></div>
+        </div>
       </section>
-      <footer class="t-foot"><span>Esc closes a panel · M mutes</span></footer>
     </div>
 
     <!-- The opening words, shown once when the game is first opened. -->
-    <div id="intro" class="hidden"><p></p><small>Press any key to skip</small></div>
+    <div id="intro" class="hidden"><div class="i-text"></div><small>Press any key to pass on</small></div>
 
     <div id="overworld" class="hidden">
       <div class="ow-map"><canvas id="ow-canvas" width="1000" height="600"></canvas></div>

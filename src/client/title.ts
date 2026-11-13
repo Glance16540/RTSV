@@ -68,9 +68,9 @@ const OPENING = [
   'From such small lights, empires are raised.',
 ];
 
-/** The opening words, one line at a time over black. Any key or click passes over them. */
+/** The opening words, set down a line at a time on the page that covers the screen. Any key or click passes on. */
 export async function playOpening(): Promise<void> {
-  const box = $('intro'), line = box.querySelector('p')!;
+  const box = $('intro'), text = box.querySelector('.i-text')!;
   box.classList.remove('hidden');
   let skipped = false;
   const skip = (): void => { skipped = true; };
@@ -79,22 +79,20 @@ export async function playOpening(): Promise<void> {
   window.addEventListener('keydown', skip);
   window.addEventListener('pointerdown', skip);
   const wait = async (ms: number): Promise<void> => { for (let t = 0; t < ms && !skipped; t += 50) await sleep(50); };
-  for (const text of OPENING) {
+  for (const line of OPENING) {
     if (skipped) break;
-    line.textContent = text;
-    line.classList.add('on');
-    await wait(3100);
-    line.classList.remove('on');
-    await wait(1000);
+    const p = document.createElement('p');
+    p.textContent = line;
+    text.append(p);
+    await wait(2700);
   }
+  await wait(1500);
   window.removeEventListener('keydown', skip);
   window.removeEventListener('pointerdown', skip);
-  line.classList.remove('on');
   box.classList.add('gone');
-  setTimeout(() => box.remove(), 2600);
+  await sleep(skipped ? 350 : 900);
+  box.remove();
 }
-
-interface Ember { x: number; y: number; vx: number; vy: number; r: number; life: number; age: number }
 
 /** The main menu. While it is up the camera circles low over the player's town, and the game waits. */
 export class Title {
@@ -108,13 +106,10 @@ export class Title {
   /** Seconds into the swoop back to the game's own camera, or -1 while the menu is up. */
   private leaving = -1;
   private from = { yaw: 0, pitch: 0, dist: 0, x: 0, y: 0, fog: 0 };
-  private embers: Ember[] = [];
-  private ctx: CanvasRenderingContext2D;
   private art = false;
 
   constructor(private app: App, art: string | null) {
     this.home = { x: app.r.cx, y: app.r.cy };
-    this.ctx = ($('t-embers') as HTMLCanvasElement).getContext('2d')!;
     if (art) {
       // Painted title art, when there is some, takes the place of the view over the town.
       this.art = true;
@@ -140,8 +135,12 @@ export class Title {
     window.addEventListener('keydown', (e) => this.key(e));
   }
 
-  /** Put the menu up. `quick` skips the slow arrival, for a return to the menu within one visit. */
-  enter(quick: boolean, panel = ''): void {
+  /**
+   * Put the menu up. `quick` skips the slow arrival, for a return to the menu within one visit.
+   * With `covered` the leaf lies over the whole screen, for the opening words, until `uncover` draws it back.
+   */
+  enter(quick: boolean, panel = '', covered = false): void {
+    this.root.classList.toggle('full', covered);
     this.active = true;
     this.app.menu = true;
     document.body.classList.add('at-title');
@@ -160,6 +159,11 @@ export class Title {
     requestAnimationFrame((n) => this.frame(n));
   }
 
+  /** Draw the leaf back to the left of the screen, showing the world behind it and the menu on it. */
+  uncover(): void {
+    this.root.classList.remove('full');
+  }
+
   /** Open one of the panels beside the menu, or close them with ''. */
   show(name: string): void {
     this.open = name;
@@ -167,7 +171,7 @@ export class Title {
     this.root.classList.toggle('paneled', !!name);
     for (const d of this.panel.querySelectorAll<HTMLElement>('[data-for]')) d.classList.toggle('hidden', d.dataset.for !== name);
     for (const b of this.root.querySelectorAll<HTMLElement>('#t-menu [data-panel]')) b.classList.toggle('on', b.dataset.panel === name);
-    this.panel.scrollTop = 0;
+    this.panel.querySelector('.t-scroll')!.scrollTop = 0;
   }
 
   /** Play begins: the menu fades and the camera comes round to where the game looks from. */
@@ -230,34 +234,7 @@ export class Title {
         r.cx = this.home.x - Math.cos(yaw) * off;
         r.cy = this.home.y + Math.sin(yaw) * off;
       }
-      if (!calm) this.drawEmbers(dt);
     }
     requestAnimationFrame((n) => this.frame(n));
-  }
-
-  /** Sparks drifting up across the picture, as from a fire below the frame. */
-  private drawEmbers(dt: number): void {
-    const cv = this.ctx.canvas, w = cv.clientWidth, h = cv.clientHeight;
-    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-    const ctx = this.ctx;
-    ctx.clearRect(0, 0, w, h);
-    if (this.embers.length < 70 && Math.random() < dt * 14) {
-      this.embers.push({ x: Math.random() * w, y: h + 8, vx: (Math.random() - 0.5) * 16, vy: -(22 + Math.random() * 46), r: 0.7 + Math.random() * 1.7, life: 5 + Math.random() * 7, age: 0 });
-    }
-    ctx.globalCompositeOperation = 'lighter';
-    for (const p of this.embers) {
-      p.age += dt;
-      p.x += (p.vx + Math.sin(p.age * 1.7 + p.r * 9) * 12) * dt;
-      p.y += p.vy * dt;
-      const a = Math.sin(Math.min(1, p.age / p.life) * Math.PI) * (0.55 + 0.45 * Math.sin(p.age * 9 + p.r * 20));
-      if (a <= 0) continue;
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
-      g.addColorStop(0, `rgba(255, 214, 140, ${a})`);
-      g.addColorStop(0.3, `rgba(255, 140, 50, ${a * 0.55})`);
-      g.addColorStop(1, 'rgba(255, 90, 20, 0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(p.x - p.r * 4, p.y - p.r * 4, p.r * 8, p.r * 8);
-    }
-    this.embers = this.embers.filter((p) => p.age < p.life && p.y > -10);
   }
 }
