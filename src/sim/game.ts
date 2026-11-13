@@ -273,7 +273,7 @@ export type GameEvent =
 
 /** What has been taken from a battlefield for good: see `Game.ground`. */
 export interface Ground { gone: number[]; left: [number, number][] }
-const LASTING = new Set(['tree', 'stone', 'gold']);
+const LASTING = new Set(['tree', 'berries', 'stone', 'gold']);
 
 export interface PlayerSetup {
   name: string;
@@ -799,9 +799,9 @@ export class Game {
   }
 
   /**
-   * What has been taken from this ground for good: wood felled, and stone and gold dug. `gone` is the cell
+   * What has been taken from this ground for good: wood felled, berries picked, and stone and gold dug. `gone` is the cell
    * (cy * size + cx) of every such node the land began with that is no longer there, and `left` what remains
-   * in each one that has been worked. Berries grow back and are not counted.
+   * in each one that has been worked.
    */
   ground(): Ground {
     const now = new Map<number, number>();

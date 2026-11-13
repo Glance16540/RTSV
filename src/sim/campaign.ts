@@ -208,7 +208,7 @@ export interface Territory {
   seed: number; // battles here are always fought on the same ground
   /** The town on this land's battlefield, as the last battle fought there in person left it. */
   town?: Town;
-  /** Wood felled and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
+  /** Wood felled, berries picked and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
   horde?: boolean;
@@ -1617,7 +1617,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   const rankBefore = c.factions[0].heroRank ?? 0;
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
-  // Felled wood and dug stone are gone whoever won. A field battle is fought on other ground.
+  // Felled wood, picked berries and dug stone are gone whoever won. A field battle is fought on other ground.
   if (ground && p.mode !== 'field' && Array.isArray(ground.gone) && Array.isArray(ground.left)) {
     land.ground = {
       gone: ground.gone.filter((k) => Number.isInteger(k) && k >= 0).slice(0, 20000),
