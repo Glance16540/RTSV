@@ -50,7 +50,7 @@ pious or decadent: that is decided by how they are ruled, not by who they are.
 | Persians | Villagers carry 3 more, war beasts 20% cheaper | Immortal (Iron Age): mends as it fights; War Elephant (Middle Ages): tramples and tears down buildings |
 | Greeks | Research 20% cheaper, soldiers +1 armour | Hoplite: resists missiles and stops cavalry; Companion Cavalry (Iron Age): a crushing charge |
 | English | Farms +10%, towers hit harder | Longbowman (Iron Age): out-ranges other archers; Billman (Middle Ages): bane of cavalry |
-| Arabs | Cavalry 10% faster, research 10% cheaper | Camel Rider: rides down cavalry; Mameluke (Middle Ages): strikes from a few paces off |
+| Abbasids | Cavalry 10% faster, research 10% cheaper | Camel Rider: rides down cavalry; Mameluke (Middle Ages): strikes from a few paces off |
 | Japanese | Soldiers +1 attack, villagers gather 5% faster | Samurai (Iron Age): quick, deadly to infantry; Ashigaru Gunner (Gunpowder Age): cheap matchlock |
 
 **Generations.** Villagers grow old: after a long working life they slow down as elders and

@@ -358,13 +358,13 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   camelrider: U({
     id: 'camelrider', name: 'Camel Rider', icon: '🐪', civ: 'arabs',
-    desc: 'Arabs only. Horses shy from camels: he rides down other cavalry.',
+    desc: 'Abbasids only. Horses shy from camels: he rides down other cavalry.',
     cost: { food: 70, gold: 25 }, time: 18, age: 1, hp: 110, atk: 8, armor: 1, range: 0.7, speed: 3.3,
     cooldown: 1.5, sight: 9, pop: 1, cls: 'cavalry', radius: 0.42, bonus: { cavalry: 2.5 },
   }),
   mameluke: U({
     id: 'mameluke', name: 'Mameluke', icon: '⚔️', civ: 'arabs',
-    desc: 'Arabs only. Elite horseman who strikes from a few paces off, and is deadly to other riders.',
+    desc: 'Abbasids only. Elite horseman who strikes from a few paces off, and is deadly to other riders.',
     cost: { food: 85, gold: 75 }, time: 24, age: 3, hp: 110, atk: 11, armor: 1, range: 3.5, speed: 3.4,
     cooldown: 1.5, sight: 9, pop: 2, cls: 'cavalry', radius: 0.42, projectile: 'arrow', bonus: { cavalry: 1.6 },
   }),
@@ -851,7 +851,7 @@ export const CIVS: Record<string, CivDef> = {
     apply: (m) => { m.farm = 1.1; m.towerAtk += 3; },
   },
   arabs: {
-    id: 'arabs', name: 'Arabs', icon: '🌙', desc: 'Traders, scholars and riders of the desert.', unique: 'camelrider', unique2: 'mameluke',
+    id: 'arabs', name: 'Abbasids', icon: '🌙', desc: 'Traders, scholars and riders of the desert.', unique: 'camelrider', unique2: 'mameluke',
     bonuses: ['Cavalry moves 10% faster', 'Research costs 10% less'],
     apply: (m) => { m.cavSpeed = 1.1; m.techCost = 0.9; },
   },
