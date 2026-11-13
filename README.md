@@ -44,7 +44,7 @@ pious or decadent: that is decided by how they are ruled, not by who they are.
 | Franks | Farms +25%, children 25% sooner, bigger houses | Hearthguard: fights harder near its own houses; Herbwife (Iron Age): quick, cheap healer |
 | Chinese | Research 30% faster and 15% cheaper, tougher siege | Fire Lancer: scorches a group and sets buildings alight; Organ Gun (Gunpowder Age): tears up packed infantry |
 | Israelites | Cheaper priests, prophets and healers, faster faith, stronger healing | Zealot: mends itself with every blow; Temple Guard (Middle Ages): armoured horseman who does the same |
-| Norse | Game yields 50% more, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf; War Bear (Iron Age): strikes faster as it is wounded |
+| Norse | Game, berries and fish gathered 50% faster, cheaper hounds and mammoths, wolves never attack them | Wolf Rider: fast raider on a great wolf; War Bear (Iron Age): strikes faster as it is wounded |
 | Egyptians | Farms +20%, 15% faster building | Khopesh Guard: cuts down infantry; War Chariot (Iron Age): a heavy charge |
 | Babylonians | Research 15% faster, buildings +15% health | Sapper: ruinous against buildings; Gate Guard (Iron Age): shrugs off missiles, fights harder at home |
 | Persians | Villagers carry 3 more, war beasts 20% cheaper | Immortal (Iron Age): mends as it fights; War Elephant (Middle Ages): tramples and tears down buildings |

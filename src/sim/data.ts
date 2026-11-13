@@ -52,7 +52,7 @@ export interface Mods {
   siegeHp: number; // siege engine health multiplier
   faith: number; // prophet faith regeneration multiplier
   clergyCost: number; // shaman and prophet cost multiplier
-  hunt: number; // yield multiplier when butchering game
+  hunt: number; // how much faster food is taken from the wild: game, berries and fish
   beastCost: number; // hound and mammoth cost multiplier
 }
 
@@ -855,7 +855,7 @@ Object.assign(CIVS, {
   },
   wild: {
     id: 'wild', name: 'Norse', icon: '🪓', desc: 'Hunters and sea-raiders of the north.', unique: 'wolfrider', unique2: 'warbear',
-    bonuses: ['Raiders: start as a war band with no Town Center', 'Fighters carry off enemy villagers, who join the tribe', 'Game yields 50% more food', 'War Hounds and Mammoths cost 25% less', 'Wild wolves never attack them'],
+    bonuses: ['Raiders: start as a war band with no Town Center', 'Fighters carry off enemy villagers, who join the tribe', 'Game, berries and fish are gathered 50% faster', 'War Hounds and Mammoths cost 25% less', 'Wild wolves never attack them'],
     apply: (m: Mods) => { m.hunt = 1.5; m.beastCost = 0.75; },
   },
 } satisfies Record<string, CivDef>);
