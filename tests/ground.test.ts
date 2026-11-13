@@ -1,4 +1,4 @@
-// Wood felled and stone dug in a siege stay gone the next time that land is fought over.
+// Wood felled, berries picked and stone dug in a siege stay gone the next time that land is fought over.
 import { describe, expect, it } from 'vitest';
 import { battleConfig, finishBattle, moveArmy, newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
@@ -37,19 +37,19 @@ describe('the ground of a land remembers what was taken from it', () => {
     const count = g.resources.length;
     finishBattle(c, false, {}, { ground: g.ground() }); // thrown back: the land is still theirs
     expect(t.owner).toBe(1);
-    expect(t.ground!.gone).toHaveLength(6);
+    expect(t.ground!.gone).toHaveLength(7);
 
     const h = play(attack(c, t.id));
     for (const [cx, cy] of trees) { expect(at(h, cx, cy)).toBeUndefined(); expect((h as unknown as { occupied: Uint8Array }).occupied[cy * h.size + cx]).toBe(0); }
     expect(at(h, gold.cx, gold.cy)).toBeUndefined();
     expect(at(h, stone.cx, stone.cy)!.amount).toBe(311);
-    expect(at(h, berries.cx, berries.cy)).toBeDefined(); // berries grow back
-    expect(h.resources.length).toBe(count + 1);
+    expect(at(h, berries.cx, berries.cy)).toBeUndefined(); // picked bushes stay bare
+    expect(h.resources.length).toBe(count);
     // A second siege adds to the first.
     const more = h.resources.find((r) => r.type === 'tree')!;
     kill(h, more);
     finishBattle(c, true, {}, { ground: h.ground() });
-    expect(t.ground!.gone).toHaveLength(7);
+    expect(t.ground!.gone).toHaveLength(8);
     expect(t.ground!.left).toEqual([[stone.cy * h.size + stone.cx, 311]]);
   });
 

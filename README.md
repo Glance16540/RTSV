@@ -294,9 +294,8 @@ neighbouring land.
   one and your camp becomes its town. A Barracks, Range, Stable, Farm or Dock you built in a siege you
   won also goes up on the map, where the land has a free slot. A land taken by auto-resolve changes
   hands as it stands, less its towers and walls. Field battles are fought away from the town.
-  The ground is kept as well (`Territory.ground`): trees felled and stone and gold dug in a siege are
-  gone, or as far worked as they were left, the next time that land is fought over, whoever won.
-  Berries grow back.
+  The ground is kept as well (`Territory.ground`): trees felled, berries picked and stone and gold dug in a siege
+  are gone, or as far worked as they were left, the next time that land is fought over, whoever won.
 - **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
   Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
   fought around a great lake with docks and ships. Build a Harbour on a coast or at a sea crossing and an army
