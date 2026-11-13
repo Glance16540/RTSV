@@ -4,12 +4,13 @@ import * as THREE from 'three';
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
-import { Job, makeBuilding, makeCaptive, makeResource, makeShot, makeStaff, makeUnit, ofPeople, mat, RES_COLOR, Rig, rigBiped } from './models';
+import { Job, lookOf, makeBuilding, makeCaptive, makeResource, makeShot, makeStaff, makeUnit, ofPeople, mat, RES_COLOR, Rig, rigBiped } from './models';
 import MOTIONS from './motions.json';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
+import { RealPerson, hold, loadPeople, makePerson, peopleReady, play } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
@@ -20,7 +21,7 @@ const FOV = 30;
 
 /** One figure in a work camp's yard: a captive on their round, or a Slaver on guard. */
 interface CampFig { g: THREE.Group; rig: Rig | null; woman: boolean; guard: boolean; i: number; goal: 'out' | 'work' | 'in'; wait: number; in: boolean }
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh } }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh }; /** Drawn from the real human figure (the trial), not from blocks. */ real?: RealPerson }
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
 interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
@@ -93,6 +94,8 @@ export class Renderer {
   private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; rig: Rig | null; role: string; seed: number; lean0: number }[] }>();
   private dust: Dust[] = [];
   private life!: Life;
+  /** The trial of realistic people: grown village men are drawn from a real human figure. `?people=0` turns it off. */
+  private realPeople = new URLSearchParams(location.search).get('people') !== '0';
   private hearthT = 0;
   private campViews = new Map<number, { key: string; g: THREE.Group; figs: CampFig[] }>();
   /** How far into night it is, 0 by day to 1 in full dark, eased through dusk and dawn. */
@@ -142,6 +145,7 @@ export class Renderer {
     this.weather = new Weather(this.scene, game.climate);
     this.life = new Life(this.scene, game, (x, y) => this.scenery.heightAt(x, y));
     this.life.fogged = !this.noFog;
+    if (this.realPeople) loadPeople();
     this.buildTrees();
     this.buildFog();
 
@@ -434,7 +438,8 @@ export class Renderer {
     let turned: number | null = null;
     // Healed back past a stage, they are made whole again: gear restored, clothes mended.
     const mended = !!v && !!v.rig && v.hurt > (u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0);
-    if (v && (v.type !== u.type || v.job !== job || v.wear !== wear || mended)) {
+    const real = this.realPeople && peopleReady() && u.type === 'villager' && u.gender === 'm' && u.growT <= 0;
+    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real)) {
       // Re-equipped by an upgrade, or set to a new trade: swap the model.
       turned = v.g.rotation.y;
       this.scene.remove(v.g);
@@ -442,9 +447,11 @@ export class Renderer {
     }
     if (!v) {
       ofPeople(this.game.players[u.owner].civ);
-      v = { g: makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, wear, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
+      const made = real ? makePerson({ ...lookOf(this.game.players[u.owner].civ, u.id), tunic: this.game.players[u.owner].color, seed: u.id }) : null;
+      v = { g: made?.g ?? makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, wear, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
-      v.rig = this.still ? null : rigBiped(v.g);
+      v.rig = this.still || made ? null : rigBiped(v.g);
+      v.real = made?.real;
       v.g.traverse((o) => {
         if (o.userData.leg === undefined) return;
         // A rider's legs are not walked: they sit astride, knees out and feet forward.
@@ -475,15 +482,15 @@ export class Renderer {
       roll = (sw(fz * 0.4, -fx * 0.4) - sw(-fz * 0.4, fx * 0.4)) * 0.11;
     } else if (u.moving) {
       v.phase += dt * u.def.speed * 5;
-      bob = v.rig ? 0 : mounted ? (0.5 - 0.5 * Math.cos(v.phase * 2)) * 0.05 : Math.abs(Math.sin(v.phase)) * 0.06;
-      pitch = mounted ? Math.sin(v.phase * 2) * 0.06 : 0.07; // riders rock at the gallop; walkers lean into their stride
-      roll = mounted || v.rig ? 0 : Math.sin(v.phase) * 0.05;
+      bob = v.rig || v.real ? 0 : mounted ? (0.5 - 0.5 * Math.cos(v.phase * 2)) * 0.05 : Math.abs(Math.sin(v.phase)) * 0.06;
+      pitch = mounted ? Math.sin(v.phase * 2) * 0.06 : v.real ? 0 : 0.07; // riders rock at the gallop; walkers lean into their stride
+      roll = mounted || v.rig || v.real ? 0 : Math.sin(v.phase) * 0.05;
     } else {
       breathe = 1 + Math.sin(this.clock * 2.2 + v.phase) * 0.012; // standing, they still breathe
     }
     // A blow is struck with the whole body: a lunge forward and back.
-    const lunge = u.def.naval || u.def.cls === 'siege' ? 0 : swing * 0.14;
-    pitch += u.def.naval || u.def.cls === 'siege' ? 0 : u.def.cls === 'cavalry' ? -swing * 0.3 : swing * 0.16; // a horse rears to the blow
+    const lunge = u.def.naval || u.def.cls === 'siege' || v.real ? 0 : swing * 0.14;
+    pitch += u.def.naval || u.def.cls === 'siege' || v.real ? 0 : u.def.cls === 'cavalry' ? -swing * 0.3 : swing * 0.16; // a horse rears to the blow
     g.position.set(x + Math.sin(g.rotation.y) * lunge, bob + this.scenery.heightAt(x, y), y + Math.cos(g.rotation.y) * lunge);
     g.scale.set(size, size * breathe, size);
     g.rotation.x += (pitch - g.rotation.x) * Math.min(1, dt * 14);
@@ -492,6 +499,10 @@ export class Renderer {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
     if (v.rig) { this.pose(u, v, dt); }
+    if (v.real) {
+      v.job = job;
+      this.poseReal(u, v.real, job, dt);
+    }
     // A Slaver's prisoner walks behind him on a rope, stripped to a loincloth.
     if (u.captive && !v.led) {
       ofPeople(this.game.players[u.captive.from]?.civ ?? ''); // a captive is still one of the people they were taken from
@@ -629,7 +640,7 @@ export class Renderer {
     }
     if (v.flesh) { this.spray(at.x, at.y + 0.5, at.z, 16, true); this.stain(at.x, at.z, v.cls === 'beast' || v.cls === 'cavalry' ? 0.6 : 0.4, 3.5); }
     else this.spray(at.x, at.y + 0.4, at.z, 12, false);
-    if (v.type === 'villager') this.tear(v, 3);
+    if (v.type === 'villager' && !v.real) this.tear(v, 3);
     this.dying.push({ g, t: 0, v, clip: (v.phase * 7) % 2 > 1 ? 'death1' : 'death2', dropped: false });
   }
 
@@ -959,6 +970,19 @@ export class Renderer {
   }
 
   /** Sets a figure's joints from the recorded motion that fits what it is doing. */
+  /** Chooses the recorded motion for what a villager is doing, and puts the tool of the trade in his hand. */
+  private poseReal(u: Unit, p: RealPerson, job: Job, dt: number): void {
+    hold(p, job === 'wood' ? 'axe' : job === 'mine' ? 'pick' : job === 'build' ? 'hammer' : job === 'farm' ? 'hoe' : '');
+    if (u.attackAnim > 0 && !u.moving) {
+      if (job === 'wood' || job === 'mine') play(p, 'Sword_Attack', 1.1);
+      else if (job === 'build') play(p, 'Fixing_Kneeling', 1);
+      else if (job === 'farm' || job === 'forage' || job === 'hunt') play(p, 'PickUp_Table', 1);
+      else play(p, 'Punch_Jab', 1.2);
+    } else if (u.moving) play(p, 'Jog_Fwd_Loop', Math.max(0.8, Math.min(1.5, u.def.speed / 1.9)));
+    else play(p, 'Idle_Loop', 1);
+    p.mixer.update(dt);
+  }
+
   private pose(u: Unit, v: UnitView, dt: number): void {
     const rig = v.rig!;
     let name = 'idle', t = (this.clock + v.phase) / motions.idle.dur;
@@ -1291,7 +1315,14 @@ export class Renderer {
       const d = this.dying[i];
       d.t += dt;
       const rig = d.v.rig;
-      if (rig) {
+      if (d.v.real) {
+        // The recorded fall, then the body lies a while and sinks into the ground.
+        play(d.v.real, 'Death01', 1, true);
+        d.v.real.mixer.update(dt);
+        d.g.rotation.x = d.g.rotation.z = 0;
+        if (d.t > 7) d.g.position.y -= dt * 0.12;
+        if (d.t > 10) { this.scene.remove(d.g); this.dying.splice(i, 1); }
+      } else if (rig) {
         // Struck down: the recorded fall, weapon and shield dropping from the hands, then the body lies a while.
         const m = motions[d.clip];
         this.setPose(rig, d.clip, Math.min(0.999, d.t / m.dur) * (1 - 1 / m.frames.length), Math.min(1, dt * 18));

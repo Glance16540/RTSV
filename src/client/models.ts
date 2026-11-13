@@ -207,6 +207,11 @@ export function ofPeople(civ: string): void {
   HAIR = people.hair;
 }
 let HAIR = ANYONE.hair;
+/** The skin and hair of one person of a nation, as `person` and `hairOf` would give them. */
+export function lookOf(civ: string, seed: number): { skin: number; hair: number } {
+  const p = PEOPLES[civ] ?? ANYONE, w = Math.abs(seed | 0);
+  return { skin: p.skin[(w * 7 + 3) % p.skin.length], hair: w % 9 === 4 ? 0x8a8680 : p.hair[w % p.hair.length] };
+}
 /** Hair gone grey: an old head among any people, one in nine. */
 const GREY = 0x8a8680;
 /** The seed of the figure being built: decides beards, how hair is worn and the like. */

@@ -1,0 +1,1 @@
+human.json (a glTF file with its data embedded): the mannequin and a selection of motions from the Universal Animation Library (standard edition) by Quaternius, https://quaternius.com, released under CC0 1.0. Trimmed to the motions the game uses.

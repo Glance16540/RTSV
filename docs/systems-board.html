@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 42 systems, 103 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 20 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:20"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 43 systems, 110 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 20 Working, rough, 9 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:20"></span><span class="thin" style="flex:9"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
-      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">42</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">20</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">43</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">20</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">9</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
     </div>
   </div>
 
@@ -174,11 +174,16 @@ footer { color: var(--dim); font-size: 13px; }
   <ul class="has"><li>Teams in a skirmish; call your ally to a spot</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>Sides are fixed at the start: no diplomacy during a battle</li></ul>
 </article></div></section>
-  <section class="area"><h2>Nations and leaders <span class="n">5</span></h2><div class="grid"><article class="sys rough" data-status="rough">
+  <section class="area"><h2>Nations and leaders <span class="n">6</span></h2><div class="grid"><article class="sys rough" data-status="rough">
   <header><h3>Nations</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Thirteen peoples, each with bonuses and two units of their own.</p>
   <ul class="has"><li>13 nations, each with two bonuses</li><li>Two unique units for every nation</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>14 unique units borrow another unit's figure with a plume and sash</li><li>Recording file names still use old internal ids (stonekin, dawn…)</li></ul>
+</article><article class="sys thin" data-status="thin">
+  <header><h3>Realistic people (trial)</h3><span class="pill thin">First pass</span></header>
+  <p class="what">A trial of drawing people from a real human figure with a skeleton and recorded motion. Only grown village men use it so far.</p>
+  <ul class="has"><li>A public-domain human figure (Quaternius, CC0) with 53 bones</li><li>Recorded motions: idle, jog, chop, kneel to build, pick up, punch, fall dead</li><li>Dressed by colouring the body: skin, hair, a tunic in the player's colour, belt, breeches, boots</li><li>Skin and hair follow the nation; heights vary a little</li><li>`?people=0` in the address switches back to the old figures for comparison</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Women, children, soldiers and every other unit still use the old block figures, which are stockier and larger-headed, so the two styles clash side by side</li><li>No real clothing shapes: the tunic is painted on the body, with no skirt, hood or folds</li><li>Face is the bare figure's: no eyes, beard or expression</li><li>Tools in the hand are unchecked</li><li>No wounds or torn clothes on the new figure</li><li>Cost with a hundred villagers unmeasured</li><li>Feet slide a little: the jog is not matched to ground speed</li></ul>
 </article><article class="sys rough" data-status="rough">
   <header><h3>Land and wildlife</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">The ground of each country, what grows on it, and the animals that live there. Drawn only: none of it changes the rules.</p>
