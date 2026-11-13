@@ -8,6 +8,7 @@ permissions:
   contents: read
 
 jobs:
+  # The branch as it stands.
   test:
     runs-on: ubuntu-latest
     steps:
@@ -17,5 +18,25 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  # The branch with the trunk merged into it: what the game would be if this work went in now.
+  # A red mark here with a green one above means another branch got in first and this one must
+  # run `npm run sync` before it can follow.
+  fits:
+    name: Fits the trunk
+    if: github.event_name == 'push' && github.ref_name != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/sync.mjs --ci
       - run: npm test
       - run: npm run build

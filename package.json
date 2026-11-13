@@ -14,7 +14,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "trials": "TRIALS=1 OUT=trials.txt vitest run scripts/trials.test.ts"
+    "trials": "TRIALS=1 OUT=trials.txt vitest run scripts/trials.test.ts",
+    "check": "tsc --noEmit && vitest run && npm run build",
+    "sync": "node scripts/sync.mjs"
   },
   "dependencies": {
     "three": "^0.170.0"

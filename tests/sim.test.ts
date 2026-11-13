@@ -13,23 +13,7 @@ import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setL
 import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
 import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, answerTale, Campaign, heroFor, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, homeCorner, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
-const setups = [
-  { name: 'A', color: 0x3366ff, isAI: false },
-  { name: 'B', color: 0xff3333, isAI: true, civ: 'hearth' }, // a settled people: the raiders have tests of their own
-];
-const run = (g: Game, seconds: number, each?: () => void) => {
-  for (let i = 0; i < seconds * 20; i++) { g.step(); if (each && i % 20 === 0) each(); }
-};
-const villagers = (g: Game, owner: number) => g.units.filter((u) => u.owner === owner && u.type === 'villager');
-/** Find a free spot for a building near the player's town center. */
-const spot = (g: Game, type: string, owner: number) => {
-  const tc = g.buildings.find((b) => b.owner === owner)!;
-  for (let r = 4; r < 20; r++)
-    for (let dy = -r; dy <= r; dy++)
-      for (let dx = -r; dx <= r; dx++)
-        if (g.canPlace(type, tc.cx + dx, tc.cy + dy)) return { cx: tc.cx + dx, cy: tc.cy + dy };
-  throw new Error('no spot');
-};
+import { run, setups, spot, villagers } from './helpers';
 
 describe('map', () => {
   it('always connects both bases by land', () => {

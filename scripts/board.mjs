@@ -1,7 +1,7 @@
 // Writes docs/systems-board.html: one page showing every system in the game, how far along it is and
 // what is missing, with rosters drawn from the game's own data. Run with `npm run board`.
 // What each system has and lacks is written by hand in scripts/systems.mjs.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'vite';
 import { AREAS } from './systems.mjs';
 
@@ -14,7 +14,7 @@ const manifest = existsSync('public/assets/manifest.json') ? JSON.parse(readFile
 const count = (k) => Object.keys(manifest[k] ?? {}).length;
 const aliasSrc = /const MODEL_ALIAS[^=]*=\s*\{([\s\S]*?)\};/.exec(readFileSync('src/client/models.ts', 'utf8'))?.[1] ?? '';
 const ALIAS = Object.fromEntries([...aliasSrc.matchAll(/(\w+): \['(\w+)'/g)].map((m) => [m[1], m[2]]));
-const tests = (readFileSync('tests/sim.test.ts', 'utf8').match(/^\s*it\(/gm) ?? []).length;
+const tests = readdirSync('tests').filter((f) => f.endsWith('.test.ts')).reduce((n, f) => n + (readFileSync('tests/' + f, 'utf8').match(/^\s*it\(/gm) ?? []).length, 0);
 
 const units = Object.values(D.UNITS).filter((u) => !['prey'].includes(u.cls) && u.id !== 'wolf');
 const owner = {};
