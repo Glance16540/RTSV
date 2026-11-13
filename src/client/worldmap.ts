@@ -289,6 +289,7 @@ export class WorldMap {
       // Chosen, and within reach of the chosen army.
       if (t.id === sel) ring(X, y, Z, 5.2, 0xfff4d0, false, 0.22);
       if (reach.has(t.id)) ring(X, y, Z, 4.4, t.owner === 0 ? 0xffffff : 0xc03020, true, 0.3);
+      if (t.horde && t.owner < 0) ring(X, y, Z, 3.9, 0x181410, false, 0.5);
 
       // The place itself: a walled town for a capital, a keep where it is fortified, a house for every other building.
       const town = new THREE.Group();
@@ -332,7 +333,7 @@ export class WorldMap {
       // What has happened here, on seals that hang in the air above it; what is still to be settled beats on the ground.
       const marks = eventsAt(c, t.id).slice(0, 2);
       marks.forEach((e, k) => {
-        const bad = e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard';
+        const bad = e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun';
         const seal = this.sprite((x, w, h) => {
           x.beginPath(); x.arc(w / 2, h / 2, w / 2 - 5, 0, 6.3); x.fillStyle = bad ? '#f0c8b8' : '#f6e8b0'; x.fill(); x.lineWidth = 5; x.strokeStyle = '#3a2a16'; x.stroke();
           x.font = '54px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(EVENTS[e.kind].icon, w / 2, h / 2 + 4);
@@ -347,7 +348,7 @@ export class WorldMap {
       const a = armyAt(c, t.id);
       const n = a ? armySize(a) : t.owner < 0 ? t.militia : 0;
       if (!n) continue;
-      const color = a ? c.factions[a.owner].color : LOCALS.color;
+      const color = a ? c.factions[a.owner].color : t.horde ? 0x2a2420 : LOCALS.color;
       const piece = new THREE.Group();
       piece.position.set(X + 0.8, y, Z + 1.8);
       piece.scale.setScalar(1.6);
@@ -377,7 +378,13 @@ export class WorldMap {
         });
         if (a.moved && c.phase === 'player') piece.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined; if (m && m.color && (o as THREE.Mesh).isMesh && !(o as THREE.SkinnedMesh).isSkinnedMesh) { m.transparent = true; m.opacity = 0.55; } });
       } else {
-        for (const [dx, dz] of [[-0.3, 0.1], [0.4, -0.25]]) add(new THREE.ConeGeometry(0.42, 0.62, 6), solid(0x8a7250), dx, 0.59, dz, piece);
+        for (const [dx, dz] of [[-0.3, 0.1], [0.4, -0.25]]) add(new THREE.ConeGeometry(0.42, 0.62, 6), solid(t.horde ? 0x4a3c30 : 0x8a7250), dx, 0.59, dz, piece);
+        // Marauders: a ring of stakes round the tents, a fire, and a black banner.
+        if (t.horde) {
+          for (let k = 0; k < 12; k++) { const sa = (k / 12) * 6.283; add(new THREE.ConeGeometry(0.06, 0.6, 5), wood, Math.cos(sa) * 0.9, 0.58, Math.sin(sa) * 0.9, piece); }
+          add(new THREE.SphereGeometry(0.13, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff8a30 }), 0.05, 0.42, 0.25, piece);
+          flagOn(piece, -0.75, 0.28, -0.35, 0x121010, 1.4);
+        }
       }
       this.pieces.add(piece);
       // Its numbers, on a shield in its colour that always faces whoever is looking.

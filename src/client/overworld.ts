@@ -260,7 +260,8 @@ export class Overworld {
   private paint(reach: Set<number>, bare = false): void {
     const c = this.c, ctx = this.sheet.getContext('2d')!, cell = this.cell, edge = this.edge;
     const img = ctx.createImageData(MAP_W, MAP_H);
-    const wash = c.territories.map((t) => (t.owner < 0 ? null : rgb(c.factions[t.owner].color)));
+    // Marauders' land is washed black.
+    const wash = c.territories.map((t) => (t.owner < 0 ? (t.horde ? [34, 28, 26] : null) : rgb(c.factions[t.owner].color)));
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
         const i = y * MAP_W + x, t = cell[i], e = edge[i];
@@ -337,7 +338,7 @@ export class Overworld {
       const seals: [string, string][] = [];
       const sky = weatherAt(c, t.id);
       if (sky) seals.push([WEATHER[sky].icon, '#dfe6ee']);
-      for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' ? '#e8c0b0' : '#f0e2a8']);
+      for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun' ? '#e8c0b0' : '#f0e2a8']);
       seals.forEach(([icon, paper], k) => {
         const sx = t.x + 40 + (k % 2) * 4, sy = t.y + 12 + k * 24;
         ctx.beginPath(); ctx.arc(sx, sy, 12, 0, 6.3); ctx.fillStyle = paper; ctx.fill();
@@ -511,6 +512,8 @@ export class Overworld {
       <div style="color:${css(owner.color)}">${owner.name}</div>
       <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '')} · Defence ${defence(c, t.id)}</div>
       ${t.trait ? `<div class="good">${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}: ${traitOf(t.trait)!.desc}</div>` : ''}
+      ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
+      ${t.taken ? `<div class="bad">⛓️ Women carried off from here: ${t.taken} supply less each turn until the marauders' camp next door is broken.</div>` : ''}
       ${weatherAt(c, t.id) ? `<div class="bad">${WEATHER[weatherAt(c, t.id) as 'rain'].icon} ${WEATHER[weatherAt(c, t.id) as 'rain'].name}: ${WEATHER[weatherAt(c, t.id) as 'rain'].desc}</div>` : ''}
       ${eventsAt(c, t.id).map((e) => `<div class="hint">${EVENTS[e.kind].icon} <b>${EVENTS[e.kind].name}</b>${e.until > c.turn ? ` <small>(${e.until - c.turn + 1} turns left)</small>` : e.kind === 'unrest' || e.kind === 'hoard' ? ' <small>(comes to a head next turn)</small>' : ''}: ${EVENTS[e.kind].desc}</div>`).join('')}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}

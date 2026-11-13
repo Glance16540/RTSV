@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { AIController } from '../src/sim/ai';
 import { MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
 import { BIRTH_COST, BIRTH_TIME, BUILDINGS, GROW_TIME } from '../src/sim/data';
-import { Building, DAY_LENGTH, Game, NIGHT_SIGHT, Unit } from '../src/sim/game';
+import { Building, DAY_LENGTH, Game, LAIR_AT, LAIR_BIRTH, NIGHT_SIGHT, Unit } from '../src/sim/game';
 import { connected, generateMap, T_GRASS, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../src/sim/map';
 import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, UNITS, styleOf } from '../src/sim/data';
-import { Campaign, WEATHER, HOARD_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { Campaign, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -2813,5 +2813,95 @@ describe('weather and events on the campaign map', () => {
     expect(c.events!.some((e) => e.kind === 'found' && e.at === home.id)).toBe(true);
     expect(c.factions[0].supplies - twin.factions[0].supplies).toBe(HOARD_PRIZE);
     expect(eventsAt(c, home.id)[0].kind).toBe('found');
+  });
+});
+
+describe('marauders', () => {
+  it('make camp in the wilds, carry off a woman who bears them children, and she goes free when the camp burns', () => {
+    const g = new Game(3, setups);
+    g.marauders = true;
+    run(g, LAIR_AT + 2);
+    const lair = g.buildings.find((b) => b.type === 'lair')!;
+    expect(lair).toBeTruthy();
+    expect(lair.owner).toBe(g.wild);
+    for (const st of g.spec.starts) expect(Math.hypot(st.x - lair.x, st.y - lair.y)).toBeGreaterThan(18);
+    const band = () => g.units.filter((u) => u.def.marauder);
+    expect(band().length).toBeGreaterThanOrEqual(4);
+    // One of them seizes a mother of two.
+    const woman = villagers(g, 0).find((v) => v.gender === 'f' && v.growT <= 0)!;
+    woman.kids = 2;
+    const name = woman.name;
+    const man = band()[0];
+    man.x = woman.x + 0.4; man.y = woman.y;
+    g.cmdStop(0, [woman.id]);
+    g.cmdTarget(g.wild, [man.id], woman.id);
+    run(g, 8);
+    expect(man.captive?.name).toBe(name);
+    expect(man.captive!.kids).toBe(2);
+    expect(villagers(g, 0).some((v) => v.name === name)).toBe(false);
+    // Brought to the camp, she is held there, and the band grows by her.
+    const held = man.captive!;
+    man.x = lair.x; man.y = lair.y + lair.size / 2 + 0.6;
+    run(g, 6);
+    expect(lair.captives).toContain(held);
+    expect(held.held).toBe(true);
+    const before = band().length;
+    run(g, LAIR_BIRTH * 5);
+    expect(held.born ?? 0).toBeGreaterThanOrEqual(1);
+    expect(band().length).toBeGreaterThan(before);
+    // The camp is burnt: she comes home with her record, bears no more, and works harder.
+    (g as unknown as { kill(e: Building): void }).kill(lair);
+    const home = villagers(g, 0).find((v) => v.name === name)!;
+    expect(home).toBeTruthy();
+    expect(home.freed).toBe(true);
+    expect(home.kids).toBe(2);
+    expect(home.captiveKids).toBe(held.born);
+    expect(home.story!.map((d) => d.s)).toEqual(['Carried off by marauders', 'Freed, and came home']);
+  }, 60000);
+
+  it('do not appear unless the match asks for them', () => {
+    const g = new Game(3, setups);
+    run(g, LAIR_AT + 5);
+    expect(g.buildings.some((b) => b.type === 'lair')).toBe(false);
+  });
+});
+
+describe('marauders on the campaign map', () => {
+  it('women carried off cost a land its supplies until the camp next door is broken', () => {
+    const c = newCampaign(5, 1, 1, 'hearth');
+    c.fronts = [];
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const camp = c.territories[home.adj.find((n) => c.territories[n].owner < 0)!];
+    const before = income(c, 0);
+    home.taken = 2;
+    expect(income(c, 0)).toBe(before - 2);
+    // The player takes the camp's land: next turn the news comes in.
+    camp.horde = true;
+    camp.owner = 0;
+    const twin: Campaign = JSON.parse(JSON.stringify(c));
+    twin.territories[camp.id].horde = false;
+    twin.territories[home.id].taken = 0;
+    endTurn(c);
+    endTurn(twin);
+    expect(c.territories[camp.id].horde).toBe(false);
+    expect(c.territories[home.id].taken).toBe(0);
+    expect(c.events!.some((e) => e.kind === 'freed' && e.at === camp.id)).toBe(true);
+    // The prize, less the two supplies the land was still short of when this turn's stores were counted.
+    expect(c.factions[0].supplies - twin.factions[0].supplies).toBe(HORDE_PRIZE - 2);
+  });
+
+  it('a camp left alone grows, and marauders appear in a long campaign', () => {
+    const c = newCampaign(9, 2, 1, 'hearth');
+    let seen = false, grew = false, last = 0;
+    for (let turn = 0; turn < 30 && c.phase !== 'over'; turn++) {
+      if (c.pending) resolvePending(c, 'auto');
+      if (c.demand) answerDemand(c, true);
+      if (c.phase === 'ai') continueAI(c);
+      if (c.phase === 'player') endTurn(c);
+      const camps = c.territories.filter((t) => t.horde && t.owner < 0);
+      if (camps.length) { seen = true; const m = Math.max(...camps.map((t) => t.militia)); if (last && m > last) grew = true; last = m; }
+    }
+    expect(seen).toBe(true);
+    expect(grew).toBe(true);
   });
 });

@@ -203,6 +203,7 @@ export function outfitFor(type: string, female: boolean, color: number, look: { 
     // ---- the plain line of foot ----
     clubman: { top: hide, sleeves: 'bare', neck: 1, legs: look.skin, weapon: 'club', beard: s % 2 === 0 },
     spearman: { top: leather, helmet: 'bronze', metal: BRONZE, shield: color, weapon: 'spear' },
+    marauder: { top: 0x2e2622, sleeves: 'bare', weapon: s % 3 === 0 ? 'club' : 'axe', mantle: true, beard: s % 2 === 0, legs: 0x2a2420, girth: 2, hat: s % 4 === 0 ? 'fur' : '', hatColor: 0x3a2e24 },
     swordsman: { mail: true, sleeves: 'long', helmet: 'iron', shield: color, weapon: 'sword' },
     pikeman: { mail: true, sleeves: 'long', helmet: 'kettle', plate: true, weapon: 'pike' },
     berserker: { top: hide, sleeves: 'bare', neck: 2, mantle: true, weapon: 'axe', beard: true, girth: 2 },

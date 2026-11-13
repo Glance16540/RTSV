@@ -467,6 +467,15 @@ export class Hud {
       if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
+      // A villager's record: who they are and what has befallen them, set down like the entries on a form.
+      if (e.type === 'villager' && e.growT <= 0 && (e.kids || e.captiveKids || e.story?.length || e.freed)) {
+        const clock = (t: number): string => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+        const lines: string[] = [];
+        if (e.kids) lines.push(`${e.gender === 'f' ? 'Mother' : 'Father'} of ${e.kids} at home`);
+        for (const d of e.story ?? []) lines.push(`${d.s} <small>at ${clock(d.t)}</small>`);
+        if (e.captiveKids) lines.splice(Math.max(1, lines.length - 1), 0, `Bore ${e.captiveKids} ${e.captiveKids === 1 ? 'child' : 'children'} in captivity`);
+        extra += `<div class="record"><b>📜 Record</b>${lines.map((l) => `<div>· ${l}</div>`).join('')}${e.freed ? '<div class="warn">Will bear no more children.</div><div class="good">Works a quarter harder than the rest.</div>' : ''}</div>`;
+      }
       if (e.lifespan > 0 && e.growT <= 0 && game.aging) {
         const years = Math.floor(16 + (e.age / e.lifespan) * 54);
         extra += game.isElder(e) ? `<div class="hint">🧓 Elder, ${years} years old: works and walks more slowly</div>` : `<div class="hint">${years} years old</div>`;
@@ -478,6 +487,11 @@ export class Hud {
     }
     const b = e;
     let body = '';
+    if (b.type === 'lair') {
+      const held = b.captives ?? [], mine = held.filter((c) => c.from === game.humanId);
+      body += `<div class="bad">🏴 ${held.length} ${held.length === 1 ? 'woman is' : 'women are'} held here${mine.length ? `, ${mine.length} of them yours: ${mine.map((c) => c.name + (c.born ? ` (${c.born} ${c.born === 1 ? 'child' : 'children'} borne here)` : '')).join(', ')}` : ''}.</div>` +
+        '<div class="hint">Every woman held bears the band children, and it grows. Destroy the camp and they all go free. A woman freed will bear no more children, but works a quarter harder.</div>';
+    }
     if (!b.complete) body += `<div>Under construction</div>${this.bar(b.progress)}`;
     else if (mine) {
       if (b.queue.length) {

@@ -247,6 +247,8 @@ loadAssets().then(() => {
     { name: 'Green Clan', color: 0x3aa648, isAI: true },
   ].slice(0, 1 + rivals).map((s, i) => ({ ...s, name: i === 0 ? 'You' : CIVS[civFor(i)].name, team: team(i), civ: civFor(i) })), size, false, params.get('land') === 'lake', relief, climateOf(myCiv));
 
+  // A band of marauders makes camp in the wilds of every skirmish and every siege (`?marauders=0` leaves them out).
+  if (!saved && params.get('marauders') !== '0' && !(cfg?.field)) game.marauders = true;
   // A battle is fought in the weather that lies over that land on the campaign map.
   if (cfg?.weather && !saved) { game.weather = cfg.weather; game.weatherWant = 0.9; game.weatherT = 240; }
   // The map is generated before the menu appears, so a different size means a fresh page.

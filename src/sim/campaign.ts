@@ -126,6 +126,10 @@ export interface Territory {
   militia: number; // defenders of an independent territory
   adj: number[];
   seed: number; // battles here are always fought on the same ground
+  /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
+  horde?: boolean;
+  /** Women carried off from here by marauders: each costs the land a supply a turn until they are freed. */
+  taken?: number;
 }
 
 export interface Army {
@@ -198,7 +202,7 @@ export const WEATHER: Record<Sky, { name: string; icon: string; march: number; d
   snow: { name: 'Snow', icon: '🌨️', march: 0.85, desc: 'An army attacking into it fights at 85% strength, and the land yields 1 supply less. A battle here is fought in the snow.' },
   dust: { name: 'Dust storm', icon: '🌪️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the dust.' },
 };
-export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found';
+export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed';
 export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
   harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
@@ -211,10 +215,20 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
   calm: { name: 'Order kept', icon: '🕊️', desc: 'The garrison kept the peace.' },
   hoard: { name: 'A hoard', icon: '💰', desc: 'Word of buried treasure. Whoever holds this land when the digging is done gains 5 supplies.' },
   found: { name: 'Treasure found', icon: '👑', desc: 'Its holder gained 5 supplies.' },
+  horde: { name: 'Marauders', icon: '🏴', desc: 'A band that belongs to no people has made camp here. It grows every turn, carries off women from the lands around, and will spread if it is left alone. Take this land to break it.' },
+  taken: { name: 'Women carried off', icon: '⛓️', desc: 'Marauders have taken women from here. The land yields a supply less for each raid, up to two, until their camp is broken.' },
+  overrun: { name: 'Overrun', icon: '🏴', desc: 'The marauders have taken this land for their own.' },
+  freed: { name: 'The women freed', icon: '🕊️', desc: 'The marauders\' camp is broken and those they held have come home.' },
 };
 export const UNREST_TURNS = 2;
 export const HOARD_TURNS = 3;
 export const HOARD_PRIZE = 5;
+/** Marauders on the map: the turn they may first appear, how strong a camp grows, and what breaking one is worth. */
+export const HORDE_TURN = 4;
+export const HORDE_MAX = 12;
+export const HORDE_SPREAD = 6;
+export const HORDE_PRIZE = 4;
+export const MAX_TAKEN = 2;
 
 /** A run of chances of its own for weather and the lasting events, so the rest of the campaign's luck is left as it was. */
 function luck(c: Campaign, k: number): number {
@@ -254,6 +268,65 @@ function mark(c: Campaign, kind: EventKind, at: number, turns = 0): void {
   (c.events ??= []).push({ kind, at, turn: c.turn, until: c.turn + turns });
 }
 
+/**
+ * The marauders: a band that belongs to no people. They take root in some land of the local tribes far from any
+ * capital, and from then on they grow each turn, carry off women from the lands next to them (which costs those
+ * lands supplies until the women are freed), and when strong enough overrun a neighbour. Whoever takes a land
+ * from them breaks that camp: the women it took go home, and the victor is the richer for it.
+ */
+function hordeTurn(c: Campaign): void {
+  const lairs = c.territories.filter((t) => t.horde);
+  // A camp that has fallen to someone: those it held are free.
+  for (const t of lairs.filter((x) => x.owner >= 0)) {
+    t.horde = false;
+    const f = c.factions[t.owner];
+    let home = 0;
+    for (const n of [t.id, ...t.adj]) { home += c.territories[n].taken ?? 0; c.territories[n].taken = 0; }
+    f.supplies += HORDE_PRIZE;
+    mark(c, 'freed', t.id);
+    c.log.push(`${f.id === 0 ? 'You have' : `${f.name} have`} broken the marauders at ${t.name}${home ? ' and the women they took have come home' : ''}: ${HORDE_PRIZE} supplies.`);
+  }
+  const live = c.territories.filter((t) => t.horde && t.owner < 0);
+  if (!live.length) {
+    for (const t of c.territories) t.taken = 0; // no camp left to hold anyone
+    if (c.turn < HORDE_TURN || luck(c, 70) > 0.45) return;
+    const caps = c.territories.filter((t) => t.capital >= 0);
+    const wild = c.territories.filter((t) => t.owner < 0 && t.capital < 0)
+      .sort((a, b) => Math.min(...caps.map((k) => Math.hypot(k.x - b.x, k.y - b.y))) - Math.min(...caps.map((k) => Math.hypot(k.x - a.x, k.y - a.y))));
+    const t = wild[0];
+    if (!t) return;
+    t.horde = true;
+    t.militia = Math.max(t.militia, 4);
+    mark(c, 'horde', t.id, 1);
+    c.log.push(`Marauders have made camp at ${t.name}. They take women, and they grow.`);
+    return;
+  }
+  live.forEach((t, i) => {
+    t.militia = Math.min(HORDE_MAX, t.militia + 1);
+    // A raid on a neighbour: the weakest-held land next door.
+    const near = t.adj.map((n) => c.territories[n]).filter((x) => x.owner >= 0 && (x.taken ?? 0) < MAX_TAKEN)
+      .sort((a, b) => (armyAt(c, a.id) ? 1 : 0) - (armyAt(c, b.id) ? 1 : 0) || a.id - b.id);
+    const prey = near[Math.floor(luck(c, 80 + i) * Math.min(2, near.length))];
+    if (prey && luck(c, 90 + i) < 0.6) {
+      prey.taken = (prey.taken ?? 0) + 1;
+      mark(c, 'taken', prey.id);
+      c.log.push(`Marauders out of ${t.name} carry off women from ${prey.name}${prey.owner === 0 ? ': it yields a supply less until you break their camp' : ''}.`);
+    }
+    // Strong enough, they take the land next door for their own: a tribe's, or a people's that no army holds.
+    if (t.militia >= HORDE_SPREAD && luck(c, 100 + i) < 0.3) {
+      const open = t.adj.map((n) => c.territories[n]).filter((x) => !x.horde && x.capital < 0 && !(x.owner >= 0 && armyAt(c, x.id)));
+      const next = open[Math.floor(luck(c, 110 + i) * open.length)];
+      if (next) {
+        if (next.owner >= 0) c.log.push(`The marauders have overrun ${next.name} and thrown out ${next.owner === 0 ? 'your people' : c.factions[next.owner].name}.`);
+        else c.log.push(`The marauders have overrun ${next.name}.`);
+        next.owner = -1; next.horde = true; next.militia = Math.max(3, Math.floor(t.militia / 2));
+        t.militia -= 2;
+        mark(c, 'overrun', next.id);
+      }
+    }
+  });
+}
+
 /** A new turn on the map itself: the weather moves on, what was brewing comes to a head, and now and then something new begins. */
 function mapTurn(c: Campaign): void {
   const fronts = frontsOf(c);
@@ -283,6 +356,7 @@ function mapTurn(c: Campaign): void {
   }
   c.events = ev.filter((x) => x.until >= c.turn - 1);
   const busy = new Set(c.events.filter((x) => x.until >= c.turn).map((x) => x.at));
+  hordeTurn(c);
   if (c.turn >= 3 && luck(c, 50) < 0.3) {
     const open = c.territories.filter((t) => t.owner >= 0 && t.capital < 0 && !busy.has(t.id) && !c.armies.some((a) => a.at === t.id && a.owner === t.owner));
     const t = open[Math.floor(luck(c, 51) * open.length)];
@@ -466,7 +540,7 @@ export const armyStrength = (a: Army): number => strengthVs(a);
 export function income(c: Campaign, f: number): number {
   let n = 0;
   let held = 0;
-  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) - (weatherAt(c, t.id) === 'snow' ? 1 : 0)); held++; }
+  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0)); held++; }
   return n + (c.factions[f].civ === 'persia' ? Math.floor(held / 3) : 0);
 }
 export function territoryIncome(t: Territory, civ = ''): number {

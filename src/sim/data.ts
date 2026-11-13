@@ -121,6 +121,8 @@ export interface UnitDef {
   needs?: 'holy' | 'decadent';
   /** Can seize enemy villagers and lead them to a Work Camp. */
   slaver?: boolean;
+  /** One of the marauders: belongs to no people, and carries off women to the camp in the wilds. */
+  marauder?: boolean;
   /** How many land units it can carry across water. */
   carry?: number;
   /** Can work fish shoals, bringing the catch to a Dock. */
@@ -494,6 +496,12 @@ export const UNITS: Record<string, UnitDef> = {
     cost: { food: 50, gold: 40 }, time: 20, age: 1, hp: 50, atk: 0, armor: 0, range: 5.5, speed: 2.1,
     cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 7, needs: 'holy',
   }),
+  marauder: U({
+    id: 'marauder', name: 'Marauder', icon: '🏴',
+    desc: 'One of a band that belongs to no people. They come out of a camp in the wilds, carry off women, and grow in number for every one they hold. Burn the camp and the women go free.',
+    cost: {}, time: 20, age: 9, hp: 70, atk: 7, armor: 0, range: 0.5, speed: 2.7,
+    cooldown: 1.4, sight: 8, pop: 0, cls: 'infantry', radius: 0.3, slaver: true, marauder: true,
+  }),
   slaver: U({
     id: 'slaver', name: 'Slaver', icon: '⛓️',
     desc: 'Only a Decadent town will train him. Right-click an enemy villager to seize him and lead him back to a Work Camp. If the Slaver is killed on the way, the captive goes free.',
@@ -619,6 +627,12 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     desc: 'Station up to four villagers here. Milkmaids (women) bring in gold; patrons (men) drink your food away but speed up the training of soldiers. With anyone inside you can hire mercenaries for gold. All of it makes your people more decadent, slows the town\'s work, empties their own cradles, and in a worldly town invites plague.',
     cost: { wood: 110 }, time: 26, age: 1, hp: 600, size: 3, pop: 0, sight: 5,
     trains: ['slaver'], techs: [], staff: 4,
+  }),
+  lair: B({
+    id: 'lair', name: 'Marauder Camp', icon: '🏴',
+    desc: 'Where the marauders keep the women they have taken. It grows stronger for every one held here. Destroy it and they go free.',
+    cost: {}, time: 1, age: 9, hp: 1100, size: 3, pop: 0, sight: 6,
+    trains: [], techs: [], camp: 14,
   }),
   workcamp: B({
     id: 'workcamp', name: 'Work Camp', icon: '⛓️',

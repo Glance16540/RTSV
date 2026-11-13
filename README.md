@@ -360,6 +360,18 @@ for filenames and a ready-made generation prompt.
   is gone; villagers' clothes tear. Healing puts it all back. The fallen drop with a recorded death; engines fly
   apart and ships sink. `?gore=0` turns the blood and the torn clothes off.
 
+## Marauders and people's records
+
+- Every villager carries a record (`kids`, `captiveKids`, `story` on a unit in `src/sim/game.ts`): children had at
+  home, being carried off, children borne in captivity, being freed. It is shown on their panel.
+- Marauders are a third party that belongs to no people (`Game.marauders`, `stepLair`). Four minutes in they make
+  camp in the wilds, raid the nearest town for women, and grow for every woman they hold. Destroy the camp
+  (`lair`) and everyone held goes free; a woman who was held bears no more children but works a quarter harder.
+  They are on in skirmishes and sieges; `?marauders=0` leaves them out.
+- On the campaign map (`hordeTurn` in `src/sim/campaign.ts`) marauders take root in a tribal land, grow each turn,
+  carry off women from the lands around (costing those lands supplies) and overrun neighbours. Taking their land
+  breaks the camp.
+
 ## Trial games
 
 `npm run trials` plays computer players against each other and writes `trials.txt`: who won and when, how much of

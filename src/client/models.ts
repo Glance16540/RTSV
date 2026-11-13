@@ -1198,6 +1198,24 @@ export function makeBuilding(type: string, color: number, age: number, civ = '',
       flag(g, color, 1.5, 0.5, 1.5, 1.6);
       break;
     }
+    case 'lair': {
+      // The marauders' camp: a ring of sharpened stakes, hide tents round a fire, a barred pen, and a black banner over it all.
+      box(g, 2.9, 0.06, 2.9, 0x4e4234, 0, 0.03, 0).castShadow = false;
+      for (let i = 0; i < 26; i++) {
+        const a = (i / 26) * Math.PI * 2;
+        if (Math.abs(a - Math.PI / 2) < 0.32) continue; // the way in
+        const st = cyl(g, 0.02, 0.07, 0.9 + (i % 3) * 0.12, DARKWOOD, Math.cos(a) * 1.35, 0.45, Math.sin(a) * 1.35, 5);
+        st.rotation.z = Math.cos(a) * -0.18; st.rotation.x = Math.sin(a) * 0.18;
+      }
+      for (const [x, z, r] of [[-0.6, -0.55, 0.5], [0.65, -0.5, 0.44], [-0.75, 0.45, 0.4]]) { const t = add(g, geo(`tent${r}`, () => new THREE.ConeGeometry(r, r * 1.5, 7)), 0x6e5a40, x, r * 0.75, z); t.rotation.y = x; }
+      // The pen where the women are kept.
+      for (const [x, z] of [[0.35, 0.3], [0.95, 0.3], [0.35, 0.9], [0.95, 0.9]]) cyl(g, 0.03, 0.03, 0.7, DARKWOOD, x, 0.35, z, 5);
+      for (const y of [0.25, 0.5, 0.7]) { box(g, 0.66, 0.04, 0.04, DARKWOOD, 0.65, y, 0.3); box(g, 0.66, 0.04, 0.04, DARKWOOD, 0.65, y, 0.9); box(g, 0.04, 0.04, 0.66, DARKWOOD, 0.35, y, 0.6); box(g, 0.04, 0.04, 0.66, DARKWOOD, 0.95, y, 0.6); }
+      ball(g, 0.14, 0xff8a30, -0.05, 0.12, 0.05, 0xc04a10);
+      cyl(g, 0.03, 0.03, 2.6, DARKWOOD, 0, 1.3, -0.1, 5);
+      box(g, 0.7, 0.42, 0.03, 0x15120f, 0.36, 2.3, -0.1);
+      break;
+    }
     case 'workcamp': {
       // A stockade: a ring of sharpened stakes round a bare yard, a guard platform and a barred hut.
       box(g, 2.8, 0.06, 2.8, 0x6a5a44, 0, 0.03, 0).castShadow = false;
