@@ -90,7 +90,8 @@ export class App {
     else if (ev.t === 'grown' && mine) sfx.play('grown');
     else if (ev.t === 'msg' && mine) sfx.play(/^(Not|Cannot|You can only|Queue|Requires)/.test(ev.text) ? 'error' : 'done');
     else if (ev.t === 'quake' && this.onScreen(ev.x, ev.y)) sfx.play('quake');
-    else if (ev.t === 'plague' && this.onScreen(ev.x, ev.y)) sfx.play('plague');
+    else if ((ev.t === 'plague' || ev.t === 'blight') && this.onScreen(ev.x, ev.y)) sfx.play('plague');
+    else if (ev.t === 'fire' && this.onScreen(ev.x, ev.y)) sfx.play('quake');
     else if (ev.t === 'remove' && ev.unit && this.onScreen(ev.x, ev.y) && this.game.vis[Math.floor(ev.y) * this.game.size + Math.floor(ev.x)] === 2) sfx.play('death');
   }
 
@@ -268,7 +269,7 @@ loadAssets().then(() => {
   civSel.innerHTML = CIV_IDS.map((id) => `<option value="${id}">${CIVS[id].icon} ${CIVS[id].name}</option>`).join('');
   civSel.value = game.players[0].civ;
   const civ = CIVS[game.players[0].civ];
-  el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} <i>${styleOf(civ.id).icon} ${styleOf(civ.id).name}: ${styleOf(civ.id).desc}</i> ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b> and, from the ${AGES[UNITS[civ.unique2].age].name}, the <b>${UNITS[civ.unique2].name}</b>.` +
+  el('civ-info').innerHTML = `<b>${civ.name}.</b> ${civ.desc} <i>${styleOf(civ.id).icon} ${styleOf(civ.id).name}: ${styleOf(civ.id).desc} ${styleOf(civ.id).rule}</i> ${civ.bonuses.join('. ')}. Only they train the <b>${UNITS[civ.unique].name}</b> and, from the ${AGES[UNITS[civ.unique2].age].name}, the <b>${UNITS[civ.unique2].name}</b>.` +
     `<br><small>Rivals: ${game.players.filter((p) => p.isAI).map((p) => `${CIVS[p.civ].icon} ${p.name}`).join(', ')}</small>`;
   const climateSel = el('map-climate') as HTMLSelectElement;
   climateSel.value = ['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? asked : 'auto';
@@ -337,7 +338,7 @@ loadAssets().then(() => {
       const survivors: Record<string, number> = {};
       for (const u of app.game.units) if (u.owner === app.pid) survivors[u.type] = (survivors[u.type] ?? 0) + 1;
       const heroRank = app.game.units.find((u) => u.owner === app.pid && u.hero)?.hero!.rank;
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -393,8 +394,8 @@ loadAssets().then(() => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; heroRank?: number };
-      finishBattle(c, r.won, r.survivors, r.heroRank);
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number };
+      finishBattle(c, r.won, r.survivors, r.virtue, r.heroRank);
       if (c.phase === 'ai') continueAI(c);
     }
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);

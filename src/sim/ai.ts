@@ -390,6 +390,16 @@ export class AIController {
         const near = g.units.filter((v) => g.hostile(v.owner, this.pid) && v.owner !== g.wild && v.plagueT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
         if (near.length >= 3) { g.cmdCast(this.pid, [u.id], 'plague', near[0].x, near[0].y); continue; }
       }
+      // Fire where buildings stand close enough for it to leap, and not in the rain; blight on a rival's fields.
+      if (u.mana >= ABILITIES.fire.cost && g.foul !== 'rain') {
+        const near = g.buildings.filter((v) => g.hostile(v.owner, this.pid) && !v.def.wall && v.burnT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
+        const b = near.find((v) => near.some((w) => w !== v && Math.hypot(w.x - v.x, w.y - v.y) < 4));
+        if (b) { g.cmdCast(this.pid, [u.id], 'fire', b.x, b.y); continue; }
+      }
+      if (u.mana >= ABILITIES.blight.cost && u.mana < ABILITIES.fire.cost) {
+        const farms = g.buildings.filter((v) => v.type === 'farm' && !v.blightT && g.hostile(v.owner, this.pid) && Math.hypot(v.x - u.x, v.y - u.y) < 11);
+        if (farms.length >= 2) { g.cmdCast(this.pid, [u.id], 'blight', farms[0].x, farms[0].y); continue; }
+      }
       if (u.mana >= ABILITIES.quake.cost) {
         const b = g.buildings.find((v) => g.hostile(v.owner, this.pid) && Math.hypot(v.x - u.x, v.y - u.y) < 11);
         if (b) g.cmdCast(this.pid, [u.id], 'quake', b.x, b.y);

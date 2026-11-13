@@ -2,7 +2,7 @@
 
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
-  MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
+  MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, CALAMITY, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
@@ -118,6 +118,8 @@ export interface Unit extends Base {
   freed?: boolean;
   /** The nation's leader: deeds done in this battle and the veterancy they have earned. */
   hero?: { xp: number; rank: number };
+  /** Foes this unit has killed. Among the Warriors every kill makes a soldier strike harder. */
+  kills?: number;
   merc?: boolean; // hired at a tavern: fights for wages and leaves when they stop
   resume: Order | null; // job to return to after sheltering
 }
@@ -156,6 +158,10 @@ export interface Building extends Base {
   workerId: number;
   doneAt: number; // game time construction finished (0 if not yet)
   burnT: number; // seconds of fire left after a flame attack
+  /** When this building last caught fire from a neighbour: it cannot catch again for a while. */
+  litAt?: number;
+  /** Seconds a blighted farm will go on yielding nothing. */
+  blightT?: number;
   sheltered: number[]; // villagers hiding inside
   captives?: Captive[]; // a work camp's prisoners
   campT?: number; // progress towards the camp's next villager
@@ -184,6 +190,8 @@ export interface Projectile {
   targetId: number;
   speed: number;
   owner: number;
+  /** The unit that loosed it, if a unit did: a kill is set down to him. */
+  from?: number;
   atk: number;
   aura: number;
   cls: ArmorClass;
@@ -250,6 +258,8 @@ export type GameEvent =
   | { t: 'grown'; player: number; x: number; y: number }
   | { t: 'quake'; x: number; y: number }
   | { t: 'plague'; x: number; y: number }
+  | { t: 'fire'; x: number; y: number }
+  | { t: 'blight'; x: number; y: number }
   | { t: 'birth'; player: number; x: number; y: number }
   | { t: 'age'; player: number }
   | { t: 'alert'; player: number; x: number; y: number }
@@ -271,6 +281,8 @@ export interface PlayerSetup {
   civ?: string;
   /** The nation's leader, where someone has made their own of them. */
   hero?: Partial<HeroSpec>;
+  /** Where this people's town stands between piety and decadence as the battle opens (Conquest carries it over). */
+  virtue?: number;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
   /** `armed`: the side already has every weapon upgrade of its starting age. */
   bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean };
@@ -395,7 +407,7 @@ export class Game {
         id: i, name: s.name, color: s.color, isAI: s.isAI, team: s.team ?? i, civ: s.civ && CIVS[s.civ] ? s.civ : CIV_IDS[i % CIV_IDS.length],
         res: { food: 200, wood: 200, gold: 100, stone: 100 },
         upgrades: {}, age: 0, agingUp: false, pop: 0, popCap: 0, mods: baseMods(), techs: new Set(), pending: new Set(),
-        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: 0, clergy: 0, captives: 0, captiveMen: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
+        defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: Math.max(-100, Math.min(100, s.virtue ?? 0)), clergy: 0, captives: 0, captiveMen: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
       this.heroes.push([]);
@@ -676,6 +688,16 @@ export class Game {
   }
 
   /** A people who live by raiding: see STYLES.raider. */
+  /** The group a people belongs to; each has a rule of its own (STYLE_RULES). */
+  style(owner: number): StyleId | '' { const p = this.players[owner]; return p && !p.neutral && p.civ ? styleOf(p.civ).id : ''; }
+  /** How much harder a soldier of the Warriors strikes for the foes he has killed. */
+  veteran(u: Unit): number {
+    return this.style(u.owner) === 'warrior' && this.isMilitary(u) ? 1 + STYLE_RULES.veteran * Math.min(STYLE_RULES.veteranKills, u.kills ?? 0) : 1;
+  }
+  /** How much faster the Scholars' villagers gather for what their people have learned. */
+  lore(owner: number): number {
+    return this.style(owner) === 'scholar' ? 1 + Math.min(STYLE_RULES.loreMax, STYLE_RULES.lore * this.players[owner].techs.size) : 1;
+  }
   raider(owner: number): boolean { return !!this.players[owner] && !!styleOf(this.players[owner].civ).raid; }
   /** The age a building needs. A raiding band may raise its hall whenever it chooses to settle. */
   ageFor(owner: number, def: BuildingDef): number { return def.id === 'towncenter' && this.raider(owner) ? 0 : def.age; }
@@ -1593,6 +1615,35 @@ export class Game {
     this.events.push({ t: 'msg', player: p.id, text: '🍷 A child is born at the tavern, and no one asks whose.' });
   }
 
+  /** Once a second: the Faithful are healed round their churches, and the Traders' markets earn. */
+  private styleUpkeep(p: Player): void {
+    const style = this.style(p.id), R = STYLE_RULES;
+    if (style === 'faithful') {
+      const heal = R.sanctuaryHeal * this.creed(p.id).heal, seen = new Set<number>();
+      for (const b of this.buildings) {
+        if (b.owner !== p.id || b.type !== 'temple' || !b.complete) continue;
+        for (const u of this.unitsNear(b.x, b.y, R.sanctuary, this.scratch)) {
+          if (u.owner !== p.id || seen.has(u.id) || Math.hypot(u.x - b.x, u.y - b.y) > R.sanctuary) continue;
+          seen.add(u.id); // two churches do not heal twice over
+          u.plagueT = 0;
+          if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + heal);
+        }
+      }
+    } else if (style === 'trader' && this.tick % (R.caravanEvery * 20) === 0) {
+      let own = 0;
+      const abroad = new Set<number>();
+      for (const b of this.buildings) {
+        if (b.type !== 'market' || !b.complete) continue;
+        if (b.owner === p.id) own++; else if (!this.players[b.owner].neutral) abroad.add(b.owner);
+      }
+      if (own) {
+        const gold = Math.min(R.caravanMarkets, own) * R.caravan + abroad.size * R.caravanAbroad;
+        p.res.gold += gold;
+        p.stats.gathered += gold;
+      }
+    }
+  }
+
   private updateCreeds(): void {
     if (this.field) return;
     for (const p of this.players) {
@@ -1611,6 +1662,7 @@ export class Game {
       }
       this.payMercenaries(p);
       this.updateCamps(p);
+      this.styleUpkeep(p);
       const clergy = Math.min(STAFF_CAP, p.clergy), maids = Math.min(STAFF_CAP, p.maids);
       const pull = (clergy * CLERGY_VIRTUE - maids * MAID_VIRTUE) / 60;
       if (pull) this.shiftVirtue(p.id, pull);
@@ -1902,7 +1954,7 @@ export class Game {
         this.weather = this.climate === 'snow' ? 'snow' : this.climate === 'desert' ? 'dust' : 'rain';
         this.weatherWant = 0.5 + r() * 0.5;
         this.weatherT = 50 + r() * 60;
-        const what = this.weather === 'rain' ? '🌧️ Rain is coming in: arrows will fall short and fires will not last.' : this.weather === 'snow' ? '🌨️ Snow is coming down: off the roads, everyone moves slower.' : '🌪️ A dust storm is rising: no one will see far, and arrows will fall short.';
+        const what = this.weather === 'rain' ? '🌧️ Rain is coming in: arrows will fall short and fires will not last, but the fields do well.' : this.weather === 'snow' ? '🌨️ Snow is coming down: off the roads, everyone moves slower, and the fields yield little.' : '🌪️ A dust storm is rising: no one will see far, arrows will fall short, and the fields dry up.';
         for (const p of this.players) if (!p.neutral) this.events.push({ t: 'msg', player: p.id, text: what });
       }
     }
@@ -1985,13 +2037,16 @@ export class Game {
       p.popCap = 0;
       this.tcs[p.id].length = 0;
     }
+    const farms: number[] = [];
     for (const b of this.buildings) {
       if (!b.complete) continue;
       const p = this.players[b.owner];
       p.popCap += b.def.pop + (b.type === 'house' ? p.mods.housePop + this.renown(b) : 0);
       if (b.type === 'towncenter') this.tcs[b.owner].push(b);
+      if (b.type === 'farm') farms[b.owner] = (farms[b.owner] ?? 0) + 1;
     }
     for (const p of this.players) {
+      if (this.style(p.id) === 'farmer') p.popCap += Math.min(STYLE_RULES.farmPopMax, (farms[p.id] ?? 0) * STYLE_RULES.farmPop);
       if (!p.neutral && this.raider(p.id)) p.popCap += BAND.pop; // the band itself, before it has a roof
       p.popCap = Math.min(POP_LIMIT, p.popCap);
       for (const tc of this.tcs[p.id]) {
@@ -2430,6 +2485,16 @@ export class Game {
                 }
               }
               this.events.push({ t: 'plague', x: o.x, y: o.y });
+            } else if (o.ability === 'fire' || o.ability === 'blight') {
+              for (const b of this.buildings) {
+                const h = b.size / 2;
+                if (!this.hostile(b.owner, u.owner) || rectDist(o.x, o.y, b.x - h, b.y - h, b.x + h, b.y + h) > a.radius) continue;
+                if (o.ability === 'fire') { if (!b.def.wall) b.burnT = Math.max(b.burnT, CALAMITY.fire); }
+                else if (b.type === 'farm') b.blightT = CALAMITY.blight;
+                this.players[b.owner].lastAttacked = { x: b.x, y: b.y, t: this.time };
+              }
+              if (o.ability === 'blight') for (const r of this.resources) if (r.type === 'berries' && Math.hypot(r.x - o.x, r.y - o.y) <= a.radius) r.amount = Math.ceil(r.amount * (1 - CALAMITY.berries));
+              this.events.push({ t: o.ability, x: o.x, y: o.y });
             } else {
               this.quakes.push({ x: o.x, y: o.y, r: a.radius, t: 5, owner: u.owner });
               this.events.push({ t: 'quake', x: o.x, y: o.y });
@@ -2578,7 +2643,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -2659,7 +2724,7 @@ export class Game {
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
     if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
-    atk *= this.highGround(u.x, u.y, t);
+    atk *= this.highGround(u.x, u.y, t) * this.veteran(u);
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
@@ -2667,21 +2732,21 @@ export class Game {
       this.projectiles.push({
         x: u.x, y: u.y, sx: u.x, sy: u.y, tx: t.x, ty: t.y, targetId: t.id,
         speed: u.def.projectile === 'boulder' ? 7 : u.def.projectile === 'shot' ? 26 : 13, owner: u.owner, atk, aura, cls: u.def.cls,
-        bonus: u.def.bonus, splash: u.def.splash ?? 0, kind: u.def.projectile, done: false,
+        bonus: u.def.bonus, splash: u.def.splash ?? 0, kind: u.def.projectile, done: false, from: u.id,
       });
     } else {
-      this.hit(u.owner, atk, aura, u.def.cls, u.def.bonus, t, 1);
+      this.hit(u.owner, atk, aura, u.def.cls, u.def.bonus, t, 1, u.id);
       if (u.def.splash) {
         for (const v of this.unitsNear(t.x, t.y, u.def.splash, this.scratch.slice())) {
           if (this.hostile(v.owner, u.owner) && v !== t && Math.hypot(v.x - t.x, v.y - t.y) <= u.def.splash) {
-            this.hit(u.owner, atk, aura, u.def.cls, u.def.bonus, v, 0.5);
+            this.hit(u.owner, atk, aura, u.def.cls, u.def.bonus, v, 0.5, u.id);
           }
         }
       }
     }
   }
 
-  private hit(owner: number, atk: number, aura: number, cls: ArmorClass, bonus: UnitDef['bonus'], t: Entity, scale: number): void {
+  private hit(owner: number, atk: number, aura: number, cls: ArmorClass, bonus: UnitDef['bonus'], t: Entity, scale: number, by = 0): void {
     if (t.dead || t.kind === 'resource') return;
     const tp = this.players[t.owner];
     const tcls: ArmorClass = t.kind === 'unit' ? t.def.cls : 'building';
@@ -2706,6 +2771,8 @@ export class Game {
     }
     if (t.hp <= 0) {
       const s = this.players[owner].stats, ts = tp.stats;
+      const killer = by ? this.entities.get(by) : undefined;
+      if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) killer.kills = (killer.kills ?? 0) + 1;
       if (t.kind === 'unit') { s.kills++; ts.lost++; } else { s.razed++; ts.buildingsLost++; }
       this.deed(owner, t);
       this.kill(t);
@@ -2726,15 +2793,15 @@ export class Game {
       p.done = true;
       if (p.splash > 0) {
         for (const v of this.unitsNear(p.x, p.y, p.splash, this.scratch.slice())) {
-          if (this.hostile(v.owner, p.owner) && Math.hypot(v.x - p.x, v.y - p.y) <= p.splash) this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, v, 1);
+          if (this.hostile(v.owner, p.owner) && Math.hypot(v.x - p.x, v.y - p.y) <= p.splash) this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, v, 1, p.from);
         }
         for (const b of this.buildings.slice()) {
           const h = b.size / 2;
           if (this.hostile(b.owner, p.owner) && rectDist(p.x, p.y, b.x - h, b.y - h, b.x + h, b.y + h) <= p.splash * 0.5) {
-            this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, b, 1);
+            this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, b, 1, p.from);
           }
         }
-      } else if (t && !t.dead) this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, t, 1);
+      } else if (t && !t.dead) this.hit(p.owner, p.atk, p.aura, p.cls, p.bonus, t, 1, p.from);
     }
     if (ps.some((p) => p.done)) this.projectiles = ps.filter((p) => !p.done);
   }
@@ -2790,14 +2857,39 @@ export class Game {
     return u;
   }
 
+  /**
+   * Once a second a burning building may set a neighbour alight, whoever owns it. Never in rain, never a wall, and
+   * a building that has caught once does not catch again for a while, so a town burns through and the fire dies.
+   * (Decided without the game's dice, so that the rest of a match is not disturbed by it.)
+   */
+  private spreadFire(b: Building): void {
+    if (this.foul === 'rain') return;
+    const h = b.size / 2;
+    for (const n of this.buildings) {
+      if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && this.time - n.litAt < CALAMITY.scorched)) continue;
+      const k = n.size / 2;
+      if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
+      const roll = ((Math.imul(b.id * 31 + n.id, 2654435761) ^ Math.imul(this.tick + this.seed, 40503)) >>> 0) / 4294967296;
+      if (roll >= CALAMITY.spread) continue;
+      n.burnT = CALAMITY.caught;
+      n.litAt = this.time;
+      if (!this.players[n.owner].neutral) this.msg(n.owner, `Fire has spread to your ${n.def.name}!`);
+    }
+  }
+
   private updateBuilding(b: Building): void {
     if (b.burnT > 0) {
       b.burnT -= this.foul === 'rain' ? DT * 2.5 : DT; // rain puts fires out
       b.hp -= 5 * DT;
       if (b.hp <= 0) { this.kill(b); return; }
+      if ((this.tick + b.id) % 20 === 0) this.spreadFire(b);
     }
+    if (b.blightT) b.blightT = Math.max(0, b.blightT - DT);
     if (!b.complete) return;
     const p = this.players[b.owner];
+    // The Builders' walls and halls mend themselves when the town is left in peace.
+    if (b.hp < b.maxHp && b.burnT <= 0 && this.style(b.owner) === 'builder' && (!p.lastAttacked || this.time - p.lastAttacked.t > STYLE_RULES.peace))
+      b.hp = Math.min(b.maxHp, b.hp + b.maxHp * STYLE_RULES.mend * DT);
 
     const q = b.queue[0];
     if (q) {
