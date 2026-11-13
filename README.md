@@ -212,7 +212,9 @@ circling slowly. Skirmish, missions, help and settings open as a second leaf. Ch
 swings the camera round to the game's view and play begins. The opening is played once a visit
 (`?intro=1` plays it again, `?intro=0` never). The main theme plays at the menu: drop a recording at
 `public/assets/music/theme.mp3` and it replaces the synthesised stand-in. The code is in
-`src/client/title.ts`.
+`src/client/title.ts`. The bars around the battlefield, the messages over it, the sheets (the word before
+a battle, the making of a leader) and the campaign's side page are on the same paper; their styles are
+the last block of `src/client/style.css`.
 
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.
