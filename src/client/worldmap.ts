@@ -81,6 +81,9 @@ export class WorldMap {
   /** Each land's town, kept until what stands there changes. */
   private towns = new Map<number, { sig: string; mesh: THREE.Mesh }>();
   private townMat = new THREE.MeshStandardMaterial({ roughness: 0.88, flatShading: true, vertexColors: true });
+  /** Camps and plinths, made once for each kind and reused. */
+  private camps = new Map<string, THREE.BufferGeometry>();
+  private fires: THREE.Mesh[] = [];
   private puffs: { g: THREE.Group; v: number }[] = [];
   private flocks: { g: THREE.Group; cx: number; cz: number; r: number; v: number; ph: number }[] = [];
   private ships: { g: THREE.Group; ph: number; v: number }[] = [];
@@ -612,6 +615,94 @@ export class WorldMap {
     return mergeGeometries(parts)!;
   }
 
+  /**
+   * Where fighting men stand. An army has a carved plinth in its colour, like a piece on a war-table, and behind it
+   * a field camp that grows with its numbers: pavilions, a rack of spears, a fire, and stores for a large host. A
+   * tribe has a camp of its country's own kind: hide tents and a totem in green country, low dark tents in the
+   * desert, snow huts in the north. Marauders have a ring of sharpened stakes, a cage and skulls on poles.
+   */
+  private buildCamp(kind: 'army' | 'horde' | 'tribe', style: string, color: number, n: number): THREE.BufferGeometry {
+    const parts: THREE.BufferGeometry[] = [], TIMBER = 0x6a4a2c, DARKWOOD = 0x3e2c1a, GOLD = 0xd8b040;
+    const box = (w: number, h: number, d: number, tone: number, x: number, by: number, z: number, ry = 0, rz = 0, low = 0.75): void => { parts.push(put(tinted(new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0), tone, low), x, by, z, ry, rz)); };
+    const cyl = (r: number, h: number, tone: number, x: number, by: number, z: number, seg = 10, top = r, rz = 0): void => { parts.push(put(tinted(new THREE.CylinderGeometry(top, r, h, seg).translate(0, h / 2, 0), tone, 0.72), x, by, z, 0, rz)); };
+    const cone = (r: number, h: number, tone: number, x: number, by: number, z: number, seg = 8, rz = 0, ry = 0): void => { parts.push(put(tinted(new THREE.ConeGeometry(r, h, seg).translate(0, h / 2, 0), tone, 0.62), x, by, z, ry, rz)); };
+    const ball = (r: number, tone: number, x: number, by: number, z: number): void => { parts.push(put(tinted(new THREE.IcosahedronGeometry(r, 0), tone, 0.8), x, by, z)); };
+    const hearth = (x: number, by: number, z: number, r = 0.16): void => {
+      for (let k = 0; k < 7; k++) ball(0.045, 0x8a8478, x + Math.cos(k * 0.9) * r, by + 0.02, z + Math.sin(k * 0.9) * r);
+      for (let k = 0; k < 3; k++) box(0.22, 0.04, 0.04, DARKWOOD, x, by + 0.02, z, k * 1.05, 0.25, 1);
+    };
+    if (kind === 'army') {
+      // The plinth: a stone foot, a drum in the army's colour set with studs, a gilt lip, and trodden earth on top.
+      cyl(1.5, 0.1, 0x5a5248, 0, 0, 0, 32, 1.44);
+      cyl(1.38, 0.14, color, 0, 0.1, 0, 32, 1.32);
+      cyl(1.36, 0.04, GOLD, 0, 0.24, 0, 32);
+      cyl(1.24, 0.045, 0x9a8a62, 0, 0.24, 0, 32);
+      for (let k = 0; k < 12; k++) ball(0.045, GOLD, Math.cos(k * 0.5236) * 1.37, 0.17, Math.sin(k * 0.5236) * 1.37);
+      // The camp behind it: a pavilion for every few companies, striped in the army's colour.
+      const tents = Math.min(5, Math.ceil(n / 3));
+      for (let k = 0; k < tents; k++) {
+        const ang = Math.PI * (1.5 + (k - (tents - 1) / 2) * 0.24), x = Math.cos(ang) * 2.15, z = Math.sin(ang) * 2.0 + 0.1, big = k === Math.floor(tents / 2);
+        const r = big ? 0.34 : 0.26;
+        cyl(r, r * 0.7, 0xece4cc, x, 0, z, 10);
+        for (let st = 0; st < 5; st++) box(0.05, r * 0.7, 0.02, color, x + Math.cos(st * 1.2566 + 0.3) * r, 0, z + Math.sin(st * 1.2566 + 0.3) * r, -(st * 1.2566 + 0.3) + Math.PI / 2, 0, 1);
+        cone(r * 1.18, r * 1.1, color, x, r * 0.7, z, 10);
+        cyl(0.012, 0.3, DARKWOOD, x, r * 1.7, z, 4); box(0.14, 0.07, 0.01, big ? GOLD : color, x + 0.07, r * 1.7 + 0.2, z, 0, 0, 1);
+        box(0.1, r * 0.5, 0.02, 0x2a1c10, x, 0, z + r, 0, 0, 1);
+      }
+      // A rack of spears and shields, a fire with a pot over it, and for a great host its stores.
+      for (const dx of [-0.16, 0.16]) cyl(0.018, 0.34, TIMBER, 1.75 + dx, 0, 0.55, 5);
+      box(0.4, 0.025, 0.025, TIMBER, 1.75, 0.3, 0.55, 0, 0, 1);
+      for (let k = 0; k < 4; k++) { cyl(0.011, 0.6, 0xb8b0a0, 1.63 + k * 0.08, 0, 0.62, 4, 0.011, 0.0); cone(0.022, 0.07, 0xd0d4d8, 1.63 + k * 0.08, 0.6, 0.62, 4); }
+      for (let k = 0; k < 2; k++) cyl(0.11, 0.025, k ? color : 0xc8c0a8, 1.6 + k * 0.3, 0.02, 0.78 + k * 0.03, 10, 0.11, 0);
+      hearth(-1.55, 0, 0.75);
+      for (const dx of [-0.14, 0.14]) cyl(0.012, 0.3, DARKWOOD, -1.55 + dx, 0, 0.75, 4); box(0.3, 0.02, 0.02, DARKWOOD, -1.55, 0.29, 0.75, 0, 0, 1); cyl(0.05, 0.06, 0x2a2a2e, -1.55, 0.18, 0.75, 7, 0.06);
+      if (n >= 6) { box(0.26, 0.2, 0.2, 0x8a6a40, -1.9, 0, -0.35, 0.4); box(0.2, 0.16, 0.18, 0x7a5c36, -1.72, 0, -0.6, 1.1); cyl(0.09, 0.2, 0x6a4a2c, -2.05, 0, -0.7, 8); cyl(0.09, 0.2, 0x74522f, -1.5, 0, -0.3, 8); box(0.2, 0.14, 0.18, 0x8a6a40, -1.88, 0.2, -0.37, 0.9); }
+    } else if (kind === 'horde') {
+      cyl(1.2, 0.05, 0x3a3028, 0, 0, 0, 20);
+      // A ring of sharpened stakes leaning outward, dark tents, a cage, skulls on poles.
+      for (let k = 0; k < 18; k++) { const ang = (k / 18) * 6.283; if (k === 4) continue; parts.push(put(tinted(new THREE.ConeGeometry(0.045, 0.62, 5).translate(0, 0.31, 0), k % 2 ? TIMBER : DARKWOOD, 0.7), Math.cos(ang) * 1.12, 0, Math.sin(ang) * 1.12, -ang, -0.42)); }
+      for (const [x, z, r] of [[-0.45, -0.25, 0.4], [0.45, -0.4, 0.34], [0.5, 0.35, 0.3]]) { cone(r, r * 1.5, 0x3e342c, x, 0.04, z, 7); cone(r * 0.5, r * 0.75, 0x14100c, x, 0.04, z + r * 0.52, 3, 0, 0.5); for (let k = 0; k < 3; k++) cyl(0.012, 0.22, DARKWOOD, x, r * 1.4, z, 4, 0.012, (k - 1) * 0.5); }
+      for (const [dx, dz] of [[-0.14, -0.14], [0.14, -0.14], [0.14, 0.14], [-0.14, 0.14]]) cyl(0.014, 0.34, DARKWOOD, -0.35 + dx, 0.04, 0.55 + dz, 4);
+      for (const dz of [-0.07, 0, 0.07]) for (const dx of [-0.14, 0.14]) cyl(0.008, 0.34, 0x2a2a2e, -0.35 + dx, 0.04, 0.55 + dz, 4);
+      box(0.32, 0.03, 0.32, DARKWOOD, -0.35, 0.37, 0.55, 0, 0, 1);
+      for (const [x, z] of [[0.95, 0.75], [-1.0, 0.6], [0.1, -1.0]]) { cyl(0.014, 0.62, DARKWOOD, x, 0, z, 4); ball(0.055, 0xe8e2d2, x, 0.65, z); }
+      hearth(0.05, 0.04, 0.3, 0.2);
+    } else {
+      const desert = style === 'desert', snow = style === 'snow', homes = Math.min(5, 2 + Math.ceil(n / 3));
+      cyl(1.15, 0.045, desert ? 0xc8ac78 : snow ? 0xd0d6d8 : 0x8f7c56, 0, 0, 0, 18);
+      for (let k = 0; k < homes; k++) {
+        const ang = 2.4 + k * (5.2 / homes), x = Math.cos(ang) * 0.68, z = Math.sin(ang) * 0.6 - 0.05, r = 0.24 + (k % 2) * 0.05;
+        if (desert) {
+          // Low black tents of woven hair, open down one side, a striped rug before each.
+          box(r * 2.4, 0.16, r * 1.5, 0x3a2c22, x, 0.04, z, -ang); parts.push(put(tinted(gable(r * 2.6, 0.14, r * 1.8), 0x2c2018, 0.8), x, 0.2, z, -ang));
+          for (const dd of [-1, 1]) cyl(0.012, 0.3, DARKWOOD, x + Math.cos(ang) * r * 1.1 * dd, 0.04, z - Math.sin(ang) * r * 1.1 * dd, 4);
+          box(0.2, 0.012, 0.13, k % 2 ? 0xa83a2a : 0x2f6a8a, x * 0.55, 0.045, z * 0.55, -ang, 0, 1);
+        } else if (snow) {
+          // Huts of packed snow, a low tunnel for a door.
+          parts.push(put(tinted(new THREE.SphereGeometry(r * 1.05, 10, 6, 0, 6.283, 0, 1.5708), 0xe6ecf0, 0.75), x, 0.04, z));
+          box(r * 0.5, r * 0.42, r * 0.7, 0xd8e0e6, x * 0.62, 0.04, z * 0.62, -ang + Math.PI / 2); box(r * 0.3, r * 0.3, 0.02, 0x2a2a30, x * 0.42, 0.04, z * 0.42, -ang + Math.PI / 2, 0, 1);
+        } else {
+          // Hide tents on a frame of poles, a painted band round each, the door-flap dark.
+          cone(r, r * 1.75, k % 2 ? 0xb89a68 : 0xa88a5a, x, 0.04, z, 8);
+          cyl(r * 0.72, 0.035, color, x, 0.04 + r * 0.5, z, 8, r * 0.7);
+          for (let q = 0; q < 3; q++) cyl(0.011, 0.26, DARKWOOD, x, 0.04 + r * 1.62, z, 4, 0.011, (q - 1) * 0.45);
+          parts.push(put(tinted(new THREE.ConeGeometry(r * 0.42, r * 0.8, 3).translate(0, r * 0.4, 0), 0x2a1c10, 1), x * 0.66, 0.04, z * 0.66, -ang + Math.PI / 2));
+        }
+      }
+      hearth(0.05, 0.045, 0.3);
+      if (snow) { box(0.5, 0.03, 0.14, TIMBER, 0.7, 0.05, 0.75, 0.5, 0, 1); for (const dz of [-0.06, 0.06]) box(0.56, 0.02, 0.02, DARKWOOD, 0.7 + dz * 0.5, 0.045, 0.75 + dz, 0.5, 0, 1); } // a sled
+      else {
+        // A totem carved and painted, and a rack of fish or hides drying.
+        cyl(0.05, 0.62, TIMBER, -0.1, 0.04, -0.2, 6); box(0.36, 0.06, 0.03, color, -0.1, 0.48, -0.2, 0, 0, 1); box(0.13, 0.1, 0.11, 0xc8a050, -0.1, 0.62, -0.2, 0.3, 0, 1); box(0.11, 0.07, 0.1, 0xa83a2a, -0.1, 0.3, -0.2, 0, 0, 1);
+        for (const dx of [-0.18, 0.18]) cyl(0.012, 0.28, DARKWOOD, 0.75 + dx, 0.04, 0.6, 4);
+        box(0.4, 0.015, 0.015, DARKWOOD, 0.75, 0.3, 0.6, 0, 0, 1); for (let q = 0; q < 4; q++) box(0.05, 0.12, 0.01, q % 2 ? 0xb89a78 : 0x9a7a58, 0.63 + q * 0.08, 0.18, 0.6, 0, 0, 1);
+      }
+      // A few stakes of fence on the side the wind comes from.
+      for (let k = 0; k < 7; k++) { const ang = 3.5 + k * 0.2; cone(0.03, 0.26, TIMBER, Math.cos(ang) * 1.1, 0.02, Math.sin(ang) * 1.1, 5); }
+    }
+    return mergeGeometries(parts)!;
+  }
+
   /** Lay the borders over the painted ground: each land edged in the colour of whoever holds it, the chosen land lit, marauder country darkened. */
   private repaint(c: Campaign, sel: number, reach: Set<number>): void {
     const ctx = this.over.getContext('2d')!, img = ctx.createImageData(MAP_W, MAP_H), D = img.data, cell = this.cell, edge = this.edge, W = this.water;
@@ -712,7 +803,7 @@ export class WorldMap {
     for (const t of this.textures) t.dispose();
     this.textures = [];
     this.pieces.clear();
-    this.people = []; this.flags = []; this.rings = []; this.bobs = []; this.labels = []; this.smokes = []; this.movers = [];
+    this.people = []; this.flags = []; this.rings = []; this.bobs = []; this.labels = []; this.smokes = []; this.movers = []; this.fires = [];
     this.repaint(c, sel, reach);
     const smokeM = new THREE.MeshBasicMaterial({ color: 0xe8e4dc, transparent: true, opacity: 0.5, depthWrite: false }), smokeG = new THREE.SphereGeometry(0.3, 7, 5);
     const live = new Set<number>();
@@ -799,9 +890,17 @@ export class WorldMap {
       holder.position.set(X + 2.6, Math.max(0.2, this.heightAt(t.x + 2.6 / K, t.y + 2.4 / K)), Z + 2.4);
       holder.add(piece);
       piece.scale.setScalar(1.6);
-      const base = add(new THREE.CylinderGeometry(a ? 1.25 : 0.95, a ? 1.38 : 1.05, 0.28, 28), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }), 0, 0.14, 0, piece);
-      base.receiveShadow = true;
-      add(new THREE.TorusGeometry(a ? 1.3 : 1, 0.07, 6, 28).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: a ? 0xe8c860 : 0x6a5a3a, roughness: 0.4, metalness: 0.5 }), 0, 0.26, 0, piece);
+      // What they stand on and camp in: a carved plinth and a field camp for an army, a camp of the country's own kind for a tribe.
+      const campKey = [a ? 'army' : t.horde ? 'horde' : 'tribe', style, color, Math.min(5, Math.ceil(n / 3))].join('|');
+      let campGeo = this.camps.get(campKey);
+      if (!campGeo) this.camps.set(campKey, (campGeo = this.buildCamp(a ? 'army' : t.horde ? 'horde' : 'tribe', style, color, n)));
+      const camp = new THREE.Mesh(campGeo, a?.moved && c.phase === 'player' ? this.townMat.clone() : this.townMat);
+      camp.castShadow = true; camp.receiveShadow = true;
+      piece.add(camp);
+      // A fire burns in every camp.
+      const fire = new THREE.Mesh(new THREE.SphereGeometry(0.1, 7, 5), new THREE.MeshBasicMaterial({ color: 0xff9a3a }));
+      fire.position.set(a ? -1.55 : 0.05, a ? 0.16 : 0.2, a ? 0.75 : 0.3); fire.userData.ph = t.id;
+      piece.add(fire); this.fires.push(fire);
       if (a) {
         flagOn(piece, -0.85, 0.28, -0.4, color, 1.5);
         const civ = c.factions[a.owner].civ, age = ageOf(c, a.owner);
@@ -824,15 +923,7 @@ export class WorldMap {
           }
         });
         if (a.moved && c.phase === 'player') piece.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined; if (m && m.color && (o as THREE.Mesh).isMesh && !(o as THREE.SkinnedMesh).isSkinnedMesh) { m.transparent = true; m.opacity = 0.55; } });
-      } else {
-        for (const [dx, dz] of [[-0.3, 0.1], [0.4, -0.25]]) add(new THREE.ConeGeometry(0.42, 0.62, 6), solid(t.horde ? 0x4a3c30 : 0x8a7250), dx, 0.59, dz, piece);
-        // Marauders: a ring of stakes round the tents, a fire, and a black banner.
-        if (t.horde) {
-          for (let k = 0; k < 12; k++) { const sa = (k / 12) * 6.283; add(new THREE.ConeGeometry(0.06, 0.6, 5), wood, Math.cos(sa) * 0.9, 0.58, Math.sin(sa) * 0.9, piece); }
-          add(new THREE.SphereGeometry(0.13, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff8a30 }), 0.05, 0.42, 0.25, piece);
-          flagOn(piece, -0.75, 0.28, -0.35, 0x121010, 1.4);
-        }
-      }
+      } else if (t.horde) flagOn(piece, -0.8, 0.05, -0.4, 0x121010, 1.4);
       this.pieces.add(holder);
       // An army that stood elsewhere a moment ago marches here over the ground.
       if (a) {
@@ -883,6 +974,7 @@ export class WorldMap {
       sh.g.position.set(Math.cos(a) * (MAP_W * K * 0.5 + 5), Math.sin(now * 1.4 + sh.ph) * 0.04, Math.sin(a) * (MAP_H * K * 0.5 + 4));
       sh.g.rotation.y = -a + (sh.v > 0 ? -Math.PI / 2 : Math.PI / 2);
     }
+    for (const f of this.fires) f.scale.setScalar(0.8 + 0.35 * Math.abs(Math.sin(now * 9 + (f.userData.ph as number) * 1.7)) + 0.15 * Math.sin(now * 23));
     for (const sm of this.smokes) {
       const k = (now * 0.22 + sm.ph) % 1;
       sm.m.position.set(sm.x + k * 1.1, sm.y + k * 3.4, sm.z);
