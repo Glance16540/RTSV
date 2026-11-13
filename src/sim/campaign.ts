@@ -184,6 +184,122 @@ export interface Campaign {
   dominion: { f: number; turns: number };
   /** The ally has asked the player to strike at this people before the turn given. */
   request?: { foe: number; until: number } | null;
+  /** Weather crossing the map: each front lies over the land within its reach and drifts on every turn. */
+  fronts?: Front[];
+  /** Things that have happened, or are happening, in particular lands: shown on the map where they are. */
+  events?: MapEvent[];
+}
+
+export type Sky = 'rain' | 'snow' | 'dust';
+export interface Front { kind: Sky; x: number; y: number; r: number; vx: number; vy: number }
+/** What weather does on the map. `march` is what is left of an attacker's strength after marching into it. */
+export const WEATHER: Record<Sky, { name: string; icon: string; march: number; desc: string }> = {
+  rain: { name: 'Heavy rain', icon: '🌧️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the rain.' },
+  snow: { name: 'Snow', icon: '🌨️', march: 0.85, desc: 'An army attacking into it fights at 85% strength, and the land yields 1 supply less. A battle here is fought in the snow.' },
+  dust: { name: 'Dust storm', icon: '🌪️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the dust.' },
+};
+export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found';
+export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
+export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
+  harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
+  volunteers: { name: 'Volunteers', icon: '🚩', desc: 'A company joined the army here.' },
+  fever: { name: 'Fever in the camp', icon: '☠️', desc: 'The army here lost a company.' },
+  raiders: { name: 'Raiders', icon: '🔥', desc: 'The farmland here was burnt.' },
+  hard: { name: 'A hard season', icon: '🥀', desc: 'Its holder lost 3 supplies.' },
+  unrest: { name: 'Unrest', icon: '⚔️', desc: 'The people are restless. Unless an army of its holder stands here when it comes to a head, the land goes back to the local tribes.' },
+  revolt: { name: 'Revolt', icon: '🏴', desc: 'The land threw off its holder and is the local tribes\' again.' },
+  calm: { name: 'Order kept', icon: '🕊️', desc: 'The garrison kept the peace.' },
+  hoard: { name: 'A hoard', icon: '💰', desc: 'Word of buried treasure. Whoever holds this land when the digging is done gains 5 supplies.' },
+  found: { name: 'Treasure found', icon: '👑', desc: 'Its holder gained 5 supplies.' },
+};
+export const UNREST_TURNS = 2;
+export const HOARD_TURNS = 3;
+export const HOARD_PRIZE = 5;
+
+/** A run of chances of its own for weather and the lasting events, so the rest of the campaign's luck is left as it was. */
+function luck(c: Campaign, k: number): number {
+  let t = (Math.imul(c.seed | 0, 2654435761) ^ Math.imul(c.turn + 11, 40503) ^ Math.imul(k + 7, 69069)) >>> 0;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/** A front of the kind that suits where on the map it starts: snow from the north, dust from the south, rain between. */
+function newFront(c: Campaign, k: number, edge: boolean): Front {
+  const y = MAP_H * (0.1 + luck(c, k) * 0.8);
+  const kind: Sky = y < MAP_H * 0.3 ? 'snow' : y > MAP_H * 0.72 ? 'dust' : 'rain';
+  const east = luck(c, k + 1) < 0.75; // most weather comes out of the west
+  return { kind, x: edge ? (east ? -80 : MAP_W + 80) : MAP_W * luck(c, k + 2), y, r: 95 + luck(c, k + 3) * 45, vx: (east ? 1 : -1) * (70 + luck(c, k + 4) * 50), vy: (luck(c, k + 5) - 0.5) * 50 };
+}
+
+/** The weather fronts on the map, made the first time they are asked for. */
+export function frontsOf(c: Campaign): Front[] {
+  return (c.fronts ??= [0, 1, 2].map((i) => newFront(c, i * 10, false)));
+}
+
+/** The weather lying over a territory this turn, if any. */
+export function weatherAt(c: Campaign, tid: number): Sky | '' {
+  const t = c.territories[tid];
+  if (!t) return '';
+  for (const f of frontsOf(c)) if (Math.hypot(f.x - t.x, f.y - t.y) < f.r) return f.kind;
+  return '';
+}
+
+/** What is marked on a territory this turn: the newest thing first. */
+export function eventsAt(c: Campaign, tid: number): MapEvent[] {
+  return (c.events ?? []).filter((e) => e.at === tid && e.until >= c.turn).reverse();
+}
+
+function mark(c: Campaign, kind: EventKind, at: number, turns = 0): void {
+  (c.events ??= []).push({ kind, at, turn: c.turn, until: c.turn + turns });
+}
+
+/** A new turn on the map itself: the weather moves on, what was brewing comes to a head, and now and then something new begins. */
+function mapTurn(c: Campaign): void {
+  const fronts = frontsOf(c);
+  fronts.forEach((f, i) => {
+    f.x += f.vx; f.y += f.vy;
+    if (f.x < -140 || f.x > MAP_W + 140 || f.y < -140 || f.y > MAP_H + 140) fronts[i] = newFront(c, i * 10 + 100, true);
+  });
+  const ev = (c.events ??= []);
+  for (const e of ev.filter((x) => x.until === c.turn - 1)) {
+    const t = c.territories[e.at];
+    if (e.kind === 'unrest' && t.owner >= 0) {
+      const a = armyAt(c, t.id), f = c.factions[t.owner];
+      if (a && a.owner === t.owner) { mark(c, 'calm', t.id); c.log.push(`The garrison keeps order in ${t.name}.`); }
+      else {
+        c.log.push(`${t.name} has risen and thrown off ${f.id === 0 ? 'your' : `${f.name}'s`} rule.`);
+        t.owner = -1; t.militia = 2;
+        mark(c, 'revolt', t.id);
+      }
+    } else if (e.kind === 'hoard') {
+      if (t.owner >= 0) {
+        const f = c.factions[t.owner];
+        f.supplies += HOARD_PRIZE;
+        mark(c, 'found', t.id);
+        c.log.push(`The hoard at ${t.name} is dug up: ${HOARD_PRIZE} supplies for ${f.id === 0 ? 'you' : f.name}.`);
+      } else c.log.push(`The hoard at ${t.name} is carried off by the local tribes.`);
+    }
+  }
+  c.events = ev.filter((x) => x.until >= c.turn - 1);
+  const busy = new Set(c.events.filter((x) => x.until >= c.turn).map((x) => x.at));
+  if (c.turn >= 3 && luck(c, 50) < 0.3) {
+    const open = c.territories.filter((t) => t.owner >= 0 && t.capital < 0 && !busy.has(t.id) && !c.armies.some((a) => a.at === t.id && a.owner === t.owner));
+    const t = open[Math.floor(luck(c, 51) * open.length)];
+    if (t) {
+      mark(c, 'unrest', t.id, UNREST_TURNS - 1);
+      busy.add(t.id);
+      c.log.push(`There is unrest in ${t.name}. ${t.owner === 0 ? 'Send an army there within ' + UNREST_TURNS + ' turns or it will rise.' : ''}`.trim());
+    }
+  }
+  if (c.turn >= 2 && luck(c, 60) < 0.22 && !c.events.some((x) => x.kind === 'hoard' && x.until >= c.turn)) {
+    const open = c.territories.filter((t) => !busy.has(t.id) && t.capital < 0);
+    const t = open[Math.floor(luck(c, 61) * open.length)];
+    if (t) {
+      mark(c, 'hoard', t.id, HOARD_TURNS - 1);
+      c.log.push(`Word of a hoard buried at ${t.name}: whoever holds it in ${HOARD_TURNS} turns gains ${HOARD_PRIZE} supplies.`);
+    }
+  }
 }
 
 const NAMES = [
@@ -350,7 +466,7 @@ export const armyStrength = (a: Army): number => strengthVs(a);
 export function income(c: Campaign, f: number): number {
   let n = 0;
   let held = 0;
-  for (const t of c.territories) if (t.owner === f) { n += territoryIncome(t, c.factions[f].civ); held++; }
+  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) - (weatherAt(c, t.id) === 'snow' ? 1 : 0)); held++; }
   return n + (c.factions[f].civ === 'persia' ? Math.floor(held / 3) : 0);
 }
 export function territoryIncome(t: Territory, civ = ''): number {
@@ -503,7 +619,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
   const round = (v: number) => Math.round(v * 10) / 10;
   c.pending = {
     armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
-    aStr: round((strengthVs(a, defenders(c, to)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1) * ageEdge(c, a.owner)), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
+    aStr: round((strengthVs(a, defenders(c, to)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1) * ageEdge(c, a.owner) * (weatherAt(c, to) ? WEATHER[weatherAt(c, to) as Sky].march : 1)), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
   };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
@@ -738,6 +854,7 @@ export function continueAI(c: Campaign): void {
         c.factions[0].supplies += 3;
         c.log.push(`${c.factions[c.ally].name} share 3 supplies with you.`);
       }
+      mapTurn(c);
       turnEvent(c);
       checkDominion(c);
       return;
@@ -760,18 +877,23 @@ function turnEvent(c: Campaign): void {
   const roll = rand(c);
   if (roll < 0.3) {
     f.supplies += 4;
+    mark(c, 'harvest', t.id);
     c.log.push(`A fine harvest in ${t.name} adds 4 to ${who} supplies.`);
   } else if (roll < 0.5 && a && a.owner === f.id && armySize(a) < MAX_ARMY) {
     a.units.infantry = (a.units.infantry ?? 0) + 1;
+    mark(c, 'volunteers', t.id);
     c.log.push(`Volunteers from ${t.name} join ${who} army.`);
   } else if (roll < 0.7 && a && a.owner === f.id && armySize(a) > 1) {
     casualties(a, 1);
+    mark(c, 'fever', t.id);
     c.log.push(`Fever in the camp at ${t.name} costs ${who} army a company.`);
   } else if (roll < 0.85 && t.buildings.includes('farm')) {
     t.buildings.splice(t.buildings.indexOf('farm'), 1);
+    mark(c, 'raiders', t.id);
     c.log.push(`Raiders burn the farmland of ${t.name}.`);
   } else {
     f.supplies = Math.max(0, f.supplies - 3);
+    mark(c, 'hard', t.id);
     c.log.push(`A hard season in ${t.name} costs 3 of ${who} supplies.`);
   }
 }
@@ -870,7 +992,7 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
 
 // ---- Real-time battles ----
 
-export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean }
+export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky }
 
 /** Turn the pending battle into a real-time match: each side fields the troops it has on the map. */
 export function battleConfig(c: Campaign): BattleConfig | null {
@@ -903,6 +1025,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const allyReserve = c.ally < 0 ? undefined : reserves(c, c.ally, p.to, p.armyId)[0];
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
+    ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [

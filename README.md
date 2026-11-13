@@ -225,6 +225,11 @@ neighbouring land.
   to agree to a truce or an alliance. An ally who loses land asks you to strike at whoever took it
   and thanks you if you do, and an ally with full stores shares with you when yours run low.
 - **Two ways to win.** Take every territory, or hold six in every ten for three turns running.
+- **Weather and events on the map.** The campaign map is drawn as an old chart (`src/client/overworld.ts`). Three
+  weather fronts cross it turn by turn (`frontsOf`, `weatherAt` in `src/sim/campaign.ts`): an army attacking into
+  rain, snow or dust fights at 85 to 90% strength, snow costs a land a supply, and the battle itself is fought in
+  that weather. Events are marked where they happen. Unrest ends in revolt unless the holder has an army there
+  when it comes to a head; a hoard pays whoever holds the land when it is dug up.
   A rival can win the same way, so a runaway neighbour has to be stopped.
 - **Each people plays differently on the map**, and each leader has a temperament: some are
   cautious builders, some raid at poor odds, some are quick to make peace.

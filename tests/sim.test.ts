@@ -8,7 +8,7 @@ import { MISSIONS, missionById, runMission } from '../src/sim/scenario';
 import { TEMPER_QUESTIONS, battleHabits, habitsWith, leaningWith, setTemperament, temperFrom, temperWord } from '../src/sim/temper';
 import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setLeaderCharacter, setLeaderPersona, speechText } from '../src/sim/leaders';
 import { BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, UNITS, styleOf } from '../src/sim/data';
-import { ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
+import { Campaign, WEATHER, HOARD_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -2772,5 +2772,46 @@ describe('day and night', () => {
     expect(g.sightOf(u)).toBe(Math.max(3, byDay - NIGHT_SIGHT));
     g.time = DAY_LENGTH * 1.1;
     expect(g.sightOf(u)).toBe(byDay);
+  });
+});
+
+describe('weather and events on the campaign map', () => {
+  const still = (kind: 'rain' | 'snow' | 'dust', x: number, y: number) => [{ kind, x, y, r: 40, vx: 0, vy: 0 }];
+  it('an army attacking into snow fights at 85% strength, and snow costs a land a supply', () => {
+    const make = () => { const c = newCampaign(5, 1, 1, 'hearth'); c.fronts = []; return c; };
+    const clear = make(), snowy = make();
+    const home = clear.territories.find((t) => t.capital === 0)!;
+    const to = home.adj.find((n) => clear.territories[n].owner < 0)!;
+    snowy.fronts = still('snow', snowy.territories[to].x, snowy.territories[to].y);
+    expect(weatherAt(snowy, to)).toBe('snow');
+    expect(weatherAt(clear, to)).toBe('');
+    const army = (c: Campaign) => c.armies.find((a) => a.owner === 0)!.id;
+    expect(moveArmy(clear, army(clear), to)).toBe('battle');
+    expect(moveArmy(snowy, army(snowy), to)).toBe('battle');
+    expect(snowy.pending!.aStr).toBeCloseTo(clear.pending!.aStr * WEATHER.snow.march, 0);
+    expect(snowy.pending!.aStr).toBeLessThan(clear.pending!.aStr);
+    const c = make();
+    const before = income(c, 0);
+    c.fronts = still('snow', home.x, home.y);
+    expect(income(c, 0)).toBe(before - 1);
+    expect(battleConfig(snowy)!.weather).toBe('snow');
+  });
+
+  it('unrest left without a garrison ends in revolt; a hoard pays whoever holds the land', () => {
+    const c = newCampaign(5, 1, 1, 'hearth');
+    c.fronts = [];
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const land = c.territories[home.adj.find((n) => c.territories[n].owner < 0)!];
+    land.owner = 0;
+    c.events = [{ kind: 'unrest', at: land.id, turn: c.turn, until: c.turn }, { kind: 'hoard', at: home.id, turn: c.turn, until: c.turn }];
+    const twin: Campaign = JSON.parse(JSON.stringify(c));
+    twin.events = [{ kind: 'unrest', at: land.id, turn: c.turn, until: c.turn }];
+    endTurn(c);
+    endTurn(twin);
+    expect(c.events!.some((e) => e.kind === 'revolt' && e.at === land.id)).toBe(true);
+    expect(c.log.some((l) => l.includes('has risen'))).toBe(true);
+    expect(c.events!.some((e) => e.kind === 'found' && e.at === home.id)).toBe(true);
+    expect(c.factions[0].supplies - twin.factions[0].supplies).toBe(HOARD_PRIZE);
+    expect(eventsAt(c, home.id)[0].kind).toBe('found');
   });
 });

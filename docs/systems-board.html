@@ -82,11 +82,11 @@ footer { color: var(--dim); font-size: 13px; }
 <div class="wrap">
   <div class="top">
     <h1>Hearth &amp; Empire Systems Board</h1>
-    <p>Every system in the game, how far along it is, and what it still lacks. 45 systems, 124 known gaps. Pick a status to see only those.</p>
-    <div class="bar" role="img" aria-label="11 Working, 23 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:23"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
+    <p>Every system in the game, how far along it is, and what it still lacks. 46 systems, 129 known gaps. Pick a status to see only those.</p>
+    <div class="bar" role="img" aria-label="11 Working, 24 Working, rough, 8 First pass, 3 Not built"><span class="solid" style="flex:11"></span><span class="rough" style="flex:24"></span><span class="thin" style="flex:8"></span><span class="none" style="flex:3"></span></div>
     <div class="filters" id="filters">
-      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">45</span></button>
-      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">23</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
+      <button id="f-all" data-f="all" aria-pressed="true">All <span class="n">46</span></button>
+      <button id="f-solid" data-f="solid" aria-pressed="false"><span class="dot solid"></span>Working <span class="n">11</span></button><button id="f-rough" data-f="rough" aria-pressed="false"><span class="dot rough"></span>Working, rough <span class="n">24</span></button><button id="f-thin" data-f="thin" aria-pressed="false"><span class="dot thin"></span>First pass <span class="n">8</span></button><button id="f-none" data-f="none" aria-pressed="false"><span class="dot none"></span>Not built <span class="n">3</span></button>
     </div>
   </div>
 
@@ -205,7 +205,7 @@ footer { color: var(--dim); font-size: 13px; }
   <ul class="has"><li>A Voice Booth file to send to friends</li><li>They can rename the leader, rewrite lines, and pick or add a portrait</li><li>Eight questions about how they rule set how the computer plays their nation</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No of 520 lines recorded</li><li>No of 13 nations have a portrait; the rest show a seal</li><li>The booth is untested with a real microphone, Safari or a phone</li></ul>
 </article></div></section>
-  <section class="area"><h2>Campaign <span class="n">6</span></h2><div class="grid"><article class="sys solid" data-status="solid">
+  <section class="area"><h2>Campaign <span class="n">7</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>World map</h3><span class="pill solid">Working</span></header>
   <p class="what">A new map of territories each time, taken turn by turn.</p>
   <ul class="has"><li>Territories with traits and 6 kinds of site to build</li><li>Coasts, harbours and sea landings</li><li>Supplies as income</li></ul>
@@ -225,6 +225,11 @@ footer { color: var(--dim); font-size: 13px; }
   <p class="what">Advance your nation and win the world.</p>
   <ul class="has"><li>Campaign ages that strengthen armies</li><li>Win by conquest or by holding most of the map</li></ul>
   <p class="nogap">No known gaps</p>
+</article><article class="sys rough" data-status="rough">
+  <header><h3>The map as a map</h3><span class="pill rough">Working, rough</span></header>
+  <p class="what">How the campaign map is drawn, and the weather and events that cross it.</p>
+  <ul class="has"><li>Drawn as an old chart: mottled parchment browned at the edges, a ruled frame, a compass rose, names lettered in italic</li><li>Each people's land is washed in its colour, strong along the borders and thinning inland; borders are inked, firm between peoples and broken within one</li><li>The lie of the land is inked in: mountains for high ground and gold hills, ploughed strips for rich soil, grass for horse plains, waves for coasts, firs in the north and round trees elsewhere</li><li>Dotted roads between neighbouring lands; a walled town with a banner at each capital and a keep on fortified land</li><li>Armies are standards: a shield with their numbers under a pennant in their colour</li><li>Three weather fronts cross the map, moving every turn and drawn as drifting cloud with rain, snow or dust falling from it: snow out of the north, dust out of the south, rain between</li><li>Weather tells: an army attacking into it fights at 85 to 90% strength, snow costs a land a supply, and a battle fought there is fought in that weather</li><li>Events are marked where they happen with a seal: harvests, volunteers, fever, raiders, hard seasons</li><li>Two events last and can be acted on: unrest, which ends in revolt unless the holder has an army there, and a hoard, which pays whoever holds the land when it is dug up; both beat on the map until they are settled</li><li>Clicking a land lists its weather and events and what each does</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>Rival leaders take no account of weather or events: they do not garrison against unrest or march for a hoard</li><li>No sea is drawn: coasts are marked with waves but the map is all land</li><li>No rivers</li><li>Weather and the new events were tried over eight turns of one campaign, not played through</li><li>The map does not scroll or zoom, and armies do not move across it: they are simply drawn where they now stand</li></ul>
 </article><article class="sys none" data-status="none">
   <header><h3>Faith on the world map</h3><span class="pill none">Not built</span></header>
   <p class="what">Piety and decadence across a whole campaign.</p>
@@ -316,7 +321,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>114 tests, all passing</li></ul>
+  <ul class="has"><li>116 tests, all passing</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li></ul>
 </article><article class="sys thin" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>
