@@ -863,7 +863,7 @@ export const CIVS: Record<string, CivDef> = {
 };
 Object.assign(CIVS, {
   dawn: {
-    id: 'dawn', name: 'Dawnsworn', icon: '🕎', desc: 'A people of priests and prophets.', unique: 'zealot', unique2: 'templar',
+    id: 'dawn', name: 'Dawnsworn', icon: '🌅', desc: 'A people of priests and prophets.', unique: 'zealot', unique2: 'templar',
     bonuses: ['Priests, Prophets and other healers cost 25% less', 'Prophets regain faith 50% faster', 'Healers mend 30% faster'],
     apply: (m: Mods) => { m.clergyCost = 0.75; m.faith = 1.5; m.heal += 0.3; },
   },
