@@ -47,6 +47,12 @@ if (real.length) {
 }
 for (const f of clashes) { tryGit('checkout', '--ours', '--', f); tryGit('add', '--', f); }
 
+// If the trunk brought new packages, they are installed before anything is built or tested.
+if (git('diff', '--name-only', `${start}...${trunk}`, '--', 'package-lock.json')) {
+  say('the packages have changed; installing.');
+  if (spawnSync('npm', ['ci', '--silent'], { stdio: 'inherit' }).status) { if (CHECK) undo(); stop('npm ci failed'); }
+}
+
 // Whatever came in, the built pages are made again from the merged sources, so they are never stale.
 try {
   npm('assets');
