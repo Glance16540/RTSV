@@ -2368,7 +2368,7 @@ describe('the thirteen nations', () => {
 });
 
 describe('men and women as leaders', () => {
-  it('every nation but the Hebrews offers a leader of each sex, and the game uses whichever is chosen', () => {
+  it('every nation but the Dawnsworn offers a leader of each sex, and the game uses whichever is chosen', () => {
     for (const id of CIV_IDS) {
       const l = LEADERS[id];
       if (id === 'dawn') { expect(l.female).toBe(false); expect(l.alt).toBeUndefined(); continue; }
@@ -2389,7 +2389,7 @@ describe('men and women as leaders', () => {
     expect(speechText({ civ: 'england', event: 'win', index: 0 })).toBe(LEADERS.england.lines.win[0]);
     setLeaderPersona('england', false);
     expect(speechText({ civ: 'england', event: 'intro', index: 0 })).toContain('Godric');
-    // The Hebrews have one leader whatever is asked for.
+    // The Dawnsworn have one leader whatever is asked for.
     setLeaderPersona('dawn', true);
     expect(leaderOf('dawn')!.name).toBe('Eliab the Seer');
     setLeaderPersona('dawn', false);
