@@ -2375,20 +2375,18 @@ describe('men and women as leaders', () => {
       expect(l.alt).toBeTruthy();
       expect(l.alt!.female).toBe(!l.female);
       expect(l.alt!.name).not.toBe(l.name);
-      // They speak every line; only the ones that name them differ.
+      // Each has a full set of lines of their own.
       const lines = personaLines(id, true);
       for (const e of LEADER_EVENTS) expect(lines[e].length).toBe(2);
       expect(lines.intro[0]).not.toBe(l.lines.intro[0]);
-      // Marta of the Arameans has every line her own; the rest share all but the ones that name them.
-      if (id === 'dawn') for (const e of LEADER_EVENTS) expect(lines[e]).not.toEqual(l.lines[e]);
-      else expect(lines.attack).toEqual(l.lines.attack);
+      for (const e of LEADER_EVENTS) for (const t of lines[e]) expect(l.lines[e]).not.toContain(t);
     }
     expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(13);
     expect(leaderOf('england')!.name).toBe('Earl Godric of Wessex');
     setLeaderPersona('england', true);
     expect(leaderOf('england')!.name).toBe('Countess Edith of Wessex');
     expect(speechText({ civ: 'england', event: 'intro', index: 0 })).toContain('Edith');
-    expect(speechText({ civ: 'england', event: 'win', index: 0 })).toBe(LEADERS.england.lines.win[0]);
+    expect(speechText({ civ: 'england', event: 'win', index: 0 })).toBe(LEADERS.england.alt!.lines.win![0]);
     setLeaderPersona('england', false);
     expect(speechText({ civ: 'england', event: 'intro', index: 0 })).toContain('Godric');
     setLeaderPersona('dawn', true);

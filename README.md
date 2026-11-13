@@ -313,8 +313,8 @@ for a holy town, an ordinary one and a decadent one. The booth's "Or speak for t
 three voices to a part; a recording named by `folkKey` in `public/assets/voice/` is played when one of them is
 clicked on, ordered, or caught in a raid (`bark` in `src/client/voice.ts`).
 
-Every nation offers two leaders, a man and a woman, who speak the same lines
-apart from the ones that name them (Marta of the Arameans has a full set of her own). The booth lists both, and the zip records which was voiced, so
+Every nation offers two leaders, a man and a woman, each with a full set of lines of their own.
+The booth lists both, and the zip records which was voiced, so
 the game is led by whichever leader your friend played.
 
 The leader is only a starting point. In the booth your friend can rename them, give them a new
