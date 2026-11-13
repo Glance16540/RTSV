@@ -10,7 +10,7 @@ import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
-import { RealPerson, hold, loadPeople, makePerson, peopleReady, play } from './person';
+import { RealPerson, drawnReal, hold, lasts, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS, wobble } from './shapes';
@@ -438,7 +438,7 @@ export class Renderer {
     let turned: number | null = null;
     // Healed back past a stage, they are made whole again: gear restored, clothes mended.
     const mended = !!v && !!v.rig && v.hurt > (u.hp < u.maxHp * 0.33 ? 2 : u.hp < u.maxHp * 0.66 ? 1 : 0);
-    const real = this.realPeople && peopleReady() && u.type === 'villager' && u.gender === 'm' && u.growT <= 0;
+    const real = this.realPeople && peopleReady() && drawnReal(u.type) && u.growT <= 0;
     if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real)) {
       // Re-equipped by an upgrade, or set to a new trade: swap the model.
       turned = v.g.rotation.y;
@@ -447,7 +447,7 @@ export class Renderer {
     }
     if (!v) {
       ofPeople(this.game.players[u.owner].civ);
-      const made = real ? makePerson({ ...lookOf(this.game.players[u.owner].civ, u.id), tunic: this.game.players[u.owner].color, seed: u.id }) : null;
+      const made = real ? makePerson(outfitFor(u.type, u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear)) : null;
       v = { g: made?.g ?? makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, wear, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
       v.rig = this.still || made ? null : rigBiped(v.g);
@@ -970,16 +970,29 @@ export class Renderer {
   }
 
   /** Sets a figure's joints from the recorded motion that fits what it is doing. */
-  /** Chooses the recorded motion for what a villager is doing, and puts the tool of the trade in his hand. */
+  /** Chooses the recorded motion for what someone is doing, and puts the tool of the trade in a villager's hand. */
   private poseReal(u: Unit, p: RealPerson, job: Job, dt: number): void {
-    hold(p, job === 'wood' ? 'axe' : job === 'mine' ? 'pick' : job === 'build' ? 'hammer' : job === 'farm' ? 'hoe' : '');
-    if (u.attackAnim > 0 && !u.moving) {
-      if (job === 'wood' || job === 'mine') play(p, 'Sword_Attack', 1.1);
-      else if (job === 'build') play(p, 'Fixing_Kneeling', 1);
-      else if (job === 'farm' || job === 'forage' || job === 'hunt') play(p, 'PickUp_Table', 1);
-      else play(p, 'Punch_Jab', 1.2);
-    } else if (u.moving) play(p, 'Jog_Fwd_Loop', Math.max(0.8, Math.min(1.5, u.def.speed / 1.9)));
-    else play(p, 'Idle_Loop', 1);
+    const jog = Math.max(0.8, Math.min(1.5, u.def.speed / 1.9));
+    if (p.soldier) {
+      // A blow is played through once from the moment it is struck, whatever the sim's own short timer says.
+      const striking = u.attackAnim > 0;
+      if (striking && !p.struck) { p.strike = lasts(p, 'Sword_Attack') / 1.5; p.now = ''; }
+      p.struck = striking;
+      p.strike -= dt;
+      if (p.strike > 0) play(p, 'Sword_Attack', 1.5, true);
+      else if (u.moving) play(p, 'Jog_Fwd_Loop', jog);
+      else play(p, u.order?.t === 'attack' ? 'Sword_Idle' : 'Idle_Loop', 1);
+    } else {
+      hold(p, job === 'wood' ? 'axe' : job === 'mine' ? 'pick' : job === 'build' ? 'hammer' : job === 'farm' ? 'hoe' : '');
+      if (u.attackAnim > 0 && !u.moving) {
+        if (job === 'wood' || job === 'mine') play(p, 'Sword_Attack', 1.1);
+        else if (job === 'build') play(p, 'Fixing_Kneeling', 1);
+        else if (job === 'farm' || job === 'forage' || job === 'hunt') play(p, 'PickUp_Table', 1);
+        else play(p, 'Punch_Jab', 1.2);
+      } else if (u.moving) play(p, 'Jog_Fwd_Loop', jog);
+      // Standing about, some of them pass the time of day.
+      else play(p, (Math.floor(this.clock / 7) + u.id) % 4 === 0 ? 'Idle_Talking_Loop' : 'Idle_Loop', 1);
+    }
     p.mixer.update(dt);
   }
 
