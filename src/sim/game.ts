@@ -271,6 +271,8 @@ export type GameEvent =
   | { t: 'signal'; player: number; x: number; y: number }
   | { t: 'gameover'; winner: number };
 
+/** A building left standing after a battle: [type, cx, cy, health], health being the share of it left, 0 to 1 (whole if not given). */
+export type Standing = [type: string, cx: number, cy: number, health?: number];
 /** What has been taken from a battlefield for good: see `Game.ground`. */
 export interface Ground { gone: number[]; left: [number, number][] }
 const LASTING = new Set(['tree', 'berries', 'stone', 'gold']);
@@ -291,7 +293,7 @@ export interface PlayerSetup {
   /** `armed`: the side already has every weapon upgrade of its starting age. */
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
-  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: [string, number, number][] };
+  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[] };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -459,13 +461,16 @@ export class Game {
         }
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
         // What was left standing here after the last battle still stands, unless another camp is pitched on it.
-        for (const [type, cx, cy] of s.bonus.town ?? []) {
+        for (const [type, cx, cy, health] of s.bonus.town ?? []) {
           const def = BUILDINGS[type];
           if (!def || !Number.isInteger(cx) || !Number.isInteger(cy)) continue;
           if (this.spec.starts.some((o, k) => k !== i && Math.hypot(o.x - cx - def.size / 2, o.y - cy - def.size / 2) < 10)) continue;
           // It was built on ground cleared of wood or stone, and that ground is still clear.
           for (const r of this.resources.filter((r) => r.cx < cx + def.size && r.cx + r.size > cx && r.cy < cy + def.size && r.cy + r.size > cy)) this.kill(r);
-          if (this.canPlace(type, cx, cy)) this.spawnBuilding(type, i, cx, cy, true);
+          if (!this.canPlace(type, cx, cy)) continue;
+          const b = this.spawnBuilding(type, i, cx, cy, true);
+          // It is as battered as the last battle left it.
+          if (typeof health === 'number' && health > 0 && health < 1) b.hp = Math.max(1, Math.round(b.maxHp * health));
         }
         // Works the land is known for are raised if they are not there already.
         const have: Record<string, number> = {};
@@ -796,6 +801,12 @@ export class Game {
     let lo = Infinity, hi = -Infinity;
     for (let y = cy; y < cy + s; y++) for (let x = cx; x < cx + s; x++) { const h = this.spec.height[y * this.size + x]; lo = Math.min(lo, h); hi = Math.max(hi, h); }
     return hi - lo > (s > 1 ? 0.4 : 0.6);
+  }
+
+  /** A side's finished buildings as they stand, each with the share of its health left: what `bonus.town` takes. */
+  standing(owner: number): Standing[] {
+    return this.buildings.filter((b) => b.owner === owner && b.complete && !b.dead)
+      .map((b) => (b.hp < b.maxHp ? [b.type, b.cx, b.cy, Math.max(0.01, Math.round((b.hp / b.maxHp) * 100) / 100)] : [b.type, b.cx, b.cy]));
   }
 
   /**

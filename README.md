@@ -290,7 +290,8 @@ neighbouring land.
   to fight there, with the holder in the town's corner and the attacker camped opposite. What the map
   says is built on a land (Farmland, Barracks, Archery Range, Stable, Harbour) stands in its town when
   a siege begins. What the victor has standing when a siege ends is kept (`Territory.town`) and is
-  there the next time that land is fought over: hold a land and you defend the town you built; take
+  there the next time that land is fought over: damage and all, so a battered
+  wall or hall is still battered and must be mended in the next fight: hold a land and you defend the town you built; take
   one and your camp becomes its town. A Barracks, Range, Stable, Farm or Dock you built in a siege you
   won also goes up on the map, where the land has a free slot. A land taken by auto-resolve changes
   hands as it stands, less its towers and walls. Field battles are fought away from the town.
