@@ -70,7 +70,7 @@ export class WorldMap {
   private paintTex: THREE.CanvasTexture;
   private seaTex: THREE.CanvasTexture;
   private seaTime = { value: 0 };
-  private lanes: { a: number; b: number; mat: THREE.MeshBasicMaterial }[] = [];
+  private lanes: { a: number; b: number; mat: THREE.MeshBasicMaterial; rim: THREE.MeshBasicMaterial }[] = [];
   private shadeTex: THREE.Texture | null = null;
   private cloudTex: THREE.Texture | null = null;
   /** Everything that is rebuilt when the campaign changes: towns, armies, names, marks. */
@@ -398,10 +398,10 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
     // ---- sea lanes: where a march goes by water, the crossing is marked on the sea in pale dashes, shore to shore ----
     // Faint until one shore or the other has a harbour to sail from.
     const dm = new THREE.Matrix4(), dq = new THREE.Quaternion(), dv = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), yUp = new THREE.Vector3(0, 1, 0);
-    const dash = new THREE.PlaneGeometry(0.8, 0.3).rotateX(-Math.PI / 2);
+    const dash = new THREE.PlaneGeometry(1.25, 0.42).rotateX(-Math.PI / 2), rimDash = new THREE.PlaneGeometry(1.55, 0.72).rotateX(-Math.PI / 2);
     for (const l of c.lanes ?? []) {
       const t = c.territories[l.a], u = c.territories[l.b], mx = (t.x + u.x) / 2 + (u.y - t.y) * 0.08, my = (t.y + u.y) / 2 - (u.x - t.x) * 0.08;
-      const n = Math.max(8, Math.round(Math.hypot(u.x - t.x, u.y - t.y) / 9)), dashes: THREE.Matrix4[] = [];
+      const n = Math.max(8, Math.round(Math.hypot(u.x - t.x, u.y - t.y) / 11)), dashes: THREE.Matrix4[] = [];
       const at = (k: number): [number, number] => { const f = k / n, g = 1 - f; return [g * g * t.x + 2 * g * f * mx + f * f * u.x, g * g * (t.y + 8) + 2 * g * f * (my + 8) + f * f * (u.y + 8)]; };
       for (let k = 1; k < n; k += 2) {
         const [x, y] = at(k), [x2, y2] = at(k + 0.5);
@@ -410,12 +410,15 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
         dashes.push(dm.compose(dv.set(WX(x), 0.05, WZ(y)), dq, one).clone());
       }
       if (!dashes.length) continue;
-      const mat = new THREE.MeshBasicMaterial({ color: 0xf6ecc8, transparent: true, opacity: 0.4, depthWrite: false });
-      const lane = new THREE.InstancedMesh(dash, mat, dashes.length);
-      dashes.forEach((m, i) => lane.setMatrixAt(i, m));
-      lane.renderOrder = 1; // over the sea, which is see-through
-      this.scene.add(lane);
-      this.lanes.push({ a: l.a, b: l.b, mat });
+      // Each dash is pale on a dark edge, so it reads on bright shallows and dark deeps alike.
+      const mat = new THREE.MeshBasicMaterial({ color: 0xfff4cc, transparent: true, opacity: 0.6, depthWrite: false, fog: false });
+      const rimMat = new THREE.MeshBasicMaterial({ color: 0x0c2030, transparent: true, opacity: 0.35, depthWrite: false, fog: false });
+      const rim = new THREE.InstancedMesh(rimDash, rimMat, dashes.length), lane = new THREE.InstancedMesh(dash, mat, dashes.length);
+      dashes.forEach((m, i) => { rim.setMatrixAt(i, m); lane.setMatrixAt(i, m); });
+      rim.renderOrder = 1; lane.renderOrder = 2; // over the sea, which is see-through
+      lane.position.y = 0.01;
+      this.scene.add(rim, lane);
+      this.lanes.push({ a: l.a, b: l.b, mat, rim: rimMat });
     }
 
     // ---- what grows: fir in the cold and the high wet, broadleaf in green country, palm in the heat, stone in the dry ----
@@ -982,7 +985,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
   sync(c: Campaign, sel: number, reach: Set<number>): void {
     this.c = c;
     this.last = { sel, reach };
-    for (const l of this.lanes) l.mat.opacity = c.territories[l.a].buildings.includes('harbour') || c.territories[l.b].buildings.includes('harbour') ? 0.95 : 0.4;
+    for (const l of this.lanes) { const open = c.territories[l.a].buildings.includes('harbour') || c.territories[l.b].buildings.includes('harbour'); l.mat.opacity = open ? 1 : 0.6; l.rim.opacity = open ? 0.6 : 0.35; }
     for (const t of this.textures) t.dispose();
     this.textures = [];
     this.pieces.clear();
