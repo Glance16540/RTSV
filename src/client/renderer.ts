@@ -10,6 +10,7 @@ import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
+import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
 import { Outfit, RealPerson, astride, bear, drawnReal, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
@@ -22,7 +23,7 @@ const FOV = 30;
 
 /** One figure in a work camp's yard: a captive on their round, or a Slaver on guard. */
 interface CampFig { g: THREE.Group; rig: Rig | null; woman: boolean; guard: boolean; i: number; goal: 'out' | 'work' | 'in'; wait: number; in: boolean }
-interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh }; /** Drawn from the real human figure, not from blocks. */ real?: RealPerson; /** Riders and drivers drawn from the real figure, on a mount or car that is still built of blocks. */ riders?: { p: RealPerson; astride: boolean }[] }
+interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type: string; rig: Rig | null; work: number; job: Job; wear: number; hp: number; hurt: number; flesh: boolean; cls: string; naval: boolean; /** A rider in the saddle, and the height they sit at. */ seat?: THREE.Object3D; seatY?: number; /** A Slaver's prisoner, led behind on a rope. */ led?: { g: THREE.Group; rig: Rig | null; rope: THREE.Mesh }; /** Drawn from the real human figure, not from blocks. */ real?: RealPerson; /** Riders and drivers drawn from the real figure, on a mount or car that is still built of blocks. */ riders?: { p: RealPerson; astride: boolean }[]; /** Animals drawn from the real figures: a mount under its rider, or the unit itself. */ beasts?: Beast[]; /** The whole unit is one such animal. */ wildlife?: boolean }
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
 interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
@@ -146,7 +147,7 @@ export class Renderer {
     this.weather = new Weather(this.scene, game.climate);
     this.life = new Life(this.scene, game, (x, y) => this.scenery.heightAt(x, y));
     this.life.fogged = !this.noFog;
-    if (this.realPeople) loadPeople();
+    if (this.realPeople) { loadPeople(); loadBeasts(); }
     this.buildTrees();
     this.buildFog();
 
@@ -442,7 +443,10 @@ export class Renderer {
     const real = this.realPeople && peopleReady() && drawnReal(u.def.cls);
     const child = u.growT > 0;
     const ridden = this.realPeople && peopleReady() && (u.def.cls === 'cavalry' || u.def.cls === 'beast');
-    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real || (!!v.real && v.real.child !== child) || (ridden && !v.riders))) {
+    // Wolves, deer and hounds are each one animal, drawn whole from the real figure.
+    const animal: BeastKind | null = !this.realPeople ? null : u.type === 'wolf' ? 'wolf' : u.type === 'hound' ? 'husky' : u.type === 'deer' ? (u.id % 3 === 0 ? 'stag' : 'deer') : null;
+    const wild = !!animal && beastReady(animal);
+    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || mended || real !== !!v.real || (!!v.real && v.real.child !== child) || (ridden && !v.riders) || (wild && !v.wildlife) || (ridden && !v.beasts && beastReady('horse') && beastReady('wolf')))) {
       // Re-equipped by an upgrade, or set to a new trade: swap the model.
       turned = v.g.rotation.y;
       this.scene.remove(v.g);
@@ -451,9 +455,11 @@ export class Renderer {
     if (!v) {
       ofPeople(this.game.players[u.owner].civ);
       const made = real ? makePerson(outfitFor(u.type, u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child })) : null;
-      v = { g: made?.g ?? makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, wear, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
+      const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
+      v = { g: made?.g ?? creature?.g ?? makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, rig: null, work: 0, job, wear, hp: u.hp, hurt: 0, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
-      v.rig = this.still || made ? null : rigBiped(v.g);
+      v.rig = this.still || made || creature ? null : rigBiped(v.g);
+      if (creature) { v.beasts = [creature]; v.wildlife = true; }
       v.real = made?.real;
       v.g.traverse((o) => {
         if (o.userData.leg === undefined) return;
@@ -464,6 +470,7 @@ export class Renderer {
         else v!.legs.push(o);
       });
       if (ridden) this.mount(u, v);
+      if (ridden && !creature) this.steeds(u, v);
       v.g.rotation.order = 'YXZ'; // so leaning forward and rocking are in the unit's own frame, whichever way it faces
       this.unitViews.set(u.id, v);
       this.scene.add(v.g);
@@ -486,15 +493,15 @@ export class Renderer {
       roll = (sw(fz * 0.4, -fx * 0.4) - sw(-fz * 0.4, fx * 0.4)) * 0.11;
     } else if (u.moving) {
       v.phase += dt * u.def.speed * 5;
-      bob = v.rig || v.real ? 0 : mounted ? (0.5 - 0.5 * Math.cos(v.phase * 2)) * 0.05 : Math.abs(Math.sin(v.phase)) * 0.06;
-      pitch = mounted ? Math.sin(v.phase * 2) * 0.06 : v.real ? 0 : 0.07; // riders rock at the gallop; walkers lean into their stride
-      roll = mounted || v.rig || v.real ? 0 : Math.sin(v.phase) * 0.05;
+      bob = v.rig || v.real || v.wildlife ? 0 : mounted ? (0.5 - 0.5 * Math.cos(v.phase * 2)) * 0.05 : Math.abs(Math.sin(v.phase)) * 0.06;
+      pitch = v.wildlife ? 0 : mounted ? Math.sin(v.phase * 2) * 0.06 : v.real ? 0 : 0.07; // riders rock at the gallop; walkers lean into their stride
+      roll = mounted || v.rig || v.real || v.wildlife ? 0 : Math.sin(v.phase) * 0.05;
     } else {
       breathe = 1 + Math.sin(this.clock * 2.2 + v.phase) * 0.012; // standing, they still breathe
     }
     // A blow is struck with the whole body: a lunge forward and back.
-    const lunge = u.def.naval || u.def.cls === 'siege' || v.real ? 0 : swing * 0.14;
-    pitch += u.def.naval || u.def.cls === 'siege' || v.real ? 0 : u.def.cls === 'cavalry' ? -swing * 0.3 : swing * 0.16; // a horse rears to the blow
+    const lunge = u.def.naval || u.def.cls === 'siege' || v.real || v.wildlife ? 0 : swing * 0.14;
+    pitch += u.def.naval || u.def.cls === 'siege' || v.real || v.wildlife ? 0 : u.def.cls === 'cavalry' ? -swing * 0.3 : swing * 0.16; // a horse rears to the blow
     g.position.set(x + Math.sin(g.rotation.y) * lunge, bob + this.scenery.heightAt(x, y), y + Math.cos(g.rotation.y) * lunge);
     g.scale.set(size, size * breathe, size);
     g.rotation.x += (pitch - g.rotation.x) * Math.min(1, dt * 14);
@@ -503,6 +510,7 @@ export class Renderer {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
     if (v.rig) { this.pose(u, v, dt); }
+    for (const b of v.beasts ?? []) this.poseBeast(u, b, dt);
     for (const r of v.riders ?? []) this.poseReal(u, r.p, '', dt, 1, g.rotation.y, true, r.astride);
     if (v.real) {
       v.job = job;
@@ -1042,6 +1050,40 @@ export class Renderer {
     if (seated) astride(p, yaw);
   }
 
+  /** The gait of an animal: standing, walking or at the gallop as the unit moves, and its bite or kick when it strikes. */
+  private poseBeast(u: Unit, b: Beast, dt: number): void {
+    const striking = u.attackAnim > 0 && !!this.game.entities.get(u.id);
+    // Only an animal that fights with its own body plays an attack: a horse leaves the fighting to its rider.
+    const fights = b.kind === 'wolf' || b.kind === 'husky';
+    if (fights && striking && !b.struck) { b.strike = 0.6; b.now = ''; }
+    b.struck = striking;
+    b.strike -= dt;
+    if (fights && b.strike > 0) gait(b, 'Attack', 1.6, true);
+    else if (u.moving) (u.def.speed < 1.5 ? gait(b, 'Walk', Math.max(0.7, u.def.speed / 1.1)) : gait(b, 'Gallop', Math.max(0.7, Math.min(1.6, u.def.speed / 3.2))));
+    // A deer left alone puts its head down to graze from time to time.
+    else gait(b, (b.kind === 'deer' || b.kind === 'stag') && (Math.floor(this.clock / 6) + u.id) % 3 === 0 ? 'Eating' : (Math.floor(this.clock / 9) + u.id) % 4 === 0 ? 'Idle_2' : 'Idle', 1);
+    b.mixer.update(dt);
+  }
+
+  /** Put real animals in the place of the block horses and wolves that riders sit on and chariots are drawn by. */
+  private steeds(u: Unit, v: UnitView): void {
+    const at = new Map<THREE.Object3D, string>();
+    v.g.traverse((o) => { if (o.userData.steed && o.parent) at.set(o.parent, o.userData.steed as string); });
+    if (!at.size) { v.beasts = []; return; } // a camel, a mammoth: no real animal for these yet
+    for (const kind of at.values()) if (!beastReady(kind as BeastKind)) return; // not arrived yet: keep the blocks for now
+    v.beasts = [];
+    let i = 0;
+    for (const [parent, kind] of at) {
+      const b = makeBeast(kind as BeastKind, kind === 'wolf' ? 0.5 : 0.7, u.id + i++, kind === 'wolf' ? 0x4a4a52 : null);
+      if (!b) continue;
+      for (const c of parent.children) if (c.userData.steed) c.visible = false;
+      // The old mount was built about its own middle with its back near 0.76 up: sit the new one to match.
+      b.g.position.set(0, 0, 0.06);
+      parent.add(b.g);
+      v.beasts.push(b);
+    }
+  }
+
   /** Put real figures in the place of the block riders and drivers of a mount or a car. */
   private mount(u: Unit, v: UnitView): void {
     const seats: THREE.Object3D[] = [];
@@ -1391,7 +1433,14 @@ export class Renderer {
       const d = this.dying[i];
       d.t += dt;
       const rig = d.v.rig;
-      if (d.v.real) {
+      if (d.v.wildlife && d.v.beasts?.length) {
+        // The animal's own fall.
+        gait(d.v.beasts[0], 'Death', 1, true);
+        d.v.beasts[0].mixer.update(dt);
+        d.g.rotation.x = d.g.rotation.z = 0;
+        if (d.t > 6) d.g.position.y -= dt * 0.12;
+        if (d.t > 9) { this.scene.remove(d.g); this.dying.splice(i, 1); }
+      } else if (d.v.real) {
         // The recorded fall, then the body lies a while and sinks into the ground.
         play(d.v.real, 'Death01', 1, true);
         d.v.real.mixer.update(dt);

@@ -414,7 +414,7 @@ function arm(g: THREE.Object3D, y = 0, sleeve = SKIN, slim = 1): THREE.Group {
 }
 
 function horse(g: THREE.Object3D, color: number, armor = 0): void {
-  const dark = 0x2a1e16;
+  const dark = 0x2a1e16, from = g.children.length;
   cap(g, 0.17, 0.88, color, 0, 0.56, 0).rotation.x = Math.PI / 2;
   ball(g, 0.185, color, 0, 0.58, -0.26); // the quarters
   ball(g, 0.175, color, 0, 0.57, 0.27); // the chest
@@ -440,6 +440,8 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
   cap(t, 0.035, 0.34, dark, 0, -0.15, -0.03).rotation.x = -0.25;
   g.add(t);
   g.userData.tail = t;
+  // Marked, so a horse drawn from the real animal can take the place of these parts. The saddle cloth stays.
+  for (const c of g.children.slice(from)) if (c !== cloth) c.userData.steed = 'horse';
 }
 
 /** The joints of a figure on foot, turned by the recorded motions. */
@@ -1322,6 +1324,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
       for (const x of [-0.09, 0.09]) box(g, 0.06, 0.12, 0.05, 0x2c2c32, x, 0.84, 0.5);
       [[-0.1, 0.32], [0.1, 0.32], [-0.1, -0.32], [0.1, -0.32]].forEach(([x, z], i) => leg(g, 0.08, 0.36, 0x3a3a42, x, z, i % 3 ? Math.PI : 0));
       box(g, 0.08, 0.08, 0.4, fur, 0, 0.56, -0.6).rotation.x = 0.5;
+      for (const c of g.children) c.userData.steed = 'wolf';
       const r = new THREE.Group();
       r.position.y = 0.36;
       r.scale.setScalar(0.9);

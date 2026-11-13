@@ -1,0 +1,1 @@
+horse.json, wolf.json, deer.json, stag.json, husky.json (glTF files with their data embedded): from the Ultimate Animated Animal Pack by Quaternius, https://quaternius.com/packs/ultimateanimatedanimals.html, released under CC0 1.0. Trimmed to the motions the game uses.
