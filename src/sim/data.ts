@@ -115,7 +115,11 @@ export interface UnitDef {
   civ?: string;
   /** A ship: moves on water only. */
   naval?: boolean;
-  /** A pagan unit: a town that keeps the faith (Devout or Righteous) will not train it. */
+  /**
+   * A pagan unit: a town that keeps the faith (Devout or Righteous) will not train it. The owner has settled which:
+   * the Shaman and the Slaver. The Berserker was marked before that and has been left so; the Prophet is not pagan
+   * (his power is the town's own faith), and no nation's own unit is. tests/pagan.test.ts holds the list.
+   */
   pagan?: boolean;
   /** Only a holy town, or only a decadent one, can train it. */
   needs?: 'holy' | 'decadent';
@@ -504,7 +508,7 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   slaver: U({
     id: 'slaver', name: 'Slaver', icon: '⛓️',
-    desc: 'Only a Decadent town will train him. Right-click an enemy villager to seize him and lead him back to a Work Camp. If the Slaver is killed on the way, the captive goes free.',
+    desc: 'Only a Decadent town will train him. Right-click an enemy villager to seize him and lead him back to a Work Camp. If the Slaver is killed on the way, the captive goes free. Pagan: a town that keeps the faith will not have him.', pagan: true,
     cost: { food: 60, gold: 60 }, time: 20, age: 1, hp: 75, atk: 4, armor: 0, range: 0.5, speed: 2.6,
     cooldown: 1.5, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, needs: 'decadent', slaver: true,
   }),
