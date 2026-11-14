@@ -12,6 +12,8 @@ const paint = () => new Promise<void>((r) => {
   const t = setTimeout(r, 80); // a hidden tab draws nothing, and must not wait for ever
   requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(t); r(); }));
 });
+/** The way the menu's camera faces to look into the sunrise: the sun comes up where the renderer puts its dawn light. */
+const SUNRISE = Math.atan2(46, -20) + 0.15; // a little past it, so the sun stands clear of the leaf on the left
 const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
 const TIPS = [
@@ -155,7 +157,7 @@ export class Title {
     this.panel.querySelector('[data-for="settings"]')!.append(settings);
     if (panel) this.show(panel);
     if (!this.art) {
-      this.app.r.cine = { yaw: YAW - 0.5, pitch: 0.4 };
+      this.app.r.cine = { yaw: SUNRISE, pitch: 0.13 };
       this.app.r.fogScale = 0.3;
     }
     this.last = performance.now();
@@ -228,10 +230,12 @@ export class Title {
     } else {
       this.t += calm ? 0 : dt;
       if (r.cine) {
-        const yaw = YAW - 0.5 + this.t * 0.014;
+        // Low over the roofs and looking east, so that the sky is in the picture with the morning sun in it;
+        // the view swings slowly from one side of the sunrise to the other and back.
+        const yaw = SUNRISE + Math.sin(this.t * 0.021) * 0.12;
         r.cine.yaw = yaw;
-        r.cine.pitch = 0.4 + Math.sin(this.t * 0.05) * 0.04;
-        r.dist = 30 + Math.sin(this.t * 0.037) * 3;
+        r.cine.pitch = 0.13 + Math.sin(this.t * 0.05) * 0.015;
+        r.dist = 34 + Math.sin(this.t * 0.037) * 3;
         // The menu stands on the left, so the camera looks a little to the left of the town and the town sits right of it.
         const off = Math.min(7, window.innerWidth / 220);
         r.cx = this.home.x - Math.cos(yaw) * off;

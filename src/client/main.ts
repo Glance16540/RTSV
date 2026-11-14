@@ -6,6 +6,7 @@ import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets, musicUrl } from './assets';
 import { loader, playOpening, Title } from './title';
 import { CampaignPrimer } from './primer';
+import { DAY_LENGTHS } from '../sim/daylight';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
@@ -401,21 +402,25 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   }
 
   // ---- Settings kept between visits ----
-  const prefs = { volume: 0.5, music: true, edge: true, scroll: 1, ...JSON.parse((() => { try { return localStorage.getItem('rtsv-prefs') ?? '{}'; } catch { return '{}'; } })()) };
+  const prefs = { volume: 0.5, music: true, edge: true, scroll: 1, day: 300, night: true, lights: true, ...JSON.parse((() => { try { return localStorage.getItem('rtsv-prefs') ?? '{}'; } catch { return '{}'; } })()) };
   const applyPrefs = () => {
     sfx.setVolume(prefs.volume);
     sfx.music = prefs.music;
     app.input.edgeScroll = prefs.edge;
     app.input.scrollSpeed = prefs.scroll;
+    // The day is the player's to set: how long it lasts, whether night falls, and whether lamps cast real light.
+    app.game.dayLength = DAY_LENGTHS.includes(prefs.day) ? prefs.day : 300;
+    app.game.nightless = !prefs.night;
+    app.r.lamplight = prefs.lights;
     try { localStorage.setItem('rtsv-prefs', JSON.stringify(prefs)); } catch { /* storage unavailable */ }
   };
-  const bind = (id: string, key: 'volume' | 'scroll' | 'music' | 'edge') => {
+  const bind = (id: string, key: 'volume' | 'scroll' | 'music' | 'edge' | 'day' | 'night' | 'lights') => {
     const input = el(id) as HTMLInputElement;
     if (input.type === 'checkbox') input.checked = prefs[key] as boolean;
     else input.value = String(prefs[key]);
     input.addEventListener('input', () => { (prefs[key] as number | boolean) = input.type === 'checkbox' ? input.checked : Number(input.value); applyPrefs(); });
   };
-  bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll');
+  bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll'); bind('pref-day', 'day'); bind('pref-night', 'night'); bind('pref-lights', 'lights');
   applyPrefs();
 
   // ---- Missions ----

@@ -8,6 +8,7 @@ import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS, powersHeld } from '..
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
 import { updateHallClock } from './hallclock';
+import { gatePanel } from './gate';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -539,6 +540,7 @@ export class Hud {
       const w = want(game.players[b.owner]);
       if (w) body += `<div class="${w === 'famine' ? 'bad' : 'warn'}">${w === 'famine' ? '💀 Famine: someone is lost every half minute until there is food in the store' : '🍞 Going hungry: the store is bare and nothing is coming in'}</div>`;
     }
+    if (b.def.guards) body += gatePanel(game, b, pid);
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
     else if (mine) {
@@ -742,8 +744,8 @@ export class Hud {
     const w = this.app.game.foul, d = this.app.game.dayT;
     // The hour, always shown: a day is five minutes, the last three tenths of it night.
     const [hi, hn, ht] = d >= 0.7 ? ['🌙', 'Night', 'Night. Units see two tiles less; buildings keep their lights. A work camp shuts its captives in until dawn.']
-      : d < 0.08 ? ['🌅', 'Dawn', 'Dawn. A day is five minutes; night comes at the end of it.'] : d < 0.28 ? ['🌤️', 'Morning', 'Morning.'] : d < 0.42 ? ['☀️', 'Midday', 'Midday.']
-        : d < 0.62 ? ['🌤️', 'Afternoon', 'Afternoon.'] : ['🌇', 'Dusk', 'Dusk. Night is coming: units will see two tiles less.'];
+      : d < 0.08 ? ['🌅', 'Dawn', `Dawn. A day is ${this.app.game.dayLength / 60} minutes${this.app.game.nightless ? ', and you have set no night to fall' : '; night comes at the end of it'}. Both can be changed in Settings.`] : d < 0.28 ? ['🌤️', 'Morning', 'Morning.'] : d < 0.42 ? ['☀️', 'Midday', 'Midday.']
+        : d < 0.62 ? ['🌤️', 'Afternoon', 'Afternoon.'] : ['🌇', 'Dusk', this.app.game.nightless ? 'Dusk. You have set no night to fall: the day turns back toward morning.' : 'Dusk. Night is coming: units will see two tiles less.'];
     const moon = this.app.game.field ? '' : ` · <span title="${ht}">${hi} ${hn}</span>`;
     if (!w) return moon;
     const [icon, name, tip] = w === 'rain' ? ['🌧️', 'Rain', 'Bows and guns reach one tile less. Fires go out quickly.'] : w === 'snow' ? ['🌨️', 'Snow', 'Everyone moves slower off the roads.'] : ['🌪️', 'Dust storm', 'No one sees as far. Bows and guns reach one tile less.'];

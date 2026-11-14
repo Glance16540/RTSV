@@ -1,5 +1,6 @@
 // Mouse and keyboard: camera control, selection, orders and building placement.
 
+import { drawGates } from './gate';
 import { bark } from './voice';
 import { BUILDINGS } from '../sim/data';
 import { Entity, Unit } from '../sim/game';
@@ -381,7 +382,10 @@ export class Input {
       ctx.globalAlpha = 0.9;
       ctx.fillText('☠️', s.x, s.y);
     }
+    drawGates(ctx, game, pid, ppt, (x, y, h) => r.project(x, y, h), (b) => r.isVisible(b));
+    ctx.globalAlpha = 1;
     ctx.font = '22px sans-serif';
+    ctx.textAlign = 'center';
     for (const f of r.floaters) {
       const s = r.project(f.x, f.y, 1 + f.t * 0.8);
       ctx.globalAlpha = Math.min(1, 2 - f.t);
