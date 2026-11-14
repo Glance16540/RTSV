@@ -742,8 +742,8 @@ export class Hud {
     const w = this.app.game.foul, d = this.app.game.dayT;
     // The hour, always shown: a day is five minutes, the last three tenths of it night.
     const [hi, hn, ht] = d >= 0.7 ? ['🌙', 'Night', 'Night. Units see two tiles less; buildings keep their lights. A work camp shuts its captives in until dawn.']
-      : d < 0.08 ? ['🌅', 'Dawn', 'Dawn. A day is five minutes; night comes at the end of it.'] : d < 0.28 ? ['🌤️', 'Morning', 'Morning.'] : d < 0.42 ? ['☀️', 'Midday', 'Midday.']
-        : d < 0.62 ? ['🌤️', 'Afternoon', 'Afternoon.'] : ['🌇', 'Dusk', 'Dusk. Night is coming: units will see two tiles less.'];
+      : d < 0.08 ? ['🌅', 'Dawn', `Dawn. A day is ${this.app.game.dayLength / 60} minutes${this.app.game.nightless ? ', and you have set no night to fall' : '; night comes at the end of it'}. Both can be changed in Settings.`] : d < 0.28 ? ['🌤️', 'Morning', 'Morning.'] : d < 0.42 ? ['☀️', 'Midday', 'Midday.']
+        : d < 0.62 ? ['🌤️', 'Afternoon', 'Afternoon.'] : ['🌇', 'Dusk', this.app.game.nightless ? 'Dusk. You have set no night to fall: the day turns back toward morning.' : 'Dusk. Night is coming: units will see two tiles less.'];
     const moon = this.app.game.field ? '' : ` · <span title="${ht}">${hi} ${hn}</span>`;
     if (!w) return moon;
     const [icon, name, tip] = w === 'rain' ? ['🌧️', 'Rain', 'Bows and guns reach one tile less. Fires go out quickly.'] : w === 'snow' ? ['🌨️', 'Snow', 'Everyone moves slower off the roads.'] : ['🌪️', 'Dust storm', 'No one sees as far. Bows and guns reach one tile less.'];
