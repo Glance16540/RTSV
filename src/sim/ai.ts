@@ -99,7 +99,10 @@ export class AIController {
     if (this.founding && villagers.length) this.build('towncenter', g.spec.starts[pid], villagers, 0, 12);
     // With nowhere to bring wood and stone, there will never be enough for a hall: a storehouse comes first.
     if (this.founding && villagers.length && !g.canAfford(p, BUILDINGS.towncenter.cost) && !mine.some((b) => b.def.dropoff) && g.canAfford(p, BUILDINGS.storehouse.cost)) {
-      const at = this.findSpot('storehouse', g.spec.starts[pid].x, g.spec.starts[pid].y, 3, 10), v = at && this.pickBuilder(villagers, at.cx, at.cy);
+      // It goes beside what is most wanted, stone before wood, so that no one walks far with a load.
+      const st = g.spec.starts[pid], cost = BUILDINGS.towncenter.cost;
+      const node = (p.res.stone < (cost.stone ?? 0) ? g.findResourceNear(st.x, st.y, 'stone', pid, 40) : null) ?? g.findResourceNear(st.x, st.y, 'wood', pid, 40);
+      const at = (node && this.findSpot('storehouse', node.x, node.y, 2.5, 6)) ?? this.findSpot('storehouse', st.x, st.y, 3, 10), v = at && this.pickBuilder(villagers, at.cx, at.cy);
       if (at && v) g.cmdPlace(pid, 'storehouse', at.cx, at.cy, [v.id]);
     }
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
@@ -815,8 +818,11 @@ export class AIController {
     const p = g.players[pid];
     // With no hall to raise yet, the hands go to what a hall is made of.
     const cost = BUILDINGS.towncenter.cost, short = (r: ResType) => (this.founding && p.res[r] < (cost[r] ?? 0) ? 1 : 0);
+    // Every hand: no one hunts or digs gold while the hall is wanting, and each goes where the most is lacking.
+    const lack = (r: ResType) => Math.max(0, (cost[r] ?? 0) - p.res[r]) * short(r);
+    const scraping = lack('wood') + lack('stone') > 0;
     const want: Record<ResType, number> =
-      short('wood') || short('stone') ? { food: 0.2, wood: short('wood') ? (short('stone') ? 0.4 : 0.8) : 0, gold: 0, stone: short('stone') ? (short('wood') ? 0.4 : 0.8) : 0 }
+      scraping ? { food: 0, wood: lack('wood'), gold: 0, stone: lack('stone') }
         : p.age === 0 ? { food: 0.5, wood: 0.4, gold: 0.07, stone: 0.03 }
         : p.age === 1 ? { food: 0.42, wood: 0.3, gold: 0.2, stone: 0.08 }
           : { food: 0.38, wood: 0.24, gold: 0.3, stone: 0.08 };
@@ -825,12 +831,13 @@ export class AIController {
     const idle: Unit[] = [];
     let hunters = 0;
     for (const v of villagers) {
-      if (v.order?.t === 'gather') have[v.order.res]++;
+      if (scraping && v.order?.t === 'gather' && !lack(v.order.res) && !v.inside) { g.cmdStop(pid, [v.id]); idle.push(v); } // called off at once
+      else if (v.order?.t === 'gather') have[v.order.res]++;
       else if (v.order?.t === 'attack') { have.food++; hunters++; }
       else if (!v.order && !v.inside) idle.push(v);
     }
     // Lean away from whatever is already piling up and towards what is running out.
-    for (const r of order) want[r] *= p.res[r] < 100 ? 2.2 : p.res[r] < 250 ? 1.4 : p.res[r] > 1500 ? 0.25 : p.res[r] > 800 ? 0.6 : 1;
+    if (!scraping) for (const r of order) want[r] *= p.res[r] < 100 ? 2.2 : p.res[r] < 250 ? 1.4 : p.res[r] > 1500 ? 0.25 : p.res[r] > 800 ? 0.6 : 1;
     const sum = want.food + want.wood + want.gold + want.stone;
     for (const r of order) want[r] /= sum;
     const total = Math.max(1, villagers.length);
@@ -876,7 +883,7 @@ export class AIController {
           const drop = g.nearestDropoff(v);
           const far = !mine.some((b) => b.def.dropoff && Math.hypot(b.x - t!.x, b.y - t!.y) < 9);
           const near = Math.hypot(t.x - home.x, t.y - home.y) < 32; // do not plant outposts in the enemy's yard
-          if (drop && far && near && p.res.wood >= 60 && mine.filter((b) => b.type === 'storehouse').length < 6 && !mine.some((b) => b.type === 'storehouse' && !b.complete)) {
+          if (drop && far && near && !scraping && p.res.wood >= 60 && mine.filter((b) => b.type === 'storehouse').length < 6 && !mine.some((b) => b.type === 'storehouse' && !b.complete)) {
             const spot = this.findSpot('storehouse', t.x, t.y, 2.5, 6);
             if (spot) g.cmdPlace(pid, 'storehouse', spot.cx, spot.cy, [v.id]);
           }
