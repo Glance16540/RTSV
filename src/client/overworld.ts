@@ -415,7 +415,7 @@ export class Overworld {
       if (sky) seals.push([WEATHER[sky].icon, '#dfe6ee']);
       const place = placeAt(c, t.id);
       if (place) seals.push([PLACES[place.kind].icon, '#e6dcc0']);
-      for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun' ? '#e8c0b0' : '#f0e2a8']);
+      for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun' || e.kind === 'famine' || e.kind === 'plague' || e.kind === 'blaze' ? '#e8c0b0' : '#f0e2a8']);
       seals.forEach(([icon, paper], k) => {
         const sx = t.x + 40 + (k % 2) * 4, sy = t.y + 12 + k * 24;
         ctx.beginPath(); ctx.arc(sx, sy, 12, 0, 6.3); ctx.fillStyle = paper; ctx.fill();
