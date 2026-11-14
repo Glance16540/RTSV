@@ -2,8 +2,8 @@
 
 import { creedOf } from '../sim/creed';
 import { PLACES, WORLD_EVENTS } from '../sim/story';
-import { AGES, CIVS, CIV_IDS } from '../sim/data';
-import { Speech, leaderOf } from '../sim/leaders';
+import { AGES, CIVS, CIV_IDS, styleOf } from '../sim/data';
+import { LEADERS, Speech, leaderOf } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
 import { WorldMap } from './worldmap';
 import {
@@ -13,11 +13,21 @@ import {
   WORLD_SHAPES, worldOf, lanesOf, onSea,
 } from '../sim/campaign';
 
+import { Claim, canSucceed, claimants, comesOfAge, houseOf, ofAge, succeed } from '../sim/dynasty';
+import { RANK_NAMES } from '../sim/hero';
+import { heroFor } from '../sim/campaign';
+import { openHeroCreator, savedHero } from './herocreator';
+
+/** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
+export type LeaderChoice = 'a' | 'b' | 'own';
+
+const c0 = (c: Campaign): string => c.factions[0].civ;
+
 export interface OverworldHooks {
   save(): void;
   /** Leave for the real-time battle described by `campaign.pending`. */
   fight(): void;
-  newCampaign(rivals: number, level: number, civ: string): void;
+  newCampaign(rivals: number, level: number, civ: string, leader: LeaderChoice): void;
   exit(): void;
 }
 
@@ -106,6 +116,7 @@ export class Overworld {
       if (kind === 'raise') raise(this.c, 0, this.sel, id);
       if (kind === 'build') build(this.c, 0, this.sel, id);
       if (kind === 'hero') summonHero(this.c, 0, this.sel);
+      if (kind === 'succession') { this.askSuccession(); return; }
       if (kind === 'truce') offerTruce(this.c, Number(id));
       if (kind === 'ally') offerAlliance(this.c, Number(id));
       if (kind === 'gift') sendGift(this.c, Number(id));
@@ -153,6 +164,7 @@ export class Overworld {
     } else if (c.demand) this.askDemand();
     else if (c.pending) this.askBattle();
     else if (c.tale && c.phase === 'player' && taleNow(c)) this.askTale();
+    else if (c.phase === 'player' && c.factions[0].alive && !c.factions[0].heroAlive && !houseOf(c, 0).asked) this.askSuccession();
     else $('ow-dialog').classList.add('hidden');
   }
 
@@ -246,21 +258,54 @@ export class Overworld {
       [...(canPay ? [[`Pay ${d.amount} supplies`, () => answer(true)] as [string, () => void]] : []), ['Refuse', () => answer(false)]]);
   }
 
-  private askNew(): void {
+  /** Your leader has fallen: who follows them? An heir of age, a captain from the armies, or nobody yet. */
+  private askSuccession(): void {
+    const c = this.c, house = houseOf(c, 0), fallen = heroFor(c, 0).name;
+    const claims = claimants(c, 0);
+    const open = claims.filter((x) => canSucceed(c, 0, x));
+    const young = house.heirs.filter((h) => !ofAge(c, h)).map((h) => `${h.name} is ${comesOfAge(c, h)} ${comesOfAge(c, h) === 1 ? 'turn' : 'turns'} from coming of age`);
+    const line = (x: Claim) => `<br><b>${x.name}</b> <small>(${RANK_NAMES[x.rank]})</small>: ${x.what}`;
+    const text = (claims.length ? 'Who will lead your people now?' + claims.map(line).join('') : 'There is no heir of age, and no captain has yet made a name in your armies.') +
+      (claims.length > open.length ? '<br><small>An heir needs an army of yours to ride to.</small>' : '') +
+      (young.length ? `<br><small>${young.join('; ')}.</small>` : '') +
+      '<br><small>Until someone leads, your armies fight without a leader. A stranger can also be hired at your capital.</small>';
+    house.asked = true;
+    this.dialog(`${fallen} has fallen`, text, [
+      ...open.map((x): [string, () => void] => [`${x.kind === 'heir' ? '♛' : '⚔'} ${x.name.split(',')[0]}`, () => { succeed(c, 0, x); this.changed(); }]),
+      ['Decide later', () => this.changed()],
+    ]);
+  }
+
+  /** Begin a campaign: your people, who leads them, how many rivals and how hard. `first`: there is no campaign yet to replace. */
+  askNew(first = false): void {
     const el = $('ow-dialog');
-    el.innerHTML = `<div class="sheet small"><h1>New campaign</h1><p class="lead">A new world, new rivals. This replaces the campaign in progress.</p>
+    el.innerHTML = `<div class="sheet small"><h1>New campaign</h1><p class="lead">${first ? 'Choose your people and who will lead them.' : 'A new world, new rivals. This replaces the campaign in progress.'}</p>
       <label class="mapsize">Rivals <select id="ow-rivals"><option>1</option><option selected>2</option><option>3</option></select></label>
       <label class="mapsize">Your people <select id="ow-civ"><option value="">Surprise me</option>${CIV_IDS.map((id) => `<option value="${id}">${CIVS[id].icon} ${CIVS[id].name}</option>`).join('')}</select></label>
+      <label class="mapsize">Your leader <select id="ow-leader"></select></label>
+      <button id="ow-make" class="secondary" type="button">Make your own leader</button><br>
       <label class="mapsize">Difficulty <select id="ow-level"><option value="0">Easy</option><option value="1" selected>Normal</option><option value="2">Hard</option></select></label>
-      <div class="levels"><button id="ow-go">Begin</button><button id="ow-cancel">Cancel</button></div></div>`;
+      <div class="levels"><button id="ow-go">Begin</button><button id="ow-cancel">${first ? 'Keep the world as dealt' : 'Cancel'}</button></div></div>`;
+    const civSel = $('ow-civ') as HTMLSelectElement, leadSel = $('ow-leader') as HTMLSelectElement;
+    if (first) civSel.value = c0(this.c);
+    // The leaders a people can follow: theirs as written, that leader's other self, or one of your own making.
+    const leaders = (want?: LeaderChoice) => {
+      const civ = civSel.value, L = LEADERS[civ], own = civ ? savedHero(civ) : undefined;
+      leadSel.innerHTML = !L ? '<option value="a">Whoever leads them</option>' :
+        `<option value="a">${L.name}</option>${L.alt ? `<option value="b">${L.alt.name}</option>` : ''}${own ? `<option value="own">Your own: ${own.name}</option>` : ''}`;
+      leadSel.value = want && [...leadSel.options].some((o) => o.value === want) ? want : own ? 'own' : 'a';
+      ($('ow-make') as HTMLButtonElement).disabled = !L;
+    };
+    leaders();
+    civSel.addEventListener('change', () => leaders());
+    $('ow-make').addEventListener('click', () => openHeroCreator(civSel.value, (h) => leaders(h ? 'own' : 'a')));
     el.classList.remove('hidden');
-    $('ow-go').addEventListener('click', () => this.hooks.newCampaign(Number(($('ow-rivals') as HTMLSelectElement).value), Number(($('ow-level') as HTMLSelectElement).value), ($('ow-civ') as HTMLSelectElement).value));
+    $('ow-go').addEventListener('click', () => this.hooks.newCampaign(Number(($('ow-rivals') as HTMLSelectElement).value), Number(($('ow-level') as HTMLSelectElement).value), ($('ow-civ') as HTMLSelectElement).value, ($('ow-leader') as HTMLSelectElement).value as LeaderChoice));
     $('ow-cancel').addEventListener('click', () => this.changed());
     const edge = document.createElement('p');
     edge.className = 'lead';
     edge.style.fontSize = '13px';
     el.querySelector('.levels')!.before(edge);
-    const civSel = $('ow-civ') as HTMLSelectElement;
     const show = () => { edge.textContent = civSel.value ? `${CIVS[civSel.value].name}: ${CAMPAIGN_EDGE[civSel.value]}` : ''; };
     civSel.addEventListener('change', show);
     show();
@@ -538,7 +583,7 @@ export class Overworld {
       `<div class="hint">👑 Win by taking every land, or by holding ${dominionNeed(c)} of ${c.territories.length} for ${DOMINION_TURNS} turns <small>(you hold ${landOf(c, 0)})</small>.` +
       (c.dominion.f >= 0 ? ` <b class="${c.dominion.f === 0 ? 'good' : 'bad'}">${c.dominion.f === 0 ? 'You have' : c.factions[c.dominion.f].name + ' have'} held it for ${c.dominion.turns}.</b>` : '') + '</div>' +
       (c.request && c.ally >= 0 ? `<div class="hint">📣 ${c.factions[c.ally].name} ask you to take land from ${c.factions[c.request.foe].name} before turn ${c.request.until}.</div>` : '');
-    const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ' · ♛ Warlord' : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
+    const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ` · ♛ ${heroFor(c, army.owner).name}` : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
       <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · Defence ${defence(c, t.id)}</div>
@@ -553,7 +598,8 @@ export class Overworld {
       ${eventsAt(c, t.id).map((e) => `<div class="hint">${EVENTS[e.kind].icon} <b>${EVENTS[e.kind].name}</b>${e.until > c.turn ? ` <small>(${e.until - c.turn + 1} turns left)</small>` : e.kind === 'unrest' || e.kind === 'hoard' ? ' <small>(comes to a head next turn)</small>' : ''}: ${EVENTS[e.kind].desc}</div>`).join('')}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}
       <div>${t.buildings.map((b) => `${SITES[b].icon} ${SITES[b].name}`).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>
-      ${t.town?.b.length ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle. Whoever holds the land fights from it.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
+      ${t.town?.b.length ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle${t.town.b.some((b) => b[3] !== undefined && b[4] === undefined) ? `, ${t.town.b.filter((b) => b[3] !== undefined && b[4] === undefined).length} of them damaged and being mended, a tenth each turn` : ''}${t.town.b.some((b) => b[4] !== undefined) ? `, ${t.town.b.filter((b) => b[4] !== undefined).length} left unfinished` : ''}${t.owner >= 0 && !styleOf(c.factions[t.owner].civ).raid && !t.town.b.some((b) => b[0] === 'towncenter') ? '. Its Town Center was razed and has not been raised again' : ''}. Whoever holds the land fights from it as it stands.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
+      ${t.ground && t.ground.gone.length + t.ground.left.length ? '<div class="hint">🪓 This ground has been worked: wood felled, berries picked or stone dug. None of it comes back.</div>' : ''}
       ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 ? '' : 'Select one of your armies to march on this land.'}</div>`;
     const btn = (act: string, label: string, cost: number, ok: boolean, tip = '') => `<button data-act="${act}" title="${tip}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label} <small>${cost}</small></button>`;
@@ -561,7 +607,9 @@ export class Overworld {
     if (t.owner === 0) {
       for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
       if (ageOf(c, 0) < AGE_COST.length) html += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
-      if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Summon a new Warlord', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital');
+      if (!me.heroAlive) html += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
+      if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
+      if (t.capital === 0) html += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
       if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
     } else if (t.owner > 0 && c.factions[t.owner].alive) {
       const truce = c.truces.find((x) => x.with === t.owner);
