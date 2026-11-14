@@ -17,6 +17,8 @@ import { Overworld } from './overworld';
 import { Input } from './input';
 import { Outlook } from './outlook';
 import { PITCH, Renderer, YAW } from './renderer';
+import { visitConfig } from '../sim/visit';
+import { VISIT_SAVE_KEY, enterVisit, mountVisits, returnFromVisit } from './visit';
 import { sfx } from './sfx';
 import '@fontsource/im-fell-english/400.css';
 import '@fontsource/im-fell-english/400-italic.css';
@@ -24,6 +26,7 @@ import '@fontsource/im-fell-english-sc/400.css';
 import '@fontsource/im-fell-french-canon/400.css';
 import '@fontsource/im-fell-french-canon/400-italic.css';
 import { mountDetailSetting } from './detail';
+import type { Census } from '../sim/township';
 import './style.css';
 
 export class App {
@@ -191,8 +194,8 @@ const sticky = (() => { try { return sessionStorage.getItem('rtsv-mode'); } catc
 const params = new URLSearchParams(boot ?? (location.search || sticky || ''));
 const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
 /** skirmish: a single match. campaign: the Conquest map. battle: a Conquest battle fought in real time. */
-const mode = params.has('battle') ? 'battle' : params.has('campaign') ? 'campaign' : missionById(params.get('mission') ?? '') ? 'mission' : 'skirmish';
-const SAVE_KEY = mode === 'battle' ? 'rtsv-battle-save' : mode === 'mission' ? 'rtsv-mission-save' : 'rtsv-save';
+const mode = params.has('battle') ? 'battle' : params.has('visit') ? 'visit' : params.has('campaign') ? 'campaign' : missionById(params.get('mission') ?? '') ? 'mission' : 'skirmish';
+const SAVE_KEY = mode === 'battle' ? 'rtsv-battle-save' : mode === 'visit' ? VISIT_SAVE_KEY : mode === 'mission' ? 'rtsv-mission-save' : 'rtsv-save';
 const CAMPAIGN_KEY = 'rtsv-campaign';
 const RESULT_KEY = 'rtsv-battle-result';
 interface Saved { game: string; ai: object[]; cam: { x: number; y: number; d: number }; tag?: string }
@@ -241,12 +244,12 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   const size = [72, 96, 128].includes(Number(params.get('size'))) ? Number(params.get('size')) : 96;
 
   const campaign = mode === 'skirmish' ? null : readCampaign();
-  const cfg = mode === 'battle' && campaign ? battleConfig(campaign) : null;
-  if (mode === 'battle' && !cfg) { go('?campaign=1'); return; }
-  const tag = cfg && campaign ? `${campaign.seed}:${campaign.turn}:${campaign.pending!.armyId}:${campaign.pending!.to}` : '';
+  const cfg = mode === 'battle' && campaign ? battleConfig(campaign) : mode === 'visit' && campaign ? visitConfig(campaign) : null;
+  if ((mode === 'battle' || mode === 'visit') && !cfg) { go('?campaign=1'); return; }
+  const tag = !cfg || !campaign ? '' : mode === 'visit' ? `${campaign.seed}:${campaign.turn}:visit:${campaign.visit!.to}` : `${campaign.seed}:${campaign.turn}:${campaign.pending!.armyId}:${campaign.pending!.to}`;
 
-  let saved = params.has('load') || mode === 'battle' ? readSave() : null;
-  if (mode === 'battle' && saved && saved.tag !== tag) saved = null; // a save from some earlier battle
+  let saved = params.has('load') || mode === 'battle' || mode === 'visit' ? readSave() : null;
+  if ((mode === 'battle' || mode === 'visit') && saved && saved.tag !== tag) saved = null; // a save from some earlier battle
   let game: Game | null = null;
   if (saved) {
     try { game = Game.restore(saved.game); } catch { saved = null; }
@@ -280,9 +283,9 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   // A band of marauders makes camp in the wilds of every skirmish and every siege (`?marauders=0` leaves them out).
   // Ground that has been fought over before is as those battles left it.
   if (cfg?.ground && !saved) game.wear(cfg.ground);
-  // A town in a campaign is in its nation's age: that advances on the map, not in the battle.
+  // A town in a campaign is in its nation's age: that advances on the map, not in the battle or on a visit.
   if (cfg && !saved) game.fixedAge = true;
-  if (!saved && params.get('marauders') !== '0' && !(cfg?.field)) game.marauders = true;
+  if (!saved && params.get('marauders') !== '0' && !(cfg?.field) && mode !== 'visit') game.marauders = true; // nobody comes against a town being visited
   // A battle is fought in the weather that lies over that land on the campaign map.
   if (cfg?.weather && !saved) { game.weather = cfg.weather; game.weatherWant = 0.9; game.weatherT = 240; }
   // The map is generated before the menu appears, so a different size means a fresh page.
@@ -362,7 +365,12 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   const resume = startScreen.querySelector<HTMLButtonElement>('.levels .resume')!;
   resume.addEventListener('click', () => begin(null));
 
-  if (cfg) {
+  if (cfg && mode === 'visit') {
+    // A visit to a town of your own: no enemy, a clock, and what stands goes back to the map.
+    if (!saved) game.aging = false;
+    begun = briefing = true;
+    enterVisit(app, cfg, !!saved, () => go('?campaign=1'));
+  } else if (cfg) {
     // A Conquest battle: difficulty and armies come from the campaign, and the result goes back to it.
     if (!saved) for (const a of app.ai) a.setLevel(cfg.level);
     if (!saved) game.aging = false; // a battle is over long before anyone grows old
@@ -382,7 +390,9 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // What the victor has standing stays standing: it is that land's town the next time it is fought over.
       const holder = won ? app.pid : 1;
       const town = cfg.field ? undefined : app.game.standing(holder);
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, champion: app.game.champion(app.pid) ?? undefined, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      // The town fought over is counted as the battle leaves it: the people and stores of the side that held it.
+      const folk = cfg.field ? undefined : app.game.census(cfg.humanAttacks ? 1 : app.pid);
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, champion: app.game.champion(app.pid) ?? undefined, town, folk, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -452,10 +462,11 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; powers?: number[]; champion?: { name: string; kills: number; unit: string; female?: boolean; type?: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
-      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, powers: r.powers, champion: r.champion, town: r.town, ground: r.ground });
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; powers?: number[]; champion?: { name: string; kills: number; unit: string; female?: boolean; type?: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] }; folk?: Partial<Census> };
+      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, powers: r.powers, champion: r.champion, town: r.town, ground: r.ground, folk: r.folk });
       if (c.phase === 'ai') continueAI(c);
     }
+    if (c && returnFromVisit(c)) writeCampaign(c);
     const fresh = !c;
     c ??= newCampaign(seed, Math.max(2, rivals), 1, params.get('civ') ?? undefined);
     const state = c;
@@ -475,6 +486,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       exit: () => go(''),
     });
     // No campaign yet: first choose a people and who leads them.
+    mountVisits(state, () => writeCampaign(state), go);
     if (fresh) ow.askNew(true);
     primer = new CampaignPrimer(state);
   }
@@ -506,4 +518,4 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     loader.hide();
   }
 });
-document.getElementById('again-btn')!.addEventListener('click', () => go(mode === 'battle' ? '?campaign=1' : ''));
+document.getElementById('again-btn')!.addEventListener('click', () => go(mode === 'battle' || mode === 'visit' ? '?campaign=1' : ''));

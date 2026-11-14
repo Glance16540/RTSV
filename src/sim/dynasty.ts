@@ -9,6 +9,7 @@ import { HeroSpec, MAX_RANK, RANK_NAMES } from './hero';
 import { leaderOf } from './leaders';
 import { leaderAsMade } from './powers';
 import { rankForKills } from './champion';
+import { seat } from './court';
 
 export interface Heir { name: string; female: boolean; born: number }
 export interface House {
@@ -131,10 +132,14 @@ const hostFor = (c: Campaign, f: number): Army | undefined => {
   return mine.find((a) => c.territories[a.at].capital === f) ?? mine.sort((a, b) => size(b) - size(a) || a.id - b.id)[0];
 };
 
-/** Could this claim be taken up now? An heir needs an army to ride to; a captain needs their army still standing. */
+/** Where an heir takes up the rule: in the capital while it is their people's, else with the host, else in any land left to them. */
+const homeFor = (c: Campaign, f: number): number =>
+  (c.territories.find((t) => t.capital === f && t.owner === f) ?? c.territories[hostFor(c, f)?.at ?? -1] ?? c.territories.find((t) => t.owner === f))?.id ?? -1;
+
+/** Could this claim be taken up now? An heir needs a land or an army left to rule from; a captain needs their army still standing. */
 export function canSucceed(c: Campaign, f: number, claim: Claim): boolean {
   if (c.factions[f].heroAlive) return false;
-  return claim.kind === 'heir' ? !!houseOf(c, f).heirs[claim.i] && !!hostFor(c, f) : c.armies.some((a) => a.id === claim.i && a.owner === f);
+  return claim.kind === 'heir' ? !!houseOf(c, f).heirs[claim.i] && homeFor(c, f) >= 0 : c.armies.some((a) => a.id === claim.i && a.owner === f);
 }
 
 /** Put a claimant at the head of their people. */
@@ -145,7 +150,8 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
     // The child has the parent's making and bearing, and their own face.
     fac.hero = { ...old, name: claim.name, female: claim.female, look: { ...old.look, beard: claim.female ? false : old.look?.beard } };
     house.heirs.splice(claim.i, 1);
-    hostFor(c, f)!.hero = true;
+    fac.heroAlive = true;
+    seat(c, f, homeFor(c, f));
     say(c, f, fac.id === 0 ? `${claim.name} takes up the rule of your people.` : `${old.name} of the ${fac.name} is dead. ${claim.name} rules them now.`);
   } else {
     // A soldier's soldier: strong in the arm, and no house behind them yet.
@@ -153,7 +159,8 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
     const made = c.armies.find((a) => a.id === claim.i)!.champion;
     fac.hero = { name: claim.name, female: claim.female, calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, powers: fac.isAI ? [0, 1, 1] : [-1, -1, -1], look: {}, ...(made?.type ? { fights: made.type } : {}) };
     house.heirs = [];
-    c.armies.find((a) => a.id === claim.i)!.hero = true;
+    fac.heroAlive = true;
+    seat(c, f, c.armies.find((a) => a.id === claim.i)!.at);
     delete c.armies.find((a) => a.id === claim.i)!.champion;
     say(c, f, `${old.name}'s house${fac.id === 0 ? '' : ` among the ${fac.name}`} is set aside: ${claim.name} is raised on the shields at ${c.territories[c.armies.find((a) => a.id === claim.i)!.at].name}.`);
   }
