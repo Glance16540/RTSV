@@ -2,7 +2,7 @@
 // town's own people and stores, both sides played by the computer. Run with the villager for hire and without it
 // (birthonly.ts), over the same seeds, to see what people coming only by birth does to a siege.
 //
-//   SIEGES=1 SEEDS=1-12 OUT=sieges.jsonl npx vitest run scripts/sieges.test.ts
+//   SIEGES=1 SEEDS=1-12 OUT=sieges.jsonl npx vitest run scripts/sieges.test.ts   (AGING=0: nobody grows old)
 //
 // Each game is written as one line of JSON to OUT. Skipped unless SIEGES is set.
 import { it } from 'vitest';
@@ -57,6 +57,7 @@ it.skipIf(!process.env.SIEGES)('campaign-shaped trial sieges', () => {
       g.fixedAge = true;
       g.bornOnly = mode === 'born';
       g.marauders = true;
+      if (process.env.AGING === '0') g.aging = false; // nobody grows old in the battle: to see what ageing costs
       const ais = setups.map((_, i) => { const a = new AIController(g, i); a.setLevel(1); return a; });
       const def = cfg.humanAttacks ? 1 : 0, att = 1 - def;
       const at20: Record<string, unknown> = {};

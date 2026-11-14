@@ -1,13 +1,14 @@
 // A town's people on the map, season by season (docs/DESIGN.md, "People come only by birth").
 //
 // Births are one record whether the player is in the town or not. Inside a battle or a visit they come in real
-// time and fast (game.ts, nursery.ts); on the map the same rule runs coarsely once a season, here:
+// time, faster than here but not fast (a couple's first child in about a visit: birthonly.ts); on the map the same
+// rule runs coarsely once a season, here:
 //
 //  - Who can bear: a man and a woman of working age under one roof. A town whose buildings are on record has as
 //    many roofs as it has finished houses; a town nobody has fought over or visited is kept by its governor, who
 //    houses its couples. Each birth costs the same food as in a town, and needs room: five to a house and ten to
 //    the hall, as in a town, for every grown person and child.
-//  - How often: a couple raises a child about every MAP_BIRTH seasons at first, more slowly the more children the
+//  - How often: a couple raises a child about every MAP_BIRTH seasons (a year and a half) at first, more slowly the more children the
 //    town already has on its records (as a house slows in a town), and sooner or later by the town's creed, which
 //    also decides how many of the births due do not come (the same shares as in a town). No child dies.
 //  - Children are counts on the town's record and are never shown. They come of age over GROWN_AT years
@@ -31,7 +32,7 @@ declare module './township' {
 }
 
 /** Seasons between a housed couple's children on the map, before creed and the slowing with more children. */
-export const MAP_BIRTH = 8;
+export const MAP_BIRTH = 6;
 /** Seasons a child on the map takes to come of age. */
 export const GROWN_SEASONS = GROWN_AT * 4;
 /** Room in a town, as in a battle: so many to a finished house and so many to the hall. */
