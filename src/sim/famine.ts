@@ -15,11 +15,14 @@
 //                                as long as the people's creed makes it (three times as late and a third as
 //                                long among the Righteous).
 //
+// A famine can also come by chance: now and then a harvest fails (`leanYear`), and a town living from field to
+// mouth with nothing laid by goes hungry for it.
+//
 // It is over the moment the store is no longer bare. Only a people with a Town Center standing can be in famine:
 // a war band that has not settled lives off the land, and the two armies of a field battle have no town at all.
 import type { Building, Game, Player, Unit } from './game';
 import { TRADE } from './data';
-import { wrath } from './wrath';
+import { roll, wrath } from './wrath';
 
 export const FAMINE = {
   /** A store under this much food is bare. */
@@ -32,6 +35,12 @@ export const FAMINE = {
   spare: 4,
   /** Seconds of a bare store before plague breaks out, how near the Town Center it strikes, and how long it lasts. */
   plague: 240, reach: 6, sick: 12,
+  /**
+   * A harvest fails, by chance, about once in `lean` seconds in a town with fields (an ordinary town: by its creed,
+   * like the rest). `fields` of its farms, and never fewer than one, then grow nothing for `barren` seconds.
+   * Twice as often in a dust storm, and never while heavy rain is on the fields.
+   */
+  lean: 600, fields: 0.5, barren: 120, drought: 2,
   /** A load of food sent to an ally, and what a town keeps for itself before it sends one. */
   load: 100, keep: 200,
 };
@@ -115,9 +124,35 @@ function sicken(g: Game, p: Player, at: Building): void {
   tell(g, p, '☠️ Sickness has followed hunger: plague has broken out among your starving people!');
 }
 
+/**
+ * The harvest fails: an act of God, and the one way a famine comes by chance and not by neglect. Once a second for
+ * every people with fields. How often, how many fields and for how long all go by the people's creed (wrath.ts).
+ * Returns the fields struck, for whoever was struck this second.
+ */
+export function leanYear(g: Game): Building[] {
+  const struck: Building[] = [];
+  if (g.field || g.foul === 'rain') return struck;
+  const k = g.foul === 'dust' ? FAMINE.drought : 1;
+  for (const p of g.players) {
+    if (p.neutral || p.defeated) continue;
+    const w = wrath(g, p.id);
+    if (roll(g, 83 + p.id * 311) >= (k * w) / FAMINE.lean) continue;
+    const farms = g.buildings.filter((b) => !b.dead && b.owner === p.id && b.type === 'farm' && b.complete && !b.blightT);
+    if (!farms.length) continue;
+    // Which fields: taken in an order of their own for this failure, not always the oldest.
+    const order = farms.map((b) => [roll(g, 97 + b.id * 389), b] as const).sort((a, b) => a[0] - b[0] || a[1].id - b[1].id).map((x) => x[1]);
+    const n = Math.min(farms.length, Math.max(1, Math.round(farms.length * FAMINE.fields * w)));
+    for (const b of order.slice(0, n)) { b.blightT = FAMINE.barren * w; struck.push(b); }
+    g.events.push({ t: 'blight', x: order[0].x, y: order[0].y });
+    tell(g, p, `🌾 The harvest has failed on ${n === farms.length ? (n === 1 ? 'your field' : `all ${n} of your fields`) : `${n} of your ${farms.length} fields`}: nothing will grow there for ${Math.round((FAMINE.barren * w) / 10) * 10} seconds. Lay in food, or put hands to hunting and fishing.`);
+  }
+  return struck;
+}
+
 /** One second of it, for every people. Called from `calamity`. */
 export function famine(g: Game): void {
   if (g.field) return;
+  leanYear(g);
   for (const p of g.players) {
     if (p.neutral || p.defeated) continue;
     const at = hall(g, p.id);

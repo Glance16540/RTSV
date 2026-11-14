@@ -15,7 +15,8 @@
 import type { Building, Game, Unit } from './game';
 import { famine } from './famine';
 import { contagion } from './contagion';
-import { wrath } from './wrath';
+import { roll, wrath } from './wrath';
+export { roll };
 
 export const FIRE = {
   /** Seconds of fire one villager at work takes off each second, on top of its burning down by itself. */
@@ -42,15 +43,6 @@ export const FIRE = {
   dry: 2,
   /** Seconds a building set alight by accident burns. */
   spark: 12,
-};
-
-/** A chance in [0, 1) from the tick, the match's seed and a number of its own, each one unrelated to the others. */
-export const roll = (g: Game, salt: number): number => {
-  let h = Math.imul(g.tick ^ Math.imul(salt + 1, 0x9e3779b1), 0x85ebca6b) ^ Math.imul(g.seed + salt, 0xc2b2ae35);
-  h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d);
-  h ^= h >>> 12; h = Math.imul(h, 0x297a2d39);
-  h ^= h >>> 15;
-  return (h >>> 0) / 4294967296;
 };
 
 const fit = (u: Unit): boolean => !u.dead && u.type === 'villager' && u.growT <= 0 && !u.inside;

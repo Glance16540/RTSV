@@ -126,7 +126,7 @@ Each step is to be playable by itself.
 
 | Point | Today |
 | --- | --- |
-| Acts of God by creed | Inside a battle, yes: one measure by creed (a third for the Righteous, half again for the Decadent) governs how often and how hard plague, fire and famine fall, and nobody is immune (`src/sim/wrath.ts`). Not yet: famine does not come at random, and nothing of it runs in a season on the map. |
+| Acts of God by creed | Inside a battle, yes: one measure by creed (a third for the Righteous, half again for the Decadent) governs how often and how hard plague, fire and famine fall, and nobody is immune (`src/sim/wrath.ts`). A harvest fails by chance, which is how famine comes unasked. Not yet: nothing of it runs in a season on the map. |
 | A soldier costs a person | No: soldiers are bought with resources alone. |
 | Notable people | Half: villagers have names, traits and families, and one best soldier of a battle is remembered. Only he and the leader outlive the match. |
 | Towns persist | Buildings stay between battles on a land. People and stores do not. |
