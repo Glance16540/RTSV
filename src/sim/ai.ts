@@ -64,6 +64,9 @@ export class AIController {
 
   /** The building it is trying to place, and how many times running it has found no site close in. */
   private crowded = { type: '', tries: 0 };
+  /** Has the town a villager to spare for the ranks, a crew or the Slavers? And one for a fishing boat, which still feeds it? */
+  private spare = false;
+  private spareFisher = false;
   /** No hall stands: every hand and every log goes to raising one. */
   private founding = false;
   constructor(private game: Game, private pid: number) {}
@@ -114,6 +117,9 @@ export class AIController {
       if (at && v) g.cmdPlace(pid, 'storehouse', at.cx, at.cy, [v.id]);
     }
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
+    // A soldier is a hand taken from the fields: the town keeps enough of them to live.
+    this.spare = villagers.length > HANDS_KEPT[p.age] * (underAttack ? 0.5 : 1);
+    this.spareFisher = villagers.length > HANDS_KEPT[p.age] / 2;
 
     // Town bell: hide the villagers while raiders are in the village.
     const raiders = underAttack ? g.units.filter((u) => g.hostile(u.owner, pid) && u.owner !== g.wild && u.def.atk > 3 && Math.hypot(u.x - home.x, u.y - home.y) < 13).length : 0;
@@ -252,8 +258,7 @@ export class AIController {
         if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && army.length >= armyTarget / 2 && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
-        // Every soldier is a hand taken from the fields: the town keeps enough of them to live.
-        if (needsPerson(def) && villagers.length <= HANDS_KEPT[p.age] * (underAttack ? 0.5 : 1)) continue;
+        if (needsPerson(def) && !this.spare) continue;
         if ((type === 'shaman' || type === 'priest') && g.countUnits(pid, type) >= 2) continue;
         if (type === 'prophet' && g.countUnits(pid, 'prophet') >= 1) continue;
         if (g.cmdTrain(pid, src.id, type)) { this.mixI = (this.mixI + k + 1) % mix.length; break; }
@@ -524,7 +529,7 @@ export class AIController {
     if (!camp.complete) return;
     const slavers = g.units.filter((u) => u.owner === pid && u.def.slaver);
     const tavern = mine.find((b) => b.type === 'tavern' && b.complete);
-    if (tavern && slavers.length < 2 && !tavern.queue.length && g.canAfford(p, UNITS.slaver.cost)) g.cmdTrain(pid, tavern.id, 'slaver');
+    if (this.spare && tavern && slavers.length < 2 && !tavern.queue.length && g.canAfford(p, UNITS.slaver.cost)) g.cmdTrain(pid, tavern.id, 'slaver');
     if ((camp.captives?.length ?? 0) >= (camp.def.camp ?? 0)) return;
     for (const s of slavers) {
       if (s.order || s.captive || s.inside) continue;
@@ -659,7 +664,7 @@ export class AIController {
     const { load, land, target } = plan;
     const ship = ships.find((u) => u.def.carry && !u.cargo?.length);
     if (!ship) {
-      if (!dock.queue.some((q) => q.kind === 'unit' && q.id === 'transport') && dock.queue.length < 2) g.cmdTrain(pid, dock.id, 'transport');
+      if (this.spare && !dock.queue.some((q) => q.kind === 'unit' && q.id === 'transport') && dock.queue.length < 2) g.cmdTrain(pid, dock.id, 'transport');
       return;
     }
     const men = fighters.sort((a, b) => Math.hypot(a.x - load.lx, a.y - load.ly) - Math.hypot(b.x - load.lx, b.y - load.ly)).slice(0, 6);
@@ -708,14 +713,14 @@ export class AIController {
     const queued = (type: string) => dock.queue.filter((q) => q.kind === 'unit' && q.id === type).length;
     const boats = ships.filter((u) => u.def.fisher);
     const fish = g.findResourceNear(dock.x, dock.y, 'food', pid, 30, 0, true);
-    if (fish && boats.length + queued('fishboat') < [2, 3, 4][this.level] && dock.queue.length < 2) g.cmdTrain(pid, dock.id, 'fishboat');
+    if (this.spareFisher && fish && boats.length + queued('fishboat') < [2, 3, 4][this.level] && dock.queue.length < 2) g.cmdTrain(pid, dock.id, 'fishboat');
     for (const b of boats) {
       if (b.order) continue;
       const near = g.findResourceNear(b.x, b.y, 'food', pid, 30, 0, true);
       if (near) g.cmdTarget(pid, [b.id], near.id);
     }
     // A transport early, before the town fills up, if there is anywhere to land with it.
-    if (this.level >= 1 && p.age >= 1 && boats.length && !ships.some((u) => u.def.carry) && !queued('transport') && dock.queue.length < 2 && this.landing(dock)) {
+    if (this.spare && this.level >= 1 && p.age >= 1 && boats.length && !ships.some((u) => u.def.carry) && !queued('transport') && dock.queue.length < 2 && this.landing(dock)) {
       g.cmdTrain(pid, dock.id, 'transport');
     }
     // Warships once there is something to protect, and the ships to match the age.
@@ -725,7 +730,7 @@ export class AIController {
       // Match whatever the enemy has put on the water, and one more.
       const theirs = g.units.filter((u) => u.def.naval && u.def.atk > 0 && g.hostile(u.owner, pid)).length;
       const want = Math.min(6, Math.max([0, 2, 3][this.level], theirs + 1));
-      if (fleet < want && dock.queue.length < 2 && p.res.gold >= 120) g.cmdTrain(pid, dock.id, 'galley');
+      if (this.spare && fleet < want && dock.queue.length < 2 && p.res.gold >= 120) g.cmdTrain(pid, dock.id, 'galley');
       // Idle warships go to wherever enemy ships are raiding our boats or shore.
       const raider = g.units.find((u) => u.def.naval && u.def.atk > 0 && g.hostile(u.owner, pid) && Math.hypot(u.x - dock.x, u.y - dock.y) < 30);
       if (raider) {

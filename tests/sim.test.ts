@@ -1666,7 +1666,8 @@ describe('the AI at sea', () => {
     const g = new Game(11, [{ name: 'A', color: 1, isAI: true }, { name: 'B', color: 2, isAI: true }], 96, false, true);
     const ais = [new AIController(g, 0), new AIController(g, 1)];
     let boats = 0, galleys = 0;
-    for (let t = 0; t < 20 * 60 * 14 && g.winner < 0; t++) {
+    // Twenty minutes, not fourteen: a ship is crewed by a man of the town now, and on this map the first sails at minute 17.
+    for (let t = 0; t < 20 * 60 * 20 && g.winner < 0; t++) {
       g.step();
       if (t % 20 === 0) for (const a of ais) a.update();
       if (t % 200 === 0) { boats = Math.max(boats, g.units.filter((u) => u.type === 'fishboat').length); galleys = Math.max(galleys, g.units.filter((u) => u.def.naval && !u.def.fisher).length); }
@@ -1675,7 +1676,7 @@ describe('the AI at sea', () => {
     expect(boats).toBeGreaterThanOrEqual(2);
     expect(galleys).toBeGreaterThanOrEqual(1);
     for (const u of g.units) if (u.def.naval) expect(g.terrain[Math.floor(u.y) * g.size + Math.floor(u.x)]).toBe(1);
-  });
+  }, 60000);
 });
 
 describe('transport ships', () => {
