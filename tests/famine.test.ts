@@ -89,14 +89,14 @@ describe('famine', () => {
     expect(n()).toBe(first - 2);
   });
 
-  it('sickness follows hunger, but never among the Righteous', () => {
-    const sick = (virtue: number) => {
+  it('sickness follows hunger; among the Righteous three times as late, and a third as long', () => {
+    const sick = (virtue: number, wait = FAMINE.plague + 3) => {
       const g = town();
       const p = g.players[0];
       p.virtue = virtue;
       p.res.food = 0;
       let struck = 0;
-      run(g, FAMINE.plague + 3, () => { p.res.food = 0; p.virtue = virtue; struck = Math.max(struck, g.units.filter((u) => u.owner === 0 && u.plagueT > 0).length); });
+      run(g, wait, () => { p.res.food = 0; p.virtue = virtue; struck = Math.max(struck, g.units.filter((u) => u.owner === 0 && u.plagueT > 0).length); });
       return { struck, told: said(g, 'Sickness has followed hunger'), creed: g.creed(0).id };
     };
     const plain = sick(0);
@@ -106,6 +106,9 @@ describe('famine', () => {
     expect(holy.creed).toBe('zealous');
     expect(holy.struck).toBe(0);
     expect(holy.told).toBe(false);
+    const later = sick(100, FAMINE.plague * 3 + 3);
+    expect(later.told).toBe(true);
+    expect(later.struck).toBeGreaterThan(0);
   });
 
   it('a war band with no hall, and the armies of a field battle, do not starve', () => {

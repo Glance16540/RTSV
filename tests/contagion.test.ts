@@ -38,10 +38,25 @@ describe('plague from outside', () => {
     expect(g.events.filter((e) => e.t === 'msg' && e.player === 1 && e.text.includes('Plague has come among your people from A')).length).toBe(1);
   });
 
-  it('the Righteous do not take it', () => {
-    const { g, near } = meet(100);
-    expect(g.creed(1).plague).toBe(0);
-    expect(near.plagueT).toBe(0);
+  it('the Righteous take it too, but about a third as readily', () => {
+    const crossed = (virtue: number) => {
+      let n = 0;
+      for (let i = 0; i < 60; i++) {
+        const g = town();
+        g.seed = 500 + i;
+        g.players[1].virtue = virtue;
+        const at = hallOf(g, 1);
+        const sick = g.spawnUnit('clubman', 0, at.x + 5, at.y + 5), near = g.spawnUnit('clubman', 1, at.x + 5.6, at.y + 5);
+        sick.plagueT = 1e4;
+        seconds(g, 4, () => { contagion(g); });
+        if (near.plagueT > 0) n++;
+      }
+      return n;
+    };
+    const plain = crossed(0), holy = crossed(100), fallen = crossed(-100);
+    expect(holy).toBeGreaterThan(0);
+    expect(holy).toBeLessThan(plain * 0.65);
+    expect(fallen).toBeGreaterThan(plain);
   });
 
   it('it takes about as long to cross as CONTAGION.touch says', () => {
@@ -99,9 +114,11 @@ describe('plague from outside', () => {
     expect(boughtIn(g, m, true)).toBe(false);
     g.time += 100;
     expect(boughtIn(g, m, true)).toBe(true);
-    // And never among the Righteous.
+    // Among the Righteous it can break out too, and lasts a third as long.
     p.virtue = 100; g.time += 500;
-    expect(boughtIn(g, m, true)).toBe(false);
+    for (const u of g.units) u.plagueT = 0;
+    expect(boughtIn(g, m, true)).toBe(true);
+    expect(Math.max(...g.units.filter((u) => u.owner === 0).map((u) => u.plagueT))).toBeCloseTo(CONTAGION.sick / 3, 5);
   });
 });
 
