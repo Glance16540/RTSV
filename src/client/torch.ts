@@ -13,8 +13,8 @@ let wood: THREE.MeshStandardMaterial | null = null, pitch: THREE.MeshStandardMat
 /** How long the torch is, and how far up it the hand grips, in the world's measure for a figure of full size. */
 export const TORCH = { long: 0.3, grip: 0.09 };
 
-/** Both hands are wanted for a bow, a crossbow or a gun, and a child carries nothing. */
-export const canCarryTorch = (p: { weapon: string; child: boolean }): boolean => !p.child && p.weapon !== 'bow' && p.weapon !== 'crossbow' && p.weapon !== 'musket' && p.weapon !== 'firetube';
+/** Both hands are wanted for a bow, a crossbow or a gun. */
+export const canCarryTorch = (p: { weapon: string }): boolean => p.weapon !== 'bow' && p.weapon !== 'crossbow' && p.weapon !== 'musket' && p.weapon !== 'firetube';
 
 function make(): Carried {
   wood ??= new THREE.MeshStandardMaterial({ color: 0x6a4a2c, roughness: 0.9 });

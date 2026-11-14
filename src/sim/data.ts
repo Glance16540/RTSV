@@ -737,7 +737,7 @@ export const TECHS: Record<string, TechDef> = {
     cost: { food: 150, gold: 60 }, time: 35, age: 1, apply: (m) => { m.birth += 0.35; },
   }),
   extendedfamily: T({
-    id: 'extendedfamily', name: 'Extended Family', icon: '👨‍👩‍👧‍👦', desc: 'Each house supports +2 population.',
+    id: 'extendedfamily', name: 'Extended Family', icon: '🏘️', desc: 'Each house supports +2 population.',
     cost: { wood: 200, stone: 100 }, time: 40, age: 2, apply: (m) => { m.housePop += 2; },
   }),
   herbalism: T({

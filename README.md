@@ -24,8 +24,10 @@ Add `?seed=123` to the URL to replay a specific map.
 **Families.** Villagers are men and women. Train them at the Town Center, or build a House and
 move one man and one woman in (right-click the house, or press *Find a couple*). A housed couple
 raises new villagers on their own for half the usual food. Each child takes a little longer than
-the last, and you can pause a family when the village is big enough. Newborns are children: small,
-fragile and unable to work until they grow up, when they take up a parent's trade.
+the last, and you can pause a family when the village is big enough. A child is never seen on the map:
+it is kept on the record of its house, which lists it by name and age, and nothing can harm it there. Grown,
+it steps out of the door as a villager and takes up a parent's trade. If the house falls, its children pass
+to a neighbouring house or the Town Center.
 
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
@@ -141,7 +143,7 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   idle villagers close by turn out on their own.
 - *Famine* (`src/sim/famine.ts`): a food store that stays bare for a minute (nothing coming in at all, not
   merely spent as it arrives) leaves the town hungry, and after two minutes it starves: every half minute it loses
-  one of its people, the old first, then the children, then soldiers, who walk away, then grown villagers, though
+  one of its people, the old first, then soldiers, who walk away, then grown villagers (never a child), though
   never the last four. After four minutes plague breaks out around the Town Center, except among the Righteous.
   Food in the store ends it at once. A war band with no hall does not starve.
   The warning says what the town can do (what its Market sells food for, or that it has none), and allies are told.

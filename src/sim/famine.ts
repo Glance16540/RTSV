@@ -6,8 +6,8 @@
 // everyone at other work). One load carried home breaks the stretch.
 //
 //   after FAMINE.hungry seconds  the people go hungry: a warning, nothing more.
-//   after FAMINE.starving        famine. One of the town is lost every FAMINE.toll seconds: the old first, then
-//                                the children, then soldiers (who do not starve but walk away), then grown
+//   after FAMINE.starving        famine. One of the town is lost every FAMINE.toll seconds: the old first, then soldiers
+//                                (who do not starve but walk away), then grown
 //                                villagers, though never the last FAMINE.spare of those, so that a town can
 //                                always work its way out. Leaders, ships and people inside buildings are let be.
 //   after FAMINE.plague          sickness follows hunger: plague breaks out around the Town Center, as long and
@@ -90,11 +90,10 @@ export function nextLost(g: Game, owner: number): Unit | null {
   const oldest = (a: Unit, b: Unit): number => b.age - a.age || a.id - b.id;
   const old = folk.filter((u) => g.isElder(u)).sort(oldest);
   if (old.length) return old[0];
-  const young = folk.filter((u) => u.growT > 0).sort((a, b) => b.growT - a.growT || a.id - b.id);
-  if (young.length) return young[0];
+  // Children are not among those a famine can take: they are on their house's record, not on the map (nursery.ts).
   const men = mine.filter((u) => g.isMilitary(u)).sort((a, b) => a.id - b.id);
   if (men.length) return men[men.length - 1]; // the last to join is the first to go
-  const grown = folk.filter((u) => u.growT <= 0).sort(oldest);
+  const grown = [...folk].sort(oldest);
   return grown.length > FAMINE.spare ? grown[0] : null;
 }
 
@@ -131,7 +130,7 @@ export function famine(g: Game): void {
       for (const ally of g.allies(p.id)) if (!ally.neutral && !ally.defeated) tell(g, ally, `🍞 ${p.name}'s people are going hungry.${canSend(g, ally.id) ? ' You can send them food from your Market.' : ''}`);
     }
     if (was < FAMINE.starving && now >= FAMINE.starving)
-      tell(g, p, '💀 Famine! Your people are starving. The old and the young will go first, soldiers will walk away, and it will not stop until there is food in the store.');
+      tell(g, p, '💀 Famine! Your people are starving. The old will go first, soldiers will walk away, and it will not stop until there is food in the store.');
     if (now >= FAMINE.starving && (now - FAMINE.starving) % FAMINE.toll === 0 && now > FAMINE.starving) {
       const u = nextLost(g, p.id);
       if (u) {

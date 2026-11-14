@@ -125,18 +125,20 @@ describe('families', () => {
     const tree = g.resources.filter((r) => r.type === 'tree').sort((a, b) => g.dist(woman, a) - g.dist(woman, b))[0];
     g.cmdTarget(0, [woman.id], tree.id);
     g.cmdTarget(0, [man.id], tree.id);
+    const pop = g.players[0].pop;
     run(g, BIRTH_TIME + 2);
-    expect(villagers(g, 0).length).toBe(before + 1);
     expect(g.players[0].res.food).toBe(food - BIRTH_COST);
-    // The newborn is a child: weaker, and it cannot work until it grows up.
-    const child = villagers(g, 0).find((v) => v.growT > 0)!;
-    expect(child.maxHp).toBeLessThan(child.def.hp);
-    g.cmdTarget(0, [child.id], tree.id);
-    expect(child.order?.t).toBe('move');
-    g.cmdStop(0, [child.id]);
+    // The newborn is on the house's record, not on the map: no one new is to be seen, though the town counts it.
+    expect(villagers(g, 0).length).toBe(before);
+    expect(house.young!.length).toBe(1);
+    expect(g.players[0].pop).toBe(pop + 1);
+    const born = house.young![0];
     run(g, GROW_TIME);
+    // Grown, it steps out of the house as itself and takes up a parent's trade.
+    expect(house.young!.some((c) => c.id === born.id)).toBe(false);
+    const child = villagers(g, 0).find((v) => v.name === born.name && v.bornAt === house.id && v.id > born.id)!;
     expect(child.growT).toBe(0);
-    expect(child.maxHp).toBe(child.def.hp);
+    expect(child.maxHp).toBe(child.def.hp * (g.has(child, 'hardy') ? 1.5 : 1));
     expect(child.order?.t).toBe('gather');
   });
 
@@ -513,11 +515,10 @@ describe('upgrades, gunpowder and traits', () => {
     for (let i = 0; i < 80; i++) {
       house.birthProgress = 1;
       g.step();
-      const child = villagers(g, 0).find((v) => v.growT > 0)!;
+      const child = house.young!.pop()!; // read off the house's record, where a child is kept
+      g.players[0].pop--;
       expect(child.family).toBe(house.family);
       counts[child.trait || 'none'] = (counts[child.trait || 'none'] ?? 0) + 1;
-      if (child.trait === 'hardy') expect(child.maxHp).toBe(Math.round(40 * 1.5 * 0.4));
-      g.cmdDelete(0, [child.id]);
     }
     expect(house.family.length).toBeGreaterThan(0);
     expect(counts.strong + counts.hardy).toBeGreaterThan(60); // about nine in ten inherit
@@ -1070,9 +1071,9 @@ describe('generations', () => {
     for (let i = 0; i < 60; i++) {
       house.birthProgress = 1;
       g.step();
-      const child = villagers(g, 0).find((v) => v.growT > 0)!;
-      if (g.has(child, 'strong') && g.has(child, 'swift')) both++;
-      g.cmdDelete(0, [child.id]);
+      const child = house.young!.pop()!; // read off the house's record
+      g.players[0].pop--;
+      if ([child.trait, child.trait2].includes('strong') && [child.trait, child.trait2].includes('swift')) both++;
     }
     expect(both).toBeGreaterThan(4);
     expect(both).toBeLessThan(30);
@@ -2002,8 +2003,9 @@ describe('church and tavern', () => {
       tavern.trystT = 0;
       // Held at the standing under test: the maids themselves would otherwise drag it down as the minutes pass.
       const hold = () => { p.virtue = virtue; };
-      const own = () => g.units.filter((u) => u.bornAt === tavern.id);
-      return { g, tavern, hold, own };
+      // A child is on a record, never a unit: one the tavern adds is kept at the Town Center.
+      const own = () => g.buildings.flatMap((b) => b.young ?? []).filter((c) => c.bornAt === tavern.id);
+      return { g, tavern, hold, own, tc };
     };
     // Five minutes of it and nothing has come of it anywhere; only in a worldly town with both maids and patrons is there even a chance building.
     const after = (virtue: number, men: number, women: number): number => { const t = setup(virtue, men, women); run(t.g, 300, t.hold); expect(t.own().length).toBe(0); return t.tavern.trystT ?? 0; };
@@ -2021,8 +2023,10 @@ describe('church and tavern', () => {
     t.tavern.trystT = 0.9999;
     run(t.g, 3, t.hold); // looked at straight away: in a town like this the child may not live long
     expect(t.own().length).toBe(1);
-    expect(t.own()[0].growT).toBeGreaterThan(0);
+    expect(t.own()[0].left).toBeGreaterThan(0);
     expect(t.own()[0].family).toBe('');
+    expect(t.tc.young).toContain(t.own()[0]);
+    expect(t.g.units.some((u) => u.bornAt === t.tavern.id)).toBe(false);
   });
 
   it('tavern maids bring in gold and decadence, and distract the rest of the town', () => {
