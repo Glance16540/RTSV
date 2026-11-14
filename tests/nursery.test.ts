@@ -24,10 +24,10 @@ describe('the record itself', () => {
     expect(yearsOld(child({ left: GROW_TIME / 2 }))).toBe(7);
     expect(yearsLeft(child({ left: 0.01 }))).toBe(1);
   });
-  it('hands back those grown and those lost, and keeps the rest', () => {
-    const young = [child({ id: 1, left: 1 }), child({ id: 2, left: 30 }), child({ id: 3, left: 10, frail: 9.5 })];
-    const { grown, lost } = ageYoung(young, 1);
-    expect([grown.map((c) => c.id), lost.map((c) => c.id), young.map((c) => c.id)]).toEqual([[1], [3], [2]]);
+  it('hands back those grown and keeps the rest: no child is ever lost', () => {
+    const young = [child({ id: 1, left: 1 }), child({ id: 2, left: 30 }), child({ id: 3, left: 10 })];
+    const grown = ageYoung(young, 1);
+    expect([grown.map((c) => c.id), young.map((c) => c.id)]).toEqual([[1], [2, 3]]);
   });
   it('sends the children of a fallen house to the nearest house, then the Town Center, then any roof, and never to a stranger', () => {
     const roof = (id: number, type: string, x: number, owner = 0) => ({ id, owner, type, complete: true, dead: false, x, y: 0 });
