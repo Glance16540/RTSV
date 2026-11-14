@@ -7,6 +7,7 @@ import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
 import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS, powersHeld } from '../sim/powers';
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
+import { needsPerson } from '../sim/muster';
 import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
@@ -344,7 +345,7 @@ export class Hud {
       } else {
         out.push({
           id: 't:' + type, icon: ico(type, d.icon), name: 'Train ' + d.name, cost: game.unitCost(pid, type), locked,
-          desc: `${d.desc}<br><span class="stat">❤ ${d.hp} · ⚔ ${d.atk} · 🛡 ${d.armor}${d.range > 1 ? ` · range ${d.range}` : ''} · pop ${d.pop}</span>`,
+          desc: `${d.desc}<br><span class="stat">❤ ${d.hp} · ⚔ ${d.atk} · 🛡 ${d.armor}${d.range > 1 ? ` · range ${d.range}` : ''} · pop ${d.pop}</span>${needsPerson(d) ? `<br><span class="stat">Takes ${d.cls === 'support' ? 'a villager' : 'a man'} of the town, who goes in to be trained.</span>` : ''}`,
           act: () => game.cmdTrain(pid, least().id, type),
         });
       }
@@ -361,7 +362,7 @@ export class Hud {
       out.push({
         id: 'age' + p.age, icon: ico('ageup', '⏫'), name: `Advance to the ${next.name}`, cost: next.cost,
         desc: 'Unlocks new buildings, units and technologies, and gives your settlement a new look.',
-        locked: p.agingUp ? 'Already advancing.' : undefined, act: () => game.cmdAgeUp(pid, b.id),
+        locked: game.fixedAge ? 'A town is in its nation\'s age: advance it on the map.' : p.agingUp ? 'Already advancing.' : undefined, act: () => game.cmdAgeUp(pid, b.id),
       });
     }
     if (b.type === 'towncenter') {

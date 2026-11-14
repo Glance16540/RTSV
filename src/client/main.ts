@@ -280,6 +280,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   // A band of marauders makes camp in the wilds of every skirmish and every siege (`?marauders=0` leaves them out).
   // Ground that has been fought over before is as those battles left it.
   if (cfg?.ground && !saved) game.wear(cfg.ground);
+  // A town in a campaign is in its nation's age: that advances on the map, not in the battle.
+  if (cfg && !saved) game.fixedAge = true;
   if (!saved && params.get('marauders') !== '0' && !(cfg?.field)) game.marauders = true;
   // A battle is fought in the weather that lies over that land on the campaign map.
   if (cfg?.weather && !saved) { game.weather = cfg.weather; game.weatherWant = 0.9; game.weatherT = 240; }

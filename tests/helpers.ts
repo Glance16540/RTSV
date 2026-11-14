@@ -1,6 +1,6 @@
 // What every test file needs to set a battle going. New tests go in a file of their own beside this one
 // (tests/<feature>.test.ts) and take these from here, so that two branches never add to the same file.
-import { Game } from '../src/sim/game';
+import { Building, Game } from '../src/sim/game';
 
 export const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -19,3 +19,9 @@ export const spot = (g: Game, type: string, owner: number) => {
         if (g.canPlace(type, tc.cx + dx, tc.cy + dy)) return { cx: tc.cx + dx, cy: tc.cy + dy };
   throw new Error('no spot');
 };
+/**
+ * A soldier is made of a villager (src/sim/muster.ts): stand `n` men at a building's door, ready to be trained there.
+ * For tests that are about something else and only need soldiers to come out of a building.
+ */
+export const menAt = (g: Game, owner: number, n: number, by: Building) =>
+  Array.from({ length: n }, (_, i) => g.spawnUnit('villager', owner, by.x - (n - 1) * 0.3 + i * 0.6, by.y + by.size / 2 + 0.8, 'm'));

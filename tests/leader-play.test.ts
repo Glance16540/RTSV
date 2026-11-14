@@ -9,7 +9,7 @@ import { Game, Unit } from '../src/sim/game';
 import { AIController } from '../src/sim/ai';
 import { RANK_XP } from '../src/sim/hero';
 import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST } from '../src/sim/powers';
-import { run } from './helpers';
+import { menAt, run } from './helpers';
 
 const LONG = 120_000;
 const two = (hero = {}) => {
@@ -87,6 +87,7 @@ describe('played through', () => {
     // Soldiers are trained at a barracks and sent, with the leader, against a raiding party.
     const barracks = g.spawnBuilding('barracks', 0, Math.floor(tc.x) - 9, Math.floor(tc.y) + 3, true);
     for (let i = 0; i < 4; i++) g.spawnBuilding('house', 0, Math.floor(tc.x) - 9 + i * 3, Math.floor(tc.y) - 8, true);
+    menAt(g, 0, 4, barracks); // a soldier is made of a villager: four men of the town go in
     run(g, 2);
     for (let i = 0; i < 4; i++) expect(g.cmdTrain(0, barracks.id, g.trainedAs(0, 'spearman'))).toBe(true);
     expect(until(g, 200, () => g.units.filter((u) => u.owner === 0 && u.def.cls === 'infantry').length >= 4)).toBe(true);

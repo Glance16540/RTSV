@@ -14,7 +14,8 @@ import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setL
 import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
 import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, answerTale, Campaign, heroFor, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, homeCorner, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
-import { run, setups, spot, villagers } from './helpers';
+import { menAt, run, setups, spot, villagers } from './helpers';
+import { mustering } from '../src/sim/muster';
 
 describe('map', () => {
   it('always connects both bases by land', () => {
@@ -272,9 +273,10 @@ describe('ai', () => {
     const ais = [new AIController(g, 0), new AIController(g, 1)];
     ais[0].setLevel(0);
     ais[1].setLevel(2);
-    run(g, 60 * 45, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
+    // An hour, not 45 minutes: since a soldier is made of a villager, armies are smaller and this war ends at minute 53.
+    run(g, 60 * 60, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
     expect(g.winner).toBe(1);
-  }, 120000);
+  }, 180000);
 });
 
 describe('wildlife and shelter', () => {
@@ -1601,6 +1603,7 @@ describe('water and ships', () => {
     const [cx, cy] = shore(g);
     const dock = g.spawnBuilding('dock', 0, cx, cy, true);
     g.players[0].res.wood = 500;
+    menAt(g, 0, 1, dock); // a boat is crewed by a man of the town
     expect(g.cmdTrain(0, dock.id, 'fishboat')).toBe(true);
     run(g, 25);
     const boat = g.units.find((u) => u.type === 'fishboat')!;
@@ -2257,7 +2260,7 @@ describe('the holy town and the work camp', () => {
     // Saved and restored, she is still held.
     expect(Game.restore(g.serialize()).buildings.find((b) => b.type === 'workcamp')!.captives!.length).toBe(1);
     // The camp turns out villagers for its owners in time.
-    const mine = g.units.filter((u) => u.owner === 0 && u.type === 'villager').length;
+    const mine = g.units.filter((u) => u.owner === 0 && u.type === 'villager' && !mustering(g, u)).length; // not the man gone to the tavern to be made a Slaver
     p.popCap = 200;
     run(g, 120);
     expect(g.units.filter((u) => u.owner === 0 && u.type === 'villager').length).toBeGreaterThan(mine);

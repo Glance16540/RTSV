@@ -29,8 +29,15 @@ it is kept on the record of its house, which lists it by name and age, and nothi
 it steps out of the door as a villager and takes up a parent's trade. If the house falls, its children pass
 to a neighbouring house or the Town Center.
 
+**A soldier costs a person.** Training a soldier, a crew or a healer takes a villager as well as the price: the
+nearest man with nothing to do (failing that, the nearest at work) walks to the building and goes in, and the
+training time turns him into the unit, under his own name. Soldiers and crews come from the men; a healer may be
+a woman, and a woman is asked first. With nobody free the order is refused. Cancel it, or lose the building, and he
+comes back out. Beasts and the nation's leader cost nobody. A woman who fights strikes far less hard than a man.
+
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
-technologies, and changes how your settlement looks.
+technologies, and changes how your settlement looks. In a campaign a town is in its nation's age, which is advanced
+on the map: nobody ages up inside a campaign battle. Skirmishes and missions age up as before.
 
 **Play styles.** Each nation belongs to a group (raiders, builders, farmers, scholars, the faithful, traders,
 warriors; see `STYLES` in `src/sim/data.ts`). The Norse and Mongols are raiders: they start as a war band with no

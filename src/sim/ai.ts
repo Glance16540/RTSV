@@ -4,12 +4,15 @@ import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
 import { turnOut } from './calamity';
+import { mustering, needsPerson } from './muster';
 import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
 const ARMY_TARGET = [4, 10, 18, 26, 32];
+/** A soldier is made of a villager: the fewest hands each age's town keeps at work before it sends another to arms (half as many when attacked). */
+const HANDS_KEPT = [8, 12, 16, 20, 22];
 /** Tries (one a second) at placing a building close to the Town Center before it looks further out. */
 const CROWDED_TRIES = 30;
 const ARMY_MIX: string[][] = [
@@ -85,7 +88,7 @@ export class AIController {
     const villagers: Unit[] = [], army: Unit[] = [], ships: Unit[] = [];
     for (const u of g.units) {
       if (u.owner !== pid) continue;
-      if (u.type === 'villager') { if (u.growT <= 0) villagers.push(u); }
+      if (u.type === 'villager') { if (!mustering(g, u)) villagers.push(u); } // one called to arms is a villager no longer
       else if (u.def.naval) ships.push(u);
       else army.push(u);
     }
@@ -121,7 +124,7 @@ export class AIController {
     if (!p.bell && !raiders) turnOut(g, pid);
 
     // ---- Economy ----
-    const wantAge = p.age < AGES.length - 1 && !p.agingUp && villagers.length >= AGE_VILLAGERS[p.age] && count('barracks') > 0;
+    const wantAge = !g.fixedAge && p.age < AGES.length - 1 && !p.agingUp && villagers.length >= AGE_VILLAGERS[p.age] && count('barracks') > 0;
     const saving = wantAge && !underAttack;
 
     if (tc && tc.complete && villagers.length < VILLAGER_TARGET[p.age] && tc.queue.length < 2 && !(saving && villagers.length >= AGE_VILLAGERS[p.age] + 2)) {
@@ -249,6 +252,8 @@ export class AIController {
         if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && army.length >= armyTarget / 2 && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
+        // Every soldier is a hand taken from the fields: the town keeps enough of them to live.
+        if (needsPerson(def) && villagers.length <= HANDS_KEPT[p.age] * (underAttack ? 0.5 : 1)) continue;
         if ((type === 'shaman' || type === 'priest') && g.countUnits(pid, type) >= 2) continue;
         if (type === 'prophet' && g.countUnits(pid, 'prophet') >= 1) continue;
         if (g.cmdTrain(pid, src.id, type)) { this.mixI = (this.mixI + k + 1) % mix.length; break; }
