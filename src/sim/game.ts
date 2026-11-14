@@ -908,7 +908,7 @@ export class Game {
     const roofs = this.buildings.filter((b) => b.owner === owner && !b.dead && b.complete && (b.type === 'house' || b.type === 'towncenter')).sort((a, b) => Number(b.type === 'house') - Number(a.type === 'house') || a.id - b.id);
     if (!roofs.length) return;
     const n = Math.max(0, Math.min(MAX_KIND, Math.round(Number(children) || 0)));
-    for (let j = 0; j < n; j++) { const c = this.bear(roofs[j % roofs.length]); c.left = GROW_TIME * (0.1 + this.rng() * 0.9); if (c.frail && c.frail >= c.left) delete c.frail; }
+    for (let j = 0; j < n; j++) { const c = this.bear(roofs[j % roofs.length]); c.left = GROW_TIME * (0.1 + this.rng() * 0.9); }
   }
 
   /**
