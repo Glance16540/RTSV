@@ -10,6 +10,8 @@ import { battleHabits, leaningWith } from './temper';
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
 const ARMY_TARGET = [4, 10, 18, 26, 32];
+/** Tries (one a second) at placing a building close to the Town Center before it looks further out. */
+const CROWDED_TRIES = 30;
 const ARMY_MIX: string[][] = [
   ['clubman', 'slinger', 'hound', 'clubman', 'javelineer'],
   ['spearman', 'bowman', 'rider', 'chariot', 'bowman', 'spearman', 'mammoth', 'shaman', 'hound'],
@@ -57,6 +59,8 @@ export class AIController {
   /** Multiplier on how large an army the AI wants. */
   armyScale = 1;
 
+  /** The building it is trying to place, and how many times running it has found no site close in. */
+  private crowded = { type: '', tries: 0 };
   /** No hall stands: every hand and every log goes to raising one. */
   private founding = false;
   constructor(private game: Game, private pid: number) {}
@@ -163,7 +167,15 @@ export class AIController {
         if (saving && step.type !== 'barracks') continue;
         // A Wonder is for an AI that is rich and not on the easy setting.
         if (step.type === 'wonder' && (this.level < 1 || p.res.wood < 1600 || !g.canAfford(p, BUILDINGS.wonder.cost))) continue;
-        if (g.canAfford(p, BUILDINGS[step.type].cost)) this.build(step.type, home, villagers, 7, 13);
+        // A grown town has no room left close in. When the same building has found no site for a while, look
+        // further out. (It used to look only close in and try for ever: a people starved beside a full treasury
+        // for want of a market it had nowhere to put. Looking far at the first failure was tried too, and spread a
+        // young town out where marauders carried its people off.)
+        if (g.canAfford(p, BUILDINGS[step.type].cost)) {
+          if (this.crowded.type !== step.type) this.crowded = { type: step.type, tries: 0 };
+          const made = this.build(step.type, home, villagers, 7, 13) ?? (this.crowded.tries >= CROWDED_TRIES ? this.build(step.type, home, villagers, 13, 26) : null);
+          this.crowded.tries = made ? 0 : this.crowded.tries + 1;
+        }
         break;
       }
     }
