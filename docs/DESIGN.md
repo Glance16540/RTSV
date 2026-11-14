@@ -82,10 +82,34 @@ town's moral standing.
 drink. This is shown by the house and not by any act: the tavern's look and lights, its hours, how
 its women are dressed, the gold it brings in, and the town's standing going down.
 
-## Not yet decided
+**A visit.** Entering a town plays about ten minutes of its season; the player may leave sooner.
+Any number of towns may be visited in a season, each once.
 
-- What grief does: whether a home that loses its mother or its sons works worse, and whether a
-  town of such homes turns to revenge or to despair.
+**A town left to itself** carries on with the last orders it was given (what to build, what to
+train, where its people work), and a governor fills the gaps sensibly.
+
+**Stores.** The four resources replace the map's supplies. Every town has its own stores of food,
+wood, gold and stone, and the nation's stores on the map are the sum of its towns'. Towns send
+food, goods and people to one another by road, a season on the way, and a convoy can be robbed.
+
+**Armies belong to towns.** An army is the men of the town that raised it, and its dead are that
+town's dead. A veteran who comes home is one of its notable people.
+
+**A town taken.** Its people stay and become the taker's over time: resentful at first and likely
+to rise, sooner settled where they are ruled well.
+
+**Rivals live by the same rules.** A rival nation has real towns, loses real people, and can be
+bled by raids as the player can.
+
+**Faith is a town's.** Each town stands where it stands between piety and decadence, and towns of
+one nation may stand at different levels. The nation's standing is the sum of its towns', as its
+stores are.
+
+**The leader is one person in one place.** He moves about the map, is in a town or with an army,
+and steadies the town he is in. He can call armies to meet him and move with them as one.
+
+**Grief.** A home that loses its mother or its sons works more slowly for a time. It tells most in
+a town of middling morals, and less in a holy or a decadent one.
 
 ## The order of building
 
