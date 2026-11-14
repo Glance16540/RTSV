@@ -16,6 +16,8 @@ import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
 import { Sky } from './sky';
 import { Flame, NightLights, carriesTorch } from './nightlight';
+import { CampScenes } from './campscene';
+import { canCarryTorch, carryTorch, dropTorch, torchTip } from './torch';
 
 /** How steeply the camera looks down. `?pitch=20` (degrees) lowers it, for looking at figures from the side. */
 export const PITCH = ((Number(new URLSearchParams(location.search).get('pitch')) || 50) * Math.PI) / 180;
@@ -45,7 +47,7 @@ export class Renderer {
   cy: number;
   dist = 30;
   /** The main menu's camera: it circles low over the town, where the game's own looks down from a fixed quarter. */
-  cine: { yaw: number; pitch: number } | null = null;
+  cine: { yaw: number; pitch: number; gaze?: number; low?: number } | null = null;
   /** How dark the unexplored land is drawn, 1 in play. The main menu lifts it so the country can be seen. */
   fogScale = 1;
   private skyC = new THREE.Color(0x0b0d10);
@@ -66,6 +68,7 @@ export class Renderer {
   private scenery!: Scenery;
   private haze = new THREE.Fog(0x9fb0c4, 60, 160);
   private fogTex!: THREE.DataTexture;
+  private misted = false;
   private fogAlpha: Float32Array;
   private rings: THREE.Mesh[] = [];
   /** What is in the air, each with its own shape, and where it will come down. */
@@ -115,6 +118,10 @@ export class Renderer {
   private campViews = new Map<number, { key: string; g: THREE.Group; figs: CampFig[] }>();
   /** How far into night it is, 0 by day to 1 in full dark, eased through dusk and dawn. */
   private nightAmt = 0;
+  /** Rescues, risings and escapes at the work camps, drawn at their gates. */
+  private campScenes!: CampScenes;
+  /** Who holds each unit's torch: the first of its figures that can, or null where none of them has a hand free. */
+  private torchBy = new Map<number, RealPerson | null>();
   private frameDt = 0.016;
   /** Hearts that rise from where a decadent town is busy at its pleasures. */
   private hearts: { m: THREE.Mesh; t: number; sway: number }[] = [];
@@ -166,6 +173,7 @@ export class Renderer {
     this.heaven = new Sky(this.glow());
     this.scene.add(this.heaven.group);
     this.nightLights = new NightLights(this.scene, this.glow());
+    this.campScenes = new CampScenes();
 
     this.area = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 48), new THREE.MeshBasicMaterial({ color: 0xb48cff, transparent: true, opacity: 0.9, depthTest: false }));
     this.area.rotation.x = -Math.PI / 2;
@@ -276,10 +284,15 @@ export class Renderer {
   private updateFog(dt: number): void {
     const vis = this.game.vis, a = this.fogAlpha, d = this.fogTex.image.data as Uint8Array;
     const k = Math.min(1, dt * 6);
+    // Looking out over the land, what is not yet known is lost in mist of the sky's colour, not in blackness.
+    const mist = (this.cine?.low ?? 0) * 255, h = this.haze.color, mr = h.r * mist, mg = h.g * mist, mb = h.b * mist;
+    const tint = mist > 0 || this.misted;
+    this.misted = mist > 0;
     for (let i = 0; i < vis.length; i++) {
       const target = vis[i] === 2 ? 0 : vis[i] === 1 ? 0.45 : 1;
       a[i] += (target - a[i]) * k;
       d[i * 4 + 3] = a[i] * 255 * this.fogScale;
+      if (tint) { d[i * 4] = mr; d[i * 4 + 1] = mg; d[i * 4 + 2] = mb; }
     }
     this.fogTex.needsUpdate = true;
   }
@@ -287,10 +300,10 @@ export class Renderer {
   // ---- Camera ----
 
   moveCamera(dxScreen: number, dyScreen: number): void {
-    // Screen right is (+x, -z) and screen up is (-x, -z) on the ground for a 45 degree yaw.
-    const k = Math.SQRT1_2;
-    this.cx += (dxScreen - dyScreen) * k;
-    this.cy += (-dxScreen - dyScreen) * k;
+    // Screen right is (+x, -z) and screen up is (-x, -z) on the ground for a 45 degree yaw; it turns with the view.
+    const yaw = this.cine?.yaw ?? YAW, c = Math.cos(yaw), s = Math.sin(yaw);
+    this.cx += dxScreen * c - dyScreen * s;
+    this.cy += -dxScreen * s - dyScreen * c;
     this.clampCamera();
   }
 
@@ -308,7 +321,9 @@ export class Renderer {
     const sh = this.shake > 0 ? Math.min(1, this.shake) * 0.12 : 0;
     this.camera.position.x += Math.sin(this.clock * 61) * sh;
     this.camera.position.y += Math.sin(this.clock * 47) * sh;
-    this.camera.lookAt(this.cx, 0, this.cy);
+    // Looking out, the eyes are raised from the ground toward the sky: `gaze` is how far above level they rest.
+    const low = this.cine ? this.cine.low ?? 1 : 0, gaze = this.cine?.gaze;
+    this.camera.lookAt(this.cx, gaze === undefined ? 0 : low * (this.camera.position.y + Math.tan(gaze) * h), this.cy);
     this.camera.updateMatrixWorld();
     const r = this.dist * 0.72;
     // Haze thickens toward the far edge of the view, and thins out when the camera is close in.
@@ -333,8 +348,9 @@ export class Renderer {
     this.sky.intensity = 1.55 * (1 - w * 0.18) * (1 - n * 0.6);
     this.gl.toneMappingExposure = 1.02 - n * 0.2;
     // Seen from low down the land runs out to a horizon, so it is lost in mist there and the sky takes the mist's colour.
-    if (this.cine) { this.haze.near = this.dist * 0.9; this.haze.far = this.dist * 2.7; }
-    (this.scene.background as THREE.Color).copy(this.cine ? this.haze.color : this.skyC);
+    this.haze.near += (this.dist * 0.9 - this.haze.near) * low;
+    this.haze.far += (this.dist * 2.7 - this.haze.far) * low;
+    (this.scene.background as THREE.Color).copy(this.skyC).lerp(this.haze.color, low);
     this.heaven.update(this.camera, { horizon: this.haze.color, sunX: sx, sunZ: 20, up, moonX: 30, moonZ: -18, night: n, warm, weather: w, sunColor: this.sun.color });
     this.sun.target.position.set(this.cx, 0, this.cy);
     const sc = this.sun.shadow.camera;
@@ -355,7 +371,11 @@ export class Renderer {
       for (const u of this.game.units) {
         if (u.inside || u.def.naval || !this.game.isMilitary(u) || !carriesTorch(u.id, !!u.hero) || (u.x - this.cx) ** 2 + (u.y - this.cy) ** 2 > far) continue;
         const v = this.unitViews.get(u.id);
-        if (v?.g.visible) torches.push({ x: v.g.position.x + 0.22, y: v.g.position.y + 1.25, z: v.g.position.z, id: u.id, torch: true });
+        if (!v?.g.visible) continue;
+        // The flame sits on the torch in the bearer's hand; a unit with no person drawn keeps it at the shoulder.
+        const by = this.torchBy.get(u.id), tip = by ? torchTip(by) : null;
+        if (tip) torches.push({ x: tip.x, y: tip.y, z: tip.z, id: u.id, torch: true });
+        else if (by === undefined) torches.push({ x: v.g.position.x + 0.22, y: v.g.position.y + 1.25, z: v.g.position.z, id: u.id, torch: true });
       }
     }
     this.nightLights.update(n, this.clock, this.cx, this.cy, lamps, torches, this.lamplight);
@@ -578,7 +598,9 @@ export class Renderer {
     g.scale.set(size, size * breathe, size);
     g.rotation.x += (pitch - g.rotation.x) * Math.min(1, dt * 14);
     g.rotation.z += (roll - g.rotation.z) * Math.min(1, dt * 14);
-    let d = u.facing - g.rotation.y;
+    // A soldier come to a work camp for his people faces its gate while he stands there.
+    const gateMan = !u.moving && u.attackAnim <= 0 ? this.campScenes.at(u.id) : undefined;
+    let d = (gateMan ? gateMan.yaw : u.facing) - g.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
     for (const b of v.beasts ?? []) this.poseBeast(u, b, dt);
@@ -723,6 +745,8 @@ export class Renderer {
     }
     if (v.flesh) { this.spray(at.x, at.y + 0.5, at.z, 16, true); this.stain(at.x, at.z, v.cls === 'beast' || v.cls === 'cavalry' ? 0.6 : 0.4, 3.5); }
     else this.spray(at.x, at.y + 0.4, at.z, 12, false);
+    // The torch goes out with its bearer.
+    for (const [id, by] of this.torchBy) if (by && (by === v.real || v.riders?.some((r) => r.p === by))) { dropTorch(by); this.torchBy.delete(id); }
     this.dying.push({ g, t: 0, v });
   }
 
@@ -1086,6 +1110,7 @@ export class Renderer {
       } else if (p.strike > 0) play(p, clip, rate, true);
       else if (p.flinch > 0) play(p, 'Hit_Chest', 1.3, true);
       else if (u.moving) move();
+      else if (this.campScenes.at(u.id)?.working) play(p, p.weapon === 'spear' || p.weapon === 'pike' ? 'Punch_Cross' : 'Sword_Attack', 0.9); // hacking at the gate
       else play(p, u.order?.t === 'attack' && (p.weapon === 'sword' || p.weapon === 'club' || p.weapon === 'axe') ? 'Sword_Idle' : 'Idle_Loop', 1);
     } else {
       hold(p, job === 'wood' ? 'hatchet' : job === 'mine' ? 'pick' : job === 'build' ? 'hammer' : job === 'farm' ? 'hoe' : '');
@@ -1103,6 +1128,12 @@ export class Renderer {
     p.mixer.update(dt);
     level(p, yaw, aim, dt);
     if (seated) astride(p, yaw);
+    // After dark, one figure of a unit that carries a torch holds it up, if it has a hand free.
+    if (this.nightAmt > 0.02 || this.torchBy.has(u.id)) {
+      let by = this.torchBy.get(u.id);
+      if (by === undefined && this.game.isMilitary(u) && !u.def.naval && carriesTorch(u.id, !!u.hero)) this.torchBy.set(u.id, (by = canCarryTorch(p) && (!mounted || seated) ? p : null));
+      if (by === p) carryTorch(p, yaw, this.nightAmt > 0.02 ? 1 : 0, dt);
+    }
   }
 
   /** The gait of an animal: standing, walking or at the gallop as the unit moves, and its bite or kick when it strikes. */
@@ -1372,6 +1403,13 @@ export class Renderer {
     if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
     this.lightNight();
+    this.campScenes.update(this.game, dt, {
+      chips: (x, y, z, n) => this.spray(x, y, z, n, false),
+      dust: (x, y, z, delay) => this.cloud(x, y, z, 0xb8a888, delay),
+      sign: (x, y, text) => { this.floaters.push({ x, y, text, t: 0 }); },
+      height: (x, y) => this.scenery.heightAt(x, y),
+      seen: (b) => !!this.buildingViews.get(b.id)?.visible,
+    });
     this.updateFog(dt);
     this.scenery.update(this.clock, 1 - this.nightAmt, this.weather.amount);
     for (const m of this.models) m.mixer.update(dt);

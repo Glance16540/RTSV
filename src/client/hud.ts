@@ -8,6 +8,7 @@ import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS, powersHeld } from '..
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
 import { updateHallClock } from './hallclock';
+import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
@@ -733,6 +734,7 @@ export class Hud {
 
     this.updateCard();
     this.updateGuide();
+    updateLessons(game, pid, this.app.paused || !!this.app.mission);
     const info = this.infoHtml();
     if (info !== this.infoSig) { this.infoSig = info; $('info').innerHTML = info; }
 
