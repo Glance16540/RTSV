@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { countryOf, countryYield } from '../src/sim/country';
 import { HeroSpec, HERO_POINTS, HERO_MIN_HURT, HOLY_GUARD, MIGHT_ATK, GUARD_ARMOR, VIGOUR_HP, RANK_ATK, RANK_ARMOR, RANK_HP, RANK_XP, TYRANT_BIND, cleanHero, heroBonus, rankOf } from '../src/sim/hero';
 import { PLACES, TALES, TALE_FROM, TALE_EVERY, WORLD_EVENTS, WORLD_FROM, COMET_VIRTUE } from '../src/sim/story';
 import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
@@ -733,7 +734,7 @@ describe('conquest campaign', () => {
     const c = newCampaign(7, 1, 1, 'steppe'); // a people with no discount on what is bought here
     const home = c.territories.find((t) => t.capital === 0)!;
     const army = armyAt(c, home.id)!;
-    expect(income(c, 0)).toBe(6); // 2 + farmland 2 + capital 2
+    expect(income(c, 0)).toBe(6 + countryYield(c, home.id)); // 2 + farmland 2 + capital 2, and what the country adds
     expect(c.territories.some((t) => t.trait)).toBe(true);
     expect(armyStrength(army)).toBe(5); // three infantry and the Warlord
     expect(canRaise(c, 0, home.id, 'archers')).toBe(false); // no archery range yet
@@ -745,7 +746,7 @@ describe('conquest campaign', () => {
     const target = c.territories[home.adj[0]];
     expect(moveArmy(c, army.id, target.id)).toBe('battle');
     // Archers fight 30% harder against the locals' infantry: 3 + 1.3 + Warlord 2.
-    expect(c.pending).toMatchObject({ attacker: 0, defender: -1, aStr: 6.3, dStr: target.militia + (target.trait === 'hills' ? 2 : 0) });
+    expect(c.pending).toMatchObject({ attacker: 0, defender: -1, aStr: Math.round(6.3 * countryOf(c, target.id).march * 10) / 10, dStr: target.militia + (target.trait === 'hills' ? 2 : 0) + countryOf(c, target.id).defence });
     expect(winChance(6.3, 1)).toBe(1);
     expect(winChance(3, 3)).toBeLessThan(0.5); // the defender has the edge at even strength
     expect(winChance(1, 6)).toBe(0);
@@ -784,7 +785,7 @@ describe('conquest campaign', () => {
     // Storming fortified land.
     const foe = c.territories.find((t) => t.capital === 1)!;
     foe.buildings.push('fortress');
-    expect(defence(c, foe.id)).toBe(5 + 1 + (c.factions[1].civ === 'stonekin' ? 4 : 3));
+    expect(defence(c, foe.id)).toBe(5 + 1 + (c.factions[1].civ === 'stonekin' ? 4 : 3) + countryOf(c, foe.id).defence);
     const raiders = { id: 99, owner: 0, at: foe.adj[0], units: { cavalry: 6 }, hero: false, vet: 2, moved: false };
     c.territories[foe.adj[0]].owner = 0;
     c.armies = c.armies.filter((a) => a.at !== foe.adj[0]);
@@ -1815,7 +1816,7 @@ describe('harbours', () => {
       c.armies = c.armies.filter((x) => x === a || !to.adj.includes(x.at));
       expect(moveArmy(c, a.id, to.id)).toBe('battle');
       expect(c.pending!.sea).toBe(true);
-      expect(c.pending!.aStr).toBeCloseTo(Math.round(armyStrength(a) * SEA_LANDING * 10) / 10, 1);
+      expect(c.pending!.aStr).toBeCloseTo(Math.round(armyStrength(a) * SEA_LANDING * countryOf(c, to.id).march * 10) / 10, 1);
       expect(battleConfig(c)!.title).toContain('landing');
       resolvePending(c, 'attacker');
       expect(to.owner).toBe(0);
@@ -3649,7 +3650,7 @@ describe('the story of a campaign', () => {
     expect(income(c, 0)).toBe(before.income + 5 * 2 + PLACES.fair.supplies!);
     expect(virtueDrift(c, 0)).toBe(before.drift + PLACES.shrine.virtue!);
     expect(ageCost(c, 0)).toBe(before.age - PLACES.library.age!);
-    expect(defence(c, keep.id)).toBe(defence(c, fair.id) + PLACES.keep.defence!);
+    expect(defence(c, keep.id)).toBe(defence(c, fair.id) + PLACES.keep.defence! + countryOf(c, keep.id).defence - countryOf(c, fair.id).defence);
     expect(hireOff(c, 0, forge.id)).toBe(1);
     expect(hireOff(c, 0, shrine.id)).toBe(0);
     forge.buildings = ['barracks'];

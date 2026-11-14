@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/sim/game';
 import type { Building } from '../src/sim/game';
-import { RESCUE_GUARD, RESCUE_TIME, guardsShort, heldAt, postGuards, rescueForce, rescuers } from '../src/sim/rescue';
+import { RESCUE_GUARD, RESCUE_TIME, gateWork, guardsShort, heldAt, postGuards, rescueForce, rescuers } from '../src/sim/rescue';
+import { gatePanel, gateSign } from '../src/client/gate';
 import { run } from './helpers';
 
 /** A decadent town (0) with a Work Camp holding people taken from its rival (1). Player 2, if asked for, is the rival's ally. */
@@ -153,5 +154,50 @@ describe('what the keeper of a camp can be told to do', () => {
     none.g.spawnUnit('slaver', 0, none.camp.x - 6, none.camp.y + 5);
     expect(guardsShort(none.g, 0)).toBe(0);
     expect(postGuards(none.g, 0)).toBe(0);
+  });
+});
+
+describe('how things stand at the gate, for whoever is looking', () => {
+  it('gateWork is null with no soldier there, counts them against the guards, and tells how long until the next is out', () => {
+    const { g, camp, through, send } = camped(6, 2);
+    expect(gateWork(g, camp)).toBeNull();
+    send(1, 3);
+    through(3);
+    expect(gateWork(g, camp)).toEqual({ from: 1, soldiers: 3, heldOff: 3, force: 5, spare: 0, progress: 0, nextIn: null });
+    send(1, 3); // six now: four held off, two at work, so one out every three seconds
+    expect(gateWork(g, camp)).toMatchObject({ soldiers: 6, heldOff: 4, spare: 2, progress: 0, nextIn: 3 });
+    through(2);
+    const w = gateWork(g, camp)!;
+    expect(w.progress).toBeGreaterThan(0.3);
+    expect(w.progress).toBeLessThan(1);
+    expect(w.nextIn).toBeLessThanOrEqual(2);
+    const before = { held: camp.captives!.length, t: camp.rescueT };
+    gateWork(g, camp); gateWork(g, camp);
+    expect({ held: camp.captives!.length, t: camp.rescueT }).toEqual(before); // looking changes nothing
+    const empty = camped(0, 0);
+    empty.send(1, 2);
+    expect(gateWork(empty.g, empty.camp)).toBeNull(); // no one to get out
+  });
+
+  it('the sign over the camp and the line on its panel say it from each side', () => {
+    const { g, camp, through, send } = camped(6, 2);
+    expect(gateSign(g, camp, 0)).toBeNull();
+    expect(gatePanel(g, camp, 0)).toBe('');
+    send(1, 3);
+    through(2);
+    expect(gateSign(g, camp, 1)).toEqual({ keeper: false, working: false, fill: 0, text: '🗡 3/5' });
+    expect(gateSign(g, camp, 0)).toMatchObject({ keeper: true, working: false });
+    expect(gatePanel(g, camp, 1)).toContain('holding off 3 soldiers at the gate: 5 are needed');
+    expect(gatePanel(g, camp, 0)).toContain('Your guards are holding off 3 soldiers at the gate. 2 more');
+    send(1, 3);
+    through(1);
+    const mine = gateSign(g, camp, 1)!, theirs = gateSign(g, camp, 0)!;
+    expect(mine).toMatchObject({ keeper: false, working: true });
+    expect(mine.text).toMatch(/^🔓 \d+s$/);
+    expect(theirs.text).toMatch(/^⚠ \d+s$/);
+    expect(mine.fill).toBeGreaterThan(0);
+    expect(gatePanel(g, camp, 1)).toContain('2 soldiers are working at the gate (the guards hold off 4 more)');
+    expect(gatePanel(g, camp, 1)).toContain('the next of your people is out in about');
+    expect(gatePanel(g, camp, 0)).toContain('6 soldiers are at the gate letting B\'s people out');
   });
 });
