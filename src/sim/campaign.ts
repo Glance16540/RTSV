@@ -2,11 +2,12 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
-import type { Ground, PlayerSetup } from './game';
+import type { Ground, PlayerSetup, Standing } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
-import { COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
+import { House, autoSucceed, strangerLeads, tickHouses } from './dynasty';
+import { Answer, LEGENDS, COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
 
 export const MAP_W = 1300;
 export const MAP_H = 800;
@@ -86,7 +87,7 @@ const hash = (a: number, b: number): number => {
 };
 /** The named places of this world: a few lands that are not capitals, chosen and named by the seed. */
 export function placesOf(c: Campaign): Place[] {
-  if (c.places) return c.places;
+  if (c.places) return suited(c, c.places);
   const open = c.territories.filter((t) => t.capital < 0).sort((a, b) => hash(c.seed, a.id) - hash(c.seed, b.id));
   const kinds = (Object.keys(PLACES) as PlaceKind[]).sort((a, b) => hash(c.seed + 1, a.length * 7 + a.charCodeAt(0)) - hash(c.seed + 1, b.length * 7 + b.charCodeAt(0)));
   const n = Math.min(open.length, 3 + Math.floor(c.territories.length / 6));
@@ -94,9 +95,17 @@ export function placesOf(c: Campaign): Place[] {
   for (let i = 0; i < n; i++) {
     const kind = kinds[i % kinds.length], def = PLACES[kind];
     const k = Math.floor(hash(c.seed + 2, i % kinds.length) * def.names.length) + Math.floor(i / kinds.length); // a second of its kind takes the next name
-    c.places.push({ at: open[i].id, kind, name: def.names[k % def.names.length], legend: def.legends[Math.floor(hash(c.seed + 3, i) * def.legends.length)] });
+    c.places.push({ at: open[i].id, kind, name: def.names[k % def.names.length], legend: '' });
   }
-  return c.places;
+  return suited(c, c.places);
+}
+/** Give each place a legend that is told of that place and no other (and put right those given another's before). */
+function suited(c: Campaign, places: Place[]): Place[] {
+  for (const p of places) {
+    const own = LEGENDS[p.name];
+    if (own && !own.includes(p.legend)) p.legend = own[Math.floor(hash(c.seed + 3, p.at) * own.length)];
+  }
+  return places;
 }
 export const placeAt = (c: Campaign, tid: number): Place | undefined => placesOf(c).find((p) => p.at === tid);
 /** Add up one kind of good from every named place a people holds. */
@@ -186,6 +195,8 @@ export interface Faction {
   lastDemand: number; // turn this rival last demanded tribute
   /** The leader as someone has made them, and the veterancy they have earned across the campaign's battles. */
   hero?: Partial<HeroSpec>; heroRank?: number;
+  /** The leader's children, and how many have led this people: see dynasty.ts. */
+  house?: House;
   /** Where this people stands between piety (100) and decadence (-100): see FAITH. */
   virtue?: number;
   age?: number; // the age this people has reached on the campaign map, 0 to 4
@@ -208,7 +219,7 @@ export interface Territory {
   seed: number; // battles here are always fought on the same ground
   /** The town on this land's battlefield, as the last battle fought there in person left it. */
   town?: Town;
-  /** Wood felled and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
+  /** Wood felled, berries picked and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
   horde?: boolean;
@@ -216,13 +227,26 @@ export interface Territory {
   taken?: number;
 }
 
-/** What stands on a land's battlefield between battles: the holder's corner of it, and each building as [type, cx, cy]. */
-export interface Town { at: number; b: [string, number, number][] }
+/** What stands on a land's battlefield between battles: the holder's corner of it, and each building with the damage it has taken. */
+export interface Town { at: number; b: Standing[] }
 /** The building that stands on the battlefield for each building of the campaign map. */
 export const SITE_BUILDING: Record<string, string> = { farm: 'farm', barracks: 'barracks', range: 'range', stable: 'stable', harbour: 'dock', fortress: 'tower' };
 /** The corner of its battlefield a land's holder defends from. The attacker makes camp in the one opposite. */
 export const homeCorner = (t: Territory): number => t.town?.at ?? 2;
 const MAX_TOWN = 240;
+/** The share of a building's full health that the people of a land mend in a turn. */
+export const TOWN_MEND = 0.1;
+/** A turn's mending: every damaged building in every town is a little nearer whole. Marauders mend nothing, and no one builds. */
+export function mendTowns(c: Campaign): void {
+  for (const t of c.territories) {
+    if (!t.town || t.horde) continue;
+    t.town.b = t.town.b.map((b): Standing => {
+      if (b[3] === undefined || b[4] !== undefined) return b; // whole, or never finished: that waits for its builders
+      const health = Math.round((b[3] + TOWN_MEND) * 100) / 100;
+      return health >= 1 ? [b[0], b[1], b[2]] : [b[0], b[1], b[2], health];
+    });
+  }
+}
 
 export interface Army {
   id: number;
@@ -296,6 +320,9 @@ export interface Campaign {
   /** A tale waiting for the player's answer this turn, with the names that fill it in. */
   tale?: { id: string; land: number; rival: number; tribe: number } | null;
   lastTale?: string;
+  /** Every tale that has been put, and how each one answered was settled: later tales turn on these. */
+  asked?: string[];
+  answers?: Answer[];
   /** The story so far: what will still matter when the campaign is over. */
   chronicle?: { turn: number; text: string }[];
 }
@@ -993,6 +1020,7 @@ export function raise(c: Campaign, f: number, tid: number, type: string): boolea
 export function summonHero(c: Campaign, f: number, tid: number): boolean {
   if (!canSummonHero(c, f, tid)) return false;
   c.factions[f].supplies -= heroCost(c.factions[f].civ);
+  strangerLeads(c, f);
   c.factions[f].heroAlive = true;
   armyAt(c, tid)!.hero = true;
   return true;
@@ -1193,6 +1221,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     c.log.push(`${fname(c, p.attacker, true)} took ${t.name} from ${fname(c, p.defender)}.`);
     const place = placeAt(c, t.id);
     if (place) tell(c, `${fname(c, p.attacker, true)} took ${place.name} in ${t.name} from ${fname(c, p.defender)}.`);
+    else if (t.capital < 0 && p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You beat the ${c.factions[p.defender].name} at ${t.name} and took it.` : `The ${c.factions[p.attacker].name} beat you at ${t.name} and took it.`);
     if (t.capital >= 0 && t.capital !== p.attacker) tell(c, `${t.name}, chief town of ${fname(c, t.capital)}, fell to ${fname(c, p.attacker)}.`);
     if (p.defender < 0 && c.factions[p.attacker].civ === 'wild') c.factions[p.attacker].supplies += 2; // plunder
     if (t.capital >= 0 && t.capital !== p.attacker) {
@@ -1224,6 +1253,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     if (defArmy) { casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
     else if (t.owner < 0) t.militia = Math.max(1, t.militia - Math.floor(p.aStr * 0.3));
     c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and ${p.attacker === 0 ? 'were' : 'was'} thrown back.`);
+    if (p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You were thrown back from ${t.name} by the ${c.factions[p.defender].name}.` : `The ${c.factions[p.attacker].name} came against ${t.name} and you threw them back.`);
   }
   checkElimination(c);
   return attackerWon;
@@ -1291,6 +1321,7 @@ export function continueAI(c: Campaign): void {
       // Everyone has moved: a new turn begins.
       c.turn++;
       c.phase = 'player';
+      tickHouses(c);
       for (const a of c.armies) { a.moved = false; a.marched = false; }
       for (const x of c.factions) x.angry = false;
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
@@ -1306,6 +1337,7 @@ export function continueAI(c: Campaign): void {
         c.log.push(`${c.factions[c.ally].name} share 3 supplies with you.`);
       }
       mapTurn(c);
+      mendTowns(c);
       turnEvent(c);
       storyTurn(c);
       checkDominion(c);
@@ -1321,7 +1353,7 @@ export function continueAI(c: Campaign): void {
 export function taleText(c: Campaign, text: string): string {
   const t = c.tale;
   if (!t) return text;
-  return text.replace(/\{land\}/g, c.territories[t.land]?.name ?? 'your land').replace(/\{rival\}/g, t.rival > 0 ? `the ${c.factions[t.rival].name}` : 'a rival').replace(/\{tribe\}/g, c.territories[t.tribe]?.name ?? 'the next valley')
+  return text.replace(/\{land\}/g, c.territories[t.land]?.name ?? 'your land').replace(/\{rival\}/g, t.rival > 0 ? `the ${c.factions[t.rival].name}` : 'a rival').replace(/\{tribe\}/g, c.territories[t.tribe]?.name ?? 'the next valley').replace(/\{place\}/g, placeAt(c, t.land)?.name ?? 'the old place')
     .replace(/(^|[.!?] )the /g, (_, lead: string) => `${lead}The `);
 }
 export const taleNow = (c: Campaign): Tale | undefined => (c.tale ? TALES.find((x) => x.id === c.tale!.id) : undefined);
@@ -1337,9 +1369,15 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
   const ch: TaleChoice = tale[choice], me = c.factions[0];
   const result = taleText(c, ch.result);
   c.tale = null;
+  (c.answers ??= []).push({ id: tale.id, choice, turn: c.turn, land: t.land, rival: t.rival, tribe: t.tribe });
   me.supplies += ch.supplies;
   if (ch.favor && t.rival > 0) c.factions[t.rival].favor = Math.max(-MAX_FAVOR, Math.min(MAX_FAVOR, (c.factions[t.rival].favor ?? 0) + ch.favor));
   if (ch.militia && c.territories[t.tribe]?.owner < 0) c.territories[t.tribe].militia = Math.max(1, c.territories[t.tribe].militia + ch.militia);
+  if (ch.join && c.territories[t.tribe]?.owner < 0 && !c.territories[t.tribe].horde) {
+    const land = c.territories[t.tribe];
+    land.owner = 0;
+    tell(c, `${land.name} came under your rule of its own will${placeAt(c, land.id) ? `, and ${placeAt(c, land.id)!.name} with it` : ''}.`);
+  }
   if (ch.company) {
     const home = c.territories.find((x) => x.capital === 0 && x.owner === 0) ?? c.territories[t.land];
     const a = armyAt(c, home.id);
@@ -1378,12 +1416,31 @@ function storyTurn(c: Campaign): void {
   if (!mine.length || c.phase === 'over') return;
   const rivals = c.factions.filter((f) => f.alive && f.id > 0);
   const tribes = mine.flatMap((t) => t.adj).filter((n) => c.territories[n].owner < 0 && !c.territories[n].horde);
-  const open = TALES.filter((x) => x.id !== c.lastTale && (x.needs !== 'rival' || rivals.length) && (x.needs !== 'tribe' || tribes.length));
+  const asked = (c.asked ??= []);
+  // First, whatever an earlier answer has led to: the same land, the same rival, the same tribe.
+  for (const x of TALES) {
+    if (!x.after || asked.includes(x.id)) continue;
+    const was = (c.answers ?? []).find((a) => a.id === x.after!.id && a.choice === x.after!.choice);
+    if (!was) continue;
+    const land = c.territories[was.land]?.owner === 0 ? was.land : mine[0].id;
+    if ((x.needs === 'rival' && !c.factions[was.rival]?.alive) || (x.needs === 'tribe' && (c.territories[was.tribe]?.owner !== -1 || c.territories[was.tribe].horde))) { asked.push(x.id); continue; } // the thread is dropped
+    asked.push(x.id);
+    c.lastTale = x.id;
+    c.tale = { id: x.id, land, rival: was.rival, tribe: was.tribe };
+    c.log.push(`${x.title}: a matter is brought before you.`);
+    return;
+  }
+  // Otherwise a new matter: one about a named place the player holds, or one that could come to anybody.
+  const held = placesOf(c).filter((p) => c.territories[p.at].owner === 0);
+  const fits = TALES.filter((x) => !x.after && x.id !== c.lastTale && (x.needs !== 'rival' || rivals.length) && (x.needs !== 'tribe' || tribes.length) && (!x.place || held.some((p) => p.kind === x.place)));
+  const fresh = fits.filter((x) => !asked.includes(x.id));
+  const open = fresh.length ? fresh : fits;
   const tale = open[Math.floor(luck(c, 90) * open.length)];
   if (!tale) return;
   c.lastTale = tale.id;
+  asked.push(tale.id);
   c.tale = {
-    id: tale.id, land: mine[Math.floor(luck(c, 91) * mine.length)].id,
+    id: tale.id, land: tale.place ? held.find((p) => p.kind === tale.place)!.at : mine[Math.floor(luck(c, 91) * mine.length)].id,
     rival: rivals.length ? rivals[Math.floor(luck(c, 92) * rivals.length)].id : -1,
     tribe: tribes.length ? tribes[Math.floor(luck(c, 93) * tribes.length)] : -1,
   };
@@ -1439,6 +1496,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
     }
     c.spent = true;
     const own = c.territories.filter((t) => t.owner === f.id);
+    // A people that has lost its leader looks first to the house, then to its captains, and only then hires one.
+    if (!f.heroAlive) autoSucceed(c, f.id);
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     // A people with stores to spare moves with the times.
     if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8) advanceAge(c, f.id);
@@ -1600,8 +1659,8 @@ export interface BattleAfter {
   virtue?: number;
   /** The rank the leader ended the battle at. */
   heroRank?: number;
-  /** The victor's buildings as they stood, each [type, cx, cy]: the land's town from now on. */
-  town?: [string, number, number][];
+  /** The victor's buildings as they stood (`Game.standing()`), damage and all: the land's town from now on. */
+  town?: Standing[];
   /** What has been taken from the battlefield for good (`Game.ground()`), whoever won. */
   ground?: Ground;
 }
@@ -1617,7 +1676,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   const rankBefore = c.factions[0].heroRank ?? 0;
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
-  // Felled wood and dug stone are gone whoever won. A field battle is fought on other ground.
+  // Felled wood, picked berries and dug stone are gone whoever won. A field battle is fought on other ground.
   if (ground && p.mode !== 'field' && Array.isArray(ground.gone) && Array.isArray(ground.left)) {
     land.ground = {
       gone: ground.gone.filter((k) => Number.isInteger(k) && k >= 0).slice(0, 20000),
@@ -1626,14 +1685,19 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   }
   if (standing && p.mode !== 'field') {
     // The victor's buildings are the town now, where they stand: a camp that took the land becomes its town.
-    const b = standing.filter((x) => Array.isArray(x) && BUILDINGS[x[0]] && x[0] !== 'wonder' && Number.isInteger(x[1]) && Number.isInteger(x[2])).slice(0, MAX_TOWN);
+    const b = standing.filter((x) => Array.isArray(x) && BUILDINGS[x[0]] && x[0] !== 'wonder' && Number.isInteger(x[1]) && Number.isInteger(x[2]))
+      .map((x): Standing => {
+        const health = typeof x[3] === 'number' && x[3] > 0 && x[3] < 1 ? x[3] : undefined;
+        if (typeof x[4] === 'number' && x[4] >= 0 && x[4] < 1) return [x[0], x[1], x[2], health ?? 0.01, x[4]]; // never finished
+        return health === undefined ? [x[0], x[1], x[2]] : [x[0], x[1], x[2], health];
+      }).slice(0, MAX_TOWN);
     land.town = { at: playerWon === humanAttacks ? (home + 2) % 4 : home, b };
     // What the player built in the fighting stands on the map as well, where the land has room for it.
     if (playerWon && land.owner === 0) {
       for (const [site, type] of Object.entries(SITE_BUILDING)) {
         if (site === 'fortress' || land.buildings.includes(site) || land.buildings.length >= slots(land)) continue;
         if (site === 'harbour' && !onSea(c, land.id)) continue;
-        if (!b.some((x) => x[0] === type)) continue;
+        if (!b.some((x) => x[0] === type && x[4] === undefined)) continue; // a finished one
         land.buildings.push(site);
         c.log.push(`The ${SITES[site].name} you built in the fighting stands in ${land.name}.`);
       }

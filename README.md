@@ -291,14 +291,16 @@ neighbouring land.
 - **Towns stay built.** A land's battlefield is one piece of ground, laid out the same whoever comes
   to fight there, with the holder in the town's corner and the attacker camped opposite. What the map
   says is built on a land (Farmland, Barracks, Archery Range, Stable, Harbour) stands in its town when
-  a siege begins. What the victor has standing when a siege ends is kept (`Territory.town`) and is
-  there the next time that land is fought over: hold a land and you defend the town you built; take
+  a siege begins. What the victor has standing when a siege ends, finished or half built, is kept (`Territory.town`) and is
+  there the next time that land is fought over: damage and all, so a battered
+  wall or hall is still battered, though the people mend a tenth of each building every turn (`TOWN_MEND`): a Town Center
+  razed in the fighting stays razed, and its people must raise it again (they may in any age when they have none):
+  hold a land and you defend the town you built; take
   one and your camp becomes its town. A Barracks, Range, Stable, Farm or Dock you built in a siege you
   won also goes up on the map, where the land has a free slot. A land taken by auto-resolve changes
   hands as it stands, less its towers and walls. Field battles are fought away from the town.
-  The ground is kept as well (`Territory.ground`): trees felled and stone and gold dug in a siege are
-  gone, or as far worked as they were left, the next time that land is fought over, whoever won.
-  Berries grow back.
+  The ground is kept as well (`Territory.ground`): trees felled, berries picked and stone and gold dug in a siege
+  are gone, or as far worked as they were left, the next time that land is fought over, whoever won.
 - **Special land.** Some territories have gold hills, rich soil, high ground or horse plains.
   Land on the rim of the map may be coast: it pays a little more, and a siege battle there is
   fought around a great lake with docks and ships. Build a Harbour on a coast or at a sea crossing and an army
@@ -353,6 +355,11 @@ their deeds, and deeds raise them through five ranks. A holy town's leader lends
 a decadent town's leader binds enemy villagers for the Work Camp and makes the camp fill the town
 faster. They are still flesh: a blow always tells, and one who falls comes back a rank lower. The rules
 are in `src/sim/hero.ts`.
+
+A new campaign asks for your people and who leads them. Every leader keeps a house: children are born
+to it as the turns pass. When a leader falls you choose who follows: an heir who has come of age, or a
+captain from an army that has won a battle, who ends the old house. The rules are in
+`src/sim/dynasty.ts`.
 
 ## Systems board
 

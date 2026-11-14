@@ -597,3 +597,6 @@ kbd { color: var(--sepia); }
 #ow-canvas { border: 2px solid var(--ink); border-radius: 0; }
 /* Key names are read letter by letter, so they are set upright in small capitals, not in the swash italic. */
 .sheet .cols td:first-child, #t-panel .cols td:first-child { font: 400 16px var(--caps); font-style: normal; letter-spacing: 0.03em; }
+
+/* Story: the last page of the chronicle on the campaign's ending */
+.ow-epilogue { margin-top: 12px; text-align: center; max-height: none; }
