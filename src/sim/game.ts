@@ -6,6 +6,7 @@ import {
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
+import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
 import { calamity, douse } from './calamity';
@@ -14,6 +15,8 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
+import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, leaderAsMade, leaderDef, powersHeld } from './powers';
+import { CHAMPION_KILLS, Champion, canLead, championName, championSpec, rankForKills } from './champion';
 import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
@@ -119,7 +122,7 @@ export interface Unit extends Base {
   /** Freed from the marauders: she will bear no more children, and works a quarter harder. */
   freed?: boolean;
   /** The nation's leader: deeds done in this battle and the veterancy they have earned. */
-  hero?: { xp: number; rank: number };
+  hero?: { xp: number; rank: number; /** Seconds their call still sounds, and seconds until it can be raised again. */ call?: number; rest?: number };
   /** Foes this unit has killed. Among the Warriors every kill makes a soldier strike harder. */
   kills?: number;
   merc?: boolean; // hired at a tavern: fights for wages and leaves when they stop
@@ -208,9 +211,11 @@ export interface Projectile {
 export interface Stats { gathered: number; trained: number; born: number; kills: number; lost: number; razed: number; buildingsLost: number }
 const newStats = (): Stats => ({ gathered: 0, trained: 0, born: 0, kills: 0, lost: 0, razed: 0, buildingsLost: 0 });
 
-export interface Player {
+export interface Player extends HallState {
   /** The nation's leader as made in the creator, and the veterancy they will take the field with next. */
   hero?: HeroSpec; heroRank?: number;
+  /** Their leader has fallen in this battle; and the one leading now is a soldier raised in their place. */
+  heroFell?: boolean; acclaimed?: boolean;
   id: number;
   name: string;
   color: number;
@@ -310,6 +315,9 @@ export interface PlayerSetup {
 
 /** How a raider's taking of someone is set down in their record. */
 const raidWord = (u: Unit): string => (u.def.slaver ? 'Seized by slavers' : 'Carried off by raiders');
+
+/** Seconds between one look at who is beaten and the next. */
+const VICTORY_STEP = 1;
 
 export class Game {
   size: number;
@@ -484,6 +492,8 @@ export class Game {
         }
         // A people left with nothing but walls raise a hall again rather than fall without a blow.
         if (!field && !this.raider(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && !b.def.wall)) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        // A town whose hall was razed in an earlier siege has a while to begin another before it counts as beaten.
+        if (!field && !this.raider(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && b.type === 'towncenter')) { p.hadHall = true; p.hallDue = RAZED_GRACE; p.razedStart = true; }
         // Works the land is known for are raised if they are not there already.
         const have: Record<string, number> = {};
         for (const b of this.buildings) if (b.owner === i && b.complete) have[b.type] = (have[b.type] ?? 0) + 1;
@@ -565,13 +575,15 @@ export class Game {
   /** The leader a player's nation follows: their own making of them, or the leader as written. */
   heroOf(owner: number): HeroSpec {
     const p = this.players[owner];
-    return (p.hero ??= cleanHero(undefined, p.civ));
+    return (p.hero ??= leaderAsMade(undefined, p.civ, p.isAI));
   }
   /** What a leader's making and veterancy add to their arm, armour and health. */
   leaderBonus(u: Unit): { atk: number; armor: number; hp: number } {
     return heroBonus(this.heroOf(u.owner), u.hero?.rank ?? 0);
   }
   private fitLeader(u: Unit): void {
+    // The powers they have come into change the hero they are built on.
+    u.def = leaderDef(UNITS[u.type], this.heroOf(u.owner), u.hero?.rank ?? 0);
     const max = Math.round(u.def.hp * this.leaderBonus(u).hp);
     u.hp = (u.hp / u.maxHp) * max;
     u.maxHp = max;
@@ -599,7 +611,8 @@ export class Game {
     if (rank > l.hero.rank) {
       l.hero.rank = this.players[owner].heroRank = rank;
       this.fitLeader(l);
-      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}.`);
+      const learnt = powersHeld(this.heroOf(owner), rank).length > powersHeld(this.heroOf(owner), rank - 1).length ? powersHeld(this.heroOf(owner), rank).at(-1) : null;
+      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : ''}.`);
     }
   }
 
@@ -666,6 +679,7 @@ export class Game {
         this.players[e.owner].heroRank = Math.max(0, e.hero.rank - 1);
         this.players[e.owner].hero = { ...this.heroOf(e.owner), name: heirName(e.name) };
         this.leaders[e.owner] = null;
+        this.players[e.owner].heroFell = true;
         this.msg(e.owner, `${e.name} has fallen.`);
       }
       const shelter = this.entities.get(e.inside);
@@ -1331,6 +1345,7 @@ export class Game {
     for (const u of g.units) u.def = UNITS[u.type];
     for (const e of [...g.resources, ...g.buildings, ...g.units]) g.entities.set(e.id, e);
     g.players = d.players.map((p: Player & { techs: string[]; pending: string[] }) => ({ ...p, techs: new Set(p.techs), pending: new Set(p.pending) }));
+    for (const u of g.units) if (u.hero) u.def = leaderDef(UNITS[u.type], g.heroOf(u.owner), u.hero.rank);
     g.projectiles = d.projectiles;
     g.quakes = d.quakes;
     g.time = d.time;
@@ -2205,8 +2220,19 @@ export class Game {
     if (this.field) { for (const u of this.units) if (this.isMilitary(u)) alive.add(u.owner); }
     else {
       for (const b of this.buildings) if (!b.def.wall) alive.add(b.owner);
+      // A people with no Town Center, and none begun in the time it has, is beaten (see beaten.ts).
+      const fallen = new Set<number>();
+      for (const p of this.players) {
+        if (p.neutral || p.defeated) continue; // a war band that has never raised a hall has no clock: hallClock sees to that
+        const news = hallClock(p, this.buildings.some((b) => b.owner === p.id && b.type === 'towncenter' && !b.dead), this.time, VICTORY_STEP, !this.units.some((u) => u.owner === p.id && this.isMilitary(u)));
+        if (news === 'beaten') { alive.delete(p.id); fallen.add(p.id); }
+        else if (news === 'lost' || news === 'warn') {
+          this.msg(p.id, `Your last Town Center has fallen. Begin another within ${hallLeft(p, this.time)} seconds or your people are beaten.`);
+          if (news === 'lost') for (const q of this.players) if (!q.neutral && q.id !== p.id && this.hostile(q.id, p.id)) this.msg(q.id, `${p.name} have lost their last Town Center. Keep them from raising another for ${hallLeft(p, this.time)} seconds and they are beaten.`);
+        } else if (news === 'raised') this.msg(p.id, 'A Town Center is begun. Your people hold on.');
+      }
       // A raiding band has no town to lose: it is beaten when its last fighter or villager falls.
-      for (const u of this.units) if (!alive.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
+      for (const u of this.units) if (!alive.has(u.owner) && !fallen.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
     }
     for (const p of this.players) {
       if (!p.defeated && !p.neutral && !alive.has(p.id)) {
@@ -2356,6 +2382,12 @@ export class Game {
     if (u.attackAnim > 0) u.attackAnim -= DT;
     if (u.def.heal) this.updateHealer(u);
     if (u.def.aura && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + 1.5 * DT); // heroes slowly regenerate
+    if (u.hero) {
+      if (u.hero.call) u.hero.call = Math.max(0, u.hero.call - DT);
+      if (u.hero.rest) u.hero.rest = Math.max(0, u.hero.rest - DT);
+      // A rival's leader raises the call when they are in the thick of it.
+      if (this.players[u.owner].isAI && u.attackAnim > 0) this.cmdCall(u.owner);
+    }
     if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith * this.creed(u.owner).faith);
     if (u.growT > 0 && this.grow(u)) return;
     if (this.aging && u.lifespan > 0 && u.growT <= 0 && (u.age += DT) > u.lifespan) {
@@ -2834,7 +2866,7 @@ export class Game {
 
   private strike(u: Unit, t: Entity): void {
     const p = this.players[u.owner];
-    u.cooldown = u.def.cooldown * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1);
+    u.cooldown = u.def.cooldown * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1) * (this.calledAt(u.owner, u.x, u.y) === 'warlord' ? CALLS.warlord.haste! : 1);
     u.attackAnim = 0.35;
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
@@ -2877,7 +2909,7 @@ export class Game {
     } else armor = 1;
     // A leader is still flesh: however armoured, a blow tells on them.
     const raw = atk * mult * aura;
-    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale;
+    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale * (t.kind === 'unit' && this.calledAt(t.owner, t.x, t.y) === 'strategist' ? CALLS.strategist.ward! : 1);
     t.hp -= dmg;
     tp.lastAttacked = { x: t.x, y: t.y, t: this.time };
     if (this.time - tp.alertT > 12) {
@@ -2888,6 +2920,8 @@ export class Game {
       const s = this.players[owner].stats, ts = tp.stats;
       const killer = by ? this.entities.get(by) : undefined;
       if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) killer.kills = (killer.kills ?? 0) + 1;
+      // One who has felled enough is known by name from then on.
+      if (killer && killer.kind === 'unit' && !killer.name && !killer.hero && !killer.merc && canLead(killer.def.cls) && (killer.kills ?? 0) >= CHAMPION_KILLS && killer.owner !== this.wild) killer.name = championName(killer.id);
       if (t.kind === 'unit') { s.kills++; ts.lost++; } else { s.razed++; ts.buildingsLost++; }
       this.deed(owner, t);
       this.kill(t);
@@ -2922,6 +2956,58 @@ export class Game {
   }
 
   // ---- Buildings ----
+
+  /** A player's leader, wherever they are. */
+  leaderOf(owner: number): Unit | undefined { return this.units.find((u) => u.owner === owner && !!u.hero); }
+  /** Can the leader raise their call now? They must be Seasoned, in the open, and rested since the last. */
+  canCall(owner: number): boolean {
+    const l = this.leaderOf(owner);
+    return !!l && !l.inside && l.hero!.rank >= CALL_RANK && !(l.hero!.rest! > 0);
+  }
+  /** The leader raises their call: for a few seconds it tells on everyone of theirs within reach. */
+  cmdCall(owner: number): boolean {
+    if (!this.canCall(owner)) return false;
+    const l = this.leaderOf(owner)!;
+    l.hero!.call = CALL_LASTS;
+    l.hero!.rest = CALL_REST;
+    this.msg(owner, `${l.name}: ${CALLS[this.heroOf(owner).calling].name}!`);
+    return true;
+  }
+  /** Whose call, if any, is sounding over this spot for this player's people: a Warlord's or a Strategist's. */
+  calledAt(owner: number, x: number, y: number): 'warlord' | 'strategist' | null {
+    const l = this.leaders[owner];
+    if (!l || l.dead || !(l.hero!.call! > 0) || Math.hypot(l.x - x, l.y - y) > (l.def.auraRange ?? 0)) return null;
+    return this.heroOf(owner).calling;
+  }
+
+  /** Could this soldier be raised to lead? Only when the leader has fallen and nobody has taken their place. */
+  canAcclaim(owner: number, u: Unit): boolean {
+    const p = this.players[owner];
+    return !!p && !!p.heroFell && u.owner === owner && !u.dead && !u.hero && !u.merc && !u.inside && !u.captive && canLead(u.def.cls) &&
+      (u.kills ?? 0) >= CHAMPION_KILLS && !this.units.some((o) => o.owner === owner && o.hero);
+  }
+  /** Raise a soldier on the shields: they are the leader now, a Warlord, with a rank for every three they have felled. */
+  cmdAcclaim(owner: number, id: number): boolean {
+    const u = this.entities.get(id);
+    if (!u || u.kind !== 'unit' || !this.canAcclaim(owner, u)) return false;
+    const p = this.players[owner], old = this.heroOf(owner).name;
+    u.name ||= championName(u.id);
+    p.hero = championSpec(u.name);
+    p.heroRank = rankForKills(u.kills ?? 0);
+    p.acclaimed = true;
+    this.reequip(u, 'warlord');
+    u.hero = { xp: RANK_XP[p.heroRank], rank: p.heroRank };
+    this.fitLeader(u);
+    this.leaders[owner] = u;
+    this.msg(owner, `${u.name} is raised on the shields to lead in ${old.replace(/ (II|III|IV|V|VI|VII|VIII|IX|X)$/, '')}'s place.`);
+    return true;
+  }
+  /** The soldier of a player's with the most kills to their name, if any has made one. */
+  champion(owner: number): Champion | null {
+    let best: Unit | null = null;
+    for (const u of this.units) if (u.owner === owner && !u.hero && !u.merc && canLead(u.def.cls) && (u.kills ?? 0) >= CHAMPION_KILLS && (!best || (u.kills ?? 0) > (best.kills ?? 0))) best = u;
+    return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name } : null;
+  }
 
   /** Turn a unit into another type, keeping its place, orders and share of health. */
   private reequip(u: Unit, type: string): void {

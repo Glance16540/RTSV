@@ -1087,7 +1087,7 @@ describe('generations', () => {
 });
 
 describe('missions', () => {
-  const start = (id: string) => { const m = missionById(id)!; const g = new Game(m.seed, m.setups, m.size, false, !!m.sea); m.init(g); return { m, g }; };
+  const start = (id: string) => { const m = missionById(id)!; const g = new Game(m.seed, m.setups, m.size, false, !!m.sea, false, m.climate ?? ''); m.init(g); return { m, g }; };
 
   it('every mission sets up cleanly and reports objectives', () => {
     for (const mission of MISSIONS) {
@@ -2958,7 +2958,9 @@ describe('marauders', () => {
   }, 60000);
 
   it('a computer player that has lost a woman to the camp marches on it and burns it', () => {
-    const g = new Game(3, setups);
+    // The two peoples are at peace: left at war, the computer player now beats its idle neighbour (whose Town
+    // Center falls with no soldier to guard it) before the camp has had time to do its work.
+    const g = new Game(3, setups.map((s) => ({ ...s, team: 0 })));
     g.marauders = true;
     const ai = new AIController(g, 1);
     let found = 0, burnt = 0, taken = 0;
@@ -3497,10 +3499,17 @@ describe('faith on the campaign map', () => {
       for (const seed of [3, 5, 8]) {
         const c = newCampaign(seed, 2, 1, civ === 'hearth' ? 'greece' : 'hearth');
         c.factions[1].civ = civ;
-        for (let i = 0; i < 14 && c.phase !== 'over'; i++) { c.factions[1].supplies += 6; turn(c); }
-        for (const t of c.territories) if (t.owner === 1) { if (t.buildings.includes('church')) n.church++; if (t.buildings.includes('tavern')) n.tavern++; }
-        if (n.church) expect(virtueOf(c, 1)).toBeGreaterThan(0);
-        if (n.tavern) expect(virtueOf(c, 1)).toBeLessThan(0);
+        // Only what they raise themselves is counted: a church that stands on land they have taken was someone else's doing.
+        const here = { church: 0, tavern: 0 };
+        for (let i = 0; i < 14 && c.phase !== 'over'; i++) {
+          c.factions[1].supplies += 6;
+          const had = new Map(c.territories.filter((t) => t.owner === 1).map((t) => [t.id, [...t.buildings]]));
+          turn(c);
+          for (const t of c.territories) if (t.owner === 1 && had.has(t.id)) for (const k of ['church', 'tavern'] as const) if (t.buildings.includes(k) && !had.get(t.id)!.includes(k)) here[k]++;
+        }
+        n.church += here.church; n.tavern += here.tavern;
+        if (here.church) expect(virtueOf(c, 1)).toBeGreaterThan(0);
+        if (here.tavern) expect(virtueOf(c, 1)).toBeLessThan(0);
       }
       return n;
     };
