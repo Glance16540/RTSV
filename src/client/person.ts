@@ -664,8 +664,10 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   if (sculpt) {
     const F = sculpt.fig, sc = (0.118 / (F.crown - F.eyeY)) * HEAD_FIT;
     // No two heads quite of a size: a little broader or narrower, longer or shorter, by the person.
-    sculpt.g.scale.set(sc * (0.97 + ((o.seed >> 5) % 5) * 0.015), sc * (0.98 + ((o.seed >> 7) % 4) * 0.013), sc);
-    sculpt.g.position.set(0, mk.crown + HEAD_UP - F.crown * sc, ez + HEAD_OUT - F.eyeZ * sc);
+    const tall = sc * (0.98 + ((o.seed >> 7) % 4) * 0.013);
+    sculpt.g.scale.set(sc * (0.97 + ((o.seed >> 5) % 5) * 0.015), tall, sc);
+    // Set by its own height, so that a longer head still has its crown where the figure's is and only its chin lower.
+    sculpt.g.position.set(0, mk.crown + HEAD_UP - F.crown * tall, ez + HEAD_OUT - F.eyeZ * sc);
     head.add(sculpt.g);
   }
   // Otherwise a face made of simple shapes.
@@ -772,7 +774,9 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       const straw = solid(0xd8b860);
       const brim = part(geo('strawbrim', () => new THREE.ConeGeometry(0.26, 0.07, 16, 1, true)), straw, 0, hc.y + hr.y * 0.72, hc.z - hr.z * 0.05);
       (brim.material as THREE.Material).side = THREE.DoubleSide;
-      head.add(brim, part(geo('strawtop', () => new THREE.CylinderGeometry(0.075, 0.095, 0.07, 12)), straw, 0, hc.y + hr.y * 0.95, hc.z - hr.z * 0.05));
+      // Over a sculpted head the crown of the hat is taller, and sits a little higher: that skull is rounder on top and would show through.
+      if (sculpt) { brim.position.y += 0.008; head.add(brim, part(geo('strawtop2', () => new THREE.CylinderGeometry(0.08, 0.1, 0.11, 12)), straw, 0, hc.y + hr.y * 0.95 + 0.028, hc.z - hr.z * 0.05)); }
+      else head.add(brim, part(geo('strawtop', () => new THREE.CylinderGeometry(0.075, 0.095, 0.07, 12)), straw, 0, hc.y + hr.y * 0.95, hc.z - hr.z * 0.05));
     } else if (o.hat === 'hood') {
       // A hood drawn up, open at the face, with a cape over the shoulders.
       head.add(crown(hm, 1.2, hr.y * 0.02));
