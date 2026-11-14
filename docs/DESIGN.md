@@ -34,6 +34,10 @@ of the defence: who was killed, who was taken, and which way the town's morals s
 training time is what turns him into the unit chosen. No man comes from nowhere. Population is the
 real resource: an army is paid for in births and years.
 
+**People come only by birth.** In the campaign (a battle or a visit) no villager is bought at the
+Town Center: a town's people are those it has and those its housed couples raise. Skirmish keeps
+villagers for hire as it was.
+
 **Men and women.** Soldiers come from the men. Women may serve, in healing and support; a woman
 who fights does so with a much lower attack. Women tend the farms, raise the children, work,
 produce, and carry more than a man. War takes the men and raiders take the women, and those are
