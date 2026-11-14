@@ -77,7 +77,7 @@ export function tendCaptives(g: Game, b: Building): number {
   let lost = 0;
   for (let i = b.captives.length - 1; i >= 0; i--) {
     const c = b.captives[i], left = timeLeft(g, c);
-    for (const k of c.young ?? []) k.left = Math.max(1, k.left - 1);
+    if (!g.bornOnly) for (const k of c.young ?? []) k.left = Math.max(1, k.left - 1); // nobody ages in a campaign town
     if (left === null) continue;
     if (left <= CAPTIVE_WARN && !c.warned && left > 0) {
       c.warned = true;
