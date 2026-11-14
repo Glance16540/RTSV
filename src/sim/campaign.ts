@@ -19,7 +19,7 @@ export const HERO_COST = 8;
 export const HERO_STRENGTH = 2;
 /** What each rank of a leader's veterancy adds to the army they march with, when a battle is settled on the map. */
 export const HERO_RANK_STRENGTH = 0.5;
-import { leaderAsMade } from './powers';
+import { leaderAsMade, leaderType } from './powers';
 
 /** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
 export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
@@ -1606,8 +1606,10 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const foe = humanAttacks ? p.defender : p.attacker;
   const attackers = c.armies.find((a) => a.id === p.armyId);
   const defenders = armyAt(c, p.to);
+  // A leader raised from the ranks fights as a common soldier does: only the army they march with has them.
+  const led = (f: number, army: Army | undefined): HeroSpec => { const h = heroFor(c, f); if (!army?.hero) delete h.fights; return h; };
   const side = (army: Army | undefined, defending: boolean, str: number, age = 0) => {
-    const calling = army && c.factions[army.owner] ? heroFor(c, army.owner).calling : 'warlord';
+    const calling = army && c.factions[army.owner] ? leaderType(heroFor(c, army.owner)) : 'warlord';
     const units: Record<string, number> = {};
     const add = (type: string, n: number) => { units[type] = (units[type] ?? 0) + n; };
     if (army) {
@@ -1640,15 +1642,15 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), hero: heroFor(c, 0), virtue: virtueOf(c, 0), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), hero: led(0, humanAttacks ? attackers : defenders), virtue: virtueOf(c, 0), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(foe < 0 ? {} : { hero: heroFor(c, foe) }), virtue: virtueOf(c, foe),
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(foe < 0 ? {} : { hero: led(foe, humanAttacks ? defenders : attackers) }), virtue: virtueOf(c, foe),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
-      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, hero: heroFor(c, foe), virtue: virtueOf(c, foe), bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
-      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, hero: heroFor(c, 0), virtue: virtueOf(c, 0), bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
-      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, hero: heroFor(c, c.ally), virtue: virtueOf(c, c.ally), bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
+      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, hero: led(foe, foeReserve), virtue: virtueOf(c, foe), bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
+      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, hero: led(0, myReserve), virtue: virtueOf(c, 0), bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
+      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, hero: led(c.ally, allyReserve), virtue: virtueOf(c, c.ally), bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
     ].slice(0, 4),
   };
 }
@@ -1669,6 +1671,8 @@ export interface BattleAfter {
   heroRank?: number;
   /** The leader fell in the battle; a soldier was raised in their place there (who they are); and the soldier with the most kills who lived. */
   fell?: boolean; acclaimed?: Partial<HeroSpec>; champion?: Partial<Champion>;
+  /** The powers the leader holds as the battle ends: what they chose on the field is theirs from then on. */
+  powers?: number[];
   /** The victor's buildings as they stood (`Game.standing()`), damage and all: the land's town from now on. */
   town?: Standing[];
   /** What has been taken from the battlefield for good (`Game.ground()`), whoever won. */
@@ -1729,11 +1733,15 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const hero = heroFor(c, 0);
   const kept = cleanChampion(after.champion);
   if (kept) mine.champion = kept; else delete mine.champion;
-  if (before.hero && after.acclaimed && survivors.warlord > 0) {
+  if (before.hero && !after.fell && !after.acclaimed && Array.isArray(after.powers) && c.factions[0].heroAlive) {
+    const { rank: _rank, ...made } = hero;
+    c.factions[0].hero = { ...made, powers: [0, 1, 2].map((t) => (after.powers![t] === 0 || after.powers![t] === 1 ? after.powers![t] : made.powers?.[t] ?? -1)) };
+  }
+  if (before.hero && after.acclaimed && (survivors[after.acclaimed.fights ?? ''] ?? survivors.warlord) > 0) {
     // The leader died out there, and the army has already chosen who follows.
     raisedInBattle(c, 0, after.acclaimed, heroRank ?? 0);
     mine.hero = true;
-  } else if (before.hero && (after.fell || !(survivors[hero.calling] > 0))) {
+  } else if (before.hero && (after.fell || (!hero.fights && !(survivors[hero.calling] > 0)))) {
     mine.hero = false;
     c.factions[0].heroAlive = false;
     c.factions[0].heroRank = Math.max(0, rankBefore - 1);

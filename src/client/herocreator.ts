@@ -117,7 +117,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
   const paint = () => {
     pick('hm-sex', h.female ? 'f' : 'm'); pick('hm-calling', h.calling); pick('hm-bent', h.bent); pick('hm-build', String(h.look!.build ?? ''));
     $('hm-rank').textContent = h.rank ? `${RANK_NAMES[h.rank]} already, from battles fought` : 'one power at each of three ranks';
-    $('hm-powers').innerHTML = `<div class="hm-power"><span>${RANK_NAMES[CALL_RANK]}</span><div><b>${CALLS[h.calling].name}</b></div><small>${CALLS[h.calling].desc} Theirs to raise by hand, once every ${CALL_REST} seconds.</small></div>` + POWERS[h.calling].map((pair, t) => `<div class="hm-power"><span>${RANK_NAMES[POWER_RANKS[t]]}</span><div class="hm-pick">${pair.map((p, k) => `<button type="button" data-t="${t}" data-k="${k}" aria-pressed="${(h.powers?.[t] ?? 0) === k}">${p.name}</button>`).join('')}</div><small>${pair[h.powers?.[t] === 1 ? 1 : 0].desc}</small></div>`).join('');
+    $('hm-powers').innerHTML = `<div class="hm-power"><span>${RANK_NAMES[CALL_RANK]}</span><div><b>${CALLS[h.calling].name}</b></div><small>${CALLS[h.calling].desc} Theirs to raise by hand, once every ${CALL_REST} seconds.</small></div>` + POWERS[h.calling].map((pair, t) => `<div class="hm-power"><span>${RANK_NAMES[POWER_RANKS[t]]}</span><div class="hm-pick">${pair.map((p, k) => `<button type="button" data-t="${t}" data-k="${k}" aria-pressed="${h.powers?.[t] === k}">${p.name}</button>`).join('')}<button type="button" data-t="${t}" data-k="-1" aria-pressed="${h.powers?.[t] !== 0 && h.powers?.[t] !== 1}">Choose then</button></div><small>${h.powers?.[t] === 0 || h.powers?.[t] === 1 ? pair[h.powers[t]].desc : `You choose between the two on the field, when they become ${RANK_NAMES[POWER_RANKS[t]]}.`}</small></div>`).join('');
     $('hm-calling-note').textContent = h.calling === 'warlord'
       ? 'Fights at the front with sword and shield. Everyone of yours fighting near them strikes a quarter harder. Raised at the Town Center from the Bronze Age.'
       : 'Stands behind the line with a staff. Enemies fighting near them strike a fifth weaker, and your wounded nearby are slowly mended. Raised at the Town Center from the Iron Age.';
@@ -145,7 +145,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
   $('hm-powers').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-t]');
     if (!b) return;
-    const powers = [0, 1, 2].map((t) => h.powers?.[t] ?? 0);
+    const powers = [0, 1, 2].map((t) => h.powers?.[t] ?? -1);
     powers[Number(b.dataset.t)] = Number(b.dataset.k);
     h.powers = powers;
     change(false);

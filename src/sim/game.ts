@@ -9,14 +9,15 @@ import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNO
 import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
-import { calamity, douse } from './calamity';
+import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
+import { calamity, douse, roll } from './calamity';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, leaderAsMade, leaderDef, powersHeld } from './powers';
-import { CHAMPION_KILLS, Champion, canLead, championName, championSpec, rankForKills } from './champion';
+import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, POWERS, leaderAsMade, leaderDef, leaderType, powerDue, powersHeld } from './powers';
+import { CHAMPION_KILLS, Champion, canLead, championFemale, championName, championSpec, rankForKills } from './champion';
 import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
@@ -216,6 +217,8 @@ export interface Player extends HallState {
   hero?: HeroSpec; heroRank?: number;
   /** Their leader has fallen in this battle; and the one leading now is a soldier raised in their place. */
   heroFell?: boolean; acclaimed?: boolean;
+  /** Seconds the food store has stayed bare, and how many a famine has taken (famine.ts). */
+  hunger?: number; starved?: number;
   id: number;
   name: string;
   color: number;
@@ -349,6 +352,8 @@ export class Game {
   scenario: { id: string; n: number; ids: number[] } | null = null;
   /** Whether a band of marauders, belonging to no people, makes camp in the wilds of this map. Off unless asked for. */
   marauders = false;
+  /** How the marauders stand over the whole battle: camps made, and whether they are coming back (marauders.ts). */
+  band?: BandState;
   private lairT = 0; private lairRaid = 0; private lairSeen = false; private lairMade = false;
   /** Player id that owns wild animals. */
   wild = -1;
@@ -560,7 +565,8 @@ export class Game {
     }
     if (def.cls === 'siege') u.hp = u.maxHp = Math.round(def.hp * this.players[owner].mods.siegeHp);
     // The first hero of their calling a people raises is their leader in person.
-    if (def.cls === 'hero' && this.players[owner] && type === this.heroOf(owner).calling && !this.units.some((o) => o.owner === owner && o.hero)) {
+    // (One raised from the ranks fights on as what they were; nobody steps into their place if they fall.)
+    if (this.players[owner] && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderType(this.heroOf(owner))) && !this.units.some((o) => o.owner === owner && o.hero)) {
       const rank = this.players[owner].heroRank ?? 0;
       u.name = this.heroOf(owner).name;
       u.hero = { xp: RANK_XP[rank], rank };
@@ -612,8 +618,25 @@ export class Game {
       l.hero.rank = this.players[owner].heroRank = rank;
       this.fitLeader(l);
       const learnt = powersHeld(this.heroOf(owner), rank).length > powersHeld(this.heroOf(owner), rank - 1).length ? powersHeld(this.heroOf(owner), rank).at(-1) : null;
-      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : ''}.`);
+      // A rival does not wait to be asked what it will learn.
+      if (this.players[owner].isAI) while (this.powerDue(owner) >= 0) this.cmdLearn(owner, 0);
+      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : this.powerDue(owner) >= 0 ? ': choose what they learn' : ''}.`);
     }
+  }
+  /** Which of their three powers a player's leader has earned and not yet chosen (-1: none). */
+  powerDue(owner: number): number {
+    const l = this.leaders[owner] ?? this.leaderOf(owner);
+    return l && !l.dead && l.hero ? powerDue(this.heroOf(owner), l.hero.rank) : -1;
+  }
+  /** Choose which of the two powers the leader takes at the rank they have just earned. It is theirs from then on. */
+  cmdLearn(owner: number, choice: number): boolean {
+    const tier = this.powerDue(owner), l = this.leaders[owner] ?? this.leaderOf(owner);
+    if (tier < 0 || !l || (choice !== 0 && choice !== 1)) return false;
+    const h = this.heroOf(owner);
+    h.powers = [0, 1, 2].map((t) => (t === tier ? choice : h.powers?.[t] ?? -1));
+    this.fitLeader(l);
+    if (!this.players[owner].isAI) this.msg(owner, `${l.name} has learnt ${POWERS[h.calling][tier][choice].name}.`);
+    return true;
   }
 
   /** Give a villager a trait (or none), keeping its health in step. */
@@ -666,6 +689,8 @@ export class Game {
     if (block) this.landPf.touch();
   }
 
+  /** A death that is nobody's doing: hunger (famine.ts). */
+  perish(u: Unit): void { this.kill(u); }
   private kill(e: Entity): void {
     if (e.dead) return;
     e.dead = true;
@@ -1315,7 +1340,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, marauders: this.marauders, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -1355,6 +1380,7 @@ export class Game {
     g.rngState = d.rngState;
     g.aging = d.aging;
     g.marauders = !!d.marauders;
+    g.band = d.band;
     if (d.lair) [g.lairT, g.lairRaid, g.lairSeen, g.lairMade] = d.lair;
     g.scenario = d.scenario;
     g.vis.set(d.vis);
@@ -1518,12 +1544,12 @@ export class Game {
     const wild = this.wild;
     let lair = this.buildings.find((b) => b.type === 'lair') ?? null;
     if (!lair) {
-      if (this.lairMade || this.time < LAIR_AT) return;
-      this.lairMade = true;
+      if ((this.lairMade && !bandReturns(this)) || this.time < LAIR_AT) return;
+      this.lairMade = true; this.lairSeen = false;
       // As far from every town as the land allows.
       let best: { cx: number; cy: number } | null = null, bd = 0;
       for (let cy = 4; cy < this.size - 7; cy += 3) for (let cx = 4; cx < this.size - 7; cx += 3) {
-        if (!this.canPlace('lair', cx, cy)) continue;
+        if (!this.canPlace('lair', cx, cy) || nearAshes(this, cx, cy)) continue;
         let d = Infinity;
         for (const b of this.buildings) if (b.owner !== wild) d = Math.min(d, Math.hypot(b.x - cx - 1.5, b.y - cy - 1.5));
         for (const st of this.spec.starts) d = Math.min(d, Math.hypot(st.x - cx - 1.5, st.y - cy - 1.5));
@@ -1536,6 +1562,7 @@ export class Game {
       for (const p of this.players) if (!p.neutral) this.msg(p.id, '🏴 Smoke in the wilds: marauders have made camp somewhere out there. They take women. Find the camp and burn it.');
       return;
     }
+    tendBand(this, lair);
     const band = this.units.filter((u) => u.def.marauder), held = lair.captives ?? [], women = held.filter((c) => c.gender === 'f');
     // Every woman held bears the band children, who are raised to it; and men drift in to a camp that prospers.
     this.lairT += women.length / LAIR_BIRTH + 1 / 110;
@@ -2871,7 +2898,7 @@ export class Game {
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
     if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
-    atk *= this.highGround(u.x, u.y, t) * this.veteran(u);
+    atk *= this.highGround(u.x, u.y, t) * this.veteran(u) * marauderEdge(this, u);
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
@@ -2986,16 +3013,15 @@ export class Game {
     return !!p && !!p.heroFell && u.owner === owner && !u.dead && !u.hero && !u.merc && !u.inside && !u.captive && canLead(u.def.cls) &&
       (u.kills ?? 0) >= CHAMPION_KILLS && !this.units.some((o) => o.owner === owner && o.hero);
   }
-  /** Raise a soldier on the shields: they are the leader now, a Warlord, with a rank for every three they have felled. */
+  /** Raise a soldier on the shields: they are the leader now, fighting as they always have, with a rank for every three they have felled. */
   cmdAcclaim(owner: number, id: number): boolean {
     const u = this.entities.get(id);
     if (!u || u.kind !== 'unit' || !this.canAcclaim(owner, u)) return false;
     const p = this.players[owner], old = this.heroOf(owner).name;
     u.name ||= championName(u.id);
-    p.hero = championSpec(u.name);
+    p.hero = championSpec(u.name, championFemale(u.id), u.type);
     p.heroRank = rankForKills(u.kills ?? 0);
     p.acclaimed = true;
-    this.reequip(u, 'warlord');
     u.hero = { xp: RANK_XP[p.heroRank], rank: p.heroRank };
     this.fitLeader(u);
     this.leaders[owner] = u;
@@ -3006,7 +3032,7 @@ export class Game {
   champion(owner: number): Champion | null {
     let best: Unit | null = null;
     for (const u of this.units) if (u.owner === owner && !u.hero && !u.merc && canLead(u.def.cls) && (u.kills ?? 0) >= CHAMPION_KILLS && (!best || (u.kills ?? 0) > (best.kills ?? 0))) best = u;
-    return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name } : null;
+    return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name, female: championFemale(best.id), type: best.type } : null;
   }
 
   /** Turn a unit into another type, keeping its place, orders and share of health. */
@@ -3015,8 +3041,15 @@ export class Game {
     this.players[u.owner].pop += def.pop - u.def.pop;
     u.hp = (u.hp / u.maxHp) * def.hp;
     u.maxHp = def.hp;
+    const was = u.type;
     u.type = type;
     u.def = def;
+    // A leader from the ranks takes the better arms with the rest, and is a leader still.
+    if (u.hero) {
+      const h = this.heroOf(u.owner);
+      if (h.fights === was) h.fights = type;
+      this.fitLeader(u);
+    }
   }
 
   /** What training `type` produces for this player once upgrades are taken into account. */
@@ -3070,8 +3103,7 @@ export class Game {
       if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && this.time - n.litAt < CALAMITY.scorched)) continue;
       const k = n.size / 2;
       if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
-      const roll = ((Math.imul(b.id * 31 + n.id, 2654435761) ^ Math.imul(this.tick + this.seed, 40503)) >>> 0) / 4294967296;
-      if (roll >= CALAMITY.spread) continue;
+      if (roll(this, b.id * 8191 + n.id) >= CALAMITY.spread) continue;
       n.burnT = CALAMITY.caught;
       n.litAt = this.time;
       if (!this.players[n.owner].neutral) this.msg(n.owner, `Fire has spread to your ${n.def.name}!`);

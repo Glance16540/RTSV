@@ -630,3 +630,17 @@ kbd { color: var(--sepia); }
 .sheet .primer-page p, #t-panel .primer-page p { margin: 0 0 5px; }
 #t-panel h2.primer-h { margin-top: 26px; }
 @media (max-width: 760px) { .primer-page { columns: 1; } #primer { width: min(300px, calc(100vw - 28px)); } }
+
+/* ---- The Town Center clock ---- */
+/* The time left to a people with no Town Center: slips under the top bar, your own in red. */
+#hall-clock { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 5px; width: max-content; max-width: calc(100vw - 620px); min-width: 300px; pointer-events: none; }
+#hall-clock:empty { display: none; }
+#hall-clock div { padding: 4px 14px 6px; color: var(--ink); background: var(--paper); border: 1px solid var(--ink); box-shadow: var(--slip); font: 16px/1.3 var(--book); text-align: center; }
+#hall-clock b { margin-right: 8px; font: 700 19px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; vertical-align: -1px; }
+#hall-clock .mine { color: var(--rubric); border-color: var(--rubric); box-shadow: inset 0 0 0 1px var(--rubric), var(--slip); }
+#hall-clock .foe b { color: var(--rubric); }
+#hall-clock .last b { animation: hall-beat 1s steps(2, jump-none) infinite; }
+@keyframes hall-beat { 50% { opacity: 0.35; } }
+#toasts { top: calc(52px + var(--hall-clock, 0px)); }
+@media (max-width: 900px) { #hall-clock { max-width: calc(100vw - 24px); top: 46px; } }
+@media (prefers-reduced-motion: reduce) { #hall-clock .last b { animation: none; } }

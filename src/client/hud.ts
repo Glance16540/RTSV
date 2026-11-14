@@ -2,10 +2,12 @@
 
 import { isHoly } from '../sim/creed';
 import { fighting } from '../sim/calamity';
+import { want } from '../sim/famine';
 import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
-import { CALLS, CALL_RANK, CALL_REST, powersHeld } from '../sim/powers';
+import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS, powersHeld } from '../sim/powers';
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
+import { updateHallClock } from './hallclock';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -283,10 +285,15 @@ export class Hud {
         const call = CALLS[game.heroOf(pid).calling], rest = Math.ceil(chief.hero!.rest ?? 0);
         out.push({ id: 'call', icon: ico('bell', '📯'), name: call.name, desc: `${call.desc}<br><span class="stat">Can be raised again after ${CALL_REST} seconds.</span>`, locked: rest > 0 ? `Ready in ${rest} seconds.` : undefined, active: (chief.hero!.call ?? 0) > 0, act: () => { game.cmdCall(pid); } });
       }
+      // A rank has been earned that brings a power: the player chooses which of the two it is.
+      const due = chief ? game.powerDue(pid) : -1;
+      if (chief && due >= 0) {
+        POWERS[game.heroOf(pid).calling][due].forEach((p, k) => out.push({ id: `learn${k}`, icon: ico('warlord', '✦'), name: `Learn ${p.name}`, desc: `${p.desc}<br><span class="stat">Earned at ${RANK_NAMES[POWER_RANKS[due]]}. One or the other: it cannot be changed afterwards.</span>`, act: () => { game.cmdLearn(pid, k); } }));
+      }
       // The leader is dead: a soldier who has made a name can be raised in their place.
       if (units.length === 1 && game.canAcclaim(pid, units[0])) {
         const who = units[0];
-        out.push({ id: 'acclaim', icon: ico('warlord', '♛'), name: 'Raise on the shields', desc: `${who.name || 'This soldier'} becomes your leader: a Warlord, ${RANK_NAMES[rankForKills(who.kills ?? 0)]} for the ${who.kills} they have felled. The old leader's line ends here.`, act: () => { game.cmdAcclaim(pid, who.id); } });
+        out.push({ id: 'acclaim', icon: ico('warlord', '♛'), name: 'Raise on the shields', desc: `${who.name || 'This soldier'} becomes your leader and fights on as the ${who.def.name.toLowerCase()} they are, ${RANK_NAMES[rankForKills(who.kills ?? 0)]} for the ${who.kills} they have felled. The old leader's line ends here.`, act: () => { game.cmdAcclaim(pid, who.id); } });
       }
       if (!units.every((u) => u.type === 'villager')) {
         while (out.length < 5) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
@@ -507,6 +514,7 @@ export class Hud {
         extra = `<div class="good">⭐ ${RANK_NAMES[r]}${top ? '' : ` · ${e.hero.xp - RANK_XP[r]} of ${RANK_XP[r + 1] - RANK_XP[r]} deeds to ${RANK_NAMES[r + 1]}`}</div>${top ? '' : this.bar((e.hero.xp - RANK_XP[r]) / (RANK_XP[r + 1] - RANK_XP[r]), 'faith')}` +
           (r >= CALL_RANK ? `<div class="${(e.hero.call ?? 0) > 0 ? 'good' : 'hint'}">📯 ${CALLS[game.heroOf(e.owner).calling].name}${(e.hero.call ?? 0) > 0 ? `: sounding, ${Math.ceil(e.hero.call!)} seconds left` : (e.hero.rest ?? 0) > 0 ? `: ready in ${Math.ceil(e.hero.rest!)} seconds` : ': ready'}</div>` : '') +
           powersHeld(game.heroOf(e.owner), r).map((p) => `<div class="good">✦ ${p.name}: ${p.desc}</div>`).join('') +
+          (e.owner === pid && game.powerDue(e.owner) >= 0 ? '<div class="warn">✦ A power is theirs to choose: see their commands</div>' : '') +
           (isHoly(virtue) ? `<div class="good">🕯️ Holy town: those near them wear ${HOLY_GUARD[virtue >= 70 ? 1 : 0]} more armour</div>` : '') +
           (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the camp fills the town faster while they are in the field</div>' : '') + extra;
       }
@@ -526,6 +534,10 @@ export class Hud {
     if (b.burnT > 0) {
       const hands = fighting(game, b);
       body += `<div class="warn">🔥 On fire: it may spread to buildings close by. ${hands ? `${hands} ${hands === 1 ? 'villager is' : 'villagers are'} fighting it.` : b.owner === game.humanId ? 'Right-click it with villagers to fight the fire.' : ''}</div>`;
+    }
+    if (b.type === 'towncenter' && b.owner === game.humanId) {
+      const w = want(game.players[b.owner]);
+      if (w) body += `<div class="${w === 'famine' ? 'bad' : 'warn'}">${w === 'famine' ? '💀 Famine: someone is lost every half minute until there is food in the store' : '🍞 Going hungry: the store is bare and nothing is coming in'}</div>`;
     }
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
@@ -683,6 +695,7 @@ export class Hud {
     const { game, pid } = this.app;
     const p = game.players[pid];
     setIconLeaning(p.virtue);
+    updateHallClock(game, pid);
     let idle = 0;
     for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside) idle++;
     const tc = game.buildings.find((b) => b.owner === pid && b.queue[0]?.kind === 'age');
