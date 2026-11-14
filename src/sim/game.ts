@@ -12,6 +12,7 @@ import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
 import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
+import { hireBar } from './birthonly';
 import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
@@ -371,6 +372,8 @@ export class Game {
   aging = true;
   /** A town in a campaign is in its nation's age, which advances only on the map: nobody ages up in the battle. */
   fixedAge = false;
+  /** A town in a campaign has only the people born to it: no villager is bought at the Town Center (birthonly.ts). */
+  bornOnly = false;
   /** Progress of a scripted mission, if one is being played: which, a counter, and ids it is tracking. */
   scenario: { id: string; n: number; ids: number[] } | null = null;
   /** Whether a band of marauders, belonging to no people, makes camp in the wilds of this map. Off unless asked for. */
@@ -1436,7 +1439,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, bornOnly: this.bornOnly, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -1476,6 +1479,7 @@ export class Game {
     g.rngState = d.rngState;
     g.aging = d.aging;
     g.fixedAge = !!d.fixedAge;
+    g.bornOnly = !!d.bornOnly;
     g.marauders = !!d.marauders;
     g.band = d.band;
     if (d.lair) [g.lairT, g.lairRaid, g.lairSeen, g.lairMade] = d.lair;
@@ -1497,6 +1501,7 @@ export class Game {
     const bar = this.creedBar(owner, def);
     if (bar) { this.msg(owner, bar); return false; }
     if (b.queue.length >= 8) { this.msg(owner, 'Queue is full.'); return false; }
+    if (type === 'villager' && hireBar(this)) { this.msg(owner, hireBar(this)!); return false; }
     if (def.limit && this.countUnits(owner, type) >= def.limit) { this.msg(owner, `You can only have ${def.limit} ${def.name}.`); return false; }
     const cost = this.unitCost(owner, type);
     if (!this.canAfford(p, cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return false; }

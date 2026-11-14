@@ -8,6 +8,7 @@ import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS, powersHeld } from '..
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
 import { needsPerson } from '../sim/muster';
+import { hireBar } from '../sim/birthonly';
 import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
@@ -343,6 +344,7 @@ export class Hud {
       if (d.civ && d.civ !== p.civ) continue; // another people's unit
       const locked = d.age > p.age ? `Requires the ${AGES[d.age].name}.` : game.creedBar(pid, d) ?? undefined;
       if (type === 'villager') {
+        const locked = (d.age > p.age ? `Requires the ${AGES[d.age].name}.` : null) ?? hireBar(game) ?? game.creedBar(pid, d) ?? undefined;
         out.push({ id: 't:vm', icon: MAN(), name: 'Train Villager (man)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'm') });
         out.push({ id: 't:vf', icon: WOMAN(), name: 'Train Villager (woman)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'f') });
       } else {

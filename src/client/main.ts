@@ -285,6 +285,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   if (cfg?.ground && !saved) game.wear(cfg.ground);
   // A town in a campaign is in its nation's age: that advances on the map, not in the battle or on a visit.
   if (cfg && !saved) game.fixedAge = true;
+  // And it has only the people born to it: no villager is bought at the Town Center (birthonly.ts).
+  if (cfg && !saved) game.bornOnly = true;
   if (!saved && params.get('marauders') !== '0' && !(cfg?.field) && mode !== 'visit') game.marauders = true; // nobody comes against a town being visited
   // A battle is fought in the weather that lies over that land on the campaign map.
   if (cfg?.weather && !saved) { game.weather = cfg.weather; game.weatherWant = 0.9; game.weatherT = 240; }
