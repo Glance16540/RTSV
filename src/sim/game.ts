@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { coupleParted, creditKill, homeRecord, leaveForWar, settleHomes, warRenown } from './household';
 import { Census, MAX_KIND, PeopleIn, Stores } from './township';
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
@@ -176,6 +177,8 @@ export interface Building extends Base {
   birthsPaused: boolean;
   family: string; // name of the family living in a house
   children: number; // villagers this house has raised
+  /** Foes felled by the people of this house while away at war (household.ts). */
+  warKills?: number;
   /** The children under this roof: a record, not people on the map (nursery.ts). */
   young?: Child[];
   /** Births that were due here and did not come: a note, and the whole of what a weak creed costs a town in children. */
@@ -547,6 +550,7 @@ export class Game {
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
         // The town's children are on the record of one of its roofs, part grown.
+        if (s.bonus.people?.named?.length && !field) settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f'));
         if (s.bonus.people?.children && !field) this.cradled(i, s.bonus.people.children, cleanAges(s.bonus.people.ages)?.k);
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
@@ -697,7 +701,7 @@ export class Game {
 
   /** A family's standing: one rank for every few children raised, up to three. */
   renown(b: Building): number {
-    return Math.min(3, Math.floor(b.children / RENOWN_CHILDREN));
+    return Math.min(3, Math.floor(b.children / RENOWN_CHILDREN) + warRenown(b)); // children raised, and what its people have won in war (household.ts)
   }
 
   spawnBuilding(type: string, owner: number, cx: number, cy: number, complete: boolean): Building {
@@ -967,7 +971,7 @@ export class Game {
       if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (woman) out.women++; else out.men++;
       const seasons = Math.round(yearsOf(u.age, u.lifespan) * SEASONS_A_YEAR), old = u.age >= u.lifespan * ELDER_AT;
       (woman ? ages.f : ages.m).push(old ? Math.max(OLD_SEASON, Math.min(LAST_SEASON, seasons)) : Math.max(GROWN_SEASON, Math.min(OLD_SEASON - 1, seasons)));
-      if (u.gender === 'f' && (u.kids ?? 0) > 0) out.named!.push({ name: u.name, gender: 'f', kids: u.kids, ...(u.family ? { family: u.family } : {}) });
+      if (u.gender === 'f' && u.type === 'villager') { const home = homeRecord(this, u); if ((u.kids ?? 0) > 0 || home.war) out.named!.push({ name: u.name, gender: 'f', kids: u.kids ?? 0, ...(u.family ? { family: u.family } : {}), ...home }); }
     }
     for (const b of this.buildings) {
       if (b.dead) continue;
@@ -3160,7 +3164,7 @@ export class Game {
     if (t.hp <= 0) {
       const s = this.players[owner].stats, ts = tp.stats;
       const killer = by ? this.entities.get(by) : undefined;
-      if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) killer.kills = (killer.kills ?? 0) + 1;
+      if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) { killer.kills = (killer.kills ?? 0) + 1; creditKill(this, killer); }
       // One who has felled enough is known by name from then on.
       if (killer && killer.kind === 'unit' && !killer.name && !killer.hero && !killer.merc && canLead(killer.def.cls) && (killer.kills ?? 0) >= CHAMPION_KILLS && killer.owner !== this.wild) killer.name = championName(killer.id);
       if (t.kind === 'unit') { s.kills++; ts.lost++; } else { s.razed++; ts.buildingsLost++; }
@@ -3358,6 +3362,7 @@ export class Game {
               if (!u.hero) u.name = was.name;
               u.family = was.family; u.age = was.age; u.lifespan = was.lifespan; u.story = was.story; u.kids = was.kids;
               if (was.gender === 'f') u.gender = 'f';
+              leaveForWar(this, was, u); // still of his house
             }
             p.stats.trained++;
           } else q.blocked = true;
@@ -3387,7 +3392,7 @@ export class Game {
         const r = this.entities.get(b.residents[g]);
         if (b.residents[g] && (!r || r.dead || r.owner !== b.owner)) b.residents[g] = 0;
       }
-      if (b.residents.m && b.residents.f && !b.birthsPaused && !this.atTavern(b.residents.m) && !this.atTavern(b.residents.f) && !(this.entities.get(b.residents.f) as Unit | undefined)?.freed) {
+      if (b.residents.m && b.residents.f && !b.birthsPaused && !coupleParted(this, b) && !this.atTavern(b.residents.m) && !this.atTavern(b.residents.f) && !(this.entities.get(b.residents.f) as Unit | undefined)?.freed) {
         if (b.birthProgress < 1) b.birthProgress = Math.min(1, b.birthProgress + DT / this.birthTime(b));
         if (b.birthProgress >= 1) {
           if (p.pop + 1 <= p.popCap && p.res.food >= BIRTH_COST && this.noChild(b)) {
