@@ -7,6 +7,7 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
+import { seasonFolk } from './seasonfolk';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
 import { Answer, LEGENDS, COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
@@ -1368,6 +1369,7 @@ export function continueAI(c: Campaign): void {
       }
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
+      seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       mendTowns(c);
       turnEvent(c);
       storyTurn(c);
