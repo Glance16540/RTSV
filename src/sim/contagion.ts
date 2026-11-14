@@ -4,7 +4,7 @@
 //
 //   Carried by an army. Once a second, anyone standing within CONTAGION.reach of a plagued stranger (friend or
 //     foe, another people's) may catch it: CONTAGION.touch for an ordinary people, more for the worldly, less for
-//     the devout, never the Righteous. So an army sick with plague brings it into the town it attacks, and a
+//     the devout, a third as readily for the Righteous. So an army sick with plague brings it into the town it attacks, and a
 //     Prophet's plague can come home on the swords of those who close with its victims.
 //   Off a ship. In the hold of a transport one sick passenger gives it to the rest far faster
 //     (CONTAGION.hold a second each): a ship with plague aboard lands a sick company.
@@ -41,7 +41,7 @@ function warn(g: Game, to: number, text: string): void {
   g.events.push({ t: 'msg', player: to, text });
 }
 
-/** How readily this people takes a plague: 0 for the Righteous, 1 for an ordinary town, more for the worldly. */
+/** How readily this people takes a plague: a third for the Righteous, 1 for an ordinary town, more for the worldly; never the wild. */
 export const prone = (g: Game, owner: number): number => (owner === g.wild || !g.players[owner] || g.players[owner].neutral ? 0 : g.creed(owner).plague);
 
 /** One second of plague passing between peoples, on land and in the holds of ships. Returns how many caught it. */

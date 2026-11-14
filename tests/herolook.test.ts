@@ -4,7 +4,7 @@ import { cleanHero } from '../src/sim/hero';
 import { leaderOutfit } from '../src/client/person';
 import type { Outfit } from '../src/client/person';
 
-const base: Outfit = { female: false, girth: 1, chest: 1, skin: 0xc89a70, hair: 0x3a2a1a, seed: 7, top: 1, sleeves: 'short', neck: 1, legs: 1, skirt: 'short', skirtColor: 1, hairStyle: 'short', beard: false, helmet: '', plate: false, shield: null, weapon: '', metal: null, child: false, hat: '', hatColor: 1, cloak: null, mantle: false, apron: null, trim: null };
+const base: Outfit = { female: false, girth: 1, chest: 1, skin: 0xc89a70, hair: 0x3a2a1a, seed: 7, top: 1, sleeves: 'short', neck: 1, legs: 1, skirt: 'short', skirtColor: 1, hairStyle: 'short', beard: false, helmet: '', plate: false, shield: null, weapon: '', metal: null, hat: '', hatColor: 1, cloak: null, mantle: false, apron: null, trim: null };
 const hero = (look: object) => ({ name: 'Ada', female: true, calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, look });
 
 describe('a leader\'s skin and face', () => {
