@@ -102,14 +102,14 @@ What a town believes also decides what it will raise:
 
 Where your people stand on the scale between piety and decadence sets their creed:
 
-- **Devout**, then **Righteous**: children come sooner and more of them live to grow up (one in
-  ten is lost in an ordinary town, one in twenty among the Devout, one in fifty among the
+- **Devout**, then **Righteous**: children come sooner and fewer births fail to come (one in
+  ten does not in an ordinary town, one in twenty among the Devout, one in fifty among the
   Righteous). Faith gathers faster, healing and morale
   are stronger. Famine, plague and fire come half as often and half as hard among the Devout, and a third
   among the Righteous: nobody is spared them altogether. They research more slowly and trade on worse terms.
 - **Worldly**, then **Decadent**: soldiers are trained faster, gold is mined faster and the market
   pays more. But villagers are distracted from their work, children come later and
-  fewer live to grow up (up to more than one in four lost), plagues last
+  fewer are born at all (up to more than one birth in four does not come; no child ever dies), plagues last
   longer, and faith, healing and morale wither.
 
 Hover over the creed in the top bar to see where you stand. Every few minutes a dilemma is also
@@ -525,7 +525,7 @@ the time units stood stuck with somewhere to go, and the slowest second. Set `PA
   snowy north. In a skirmish it is chosen in the menu or follows your people's homeland; `?climate=desert`.
 - Weather belongs to the match (`Game.stepWeather`), on its own seeded run of chances, and only in a country (the plain maps have none). While it is heavy, rain takes a tile off bows and guns and puts fires out, snow slows everyone off the roads, and a dust storm cuts sight by two tiles and takes a tile off bows and guns. `src/client/weather.ts` draws it; `?weather=rain|snow|dust|clear` holds one kind on screen without changing the match.
 - A day is five minutes (`DAY_LENGTH`), the last three tenths of it night (`Game.night`). The sun crosses the sky from dawn to dusk, low and red at either end with long shadows; by night the light is dim and blue, buildings show a lamp and a pool of warm light, and the top bar names the hour. In the dark units see two tiles less (`NIGHT_SIGHT`); buildings see as far as ever. Night also matters to the work camp, which is also drawn living by it: women in the workroom and men breaking stone by day, everyone shut in the bunkhouse at dusk.
-- *A Decadent town grows by what it takes.* Its own households are dying out: children come less than half as often as in a temperate town and half of them do not live to grow up, and a villager takes twice as long to raise at the Town Center. What keeps such a town alive is its Work Camp (now twelve captives), whose women still bring villagers at the old pace. Worldly towns are untouched. The computer opponent on Normal or Hard empties its tavern at -60 so as not to end up there; if it does, it builds a camp and sends Slavers.
+- *A Decadent town grows by what it takes.* Its own households are dying out: children come less than half as often as in a temperate town and half the births that are due do not come, and a villager takes twice as long to raise at the Town Center. What keeps such a town alive is its Work Camp (now twelve captives), whose women still bring villagers at the old pace. Worldly towns are untouched. The computer opponent on Normal or Hard empties its tavern at -60 so as not to end up there; if it does, it builds a camp and sends Slavers.
 - *Holding people has a cost.* Each guard watches three captives through the night (`GUARD_WATCH`). A camp with anyone unwatched loses about one a night: they slip out and run for their own Town Center, and can be run down again on the way. A camp with four or more men unwatched may rise instead (`REVOLT_TIME`): the stockade burns, loses a quarter of its strength, and half of everyone held breaks out at once. Nothing gets out by day.
 - A Slaver with no captive, right-clicked on his own Work Camp, is posted there as a guard (up to four, `GUARD_DRIVE`): each makes the men held there count a quarter more toward the town's gathering.
 - `?fog=0` shows the whole map with no fog of war, for looking at the game rather than playing it.
