@@ -38,6 +38,11 @@ real resource: an army is paid for in births and years.
 Town Center: a town's people are those it has and those its housed couples raise. Skirmish keeps
 villagers for hire as it was.
 
+Births happen in both places and are one record: on the map a town's couples raise children season by
+season, coarsely; inside a battle or a visit they are born faster, in real time. Either way the people
+born are the town's and persist: a town brings its real people into a visit or a siege, and what is
+left of them, with everyone born there, goes back to it afterwards.
+
 **Men and women.** Soldiers come from the men. Women may serve, in healing and support; a woman
 who fights does so with a much lower attack. Women tend the farms, raise the children, work,
 produce, and carry more than a man. War takes the men and raiders take the women, and those are
