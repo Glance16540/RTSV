@@ -6,17 +6,20 @@
 // everyone at other work). One load carried home breaks the stretch.
 //
 //   after FAMINE.hungry seconds  the people go hungry: a warning, nothing more.
-//   after FAMINE.starving        famine. One of the town is lost every FAMINE.toll seconds: the old first, then soldiers
+//   after FAMINE.starving        famine. One of the town is lost every FAMINE.toll seconds (an ordinary town:
+//                                a Righteous one every three times that, a Decadent one half again as fast): the old first, then soldiers
 //                                (who do not starve but walk away), then grown
 //                                villagers, though never the last FAMINE.spare of those, so that a town can
 //                                always work its way out. Leaders, ships and people inside buildings are let be.
-//   after FAMINE.plague          sickness follows hunger: plague breaks out around the Town Center, as long and
-//                                as hard as the people's creed makes it (never among the Righteous).
+//   after FAMINE.plague          sickness follows hunger: plague breaks out around the Town Center, as soon and
+//                                as long as the people's creed makes it (three times as late and a third as
+//                                long among the Righteous).
 //
 // It is over the moment the store is no longer bare. Only a people with a Town Center standing can be in famine:
 // a war band that has not settled lives off the land, and the two armies of a field battle have no town at all.
 import type { Building, Game, Player, Unit } from './game';
 import { TRADE } from './data';
+import { wrath } from './wrath';
 
 export const FAMINE = {
   /** A store under this much food is bare. */
@@ -131,7 +134,9 @@ export function famine(g: Game): void {
     }
     if (was < FAMINE.starving && now >= FAMINE.starving)
       tell(g, p, '💀 Famine! Your people are starving. The old will go first, soldiers will walk away, and it will not stop until there is food in the store.');
-    if (now >= FAMINE.starving && (now - FAMINE.starving) % FAMINE.toll === 0 && now > FAMINE.starving) {
+    // How fast it takes them, and how soon sickness follows, go by the people's standing with heaven (wrath.ts).
+    const w = wrath(g, p.id), every = FAMINE.toll / w, since = now - FAMINE.starving;
+    if (since > 0 && Math.floor(since / every) > Math.floor((since - 1) / every)) {
       const u = nextLost(g, p.id);
       if (u) {
         const soldier = g.isMilitary(u);
@@ -140,6 +145,6 @@ export function famine(g: Game): void {
         g.perish(u);
       }
     }
-    if (was < FAMINE.plague && now >= FAMINE.plague) sicken(g, p, at);
+    if (was < FAMINE.plague / w && now >= FAMINE.plague / w) sicken(g, p, at);
   }
 }

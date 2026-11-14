@@ -15,6 +15,7 @@
 import type { Building, Game, Unit } from './game';
 import { famine } from './famine';
 import { contagion } from './contagion';
+import { wrath } from './wrath';
 
 export const FIRE = {
   /** Seconds of fire one villager at work takes off each second, on top of its burning down by itself. */
@@ -94,15 +95,19 @@ export function douse(g: Game, b: Building): boolean {
 /** A bolt out of the storm. Returns the building it set alight, or null if it found none. */
 export function lightning(g: Game, salt = 0): Building | null {
   if (roll(g, 11 + salt) >= FIRE.struck) return null;
-  const marks: Building[] = [];
+  // Every standing building is a mark, weighed by its height and by how its people stand with heaven (wrath.ts).
+  const marks: Building[] = [], weights: number[] = [];
+  let all = 0;
   for (const b of g.buildings) {
     if (b.dead || b.def.wall || b.burnT > 0) continue;
-    marks.push(b);
-    if (FIRE.tall.includes(b.type)) marks.push(b, b);
+    const w = (FIRE.tall.includes(b.type) ? 3 : 1) * wrath(g, b.owner);
+    marks.push(b); weights.push(w); all += w;
   }
-  if (!marks.length) return null;
-  const b = marks[Math.floor(roll(g, 23 + salt) * marks.length)];
-  b.burnT = FIRE.bolt;
+  if (!marks.length || all <= 0) return null;
+  let at = roll(g, 23 + salt) * all, i = 0;
+  while (i < marks.length - 1 && at >= weights[i]) at -= weights[i++];
+  const b = marks[i];
+  b.burnT = FIRE.bolt * wrath(g, b.owner);
   b.litAt = g.time;
   g.events.push({ t: 'fire', x: b.x, y: b.y });
   tell(g, b.owner, `⚡ Lightning has struck your ${b.def.name} and set it alight! Send villagers to fight the fire.`);
@@ -110,7 +115,7 @@ export function lightning(g: Game, salt = 0): Building | null {
 }
 
 /**
- * Fire by accident, once a second: a Blacksmith with work in hand may catch from its forge, and by night one of a
+ * Fire by accident, once a second (as often and as long as the people's standing with heaven makes it: wrath.ts): a Blacksmith with work in hand may catch from its forge, and by night one of a
  * town's lived-in houses may catch from its hearth. Never in heavy rain, twice as often in a dust storm, and not
  * in a field battle, where there is no town. Returns the building set alight, or null.
  */
@@ -119,7 +124,7 @@ export function accident(g: Game): Building | null {
   const k = g.foul === 'dust' ? FIRE.dry : 1;
   let lit: Building | null = null;
   const light = (b: Building, text: string): void => {
-    b.burnT = FIRE.spark;
+    b.burnT = FIRE.spark * wrath(g, b.owner);
     b.litAt = g.time;
     g.events.push({ t: 'fire', x: b.x, y: b.y });
     tell(g, b.owner, text);
@@ -127,13 +132,13 @@ export function accident(g: Game): Building | null {
   };
   for (const b of g.buildings) {
     if (b.dead || !b.complete || b.burnT > 0 || b.type !== 'blacksmith' || !b.queue.length || g.players[b.owner]?.neutral !== false) continue;
-    if (roll(g, 41 + b.id * 131) < k / FIRE.forge) light(b, '🔥 A spark from the forge has set your Blacksmith alight! Send villagers to fight the fire.');
+    if (roll(g, 41 + b.id * 131) < (k * wrath(g, b.owner)) / FIRE.forge) light(b, '🔥 A spark from the forge has set your Blacksmith alight! Send villagers to fight the fire.');
   }
   if (g.night) for (const p of g.players) {
     if (p.neutral || p.defeated) continue;
     const homes = g.buildings.filter((b) => !b.dead && b.complete && b.owner === p.id && b.type === 'house' && b.burnT <= 0 && (b.residents.m || b.residents.f));
     // A hamlet of a house or two is seldom caught out: the chance grows with the hearths, up to FIRE.hearths of them.
-    if (!homes.length || roll(g, 59 + p.id * 257) >= (k / FIRE.hearth) * Math.min(1, homes.length / FIRE.hearths)) continue;
+    if (!homes.length || roll(g, 59 + p.id * 257) >= ((k * wrath(g, p.id)) / FIRE.hearth) * Math.min(1, homes.length / FIRE.hearths)) continue;
     const b = homes[Math.floor(roll(g, 71 + p.id * 263) * homes.length)];
     light(b, `🔥 A hearth fire has got out of hand: ${b.family ? `the ${b.family} house` : 'one of your houses'} is alight! Send villagers to fight the fire.`);
   }
