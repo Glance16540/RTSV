@@ -67,7 +67,7 @@ export function cleanHero(h: Partial<HeroSpec> | null | undefined, civ: string):
     if (h.look.helmet) look.helmet = text(h.look.helmet, 12);
   }
   return {
-    name: text(h.name, 40) || d.name, female: h.female == null ? d.female : !!h.female,
+    name: text(h.name, 60) || d.name, female: h.female == null ? d.female : !!h.female,
     calling: h.calling === 'strategist' ? 'strategist' : 'warlord', bent: h.bent === 'strength' || h.bent === 'armour' ? h.bent : 'both',
     might, guard, vigour, rank: int(h.rank, 0, MAX_RANK), look,
   };
@@ -82,6 +82,13 @@ export function heroBonus(h: HeroSpec, rank: number): { atk: number; armor: numb
     armor: h.guard * GUARD_ARMOR + (rank - toAtk) * RANK_ARMOR,
     hp: 1 + h.vigour * VIGOUR_HP + rank * RANK_HP,
   };
+}
+
+const NUMERALS = ['II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+/** The name of the heir who takes a fallen leader's place in the middle of a battle: their parent's, and the next number. */
+export function heirName(name: string): string {
+  const m = / (II|III|IV|V|VI|VII|VIII|IX)$/.exec(name);
+  return m ? name.slice(0, m.index) + ' ' + NUMERALS[NUMERALS.indexOf(m[1]) + 1] : `${name} II`;
 }
 
 /** The rank a number of deeds has earned. */
