@@ -3,7 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { Campaign, battleConfig, finishBattle, moveArmy, newCampaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
-import { beginVisit, finishVisit, visitConfig } from '../src/sim/visit';
+import { VISIT_SECONDS, beginVisit, finishVisit, visitConfig } from '../src/sim/visit';
+import { TOWN_GROW } from '../src/sim/birthonly';
 import { folkOf, grown } from '../src/sim/township';
 import { GROWN_SEASONS, couplesOf, roomOf, seasonFolk, seasonTown } from '../src/sim/seasonfolk';
 import { run, spot, villagers } from './helpers';
@@ -143,5 +144,11 @@ describe('on the map, housed couples raise children season by season', () => {
     f.men = 5; f.women = 5; f.children = 0; f.stores.food = 2000;
     for (let s = 0; s < 12; s++) { c.turn++; seasonFolk(c); }
     expect(f.children).toBeGreaterThan(0);
+  });
+});
+
+describe('a town and the map keep one pace for growing up', () => {
+  it('a child takes as many visits to come of age in a town as seasons on the map', () => {
+    expect(TOWN_GROW).toBe(VISIT_SECONDS * GROWN_SEASONS);
   });
 });

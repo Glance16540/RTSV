@@ -12,7 +12,7 @@ import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
 import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
-import { hireBar } from './birthonly';
+import { birthPace, growPace, hireBar } from './birthonly';
 import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
@@ -1879,7 +1879,7 @@ export class Game {
 
   /** Time passes for the children on a record. One who is grown steps out of `door` as a villager; `at` is used when there is no door. */
   private tendYoung(owner: number, young: Child[], dt: number, door: Building | null, at?: { x: number; y: number }): void {
-    const grown = ageYoung(young, dt), p = this.players[owner];
+    const grown = ageYoung(young, dt * growPace(this)), p = this.players[owner];
     for (const c of grown) {
       p.pop -= UNITS.villager.pop; // the grown villager is counted in their place
       const u = door ? this.spawnFrom(door, 'villager', c.gender) : this.spawnUnit('villager', owner, at?.x ?? 0, at?.y ?? 0, c.gender);
@@ -2268,7 +2268,7 @@ export class Game {
 
   /** Seconds a house needs for its next child. Each child takes a little longer than the last. */
   birthTime(b: Building): number {
-    return (BIRTH_TIME * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * this.creed(b.owner).birth * (1 + CLERGY_BIRTH * Math.min(STAFF_CAP, this.players[b.owner].clergy)) * (1 + 0.1 * this.renown(b)));
+    return (BIRTH_TIME * birthPace(this) * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * this.creed(b.owner).birth * (1 + CLERGY_BIRTH * Math.min(STAFF_CAP, this.players[b.owner].clergy)) * (1 + 0.1 * this.renown(b)));
   }
 
   // ------------------------------------------------------------------
