@@ -315,6 +315,8 @@ neighbouring land.
   Settings has the same choice (`src/client/detail.ts`): Automatic picks the plainer map on a machine that draws
   in software or is small. Country changes the rules as well as the look, and a closed border can be opened with
   a bridge or a road over the pass (`src/sim/country.ts`).
+  Every land's town keeps its people, its notable names and its stores between battles (`src/sim/township.ts`):
+  a siege fought in person is fought by those people out of those stores, and what is left is what the town has.
   Drag to move, wheel to zoom, click a land to choose it. The flat chart of `src/client/overworld.ts` is shown
   where 3D is not available or with `?map=2d`. Three
   weather fronts cross it turn by turn (`frontsOf`, `weatherAt` in `src/sim/campaign.ts`): an army attacking into

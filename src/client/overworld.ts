@@ -3,6 +3,7 @@
 import { creedOf } from '../sim/creed';
 import { PLACES, WORLD_EVENTS, epilogue } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield, openBorder } from '../sim/country';
+import { nationHtml, townHtml } from './townpanel';
 import { AGES, CIVS, CIV_IDS, styleOf } from '../sim/data';
 import { LEADERS, Speech, leaderOf } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -579,6 +580,7 @@ export class Overworld {
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
       '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
+      nationHtml(c) +
       `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
       `<div class="hint">${creedOf(virtueOf(c, 0)).icon} Your people are <b>${creedOf(virtueOf(c, 0)).name}</b> <small>(${virtueOf(c, 0) > 0 ? 'piety ' + virtueOf(c, 0) : virtueOf(c, 0) < 0 ? 'decadence ' + -virtueOf(c, 0) : 'in the middle'}${virtueDrift(c, 0) ? `, ${virtueDrift(c, 0) > 0 ? 'growing more pious' : 'growing more decadent'} by ${Math.abs(virtueDrift(c, 0))} a turn` : ''})</small>. ${FAITH[creedOf(virtueOf(c, 0)).id].desc} Your towns begin each battle as they stand here.</div>` +
       (worldNow(c) ? `<div class="hint">${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].icon} <b>${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].name}.</b> ${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].desc} <small>(${c.world!.until - c.turn + 1} turns left)</small></div>` : '') +
@@ -590,6 +592,7 @@ export class Overworld {
     $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
       <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · Defence ${defence(c, t.id)}</div>
+      ${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc} <i>${countryOf(c, t.id).rule}</i></div>
       ${lanesOf(c, t.id).map((n) => `<div class="hint">⛵ Sea crossing to ${c.territories[n].name}${t.buildings.includes('harbour') ? '' : t.owner === 0 ? ': build a Harbour here to make it' : ': made from a Harbour'}.</div>`).join('')}
       ${(c.barriers ?? []).filter((w) => w.a === t.id || w.b === t.id).map((w) => `<div class="hint">${BARRIERS[w.kind].icon} No march to ${c.territories[w.a === t.id ? w.b : w.a].name}: ${BARRIERS[w.kind].by} lie${w.kind === 'mountains' ? '' : 's'} between${w.kind !== 'water' ? `. ${WORKS[w.kind].name[0].toUpperCase() + WORKS[w.kind].name.slice(1)} would open it (${WORKS[w.kind].cost} supplies, built from either side)` : ''}.</div>`).join('')}

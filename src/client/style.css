@@ -679,3 +679,8 @@ body.looking-out #guide, body.looking-out #lesson { display: none; }
 .tavernfall { margin: 4px 0; padding: 3px 6px; border-left: 3px solid #b08a3a; font-size: 12px; }
 .tavernfall.worldly { border-left-color: #c8742a; }
 .tavernfall.decadent { border-left-color: #a0282a; }
+/* ---- Towns: a land's people, stores and notable names on the campaign screen (townpanel.ts) ---- */
+.town-folk small, .town-nation small { opacity: 0.85; }
+.town-stores { font-size: 0.92em; }
+.town-notable { font-size: 0.92em; padding-left: 4px; }
+.town-notable.gone { opacity: 0.6; font-style: italic; }
