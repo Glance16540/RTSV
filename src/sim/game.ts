@@ -926,7 +926,8 @@ export class Game {
   }
 
   /**
-   * A count of a side's town as it stands (township.ts): its men and women of working age, its old, the children on
+   * A count of a side's town as it stands (township.ts): its men and women of working age (those trained to arms
+   * out of the town among them), its old, the children on
    * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name.
    */
   census(owner: number): Census {
@@ -935,8 +936,13 @@ export class Game {
     for (const r of RES_TYPES) out.stores[r] = Math.max(0, Math.floor(p.res[r]));
     for (const u of this.units) {
       if (u.captive && u.captive.from === owner) out.taken!++;
-      if (u.owner !== owner || u.type !== 'villager' || u.dead || !u.gender) continue;
-      if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (u.gender === 'm') out.men++; else out.women++;
+      if (u.owner !== owner || u.dead) continue;
+      // A townsman in arms is still one of the town's people (muster.ts): he keeps the span of his life, which an
+      // army brought to the battle, a beast or the leader does not have. A woman serving keeps her gender; a man does not.
+      const armed = u.type !== 'villager' && u.lifespan > 0;
+      if (!armed && (u.type !== 'villager' || !u.gender)) continue;
+      const woman = u.gender === 'f';
+      if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (woman) out.women++; else out.men++;
       if (u.gender === 'f' && (u.kids ?? 0) > 0) out.named!.push({ name: u.name, gender: 'f', kids: u.kids, ...(u.family ? { family: u.family } : {}) });
     }
     for (const b of this.buildings) {
