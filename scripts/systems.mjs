@@ -74,7 +74,7 @@ export const AREAS = [
           'Only the one best soldier of a battle is remembered with the army, and only until its next battle or until it joins another army; a battle settled on the map remembers nobody',
           'A soldier raised to lead always becomes a Warlord on foot with the same making, whatever they fought as, and is always a man',
           'Rival peoples never raise a soldier in battle: when their leader falls there they wait for the map',
-          'Raising a soldier was checked by tests only: the button and the change of figure have not been seen',
+          'Raising a soldier was checked by tests and once in a browser with a soldier set up by hand; it has not been reached in a real fight',
           'Succession was walked through once in a browser by editing a saved campaign, not reached by play',
           'Powers count for nothing when a battle is settled on the map: only the rank does',
           'The powers, rival builds and kept skirmish rank were checked by tests and one look at the creator; none has been played',
