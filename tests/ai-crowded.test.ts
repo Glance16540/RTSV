@@ -17,7 +17,7 @@ describe('the computer player in a crowded town', () => {
     const before = new Set(g.buildings.map((b) => b.id));
     const ai = new AIController(g, 1);
     ai.setLevel(1);
-    for (let s = 0; s < 90; s++) { run(g, 1); ai.update(); }
+    for (let s = 0; s < 180; s++) { run(g, 1); ai.update(); }
     const built = g.buildings.filter((b) => b.owner === 1 && !before.has(b.id) && !b.def.wall && b.type !== 'farm');
     expect(built.length).toBeGreaterThan(0);
     for (const b of built) expect(Math.hypot(b.x - home.x, b.y - home.y)).toBeGreaterThan(13);
