@@ -30,6 +30,38 @@ export function rescuers(g: Game, b: Building, from: number): Unit[] {
 /** How many soldiers must stand at this camp before the first captive is let out. */
 export const rescueForce = (b: Building): number => RESCUE_GUARD * guards(b) + 1;
 
+/** How things stand at a camp's gate, for whoever is looking at it. */
+export interface GateWork {
+  /** The people whose soldiers are doing most there (the one a captive would next be let out for). */
+  from: number;
+  /** Soldiers standing at the gate for that people. */
+  soldiers: number;
+  /** How many of them the guards hold off, and how many are needed before anyone gets out. */
+  heldOff: number; force: number;
+  /** Soldiers over and above those held off: the ones at work. None, and no one is getting out. */
+  spare: number;
+  /** How far along the next captive is, from 0 to 1, and the seconds until they are out (null if no one is working). */
+  progress: number; nextIn: number | null;
+}
+
+/**
+ * Who is at this camp's gate and how near they are to getting someone out; null when it holds no one who could
+ * be rescued or no soldier has come for them. Changes nothing.
+ */
+export function gateWork(g: Game, b: Building): GateWork | null {
+  if (!b.def.guards || !b.captives?.length) return null;
+  const off = RESCUE_GUARD * guards(b);
+  let best: GateWork | null = null;
+  for (const from of new Set(b.captives.map((c) => c.from))) {
+    if (!g.hostile(from, b.owner)) continue;
+    const soldiers = rescuers(g, b, from).length;
+    if (!soldiers || (best && soldiers <= best.soldiers)) continue;
+    const spare = Math.max(0, soldiers - off), progress = spare ? Math.min(1, b.rescueT ?? 0) : 0;
+    best = { from, soldiers, heldOff: Math.min(soldiers, off), force: off + 1, spare, progress, nextIn: spare ? Math.max(1, Math.ceil((1 - progress) * RESCUE_TIME / spare)) : null };
+  }
+  return best;
+}
+
 /**
  * One second at a guarded camp (a Work Camp; the marauders' camp has to be burned). Returns how many were let out.
  * The count towards the next one is kept on the camp, and is lost if the soldiers are driven off.

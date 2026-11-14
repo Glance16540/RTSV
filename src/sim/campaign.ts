@@ -20,6 +20,7 @@ export const HERO_STRENGTH = 2;
 /** What each rank of a leader's veterancy adds to the army they march with, when a battle is settled on the map. */
 export const HERO_RANK_STRENGTH = 0.5;
 import { leaderAsMade, leaderType } from './powers';
+import { countryOf, countryYield, rivalOpens } from './country';
 
 /** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
 export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
@@ -287,6 +288,8 @@ export interface Campaign {
   barriers?: Barrier[];
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
+  /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
+  works?: (Barrier & { /** Who built it. */ by?: number })[];
   rngState: number;
   level: number; // 0 easy, 1 normal, 2 hard
   turn: number;
@@ -942,7 +945,7 @@ export function income(c: Campaign, f: number): number {
   let n = 0;
   let held = 0;
   const world = worldNow(c);
-  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0)); held++; }
+  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) + countryYield(c, t.id) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0)); held++; }
   return n + placeGood(c, f, 'supplies') + (c.factions[f].civ === 'persia' ? Math.floor(held / 3) : 0);
 }
 export function territoryIncome(t: Territory, civ = ''): number {
@@ -961,7 +964,7 @@ export function defenders(c: Campaign, tid: number): Record<string, number> {
 /** Everything that defends a territory, optionally against a particular mix of attackers. */
 export function defence(c: Campaign, tid: number, vs: Record<string, number> = {}, attackerCiv = ''): number {
   const t = c.territories[tid];
-  const ground = (t.trait === 'hills' ? 2 : 0) + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.defence ?? 0);
+  const ground = (t.trait === 'hills' ? 2 : 0) + countryOf(c, tid).defence + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.defence ?? 0);
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
@@ -1097,7 +1100,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
   const round = (v: number) => Math.round(v * 10) / 10;
   c.pending = {
     armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
-    aStr: round((strengthVs(a, defenders(c, to), rankWith(c, a)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1) * ageEdge(c, a.owner) * (weatherAt(c, to) ? WEATHER[weatherAt(c, to) as Sky].march : 1)), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
+    aStr: round((strengthVs(a, defenders(c, to), rankWith(c, a)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1) * ageEdge(c, a.owner) * (weatherAt(c, to) ? WEATHER[weatherAt(c, to) as Sky].march : 1) * countryOf(c, to).march), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
   };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
@@ -1512,6 +1515,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
     // A people shut in by the sea builds a harbour before anything else.
     const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
     if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }
+    // A people with stores to spare bridges a river or cuts a pass towards land that is not its own.
+    if (c.turn >= 6) rivalOpens(c, f.id);
     // A people builds what it believes in: the pious a church, the worldly a tavern, each in its chief town first.
     const lean = leaningWith(civ, LEANING[civ] ?? 0.5);
     const house = lean >= 0.6 ? 'church' : lean <= 0.4 ? 'tavern' : '';

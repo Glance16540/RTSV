@@ -32,7 +32,7 @@ export interface HeroSpec {
 export const HERO_POINTS = 6;
 export const MAX_RANK = 5;
 /** Deeds needed to reach each rank. A deed is an enemy felled, by the leader or by anyone fighting beside them. */
-export const RANK_XP = [0, 6, 15, 28, 46, 70];
+export const RANK_XP = [0, 6, 15, 41, 77, 125];
 export const RANK_NAMES = ['Untried', 'Blooded', 'Seasoned', 'Veteran', 'Renowned', 'Legend'];
 export const MIGHT_ATK = 1.5; // attack per point of might
 export const GUARD_ARMOR = 0.4; // armour per point of guard

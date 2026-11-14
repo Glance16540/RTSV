@@ -22,6 +22,7 @@ import '@fontsource/im-fell-english/400-italic.css';
 import '@fontsource/im-fell-english-sc/400.css';
 import '@fontsource/im-fell-french-canon/400.css';
 import '@fontsource/im-fell-french-canon/400-italic.css';
+import { mountDetailSetting } from './detail';
 import './style.css';
 
 export class App {
@@ -421,6 +422,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     input.addEventListener('input', () => { (prefs[key] as number | boolean) = input.type === 'checkbox' ? input.checked : Number(input.value); applyPrefs(); });
   };
   bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll'); bind('pref-day', 'day'); bind('pref-night', 'night'); bind('pref-lights', 'lights');
+  mountDetailSetting();
   applyPrefs();
 
   // ---- Missions ----
