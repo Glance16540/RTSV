@@ -1,6 +1,7 @@
 // Children. A child is never a unit on the map: it is an entry in the record of the house it was born to (its
 // name, its family, what it takes after its parents in), it ages there unseen, and at coming of age a grown
-// villager steps out of the door. Nothing on the map can reach a child: not a blow, a raid, a famine or a fire.
+// villager steps out of the door. Nothing can reach a child: not a blow, a raid, a famine, a fire or a sickness. No child dies. Where a town's
+// creed makes families weak, fewer children are born, and the house keeps a note of it (`missed`).
 // When a house falls its children pass to another roof of the town; see `wardFor`.
 import { GROW_TIME } from './data';
 
@@ -14,8 +15,6 @@ export interface Child {
   lifespan: number;
   /** Seconds until it comes of age. */
   left: number;
-  /** A child that will not live to grow up is lost, of sickness and in its bed, when `left` falls to this. */
-  frail?: number;
   /** The house it was born in, whose trade it may take up. */
   bornAt: number;
 }
@@ -25,16 +24,15 @@ export const GROWN_AT = 15;
 export const yearsOld = (c: Child): number => Math.max(0, Math.min(GROWN_AT - 1, Math.floor(GROWN_AT * (1 - c.left / GROW_TIME))));
 export const yearsLeft = (c: Child): number => Math.max(1, GROWN_AT - yearsOld(c));
 
-/** A stretch of time passes for the children under one roof. Those grown and those lost are taken off the record and handed back. */
-export function ageYoung(young: Child[], dt: number): { grown: Child[]; lost: Child[] } {
-  const grown: Child[] = [], lost: Child[] = [];
+/** A stretch of time passes for the children under one roof. Those grown are taken off the record and handed back. No child is ever lost. */
+export function ageYoung(young: Child[], dt: number): Child[] {
+  const grown: Child[] = [];
   for (let i = young.length - 1; i >= 0; i--) {
     const c = young[i];
     c.left -= dt;
-    if (c.frail && c.left <= c.frail) lost.push(...young.splice(i, 1));
-    else if (c.left <= 0) grown.push(...young.splice(i, 1));
+    if (c.left <= 0) grown.push(...young.splice(i, 1));
   }
-  return { grown: grown.reverse(), lost: lost.reverse() };
+  return grown.reverse();
 }
 
 interface Roof { id: number; owner: number; type: string; complete: boolean; dead: boolean; x: number; y: number; young?: Child[] }

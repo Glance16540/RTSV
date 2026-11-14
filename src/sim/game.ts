@@ -164,6 +164,8 @@ export interface Building extends Base {
   children: number; // villagers this house has raised
   /** The children under this roof: a record, not people on the map (nursery.ts). */
   young?: Child[];
+  /** Births that were due here and did not come: a note, and the whole of what a weak creed costs a town in children. */
+  missed?: number;
   cooldown: number;
   scanT: number;
   workerId: number;
@@ -1723,21 +1725,25 @@ export class Game {
   private bear(b: Building, gender?: Gender): Child {
     const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = g === 'm' ? NAMES_M : NAMES_F;
     const c: Child = { id: this.nextId++, name: names[Math.floor(this.rng() * names.length)], family: '', gender: g, trait: '', trait2: '', lifespan: LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]), left: GROW_TIME, bornAt: b.id };
-    // In a town whose families are strong, more children live to grow up. (Decided without the game's dice.)
-    const fate = ((c.id * 2654435761 + this.seed * 40503) >>> 0) / 4294967296, loss = this.creed(b.owner).childLoss;
-    if (fate < loss) c.frail = GROW_TIME * (0.15 + 0.7 * (fate / Math.max(0.01, loss)));
     (b.young ??= []).push(c);
     this.players[b.owner].pop += UNITS.villager.pop;
     return c;
   }
 
+  /**
+   * Whether a birth that was due does not come. No child ever dies: where families are weak, fewer are born, so
+   * fewer grow up, and the roof keeps a note of each one that did not come. (Decided without the game's dice.)
+   */
+  private noChild(b: Building): boolean {
+    const fate = ((this.nextId++ * 2654435761 + this.seed * 40503) >>> 0) / 4294967296;
+    if (fate >= this.creed(b.owner).childLoss) return false;
+    b.missed = (b.missed ?? 0) + 1;
+    return true;
+  }
+
   /** Time passes for the children on a record. One who is grown steps out of `door` as a villager; `at` is used when there is no door. */
   private tendYoung(owner: number, young: Child[], dt: number, door: Building | null, at?: { x: number; y: number }): void {
-    const { grown, lost } = ageYoung(young, dt), p = this.players[owner];
-    for (const c of lost) {
-      p.pop -= UNITS.villager.pop;
-      this.msg(owner, `${c.name}, a child of the ${c.family || 'town'}, sickened and has died young.`);
-    }
+    const grown = ageYoung(young, dt), p = this.players[owner];
     for (const c of grown) {
       p.pop -= UNITS.villager.pop; // the grown villager is counted in their place
       const u = door ? this.spawnFrom(door, 'villager', c.gender) : this.spawnUnit('villager', owner, at?.x ?? 0, at?.y ?? 0, c.gender);
@@ -1782,7 +1788,7 @@ export class Game {
   /**
    * In a worldly town, what goes on between the maids and the patrons of a tavern has its consequences, but
    * rarely: they take care to prevent it. Once in a long while a child is born there that belongs to no household. It costs no food and needs no house, and like any
-   * child of such a town it is less likely to live to grow up.
+   * child of such a town it is less likely to come at all.
    */
   private tavernBirth(p: Player, b: Building): void {
     if (p.virtue > -30 || !b.complete) return;
@@ -1795,6 +1801,7 @@ export class Game {
     if (p.pop + 1 > p.popCap) { b.trystT = 1; return; }
     b.trystT = 0;
     // Decided without the game's dice, so the rest of the match is not disturbed by it.
+    if (this.noChild(b)) return;
     // A child no household owns to is kept at the Town Center, if the town has one.
     const roof = this.tcs[p.id]?.[0] ?? b;
     this.bear(roof, (b.id + this.tick / 20) % 2 < 1 ? 'm' : 'f').bornAt = b.id;
@@ -3201,7 +3208,11 @@ export class Game {
       if (b.residents.m && b.residents.f && !b.birthsPaused && !this.atTavern(b.residents.m) && !this.atTavern(b.residents.f) && !(this.entities.get(b.residents.f) as Unit | undefined)?.freed) {
         if (b.birthProgress < 1) b.birthProgress = Math.min(1, b.birthProgress + DT / this.birthTime(b));
         if (b.birthProgress >= 1) {
-          if (p.pop + 1 <= p.popCap && p.res.food >= BIRTH_COST) {
+          if (p.pop + 1 <= p.popCap && p.res.food >= BIRTH_COST && this.noChild(b)) {
+            // The time is spent and nothing has come of it; the food is kept.
+            b.birthProgress = 0;
+            b.birthBlocked = false;
+          } else if (p.pop + 1 <= p.popCap && p.res.food >= BIRTH_COST) {
             p.res.food -= BIRTH_COST;
             b.birthProgress = 0;
             b.birthBlocked = false;
