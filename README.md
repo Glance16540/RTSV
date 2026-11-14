@@ -414,7 +414,11 @@ captain from an army that has won a battle, who ends the old house. The rules ar
 
 At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator or
 left open and chosen on the field when the rank is earned; rival leaders are built to suit how their
-people live. A soldier raised to lead fights on as what they were. Both are in `src/sim/powers.ts`.
+people live. A soldier raised to lead fights on as what they were.
+
+On the campaign map the leader is one person in one place: a land of yours, in its town or with the
+army there. They are in a battle only if it is fought where they are, no unrest rises in the land they
+are in, and they can call the armies to them. The rules are in `src/sim/court.ts`. Both are in `src/sim/powers.ts`.
 
 ## Systems board
 

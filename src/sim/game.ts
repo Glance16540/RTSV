@@ -223,7 +223,7 @@ export interface Player extends HallState {
   /** The nation's leader as made in the creator, and the veterancy they will take the field with next. */
   hero?: HeroSpec; heroRank?: number;
   /** Their leader has fallen in this battle; and the one leading now is a soldier raised in their place. */
-  heroFell?: boolean; acclaimed?: boolean;
+  heroFell?: boolean; acclaimed?: boolean; leaderAway?: boolean;
   /** Seconds the food store has stayed bare, and how many a famine has taken (famine.ts). */
   hunger?: number; starved?: number;
   id: number;
@@ -309,6 +309,8 @@ export interface PlayerSetup {
   civ?: string;
   /** The nation's leader, where someone has made their own of them. */
   hero?: Partial<HeroSpec>;
+  /** The leader is elsewhere on the campaign map: nobody raised in this battle is the leader in person. */
+  leaderAway?: boolean;
   /** Where this people's town stands between piety and decadence as the battle opens (Conquest carries it over). */
   virtue?: number;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
@@ -460,6 +462,7 @@ export class Game {
       this.heroes.push([]);
       this.leaders.push(null);
       if (s.hero) { this.players[i].hero = cleanHero(s.hero, this.players[i].civ); this.players[i].heroRank = this.players[i].hero!.rank ?? 0; }
+      if (s.leaderAway) this.players[i].leaderAway = true;
       this.tcs.push([]);
       const st = this.spec.starts[i];
       const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
@@ -573,7 +576,7 @@ export class Game {
     if (def.cls === 'siege') u.hp = u.maxHp = Math.round(def.hp * this.players[owner].mods.siegeHp);
     // The first hero of their calling a people raises is their leader in person.
     // (One raised from the ranks fights on as what they were; nobody steps into their place if they fall.)
-    if (this.players[owner] && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderType(this.heroOf(owner))) && !this.units.some((o) => o.owner === owner && o.hero)) {
+    if (this.players[owner] && !this.players[owner].leaderAway && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderType(this.heroOf(owner))) && !this.units.some((o) => o.owner === owner && o.hero)) {
       const rank = this.players[owner].heroRank ?? 0;
       u.name = this.heroOf(owner).name;
       u.hero = { xp: RANK_XP[rank], rank };

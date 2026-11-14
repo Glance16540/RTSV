@@ -17,6 +17,7 @@ import {
 import { Claim, canSucceed, claimants, comesOfAge, houseOf, ofAge, rulerName, succeed } from '../sim/dynasty';
 import { RANK_NAMES } from '../sim/hero';
 import { heroFor } from '../sim/campaign';
+import { callArmies, called, courtOf, endCall, holdCourt, leaderReach, moveLeader } from '../sim/court';
 import { openHeroCreator, savedHero } from './herocreator';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
@@ -118,6 +119,10 @@ export class Overworld {
       if (kind === 'build') build(this.c, 0, this.sel, id);
       if (kind === 'hero') summonHero(this.c, 0, this.sel);
       if (kind === 'succession') { this.askSuccession(); return; }
+      if (kind === 'lead') moveLeader(this.c, 0, this.sel);
+      if (kind === 'call') callArmies(this.c, 0);
+      if (kind === 'endcall') endCall(this.c, 0);
+      if (kind === 'hold') holdCourt(this.c, 0, id === '1');
       if (kind === 'truce') offerTruce(this.c, Number(id));
       if (kind === 'ally') offerAlliance(this.c, Number(id));
       if (kind === 'gift') sendGift(this.c, Number(id));
@@ -423,6 +428,8 @@ export class Overworld {
       });
       const a = armyAt(c, t.id);
       const n = a ? armySize(a) : t.owner < 0 ? t.militia : 0;
+      // A leader in a town with no army about them is marked by the crown alone.
+      if (!n && t.owner >= 0 && c.factions[t.owner].court?.at === t.id && c.factions[t.owner].heroAlive) { ctx.font = '22px serif'; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = '#3a2c18'; ctx.strokeText('♛', t.x, t.y + 18); ctx.fillStyle = '#f6d860'; ctx.fillText('♛', t.x, t.y + 18); }
       if (!n) continue;
       ctx.globalAlpha = a && a.moved && c.phase === 'player' ? 0.6 : 1;
       this.standard(ctx, t.x, t.y + 12, css(a ? c.factions[a.owner].color : LOCALS.color), n, !!a, !!a?.hero);
@@ -611,6 +618,17 @@ export class Overworld {
     if (t.owner === 0) {
       for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
       if (ageOf(c, 0) < AGE_COST.length) html += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
+      const court = courtOf(c, 0);
+      if (court && court.at === t.id) {
+        const away = called(c, 0).length;
+        html += `<div class="hint">♛ ${heroFor(c, 0).name} is here${a ? ', at the head of this army' : ', in the town'}. No unrest rises where your leader is, and they fight only in battles fought here${a && !court.holds ? ' or where this army marches' : ''}.${court.rally ? ` The armies are called: ${away} still on the way.` : ''}</div>`;
+        if (court.rally) html += `<button data-act="endcall" ${c.phase === 'player' ? '' : 'disabled'} title="The armies stay where they have got to.">♛ End the call</button>`;
+        else html += `<button data-act="call" ${c.phase === 'player' && away ? '' : 'disabled'} title="Every army of yours marches a land nearer each turn, through your own country, until all have come or you end the call. Lands they leave have no garrison.">♛ Call the armies here</button>`;
+        html += `<button data-act="hold:${court.holds ? 0 : 1}" ${c.phase === 'player' ? '' : 'disabled'} title="${court.holds ? 'They ride with the army here when it marches.' : 'An army that marches out of this land goes without them.'}">♛ ${court.holds ? 'Ride with the army' : 'Keep to the town'}</button>`;
+      } else if (court) {
+        const can = leaderReach(c, 0).includes(t.id);
+        html += `<button data-act="lead" ${can && c.phase === 'player' ? '' : 'disabled'} title="${can ? 'They travel here alone, leaving any army where it is. Once a turn.' : court.moved ? 'They have travelled already this turn.' : `They are in ${c.territories[court.at]?.name ?? 'the field'}: only a neighbouring land of yours can be reached in a turn.`}">♛ Bring ${heroFor(c, 0).name} here</button>`;
+      }
       if (!me.heroAlive) html += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
       if (t.capital === 0) html += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
