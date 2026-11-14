@@ -16,6 +16,7 @@ import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
 import { Sky } from './sky';
 import { Flame, NightLights, carriesTorch } from './nightlight';
+import { CampScenes } from './campscene';
 import { canCarryTorch, carryTorch, dropTorch, torchTip } from './torch';
 
 /** How steeply the camera looks down. `?pitch=20` (degrees) lowers it, for looking at figures from the side. */
@@ -117,6 +118,8 @@ export class Renderer {
   private campViews = new Map<number, { key: string; g: THREE.Group; figs: CampFig[] }>();
   /** How far into night it is, 0 by day to 1 in full dark, eased through dusk and dawn. */
   private nightAmt = 0;
+  /** Rescues, risings and escapes at the work camps, drawn at their gates. */
+  private campScenes!: CampScenes;
   /** Who holds each unit's torch: the first of its figures that can, or null where none of them has a hand free. */
   private torchBy = new Map<number, RealPerson | null>();
   private frameDt = 0.016;
@@ -170,6 +173,7 @@ export class Renderer {
     this.heaven = new Sky(this.glow());
     this.scene.add(this.heaven.group);
     this.nightLights = new NightLights(this.scene, this.glow());
+    this.campScenes = new CampScenes();
 
     this.area = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 48), new THREE.MeshBasicMaterial({ color: 0xb48cff, transparent: true, opacity: 0.9, depthTest: false }));
     this.area.rotation.x = -Math.PI / 2;
@@ -594,7 +598,9 @@ export class Renderer {
     g.scale.set(size, size * breathe, size);
     g.rotation.x += (pitch - g.rotation.x) * Math.min(1, dt * 14);
     g.rotation.z += (roll - g.rotation.z) * Math.min(1, dt * 14);
-    let d = u.facing - g.rotation.y;
+    // A soldier come to a work camp for his people faces its gate while he stands there.
+    const gateMan = !u.moving && u.attackAnim <= 0 ? this.campScenes.at(u.id) : undefined;
+    let d = (gateMan ? gateMan.yaw : u.facing) - g.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
     for (const b of v.beasts ?? []) this.poseBeast(u, b, dt);
@@ -1104,6 +1110,7 @@ export class Renderer {
       } else if (p.strike > 0) play(p, clip, rate, true);
       else if (p.flinch > 0) play(p, 'Hit_Chest', 1.3, true);
       else if (u.moving) move();
+      else if (this.campScenes.at(u.id)?.working) play(p, p.weapon === 'spear' || p.weapon === 'pike' ? 'Punch_Cross' : 'Sword_Attack', 0.9); // hacking at the gate
       else play(p, u.order?.t === 'attack' && (p.weapon === 'sword' || p.weapon === 'club' || p.weapon === 'axe') ? 'Sword_Idle' : 'Idle_Loop', 1);
     } else {
       hold(p, job === 'wood' ? 'hatchet' : job === 'mine' ? 'pick' : job === 'build' ? 'hammer' : job === 'farm' ? 'hoe' : '');
@@ -1396,6 +1403,13 @@ export class Renderer {
     if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
     this.lightNight();
+    this.campScenes.update(this.game, dt, {
+      chips: (x, y, z, n) => this.spray(x, y, z, n, false),
+      dust: (x, y, z, delay) => this.cloud(x, y, z, 0xb8a888, delay),
+      sign: (x, y, text) => { this.floaters.push({ x, y, text, t: 0 }); },
+      height: (x, y) => this.scenery.heightAt(x, y),
+      seen: (b) => !!this.buildingViews.get(b.id)?.visible,
+    });
     this.updateFog(dt);
     this.scenery.update(this.clock, 1 - this.nightAmt, this.weather.amount);
     for (const m of this.models) m.mixer.update(dt);
