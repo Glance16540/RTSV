@@ -21,7 +21,7 @@ describe('what a leader learns', () => {
     expect(powersHeld(h, 0)).toEqual([]);
     expect(powersHeld(h, 2).map((p) => p.name)).toEqual(['The long banner']);
     expect(powersHeld(h, 5).map((p) => p.name)).toEqual(['The long banner', 'Drinker of blood', 'Fury']);
-    expect(cleanHero({ powers: [7, 1] as number[] }, 'hearth').powers).toEqual([0, 1, 0]); // anything but a plain choice is the first
+    expect(cleanHero({ powers: [7, 1] as number[] }, 'hearth').powers).toEqual([-1, 1, -1]); // anything but a plain choice is still to be made
     const w = UNITS.warlord;
     expect(leaderDef(w, h, 0)).toBe(w);
     expect(leaderDef(w, h, 5)).toMatchObject({ auraRange: w.auraRange! + 3, drain: 6, frenzy: true, aura: w.aura });
@@ -65,8 +65,8 @@ describe('rival leaders', () => {
       builds.add([h.bent, h.might, h.guard, h.vigour, h.powers!.join('')].join());
     }
     expect(builds.size).toBeGreaterThanOrEqual(6);
-    expect(rivalHero('steppe')).toMatchObject({ bent: 'strength', might: 4 });
-    const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'hearth' }, { name: 'B', color: 2, isAI: true, civ: 'steppe' }]);
+    expect(rivalHero('wild')).toMatchObject({ bent: 'strength', might: 4 });
+    const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'hearth' }, { name: 'B', color: 2, isAI: true, civ: 'wild' }]);
     expect(g.heroOf(1)).toMatchObject({ might: 4, powers: [0, 0, 1] });
     expect(g.heroOf(0)).toMatchObject({ might: 2, guard: 2, vigour: 2 }); // yours, unmade, is still as written
     const c = newCampaign(3);

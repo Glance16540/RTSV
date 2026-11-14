@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { armyAt, finishBattle, heroFor, moveArmy, newCampaign } from '../src/sim/campaign';
-import { CHAMPION_KILLS, championName, rankForKills } from '../src/sim/champion';
+import { CHAMPION_KILLS, championFemale, championName, rankForKills } from '../src/sim/champion';
 import { UNITS } from '../src/sim/data';
 import { HEIR_AGE, claimants, houseOf, succeed } from '../src/sim/dynasty';
 import { Game } from '../src/sim/game';
@@ -28,7 +28,7 @@ describe('soldiers who make a name', () => {
     const s = blood(g, 46.5, 46.5, 6);
     expect(s.kills).toBe(6);
     expect(s.name).toBe(championName(s.id));
-    expect(g.champion(0)).toEqual({ name: s.name, kills: 6, unit: UNITS.swordsman.name });
+    expect(g.champion(0)).toEqual({ name: s.name, kills: 6, unit: UNITS.swordsman.name, female: championFemale(s.id), type: 'swordsman' });
     expect(g.canAcclaim(0, s)).toBe(false); // the leader lives
     expect(g.cmdAcclaim(0, s.id)).toBe(false);
     const green = g.spawnUnit('swordsman', 0, 40.5, 40.5);
@@ -43,13 +43,18 @@ describe('soldiers who make a name', () => {
     expect(g.canAcclaim(1, s)).toBe(false); // not theirs to raise
     const pop = g.players[0].pop, hurt = (s.hp = s.maxHp / 2) / s.maxHp;
     expect(g.cmdAcclaim(0, s.id)).toBe(true);
-    expect(s.type).toBe('warlord');
+    expect(s.type).toBe('swordsman'); // still what they fought as
     expect(s.hero).toEqual({ xp: RANK_XP[2], rank: 2 });
     expect(g.heroOf(0)).toMatchObject({ name: s.name, calling: 'warlord', bent: 'strength' });
     expect(g.players[0]).toMatchObject({ heroRank: 2, acclaimed: true });
-    expect(g.players[0].pop).toBe(pop + UNITS.warlord.pop - UNITS.swordsman.pop);
+    expect(g.players[0].pop).toBe(pop);
+    expect(g.heroOf(0).fights).toBe('swordsman');
     expect(s.hp / s.maxHp).toBeCloseTo(hurt); // as wounded as he was
-    expect(s.def.aura).toBe(1.35); // Battle cry, a fighter's power, come into at Blooded
+    expect(s.def.aura).toBe(UNITS.warlord.aura); // a leader's presence, on a swordsman's arms
+    expect(s.def.atk).toBe(UNITS.swordsman.atk);
+    expect(g.powerDue(0)).toBe(0); // Blooded already: the first power is theirs to choose
+    expect(g.cmdLearn(0, 0)).toBe(true);
+    expect(s.def.aura).toBe(1.35); // Battle cry
     expect(g.canAcclaim(0, s)).toBe(false);
     expect(g.champion(0)).toBeNull(); // the leader is not counted among the soldiers
     run(g, 1);

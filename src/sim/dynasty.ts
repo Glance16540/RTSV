@@ -97,7 +97,7 @@ export function tickHouses(c: Campaign): void {
 
 const captainOf = (c: Campaign, a: Army): { name: string; female: boolean } => {
   // A soldier the player watched make their name comes before any nameless officer.
-  if (a.champion) return { name: a.champion.name, female: false };
+  if (a.champion) return { name: a.champion.name, female: !!a.champion.female };
   const female = pick(c, a.id * 53 + 7, 5) === 0;
   const names = female ? NAMES_F : NAMES_M;
   return { name: `Captain ${names[pick(c, a.id * 53 + 11, names.length)]}`, female };
@@ -149,7 +149,9 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
     say(c, f, fac.id === 0 ? `${claim.name} takes up the rule of your people.` : `${old.name} of the ${fac.name} is dead. ${claim.name} rules them now.`);
   } else {
     // A soldier's soldier: strong in the arm, and no house behind them yet.
-    fac.hero = { name: claim.name, female: claim.female, calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, powers: [0, 1, 1], look: {} };
+    // One the player watched make a name goes on fighting as what they were, and the player chooses what they learn.
+    const made = c.armies.find((a) => a.id === claim.i)!.champion;
+    fac.hero = { name: claim.name, female: claim.female, calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, powers: fac.isAI ? [0, 1, 1] : [-1, -1, -1], look: {}, ...(made?.type ? { fights: made.type } : {}) };
     house.heirs = [];
     c.armies.find((a) => a.id === claim.i)!.hero = true;
     delete c.armies.find((a) => a.id === claim.i)!.champion;
