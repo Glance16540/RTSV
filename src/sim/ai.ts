@@ -3,6 +3,7 @@
 import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
+import { turnOut } from './calamity';
 import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 
@@ -111,6 +112,9 @@ export class AIController {
     const raiders = underAttack ? g.units.filter((u) => g.hostile(u.owner, pid) && u.owner !== g.wild && u.def.atk > 3 && Math.hypot(u.x - home.x, u.y - home.y) < 13).length : 0;
     if (!p.bell && raiders >= 3) g.cmdBell(pid, true);
     else if (p.bell && (!p.lastAttacked || g.time - p.lastAttacked.t > 10)) g.cmdBell(pid, false);
+    // A fire in the town: the nearest hands leave their work for it and go back after (see calamity.ts). Not while
+    // the bell is rung or raiders are in the streets: then the fire is the enemy's doing and the people are in hiding.
+    if (!p.bell && !raiders) turnOut(g, pid);
 
     // ---- Economy ----
     const wantAge = p.age < AGES.length - 1 && !p.agingUp && villagers.length >= AGE_VILLAGERS[p.age] && count('barracks') > 0;
