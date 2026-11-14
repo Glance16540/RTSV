@@ -669,8 +669,32 @@ body.looking-out #bottom { transform: translateY(105%); opacity: 0; pointer-even
 #lesson .lesson-off { border: 0; background: none; padding: 0; color: var(--sepia); font: italic 13px var(--book); text-decoration: underline; cursor: pointer; }
 body.looking-out #guide, body.looking-out #lesson { display: none; }
 
+/* ---- Notable people (src/client/notables.ts) ---- */
+.notable { margin: 2px 0 4px; padding: 2px 6px; border-left: 3px solid #c9a227; color: #6a4a12; font-size: 12px; }
+.notables { margin: 4px 0; padding: 4px 6px; border-left: 3px solid #c9a227; font-size: 12px; }
+.notables > b { display: block; margin-bottom: 2px; }
+.notables small { opacity: 0.8; }
+
+/* ---- The tavern as a town falls (src/client/tavernlook.ts) ---- */
+.tavernfall { margin: 4px 0; padding: 3px 6px; border-left: 3px solid #b08a3a; font-size: 12px; }
+.tavernfall.worldly { border-left-color: #c8742a; }
+.tavernfall.decadent { border-left-color: #a0282a; }
 /* ---- Towns: a land's people, stores and notable names on the campaign screen (townpanel.ts) ---- */
 .town-folk small, .town-nation small { opacity: 0.85; }
 .town-stores { font-size: 0.92em; }
 .town-notable { font-size: 0.92em; padding-left: 4px; }
 .town-notable.gone { opacity: 0.6; font-style: italic; }
+
+/* ---- A visit to a town of your own ---- */
+#visit {
+  pointer-events: auto; position: absolute; top: 50px; right: 12px; width: 250px; padding: 8px 12px;
+  background: var(--paper); border: 1px solid var(--ink); box-shadow: var(--slip); color: var(--ink);
+}
+#visit div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border-bottom: 1px solid var(--ink); padding-bottom: 3px; margin-bottom: 5px; }
+#visit b { font: 400 18px/1.15 var(--caps); text-transform: lowercase; }
+#visit span { font: 400 17px var(--book); color: var(--rubric); white-space: nowrap; font-variant-numeric: tabular-nums; }
+#visit.ending span { animation: hall-beat 1s ease-in-out infinite; }
+#visit small { display: block; font: italic 14px/1.25 var(--book); color: var(--sepia); margin-bottom: 7px; }
+#visit button { width: 100%; }
+body.visiting #guide, body.visiting #concede-btn { display: none; }
+body.looking-out #visit { display: none; }

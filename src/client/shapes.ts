@@ -509,7 +509,6 @@ function tavern(o: Look): THREE.Group {
     for (const z of [1.28, 1.92]) bx(g, 0.8, 0.04, 0.14, toon(0x9a6a3e, 'planks'), -0.8, 0.2, z);
   }
   if (gaudy) {
-    castOff(g, o, -0.95, 2.0, 1.75, 0.95, 0.94);
     // Dressed to draw a crowd: red lanterns along the eaves, bright pennants, a great painted mug, more tables.
     for (const x of [-1.2, -0.6, 0, 0.6, 1.2]) { bx(g, 0.02, 0.2, 0.02, toon(TIMBER), x, 1.9, 0.98); mesh(g, new THREE.SphereGeometry(0.1, 10, 8), toon(0xff3a30, '', 0xcc1a10), x, 1.76, 0.98).castShadow = false; }
     for (const [x, c] of [[-1.0, 0xe83a6a], [-0.5, 0xf0c030], [0, 0xe83a6a], [0.5, 0xf0c030], [1.0, 0xe83a6a]]) { const p = bx(g, 0.2, 0.26, 0.03, toon(c, '', new THREE.Color(c).multiplyScalar(0.3).getHex()), x, 1.3, 0.93); p.rotation.z = Math.PI / 4; p.castShadow = false; }
@@ -1021,7 +1020,6 @@ function camp(o: Look, type: string): THREE.Group {
     for (const [x, z] of [[0.0, 1.15], [0.7, 1.2], [0.35, 0.55]]) mesh(g, new THREE.CylinderGeometry(0.1, 0.1, 0.14, 8).rotateZ(Math.PI / 2), tim, x, 0.08, z);
     barrel(g, -0.9, 0.9, 0.8); if (!holy) barrel(g, -1.1, 0.55, 0.75);
     if (low) {
-      castOff(g, o, -0.35, 1.2, 0.62, 1.0, 0.13);
       // Dressed to draw a crowd: red lanterns round the eaves and bright pennants.
       for (let i = 0; i < 7; i++) { const an = -0.2 + (i / 6) * Math.PI * 0.9; mesh(g, new THREE.SphereGeometry(0.07, 8, 6), toon(0xff3a30, '', 0xcc1a10), -0.3 + Math.sin(an) * 1.02, 0.6, -0.4 + Math.cos(an) * 1.02).castShadow = false; }
       [0xe83a6a, 0xf0c030, 0xe83a6a, 0xf0c030].forEach((c, i) => { bx(g, 0.14, 0.2, 0.012, toon(c), 0.62 + i * 0.2, 0.74, 0.1).castShadow = false; });

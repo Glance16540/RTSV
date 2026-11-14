@@ -1,5 +1,6 @@
 // Mouse and keyboard: camera control, selection, orders and building placement.
 
+import { drawNotableMarks } from './notables';
 import { drawGates } from './gate';
 import { bark } from './voice';
 import { BUILDINGS } from '../sim/data';
@@ -377,6 +378,7 @@ export class Input {
     for (const b of game.buildings) {
       if ((b.hp < b.maxHp || selected.has(b.id)) && r.isVisible(b)) bar(b, b.type === 'farm' ? 0.6 : b.size * 0.5 + 1.2, ppt * b.size * 0.7);
     }
+    drawNotableMarks(ctx, game, pid, ppt, (x, y, h) => r.project(x, y, h), (u) => r.isVisible(u));
     // Hearts over houses where a family is raising a child.
     ctx.font = `${Math.max(11, ppt * 0.5)}px sans-serif`;
     ctx.textAlign = 'center';
