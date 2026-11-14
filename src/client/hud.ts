@@ -10,6 +10,8 @@ import { HALL_GRACE } from '../sim/beaten';
 import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
+import { notableLine, notableList } from './notables';
+import { tavernPanel } from './tavernlook';
 import { yearsLeft, yearsOld } from '../sim/nursery';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
@@ -522,7 +524,7 @@ export class Hud {
       }
       const role = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
-      return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>
+      return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>${notableLine(game, e)}
         <div class="stat">⚔ ${Math.round((d.atk + (mil ? mods.atk : 0) + (lead?.atk ?? 0)) * 10) / 10} · 🛡 ${Math.round((d.armor + (mil ? mods.armor : 0) + (lead?.armor ?? 0) + game.guardAt(e.owner, e.x, e.y)) * 10) / 10}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
     const b = e;
@@ -537,6 +539,7 @@ export class Hud {
       const hands = fighting(game, b);
       body += `<div class="warn">🔥 On fire: it may spread to buildings close by. ${hands ? `${hands} ${hands === 1 ? 'villager is' : 'villagers are'} fighting it.` : b.owner === game.humanId ? 'Right-click it with villagers to fight the fire.' : ''}</div>`;
     }
+    if (b.type === 'towncenter' && !game.hostile(b.owner, pid)) body += notableList(game, b.owner);
     if (b.type === 'towncenter' && b.owner === game.humanId) {
       const w = want(game.players[b.owner]);
       if (w) body += `<div class="${w === 'famine' ? 'bad' : 'warn'}">${w === 'famine' ? '💀 Famine: someone is lost every half minute until there is food in the store' : '🍞 Going hungry: the store is bare and nothing is coming in'}</div>`;
@@ -595,6 +598,7 @@ export class Hud {
             ? `A milkmaid brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute. A patron eats and drinks ${(PATRON_FOOD * 60).toFixed(0)} food a minute, but soldiers are trained ${(PATRON_MUSTER * 100).toFixed(0)}% faster for each one. Each adds ${MAID_VIRTUE} decadence a minute and slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile. In a worldly town, plague can break out here.`
             : `Each adds ${CLERGY_VIRTUE} piety a minute and brings the town's children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner. They leave their own house when they enter.`} Up to ${STAFF_CAP} count in all.</div>`;
       }
+      if (b.type === 'tavern' && b.complete) { const w = (b.staff ?? []).map((id) => game.entities.get(id)).filter((u) => !!u && u.kind === 'unit' && u.gender === 'f').length; body += tavernPanel(owner.virtue ?? 0, game.field ? 0 : game.dayT, w); }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
     return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;
