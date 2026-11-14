@@ -7,6 +7,7 @@ import {
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { leaningWith } from './temper';
+import { rescue } from './rescue';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
@@ -165,6 +166,7 @@ export interface Building extends Base {
   sheltered: number[]; // villagers hiding inside
   captives?: Captive[]; // a work camp's prisoners
   campT?: number; // progress towards the camp's next villager
+  rescueT?: number; // progress of soldiers at the gate towards letting the next captive out (rescue.ts)
   trystT?: number; // progress towards a tavern's next child born out of any household
   staff?: number[]; // villagers stationed here to work: clergy or tavern maids
   morale: number; // town centers: number of houses nearby (capped)
@@ -1547,7 +1549,7 @@ export class Game {
   /** How many of a camp's captives its guards cannot keep an eye on. */
   unwatched(b: Building): number { return Math.max(0, (b.captives?.length ?? 0) - GUARD_WATCH * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)); }
   /** One captive gets out of a camp and makes for home on foot: they can be run down again on the way. */
-  private breakOut(b: Building, i: number): void {
+  breakOut(b: Building, i: number): void {
     const c = b.captives!.splice(i, 1)[0], home = this.players[c.from];
     if (!home || home.defeated) return;
     const at = this.landPf.nearestFree(b.x, b.y + b.size / 2 + 0.8);
@@ -1600,6 +1602,7 @@ export class Game {
         p.stats.born++;
         this.events.push({ t: 'birth', player: p.id, x: b.x, y: b.y });
       } else if (b.campT > 1) b.campT = 1;
+      if (rescue(this, b) && !b.captives.length) continue;
       if (this.night) this.campNight(p, b);
     }
     if (p.captives) this.shiftVirtue(p.id, (-Math.min(CAPTIVE_CAP, p.captives) * CAPTIVE_VIRTUE) / 60);
