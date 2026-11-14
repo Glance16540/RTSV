@@ -238,13 +238,13 @@ the last block of `src/client/style.css`.
 **Teaching.** Every battle has a first-steps guide. The campaign has its own: a slip of *first orders*
 over the map, each marked done by what the player has done, and a page, *How the campaign works*, which
 opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
-out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`.
+out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`. In a battle, a slip under the first-steps guide teaches fire-fighting, famine, walls, towers, the market and the work camp the first time each is needed.
 
 **Day and night.** Settings set how long a day lasts (3, 5 or 10 minutes) and whether night falls at
 all (`src/sim/daylight.ts`). There is a sky with the sun, a moon and stars (`src/client/sky.ts`); the
 game's own camera looks down and does not see it, so it shows on the main menu, whose camera looks into
 the sunrise, and with a lowered camera (`?pitch=9`). By night the lamps and torches nearest the middle
-of the view cast real light (`src/client/nightlight.ts`); a setting turns that off for a slow machine.
+of the view cast real light (`src/client/nightlight.ts`); a setting turns that off for a slow machine. In a match, press O to bring the camera down and look out at the sky: it turns to face the sun, or the moon by night; [ and ] turn the view, the wheel raises your eyes, and O goes back.
 
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.
