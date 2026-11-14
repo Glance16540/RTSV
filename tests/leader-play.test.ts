@@ -133,11 +133,12 @@ describe('played through', () => {
     expect(g.canAcclaim(0, chosen)).toBe(true);
     expect(g.cmdAcclaim(0, chosen.id)).toBe(true);
     expect(g.leaderOf(0)).toBe(chosen);
-    expect(chosen.type).toBe('warlord');
+    expect(chosen.type).toBe('spearman');
     expect(chosen.name).toBe(best.name);
     expect(g.heroOf(0).name).toBe(best.name);
     run(g, 1);
-    expect(chosen.hero!.rank).toBe(1); // four felled: Blooded, and Battle cry with it
+    expect(chosen.hero!.rank).toBe(1); // four felled: Blooded, and a power to choose
+    expect(g.cmdLearn(0, 0)).toBe(true); // Battle cry
     expect(g.auraAt(0, chosen.x + 1, chosen.y)).toBe(1.35);
   }, LONG);
 

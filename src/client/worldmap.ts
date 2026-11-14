@@ -1194,7 +1194,7 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
         const main = (a.units.cavalry ?? 0) > (a.units.infantry ?? 0) ? 'spearman' : (a.units.archers ?? 0) > (a.units.infantry ?? 0) ? 'bowman' : age >= 2 ? 'swordsman' : age >= 1 ? 'spearman' : 'clubman';
         kinds.push(main); if (n >= 5) kinds.push(age >= 1 ? 'bowman' : 'slinger');
         kinds.slice(0, 3).forEach((type, k) => {
-          const made = peopleReady() ? makePerson(((o) => (a.hero && k === 0 ? leaderOutfit(o, lead.female, lead.look) : o))(outfitFor(type, a.hero && k === 0 ? lead.female : false, color, lookOf(civ, a.id * 7 + k), a.id * 7 + k, 0, { cls: a.hero && k === 0 ? 'hero' : type === 'bowman' || type === 'slinger' ? 'ranged' : 'infantry', age }))) : null;
+          const made = peopleReady() ? makePerson(((o) => (a.hero && k === 0 ? leaderOutfit(o, lead.female, lead.look) : o))(outfitFor(type, a.hero && k === 0 ? lead.female : false, color, lookOf(civ, a.id * 7 + k), a.id * 7 + k, 0, { cls: a.hero && k === 0 ? 'hero' : type === 'bowman' || type === 'slinger' ? 'ranged' : 'infantry', age, civ }))) : null;
           const px = kinds.length === 1 ? 0.1 : [0.15, 0.75, -0.25][k], pz = kinds.length === 1 ? 0.1 : [0.35, -0.2, -0.3][k];
           if (made) {
             made.g.scale.setScalar(k === 0 ? 1.75 : 1.5);
