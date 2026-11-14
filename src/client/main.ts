@@ -375,7 +375,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // What the victor has standing stays standing: it is that land's town the next time it is fought over.
       const holder = won ? app.pid : 1;
       const town = cfg.field ? undefined : app.game.standing(holder);
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, champion: app.game.champion(app.pid) ?? undefined, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, champion: app.game.champion(app.pid) ?? undefined, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -390,6 +390,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     app.onGameOver = () => {
       const g = app.game, civ = g.players[app.pid].civ;
       const h = { ...g.heroOf(app.pid), rank: g.players[app.pid].heroRank ?? 0 };
+      // A soldier raised in the fighting led for that day only: the leader you made is yours still.
+      if (g.players[app.pid].acclaimed) return;
       if (savedHero(civ) || h.rank > 0 || h.name !== defaultHero(civ).name) keepHero(civ, h);
     };
   }
@@ -442,8 +444,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; champion?: { name: string; kills: number; unit: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
-      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, champion: r.champion, town: r.town, ground: r.ground });
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; powers?: number[]; champion?: { name: string; kills: number; unit: string; female?: boolean; type?: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
+      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, powers: r.powers, champion: r.champion, town: r.town, ground: r.ground });
       if (c.phase === 'ai') continueAI(c);
     }
     const fresh = !c;

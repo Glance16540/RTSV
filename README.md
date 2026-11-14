@@ -391,8 +391,9 @@ to it as the turns pass. When a leader falls you choose who follows: an heir who
 captain from an army that has won a battle, who ends the old house. The rules are in
 `src/sim/dynasty.ts`.
 
-At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator;
-rival leaders are built to suit how their people live. Both are in `src/sim/powers.ts`.
+At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator or
+left open and chosen on the field when the rank is earned; rival leaders are built to suit how their
+people live. A soldier raised to lead fights on as what they were. Both are in `src/sim/powers.ts`.
 
 ## Systems board
 

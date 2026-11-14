@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { headsReady, loadHeads, sculptedHead } from './heads';
+import { nationDress, plainDress } from './dress';
 
 /** How tall a man stands in the game's units; the model is 1.83 of its own. */
 const SCALE = 1.02 / 1.83;
@@ -202,9 +203,16 @@ export function roleOutfit(role: 'captive' | 'monk' | 'nun' | 'milkmaid' | 'patr
 }
 /**
  * The dress of every unit that goes on foot. `wear` is how a village woman's town dresses her: 1 covered, 2 and 3
- * freer. `age` is the age the unit belongs to, which sets how well a plain soldier is armoured.
+ * freer. `age` is the age the unit belongs to, which sets how well a plain soldier is armoured. `civ` is the nation,
+ * which dresses its villagers and plain soldiers its own way (`dress.ts`).
  */
-export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; child?: boolean; naval?: boolean } = { cls: 'villager', age: 0 }): Outfit {
+export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; child?: boolean; naval?: boolean; civ?: string } = { cls: 'villager', age: 0 }): Outfit {
+  const o = plainOutfit(type, female, color, look, seed, wear, info);
+  return info.civ && plainDress(type, NAMED.has(type)) ? nationDress(info.civ, type, o, color) : o;
+}
+/** Units with a dress of their own below. */
+const NAMED = new Set(['clubman', 'spearman', 'marauder', 'swordsman', 'pikeman', 'berserker', 'grenadier', 'slaver', 'slinger', 'javelineer', 'bowman', 'crossbowman', 'musketeer', 'shaman', 'priest', 'prophet', 'herbwife', 'warlord', 'strategist', 'hearthguard', 'zealot', 'shieldbearer', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai', 'firethrower', 'rider', 'knight', 'hussar', 'lancer', 'horsearcher', 'wolfrider', 'templar', 'companion', 'camelrider', 'mameluke', 'chariot', 'warchariot', 'longbowman', 'ashigaru']);
+function plainOutfit(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; child?: boolean; naval?: boolean }): Outfit {
   const s = Math.abs(seed | 0);
   const pick = (k: number): 0 | 1 | 2 => ([1, 0, 1, 2, 1, 1, 2, 0, 1][(s >> k) % 9] as 0 | 1 | 2);
   const fighter = info.cls === 'infantry' || info.cls === 'hero';

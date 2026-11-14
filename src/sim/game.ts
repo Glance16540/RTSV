@@ -17,8 +17,8 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, leaderAsMade, leaderDef, powersHeld } from './powers';
-import { CHAMPION_KILLS, Champion, canLead, championName, championSpec, rankForKills } from './champion';
+import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, POWERS, leaderAsMade, leaderDef, leaderType, powerDue, powersHeld } from './powers';
+import { CHAMPION_KILLS, Champion, canLead, championFemale, championName, championSpec, rankForKills } from './champion';
 import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
@@ -566,7 +566,8 @@ export class Game {
     }
     if (def.cls === 'siege') u.hp = u.maxHp = Math.round(def.hp * this.players[owner].mods.siegeHp);
     // The first hero of their calling a people raises is their leader in person.
-    if (def.cls === 'hero' && this.players[owner] && type === this.heroOf(owner).calling && !this.units.some((o) => o.owner === owner && o.hero)) {
+    // (One raised from the ranks fights on as what they were; nobody steps into their place if they fall.)
+    if (this.players[owner] && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderType(this.heroOf(owner))) && !this.units.some((o) => o.owner === owner && o.hero)) {
       const rank = this.players[owner].heroRank ?? 0;
       u.name = this.heroOf(owner).name;
       u.hero = { xp: RANK_XP[rank], rank };
@@ -618,8 +619,25 @@ export class Game {
       l.hero.rank = this.players[owner].heroRank = rank;
       this.fitLeader(l);
       const learnt = powersHeld(this.heroOf(owner), rank).length > powersHeld(this.heroOf(owner), rank - 1).length ? powersHeld(this.heroOf(owner), rank).at(-1) : null;
-      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : ''}.`);
+      // A rival does not wait to be asked what it will learn.
+      if (this.players[owner].isAI) while (this.powerDue(owner) >= 0) this.cmdLearn(owner, 0);
+      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : this.powerDue(owner) >= 0 ? ': choose what they learn' : ''}.`);
     }
+  }
+  /** Which of their three powers a player's leader has earned and not yet chosen (-1: none). */
+  powerDue(owner: number): number {
+    const l = this.leaders[owner] ?? this.leaderOf(owner);
+    return l && !l.dead && l.hero ? powerDue(this.heroOf(owner), l.hero.rank) : -1;
+  }
+  /** Choose which of the two powers the leader takes at the rank they have just earned. It is theirs from then on. */
+  cmdLearn(owner: number, choice: number): boolean {
+    const tier = this.powerDue(owner), l = this.leaders[owner] ?? this.leaderOf(owner);
+    if (tier < 0 || !l || (choice !== 0 && choice !== 1)) return false;
+    const h = this.heroOf(owner);
+    h.powers = [0, 1, 2].map((t) => (t === tier ? choice : h.powers?.[t] ?? -1));
+    this.fitLeader(l);
+    if (!this.players[owner].isAI) this.msg(owner, `${l.name} has learnt ${POWERS[h.calling][tier][choice].name}.`);
+    return true;
   }
 
   /** Give a villager a trait (or none), keeping its health in step. */
@@ -2999,16 +3017,15 @@ export class Game {
     return !!p && !!p.heroFell && u.owner === owner && !u.dead && !u.hero && !u.merc && !u.inside && !u.captive && canLead(u.def.cls) &&
       (u.kills ?? 0) >= CHAMPION_KILLS && !this.units.some((o) => o.owner === owner && o.hero);
   }
-  /** Raise a soldier on the shields: they are the leader now, a Warlord, with a rank for every three they have felled. */
+  /** Raise a soldier on the shields: they are the leader now, fighting as they always have, with a rank for every three they have felled. */
   cmdAcclaim(owner: number, id: number): boolean {
     const u = this.entities.get(id);
     if (!u || u.kind !== 'unit' || !this.canAcclaim(owner, u)) return false;
     const p = this.players[owner], old = this.heroOf(owner).name;
     u.name ||= championName(u.id);
-    p.hero = championSpec(u.name);
+    p.hero = championSpec(u.name, championFemale(u.id), u.type);
     p.heroRank = rankForKills(u.kills ?? 0);
     p.acclaimed = true;
-    this.reequip(u, 'warlord');
     u.hero = { xp: RANK_XP[p.heroRank], rank: p.heroRank };
     this.fitLeader(u);
     this.leaders[owner] = u;
@@ -3019,7 +3036,7 @@ export class Game {
   champion(owner: number): Champion | null {
     let best: Unit | null = null;
     for (const u of this.units) if (u.owner === owner && !u.hero && !u.merc && canLead(u.def.cls) && (u.kills ?? 0) >= CHAMPION_KILLS && (!best || (u.kills ?? 0) > (best.kills ?? 0))) best = u;
-    return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name } : null;
+    return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name, female: championFemale(best.id), type: best.type } : null;
   }
 
   /** Turn a unit into another type, keeping its place, orders and share of health. */
@@ -3028,8 +3045,15 @@ export class Game {
     this.players[u.owner].pop += def.pop - u.def.pop;
     u.hp = (u.hp / u.maxHp) * def.hp;
     u.maxHp = def.hp;
+    const was = u.type;
     u.type = type;
     u.def = def;
+    // A leader from the ranks takes the better arms with the rest, and is a leader still.
+    if (u.hero) {
+      const h = this.heroOf(u.owner);
+      if (h.fights === was) h.fights = type;
+      this.fitLeader(u);
+    }
   }
 
   /** What training `type` produces for this player once upgrades are taken into account. */

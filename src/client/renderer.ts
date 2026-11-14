@@ -533,7 +533,7 @@ export class Renderer {
       ofPeople(this.game.players[u.owner].civ);
       // The leader is dressed as whoever made them chose; everyone else by their kind.
       const lead = u.hero ? this.game.heroOf(u.owner) : null;
-      const fit = real ? outfitFor(u.type, lead ? lead.female : u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child }) : null;
+      const fit = real ? outfitFor(u.type, lead ? lead.female : u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child, civ: this.game.players[u.owner].civ }) : null;
       const made = fit ? makePerson(lead ? leaderOutfit(fit, lead.female, lead.look) : fit) : null;
       const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
       v = { g: made?.g ?? creature?.g ?? (afoot ? new THREE.Group() : makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear)), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, work: 0, job, wear, hp: u.hp, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
@@ -1151,7 +1151,7 @@ export class Renderer {
     v.riders = [];
     const pl = this.game.players[u.owner];
     seats.forEach((seat, i) => {
-      const made = makePerson(outfitFor(u.type, false, pl.color, lookOf(pl.civ, u.id + i * 5), u.id + i * 5, 0, { cls: u.def.cls, age: u.def.age, naval: !!u.def.naval }));
+      const made = makePerson(outfitFor(u.type, false, pl.color, lookOf(pl.civ, u.id + i * 5), u.id + i * 5, 0, { cls: u.def.cls, age: u.def.age, naval: !!u.def.naval, civ: pl.civ }));
       if (!made) return;
       for (const c of seat.children) c.visible = false; // the block figure and its gear give way
       seat.add(made.g);
