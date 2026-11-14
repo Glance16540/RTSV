@@ -72,7 +72,7 @@ export const AREAS = [
           'Choosing a power on the field is checked by tests only: its two buttons have not been seen in a browser, and nothing but a line in the messages and on the panel tells the player a choice is waiting',
           'A rival always has its powers chosen beforehand; a leader of yours fought by the computer (a reserve) takes the first of each pair',
           'One power only is set off by hand, the call; a rival\'s leader raises theirs the moment they are struck at, with no thought for when it would tell most',
-          'Veterancy comes fast: in the one siege played through by computer players a leader went from Untried to Legend in nineteen minutes. The deeds asked for each rank are too few for a long battle',
+          'Veterancy was slowed after a played siege took a leader from Untried to Legend in nineteen minutes: Veteran, Renowned and Legend now ask twice the deeds (41, 77 and 125 in all). The new pace has not been played by a person, and a leader who had a rank saved under the old count keeps it',
           'Every number here is a first guess: points, ranks, the armour lent, the camp\'s rate',
           'The leader speaks no lines of their own on the field',
           'Rival leaders never take captives when decadent and are not kept out of danger: the computer marches them with the army like any other soldier',
