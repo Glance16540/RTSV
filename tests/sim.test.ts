@@ -14,7 +14,7 @@ import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setL
 import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
 import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, answerTale, Campaign, heroFor, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, homeCorner, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
-import { run, setups, spot, villagers } from './helpers';
+import { menAt, run, setups, spot, villagers } from './helpers';
 
 describe('map', () => {
   it('always connects both bases by land', () => {
@@ -272,9 +272,10 @@ describe('ai', () => {
     const ais = [new AIController(g, 0), new AIController(g, 1)];
     ais[0].setLevel(0);
     ais[1].setLevel(2);
-    run(g, 60 * 45, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
+    // An hour, not 45 minutes: since a soldier is made of a villager, armies are smaller and this war ends at minute 53.
+    run(g, 60 * 60, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
     expect(g.winner).toBe(1);
-  }, 120000);
+  }, 180000);
 });
 
 describe('wildlife and shelter', () => {
@@ -1603,6 +1604,7 @@ describe('water and ships', () => {
     const [cx, cy] = shore(g);
     const dock = g.spawnBuilding('dock', 0, cx, cy, true);
     g.players[0].res.wood = 500;
+    menAt(g, 0, 1, dock); // a boat is crewed by a man of the town
     expect(g.cmdTrain(0, dock.id, 'fishboat')).toBe(true);
     run(g, 25);
     const boat = g.units.find((u) => u.type === 'fishboat')!;
@@ -1663,7 +1665,8 @@ describe('the AI at sea', () => {
     const g = new Game(11, [{ name: 'A', color: 1, isAI: true }, { name: 'B', color: 2, isAI: true }], 96, false, true);
     const ais = [new AIController(g, 0), new AIController(g, 1)];
     let boats = 0, galleys = 0;
-    for (let t = 0; t < 20 * 60 * 14 && g.winner < 0; t++) {
+    // Twenty minutes, not fourteen: a ship is crewed by a man of the town now, and on this map the first sails at minute 17.
+    for (let t = 0; t < 20 * 60 * 20 && g.winner < 0; t++) {
       g.step();
       if (t % 20 === 0) for (const a of ais) a.update();
       if (t % 200 === 0) { boats = Math.max(boats, g.units.filter((u) => u.type === 'fishboat').length); galleys = Math.max(galleys, g.units.filter((u) => u.def.naval && !u.def.fisher).length); }
@@ -1672,7 +1675,7 @@ describe('the AI at sea', () => {
     expect(boats).toBeGreaterThanOrEqual(2);
     expect(galleys).toBeGreaterThanOrEqual(1);
     for (const u of g.units) if (u.def.naval) expect(g.terrain[Math.floor(u.y) * g.size + Math.floor(u.x)]).toBe(1);
-  });
+  }, 60000);
 });
 
 describe('transport ships', () => {
@@ -2245,7 +2248,7 @@ describe('the holy town and the work camp', () => {
     expect(camp.captives!.map((c) => c.name)).toEqual(['Ruth']);
     run(g, 2);
     expect(p.captives).toBe(1);
-    expect(p.captiveMen).toBe(0); // a woman: she adds villagers, not work
+    expect(p.captiveMen).toBe(0); // a woman: no labour counted until she has borne a child there
     // A man held adds work and no children.
     const solo = new Game(5, g.setups);
     const sc = solo.spawnBuilding('workcamp', 0, 30, 30, true);
@@ -2258,15 +2261,21 @@ describe('the holy town and the work camp', () => {
     expect(solo.units.filter((u) => u.owner === 0 && u.type === 'villager').length).toBeLessThanOrEqual(sv + 2); // only what the town itself trains or bears
     // Saved and restored, she is still held.
     expect(Game.restore(g.serialize()).buildings.find((b) => b.type === 'workcamp')!.captives!.length).toBe(1);
-    // The camp turns out villagers for its owners in time.
+    // In time she bears a child there. It is hers, a line on her record: the keeper gets no villager by it, only
+    // more out of the camp (docs/DESIGN.md, Captivity; the rules are in src/sim/captivity.ts).
     const mine = g.units.filter((u) => u.owner === 0 && u.type === 'villager').length;
     p.popCap = 200;
     run(g, 120);
-    expect(g.units.filter((u) => u.owner === 0 && u.type === 'villager').length).toBeGreaterThan(mine);
-    // Break the camp and Ruth goes home, still herself.
+    expect(camp.captives![0].born).toBe(1);
+    expect(camp.captives![0].young!.length).toBe(1);
+    expect(p.captiveMen).toBe(0.5);
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'villager').length).toBeLessThanOrEqual(mine + 2); // only what the town itself bears
+    // Break the camp and Ruth goes home, still herself, and the child with her.
     g.cmdDelete(0, [camp.id]);
     const ruth = g.units.find((u) => u.owner === 1 && u.name === 'Ruth');
     expect(ruth).toBeTruthy();
+    expect(ruth!.captiveKids).toBe(1);
+    expect(g.buildings.filter((b) => b.owner === 1).reduce((n, b) => n + (b.young?.length ?? 0), 0) + (g.players[1].wards?.length ?? 0)).toBeGreaterThanOrEqual(1); // under a roof of her people's, or travelling with them if they have none
     expect(ruth!.trait).toBe('strong');
     expect(ruth!.gender).toBe('f');
   });
@@ -2410,7 +2419,7 @@ describe('children who live to grow up', () => {
     expect(holy.missed / holy.due).toBeLessThan(0.08);
     expect(fallen.missed / fallen.due).toBeGreaterThan(0.15);
     expect(holy.born).toBeGreaterThan(fallen.born); // and the faithful have more of them to begin with
-  });
+  }, 30000); // a long battle: 5.3 s on a slow machine against the default 5 s
 });
 
 describe('the thirteen nations', () => {
@@ -2955,7 +2964,7 @@ describe('marauders', () => {
     expect(lair.captives).toContain(held);
     expect(held.held).toBe(true);
     const before = band().length;
-    run(g, LAIR_BIRTH * 5);
+    run(g, LAIR_BIRTH * 3); // not past the ten minutes she can be got back in (src/sim/captivity.ts)
     expect(held.born ?? 0).toBeGreaterThanOrEqual(1);
     expect(band().length).toBeGreaterThan(before);
     // The camp is burnt: she comes home with her record, bears no more, and works harder.
@@ -2965,7 +2974,9 @@ describe('marauders', () => {
     expect(home.freed).toBe(true);
     expect(home.kids).toBe(2);
     expect(home.captiveKids).toBe(held.born);
-    expect(home.story!.map((d) => d.s)).toEqual(['Carried off by marauders', 'Freed, and came home']);
+    expect(home.story!.map((d) => d.s).slice(0, 2)).toEqual(['Carried off by marauders', 'Freed, and came home']);
+    expect(home.story!.some((d) => /^Held \d+ minutes: came home \d+ years older$/.test(d.s))).toBe(true);
+    expect(home.story!.some((d) => d.s.includes('born in captivity'))).toBe(true);
   }, 60000);
 
   it('a computer player that has lost a woman to the camp marches on it and burns it', () => {
@@ -3244,7 +3255,7 @@ describe('the leader on the field', () => {
     expect(w.captive?.name).toBe(v.name);
     run(g, 30);
     expect(camp.captives!.map((c) => c.name)).toEqual([v.name]);
-    // With the leader standing in the town, the camp's women fill it far faster.
+    // With the leader standing in the town, the camp's women bear far sooner (children are records now, not villagers).
     const fill = (withLeader: boolean) => {
       const h = two();
       const q = h.players[0], hall = h.buildings.find((b) => b.owner === 0)!;
@@ -3253,9 +3264,8 @@ describe('the leader on the field', () => {
       const c2 = h.spawnBuilding('workcamp', 0, Math.floor(hall.x) + 6, Math.floor(hall.y) - 6, true);
       c2.captives = [0, 1, 2].map((i) => ({ from: 1, name: 'W' + i, family: '', gender: 'f' as const, trait: '', trait2: '', age: 0, lifespan: 9e9 }));
       h.spawnUnit('slaver', 0, c2.x, c2.y + 3); // someone to watch them
-      const before = h.units.filter((u) => u.owner === 0 && u.type === 'villager').length;
       run(h, 30);
-      return h.units.filter((u) => u.owner === 0 && u.type === 'villager').length - before + c2.campT!;
+      return c2.captives!.reduce((n, c) => n + (c.born ?? 0), 0) + c2.campT!; // children borne there, and the next on the way
     };
     expect(fill(true)).toBeGreaterThan(fill(false) * 2);
   });

@@ -1,6 +1,7 @@
 // Teaching the campaign: what a new player is told to do first, and the page that explains the rest.
 // Everything here is worked out from the campaign's own rules and numbers, so it cannot drift from them.
 
+import { VISIT_SECONDS } from './visit';
 import { creedOf } from './creed';
 import {
   ALLIANCE_COST, BEATS, COMPANIES, Campaign, DOMINION_SHARE, DOMINION_TURNS, FAITH, HERO_RANK_STRENGTH, MAX_ARMY, SEA_LANDING, SITES, TRUCE_COST, TRUCE_TURNS,
@@ -75,6 +76,7 @@ export function primerPage(c?: Campaign): PrimerSection[] {
     { title: 'Lands', lines: [
       'Click any land to read it: who holds it, what it pays, how well it is defended, what country it is and what stands on it. A land has room for only a few buildings.',
       ...sites,
+      `You may enter any town of your own from its panel and play up to ${Math.round(VISIT_SECONDS / 60)} minutes of the season there in person, with no enemy in it: build, train and set people to work. What you build stays. Each town can be visited once a season, and as many towns as you like. The age is not advanced there.`,
       'Some lands have a gift of their own (good soil, hills, a coast), and a few are places of note with a name and a legend: whoever holds one has the good of it.',
     ] },
     { title: 'Armies and battles', lines: [

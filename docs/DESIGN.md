@@ -34,6 +34,10 @@ of the defence: who was killed, who was taken, and which way the town's morals s
 training time is what turns him into the unit chosen. No man comes from nowhere. Population is the
 real resource: an army is paid for in births and years.
 
+**People come only by birth.** In the campaign (a battle or a visit) no villager is bought at the
+Town Center: a town's people are those it has and those its housed couples raise. Skirmish keeps
+villagers for hire as it was.
+
 **Men and women.** Soldiers come from the men. Women may serve, in healing and support; a woman
 who fights does so with a much lower attack. Women tend the farms, raise the children, work,
 produce, and carry more than a man. War takes the men and raiders take the women, and those are
@@ -127,11 +131,11 @@ Each step is to be playable by itself.
 | Point | Today |
 | --- | --- |
 | Acts of God by creed | Yes, coarsely on the map as well (`src/sim/acts.ts`: each season a held land may have famine, plague or fire, counted in supplies and companies until towns keep their people). Inside a battle: one measure by creed (a third for the Righteous, half again for the Decadent) governs how often and how hard plague, fire and famine fall, and nobody is immune (`src/sim/wrath.ts`). A harvest fails by chance, which is how famine comes unasked. |
-| A soldier costs a person | No: soldiers are bought with resources alone. |
-| Notable people | Half: villagers have names, traits and families, and one best soldier of a battle is remembered. Only he and the leader outlive the match. |
-| Towns persist | Buildings stay between battles on a land. People and stores do not. |
+| A soldier costs a person | Yes, inside a battle: training takes a villager as well as the price, and the unit that comes out is that man (`src/sim/muster.ts`). It bites less than meant, because a town can still buy a new villager at the Town Center for 50 food. |
+| Notable people | In part: a woman who has raised three children or more, and the best soldier to live through a battle, are kept by name on a town, turn out again by name (the woman), and are recorded as lost (`src/sim/township.ts`). Not yet: a farm well kept or much carried in, veterans tied to their own town, or any weight to their loss beyond the record. |
+| Towns persist | In part: every land's town keeps its people (counts by kind) and its four stores as well as its buildings, a siege fought in person loads them and writes back what is left (`src/sim/township.ts`). Not yet: the map still spends supplies, not the towns' stores; soldiers and armies are not yet a town's men; nothing changes in a town between battles. |
 | A town defends itself | No: a battle not fought is settled by strength numbers. |
 | Threats on the map | No: marauders and slavers exist only inside a match. |
 | Drift | No: the parts exist as separate rules, not as cause and effect. |
 | Children never shown | No: children are drawn as small figures that walk the town and can be hurt. |
-| Age on the map only | Half: the campaign sets the age a battle begins in, and the player can still age up within it. |
+| Age on the map only | Yes for a campaign battle and a visit (`Game.fixedAge`). Skirmish and missions still age up. |

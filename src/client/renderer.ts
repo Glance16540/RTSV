@@ -10,13 +10,15 @@ import { Roads } from './roads';
 import { Weather } from './weather';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
-import { Outfit, RealPerson, leaderOutfit, astride, bear, embrace, drawnReal, sprawl, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
+import { Outfit, RealPerson, leaderOutfit, astride, bear, drawnReal, sprawl, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
 import { Sky } from './sky';
 import { Flame, NightLights, carriesTorch } from './nightlight';
 import { CampScenes } from './campscene';
+import { tavernLight } from './tavernlook';
+import { tavernTier } from '../sim/tavernfall';
 import { canCarryTorch, carryTorch, dropTorch, torchTip } from './torch';
 
 /** How steeply the camera looks down. `?pitch=20` (degrees) lowers it, for looking at figures from the side. */
@@ -364,7 +366,7 @@ export class Renderer {
     if (n > 0.02) {
       for (const b of this.game.buildings) {
         const g = this.buildingViews.get(b.id), lamp = (g?.userData.lit as THREE.Object3D[] | undefined)?.[1];
-        if (!g || !lamp || !g.visible || !b.complete || (b.x - this.cx) ** 2 + (b.y - this.cy) ** 2 > far) continue;
+        if (!g || !lamp || !g.visible || !lamp.visible || !b.complete || (b.x - this.cx) ** 2 + (b.y - this.cy) ** 2 > far) continue;
         const at = lamp.getWorldPosition(this.lampAt);
         lamps.push({ x: at.x, y: at.y + 0.25, z: at.z, id: b.id });
       }
@@ -986,20 +988,21 @@ export class Renderer {
     this.hearts.push({ m, t: 0, sway: Math.random() * 6.28 });
   }
   private stepHearts(dt: number): void {
-    // Where they come from: a staffed tavern, and houses where a man and a woman are both at home, in a town that has let itself go.
+    // Where they come from: houses where a man and a woman are both at home, in a town that has let itself go. (Never a tavern: what kind of house it is shows in its lights and hours, tavernlook.ts.)
     for (const b of this.game.buildings) {
-      if (!b.complete || (b.type !== 'tavern' && b.type !== 'house')) continue;
+      if (b.type !== 'house') continue;
+      if (!b.complete) continue;
       const virtue = this.game.players[b.owner].virtue ?? 0;
       if (virtue > -30) continue;
-      const busy = b.type === 'tavern' ? (b.staff?.length ?? 0) >= 2 : b.residents.m !== 0 && b.residents.f !== 0;
+      const busy = b.residents.m !== 0 && b.residents.f !== 0;
       const g = this.buildingViews.get(b.id);
       if (!busy || !g?.visible) continue;
-      const every = (b.type === 'tavern' ? 2.2 : 5.5) * (virtue <= -70 ? 0.6 : 1), slot = Math.floor((this.clock + b.id * 1.37) / every);
+      const every = 5.5 * (virtue <= -70 ? 0.6 : 1), slot = Math.floor((this.clock + b.id * 1.37) / every);
       if (g.userData.heartSlot === slot) continue;
       const first = g.userData.heartSlot === undefined;
       g.userData.heartSlot = slot;
       // Not every beat: it comes in spells, with quiet between.
-      if (!first && ((Math.sin(slot * 12.9898 + b.id) * 43758.5453) % 1 + 1) % 1 < (b.type === 'tavern' ? 0.8 : 0.5)) this.heart(b.x + (Math.random() - 0.5) * b.size * 0.5, g.position.y + (b.type === 'tavern' ? 1.6 : 1.1), b.y + (Math.random() - 0.3) * b.size * 0.4);
+      if (!first && ((Math.sin(slot * 12.9898 + b.id) * 43758.5453) % 1 + 1) % 1 < 0.5) this.heart(b.x + (Math.random() - 0.5) * b.size * 0.5, g.position.y + 1.1, b.y + (Math.random() - 0.3) * b.size * 0.4);
     }
     for (let i = this.hearts.length - 1; i >= 0; i--) {
       const h = this.hearts[i];
@@ -1016,7 +1019,7 @@ export class Renderer {
   private syncStaff(b: Building, shown: boolean, lean: '' | 'holy' | 'low'): void {
     let women = 0, men = 0;
     for (const id of b.staff ?? []) { const s = this.game.entities.get(id) as Unit | undefined; if (s) { if (s.gender === 'f') women++; else men++; } }
-    const key = `${women}:${men}:${lean}`;
+    const key = `${women}:${men}:${lean}:${b.type === 'tavern' ? tavernTier(this.game.players[b.owner].virtue ?? 0) : ''}`;
     let sv = this.staffViews.get(b.id);
     if (sv && sv.key !== key) { this.scene.remove(sv.g); sv = undefined; this.staffViews.delete(b.id); }
     if (!sv && peopleReady() && women + men > 0) {
@@ -1026,20 +1029,13 @@ export class Renderer {
         const role = tav ? (f ? 'milkmaid' : 'patron') : f ? 'nun' : 'monk';
         ofPeople(this.game.players[b.owner].civ);
         const pl = this.game.players[b.owner];
-        const made = makePerson(roleOutfit(role as 'monk' | 'nun' | 'milkmaid' | 'patron', f, pl.color, lookOf(pl.civ, b.id + i * 7), b.id + i * 7, lean))!;
+        const made = makePerson(roleOutfit(role as 'monk' | 'nun' | 'milkmaid' | 'patron', f, pl.color, lookOf(pl.civ, b.id + i * 7), b.id + i * 7, tav && lean === 'low' && tavernTier(pl.virtue ?? 0) === 'decadent' ? 'fallen' : lean))!;
         const fig = made.g;
         // Along the front and round the near corner, where the camera sees them.
         const k = i - (women + men - 1) / 2;
         const x = i % 2 ? half - 0.12 : k * 0.42 + 0.3, z = i % 2 ? k * 0.42 + 0.2 : half - 0.12;
         fig.position.set(b.x + x, this.scenery.heightAt(b.x + x, b.y + z), b.y + z);
         fig.rotation.y = Math.PI / 4 + Math.sin(b.id + i * 3.1) * 0.5;
-        // In a town that has let itself go, the first maid and the first patron are found in each other's arms round the side.
-        if (tav && lean === 'low' && women > 0 && men > 0 && (i === 0 || i === women)) {
-          const sx = b.x - half - 0.22, sz = b.y + half * 0.35, side = i === 0 ? -1 : 1;
-          fig.position.set(sx, this.scenery.heightAt(sx, sz), sz + side * 0.15);
-          fig.rotation.set(0.04, side < 0 ? 0 : Math.PI, 0);
-          fig.userData.pair = true;
-        }
         g.add(fig);
         figs.push({ g: fig, role, seed: (b.id * 1.3 + i * 2.1) % 6.28, real: made.real });
       }
@@ -1055,10 +1051,9 @@ export class Renderer {
     for (const f of sv.figs) {
       const t = this.clock + f.seed * 3, beat = Math.floor(t / 2.6), busy = ((Math.sin(beat * 12.9898 + f.seed) * 43758.5453) % 1 + 1) % 1 < rowdy;
       // Patrons talk, and cheer when the mood takes them; the maid serves; monks and nuns stand at their prayers.
-      const clip = f.g.userData.pair ? 'Idle_Loop' : f.role === 'patron' ? (busy ? 'Dance_Loop' : 'Idle_Talking_Loop') : f.role === 'milkmaid' ? (busy ? 'Interact' : 'Idle_Loop') : busy || lean === 'holy' ? 'Spell_Simple_Idle_Loop' : 'Idle_Loop';
+      const clip = f.role === 'patron' ? (busy ? 'Dance_Loop' : 'Idle_Talking_Loop') : f.role === 'milkmaid' ? (busy ? 'Interact' : 'Idle_Loop') : busy || lean === 'holy' ? 'Spell_Simple_Idle_Loop' : 'Idle_Loop';
       play(f.real, clip, 1);
       f.real.mixer.update(Math.min(0.1, this.frameDt));
-      if (f.g.userData.pair) embrace(f.real, f.g.rotation.y, f.role === 'milkmaid');
     }
   }
 
@@ -1320,7 +1315,10 @@ export class Renderer {
     const lit = g.userData.lit as THREE.Object3D[] | undefined;
     if (lit) {
       const on = b.complete ? this.nightAmt : 0, flick = 0.86 + 0.14 * Math.sin(this.clock * 7 + b.id * 1.7) * Math.sin(this.clock * 3.1 + b.id);
-      for (const o of lit) { o.visible = on > 0.02; ((o as THREE.Mesh).material as THREE.Material).opacity = on * flick * (o.userData.k as number); }
+      // A tavern's lamp says what kind of house it is: out once an honest house has shut, amber where it keeps late hours, red where it never shuts.
+      const tl = b.type === 'tavern' ? tavernLight(this.game.players[b.owner].virtue ?? 0, this.game.field ? 0 : this.game.dayT) : null;
+      const k = tl ? (tl.on ? tl.strength : 0) : 1;
+      for (const o of lit) { o.visible = on * k > 0.02; const mt = (o as THREE.Mesh).material as THREE.MeshBasicMaterial; mt.opacity = Math.min(1, on * k * flick * (o.userData.k as number)); if (tl) mt.color.setHex(o === lit[1] ? tl.lamp : tl.pool); }
     }
     g.visible = this.isVisible(b);
     if (b.def.staff) this.syncStaff(b, g.visible && b.complete, lean);
