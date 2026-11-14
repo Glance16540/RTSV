@@ -11,6 +11,7 @@ import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
+import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
@@ -1936,7 +1937,9 @@ export class Game {
       if (pull) this.shiftVirtue(p.id, pull);
       // Milkmaids earn the tavern's keep; patrons eat and drink their households' stores away.
       const women = Math.min(STAFF_CAP, p.maids - p.patrons);
-      if (women) { p.res.gold += women * MAID_GOLD; p.stats.gathered += women * MAID_GOLD; }
+      // What they bring in follows the house: more as the town falls, and nothing once it has shut for the night (tavernfall.ts).
+      const takes = women > 0 ? women * MAID_GOLD * tavernTrade(p.virtue, this.dayT).gold : 0;
+      if (takes) { p.res.gold += takes; p.stats.gathered += takes; }
       p.res.food = Math.max(0, p.res.food - Math.min(STAFF_CAP, p.patrons) * PATRON_FOOD);
       if (p.dilemma || this.time < p.dilemmaT) continue;
       // Chosen without the game's dice, so that a match plays out the same with or without them.

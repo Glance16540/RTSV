@@ -199,7 +199,12 @@ export function roleOutfit(role: 'captive' | 'monk' | 'nun' | 'milkmaid' | 'patr
   if (role === 'captive') return { ...base, top: female ? cloth : look.skin, sleeves: 'bare', neck: female ? 1 : 2, skirt: 'short', skirtColor: cloth, legs: look.skin, barefoot: true, hat: '', apron: null, hairStyle: female ? 'long' : 'short', girth: 0 };
   if (role === 'monk') return { ...base, top: 0x6a4e34, skirtColor: 0x6a4e34, skirt: 'long', sleeves: 'long', neck: 0, hat: 'hood', hatColor: 0x6a4e34, trim: 0xb8a274, beard: seed % 2 === 0 };
   if (role === 'nun') return { ...base, top: 0x2e2c30, skirtColor: 0x2e2c30, skirt: 'long', sleeves: 'long', neck: 0, hairStyle: 'covered', apron: null, legs: 0x2e2c30 };
-  if (role === 'milkmaid') return { ...base, top: lean === 'low' ? 0xa03038 : 0x7a8a5a, skirt: 'long', skirtColor: cloth, sleeves: lean === 'holy' ? 'short' : 'bare', neck: lean === 'low' ? 2 : lean === 'holy' ? 0 : 1, apron: lean === 'low' ? null : 0xe2d8c0, hairStyle: lean === 'holy' ? 'bun' : 'long', trim: lean === 'low' ? 0xa03038 : null };
+  // The tavern's women follow their house: plainly dressed in an honest one, a coloured bodice where it keeps late hours,
+  // and where it never shuts a whole gown in red trimmed with gold, the apron gone. (Dress only: nothing else is shown.)
+  if (role === 'milkmaid') {
+    const fallen = lean === 'fallen', low = lean === 'low' || fallen;
+    return { ...base, top: low ? 0xa03038 : 0x7a8a5a, skirt: 'long', skirtColor: fallen ? 0xa03038 : cloth, sleeves: lean === 'holy' ? 'short' : 'bare', neck: fallen ? 2 : lean === 'holy' ? 0 : 1, apron: fallen ? null : 0xe2d8c0, hairStyle: lean === 'holy' ? 'bun' : 'long', trim: fallen ? 0xd8b040 : low ? 0xa03038 : null, hat: fallen ? 'circlet' : '', hatColor: 0xd8b040 };
+  }
   return { ...base, top: [0x7a5a3a, 0x5a6a4a, 0x6a4a5a][seed % 3], skirtColor: [0x7a5a3a, 0x5a6a4a, 0x6a4a5a][seed % 3], sleeves: 'short', neck: lean === 'low' ? 2 : 1, hat: seed % 3 === 0 ? 'cap' : '', hatColor: 0x4a3a30, girth: seed % 2 ? 2 : 1 };
 }
 /**
@@ -1044,15 +1049,6 @@ export function sprawl(p: RealPerson, kind: number, w: number): void {
   }
 }
 
-/** Put a figure's arms round someone standing close in front of them: `high` round the neck, otherwise round the waist. Call after the motion has been advanced. */
-export function embrace(p: RealPerson, yaw: number, high: boolean): void {
-  const fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw), up = high ? 0.32 : -0.42;
-  const to = (f: number, l: number, u: number): THREE.Vector3 => dir.set(fx * f + lx * l, u, fz * f + lz * l).normalize();
-  for (const [side, sign] of [['L', 1], ['R', -1]] as const) {
-    point(p.bones.get('DEF-upper_arm' + side), to(0.85, sign * 0.34, up), 1);
-    point(p.bones.get('DEF-forearm' + side), to(0.55, sign * -0.8, up * 0.4 + 0.05), 1);
-  }
-}
 
 /** Seat a figure astride: thighs out round the animal's barrel and forward, shins hanging. Call after the motion has been advanced. */
 export function astride(p: RealPerson, yaw: number): void {
