@@ -14,6 +14,7 @@ import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
 import { calamity, douse, roll } from './calamity';
 import { boughtIn } from './contagion';
+import { wrath } from './wrath';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
@@ -3137,8 +3138,9 @@ export class Game {
       if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && this.time - n.litAt < CALAMITY.scorched)) continue;
       const k = n.size / 2;
       if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
-      if (roll(this, b.id * 8191 + n.id) >= CALAMITY.spread) continue;
-      n.burnT = CALAMITY.caught;
+      const w = wrath(this, n.owner); // it catches less readily among the holy, and burns a shorter time (wrath.ts)
+      if (roll(this, b.id * 8191 + n.id) >= CALAMITY.spread * w) continue;
+      n.burnT = CALAMITY.caught * w;
       n.litAt = this.time;
       if (!this.players[n.owner].neutral) this.msg(n.owner, `Fire has spread to your ${n.def.name}!`);
     }

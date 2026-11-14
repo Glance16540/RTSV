@@ -2064,7 +2064,7 @@ describe('church and tavern', () => {
 });
 
 describe('faith, plague and the home', () => {
-  it('the devout get over a plague in half the time and no plague takes hold among the righteous; the decadent suffer longer', () => {
+  it('the devout get over a plague in half the time and the righteous in a third (acts of God spare nobody: docs/DESIGN.md); the decadent suffer longer', () => {
     const lasts = (virtue: number) => {
       const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
       g.players[1].virtue = virtue;
@@ -2079,7 +2079,8 @@ describe('faith, plague and the home', () => {
     const plain = lasts(0);
     expect(plain).toBeGreaterThan(10);
     expect(lasts(40)).toBeLessThan(plain * 0.6);
-    expect(lasts(80)).toBe(0);
+    expect(lasts(80)).toBeGreaterThan(0);
+    expect(lasts(80)).toBeLessThan(plain * 0.4);
     expect(lasts(-80)).toBeGreaterThan(plain * 1.3);
     expect(creedOf(80).name).toBe('Righteous');
   });
