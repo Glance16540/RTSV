@@ -1716,9 +1716,1990 @@
     "status_drunk",
     "a drunk man staggering with a bottle"
    ]
+  ],
+  [
+   [
+    "wild_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "wild_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "wild_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "wild_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "wild_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "wild_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "wild_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "wild_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "wild_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "wild_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "wild_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "wild_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "wild_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "wild_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "wild_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "wild_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "wild_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "wild_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "wild_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "wild_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "wild_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "wild_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "wild_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "wild_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "wild_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "wild_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "wild_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "wild_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "wild_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "wild_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "wild_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "wild_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "england_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "england_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "england_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "england_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "england_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "england_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "england_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "england_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "england_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "england_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "england_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "england_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "england_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "england_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "england_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "england_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "england_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "england_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "england_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "england_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "england_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "england_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "england_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "england_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "england_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "england_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "england_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "england_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "england_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "england_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "england_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "england_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "hearth_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "hearth_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "hearth_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "hearth_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "hearth_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "hearth_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "hearth_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "hearth_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "hearth_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "hearth_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "hearth_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "hearth_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "hearth_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "hearth_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "hearth_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "hearth_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "hearth_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "hearth_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "hearth_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "hearth_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "hearth_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "hearth_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "hearth_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "hearth_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "hearth_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "hearth_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "hearth_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "hearth_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "hearth_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "hearth_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "hearth_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "hearth_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "stonekin_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "stonekin_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "stonekin_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "stonekin_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "stonekin_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "stonekin_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "stonekin_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "stonekin_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "stonekin_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "stonekin_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "stonekin_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "stonekin_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "stonekin_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "stonekin_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "stonekin_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "stonekin_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "stonekin_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "stonekin_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "stonekin_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "stonekin_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "stonekin_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "stonekin_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "stonekin_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "stonekin_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "stonekin_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "stonekin_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "stonekin_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "stonekin_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "stonekin_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "stonekin_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "stonekin_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "stonekin_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "greece_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "greece_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "greece_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "greece_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "greece_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "greece_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "greece_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "greece_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "greece_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "greece_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "greece_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "greece_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "greece_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "greece_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "greece_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "greece_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "greece_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "greece_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "greece_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "greece_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "greece_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "greece_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "greece_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "greece_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "greece_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "greece_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "greece_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "greece_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "greece_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "greece_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "greece_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "greece_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "dawn_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "dawn_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "dawn_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "dawn_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "dawn_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "dawn_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "dawn_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "dawn_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "dawn_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "dawn_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "dawn_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "dawn_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "dawn_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "dawn_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "dawn_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "dawn_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "dawn_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "dawn_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "dawn_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "dawn_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "dawn_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "dawn_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "dawn_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "dawn_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "dawn_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "dawn_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "dawn_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "dawn_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "dawn_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "dawn_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "dawn_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "dawn_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "babylon_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "babylon_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "babylon_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "babylon_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "babylon_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "babylon_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "babylon_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "babylon_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "babylon_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "babylon_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "babylon_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "babylon_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "babylon_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "babylon_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "babylon_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "babylon_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "babylon_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "babylon_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "babylon_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "babylon_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "babylon_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "babylon_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "babylon_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "babylon_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "babylon_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "babylon_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "babylon_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "babylon_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "babylon_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "babylon_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "babylon_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "babylon_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "persia_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "persia_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "persia_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "persia_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "persia_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "persia_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "persia_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "persia_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "persia_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "persia_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "persia_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "persia_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "persia_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "persia_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "persia_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "persia_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "persia_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "persia_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "persia_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "persia_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "persia_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "persia_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "persia_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "persia_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "persia_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "persia_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "persia_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "persia_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "persia_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "persia_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "persia_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "persia_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "arabs_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "arabs_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "arabs_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "arabs_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "arabs_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "arabs_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "arabs_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "arabs_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "arabs_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "arabs_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "arabs_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "arabs_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "arabs_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "arabs_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "arabs_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "arabs_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "arabs_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "arabs_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "arabs_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "arabs_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "arabs_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "arabs_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "arabs_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "arabs_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "arabs_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "arabs_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "arabs_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "arabs_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "arabs_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "arabs_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "arabs_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "arabs_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "egypt_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "egypt_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "egypt_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "egypt_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "egypt_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "egypt_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "egypt_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "egypt_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "egypt_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "egypt_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "egypt_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "egypt_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "egypt_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "egypt_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "egypt_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "egypt_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "egypt_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "egypt_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "egypt_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "egypt_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "egypt_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "egypt_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "egypt_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "egypt_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "egypt_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "egypt_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "egypt_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "egypt_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "egypt_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "egypt_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "egypt_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "egypt_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "steppe_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "steppe_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "steppe_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "steppe_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "steppe_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "steppe_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "steppe_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "steppe_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "steppe_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "steppe_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "steppe_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "steppe_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "steppe_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "steppe_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "steppe_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "steppe_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "steppe_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "steppe_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "steppe_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "steppe_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "steppe_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "steppe_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "steppe_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "steppe_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "steppe_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "steppe_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "steppe_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "steppe_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "steppe_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "steppe_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "steppe_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "steppe_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "forge_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "forge_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "forge_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "forge_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "forge_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "forge_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "forge_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "forge_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "forge_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "forge_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "forge_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "forge_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "forge_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "forge_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "forge_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "forge_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "forge_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "forge_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "forge_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "forge_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "forge_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "forge_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "forge_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "forge_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "forge_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "forge_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "forge_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "forge_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "forge_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "forge_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "forge_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "forge_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "japan_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "japan_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "japan_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "japan_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "japan_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "japan_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "japan_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "japan_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "japan_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "japan_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "japan_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "japan_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "japan_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "japan_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "japan_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "japan_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "japan_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "japan_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "japan_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "japan_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "japan_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "japan_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "japan_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "japan_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "japan_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "japan_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "japan_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "japan_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "japan_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "japan_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "japan_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "japan_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "mali_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "mali_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "mali_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "mali_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "mali_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "mali_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "mali_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "mali_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "mali_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "mali_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "mali_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "mali_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "mali_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "mali_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "mali_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "mali_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "mali_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "mali_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "mali_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "mali_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "mali_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "mali_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "mali_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "mali_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "mali_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "mali_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "mali_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "mali_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "mali_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "mali_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "mali_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "mali_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
+  ],
+  [
+   [
+    "kush_clubman",
+    "a stone-age warrior with a club, of this people"
+   ],
+   [
+    "kush_slinger",
+    "a warrior whirling a sling, of this people"
+   ],
+   [
+    "kush_javelineer",
+    "a javelin thrower, of this people"
+   ],
+   [
+    "kush_spearman",
+    "a spearman with shield, of this people"
+   ],
+   [
+    "kush_swordsman",
+    "a swordsman with shield, of this people"
+   ],
+   [
+    "kush_bowman",
+    "an archer, of this people"
+   ],
+   [
+    "kush_crossbowman",
+    "a crossbowman, of this people"
+   ],
+   [
+    "kush_musketeer",
+    "a musketeer, of this people"
+   ],
+   [
+    "kush_pikeman",
+    "a pikeman, of this people"
+   ],
+   [
+    "kush_grenadier",
+    "a grenadier with a lit grenade, of this people"
+   ],
+   [
+    "kush_berserker",
+    "a bare-chested berserker with two axes, of this people"
+   ],
+   [
+    "kush_rider",
+    "a scout on a light horse, of this people"
+   ],
+   [
+    "kush_knight",
+    "a heavy knight on a warhorse, of this people"
+   ],
+   [
+    "kush_hussar",
+    "a light horseman with a sabre, of this people"
+   ],
+   [
+    "kush_chariot",
+    "an archer in a chariot, of this people"
+   ],
+   [
+    "kush_mammoth",
+    "a war mammoth with a rider, of this people"
+   ]
+  ],
+  [
+   [
+    "kush_ram",
+    "a battering ram, of this people"
+   ],
+   [
+    "kush_scorpion",
+    "a giant crossbow on wheels, of this people"
+   ],
+   [
+    "kush_catapult",
+    "a catapult, of this people"
+   ],
+   [
+    "kush_bombard",
+    "a heavy gun, of this people"
+   ],
+   [
+    "kush_fishboat",
+    "a fishing boat, of this people"
+   ],
+   [
+    "kush_transport",
+    "a transport ship, of this people"
+   ],
+   [
+    "kush_galley",
+    "a war galley, of this people"
+   ],
+   [
+    "kush_frigate",
+    "a gunpowder warship, of this people"
+   ],
+   [
+    "kush_shaman",
+    "a pagan shaman, of this people"
+   ],
+   [
+    "kush_priest",
+    "a priest with a cross, of this people"
+   ],
+   [
+    "kush_prophet",
+    "a prophet with arms raised, of this people"
+   ],
+   [
+    "kush_slaver",
+    "a slaver with rope and shackles, of this people"
+   ],
+   [
+    "kush_warlord",
+    "a warlord with a banner, of this people"
+   ],
+   [
+    "kush_strategist",
+    "an old general with a map, of this people"
+   ],
+   [
+    "kush_captive_m",
+    "a captive man in shackles, of this people"
+   ],
+   [
+    "kush_captive_f",
+    "a captive woman, fully covered, wrists bound, of this people"
+   ]
   ]
  ],
  "variants": "Sheet 10 holds pairs: the icon a pious town shows (_holy) and the one a decadent town shows (_low). Its prompt adds: The icons come in pairs: a virtuous version then a decadent version of the same subject.",
  "style_before_woodblock": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: ",
- "nations_note": "Sheets 10 to 24 are one people each (key prefix = the nation's id), rows man / woman / soldier / tavern woman, columns holy / plain / worldly / low. Their prompts used the woodblock style above, the people's skin, hair, dress and arms, and this line, which must stay: Every woman is clothed: her gown always covers her chest, made of thick opaque cloth; no bare breasts, no nipples, no see-through cloth. Sheet 25 is the marks of a person's condition. A woman's figure says nothing of her morals: each woman's figure (full-figured and large-bosomed, of average figure, or slender) is named in the prompt and spread across the four standings differently in every people, and the devout village woman is always full-figured and fully covered. Wickedness is shown by dress, pose, paint and look."
+ "nations_note": "Sheets 10 to 24 are one people each (key prefix = the nation's id), rows man / woman / soldier / tavern woman, columns holy / plain / worldly / low. Their prompts used the woodblock style above, the people's skin, hair, dress and arms, and this line, which must stay: Every woman is clothed: her gown always covers her chest, made of thick opaque cloth; no bare breasts, no nipples, no see-through cloth. Sheet 25 is the marks of a person's condition. A woman's figure says nothing of her morals: each woman's figure (full-figured and large-bosomed, of average figure, or slender) is named in the prompt and spread across the four standings differently in every people, and the devout village woman is always full-figured and fully covered. Wickedness is shown by dress, pose, paint and look.",
+ "units_note": "Sheets 26 to 55 are two per people, in the order of sheets 10 to 24: every unit that is not a nation's own, drawn as that people with its own dress, arms, ships and engines (key <nation>_<unit id>), and a captive man and woman of it. Wild beasts and marauders belong to no people and keep one picture."
 }
