@@ -9,7 +9,7 @@ import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNO
 import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
-import { calamity, douse } from './calamity';
+import { calamity, douse, roll } from './calamity';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
@@ -216,6 +216,8 @@ export interface Player extends HallState {
   hero?: HeroSpec; heroRank?: number;
   /** Their leader has fallen in this battle; and the one leading now is a soldier raised in their place. */
   heroFell?: boolean; acclaimed?: boolean;
+  /** Seconds the food store has stayed bare, and how many a famine has taken (famine.ts). */
+  hunger?: number; starved?: number;
   id: number;
   name: string;
   color: number;
@@ -666,6 +668,8 @@ export class Game {
     if (block) this.landPf.touch();
   }
 
+  /** A death that is nobody's doing: hunger (famine.ts). */
+  perish(u: Unit): void { this.kill(u); }
   private kill(e: Entity): void {
     if (e.dead) return;
     e.dead = true;
@@ -3070,8 +3074,7 @@ export class Game {
       if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && this.time - n.litAt < CALAMITY.scorched)) continue;
       const k = n.size / 2;
       if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
-      const roll = ((Math.imul(b.id * 31 + n.id, 2654435761) ^ Math.imul(this.tick + this.seed, 40503)) >>> 0) / 4294967296;
-      if (roll >= CALAMITY.spread) continue;
+      if (roll(this, b.id * 8191 + n.id) >= CALAMITY.spread) continue;
       n.burnT = CALAMITY.caught;
       n.litAt = this.time;
       if (!this.players[n.owner].neutral) this.msg(n.owner, `Fire has spread to your ${n.def.name}!`);

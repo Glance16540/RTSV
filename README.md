@@ -139,6 +139,11 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   short and does not spread; dry lightning in a dust storm burns like any other fire. Right-click a burning
   building of your own with villagers and they beat the fire down before mending it (up to five to a fire);
   idle villagers close by turn out on their own.
+- *Famine* (`src/sim/famine.ts`): a food store that stays bare for a minute (nothing coming in at all, not
+  merely spent as it arrives) leaves the town hungry, and after two minutes it starves: every half minute it loses
+  one of its people, the old first, then the children, then soldiers, who walk away, then grown villagers, though
+  never the last four. After four minutes plague breaks out around the Town Center, except among the Righteous.
+  Food in the store ends it at once. A war band with no hall does not starve.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).

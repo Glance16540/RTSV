@@ -2,6 +2,7 @@
 
 import { isHoly } from '../sim/creed';
 import { fighting } from '../sim/calamity';
+import { want } from '../sim/famine';
 import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
 import { CALLS, CALL_RANK, CALL_REST, powersHeld } from '../sim/powers';
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
@@ -526,6 +527,10 @@ export class Hud {
     if (b.burnT > 0) {
       const hands = fighting(game, b);
       body += `<div class="warn">🔥 On fire: it may spread to buildings close by. ${hands ? `${hands} ${hands === 1 ? 'villager is' : 'villagers are'} fighting it.` : b.owner === game.humanId ? 'Right-click it with villagers to fight the fire.' : ''}</div>`;
+    }
+    if (b.type === 'towncenter' && b.owner === game.humanId) {
+      const w = want(game.players[b.owner]);
+      if (w) body += `<div class="${w === 'famine' ? 'bad' : 'warn'}">${w === 'famine' ? '💀 Famine: someone is lost every half minute until there is food in the store' : '🍞 Going hungry: the store is bare and nothing is coming in'}</div>`;
     }
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
