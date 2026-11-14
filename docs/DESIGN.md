@@ -27,8 +27,8 @@ women gone. From the map the player may enter any of their towns at any time to 
 keep order.
 
 **No auto-resolve.** A town the player is not in defends itself with what it has: walls, guards,
-people, its state. It may hold, be sacked, be taken or be destroyed. The player is told what
-happened and to whom.
+people, its state. It may hold, be sacked, be taken or be destroyed. The player is given a report
+of the defence: who was killed, who was taken, and which way the town's morals swayed.
 
 **A soldier costs a person.** Training takes a villager as well as the usual resources, and the
 training time is what turns him into the unit chosen. No man comes from nowhere. Population is the
@@ -47,8 +47,9 @@ well kept, much carried in). Their loss carries weight for the nation, not only 
 Captivity shortens a life: a captive man loses about twenty years, and a captive woman does not
 long outlive her use to her captors. What the captor gains depends on who he is. A rival nation
 that assimilates gains population outright. Slavers gain output: the captives' labour and the
-children born in captivity raise what the holder produces. This is a matter of numbers and
-consequence; none of it is depicted.
+children born in captivity raise what the holder produces. What is shown of it is the place and the condition: the stockade, the quarters, the
+captives' dress, the work they are put to, the guards. What is done to a captive woman is told by
+what follows from it (a shorter life, children born to the captor), and is not shown.
 
 **Acts of God.** Famine, plague, fire and the like come at random. They fall harder on the
 decadent than on the holy, but spare nobody: a Righteous town has them at about a third of the
@@ -71,8 +72,6 @@ town's moral standing.
 
 - What grief does: whether a home that loses its mother or its sons works worse, and whether a
   town of such homes turns to revenge or to despair.
-- How much the player sees of a defence they were not at: a report, a chronicle of the named, or
-  the chance to watch.
 
 ## The order of building
 
