@@ -16,6 +16,7 @@ import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
 import { Sky } from './sky';
 import { Flame, NightLights, carriesTorch } from './nightlight';
+import { canCarryTorch, carryTorch, dropTorch, torchTip } from './torch';
 
 /** How steeply the camera looks down. `?pitch=20` (degrees) lowers it, for looking at figures from the side. */
 export const PITCH = ((Number(new URLSearchParams(location.search).get('pitch')) || 50) * Math.PI) / 180;
@@ -116,6 +117,8 @@ export class Renderer {
   private campViews = new Map<number, { key: string; g: THREE.Group; figs: CampFig[] }>();
   /** How far into night it is, 0 by day to 1 in full dark, eased through dusk and dawn. */
   private nightAmt = 0;
+  /** Who holds each unit's torch: the first of its figures that can, or null where none of them has a hand free. */
+  private torchBy = new Map<number, RealPerson | null>();
   private frameDt = 0.016;
   /** Hearts that rise from where a decadent town is busy at its pleasures. */
   private hearts: { m: THREE.Mesh; t: number; sway: number }[] = [];
@@ -364,7 +367,11 @@ export class Renderer {
       for (const u of this.game.units) {
         if (u.inside || u.def.naval || !this.game.isMilitary(u) || !carriesTorch(u.id, !!u.hero) || (u.x - this.cx) ** 2 + (u.y - this.cy) ** 2 > far) continue;
         const v = this.unitViews.get(u.id);
-        if (v?.g.visible) torches.push({ x: v.g.position.x + 0.22, y: v.g.position.y + 1.25, z: v.g.position.z, id: u.id, torch: true });
+        if (!v?.g.visible) continue;
+        // The flame sits on the torch in the bearer's hand; a unit with no person drawn keeps it at the shoulder.
+        const by = this.torchBy.get(u.id), tip = by ? torchTip(by) : null;
+        if (tip) torches.push({ x: tip.x, y: tip.y, z: tip.z, id: u.id, torch: true });
+        else if (by === undefined) torches.push({ x: v.g.position.x + 0.22, y: v.g.position.y + 1.25, z: v.g.position.z, id: u.id, torch: true });
       }
     }
     this.nightLights.update(n, this.clock, this.cx, this.cy, lamps, torches, this.lamplight);
@@ -732,6 +739,8 @@ export class Renderer {
     }
     if (v.flesh) { this.spray(at.x, at.y + 0.5, at.z, 16, true); this.stain(at.x, at.z, v.cls === 'beast' || v.cls === 'cavalry' ? 0.6 : 0.4, 3.5); }
     else this.spray(at.x, at.y + 0.4, at.z, 12, false);
+    // The torch goes out with its bearer.
+    for (const [id, by] of this.torchBy) if (by && (by === v.real || v.riders?.some((r) => r.p === by))) { dropTorch(by); this.torchBy.delete(id); }
     this.dying.push({ g, t: 0, v });
   }
 
@@ -1112,6 +1121,12 @@ export class Renderer {
     p.mixer.update(dt);
     level(p, yaw, aim, dt);
     if (seated) astride(p, yaw);
+    // After dark, one figure of a unit that carries a torch holds it up, if it has a hand free.
+    if (this.nightAmt > 0.02 || this.torchBy.has(u.id)) {
+      let by = this.torchBy.get(u.id);
+      if (by === undefined && this.game.isMilitary(u) && !u.def.naval && carriesTorch(u.id, !!u.hero)) this.torchBy.set(u.id, (by = canCarryTorch(p) && (!mounted || seated) ? p : null));
+      if (by === p) carryTorch(p, yaw, this.nightAmt > 0.02 ? 1 : 0, dt);
+    }
   }
 
   /** The gait of an animal: standing, walking or at the gallop as the unit moves, and its bite or kick when it strikes. */
