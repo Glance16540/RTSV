@@ -79,6 +79,18 @@ const DRESS: Record<string, Dress> = {
     woman: () => ({ apron: null, trim: GOLD, legs: LINEN }),
     soldier: (o, s, color) => ({ skirt: 'long', sleeves: 'long', legs: LINEN, cloak: o.helmet === 'iron' ? color : o.cloak, ...(soft(o) && o.hat === '' ? { helmet: '', hat: 'turban', hatColor: of([0xf0ece0, 0xd8c8a0], s) } : {}) }),
   },
+  // Malians: a long wide robe in white or indigo, a cap, gold at the hem.
+  mali: {
+    man: (_o, s) => ({ skirt: 'long', sleeves: 'long', neck: 0, hat: s % 3 !== 0 ? 'cap' : '', hatColor: of([0xf0ece0, 0x2e3a6a], s), legs: LINEN, trim: of([0x2e3a6a, GOLD], s), beard: s % 3 === 0 }),
+    woman: (_o, s) => ({ apron: null, trim: of([GOLD, 0x2e3a6a], s), legs: LINEN }),
+    soldier: (o, s) => ({ sleeves: 'long', legs: LINEN, trim: 0x2e3a6a, ...(soft(o) && o.hat === '' ? { helmet: '', hat: 'cap', hatColor: of([0xf0ece0, 0x2e3a6a], s) } : {}) }),
+  },
+  // Kushites: bare arms and legs under white linen, gold at the neck; soldiers clean-shaven.
+  kush: {
+    man: (o) => ({ sleeves: 'bare', neck: 1, legs: o.skin, hat: '', beard: false, trim: GOLD }),
+    woman: () => ({ apron: null, trim: GOLD }),
+    soldier: (o) => ({ legs: o.skin, beard: false, trim: GOLD, ...(light(o) ? { sleeves: 'bare' } : {}) }),
+  },
   // Japanese: indigo leggings, straw hats, lacquered armour in black or red.
   japan: {
     man: (_o, s) => ({ sleeves: 'short', neck: 1, legs: 0x2e3a5a, hat: s % 2 ? 'straw' : '', hatColor: 0xc8a868, beard: false, trim: LACQUER }),

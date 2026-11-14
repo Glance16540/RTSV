@@ -598,6 +598,8 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       greece: { wall: 'stone', stone: 0xe6e2d6, dark: 0xb8b2a2, plaster: 0xf2efe6, roof: 0xb85a38, house: 'gable', tower: 'flat', keep: 'acropolis' },
       england: { wall: 'stone', stone: 0xa8a498, dark: 0x7c786c, plaster: 0xe4d8bc, roof: 0xc9a85a, house: 'gable', tower: 'flat', keep: 'norman' },
       arabs: { wall: 'mud', stone: 0xdcc79c, dark: 0xb89c6c, plaster: 0xeadcb8, roof: 0xd2bd92, house: 'flat', tower: 'flat', keep: 'mosque', trim: 0xf0ece0 },
+      mali: { wall: 'mud', stone: 0xc89a66, dark: 0x9a7044, plaster: 0xd8ae7c, roof: 0xc09460, house: 'flat', tower: 'flat', keep: 'mosque', trim: 0x6a4a2c },
+      kush: { wall: 'mud', stone: 0xd0b07c, dark: 0xa8885a, plaster: 0xdcc090, roof: 0xc8a874, house: 'flat', tower: 'flat', keep: 'pyramid', trim: 0xc8963a },
       japan: { wall: 'stone', stone: 0x8c8a84, dark: 0x64625e, plaster: 0xf0eee8, roof: 0x3a3f4a, house: 'hip', tower: 'hip', keep: 'tenshu', trim: 0xc83a2a },
       dawn: { wall: 'stone', stone: 0xe4d8b8, dark: 0xb8aa84, plaster: 0xeee2c4, roof: 0xd8cba6, house: 'flat', tower: 'flat', keep: 'sanctuary', trim: 0xd8b040 },
       wild: { wall: 'wood', stone: 0x6a4a2c, dark: 0x4a3420, plaster: 0x7a5a3a, roof: 0x6f7a44, house: 'long', tower: 'flat', keep: 'meadhall' },

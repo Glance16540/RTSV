@@ -48,6 +48,18 @@ parents, age, what it may inherit) and is not seen, does not leave the house and
 taken or harmed until it comes of age, when it steps out as a grown villager. No violence is ever
 done to a child, on screen or in the rules.
 
+**A man at war is still of his house.** A man who leaves to fight stays a member of his household:
+what he earns and wins in war counts to the house's output and renown as his work at home did, and
+he comes home to it. His absence is felt (the house has one pair of hands fewer for the fields) but
+he is not lost to it until he dies or is taken.
+
+**Icons tell status.** The picture beside a person is the main way the player reads them, so it
+shows their people (each nation drawn in its own dress, skin and arms) and their town's standing
+(devout, ordinary, worldly, decadent: the women plainly more alluring and the men plainly crueller
+as a town falls). A person's condition has its own mark as well: wounded, maimed, captive, led
+away, freed, sick, starving, grieving, old, veteran, gone to war, deserter, in revolt, drunk.
+Icons are the only way the game shows feeling. Each person keeps one body for life (full-figured or slender, broad or lean) and their face shows how they are: content, afraid, grieving or angry.
+
 **Notable people.** Most villagers are ordinary. Some earn a name the nation remembers: a soldier
 who rises through veterancy, and a woman whose home produces most (many children raised, a farm
 well kept, much carried in). Their loss carries weight for the nation, not only for the town.
@@ -60,6 +72,7 @@ children born in captivity raise what the holder produces. What is shown of it i
 captives' dress, the work they are put to, the guards. What is done to a captive woman is told by
 what follows from it (a shorter life, children born in captivity), and is not shown.
 Nothing is drawn to suggest it, not even by a sign.
+A captive of slavers or marauders is drawn in a ragged loincloth (a woman with a thick band covering her chest), hands tied behind the back with rope (no chains), dishevelled and worn down; a captive of a rival nation stays clothed, bound and bowed.
 
 Children born in captivity: where the captor is a slaver or a marauder, they are the mother's and
 her people's, and come home with her if she is got back. Where the captor is a rival nation that

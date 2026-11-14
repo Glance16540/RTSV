@@ -17,10 +17,10 @@ const path = require('path');
       const img = new Image(); img.src = src; await img.decode();
       const cw = img.width / 4, ch = img.height / 4, res = [];
       for (let i = 0; i < 16; i++) {
-        const c = document.createElement('canvas'); c.width = c.height = 112;
+        const c = document.createElement('canvas'); c.width = c.height = 144;
         const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
         // A hair inside each cell, so a neighbour's edge never shows.
-        g.drawImage(img, (i % 4) * cw + cw * 0.02, Math.floor(i / 4) * ch + ch * 0.02, cw * 0.96, ch * 0.96, 0, 0, 112, 112);
+        g.drawImage(img, (i % 4) * cw + cw * 0.02, Math.floor(i / 4) * ch + ch * 0.02, cw * 0.96, ch * 0.96, 0, 0, 144, 144);
         res.push(c.toDataURL('image/webp', 0.86).split(',')[1]);
       }
       return res;
