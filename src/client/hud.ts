@@ -6,6 +6,7 @@ import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
 import { powersHeld } from '../sim/powers';
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
+import { updateHallClock } from './hallclock';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -676,6 +677,7 @@ export class Hud {
     const { game, pid } = this.app;
     const p = game.players[pid];
     setIconLeaning(p.virtue);
+    updateHallClock(game, pid);
     let idle = 0;
     for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside) idle++;
     const tc = game.buildings.find((b) => b.owner === pid && b.queue[0]?.kind === 'age');
