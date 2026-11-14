@@ -1,667 +1,5225 @@
 {
- "style": "Sixteen small prints in a strict 4 by 4 grid of equal squares, each a genuine fifteenth-century hand-cut woodblock print as in the Nuremberg Chronicle: crude, stiff, naive drawing cut by a craftsman's knife, thick uneven black lines with broken edges, simple parallel knife-cut shading, awkward honest proportions, flat faces with dots and short strokes. Sparse hand-brushed watercolour wash in dull ochre, brick red, grey-blue and a brown for skin and wood, loosely laid so it misses the lines. Every square is the same plain cream laid paper, clean, with no grid lines, no borders, no ghost printing and nothing behind the subject. Each subject is different from every other, fills its square with a clear margin, and reads when shrunk very small. People are shown from the knees up. Nothing polished, no modern illustration finish, no gradients, no glow, no text, no letters, no numbers. Reading left to right, top row first, the sixteen subjects are: ",
- "sheets": [
-  [
-   [
-    "food",
-    "a roast leg of meat"
-   ],
-   [
-    "wood",
-    "three stacked logs"
-   ],
-   [
-    "gold",
-    "a pile of gold coins"
-   ],
-   [
-    "stone",
-    "a cut block of grey stone"
-   ],
-   [
-    "population",
-    "three villagers standing together"
-   ],
-   [
-    "villager_m",
-    "a peasant man holding a hoe"
-   ],
-   [
-    "villager_f",
-    "a peasant woman carrying a basket"
-   ],
-   [
-    "villager",
-    "a peasant man and woman side by side"
-   ],
-   [
-    "couple",
-    "two joined wedding rings"
-   ],
-   [
-    "births_resume",
-    "a wooden cradle with a folded blanket and a lit candle beside it"
-   ],
-   [
-    "births_pause",
-    "an empty wooden cradle"
-   ],
-   [
-    "evict",
-    "an open door with footprints leading away"
-   ],
-   [
-    "ageup",
-    "a rising sun behind a tower"
-   ],
-   [
-    "bell",
-    "a bronze bell swinging"
-   ],
-   [
-    "bell_clear",
-    "a dove carrying an olive branch"
-   ],
-   [
-    "stop",
-    "a raised open hand"
-   ]
+  "style": "Sixteen small prints in a strict 4 by 4 grid of equal squares, each a genuine fifteenth-century hand-cut woodblock print as in the Nuremberg Chronicle: crude, stiff, naive drawing cut by a craftsman's knife, thick uneven black lines with broken edges, simple parallel knife-cut shading, awkward honest proportions, flat faces with dots and short strokes. Sparse hand-brushed watercolour wash in dull ochre, brick red, grey-blue and a brown for skin and wood, loosely laid so it misses the lines. Every square is the same plain cream laid paper, clean, with no grid lines, no borders, no ghost printing and nothing behind the subject. Each subject is different from every other, fills its square with a clear margin, and reads when shrunk very small. People are shown from the knees up. Nothing polished, no modern illustration finish, no gradients, no glow, no text, no letters, no numbers. Reading left to right, top row first, the sixteen subjects are: ",
+  "sheets": [
+    [
+      [
+        "food",
+        "a roast leg of meat"
+      ],
+      [
+        "wood",
+        "three stacked logs"
+      ],
+      [
+        "gold",
+        "a pile of gold coins"
+      ],
+      [
+        "stone",
+        "a cut block of grey stone"
+      ],
+      [
+        "population",
+        "three villagers standing together"
+      ],
+      [
+        "villager_m",
+        "a peasant man holding a hoe"
+      ],
+      [
+        "villager_f",
+        "a peasant woman carrying a basket"
+      ],
+      [
+        "villager",
+        "a peasant man and woman side by side"
+      ],
+      [
+        "couple",
+        "two joined wedding rings"
+      ],
+      [
+        "births_resume",
+        "a wooden cradle with a folded blanket and a lit candle beside it"
+      ],
+      [
+        "births_pause",
+        "an empty wooden cradle"
+      ],
+      [
+        "evict",
+        "an open door with footprints leading away"
+      ],
+      [
+        "ageup",
+        "a rising sun behind a tower"
+      ],
+      [
+        "bell",
+        "a bronze bell swinging"
+      ],
+      [
+        "bell_clear",
+        "a dove carrying an olive branch"
+      ],
+      [
+        "stop",
+        "a raised open hand"
+      ]
+    ],
+    [
+      [
+        "attackmove",
+        "two crossed swords"
+      ],
+      [
+        "patrol",
+        "a guard walking with a lantern"
+      ],
+      [
+        "stance_aggressive",
+        "a charging wild boar"
+      ],
+      [
+        "stance_defensive",
+        "a shield planted upright in the ground"
+      ],
+      [
+        "stance_hold",
+        "a banner on a pole planted in the ground"
+      ],
+      [
+        "unload",
+        "a gangplank from a boat down to a beach"
+      ],
+      [
+        "unstaff",
+        "one person walking out of a doorway"
+      ],
+      [
+        "release",
+        "a crowd of people walking out through an open gate"
+      ],
+      [
+        "page_settlement",
+        "a cluster of three small thatched houses"
+      ],
+      [
+        "page_military",
+        "a helmet above two crossed spears"
+      ],
+      [
+        "node_tree",
+        "a single oak tree"
+      ],
+      [
+        "node_berries",
+        "a bush covered in red berries"
+      ],
+      [
+        "node_gold",
+        "a rock veined with gold ore"
+      ],
+      [
+        "node_stone",
+        "a heap of grey boulders"
+      ],
+      [
+        "node_carcass",
+        "a haunch of venison on the ground"
+      ],
+      [
+        "node_fish",
+        "two fish leaping from water"
+      ]
+    ],
+    [
+      [
+        "towncenter",
+        "a timber town hall with a central tower and a banner"
+      ],
+      [
+        "house",
+        "a small thatched cottage with a smoking chimney"
+      ],
+      [
+        "storehouse",
+        "a wooden storehouse with barrels and sacks"
+      ],
+      [
+        "dock",
+        "a wooden pier with a boathouse"
+      ],
+      [
+        "farm",
+        "a ploughed field of wheat with a scarecrow"
+      ],
+      [
+        "barracks",
+        "a long soldiers' hall with shields hung on the wall"
+      ],
+      [
+        "range",
+        "a round straw archery target with arrows in it"
+      ],
+      [
+        "stable",
+        "a horse looking out over a stable door"
+      ],
+      [
+        "temple",
+        "a stone church with a steeple and a cross"
+      ],
+      [
+        "tavern",
+        "a tavern with a hanging sign and a foaming ale mug"
+      ],
+      [
+        "workcamp",
+        "a stockade of sharpened stakes with a watch platform"
+      ],
+      [
+        "blacksmith",
+        "an anvil and hammer by a glowing forge"
+      ],
+      [
+        "workshop",
+        "a carpenter's workshop with a great wooden wheel"
+      ],
+      [
+        "wonder",
+        "a towering stepped monument with a golden top"
+      ],
+      [
+        "market",
+        "a market stall under a striped awning"
+      ],
+      [
+        "tower",
+        "a tall stone watch tower"
+      ]
+    ],
+    [
+      [
+        "palisade",
+        "a wall of sharpened wooden logs"
+      ],
+      [
+        "stonewall",
+        "a stretch of stone wall with battlements"
+      ],
+      [
+        "gate",
+        "a fortified gatehouse with open wooden doors"
+      ],
+      [
+        "stonetools",
+        "a flint hand axe"
+      ],
+      [
+        "bronzetools",
+        "a bronze pickaxe and sickle crossed"
+      ],
+      [
+        "wheelbarrow",
+        "a wooden wheelbarrow loaded with stones"
+      ],
+      [
+        "fertility",
+        "a sheaf of wheat tied with a ribbon beside a lit candle"
+      ],
+      [
+        "extendedfamily",
+        "three thatched roofs of one household joined round a shared hearth"
+      ],
+      [
+        "herbalism",
+        "a mortar and pestle with herbs"
+      ],
+      [
+        "weapons1",
+        "a bronze short sword"
+      ],
+      [
+        "weapons2",
+        "an iron longsword"
+      ],
+      [
+        "weapons3",
+        "a gleaming steel greatsword"
+      ],
+      [
+        "armor1",
+        "a leather hide jerkin"
+      ],
+      [
+        "armor2",
+        "a coat of scale armour"
+      ],
+      [
+        "armor3",
+        "a steel plate breastplate"
+      ],
+      [
+        "ballistics",
+        "a bundle of heavy arrows with iron heads"
+      ]
+    ],
+    [
+      [
+        "up_frigate",
+        "a tall three-masted sailing warship"
+      ],
+      [
+        "up_bowman",
+        "a longbow beside a sling"
+      ],
+      [
+        "up_swordsman",
+        "a sword laid across a wooden club"
+      ],
+      [
+        "up_pike",
+        "a row of long pikes held upright"
+      ],
+      [
+        "up_crossbow",
+        "a wooden crossbow"
+      ],
+      [
+        "up_knight",
+        "a knight's great helm with a plume"
+      ],
+      [
+        "up_musket",
+        "a matchlock musket"
+      ],
+      [
+        "up_bombard",
+        "a bronze cannon barrel being cast"
+      ],
+      [
+        "plague",
+        "a plague doctor's beaked mask"
+      ],
+      [
+        "quake",
+        "the ground splitting in a jagged crack under a falling tower"
+      ],
+      [
+        "deer",
+        "a stag with antlers"
+      ],
+      [
+        "wolf",
+        "a snarling wolf"
+      ],
+      [
+        "clubman",
+        "a stone-age warrior with a wooden club"
+      ],
+      [
+        "slinger",
+        "a warrior whirling a sling"
+      ],
+      [
+        "javelineer",
+        "a warrior about to throw a javelin"
+      ],
+      [
+        "hound",
+        "a war dog in a spiked collar"
+      ]
+    ],
+    [
+      [
+        "chariot",
+        "an archer in a two-wheeled chariot pulled by a horse"
+      ],
+      [
+        "berserker",
+        "a wild bare-chested warrior with two axes"
+      ],
+      [
+        "pikeman",
+        "a soldier with a very long pike"
+      ],
+      [
+        "grenadier",
+        "a soldier holding a lit round grenade"
+      ],
+      [
+        "ram",
+        "a covered battering ram on wheels"
+      ],
+      [
+        "scorpion",
+        "a giant crossbow on a wheeled frame"
+      ],
+      [
+        "hussar",
+        "a light cavalryman with a sabre on a galloping horse"
+      ],
+      [
+        "strategist",
+        "an old general studying a map"
+      ],
+      [
+        "zealot",
+        "a robed warrior with a staff and a short sword"
+      ],
+      [
+        "wolfrider",
+        "a warrior riding a giant wolf"
+      ],
+      [
+        "shieldbearer",
+        "a Roman legionary with a large rectangular shield"
+      ],
+      [
+        "trebuchet",
+        "a tall counterweight trebuchet"
+      ],
+      [
+        "horsearcher",
+        "a steppe archer shooting a bow from a galloping horse"
+      ],
+      [
+        "herbwife",
+        "an old woman healer with a basket of herbs"
+      ],
+      [
+        "organgun",
+        "a cart with a row of many small gun barrels"
+      ],
+      [
+        "templar",
+        "an armoured temple guard on an armoured horse"
+      ]
+    ],
+    [
+      [
+        "warbear",
+        "an armoured bear rearing up"
+      ],
+      [
+        "khopesh",
+        "an Egyptian guard with a curved sickle-sword and shield"
+      ],
+      [
+        "warchariot",
+        "an Egyptian war chariot with two horses"
+      ],
+      [
+        "sapper",
+        "a soldier with a pickaxe and a torch"
+      ],
+      [
+        "gateguard",
+        "a Babylonian guard with a tall shield and spear"
+      ],
+      [
+        "immortal",
+        "a Persian Immortal with a wicker shield and spear"
+      ],
+      [
+        "warelephant",
+        "a war elephant with a tower on its back"
+      ],
+      [
+        "hoplite",
+        "a Greek hoplite with a round shield, crested helmet and spear"
+      ],
+      [
+        "companion",
+        "a Greek cavalryman with a lance on a rearing horse"
+      ],
+      [
+        "longbowman",
+        "an English archer drawing a longbow"
+      ],
+      [
+        "billman",
+        "an English soldier with a hooked polearm"
+      ],
+      [
+        "camelrider",
+        "a warrior riding a camel"
+      ],
+      [
+        "mameluke",
+        "a mounted Mameluke in a turban with a curved sword"
+      ],
+      [
+        "samurai",
+        "a samurai in armour with a katana"
+      ],
+      [
+        "ashigaru",
+        "a Japanese foot soldier in a conical hat with a matchlock gun"
+      ],
+      [
+        "lancer",
+        "a Mongol rider with a long lance"
+      ]
+    ],
+    [
+      [
+        "hearthguard",
+        "a household guard with a round shield and axe"
+      ],
+      [
+        "firethrower",
+        "a soldier with a fire lance spitting flame"
+      ],
+      [
+        "spearman",
+        "a soldier with a spear and small shield"
+      ],
+      [
+        "swordsman",
+        "a soldier with a sword and shield"
+      ],
+      [
+        "bowman",
+        "an archer with a short bow"
+      ],
+      [
+        "crossbowman",
+        "a soldier aiming a crossbow"
+      ],
+      [
+        "musketeer",
+        "a soldier firing a musket"
+      ],
+      [
+        "fishboat",
+        "a small fishing boat with a net"
+      ],
+      [
+        "transport",
+        "a broad wooden transport ship with one sail"
+      ],
+      [
+        "galley",
+        "a war galley with oars and a ram"
+      ],
+      [
+        "frigate",
+        "a sailing warship firing a cannon"
+      ],
+      [
+        "bombard",
+        "a heavy cannon on a wooden carriage"
+      ],
+      [
+        "rider",
+        "a scout on a light horse"
+      ],
+      [
+        "knight",
+        "a knight in full armour on a charging warhorse"
+      ],
+      [
+        "mammoth",
+        "a woolly mammoth with a rider"
+      ],
+      [
+        "shaman",
+        "a shaman in a horned headdress with a bone staff"
+      ]
+    ],
+    [
+      [
+        "priest",
+        "a priest in robes holding up a cross"
+      ],
+      [
+        "slaver",
+        "a rough man carrying a rope and shackles"
+      ],
+      [
+        "prophet",
+        "a wild-bearded prophet with arms raised to the sky"
+      ],
+      [
+        "warlord",
+        "a warlord in a cloak with a great banner"
+      ],
+      [
+        "catapult",
+        "a wooden catapult"
+      ],
+      [
+        "monk",
+        "a monk with a tonsure praying"
+      ],
+      [
+        "nun",
+        "a nun in a habit holding a candle"
+      ],
+      [
+        "milkmaid",
+        "a tavern milkmaid carrying two pitchers"
+      ],
+      [
+        "patron",
+        "a man drinking from a tankard at a table"
+      ],
+      [
+        "captive",
+        "a pair of iron shackles and chain"
+      ],
+      [
+        "mercenary",
+        "a hired soldier holding out a purse of coins"
+      ],
+      [
+        "piety",
+        "an open book with a cross above it"
+      ],
+      [
+        "decadence",
+        "a goblet of wine and a pair of dice"
+      ],
+      [
+        "dilemma",
+        "a set of balance scales"
+      ],
+      [
+        "morale",
+        "a hearth fire burning in a stone fireplace"
+      ],
+      [
+        "trade",
+        "a merchant's cart loaded with goods"
+      ]
+    ],
+    [
+      [
+        "milkmaid_holy",
+        "a modest dairymaid in a high-necked dress, apron and white headscarf carrying two milk pails"
+      ],
+      [
+        "milkmaid_low",
+        "a flirtatious tavern wench in a low-cut laced bodice with bare shoulders, winking, holding two foaming tankards"
+      ],
+      [
+        "patron_holy",
+        "a sober man at a table with a bowl of soup and a small cup"
+      ],
+      [
+        "patron_low",
+        "a drunk man slumped over a table among spilled tankards and dice"
+      ],
+      [
+        "monk_holy",
+        "a serene monk kneeling in prayer"
+      ],
+      [
+        "monk_low",
+        "a fat friar asleep against a wine barrel with a goblet in his hand"
+      ],
+      [
+        "tavern_holy",
+        "a plain quiet village inn with closed shutters and a small sign"
+      ],
+      [
+        "tavern_low",
+        "a gaudy tavern hung with red lanterns and bright banners, a huge ale-mug sign, light blazing from the windows"
+      ],
+      [
+        "temple_holy",
+        "a well-kept white stone church with a tall steeple, a golden cross, flowers at the door and light shining from the windows"
+      ],
+      [
+        "temple_low",
+        "a ruined crumbling church with a collapsed roof, broken steeple, cracked walls overgrown with ivy and weeds"
+      ],
+      [
+        "villager_f_holy",
+        "a modest peasant woman in a headscarf and long dress carrying a loaf of bread"
+      ],
+      [
+        "villager_f_low",
+        "a woman in a gaudy low-cut red dress with bare shoulders, jewellery and loose hair, hand on hip"
+      ],
+      [
+        "villager_m_holy",
+        "a neat hardworking peasant man with a hoe and a straw hat"
+      ],
+      [
+        "villager_m_low",
+        "a slouching idle man with a bottle in one hand and dice in the other"
+      ],
+      [
+        "house_holy",
+        "a tidy thatched cottage with flower boxes and a small cross above the door"
+      ],
+      [
+        "house_low",
+        "a shabby cottage with broken shutters, a sagging roof and empty bottles by the door"
+      ]
+    ],
+    [
+      [
+        "wild_man_holy",
+        "a village man of the Norse, devout"
+      ],
+      [
+        "wild_man_plain",
+        "a village man of the Norse, ordinary"
+      ],
+      [
+        "wild_man_worldly",
+        "a village man of the Norse, worldly"
+      ],
+      [
+        "wild_man_low",
+        "a village man of the Norse, decadent"
+      ],
+      [
+        "wild_woman_holy",
+        "a grown village woman of the Norse, devout"
+      ],
+      [
+        "wild_woman_plain",
+        "a grown village woman of the Norse, ordinary"
+      ],
+      [
+        "wild_woman_worldly",
+        "a grown village woman of the Norse, worldly"
+      ],
+      [
+        "wild_woman_low",
+        "a grown village woman of the Norse, decadent"
+      ],
+      [
+        "wild_soldier_holy",
+        "a common soldier of the Norse, devout"
+      ],
+      [
+        "wild_soldier_plain",
+        "a common soldier of the Norse, ordinary"
+      ],
+      [
+        "wild_soldier_worldly",
+        "a common soldier of the Norse, worldly"
+      ],
+      [
+        "wild_soldier_low",
+        "a common soldier of the Norse, decadent"
+      ],
+      [
+        "wild_tavern_holy",
+        "a grown tavern woman of the Norse, devout"
+      ],
+      [
+        "wild_tavern_plain",
+        "a grown tavern woman of the Norse, ordinary"
+      ],
+      [
+        "wild_tavern_worldly",
+        "a grown tavern woman of the Norse, worldly"
+      ],
+      [
+        "wild_tavern_low",
+        "a grown tavern woman of the Norse, decadent"
+      ]
+    ],
+    [
+      [
+        "england_man_holy",
+        "a village man of medieval English, devout"
+      ],
+      [
+        "england_man_plain",
+        "a village man of medieval English, ordinary"
+      ],
+      [
+        "england_man_worldly",
+        "a village man of medieval English, worldly"
+      ],
+      [
+        "england_man_low",
+        "a village man of medieval English, decadent"
+      ],
+      [
+        "england_woman_holy",
+        "a grown village woman of medieval English, devout"
+      ],
+      [
+        "england_woman_plain",
+        "a grown village woman of medieval English, ordinary"
+      ],
+      [
+        "england_woman_worldly",
+        "a grown village woman of medieval English, worldly"
+      ],
+      [
+        "england_woman_low",
+        "a grown village woman of medieval English, decadent"
+      ],
+      [
+        "england_soldier_holy",
+        "a common soldier of medieval English, devout"
+      ],
+      [
+        "england_soldier_plain",
+        "a common soldier of medieval English, ordinary"
+      ],
+      [
+        "england_soldier_worldly",
+        "a common soldier of medieval English, worldly"
+      ],
+      [
+        "england_soldier_low",
+        "a common soldier of medieval English, decadent"
+      ],
+      [
+        "england_tavern_holy",
+        "a grown tavern woman of medieval English, devout"
+      ],
+      [
+        "england_tavern_plain",
+        "a grown tavern woman of medieval English, ordinary"
+      ],
+      [
+        "england_tavern_worldly",
+        "a grown tavern woman of medieval English, worldly"
+      ],
+      [
+        "england_tavern_low",
+        "a grown tavern woman of medieval English, decadent"
+      ]
+    ],
+    [
+      [
+        "hearth_man_holy",
+        "a village man of early medieval Franks, devout"
+      ],
+      [
+        "hearth_man_plain",
+        "a village man of early medieval Franks, ordinary"
+      ],
+      [
+        "hearth_man_worldly",
+        "a village man of early medieval Franks, worldly"
+      ],
+      [
+        "hearth_man_low",
+        "a village man of early medieval Franks, decadent"
+      ],
+      [
+        "hearth_woman_holy",
+        "a grown village woman of early medieval Franks, devout"
+      ],
+      [
+        "hearth_woman_plain",
+        "a grown village woman of early medieval Franks, ordinary"
+      ],
+      [
+        "hearth_woman_worldly",
+        "a grown village woman of early medieval Franks, worldly"
+      ],
+      [
+        "hearth_woman_low",
+        "a grown village woman of early medieval Franks, decadent"
+      ],
+      [
+        "hearth_soldier_holy",
+        "a common soldier of early medieval Franks, devout"
+      ],
+      [
+        "hearth_soldier_plain",
+        "a common soldier of early medieval Franks, ordinary"
+      ],
+      [
+        "hearth_soldier_worldly",
+        "a common soldier of early medieval Franks, worldly"
+      ],
+      [
+        "hearth_soldier_low",
+        "a common soldier of early medieval Franks, decadent"
+      ],
+      [
+        "hearth_tavern_holy",
+        "a grown tavern woman of early medieval Franks, devout"
+      ],
+      [
+        "hearth_tavern_plain",
+        "a grown tavern woman of early medieval Franks, ordinary"
+      ],
+      [
+        "hearth_tavern_worldly",
+        "a grown tavern woman of early medieval Franks, worldly"
+      ],
+      [
+        "hearth_tavern_low",
+        "a grown tavern woman of early medieval Franks, decadent"
+      ]
+    ],
+    [
+      [
+        "stonekin_man_holy",
+        "a village man of ancient Romans, devout"
+      ],
+      [
+        "stonekin_man_plain",
+        "a village man of ancient Romans, ordinary"
+      ],
+      [
+        "stonekin_man_worldly",
+        "a village man of ancient Romans, worldly"
+      ],
+      [
+        "stonekin_man_low",
+        "a village man of ancient Romans, decadent"
+      ],
+      [
+        "stonekin_woman_holy",
+        "a grown village woman of ancient Romans, devout"
+      ],
+      [
+        "stonekin_woman_plain",
+        "a grown village woman of ancient Romans, ordinary"
+      ],
+      [
+        "stonekin_woman_worldly",
+        "a grown village woman of ancient Romans, worldly"
+      ],
+      [
+        "stonekin_woman_low",
+        "a grown village woman of ancient Romans, decadent"
+      ],
+      [
+        "stonekin_soldier_holy",
+        "a common soldier of ancient Romans, devout"
+      ],
+      [
+        "stonekin_soldier_plain",
+        "a common soldier of ancient Romans, ordinary"
+      ],
+      [
+        "stonekin_soldier_worldly",
+        "a common soldier of ancient Romans, worldly"
+      ],
+      [
+        "stonekin_soldier_low",
+        "a common soldier of ancient Romans, decadent"
+      ],
+      [
+        "stonekin_tavern_holy",
+        "a grown tavern woman of ancient Romans, devout"
+      ],
+      [
+        "stonekin_tavern_plain",
+        "a grown tavern woman of ancient Romans, ordinary"
+      ],
+      [
+        "stonekin_tavern_worldly",
+        "a grown tavern woman of ancient Romans, worldly"
+      ],
+      [
+        "stonekin_tavern_low",
+        "a grown tavern woman of ancient Romans, decadent"
+      ]
+    ],
+    [
+      [
+        "greece_man_holy",
+        "a village man of ancient Greeks, devout"
+      ],
+      [
+        "greece_man_plain",
+        "a village man of ancient Greeks, ordinary"
+      ],
+      [
+        "greece_man_worldly",
+        "a village man of ancient Greeks, worldly"
+      ],
+      [
+        "greece_man_low",
+        "a village man of ancient Greeks, decadent"
+      ],
+      [
+        "greece_woman_holy",
+        "a grown village woman of ancient Greeks, devout"
+      ],
+      [
+        "greece_woman_plain",
+        "a grown village woman of ancient Greeks, ordinary"
+      ],
+      [
+        "greece_woman_worldly",
+        "a grown village woman of ancient Greeks, worldly"
+      ],
+      [
+        "greece_woman_low",
+        "a grown village woman of ancient Greeks, decadent"
+      ],
+      [
+        "greece_soldier_holy",
+        "a common soldier of ancient Greeks, devout"
+      ],
+      [
+        "greece_soldier_plain",
+        "a common soldier of ancient Greeks, ordinary"
+      ],
+      [
+        "greece_soldier_worldly",
+        "a common soldier of ancient Greeks, worldly"
+      ],
+      [
+        "greece_soldier_low",
+        "a common soldier of ancient Greeks, decadent"
+      ],
+      [
+        "greece_tavern_holy",
+        "a grown tavern woman of ancient Greeks, devout"
+      ],
+      [
+        "greece_tavern_plain",
+        "a grown tavern woman of ancient Greeks, ordinary"
+      ],
+      [
+        "greece_tavern_worldly",
+        "a grown tavern woman of ancient Greeks, worldly"
+      ],
+      [
+        "greece_tavern_low",
+        "a grown tavern woman of ancient Greeks, decadent"
+      ]
+    ],
+    [
+      [
+        "dawn_man_holy",
+        "a village man of ancient Arameans of Syria, devout"
+      ],
+      [
+        "dawn_man_plain",
+        "a village man of ancient Arameans of Syria, ordinary"
+      ],
+      [
+        "dawn_man_worldly",
+        "a village man of ancient Arameans of Syria, worldly"
+      ],
+      [
+        "dawn_man_low",
+        "a village man of ancient Arameans of Syria, decadent"
+      ],
+      [
+        "dawn_woman_holy",
+        "a grown village woman of ancient Arameans of Syria, devout"
+      ],
+      [
+        "dawn_woman_plain",
+        "a grown village woman of ancient Arameans of Syria, ordinary"
+      ],
+      [
+        "dawn_woman_worldly",
+        "a grown village woman of ancient Arameans of Syria, worldly"
+      ],
+      [
+        "dawn_woman_low",
+        "a grown village woman of ancient Arameans of Syria, decadent"
+      ],
+      [
+        "dawn_soldier_holy",
+        "a common soldier of ancient Arameans of Syria, devout"
+      ],
+      [
+        "dawn_soldier_plain",
+        "a common soldier of ancient Arameans of Syria, ordinary"
+      ],
+      [
+        "dawn_soldier_worldly",
+        "a common soldier of ancient Arameans of Syria, worldly"
+      ],
+      [
+        "dawn_soldier_low",
+        "a common soldier of ancient Arameans of Syria, decadent"
+      ],
+      [
+        "dawn_tavern_holy",
+        "a grown tavern woman of ancient Arameans of Syria, devout"
+      ],
+      [
+        "dawn_tavern_plain",
+        "a grown tavern woman of ancient Arameans of Syria, ordinary"
+      ],
+      [
+        "dawn_tavern_worldly",
+        "a grown tavern woman of ancient Arameans of Syria, worldly"
+      ],
+      [
+        "dawn_tavern_low",
+        "a grown tavern woman of ancient Arameans of Syria, decadent"
+      ]
+    ],
+    [
+      [
+        "babylon_man_holy",
+        "a village man of ancient Babylonians, devout"
+      ],
+      [
+        "babylon_man_plain",
+        "a village man of ancient Babylonians, ordinary"
+      ],
+      [
+        "babylon_man_worldly",
+        "a village man of ancient Babylonians, worldly"
+      ],
+      [
+        "babylon_man_low",
+        "a village man of ancient Babylonians, decadent"
+      ],
+      [
+        "babylon_woman_holy",
+        "a grown village woman of ancient Babylonians, devout"
+      ],
+      [
+        "babylon_woman_plain",
+        "a grown village woman of ancient Babylonians, ordinary"
+      ],
+      [
+        "babylon_woman_worldly",
+        "a grown village woman of ancient Babylonians, worldly"
+      ],
+      [
+        "babylon_woman_low",
+        "a grown village woman of ancient Babylonians, decadent"
+      ],
+      [
+        "babylon_soldier_holy",
+        "a common soldier of ancient Babylonians, devout"
+      ],
+      [
+        "babylon_soldier_plain",
+        "a common soldier of ancient Babylonians, ordinary"
+      ],
+      [
+        "babylon_soldier_worldly",
+        "a common soldier of ancient Babylonians, worldly"
+      ],
+      [
+        "babylon_soldier_low",
+        "a common soldier of ancient Babylonians, decadent"
+      ],
+      [
+        "babylon_tavern_holy",
+        "a grown tavern woman of ancient Babylonians, devout"
+      ],
+      [
+        "babylon_tavern_plain",
+        "a grown tavern woman of ancient Babylonians, ordinary"
+      ],
+      [
+        "babylon_tavern_worldly",
+        "a grown tavern woman of ancient Babylonians, worldly"
+      ],
+      [
+        "babylon_tavern_low",
+        "a grown tavern woman of ancient Babylonians, decadent"
+      ]
+    ],
+    [
+      [
+        "persia_man_holy",
+        "a village man of ancient Persians, devout"
+      ],
+      [
+        "persia_man_plain",
+        "a village man of ancient Persians, ordinary"
+      ],
+      [
+        "persia_man_worldly",
+        "a village man of ancient Persians, worldly"
+      ],
+      [
+        "persia_man_low",
+        "a village man of ancient Persians, decadent"
+      ],
+      [
+        "persia_woman_holy",
+        "a grown village woman of ancient Persians, devout"
+      ],
+      [
+        "persia_woman_plain",
+        "a grown village woman of ancient Persians, ordinary"
+      ],
+      [
+        "persia_woman_worldly",
+        "a grown village woman of ancient Persians, worldly"
+      ],
+      [
+        "persia_woman_low",
+        "a grown village woman of ancient Persians, decadent"
+      ],
+      [
+        "persia_soldier_holy",
+        "a common soldier of ancient Persians, devout"
+      ],
+      [
+        "persia_soldier_plain",
+        "a common soldier of ancient Persians, ordinary"
+      ],
+      [
+        "persia_soldier_worldly",
+        "a common soldier of ancient Persians, worldly"
+      ],
+      [
+        "persia_soldier_low",
+        "a common soldier of ancient Persians, decadent"
+      ],
+      [
+        "persia_tavern_holy",
+        "a grown tavern woman of ancient Persians, devout"
+      ],
+      [
+        "persia_tavern_plain",
+        "a grown tavern woman of ancient Persians, ordinary"
+      ],
+      [
+        "persia_tavern_worldly",
+        "a grown tavern woman of ancient Persians, worldly"
+      ],
+      [
+        "persia_tavern_low",
+        "a grown tavern woman of ancient Persians, decadent"
+      ]
+    ],
+    [
+      [
+        "arabs_man_holy",
+        "a village man of Abbasid Arabs, devout"
+      ],
+      [
+        "arabs_man_plain",
+        "a village man of Abbasid Arabs, ordinary"
+      ],
+      [
+        "arabs_man_worldly",
+        "a village man of Abbasid Arabs, worldly"
+      ],
+      [
+        "arabs_man_low",
+        "a village man of Abbasid Arabs, decadent"
+      ],
+      [
+        "arabs_woman_holy",
+        "a grown village woman of Abbasid Arabs, devout"
+      ],
+      [
+        "arabs_woman_plain",
+        "a grown village woman of Abbasid Arabs, ordinary"
+      ],
+      [
+        "arabs_woman_worldly",
+        "a grown village woman of Abbasid Arabs, worldly"
+      ],
+      [
+        "arabs_woman_low",
+        "a grown village woman of Abbasid Arabs, decadent"
+      ],
+      [
+        "arabs_soldier_holy",
+        "a common soldier of Abbasid Arabs, devout"
+      ],
+      [
+        "arabs_soldier_plain",
+        "a common soldier of Abbasid Arabs, ordinary"
+      ],
+      [
+        "arabs_soldier_worldly",
+        "a common soldier of Abbasid Arabs, worldly"
+      ],
+      [
+        "arabs_soldier_low",
+        "a common soldier of Abbasid Arabs, decadent"
+      ],
+      [
+        "arabs_tavern_holy",
+        "a grown tavern woman of Abbasid Arabs, devout"
+      ],
+      [
+        "arabs_tavern_plain",
+        "a grown tavern woman of Abbasid Arabs, ordinary"
+      ],
+      [
+        "arabs_tavern_worldly",
+        "a grown tavern woman of Abbasid Arabs, worldly"
+      ],
+      [
+        "arabs_tavern_low",
+        "a grown tavern woman of Abbasid Arabs, decadent"
+      ]
+    ],
+    [
+      [
+        "egypt_man_holy",
+        "a village man of ancient Egyptians, devout"
+      ],
+      [
+        "egypt_man_plain",
+        "a village man of ancient Egyptians, ordinary"
+      ],
+      [
+        "egypt_man_worldly",
+        "a village man of ancient Egyptians, worldly"
+      ],
+      [
+        "egypt_man_low",
+        "a village man of ancient Egyptians, decadent"
+      ],
+      [
+        "egypt_woman_holy",
+        "a grown village woman of ancient Egyptians, devout"
+      ],
+      [
+        "egypt_woman_plain",
+        "a grown village woman of ancient Egyptians, ordinary"
+      ],
+      [
+        "egypt_woman_worldly",
+        "a grown village woman of ancient Egyptians, worldly"
+      ],
+      [
+        "egypt_woman_low",
+        "a grown village woman of ancient Egyptians, decadent"
+      ],
+      [
+        "egypt_soldier_holy",
+        "a common soldier of ancient Egyptians, devout"
+      ],
+      [
+        "egypt_soldier_plain",
+        "a common soldier of ancient Egyptians, ordinary"
+      ],
+      [
+        "egypt_soldier_worldly",
+        "a common soldier of ancient Egyptians, worldly"
+      ],
+      [
+        "egypt_soldier_low",
+        "a common soldier of ancient Egyptians, decadent"
+      ],
+      [
+        "egypt_tavern_holy",
+        "a grown tavern woman of ancient Egyptians, devout"
+      ],
+      [
+        "egypt_tavern_plain",
+        "a grown tavern woman of ancient Egyptians, ordinary"
+      ],
+      [
+        "egypt_tavern_worldly",
+        "a grown tavern woman of ancient Egyptians, worldly"
+      ],
+      [
+        "egypt_tavern_low",
+        "a grown tavern woman of ancient Egyptians, decadent"
+      ]
+    ],
+    [
+      [
+        "steppe_man_holy",
+        "a village man of Mongols of the steppe, devout"
+      ],
+      [
+        "steppe_man_plain",
+        "a village man of Mongols of the steppe, ordinary"
+      ],
+      [
+        "steppe_man_worldly",
+        "a village man of Mongols of the steppe, worldly"
+      ],
+      [
+        "steppe_man_low",
+        "a village man of Mongols of the steppe, decadent"
+      ],
+      [
+        "steppe_woman_holy",
+        "a grown village woman of Mongols of the steppe, devout"
+      ],
+      [
+        "steppe_woman_plain",
+        "a grown village woman of Mongols of the steppe, ordinary"
+      ],
+      [
+        "steppe_woman_worldly",
+        "a grown village woman of Mongols of the steppe, worldly"
+      ],
+      [
+        "steppe_woman_low",
+        "a grown village woman of Mongols of the steppe, decadent"
+      ],
+      [
+        "steppe_soldier_holy",
+        "a common soldier of Mongols of the steppe, devout"
+      ],
+      [
+        "steppe_soldier_plain",
+        "a common soldier of Mongols of the steppe, ordinary"
+      ],
+      [
+        "steppe_soldier_worldly",
+        "a common soldier of Mongols of the steppe, worldly"
+      ],
+      [
+        "steppe_soldier_low",
+        "a common soldier of Mongols of the steppe, decadent"
+      ],
+      [
+        "steppe_tavern_holy",
+        "a grown tavern woman of Mongols of the steppe, devout"
+      ],
+      [
+        "steppe_tavern_plain",
+        "a grown tavern woman of Mongols of the steppe, ordinary"
+      ],
+      [
+        "steppe_tavern_worldly",
+        "a grown tavern woman of Mongols of the steppe, worldly"
+      ],
+      [
+        "steppe_tavern_low",
+        "a grown tavern woman of Mongols of the steppe, decadent"
+      ]
+    ],
+    [
+      [
+        "forge_man_holy",
+        "a village man of medieval Chinese, devout"
+      ],
+      [
+        "forge_man_plain",
+        "a village man of medieval Chinese, ordinary"
+      ],
+      [
+        "forge_man_worldly",
+        "a village man of medieval Chinese, worldly"
+      ],
+      [
+        "forge_man_low",
+        "a village man of medieval Chinese, decadent"
+      ],
+      [
+        "forge_woman_holy",
+        "a grown village woman of medieval Chinese, devout"
+      ],
+      [
+        "forge_woman_plain",
+        "a grown village woman of medieval Chinese, ordinary"
+      ],
+      [
+        "forge_woman_worldly",
+        "a grown village woman of medieval Chinese, worldly"
+      ],
+      [
+        "forge_woman_low",
+        "a grown village woman of medieval Chinese, decadent"
+      ],
+      [
+        "forge_soldier_holy",
+        "a common soldier of medieval Chinese, devout"
+      ],
+      [
+        "forge_soldier_plain",
+        "a common soldier of medieval Chinese, ordinary"
+      ],
+      [
+        "forge_soldier_worldly",
+        "a common soldier of medieval Chinese, worldly"
+      ],
+      [
+        "forge_soldier_low",
+        "a common soldier of medieval Chinese, decadent"
+      ],
+      [
+        "forge_tavern_holy",
+        "a grown tavern woman of medieval Chinese, devout"
+      ],
+      [
+        "forge_tavern_plain",
+        "a grown tavern woman of medieval Chinese, ordinary"
+      ],
+      [
+        "forge_tavern_worldly",
+        "a grown tavern woman of medieval Chinese, worldly"
+      ],
+      [
+        "forge_tavern_low",
+        "a grown tavern woman of medieval Chinese, decadent"
+      ]
+    ],
+    [
+      [
+        "japan_man_holy",
+        "a village man of medieval Japanese, devout"
+      ],
+      [
+        "japan_man_plain",
+        "a village man of medieval Japanese, ordinary"
+      ],
+      [
+        "japan_man_worldly",
+        "a village man of medieval Japanese, worldly"
+      ],
+      [
+        "japan_man_low",
+        "a village man of medieval Japanese, decadent"
+      ],
+      [
+        "japan_woman_holy",
+        "a grown village woman of medieval Japanese, devout"
+      ],
+      [
+        "japan_woman_plain",
+        "a grown village woman of medieval Japanese, ordinary"
+      ],
+      [
+        "japan_woman_worldly",
+        "a grown village woman of medieval Japanese, worldly"
+      ],
+      [
+        "japan_woman_low",
+        "a grown village woman of medieval Japanese, decadent"
+      ],
+      [
+        "japan_soldier_holy",
+        "a common soldier of medieval Japanese, devout"
+      ],
+      [
+        "japan_soldier_plain",
+        "a common soldier of medieval Japanese, ordinary"
+      ],
+      [
+        "japan_soldier_worldly",
+        "a common soldier of medieval Japanese, worldly"
+      ],
+      [
+        "japan_soldier_low",
+        "a common soldier of medieval Japanese, decadent"
+      ],
+      [
+        "japan_tavern_holy",
+        "a grown tavern woman of medieval Japanese, devout"
+      ],
+      [
+        "japan_tavern_plain",
+        "a grown tavern woman of medieval Japanese, ordinary"
+      ],
+      [
+        "japan_tavern_worldly",
+        "a grown tavern woman of medieval Japanese, worldly"
+      ],
+      [
+        "japan_tavern_low",
+        "a grown tavern woman of medieval Japanese, decadent"
+      ]
+    ],
+    [
+      [
+        "mali_man_holy",
+        "a village man of the empire of Mali, devout"
+      ],
+      [
+        "mali_man_plain",
+        "a village man of the empire of Mali, ordinary"
+      ],
+      [
+        "mali_man_worldly",
+        "a village man of the empire of Mali, worldly"
+      ],
+      [
+        "mali_man_low",
+        "a village man of the empire of Mali, decadent"
+      ],
+      [
+        "mali_woman_holy",
+        "a grown village woman of the empire of Mali, devout"
+      ],
+      [
+        "mali_woman_plain",
+        "a grown village woman of the empire of Mali, ordinary"
+      ],
+      [
+        "mali_woman_worldly",
+        "a grown village woman of the empire of Mali, worldly"
+      ],
+      [
+        "mali_woman_low",
+        "a grown village woman of the empire of Mali, decadent"
+      ],
+      [
+        "mali_soldier_holy",
+        "a common soldier of the empire of Mali, devout"
+      ],
+      [
+        "mali_soldier_plain",
+        "a common soldier of the empire of Mali, ordinary"
+      ],
+      [
+        "mali_soldier_worldly",
+        "a common soldier of the empire of Mali, worldly"
+      ],
+      [
+        "mali_soldier_low",
+        "a common soldier of the empire of Mali, decadent"
+      ],
+      [
+        "mali_tavern_holy",
+        "a grown tavern woman of the empire of Mali, devout"
+      ],
+      [
+        "mali_tavern_plain",
+        "a grown tavern woman of the empire of Mali, ordinary"
+      ],
+      [
+        "mali_tavern_worldly",
+        "a grown tavern woman of the empire of Mali, worldly"
+      ],
+      [
+        "mali_tavern_low",
+        "a grown tavern woman of the empire of Mali, decadent"
+      ]
+    ],
+    [
+      [
+        "kush_man_holy",
+        "a village man of the kingdom of Kush in Nubia, devout"
+      ],
+      [
+        "kush_man_plain",
+        "a village man of the kingdom of Kush in Nubia, ordinary"
+      ],
+      [
+        "kush_man_worldly",
+        "a village man of the kingdom of Kush in Nubia, worldly"
+      ],
+      [
+        "kush_man_low",
+        "a village man of the kingdom of Kush in Nubia, decadent"
+      ],
+      [
+        "kush_woman_holy",
+        "a grown village woman of the kingdom of Kush in Nubia, devout"
+      ],
+      [
+        "kush_woman_plain",
+        "a grown village woman of the kingdom of Kush in Nubia, ordinary"
+      ],
+      [
+        "kush_woman_worldly",
+        "a grown village woman of the kingdom of Kush in Nubia, worldly"
+      ],
+      [
+        "kush_woman_low",
+        "a grown village woman of the kingdom of Kush in Nubia, decadent"
+      ],
+      [
+        "kush_soldier_holy",
+        "a common soldier of the kingdom of Kush in Nubia, devout"
+      ],
+      [
+        "kush_soldier_plain",
+        "a common soldier of the kingdom of Kush in Nubia, ordinary"
+      ],
+      [
+        "kush_soldier_worldly",
+        "a common soldier of the kingdom of Kush in Nubia, worldly"
+      ],
+      [
+        "kush_soldier_low",
+        "a common soldier of the kingdom of Kush in Nubia, decadent"
+      ],
+      [
+        "kush_tavern_holy",
+        "a grown tavern woman of the kingdom of Kush in Nubia, devout"
+      ],
+      [
+        "kush_tavern_plain",
+        "a grown tavern woman of the kingdom of Kush in Nubia, ordinary"
+      ],
+      [
+        "kush_tavern_worldly",
+        "a grown tavern woman of the kingdom of Kush in Nubia, worldly"
+      ],
+      [
+        "kush_tavern_low",
+        "a grown tavern woman of the kingdom of Kush in Nubia, decadent"
+      ]
+    ],
+    [
+      [
+        "status_wounded",
+        "a soldier with a bandaged arm in a sling"
+      ],
+      [
+        "status_maimed",
+        "a badly wounded soldier on a crutch, bloodied bandage round his head"
+      ],
+      [
+        "status_captive_m",
+        "a captive man in iron shackles, head bowed"
+      ],
+      [
+        "status_captive_f",
+        "a captive woman in a plain rough shift with bound wrists, head bowed"
+      ],
+      [
+        "status_led",
+        "a captive led away on a rope"
+      ],
+      [
+        "status_freed",
+        "a freed man breaking his chains"
+      ],
+      [
+        "status_plague",
+        "a plague-sick man wrapped in a blanket"
+      ],
+      [
+        "status_hunger",
+        "a starving thin man with an empty bowl"
+      ],
+      [
+        "status_grief",
+        "a grieving widow in a black veil weeping"
+      ],
+      [
+        "status_elder",
+        "an old man leaning on a stick"
+      ],
+      [
+        "status_veteran",
+        "a grizzled scarred veteran with a laurel wreath"
+      ],
+      [
+        "status_towar",
+        "a man taking up a spear and kissing his wife goodbye at his door"
+      ],
+      [
+        "status_healer",
+        "a healer woman binding a soldier's wound"
+      ],
+      [
+        "status_deserter",
+        "a deserter running away dropping his spear"
+      ],
+      [
+        "status_rebel",
+        "an angry villager raising a pitchfork"
+      ],
+      [
+        "status_drunk",
+        "a drunk man staggering with a bottle"
+      ]
+    ],
+    [
+      [
+        "wild_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "wild_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "wild_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "wild_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "wild_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "wild_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "wild_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "wild_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "wild_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "wild_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "wild_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "wild_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "wild_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "wild_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "wild_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "wild_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "wild_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "wild_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "wild_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "wild_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "wild_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "wild_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "wild_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "wild_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "wild_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "wild_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "wild_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "wild_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "wild_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "wild_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "wild_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "wild_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "england_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "england_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "england_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "england_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "england_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "england_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "england_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "england_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "england_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "england_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "england_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "england_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "england_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "england_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "england_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "england_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "england_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "england_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "england_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "england_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "england_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "england_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "england_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "england_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "england_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "england_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "england_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "england_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "england_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "england_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "england_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "england_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "hearth_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "hearth_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "hearth_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "hearth_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "hearth_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "hearth_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "hearth_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "hearth_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "hearth_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "hearth_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "hearth_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "hearth_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "hearth_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "hearth_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "hearth_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "hearth_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "hearth_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "hearth_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "hearth_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "hearth_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "hearth_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "hearth_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "hearth_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "hearth_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "hearth_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "hearth_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "hearth_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "hearth_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "hearth_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "hearth_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "hearth_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "hearth_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "stonekin_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "stonekin_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "stonekin_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "stonekin_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "stonekin_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "stonekin_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "stonekin_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "stonekin_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "stonekin_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "stonekin_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "stonekin_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "stonekin_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "stonekin_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "stonekin_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "stonekin_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "stonekin_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "stonekin_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "stonekin_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "stonekin_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "stonekin_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "stonekin_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "stonekin_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "stonekin_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "stonekin_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "stonekin_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "stonekin_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "stonekin_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "stonekin_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "stonekin_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "stonekin_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "stonekin_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "stonekin_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "greece_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "greece_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "greece_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "greece_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "greece_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "greece_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "greece_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "greece_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "greece_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "greece_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "greece_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "greece_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "greece_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "greece_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "greece_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "greece_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "greece_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "greece_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "greece_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "greece_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "greece_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "greece_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "greece_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "greece_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "greece_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "greece_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "greece_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "greece_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "greece_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "greece_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "greece_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "greece_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "dawn_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "dawn_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "dawn_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "dawn_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "dawn_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "dawn_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "dawn_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "dawn_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "dawn_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "dawn_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "dawn_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "dawn_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "dawn_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "dawn_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "dawn_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "dawn_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "dawn_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "dawn_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "dawn_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "dawn_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "dawn_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "dawn_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "dawn_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "dawn_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "dawn_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "dawn_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "dawn_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "dawn_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "dawn_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "dawn_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "dawn_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "dawn_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "babylon_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "babylon_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "babylon_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "babylon_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "babylon_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "babylon_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "babylon_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "babylon_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "babylon_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "babylon_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "babylon_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "babylon_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "babylon_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "babylon_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "babylon_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "babylon_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "babylon_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "babylon_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "babylon_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "babylon_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "babylon_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "babylon_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "babylon_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "babylon_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "babylon_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "babylon_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "babylon_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "babylon_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "babylon_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "babylon_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "babylon_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "babylon_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "persia_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "persia_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "persia_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "persia_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "persia_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "persia_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "persia_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "persia_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "persia_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "persia_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "persia_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "persia_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "persia_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "persia_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "persia_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "persia_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "persia_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "persia_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "persia_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "persia_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "persia_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "persia_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "persia_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "persia_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "persia_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "persia_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "persia_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "persia_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "persia_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "persia_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "persia_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "persia_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "arabs_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "arabs_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "arabs_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "arabs_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "arabs_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "arabs_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "arabs_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "arabs_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "arabs_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "arabs_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "arabs_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "arabs_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "arabs_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "arabs_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "arabs_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "arabs_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "arabs_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "arabs_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "arabs_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "arabs_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "arabs_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "arabs_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "arabs_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "arabs_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "arabs_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "arabs_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "arabs_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "arabs_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "arabs_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "arabs_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "arabs_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "arabs_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "egypt_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "egypt_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "egypt_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "egypt_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "egypt_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "egypt_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "egypt_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "egypt_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "egypt_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "egypt_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "egypt_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "egypt_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "egypt_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "egypt_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "egypt_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "egypt_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "egypt_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "egypt_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "egypt_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "egypt_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "egypt_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "egypt_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "egypt_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "egypt_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "egypt_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "egypt_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "egypt_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "egypt_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "egypt_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "egypt_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "egypt_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "egypt_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "steppe_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "steppe_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "steppe_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "steppe_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "steppe_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "steppe_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "steppe_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "steppe_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "steppe_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "steppe_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "steppe_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "steppe_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "steppe_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "steppe_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "steppe_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "steppe_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "steppe_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "steppe_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "steppe_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "steppe_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "steppe_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "steppe_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "steppe_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "steppe_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "steppe_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "steppe_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "steppe_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "steppe_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "steppe_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "steppe_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "steppe_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "steppe_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "forge_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "forge_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "forge_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "forge_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "forge_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "forge_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "forge_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "forge_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "forge_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "forge_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "forge_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "forge_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "forge_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "forge_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "forge_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "forge_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "forge_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "forge_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "forge_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "forge_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "forge_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "forge_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "forge_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "forge_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "forge_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "forge_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "forge_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "forge_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "forge_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "forge_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "forge_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "forge_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "japan_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "japan_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "japan_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "japan_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "japan_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "japan_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "japan_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "japan_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "japan_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "japan_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "japan_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "japan_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "japan_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "japan_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "japan_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "japan_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "japan_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "japan_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "japan_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "japan_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "japan_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "japan_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "japan_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "japan_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "japan_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "japan_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "japan_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "japan_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "japan_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "japan_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "japan_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "japan_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "mali_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "mali_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "mali_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "mali_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "mali_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "mali_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "mali_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "mali_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "mali_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "mali_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "mali_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "mali_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "mali_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "mali_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "mali_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "mali_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "mali_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "mali_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "mali_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "mali_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "mali_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "mali_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "mali_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "mali_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "mali_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "mali_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "mali_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "mali_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "mali_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "mali_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "mali_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "mali_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "kush_clubman",
+        "a stone-age warrior with a club, of this people"
+      ],
+      [
+        "kush_slinger",
+        "a warrior whirling a sling, of this people"
+      ],
+      [
+        "kush_javelineer",
+        "a javelin thrower, of this people"
+      ],
+      [
+        "kush_spearman",
+        "a spearman with shield, of this people"
+      ],
+      [
+        "kush_swordsman",
+        "a swordsman with shield, of this people"
+      ],
+      [
+        "kush_bowman",
+        "an archer, of this people"
+      ],
+      [
+        "kush_crossbowman",
+        "a crossbowman, of this people"
+      ],
+      [
+        "kush_musketeer",
+        "a musketeer, of this people"
+      ],
+      [
+        "kush_pikeman",
+        "a pikeman, of this people"
+      ],
+      [
+        "kush_grenadier",
+        "a grenadier with a lit grenade, of this people"
+      ],
+      [
+        "kush_berserker",
+        "a bare-chested berserker with two axes, of this people"
+      ],
+      [
+        "kush_rider",
+        "a scout on a light horse, of this people"
+      ],
+      [
+        "kush_knight",
+        "a heavy knight on a warhorse, of this people"
+      ],
+      [
+        "kush_hussar",
+        "a light horseman with a sabre, of this people"
+      ],
+      [
+        "kush_chariot",
+        "an archer in a chariot, of this people"
+      ],
+      [
+        "kush_mammoth",
+        "a war mammoth with a rider, of this people"
+      ]
+    ],
+    [
+      [
+        "kush_ram",
+        "a battering ram, of this people"
+      ],
+      [
+        "kush_scorpion",
+        "a giant crossbow on wheels, of this people"
+      ],
+      [
+        "kush_catapult",
+        "a catapult, of this people"
+      ],
+      [
+        "kush_bombard",
+        "a heavy gun, of this people"
+      ],
+      [
+        "kush_fishboat",
+        "a fishing boat, of this people"
+      ],
+      [
+        "kush_transport",
+        "a transport ship, of this people"
+      ],
+      [
+        "kush_galley",
+        "a war galley, of this people"
+      ],
+      [
+        "kush_frigate",
+        "a gunpowder warship, of this people"
+      ],
+      [
+        "kush_shaman",
+        "a pagan shaman, of this people"
+      ],
+      [
+        "kush_priest",
+        "a priest with a cross, of this people"
+      ],
+      [
+        "kush_prophet",
+        "a prophet with arms raised, of this people"
+      ],
+      [
+        "kush_slaver",
+        "a slaver with rope and shackles, of this people"
+      ],
+      [
+        "kush_warlord",
+        "a warlord with a banner, of this people"
+      ],
+      [
+        "kush_strategist",
+        "an old general with a map, of this people"
+      ],
+      [
+        "kush_captive_m",
+        "a captive man in shackles, of this people"
+      ],
+      [
+        "kush_captive_f",
+        "a captive woman, fully covered, wrists bound, of this people"
+      ]
+    ],
+    [
+      [
+        "wild_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "wild_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "england_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "england_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "hearth_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "hearth_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "stonekin_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "stonekin_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "greece_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "greece_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "dawn_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "dawn_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "babylon_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "babylon_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "persia_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "persia_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ]
+    ],
+    [
+      [
+        "arabs_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "arabs_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "egypt_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "egypt_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "steppe_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "steppe_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "forge_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "forge_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "japan_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "japan_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "mali_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "mali_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "kush_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "kush_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and a thick cloth band wound over her chest, hands tied behind, gaunt, of this people"
+      ],
+      [
+        "status_enslaved_m",
+        "a man held by slavers, in a ragged loincloth, hands tied behind"
+      ],
+      [
+        "status_enslaved_f",
+        "a woman held by slavers, in a ragged loincloth and chest band, hands tied behind"
+      ]
+    ],
+    [
+      [
+        "wild_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "wild_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "wild_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "england_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "england_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "england_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "hearth_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "hearth_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "hearth_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "stonekin_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "stonekin_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "stonekin_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "greece_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "greece_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "greece_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "status_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: numb and hollow-eyed, of no clear people"
+      ]
+    ],
+    [
+      [
+        "dawn_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "dawn_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "dawn_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "babylon_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "babylon_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "babylon_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "persia_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "persia_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "persia_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "arabs_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "arabs_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "arabs_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "egypt_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "egypt_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "egypt_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "status_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: numb and hollow-eyed, of no clear people"
+      ]
+    ],
+    [
+      [
+        "steppe_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "steppe_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "steppe_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "forge_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "forge_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "forge_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "japan_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "japan_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "japan_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "mali_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "mali_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "mali_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "kush_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: full-figured, large-bosomed, in quiet despair, tears, of this people"
+      ],
+      [
+        "kush_enslaved_f_2",
+        "held by slavers, loincloth, hands tied behind: average figure, defiant, glaring, of this people"
+      ],
+      [
+        "kush_enslaved_f_3",
+        "held by slavers, loincloth, hands tied behind: slender, frightened, arms drawn in, of this people"
+      ],
+      [
+        "status_enslaved_f_1",
+        "held by slavers, loincloth, hands tied behind: numb and hollow-eyed, of no clear people"
+      ]
+    ],
+    [
+      [
+        "wild_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "wild_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "wild_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "england_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "england_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "england_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "hearth_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "hearth_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "hearth_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "stonekin_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "stonekin_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "stonekin_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "greece_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "greece_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "greece_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "status_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: numb and hollow-eyed, of no clear people"
+      ]
+    ],
+    [
+      [
+        "dawn_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "dawn_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "dawn_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "babylon_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "babylon_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "babylon_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "persia_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "persia_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "persia_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "arabs_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "arabs_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "arabs_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "egypt_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "egypt_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "egypt_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "status_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: numb and hollow-eyed, of no clear people"
+      ]
+    ],
+    [
+      [
+        "steppe_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "steppe_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "steppe_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "forge_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "forge_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "forge_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "japan_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "japan_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "japan_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "mali_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "mali_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "mali_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "kush_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: big and broad, defiant, fists on his chain, of this people"
+      ],
+      [
+        "kush_enslaved_m_2",
+        "held by slavers, loincloth, hands tied behind: average build, broken, weeping, of this people"
+      ],
+      [
+        "kush_enslaved_m_3",
+        "held by slavers, loincloth, hands tied behind: old and thin, staring empty, of this people"
+      ],
+      [
+        "status_enslaved_m_1",
+        "held by slavers, loincloth, hands tied behind: numb and hollow-eyed, of no clear people"
+      ]
+    ],
+    [
+      [
+        "wild_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "wild_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "wild_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "wild_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "wild_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "wild_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "wild_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "wild_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "wild_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "wild_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "wild_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "wild_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "wild_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "wild_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "wild_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "wild_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "england_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "england_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "england_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "england_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "england_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "england_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "england_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "england_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "england_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "england_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "england_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "england_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "england_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "england_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "england_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "england_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "hearth_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "hearth_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "hearth_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "hearth_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "hearth_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "hearth_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "hearth_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "hearth_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "hearth_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "hearth_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "hearth_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "hearth_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "hearth_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "hearth_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "hearth_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "hearth_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "stonekin_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "stonekin_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "stonekin_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "stonekin_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "stonekin_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "stonekin_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "stonekin_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "stonekin_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "stonekin_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "stonekin_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "stonekin_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "stonekin_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "stonekin_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "stonekin_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "stonekin_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "stonekin_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "greece_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "greece_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "greece_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "greece_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "greece_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "greece_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "greece_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "greece_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "greece_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "greece_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "greece_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "greece_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "greece_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "greece_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "greece_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "greece_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "dawn_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "dawn_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "dawn_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "dawn_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "dawn_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "dawn_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "dawn_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "dawn_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "dawn_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "dawn_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "dawn_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "dawn_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "dawn_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "dawn_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "dawn_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "dawn_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "babylon_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "babylon_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "babylon_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "babylon_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "babylon_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "babylon_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "babylon_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "babylon_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "babylon_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "babylon_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "babylon_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "babylon_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "babylon_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "babylon_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "babylon_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "babylon_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "persia_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "persia_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "persia_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "persia_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "persia_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "persia_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "persia_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "persia_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "persia_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "persia_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "persia_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "persia_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "persia_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "persia_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "persia_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "persia_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "arabs_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "arabs_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "arabs_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "arabs_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "arabs_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "arabs_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "arabs_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "arabs_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "arabs_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "arabs_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "arabs_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "arabs_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "arabs_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "arabs_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "arabs_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "arabs_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "egypt_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "egypt_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "egypt_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "egypt_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "egypt_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "egypt_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "egypt_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "egypt_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "egypt_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "egypt_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "egypt_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "egypt_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "egypt_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "egypt_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "egypt_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "egypt_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "steppe_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "steppe_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "steppe_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "steppe_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "steppe_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "steppe_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "steppe_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "steppe_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "steppe_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "steppe_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "steppe_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "steppe_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "steppe_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "steppe_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "steppe_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "steppe_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "forge_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "forge_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "forge_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "forge_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "forge_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "forge_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "forge_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "forge_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "forge_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "forge_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "forge_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "forge_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "forge_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "forge_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "forge_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "forge_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "japan_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "japan_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "japan_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "japan_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "japan_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "japan_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "japan_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "japan_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "japan_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "japan_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "japan_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "japan_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "japan_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "japan_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "japan_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "japan_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "mali_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "mali_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "mali_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "mali_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "mali_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "mali_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "mali_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "mali_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "mali_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "mali_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "mali_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "mali_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "mali_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "mali_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "mali_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "mali_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "kush_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "kush_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "kush_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "kush_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "kush_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "kush_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "kush_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "kush_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "kush_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "kush_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "kush_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "kush_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "kush_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "kush_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "kush_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "kush_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ]
   ],
-  [
-   [
-    "attackmove",
-    "two crossed swords"
-   ],
-   [
-    "patrol",
-    "a guard walking with a lantern"
-   ],
-   [
-    "stance_aggressive",
-    "a charging wild boar"
-   ],
-   [
-    "stance_defensive",
-    "a shield planted upright in the ground"
-   ],
-   [
-    "stance_hold",
-    "a banner on a pole planted in the ground"
-   ],
-   [
-    "unload",
-    "a gangplank from a boat down to a beach"
-   ],
-   [
-    "unstaff",
-    "one person walking out of a doorway"
-   ],
-   [
-    "release",
-    "a crowd of people walking out through an open gate"
-   ],
-   [
-    "page_settlement",
-    "a cluster of three small thatched houses"
-   ],
-   [
-    "page_military",
-    "a helmet above two crossed spears"
-   ],
-   [
-    "node_tree",
-    "a single oak tree"
-   ],
-   [
-    "node_berries",
-    "a bush covered in red berries"
-   ],
-   [
-    "node_gold",
-    "a rock veined with gold ore"
-   ],
-   [
-    "node_stone",
-    "a heap of grey boulders"
-   ],
-   [
-    "node_carcass",
-    "a haunch of venison on the ground"
-   ],
-   [
-    "node_fish",
-    "two fish leaping from water"
-   ]
-  ],
-  [
-   [
-    "towncenter",
-    "a timber town hall with a central tower and a banner"
-   ],
-   [
-    "house",
-    "a small thatched cottage with a smoking chimney"
-   ],
-   [
-    "storehouse",
-    "a wooden storehouse with barrels and sacks"
-   ],
-   [
-    "dock",
-    "a wooden pier with a boathouse"
-   ],
-   [
-    "farm",
-    "a ploughed field of wheat with a scarecrow"
-   ],
-   [
-    "barracks",
-    "a long soldiers' hall with shields hung on the wall"
-   ],
-   [
-    "range",
-    "a round straw archery target with arrows in it"
-   ],
-   [
-    "stable",
-    "a horse looking out over a stable door"
-   ],
-   [
-    "temple",
-    "a stone church with a steeple and a cross"
-   ],
-   [
-    "tavern",
-    "a tavern with a hanging sign and a foaming ale mug"
-   ],
-   [
-    "workcamp",
-    "a stockade of sharpened stakes with a watch platform"
-   ],
-   [
-    "blacksmith",
-    "an anvil and hammer by a glowing forge"
-   ],
-   [
-    "workshop",
-    "a carpenter's workshop with a great wooden wheel"
-   ],
-   [
-    "wonder",
-    "a towering stepped monument with a golden top"
-   ],
-   [
-    "market",
-    "a market stall under a striped awning"
-   ],
-   [
-    "tower",
-    "a tall stone watch tower"
-   ]
-  ],
-  [
-   [
-    "palisade",
-    "a wall of sharpened wooden logs"
-   ],
-   [
-    "stonewall",
-    "a stretch of stone wall with battlements"
-   ],
-   [
-    "gate",
-    "a fortified gatehouse with open wooden doors"
-   ],
-   [
-    "stonetools",
-    "a flint hand axe"
-   ],
-   [
-    "bronzetools",
-    "a bronze pickaxe and sickle crossed"
-   ],
-   [
-    "wheelbarrow",
-    "a wooden wheelbarrow loaded with stones"
-   ],
-   [
-    "fertility",
-    "a sheaf of wheat tied with a ribbon beside a lit candle"
-   ],
-   [
-    "extendedfamily",
-    "three thatched roofs of one household joined round a shared hearth"
-   ],
-   [
-    "herbalism",
-    "a mortar and pestle with herbs"
-   ],
-   [
-    "weapons1",
-    "a bronze short sword"
-   ],
-   [
-    "weapons2",
-    "an iron longsword"
-   ],
-   [
-    "weapons3",
-    "a gleaming steel greatsword"
-   ],
-   [
-    "armor1",
-    "a leather hide jerkin"
-   ],
-   [
-    "armor2",
-    "a coat of scale armour"
-   ],
-   [
-    "armor3",
-    "a steel plate breastplate"
-   ],
-   [
-    "ballistics",
-    "a bundle of heavy arrows with iron heads"
-   ]
-  ],
-  [
-   [
-    "up_frigate",
-    "a tall three-masted sailing warship"
-   ],
-   [
-    "up_bowman",
-    "a longbow beside a sling"
-   ],
-   [
-    "up_swordsman",
-    "a sword laid across a wooden club"
-   ],
-   [
-    "up_pike",
-    "a row of long pikes held upright"
-   ],
-   [
-    "up_crossbow",
-    "a wooden crossbow"
-   ],
-   [
-    "up_knight",
-    "a knight's great helm with a plume"
-   ],
-   [
-    "up_musket",
-    "a matchlock musket"
-   ],
-   [
-    "up_bombard",
-    "a bronze cannon barrel being cast"
-   ],
-   [
-    "plague",
-    "a plague doctor's beaked mask"
-   ],
-   [
-    "quake",
-    "the ground splitting in a jagged crack under a falling tower"
-   ],
-   [
-    "deer",
-    "a stag with antlers"
-   ],
-   [
-    "wolf",
-    "a snarling wolf"
-   ],
-   [
-    "clubman",
-    "a stone-age warrior with a wooden club"
-   ],
-   [
-    "slinger",
-    "a warrior whirling a sling"
-   ],
-   [
-    "javelineer",
-    "a warrior about to throw a javelin"
-   ],
-   [
-    "hound",
-    "a war dog in a spiked collar"
-   ]
-  ],
-  [
-   [
-    "chariot",
-    "an archer in a two-wheeled chariot pulled by a horse"
-   ],
-   [
-    "berserker",
-    "a wild bare-chested warrior with two axes"
-   ],
-   [
-    "pikeman",
-    "a soldier with a very long pike"
-   ],
-   [
-    "grenadier",
-    "a soldier holding a lit round grenade"
-   ],
-   [
-    "ram",
-    "a covered battering ram on wheels"
-   ],
-   [
-    "scorpion",
-    "a giant crossbow on a wheeled frame"
-   ],
-   [
-    "hussar",
-    "a light cavalryman with a sabre on a galloping horse"
-   ],
-   [
-    "strategist",
-    "an old general studying a map"
-   ],
-   [
-    "zealot",
-    "a robed warrior with a staff and a short sword"
-   ],
-   [
-    "wolfrider",
-    "a warrior riding a giant wolf"
-   ],
-   [
-    "shieldbearer",
-    "a Roman legionary with a large rectangular shield"
-   ],
-   [
-    "trebuchet",
-    "a tall counterweight trebuchet"
-   ],
-   [
-    "horsearcher",
-    "a steppe archer shooting a bow from a galloping horse"
-   ],
-   [
-    "herbwife",
-    "an old woman healer with a basket of herbs"
-   ],
-   [
-    "organgun",
-    "a cart with a row of many small gun barrels"
-   ],
-   [
-    "templar",
-    "an armoured temple guard on an armoured horse"
-   ]
-  ],
-  [
-   [
-    "warbear",
-    "an armoured bear rearing up"
-   ],
-   [
-    "khopesh",
-    "an Egyptian guard with a curved sickle-sword and shield"
-   ],
-   [
-    "warchariot",
-    "an Egyptian war chariot with two horses"
-   ],
-   [
-    "sapper",
-    "a soldier with a pickaxe and a torch"
-   ],
-   [
-    "gateguard",
-    "a Babylonian guard with a tall shield and spear"
-   ],
-   [
-    "immortal",
-    "a Persian Immortal with a wicker shield and spear"
-   ],
-   [
-    "warelephant",
-    "a war elephant with a tower on its back"
-   ],
-   [
-    "hoplite",
-    "a Greek hoplite with a round shield, crested helmet and spear"
-   ],
-   [
-    "companion",
-    "a Greek cavalryman with a lance on a rearing horse"
-   ],
-   [
-    "longbowman",
-    "an English archer drawing a longbow"
-   ],
-   [
-    "billman",
-    "an English soldier with a hooked polearm"
-   ],
-   [
-    "camelrider",
-    "a warrior riding a camel"
-   ],
-   [
-    "mameluke",
-    "a mounted Mameluke in a turban with a curved sword"
-   ],
-   [
-    "samurai",
-    "a samurai in armour with a katana"
-   ],
-   [
-    "ashigaru",
-    "a Japanese foot soldier in a conical hat with a matchlock gun"
-   ],
-   [
-    "lancer",
-    "a Mongol rider with a long lance"
-   ]
-  ],
-  [
-   [
-    "hearthguard",
-    "a household guard with a round shield and axe"
-   ],
-   [
-    "firethrower",
-    "a soldier with a fire lance spitting flame"
-   ],
-   [
-    "spearman",
-    "a soldier with a spear and small shield"
-   ],
-   [
-    "swordsman",
-    "a soldier with a sword and shield"
-   ],
-   [
-    "bowman",
-    "an archer with a short bow"
-   ],
-   [
-    "crossbowman",
-    "a soldier aiming a crossbow"
-   ],
-   [
-    "musketeer",
-    "a soldier firing a musket"
-   ],
-   [
-    "fishboat",
-    "a small fishing boat with a net"
-   ],
-   [
-    "transport",
-    "a broad wooden transport ship with one sail"
-   ],
-   [
-    "galley",
-    "a war galley with oars and a ram"
-   ],
-   [
-    "frigate",
-    "a sailing warship firing a cannon"
-   ],
-   [
-    "bombard",
-    "a heavy cannon on a wooden carriage"
-   ],
-   [
-    "rider",
-    "a scout on a light horse"
-   ],
-   [
-    "knight",
-    "a knight in full armour on a charging warhorse"
-   ],
-   [
-    "mammoth",
-    "a woolly mammoth with a rider"
-   ],
-   [
-    "shaman",
-    "a shaman in a horned headdress with a bone staff"
-   ]
-  ],
-  [
-   [
-    "priest",
-    "a priest in robes holding up a cross"
-   ],
-   [
-    "slaver",
-    "a rough man carrying a rope and shackles"
-   ],
-   [
-    "prophet",
-    "a wild-bearded prophet with arms raised to the sky"
-   ],
-   [
-    "warlord",
-    "a warlord in a cloak with a great banner"
-   ],
-   [
-    "catapult",
-    "a wooden catapult"
-   ],
-   [
-    "monk",
-    "a monk with a tonsure praying"
-   ],
-   [
-    "nun",
-    "a nun in a habit holding a candle"
-   ],
-   [
-    "milkmaid",
-    "a tavern milkmaid carrying two pitchers"
-   ],
-   [
-    "patron",
-    "a man drinking from a tankard at a table"
-   ],
-   [
-    "captive",
-    "a pair of iron shackles and chain"
-   ],
-   [
-    "mercenary",
-    "a hired soldier holding out a purse of coins"
-   ],
-   [
-    "piety",
-    "an open book with a cross above it"
-   ],
-   [
-    "decadence",
-    "a goblet of wine and a pair of dice"
-   ],
-   [
-    "dilemma",
-    "a set of balance scales"
-   ],
-   [
-    "morale",
-    "a hearth fire burning in a stone fireplace"
-   ],
-   [
-    "trade",
-    "a merchant's cart loaded with goods"
-   ]
-  ],
-  [
-   [
-    "milkmaid_holy",
-    "a modest dairymaid in a high-necked dress, apron and white headscarf carrying two milk pails"
-   ],
-   [
-    "milkmaid_low",
-    "a flirtatious tavern wench in a low-cut laced bodice with bare shoulders, winking, holding two foaming tankards"
-   ],
-   [
-    "patron_holy",
-    "a sober man at a table with a bowl of soup and a small cup"
-   ],
-   [
-    "patron_low",
-    "a drunk man slumped over a table among spilled tankards and dice"
-   ],
-   [
-    "monk_holy",
-    "a serene monk kneeling in prayer"
-   ],
-   [
-    "monk_low",
-    "a fat friar asleep against a wine barrel with a goblet in his hand"
-   ],
-   [
-    "tavern_holy",
-    "a plain quiet village inn with closed shutters and a small sign"
-   ],
-   [
-    "tavern_low",
-    "a gaudy tavern hung with red lanterns and bright banners, a huge ale-mug sign, light blazing from the windows"
-   ],
-   [
-    "temple_holy",
-    "a well-kept white stone church with a tall steeple, a golden cross, flowers at the door and light shining from the windows"
-   ],
-   [
-    "temple_low",
-    "a ruined crumbling church with a collapsed roof, broken steeple, cracked walls overgrown with ivy and weeds"
-   ],
-   [
-    "villager_f_holy",
-    "a modest peasant woman in a headscarf and long dress carrying a loaf of bread"
-   ],
-   [
-    "villager_f_low",
-    "a woman in a gaudy low-cut red dress with bare shoulders, jewellery and loose hair, hand on hip"
-   ],
-   [
-    "villager_m_holy",
-    "a neat hardworking peasant man with a hoe and a straw hat"
-   ],
-   [
-    "villager_m_low",
-    "a slouching idle man with a bottle in one hand and dice in the other"
-   ],
-   [
-    "house_holy",
-    "a tidy thatched cottage with flower boxes and a small cross above the door"
-   ],
-   [
-    "house_low",
-    "a shabby cottage with broken shutters, a sagging roof and empty bottles by the door"
-   ]
-  ]
- ],
- "variants": "Sheet 10 holds pairs: the icon a pious town shows (_holy) and the one a decadent town shows (_low). Its prompt adds: The icons come in pairs: a virtuous version then a decadent version of the same subject.",
- "style_before_woodblock": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: "
+  "variants": "Sheet 10 holds pairs: the icon a pious town shows (_holy) and the one a decadent town shows (_low). Its prompt adds: The icons come in pairs: a virtuous version then a decadent version of the same subject.",
+  "style_before_woodblock": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: ",
+  "nations_note": "Sheets 10 to 24 are one people each (key prefix = the nation's id), rows man / woman / soldier / tavern woman, columns holy / plain / worldly / low. Their prompts used the woodblock style above, the people's skin, hair, dress and arms, and this line, which must stay: Every woman is clothed: her gown always covers her chest, made of thick opaque cloth; no bare breasts, no nipples, no see-through cloth. Sheet 25 is the marks of a person's condition. A woman's figure says nothing of her morals: each woman's figure (full-figured and large-bosomed, of average figure, or slender) is named in the prompt and spread across the four standings differently in every people, and the devout village woman is always full-figured and fully covered. Wickedness is shown by dress, pose, paint and look.",
+  "units_note": "Sheets 26 to 55 are two per people, in the order of sheets 10 to 24: every unit that is not a nation's own, drawn as that people with its own dress, arms, ships and engines (key <nation>_<unit id>), and a captive man and woman of it. Wild beasts and marauders belong to no people and keep one picture.",
+  "enslaved_note": "Sheets 56 and 57: captives held by slavers or marauders, distressed, in loincloths, hands tied behind the back with rope (no chains) (key <nation>_enslaved_<m|f>, falling back to status_enslaved_<m|f>). A captive of a rival nation keeps <nation>_captive_<m|f>, clothed. Every woman wears a thick opaque chest band that covers her breasts, and is drawn as a suffering prisoner, never posed to allure. Sheets 58 to 63 add three more of each (key <nation>_enslaved_<m|f>_<1|2|3>): women 1 full-figured in despair, 2 average and defiant, 3 slender and frightened; men 1 big and defiant, 2 average and sobbing, 3 old and empty; status_enslaved_<m|f>_1 numb. The plain <nation>_enslaved_<m|f> is the worn-down, bowed one. A person keeps one body for life (pick by their id) and their face changes with their state: icons are how the game shows feeling.",
+  "moods_note": "Sheets 64 to 78, one per people in the order of sheets 10 to 24: an ordinary villager in plain dress, in two bodies per sex and four feelings. Key <nation>_<woman_full|woman_slender|man_broad|man_lean>_<content|afraid|grief|angry>. Icons are the only way the game shows feeling: give each person one body for life (from their id) and pick the feeling from their state (fed and safe: content; raided, sick or starving: afraid; bereaved: grief; resentful, rebelling or wronged: angry). The standing icons (sheets 10 to 24) still show a town's morals; condition marks (sheet 25) sit over either."
 }

@@ -7,6 +7,7 @@
  * A town is founded the first time it is asked for, so a campaign saved before this still loads.
  */
 import type { Campaign } from './campaign';
+import { Ages, agesOf, cleanAges, countFrom } from './ageing';
 
 export interface Stores { food: number; wood: number; gold: number; stone: number }
 export const STORE_KINDS = ['food', 'wood', 'gold', 'stone'] as const;
@@ -24,13 +25,13 @@ export interface Notable {
   lost?: { turn: number; how: string };
 }
 /** A town's people and stores between seasons. `men` and `women` are of working age; `children` are records only. */
-export interface Folk { men: number; women: number; elders: number; children: number; stores: Stores; notables: Notable[] }
+export interface Folk { men: number; women: number; elders: number; children: number; stores: Stores; notables: Notable[]; /** Everyone's age, in seasons (ageing.ts). */ ages?: Ages }
 /** A villager a battle knows by name: who they are and how many children they have raised. */
 export interface Named { name: string; family?: string; gender: 'm' | 'f'; kids?: number }
 /** What a town sends into a battle (`PlayerSetup.bonus.people`): its people, the notable among them by name. */
-export interface PeopleIn { men: number; women: number; elders: number; children: number; named?: Named[] }
+export interface PeopleIn { men: number; women: number; elders: number; children: number; named?: Named[]; /** Their ages, in seasons (ageing.ts). */ ages?: Ages }
 /** What a battle hands back for the side that held the town (`Game.census`). `taken`: its people held captive as it ended. */
-export interface Census { men: number; women: number; elders: number; children: number; stores: Stores; taken?: number; named?: Named[] }
+export interface Census { men: number; women: number; elders: number; children: number; stores: Stores; taken?: number; named?: Named[]; /** Their ages, in seasons (ageing.ts). */ ages?: Ages }
 
 /** The most people of one kind a town is kept at, and the most of any one store. */
 export const MAX_KIND = 60;
@@ -87,7 +88,8 @@ export const nationNotables = (c: Campaign, f: number): { at: number; who: Notab
 export function musterFolk(c: Campaign, tid: number): { people: PeopleIn; stores: Stores } {
   const f = folkOf(c, tid);
   const named = living(f).filter((n) => n.kind === 'mother').map((n): Named => ({ name: n.name, gender: n.gender, ...(n.family ? { family: n.family } : {}), ...(n.kids ? { kids: n.kids } : {}) }));
-  return { people: { men: f.men, women: f.women, elders: f.elders, children: f.children, ...(named.length ? { named } : {}) }, stores: { ...f.stores } };
+  const ages = agesOf(c, tid, f);
+  return { people: { men: f.men, women: f.women, elders: f.elders, children: f.children, ...(named.length ? { named } : {}), ages: { m: [...ages.m], f: [...ages.f], k: [...ages.k] } }, stores: { ...f.stores } };
 }
 
 /** Make safe a count of a town handed back from a battle. Nothing if it is not one. */
@@ -99,6 +101,7 @@ export function cleanCensus(x: Partial<Census> | null | undefined): Census | und
     men: whole(x.men, MAX_KIND), women: whole(x.women, MAX_KIND), elders: whole(x.elders, MAX_KIND), children: whole(x.children, MAX_KIND), taken: whole(x.taken, MAX_KIND * 3),
     stores: { food: whole(x.stores.food, MAX_STORE), wood: whole(x.stores.wood, MAX_STORE), gold: whole(x.stores.gold, MAX_STORE), stone: whole(x.stores.stone, MAX_STORE) },
     named,
+    ...(cleanAges(x.ages) ? { ages: cleanAges(x.ages) } : {}),
   };
 }
 
@@ -114,6 +117,10 @@ export interface Reckoning { before: number; after: number; taken: number; lost:
 export function settleFolk(c: Campaign, tid: number, census: Census, opts: { taken?: boolean } = {}): Reckoning {
   const t = c.territories[tid], f = folkOf(c, tid), before = headcount(f);
   f.men = census.men; f.women = census.women; f.elders = census.elders; f.children = census.children;
+  // Everyone at the age the battle found them (ageing.ts), where it counted them so.
+  const ages = cleanAges(census.ages);
+  if (ages && ages.m.length + ages.f.length === census.men + census.women + census.elders && ages.k.length === census.children) countFrom(f, ages);
+  else delete f.ages;
   f.stores = { ...census.stores };
   const here = new Map((census.named ?? []).map((n) => [n.name, n]));
   const lost: Notable[] = [], made: Notable[] = [];
