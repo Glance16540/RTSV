@@ -8,21 +8,24 @@
 // them: every man and woman with no roof is a couple waiting for a house, and a husband is the last man sent to arms
 // (muster.ts asks for a man with no house before one with a wife).
 import type { Game, Unit } from './game';
-import { BIRTH_TIME, GROW_TIME } from './data';
+import { BIRTH_TIME } from './data';
 
 /**
  * The pace of births in a campaign town, slower than a skirmish's (the owner's word: faster than on the map, but
- * far from a child every half minute). A housed couple's first child takes eight minutes, most of a visit; later ones come
- * more slowly still, as in any house. A child takes TOWN_GROW seconds to come of age: sixty visits of ten minutes,
- * as a child on the map takes sixty seasons (seasonfolk.ts), so a visit, which is one season, sees about as many come
- * of age as a season on the map does, and one born on a visit or in a siege grows up over the seasons, not while
- * the player watches.
+ * far from a child every half minute). A housed couple's first child takes eight minutes, most of a visit; later
+ * ones come more slowly still, as in any house.
  */
 export const TOWN_BIRTH = 480;
-export const TOWN_GROW = 600 * 60;
-/** How much longer a birth takes here than the usual BIRTH_TIME, and how much slower a child grows than GROW_TIME. */
+/** How much longer a birth takes here than the usual BIRTH_TIME. */
 export const birthPace = (g: Game): number => (g.bornOnly ? TOWN_BIRTH / BIRTH_TIME : 1);
-export const growPace = (g: Game): number => (g.bornOnly ? GROW_TIME / TOWN_GROW : 1);
+/**
+ * Nobody ages in a campaign town (docs/DESIGN.md, "Time"): a person ages only on the map, a season at a time
+ * (ageing.ts). Children there do not grow, the grown do not grow old, and nobody dies of age. A skirmish or a
+ * mission keeps the ageing it always had, where `Game.aging` is on.
+ */
+export const agesHere = (g: Game): boolean => g.aging && !g.bornOnly;
+/** How fast children grow up here: not at all in a campaign town, at the usual pace elsewhere. */
+export const growPace = (g: Game): number => (g.bornOnly ? 0 : 1);
 
 /** Why the Town Center will not train a villager here. */
 export const BORN_ONLY = 'In the campaign no villager is bought: a town\'s people are born to its housed couples.';

@@ -11,21 +11,21 @@
 //  - How often: a couple raises a child about every MAP_BIRTH seasons (a year and a half) at first, more slowly the more children the
 //    town already has on its records (as a house slows in a town), and sooner or later by the town's creed, which
 //    also decides how many of the births due do not come (the same shares as in a town). No child dies.
-//  - Children are counts on the town's record and are never shown. They come of age over GROWN_AT years
-//    (four seasons to a year) into men and women of working age.
-//
-// Nobody grows old or dies here yet: that is step 3 of the design.
+//  - Children are on the town's record, with their ages, and are never shown. Everyone ages a season at a time
+//    (ageing.ts): a child comes of age at fifteen into a man or a woman of working age, the grown are old at sixty,
+//    and the old die over the years after.
 import type { Campaign, Territory } from './campaign';
 import { virtueOf } from './campaign';
 import { creedOf } from './creed';
 import { BIRTH_COST } from './data';
 import { GROWN_AT } from './nursery';
 import { Folk, MAX_KIND, folkOf, grown } from './township';
+import { ageTown } from './ageing';
 
 declare module './township' {
   interface Folk {
-    /** Progress toward the next birth on the map, in births; and toward the next child coming of age. */
-    due?: number; growing?: number;
+    /** Progress toward the next birth on the map, in births. */
+    due?: number;
     /** Births that were due and did not come, as a house keeps the count. */
     missed?: number;
   }
@@ -65,21 +65,14 @@ export function roomOf(t: Territory): number {
 }
 
 /** One season in one town: children born to its couples, and children come of age. Returns how many were born and grew up. */
-export function seasonTown(c: Campaign, tid: number): { born: number; grew: number; missed: number } {
+export function seasonTown(c: Campaign, tid: number): { born: number; grew: number; missed: number; died: number } {
   const t = c.territories[tid], f = folkOf(c, tid), creed = creedOf(virtueOf(c, t.owner));
-  let born = 0, grew = 0, missed = 0;
-  // Children come of age first, so that a season's grown are counted among those who may marry next season.
-  f.growing = (f.growing ?? 0) + f.children / GROWN_SEASONS;
-  while (f.growing >= 1 && f.children > 0) {
-    f.growing -= 1;
-    f.children--;
-    const boy = hash(c.seed, tid * 977 + c.turn, grew) < 0.5;
-    if ((boy && f.men < MAX_KIND) || f.women >= MAX_KIND) f.men++; else f.women++;
-    grew++;
-  }
-  if (f.children === 0) f.growing = 0;
+  let born = 0, grew = 0, missed = 0, died = 0;
+  // The town's people are a season older first (ageing.ts): children come of age, the grown grow old, the old die.
+  const aged = ageTown(c, tid, f, MAX_KIND);
+  grew = aged.grew; died = aged.died;
   const couples = couplesOf(t, f);
-  if (!couples) { f.due = 0; return { born, grew, missed }; }
+  if (!couples) { f.due = 0; return { born, grew, missed, died }; }
   const slow = Math.min(3, 1 + 0.2 * (f.children / couples));
   f.due = Math.min(couples, (f.due ?? 0) + (couples * creed.birth) / (MAP_BIRTH * slow));
   while (f.due >= 1) {
@@ -89,10 +82,11 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
     if (hash(c.seed, tid * 131 + c.turn, 1000 + born + missed) < creed.childLoss) { missed++; continue; }
     f.stores.food -= BIRTH_COST;
     f.children++;
+    f.ages!.k.push(0);
     born++;
   }
   if (missed) f.missed = (f.missed ?? 0) + missed;
-  return { born, grew, missed };
+  return { born, grew, missed, died };
 }
 
 /** A season passes for the people of every town on the map that is not held by marauders. */
