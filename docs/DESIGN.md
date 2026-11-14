@@ -71,6 +71,7 @@ children born in captivity raise what the holder produces. What is shown of it i
 captives' dress, the work they are put to, the guards. What is done to a captive woman is told by
 what follows from it (a shorter life, children born in captivity), and is not shown.
 Nothing is drawn to suggest it, not even by a sign.
+A captive of slavers or marauders is drawn in a ragged loincloth (a woman with a thick band covering her chest), hands tied behind the back with rope (no chains), dishevelled and worn down; a captive of a rival nation stays clothed, bound and bowed.
 
 Children born in captivity: where the captor is a slaver or a marauder, they are the mother's and
 her people's, and come home with her if she is got back. Where the captor is a rival nation that
