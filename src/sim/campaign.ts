@@ -21,6 +21,7 @@ export const HERO_STRENGTH = 2;
 export const HERO_RANK_STRENGTH = 0.5;
 import { leaderAsMade, leaderType } from './powers';
 import { countryOf, countryYield, rivalOpens } from './country';
+import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 
 /** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
 export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
@@ -224,6 +225,8 @@ export interface Territory {
   seed: number; // battles here are always fought on the same ground
   /** The town on this land's battlefield, as the last battle fought there in person left it. */
   town?: Town;
+  /** The town's people and stores between seasons: see township.ts. Founded the first time it is asked for. */
+  folk?: Folk;
   /** Wood felled, berries picked and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
@@ -1211,6 +1214,8 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     attackerWon = a > d;
   }
   c.pending = null;
+  // A battle nobody watched is paid for by the town in men, and in stores if it falls.
+  if (how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde) tollFolk(c, p.to, attackerWon);
   // The rival leader has something to say about a battle against the player.
   if (p.attacker === 0 || p.defender === 0) {
     const won = attackerWon === (p.attacker === 0);
@@ -1629,6 +1634,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
       ...(defending && !field && t.town?.b.length ? { town: t.town.b } : {}),
+      // The town itself turns out: its own people, living off its own stores (township.ts).
+      ...(defending && !field && !t.horde ? musterFolk(c, t.id) : {}),
     };
   };
   // A siege is always fought over the same ground: the holder in the town's corner, the attacker opposite.
@@ -1682,6 +1689,8 @@ export interface BattleAfter {
   town?: Standing[];
   /** What has been taken from the battlefield for good (`Game.ground()`), whoever won. */
   ground?: Ground;
+  /** The town that was fought over, counted as the battle ended (`Game.census()` of the side that held it when it began). */
+  folk?: Partial<Census>;
 }
 export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, after: BattleAfter = {}): void {
   const { virtue, heroRank, town: standing, ground } = after;
@@ -1694,7 +1703,14 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const mine = humanAttacks ? c.armies.find((a) => a.id === p.armyId) : armyAt(c, p.to);
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   const rankBefore = c.factions[0].heroRank ?? 0;
+  const known = mine?.champion?.name;
+  const camp = !!land.horde; // marauders hold no town
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
+  // The town is what the battle left of it: its people and its stores, whoever holds it now.
+  const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
+  if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
+  // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
+  if (known && mine && !c.armies.includes(mine)) loseVeteran(c, 0, known);
   // Felled wood, picked berries and dug stone are gone whoever won. A field battle is fought on other ground.
   if (ground && p.mode !== 'field' && Array.isArray(ground.gone) && Array.isArray(ground.left)) {
     land.ground = {
@@ -1738,6 +1754,8 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const hero = heroFor(c, 0);
   const kept = cleanChampion(after.champion);
   if (kept) mine.champion = kept; else delete mine.champion;
+  // And is one of the notable people of the nation's chief town (or, if that is lost, of the land just fought over).
+  if (kept) rememberVeteran(c, (c.territories.find((t) => t.capital === 0 && t.owner === 0) ?? c.territories.find((t) => t.owner === 0) ?? land).id, kept);
   if (before.hero && !after.fell && !after.acclaimed && Array.isArray(after.powers) && c.factions[0].heroAlive) {
     const { rank: _rank, ...made } = hero;
     c.factions[0].hero = { ...made, powers: [0, 1, 2].map((t) => (after.powers![t] === 0 || after.powers![t] === 1 ? after.powers![t] : made.powers?.[t] ?? -1)) };

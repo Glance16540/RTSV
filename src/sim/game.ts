@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { Census, MAX_KIND, PeopleIn, Stores } from './township';
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, CALAMITY, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
@@ -315,7 +316,8 @@ export interface PlayerSetup {
   /** `armed`: the side already has every weapon upgrade of its starting age. */
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
-  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[] };
+  /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
+  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; people?: PeopleIn; stores?: Partial<Stores> };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -473,13 +475,16 @@ export class Game {
       } else if (!field) {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
-        this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
-        this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
-        this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
-        this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
+        if (s.bonus?.people) this.peopled(i, s.bonus.people, st, dir);
+        else {
+          this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
+          this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
+          this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
+          this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
+        }
       }
       // The founders are not all the same age, so they do not all die in the same minute.
-      for (const u of this.units) if (u.owner === i) u.age = this.rng() * 240;
+      for (const u of this.units) if (u.owner === i) u.age = u.age > 0 ? u.age : this.rng() * 240;
       if (s.bonus) {
         const p = this.players[i];
         p.age = s.bonus.age ?? 0;
@@ -488,6 +493,8 @@ export class Game {
           for (const t of Object.values(TECHS)) if (t.upgrade && t.age <= p.age) { p.techs.add(t.id); p.upgrades[t.upgrade[0]] = t.upgrade[1]; }
         }
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
+        // A town fights out of its own stores, not out of the usual stock.
+        if (s.bonus.stores) for (const r of RES_TYPES) p.res[r] = Math.max(0, Math.round(Number(s.bonus.stores[r]) || 0));
         // What was left standing here after the last battle still stands, unless another camp is pitched on it.
         for (const [type, cx, cy, health, built] of [...(s.bonus.town ?? [])].sort((a, b) => Number(b[0] === 'towncenter') - Number(a[0] === 'towncenter'))) {
           const def = BUILDINGS[type];
@@ -517,6 +524,8 @@ export class Game {
           const at = type === 'tower' && this.canPlace(type, cx, cy) ? { cx, cy } : this.siteNear(type, st, dir);
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
+        // The town's children are on the record of one of its roofs, part grown.
+        if (s.bonus.people?.children && !field) this.cradled(i, s.bonus.people.children);
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
           // In a field battle the army forms up where the town would have been.
@@ -864,6 +873,63 @@ export class Game {
     let lo = Infinity, hi = -Infinity;
     for (let y = cy; y < cy + s; y++) for (let x = cx; x < cx + s; x++) { const h = this.spec.height[y * this.size + x]; lo = Math.min(lo, h); hi = Math.max(hi, h); }
     return hi - lo > (s > 1 ? 0.4 : 0.6);
+  }
+
+  /** A town's own people take the field in place of four founders: its men, its women and its old, the notable among them by name. */
+  private peopled(owner: number, people: PeopleIn, st: { x: number; y: number }, dir: number): void {
+    const count = (v: unknown): number => Math.max(0, Math.min(MAX_KIND, Math.round(Number(v) || 0)));
+    const men = count(people.men), women = count(people.women), elders = count(people.elders);
+    const named = (people.named ?? []).slice(0, 40);
+    let k = 0;
+    const one = (gender: Gender, old: boolean): Unit => {
+      const u = this.spawnUnit('villager', owner, st.x - 3.5 + (k % 8), st.y + (3.5 + Math.floor(k / 8)) * dir, gender);
+      k++;
+      // The old are in the last third of their lives; the rest are spread through the years before it.
+      u.age = Math.max(1, u.lifespan * (old ? ELDER_AT + this.rng() * (0.95 - ELDER_AT) : this.rng() * ELDER_AT * 0.9));
+      return u;
+    };
+    const folk: Unit[] = [];
+    for (let j = 0; j < Math.max(men, women); j++) { if (j < men) folk.push(one('m', false)); if (j < women) folk.push(one('f', false)); }
+    for (let j = 0; j < elders; j++) folk.push(one(j % 2 ? 'm' : 'f', true));
+    // Those the nation knows by name are among them, with what they are known for.
+    for (const n of named) {
+      const u = folk.find((x) => x.gender === n.gender && !x.story?.length && !(x.kids ?? 0) && !named.some((m) => m !== n && m.name === x.name)) ?? null;
+      if (!u || typeof n.name !== 'string' || !n.name) continue;
+      u.name = n.name.slice(0, 40);
+      if (typeof n.family === 'string' && n.family) u.family = n.family.slice(0, 40);
+      u.kids = Math.max(0, Math.round(Number(n.kids) || 0));
+    }
+  }
+
+  /** A town's children are set down on the record of one of its roofs, each some way toward being grown. */
+  private cradled(owner: number, children: number): void {
+    const roofs = this.buildings.filter((b) => b.owner === owner && !b.dead && b.complete && (b.type === 'house' || b.type === 'towncenter')).sort((a, b) => Number(b.type === 'house') - Number(a.type === 'house') || a.id - b.id);
+    if (!roofs.length) return;
+    const n = Math.max(0, Math.min(MAX_KIND, Math.round(Number(children) || 0)));
+    for (let j = 0; j < n; j++) { const c = this.bear(roofs[j % roofs.length]); c.left = GROW_TIME * (0.1 + this.rng() * 0.9); if (c.frail && c.frail >= c.left) delete c.frail; }
+  }
+
+  /**
+   * A count of a side's town as it stands (township.ts): its men and women of working age, its old, the children on
+   * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name.
+   */
+  census(owner: number): Census {
+    const p = this.players[owner], out: Census = { men: 0, women: 0, elders: 0, children: p?.wards?.length ?? 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, taken: 0, named: [] };
+    if (!p) return out;
+    for (const r of RES_TYPES) out.stores[r] = Math.max(0, Math.floor(p.res[r]));
+    for (const u of this.units) {
+      if (u.captive && u.captive.from === owner) out.taken!++;
+      if (u.owner !== owner || u.type !== 'villager' || u.dead || !u.gender) continue;
+      if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (u.gender === 'm') out.men++; else out.women++;
+      if (u.gender === 'f' && (u.kids ?? 0) > 0) out.named!.push({ name: u.name, gender: 'f', kids: u.kids, ...(u.family ? { family: u.family } : {}) });
+    }
+    for (const b of this.buildings) {
+      if (b.dead) continue;
+      if (b.owner === owner) out.children += b.young?.length ?? 0;
+      for (const c of b.captives ?? []) if (c.from === owner) out.taken!++;
+    }
+    out.named = out.named!.sort((a, b) => (b.kids ?? 0) - (a.kids ?? 0) || a.name.localeCompare(b.name)).slice(0, 12);
+    return out;
   }
 
   /** A side's buildings as they stand, each with the share of its health left, the unfinished with how far built: what `bonus.town` takes. */
