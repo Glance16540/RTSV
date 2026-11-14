@@ -49,7 +49,13 @@ long outlive her use to her captors. What the captor gains depends on who he is.
 that assimilates gains population outright. Slavers gain output: the captives' labour and the
 children born in captivity raise what the holder produces. What is shown of it is the place and the condition: the stockade, the quarters, the
 captives' dress, the work they are put to, the guards. What is done to a captive woman is told by
-what follows from it (a shorter life, children born to the captor), and is not shown.
+what follows from it (a shorter life, children born in captivity), and is not shown. The most the
+game may ever suggest is clothing laid aside and taken up again, with no figures in it; this
+concerns grown women only, and nothing of the kind is ever suggested of a child.
+
+Children born in captivity: where the captor is a slaver or a marauder, they are the mother's and
+her people's, and come home with her if she is got back. Where the captor is a rival nation that
+assimilates, they are that nation's.
 
 **Acts of God.** Famine, plague, fire and the like come at random. They fall harder on the
 decadent than on the holy, but spare nobody: a Righteous town has them at about a third of the
