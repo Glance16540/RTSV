@@ -14,7 +14,7 @@ import { LEADERS, LEADER_EVENTS, leaderOf, lineKey, monogram, personaLines, setL
 import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES, STYLE_RULES, UNITS, styleOf } from '../src/sim/data';
 import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, answerTale, Campaign, heroFor, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, homeCorner, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
-import { run, setups, spot, villagers } from './helpers';
+import { menAt, run, setups, spot, villagers } from './helpers';
 
 describe('map', () => {
   it('always connects both bases by land', () => {
@@ -272,9 +272,10 @@ describe('ai', () => {
     const ais = [new AIController(g, 0), new AIController(g, 1)];
     ais[0].setLevel(0);
     ais[1].setLevel(2);
-    run(g, 60 * 45, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
+    // An hour, not 45 minutes: since a soldier is made of a villager, armies are smaller and this war ends at minute 53.
+    run(g, 60 * 60, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
     expect(g.winner).toBe(1);
-  }, 120000);
+  }, 180000);
 });
 
 describe('wildlife and shelter', () => {
@@ -1603,6 +1604,7 @@ describe('water and ships', () => {
     const [cx, cy] = shore(g);
     const dock = g.spawnBuilding('dock', 0, cx, cy, true);
     g.players[0].res.wood = 500;
+    menAt(g, 0, 1, dock); // a boat is crewed by a man of the town
     expect(g.cmdTrain(0, dock.id, 'fishboat')).toBe(true);
     run(g, 25);
     const boat = g.units.find((u) => u.type === 'fishboat')!;
@@ -1663,7 +1665,8 @@ describe('the AI at sea', () => {
     const g = new Game(11, [{ name: 'A', color: 1, isAI: true }, { name: 'B', color: 2, isAI: true }], 96, false, true);
     const ais = [new AIController(g, 0), new AIController(g, 1)];
     let boats = 0, galleys = 0;
-    for (let t = 0; t < 20 * 60 * 14 && g.winner < 0; t++) {
+    // Twenty minutes, not fourteen: a ship is crewed by a man of the town now, and on this map the first sails at minute 17.
+    for (let t = 0; t < 20 * 60 * 20 && g.winner < 0; t++) {
       g.step();
       if (t % 20 === 0) for (const a of ais) a.update();
       if (t % 200 === 0) { boats = Math.max(boats, g.units.filter((u) => u.type === 'fishboat').length); galleys = Math.max(galleys, g.units.filter((u) => u.def.naval && !u.def.fisher).length); }
@@ -1672,7 +1675,7 @@ describe('the AI at sea', () => {
     expect(boats).toBeGreaterThanOrEqual(2);
     expect(galleys).toBeGreaterThanOrEqual(1);
     for (const u of g.units) if (u.def.naval) expect(g.terrain[Math.floor(u.y) * g.size + Math.floor(u.x)]).toBe(1);
-  });
+  }, 60000);
 });
 
 describe('transport ships', () => {
