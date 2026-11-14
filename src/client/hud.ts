@@ -598,8 +598,11 @@ export class Hud {
       ['Build a House', 'Select a villager, press Q, then click a spot near the Town Center.', mine.some((b) => b.type === 'house' && b.complete)],
       ['Start a family', 'Select the house and press Q, or right-click it with a man and a woman.', mine.some((b) => b.residents.m && b.residents.f)],
       ['Grow to 10 people', 'Train villagers at the Town Center (H) and let your families raise children.', p.pop >= 10],
+      // Where there is water to fish and fight on, the Dock is taught while the town is still small.
+      ...(game.sea ? [['Take to the water', 'Villager → Dock, set at the water\'s edge. Select it to build a fishing boat, and later warships and transports.', units.some((u) => u.def.naval)] as [string, string, boolean]] : []),
       ['Raise an army', 'Villager → Military buildings (V) → Barracks, then train three soldiers.', units.filter((u) => game.isMilitary(u)).length >= 3],
       ['Advance to the Bronze Age', 'Select the Town Center (H) and press T once you have the food and wood.', p.age >= 1],
+      ['Choose what your town believes', 'Villager → Church or Tavern, then right-click it with villagers to station them inside. A Church makes your people pious, a Tavern decadent, and each changes what your town is good at.', mine.some((b) => (b.type === 'temple' || b.type === 'tavern') && b.complete && (b.staff?.length ?? 0) > 0)],
       ['Destroy your rivals', 'Scout with soldiers, then select your army, press Q and click their base.', game.winner === pid],
     ];
     const i = steps.findIndex((s) => !s[2]);
