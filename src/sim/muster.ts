@@ -6,9 +6,10 @@
 //
 // Who goes: soldiers, crews and engineers come from the men. Healers and the like (the 'support' class) may be
 // women or men, and a woman is asked first so that the men are left for the ranks. Of those who may go, the
-// nearest with nothing to do is taken; if nobody is idle, the nearest at work.
+// nearest with nothing to do is taken; if nobody is idle, the nearest at work. Whoever has no house goes before a
+// husband or a wife, so that a household is not broken while there is anyone else to send.
 //
-// Who costs nobody: a villager (trained at the Town Center and born to housed couples, as before), a beast
+// Who costs nobody: a villager (born to housed couples, and outside the campaign trained at the Town Center), a beast
 // (hound, mammoth, bear, elephant), and the nation's leader (a named person of the nation, not one of the town).
 // Units that do not come out of a building (a war band's first fighters, marauders, hired swords, an army
 // brought to a battle) arrive as they always did.
@@ -40,8 +41,9 @@ export function recruits(g: Game, owner: number, def: UnitDef): Unit[] {
 export function recruitFor(g: Game, b: Building, def: UnitDef): Unit | null {
   let best: Unit | null = null, bestD = Infinity;
   for (const v of recruits(g, b.owner, def)) {
-    // An idle hand before a busy one, and for the healing arts a woman before a man.
-    const d = Math.hypot(v.x - b.x, v.y - b.y) + (v.order ? 1000 : 0) + (def.cls === 'support' && v.gender === 'm' ? 5000 : 0);
+    // One with no house before one with a husband or wife in it (a house left with one of a couple raises no
+    // children), an idle hand before a busy one, and for the healing arts a woman before a man.
+    const d = Math.hypot(v.x - b.x, v.y - b.y) + (v.order ? 1000 : 0) + (v.homeId ? 2000 : 0) + (def.cls === 'support' && v.gender === 'm' ? 5000 : 0);
     if (d < bestD) { bestD = d; best = v; }
   }
   return best;
