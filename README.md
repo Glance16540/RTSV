@@ -162,6 +162,12 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   Decadent. It covers how readily plague is caught and how long it lasts, how often lightning and accident find a
   town and how long those fires burn, how readily fire spreads, how often a harvest fails and on how many fields, and how fast a famine takes people. It does not
   soften what an enemy does directly: a Prophet's fire burns the building it falls on for as long as ever.
+- *On the campaign map* (`src/sim/acts.ts`): every season each held land may be struck by one of the three, by
+  the same measure of its holder's creed. A failed harvest costs what the land would have yielded. Plague stays
+  two seasons, costs a supply a season, takes a company a season from an army kept there and may pass to the land
+  next door. Fire costs supplies to rebuild and leaves the land's town damaged for the next battle there. A hard
+  strike (rare, and very rare for the Righteous) does more: unfed soldiers walk away, or a farm or barracks burns
+  down. No famine or fire where it rains; twice as many under dust. Each is marked on the map and told in the log.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
