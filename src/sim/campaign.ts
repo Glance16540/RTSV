@@ -70,7 +70,7 @@ export function virtueDrift(c: Campaign, f: number): number {
   for (const t of c.territories) if (t.owner === f) n += (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0);
   return n + placeGood(c, f, 'virtue');
 }
-function shiftVirtue(c: Campaign, f: number, by: number): void {
+export function shiftVirtue(c: Campaign, f: number, by: number): void {
   const x = c.factions[f];
   if (!x || !by) return;
   const was = creedOf(x.virtue ?? 0);

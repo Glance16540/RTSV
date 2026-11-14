@@ -44,7 +44,7 @@ export function updateLessons(game: Game, pid: number, quiet: boolean): void {
   const list = load();
   if (upAt) {
     // It sits beneath the guide, wherever the guide's foot now is.
-    box.style.top = `${guide.classList.contains('hidden') ? 50 : guide.offsetTop + guide.offsetHeight + 8}px`;
+    box.style.top = `${guide.offsetHeight === 0 ? 50 : guide.offsetTop + guide.offsetHeight + 8}px`;
     if (quiet || game.time - upAt > STAY || game.time < upAt) close();
     return;
   }
@@ -58,5 +58,5 @@ export function updateLessons(game: Game, pid: number, quiet: boolean): void {
   upAt = game.time || 0.001;
   box.innerHTML = `<h4>${l.title}<button title="Put this away">✕</button></h4><p>${l.text}</p><button class="lesson-off" data-lesson="off">Tell me no more of these</button>`;
   box.classList.remove('hidden');
-  box.style.top = `${guide.classList.contains('hidden') ? 50 : guide.offsetTop + guide.offsetHeight + 8}px`;
+  box.style.top = `${guide.offsetHeight === 0 ? 50 : guide.offsetTop + guide.offsetHeight + 8}px`;
 }

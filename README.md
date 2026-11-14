@@ -258,6 +258,10 @@ over the map, each marked done by what the player has done, and a page, *How the
 opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
 out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`. In a battle, a slip under the first-steps guide teaches fire-fighting, famine, walls, towers, the market and the work camp the first time each is needed.
 
+**A visit.** On the campaign map, a land of your own has an *Enter the town* button: up to ten minutes
+of that season played in the town itself, with no enemy there. What you build stays on the map, as it
+does after a siege. Each town once a season. Rules in `src/sim/visit.ts`, screen in `src/client/visit.ts`.
+
 **Day and night.** Settings set how long a day lasts (3, 5 or 10 minutes) and whether night falls at
 all (`src/sim/daylight.ts`). There is a sky with the sun, a moon and stars (`src/client/sky.ts`); the
 game's own camera looks down and does not see it, so it shows on the main menu, whose camera looks into
