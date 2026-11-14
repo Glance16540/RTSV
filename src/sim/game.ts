@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { Census, MAX_KIND, PeopleIn, Stores } from './township';
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, CALAMITY, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
@@ -10,6 +11,8 @@ import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
+import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
+import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
@@ -57,6 +60,7 @@ export type Order =
   | { t: 'shelter'; id: number; then?: Order | null }
   | { t: 'board'; id: number }
   | { t: 'staff'; id: number }
+  | { t: 'enlist'; id: number }
   | { t: 'capture'; id: number; t0?: number }
   | { t: 'deliver'; id: number }
   | { t: 'unload'; x: number; y: number; started?: boolean; tries?: number }
@@ -143,6 +147,9 @@ export interface QueueItem {
   time: number;
   cost: Cost;
   blocked?: boolean; // waiting for population room
+  /** The villager being made into this unit (muster.ts): 0 while nobody has been found, and `in` once they are inside. */
+  who?: number;
+  in?: boolean;
 }
 
 export interface Building extends Base {
@@ -227,7 +234,7 @@ export interface Player extends HallState {
   /** The nation's leader as made in the creator, and the veterancy they will take the field with next. */
   hero?: HeroSpec; heroRank?: number;
   /** Their leader has fallen in this battle; and the one leading now is a soldier raised in their place. */
-  heroFell?: boolean; acclaimed?: boolean;
+  heroFell?: boolean; acclaimed?: boolean; leaderAway?: boolean;
   /** Seconds the food store has stayed bare, and how many a famine has taken (famine.ts). */
   hunger?: number; starved?: number;
   id: number;
@@ -313,13 +320,16 @@ export interface PlayerSetup {
   civ?: string;
   /** The nation's leader, where someone has made their own of them. */
   hero?: Partial<HeroSpec>;
+  /** The leader is elsewhere on the campaign map: nobody raised in this battle is the leader in person. */
+  leaderAway?: boolean;
   /** Where this people's town stands between piety and decadence as the battle opens (Conquest carries it over). */
   virtue?: number;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
   /** `armed`: the side already has every weapon upgrade of its starting age. */
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
-  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[] };
+  /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
+  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; people?: PeopleIn; stores?: Partial<Stores> };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -359,6 +369,8 @@ export class Game {
   humanId = 0;
   /** Villagers grow old and die. Turned off for short Conquest battles. */
   aging = true;
+  /** A town in a campaign is in its nation's age, which advances only on the map: nobody ages up in the battle. */
+  fixedAge = false;
   /** Progress of a scripted mission, if one is being played: which, a counter, and ids it is tracking. */
   scenario: { id: string; n: number; ids: number[] } | null = null;
   /** Whether a band of marauders, belonging to no people, makes camp in the wilds of this map. Off unless asked for. */
@@ -464,6 +476,7 @@ export class Game {
       this.heroes.push([]);
       this.leaders.push(null);
       if (s.hero) { this.players[i].hero = cleanHero(s.hero, this.players[i].civ); this.players[i].heroRank = this.players[i].hero!.rank ?? 0; }
+      if (s.leaderAway) this.players[i].leaderAway = true;
       this.tcs.push([]);
       const st = this.spec.starts[i];
       const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
@@ -477,13 +490,16 @@ export class Game {
       } else if (!field) {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
-        this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
-        this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
-        this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
-        this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
+        if (s.bonus?.people) this.peopled(i, s.bonus.people, st, dir);
+        else {
+          this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
+          this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
+          this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
+          this.spawnUnit('villager', i, st.x + 1.5, st.y + 3.5 * dir, 'f');
+        }
       }
       // The founders are not all the same age, so they do not all die in the same minute.
-      for (const u of this.units) if (u.owner === i) u.age = this.rng() * 240;
+      for (const u of this.units) if (u.owner === i) u.age = u.age > 0 ? u.age : this.rng() * 240;
       if (s.bonus) {
         const p = this.players[i];
         p.age = s.bonus.age ?? 0;
@@ -492,6 +508,8 @@ export class Game {
           for (const t of Object.values(TECHS)) if (t.upgrade && t.age <= p.age) { p.techs.add(t.id); p.upgrades[t.upgrade[0]] = t.upgrade[1]; }
         }
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
+        // A town fights out of its own stores, not out of the usual stock.
+        if (s.bonus.stores) for (const r of RES_TYPES) p.res[r] = Math.max(0, Math.round(Number(s.bonus.stores[r]) || 0));
         // What was left standing here after the last battle still stands, unless another camp is pitched on it.
         for (const [type, cx, cy, health, built] of [...(s.bonus.town ?? [])].sort((a, b) => Number(b[0] === 'towncenter') - Number(a[0] === 'towncenter'))) {
           const def = BUILDINGS[type];
@@ -521,6 +539,8 @@ export class Game {
           const at = type === 'tower' && this.canPlace(type, cx, cy) ? { cx, cy } : this.siteNear(type, st, dir);
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
+        // The town's children are on the record of one of its roofs, part grown.
+        if (s.bonus.people?.children && !field) this.cradled(i, s.bonus.people.children);
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
           // In a field battle the army forms up where the town would have been.
@@ -577,7 +597,7 @@ export class Game {
     if (def.cls === 'siege') u.hp = u.maxHp = Math.round(def.hp * this.players[owner].mods.siegeHp);
     // The first hero of their calling a people raises is their leader in person.
     // (One raised from the ranks fights on as what they were; nobody steps into their place if they fall.)
-    if (this.players[owner] && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderType(this.heroOf(owner))) && !this.units.some((o) => o.owner === owner && o.hero)) {
+    if (this.players[owner] && !this.players[owner].leaderAway && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderType(this.heroOf(owner))) && !this.units.some((o) => o.owner === owner && o.hero)) {
       const rank = this.players[owner].heroRank ?? 0;
       u.name = this.heroOf(owner).name;
       u.hero = { xp: RANK_XP[rank], rank };
@@ -737,6 +757,7 @@ export class Game {
     } else if (e.kind === 'building') {
       if (e.type === 'towncenter') this.relayRoads(); else this.liftRoad(e.id);
       this.unstaff(e, e.staff?.length ?? 0);
+      for (const q of e.queue) this.discharge(e, q);
       this.rehome(e);
       // A fallen camp's prisoners go home.
       (e.captives ?? []).forEach((c, i) => this.freeCaptive(c, e.x - 1.5 + (i % 4), e.y + e.size / 2 + 0.6 + Math.floor(i / 4) * 0.6));
@@ -868,6 +889,63 @@ export class Game {
     let lo = Infinity, hi = -Infinity;
     for (let y = cy; y < cy + s; y++) for (let x = cx; x < cx + s; x++) { const h = this.spec.height[y * this.size + x]; lo = Math.min(lo, h); hi = Math.max(hi, h); }
     return hi - lo > (s > 1 ? 0.4 : 0.6);
+  }
+
+  /** A town's own people take the field in place of four founders: its men, its women and its old, the notable among them by name. */
+  private peopled(owner: number, people: PeopleIn, st: { x: number; y: number }, dir: number): void {
+    const count = (v: unknown): number => Math.max(0, Math.min(MAX_KIND, Math.round(Number(v) || 0)));
+    const men = count(people.men), women = count(people.women), elders = count(people.elders);
+    const named = (people.named ?? []).slice(0, 40);
+    let k = 0;
+    const one = (gender: Gender, old: boolean): Unit => {
+      const u = this.spawnUnit('villager', owner, st.x - 3.5 + (k % 8), st.y + (3.5 + Math.floor(k / 8)) * dir, gender);
+      k++;
+      // The old are in the last third of their lives; the rest are spread through the years before it.
+      u.age = Math.max(1, u.lifespan * (old ? ELDER_AT + this.rng() * (0.95 - ELDER_AT) : this.rng() * ELDER_AT * 0.9));
+      return u;
+    };
+    const folk: Unit[] = [];
+    for (let j = 0; j < Math.max(men, women); j++) { if (j < men) folk.push(one('m', false)); if (j < women) folk.push(one('f', false)); }
+    for (let j = 0; j < elders; j++) folk.push(one(j % 2 ? 'm' : 'f', true));
+    // Those the nation knows by name are among them, with what they are known for.
+    for (const n of named) {
+      const u = folk.find((x) => x.gender === n.gender && !x.story?.length && !(x.kids ?? 0) && !named.some((m) => m !== n && m.name === x.name)) ?? null;
+      if (!u || typeof n.name !== 'string' || !n.name) continue;
+      u.name = n.name.slice(0, 40);
+      if (typeof n.family === 'string' && n.family) u.family = n.family.slice(0, 40);
+      u.kids = Math.max(0, Math.round(Number(n.kids) || 0));
+    }
+  }
+
+  /** A town's children are set down on the record of one of its roofs, each some way toward being grown. */
+  private cradled(owner: number, children: number): void {
+    const roofs = this.buildings.filter((b) => b.owner === owner && !b.dead && b.complete && (b.type === 'house' || b.type === 'towncenter')).sort((a, b) => Number(b.type === 'house') - Number(a.type === 'house') || a.id - b.id);
+    if (!roofs.length) return;
+    const n = Math.max(0, Math.min(MAX_KIND, Math.round(Number(children) || 0)));
+    for (let j = 0; j < n; j++) { const c = this.bear(roofs[j % roofs.length]); c.left = GROW_TIME * (0.1 + this.rng() * 0.9); }
+  }
+
+  /**
+   * A count of a side's town as it stands (township.ts): its men and women of working age, its old, the children on
+   * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name.
+   */
+  census(owner: number): Census {
+    const p = this.players[owner], out: Census = { men: 0, women: 0, elders: 0, children: p?.wards?.length ?? 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, taken: 0, named: [] };
+    if (!p) return out;
+    for (const r of RES_TYPES) out.stores[r] = Math.max(0, Math.floor(p.res[r]));
+    for (const u of this.units) {
+      if (u.captive && u.captive.from === owner) out.taken!++;
+      if (u.owner !== owner || u.type !== 'villager' || u.dead || !u.gender) continue;
+      if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (u.gender === 'm') out.men++; else out.women++;
+      if (u.gender === 'f' && (u.kids ?? 0) > 0) out.named!.push({ name: u.name, gender: 'f', kids: u.kids, ...(u.family ? { family: u.family } : {}) });
+    }
+    for (const b of this.buildings) {
+      if (b.dead) continue;
+      if (b.owner === owner) out.children += b.young?.length ?? 0;
+      for (const c of b.captives ?? []) if (c.from === owner) out.taken!++;
+    }
+    out.named = out.named!.sort((a, b) => (b.kids ?? 0) - (a.kids ?? 0) || a.name.localeCompare(b.name)).slice(0, 12);
+    return out;
   }
 
   /** A side's buildings as they stand, each with the share of its health left, the unfinished with how far built: what `bonus.town` takes. */
@@ -1352,7 +1430,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -1391,6 +1469,7 @@ export class Game {
     g.nextId = d.nextId;
     g.rngState = d.rngState;
     g.aging = d.aging;
+    g.fixedAge = !!d.fixedAge;
     g.marauders = !!d.marauders;
     g.band = d.band;
     if (d.lair) [g.lairT, g.lairRaid, g.lairSeen, g.lairMade] = d.lair;
@@ -1415,6 +1494,9 @@ export class Game {
     if (def.limit && this.countUnits(owner, type) >= def.limit) { this.msg(owner, `You can only have ${def.limit} ${def.name}.`); return false; }
     const cost = this.unitCost(owner, type);
     if (!this.canAfford(p, cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return false; }
+    // A soldier costs a person: somebody must go in to be trained.
+    const who = needsPerson(def) ? recruitFor(this, b, def) : null;
+    if (needsPerson(def) && !who) { this.msg(owner, def.cls === 'support' ? `Nobody is free to be trained as a ${def.name}.` : `No man is free to be trained as a ${def.name}.`); return false; }
     if (type === 'villager' && !gender) {
       let m = 0, f = 0;
       for (const u of this.units) if (u.owner === owner && u.type === 'villager') u.gender === 'm' ? m++ : f++;
@@ -1422,7 +1504,8 @@ export class Game {
       gender = m <= f ? 'm' : 'f';
     }
     this.pay(p, cost);
-    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train * (1 - PATRON_MUSTER * Math.min(STAFF_CAP, p.patrons)) : type === 'villager' ? this.creed(owner).settle * (this.raider(owner) ? BAND.settle : 1) : 1), cost });
+    b.queue.push({ kind: 'unit', id: type, gender, t: 0, time: def.time * (this.isMilitary({ def } as Unit) ? this.creed(owner).train * (1 - PATRON_MUSTER * Math.min(STAFF_CAP, p.patrons)) : type === 'villager' ? this.creed(owner).settle * (this.raider(owner) ? BAND.settle : 1) : 1), cost, ...(who ? { who: who.id } : {}) });
+    if (who) { who.queue.length = 0; this.setOrder(who, { t: 'enlist', id: b.id }); }
     return true;
   }
 
@@ -1469,6 +1552,7 @@ export class Game {
     const p = this.players[owner];
     if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || b.type !== 'towncenter') return false;
     if (p.age >= AGES.length - 1 || p.agingUp) return false;
+    if (this.fixedAge) { this.msg(owner, 'A town is in its nation\'s age: that is advanced on the map.'); return false; }
     const next = AGES[p.age + 1];
     if (!this.canAfford(p, next.cost)) { this.msg(owner, `Not enough resources to reach the ${next.name}.`); return false; }
     this.pay(p, next.cost);
@@ -1482,9 +1566,42 @@ export class Game {
     if (!b || b.kind !== 'building' || b.owner !== owner || !b.queue[index]) return;
     const p = this.players[owner];
     const [q] = b.queue.splice(index, 1);
+    this.discharge(b, q);
     this.refund(p, q.cost);
     if (q.kind === 'tech') p.pending.delete(q.id);
     if (q.kind === 'age') p.agingUp = false;
+  }
+
+  /** Whoever was to be made into this unit is let go: out of the door if they were inside, back to nothing if on the way. */
+  private discharge(b: Building, q: QueueItem): void {
+    const u = q.who ? this.entities.get(q.who) : undefined;
+    if (q.who !== undefined) q.who = 0;
+    const was = !!q.in;
+    q.in = false;
+    if (!u || u.kind !== 'unit' || u.dead) return;
+    if (was && u.inside === b.id) {
+      const s = this.exitSpot(b, b.x, b.y + b.size);
+      u.inside = 0;
+      u.x = u.px = s.x;
+      u.y = u.py = s.y;
+      this.setOrder(u, null);
+    } else if (u.order?.t === 'enlist' && u.order.id === b.id) this.setOrder(u, null);
+  }
+
+  /**
+   * Is the villager this unit is to be made from inside? If they have died or been sent elsewhere, another is called;
+   * the training does not run until somebody has come in.
+   */
+  private mustered(b: Building, q: QueueItem): boolean {
+    if (q.who === undefined) return true;
+    const u = q.who ? this.entities.get(q.who) : undefined;
+    const ok = !!u && u.kind === 'unit' && !u.dead && u.owner === b.owner && (q.in ? u.inside === b.id : u.order?.t === 'enlist' && u.order.id === b.id);
+    if (ok) return !!q.in;
+    this.discharge(b, q);
+    const next = recruitFor(this, b, UNITS[q.id]);
+    q.who = next?.id ?? 0;
+    if (next) { next.queue.length = 0; this.setOrder(next, { t: 'enlist', id: b.id }); }
+    return false;
   }
 
   /** Players on the same side as `owner` who are still in the game. */
@@ -1867,7 +1984,9 @@ export class Game {
       if (pull) this.shiftVirtue(p.id, pull);
       // Milkmaids earn the tavern's keep; patrons eat and drink their households' stores away.
       const women = Math.min(STAFF_CAP, p.maids - p.patrons);
-      if (women) { p.res.gold += women * MAID_GOLD; p.stats.gathered += women * MAID_GOLD; }
+      // What they bring in follows the house: more as the town falls, and nothing once it has shut for the night (tavernfall.ts).
+      const takes = women > 0 ? women * MAID_GOLD * tavernTrade(p.virtue, this.dayT).gold : 0;
+      if (takes) { p.res.gold += takes; p.stats.gathered += takes; }
       p.res.food = Math.max(0, p.res.food - Math.min(STAFF_CAP, p.patrons) * PATRON_FOOD);
       if (p.dilemma || this.time < p.dilemmaT) continue;
       // Chosen without the game's dice, so that a match plays out the same with or without them.
@@ -2635,6 +2754,22 @@ export class Game {
         break;
       }
 
+      case 'enlist': {
+        const b = this.entities.get(o.id);
+        const q = b && b.kind === 'building' && !b.dead ? b.queue.find((i) => i.who === u.id && !i.in) : undefined;
+        if (!b || !q) { this.setOrder(u, null); break; }
+        const r = this.approach(u, b, REACH);
+        if (r === 'there') {
+          q.in = true;
+          u.inside = b.id;
+          u.carryAmt = 0;
+          this.setOrder(u, null);
+          u.x = u.px = b.x;
+          u.y = u.py = b.y;
+        } else if (r === 'fail') { q.who = 0; this.setOrder(u, null); }
+        break;
+      }
+
       case 'staff': {
         const b = this.entities.get(o.id);
         if (!b || b.kind !== 'building' || b.dead || !b.complete || (b.staff?.length ?? 0) >= (b.def.staff ?? b.def.guards ?? 0)) { this.setOrder(u, null); break; }
@@ -2943,6 +3078,7 @@ export class Game {
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
     if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
     atk *= this.highGround(u.x, u.y, t) * this.veteran(u) * marauderEdge(this, u);
+    if (u.gender === 'f' && !(t.kind === 'unit' && t.def.cls === 'prey')) atk *= WOMAN_ATK;
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
@@ -3171,14 +3307,24 @@ export class Game {
       b.hp = Math.min(b.maxHp, b.hp + b.maxHp * STYLE_RULES.mend * DT);
 
     const q = b.queue[0];
-    if (q) {
+    // Everyone called to this building is kept coming, not only whoever is next.
+    if ((this.tick + b.id) % 20 === 0) for (let i = 1; i < b.queue.length; i++) if (b.queue[i].kind === 'unit') this.mustered(b, b.queue[i]);
+    if (q && (q.kind !== 'unit' || q.in || ((this.tick + b.id) % 20 === 0 ? this.mustered(b, q) : q.who === undefined))) {
       if (q.t < q.time) q.t += DT;
       if (q.t >= q.time) {
         if (q.kind === 'unit') {
           const def = UNITS[q.id];
-          if (p.pop + def.pop <= p.popCap) {
+          const was = q.who ? this.entities.get(q.who) : undefined;
+          if (p.pop + def.pop - (was ? UNITS.villager.pop : 0) <= p.popCap) {
             b.queue.shift();
-            this.spawnFrom(b, q.id, q.gender);
+            if (was && was.kind === 'unit') { was.inside = 0; this.kill(was); }
+            const u = this.spawnFrom(b, q.id, q.gender);
+            // The same person, in arms: their name and their years go with them.
+            if (was && was.kind === 'unit') {
+              if (!u.hero) u.name = was.name;
+              u.family = was.family; u.age = was.age; u.lifespan = was.lifespan; u.story = was.story; u.kids = was.kids;
+              if (was.gender === 'f') u.gender = 'f';
+            }
             p.stats.trained++;
           } else q.blocked = true;
         } else if (q.kind === 'tech') {

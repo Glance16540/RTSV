@@ -29,8 +29,15 @@ it is kept on the record of its house, which lists it by name and age, and nothi
 it steps out of the door as a villager and takes up a parent's trade. If the house falls, its children pass
 to a neighbouring house or the Town Center.
 
+**A soldier costs a person.** Training a soldier, a crew or a healer takes a villager as well as the price: the
+nearest man with nothing to do (failing that, the nearest at work) walks to the building and goes in, and the
+training time turns him into the unit, under his own name. Soldiers and crews come from the men; a healer may be
+a woman, and a woman is asked first. With nobody free the order is refused. Cancel it, or lose the building, and he
+comes back out. Beasts and the nation's leader cost nobody. A woman who fights strikes far less hard than a man.
+
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
-technologies, and changes how your settlement looks.
+technologies, and changes how your settlement looks. In a campaign a town is in its nation's age, which is advanced
+on the map: nobody ages up inside a campaign battle. Skirmishes and missions age up as before.
 
 **Play styles.** Each nation belongs to a group (raiders, builders, farmers, scholars, the faithful, traders,
 warriors; see `STYLES` in `src/sim/data.ts`). The Norse and Mongols are raiders: they start as a war band with no
@@ -78,7 +85,7 @@ out.
 
 - *In a Church* a man becomes a monk and a woman a nun. Each adds piety and brings the town's
   children sooner. Taking vows, they leave the house they shared.
-- *What goes on at the tavern.* Hearts rise from a busy tavern in a Worldly or Decadent town, and from houses where a couple is at home. Almost nothing comes of it: the maids and patrons take care that it does not. Once in a very long while (tens of minutes, a little sooner in a Decadent town) a tavern with both has a child that belongs to no household, costs no food and needs no house.
+- *The tavern as a town falls.* An honest tavern shuts at dusk. In a Worldly town it keeps late hours and takes more gold (140% for each of its women); in a Decadent town it never shuts and takes double. What kind of house it has become shows in its lamp by night (dark, amber or red), its women's dress and its panel, and in nothing else. Hearts rise only from houses where a couple is at home. Once in a very long while (tens of minutes, a little sooner in a Decadent town) a tavern with both has a child that belongs to no household, costs no food and needs no house.
 - *In a Tavern* a woman becomes a milkmaid and a man a patron. A milkmaid brings in gold. A patron
   eats and drinks your food away, but soldiers are trained faster for every patron. Each adds
   decadence, the whole town gathers a little slower for the distraction, and a house with someone
@@ -264,6 +271,10 @@ over the map, each marked done by what the player has done, and a page, *How the
 opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
 out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`. In a battle, a slip under the first-steps guide teaches fire-fighting, famine, walls, towers, the market and the work camp the first time each is needed.
 
+**A visit.** On the campaign map, a land of your own has an *Enter the town* button: up to ten minutes
+of that season played in the town itself, with no enemy there. What you build stays on the map, as it
+does after a siege. Each town once a season. Rules in `src/sim/visit.ts`, screen in `src/client/visit.ts`.
+
 **Day and night.** Settings set how long a day lasts (3, 5 or 10 minutes) and whether night falls at
 all (`src/sim/daylight.ts`). There is a sky with the sun, a moon and stars (`src/client/sky.ts`); the
 game's own camera looks down and does not see it, so it shows on the main menu, whose camera looks into
@@ -315,6 +326,8 @@ neighbouring land.
   Settings has the same choice (`src/client/detail.ts`): Automatic picks the plainer map on a machine that draws
   in software or is small. Country changes the rules as well as the look, and a closed border can be opened with
   a bridge or a road over the pass (`src/sim/country.ts`).
+  Every land's town keeps its people, its notable names and its stores between battles (`src/sim/township.ts`):
+  a siege fought in person is fought by those people out of those stores, and what is left is what the town has.
   Drag to move, wheel to zoom, click a land to choose it. The flat chart of `src/client/overworld.ts` is shown
   where 3D is not available or with `?map=2d`. Three
   weather fronts cross it turn by turn (`frontsOf`, `weatherAt` in `src/sim/campaign.ts`): an army attacking into
@@ -420,7 +433,11 @@ captain from an army that has won a battle, who ends the old house. The rules ar
 
 At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator or
 left open and chosen on the field when the rank is earned; rival leaders are built to suit how their
-people live. A soldier raised to lead fights on as what they were. Both are in `src/sim/powers.ts`.
+people live. A soldier raised to lead fights on as what they were.
+
+On the campaign map the leader is one person in one place: a land of yours, in its town or with the
+army there. They are in a battle only if it is fought where they are, no unrest rises in the land they
+are in, and they can call the armies to them. The rules are in `src/sim/court.ts`. Both are in `src/sim/powers.ts`.
 
 ## Systems board
 

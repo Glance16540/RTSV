@@ -7,9 +7,12 @@ import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
 import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS, powersHeld } from '../sim/powers';
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
+import { needsPerson } from '../sim/muster';
 import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
+import { notableLine, notableList } from './notables';
+import { tavernPanel } from './tavernlook';
 import { heldPanel, takenPanel } from './captives';
 import { yearsLeft, yearsOld } from '../sim/nursery';
 import {
@@ -345,7 +348,7 @@ export class Hud {
       } else {
         out.push({
           id: 't:' + type, icon: ico(type, d.icon), name: 'Train ' + d.name, cost: game.unitCost(pid, type), locked,
-          desc: `${d.desc}<br><span class="stat">❤ ${d.hp} · ⚔ ${d.atk} · 🛡 ${d.armor}${d.range > 1 ? ` · range ${d.range}` : ''} · pop ${d.pop}</span>`,
+          desc: `${d.desc}<br><span class="stat">❤ ${d.hp} · ⚔ ${d.atk} · 🛡 ${d.armor}${d.range > 1 ? ` · range ${d.range}` : ''} · pop ${d.pop}</span>${needsPerson(d) ? `<br><span class="stat">Takes ${d.cls === 'support' ? 'a villager' : 'a man'} of the town, who goes in to be trained.</span>` : ''}`,
           act: () => game.cmdTrain(pid, least().id, type),
         });
       }
@@ -362,7 +365,7 @@ export class Hud {
       out.push({
         id: 'age' + p.age, icon: ico('ageup', '⏫'), name: `Advance to the ${next.name}`, cost: next.cost,
         desc: 'Unlocks new buildings, units and technologies, and gives your settlement a new look.',
-        locked: p.agingUp ? 'Already advancing.' : undefined, act: () => game.cmdAgeUp(pid, b.id),
+        locked: game.fixedAge ? 'A town is in its nation\'s age: advance it on the map.' : p.agingUp ? 'Already advancing.' : undefined, act: () => game.cmdAgeUp(pid, b.id),
       });
     }
     if (b.type === 'towncenter') {
@@ -523,7 +526,7 @@ export class Hud {
       }
       const role = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
-      return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>
+      return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>${notableLine(game, e)}
         <div class="stat">⚔ ${Math.round((d.atk + (mil ? mods.atk : 0) + (lead?.atk ?? 0)) * 10) / 10} · 🛡 ${Math.round((d.armor + (mil ? mods.armor : 0) + (lead?.armor ?? 0) + game.guardAt(e.owner, e.x, e.y)) * 10) / 10}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
     const b = e;
@@ -538,6 +541,7 @@ export class Hud {
       const hands = fighting(game, b);
       body += `<div class="warn">🔥 On fire: it may spread to buildings close by. ${hands ? `${hands} ${hands === 1 ? 'villager is' : 'villagers are'} fighting it.` : b.owner === game.humanId ? 'Right-click it with villagers to fight the fire.' : ''}</div>`;
     }
+    if (b.type === 'towncenter' && !game.hostile(b.owner, pid)) body += notableList(game, b.owner);
     if (b.type === 'towncenter' && b.owner === game.humanId) {
       const w = want(game.players[b.owner]);
       if (w) body += `<div class="${w === 'famine' ? 'bad' : 'warn'}">${w === 'famine' ? '💀 Famine: someone is lost every half minute until there is food in the store' : '🍞 Going hungry: the store is bare and nothing is coming in'}</div>`;
@@ -598,6 +602,7 @@ export class Hud {
             ? `A milkmaid brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute. A patron eats and drinks ${(PATRON_FOOD * 60).toFixed(0)} food a minute, but soldiers are trained ${(PATRON_MUSTER * 100).toFixed(0)}% faster for each one. Each adds ${MAID_VIRTUE} decadence a minute and slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile. In a worldly town, plague can break out here.`
             : `Each adds ${CLERGY_VIRTUE} piety a minute and brings the town's children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner. They leave their own house when they enter.`} Up to ${STAFF_CAP} count in all.</div>`;
       }
+      if (b.type === 'tavern' && b.complete) { const w = (b.staff ?? []).map((id) => game.entities.get(id)).filter((u) => !!u && u.kind === 'unit' && u.gender === 'f').length; body += tavernPanel(owner.virtue ?? 0, game.field ? 0 : game.dayT, w); }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
     return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;
