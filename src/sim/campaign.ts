@@ -16,6 +16,9 @@ export const CAMPAIGN_VERSION = 8;
 export const MAX_ARMY = 12; // companies in one army
 export const HERO_COST = 8;
 export const HERO_STRENGTH = 2;
+/** What each rank of a leader's veterancy adds to the army they march with, when a battle is settled on the map. */
+export const HERO_RANK_STRENGTH = 0.5;
+import { leaderAsMade } from './powers';
 
 /** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
 export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
@@ -914,21 +917,23 @@ export function advanceAge(c: Campaign, f: number): boolean {
 /** A leader who comes through a battle won is the more seasoned for it. */
 const seasonHero = (c: Campaign, f: number): void => { c.factions[f].heroRank = Math.min(MAX_RANK, (c.factions[f].heroRank ?? 0) + 1); };
 /** A faction's leader as they take the field: their making, and the veterancy the campaign has given them. */
-export const heroFor = (c: Campaign, f: number): HeroSpec => ({ ...cleanHero(c.factions[f].hero, c.factions[f].civ), rank: c.factions[f].heroRank ?? 0 });
+export const heroFor = (c: Campaign, f: number): HeroSpec => ({ ...leaderAsMade(c.factions[f].hero, c.factions[f].civ, c.factions[f].isAI), rank: c.factions[f].heroRank ?? 0 });
 export const armyAt = (c: Campaign, tid: number): Army | undefined => c.armies.find((a) => a.at === tid);
 /** Number of companies in an army. */
 export const armySize = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
 /** An army's strength against a given mix of enemy companies (none: its plain strength). */
-export function strengthVs(a: Army, foe: Record<string, number> = {}): number {
+export function strengthVs(a: Army, foe: Record<string, number> = {}, heroRank = 0): number {
   const total = Object.values(foe).reduce((n, v) => n + v, 0);
-  let s = (a.hero ? HERO_STRENGTH : 0) + a.vet;
+  let s = (a.hero ? HERO_STRENGTH + heroRank * HERO_RANK_STRENGTH : 0) + a.vet;
   for (const [type, n] of Object.entries(a.units)) {
     const edge = total ? (0.3 * (foe[BEATS[type]] ?? 0)) / total : 0;
     s += n * COMPANIES[type].str * (1 + edge);
   }
   return Math.round(s * 10) / 10;
 }
-export const armyStrength = (a: Army): number => strengthVs(a);
+/** An army's plain strength. Give the campaign and its leader's veterancy is counted too. */
+export const armyStrength = (a: Army, c?: Campaign): number => strengthVs(a, {}, c ? rankWith(c, a) : 0);
+const rankWith = (c: Campaign, a: Army): number => (a.hero ? c.factions[a.owner]?.heroRank ?? 0 : 0);
 
 export function income(c: Campaign, f: number): number {
   let n = 0;
@@ -957,7 +962,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs) : 0) + 1 + fort + ground) * faithOf(c, t.owner).defence * 10) / 10;
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground) * faithOf(c, t.owner).defence * 10) / 10;
 }
 
 /** True while the player and a rival are bound by a truce. */
@@ -1089,7 +1094,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
   const round = (v: number) => Math.round(v * 10) / 10;
   c.pending = {
     armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
-    aStr: round((strengthVs(a, defenders(c, to)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1) * ageEdge(c, a.owner) * (weatherAt(c, to) ? WEATHER[weatherAt(c, to) as Sky].march : 1)), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
+    aStr: round((strengthVs(a, defenders(c, to), rankWith(c, a)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1) * ageEdge(c, a.owner) * (weatherAt(c, to) ? WEATHER[weatherAt(c, to) as Sky].march : 1)), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
   };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
@@ -1550,7 +1555,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     // Cautious leaders want better odds; a leader who has just been refused wants blood.
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
     const bySea = !here.adj.includes(t.id);
-    if (strengthVs(army, defenders(c, t.id)) * (bySea ? SEA_LANDING : 1) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
+    if (strengthVs(army, defenders(c, t.id), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
       moveArmy(c, army.id, t.id);
       return false;
     }

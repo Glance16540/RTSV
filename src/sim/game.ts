@@ -14,6 +14,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
+import { leaderAsMade, leaderDef, powersHeld } from './powers';
 import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
@@ -565,13 +566,15 @@ export class Game {
   /** The leader a player's nation follows: their own making of them, or the leader as written. */
   heroOf(owner: number): HeroSpec {
     const p = this.players[owner];
-    return (p.hero ??= cleanHero(undefined, p.civ));
+    return (p.hero ??= leaderAsMade(undefined, p.civ, p.isAI));
   }
   /** What a leader's making and veterancy add to their arm, armour and health. */
   leaderBonus(u: Unit): { atk: number; armor: number; hp: number } {
     return heroBonus(this.heroOf(u.owner), u.hero?.rank ?? 0);
   }
   private fitLeader(u: Unit): void {
+    // The powers they have come into change the hero they are built on.
+    u.def = leaderDef(UNITS[u.type], this.heroOf(u.owner), u.hero?.rank ?? 0);
     const max = Math.round(u.def.hp * this.leaderBonus(u).hp);
     u.hp = (u.hp / u.maxHp) * max;
     u.maxHp = max;
@@ -599,7 +602,8 @@ export class Game {
     if (rank > l.hero.rank) {
       l.hero.rank = this.players[owner].heroRank = rank;
       this.fitLeader(l);
-      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}.`);
+      const learnt = powersHeld(this.heroOf(owner), rank).length > powersHeld(this.heroOf(owner), rank - 1).length ? powersHeld(this.heroOf(owner), rank).at(-1) : null;
+      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : ''}.`);
     }
   }
 
@@ -1331,6 +1335,7 @@ export class Game {
     for (const u of g.units) u.def = UNITS[u.type];
     for (const e of [...g.resources, ...g.buildings, ...g.units]) g.entities.set(e.id, e);
     g.players = d.players.map((p: Player & { techs: string[]; pending: string[] }) => ({ ...p, techs: new Set(p.techs), pending: new Set(p.pending) }));
+    for (const u of g.units) if (u.hero) u.def = leaderDef(UNITS[u.type], g.heroOf(u.owner), u.hero.rank);
     g.projectiles = d.projectiles;
     g.quakes = d.quakes;
     g.time = d.time;
