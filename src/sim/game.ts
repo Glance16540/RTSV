@@ -7,11 +7,14 @@ import {
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { leaningWith } from './temper';
+import { rescue } from './rescue';
+import { calamity, douse } from './calamity';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
+import { leaderAsMade, leaderDef, powersHeld } from './powers';
 import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
@@ -165,6 +168,8 @@ export interface Building extends Base {
   sheltered: number[]; // villagers hiding inside
   captives?: Captive[]; // a work camp's prisoners
   campT?: number; // progress towards the camp's next villager
+  douseAt?: number; douseN?: number; // the tick villagers last beat at a fire here, and how many (calamity.ts)
+  rescueT?: number; // progress of soldiers at the gate towards letting the next captive out (rescue.ts)
   trystT?: number; // progress towards a tavern's next child born out of any household
   staff?: number[]; // villagers stationed here to work: clergy or tavern maids
   morale: number; // town centers: number of houses nearby (capped)
@@ -561,13 +566,15 @@ export class Game {
   /** The leader a player's nation follows: their own making of them, or the leader as written. */
   heroOf(owner: number): HeroSpec {
     const p = this.players[owner];
-    return (p.hero ??= cleanHero(undefined, p.civ));
+    return (p.hero ??= leaderAsMade(undefined, p.civ, p.isAI));
   }
   /** What a leader's making and veterancy add to their arm, armour and health. */
   leaderBonus(u: Unit): { atk: number; armor: number; hp: number } {
     return heroBonus(this.heroOf(u.owner), u.hero?.rank ?? 0);
   }
   private fitLeader(u: Unit): void {
+    // The powers they have come into change the hero they are built on.
+    u.def = leaderDef(UNITS[u.type], this.heroOf(u.owner), u.hero?.rank ?? 0);
     const max = Math.round(u.def.hp * this.leaderBonus(u).hp);
     u.hp = (u.hp / u.maxHp) * max;
     u.maxHp = max;
@@ -595,7 +602,8 @@ export class Game {
     if (rank > l.hero.rank) {
       l.hero.rank = this.players[owner].heroRank = rank;
       this.fitLeader(l);
-      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}.`);
+      const learnt = powersHeld(this.heroOf(owner), rank).length > powersHeld(this.heroOf(owner), rank - 1).length ? powersHeld(this.heroOf(owner), rank).at(-1) : null;
+      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : ''}.`);
     }
   }
 
@@ -1327,6 +1335,7 @@ export class Game {
     for (const u of g.units) u.def = UNITS[u.type];
     for (const e of [...g.resources, ...g.buildings, ...g.units]) g.entities.set(e.id, e);
     g.players = d.players.map((p: Player & { techs: string[]; pending: string[] }) => ({ ...p, techs: new Set(p.techs), pending: new Set(p.pending) }));
+    for (const u of g.units) if (u.hero) u.def = leaderDef(UNITS[u.type], g.heroOf(u.owner), u.hero.rank);
     g.projectiles = d.projectiles;
     g.quakes = d.quakes;
     g.time = d.time;
@@ -1547,7 +1556,7 @@ export class Game {
   /** How many of a camp's captives its guards cannot keep an eye on. */
   unwatched(b: Building): number { return Math.max(0, (b.captives?.length ?? 0) - GUARD_WATCH * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)); }
   /** One captive gets out of a camp and makes for home on foot: they can be run down again on the way. */
-  private breakOut(b: Building, i: number): void {
+  breakOut(b: Building, i: number): void {
     const c = b.captives!.splice(i, 1)[0], home = this.players[c.from];
     if (!home || home.defeated) return;
     const at = this.landPf.nearestFree(b.x, b.y + b.size / 2 + 0.8);
@@ -1600,6 +1609,7 @@ export class Game {
         p.stats.born++;
         this.events.push({ t: 'birth', player: p.id, x: b.x, y: b.y });
       } else if (b.campT > 1) b.campT = 1;
+      if (rescue(this, b) && !b.captives.length) continue;
       if (this.night) this.campNight(p, b);
     }
     if (p.captives) this.shiftVirtue(p.id, (-Math.min(CAPTIVE_CAP, p.captives) * CAPTIVE_VIRTUE) / 60);
@@ -2089,6 +2099,7 @@ export class Game {
     this.tick++;
     this.time += DT;
     this.stepWeather();
+    if (this.tick % 20 === 0) calamity(this);
     this.pathBudget = 16;
 
     for (const bucket of this.hash) bucket.length = 0;
@@ -2633,6 +2644,7 @@ export class Game {
           u.anchored = true;
           u.facing = Math.atan2(b.x - u.x, b.y - u.y);
           u.attackAnim = 0.3;
+          if (b.burnT > 0) { douse(this, b); break; } // the fire first: nothing is mended while it burns
           const p0 = this.players[u.owner];
           if (!b.complete) {
             const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build;

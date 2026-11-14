@@ -1,7 +1,9 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import { isHoly } from '../sim/creed';
+import { fighting } from '../sim/calamity';
 import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
+import { powersHeld } from '../sim/powers';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -140,7 +142,7 @@ export class Hud {
     const civ = this.app.game.players[this.app.pid].civ;
     if (!LEADERS[civ]) return;
     const s = { civ, event, index: Math.floor(Math.random() * LEADERS[civ].lines[event].length) };
-    this.toast(speechHtml(s), 'leader', true);
+    this.toast(speechHtml(s, this.app.game.heroOf(this.app.pid).name), 'leader', true);
     playLine(s);
   }
 
@@ -152,7 +154,7 @@ export class Hud {
     // Local tribes and reserve armies are not led by anyone with a name.
     if (!l || !p.isAI || p.neutral || !game.hostile(player, pid) || p.name === LOCALS.name || p.name.endsWith(' reserve')) return;
     const s = { civ: p.civ, event, index: Math.floor(Math.random() * l.lines[event].length) };
-    this.toast(speechHtml(s), 'leader', true);
+    this.toast(speechHtml(s, game.heroOf(player).name), 'leader', true);
     playLine(s);
   }
 
@@ -489,6 +491,7 @@ export class Hud {
         const r = e.hero.rank, virtue = game.players[e.owner].virtue;
         const top = r >= MAX_RANK;
         extra = `<div class="good">⭐ ${RANK_NAMES[r]}${top ? '' : ` · ${e.hero.xp - RANK_XP[r]} of ${RANK_XP[r + 1] - RANK_XP[r]} deeds to ${RANK_NAMES[r + 1]}`}</div>${top ? '' : this.bar((e.hero.xp - RANK_XP[r]) / (RANK_XP[r + 1] - RANK_XP[r]), 'faith')}` +
+          powersHeld(game.heroOf(e.owner), r).map((p) => `<div class="good">✦ ${p.name}: ${p.desc}</div>`).join('') +
           (isHoly(virtue) ? `<div class="good">🕯️ Holy town: those near them wear ${HOLY_GUARD[virtue >= 70 ? 1 : 0]} more armour</div>` : '') +
           (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the camp fills the town faster while they are in the field</div>' : '') + extra;
       }
@@ -505,7 +508,10 @@ export class Hud {
         '<div class="hint">Every woman held bears the band children, and it grows. Destroy the camp and they all go free. A woman freed will bear no more children, but works a quarter harder.</div>';
     }
     if (!b.complete) body += `<div>Under construction</div>${this.bar(b.progress)}`;
-    if (b.burnT > 0) body += '<div class="warn">🔥 On fire: it may spread to buildings close by</div>';
+    if (b.burnT > 0) {
+      const hands = fighting(game, b);
+      body += `<div class="warn">🔥 On fire: it may spread to buildings close by. ${hands ? `${hands} ${hands === 1 ? 'villager is' : 'villagers are'} fighting it.` : b.owner === game.humanId ? 'Right-click it with villagers to fight the fire.' : ''}</div>`;
+    }
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
     else if (mine) {

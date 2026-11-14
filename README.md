@@ -134,6 +134,11 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   troops and spreads between them), Earthquake (shatters buildings), Fire from Heaven (sets buildings alight) and
   Blight (empties a rival's farms for a minute). Fire spreads to buildings standing close by, whoever owns them,
   until it burns out or rain comes (`CALAMITY` in `src/sim/data.ts`). Farms yield more in rain and less in dust and snow.
+- *Lightning and fighting fire* (`src/sim/calamity.ts`): while rain or a dust storm is heavy, lightning now and
+  then sets a building alight, anyone's, and a tower, church or wonder sooner than a house. In rain the fire is
+  short and does not spread; dry lightning in a dust storm burns like any other fire. Right-click a burning
+  building of your own with villagers and they beat the fire down before mending it (up to five to a fire);
+  idle villagers close by turn out on their own.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
@@ -365,6 +370,9 @@ A new campaign asks for your people and who leads them. Every leader keeps a hou
 to it as the turns pass. When a leader falls you choose who follows: an heir who has come of age, or a
 captain from an army that has won a battle, who ends the old house. The rules are in
 `src/sim/dynasty.ts`.
+
+At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator;
+rival leaders are built to suit how their people live. Both are in `src/sim/powers.ts`.
 
 ## Systems board
 
