@@ -3,6 +3,7 @@ import { Campaign, armyAt, finishBattle, heroFor, moveArmy, newCampaign, raise, 
 import { HEIR_AGE, HEIR_EVERY, MAX_HEIRS, autoSucceed, canSucceed, claimants, comesOfAge, houseOf, ofAge, succeed, tickHouses } from '../src/sim/dynasty';
 import { Game } from '../src/sim/game';
 import { heirName } from '../src/sim/hero';
+import { leaderAt } from '../src/sim/court';
 import { run } from './helpers';
 
 /** A campaign whose leader has just died with their army. */
@@ -45,12 +46,15 @@ describe('the ruling house', () => {
     const heir = houseOf(c, 0).heirs[0];
     expect(claim).toMatchObject({ kind: 'heir', rank: 1, female: heir.female });
     expect(claim.name).toBe(`${heir.name}, ${heir.female ? 'daughter' : 'son'} of Brunhild`);
-    expect(canSucceed(c, 0, claim)).toBe(false); // no army to ride to
-    c.factions[0].supplies = 20;
-    expect(raise(c, 0, home, 'infantry')).toBe(true);
+    expect(canSucceed(c, 0, claim)).toBe(true); // no army is needed: the heir takes up the rule in the capital
     expect(succeed(c, 0, claim)).toBe(true);
     expect(c.factions[0].heroAlive).toBe(true);
-    expect(armyAt(c, home)!.hero).toBe(true);
+    expect(c.factions[0].court!.at).toBe(home);
+    c.factions[0].supplies = 20;
+    expect(raise(c, 0, home, 'infantry')).toBe(true);
+    expect(leaderAt(c, 0, home)).toBe(true);
+    expect(armyAt(c, home)!.hero).toBe(true); // an army raised where the leader is has them at its head
+    expect(heroFor(c, 0).name).toBe(claim.name);
     expect(heroFor(c, 0)).toMatchObject({ name: claim.name, female: heir.female, calling: 'strategist', bent: 'armour', guard: 4, rank: 1 });
     expect(houseOf(c, 0)).toMatchObject({ heirs: [], line: 2 });
     expect(c.chronicle!.at(-1)!.text).toContain('takes up the rule');
