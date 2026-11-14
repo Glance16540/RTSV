@@ -39,7 +39,7 @@ export const AREAS = [
           'One leader is kept for each nation on this device and leads it in every skirmish and campaign',
           'The first hero of their calling raised in a battle is the leader, by name; the other calling is a plain lieutenant',
           'Veterancy: enemies felled within the leader\'s reach are their deeds, and deeds raise them through five ranks, Blooded to Legend',
-          'Each rank adds health, and strength or armour as chosen in the creator: all to the arm, all to armour, or the two by turns',
+          'The creator also sets the leader\'s skin (eight shades from fair to dark, or left to their people) and face (eight that differ in both halves, or left to chance); both are kept with the hero and worn in battle and on the campaign map', 'Each rank adds health, and strength or armour as chosen in the creator: all to the arm, all to armour, or the two by turns',
           'They are still flesh: however armoured, a leader takes at least three tenths of every blow, and one who falls is raised again a rank lower',
           'Starting a campaign asks for your people and who leads them: the nation\'s leader as written, that leader\'s other self, or one of your own making',
           'Every leader keeps a house: one child half grown at the start, another every five turns while the leader lives, up to three; an heir comes of age at six turns',
@@ -89,7 +89,7 @@ export const AREAS = [
           'Powers count for nothing when a battle is settled on the map: only the rank does',
           'The call, the powers, rival builds and kept skirmish rank are checked by tests and one look at the creator; none has been used by a person',
           'Face, skin and clothing colours other than the cloak cannot be chosen',
-          'The creator has been seen in pictures on a slow test renderer, not used by a person'] },
+          'The creator has been seen in pictures on a slow test renderer, not used by a person', 'Skin and face in the creator: a dark skin and one face were seen applied to the turning figure, from the side; the eight faces were not compared with one another there, and the chosen look was not seen on the leader in a battle or on the campaign map'] },
     ],
   },
   {
