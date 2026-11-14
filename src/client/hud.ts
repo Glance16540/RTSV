@@ -5,6 +5,7 @@ import { fighting } from '../sim/calamity';
 import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
 import { powersHeld } from '../sim/powers';
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
+import { HALL_GRACE } from '../sim/beaten';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -603,7 +604,7 @@ export class Hud {
       ['Raise an army', 'Villager → Military buildings (V) → Barracks, then train three soldiers.', units.filter((u) => game.isMilitary(u)).length >= 3],
       ['Advance to the Bronze Age', 'Select the Town Center (H) and press T once you have the food and wood.', p.age >= 1],
       ['Choose what your town believes', 'Villager → Church or Tavern, then right-click it with villagers to station them inside. A Church makes your people pious, a Tavern decadent, and each changes what your town is good at.', mine.some((b) => (b.type === 'temple' || b.type === 'tavern') && b.complete && (b.staff?.length ?? 0) > 0)],
-      ['Destroy your rivals', 'Scout with soldiers, then select your army, press Q and click their base.', game.winner === pid],
+      ['Bring down their Town Center', `Scout with soldiers, then select your army, press Q and click their Town Center. A people with none, who do not begin another within ${HALL_GRACE} seconds, are beaten: so guard your own.`, game.winner === pid],
     ];
     const i = steps.findIndex((s) => !s[2]);
     const show = !this.guideOff && i >= 0 && !this.app.paused;
