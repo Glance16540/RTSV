@@ -3521,12 +3521,12 @@ describe('faith on the campaign map', () => {
 });
 
 describe('fire, blight and the weather on the harvest', () => {
-  const two = () => { const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'hearth' }, { name: 'B', color: 2, isAI: false, civ: 'england' }]); g.weatherT = 1e6; return g; };
+  const two = (seed = 7) => { const g = new Game(seed, [{ name: 'A', color: 1, isAI: false, civ: 'hearth' }, { name: 'B', color: 2, isAI: false, civ: 'england' }]); g.weatherT = 1e6; return g; };
   const prophetBy = (g: Game, x: number, y: number) => { const u = g.spawnUnit('prophet', 0, x, y); u.mana = 100; return u; };
 
   it('a Prophet sets enemy buildings alight; fire leaps to what stands close, burns through and dies; rain stops it', () => {
     const burn = (rain: boolean) => {
-      const g = two();
+      const g = two(9); // a match in which the fire does reach the next house: it is a chance each second, not a certainty
       if (rain) { g.weather = 'rain'; g.weatherAmt = g.weatherWant = 1; }
       const tc = g.buildings.find((b) => b.owner === 1)!;
       // Nobody at home to fight it (tests/fire-fighting.test.ts): this is what a fire does when it is left to itself.

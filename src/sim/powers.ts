@@ -1,9 +1,9 @@
 // What a leader learns as they rise. At three ranks of veterancy (Blooded, Veteran, Legend) a leader comes into one
-// of two powers, chosen for them when they are made. A power changes what the leader is on the field: how far their
+// of two powers: chosen when they are made, or left open and chosen on the field at the moment the rank is earned. A power changes what the leader is on the field: how far their
 // presence reaches, what it does to friend and foe, how they stand a blow. Also here: the leader a rival people has
 // when nobody has made one for them, built to suit how that people lives.
 
-import { CIV_STYLE, StyleId, UnitDef } from './data';
+import { CIV_STYLE, StyleId, UNITS, UnitDef } from './data';
 import { Calling, HeroSpec, cleanHero } from './hero';
 
 /** The ranks at which a power is come into. */
@@ -45,12 +45,19 @@ export const CALLS: Record<Calling, { name: string; desc: string; haste?: number
 
 /** The powers a leader of this making holds at a rank, in the order they came into them. */
 export function powersHeld(h: HeroSpec, rank: number): Power[] {
-  return POWER_RANKS.flatMap((at, tier) => (rank >= at ? [POWERS[h.calling][tier][h.powers?.[tier] === 1 ? 1 : 0]] : []));
+  return POWER_RANKS.flatMap((at, tier) => (rank >= at && (h.powers?.[tier] === 0 || h.powers?.[tier] === 1) ? [POWERS[h.calling][tier][h.powers[tier]]] : []));
 }
+/** The power a leader has earned and not yet chosen: which of the three it is, or -1 when there is nothing to choose. */
+export function powerDue(h: HeroSpec, rank: number): number {
+  return POWER_RANKS.findIndex((at, tier) => rank >= at && h.powers?.[tier] !== 0 && h.powers?.[tier] !== 1);
+}
+/** The unit a leader takes the field as: a hero of their calling, or what they fought as before they were raised. */
+export const leaderType = (h: HeroSpec): string => (h.fights && UNITS[h.fights] && ['infantry', 'ranged', 'cavalry'].includes(UNITS[h.fights].cls) ? h.fights : h.calling);
 
 /** The plain hero a leader is built on, as their powers have changed it. */
 export function leaderDef(def: UnitDef, h: HeroSpec, rank: number): UnitDef {
-  let out = def;
+  // A soldier raised to lead keeps their own arms, and has a leader's presence about them.
+  let out = def.aura ? def : { ...def, aura: UNITS[h.calling].aura, auraRange: UNITS[h.calling].auraRange };
   for (const p of powersHeld(h, rank)) out = { ...out, ...p.mod(out) };
   return out;
 }
@@ -65,9 +72,18 @@ const RIVAL: Record<StyleId, Pick<HeroSpec, 'calling' | 'bent' | 'might' | 'guar
   trader: { calling: 'warlord', bent: 'both', might: 2, guard: 2, vigour: 2, powers: [1, 1, 1] },
   warrior: { calling: 'warlord', bent: 'strength', might: 5, guard: 1, vigour: 0, powers: [0, 0, 1] },
 };
+/** Peoples who live alike are not led alike: where one of these is written, it stands in place of their kind's. */
+const RIVAL_OF: Record<string, (typeof RIVAL)[StyleId]> = {
+  steppe: { calling: 'warlord', bent: 'both', might: 3, guard: 0, vigour: 3, powers: [1, 0, 0] },
+  babylon: { calling: 'strategist', bent: 'armour', might: 0, guard: 3, vigour: 3, powers: [1, 1, 1] },
+  egypt: { calling: 'warlord', bent: 'both', might: 1, guard: 2, vigour: 3, powers: [0, 1, 0] },
+  england: { calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, powers: [1, 1, 1] },
+  greece: { calling: 'strategist', bent: 'strength', might: 3, guard: 1, vigour: 2, powers: [1, 0, 0] },
+  arabs: { calling: 'warlord', bent: 'strength', might: 4, guard: 1, vigour: 1, powers: [0, 0, 1] },
+};
 /** A rival people's leader as the game makes them: the leader as written, built to suit how their people live. */
 export function rivalHero(civ: string): HeroSpec {
-  return cleanHero({ ...cleanHero(undefined, civ), ...RIVAL[CIV_STYLE[civ] ?? 'farmer'] }, civ);
+  return cleanHero({ ...cleanHero(undefined, civ), ...(RIVAL_OF[civ] ?? RIVAL[CIV_STYLE[civ] ?? 'farmer']) }, civ);
 }
 /** The leader a people follows: someone's own making of them, else the game's for a rival, else the leader as written. */
 export const leaderAsMade = (made: Partial<HeroSpec> | null | undefined, civ: string, rival: boolean): HeroSpec =>
