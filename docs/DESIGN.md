@@ -48,6 +48,17 @@ parents, age, what it may inherit) and is not seen, does not leave the house and
 taken or harmed until it comes of age, when it steps out as a grown villager. No violence is ever
 done to a child, on screen or in the rules.
 
+**A man at war is still of his house.** A man who leaves to fight stays a member of his household:
+what he earns and wins in war counts to the house's output and renown as his work at home did, and
+he comes home to it. His absence is felt (the house has one pair of hands fewer for the fields) but
+he is not lost to it until he dies or is taken.
+
+**Icons tell status.** The picture beside a person is the main way the player reads them, so it
+shows their people (each nation drawn in its own dress, skin and arms) and their town's standing
+(devout, ordinary, worldly, decadent: the women plainly more alluring and the men plainly crueller
+as a town falls). A person's condition has its own mark as well: wounded, maimed, captive, led
+away, freed, sick, starving, grieving, old, veteran, gone to war, deserter, in revolt, drunk.
+
 **Notable people.** Most villagers are ordinary. Some earn a name the nation remembers: a soldier
 who rises through veterancy, and a woman whose home produces most (many children raised, a farm
 well kept, much carried in). Their loss carries weight for the nation, not only for the town.
