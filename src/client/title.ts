@@ -18,7 +18,7 @@ const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? 
 
 const TIPS = [
   'A housed couple raises new villagers on their own, for half the food.',
-  'Children cannot work. A village is only as old as its youngest family.',
+  'A child is kept at home, on its house\'s record, until it is grown. A village is only as old as its youngest family.',
   'Houses near your Town Center harden its defenders.',
   'From the Bronze Age a Warlord inspires the soldiers around them.',
   'Raiders begin as a war band with no Town Center, and settle where they choose.',

@@ -24,8 +24,10 @@ Add `?seed=123` to the URL to replay a specific map.
 **Families.** Villagers are men and women. Train them at the Town Center, or build a House and
 move one man and one woman in (right-click the house, or press *Find a couple*). A housed couple
 raises new villagers on their own for half the usual food. Each child takes a little longer than
-the last, and you can pause a family when the village is big enough. Newborns are children: small,
-fragile and unable to work until they grow up, when they take up a parent's trade.
+the last, and you can pause a family when the village is big enough. A child is never seen on the map:
+it is kept on the record of its house, which lists it by name and age, and nothing can harm it there. Grown,
+it steps out of the door as a villager and takes up a parent's trade. If the house falls, its children pass
+to a neighbouring house or the Town Center.
 
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
@@ -103,8 +105,8 @@ Where your people stand on the scale between piety and decadence sets their cree
 - **Devout**, then **Righteous**: children come sooner and more of them live to grow up (one in
   ten is lost in an ordinary town, one in twenty among the Devout, one in fifty among the
   Righteous). Faith gathers faster, healing and morale
-  are stronger. A plague passes among the Devout in half the time, and among the Righteous it does
-  not take hold at all. They research more slowly and trade on worse terms.
+  are stronger. Famine, plague and fire come half as often and half as hard among the Devout, and a third
+  among the Righteous: nobody is spared them altogether. They research more slowly and trade on worse terms.
 - **Worldly**, then **Decadent**: soldiers are trained faster, gold is mined faster and the market
   pays more. But villagers are distracted from their work, children come later and
   fewer live to grow up (up to more than one in four lost), plagues last
@@ -141,9 +143,25 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   idle villagers close by turn out on their own.
 - *Famine* (`src/sim/famine.ts`): a food store that stays bare for a minute (nothing coming in at all, not
   merely spent as it arrives) leaves the town hungry, and after two minutes it starves: every half minute it loses
-  one of its people, the old first, then the children, then soldiers, who walk away, then grown villagers, though
-  never the last four. After four minutes plague breaks out around the Town Center, except among the Righteous.
+  one of its people, the old first, then soldiers, who walk away, then grown villagers (never a child), though
+  never the last four. After four minutes plague breaks out around the Town Center.
   Food in the store ends it at once. A war band with no hall does not starve.
+  The warning says what the town can do (what its Market sells food for, or that it has none), and allies are told.
+- *A failed harvest* (`leanYear` in `src/sim/famine.ts`): about once in ten minutes, by chance, half of an
+  ordinary town's fields grow nothing for two minutes. Twice as often in a dust storm, never in heavy rain. A town
+  with food laid by rides it out; one living from field to mouth goes hungry.
+- *Plague from outside* (`src/sim/contagion.ts`): plague now passes between peoples. Anyone standing close to
+  another people's sick may catch it, so a plagued army carries it into the town it attacks, and a Prophet's plague
+  can come home with those who fight its victims. In a transport's hold one sick passenger gives it to the rest.
+  Now and then (one purchase in a hundred) what is bought at a Market brings plague with it.
+- *Fire by accident*: a Blacksmith with work in hand may catch from its forge, and by night a lived-in house from
+  its hearth, a small village much less often than a town. Never in heavy rain; twice as often in a dust storm.
+- *Acts of God go by creed* (`src/sim/wrath.ts`): famine, plague and fire fall on everyone, but harder on the
+  decadent than the holy. One measure governs all three, applied both to how often a thing comes and to how bad
+  it is: a third for the Righteous, a half for the Devout, a quarter more for the Worldly, half again for the
+  Decadent. It covers how readily plague is caught and how long it lasts, how often lightning and accident find a
+  town and how long those fires burn, how readily fire spreads, how often a harvest fails and on how many fields, and how fast a famine takes people. It does not
+  soften what an enemy does directly: a Prophet's fire burns the building it falls on for as long as ever.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
@@ -238,13 +256,13 @@ the last block of `src/client/style.css`.
 **Teaching.** Every battle has a first-steps guide. The campaign has its own: a slip of *first orders*
 over the map, each marked done by what the player has done, and a page, *How the campaign works*, which
 opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
-out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`.
+out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`. In a battle, a slip under the first-steps guide teaches fire-fighting, famine, walls, towers, the market and the work camp the first time each is needed.
 
 **Day and night.** Settings set how long a day lasts (3, 5 or 10 minutes) and whether night falls at
 all (`src/sim/daylight.ts`). There is a sky with the sun, a moon and stars (`src/client/sky.ts`); the
 game's own camera looks down and does not see it, so it shows on the main menu, whose camera looks into
 the sunrise, and with a lowered camera (`?pitch=9`). By night the lamps and torches nearest the middle
-of the view cast real light (`src/client/nightlight.ts`); a setting turns that off for a slow machine.
+of the view cast real light (`src/client/nightlight.ts`); a setting turns that off for a slow machine. In a match, press O to bring the camera down and look out at the sky: it turns to face the sun, or the moon by night; [ and ] turn the view, the wheel raises your eyes, and O goes back.
 
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.
@@ -288,6 +306,9 @@ neighbouring land.
   Mountains, rivers and open water bar a march (`terrainOf`, `raiseBarriers`, `Campaign.barriers`): lands whose
   straight road is crossed by one are not neighbours. Roads on the map show where an army can go.
   `?detail=low` draws it plainer (coarser ground, simpler trees, smaller textures) for a weak machine.
+  Settings has the same choice (`src/client/detail.ts`): Automatic picks the plainer map on a machine that draws
+  in software or is small. Country changes the rules as well as the look, and a closed border can be opened with
+  a bridge or a road over the pass (`src/sim/country.ts`).
   Drag to move, wheel to zoom, click a land to choose it. The flat chart of `src/client/overworld.ts` is shown
   where 3D is not available or with `?map=2d`. Three
   weather fronts cross it turn by turn (`frontsOf`, `weatherAt` in `src/sim/campaign.ts`): an army attacking into

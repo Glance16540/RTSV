@@ -15,13 +15,15 @@ import { HeroSpec, defaultHero } from '../sim/hero';
 import { LEADERS } from '../sim/leaders';
 import { Overworld } from './overworld';
 import { Input } from './input';
-import { Renderer } from './renderer';
+import { Outlook } from './outlook';
+import { PITCH, Renderer, YAW } from './renderer';
 import { sfx } from './sfx';
 import '@fontsource/im-fell-english/400.css';
 import '@fontsource/im-fell-english/400-italic.css';
 import '@fontsource/im-fell-english-sc/400.css';
 import '@fontsource/im-fell-french-canon/400.css';
 import '@fontsource/im-fell-french-canon/400-italic.css';
+import { mountDetailSetting } from './detail';
 import './style.css';
 
 export class App {
@@ -29,6 +31,7 @@ export class App {
   r: Renderer;
   hud: Hud;
   input: Input;
+  outlook: Outlook;
   ai: AIController[] = [];
   pid = 0;
   sel: number[] = [];
@@ -60,6 +63,7 @@ export class App {
     for (const p of this.game.players) if (p.isAI && (!this.mission || this.mission.aiLevel !== null)) this.ai.push(new AIController(this.game, p.id));
     this.r = new Renderer(document.getElementById('game') as HTMLCanvasElement, this.game);
     this.hud = new Hud(this);
+    this.outlook = new Outlook(this.r, { yaw: YAW, pitch: PITCH }, () => (this.game.field ? 0 : this.game.dayT));
     this.input = new Input(this);
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -81,7 +85,7 @@ export class App {
   }
 
   nextIdle(): void {
-    const idle = this.game.units.filter((u) => u.owner === this.pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside);
+    const idle = this.game.units.filter((u) => u.owner === this.pid && u.type === 'villager' && !u.order && !u.inside);
     if (!idle.length) return;
     const u = idle[this.idleI++ % idle.length];
     this.select([u.id]);
@@ -96,7 +100,7 @@ export class App {
   private sound(ev: GameEvent): void {
     const mine = 'player' in ev && ev.player === this.pid;
     if (ev.t === 'age' && mine) sfx.play('age');
-    else if (ev.t === 'alert' && mine) { sfx.play('alert'); const v = this.game.units.find((u) => u.owner === this.pid && u.type === 'villager' && u.growT <= 0 && !u.inside); if (v) bark(this.game, v, 'fear'); }
+    else if (ev.t === 'alert' && mine) { sfx.play('alert'); const v = this.game.units.find((u) => u.owner === this.pid && u.type === 'villager' && !u.inside); if (v) bark(this.game, v, 'fear'); }
     else if (ev.t === 'wonder') sfx.play(mine ? 'age' : 'alert');
     else if (ev.t === 'birth' && mine) sfx.play('birth');
     else if (ev.t === 'grown' && mine) sfx.play('grown');
@@ -162,6 +166,7 @@ export class App {
     if (this.sel.some((id) => !game.entities.has(id))) this.sel = this.sel.filter((id) => game.entities.has(id));
 
     this.input.update(dt);
+    this.outlook.update(dt);
     this.r.frame(this.paused ? 1 : this.acc / DT, dt, this.sel);
     this.input.draw();
     this.hud.update(dt);
@@ -421,6 +426,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     input.addEventListener('input', () => { (prefs[key] as number | boolean) = input.type === 'checkbox' ? input.checked : Number(input.value); applyPrefs(); });
   };
   bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll'); bind('pref-day', 'day'); bind('pref-night', 'night'); bind('pref-lights', 'lights');
+  mountDetailSetting();
   applyPrefs();
 
   // ---- Missions ----

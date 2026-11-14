@@ -1,5 +1,5 @@
 // Which units are pagan, and what a town that keeps the faith does about them. The owner settled the list:
-// the Shaman and the Slaver. The Berserker was marked before that and is left as it was.
+// the Shaman, the Slaver and the Berserker.
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/sim/game';
 import { BUILDINGS, UNITS } from '../src/sim/data';
@@ -17,7 +17,7 @@ const town = (virtue: number) => {
 const pagan = Object.values(UNITS).filter((u) => u.pagan).map((u) => u.id).sort();
 
 describe('pagan units', () => {
-  it('are the Shaman and the Slaver (and the Berserker, as before); the Prophet and the Priest are not', () => {
+  it('are the Shaman, the Slaver and the Berserker; the Prophet and the Priest are not', () => {
     expect(pagan).toEqual(['berserker', 'shaman', 'slaver']);
     expect(UNITS.prophet.pagan).toBeFalsy();
     expect(UNITS.priest.pagan).toBeFalsy();
@@ -35,6 +35,14 @@ describe('pagan units', () => {
 
   it('every one of them can be trained somewhere, so the mark is not on a unit no one could raise', () => {
     for (const id of pagan) expect(Object.values(BUILDINGS).some((b) => b.trains.includes(id))).toBe(true);
+  });
+
+  it('a faithful town has the Swordsman in the Berserker\'s place: same Barracks, same age, same price', () => {
+    const total = (id: string) => Object.values(UNITS[id].cost).reduce((n, v) => n + (v ?? 0), 0);
+    expect(UNITS.swordsman.pagan).toBeFalsy();
+    expect(UNITS.swordsman.age).toBe(UNITS.berserker.age);
+    expect(total('swordsman')).toBe(total('berserker'));
+    expect(BUILDINGS.barracks.trains).toEqual(expect.arrayContaining(['swordsman', 'berserker']));
   });
 
   it('a town refuses them from the moment it is Devout, and not a point before', () => {

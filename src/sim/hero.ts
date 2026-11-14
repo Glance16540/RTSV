@@ -11,7 +11,7 @@ export type Calling = 'warlord' | 'strategist';
 export type Bent = 'strength' | 'armour' | 'both';
 
 /** How a leader looks, as chosen in the creator. Everything left out follows their calling's usual dress. */
-export interface HeroLook { hair?: number; beard?: boolean; helmet?: string; cloak?: number; build?: number }
+export interface HeroLook { hair?: number; beard?: boolean; helmet?: string; cloak?: number; build?: number; /** The colour of the skin, if not one of their people's own. */ skin?: number; /** Which face, 0 to 99, if not left to chance. */ face?: number }
 
 export interface HeroSpec {
   name: string;
@@ -32,7 +32,7 @@ export interface HeroSpec {
 export const HERO_POINTS = 6;
 export const MAX_RANK = 5;
 /** Deeds needed to reach each rank. A deed is an enemy felled, by the leader or by anyone fighting beside them. */
-export const RANK_XP = [0, 6, 15, 28, 46, 70];
+export const RANK_XP = [0, 6, 15, 41, 77, 125];
 export const RANK_NAMES = ['Untried', 'Blooded', 'Seasoned', 'Veteran', 'Renowned', 'Legend'];
 export const MIGHT_ATK = 1.5; // attack per point of might
 export const GUARD_ARMOR = 0.4; // armour per point of guard
@@ -68,6 +68,8 @@ export function cleanHero(h: Partial<HeroSpec> | null | undefined, civ: string):
     if (h.look.cloak != null) look.cloak = int(h.look.cloak, 0, 0xffffff);
     if (h.look.beard != null) look.beard = !!h.look.beard;
     if (h.look.build != null) look.build = int(h.look.build, 0, 2);
+    if (h.look.skin != null) look.skin = int(h.look.skin, 0, 0xffffff);
+    if (h.look.face != null) look.face = int(h.look.face, 0, 99);
     if (h.look.helmet) look.helmet = text(h.look.helmet, 12);
   }
   return {

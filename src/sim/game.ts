@@ -10,8 +10,11 @@ import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
+import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
 import { calamity, douse, roll } from './calamity';
+import { boughtIn } from './contagion';
+import { wrath } from './wrath';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
@@ -109,15 +112,14 @@ export interface Unit extends Base {
   trait2: string; // a second trait, for the lucky
   age: number; // seconds lived as an adult
   lifespan: number; // seconds of adult life this villager will have
-  growT: number; // seconds until a child becomes a working adult (0 for adults)
-  bornAt: number; // house a child was born in
+  growT: number; // always 0: a child is never a unit (see nursery.ts); kept so that older code asking still gets its answer
+  bornAt: number; // the house they were born in
   plagueT: number; // seconds of plague remaining
   mana: number;
   homeX: number; // where a wild animal lives
   homeY: number;
   inside: number; // building this unit is sheltering in, or ship it is aboard
   cargo?: number[]; // a transport ship's passengers
-  frail?: number; // a child who will not live to grow up: dies when growT falls to this
   captive?: Captive | null; // a Slaver's prisoner, being led to a camp
   /** A villager's record: children had at home, children borne in captivity, and what has befallen them. */
   kids?: number; captiveKids?: number; story?: Deed[];
@@ -160,6 +162,8 @@ export interface Building extends Base {
   birthsPaused: boolean;
   family: string; // name of the family living in a house
   children: number; // villagers this house has raised
+  /** The children under this roof: a record, not people on the map (nursery.ts). */
+  young?: Child[];
   cooldown: number;
   scanT: number;
   workerId: number;
@@ -214,6 +218,8 @@ export interface Stats { gathered: number; trained: number; born: number; kills:
 const newStats = (): Stats => ({ gathered: 0, trained: 0, born: 0, kills: 0, lost: 0, razed: 0, buildingsLost: 0 });
 
 export interface Player extends HallState {
+  /** Children of a people with no roof left, who travel with it until they are grown (nursery.ts). */
+  wards?: Child[];
   /** The nation's leader as made in the creator, and the veterancy they will take the field with next. */
   hero?: HeroSpec; heroRank?: number;
   /** Their leader has fallen in this battle; and the one leading now is a soldier raised in their place. */
@@ -644,7 +650,7 @@ export class Game {
   setTrait(u: Unit, trait: string, trait2 = ''): void {
     u.trait = trait || trait2;
     u.trait2 = trait && trait2 !== trait ? trait2 : '';
-    const max = Math.round(u.def.hp * (this.has(u, 'hardy') ? 1.5 : 1) * (u.growT > 0 ? 0.4 : 1));
+    const max = Math.round(u.def.hp * (this.has(u, 'hardy') ? 1.5 : 1));
     u.hp = (u.hp / u.maxHp) * max;
     u.maxHp = max;
   }
@@ -727,6 +733,7 @@ export class Game {
     } else if (e.kind === 'building') {
       if (e.type === 'towncenter') this.relayRoads(); else this.liftRoad(e.id);
       this.unstaff(e, e.staff?.length ?? 0);
+      this.rehome(e);
       // A fallen camp's prisoners go home.
       (e.captives ?? []).forEach((c, i) => this.freeCaptive(c, e.x - 1.5 + (i % 4), e.y + e.size / 2 + 0.6 + Math.floor(i / 4) * 0.6));
       e.captives = [];
@@ -1709,16 +1716,45 @@ export class Game {
     }
   }
 
-  /** A child grows a little older. Returns true if the child died: not every child lives to grow up. */
-  private grow(u: Unit): boolean {
-    u.growT -= DT;
-    if (u.frail && u.growT <= u.frail) {
-      this.msg(u.owner, `${u.name}, a child of the ${u.family || 'town'}, has died young.`);
-      this.kill(u);
-      return true;
+  /**
+   * A child is born under a roof: written into its record, never set on the map. It counts among the town's
+   * people from the day it is born, so a town has room for it when it is grown.
+   */
+  private bear(b: Building, gender?: Gender): Child {
+    const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = g === 'm' ? NAMES_M : NAMES_F;
+    const c: Child = { id: this.nextId++, name: names[Math.floor(this.rng() * names.length)], family: '', gender: g, trait: '', trait2: '', lifespan: LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]), left: GROW_TIME, bornAt: b.id };
+    // In a town whose families are strong, more children live to grow up. (Decided without the game's dice.)
+    const fate = ((c.id * 2654435761 + this.seed * 40503) >>> 0) / 4294967296, loss = this.creed(b.owner).childLoss;
+    if (fate < loss) c.frail = GROW_TIME * (0.15 + 0.7 * (fate / Math.max(0.01, loss)));
+    (b.young ??= []).push(c);
+    this.players[b.owner].pop += UNITS.villager.pop;
+    return c;
+  }
+
+  /** Time passes for the children on a record. One who is grown steps out of `door` as a villager; `at` is used when there is no door. */
+  private tendYoung(owner: number, young: Child[], dt: number, door: Building | null, at?: { x: number; y: number }): void {
+    const { grown, lost } = ageYoung(young, dt), p = this.players[owner];
+    for (const c of lost) {
+      p.pop -= UNITS.villager.pop;
+      this.msg(owner, `${c.name}, a child of the ${c.family || 'town'}, sickened and has died young.`);
     }
-    if (u.growT <= 0) this.comeOfAge(u);
-    return false;
+    for (const c of grown) {
+      p.pop -= UNITS.villager.pop; // the grown villager is counted in their place
+      const u = door ? this.spawnFrom(door, 'villager', c.gender) : this.spawnUnit('villager', owner, at?.x ?? 0, at?.y ?? 0, c.gender);
+      u.name = c.name; u.family = c.family; u.lifespan = c.lifespan; u.bornAt = c.bornAt;
+      u.trait = c.trait; u.trait2 = c.trait2;
+      this.comeOfAge(u);
+    }
+  }
+
+  /** A roof has fallen: its children pass to another of their town's, or travel with their people if it has none. Nothing harms them. */
+  private rehome(b: Building): void {
+    if (!b.young?.length) return;
+    const to = wardFor(this.buildings, b), p = this.players[b.owner];
+    if (to) (to.young ??= []).push(...b.young);
+    else (p.wards ??= []).push(...b.young);
+    this.msg(b.owner, `The ${b.young.length === 1 ? 'child' : `${b.young.length} children`} of the fallen ${b.def.name.toLowerCase()} ${b.young.length === 1 ? 'has' : 'have'} been taken in ${to ? (to.type === 'house' ? 'by a neighbouring house' : `at the ${to.def.name}`) : 'by those who are left'}.`);
+    b.young = [];
   }
 
   /** Is this villager spending their days in a tavern? Their house raises no children meanwhile. */
@@ -1759,15 +1795,11 @@ export class Game {
     if (p.pop + 1 > p.popCap) { b.trystT = 1; return; }
     b.trystT = 0;
     // Decided without the game's dice, so the rest of the match is not disturbed by it.
-    const child = this.spawnFrom(b, 'villager', (b.id + this.tick / 20) % 2 < 1 ? 'm' : 'f');
-    this.setOrder(child, null);
-    child.growT = GROW_TIME;
-    child.bornAt = b.id;
-    const fate = ((child.id * 2654435761 + this.seed * 40503) >>> 0) / 4294967296, loss = this.creed(p.id).childLoss;
-    if (fate < loss) child.frail = GROW_TIME * (0.15 + 0.7 * (fate / Math.max(0.01, loss)));
-    child.maxHp = child.hp = Math.round(child.def.hp * 0.4);
+    // A child no household owns to is kept at the Town Center, if the town has one.
+    const roof = this.tcs[p.id]?.[0] ?? b;
+    this.bear(roof, (b.id + this.tick / 20) % 2 < 1 ? 'm' : 'f').bornAt = b.id;
     p.stats.born++;
-    this.events.push({ t: 'birth', player: p.id, x: child.x, y: child.y });
+    this.events.push({ t: 'birth', player: p.id, x: b.x, y: b.y });
     this.events.push({ t: 'msg', player: p.id, text: '🍷 A child is born at the tavern, and no one asks whose.' });
   }
 
@@ -1803,6 +1835,8 @@ export class Game {
   private updateCreeds(): void {
     if (this.field) return;
     for (const p of this.players) {
+      // Children travelling with a people that has no roof: grown, they appear beside one of their own.
+      if (p.wards?.length && !p.defeated) { const any = this.units.find((u) => u.owner === p.id && !u.dead && !u.inside), door = this.buildings.find((b) => b.owner === p.id && b.complete) ?? null; if (door || any) this.tendYoung(p.id, p.wards, 1, door, any); }
       if (p.id === this.wild || p.defeated || !this.tcs[p.id]?.length) continue;
       // Clergy pull a people towards piety, tavern maids the other way; the maids also earn their keep.
       p.clergy = 0;
@@ -1865,7 +1899,7 @@ export class Game {
     if (!this.canAfford(p, cost)) { this.msg(owner, dir === 'sell' ? `Not enough ${res} to sell.` : 'Not enough gold.'); return false; }
     this.pay(p, cost);
     if (dir === 'sell') p.res.gold += Math.round(rate.sell * this.creed(owner).trade);
-    else p.res[res] += 100;
+    else { p.res[res] += 100; boughtIn(this, b); } // what is bought comes from elsewhere, and now and then plague with it
     this.shiftVirtue(owner, -2); // a people that haggles thinks about money
     return true;
   }
@@ -2404,7 +2438,6 @@ export class Game {
     if (u.inside) {
       const ship = this.entities.get(u.inside);
       if (ship && ship.kind === 'unit') { u.x = ship.x; u.y = ship.y; }
-      if (u.growT > 0 && this.grow(u)) return;
       return;
     }
     u.moving = false;
@@ -2420,8 +2453,7 @@ export class Game {
       if (this.players[u.owner].isAI && u.attackAnim > 0) this.cmdCall(u.owner);
     }
     if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith * this.creed(u.owner).faith);
-    if (u.growT > 0 && this.grow(u)) return;
-    if (this.aging && u.lifespan > 0 && u.growT <= 0 && (u.age += DT) > u.lifespan) {
+    if (this.aging && u.lifespan > 0 && (u.age += DT) > u.lifespan) {
       this.events.push({ t: 'oldage', player: u.owner, name: `${u.name}${u.family ? ' ' + u.family : ''}` });
       this.kill(u);
       return;
@@ -2740,9 +2772,8 @@ export class Game {
     }
   }
 
-  /** A child grows up: it can now work, and takes up a parent's trade unless the house has a rally point. */
+  /** A child is grown and has stepped out of the door: they take up a parent's trade unless the house has a rally point. */
   private comeOfAge(u: Unit): void {
-    u.growT = 0;
     this.setTrait(u, u.trait, u.trait2); // full adult health
     this.events.push({ t: 'grown', player: u.owner, x: u.x, y: u.y });
     if (u.order || u.inside) return;
@@ -3107,14 +3138,16 @@ export class Game {
       if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && this.time - n.litAt < CALAMITY.scorched)) continue;
       const k = n.size / 2;
       if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
-      if (roll(this, b.id * 8191 + n.id) >= CALAMITY.spread) continue;
-      n.burnT = CALAMITY.caught;
+      const w = wrath(this, n.owner); // it catches less readily among the holy, and burns a shorter time (wrath.ts)
+      if (roll(this, b.id * 8191 + n.id) >= CALAMITY.spread * w) continue;
+      n.burnT = CALAMITY.caught * w;
       n.litAt = this.time;
       if (!this.players[n.owner].neutral) this.msg(n.owner, `Fire has spread to your ${n.def.name}!`);
     }
   }
 
   private updateBuilding(b: Building): void {
+    if (b.young?.length) this.tendYoung(b.owner, b.young, DT, b);
     if (b.burnT > 0) {
       b.burnT -= this.foul === 'rain' ? DT * 2.5 : DT; // rain puts fires out
       b.hp -= 5 * DT;
@@ -3173,14 +3206,7 @@ export class Game {
             b.birthProgress = 0;
             b.birthBlocked = false;
             b.children++;
-            const child = this.spawnFrom(b, 'villager');
-            this.setOrder(child, null);
-            child.growT = GROW_TIME;
-            child.bornAt = b.id;
-            // In a town whose families are strong, more children live to grow up. (Decided without the
-            // game's dice, so the rest of the match is not disturbed by it.)
-            const fate = ((child.id * 2654435761 + this.seed * 40503) >>> 0) / 4294967296;
-            if (fate < this.creed(b.owner).childLoss) child.frail = GROW_TIME * (0.15 + 0.7 * (fate / Math.max(0.01, this.creed(b.owner).childLoss)));
+            const child = this.bear(b);
             // Children take after their parents: usually one of their traits, now and then something new.
             const mother = this.entities.get(b.residents.f) as Unit, father = this.entities.get(b.residents.m) as Unit;
             mother.kids = (mother.kids ?? 0) + 1;
@@ -3191,10 +3217,9 @@ export class Game {
             const second = trait && other && other !== trait && this.rng() < 0.25 ? other : '';
             if (!b.family) b.family = FAMILY_NAMES[Math.floor(this.rng() * FAMILY_NAMES.length)];
             child.family = b.family;
-            child.maxHp = child.hp = Math.round(child.def.hp * 0.4);
-            this.setTrait(child, trait, second);
+            child.trait = trait; child.trait2 = second;
             p.stats.born++;
-            this.events.push({ t: 'birth', player: b.owner, x: child.x, y: child.y });
+            this.events.push({ t: 'birth', player: b.owner, x: b.x, y: b.y });
           } else b.birthBlocked = true;
         }
       } else if (b.birthProgress > 0 && !b.birthsPaused) b.birthProgress = Math.max(0, b.birthProgress - DT / 20);

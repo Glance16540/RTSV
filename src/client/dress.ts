@@ -101,7 +101,7 @@ const DRESS: Record<string, Dress> = {
 
 /**
  * Dresses someone the way their nation does. A village woman's neckline, sleeves and head covering stay as her town
- * gave them; a rider keeps no skirt; a child wears the grown-ups' cloth without their hats, cloaks or furs.
+ * gave them; a rider keeps no skirt.
  */
 export function nationDress(civ: string, type: string, o: Outfit, color: number): Outfit {
   const d = DRESS[civ];
@@ -120,6 +120,5 @@ export function nationDress(civ: string, type: string, o: Outfit, color: number)
     if (o.apron == null && cut.apron != null) delete cut.apron;
     cut.beard = false;
   }
-  if (o.child) return { ...o, ...cut, hat: '', beard: false, cloak: null, mantle: false, hairStyle: o.hairStyle, skirt: o.skirt };
   return { ...o, ...cut };
 }

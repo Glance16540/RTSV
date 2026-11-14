@@ -44,16 +44,17 @@ describe('famine', () => {
     expect(p.starved ?? 0).toBe(0);
   });
 
-  it('it takes the old first, then the children, then soldiers, then grown villagers, and leaves the last few', () => {
+  it('it takes the old first, then soldiers, then grown villagers, leaves the last few, and never a child', () => {
     const g = town();
     const p = g.players[0], at = hallOf(g);
     for (let i = 0; i < 4; i++) g.spawnUnit('villager', 0, at.x + 4 + i * 0.5, at.y + 5);
     const folk = villagers(g, 0);
-    const elder = folk[0], child = folk[1];
+    const elder = folk[0];
     elder.lifespan = 1e6; elder.age = 0.99e6;
-    child.growT = 1e5;
+    // A child on a house's record: a famine cannot reach it (nursery.ts).
+    at.young = [{ id: 1e6, name: 'Small', family: '', gender: 'f', trait: '', trait2: '', lifespan: 9999, left: 1e9, bornAt: at.id }];
     const soldier = g.spawnUnit('clubman', 0, at.x + 5, at.y + 6);
-    const grown = folk.length - 2;
+    const grown = folk.length - 1;
     expect(grown).toBeGreaterThan(FAMINE.spare);
     expect(nextLost(g, 0)).toBe(elder);
     p.res.food = 0;
@@ -61,12 +62,13 @@ describe('famine', () => {
     const seen = new Set<number>();
     run(g, FAMINE.starving + FAMINE.toll * (grown + 6), () => {
       p.res.food = 0;
-      for (const u of [elder, child, soldier, ...folk]) if (u.dead && !seen.has(u.id)) { seen.add(u.id); order.push(u === elder ? 'old' : u === child ? 'child' : u === soldier ? 'soldier' : 'grown'); }
+      for (const u of [elder, soldier, ...folk]) if (u.dead && !seen.has(u.id)) { seen.add(u.id); order.push(u === elder ? 'old' : u === soldier ? 'soldier' : 'grown'); }
     });
-    expect(order.slice(0, 3)).toEqual(['old', 'child', 'soldier']);
-    expect(order.slice(3).every((x) => x === 'grown')).toBe(true);
+    expect(order.slice(0, 2)).toEqual(['old', 'soldier']);
+    expect(order.slice(2).every((x) => x === 'grown')).toBe(true);
+    expect(at.young.length).toBe(1);
     expect(villagers(g, 0).length).toBe(FAMINE.spare);
-    expect(p.starved).toBe(3 + grown - FAMINE.spare);
+    expect(p.starved).toBe(2 + grown - FAMINE.spare);
     expect(nextLost(g, 0)).toBe(null);
     expect(said(g, 'has starved')).toBe(true);
     expect(said(g, 'has walked away from your army')).toBe(true);
@@ -87,14 +89,14 @@ describe('famine', () => {
     expect(n()).toBe(first - 2);
   });
 
-  it('sickness follows hunger, but never among the Righteous', () => {
-    const sick = (virtue: number) => {
+  it('sickness follows hunger; among the Righteous three times as late, and a third as long', () => {
+    const sick = (virtue: number, wait = FAMINE.plague + 3) => {
       const g = town();
       const p = g.players[0];
       p.virtue = virtue;
       p.res.food = 0;
       let struck = 0;
-      run(g, FAMINE.plague + 3, () => { p.res.food = 0; p.virtue = virtue; struck = Math.max(struck, g.units.filter((u) => u.owner === 0 && u.plagueT > 0).length); });
+      run(g, wait, () => { p.res.food = 0; p.virtue = virtue; struck = Math.max(struck, g.units.filter((u) => u.owner === 0 && u.plagueT > 0).length); });
       return { struck, told: said(g, 'Sickness has followed hunger'), creed: g.creed(0).id };
     };
     const plain = sick(0);
@@ -104,6 +106,9 @@ describe('famine', () => {
     expect(holy.creed).toBe('zealous');
     expect(holy.struck).toBe(0);
     expect(holy.told).toBe(false);
+    const later = sick(100, FAMINE.plague * 3 + 3);
+    expect(later.told).toBe(true);
+    expect(later.struck).toBeGreaterThan(0);
   });
 
   it('a war band with no hall, and the armies of a field battle, do not starve', () => {

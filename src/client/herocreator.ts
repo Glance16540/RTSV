@@ -26,6 +26,9 @@ function keep(civ: string, h: HeroSpec | null): void {
 }
 
 const HAIR = [0x1c1814, 0x4a3220, 0x7a5a34, 0xb08a4a, 0xd8c8a0, 0x8a3a20, 0x8a8680, 0xe6e2da];
+/** Skins from fair to dark, and eight faces that differ in both halves (see `heads.ts`). */
+const SKIN = [0xf0c8a8, 0xe8b894, 0xd8a47c, 0xc89264, 0xb07a50, 0x94603c, 0x74482c, 0x54321e];
+const FACES = [0, 9, 18, 27, 36, 13, 22, 31];
 const CLOAK = [0x8a2028, 0x2f4f8a, 0x2f6a44, 0x5a2f7a, 0xb8862a, 0x2a2a30, 0xe2dccc, 0x6a4a2a];
 const HELMETS: [string, string][] = [['', 'As their calling wears'], ['none', 'Bare-headed'], ['circlet', 'A circlet'], ['leather', 'Leather cap'], ['bronze', 'Bronze helm'], ['iron', 'Iron helm'], ['kettle', 'Kettle hat']];
 const css = (n: number): string => '#' + n.toString(16).padStart(6, '0');
@@ -59,6 +62,8 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
         <h3>What they learn <small id="hm-rank"></small></h3>
         <div id="hm-powers"></div>
         <h3>How they look</h3>
+        <div class="hm-row"><span>Skin</span><div class="hm-swatches" id="hm-skin"></div></div>
+        <div class="hm-row"><span>Face</span><div class="hm-pick" id="hm-face"><button type="button" data-v="">auto</button>${FACES.map((f, i) => `<button type="button" data-v="${f}">${i + 1}</button>`).join('')}</div></div>
         <div class="hm-row"><span>Hair</span><div class="hm-swatches" id="hm-hair"></div></div>
         <div class="hm-row"><span>Cloak</span><div class="hm-swatches" id="hm-cloak"></div></div>
         <label class="hm-row">Head <select id="hm-helmet">${HELMETS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label>
@@ -123,7 +128,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
       : 'Stands behind the line with a staff. Enemies fighting near them strike a fifth weaker, and your wounded nearby are slowly mended. Raised at the Town Center from the Iron Age.';
     $('hm-left').textContent = left() ? `${left()} of ${HERO_POINTS} points still to spend` : `all ${HERO_POINTS} points spent`;
     $('hm-points').innerHTML = STATS.map(([k, name, what]) => `<div class="hm-stat"><b>${name}</b><small>${what}</small><button type="button" data-k="${k}" data-d="-1" ${h[k] <= 0 ? 'disabled' : ''} aria-label="Less ${name}">−</button><span class="hm-pips">${'●'.repeat(h[k])}${'○'.repeat(HERO_POINTS - h[k])}</span><button type="button" data-k="${k}" data-d="1" ${left() <= 0 ? 'disabled' : ''} aria-label="More ${name}">+</button></div>`).join('');
-    swatches('hm-hair', HAIR, h.look!.hair); swatches('hm-cloak', CLOAK, h.look!.cloak);
+    swatches('hm-hair', HAIR, h.look!.hair); swatches('hm-cloak', CLOAK, h.look!.cloak); swatches('hm-skin', SKIN, h.look!.skin); pick('hm-face', h.look!.face == null ? '' : String(h.look!.face));
     $('hm-beard-row').classList.toggle('hidden', h.female);
     $<HTMLInputElement>('hm-beard').checked = h.look!.beard ?? h.calling === 'warlord';
     $<HTMLSelectElement>('hm-helmet').value = h.look!.helmet ?? '';
@@ -151,6 +156,8 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
     change(false);
   });
   onPick('hm-build', (v) => { h.look!.build = Number(v); });
+  onPick('hm-skin', (v) => { if (v) h.look!.skin = Number(v); else delete h.look!.skin; });
+  onPick('hm-face', (v) => { if (v) h.look!.face = Number(v); else delete h.look!.face; });
   onPick('hm-hair', (v) => { if (v) h.look!.hair = Number(v); else delete h.look!.hair; });
   onPick('hm-cloak', (v) => { if (v) h.look!.cloak = Number(v); else delete h.look!.cloak; });
   $('hm-points').addEventListener('click', (e) => {

@@ -104,7 +104,7 @@ export class Sky {
     this.sun.material.opacity = day * (0.25 + 0.75 * clear);
     this.halo.material.color.copy(LOW_SUN).lerp(st.sunColor, 0.5);
     this.halo.material.opacity = day * clear * (0.5 + 0.35 * st.warm);
-    const mk = 1 / Math.hypot(st.moonX, st.moonZ), me = 24 * (Math.PI / 180);
+    const mk = 1 / Math.hypot(st.moonX, st.moonZ), me = 17 * (Math.PI / 180);
     this.moon.position.set(st.moonX * mk * Math.cos(me), Math.sin(me), st.moonZ * mk * Math.cos(me)).multiplyScalar(R * 0.95);
     this.moon.material.opacity = st.night * (0.2 + 0.8 * clear);
     this.stars.material.opacity = st.night * clear * 0.95;

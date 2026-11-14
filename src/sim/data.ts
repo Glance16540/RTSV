@@ -117,7 +117,7 @@ export interface UnitDef {
   naval?: boolean;
   /**
    * A pagan unit: a town that keeps the faith (Devout or Righteous) will not train it. The owner has settled which:
-   * the Shaman and the Slaver. The Berserker was marked before that and has been left so; the Prophet is not pagan
+   * the Shaman, the Slaver and the Berserker. The Prophet is not pagan
    * (his power is the town's own faith), and no nation's own unit is. tests/pagan.test.ts holds the list.
    */
   pagan?: boolean;
@@ -737,7 +737,7 @@ export const TECHS: Record<string, TechDef> = {
     cost: { food: 150, gold: 60 }, time: 35, age: 1, apply: (m) => { m.birth += 0.35; },
   }),
   extendedfamily: T({
-    id: 'extendedfamily', name: 'Extended Family', icon: '👨‍👩‍👧‍👦', desc: 'Each house supports +2 population.',
+    id: 'extendedfamily', name: 'Extended Family', icon: '🏘️', desc: 'Each house supports +2 population.',
     cost: { wood: 200, stone: 100 }, time: 40, age: 2, apply: (m) => { m.housePop += 2; },
   }),
   herbalism: T({

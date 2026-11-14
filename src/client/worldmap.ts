@@ -6,6 +6,7 @@
 // figures under a standard that march from land to land, and the map moves: the sea runs, cloud drifts and throws
 // shadow, weather fronts pass with rain, snow or dust, birds wheel, ships go by, and smoke rises from the towns.
 
+import { lowDetail, reportMapTime } from './detail';
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -23,8 +24,8 @@ const UX = MAP_W / 1000, UZ = MAP_H / 600;
 const WX = (px: number): number => px * K - (MAP_W * K) / 2;
 const WZ = (py: number): number => py * K - (MAP_H * K) / 2;
 const STEP = LAND_STEP;
-/** `?detail=low` draws a plainer map for a machine that struggles with the full one. */
-const LOW = typeof location !== 'undefined' && new URLSearchParams(location.search).get('detail') === 'low';
+/** A plainer map for a machine that struggles with the full one: chosen in Settings, by `?detail=low`, or automatically (see detail.ts). Settled each time a map is made. */
+let LOW = false;
 
 const hash = (x: number, y: number): number => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
 const smooth = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -107,11 +108,15 @@ export class WorldMap {
   private moved = false;
   private raf = 0;
   private c: Campaign;
+  /** When this map began to be made, until its first picture is drawn and the time it took is reported. */
+  private born = 0;
   private last: { sel: number; reach: Set<number> } = { sel: -1, reach: new Set() };
   private textures: THREE.Texture[] = [];
 
   constructor(private host: HTMLElement, c: Campaign, private cell: Uint8Array, private edge: Float32Array, private onPick: (tid: number) => void) {
     this.c = c;
+    LOW = lowDetail();
+    this.born = performance.now();
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'ow-gl';
     this.gl = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
@@ -897,6 +902,16 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       D[o] = r; D[o + 1] = g; D[o + 2] = b; D[o + 3] = a * 255;
     }
     ctx.putImageData(img, 0, 0);
+    // A bridge or a pass road made since the ground was painted: the same dotted way as any other road.
+    ctx.setLineDash([4, 4.5]); ctx.lineCap = 'round';
+    for (const [tone, wide] of [['rgba(60,40,20,0.4)', 2.6], ['rgba(240,224,176,0.95)', 1.3]] as [string, number][]) {
+      ctx.strokeStyle = tone; ctx.lineWidth = wide;
+      for (const w of c.works ?? []) {
+        const t = c.territories[Math.min(w.a, w.b)], u = c.territories[Math.max(w.a, w.b)], mx = (t.x + u.x) / 2 + (u.y - t.y) * 0.08, my = (t.y + u.y) / 2 - (u.x - t.x) * 0.08;
+        ctx.beginPath(); ctx.moveTo(t.x, t.y + 8); ctx.quadraticCurveTo(mx, my + 8, u.x, u.y + 8); ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
     this.overTex.needsUpdate = true;
   }
 
@@ -1316,5 +1331,6 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       p.needsUpdate = true;
     });
     this.gl.render(this.scene, this.camera);
+    if (this.born) { reportMapTime(performance.now() - this.born, LOW); this.born = 0; }
   }
 }
