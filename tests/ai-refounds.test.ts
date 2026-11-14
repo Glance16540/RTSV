@@ -22,6 +22,7 @@ describe('the computer player re-founds a razed town', () => {
       if (begun < 0 && halls().length) { begun = s; first = g.buildings.filter((b) => b.owner === 1 && b.type !== 'towncenter').map((b) => b.type); }
     }
     expect(begun).toBeGreaterThanOrEqual(0);
+    expect(begun).toBeLessThan(200); // every hand went to wood and stone: it does not take the whole battle
     // Short of stone and with nowhere to bring it, it built a storehouse and nothing else before the hall.
     expect(first.sort()).toEqual(['barracks', 'storehouse']);
     expect(halls()[0].complete).toBe(true);

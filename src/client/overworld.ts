@@ -1,7 +1,7 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
 import { creedOf } from '../sim/creed';
-import { PLACES, WORLD_EVENTS } from '../sim/story';
+import { PLACES, WORLD_EVENTS, epilogue } from '../sim/story';
 import { AGES, CIVS, CIV_IDS, styleOf } from '../sim/data';
 import { LEADERS, Speech, leaderOf } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -159,8 +159,8 @@ export class Overworld {
     const c = this.c;
     if (c.phase === 'over') {
       this.dialog(c.winner === 0 ? 'The land is yours' : 'Your people are conquered',
-        c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`,
-        [['New campaign', () => this.askNew()], ['Main menu', () => this.hooks.exit()]]);
+        (c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`) + `<span class="ow-chronicle ow-epilogue">${epilogue(c).slice(1).map((l) => `<div><i>${l}</i></div>`).join('')}</span>`,
+        [['Read the chronicle', () => this.showChronicle()], ['New campaign', () => this.askNew()], ['Main menu', () => this.hooks.exit()]]);
     } else if (c.demand) this.askDemand();
     else if (c.pending) this.askBattle();
     else if (c.tale && c.phase === 'player' && taleNow(c)) this.askTale();
@@ -241,7 +241,8 @@ export class Overworld {
     const c = this.c;
     const lines = (c.chronicle ?? []).map((l) => `<div><small>Turn ${l.turn}.</small> ${l.text}</div>`).join('');
     const places = placesOf(c).map((p) => { const t = c.territories[p.at]; return `<div>${PLACES[p.kind].icon} <b>${p.name[0].toUpperCase() + p.name.slice(1)}</b>, in ${t.name} <small>(${t.owner < 0 ? 'the local tribes' : t.owner === 0 ? 'yours' : c.factions[t.owner].name})</small>. ${p.legend}</div>`; }).join('');
-    this.dialog('The chronicle', `<span class="ow-chronicle">${lines || 'Nothing is written yet.'}<h3>Places of note</h3>${places}</span>`, [['Close', () => this.changed()]]);
+    const last = epilogue(c).map((l) => `<div><i>${l}</i></div>`).join('');
+    this.dialog('The chronicle', `<span class="ow-chronicle">${lines || 'Nothing is written yet.'}${last ? `<h3>How it ended</h3>${last}` : ''}<h3>Places of note</h3>${places}</span>`, [['Close', () => this.changed()]]);
   }
 
   private askDemand(): void {
