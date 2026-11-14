@@ -34,6 +34,10 @@ of the defence: who was killed, who was taken, and which way the town's morals s
 training time is what turns him into the unit chosen. No man comes from nowhere. Population is the
 real resource: an army is paid for in births and years.
 
+**People come only by birth.** In the campaign (a battle or a visit) no villager is bought at the
+Town Center: a town's people are those it has and those its housed couples raise. Skirmish keeps
+villagers for hire as it was.
+
 **Men and women.** Soldiers come from the men. Women may serve, in healing and support; a woman
 who fights does so with a much lower attack. Women tend the farms, raise the children, work,
 produce, and carry more than a man. War takes the men and raiders take the women, and those are
@@ -43,6 +47,17 @@ two different wounds.
 parents, age, what it may inherit) and is not seen, does not leave the house and cannot be struck,
 taken or harmed until it comes of age, when it steps out as a grown villager. No violence is ever
 done to a child, on screen or in the rules.
+
+**A man at war is still of his house.** A man who leaves to fight stays a member of his household:
+what he earns and wins in war counts to the house's output and renown as his work at home did, and
+he comes home to it. His absence is felt (the house has one pair of hands fewer for the fields) but
+he is not lost to it until he dies or is taken.
+
+**Icons tell status.** The picture beside a person is the main way the player reads them, so it
+shows their people (each nation drawn in its own dress, skin and arms) and their town's standing
+(devout, ordinary, worldly, decadent: the women plainly more alluring and the men plainly crueller
+as a town falls). A person's condition has its own mark as well: wounded, maimed, captive, led
+away, freed, sick, starving, grieving, old, veteran, gone to war, deserter, in revolt, drunk.
 
 **Notable people.** Most villagers are ordinary. Some earn a name the nation remembers: a soldier
 who rises through veterancy, and a woman whose home produces most (many children raised, a farm
