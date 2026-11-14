@@ -112,6 +112,9 @@ const STYLES: Record<string, Style> = {
   arabs: { roof: 'dome', walls: [0xd4c298, 0xdccca6, 0xe4d6b6, 0xece2c8, 0xf2ecda], roofs: [0xc4b088, 0xcab890, 0x4a9a8c, 0x3a8c88, 0x2f8684], post: 0x3a8c88 },
   persia: { roof: 'dome', walls: [0xc4aa82, 0xccb48e, 0xd4be9c, 0xdccaac, 0xe4d6be], roofs: [0xb49464, 0xbc9e70, 0x3a78a8, 0x2f6aa8, 0x2a60a8], post: 0xd8b060 },
   forge: { roof: 'pagoda', walls: [0xb89a6a, 0xc0a474, 0xcabca4, 0xd8d0c0, 0xe2dcd0], roofs: [0x8a866c, 0x7c8470, 0x5f8f78, 0x4f9078, 0x449078], post: 0xa8322a },
+  // Mali: banked mud walls the colour of the earth they stand on. Kush: sandstone and flat roofs, gilded at the door.
+  mali: { roof: 'flat', walls: [0xb88a5a, 0xc0925e, 0xc89a66, 0xd0a470, 0xd8ae7c], roofs: [0xa87a4c, 0xb08252, 0xb88a5a, 0xc0925e, 0xc89a66], post: 0x6a4a2c },
+  kush: { roof: 'flat', walls: [0xc8a878, 0xd0b07c, 0xd8ba88, 0xe0c494, 0xe6cea2], roofs: [0xb8965e, 0xc09e68, 0xc8a874, 0xd0b280, 0xd8bc8c], post: 0xc8963a },
   japan: { roof: 'pagoda', walls: [0xc4b088, 0xd0c09c, 0xdcd2b8, 0xe8e2d0, 0xf0ece2], roofs: [0x7a6c5e, 0x6c6258, 0x5e5a5a, 0x54565e, 0x4c5060], post: 0x5a3a28 },
   wild: { roof: 'steep', walls: [0x8a6a44, 0x82623e, 0x7c5c3a, 0x765838, 0x705436], roofs: [0x7a8448, 0x6e7842, 0x6a5c3c, 0x5a4c36, 0x4c4238] },
   england: { roof: 'steep', walls: [0xb89a6a, 0xb8a078, 0xcfc6b0, 0xd9d2c0, 0xe8e2d4], roofs: [0xc9b458, 0xb89848, 0x8a6a48, 0x6a6460, 0x565a66] },
@@ -184,6 +187,9 @@ const PEOPLES: Record<string, { skin: number[]; hair: number[] }> = {
   steppe: { skin: [0xdcae80, 0xd6a678, 0xe0b488], hair: [0x16120f, 0x1e1a18, 0x2a2018] },
   forge: { skin: [0xe6bc92, 0xe0b488, 0xeac49c], hair: [0x16120f, 0x1e1a18] },
   japan: { skin: [0xeac49c, 0xe6bc92, 0xeeccA6], hair: [0x16120f, 0x1e1a18] },
+  // West Africa and the upper Nile: dark brown to very dark, with black hair.
+  mali: { skin: [0x74482c, 0x663e26, 0x5c3620], hair: [0x16120f, 0x1e1a18] },
+  kush: { skin: [0x6a4028, 0x74482c, 0x54321e], hair: [0x16120f, 0x1e1a18] },
 };
 const ANYONE = { skin: [0xe0ac7e, 0xd8a074, 0xe4b088], hair: [0x3a2a1a, 0x5a3a1c, 0x1e1a18, 0x8a6a3a] };
 /** The people the figure being built belongs to. Set by `ofPeople` before a figure is made. */
@@ -294,7 +300,7 @@ function horse(g: THREE.Object3D, color: number, armor = 0): void {
 }
 
 const UNIT_HEIGHT: Record<string, number> = {
-  warchariot: 1.4, warelephant: 1.9, companion: 1.5, camelrider: 1.45, mameluke: 1.45, horsearcher: 1.45, templar: 1.5, warbear: 0.9, trebuchet: 1.6, organgun: 0.8, rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, wolfrider: 1.4, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
+  warchariot: 1.4, warelephant: 1.9, companion: 1.5, camelrider: 1.45, mameluke: 1.45, mandekalu: 1.5, horsearcher: 1.45, templar: 1.5, warbear: 0.9, trebuchet: 1.6, organgun: 0.8, rider: 1.45, knight: 1.5, hussar: 1.5, lancer: 1.5, wolfrider: 1.4, chariot: 1.4, mammoth: 1.9, catapult: 1.1, bombard: 0.9, ram: 1.0, scorpion: 0.9, warlord: 1.2, hound: 0.55,
 };
 
 /** Units of the newer nations are drawn as an existing figure with a crest of their own colour. */
@@ -303,6 +309,7 @@ const MODEL_ALIAS: Record<string, [string, number]> = {
   immortal: ['swordsman', 0xb03a6a], warelephant: ['mammoth', 0xb03a6a], hoplite: ['shieldbearer', 0xc8a040], companion: ['knight', 0x4a78d8],
   longbowman: ['bowman', 0x4a7a3a], billman: ['pikeman', 0xc83a3a], camelrider: ['rider', 0xd8c090], mameluke: ['horsearcher', 0x2f9a6a],
   samurai: ['swordsman', 0x2a2a34], ashigaru: ['musketeer', 0x8a2a2a],
+  sofa: ['bowman', 0xa8561e], mandekalu: ['knight', 0xa8561e], setibowman: ['bowman', 0x5a7a1e], meroeguard: ['swordsman', 0x5a7a1e],
 };
 
 /** What a villager is busy with, which decides what they wear and carry. */

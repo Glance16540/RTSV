@@ -29,8 +29,15 @@ it is kept on the record of its house, which lists it by name and age, and nothi
 it steps out of the door as a villager and takes up a parent's trade. If the house falls, its children pass
 to a neighbouring house or the Town Center.
 
+**A soldier costs a person.** Training a soldier, a crew or a healer takes a villager as well as the price: the
+nearest man with nothing to do (failing that, the nearest at work) walks to the building and goes in, and the
+training time turns him into the unit, under his own name. Soldiers and crews come from the men; a healer may be
+a woman, and a woman is asked first. With nobody free the order is refused. Cancel it, or lose the building, and he
+comes back out. Beasts and the nation's leader cost nobody. A woman who fights strikes far less hard than a man.
+
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
-technologies, and changes how your settlement looks.
+technologies, and changes how your settlement looks. In a campaign a town is in its nation's age, which is advanced
+on the map: nobody ages up inside a campaign battle. Skirmishes and missions age up as before.
 
 **Play styles.** Each nation belongs to a group (raiders, builders, farmers, scholars, the faithful, traders,
 warriors; see `STYLES` in `src/sim/data.ts`). The Norse and Mongols are raiders: they start as a war band with no
@@ -40,7 +47,7 @@ left in peace, each farm of the farmers makes room for one more villager, the sc
 technology they learn, the faithful are healed and cured round their Church, the traders' Markets earn gold by
 themselves, and a warrior strikes harder for every foe he has killed (every soldier's kills are shown on his panel).
 
-**Thirteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
+**Fifteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
 pious or decadent: that is decided by how they are ruled, not by who they are.
 
 | People | Bonuses | Only they train |
@@ -58,6 +65,8 @@ pious or decadent: that is decided by how they are ruled, not by who they are.
 | English | Farms +10%, towers hit harder | Longbowman (Iron Age): out-ranges other archers; Billman (Middle Ages): bane of cavalry |
 | Abbasids | Cavalry 10% faster, research 10% cheaper | Camel Rider: rides down cavalry; Mameluke (Middle Ages): strikes from a few paces off |
 | Japanese | Soldiers +1 attack, villagers gather 5% faster | Samurai (Iron Age): quick, deadly to infantry; Ashigaru Gunner (Gunpowder Age): cheap matchlock |
+| Malians | Villagers carry 2 more, cavalry 10% cheaper | Sofa Archer: poisoned arrows, deadly to infantry; Mandekalu Horseman (Iron Age): quilted armour turns missiles |
+| Kushites | Towers shoot 1 tile further, game, berries and fish gathered 20% faster | Bowman of Ta-Seti: out-shoots other bowmen of his age; Guard of Meroe (Iron Age): fights harder near home |
 
 **Generations.** Villagers grow old: after a long working life they slow down as elders and
 eventually die, so a village lasts only as long as its families keep raising children. A child of
@@ -78,7 +87,7 @@ out.
 
 - *In a Church* a man becomes a monk and a woman a nun. Each adds piety and brings the town's
   children sooner. Taking vows, they leave the house they shared.
-- *What goes on at the tavern.* Hearts rise from a busy tavern in a Worldly or Decadent town, and from houses where a couple is at home. Almost nothing comes of it: the maids and patrons take care that it does not. Once in a very long while (tens of minutes, a little sooner in a Decadent town) a tavern with both has a child that belongs to no household, costs no food and needs no house.
+- *The tavern as a town falls.* An honest tavern shuts at dusk. In a Worldly town it keeps late hours and takes more gold (140% for each of its women); in a Decadent town it never shuts and takes double. What kind of house it has become shows in its lamp by night (dark, amber or red), its women's dress and its panel, and in nothing else. Hearts rise only from houses where a couple is at home. Once in a very long while (tens of minutes, a little sooner in a Decadent town) a tavern with both has a child that belongs to no household, costs no food and needs no house.
 - *In a Tavern* a woman becomes a milkmaid and a man a patron. A milkmaid brings in gold. A patron
   eats and drinks your food away, but soldiers are trained faster for every patron. Each adds
   decadence, the whole town gathers a little slower for the distraction, and a house with someone
@@ -102,14 +111,14 @@ What a town believes also decides what it will raise:
 
 Where your people stand on the scale between piety and decadence sets their creed:
 
-- **Devout**, then **Righteous**: children come sooner and more of them live to grow up (one in
-  ten is lost in an ordinary town, one in twenty among the Devout, one in fifty among the
+- **Devout**, then **Righteous**: children come sooner and fewer births fail to come (one in
+  ten does not in an ordinary town, one in twenty among the Devout, one in fifty among the
   Righteous). Faith gathers faster, healing and morale
   are stronger. Famine, plague and fire come half as often and half as hard among the Devout, and a third
   among the Righteous: nobody is spared them altogether. They research more slowly and trade on worse terms.
 - **Worldly**, then **Decadent**: soldiers are trained faster, gold is mined faster and the market
   pays more. But villagers are distracted from their work, children come later and
-  fewer live to grow up (up to more than one in four lost), plagues last
+  fewer are born at all (up to more than one birth in four does not come; no child ever dies), plagues last
   longer, and faith, healing and morale wither.
 
 Hover over the creed in the top bar to see where you stand. Every few minutes a dilemma is also
@@ -264,6 +273,10 @@ over the map, each marked done by what the player has done, and a page, *How the
 opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
 out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`. In a battle, a slip under the first-steps guide teaches fire-fighting, famine, walls, towers, the market and the work camp the first time each is needed.
 
+**A visit.** On the campaign map, a land of your own has an *Enter the town* button: up to ten minutes
+of that season played in the town itself, with no enemy there. What you build stays on the map, as it
+does after a siege. Each town once a season. Rules in `src/sim/visit.ts`, screen in `src/client/visit.ts`.
+
 **Day and night.** Settings set how long a day lasts (3, 5 or 10 minutes) and whether night falls at
 all (`src/sim/daylight.ts`). There is a sky with the sun, a moon and stars (`src/client/sky.ts`); the
 game's own camera looks down and does not see it, so it shows on the main menu, whose camera looks into
@@ -315,6 +328,8 @@ neighbouring land.
   Settings has the same choice (`src/client/detail.ts`): Automatic picks the plainer map on a machine that draws
   in software or is small. Country changes the rules as well as the look, and a closed border can be opened with
   a bridge or a road over the pass (`src/sim/country.ts`).
+  Every land's town keeps its people, its notable names and its stores between battles (`src/sim/township.ts`):
+  a siege fought in person is fought by those people out of those stores, and what is left is what the town has.
   Drag to move, wheel to zoom, click a land to choose it. The flat chart of `src/client/overworld.ts` is shown
   where 3D is not available or with `?map=2d`. Three
   weather fronts cross it turn by turn (`frontsOf`, `weatherAt` in `src/sim/campaign.ts`): an army attacking into
@@ -420,7 +435,11 @@ captain from an army that has won a battle, who ends the old house. The rules ar
 
 At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator or
 left open and chosen on the field when the rank is earned; rival leaders are built to suit how their
-people live. A soldier raised to lead fights on as what they were. Both are in `src/sim/powers.ts`.
+people live. A soldier raised to lead fights on as what they were.
+
+On the campaign map the leader is one person in one place: a land of yours, in its town or with the
+army there. They are in a battle only if it is fought where they are, no unrest rises in the land they
+are in, and they can call the armies to them. The rules are in `src/sim/court.ts`. Both are in `src/sim/powers.ts`.
 
 ## Systems board
 
@@ -531,7 +550,7 @@ the time units stood stuck with somewhere to go, and the slowest second. Set `PA
   snowy north. In a skirmish it is chosen in the menu or follows your people's homeland; `?climate=desert`.
 - Weather belongs to the match (`Game.stepWeather`), on its own seeded run of chances, and only in a country (the plain maps have none). While it is heavy, rain takes a tile off bows and guns and puts fires out, snow slows everyone off the roads, and a dust storm cuts sight by two tiles and takes a tile off bows and guns. `src/client/weather.ts` draws it; `?weather=rain|snow|dust|clear` holds one kind on screen without changing the match.
 - A day is five minutes (`DAY_LENGTH`), the last three tenths of it night (`Game.night`). The sun crosses the sky from dawn to dusk, low and red at either end with long shadows; by night the light is dim and blue, buildings show a lamp and a pool of warm light, and the top bar names the hour. In the dark units see two tiles less (`NIGHT_SIGHT`); buildings see as far as ever. Night also matters to the work camp, which is also drawn living by it: women in the workroom and men breaking stone by day, everyone shut in the bunkhouse at dusk.
-- *A Decadent town grows by what it takes.* Its own households are dying out: children come less than half as often as in a temperate town and half of them do not live to grow up, and a villager takes twice as long to raise at the Town Center. What keeps such a town alive is its Work Camp (now twelve captives), whose women still bring villagers at the old pace. Worldly towns are untouched. The computer opponent on Normal or Hard empties its tavern at -60 so as not to end up there; if it does, it builds a camp and sends Slavers.
+- *A Decadent town grows by what it takes.* Its own households are dying out: children come less than half as often as in a temperate town and half the births that are due do not come, and a villager takes twice as long to raise at the Town Center. What keeps such a town alive is its Work Camp (now twelve captives), whose women still bring villagers at the old pace. Worldly towns are untouched. The computer opponent on Normal or Hard empties its tavern at -60 so as not to end up there; if it does, it builds a camp and sends Slavers.
 - *Holding people has a cost.* Each guard watches three captives through the night (`GUARD_WATCH`). A camp with anyone unwatched loses about one a night: they slip out and run for their own Town Center, and can be run down again on the way. A camp with four or more men unwatched may rise instead (`REVOLT_TIME`): the stockade burns, loses a quarter of its strength, and half of everyone held breaks out at once. Nothing gets out by day.
 - A Slaver with no captive, right-clicked on his own Work Camp, is posted there as a guard (up to four, `GUARD_DRIVE`): each makes the men held there count a quarter more toward the town's gathering.
 - `?fog=0` shows the whole map with no fog of war, for looking at the game rather than playing it.

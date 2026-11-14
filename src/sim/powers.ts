@@ -80,6 +80,8 @@ const RIVAL_OF: Record<string, (typeof RIVAL)[StyleId]> = {
   england: { calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, powers: [1, 1, 1] },
   greece: { calling: 'strategist', bent: 'strength', might: 3, guard: 1, vigour: 2, powers: [1, 0, 0] },
   arabs: { calling: 'warlord', bent: 'strength', might: 4, guard: 1, vigour: 1, powers: [0, 0, 1] },
+  mali: { calling: 'warlord', bent: 'armour', might: 2, guard: 3, vigour: 1, powers: [1, 0, 0] },
+  kush: { calling: 'warlord', bent: 'both', might: 3, guard: 1, vigour: 2, powers: [1, 1, 0] },
 };
 /** A rival people's leader as the game makes them: the leader as written, built to suit how their people live. */
 export function rivalHero(civ: string): HeroSpec {

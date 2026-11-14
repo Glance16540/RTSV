@@ -70,7 +70,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
         <div class="hm-row"><span>Build</span><div class="hm-pick" id="hm-build"><button type="button" data-v="0">Slight</button><button type="button" data-v="1">Average</button><button type="button" data-v="2">Heavy</button></div></div>
         <label class="hm-row hm-check" id="hm-beard-row"><input id="hm-beard" type="checkbox" /> Bearded</label>
         <h3>What their town makes of them</h3>
-        <p class="hm-note"><b>In a holy town</b> everyone of yours near them takes blows as if wearing ${HOLY_GUARD[0]} more armour (${HOLY_GUARD[1]} if the town is Righteous).<br><b>In a decadent town</b> they bind enemy villagers themselves and lead them to a Work Camp, and while they are in the field the camp's women fill the town ${TYRANT_BIRTH} times as fast.</p>
+        <p class="hm-note"><b>In a holy town</b> everyone of yours near them takes blows as if wearing ${HOLY_GUARD[0]} more armour (${HOLY_GUARD[1]} if the town is Righteous).<br><b>In a decadent town</b> they bind enemy villagers themselves and lead them to a Work Camp, and while they are in the field the camp's women bear ${TYRANT_BIRTH} times as fast.</p>
       </div>
     </div>
     <div class="levels"><button type="button" id="hm-save">Save</button><button type="button" class="secondary" id="hm-reset">As written</button><button type="button" class="secondary" id="hm-cancel">Cancel</button></div>

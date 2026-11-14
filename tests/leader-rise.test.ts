@@ -147,11 +147,11 @@ describe('a soldier raised keeps their arm', () => {
     expect(moveArmy(c, army.id, home.adj[0])).toBe('battle');
     const cfg = battleConfig(c)!;
     expect(cfg.setups[0].hero).toMatchObject({ fights: 'bowman' });
-    army.hero = false;
+    c.factions[0].court!.away = army.id; // as if they had kept to the town when it marched
     const without = battleConfig(c)!;
     expect(without.setups[0].hero?.fights).toBeUndefined(); // an army they are not with has only its own archers
     expect((cfg.setups[0].bonus!.units!.bowman ?? 0) - (without.setups[0].bonus!.units!.bowman ?? 0)).toBe(1);
-    army.hero = true;
+    delete c.factions[0].court!.away;
     expect(army.units).toEqual(before);
     const g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field);
     const lead = g.units.filter((u) => u.owner === 0 && u.hero);
