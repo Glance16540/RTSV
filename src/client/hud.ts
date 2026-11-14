@@ -1,7 +1,11 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import { isHoly } from '../sim/creed';
+import { fighting } from '../sim/calamity';
 import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
+import { CALLS, CALL_RANK, CALL_REST, powersHeld } from '../sim/powers';
+import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
+import { HALL_GRACE } from '../sim/beaten';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -140,7 +144,7 @@ export class Hud {
     const civ = this.app.game.players[this.app.pid].civ;
     if (!LEADERS[civ]) return;
     const s = { civ, event, index: Math.floor(Math.random() * LEADERS[civ].lines[event].length) };
-    this.toast(speechHtml(s), 'leader', true);
+    this.toast(speechHtml(s, this.app.game.heroOf(this.app.pid).name), 'leader', true);
     playLine(s);
   }
 
@@ -152,7 +156,7 @@ export class Hud {
     // Local tribes and reserve armies are not led by anyone with a name.
     if (!l || !p.isAI || p.neutral || !game.hostile(player, pid) || p.name === LOCALS.name || p.name.endsWith(' reserve')) return;
     const s = { civ: p.civ, event, index: Math.floor(Math.random() * l.lines[event].length) };
-    this.toast(speechHtml(s), 'leader', true);
+    this.toast(speechHtml(s, game.heroOf(player).name), 'leader', true);
     playLine(s);
   }
 
@@ -272,6 +276,17 @@ export class Hud {
             });
           }
         }
+      }
+      // The leader's call: the one power set off by hand.
+      const chief = units.find((u) => u.hero);
+      if (chief && chief.hero!.rank >= CALL_RANK) {
+        const call = CALLS[game.heroOf(pid).calling], rest = Math.ceil(chief.hero!.rest ?? 0);
+        out.push({ id: 'call', icon: ico('bell', '📯'), name: call.name, desc: `${call.desc}<br><span class="stat">Can be raised again after ${CALL_REST} seconds.</span>`, locked: rest > 0 ? `Ready in ${rest} seconds.` : undefined, active: (chief.hero!.call ?? 0) > 0, act: () => { game.cmdCall(pid); } });
+      }
+      // The leader is dead: a soldier who has made a name can be raised in their place.
+      if (units.length === 1 && game.canAcclaim(pid, units[0])) {
+        const who = units[0];
+        out.push({ id: 'acclaim', icon: ico('warlord', '♛'), name: 'Raise on the shields', desc: `${who.name || 'This soldier'} becomes your leader: a Warlord, ${RANK_NAMES[rankForKills(who.kills ?? 0)]} for the ${who.kills} they have felled. The old leader's line ends here.`, act: () => { game.cmdAcclaim(pid, who.id); } });
       }
       if (!units.every((u) => u.type === 'villager')) {
         while (out.length < 5) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
@@ -468,6 +483,7 @@ export class Hud {
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
       if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
       if (e.kills) extra += `<div${game.veteran(e) > 1 ? ' class="good"' : ''}>⚔️ ${e.kills} ${e.kills === 1 ? 'kill' : 'kills'}${game.veteran(e) > 1 ? `: a veteran, +${Math.round((game.veteran(e) - 1) * 100)}% damage` : ''}</div>`;
+      if (!e.hero && !e.merc && canLead(d.cls) && (e.kills ?? 0) >= CHAMPION_KILLS) extra += `<div class="hint">♛ Has made a name: if your leader falls, ${game.canAcclaim(e.owner, e) ? 'they can be raised to lead now' : 'they can be raised to lead'}.</div>`;
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
       // A villager's record: who they are and what has befallen them, set down like the entries on a form.
@@ -489,6 +505,8 @@ export class Hud {
         const r = e.hero.rank, virtue = game.players[e.owner].virtue;
         const top = r >= MAX_RANK;
         extra = `<div class="good">⭐ ${RANK_NAMES[r]}${top ? '' : ` · ${e.hero.xp - RANK_XP[r]} of ${RANK_XP[r + 1] - RANK_XP[r]} deeds to ${RANK_NAMES[r + 1]}`}</div>${top ? '' : this.bar((e.hero.xp - RANK_XP[r]) / (RANK_XP[r + 1] - RANK_XP[r]), 'faith')}` +
+          (r >= CALL_RANK ? `<div class="${(e.hero.call ?? 0) > 0 ? 'good' : 'hint'}">📯 ${CALLS[game.heroOf(e.owner).calling].name}${(e.hero.call ?? 0) > 0 ? `: sounding, ${Math.ceil(e.hero.call!)} seconds left` : (e.hero.rest ?? 0) > 0 ? `: ready in ${Math.ceil(e.hero.rest!)} seconds` : ': ready'}</div>` : '') +
+          powersHeld(game.heroOf(e.owner), r).map((p) => `<div class="good">✦ ${p.name}: ${p.desc}</div>`).join('') +
           (isHoly(virtue) ? `<div class="good">🕯️ Holy town: those near them wear ${HOLY_GUARD[virtue >= 70 ? 1 : 0]} more armour</div>` : '') +
           (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the camp fills the town faster while they are in the field</div>' : '') + extra;
       }
@@ -505,7 +523,10 @@ export class Hud {
         '<div class="hint">Every woman held bears the band children, and it grows. Destroy the camp and they all go free. A woman freed will bear no more children, but works a quarter harder.</div>';
     }
     if (!b.complete) body += `<div>Under construction</div>${this.bar(b.progress)}`;
-    if (b.burnT > 0) body += '<div class="warn">🔥 On fire: it may spread to buildings close by</div>';
+    if (b.burnT > 0) {
+      const hands = fighting(game, b);
+      body += `<div class="warn">🔥 On fire: it may spread to buildings close by. ${hands ? `${hands} ${hands === 1 ? 'villager is' : 'villagers are'} fighting it.` : b.owner === game.humanId ? 'Right-click it with villagers to fight the fire.' : ''}</div>`;
+    }
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
     else if (mine) {
@@ -585,9 +606,12 @@ export class Hud {
       ['Build a House', 'Select a villager, press Q, then click a spot near the Town Center.', mine.some((b) => b.type === 'house' && b.complete)],
       ['Start a family', 'Select the house and press Q, or right-click it with a man and a woman.', mine.some((b) => b.residents.m && b.residents.f)],
       ['Grow to 10 people', 'Train villagers at the Town Center (H) and let your families raise children.', p.pop >= 10],
+      // Where there is water to fish and fight on, the Dock is taught while the town is still small.
+      ...(game.sea ? [['Take to the water', 'Villager → Dock, set at the water\'s edge. Select it to build a fishing boat, and later warships and transports.', units.some((u) => u.def.naval)] as [string, string, boolean]] : []),
       ['Raise an army', 'Villager → Military buildings (V) → Barracks, then train three soldiers.', units.filter((u) => game.isMilitary(u)).length >= 3],
       ['Advance to the Bronze Age', 'Select the Town Center (H) and press T once you have the food and wood.', p.age >= 1],
-      ['Destroy your rivals', 'Scout with soldiers, then select your army, press Q and click their base.', game.winner === pid],
+      ['Choose what your town believes', 'Villager → Church or Tavern, then right-click it with villagers to station them inside. A Church makes your people pious, a Tavern decadent, and each changes what your town is good at.', mine.some((b) => (b.type === 'temple' || b.type === 'tavern') && b.complete && (b.staff?.length ?? 0) > 0)],
+      ['Bring down their Town Center', `Scout with soldiers, then select your army, press Q and click their Town Center. A people with none, who do not begin another within ${HALL_GRACE} seconds, are beaten: so guard your own.`, game.winner === pid],
     ];
     const i = steps.findIndex((s) => !s[2]);
     const show = !this.guideOff && i >= 0 && !this.app.paused;

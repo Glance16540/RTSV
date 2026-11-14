@@ -134,6 +134,11 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   troops and spreads between them), Earthquake (shatters buildings), Fire from Heaven (sets buildings alight) and
   Blight (empties a rival's farms for a minute). Fire spreads to buildings standing close by, whoever owns them,
   until it burns out or rain comes (`CALAMITY` in `src/sim/data.ts`). Farms yield more in rain and less in dust and snow.
+- *Lightning and fighting fire* (`src/sim/calamity.ts`): while rain or a dust storm is heavy, lightning now and
+  then sets a building alight, anyone's, and a tower, church or wonder sooner than a house. In rain the fire is
+  short and does not spread; dry lightning in a dust storm burns like any other fire. Right-click a burning
+  building of your own with villagers and they beat the fire down before mending it (up to five to a fire);
+  idle villagers close by turn out on their own.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
@@ -163,6 +168,11 @@ the same water as your shore. Ships never leave the water; foot
 soldiers with blades cannot reach them, but archers and towers can. The AI fishes and builds a
 small fleet too. A dock placed on water with no fish nearby earns a warning.
 
+**Winning a match.** A people is beaten when its last Town Center has fallen and it has not begun another
+within a minute and a half (twenty seconds if it has not one soldier left); whatever else still stands, the war
+is over. A band of raiders that has never raised a hall is beaten when its last person falls. The rule is in
+`src/sim/beaten.ts`.
+
 **Wonder.** In the Middle Ages you can build a Wonder. If it stands for five minutes you win, and
 every rival is told the moment it is finished. Richer AIs build them too.
 
@@ -190,7 +200,7 @@ difficulty levels that plays by the same rules.
 
 ## Missions
 
-*Missions* on the start screen offers six scripted scenarios with objectives shown as you play:
+*Missions* on the start screen offers eight scripted scenarios with objectives shown as you play:
 
 - **First Hearth** — a gentle tutorial: gather, found a family, grow, raise soldiers and drive off
   a wolf pack. Nobody attacks you.
@@ -199,9 +209,13 @@ difficulty levels that plays by the same rules.
 - **Two Doors** — build a Church and a Tavern, fill them, answer what your people ask, and become Devout or
   Worldly. Teaches faith and vice; nobody attacks you.
 - **The Far Shore** — on the great lake: a Dock, fishing boats, War Galleys to sink the pirates, then a Transport
-  to carry your soldiers over and burn out their stronghold.
+  to carry your soldiers over and burn out their stronghold. The way round by land is walled.
 - **Wolves of the North** — play the Norse war band: carry off the Franks' villagers, raise a hall where you
   choose, and grow the tribe.
+- **The Stockade** — Egyptians in the desert: six of your people are held in Babylon's Work Camp. Stand enough
+  soldiers at its gate and they are let out one by one; you need not burn it.
+- **The Mountain King** — English in the snow: two Prophets against a keep behind old stone. Earthquake for the
+  wall, Plague for the garrison, Blight or fire for the rest, then go in.
 
 **How it opens.** The game opens as a printed chronicle, to go with its woodcut icons: vellum, black
 ink and a red for the rubrics, set in the Fell types (bundled from `@fontsource`, under the Open Font
@@ -215,6 +229,11 @@ swings the camera round to the game's view and play begins. The opening is playe
 `src/client/title.ts`. The bars around the battlefield, the messages over it, the sheets (the word before
 a battle, the making of a leader) and the campaign's side page are on the same paper; their styles are
 the last block of `src/client/style.css`.
+
+**Teaching.** Every battle has a first-steps guide. The campaign has its own: a slip of *first orders*
+over the map, each marked done by what the player has done, and a page, *How the campaign works*, which
+opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
+out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`.
 
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.
@@ -360,6 +379,9 @@ A new campaign asks for your people and who leads them. Every leader keeps a hou
 to it as the turns pass. When a leader falls you choose who follows: an heir who has come of age, or a
 captain from an army that has won a battle, who ends the old house. The rules are in
 `src/sim/dynasty.ts`.
+
+At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator;
+rival leaders are built to suit how their people live. Both are in `src/sim/powers.ts`.
 
 ## Systems board
 

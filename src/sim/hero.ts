@@ -22,6 +22,8 @@ export interface HeroSpec {
   might: number; guard: number; vigour: number;
   /** Veterancy they come to the field with (0 to MAX_RANK). */
   rank?: number;
+  /** Which of the two powers they come into at each of three ranks (0 or 1): see powers.ts. */
+  powers?: number[];
   look?: HeroLook;
 }
 
@@ -69,7 +71,7 @@ export function cleanHero(h: Partial<HeroSpec> | null | undefined, civ: string):
   return {
     name: text(h.name, 60) || d.name, female: h.female == null ? d.female : !!h.female,
     calling: h.calling === 'strategist' ? 'strategist' : 'warlord', bent: h.bent === 'strength' || h.bent === 'armour' ? h.bent : 'both',
-    might, guard, vigour, rank: int(h.rank, 0, MAX_RANK), look,
+    might, guard, vigour, rank: int(h.rank, 0, MAX_RANK), powers: [0, 1, 2].map((t) => (Array.isArray(h.powers) && h.powers[t] === 1 ? 1 : 0)), look,
   };
 }
 

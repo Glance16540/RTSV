@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { CIVS, CIV_COLOR, UNITS } from '../sim/data';
 import { HeroSpec, HERO_POINTS, MAX_RANK, RANK_NAMES, HOLY_GUARD, TYRANT_BIRTH, cleanHero, defaultHero, heroBonus } from '../sim/hero';
+import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS } from '../sim/powers';
 import { lookOf } from './models';
 import { RealPerson, leaderOutfit, loadPeople, makePerson, outfitFor, play } from './person';
 
@@ -16,6 +17,8 @@ export function savedHero(civ: string): HeroSpec | undefined {
   const h = readAll()[civ];
   return h ? cleanHero(h, civ) : undefined;
 }
+/** Set down what a skirmish made of a people's leader: the veterancy they came away with, and their name if an heir now bears it. */
+export function keepHero(civ: string, h: HeroSpec): void { keep(civ, cleanHero(h, civ)); }
 function keep(civ: string, h: HeroSpec | null): void {
   const all = readAll();
   if (h) all[civ] = h; else delete all[civ];
@@ -52,7 +55,9 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
         <div class="hm-points" id="hm-points"></div>
         <h3>What battles teach them</h3>
         <div class="hm-pick" id="hm-bent"><button type="button" data-v="strength">Strength</button><button type="button" data-v="both">Both by turns</button><button type="button" data-v="armour">Armour</button></div>
-        <p class="hm-note">Enemies felled where they stand are their deeds. Deeds raise them through five ranks, from Blooded to Legend, and each rank hardens them the way you choose here. They are flesh all the same: every blow tells, and one who falls comes back a rank the less.</p>
+        <p class="hm-note">Enemies felled where they stand are their deeds. Deeds raise them through five ranks, from Blooded to Legend, and each rank hardens them the way you choose here. The rank they earn in a skirmish stays with them for the next. They are flesh all the same: every blow tells, and one who falls comes back a rank the less.</p>
+        <h3>What they learn <small id="hm-rank"></small></h3>
+        <div id="hm-powers"></div>
         <h3>How they look</h3>
         <div class="hm-row"><span>Hair</span><div class="hm-swatches" id="hm-hair"></div></div>
         <div class="hm-row"><span>Cloak</span><div class="hm-swatches" id="hm-cloak"></div></div>
@@ -111,6 +116,8 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
   };
   const paint = () => {
     pick('hm-sex', h.female ? 'f' : 'm'); pick('hm-calling', h.calling); pick('hm-bent', h.bent); pick('hm-build', String(h.look!.build ?? ''));
+    $('hm-rank').textContent = h.rank ? `${RANK_NAMES[h.rank]} already, from battles fought` : 'one power at each of three ranks';
+    $('hm-powers').innerHTML = `<div class="hm-power"><span>${RANK_NAMES[CALL_RANK]}</span><div><b>${CALLS[h.calling].name}</b></div><small>${CALLS[h.calling].desc} Theirs to raise by hand, once every ${CALL_REST} seconds.</small></div>` + POWERS[h.calling].map((pair, t) => `<div class="hm-power"><span>${RANK_NAMES[POWER_RANKS[t]]}</span><div class="hm-pick">${pair.map((p, k) => `<button type="button" data-t="${t}" data-k="${k}" aria-pressed="${(h.powers?.[t] ?? 0) === k}">${p.name}</button>`).join('')}</div><small>${pair[h.powers?.[t] === 1 ? 1 : 0].desc}</small></div>`).join('');
     $('hm-calling-note').textContent = h.calling === 'warlord'
       ? 'Fights at the front with sword and shield. Everyone of yours fighting near them strikes a quarter harder. Raised at the Town Center from the Bronze Age.'
       : 'Stands behind the line with a staff. Enemies fighting near them strike a fifth weaker, and your wounded nearby are slowly mended. Raised at the Town Center from the Iron Age.';
@@ -135,6 +142,14 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
   onPick('hm-sex', (v) => { h.female = v === 'f'; });
   onPick('hm-calling', (v) => { h.calling = v === 'strategist' ? 'strategist' : 'warlord'; });
   onPick('hm-bent', (v) => { h.bent = v as HeroSpec['bent']; });
+  $('hm-powers').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-t]');
+    if (!b) return;
+    const powers = [0, 1, 2].map((t) => h.powers?.[t] ?? 0);
+    powers[Number(b.dataset.t)] = Number(b.dataset.k);
+    h.powers = powers;
+    change(false);
+  });
   onPick('hm-build', (v) => { h.look!.build = Number(v); });
   onPick('hm-hair', (v) => { if (v) h.look!.hair = Number(v); else delete h.look!.hair; });
   onPick('hm-cloak', (v) => { if (v) h.look!.cloak = Number(v); else delete h.look!.cloak; });
@@ -152,7 +167,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
   $('hm-cancel').addEventListener('click', close);
   $('hm-reset').addEventListener('click', () => { keep(civ, null); close(); done(null); });
   $('hm-save').addEventListener('click', () => {
-    const made = cleanHero({ ...h, rank: 0 }, civ);
+    const made = cleanHero(h, civ);
     keep(civ, made);
     close();
     done(made);

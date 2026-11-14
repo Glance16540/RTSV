@@ -5,7 +5,10 @@
 
 import type { Army, Campaign } from './campaign';
 import { NAMES_F, NAMES_M } from './data';
-import { HeroSpec, MAX_RANK, RANK_NAMES, cleanHero } from './hero';
+import { HeroSpec, MAX_RANK, RANK_NAMES } from './hero';
+import { leaderOf } from './leaders';
+import { leaderAsMade } from './powers';
+import { rankForKills } from './champion';
 
 export interface Heir { name: string; female: boolean; born: number }
 export interface House {
@@ -46,10 +49,14 @@ const pick = (c: Campaign, salt: number, n: number): number => {
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
   return ((h ^ (h >>> 16)) >>> 0) % n;
 };
-const leaderOfFaction = (c: Campaign, f: number): HeroSpec => cleanHero(c.factions[f].hero, c.factions[f].civ);
+const leaderOfFaction = (c: Campaign, f: number): HeroSpec => leaderAsMade(c.factions[f].hero, c.factions[f].civ, c.factions[f].isAI);
+/** The name of whoever leads a people now: the one a succession raised, the player's own making, or the leader as written. */
+export const rulerName = (c: Campaign, f: number): string => (c.factions[f].hero ? leaderOfFaction(c, f).name : leaderOf(c.factions[f].civ)?.name ?? leaderOfFaction(c, f).name);
 const say = (c: Campaign, f: number, text: string): void => {
   (c.chronicle ??= []).push({ turn: c.turn, text });
-  if (f === 0) c.log.push(text);
+  // A rival's succession is news too.
+  c.log.push(text);
+  void f;
 };
 const child = (c: Campaign, f: number, house: House, born: number): Heir => {
   const salt = f * 977 + house.line * 131 + house.births * 17;
@@ -89,6 +96,8 @@ export function tickHouses(c: Campaign): void {
 }
 
 const captainOf = (c: Campaign, a: Army): { name: string; female: boolean } => {
+  // A soldier the player watched make their name comes before any nameless officer.
+  if (a.champion) return { name: a.champion.name, female: false };
   const female = pick(c, a.id * 53 + 7, 5) === 0;
   const names = female ? NAMES_F : NAMES_M;
   return { name: `Captain ${names[pick(c, a.id * 53 + 11, names.length)]}`, female };
@@ -106,10 +115,11 @@ export function claimants(c: Campaign, f: number): Claim[] {
     out.push({ kind: 'heir', i, name: `${h.name}, ${h.female ? 'daughter' : 'son'} of ${fallen.name}`.slice(0, 60), female: h.female, rank: Math.floor((fac.heroRank ?? 0) / 2), what: `${h.female ? 'Daughter' : 'Son'} of ${fallen.name}, ${c.turn - h.born} turns old. Keeps their parent's gifts and the house.` });
   });
   out.sort((a, b) => house.heirs[a.i].born - house.heirs[b.i].born);
-  const armies = c.armies.filter((a) => a.owner === f && a.vet >= CAPTAIN_VET).sort((a, b) => b.vet - a.vet || a.id - b.id).slice(0, 2);
+  const armies = c.armies.filter((a) => a.owner === f && (a.vet >= CAPTAIN_VET || !!a.champion)).sort((a, b) => b.vet - a.vet || a.id - b.id).slice(0, 2);
   for (const a of armies) {
     const who = captainOf(c, a);
-    out.push({ kind: 'captain', i: a.id, ...who, rank: Math.min(MAX_RANK, a.vet), what: `Leads the veterans at ${c.territories[a.at].name}. ${RANK_NAMES[Math.min(MAX_RANK, a.vet)]} already, and takes command where ${who.female ? 'she' : 'he'} stands, but the old house ends.` });
+    const rank = Math.min(MAX_RANK, Math.max(a.vet, a.champion ? rankForKills(a.champion.kills) : 0));
+    out.push({ kind: 'captain', i: a.id, ...who, rank, what: `${a.champion ? `A ${a.champion.unit.toLowerCase()} who felled ${a.champion.kills} in the army's last battle, now at` : 'Leads the veterans at'} ${c.territories[a.at].name}. ${RANK_NAMES[rank]} already, and takes command where ${who.female ? 'she' : 'he'} stands, but the old house ends.` });
   }
   return out;
 }
@@ -136,13 +146,14 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
     fac.hero = { ...old, name: claim.name, female: claim.female, look: { ...old.look, beard: claim.female ? false : old.look?.beard } };
     house.heirs.splice(claim.i, 1);
     hostFor(c, f)!.hero = true;
-    say(c, f, `${claim.name} takes up the rule of the ${fac.id === 0 ? 'people' : fac.name}.`);
+    say(c, f, fac.id === 0 ? `${claim.name} takes up the rule of your people.` : `${old.name} of the ${fac.name} is dead. ${claim.name} rules them now.`);
   } else {
     // A soldier's soldier: strong in the arm, and no house behind them yet.
-    fac.hero = { name: claim.name, female: claim.female, calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, look: {} };
+    fac.hero = { name: claim.name, female: claim.female, calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, powers: [0, 1, 1], look: {} };
     house.heirs = [];
     c.armies.find((a) => a.id === claim.i)!.hero = true;
-    say(c, f, `${old.name}'s house is set aside: ${claim.name} is raised on the shields at ${c.territories[c.armies.find((a) => a.id === claim.i)!.at].name}.`);
+    delete c.armies.find((a) => a.id === claim.i)!.champion;
+    say(c, f, `${old.name}'s house${fac.id === 0 ? '' : ` among the ${fac.name}`} is set aside: ${claim.name} is raised on the shields at ${c.territories[c.armies.find((a) => a.id === claim.i)!.at].name}.`);
   }
   fac.heroRank = claim.rank;
   fac.heroAlive = true;
@@ -151,6 +162,20 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
   house.due = c.turn + HEIR_EVERY;
   house.asked = false;
   return true;
+}
+
+/** The leader fell in a battle fought in person and the army raised one of its own there: they lead now, and the old house ends. */
+export function raisedInBattle(c: Campaign, f: number, who: Partial<HeroSpec>, rank: number): void {
+  const fac = c.factions[f], house = houseOf(c, f), old = leaderOfFaction(c, f);
+  fac.hero = leaderAsMade(who, fac.civ, false);
+  fac.heroRank = Math.max(0, Math.min(MAX_RANK, Math.round(rank)));
+  fac.heroAlive = true;
+  house.heirs = [];
+  house.line++;
+  house.births = 0;
+  house.due = c.turn + HEIR_EVERY;
+  house.asked = false;
+  say(c, f, `${old.name} fell in the fighting. ${fac.hero.name} was raised on the shields where they stood, and ${old.name}'s house is ended.`);
 }
 
 /** A rival people settles its own succession: the eldest heir of age, else its best captain. */
