@@ -8,7 +8,9 @@ import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS, powersHeld } from '..
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
 import { updateHallClock } from './hallclock';
+import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
+import { yearsLeft, yearsOld } from '../sim/nursery';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -175,7 +177,7 @@ export class Hud {
       if (game.time - this.alertSaid > 60 && !game.field) { this.alertSaid = game.time; this.advisorSay('p_alert'); }
       this.alerts.push({ x: ev.x, y: ev.y, t: 0 });
       this.app.lastAlert = { x: ev.x, y: ev.y };
-    } else if (ev.t === 'birth' && ev.player === pid) this.toast('👶 A child is born.');
+    } else if (ev.t === 'birth' && ev.player === pid) this.toast('💗 A child is born.');
     else if (ev.t === 'defeated' && ev.player !== pid) { this.toast(`${game.players[ev.player].name} has been destroyed.`, 'big'); this.leaderSay(ev.player, 'eliminated'); }
     else if (ev.t === 'defeated') this.toast(ev.player === pid ? 'Your settlement has fallen. Your ally fights on.' : `${game.players[ev.player].name} has been destroyed.`, 'big');
     else if (ev.t === 'signal' && ev.player !== pid && !game.hostile(ev.player, pid)) this.toast(`📣 ${game.players[ev.player].name} calls for you.`);
@@ -474,8 +476,7 @@ export class Hud {
       const mods = owner.mods;
       const mil = game.isMilitary(e);
       let extra = '';
-      if (e.growT > 0) extra += `<div class="good">👶 Child — grows up in ${Math.ceil(e.growT)}s</div>`;
-      else if (e.type === 'villager' && mine) {
+      if (e.type === 'villager' && mine) {
         extra += `<div>${e.homeId ? '🏠 Lives in a house' : '⛺ Homeless — right-click a house to move in'}</div>`;
         if (e.carryAmt > 0) extra += `<div>Carrying ${RI(e.carryType)} ${e.carryAmt}</div>`;
       }
@@ -495,7 +496,7 @@ export class Hud {
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
       // A villager's record: who they are and what has befallen them, set down like the entries on a form.
-      if (e.type === 'villager' && e.growT <= 0 && (e.kids || e.captiveKids || e.story?.length || e.freed)) {
+      if (e.type === 'villager' && (e.kids || e.captiveKids || e.story?.length || e.freed)) {
         const clock = (t: number): string => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
         const lines: string[] = [];
         if (e.kids) lines.push(`${e.gender === 'f' ? 'Mother' : 'Father'} of ${e.kids} at home`);
@@ -503,7 +504,7 @@ export class Hud {
         if (e.captiveKids) lines.splice(Math.max(1, lines.length - 1), 0, `Bore ${e.captiveKids} ${e.captiveKids === 1 ? 'child' : 'children'} in captivity`);
         extra += `<div class="record"><b>📜 Record</b>${lines.map((l) => `<div>· ${l}</div>`).join('')}${e.freed ? '<div class="warn">Will bear no more children.</div><div class="good">Works a quarter harder than the rest.</div>' : ''}</div>`;
       }
-      if (e.lifespan > 0 && e.growT <= 0 && game.aging) {
+      if (e.lifespan > 0 && game.aging) {
         const years = Math.floor(16 + (e.age / e.lifespan) * 54);
         extra += game.isElder(e) ? `<div class="hint">🧓 Elder, ${years} years old: works and walks more slowly</div>` : `<div class="hint">${years} years old</div>`;
       }
@@ -519,7 +520,7 @@ export class Hud {
           (isHoly(virtue) ? `<div class="good">🕯️ Holy town: those near them wear ${HOLY_GUARD[virtue >= 70 ? 1 : 0]} more armour</div>` : '') +
           (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the camp fills the town faster while they are in the field</div>' : '') + extra;
       }
-      const role = (e.growT > 0 ? 'Child' : d.name) + (e.gender ? ` ${GENDER[e.gender]}` : '');
+      const role = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
       return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>
         <div class="stat">⚔ ${Math.round((d.atk + (mil ? mods.atk : 0) + (lead?.atk ?? 0)) * 10) / 10} · 🛡 ${Math.round((d.armor + (mil ? mods.armor : 0) + (lead?.armor ?? 0) + game.guardAt(e.owner, e.x, e.y)) * 10) / 10}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
@@ -563,6 +564,8 @@ export class Hud {
               (b.birthBlocked ? `<div class="warn">${owner.pop >= owner.popCap ? 'Need more houses!' : 'Need food!'}</div>` : '');
         } else body += '<div class="hint">Needs a man and a woman to raise children.</div>';
       }
+      // The children under this roof, in words: they are on its record and are not seen on the map.
+      if (b.young?.length) body += `<div class="record"><b>📜 Children of this ${b.type === 'house' ? 'house' : 'roof'}</b>${b.young.map((c) => `<div>· ${c.name}${c.family ? ' ' + c.family : ''}, ${yearsOld(c)} ${yearsOld(c) === 1 ? 'year' : 'years'} old · of age in ${yearsLeft(c)} ${yearsLeft(c) === 1 ? 'year' : 'years'}</div>`).join('')}</div>`;
       if (b.type === 'towncenter') {
         body += `<div class="${b.morale ? 'good' : 'hint'}">🏠 Houses nearby: ${b.morale}/${MORALE_MAX_HOUSES} — defenders take ${Math.round(b.morale * MORALE_PER_HOUSE * 100)}% less damage</div>`;
       }
@@ -699,7 +702,7 @@ export class Hud {
     setIconLeaning(p.virtue);
     updateHallClock(game, pid);
     let idle = 0;
-    for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside) idle++;
+    for (const u of game.units) if (u.owner === pid && u.type === 'villager' && !u.order && !u.inside) idle++;
     const tc = game.buildings.find((b) => b.owner === pid && b.queue[0]?.kind === 'age');
     const aging = tc ? ` → ${AGES[p.age + 1].name} ${Math.floor((tc.queue[0].t / tc.queue[0].time) * 100)}%` : '';
     // A standing Wonder is everyone's business: show whose it is and how long is left.
@@ -733,6 +736,7 @@ export class Hud {
 
     this.updateCard();
     this.updateGuide();
+    updateLessons(game, pid, this.app.paused || !!this.app.mission);
     const info = this.infoHtml();
     if (info !== this.infoSig) { this.infoSig = info; $('info').innerHTML = info; }
 

@@ -24,8 +24,10 @@ Add `?seed=123` to the URL to replay a specific map.
 **Families.** Villagers are men and women. Train them at the Town Center, or build a House and
 move one man and one woman in (right-click the house, or press *Find a couple*). A housed couple
 raises new villagers on their own for half the usual food. Each child takes a little longer than
-the last, and you can pause a family when the village is big enough. Newborns are children: small,
-fragile and unable to work until they grow up, when they take up a parent's trade.
+the last, and you can pause a family when the village is big enough. A child is never seen on the map:
+it is kept on the record of its house, which lists it by name and age, and nothing can harm it there. Grown,
+it steps out of the door as a villager and takes up a parent's trade. If the house falls, its children pass
+to a neighbouring house or the Town Center.
 
 **Ages.** Stone Age → Bronze Age → Iron Age → Middle Ages → Gunpowder Age. Each age unlocks buildings, units and
 technologies, and changes how your settlement looks.
@@ -141,7 +143,7 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   idle villagers close by turn out on their own.
 - *Famine* (`src/sim/famine.ts`): a food store that stays bare for a minute (nothing coming in at all, not
   merely spent as it arrives) leaves the town hungry, and after two minutes it starves: every half minute it loses
-  one of its people, the old first, then the children, then soldiers, who walk away, then grown villagers, though
+  one of its people, the old first, then soldiers, who walk away, then grown villagers (never a child), though
   never the last four. After four minutes plague breaks out around the Town Center, except among the Righteous.
   Food in the store ends it at once. A war band with no hall does not starve.
   The warning says what the town can do (what its Market sells food for, or that it has none), and allies are told.
@@ -246,13 +248,13 @@ the last block of `src/client/style.css`.
 **Teaching.** Every battle has a first-steps guide. The campaign has its own: a slip of *first orders*
 over the map, each marked done by what the player has done, and a page, *How the campaign works*, which
 opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
-out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`.
+out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`. In a battle, a slip under the first-steps guide teaches fire-fighting, famine, walls, towers, the market and the work camp the first time each is needed.
 
 **Day and night.** Settings set how long a day lasts (3, 5 or 10 minutes) and whether night falls at
 all (`src/sim/daylight.ts`). There is a sky with the sun, a moon and stars (`src/client/sky.ts`); the
 game's own camera looks down and does not see it, so it shows on the main menu, whose camera looks into
 the sunrise, and with a lowered camera (`?pitch=9`). By night the lamps and torches nearest the middle
-of the view cast real light (`src/client/nightlight.ts`); a setting turns that off for a slow machine.
+of the view cast real light (`src/client/nightlight.ts`); a setting turns that off for a slow machine. In a match, press O to bring the camera down and look out at the sky: it turns to face the sun, or the moon by night; [ and ] turn the view, the wheel raises your eyes, and O goes back.
 
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.

@@ -653,3 +653,18 @@ kbd { color: var(--sepia); }
 /* ---- Campaign map detail: the choice of full or plainer map, added to Settings by detail.ts ---- */
 #settings .pref-map select { font: inherit; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 3px; padding: 2px 6px; }
 #settings .pref-map option { color: #24180f; background: #efe2c4; }
+
+/* ---- Looking out at the sky ---- */
+#bottom { transition: transform 0.7s ease, opacity 0.5s ease; }
+body.looking-out #bottom { transform: translateY(105%); opacity: 0; pointer-events: none; }
+
+/* ---- Lessons for the moment ---- */
+#lesson {
+  pointer-events: auto; position: absolute; top: 50px; left: 12px; width: 270px; padding: 8px 12px;
+  background: var(--paper); border: 1px solid var(--ink); border-left: 3px solid var(--rubric); box-shadow: var(--slip); color: var(--ink);
+}
+#lesson h4 { margin: 0 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--ink); font: 400 19px/1.15 var(--caps); text-transform: lowercase; color: var(--rubric); display: flex; justify-content: space-between; gap: 8px; }
+#lesson h4 button { border: 0; background: none; color: var(--sepia); padding: 0 2px; }
+#lesson p { margin: 0 0 6px; font: 400 15px/1.3 var(--book); }
+#lesson .lesson-off { border: 0; background: none; padding: 0; color: var(--sepia); font: italic 13px var(--book); text-decoration: underline; cursor: pointer; }
+body.looking-out #guide, body.looking-out #lesson { display: none; }
