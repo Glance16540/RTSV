@@ -157,6 +157,8 @@ export const CAMPAIGN_EDGE: Record<string, string> = {
   england: 'Archers cost 1 instead of 2.',
   arabs: 'A truce costs 1 instead of 3, and gifts cost 3 instead of 4.',
   japan: 'New armies are raised as veterans of one battle.',
+  mali: 'Gold country yields 2 more.',
+  kush: 'Every land of theirs is defended at 1 more: its bowmen turn out.',
 };
 
 /** How each leader plays: caution in attack, taste for forts and farms, openness to peace, and greed. */
@@ -174,6 +176,8 @@ export const PERSONA: Record<string, { margin: number; fort: number; farm: numbe
   england: { margin: 1, fort: 0.4, farm: 0.7, peace: 0.65, greed: 0.1 },
   arabs: { margin: 0, fort: 0.2, farm: 0.4, peace: 0.7, greed: 0.25 },
   japan: { margin: 0, fort: 0.4, farm: 0.6, peace: 0.4, greed: 0.15 },
+  mali: { margin: 1, fort: 0.2, farm: 0.5, peace: 0.7, greed: 0.3 },
+  kush: { margin: 0, fort: 0.4, farm: 0.5, peace: 0.4, greed: 0.2 },
 };
 export const TRUCE_COST = 3;
 export const TRUCE_TURNS = 6;
@@ -961,7 +965,7 @@ export function income(c: Campaign, f: number): number {
 }
 export function territoryIncome(t: Territory, civ = ''): number {
   const hearth = civ === 'hearth' ? 1 : 0;
-  return 2 + (t.buildings.includes('farm') ? (t.trait === 'fertile' ? 4 : 2) + hearth : 0) + (t.capital >= 0 ? 2 + hearth : 0) + (t.trait === 'gold' ? 3 : t.trait === 'coast' ? 1 : 0);
+  return 2 + (t.buildings.includes('farm') ? (t.trait === 'fertile' ? 4 : 2) + hearth : 0) + (t.capital >= 0 ? 2 + hearth : 0) + (t.trait === 'gold' ? 3 + (civ === 'mali' ? 2 : 0) : t.trait === 'coast' ? 1 : 0);
 }
 
 /** The companies an attacker would face in a territory. Locals and town guards fight as infantry. */
@@ -979,7 +983,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground) * faithOf(c, t.owner).defence * 10) / 10;
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * faithOf(c, t.owner).defence * 10) / 10;
 }
 
 /** True while the player and a rival are bound by a truce. */
