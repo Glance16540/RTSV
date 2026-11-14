@@ -163,6 +163,11 @@ the same water as your shore. Ships never leave the water; foot
 soldiers with blades cannot reach them, but archers and towers can. The AI fishes and builds a
 small fleet too. A dock placed on water with no fish nearby earns a warning.
 
+**Winning a match.** A people is beaten when its last Town Center has fallen and it has not begun another
+within a minute and a half (twenty seconds if it has not one soldier left); whatever else still stands, the war
+is over. A band of raiders that has never raised a hall is beaten when its last person falls. The rule is in
+`src/sim/beaten.ts`.
+
 **Wonder.** In the Middle Ages you can build a Wonder. If it stands for five minutes you win, and
 every rival is told the moment it is finished. Richer AIs build them too.
 

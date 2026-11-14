@@ -2958,7 +2958,9 @@ describe('marauders', () => {
   }, 60000);
 
   it('a computer player that has lost a woman to the camp marches on it and burns it', () => {
-    const g = new Game(3, setups);
+    // The two peoples are at peace: left at war, the computer player now beats its idle neighbour (whose Town
+    // Center falls with no soldier to guard it) before the camp has had time to do its work.
+    const g = new Game(3, setups.map((s) => ({ ...s, team: 0 })));
     g.marauders = true;
     const ai = new AIController(g, 1);
     let found = 0, burnt = 0, taken = 0;

@@ -362,8 +362,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     startScreen.querySelector('.lead')!.textContent = cfg.field
       ? 'The armies have met in open country. There is nothing to build: destroy every enemy soldier. Whoever is left standing marches on.'
       : cfg.humanAttacks
-        ? 'Your army has made camp. Destroy every enemy building to take this land.'
-        : 'The enemy is at the gates. Destroy every enemy building to hold this land.';
+        ? 'Your army has made camp. Bring down their Town Center and keep them from raising another to take this land.'
+        : 'The enemy is at the gates. Bring down their Town Center and keep them from raising another to hold this land.';
     resume.textContent = saved ? 'Resume the battle' : 'To battle';
     const finish = (won: boolean) => {
       // Who is still standing decides what is left of the army on the campaign map.
