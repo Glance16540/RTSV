@@ -139,6 +139,11 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   short and does not spread; dry lightning in a dust storm burns like any other fire. Right-click a burning
   building of your own with villagers and they beat the fire down before mending it (up to five to a fire);
   idle villagers close by turn out on their own.
+- *Famine* (`src/sim/famine.ts`): a food store that stays bare for a minute (nothing coming in at all, not
+  merely spent as it arrives) leaves the town hungry, and after two minutes it starves: every half minute it loses
+  one of its people, the old first, then the children, then soldiers, who walk away, then grown villagers, though
+  never the last four. After four minutes plague breaks out around the Town Center, except among the Righteous.
+  Food in the store ends it at once. A war band with no hall does not starve.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
@@ -200,7 +205,7 @@ difficulty levels that plays by the same rules.
 
 ## Missions
 
-*Missions* on the start screen offers six scripted scenarios with objectives shown as you play:
+*Missions* on the start screen offers eight scripted scenarios with objectives shown as you play:
 
 - **First Hearth** — a gentle tutorial: gather, found a family, grow, raise soldiers and drive off
   a wolf pack. Nobody attacks you.
@@ -209,9 +214,13 @@ difficulty levels that plays by the same rules.
 - **Two Doors** — build a Church and a Tavern, fill them, answer what your people ask, and become Devout or
   Worldly. Teaches faith and vice; nobody attacks you.
 - **The Far Shore** — on the great lake: a Dock, fishing boats, War Galleys to sink the pirates, then a Transport
-  to carry your soldiers over and burn out their stronghold.
+  to carry your soldiers over and burn out their stronghold. The way round by land is walled.
 - **Wolves of the North** — play the Norse war band: carry off the Franks' villagers, raise a hall where you
   choose, and grow the tribe.
+- **The Stockade** — Egyptians in the desert: six of your people are held in Babylon's Work Camp. Stand enough
+  soldiers at its gate and they are let out one by one; you need not burn it.
+- **The Mountain King** — English in the snow: two Prophets against a keep behind old stone. Earthquake for the
+  wall, Plague for the garrison, Blight or fire for the rest, then go in.
 
 **How it opens.** The game opens as a printed chronicle, to go with its woodcut icons: vellum, black
 ink and a red for the rubrics, set in the Fell types (bundled from `@fontsource`, under the Open Font
