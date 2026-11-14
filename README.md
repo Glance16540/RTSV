@@ -200,7 +200,7 @@ difficulty levels that plays by the same rules.
 
 ## Missions
 
-*Missions* on the start screen offers six scripted scenarios with objectives shown as you play:
+*Missions* on the start screen offers eight scripted scenarios with objectives shown as you play:
 
 - **First Hearth** — a gentle tutorial: gather, found a family, grow, raise soldiers and drive off
   a wolf pack. Nobody attacks you.
@@ -209,9 +209,13 @@ difficulty levels that plays by the same rules.
 - **Two Doors** — build a Church and a Tavern, fill them, answer what your people ask, and become Devout or
   Worldly. Teaches faith and vice; nobody attacks you.
 - **The Far Shore** — on the great lake: a Dock, fishing boats, War Galleys to sink the pirates, then a Transport
-  to carry your soldiers over and burn out their stronghold.
+  to carry your soldiers over and burn out their stronghold. The way round by land is walled.
 - **Wolves of the North** — play the Norse war band: carry off the Franks' villagers, raise a hall where you
   choose, and grow the tribe.
+- **The Stockade** — Egyptians in the desert: six of your people are held in Babylon's Work Camp. Stand enough
+  soldiers at its gate and they are let out one by one; you need not burn it.
+- **The Mountain King** — English in the snow: two Prophets against a keep behind old stone. Earthquake for the
+  wall, Plague for the garrison, Blight or fire for the rest, then go in.
 
 **How it opens.** The game opens as a printed chronicle, to go with its woodcut icons: vellum, black
 ink and a red for the rubrics, set in the Fell types (bundled from `@fontsource`, under the Open Font
