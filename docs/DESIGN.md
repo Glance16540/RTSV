@@ -39,6 +39,11 @@ who fights does so with a much lower attack. Women tend the farms, raise the chi
 produce, and carry more than a man. War takes the men and raiders take the women, and those are
 two different wounds.
 
+**Children are never shown.** A child is written in the record of the house it is born to (name,
+parents, age, what it may inherit) and is not seen, does not leave the house and cannot be struck,
+taken or harmed until it comes of age, when it steps out as a grown villager. No violence is ever
+done to a child, on screen or in the rules.
+
 **Notable people.** Most villagers are ordinary. Some earn a name the nation remembers: a soldier
 who rises through veterancy, and a woman whose home produces most (many children raised, a farm
 well kept, much carried in). Their loss carries weight for the nation, not only for the town.
@@ -49,9 +54,8 @@ long outlive her use to her captors. What the captor gains depends on who he is.
 that assimilates gains population outright. Slavers gain output: the captives' labour and the
 children born in captivity raise what the holder produces. What is shown of it is the place and the condition: the stockade, the quarters, the
 captives' dress, the work they are put to, the guards. What is done to a captive woman is told by
-what follows from it (a shorter life, children born in captivity), and is not shown. The most the
-game may ever suggest is clothing laid aside and taken up again, with no figures in it; this
-concerns grown women only, and nothing of the kind is ever suggested of a child.
+what follows from it (a shorter life, children born in captivity), and is not shown.
+Nothing is drawn to suggest it, not even by a sign.
 
 Children born in captivity: where the captor is a slaver or a marauder, they are the mother's and
 her people's, and come home with her if she is got back. Where the captor is a rival nation that
@@ -73,6 +77,10 @@ drift toward it instead.
 keep order by force, food removes the cause, closing the tavern works and angers a decadent town.
 A decree can also go the other way: ordering the women into the taverns raises gold and lowers the
 town's moral standing.
+
+**The tavern as a town falls.** As a town grows less moral its tavern women come to sell more than
+drink. This is shown by the house and not by any act: the tavern's look and lights, its hours, how
+its women are dressed, the gold it brings in, and the town's standing going down.
 
 ## Not yet decided
 
@@ -101,4 +109,5 @@ Each step is to be playable by itself.
 | A town defends itself | No: a battle not fought is settled by strength numbers. |
 | Threats on the map | No: marauders and slavers exist only inside a match. |
 | Drift | No: the parts exist as separate rules, not as cause and effect. |
+| Children never shown | No: children are drawn as small figures that walk the town and can be hurt. |
 | Age on the map only | Half: the campaign sets the age a battle begins in, and the player can still age up within it. |
