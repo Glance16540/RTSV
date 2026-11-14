@@ -356,6 +356,11 @@ a decadent town's leader binds enemy villagers for the Work Camp and makes the c
 faster. They are still flesh: a blow always tells, and one who falls comes back a rank lower. The rules
 are in `src/sim/hero.ts`.
 
+A new campaign asks for your people and who leads them. Every leader keeps a house: children are born
+to it as the turns pass. When a leader falls you choose who follows: an heir who has come of age, or a
+captain from an army that has won a battle, who ends the old house. The rules are in
+`src/sim/dynasty.ts`.
+
 ## Systems board
 
 [docs/systems-board.html](docs/systems-board.html) shows every system in the game, how far along it
