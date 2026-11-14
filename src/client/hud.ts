@@ -12,6 +12,7 @@ import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
 import { notableLine, notableList } from './notables';
+import { captivePortraitHtml, standingHtml, tavernFace, unitPortraitHtml } from './portrait';
 import { tavernPanel } from './tavernlook';
 import { heldPanel, takenPanel } from './captives';
 import { yearsLeft, yearsOld } from '../sim/nursery';
@@ -484,7 +485,7 @@ export class Hud {
         extra += `<div>${e.homeId ? '🏠 Lives in a house' : '⛺ Homeless — right-click a house to move in'}</div>`;
         if (e.carryAmt > 0) extra += `<div>Carrying ${RI(e.carryType)} ${e.carryAmt}</div>`;
       }
-      if (e.captive) extra += `<div class="hint">⛓️ Leading ${e.captive.name} ${d.slaver ? 'to a Work Camp' : 'home to join the tribe'}</div>`;
+      if (e.captive) extra += `<div class="hint likeness-row">${captivePortraitHtml(game, e.captive, e)}⛓️ Leading ${e.captive.name} ${d.slaver ? 'to a Work Camp' : 'home to join the tribe'}</div>`;
       else if (mine && !d.slaver && game.canSeize(e)) extra += '<div class="hint">🪓 Right-click an enemy villager to carry them off; they join your tribe.</div>';
       else if (d.slaver) extra += '<div class="hint">Right-click an enemy villager to seize him.</div>';
       if (e.merc) extra += `<div class="hint">💰 Mercenary: ${(MERC_WAGE * 60).toFixed(1)} gold a minute, or he leaves</div>`;
@@ -526,7 +527,7 @@ export class Hud {
       }
       const role = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
-      return `<div class="head"><span class="icon">${e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon)}</span><div><b>${name}</b>${tag}${hp}</div></div>${notableLine(game, e)}
+      return `<div class="head"><span class="icon">${unitPortraitHtml(game, e, e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon))}</span><div><b>${name}</b>${tag}${hp}</div></div>${notableLine(game, e)}
         <div class="stat">⚔ ${Math.round((d.atk + (mil ? mods.atk : 0) + (lead?.atk ?? 0)) * 10) / 10} · 🛡 ${Math.round((d.armor + (mil ? mods.armor : 0) + (lead?.armor ?? 0) + game.guardAt(e.owner, e.x, e.y)) * 10) / 10}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
     const b = e;
@@ -596,7 +597,8 @@ export class Hud {
         const men = who.filter((u) => u.gender === 'm').length, women = who.length - men;
         const count = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
         const roll = tav ? `${count(women, 'milkmaid', 'milkmaids')}, ${count(men, 'patron', 'patrons')}` : `${count(men, 'monk', 'monks')}, ${count(women, 'nun', 'nuns')}`;
-        const faces = tav ? ico('milkmaid', '').repeat(women) + ico('patron', '').repeat(men) : ico('monk', '').repeat(men) + ico('nun', '').repeat(women);
+        // The tavern's women are drawn as the town's standing makes them; its patrons as themselves, drunk.
+        const faces = tav ? tavernFace(owner.civ, owner.virtue).repeat(women) + who.filter((u) => u.gender === 'm').map((u) => unitPortraitHtml(game, u, ico('patron', ''), 'sm')).join('') : ico('monk', '').repeat(men) + ico('nun', '').repeat(women);
         body += `<div class="${who.length ? 'good' : 'hint'} staffrow">${faces || (tav ? ico('tavern', '🍺') : ico('temple', '🙏'))} ${roll} <small>(${who.length}/${b.def.staff})</small> — right-click with villagers to station them</div>` +
           `<div class="hint">${tav
             ? `A milkmaid brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute. A patron eats and drinks ${(PATRON_FOOD * 60).toFixed(0)} food a minute, but soldiers are trained ${(PATRON_MUSTER * 100).toFixed(0)}% faster for each one. Each adds ${MAID_VIRTUE} decadence a minute and slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile. In a worldly town, plague can break out here.`
@@ -605,7 +607,7 @@ export class Hud {
       if (b.type === 'tavern' && b.complete) { const w = (b.staff ?? []).map((id) => game.entities.get(id)).filter((u) => !!u && u.kind === 'unit' && u.gender === 'f').length; body += tavernPanel(owner.virtue ?? 0, game.field ? 0 : game.dayT, w); }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
-    return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${tag}${hp}</div></div>${body}`;
+    return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${b.type === 'towncenter' && !owner.neutral ? standingHtml(owner.civ, owner.virtue) : ''}${tag}${hp}</div></div>${body}`;
   }
 
   // ---- First steps guide ----

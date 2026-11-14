@@ -77,7 +77,8 @@ export interface Deed { t: number; s: string }
 export interface Captive { from: number; name: string; family: string; gender: Gender; trait: string; trait2: string; age: number; lifespan: number;
   /** Children she had at home before she was taken, and the rest of her record. */ kids?: number; story?: Deed[];
   /** Children borne in captivity: the count, and the records of them (captivity.ts). */ born?: number; young?: Child[];
-  /** When they were seized: the clock on getting them back runs from here. Told once that it is running out. */ taken?: number; warned?: boolean; /** Held by marauders, not in a people's work camp. */ held?: boolean }
+  /** When they were seized: the clock on getting them back runs from here. Told once that it is running out. */ taken?: number; warned?: boolean; /** Held by marauders, not in a people's work camp. */ held?: boolean;
+  /** The people they were born to, if not their home's (portrait.ts). */ people?: string }
 /** When the marauders make camp, how often each woman they hold bears them a child, how often they raid, and how many they can grow to. */
 export const LAIR_AT = 240;
 export const LAIR_BIRTH = 120;
@@ -131,6 +132,8 @@ export interface Unit extends Base {
   kids?: number; captiveKids?: number; story?: Deed[];
   /** Freed from the marauders: she will bear no more children, and works a quarter harder. */
   freed?: boolean;
+  /** The people a villager was born to, when another people took them in (portrait.ts draws them as their own). */
+  people?: string;
   /** The nation's leader: deeds done in this battle and the veterancy they have earned. */
   hero?: { xp: number; rank: number; /** Seconds their call still sounds, and seconds until it can be raised again. */ call?: number; rest?: number };
   /** Foes this unit has killed. Among the Warriors every kill makes a soldier strike harder. */
@@ -857,6 +860,7 @@ export class Game {
     const v = this.spawnUnit('villager', owner, at.x, at.y, c.gender);
     v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
     v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: `Taken into the ${this.players[owner].name}` }];
+    v.people = c.people ?? this.players[c.from]?.civ;
     this.msg(owner, `${c.name} has been taken into the tribe.`);
   }
 
@@ -1661,6 +1665,7 @@ export class Game {
     const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
     v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
     v.kids = c.kids; v.captiveKids = c.born;
+    if (c.people) v.people = c.people;
     v.story = [...(c.story ?? []), { t: this.time, s: 'Freed, and came home' }];
     // What the marauders did to her is not undone by burning their camp: she will bear no more children. But she
     // has come through it, and works like one who means to live.
@@ -1737,6 +1742,7 @@ export class Game {
     const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
     v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
     v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: 'Got out of the camp' }];
+    if (c.people) v.people = c.people;
     comeHome(this, c, v);
     const tc = this.tcs[c.from]?.[0];
     if (tc) this.cmdMove(c.from, [v.id], tc.x, tc.y + tc.size / 2 + 1);
@@ -2720,7 +2726,7 @@ export class Game {
         // A man being bound does not go on with his work.
         if (v.order) this.setOrder(v, null);
         if (o.t0 < CAPTURE_TIME * (this.tyrant(u) ? TYRANT_BIND : 1)) break;
-        u.captive = { from: v.owner, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan, taken: this.time, kids: v.kids, born: v.captiveKids, story: [...(v.story ?? []), { t: this.time, s: u.def.marauder ? 'Carried off by marauders' : raidWord(u) }] };
+        u.captive = { from: v.owner, people: v.people, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan, taken: this.time, kids: v.kids, born: v.captiveKids, story: [...(v.story ?? []), { t: this.time, s: u.def.marauder ? 'Carried off by marauders' : raidWord(u) }] };
         const raid = this.adopts(u);
         this.msg(v.owner, `${v.name} has been carried off by ${u.def.marauder ? 'marauders' : raid ? 'raiders' : 'slavers'}!`);
         this.players[v.owner].lastAttacked = { x: v.x, y: v.y, t: this.time };
