@@ -6,6 +6,7 @@ import type { Ground, PlayerSetup, Standing } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
+import { House, autoSucceed, strangerLeads, tickHouses } from './dynasty';
 import { COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
 
 export const MAP_W = 1300;
@@ -186,6 +187,8 @@ export interface Faction {
   lastDemand: number; // turn this rival last demanded tribute
   /** The leader as someone has made them, and the veterancy they have earned across the campaign's battles. */
   hero?: Partial<HeroSpec>; heroRank?: number;
+  /** The leader's children, and how many have led this people: see dynasty.ts. */
+  house?: House;
   /** Where this people stands between piety (100) and decadence (-100): see FAITH. */
   virtue?: number;
   age?: number; // the age this people has reached on the campaign map, 0 to 4
@@ -1006,6 +1009,7 @@ export function raise(c: Campaign, f: number, tid: number, type: string): boolea
 export function summonHero(c: Campaign, f: number, tid: number): boolean {
   if (!canSummonHero(c, f, tid)) return false;
   c.factions[f].supplies -= heroCost(c.factions[f].civ);
+  strangerLeads(c, f);
   c.factions[f].heroAlive = true;
   armyAt(c, tid)!.hero = true;
   return true;
@@ -1304,6 +1308,7 @@ export function continueAI(c: Campaign): void {
       // Everyone has moved: a new turn begins.
       c.turn++;
       c.phase = 'player';
+      tickHouses(c);
       for (const a of c.armies) { a.moved = false; a.marched = false; }
       for (const x of c.factions) x.angry = false;
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
@@ -1453,6 +1458,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
     }
     c.spent = true;
     const own = c.territories.filter((t) => t.owner === f.id);
+    // A people that has lost its leader looks first to the house, then to its captains, and only then hires one.
+    if (!f.heroAlive) autoSucceed(c, f.id);
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     // A people with stores to spare moves with the times.
     if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8) advanceAge(c, f.id);
