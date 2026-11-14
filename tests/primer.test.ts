@@ -1,6 +1,8 @@
 // Teaching the campaign: the first orders follow what the player has done, and the page says what the rules say.
 import { describe, expect, it } from 'vitest';
-import { COMPANIES, DOMINION_TURNS, SITES, advanceAge, armyAt, build, canBuild, canRaise, dominionNeed, endTurn, newCampaign, raise, reach, sendGift } from '../src/sim/campaign';
+import { COMPANIES, DOMINION_TURNS, HERO_RANK_STRENGTH, SITES, advanceAge, armyAt, build, canBuild, canRaise, dominionNeed, endTurn, newCampaign, raise, reach, sendGift } from '../src/sim/campaign';
+import { HALL_GRACE } from '../src/sim/beaten';
+import { CHAMPION_KILLS } from '../src/sim/champion';
 import { primerBase, primerPage, primerSteps } from '../src/sim/primer';
 
 const world = () => newCampaign(7, 2, 1, 'stonekin');
@@ -64,6 +66,14 @@ describe('the page that explains the campaign', () => {
     const text = primerPage().flatMap((s) => s.lines).join(' ');
     for (const s of Object.values(SITES)) expect(text).toContain(`<b>${s.name}</b> (${s.cost})`);
     for (const d of Object.values(COMPANIES)) expect(text).toContain(`<b>${d.name}</b> (${d.cost}`);
+  });
+
+  it('says how a siege is won and what a leader is worth, in the rules\' own numbers', () => {
+    const text = primerPage().flatMap((s) => s.lines).join(' ');
+    expect(text).toContain(`${HALL_GRACE} seconds`);
+    expect(text).toContain(`each rank adds ${HERO_RANK_STRENGTH} `);
+    expect(text).toContain(`${CHAMPION_KILLS} kills`);
+    expect(text).toContain('Blooded, Veteran and Legend');
   });
 
   it('gives the winning numbers of the world in hand, and a share of the map without one', () => {
