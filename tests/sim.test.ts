@@ -1087,7 +1087,7 @@ describe('generations', () => {
 });
 
 describe('missions', () => {
-  const start = (id: string) => { const m = missionById(id)!; const g = new Game(m.seed, m.setups, m.size, false, !!m.sea); m.init(g); return { m, g }; };
+  const start = (id: string) => { const m = missionById(id)!; const g = new Game(m.seed, m.setups, m.size, false, !!m.sea, false, m.climate ?? ''); m.init(g); return { m, g }; };
 
   it('every mission sets up cleanly and reports objectives', () => {
     for (const mission of MISSIONS) {
