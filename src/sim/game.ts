@@ -9,6 +9,7 @@ import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNO
 import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
+import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
 import { calamity, douse } from './calamity';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
@@ -349,6 +350,8 @@ export class Game {
   scenario: { id: string; n: number; ids: number[] } | null = null;
   /** Whether a band of marauders, belonging to no people, makes camp in the wilds of this map. Off unless asked for. */
   marauders = false;
+  /** How the marauders stand over the whole battle: camps made, and whether they are coming back (marauders.ts). */
+  band?: BandState;
   private lairT = 0; private lairRaid = 0; private lairSeen = false; private lairMade = false;
   /** Player id that owns wild animals. */
   wild = -1;
@@ -1315,7 +1318,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, marauders: this.marauders, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -1355,6 +1358,7 @@ export class Game {
     g.rngState = d.rngState;
     g.aging = d.aging;
     g.marauders = !!d.marauders;
+    g.band = d.band;
     if (d.lair) [g.lairT, g.lairRaid, g.lairSeen, g.lairMade] = d.lair;
     g.scenario = d.scenario;
     g.vis.set(d.vis);
@@ -1518,12 +1522,12 @@ export class Game {
     const wild = this.wild;
     let lair = this.buildings.find((b) => b.type === 'lair') ?? null;
     if (!lair) {
-      if (this.lairMade || this.time < LAIR_AT) return;
-      this.lairMade = true;
+      if ((this.lairMade && !bandReturns(this)) || this.time < LAIR_AT) return;
+      this.lairMade = true; this.lairSeen = false;
       // As far from every town as the land allows.
       let best: { cx: number; cy: number } | null = null, bd = 0;
       for (let cy = 4; cy < this.size - 7; cy += 3) for (let cx = 4; cx < this.size - 7; cx += 3) {
-        if (!this.canPlace('lair', cx, cy)) continue;
+        if (!this.canPlace('lair', cx, cy) || nearAshes(this, cx, cy)) continue;
         let d = Infinity;
         for (const b of this.buildings) if (b.owner !== wild) d = Math.min(d, Math.hypot(b.x - cx - 1.5, b.y - cy - 1.5));
         for (const st of this.spec.starts) d = Math.min(d, Math.hypot(st.x - cx - 1.5, st.y - cy - 1.5));
@@ -1536,6 +1540,7 @@ export class Game {
       for (const p of this.players) if (!p.neutral) this.msg(p.id, '🏴 Smoke in the wilds: marauders have made camp somewhere out there. They take women. Find the camp and burn it.');
       return;
     }
+    tendBand(this, lair);
     const band = this.units.filter((u) => u.def.marauder), held = lair.captives ?? [], women = held.filter((c) => c.gender === 'f');
     // Every woman held bears the band children, who are raised to it; and men drift in to a camp that prospers.
     this.lairT += women.length / LAIR_BIRTH + 1 / 110;
@@ -2871,7 +2876,7 @@ export class Game {
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
     if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
-    atk *= this.highGround(u.x, u.y, t) * this.veteran(u);
+    atk *= this.highGround(u.x, u.y, t) * this.veteran(u) * marauderEdge(this, u);
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
