@@ -34,7 +34,7 @@ export const AREAS = [
       { name: 'Morale', status: 'rough', what: 'Homes steady the defenders.',
         has: ['Houses near the Town Center harden its defenders'],
         gaps: ['How much it should count is a guess'] },
-      { name: 'The leader on the field', status: 'thin', what: 'Your nation\'s leader fights in person: made in a creator, hardened by battle, shaped by the town\'s piety.',
+      { name: 'The leader on the field', status: 'rough', what: 'Your nation\'s leader fights in person: made in a creator, hardened by battle, shaped by the town\'s piety.',
         has: ['A hero creator, opened from the menu and from the campaign map: name, man or woman, calling (Warlord or Strategist), six points across Might, Guard and Vigour, and a turning figure to dress: hair, cloak, headgear, build, beard',
           'One leader is kept for each nation on this device and leads it in every skirmish and campaign',
           'The first hero of their calling raised in a battle is the leader, by name; the other calling is a plain lieutenant',
