@@ -7,6 +7,7 @@ import {
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
+import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
@@ -2117,8 +2118,11 @@ export class Game {
     this.weatherAmt += Math.sign(d) * Math.min(Math.abs(d), DT / 9);
     if (this.weatherAmt <= 0 && this.weatherWant === 0) this.weather = '';
   }
-  /** How far through the day it is, 0 at dawn to 1 at the next: the last three tenths are night. A day is five minutes. */
-  get dayT(): number { return (this.time % DAY_LENGTH) / DAY_LENGTH; }
+  /** The player's own choice of how long a day lasts and whether night falls. Settings, not part of a saved game. */
+  dayLength = DAY_LENGTH;
+  nightless = false;
+  /** How far through the day it is, 0 at dawn to 1 at the next: the last three tenths are night. A day is five minutes unless the player has set it otherwise. */
+  get dayT(): number { return dayPhase(this.time, this.dayLength, this.nightless); }
   get night(): boolean { return this.dayT >= 0.7; }
   /** The weather that is heavy enough to matter just now, or ''. */
   get foul(): '' | 'rain' | 'snow' | 'dust' { return this.weatherAmt >= 0.4 ? this.weather : ''; }

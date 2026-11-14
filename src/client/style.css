@@ -644,3 +644,8 @@ kbd { color: var(--sepia); }
 #toasts { top: calc(52px + var(--hall-clock, 0px)); }
 @media (max-width: 900px) { #hall-clock { max-width: calc(100vw - 24px); top: 46px; } }
 @media (prefers-reduced-motion: reduce) { #hall-clock .last b { animation: none; } }
+
+/* ---- Day and night in Settings ---- */
+#settings select { padding: 3px 4px 4px; font: 17px var(--book); color: var(--ink); background: rgba(255, 250, 235, 0.35); border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; cursor: pointer; }
+#settings select:hover, #settings select:focus { background: rgba(255, 250, 235, 0.7); border-bottom-color: var(--rubric); outline: 0; }
+.sheet #settings label { margin: 8px 12px 0; }
