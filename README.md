@@ -240,6 +240,12 @@ over the map, each marked done by what the player has done, and a page, *How the
 opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
 out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`.
 
+**Day and night.** Settings set how long a day lasts (3, 5 or 10 minutes) and whether night falls at
+all (`src/sim/daylight.ts`). There is a sky with the sun, a moon and stars (`src/client/sky.ts`); the
+game's own camera looks down and does not see it, so it shows on the main menu, whose camera looks into
+the sunrise, and with a lowered camera (`?pitch=9`). By night the lamps and torches nearest the middle
+of the view cast real light (`src/client/nightlight.ts`); a setting turns that off for a slow machine.
+
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.
 
@@ -385,8 +391,9 @@ to it as the turns pass. When a leader falls you choose who follows: an heir who
 captain from an army that has won a battle, who ends the old house. The rules are in
 `src/sim/dynasty.ts`.
 
-At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator;
-rival leaders are built to suit how their people live. Both are in `src/sim/powers.ts`.
+At three ranks (Blooded, Veteran, Legend) a leader comes into one of two powers, chosen in the creator or
+left open and chosen on the field when the rank is earned; rival leaders are built to suit how their
+people live. A soldier raised to lead fights on as what they were. Both are in `src/sim/powers.ts`.
 
 ## Systems board
 
