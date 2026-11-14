@@ -254,7 +254,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   const team = (i: number) => (sides === 'ffa' ? i : i === 0 || (sides === 'ally' && i === 1) ? 0 : 1);
   const mission = mode === 'mission' ? missionById(params.get('mission')!)! : null;
   if (mission) {
-    game = new Game(mission.seed, mission.setups, mission.size, false, !!mission.sea);
+    game = new Game(mission.seed, mission.setups, mission.size, false, !!mission.sea, false, mission.climate ?? '');
     mission.init(game);
   }
   // The country a battle is fought in: chosen, or the homeland of whoever holds the ground.
@@ -460,8 +460,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       exit: () => go(''),
     });
     // No campaign yet: first choose a people and who leads them.
-    primer = new CampaignPrimer(state);
     if (fresh) ow.askNew(true);
+    primer = new CampaignPrimer(state);
   }
 
   // ---- What is on screen when the loading is done ----
