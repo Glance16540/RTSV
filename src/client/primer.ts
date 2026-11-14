@@ -25,7 +25,13 @@ export class CampaignPrimer {
     this.kept = kept && kept.base?.seed === c.seed ? kept : { base: primerBase(c), seen: [], off: kept?.off ?? false };
     this.slip.id = 'primer';
     // Under the campaign's own dialogs, so that a battle or a tale put to the player is never covered.
-    document.getElementById('ow-dialog')!.before(this.slip);
+    const dialog = document.getElementById('ow-dialog')!;
+    dialog.before(this.slip);
+    // While the player is choosing their people and leader for a new world there are no orders to give yet:
+    // the slip waits until that dialog is answered or put aside. The dialog is watched, not changed.
+    const wait = (): void => { this.slip.classList.toggle('hidden', !dialog.classList.contains('hidden') && !!dialog.querySelector('#ow-go')); };
+    new MutationObserver(wait).observe(dialog, { attributes: true, attributeFilter: ['class'], childList: true });
+    wait();
     this.slip.addEventListener('click', (e) => {
       const act = (e.target as HTMLElement).closest<HTMLElement>('[data-primer]')?.dataset.primer;
       if (act === 'off' || act === 'on') this.kept.off = act === 'off';

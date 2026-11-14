@@ -13,6 +13,7 @@
 //
 // Decided without the game's dice, like the spreading of fire, so nothing else in a match is disturbed.
 import type { Building, Game, Unit } from './game';
+import { famine } from './famine';
 
 export const FIRE = {
   /** Seconds of fire one villager at work takes off each second, on top of its burning down by itself. */
@@ -34,7 +35,7 @@ export const FIRE = {
 };
 
 /** A chance in [0, 1) from the tick, the match's seed and a number of its own, each one unrelated to the others. */
-const roll = (g: Game, salt: number): number => {
+export const roll = (g: Game, salt: number): number => {
   let h = Math.imul(g.tick ^ Math.imul(salt + 1, 0x9e3779b1), 0x85ebca6b) ^ Math.imul(g.seed + salt, 0xc2b2ae35);
   h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d);
   h ^= h >>> 12; h = Math.imul(h, 0x297a2d39);
@@ -121,8 +122,9 @@ export function turnOut(g: Game, owner: number, reach = FIRE.call, crew = FIRE.c
   return sent;
 }
 
-/** Once a second: lightning while a storm is heavy, and idle villagers turning out to fires near them. */
+/** Once a second: hunger (famine.ts), lightning while a storm is heavy, and idle villagers turning out to fires near them. */
 export function calamity(g: Game): void {
+  famine(g);
   if ((g.foul === 'rain' || g.foul === 'dust') && roll(g, 3) < 1 / FIRE.storm) lightning(g);
   for (const b of g.buildings) {
     if (b.dead || b.burnT <= 0 || b.hp >= b.maxHp || g.players[b.owner]?.neutral) continue;
