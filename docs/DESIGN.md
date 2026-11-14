@@ -18,6 +18,10 @@ poorer for a generation.
 about 60. Entering a town plays a fixed stretch of that season in real time. Every town the player
 does not visit lives the same season by the same rules, run coarsely.
 
+A person ages only on the map, a season at a time. Nobody grows older inside a battle or a visit,
+and nobody dies of age there: in a town people die only by violence, sickness, fire or hunger.
+Each person's age is kept on the town's record, so a town loads with the same people it left with.
+
 **Age belongs to the nation.** It advances only on the map. Nobody ages up inside a town; a town is
 in whatever age its nation is in.
 
