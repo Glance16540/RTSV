@@ -515,7 +515,8 @@ describe('upgrades, gunpowder and traits', () => {
     for (let i = 0; i < 80; i++) {
       house.birthProgress = 1;
       g.step();
-      const child = house.young!.pop()!; // read off the house's record, where a child is kept
+      const child = house.young?.pop(); // read off the house's record, where a child is kept
+      if (!child) continue; // a birth that was due and did not come
       g.players[0].pop--;
       expect(child.family).toBe(house.family);
       counts[child.trait || 'none'] = (counts[child.trait || 'none'] ?? 0) + 1;
@@ -1071,7 +1072,8 @@ describe('generations', () => {
     for (let i = 0; i < 60; i++) {
       house.birthProgress = 1;
       g.step();
-      const child = house.young!.pop()!; // read off the house's record
+      const child = house.young?.pop(); // read off the house's record
+      if (!child) continue; // a birth that was due and did not come
       g.players[0].pop--;
       if ([child.trait, child.trait2].includes('strong') && [child.trait, child.trait2].includes('swift')) both++;
     }
@@ -2390,7 +2392,7 @@ describe('children who live to grow up', () => {
     expect(BUILDINGS.workcamp.camp).toBe(12);
   });
 
-  it('nearly all do in a righteous town, far fewer in a decadent one', () => {
+  it('nearly every birth comes in a righteous town, far fewer in a decadent one, and no child dies', () => {
     const raise = (virtue: number) => {
       const g = new Game(5, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: false }]);
       const p = g.players[0];
@@ -2402,14 +2404,17 @@ describe('children who live to grow up', () => {
         const m = g.spawnUnit('villager', 0, h.x, h.y + 2, 'm'), f = g.spawnUnit('villager', 0, h.x + 0.5, h.y + 2, 'f');
         h.residents = { m: m.id, f: f.id }; m.homeId = h.id; f.homeId = h.id;
       }
-      let died = 0;
-      run(g, 600, () => { p.virtue = virtue; p.popCap = 400; died += g.events.filter((e) => e.t === 'msg' && e.player === 0 && e.text.includes('died young')).length; g.events.length = 0; });
-      return { born: p.stats.born, died };
+      // No child dies: where families are weak a birth that was due does not come, and the house notes it.
+      let said = 0;
+      run(g, 600, () => { p.virtue = virtue; p.popCap = 400; said += g.events.filter((e) => e.t === 'msg' && e.player === 0 && /died|sickened/.test(e.text)).length; g.events.length = 0; });
+      expect(said).toBe(0);
+      const missed = g.buildings.reduce((n, b) => n + (b.missed ?? 0), 0);
+      return { born: p.stats.born, due: p.stats.born + missed, missed };
     };
     const holy = raise(90), fallen = raise(-90);
     expect(holy.born).toBeGreaterThan(20);
-    expect(holy.died / holy.born).toBeLessThan(0.08);
-    expect(fallen.died / fallen.born).toBeGreaterThan(0.15);
+    expect(holy.missed / holy.due).toBeLessThan(0.08);
+    expect(fallen.missed / fallen.due).toBeGreaterThan(0.15);
     expect(holy.born).toBeGreaterThan(fallen.born); // and the faithful have more of them to begin with
   });
 });
