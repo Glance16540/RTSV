@@ -30,6 +30,19 @@ export const POWERS: Record<Calling, [Power, Power][]> = {
   ],
 };
 
+/** The rank (Seasoned) from which a leader can raise their call, how long it lasts, and how long before it can be raised again. */
+export const CALL_RANK = 2;
+export const CALL_LASTS = 12;
+export const CALL_REST = 90;
+/**
+ * The one thing a leader sets off by hand. `haste`: those of theirs within reach take this share of the usual time
+ * between blows. `ward`: those within reach take this share of the harm done them.
+ */
+export const CALLS: Record<Calling, { name: string; desc: string; haste?: number; ward?: number }> = {
+  warlord: { name: 'Sound the charge', desc: `For ${CALL_LASTS} seconds everyone of yours within their reach strikes a third faster.`, haste: 0.75 },
+  strategist: { name: 'Hold fast', desc: `For ${CALL_LASTS} seconds everyone of yours within their reach takes 30% less harm.`, ward: 0.7 },
+};
+
 /** The powers a leader of this making holds at a rank, in the order they came into them. */
 export function powersHeld(h: HeroSpec, rank: number): Power[] {
   return POWER_RANKS.flatMap((at, tier) => (rank >= at ? [POWERS[h.calling][tier][h.powers?.[tier] === 1 ? 1 : 0]] : []));

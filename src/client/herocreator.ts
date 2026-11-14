@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { CIVS, CIV_COLOR, UNITS } from '../sim/data';
 import { HeroSpec, HERO_POINTS, MAX_RANK, RANK_NAMES, HOLY_GUARD, TYRANT_BIRTH, cleanHero, defaultHero, heroBonus } from '../sim/hero';
-import { POWERS, POWER_RANKS } from '../sim/powers';
+import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS } from '../sim/powers';
 import { lookOf } from './models';
 import { RealPerson, leaderOutfit, loadPeople, makePerson, outfitFor, play } from './person';
 
@@ -117,7 +117,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
   const paint = () => {
     pick('hm-sex', h.female ? 'f' : 'm'); pick('hm-calling', h.calling); pick('hm-bent', h.bent); pick('hm-build', String(h.look!.build ?? ''));
     $('hm-rank').textContent = h.rank ? `${RANK_NAMES[h.rank]} already, from battles fought` : 'one power at each of three ranks';
-    $('hm-powers').innerHTML = POWERS[h.calling].map((pair, t) => `<div class="hm-power"><span>${RANK_NAMES[POWER_RANKS[t]]}</span><div class="hm-pick">${pair.map((p, k) => `<button type="button" data-t="${t}" data-k="${k}" aria-pressed="${(h.powers?.[t] ?? 0) === k}">${p.name}</button>`).join('')}</div><small>${pair[h.powers?.[t] === 1 ? 1 : 0].desc}</small></div>`).join('');
+    $('hm-powers').innerHTML = `<div class="hm-power"><span>${RANK_NAMES[CALL_RANK]}</span><div><b>${CALLS[h.calling].name}</b></div><small>${CALLS[h.calling].desc} Theirs to raise by hand, once every ${CALL_REST} seconds.</small></div>` + POWERS[h.calling].map((pair, t) => `<div class="hm-power"><span>${RANK_NAMES[POWER_RANKS[t]]}</span><div class="hm-pick">${pair.map((p, k) => `<button type="button" data-t="${t}" data-k="${k}" aria-pressed="${(h.powers?.[t] ?? 0) === k}">${p.name}</button>`).join('')}</div><small>${pair[h.powers?.[t] === 1 ? 1 : 0].desc}</small></div>`).join('');
     $('hm-calling-note').textContent = h.calling === 'warlord'
       ? 'Fights at the front with sword and shield. Everyone of yours fighting near them strikes a quarter harder. Raised at the Town Center from the Bronze Age.'
       : 'Stands behind the line with a staff. Enemies fighting near them strike a fifth weaker, and your wounded nearby are slowly mended. Raised at the Town Center from the Iron Age.';
