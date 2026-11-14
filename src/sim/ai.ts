@@ -163,7 +163,10 @@ export class AIController {
         if (saving && step.type !== 'barracks') continue;
         // A Wonder is for an AI that is rich and not on the easy setting.
         if (step.type === 'wonder' && (this.level < 1 || p.res.wood < 1600 || !g.canAfford(p, BUILDINGS.wonder.cost))) continue;
-        if (g.canAfford(p, BUILDINGS[step.type].cost)) this.build(step.type, home, villagers, 7, 13);
+        // A grown town has no room left close in: look further out before giving up. (It used to look only close in,
+        // find nothing, and try the same building for ever: a people starved beside a full treasury for want of a
+        // market it had nowhere to put.)
+        if (g.canAfford(p, BUILDINGS[step.type].cost)) this.build(step.type, home, villagers, 7, 13) ?? this.build(step.type, home, villagers, 13, 26);
         break;
       }
     }
