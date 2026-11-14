@@ -13,7 +13,7 @@ import {
   WORLD_SHAPES, worldOf, lanesOf, onSea,
 } from '../sim/campaign';
 
-import { Claim, canSucceed, claimants, comesOfAge, houseOf, ofAge, succeed } from '../sim/dynasty';
+import { Claim, canSucceed, claimants, comesOfAge, houseOf, ofAge, rulerName, succeed } from '../sim/dynasty';
 import { RANK_NAMES } from '../sim/hero';
 import { heroFor } from '../sim/campaign';
 import { openHeroCreator, savedHero } from './herocreator';
@@ -145,7 +145,7 @@ export class Overworld {
     if (!s) return;
     this.speaking = s;
     this.speakT = Date.now() + 4500;
-    $('ow-speech').innerHTML = speechHtml(s);
+    $('ow-speech').innerHTML = speechHtml(s, rulerName(this.c, Math.max(0, this.c.factions.findIndex((f) => f.civ === s.civ && (s.event.startsWith('p_') ? f.id === 0 : f.id > 0)))));
     playLine(s);
     this.hooks.save();
     if (this.c.speech.length) setTimeout(() => this.nextSpeech(), 4600);
@@ -254,7 +254,7 @@ export class Overworld {
       this.changed();
     };
     const canPay = c.factions[0].supplies >= d.amount;
-    this.dialog(`${leaderOf(fac.civ)!.name} demands tribute`,
+    this.dialog(`${rulerName(c, fac.id)} demands tribute`,
       `${fac.name} want ${d.amount} supplies. Pay, and they will leave you alone for four turns. Refuse, and they will come for you at once if they think they can win.` + (canPay ? '' : ' You do not have enough to pay.'),
       [...(canPay ? [[`Pay ${d.amount} supplies`, () => answer(true)] as [string, () => void]] : []), ['Refuse', () => answer(false)]]);
   }
@@ -576,7 +576,7 @@ export class Overworld {
     const a = armyAt(c, this.sel);
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
-      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${leaderOf(f.civ)!.name}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
+      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
       `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
       `<div class="hint">${creedOf(virtueOf(c, 0)).icon} Your people are <b>${creedOf(virtueOf(c, 0)).name}</b> <small>(${virtueOf(c, 0) > 0 ? 'piety ' + virtueOf(c, 0) : virtueOf(c, 0) < 0 ? 'decadence ' + -virtueOf(c, 0) : 'in the middle'}${virtueDrift(c, 0) ? `, ${virtueDrift(c, 0) > 0 ? 'growing more pious' : 'growing more decadent'} by ${Math.abs(virtueDrift(c, 0))} a turn` : ''})</small>. ${FAITH[creedOf(virtueOf(c, 0)).id].desc} Your towns begin each battle as they stand here.</div>` +
       (worldNow(c) ? `<div class="hint">${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].icon} <b>${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].name}.</b> ${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].desc} <small>(${c.world!.until - c.turn + 1} turns left)</small></div>` : '') +
@@ -601,7 +601,7 @@ export class Overworld {
       <div>${t.buildings.map((b) => `${SITES[b].icon} ${SITES[b].name}`).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>
       ${t.town?.b.length ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle${t.town.b.some((b) => b[3] !== undefined && b[4] === undefined) ? `, ${t.town.b.filter((b) => b[3] !== undefined && b[4] === undefined).length} of them damaged and being mended, a tenth each turn` : ''}${t.town.b.some((b) => b[4] !== undefined) ? `, ${t.town.b.filter((b) => b[4] !== undefined).length} left unfinished` : ''}${t.owner >= 0 && !styleOf(c.factions[t.owner].civ).raid && !t.town.b.some((b) => b[0] === 'towncenter') ? '. Its Town Center was razed and has not been raised again' : ''}. Whoever holds the land fights from it as it stands.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
       ${t.ground && t.ground.gone.length + t.ground.left.length ? '<div class="hint">🪓 This ground has been worked: wood felled, berries picked or stone dug. None of it comes back.</div>' : ''}
-      ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
+      ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a, c)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 ? '' : 'Select one of your armies to march on this land.'}</div>`;
     const btn = (act: string, label: string, cost: number, ok: boolean, tip = '') => `<button data-act="${act}" title="${tip}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label} <small>${cost}</small></button>`;
     let html = '';
@@ -617,9 +617,9 @@ export class Overworld {
       if (c.ally === t.owner) html += `<div class="hint">🤝 ${c.factions[t.owner].name} are your allies. Their armies next to a battle of yours fight in it, and yours in theirs.</div>`;
       else if (truce) {
         html += `<div class="hint">🕊️ At truce with ${c.factions[t.owner].name} until turn ${truce.until}.</div>`;
-        if (c.ally < 0 && c.factions.filter((f) => f.alive).length >= 3) html += btn('ally:' + t.owner, `🤝 Offer ${leaderOf(c.factions[t.owner].civ)!.name} an alliance`, ALLIANCE_COST, canAlly(c, t.owner), c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts until one of you breaks it or only you two remain.');
+        if (c.ally < 0 && c.factions.filter((f) => f.alive).length >= 3) html += btn('ally:' + t.owner, `🤝 Offer ${rulerName(c, t.owner)} an alliance`, ALLIANCE_COST, canAlly(c, t.owner), c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts until one of you breaks it or only you two remain.');
       }
-      else html += btn('truce:' + t.owner, `🕊️ Offer ${leaderOf(c.factions[t.owner].civ)!.name} a truce`, truceCost(me.civ), me.supplies >= truceCost(me.civ) && c.factions[t.owner].refused !== c.turn, c.factions[t.owner].refused === c.turn ? 'They have given their answer for this turn.' : c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts six turns.');
+      else html += btn('truce:' + t.owner, `🕊️ Offer ${rulerName(c, t.owner)} a truce`, truceCost(me.civ), me.supplies >= truceCost(me.civ) && c.factions[t.owner].refused !== c.turn, c.factions[t.owner].refused === c.turn ? 'They have given their answer for this turn.' : c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts six turns.');
     }
     if (t.owner > 0 && c.factions[t.owner].alive) {
       const fav = c.factions[t.owner].favor ?? 0;

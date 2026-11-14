@@ -8,7 +8,7 @@ import { loader, playOpening, Title } from './title';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
-import { openHeroCreator, savedHero } from './herocreator';
+import { keepHero, openHeroCreator, savedHero } from './herocreator';
 import { HeroSpec, defaultHero } from '../sim/hero';
 import { LEADERS } from '../sim/leaders';
 import { Overworld } from './overworld';
@@ -383,6 +383,14 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
 
   // ---- Options chosen before a match ----
   const agingBox = el('aging') as HTMLInputElement;
+  if (mode === 'skirmish') {
+    // What a skirmish makes of your leader stays with them: the veterancy they came away with, and an heir's name if they fell.
+    app.onGameOver = () => {
+      const g = app.game, civ = g.players[app.pid].civ;
+      const h = { ...g.heroOf(app.pid), rank: g.players[app.pid].heroRank ?? 0 };
+      if (savedHero(civ) || h.rank > 0 || h.name !== defaultHero(civ).name) keepHero(civ, h);
+    };
+  }
   if (mode === 'skirmish' && !saved) {
     game.aging = params.get('aging') !== '0';
     agingBox.checked = game.aging;
