@@ -126,7 +126,7 @@ Each step is to be playable by itself.
 
 | Point | Today |
 | --- | --- |
-| Acts of God by creed | Inside a battle, yes: one measure by creed (a third for the Righteous, half again for the Decadent) governs how often and how hard plague, fire and famine fall, and nobody is immune (`src/sim/wrath.ts`). A harvest fails by chance, which is how famine comes unasked. Not yet: nothing of it runs in a season on the map. |
+| Acts of God by creed | Yes, coarsely on the map as well (`src/sim/acts.ts`: each season a held land may have famine, plague or fire, counted in supplies and companies until towns keep their people). Inside a battle: one measure by creed (a third for the Righteous, half again for the Decadent) governs how often and how hard plague, fire and famine fall, and nobody is immune (`src/sim/wrath.ts`). A harvest fails by chance, which is how famine comes unasked. |
 | A soldier costs a person | No: soldiers are bought with resources alone. |
 | Notable people | In part: a woman who has raised three children or more, and the best soldier to live through a battle, are kept by name on a town, turn out again by name (the woman), and are recorded as lost (`src/sim/township.ts`). Not yet: a farm well kept or much carried in, veterans tied to their own town, or any weight to their loss beyond the record. |
 | Towns persist | In part: every land's town keeps its people (counts by kind) and its four stores as well as its buildings, a siege fought in person loads them and writes back what is left (`src/sim/township.ts`). Not yet: the map still spends supplies, not the towns' stores; soldiers and armies are not yet a town's men; nothing changes in a town between battles. |

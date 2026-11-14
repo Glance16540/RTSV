@@ -564,6 +564,7 @@ export class Hud {
               (b.birthBlocked ? `<div class="warn">${owner.pop >= owner.popCap ? 'Need more houses!' : 'Need food!'}</div>` : '');
         } else body += '<div class="hint">Needs a man and a woman to raise children.</div>';
       }
+      if (b.missed) body += `<div class="hint">${b.missed} ${b.missed === 1 ? 'birth' : 'births'} due here did not come.</div>`;
       // The children under this roof, in words: they are on its record and are not seen on the map.
       if (b.young?.length) body += `<div class="record"><b>📜 Children of this ${b.type === 'house' ? 'house' : 'roof'}</b>${b.young.map((c) => `<div>· ${c.name}${c.family ? ' ' + c.family : ''}, ${yearsOld(c)} ${yearsOld(c) === 1 ? 'year' : 'years'} old · of age in ${yearsLeft(c)} ${yearsLeft(c) === 1 ? 'year' : 'years'}</div>`).join('')}</div>`;
       if (b.type === 'towncenter') {
