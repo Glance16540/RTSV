@@ -363,8 +363,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     startScreen.querySelector('.lead')!.textContent = cfg.field
       ? 'The armies have met in open country. There is nothing to build: destroy every enemy soldier. Whoever is left standing marches on.'
       : cfg.humanAttacks
-        ? 'Your army has made camp. Destroy every enemy building to take this land.'
-        : 'The enemy is at the gates. Destroy every enemy building to hold this land.';
+        ? 'Your army has made camp. Bring down their Town Center and keep them from raising another to take this land.'
+        : 'The enemy is at the gates. Bring down their Town Center and keep them from raising another to hold this land.';
     resume.textContent = saved ? 'Resume the battle' : 'To battle';
     const finish = (won: boolean) => {
       // Who is still standing decides what is left of the army on the campaign map.
@@ -374,7 +374,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // What the victor has standing stays standing: it is that land's town the next time it is fought over.
       const holder = won ? app.pid : 1;
       const town = cfg.field ? undefined : app.game.standing(holder);
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, champion: app.game.champion(app.pid) ?? undefined, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -437,8 +437,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
-      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, town: r.town, ground: r.ground });
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; champion?: { name: string; kills: number; unit: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
+      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, champion: r.champion, town: r.town, ground: r.ground });
       if (c.phase === 'ai') continueAI(c);
     }
     const fresh = !c;

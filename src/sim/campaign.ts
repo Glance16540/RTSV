@@ -6,7 +6,8 @@ import type { Ground, PlayerSetup, Standing } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
-import { House, autoSucceed, strangerLeads, tickHouses } from './dynasty';
+import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
+import { Champion, cleanChampion } from './champion';
 import { Answer, LEGENDS, COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
 
 export const MAP_W = 1300;
@@ -259,6 +260,8 @@ export interface Army {
   hero: boolean; // the faction's Warlord marches with this army
   marched?: boolean; // has already made its extra march this turn (Mongols)
   vet: number; // battles won, up to MAX_VETERAN: +1 strength each
+  /** The soldier who made the most of a name in this army's last battle fought in person: see champion.ts. */
+  champion?: Champion;
   moved: boolean;
 }
 
@@ -1664,6 +1667,8 @@ export interface BattleAfter {
   virtue?: number;
   /** The rank the leader ended the battle at. */
   heroRank?: number;
+  /** The leader fell in the battle; a soldier was raised in their place there (who they are); and the soldier with the most kills who lived. */
+  fell?: boolean; acclaimed?: Partial<HeroSpec>; champion?: Partial<Champion>;
   /** The victor's buildings as they stood (`Game.standing()`), damage and all: the land's town from now on. */
   town?: Standing[];
   /** What has been taken from the battlefield for good (`Game.ground()`), whoever won. */
@@ -1722,7 +1727,13 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   if (!Object.keys(units).length) units[Object.keys(before.units)[0] ?? 'infantry'] = 1;
   mine.units = units;
   const hero = heroFor(c, 0);
-  if (before.hero && !(survivors[hero.calling] > 0)) {
+  const kept = cleanChampion(after.champion);
+  if (kept) mine.champion = kept; else delete mine.champion;
+  if (before.hero && after.acclaimed && survivors.warlord > 0) {
+    // The leader died out there, and the army has already chosen who follows.
+    raisedInBattle(c, 0, after.acclaimed, heroRank ?? 0);
+    mine.hero = true;
+  } else if (before.hero && (after.fell || !(survivors[hero.calling] > 0))) {
     mine.hero = false;
     c.factions[0].heroAlive = false;
     c.factions[0].heroRank = Math.max(0, rankBefore - 1);

@@ -4,6 +4,7 @@ import { isHoly } from '../sim/creed';
 import { fighting } from '../sim/calamity';
 import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
 import { powersHeld } from '../sim/powers';
+import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -275,6 +276,11 @@ export class Hud {
           }
         }
       }
+      // The leader is dead: a soldier who has made a name can be raised in their place.
+      if (units.length === 1 && game.canAcclaim(pid, units[0])) {
+        const who = units[0];
+        out.push({ id: 'acclaim', icon: ico('warlord', '♛'), name: 'Raise on the shields', desc: `${who.name || 'This soldier'} becomes your leader: a Warlord, ${RANK_NAMES[rankForKills(who.kills ?? 0)]} for the ${who.kills} they have felled. The old leader's line ends here.`, act: () => { game.cmdAcclaim(pid, who.id); } });
+      }
       if (!units.every((u) => u.type === 'villager')) {
         while (out.length < 5) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
         const stances: [Stance, string, string, string][] = [
@@ -470,6 +476,7 @@ export class Hud {
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
       if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
       if (e.kills) extra += `<div${game.veteran(e) > 1 ? ' class="good"' : ''}>⚔️ ${e.kills} ${e.kills === 1 ? 'kill' : 'kills'}${game.veteran(e) > 1 ? `: a veteran, +${Math.round((game.veteran(e) - 1) * 100)}% damage` : ''}</div>`;
+      if (!e.hero && !e.merc && canLead(d.cls) && (e.kills ?? 0) >= CHAMPION_KILLS) extra += `<div class="hint">♛ Has made a name: if your leader falls, ${game.canAcclaim(e.owner, e) ? 'they can be raised to lead now' : 'they can be raised to lead'}.</div>`;
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
       // A villager's record: who they are and what has befallen them, set down like the entries on a form.
