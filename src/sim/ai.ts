@@ -3,6 +3,7 @@
 import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
+import { turnOut } from './calamity';
 import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 
@@ -95,7 +96,7 @@ export class AIController {
     }
     // A settled people whose hall is gone (razed in an earlier siege of this land) raise it again before anything
     // else: without it there are no new villagers and no new age. Until it is begun, nothing else is built.
-    this.founding = !tc && !g.raider(pid);
+    this.founding = !tc && (!g.raider(pid) || !!p.hadHall); // a war band that has settled once is a people like any other
     if (this.founding && villagers.length) this.build('towncenter', g.spec.starts[pid], villagers, 0, 12);
     // With nowhere to bring wood and stone, there will never be enough for a hall: a storehouse comes first.
     if (this.founding && villagers.length && !g.canAfford(p, BUILDINGS.towncenter.cost) && !mine.some((b) => b.def.dropoff) && g.canAfford(p, BUILDINGS.storehouse.cost)) {
@@ -111,6 +112,9 @@ export class AIController {
     const raiders = underAttack ? g.units.filter((u) => g.hostile(u.owner, pid) && u.owner !== g.wild && u.def.atk > 3 && Math.hypot(u.x - home.x, u.y - home.y) < 13).length : 0;
     if (!p.bell && raiders >= 3) g.cmdBell(pid, true);
     else if (p.bell && (!p.lastAttacked || g.time - p.lastAttacked.t > 10)) g.cmdBell(pid, false);
+    // A fire in the town: the nearest hands leave their work for it and go back after (see calamity.ts). Not while
+    // the bell is rung or raiders are in the streets: then the fire is the enemy's doing and the people are in hiding.
+    if (!p.bell && !raiders) turnOut(g, pid);
 
     // ---- Economy ----
     const wantAge = p.age < AGES.length - 1 && !p.agingUp && villagers.length >= AGE_VILLAGERS[p.age] && count('barracks') > 0;
@@ -754,10 +758,23 @@ export class AIController {
     // A rival's Wonder is a clock running out: go for it before anything else.
     const wonder = this.game.buildings.find((b) => this.game.hostile(b.owner, this.pid) && b.type === 'wonder');
     if (wonder) return wonder;
-    const cur = this.game.entities.get(this.targetId);
-    if (cur && !cur.dead) return cur;
+    const g = this.game;
     const d = (b: Entity) => Math.hypot(b.x - from.x, b.y - from.y);
-    const enemy = this.game.buildings.filter((b) => this.game.hostile(b.owner, this.pid) && !b.def.wall);
+    const enemy = g.buildings.filter((b) => g.hostile(b.owner, this.pid) && !b.def.wall);
+    // A people falls with its Town Center (see beaten.ts). Once it has next to no soldiers left, or its last hall
+    // is down and it is trying to raise another, the hall is the target, begun or finished. Not before: a Town
+    // Center shoots, and in trial games an army sent at it while the defenders still stood was thrown away.
+    const halls = enemy.filter((b) => b.type === 'towncenter' && !g.players[b.owner].defeated).sort((a, b) => d(a) - d(b));
+    if (halls.length) {
+      const mine = g.units.filter((u) => u.owner === this.pid && g.isMilitary(u) && !u.def.naval).length;
+      const hall = halls.find((b) => {
+        const theirs = g.units.filter((u) => u.owner === b.owner && g.isMilitary(u) && !u.def.naval).length;
+        return (!b.complete || (theirs <= 2 && mine >= 6)) && !this.route(from, b).partial;
+      });
+      if (hall) { this.targetId = hall.id; return hall; }
+    }
+    const cur = g.entities.get(this.targetId);
+    if (cur && !cur.dead) return cur;
     const done = enemy.filter((b) => b.complete);
     const list = (done.length ? done : enemy).sort((a, b) => d(a) - d(b));
     const pick = list.slice(0, 10).find((b) => !this.route(from, b).partial) ?? list[0] ?? null;
