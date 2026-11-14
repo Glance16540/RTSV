@@ -144,6 +144,14 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   one of its people, the old first, then the children, then soldiers, who walk away, then grown villagers, though
   never the last four. After four minutes plague breaks out around the Town Center, except among the Righteous.
   Food in the store ends it at once. A war band with no hall does not starve.
+  The warning says what the town can do (what its Market sells food for, or that it has none), and allies are told.
+- *Plague from outside* (`src/sim/contagion.ts`): plague now passes between peoples. Anyone standing close to
+  another people's sick may catch it, so a plagued army carries it into the town it attacks, and a Prophet's plague
+  can come home with those who fight its victims. In a transport's hold one sick passenger gives it to the rest.
+  Now and then (one purchase in a hundred) what is bought at a Market brings plague with it. The Righteous take
+  none of these.
+- *Fire by accident*: a Blacksmith with work in hand may catch from its forge, and by night a lived-in house from
+  its hearth, a small village much less often than a town. Never in heavy rain; twice as often in a dust storm.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
