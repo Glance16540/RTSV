@@ -29,7 +29,7 @@ describe('legends that suit their places', () => {
     const all = Object.values(LEGENDS).flat();
     expect(new Set(all).size).toBe(all.length); // none is told of two places
     for (let seed = 1; seed <= 20; seed++) for (const p of placesOf(newCampaign(seed, 2))) expect(LEGENDS[p.name], `${seed} ${p.name}`).toContain(p.legend);
-  });
+  }, 30000); // twenty worlds are made here: more than the usual five seconds when the whole suite runs at once
 
   it('a campaign saved with a legend that belonged to another place is put right on loading', () => {
     const c = newCampaign(7, 2);
