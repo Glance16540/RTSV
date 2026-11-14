@@ -2,6 +2,7 @@
 // Who is notable is `src/sim/notable.ts`.
 import type { Game, Unit } from '../sim/game';
 import { Notable, notableOf, notables } from '../sim/notable';
+import { unitPortraitHtml } from './portrait';
 
 const SIGN = { leader: '👑', veteran: '⚔️', matron: '🌾' } as const;
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -13,11 +14,14 @@ export function notableLine(game: Game, u: Unit): string {
   return n ? `<div class="notable">${SIGN[n.kind]} <b>Notable</b> ${stars(n)} · ${esc(n.known)}</div>` : '';
 }
 
+/** A notable person's portrait, where they are on the field. */
+const face = (game: Game, n: Notable): string => { const u = game.entities.get(n.id); return u && u.kind === 'unit' ? unitPortraitHtml(game, u, '', 'sm') : ''; };
+
 /** The town's list, for its Town Center's panel. */
 export function notableList(game: Game, owner: number): string {
   const list = notables(game, owner);
   if (!list.length) return '<div class="notables hint">📜 No one of this town has yet made a name.</div>';
-  return `<div class="notables"><b>📜 Notable people of this town</b>${list.slice(0, 8).map((n) => `<div>${SIGN[n.kind]} ${esc(n.name)} <small>${stars(n)} ${esc(n.known)}</small></div>`).join('')}${list.length > 8 ? `<div class="hint">and ${list.length - 8} more</div>` : ''}</div>`;
+  return `<div class="notables"><b>📜 Notable people of this town</b>${list.slice(0, 8).map((n) => `<div class="likeness-row">${face(game, n)}${SIGN[n.kind]} ${esc(n.name)} <small>${stars(n)} ${esc(n.known)}</small></div>`).join('')}${list.length > 8 ? `<div class="hint">and ${list.length - 8} more</div>` : ''}</div>`;
 }
 
 /**

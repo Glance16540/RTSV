@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { coupleParted, creditKill, homeRecord, leaveForWar, settleHomes, warRenown } from './household';
 import { Census, MAX_KIND, PeopleIn, Stores } from './township';
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
@@ -12,6 +13,8 @@ import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
 import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
+import { agesHere, birthPace, growPace, hireBar } from './birthonly';
+import { Ages, GROWN_SEASON, LAST_SEASON, OLD_SEASON, SEASONS_A_YEAR, ageFor, childSeasons, cleanAges, leftFor, yearsOf } from './ageing';
 import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
@@ -77,7 +80,8 @@ export interface Deed { t: number; s: string }
 export interface Captive { from: number; name: string; family: string; gender: Gender; trait: string; trait2: string; age: number; lifespan: number;
   /** Children she had at home before she was taken, and the rest of her record. */ kids?: number; story?: Deed[];
   /** Children borne in captivity: the count, and the records of them (captivity.ts). */ born?: number; young?: Child[];
-  /** When they were seized: the clock on getting them back runs from here. Told once that it is running out. */ taken?: number; warned?: boolean; /** Held by marauders, not in a people's work camp. */ held?: boolean }
+  /** When they were seized: the clock on getting them back runs from here. Told once that it is running out. */ taken?: number; warned?: boolean; /** Held by marauders, not in a people's work camp. */ held?: boolean;
+  /** The people they were born to, if not their home's (portrait.ts). */ people?: string }
 /** When the marauders make camp, how often each woman they hold bears them a child, how often they raid, and how many they can grow to. */
 export const LAIR_AT = 240;
 export const LAIR_BIRTH = 120;
@@ -131,6 +135,8 @@ export interface Unit extends Base {
   kids?: number; captiveKids?: number; story?: Deed[];
   /** Freed from the marauders: she will bear no more children, and works a quarter harder. */
   freed?: boolean;
+  /** The people a villager was born to, when another people took them in (portrait.ts draws them as their own). */
+  people?: string;
   /** The nation's leader: deeds done in this battle and the veterancy they have earned. */
   hero?: { xp: number; rank: number; /** Seconds their call still sounds, and seconds until it can be raised again. */ call?: number; rest?: number };
   /** Foes this unit has killed. Among the Warriors every kill makes a soldier strike harder. */
@@ -171,6 +177,8 @@ export interface Building extends Base {
   birthsPaused: boolean;
   family: string; // name of the family living in a house
   children: number; // villagers this house has raised
+  /** Foes felled by the people of this house while away at war (household.ts). */
+  warKills?: number;
   /** The children under this roof: a record, not people on the map (nursery.ts). */
   young?: Child[];
   /** Births that were due here and did not come: a note, and the whole of what a weak creed costs a town in children. */
@@ -371,6 +379,8 @@ export class Game {
   aging = true;
   /** A town in a campaign is in its nation's age, which advances only on the map: nobody ages up in the battle. */
   fixedAge = false;
+  /** A town in a campaign has only the people born to it: no villager is bought at the Town Center (birthonly.ts). */
+  bornOnly = false;
   /** Progress of a scripted mission, if one is being played: which, a counter, and ids it is tracking. */
   scenario: { id: string; n: number; ids: number[] } | null = null;
   /** Whether a band of marauders, belonging to no people, makes camp in the wilds of this map. Off unless asked for. */
@@ -540,7 +550,8 @@ export class Game {
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
         // The town's children are on the record of one of its roofs, part grown.
-        if (s.bonus.people?.children && !field) this.cradled(i, s.bonus.people.children);
+        if (s.bonus.people?.named?.length && !field) settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f'));
+        if (s.bonus.people?.children && !field) this.cradled(i, s.bonus.people.children, cleanAges(s.bonus.people.ages)?.k);
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
           // In a field battle the army forms up where the town would have been.
@@ -690,7 +701,7 @@ export class Game {
 
   /** A family's standing: one rank for every few children raised, up to three. */
   renown(b: Building): number {
-    return Math.min(3, Math.floor(b.children / RENOWN_CHILDREN));
+    return Math.min(3, Math.floor(b.children / RENOWN_CHILDREN) + warRenown(b)); // children raised, and what its people have won in war (household.ts)
   }
 
   spawnBuilding(type: string, owner: number, cx: number, cy: number, complete: boolean): Building {
@@ -857,6 +868,7 @@ export class Game {
     const v = this.spawnUnit('villager', owner, at.x, at.y, c.gender);
     v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
     v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: `Taken into the ${this.players[owner].name}` }];
+    v.people = c.people ?? this.players[c.from]?.civ;
     this.msg(owner, `${c.name} has been taken into the tribe.`);
   }
 
@@ -897,16 +909,26 @@ export class Game {
     const men = count(people.men), women = count(people.women), elders = count(people.elders);
     const named = (people.named ?? []).slice(0, 40);
     let k = 0;
-    const one = (gender: Gender, old: boolean): Unit => {
+    const one = (gender: Gender, old: boolean, seasons?: number): Unit => {
       const u = this.spawnUnit('villager', owner, st.x - 3.5 + (k % 8), st.y + (3.5 + Math.floor(k / 8)) * dir, gender);
       k++;
-      // The old are in the last third of their lives; the rest are spread through the years before it.
-      u.age = Math.max(1, u.lifespan * (old ? ELDER_AT + this.rng() * (0.95 - ELDER_AT) : this.rng() * ELDER_AT * 0.9));
+      // At the age the town's record has them (ageing.ts); with no record, the old in the last third of their lives
+      // and the rest spread through the years before it.
+      u.age = seasons !== undefined ? ageFor(seasons / SEASONS_A_YEAR, u.lifespan)
+        : Math.max(1, u.lifespan * (old ? ELDER_AT + this.rng() * (0.95 - ELDER_AT) : this.rng() * ELDER_AT * 0.9));
       return u;
     };
     const folk: Unit[] = [];
-    for (let j = 0; j < Math.max(men, women); j++) { if (j < men) folk.push(one('m', false)); if (j < women) folk.push(one('f', false)); }
-    for (let j = 0; j < elders; j++) folk.push(one(j % 2 ? 'm' : 'f', true));
+    const ages = cleanAges(people.ages);
+    if (ages && ages.m.length + ages.f.length === men + women + elders) {
+      for (let j = 0; j < Math.max(ages.m.length, ages.f.length); j++) {
+        if (j < ages.m.length) folk.push(one('m', false, ages.m[j]));
+        if (j < ages.f.length) folk.push(one('f', false, ages.f[j]));
+      }
+    } else {
+      for (let j = 0; j < Math.max(men, women); j++) { if (j < men) folk.push(one('m', false)); if (j < women) folk.push(one('f', false)); }
+      for (let j = 0; j < elders; j++) folk.push(one(j % 2 ? 'm' : 'f', true));
+    }
     // Those the nation knows by name are among them, with what they are known for.
     for (const n of named) {
       const u = folk.find((x) => x.gender === n.gender && !x.story?.length && !(x.kids ?? 0) && !named.some((m) => m !== n && m.name === x.name)) ?? null;
@@ -918,30 +940,42 @@ export class Game {
   }
 
   /** A town's children are set down on the record of one of its roofs, each some way toward being grown. */
-  private cradled(owner: number, children: number): void {
+  private cradled(owner: number, children: number, ages?: number[]): void {
     const roofs = this.buildings.filter((b) => b.owner === owner && !b.dead && b.complete && (b.type === 'house' || b.type === 'towncenter')).sort((a, b) => Number(b.type === 'house') - Number(a.type === 'house') || a.id - b.id);
     if (!roofs.length) return;
     const n = Math.max(0, Math.min(MAX_KIND, Math.round(Number(children) || 0)));
-    for (let j = 0; j < n; j++) { const c = this.bear(roofs[j % roofs.length]); c.left = GROW_TIME * (0.1 + this.rng() * 0.9); }
+    const at = ages && ages.length === n ? ages : null;
+    for (let j = 0; j < n; j++) { const c = this.bear(roofs[j % roofs.length]); c.left = at ? leftFor(at[j], GROW_TIME) : GROW_TIME * (0.1 + this.rng() * 0.9); }
   }
 
   /**
-   * A count of a side's town as it stands (township.ts): its men and women of working age, its old, the children on
+   * A count of a side's town as it stands (township.ts): its men and women of working age (those trained to arms
+   * out of the town among them), its old, the children on
    * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name.
    */
   census(owner: number): Census {
     const p = this.players[owner], out: Census = { men: 0, women: 0, elders: 0, children: p?.wards?.length ?? 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, taken: 0, named: [] };
     if (!p) return out;
+    // Everyone's age as the town's record keeps it, in seasons (ageing.ts).
+    const ages: Ages = { m: [], f: [], k: (p.wards ?? []).map((c) => childSeasons(c.left, GROW_TIME)) };
+    out.ages = ages;
     for (const r of RES_TYPES) out.stores[r] = Math.max(0, Math.floor(p.res[r]));
     for (const u of this.units) {
       if (u.captive && u.captive.from === owner) out.taken!++;
-      if (u.owner !== owner || u.type !== 'villager' || u.dead || !u.gender) continue;
-      if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (u.gender === 'm') out.men++; else out.women++;
-      if (u.gender === 'f' && (u.kids ?? 0) > 0) out.named!.push({ name: u.name, gender: 'f', kids: u.kids, ...(u.family ? { family: u.family } : {}) });
+      if (u.owner !== owner || u.dead) continue;
+      // A townsman in arms is still one of the town's people (muster.ts): he keeps the span of his life, which an
+      // army brought to the battle, a beast or the leader does not have. A woman serving keeps her gender; a man does not.
+      const armed = u.type !== 'villager' && u.lifespan > 0;
+      if (!armed && (u.type !== 'villager' || !u.gender)) continue;
+      const woman = u.gender === 'f';
+      if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (woman) out.women++; else out.men++;
+      const seasons = Math.round(yearsOf(u.age, u.lifespan) * SEASONS_A_YEAR), old = u.age >= u.lifespan * ELDER_AT;
+      (woman ? ages.f : ages.m).push(old ? Math.max(OLD_SEASON, Math.min(LAST_SEASON, seasons)) : Math.max(GROWN_SEASON, Math.min(OLD_SEASON - 1, seasons)));
+      if (u.gender === 'f' && u.type === 'villager') { const home = homeRecord(this, u); if ((u.kids ?? 0) > 0 || home.war) out.named!.push({ name: u.name, gender: 'f', kids: u.kids ?? 0, ...(u.family ? { family: u.family } : {}), ...home }); }
     }
     for (const b of this.buildings) {
       if (b.dead) continue;
-      if (b.owner === owner) out.children += b.young?.length ?? 0;
+      if (b.owner === owner) { out.children += b.young?.length ?? 0; for (const c of b.young ?? []) ages.k.push(childSeasons(c.left, GROW_TIME)); }
       for (const c of b.captives ?? []) if (c.from === owner) out.taken!++;
     }
     out.named = out.named!.sort((a, b) => (b.kids ?? 0) - (a.kids ?? 0) || a.name.localeCompare(b.name)).slice(0, 12);
@@ -1430,7 +1464,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, bornOnly: this.bornOnly, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -1470,6 +1504,7 @@ export class Game {
     g.rngState = d.rngState;
     g.aging = d.aging;
     g.fixedAge = !!d.fixedAge;
+    g.bornOnly = !!d.bornOnly;
     g.marauders = !!d.marauders;
     g.band = d.band;
     if (d.lair) [g.lairT, g.lairRaid, g.lairSeen, g.lairMade] = d.lair;
@@ -1491,6 +1526,7 @@ export class Game {
     const bar = this.creedBar(owner, def);
     if (bar) { this.msg(owner, bar); return false; }
     if (b.queue.length >= 8) { this.msg(owner, 'Queue is full.'); return false; }
+    if (type === 'villager' && hireBar(this)) { this.msg(owner, hireBar(this)!); return false; }
     if (def.limit && this.countUnits(owner, type) >= def.limit) { this.msg(owner, `You can only have ${def.limit} ${def.name}.`); return false; }
     const cost = this.unitCost(owner, type);
     if (!this.canAfford(p, cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return false; }
@@ -1655,6 +1691,7 @@ export class Game {
     const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
     v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
     v.kids = c.kids; v.captiveKids = c.born;
+    if (c.people) v.people = c.people;
     v.story = [...(c.story ?? []), { t: this.time, s: 'Freed, and came home' }];
     // What the marauders did to her is not undone by burning their camp: she will bear no more children. But she
     // has come through it, and works like one who means to live.
@@ -1731,6 +1768,7 @@ export class Game {
     const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
     v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
     v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: 'Got out of the camp' }];
+    if (c.people) v.people = c.people;
     comeHome(this, c, v);
     const tc = this.tcs[c.from]?.[0];
     if (tc) this.cmdMove(c.from, [v.id], tc.x, tc.y + tc.size / 2 + 1);
@@ -1862,7 +1900,7 @@ export class Game {
 
   /** Time passes for the children on a record. One who is grown steps out of `door` as a villager; `at` is used when there is no door. */
   private tendYoung(owner: number, young: Child[], dt: number, door: Building | null, at?: { x: number; y: number }): void {
-    const grown = ageYoung(young, dt), p = this.players[owner];
+    const grown = ageYoung(young, dt * growPace(this)), p = this.players[owner];
     for (const c of grown) {
       p.pop -= UNITS.villager.pop; // the grown villager is counted in their place
       const u = door ? this.spawnFrom(door, 'villager', c.gender) : this.spawnUnit('villager', owner, at?.x ?? 0, at?.y ?? 0, c.gender);
@@ -2251,7 +2289,7 @@ export class Game {
 
   /** Seconds a house needs for its next child. Each child takes a little longer than the last. */
   birthTime(b: Building): number {
-    return (BIRTH_TIME * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * this.creed(b.owner).birth * (1 + CLERGY_BIRTH * Math.min(STAFF_CAP, this.players[b.owner].clergy)) * (1 + 0.1 * this.renown(b)));
+    return (BIRTH_TIME * birthPace(this) * Math.min(3, 1 + 0.2 * b.children)) / (this.players[b.owner].mods.birth * this.creed(b.owner).birth * (1 + CLERGY_BIRTH * Math.min(STAFF_CAP, this.players[b.owner].clergy)) * (1 + 0.1 * this.renown(b)));
   }
 
   // ------------------------------------------------------------------
@@ -2581,7 +2619,7 @@ export class Game {
       if (this.players[u.owner].isAI && u.attackAnim > 0) this.cmdCall(u.owner);
     }
     if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith * this.creed(u.owner).faith);
-    if (this.aging && u.lifespan > 0 && (u.age += DT) > u.lifespan) {
+    if (agesHere(this) && u.lifespan > 0 && (u.age += DT) > u.lifespan) {
       this.events.push({ t: 'oldage', player: u.owner, name: `${u.name}${u.family ? ' ' + u.family : ''}` });
       this.kill(u);
       return;
@@ -2714,7 +2752,7 @@ export class Game {
         // A man being bound does not go on with his work.
         if (v.order) this.setOrder(v, null);
         if (o.t0 < CAPTURE_TIME * (this.tyrant(u) ? TYRANT_BIND : 1)) break;
-        u.captive = { from: v.owner, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan, taken: this.time, kids: v.kids, born: v.captiveKids, story: [...(v.story ?? []), { t: this.time, s: u.def.marauder ? 'Carried off by marauders' : raidWord(u) }] };
+        u.captive = { from: v.owner, people: v.people, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan, taken: this.time, kids: v.kids, born: v.captiveKids, story: [...(v.story ?? []), { t: this.time, s: u.def.marauder ? 'Carried off by marauders' : raidWord(u) }] };
         const raid = this.adopts(u);
         this.msg(v.owner, `${v.name} has been carried off by ${u.def.marauder ? 'marauders' : raid ? 'raiders' : 'slavers'}!`);
         this.players[v.owner].lastAttacked = { x: v.x, y: v.y, t: this.time };
@@ -3126,7 +3164,7 @@ export class Game {
     if (t.hp <= 0) {
       const s = this.players[owner].stats, ts = tp.stats;
       const killer = by ? this.entities.get(by) : undefined;
-      if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) killer.kills = (killer.kills ?? 0) + 1;
+      if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) { killer.kills = (killer.kills ?? 0) + 1; creditKill(this, killer); }
       // One who has felled enough is known by name from then on.
       if (killer && killer.kind === 'unit' && !killer.name && !killer.hero && !killer.merc && canLead(killer.def.cls) && (killer.kills ?? 0) >= CHAMPION_KILLS && killer.owner !== this.wild) killer.name = championName(killer.id);
       if (t.kind === 'unit') { s.kills++; ts.lost++; } else { s.razed++; ts.buildingsLost++; }
@@ -3324,6 +3362,7 @@ export class Game {
               if (!u.hero) u.name = was.name;
               u.family = was.family; u.age = was.age; u.lifespan = was.lifespan; u.story = was.story; u.kids = was.kids;
               if (was.gender === 'f') u.gender = 'f';
+              leaveForWar(this, was, u); // still of his house
             }
             p.stats.trained++;
           } else q.blocked = true;
@@ -3353,7 +3392,7 @@ export class Game {
         const r = this.entities.get(b.residents[g]);
         if (b.residents[g] && (!r || r.dead || r.owner !== b.owner)) b.residents[g] = 0;
       }
-      if (b.residents.m && b.residents.f && !b.birthsPaused && !this.atTavern(b.residents.m) && !this.atTavern(b.residents.f) && !(this.entities.get(b.residents.f) as Unit | undefined)?.freed) {
+      if (b.residents.m && b.residents.f && !b.birthsPaused && !coupleParted(this, b) && !this.atTavern(b.residents.m) && !this.atTavern(b.residents.f) && !(this.entities.get(b.residents.f) as Unit | undefined)?.freed) {
         if (b.birthProgress < 1) b.birthProgress = Math.min(1, b.birthProgress + DT / this.birthTime(b));
         if (b.birthProgress >= 1) {
           if (p.pop + 1 <= p.popCap && p.res.food >= BIRTH_COST && this.noChild(b)) {

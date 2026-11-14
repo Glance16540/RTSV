@@ -18,6 +18,10 @@ poorer for a generation.
 about 60. Entering a town plays a fixed stretch of that season in real time. Every town the player
 does not visit lives the same season by the same rules, run coarsely.
 
+A person ages only on the map, a season at a time. Nobody grows older inside a battle or a visit,
+and nobody dies of age there: in a town people die only by violence, sickness, fire or hunger.
+Each person's age is kept on the town's record, so a town loads with the same people it left with.
+
 **Age belongs to the nation.** It advances only on the map. Nobody ages up inside a town; a town is
 in whatever age its nation is in.
 
@@ -38,6 +42,11 @@ real resource: an army is paid for in births and years.
 Town Center: a town's people are those it has and those its housed couples raise. Skirmish keeps
 villagers for hire as it was.
 
+Births happen in both places and are one record: on the map a town's couples raise children season by
+season, coarsely; inside a battle or a visit they are born faster, in real time. Either way the people
+born are the town's and persist: a town brings its real people into a visit or a siege, and what is
+left of them, with everyone born there, goes back to it afterwards.
+
 **Men and women.** Soldiers come from the men. Women may serve, in healing and support; a woman
 who fights does so with a much lower attack. Women tend the farms, raise the children, work,
 produce, and carry more than a man. War takes the men and raiders take the women, and those are
@@ -47,6 +56,18 @@ two different wounds.
 parents, age, what it may inherit) and is not seen, does not leave the house and cannot be struck,
 taken or harmed until it comes of age, when it steps out as a grown villager. No violence is ever
 done to a child, on screen or in the rules.
+
+**A man at war is still of his house.** A man who leaves to fight stays a member of his household:
+what he earns and wins in war counts to the house's output and renown as his work at home did, and
+he comes home to it. His absence is felt (the house has one pair of hands fewer for the fields) but
+he is not lost to it until he dies or is taken.
+
+**Icons tell status.** The picture beside a person is the main way the player reads them, so it
+shows their people (each nation drawn in its own dress, skin and arms) and their town's standing
+(devout, ordinary, worldly, decadent: the women plainly more alluring and the men plainly crueller
+as a town falls). A person's condition has its own mark as well: wounded, maimed, captive, led
+away, freed, sick, starving, grieving, old, veteran, gone to war, deserter, in revolt, drunk.
+Icons are the only way the game shows feeling. Each person keeps one body for life (full-figured or slender, broad or lean) and their face shows how they are: content, afraid, grieving or angry.
 
 **Notable people.** Most villagers are ordinary. Some earn a name the nation remembers: a soldier
 who rises through veterancy, and a woman whose home produces most (many children raised, a farm
@@ -60,6 +81,7 @@ children born in captivity raise what the holder produces. What is shown of it i
 captives' dress, the work they are put to, the guards. What is done to a captive woman is told by
 what follows from it (a shorter life, children born in captivity), and is not shown.
 Nothing is drawn to suggest it, not even by a sign.
+A captive of slavers or marauders is drawn in a ragged loincloth (a woman with a thick band covering her chest), hands tied behind the back with rope (no chains), dishevelled and worn down; a captive of a rival nation stays clothed, bound and bowed.
 
 Children born in captivity: where the captor is a slaver or a marauder, they are the mother's and
 her people's, and come home with her if she is got back. Where the captor is a rival nation that
@@ -131,9 +153,12 @@ Each step is to be playable by itself.
 | Point | Today |
 | --- | --- |
 | Acts of God by creed | Yes, coarsely on the map as well (`src/sim/acts.ts`: each season a held land may have famine, plague or fire, counted in supplies and companies until towns keep their people). Inside a battle: one measure by creed (a third for the Righteous, half again for the Decadent) governs how often and how hard plague, fire and famine fall, and nobody is immune (`src/sim/wrath.ts`). A harvest fails by chance, which is how famine comes unasked. |
-| A soldier costs a person | Yes, inside a battle: training takes a villager as well as the price, and the unit that comes out is that man (`src/sim/muster.ts`). It bites less than meant, because a town can still buy a new villager at the Town Center for 50 food. |
+| A soldier costs a person | Yes, inside a battle: training takes a villager as well as the price, and the unit that comes out is that man (`src/sim/muster.ts`); an unmarried man goes before a husband. In a campaign battle or a visit no villager is bought at the Town Center: people come only by birth (`src/sim/birthonly.ts`), and the computer houses its couples to live by it. In trial sieges it halved a town's villagers by the 20th minute and left its soldiers about as many. In trial sieges with births at the slow pace below, sieges were shorter (mean 16 minutes, 7 of 48 undecided) and an attacker's camp could not raise an army at all. Not yet: a town that dies out can hold a battle open, and a skirmish still buys villagers. |
+| Births | Yes, on the map and in a town, one record (`src/sim/seasonfolk.ts`, `src/sim/birthonly.ts`). Rates chosen: on the map a housed couple bears about one child every 6 seasons at first, more slowly as children add up; in a campaign battle or visit a couple's first child takes 8 minutes (about one a visit). A child comes of age at fifteen years (60 seasons), on the map only. Each birth costs 25 food and needs room (5 to a house, 10 to the hall). A skirmish keeps a child every 32 seconds, grown in 25. |
+| People age on the map only | Yes (`src/sim/ageing.ts`): each person's age is on the town's record in seasons; a battle or visit loads them at those ages and writes back the same, and nobody ages or dies of age there. On the map a child is grown at 15, a person old at 60, and the old die over the years after (1% a season at 60, half a percent more each year past it; about half are gone by 67). Skirmish and missions keep their ageing. Not yet: the leader's heirs come of age in 6 seasons (`dynasty.ts`), not 15 years; a captive comes home about 24 years older on the record, not 20. |
 | Notable people | In part: a woman who has raised three children or more, and the best soldier to live through a battle, are kept by name on a town, turn out again by name (the woman), and are recorded as lost (`src/sim/township.ts`). Not yet: a farm well kept or much carried in, veterans tied to their own town, or any weight to their loss beyond the record. |
-| Towns persist | In part: every land's town keeps its people (counts by kind) and its four stores as well as its buildings, a siege fought in person loads them and writes back what is left (`src/sim/township.ts`). Not yet: the map still spends supplies, not the towns' stores; soldiers and armies are not yet a town's men; nothing changes in a town between battles. |
+| A man at war is still of his house | In part (`src/sim/household.ts`): a husband trained to arms keeps his place in his house, a son stays on the record of the house he was born in, the foes he fells raise the house's renown, no child is begun while he is away, and a notable home is kept with its man between seasons. Not yet: no soldier can come home inside one sitting, ordinary homes are not kept by name, and an army on the map is not tied to any house. |
+| Towns persist | In part: every land's town keeps its people (counts by kind) and its four stores as well as its buildings; a siege fought in person and a visit both load them and write back what is left, those born there included (`src/sim/township.ts`, `src/sim/visit.ts`). On the map housed couples raise children season by season and children come of age over sixty seasons (`src/sim/seasonfolk.ts`). Not yet: the map still spends supplies, not the towns' stores; soldiers and armies are not yet a town's men; a town is held to the room of the houses on its record, so over twenty years a capital left alone held at about 26 people. |
 | A town defends itself | No: a battle not fought is settled by strength numbers. |
 | Threats on the map | No: marauders and slavers exist only inside a match. |
 | Drift | No: the parts exist as separate rules, not as cause and effect. |

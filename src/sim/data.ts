@@ -372,6 +372,30 @@ export const UNITS: Record<string, UnitDef> = {
     cost: { food: 85, gold: 75 }, time: 24, age: 3, hp: 110, atk: 11, armor: 1, range: 3.5, speed: 3.4,
     cooldown: 1.5, sight: 9, pop: 2, cls: 'cavalry', radius: 0.42, projectile: 'arrow', bonus: { cavalry: 1.6 },
   }),
+  sofa: U({
+    id: 'sofa', name: 'Sofa Archer', icon: '🏹', civ: 'mali',
+    desc: 'Malians only. A foot archer of the standing army. His arrows are poisoned: they tell most on men on foot.',
+    cost: { food: 35, wood: 40 }, time: 16, age: 1, hp: 45, atk: 7, armor: 0, range: 6.5, speed: 2.2,
+    cooldown: 1.8, sight: 9, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'arrow', bonus: { infantry: 1.7 },
+  }),
+  mandekalu: U({
+    id: 'mandekalu', name: 'Mandekalu Horseman', icon: '🐎', civ: 'mali',
+    desc: 'Malians only. A lancer of the horse-owning nobility, man and mount in quilted armour: missiles do a third less.',
+    cost: { food: 85, gold: 55 }, time: 22, age: 2, hp: 140, atk: 12, armor: 2, range: 0.7, speed: 3.3,
+    cooldown: 1.5, sight: 9, pop: 2, cls: 'cavalry', radius: 0.45, rangedResist: 0.35,
+  }),
+  setibowman: U({
+    id: 'setibowman', name: 'Bowman of Ta-Seti', icon: '🏹', civ: 'kush',
+    desc: 'Kushites only. From the Land of the Bow: he shoots half a tile further than other bowmen of his age, and faster.',
+    cost: { food: 35, wood: 40 }, time: 16, age: 1, hp: 42, atk: 7, armor: 0, range: 7, speed: 2.2,
+    cooldown: 1.6, sight: 10, pop: 1, cls: 'ranged', radius: 0.28, projectile: 'arrow', bonus: { infantry: 1.3 },
+  }),
+  meroeguard: U({
+    id: 'meroeguard', name: 'Guard of Meroe', icon: '🛡️', civ: 'kush',
+    desc: 'Kushites only. Iron from the furnaces of Meroe and a great hide shield: he fights a quarter harder near his own houses.',
+    cost: { food: 65, gold: 35 }, time: 18, age: 2, hp: 110, atk: 12, armor: 2, range: 0.5, speed: 2.2,
+    cooldown: 1.5, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, homeBonus: 1.25,
+  }),
   samurai: U({
     id: 'samurai', name: 'Samurai', icon: '🎌', civ: 'japan',
     desc: 'Japanese only. A swordsman of rare skill who strikes quickly and cuts down other foot soldiers.',
@@ -606,19 +630,19 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'barracks', name: 'Barracks', icon: '🗡️',
     desc: 'Trains infantry.',
     cost: { wood: 120 }, time: 28, age: 0, hp: 1000, size: 3, pop: 0, sight: 6,
-    trains: ['clubman', 'hearthguard', 'shieldbearer', 'zealot', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
+    trains: ['clubman', 'hearthguard', 'shieldbearer', 'zealot', 'slinger', 'javelineer', 'hound', 'spearman', 'swordsman', 'berserker', 'pikeman', 'grenadier', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai', 'meroeguard'], techs: ['up_bowman', 'up_swordsman', 'up_pike'],
   }),
   range: B({
     id: 'range', name: 'Archery Range', icon: '🏹',
     desc: 'Trains archers.',
     cost: { wood: 140 }, time: 28, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['bowman', 'crossbowman', 'musketeer', 'longbowman', 'ashigaru'], techs: ['up_crossbow', 'up_musket'],
+    trains: ['bowman', 'crossbowman', 'musketeer', 'longbowman', 'ashigaru', 'sofa', 'setibowman'], techs: ['up_crossbow', 'up_musket'],
   }),
   stable: B({
     id: 'stable', name: 'Stable', icon: '🐴',
     desc: 'Trains cavalry and war beasts.',
     cost: { wood: 150 }, time: 30, age: 1, hp: 900, size: 3, pop: 0, sight: 6,
-    trains: ['rider', 'lancer', 'wolfrider', 'chariot', 'mammoth', 'knight', 'hussar', 'horsearcher', 'templar', 'warbear', 'warchariot', 'warelephant', 'companion', 'camelrider', 'mameluke'], techs: ['up_knight'],
+    trains: ['rider', 'lancer', 'wolfrider', 'chariot', 'mammoth', 'knight', 'hussar', 'horsearcher', 'templar', 'warbear', 'warchariot', 'warelephant', 'companion', 'camelrider', 'mameluke', 'mandekalu'], techs: ['up_knight'],
   }),
   temple: B({
     id: 'temple', name: 'Church', icon: '⛪',
@@ -864,6 +888,16 @@ export const CIVS: Record<string, CivDef> = {
     bonuses: ['Soldiers have 1 more attack', 'Villagers gather 5% faster'],
     apply: (m) => { m.atk += 1; m.gather *= 1.05; },
   },
+  mali: {
+    id: 'mali', name: 'Malians', icon: '🪙', desc: 'Lords of the gold fields and the great river, rich in trade, horsemen and learning.', unique: 'sofa', unique2: 'mandekalu',
+    bonuses: ['Villagers carry 2 more', 'Cavalry costs 10% less'],
+    apply: (m) => { m.carry += 2; m.cavCost = 0.9; },
+  },
+  kush: {
+    id: 'kush', name: 'Kushites', icon: '🏹', desc: 'The Land of the Bow: archers, ironworkers and pyramid builders of the upper Nile.', unique: 'setibowman', unique2: 'meroeguard',
+    bonuses: ['Towers and Town Centers shoot 1 tile further', 'Game, berries and fish are gathered 20% faster'],
+    apply: (m) => { m.towerRange += 1; m.hunt = 1.2; },
+  },
 };
 Object.assign(CIVS, {
   dawn: {
@@ -881,7 +915,7 @@ export const CIV_IDS = Object.keys(CIVS);
 
 /**
  * How a people plays. Every nation belongs to one group, so rules, the computer opponent and the balance sheet
- * can reason about "the raiders" or "the builders" rather than thirteen separate names.
+ * can reason about "the raiders" or "the builders" rather than fifteen separate names.
  */
 export type StyleId = 'raider' | 'builder' | 'farmer' | 'scholar' | 'faithful' | 'trader' | 'warrior';
 export interface StyleDef {
@@ -906,8 +940,8 @@ export const CIV_STYLE: Record<string, StyleId> = {
   hearth: 'farmer', england: 'farmer',
   forge: 'scholar', greece: 'scholar',
   dawn: 'faithful',
-  persia: 'trader', arabs: 'trader',
-  japan: 'warrior',
+  persia: 'trader', arabs: 'trader', mali: 'trader',
+  japan: 'warrior', kush: 'warrior',
 };
 export const styleOf = (civ: string): StyleDef => STYLES[CIV_STYLE[civ] ?? 'farmer'];
 /**
@@ -925,7 +959,7 @@ export const STYLE_RULES = {
 /** A raiding band: what it starts with instead of a town, and how it lives. */
 export const BAND = { fighters: 7, pop: 12, wood: 150, stone: 200, settle: 1.25, virtue: -1 };
 /** Banner colour of each people on the campaign map and in battle. */
-export const CIV_COLOR: Record<string, number> = { stonekin: 0x6f8fb0, steppe: 0xe0452f, hearth: 0x3aa648, forge: 0xe0902a, dawn: 0xe0c020, wild: 0x8a5ad0, egypt: 0xd8b46a, babylon: 0x3a8fa8, persia: 0xb03a6a, greece: 0x4a78d8, england: 0xc83a3a, arabs: 0x2f9a6a, japan: 0xd8d8e8 };
+export const CIV_COLOR: Record<string, number> = { stonekin: 0x6f8fb0, steppe: 0xe0452f, hearth: 0x3aa648, forge: 0xe0902a, dawn: 0xe0c020, wild: 0x8a5ad0, egypt: 0xd8b46a, babylon: 0x3a8fa8, persia: 0xb03a6a, greece: 0x4a78d8, england: 0xc83a3a, arabs: 0x2f9a6a, japan: 0xd8d8e8, mali: 0xa8561e, kush: 0x5a7a1e };
 
 export interface AbilityDef { id: string; name: string; icon: string; desc: string; cost: number; radius: number }
 export const ABILITIES: Record<string, AbilityDef> = {

@@ -1207,7 +1207,191 @@ Put a file named `persona_japan.txt` containing `alt` beside the recordings to h
 | `japan_p_ageup_1` | As the player's own leader: a new age is reached | A new age. Let our discipline keep pace with it. |
 | `japan_p_ageup_2` | As the player's own leader: a new age is reached | We advance. The old ways still apply. |
 
-520 lines in all.
+## Malians: Mansa Makan Konaté — Mansa of the Gold Rivers
+
+**Direction:** Male, fifties. Unhurried, generous, certain of himself: a host and a judge who has never needed to raise his voice. Warm until he is crossed, and then very quiet.
+
+**Or, as a woman: Qasa Nyele Konaté — Qasa of the Gold Rivers.** Female, fifties. Unhurried, generous, certain of herself: a host and a judge who has never needed to raise her voice. Warm until she is crossed, and then very quiet. The same lines, except:
+
+- `mali_intro_1`: You are in the lands of the Qasa. I am Nyele Konaté. Eat first; we will talk after.
+- `mali_intro_2`: A stranger at my gate. Come in out of the sun and tell me who sent you.
+- `mali_attack_1`: I offered you my markets. You wanted my fields. Now you will have my spears.
+- `mali_attack_2`: The drums are calling every town. I do not call them back.
+- `mali_defend_1`: You come for the gold. Everyone comes for the gold. None of them kept it.
+- `mali_defend_2`: This river raised me. It will not carry you home.
+- `mali_win_1`: Enough. Take your wounded and go; I do not war on the beaten.
+- `mali_win_2`: It is settled. Let the griots tell it as it was.
+- `mali_lose_1`: You have the field. I have the kingdom still.
+- `mali_lose_2`: Well fought. I do not make the same mistake twice.
+- `mali_eliminated_1`: My house ends here. The people are not to blame for it; treat them well.
+- `mali_eliminated_2`: Let the griots sing the whole of it, the end as well. I am not ashamed.
+- `mali_battle_1`: Archers, wait for my word. Horsemen, wait for theirs to break.
+- `mali_battle_2`: Listen for the drum. When it quickens, go in.
+- `mali_ageup_1`: A new age. Pay the scholars before the soldiers, this once.
+- `mali_ageup_2`: We move on. Let nothing we have learned be lost on the way.
+- `mali_wonder_1`: There it stands. Pilgrims will come a year's journey to see it.
+- `mali_wonder_2`: Ten thousand hands built it, and every one of them was paid.
+- `mali_truce_1`: Peace. I prefer it; it is better for trade.
+- `mali_truce_2`: A truce, and my word on it. No one has yet called that word light.
+- `mali_refuse_1`: No. The scale does not balance.
+- `mali_refuse_2`: I decline. Come back with a better weight.
+- `mali_demand_1`: My roads, my wells, my peace: you have used all three. Now you pay.
+- `mali_demand_2`: The Qasa is owed a gift. Send it, and we need not speak of this again.
+- `mali_betray_1`: You swore before my griots. They forget nothing, and neither do I.
+- `mali_betray_2`: A broken word is a debt. I always collect.
+- `mali_ally_1`: Then we are one house. Ask, and it is yours.
+- `mali_ally_2`: Allies. May the caravans grow fat between us.
+- `mali_rivalry_1`: Two of us remain, and I would have had it otherwise. There is only the one stool.
+- `mali_rivalry_2`: You were a true friend. I will meet you honestly, and I mean to win.
+- `mali_p_start_1`: Here, by the water. The land is good and the gold is near.
+- `mali_p_start_2`: Granaries first. Hunger takes more towns than any army.
+- `mali_p_win_1`: We have won. Give thanks, and count the dead with care.
+- `mali_p_win_2`: A victory. Tend the wounded; the songs can wait.
+- `mali_p_loss_1`: Beaten, for today. Bring the riders in and we shall begin again.
+- `mali_p_loss_2`: A hard day. The river has seen harder.
+- `mali_p_alert_1`: Enemies in the town. Drums! Everyone to the walls!
+- `mali_p_alert_2`: They are upon us. To arms!
+- `mali_p_ageup_1`: A new age. Let us spend it wisely.
+- `mali_p_ageup_2`: We go forward. A teacher in every town.
+
+Put a file named `persona_mali.txt` containing `alt` beside the recordings to have Qasa Nyele Konaté lead in the game.
+
+| File | When | Line |
+| --- | --- | --- |
+| `mali_intro_1` | First meeting on the campaign map | You stand in the lands of the Mansa. I am Makan Konaté. Sit, eat, and tell me what you came for. |
+| `mali_intro_2` | First meeting on the campaign map | A traveller from far off. My griots will want your name, and so do I. |
+| `mali_attack_1` | Marching on the player's land | I sent you salt and gold and you sent me nothing. Now I send horsemen. |
+| `mali_attack_2` | Marching on the player's land | The drums have spoken in every town on the river. We are coming. |
+| `mali_defend_1` | The player marches on their land | You march on the river that feeds half the world. It will not feed you. |
+| `mali_defend_2` | The player marches on their land | My fathers held this ground against the desert itself. You are less than the desert. |
+| `mali_win_1` | After beating the player in battle | It is done. Bury your dead with honour; I will not hinder it. |
+| `mali_win_2` | After beating the player in battle | You fought. The griots will say so. They will also say who won. |
+| `mali_lose_1` | After losing a battle to the player | The day is yours. I have lost a field, not a kingdom. |
+| `mali_lose_2` | After losing a battle to the player | Well struck. I shall remember how you did it. |
+| `mali_eliminated_1` | Their last territory falls | The river will run when I am gone. Rule its people justly, or it will remember. |
+| `mali_eliminated_2` | Their last territory falls | So the line of Konaté ends in my time. Let the griots sing it true, with nothing left out. |
+| `mali_battle_1` | A real-time battle against them begins | Horsemen on the wings, archers before me. Let the drums begin. |
+| `mali_battle_2` | A real-time battle against them begins | Hold until the drum changes. Then ride them down. |
+| `mali_ageup_1` | They advance to a new age | A new age. Send for the scholars; there is more to learn than there is gold to pay for it. |
+| `mali_ageup_2` | They advance to a new age | We go forward. Let every town have its teacher before it has its wall. |
+| `mali_wonder_1` | They complete a Wonder | It is finished. Men will cross the desert only to stand before it. |
+| `mali_wonder_2` | They complete a Wonder | Mud, timber and ten thousand hands, and it will outlast us all. |
+| `mali_truce_1` | They accept the player's offer of a truce | Peace, then. Let the caravans move; I have missed them. |
+| `mali_truce_2` | They accept the player's offer of a truce | A truce. My word is carried by every griot in the land. It will be kept. |
+| `mali_refuse_1` | They turn down a truce | No. You offer me less than I already hold. |
+| `mali_refuse_2` | They turn down a truce | I must decline. Ask me again when you have something to weigh. |
+| `mali_demand_1` | They demand tribute from the player | You trade on my roads and drink at my wells. There is a toll. Pay it. |
+| `mali_demand_2` | They demand tribute from the player | A gift is owed to the Mansa. I should be sorry to have to come for it. |
+| `mali_betray_1` | The player breaks a truce with them | You ate from my bowl and then struck my hand. No one will trade with you again. |
+| `mali_betray_2` | The player breaks a truce with them | Your word weighed nothing. I shall see that every market from here to the sea knows it. |
+| `mali_ally_1` | They accept an alliance with the player | Then your road is my road. What I have, you may ask for. |
+| `mali_ally_2` | They accept an alliance with the player | An alliance. Let our children wonder that we were ever strangers. |
+| `mali_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | Only two of us are left, my friend, and there is one stool. I am sorry for it. |
+| `mali_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | You kept faith with me to the end. I will fight you as I would a brother: fairly, and to win. |
+| `mali_p_start_1` | As the player's own leader: a campaign or match begins | Here, where the river bends. Good earth, and gold not far off. |
+| `mali_p_start_2` | As the player's own leader: a campaign or match begins | Plant first, then build. A full granary is the first wall. |
+| `mali_p_win_1` | As the player's own leader: a battle is won | A victory. Give thanks, and send word to the families of the fallen. |
+| `mali_p_win_2` | As the player's own leader: a battle is won | We have won. See that the wounded are tended before anyone feasts. |
+| `mali_p_loss_1` | As the player's own leader: a battle is lost | We are beaten today. Gather the horsemen; there is tomorrow. |
+| `mali_p_loss_2` | As the player's own leader: a battle is lost | A loss. I have seen worse seasons, and so has the river. |
+| `mali_p_alert_1` | As the player's own leader: the town is under attack | They are in the town. Beat the drums; every bow to the walls! |
+| `mali_p_alert_2` | As the player's own leader: the town is under attack | We are attacked. To arms, all of you! |
+| `mali_p_ageup_1` | As the player's own leader: a new age is reached | A new age opens to us. Let us be generous in it. |
+| `mali_p_ageup_2` | As the player's own leader: a new age is reached | We advance. Build a school beside every market. |
+
+## Kushites: Kandake Amanirekh — Kandake of Kush, Lady of the Bow
+
+**Direction:** Female, forties. Direct, proud, dry: a queen who leads her army herself and expects to be obeyed. Little patience for flattery, real respect for courage.
+
+**Or, as a man: Qore Talakhamun — Qore of Kush, Lord of the Bow.** Male, forties. Direct, proud, dry: a king who leads his army himself and expects to be obeyed. Little patience for flattery, real respect for courage. The same lines, except:
+
+- `kush_intro_1`: I am Talakhamun, Qore of Kush. You are a long way up my river. Explain it.
+- `kush_intro_2`: A stranger at the cataract. Say what you want, and say it briefly.
+- `kush_attack_1`: I warned you once. Kush does not warn twice.
+- `kush_attack_2`: String the bows. We march before the sun is high.
+- `kush_defend_1`: You are not the first to come up this river in arms. None of the others went down it.
+- `kush_defend_2`: This is the Land of the Bow. You have walked into its range.
+- `kush_win_1`: Go back. Tell them you met the archers of Kush and were let live.
+- `kush_win_2`: Finished. You did not run; I respect that.
+- `kush_lose_1`: The field is yours today. I will want it back.
+- `kush_lose_2`: Beaten. It has happened before, and I am not gone yet.
+- `kush_eliminated_1`: Kush ends with me. My tomb is built; it will outlast your kingdom.
+- `kush_eliminated_2`: So. I stood in the front rank to the end. Write that, if you write anything.
+- `kush_battle_1`: Archers forward. Hold until I loose, then do not stop.
+- `kush_battle_2`: Follow me. I go first; I always have.
+- `kush_ageup_1`: A new age. Meroe's smiths have done what I asked of them.
+- `kush_ageup_2`: Forward. More iron, and better.
+- `kush_wonder_1`: It stands. The god will be pleased, and so am I.
+- `kush_wonder_2`: Stone on stone, as my fathers built. Mine is the taller.
+- `kush_truce_1`: Peace. I hold to what I sign; do the same.
+- `kush_truce_2`: A truce. It is convenience, not fear. Remember the difference.
+- `kush_refuse_1`: No. I see nothing in it for Kush.
+- `kush_refuse_2`: Refused. Beat me first, and then we may talk.
+- `kush_demand_1`: Tribute is due to Kush. Others have paid it and lived well.
+- `kush_demand_2`: Send gold or send grain. Send it soon.
+- `kush_betray_1`: You swore to a king and lied. My archers will find you.
+- `kush_betray_2`: Oath-breaker. I have a long reach, and I forget nothing.
+- `kush_ally_1`: We stand together, then. I do not abandon those who stand with me.
+- `kush_ally_2`: Allies. The bows of Kush are yours in an honest fight.
+- `kush_rivalry_1`: Two are left. I have thought well of you; it will not spare you.
+- `kush_rivalry_2`: You were true to me. I will be true to you now: I mean to win.
+- `kush_p_start_1`: Here, clear of the flood. Stone, grass and the river behind us.
+- `kush_p_start_2`: Mark out the archery ground first. Then the granary.
+- `kush_p_win_1`: A victory. Make the offering and call out the names of the brave.
+- `kush_p_win_2`: We have won. See to the wounded; I will see to them too.
+- `kush_p_loss_1`: We are beaten. No excuses, mine least of all.
+- `kush_p_loss_2`: A loss. New strings, new arrows, and again.
+- `kush_p_alert_1`: They are attacking the town. Archers, to the walls!
+- `kush_p_alert_2`: To arms! The enemy is in the fields!
+- `kush_p_ageup_1`: A new age. Kush will lead it.
+- `kush_p_ageup_2`: We go forward. Fire the furnaces.
+
+Put a file named `persona_kush.txt` containing `alt` beside the recordings to have Qore Talakhamun lead in the game.
+
+| File | When | Line |
+| --- | --- | --- |
+| `kush_intro_1` | First meeting on the campaign map | I am Amanirekh, Kandake of Kush. You have come a long way up the river. Why? |
+| `kush_intro_2` | First meeting on the campaign map | A new face at the cataract. Speak plainly; I have no ear for anything else. |
+| `kush_attack_1` | Marching on the player's land | You mistook my patience for weakness. I have come to correct you. |
+| `kush_attack_2` | Marching on the player's land | The bows of Kush are strung. You will hear them before you see us. |
+| `kush_defend_1` | The player marches on their land | Others have marched up this river. Their bones are still here. |
+| `kush_defend_2` | The player marches on their land | You have come to the Land of the Bow. You will learn why it is called so. |
+| `kush_win_1` | After beating the player in battle | Go home. Tell them what the archers of Kush did to you. |
+| `kush_win_2` | After beating the player in battle | It is over. You stood longer than I expected; I will say that for you. |
+| `kush_lose_1` | After losing a battle to the player | You have beaten me today. Do not grow used to it. |
+| `kush_lose_2` | After losing a battle to the player | A defeat. I have had them before, and I am still here. |
+| `kush_eliminated_1` | Their last territory falls | Kush falls in my time. The pyramids will stand when your name is dust. |
+| `kush_eliminated_2` | Their last territory falls | So it ends. I led from the front to the last; let that be written. |
+| `kush_battle_1` | A real-time battle against them begins | Archers, to the front. Loose when you can count their teeth. |
+| `kush_battle_2` | A real-time battle against them begins | With me. I do not ask you to go where I will not. |
+| `kush_ageup_1` | They advance to a new age | A new age. The furnaces of Meroe have earned their keep. |
+| `kush_ageup_2` | They advance to a new age | We go forward. Iron, and then more iron. |
+| `kush_wonder_1` | They complete a Wonder | It is raised. Amun himself would not find fault with it. |
+| `kush_wonder_2` | They complete a Wonder | My fathers built in stone. So have I, and higher. |
+| `kush_truce_1` | They accept the player's offer of a truce | Peace, then. I keep my treaties; see that you keep yours. |
+| `kush_truce_2` | They accept the player's offer of a truce | A truce. It suits me. Do not suppose it was fear. |
+| `kush_refuse_1` | They turn down a truce | No. You have nothing I cannot take. |
+| `kush_refuse_2` | They turn down a truce | I refuse. Ask again when you have beaten me, if you can. |
+| `kush_demand_1` | They demand tribute from the player | You will send tribute to Kush. Greater kingdoms than yours have done it. |
+| `kush_demand_2` | They demand tribute from the player | Gold, or grain. I am not particular, and I am not patient. |
+| `kush_betray_1` | The player breaks a truce with them | You gave your word to a queen and broke it. I will have that word back, in blood. |
+| `kush_betray_2` | The player breaks a truce with them | Faithless. My archers have a long reach and a long memory. |
+| `kush_ally_1` | They accept an alliance with the player | Then we stand together. I am a hard enemy; you will find me a harder friend to lose. |
+| `kush_ally_2` | They accept an alliance with the player | Allies. My bows are yours, where the cause is just. |
+| `kush_rivalry_1` | The alliance ends because only they and the player are left; regretful, not hostile yet | Two of us are left. I have liked you; I shall not go gently on you for it. |
+| `kush_rivalry_2` | The alliance ends because only they and the player are left; regretful, not hostile yet | You kept your word to me. I honour it. Now defend yourself. |
+| `kush_p_start_1` | As the player's own leader: a campaign or match begins | Here, above the flood line. Good stone, good pasture, and the river at our backs. |
+| `kush_p_start_2` | As the player's own leader: a campaign or match begins | Set the archers' butts beside the granary. Both feed us. |
+| `kush_p_win_1` | As the player's own leader: a battle is won | A victory. Make the offering, and name the brave before the army. |
+| `kush_p_win_2` | As the player's own leader: a battle is won | We have won. Bind the wounded; I will come round to them myself. |
+| `kush_p_loss_1` | As the player's own leader: a battle is lost | We are beaten. I will not hear excuses, least of all my own. |
+| `kush_p_loss_2` | As the player's own leader: a battle is lost | A loss. We will string new bows and come again. |
+| `kush_p_alert_1` | As the player's own leader: the town is under attack | The town is attacked. Every archer to the wall, now! |
+| `kush_p_alert_2` | As the player's own leader: the town is under attack | To arms! They are inside the fields! |
+| `kush_p_ageup_1` | As the player's own leader: a new age is reached | A new age. Let Kush be first in it. |
+| `kush_p_ageup_2` | As the player's own leader: a new age is reached | We advance. Light the furnaces. |
+
+600 lines in all.
 
 ## The people: villagers and warriors
 

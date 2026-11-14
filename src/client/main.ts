@@ -267,7 +267,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     mission.init(game);
   }
   // The country a battle is fought in: chosen, or the homeland of whoever holds the ground.
-  const HOMELAND: Record<string, Climate> = { egypt: 'desert', arabs: 'desert', babylon: 'desert', persia: 'desert', dawn: 'desert', steppe: 'steppe', wild: 'snow' };
+  const HOMELAND: Record<string, Climate> = { egypt: 'desert', arabs: 'desert', babylon: 'desert', persia: 'desert', dawn: 'desert', steppe: 'steppe', wild: 'snow', mali: 'steppe', kush: 'desert' };
   const asked = params.get('climate') ?? 'auto';
   const climateOf = (civ: string): Climate => (['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? (asked as Climate) : HOMELAND[civ] ?? 'temperate');
   // Skirmishes and campaign battles are fought over hills and mountains; `?flat=1` gives the old level ground.
@@ -285,6 +285,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   if (cfg?.ground && !saved) game.wear(cfg.ground);
   // A town in a campaign is in its nation's age: that advances on the map, not in the battle or on a visit.
   if (cfg && !saved) game.fixedAge = true;
+  // And it has only the people born to it: no villager is bought at the Town Center (birthonly.ts).
+  if (cfg && !saved) game.bornOnly = true;
   if (!saved && params.get('marauders') !== '0' && !(cfg?.field) && mode !== 'visit') game.marauders = true; // nobody comes against a town being visited
   // A battle is fought in the weather that lies over that land on the campaign map.
   if (cfg?.weather && !saved) { game.weather = cfg.weather; game.weatherWant = 0.9; game.weatherT = 240; }
