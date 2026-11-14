@@ -600,3 +600,30 @@ kbd { color: var(--sepia); }
 
 /* Story: the last page of the chronicle on the campaign's ending */
 .ow-epilogue { margin-top: 12px; text-align: center; max-height: none; }
+
+/* ---- Teaching the campaign ---- */
+/* The first orders: a slip of paper pinned over the top of the map, and the tab it leaves when put away. */
+#primer { position: absolute; top: 14px; left: 14px; width: 300px; padding: 9px 13px 10px; color: var(--ink); background: var(--paper); border: 1px solid var(--ink); box-shadow: var(--slip); font: 16px/1.35 var(--book); }
+#primer h4 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 6px; padding-bottom: 3px; font: 400 19px/1.15 var(--caps); text-transform: lowercase; border-bottom: 1px solid var(--ink); }
+#primer .done { color: var(--sepia); text-decoration: line-through; }
+#primer .now b { display: block; margin-top: 3px; font-weight: 400; font-size: 19px; }
+#primer .now b::before { content: '¶ '; color: var(--rubric); }
+#primer .now p { margin: 2px 0 0; color: #3d2c1a; }
+#primer button { padding: 0; font: 400 16px var(--caps); text-transform: lowercase; letter-spacing: 0.03em; color: var(--ink); background: none; border: 0; border-bottom: 1px solid transparent; }
+#primer button:hover, #primer button:focus-visible { color: var(--rubric); border-bottom-color: var(--rubric); outline: 0; }
+#primer h4 button { font-size: 15px; color: var(--sepia); }
+.primer-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 9px; padding-top: 6px; border-top: 1px dotted rgba(36, 24, 15, 0.42); }
+.primer-foot button:first-child { border-bottom-color: rgba(36, 24, 15, 0.5); }
+#primer.folded { width: auto; display: flex; gap: 16px; padding: 5px 12px 7px; }
+#primer.folded:empty { display: none; }
+
+/* The page behind it, on the campaign screen and under How to play on the main menu. */
+.primer-screen { z-index: 5; }
+.primer-page { columns: 2; column-gap: 32px; text-align: left; }
+.primer-page section { break-inside: avoid; margin-bottom: 12px; }
+.primer-page section:nth-child(2), .primer-page section:nth-child(3) { break-inside: auto; }
+.primer-page h3 { margin: 0 0 2px; }
+.primer-page p { margin: 0 0 5px; font-size: 16px; line-height: 1.33; }
+.sheet .primer-page p, #t-panel .primer-page p { margin: 0 0 5px; }
+#t-panel h2.primer-h { margin-top: 26px; }
+@media (max-width: 760px) { .primer-page { columns: 1; } #primer { width: min(300px, calc(100vw - 28px)); } }

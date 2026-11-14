@@ -5,6 +5,7 @@ import { CIVS, CIV_IDS, UNITS, AGES, styleOf } from '../sim/data';
 import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets, musicUrl } from './assets';
 import { loader, playOpening, Title } from './title';
+import { CampaignPrimer } from './primer';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
@@ -438,8 +439,10 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     // The leader you have made for this people leads them here too; change them and the change holds from the next battle.
     state.factions[0].hero ??= savedHero(state.factions[0].civ);
     el('ow-hero').addEventListener('click', () => openHeroCreator(state.factions[0].civ, (h) => { state.factions[0].hero = h ?? undefined; writeCampaign(state); }));
+    // The first orders are told of every change by the same call that saves it.
+    let primer: CampaignPrimer | null = null;
     const ow = new Overworld(state, {
-      save: () => writeCampaign(state),
+      save: () => { writeCampaign(state); primer?.update(); },
       fight: () => { writeCampaign(state); go('?battle=1'); },
       newCampaign: (r, l, civ, leader) => {
         const made = newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined);
@@ -449,6 +452,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       exit: () => go(''),
     });
     // No campaign yet: first choose a people and who leads them.
+    primer = new CampaignPrimer(state);
     if (fresh) ow.askNew(true);
   }
 
