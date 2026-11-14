@@ -27,8 +27,8 @@ women gone. From the map the player may enter any of their towns at any time to 
 keep order.
 
 **No auto-resolve.** A town the player is not in defends itself with what it has: walls, guards,
-people, its state. It may hold, be sacked, be taken or be destroyed. The player is told what
-happened and to whom.
+people, its state. It may hold, be sacked, be taken or be destroyed. The player is given a report
+of the defence: who was killed, who was taken, and which way the town's morals swayed.
 
 **A soldier costs a person.** Training takes a villager as well as the usual resources, and the
 training time is what turns him into the unit chosen. No man comes from nowhere. Population is the
@@ -39,6 +39,11 @@ who fights does so with a much lower attack. Women tend the farms, raise the chi
 produce, and carry more than a man. War takes the men and raiders take the women, and those are
 two different wounds.
 
+**Children are never shown.** A child is written in the record of the house it is born to (name,
+parents, age, what it may inherit) and is not seen, does not leave the house and cannot be struck,
+taken or harmed until it comes of age, when it steps out as a grown villager. No violence is ever
+done to a child, on screen or in the rules.
+
 **Notable people.** Most villagers are ordinary. Some earn a name the nation remembers: a soldier
 who rises through veterancy, and a woman whose home produces most (many children raised, a farm
 well kept, much carried in). Their loss carries weight for the nation, not only for the town.
@@ -47,8 +52,14 @@ well kept, much carried in). Their loss carries weight for the nation, not only 
 Captivity shortens a life: a captive man loses about twenty years, and a captive woman does not
 long outlive her use to her captors. What the captor gains depends on who he is. A rival nation
 that assimilates gains population outright. Slavers gain output: the captives' labour and the
-children born in captivity raise what the holder produces. This is a matter of numbers and
-consequence; none of it is depicted.
+children born in captivity raise what the holder produces. What is shown of it is the place and the condition: the stockade, the quarters, the
+captives' dress, the work they are put to, the guards. What is done to a captive woman is told by
+what follows from it (a shorter life, children born in captivity), and is not shown.
+Nothing is drawn to suggest it, not even by a sign.
+
+Children born in captivity: where the captor is a slaver or a marauder, they are the mother's and
+her people's, and come home with her if she is got back. Where the captor is a rival nation that
+assimilates, they are that nation's.
 
 **Acts of God.** Famine, plague, fire and the like come at random. They fall harder on the
 decadent than on the holy, but spare nobody: a Righteous town has them at about a third of the
@@ -67,12 +78,38 @@ keep order by force, food removes the cause, closing the tavern works and angers
 A decree can also go the other way: ordering the women into the taverns raises gold and lowers the
 town's moral standing.
 
-## Not yet decided
+**The tavern as a town falls.** As a town grows less moral its tavern women come to sell more than
+drink. This is shown by the house and not by any act: the tavern's look and lights, its hours, how
+its women are dressed, the gold it brings in, and the town's standing going down.
 
-- What grief does: whether a home that loses its mother or its sons works worse, and whether a
-  town of such homes turns to revenge or to despair.
-- How much the player sees of a defence they were not at: a report, a chronicle of the named, or
-  the chance to watch.
+**A visit.** Entering a town plays about ten minutes of its season; the player may leave sooner.
+Any number of towns may be visited in a season, each once.
+
+**A town left to itself** carries on with the last orders it was given (what to build, what to
+train, where its people work), and a governor fills the gaps sensibly.
+
+**Stores.** The four resources replace the map's supplies. Every town has its own stores of food,
+wood, gold and stone, and the nation's stores on the map are the sum of its towns'. Towns send
+food, goods and people to one another by road, a season on the way, and a convoy can be robbed.
+
+**Armies belong to towns.** An army is the men of the town that raised it, and its dead are that
+town's dead. A veteran who comes home is one of its notable people.
+
+**A town taken.** Its people stay and become the taker's over time: resentful at first and likely
+to rise, sooner settled where they are ruled well.
+
+**Rivals live by the same rules.** A rival nation has real towns, loses real people, and can be
+bled by raids as the player can.
+
+**Faith is a town's.** Each town stands where it stands between piety and decadence, and towns of
+one nation may stand at different levels. The nation's standing is the sum of its towns', as its
+stores are.
+
+**The leader is one person in one place.** He moves about the map, is in a town or with an army,
+and steadies the town he is in. He can call armies to meet him and move with them as one.
+
+**Grief.** A home that loses its mother or its sons works more slowly for a time. It tells most in
+a town of middling morals, and less in a holy or a decadent one.
 
 ## The order of building
 
@@ -89,11 +126,12 @@ Each step is to be playable by itself.
 
 | Point | Today |
 | --- | --- |
-| Acts of God by creed | In part: the Righteous never take plague and creed scales contagion. Famine and fire do not look at creed. |
+| Acts of God by creed | Inside a battle, yes: one measure by creed (a third for the Righteous, half again for the Decadent) governs how often and how hard plague, fire and famine fall, and nobody is immune (`src/sim/wrath.ts`). A harvest fails by chance, which is how famine comes unasked. Not yet: nothing of it runs in a season on the map. |
 | A soldier costs a person | No: soldiers are bought with resources alone. |
 | Notable people | Half: villagers have names, traits and families, and one best soldier of a battle is remembered. Only he and the leader outlive the match. |
 | Towns persist | Buildings stay between battles on a land. People and stores do not. |
 | A town defends itself | No: a battle not fought is settled by strength numbers. |
 | Threats on the map | No: marauders and slavers exist only inside a match. |
 | Drift | No: the parts exist as separate rules, not as cause and effect. |
+| Children never shown | No: children are drawn as small figures that walk the town and can be hurt. |
 | Age on the map only | Half: the campaign sets the age a battle begins in, and the player can still age up within it. |

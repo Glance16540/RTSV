@@ -477,7 +477,7 @@ export class Renderer {
         if (b && b.owner === ev.player) { this.scene.remove(g); this.buildingViews.delete(id); }
       }
     } else if (ev.t === 'birth' && ev.player === this.game.humanId) {
-      this.floaters.push({ x: ev.x, y: ev.y, text: '👶', t: 0 });
+      this.floaters.push({ x: ev.x, y: ev.y, text: '💗', t: 0 });
     } else if (ev.t === 'grown' && ev.player === this.game.humanId) {
       this.floaters.push({ x: ev.x, y: ev.y, text: '✨', t: 0 });
     } else if (ev.t === 'signal' && !this.game.hostile(ev.player, this.game.humanId)) {
@@ -538,12 +538,11 @@ export class Renderer {
     const virtue = this.game.players[u.owner].virtue ?? 0, wear = u.type !== 'villager' || u.gender !== 'f' ? 0 : virtue >= 30 ? 1 : virtue <= -70 ? 3 : virtue <= -30 ? 2 : 0;
     let turned: number | null = null;
     const afoot = drawnReal(u.def.cls), real = peopleReady() && afoot;
-    const child = u.growT > 0;
     const ridden = peopleReady() && (u.def.cls === 'cavalry' || u.def.cls === 'beast' || u.def.cls === 'siege');
     // Wolves, deer and hounds are each one animal, drawn whole from the real figure.
     const animal: BeastKind | null = u.type === 'wolf' ? 'wolf' : u.type === 'hound' ? 'husky' : u.type === 'deer' ? (u.id % 3 === 0 ? 'stag' : 'deer') : null;
     const wild = !!animal && beastReady(animal);
-    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || real !== !!v.real || (!!v.real && v.real.child !== child) || (ridden && !v.riders) || (wild && !v.wildlife) || (ridden && !v.beasts && beastReady('horse') && beastReady('wolf') && beastReady('camel') && beastReady('elephant')))) {
+    if (v && (v.type !== u.type || (v.job !== job && !v.real) || v.wear !== wear || real !== !!v.real || (ridden && !v.riders) || (wild && !v.wildlife) || (ridden && !v.beasts && beastReady('horse') && beastReady('wolf') && beastReady('camel') && beastReady('elephant')))) {
       // Re-equipped by an upgrade, or set to a new trade: swap the model.
       turned = v.g.rotation.y;
       this.scene.remove(v.g);
@@ -553,7 +552,7 @@ export class Renderer {
       ofPeople(this.game.players[u.owner].civ);
       // The leader is dressed as whoever made them chose; everyone else by their kind.
       const lead = u.hero ? this.game.heroOf(u.owner) : null;
-      const fit = real ? outfitFor(u.type, lead ? lead.female : u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child, civ: this.game.players[u.owner].civ }) : null;
+      const fit = real ? outfitFor(u.type, lead ? lead.female : u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, civ: this.game.players[u.owner].civ }) : null;
       const made = fit ? makePerson(lead ? leaderOutfit(fit, lead.female, lead.look) : fit) : null;
       const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
       v = { g: made?.g ?? creature?.g ?? (afoot ? new THREE.Group() : makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear)), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, work: 0, job, wear, hp: u.hp, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
@@ -574,7 +573,7 @@ export class Renderer {
     const x = u.px + (u.x - u.px) * alpha, y = u.py + (u.y - u.py) * alpha;
     const swing = u.attackAnim > 0 ? Math.sin((u.attackAnim / 0.35) * Math.PI) : 0;
     const mounted = u.def.cls === 'cavalry' || u.def.cls === 'beast';
-    const size = u.growT > 0 ? 0.62 : 1;
+    const size = 1;
     let bob = 0, pitch = 0, roll = 0, breathe = 1;
     if (u.def.naval) {
       // Afloat: she rides the swell that is drawn under her, lifting to each crest, pitching and rolling with its slope.
