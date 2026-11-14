@@ -460,8 +460,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       exit: () => go(''),
     });
     // No campaign yet: first choose a people and who leads them.
-    primer = new CampaignPrimer(state);
     if (fresh) ow.askNew(true);
+    primer = new CampaignPrimer(state);
   }
 
   // ---- What is on screen when the loading is done ----
