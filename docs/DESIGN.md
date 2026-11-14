@@ -58,6 +58,7 @@ shows their people (each nation drawn in its own dress, skin and arms) and their
 (devout, ordinary, worldly, decadent: the women plainly more alluring and the men plainly crueller
 as a town falls). A person's condition has its own mark as well: wounded, maimed, captive, led
 away, freed, sick, starving, grieving, old, veteran, gone to war, deserter, in revolt, drunk.
+Icons are the only way the game shows feeling. Each person keeps one body for life (full-figured or slender, broad or lean) and their face shows how they are: content, afraid, grieving or angry.
 
 **Notable people.** Most villagers are ordinary. Some earn a name the nation remembers: a soldier
 who rises through veterancy, and a woman whose home produces most (many children raised, a farm

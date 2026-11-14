@@ -4224,11 +4224,1002 @@
         "status_enslaved_m_1",
         "held by slavers, loincloth, hands tied behind: numb and hollow-eyed, of no clear people"
       ]
+    ],
+    [
+      [
+        "wild_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "wild_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "wild_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "wild_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "wild_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "wild_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "wild_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "wild_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "wild_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "wild_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "wild_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "wild_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "wild_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "wild_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "wild_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "wild_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "england_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "england_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "england_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "england_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "england_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "england_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "england_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "england_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "england_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "england_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "england_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "england_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "england_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "england_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "england_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "england_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "hearth_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "hearth_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "hearth_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "hearth_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "hearth_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "hearth_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "hearth_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "hearth_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "hearth_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "hearth_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "hearth_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "hearth_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "hearth_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "hearth_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "hearth_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "hearth_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "stonekin_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "stonekin_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "stonekin_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "stonekin_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "stonekin_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "stonekin_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "stonekin_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "stonekin_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "stonekin_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "stonekin_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "stonekin_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "stonekin_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "stonekin_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "stonekin_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "stonekin_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "stonekin_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "greece_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "greece_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "greece_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "greece_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "greece_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "greece_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "greece_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "greece_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "greece_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "greece_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "greece_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "greece_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "greece_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "greece_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "greece_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "greece_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "dawn_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "dawn_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "dawn_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "dawn_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "dawn_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "dawn_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "dawn_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "dawn_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "dawn_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "dawn_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "dawn_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "dawn_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "dawn_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "dawn_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "dawn_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "dawn_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "babylon_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "babylon_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "babylon_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "babylon_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "babylon_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "babylon_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "babylon_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "babylon_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "babylon_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "babylon_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "babylon_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "babylon_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "babylon_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "babylon_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "babylon_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "babylon_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "persia_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "persia_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "persia_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "persia_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "persia_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "persia_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "persia_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "persia_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "persia_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "persia_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "persia_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "persia_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "persia_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "persia_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "persia_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "persia_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "arabs_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "arabs_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "arabs_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "arabs_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "arabs_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "arabs_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "arabs_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "arabs_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "arabs_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "arabs_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "arabs_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "arabs_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "arabs_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "arabs_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "arabs_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "arabs_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "egypt_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "egypt_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "egypt_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "egypt_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "egypt_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "egypt_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "egypt_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "egypt_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "egypt_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "egypt_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "egypt_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "egypt_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "egypt_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "egypt_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "egypt_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "egypt_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "steppe_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "steppe_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "steppe_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "steppe_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "steppe_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "steppe_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "steppe_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "steppe_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "steppe_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "steppe_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "steppe_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "steppe_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "steppe_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "steppe_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "steppe_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "steppe_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "forge_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "forge_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "forge_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "forge_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "forge_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "forge_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "forge_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "forge_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "forge_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "forge_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "forge_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "forge_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "forge_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "forge_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "forge_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "forge_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "japan_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "japan_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "japan_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "japan_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "japan_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "japan_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "japan_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "japan_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "japan_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "japan_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "japan_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "japan_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "japan_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "japan_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "japan_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "japan_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "mali_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "mali_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "mali_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "mali_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "mali_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "mali_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "mali_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "mali_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "mali_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "mali_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "mali_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "mali_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "mali_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "mali_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "mali_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "mali_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
+    ],
+    [
+      [
+        "kush_woman_full_content",
+        "woman, full villager, content, of this people"
+      ],
+      [
+        "kush_woman_full_afraid",
+        "woman, full villager, afraid, of this people"
+      ],
+      [
+        "kush_woman_full_grief",
+        "woman, full villager, grief, of this people"
+      ],
+      [
+        "kush_woman_full_angry",
+        "woman, full villager, angry, of this people"
+      ],
+      [
+        "kush_woman_slender_content",
+        "woman, slender villager, content, of this people"
+      ],
+      [
+        "kush_woman_slender_afraid",
+        "woman, slender villager, afraid, of this people"
+      ],
+      [
+        "kush_woman_slender_grief",
+        "woman, slender villager, grief, of this people"
+      ],
+      [
+        "kush_woman_slender_angry",
+        "woman, slender villager, angry, of this people"
+      ],
+      [
+        "kush_man_broad_content",
+        "man, broad villager, content, of this people"
+      ],
+      [
+        "kush_man_broad_afraid",
+        "man, broad villager, afraid, of this people"
+      ],
+      [
+        "kush_man_broad_grief",
+        "man, broad villager, grief, of this people"
+      ],
+      [
+        "kush_man_broad_angry",
+        "man, broad villager, angry, of this people"
+      ],
+      [
+        "kush_man_lean_content",
+        "man, lean villager, content, of this people"
+      ],
+      [
+        "kush_man_lean_afraid",
+        "man, lean villager, afraid, of this people"
+      ],
+      [
+        "kush_man_lean_grief",
+        "man, lean villager, grief, of this people"
+      ],
+      [
+        "kush_man_lean_angry",
+        "man, lean villager, angry, of this people"
+      ]
     ]
   ],
   "variants": "Sheet 10 holds pairs: the icon a pious town shows (_holy) and the one a decadent town shows (_low). Its prompt adds: The icons come in pairs: a virtuous version then a decadent version of the same subject.",
   "style_before_woodblock": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: ",
   "nations_note": "Sheets 10 to 24 are one people each (key prefix = the nation's id), rows man / woman / soldier / tavern woman, columns holy / plain / worldly / low. Their prompts used the woodblock style above, the people's skin, hair, dress and arms, and this line, which must stay: Every woman is clothed: her gown always covers her chest, made of thick opaque cloth; no bare breasts, no nipples, no see-through cloth. Sheet 25 is the marks of a person's condition. A woman's figure says nothing of her morals: each woman's figure (full-figured and large-bosomed, of average figure, or slender) is named in the prompt and spread across the four standings differently in every people, and the devout village woman is always full-figured and fully covered. Wickedness is shown by dress, pose, paint and look.",
   "units_note": "Sheets 26 to 55 are two per people, in the order of sheets 10 to 24: every unit that is not a nation's own, drawn as that people with its own dress, arms, ships and engines (key <nation>_<unit id>), and a captive man and woman of it. Wild beasts and marauders belong to no people and keep one picture.",
-  "enslaved_note": "Sheets 56 and 57: captives held by slavers or marauders, distressed, in loincloths, hands tied behind the back with rope (no chains) (key <nation>_enslaved_<m|f>, falling back to status_enslaved_<m|f>). A captive of a rival nation keeps <nation>_captive_<m|f>, clothed. Every woman wears a thick opaque chest band that covers her breasts, and is drawn as a suffering prisoner, never posed to allure. Sheets 58 to 63 add three more of each (key <nation>_enslaved_<m|f>_<1|2|3>): women 1 full-figured in despair, 2 average and defiant, 3 slender and frightened; men 1 big and defiant, 2 average and sobbing, 3 old and empty; status_enslaved_<m|f>_1 numb. The plain <nation>_enslaved_<m|f> is the worn-down, bowed one. A person keeps one body for life (pick by their id) and their face changes with their state: icons are how the game shows feeling."
+  "enslaved_note": "Sheets 56 and 57: captives held by slavers or marauders, distressed, in loincloths, hands tied behind the back with rope (no chains) (key <nation>_enslaved_<m|f>, falling back to status_enslaved_<m|f>). A captive of a rival nation keeps <nation>_captive_<m|f>, clothed. Every woman wears a thick opaque chest band that covers her breasts, and is drawn as a suffering prisoner, never posed to allure. Sheets 58 to 63 add three more of each (key <nation>_enslaved_<m|f>_<1|2|3>): women 1 full-figured in despair, 2 average and defiant, 3 slender and frightened; men 1 big and defiant, 2 average and sobbing, 3 old and empty; status_enslaved_<m|f>_1 numb. The plain <nation>_enslaved_<m|f> is the worn-down, bowed one. A person keeps one body for life (pick by their id) and their face changes with their state: icons are how the game shows feeling.",
+  "moods_note": "Sheets 64 to 78, one per people in the order of sheets 10 to 24: an ordinary villager in plain dress, in two bodies per sex and four feelings. Key <nation>_<woman_full|woman_slender|man_broad|man_lean>_<content|afraid|grief|angry>. Icons are the only way the game shows feeling: give each person one body for life (from their id) and pick the feeling from their state (fed and safe: content; raided, sick or starving: afraid; bereaved: grief; resentful, rebelling or wronged: angry). The standing icons (sheets 10 to 24) still show a town's morals; condition marks (sheet 25) sit over either."
 }
