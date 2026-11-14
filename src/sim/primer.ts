@@ -3,9 +3,13 @@
 
 import { creedOf } from './creed';
 import {
-  ALLIANCE_COST, BEATS, COMPANIES, Campaign, DOMINION_SHARE, DOMINION_TURNS, FAITH, MAX_ARMY, SEA_LANDING, SITES, TRUCE_COST, TRUCE_TURNS,
+  ALLIANCE_COST, BEATS, COMPANIES, Campaign, DOMINION_SHARE, DOMINION_TURNS, FAITH, HERO_RANK_STRENGTH, MAX_ARMY, SEA_LANDING, SITES, TRUCE_COST, TRUCE_TURNS,
   ageOf, dominionNeed, landOf,
 } from './campaign';
+import { HALL_GRACE } from './beaten';
+import { CHAMPION_KILLS } from './champion';
+import { RANK_NAMES } from './hero';
+import { POWER_RANKS } from './powers';
 import { TALE_EVERY, TALE_FROM } from './story';
 
 /** How things stood when the guide first saw this campaign: its steps are measured from here. */
@@ -77,8 +81,10 @@ export function primerPage(c?: Campaign): PrimerSection[] {
       `An army is up to ${MAX_ARMY} companies standing on one land. ${companies.join('; ')}.`,
       'To march, click the land your army is on and then a neighbour joined to it by a dotted road. Mountains, rivers and open water close some borders; the land\'s panel says which.',
       `Open water is crossed only from a land with a ${SITES.harbour.name}, and troops landing from the sea fight at ${pct(SEA_LANDING)} strength.`,
-      'March into land that is not yours and there is a battle. Fight it yourself, in the field or as a siege of the town, or let it be settled on the map by strength. What you build and fell in a siege stays on that land.',
-      'Your leader marches with one army and fights in its battles. If they fall, choose an heir to lead, or hire a stranger in your capital.',
+      'March into land that is not yours and there is a battle. Fight it yourself, in the field or as a siege of the town, or let it be settled on the map by strength.',
+      `A siege is won by bringing down their Town Center and keeping them from beginning another for ${HALL_GRACE} seconds; it is lost the same way. What you build and fell in a siege stays on that land.`,
+      `Your leader marches with one army and fights in its battles. Deeds in battle raise their rank, and each rank adds ${HERO_RANK_STRENGTH} to that army's strength on the map. At ${POWER_RANKS.map((r) => RANK_NAMES[r]).join(', ').replace(/, ([^,]*)$/, ' and $1')} they come into one of two powers, chosen when you make them.`,
+      `If they fall, choose an heir to lead, or hire a stranger in your capital. In the battle itself, a foot or mounted soldier with ${CHAMPION_KILLS} kills has made a name and can be raised to lead where they stand; they then lead on the map too.`,
     ] },
     { title: 'Rivals', lines: [
       `Click a rival's land to deal with them. A <b>truce</b> (${TRUCE_COST}) lasts ${TRUCE_TURNS} turns; at truce you may offer an <b>alliance</b> (${ALLIANCE_COST}), and an ally's armies beside a battle of yours fight in it. Both are paid only if accepted.`,
@@ -87,13 +93,13 @@ export function primerPage(c?: Campaign): PrimerSection[] {
     { title: 'Creed', lines: [
       `Your people stand somewhere between pious and decadent. A ${SITES.church.name} moves them one way every turn and a ${SITES.tavern.name} the other, and your towns begin each battle as your people are.`,
       creed('zealous'), creed('devout'), creed('worldly'), creed('decadent'),
-      `From turn ${TALE_FROM}, every ${TALE_EVERY} turns a matter is brought before you with a pious answer and a worldly one, each at a price. What you answer can come back later.`,
+      `From turn ${TALE_FROM}, every ${TALE_EVERY} turns a matter is brought before you with a pious answer and a worldly one, each at a price. Some are told only to whoever holds a place of note, and some follow from what you answered before.`,
     ] },
     { title: 'Winning', lines: [
       c
         ? `Take every land, or hold ${dominionNeed(c)} of this world's ${c.territories.length} lands for ${DOMINION_TURNS} turns running.`
         : `Take every land, or hold ${pct(DOMINION_SHARE)} of them for ${DOMINION_TURNS} turns running.`,
-      'A rival who does the same has won. The chronicle keeps what happened along the way.',
+      'A rival who does the same has won. The chronicle keeps what happened along the way, and its last page tells how it ended.',
     ] },
   ];
 }

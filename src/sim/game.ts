@@ -15,7 +15,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-import { leaderAsMade, leaderDef, powersHeld } from './powers';
+import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, leaderAsMade, leaderDef, powersHeld } from './powers';
 import { CHAMPION_KILLS, Champion, canLead, championName, championSpec, rankForKills } from './champion';
 import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
@@ -122,7 +122,7 @@ export interface Unit extends Base {
   /** Freed from the marauders: she will bear no more children, and works a quarter harder. */
   freed?: boolean;
   /** The nation's leader: deeds done in this battle and the veterancy they have earned. */
-  hero?: { xp: number; rank: number };
+  hero?: { xp: number; rank: number; /** Seconds their call still sounds, and seconds until it can be raised again. */ call?: number; rest?: number };
   /** Foes this unit has killed. Among the Warriors every kill makes a soldier strike harder. */
   kills?: number;
   merc?: boolean; // hired at a tavern: fights for wages and leaves when they stop
@@ -2382,6 +2382,12 @@ export class Game {
     if (u.attackAnim > 0) u.attackAnim -= DT;
     if (u.def.heal) this.updateHealer(u);
     if (u.def.aura && u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + 1.5 * DT); // heroes slowly regenerate
+    if (u.hero) {
+      if (u.hero.call) u.hero.call = Math.max(0, u.hero.call - DT);
+      if (u.hero.rest) u.hero.rest = Math.max(0, u.hero.rest - DT);
+      // A rival's leader raises the call when they are in the thick of it.
+      if (this.players[u.owner].isAI && u.attackAnim > 0) this.cmdCall(u.owner);
+    }
     if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith * this.creed(u.owner).faith);
     if (u.growT > 0 && this.grow(u)) return;
     if (this.aging && u.lifespan > 0 && u.growT <= 0 && (u.age += DT) > u.lifespan) {
@@ -2860,7 +2866,7 @@ export class Game {
 
   private strike(u: Unit, t: Entity): void {
     const p = this.players[u.owner];
-    u.cooldown = u.def.cooldown * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1);
+    u.cooldown = u.def.cooldown * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1) * (this.calledAt(u.owner, u.x, u.y) === 'warlord' ? CALLS.warlord.haste! : 1);
     u.attackAnim = 0.35;
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
@@ -2903,7 +2909,7 @@ export class Game {
     } else armor = 1;
     // A leader is still flesh: however armoured, a blow tells on them.
     const raw = atk * mult * aura;
-    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale;
+    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale * (t.kind === 'unit' && this.calledAt(t.owner, t.x, t.y) === 'strategist' ? CALLS.strategist.ward! : 1);
     t.hp -= dmg;
     tp.lastAttacked = { x: t.x, y: t.y, t: this.time };
     if (this.time - tp.alertT > 12) {
@@ -2950,6 +2956,29 @@ export class Game {
   }
 
   // ---- Buildings ----
+
+  /** A player's leader, wherever they are. */
+  leaderOf(owner: number): Unit | undefined { return this.units.find((u) => u.owner === owner && !!u.hero); }
+  /** Can the leader raise their call now? They must be Seasoned, in the open, and rested since the last. */
+  canCall(owner: number): boolean {
+    const l = this.leaderOf(owner);
+    return !!l && !l.inside && l.hero!.rank >= CALL_RANK && !(l.hero!.rest! > 0);
+  }
+  /** The leader raises their call: for a few seconds it tells on everyone of theirs within reach. */
+  cmdCall(owner: number): boolean {
+    if (!this.canCall(owner)) return false;
+    const l = this.leaderOf(owner)!;
+    l.hero!.call = CALL_LASTS;
+    l.hero!.rest = CALL_REST;
+    this.msg(owner, `${l.name}: ${CALLS[this.heroOf(owner).calling].name}!`);
+    return true;
+  }
+  /** Whose call, if any, is sounding over this spot for this player's people: a Warlord's or a Strategist's. */
+  calledAt(owner: number, x: number, y: number): 'warlord' | 'strategist' | null {
+    const l = this.leaders[owner];
+    if (!l || l.dead || !(l.hero!.call! > 0) || Math.hypot(l.x - x, l.y - y) > (l.def.auraRange ?? 0)) return null;
+    return this.heroOf(owner).calling;
+  }
 
   /** Could this soldier be raised to lead? Only when the leader has fallen and nobody has taken their place. */
   canAcclaim(owner: number, u: Unit): boolean {

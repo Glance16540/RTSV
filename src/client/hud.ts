@@ -3,8 +3,9 @@
 import { isHoly } from '../sim/creed';
 import { fighting } from '../sim/calamity';
 import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
-import { powersHeld } from '../sim/powers';
+import { CALLS, CALL_RANK, CALL_REST, powersHeld } from '../sim/powers';
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
+import { HALL_GRACE } from '../sim/beaten';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -276,6 +277,12 @@ export class Hud {
           }
         }
       }
+      // The leader's call: the one power set off by hand.
+      const chief = units.find((u) => u.hero);
+      if (chief && chief.hero!.rank >= CALL_RANK) {
+        const call = CALLS[game.heroOf(pid).calling], rest = Math.ceil(chief.hero!.rest ?? 0);
+        out.push({ id: 'call', icon: ico('bell', '📯'), name: call.name, desc: `${call.desc}<br><span class="stat">Can be raised again after ${CALL_REST} seconds.</span>`, locked: rest > 0 ? `Ready in ${rest} seconds.` : undefined, active: (chief.hero!.call ?? 0) > 0, act: () => { game.cmdCall(pid); } });
+      }
       // The leader is dead: a soldier who has made a name can be raised in their place.
       if (units.length === 1 && game.canAcclaim(pid, units[0])) {
         const who = units[0];
@@ -498,6 +505,7 @@ export class Hud {
         const r = e.hero.rank, virtue = game.players[e.owner].virtue;
         const top = r >= MAX_RANK;
         extra = `<div class="good">⭐ ${RANK_NAMES[r]}${top ? '' : ` · ${e.hero.xp - RANK_XP[r]} of ${RANK_XP[r + 1] - RANK_XP[r]} deeds to ${RANK_NAMES[r + 1]}`}</div>${top ? '' : this.bar((e.hero.xp - RANK_XP[r]) / (RANK_XP[r + 1] - RANK_XP[r]), 'faith')}` +
+          (r >= CALL_RANK ? `<div class="${(e.hero.call ?? 0) > 0 ? 'good' : 'hint'}">📯 ${CALLS[game.heroOf(e.owner).calling].name}${(e.hero.call ?? 0) > 0 ? `: sounding, ${Math.ceil(e.hero.call!)} seconds left` : (e.hero.rest ?? 0) > 0 ? `: ready in ${Math.ceil(e.hero.rest!)} seconds` : ': ready'}</div>` : '') +
           powersHeld(game.heroOf(e.owner), r).map((p) => `<div class="good">✦ ${p.name}: ${p.desc}</div>`).join('') +
           (isHoly(virtue) ? `<div class="good">🕯️ Holy town: those near them wear ${HOLY_GUARD[virtue >= 70 ? 1 : 0]} more armour</div>` : '') +
           (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the camp fills the town faster while they are in the field</div>' : '') + extra;
@@ -603,7 +611,7 @@ export class Hud {
       ['Raise an army', 'Villager → Military buildings (V) → Barracks, then train three soldiers.', units.filter((u) => game.isMilitary(u)).length >= 3],
       ['Advance to the Bronze Age', 'Select the Town Center (H) and press T once you have the food and wood.', p.age >= 1],
       ['Choose what your town believes', 'Villager → Church or Tavern, then right-click it with villagers to station them inside. A Church makes your people pious, a Tavern decadent, and each changes what your town is good at.', mine.some((b) => (b.type === 'temple' || b.type === 'tavern') && b.complete && (b.staff?.length ?? 0) > 0)],
-      ['Destroy your rivals', 'Scout with soldiers, then select your army, press Q and click their base.', game.winner === pid],
+      ['Bring down their Town Center', `Scout with soldiers, then select your army, press Q and click their Town Center. A people with none, who do not begin another within ${HALL_GRACE} seconds, are beaten: so guard your own.`, game.winner === pid],
     ];
     const i = steps.findIndex((s) => !s[2]);
     const show = !this.guideOff && i >= 0 && !this.app.paused;
