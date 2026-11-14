@@ -6,6 +6,7 @@ import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets, musicUrl } from './assets';
 import { loader, playOpening, Title } from './title';
 import { CampaignPrimer } from './primer';
+import { DAY_LENGTHS } from '../sim/daylight';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
@@ -374,7 +375,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // What the victor has standing stays standing: it is that land's town the next time it is fought over.
       const holder = won ? app.pid : 1;
       const town = cfg.field ? undefined : app.game.standing(holder);
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, champion: app.game.champion(app.pid) ?? undefined, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, champion: app.game.champion(app.pid) ?? undefined, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -389,6 +390,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     app.onGameOver = () => {
       const g = app.game, civ = g.players[app.pid].civ;
       const h = { ...g.heroOf(app.pid), rank: g.players[app.pid].heroRank ?? 0 };
+      // A soldier raised in the fighting led for that day only: the leader you made is yours still.
+      if (g.players[app.pid].acclaimed) return;
       if (savedHero(civ) || h.rank > 0 || h.name !== defaultHero(civ).name) keepHero(civ, h);
     };
   }
@@ -399,21 +402,25 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   }
 
   // ---- Settings kept between visits ----
-  const prefs = { volume: 0.5, music: true, edge: true, scroll: 1, ...JSON.parse((() => { try { return localStorage.getItem('rtsv-prefs') ?? '{}'; } catch { return '{}'; } })()) };
+  const prefs = { volume: 0.5, music: true, edge: true, scroll: 1, day: 300, night: true, lights: true, ...JSON.parse((() => { try { return localStorage.getItem('rtsv-prefs') ?? '{}'; } catch { return '{}'; } })()) };
   const applyPrefs = () => {
     sfx.setVolume(prefs.volume);
     sfx.music = prefs.music;
     app.input.edgeScroll = prefs.edge;
     app.input.scrollSpeed = prefs.scroll;
+    // The day is the player's to set: how long it lasts, whether night falls, and whether lamps cast real light.
+    app.game.dayLength = DAY_LENGTHS.includes(prefs.day) ? prefs.day : 300;
+    app.game.nightless = !prefs.night;
+    app.r.lamplight = prefs.lights;
     try { localStorage.setItem('rtsv-prefs', JSON.stringify(prefs)); } catch { /* storage unavailable */ }
   };
-  const bind = (id: string, key: 'volume' | 'scroll' | 'music' | 'edge') => {
+  const bind = (id: string, key: 'volume' | 'scroll' | 'music' | 'edge' | 'day' | 'night' | 'lights') => {
     const input = el(id) as HTMLInputElement;
     if (input.type === 'checkbox') input.checked = prefs[key] as boolean;
     else input.value = String(prefs[key]);
     input.addEventListener('input', () => { (prefs[key] as number | boolean) = input.type === 'checkbox' ? input.checked : Number(input.value); applyPrefs(); });
   };
-  bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll');
+  bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll'); bind('pref-day', 'day'); bind('pref-night', 'night'); bind('pref-lights', 'lights');
   applyPrefs();
 
   // ---- Missions ----
@@ -437,8 +444,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; champion?: { name: string; kills: number; unit: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
-      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, champion: r.champion, town: r.town, ground: r.ground });
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; powers?: number[]; champion?: { name: string; kills: number; unit: string; female?: boolean; type?: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
+      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, powers: r.powers, champion: r.champion, town: r.town, ground: r.ground });
       if (c.phase === 'ai') continueAI(c);
     }
     const fresh = !c;

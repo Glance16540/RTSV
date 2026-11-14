@@ -14,6 +14,8 @@ import { Outfit, RealPerson, leaderOutfit, astride, bear, embrace, drawnReal, sp
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
+import { Sky } from './sky';
+import { Flame, NightLights, carriesTorch } from './nightlight';
 
 /** How steeply the camera looks down. `?pitch=20` (degrees) lowers it, for looking at figures from the side. */
 export const PITCH = ((Number(new URLSearchParams(location.search).get('pitch')) || 50) * Math.PI) / 180;
@@ -47,6 +49,11 @@ export class Renderer {
   /** How dark the unexplored land is drawn, 1 in play. The main menu lifts it so the country can be seen. */
   fogScale = 1;
   private skyC = new THREE.Color(0x0b0d10);
+  /** The player's setting: whether lamps and torches cast real light by night, or only show their glow. */
+  lamplight = true;
+  private heaven!: Sky;
+  private nightLights!: NightLights;
+  private lampAt = new THREE.Vector3();
   floaters: Floater[] = [];
 
   private sun: THREE.DirectionalLight;
@@ -156,6 +163,9 @@ export class Renderer {
     loadPeople(); loadBeasts();
     this.buildTrees();
     this.buildFog();
+    this.heaven = new Sky(this.glow());
+    this.scene.add(this.heaven.group);
+    this.nightLights = new NightLights(this.scene, this.glow());
 
     this.area = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 48), new THREE.MeshBasicMaterial({ color: 0xb48cff, transparent: true, opacity: 0.9, depthTest: false }));
     this.area.rotation.x = -Math.PI / 2;
@@ -325,10 +335,30 @@ export class Renderer {
     // Seen from low down the land runs out to a horizon, so it is lost in mist there and the sky takes the mist's colour.
     if (this.cine) { this.haze.near = this.dist * 0.9; this.haze.far = this.dist * 2.7; }
     (this.scene.background as THREE.Color).copy(this.cine ? this.haze.color : this.skyC);
+    this.heaven.update(this.camera, { horizon: this.haze.color, sunX: sx, sunZ: 20, up, moonX: 30, moonZ: -18, night: n, warm, weather: w, sunColor: this.sun.color });
     this.sun.target.position.set(this.cx, 0, this.cy);
     const sc = this.sun.shadow.camera;
     sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 1; sc.far = 160;
     sc.updateProjectionMatrix();
+  }
+
+  /** By night, gather the lamps and torches in view and let the nearest of them cast real light. */
+  private lightNight(): void {
+    const lamps: Flame[] = [], torches: Flame[] = [], far = (this.dist * 1.3) ** 2, n = this.nightAmt;
+    if (n > 0.02) {
+      for (const b of this.game.buildings) {
+        const g = this.buildingViews.get(b.id), lamp = (g?.userData.lit as THREE.Object3D[] | undefined)?.[1];
+        if (!g || !lamp || !g.visible || !b.complete || (b.x - this.cx) ** 2 + (b.y - this.cy) ** 2 > far) continue;
+        const at = lamp.getWorldPosition(this.lampAt);
+        lamps.push({ x: at.x, y: at.y + 0.25, z: at.z, id: b.id });
+      }
+      for (const u of this.game.units) {
+        if (u.inside || u.def.naval || !this.game.isMilitary(u) || !carriesTorch(u.id, !!u.hero) || (u.x - this.cx) ** 2 + (u.y - this.cy) ** 2 > far) continue;
+        const v = this.unitViews.get(u.id);
+        if (v?.g.visible) torches.push({ x: v.g.position.x + 0.22, y: v.g.position.y + 1.25, z: v.g.position.z, id: u.id, torch: true });
+      }
+    }
+    this.nightLights.update(n, this.clock, this.cx, this.cy, lamps, torches, this.lamplight);
   }
 
   /** A soft round glow, made once. */
@@ -503,7 +533,7 @@ export class Renderer {
       ofPeople(this.game.players[u.owner].civ);
       // The leader is dressed as whoever made them chose; everyone else by their kind.
       const lead = u.hero ? this.game.heroOf(u.owner) : null;
-      const fit = real ? outfitFor(u.type, lead ? lead.female : u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child }) : null;
+      const fit = real ? outfitFor(u.type, lead ? lead.female : u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, child, civ: this.game.players[u.owner].civ }) : null;
       const made = fit ? makePerson(lead ? leaderOutfit(fit, lead.female, lead.look) : fit) : null;
       const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
       v = { g: made?.g ?? creature?.g ?? (afoot ? new THREE.Group() : makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear)), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, work: 0, job, wear, hp: u.hp, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
@@ -1121,7 +1151,7 @@ export class Renderer {
     v.riders = [];
     const pl = this.game.players[u.owner];
     seats.forEach((seat, i) => {
-      const made = makePerson(outfitFor(u.type, false, pl.color, lookOf(pl.civ, u.id + i * 5), u.id + i * 5, 0, { cls: u.def.cls, age: u.def.age, naval: !!u.def.naval }));
+      const made = makePerson(outfitFor(u.type, false, pl.color, lookOf(pl.civ, u.id + i * 5), u.id + i * 5, 0, { cls: u.def.cls, age: u.def.age, naval: !!u.def.naval, civ: pl.civ }));
       if (!made) return;
       for (const c of seat.children) c.visible = false; // the block figure and its gear give way
       seat.add(made.g);
@@ -1341,6 +1371,7 @@ export class Renderer {
     for (const b of game.buildings) this.syncBuilding(b);
     if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
+    this.lightNight();
     this.updateFog(dt);
     this.scenery.update(this.clock, 1 - this.nightAmt, this.weather.amount);
     for (const m of this.models) m.mixer.update(dt);
