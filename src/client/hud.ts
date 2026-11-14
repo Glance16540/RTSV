@@ -10,6 +10,7 @@ import { HALL_GRACE } from '../sim/beaten';
 import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
+import { heldPanel, takenPanel } from './captives';
 import { yearsLeft, yearsOld } from '../sim/nursery';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
@@ -518,7 +519,7 @@ export class Hud {
           powersHeld(game.heroOf(e.owner), r).map((p) => `<div class="good">✦ ${p.name}: ${p.desc}</div>`).join('') +
           (e.owner === pid && game.powerDue(e.owner) >= 0 ? '<div class="warn">✦ A power is theirs to choose: see their commands</div>' : '') +
           (isHoly(virtue) ? `<div class="good">🕯️ Holy town: those near them wear ${HOLY_GUARD[virtue >= 70 ? 1 : 0]} more armour</div>` : '') +
-          (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the camp fills the town faster while they are in the field</div>' : '') + extra;
+          (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the women of the camp bear sooner while they are in the field</div>' : '') + extra;
       }
       const role = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
@@ -542,6 +543,8 @@ export class Hud {
       if (w) body += `<div class="${w === 'famine' ? 'bad' : 'warn'}">${w === 'famine' ? '💀 Famine: someone is lost every half minute until there is food in the store' : '🍞 Going hungry: the store is bare and nothing is coming in'}</div>`;
     }
     if (b.def.guards) body += gatePanel(game, b, pid);
+    if (b.def.camp) body += heldPanel(game, b, pid);
+    if (b.type === 'towncenter' && b.owner === pid) body += takenPanel(game, pid);
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
     else if (mine) {
@@ -580,7 +583,7 @@ export class Hud {
         const n = b.captives?.length ?? 0;
         const men = (b.captives ?? []).filter((c) => c.gender === 'm').length, women = n - men;
         body += `<div class="${n ? 'good' : 'hint'}">⛓️ Captives: ${men} ${men === 1 ? 'man' : 'men'}, ${women} ${women === 1 ? 'woman' : 'women'} <small>(${n}/${b.def.camp}${n ? ': ' + b.captives!.map((c) => c.name).join(', ') : ''})</small>${n ? '' : ' — send Slavers after enemy villagers'}</div>` +
-          `<div class="hint">Each man held makes the whole town gather ${(CAPTIVE_WORK * 100).toFixed(0)}% faster. Each woman held makes the camp turn out villagers sooner${women ? `: one about every ${Math.round(CAMP_BIRTH / women)} seconds now` : ` (one every ${CAMP_BIRTH} seconds for one woman)`}. Each captive adds ${CAPTIVE_VIRTUE} decadence a minute. If the camp falls, they go home.</div>`;
+          `<div class="hint">Each man held makes the whole town gather ${(CAPTIVE_WORK * 100).toFixed(0)}% faster. The women held bear children there${women ? `, one about every ${Math.round(CAMP_BIRTH / women)} seconds now` : ` (one every ${CAMP_BIRTH} seconds for one woman)`}: they are the mother's, not yours, but each adds half a man's labour while she is held. Each captive adds ${CAPTIVE_VIRTUE} decadence a minute. If the camp falls, they go home.</div>`;
       }
       if (b.def.staff) {
         const tav = b.type === 'tavern';

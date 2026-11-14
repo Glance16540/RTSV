@@ -10,6 +10,7 @@ import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
+import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
 import { calamity, douse, roll } from './calamity';
@@ -71,7 +72,8 @@ export const NIGHT_SIGHT = 2;
 export interface Deed { t: number; s: string }
 export interface Captive { from: number; name: string; family: string; gender: Gender; trait: string; trait2: string; age: number; lifespan: number;
   /** Children she had at home before she was taken, and the rest of her record. */ kids?: number; story?: Deed[];
-  /** Children borne in captivity. */ born?: number; /** Held by marauders, not in a people's work camp. */ held?: boolean }
+  /** Children borne in captivity: the count, and the records of them (captivity.ts). */ born?: number; young?: Child[];
+  /** When they were seized: the clock on getting them back runs from here. Told once that it is running out. */ taken?: number; warned?: boolean; /** Held by marauders, not in a people's work camp. */ held?: boolean }
 /** When the marauders make camp, how often each woman they hold bears them a child, how often they raid, and how many they can grow to. */
 export const LAIR_AT = 240;
 export const LAIR_BIRTH = 120;
@@ -175,7 +177,7 @@ export interface Building extends Base {
   blightT?: number;
   sheltered: number[]; // villagers hiding inside
   captives?: Captive[]; // a work camp's prisoners
-  campT?: number; // progress towards the camp's next villager
+  campT?: number; // progress towards the next child born to a woman held in the camp
   douseAt?: number; douseN?: number; // the tick villagers last beat at a fire here, and how many (calamity.ts)
   rescueT?: number; // progress of soldiers at the gate towards letting the next captive out (rescue.ts)
   trystT?: number; // progress towards a tavern's next child born out of any household
@@ -1538,6 +1540,7 @@ export class Game {
     // What the marauders did to her is not undone by burning their camp: she will bear no more children. But she
     // has come through it, and works like one who means to live.
     if (c.held && c.gender === 'f') v.freed = true;
+    comeHome(this, c, v);
     this.msg(c.from, c.held ? `${c.name} is free of the marauders and has come home${c.born ? `, having borne them ${c.born} ${c.born === 1 ? 'child' : 'children'}` : ''}.` : `${c.name} is free and has come home.`);
   }
 
@@ -1571,13 +1574,14 @@ export class Game {
       return;
     }
     tendBand(this, lair);
+    tendCaptives(this, lair);
     const band = this.units.filter((u) => u.def.marauder), held = lair.captives ?? [], women = held.filter((c) => c.gender === 'f');
     // Every woman held bears the band children, who are raised to it; and men drift in to a camp that prospers.
     this.lairT += women.length / LAIR_BIRTH + 1 / 110;
     if (this.lairT >= 1) {
       this.lairT = 0;
       const mother = women.length ? women.reduce((a, b) => ((a.born ?? 0) <= (b.born ?? 0) ? a : b)) : null;
-      if (mother && this.rng() < women.length / (women.length + 0.7)) mother.born = (mother.born ?? 0) + 1;
+      if (mother && this.rng() < women.length / (women.length + 0.7)) bearCaptive(this, mother);
       if (band.length < Math.min(LAIR_MAX, 5 + women.length * 3)) this.spawnUnit('marauder', wild, lair.x - 1 + this.rng() * 2, lair.y + 2.2);
     }
     // Those who have strayed, with nothing in hand, go back to the fire.
@@ -1607,6 +1611,8 @@ export class Game {
     const at = this.landPf.nearestFree(b.x, b.y + b.size / 2 + 0.8);
     const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
     v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
+    v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: 'Got out of the camp' }];
+    comeHome(this, c, v);
     const tc = this.tcs[c.from]?.[0];
     if (tc) this.cmdMove(c.from, [v.id], tc.x, tc.y + tc.size / 2 + 1);
     this.msg(c.from, `${c.name} has got out of the camp and is running for home.`);
@@ -1641,19 +1647,15 @@ export class Game {
     p.captiveMen = 0;
     for (const b of this.buildings) {
       if (b.owner !== p.id || !b.captives?.length) continue;
-      // The men are put to work; it is the women held there who bear the camp's children.
+      if (tendCaptives(this, b) && !b.captives.length) continue;
+      // The men are put to work; the women held there bear children, who are theirs and are kept on their records.
       const men = b.captives.filter((c) => c.gender === 'm').length, women = b.captives.length - men;
       p.captives += b.captives.length;
       // Men under a guard's eye are driven harder.
-      p.captiveMen += men * (1 + GUARD_DRIVE * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0));
+      p.captiveMen += men * (1 + GUARD_DRIVE * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)) + campLabour(b);
       // Under a decadent leader's eye the camps are made to fill the town far faster.
       b.campT = (b.campT ?? 0) + (women / CAMP_BIRTH) * (this.leaders[p.id] && !this.leaders[p.id]!.dead && isDecadent(p.virtue) ? TYRANT_BIRTH : 1);
-      if (b.campT >= 1 && p.pop + 1 <= p.popCap) {
-        b.campT = 0;
-        this.spawnFrom(b, 'villager', this.rng() < 0.5 ? 'm' : 'f');
-        p.stats.born++;
-        this.events.push({ t: 'birth', player: p.id, x: b.x, y: b.y });
-      } else if (b.campT > 1) b.campT = 1;
+      if (b.campT >= 1) { b.campT = 0; campChild(this, b); }
       if (rescue(this, b) && !b.captives.length) continue;
       if (this.night) this.campNight(p, b);
     }
@@ -2586,7 +2588,7 @@ export class Game {
         // A man being bound does not go on with his work.
         if (v.order) this.setOrder(v, null);
         if (o.t0 < CAPTURE_TIME * (this.tyrant(u) ? TYRANT_BIND : 1)) break;
-        u.captive = { from: v.owner, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan, kids: v.kids, born: v.captiveKids, story: [...(v.story ?? []), { t: this.time, s: u.def.marauder ? 'Carried off by marauders' : raidWord(u) }] };
+        u.captive = { from: v.owner, name: v.name, family: v.family, gender: v.gender!, trait: v.trait, trait2: v.trait2, age: v.age, lifespan: v.lifespan, taken: this.time, kids: v.kids, born: v.captiveKids, story: [...(v.story ?? []), { t: this.time, s: u.def.marauder ? 'Carried off by marauders' : raidWord(u) }] };
         const raid = this.adopts(u);
         this.msg(v.owner, `${v.name} has been carried off by ${u.def.marauder ? 'marauders' : raid ? 'raiders' : 'slavers'}!`);
         this.players[v.owner].lastAttacked = { x: v.x, y: v.y, t: this.time };
