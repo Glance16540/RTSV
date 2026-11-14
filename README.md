@@ -144,6 +144,14 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   one of its people, the old first, then the children, then soldiers, who walk away, then grown villagers, though
   never the last four. After four minutes plague breaks out around the Town Center, except among the Righteous.
   Food in the store ends it at once. A war band with no hall does not starve.
+  The warning says what the town can do (what its Market sells food for, or that it has none), and allies are told.
+- *Plague from outside* (`src/sim/contagion.ts`): plague now passes between peoples. Anyone standing close to
+  another people's sick may catch it, so a plagued army carries it into the town it attacks, and a Prophet's plague
+  can come home with those who fight its victims. In a transport's hold one sick passenger gives it to the rest.
+  Now and then (one purchase in a hundred) what is bought at a Market brings plague with it. The Righteous take
+  none of these.
+- *Fire by accident*: a Blacksmith with work in hand may catch from its forge, and by night a lived-in house from
+  its hearth, a small village much less often than a town. Never in heavy rain; twice as often in a dust storm.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
 plague), Prophet (calamities), Warlord (hero aura), Catapult (splash damage, helpless up close).
@@ -238,7 +246,13 @@ the last block of `src/client/style.css`.
 **Teaching.** Every battle has a first-steps guide. The campaign has its own: a slip of *first orders*
 over the map, each marked done by what the player has done, and a page, *How the campaign works*, which
 opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
-out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`.
+out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`. In a battle, a slip under the first-steps guide teaches fire-fighting, famine, walls, towers, the market and the work camp the first time each is needed.
+
+**Day and night.** Settings set how long a day lasts (3, 5 or 10 minutes) and whether night falls at
+all (`src/sim/daylight.ts`). There is a sky with the sun, a moon and stars (`src/client/sky.ts`); the
+game's own camera looks down and does not see it, so it shows on the main menu, whose camera looks into
+the sunrise, and with a lowered camera (`?pitch=9`). By night the lamps and torches nearest the middle
+of the view cast real light (`src/client/nightlight.ts`); a setting turns that off for a slow machine. In a match, press O to bring the camera down and look out at the sky: it turns to face the sun, or the moon by night; [ and ] turn the view, the wheel raises your eyes, and O goes back.
 
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.

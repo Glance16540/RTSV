@@ -3,6 +3,12 @@
 Several sessions work on this game at once, each on its own branch. These rules keep one session's
 work from breaking another's. They apply to every session, whatever it was asked to do.
 
+## Where the game is going
+
+`docs/DESIGN.md` is the owner's design: the world map is the game, a battle is the close view of one
+town in it, people persist, and a soldier costs a person. Read it before starting a piece of work,
+build toward it, and do not build against it. Change it only on the owner's word.
+
 ## The trunk
 
 `main` is the game as it stands: everything that is finished, fitted together, with the tests passing

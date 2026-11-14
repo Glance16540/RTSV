@@ -929,7 +929,7 @@ export function bear(p: RealPerson, kind: string): void {
 
 const UP = new THREE.Vector3(0, 1, 0), q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion(), q3 = new THREE.Quaternion(), q4 = new THREE.Quaternion(), v1 = new THREE.Vector3(), dir = new THREE.Vector3();
 /** Turn a bone so that it lies along a direction in the world, by a share `w` of the way from where the motion left it. */
-function point(b: THREE.Object3D | undefined, d: THREE.Vector3, w: number): void {
+export function point(b: THREE.Object3D | undefined, d: THREE.Vector3, w: number): void {
   if (!b?.parent) return;
   b.updateWorldMatrix(true, false);
   b.getWorldQuaternion(q1);

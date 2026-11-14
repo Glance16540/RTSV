@@ -7,10 +7,12 @@ import {
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
+import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
 import { calamity, douse, roll } from './calamity';
+import { boughtIn } from './contagion';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
@@ -1864,7 +1866,7 @@ export class Game {
     if (!this.canAfford(p, cost)) { this.msg(owner, dir === 'sell' ? `Not enough ${res} to sell.` : 'Not enough gold.'); return false; }
     this.pay(p, cost);
     if (dir === 'sell') p.res.gold += Math.round(rate.sell * this.creed(owner).trade);
-    else p.res[res] += 100;
+    else { p.res[res] += 100; boughtIn(this, b); } // what is bought comes from elsewhere, and now and then plague with it
     this.shiftVirtue(owner, -2); // a people that haggles thinks about money
     return true;
   }
@@ -2117,8 +2119,11 @@ export class Game {
     this.weatherAmt += Math.sign(d) * Math.min(Math.abs(d), DT / 9);
     if (this.weatherAmt <= 0 && this.weatherWant === 0) this.weather = '';
   }
-  /** How far through the day it is, 0 at dawn to 1 at the next: the last three tenths are night. A day is five minutes. */
-  get dayT(): number { return (this.time % DAY_LENGTH) / DAY_LENGTH; }
+  /** The player's own choice of how long a day lasts and whether night falls. Settings, not part of a saved game. */
+  dayLength = DAY_LENGTH;
+  nightless = false;
+  /** How far through the day it is, 0 at dawn to 1 at the next: the last three tenths are night. A day is five minutes unless the player has set it otherwise. */
+  get dayT(): number { return dayPhase(this.time, this.dayLength, this.nightless); }
   get night(): boolean { return this.dayT >= 0.7; }
   /** The weather that is heavy enough to matter just now, or ''. */
   get foul(): '' | 'rain' | 'snow' | 'dust' { return this.weatherAmt >= 0.4 ? this.weather : ''; }

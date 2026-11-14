@@ -6,6 +6,7 @@ import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets, musicUrl } from './assets';
 import { loader, playOpening, Title } from './title';
 import { CampaignPrimer } from './primer';
+import { DAY_LENGTHS } from '../sim/daylight';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
@@ -14,7 +15,8 @@ import { HeroSpec, defaultHero } from '../sim/hero';
 import { LEADERS } from '../sim/leaders';
 import { Overworld } from './overworld';
 import { Input } from './input';
-import { Renderer } from './renderer';
+import { Outlook } from './outlook';
+import { PITCH, Renderer, YAW } from './renderer';
 import { sfx } from './sfx';
 import '@fontsource/im-fell-english/400.css';
 import '@fontsource/im-fell-english/400-italic.css';
@@ -29,6 +31,7 @@ export class App {
   r: Renderer;
   hud: Hud;
   input: Input;
+  outlook: Outlook;
   ai: AIController[] = [];
   pid = 0;
   sel: number[] = [];
@@ -60,6 +63,7 @@ export class App {
     for (const p of this.game.players) if (p.isAI && (!this.mission || this.mission.aiLevel !== null)) this.ai.push(new AIController(this.game, p.id));
     this.r = new Renderer(document.getElementById('game') as HTMLCanvasElement, this.game);
     this.hud = new Hud(this);
+    this.outlook = new Outlook(this.r, { yaw: YAW, pitch: PITCH }, () => (this.game.field ? 0 : this.game.dayT));
     this.input = new Input(this);
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -162,6 +166,7 @@ export class App {
     if (this.sel.some((id) => !game.entities.has(id))) this.sel = this.sel.filter((id) => game.entities.has(id));
 
     this.input.update(dt);
+    this.outlook.update(dt);
     this.r.frame(this.paused ? 1 : this.acc / DT, dt, this.sel);
     this.input.draw();
     this.hud.update(dt);
@@ -402,21 +407,25 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   }
 
   // ---- Settings kept between visits ----
-  const prefs = { volume: 0.5, music: true, edge: true, scroll: 1, ...JSON.parse((() => { try { return localStorage.getItem('rtsv-prefs') ?? '{}'; } catch { return '{}'; } })()) };
+  const prefs = { volume: 0.5, music: true, edge: true, scroll: 1, day: 300, night: true, lights: true, ...JSON.parse((() => { try { return localStorage.getItem('rtsv-prefs') ?? '{}'; } catch { return '{}'; } })()) };
   const applyPrefs = () => {
     sfx.setVolume(prefs.volume);
     sfx.music = prefs.music;
     app.input.edgeScroll = prefs.edge;
     app.input.scrollSpeed = prefs.scroll;
+    // The day is the player's to set: how long it lasts, whether night falls, and whether lamps cast real light.
+    app.game.dayLength = DAY_LENGTHS.includes(prefs.day) ? prefs.day : 300;
+    app.game.nightless = !prefs.night;
+    app.r.lamplight = prefs.lights;
     try { localStorage.setItem('rtsv-prefs', JSON.stringify(prefs)); } catch { /* storage unavailable */ }
   };
-  const bind = (id: string, key: 'volume' | 'scroll' | 'music' | 'edge') => {
+  const bind = (id: string, key: 'volume' | 'scroll' | 'music' | 'edge' | 'day' | 'night' | 'lights') => {
     const input = el(id) as HTMLInputElement;
     if (input.type === 'checkbox') input.checked = prefs[key] as boolean;
     else input.value = String(prefs[key]);
     input.addEventListener('input', () => { (prefs[key] as number | boolean) = input.type === 'checkbox' ? input.checked : Number(input.value); applyPrefs(); });
   };
-  bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll');
+  bind('pref-volume', 'volume'); bind('pref-music', 'music'); bind('pref-edge', 'edge'); bind('pref-scroll', 'scroll'); bind('pref-day', 'day'); bind('pref-night', 'night'); bind('pref-lights', 'lights');
   mountDetailSetting();
   applyPrefs();
 
