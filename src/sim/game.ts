@@ -6,6 +6,7 @@ import {
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
+import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
 import { calamity, douse } from './calamity';
@@ -210,7 +211,7 @@ export interface Projectile {
 export interface Stats { gathered: number; trained: number; born: number; kills: number; lost: number; razed: number; buildingsLost: number }
 const newStats = (): Stats => ({ gathered: 0, trained: 0, born: 0, kills: 0, lost: 0, razed: 0, buildingsLost: 0 });
 
-export interface Player {
+export interface Player extends HallState {
   /** The nation's leader as made in the creator, and the veterancy they will take the field with next. */
   hero?: HeroSpec; heroRank?: number;
   /** Their leader has fallen in this battle; and the one leading now is a soldier raised in their place. */
@@ -314,6 +315,9 @@ export interface PlayerSetup {
 
 /** How a raider's taking of someone is set down in their record. */
 const raidWord = (u: Unit): string => (u.def.slaver ? 'Seized by slavers' : 'Carried off by raiders');
+
+/** Seconds between one look at who is beaten and the next. */
+const VICTORY_STEP = 1;
 
 export class Game {
   size: number;
@@ -488,6 +492,8 @@ export class Game {
         }
         // A people left with nothing but walls raise a hall again rather than fall without a blow.
         if (!field && !this.raider(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && !b.def.wall)) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        // A town whose hall was razed in an earlier siege has a while to begin another before it counts as beaten.
+        if (!field && !this.raider(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && b.type === 'towncenter')) { p.hadHall = true; p.hallDue = RAZED_GRACE; p.razedStart = true; }
         // Works the land is known for are raised if they are not there already.
         const have: Record<string, number> = {};
         for (const b of this.buildings) if (b.owner === i && b.complete) have[b.type] = (have[b.type] ?? 0) + 1;
@@ -2214,8 +2220,19 @@ export class Game {
     if (this.field) { for (const u of this.units) if (this.isMilitary(u)) alive.add(u.owner); }
     else {
       for (const b of this.buildings) if (!b.def.wall) alive.add(b.owner);
+      // A people with no Town Center, and none begun in the time it has, is beaten (see beaten.ts).
+      const fallen = new Set<number>();
+      for (const p of this.players) {
+        if (p.neutral || p.defeated) continue; // a war band that has never raised a hall has no clock: hallClock sees to that
+        const news = hallClock(p, this.buildings.some((b) => b.owner === p.id && b.type === 'towncenter' && !b.dead), this.time, VICTORY_STEP, !this.units.some((u) => u.owner === p.id && this.isMilitary(u)));
+        if (news === 'beaten') { alive.delete(p.id); fallen.add(p.id); }
+        else if (news === 'lost' || news === 'warn') {
+          this.msg(p.id, `Your last Town Center has fallen. Begin another within ${hallLeft(p, this.time)} seconds or your people are beaten.`);
+          if (news === 'lost') for (const q of this.players) if (!q.neutral && q.id !== p.id && this.hostile(q.id, p.id)) this.msg(q.id, `${p.name} have lost their last Town Center. Keep them from raising another for ${hallLeft(p, this.time)} seconds and they are beaten.`);
+        } else if (news === 'raised') this.msg(p.id, 'A Town Center is begun. Your people hold on.');
+      }
       // A raiding band has no town to lose: it is beaten when its last fighter or villager falls.
-      for (const u of this.units) if (!alive.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
+      for (const u of this.units) if (!alive.has(u.owner) && !fallen.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
     }
     for (const p of this.players) {
       if (!p.defeated && !p.neutral && !alive.has(p.id)) {

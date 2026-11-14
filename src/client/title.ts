@@ -2,6 +2,7 @@
 
 import type { App } from './main';
 import { PITCH, YAW } from './renderer';
+import { primerHtml } from './primer';
 import { sfx } from './sfx';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -119,6 +120,8 @@ export class Title {
     // How to play is the same page the game shows behind its help button.
     const howto = this.panel.querySelector('[data-for="howto"]')!;
     howto.append(document.querySelector('#start .cols')!.cloneNode(true));
+    // The campaign has a page of its own beneath it, the same one its screen opens.
+    howto.insertAdjacentHTML('beforeend', '<h2 class="primer-h">The campaign</h2>' + primerHtml());
 
     const menu = $('t-menu');
     menu.addEventListener('click', (e) => {
