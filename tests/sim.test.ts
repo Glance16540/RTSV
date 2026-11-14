@@ -700,7 +700,7 @@ describe('conquest campaign', () => {
         l.lines[ev].forEach((_, i) => keys.add(lineKey(l.civ, ev, i)));
       }
     }
-    expect(keys.size).toBe(520);
+    expect(keys.size).toBe(600);
     expect(keys.has('steppe_attack_2')).toBe(true);
     // In a campaign: the player attacks a rival, wins, and finally wipes them out.
     const c = newCampaign(7, 1);
@@ -1463,7 +1463,7 @@ describe('alliances and dominion', () => {
     expect(ok).toBe(true);
     expect(c.ally).toBe(1);
     expect(c.speech.some((s) => s.event === 'ally')).toBe(true);
-    expect(c.factions[0].supplies).toBe(40 - TRUCE_COST - ALLIANCE_COST);
+    expect(c.factions[0].supplies).toBe(40 - truceCost(c.factions[0].civ) - ALLIANCE_COST); // whoever the seed made the player: the Abbasids pay less
     expect(canAlly(c, 2)).toBe(false); // one alliance at a time
     c.truces = [];
     expect(atTruce(c, 0, 1)).toBe(true); // an alliance does not run out
@@ -2424,7 +2424,7 @@ describe('children who live to grow up', () => {
 
 describe('the thirteen nations', () => {
   it('every nation is complete: bonuses, two units of its own with a place to train them, a leader with every line, and campaign rules', () => {
-    expect(CIV_IDS.length).toBe(13);
+    expect(CIV_IDS.length).toBe(15);
     for (const id of CIV_IDS) {
       const civ = CIVS[id];
       expect(civ.bonuses.length).toBeGreaterThan(0);
@@ -2442,8 +2442,8 @@ describe('the thirteen nations', () => {
       expect(g.players[0].civ).toBe(id);
       expect(newCampaign(4, 2, 1, id).factions[0].civ).toBe(id);
     }
-    expect(new Set(CIV_IDS.map((id) => CIVS[id].name)).size).toBe(13);
-    expect(new Set(CIV_IDS.map((id) => LEADERS[id].name)).size).toBe(13);
+    expect(new Set(CIV_IDS.map((id) => CIVS[id].name)).size).toBe(15);
+    expect(new Set(CIV_IDS.map((id) => LEADERS[id].name)).size).toBe(15);
   });
 
   it('the new nations\' units and campaign rules do what they say', () => {
@@ -2498,7 +2498,7 @@ describe('men and women as leaders', () => {
       expect(lines.intro[0]).not.toBe(l.lines.intro[0]);
       for (const e of LEADER_EVENTS) for (const t of lines[e]) expect(l.lines[e]).not.toContain(t);
     }
-    expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(13);
+    expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(15);
     expect(leaderOf('england')!.name).toBe('Earl Godric of Wessex');
     setLeaderPersona('england', true);
     expect(leaderOf('england')!.name).toBe('Countess Edith of Wessex');

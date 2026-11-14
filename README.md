@@ -47,7 +47,7 @@ left in peace, each farm of the farmers makes room for one more villager, the sc
 technology they learn, the faithful are healed and cured round their Church, the traders' Markets earn gold by
 themselves, and a warrior strikes harder for every foe he has killed (every soldier's kills are shown on his panel).
 
-**Thirteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
+**Fifteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
 pious or decadent: that is decided by how they are ruled, not by who they are.
 
 | People | Bonuses | Only they train |
@@ -65,6 +65,8 @@ pious or decadent: that is decided by how they are ruled, not by who they are.
 | English | Farms +10%, towers hit harder | Longbowman (Iron Age): out-ranges other archers; Billman (Middle Ages): bane of cavalry |
 | Abbasids | Cavalry 10% faster, research 10% cheaper | Camel Rider: rides down cavalry; Mameluke (Middle Ages): strikes from a few paces off |
 | Japanese | Soldiers +1 attack, villagers gather 5% faster | Samurai (Iron Age): quick, deadly to infantry; Ashigaru Gunner (Gunpowder Age): cheap matchlock |
+| Malians | Villagers carry 2 more, cavalry 10% cheaper | Sofa Archer: poisoned arrows, deadly to infantry; Mandekalu Horseman (Iron Age): quilted armour turns missiles |
+| Kushites | Towers shoot 1 tile further, game, berries and fish gathered 20% faster | Bowman of Ta-Seti: out-shoots other bowmen of his age; Guard of Meroe (Iron Age): fights harder near home |
 
 **Generations.** Villagers grow old: after a long working life they slow down as elders and
 eventually die, so a village lasts only as long as its families keep raising children. A child of

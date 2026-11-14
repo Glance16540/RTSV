@@ -267,7 +267,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     mission.init(game);
   }
   // The country a battle is fought in: chosen, or the homeland of whoever holds the ground.
-  const HOMELAND: Record<string, Climate> = { egypt: 'desert', arabs: 'desert', babylon: 'desert', persia: 'desert', dawn: 'desert', steppe: 'steppe', wild: 'snow' };
+  const HOMELAND: Record<string, Climate> = { egypt: 'desert', arabs: 'desert', babylon: 'desert', persia: 'desert', dawn: 'desert', steppe: 'steppe', wild: 'snow', mali: 'steppe', kush: 'desert' };
   const asked = params.get('climate') ?? 'auto';
   const climateOf = (civ: string): Climate => (['temperate', 'desert', 'steppe', 'snow'].includes(asked) ? (asked as Climate) : HOMELAND[civ] ?? 'temperate');
   // Skirmishes and campaign battles are fought over hills and mountains; `?flat=1` gives the old level ground.
