@@ -2416,7 +2416,7 @@ describe('children who live to grow up', () => {
     expect(holy.missed / holy.due).toBeLessThan(0.08);
     expect(fallen.missed / fallen.due).toBeGreaterThan(0.15);
     expect(holy.born).toBeGreaterThan(fallen.born); // and the faithful have more of them to begin with
-  });
+  }, 30000); // a long battle: 5.3 s on a slow machine against the default 5 s
 });
 
 describe('the thirteen nations', () => {
