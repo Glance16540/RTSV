@@ -147,6 +147,9 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   never the last four. After four minutes plague breaks out around the Town Center.
   Food in the store ends it at once. A war band with no hall does not starve.
   The warning says what the town can do (what its Market sells food for, or that it has none), and allies are told.
+- *A failed harvest* (`leanYear` in `src/sim/famine.ts`): about once in ten minutes, by chance, half of an
+  ordinary town's fields grow nothing for two minutes. Twice as often in a dust storm, never in heavy rain. A town
+  with food laid by rides it out; one living from field to mouth goes hungry.
 - *Plague from outside* (`src/sim/contagion.ts`): plague now passes between peoples. Anyone standing close to
   another people's sick may catch it, so a plagued army carries it into the town it attacks, and a Prophet's plague
   can come home with those who fight its victims. In a transport's hold one sick passenger gives it to the rest.
@@ -157,7 +160,7 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   decadent than the holy. One measure governs all three, applied both to how often a thing comes and to how bad
   it is: a third for the Righteous, a half for the Devout, a quarter more for the Worldly, half again for the
   Decadent. It covers how readily plague is caught and how long it lasts, how often lightning and accident find a
-  town and how long those fires burn, how readily fire spreads, and how fast a famine takes people. It does not
+  town and how long those fires burn, how readily fire spreads, how often a harvest fails and on how many fields, and how fast a famine takes people. It does not
   soften what an enemy does directly: a Prophet's fire burns the building it falls on for as long as ever.
 
 **Unique units.** War Mammoth (tramples everything around its target), Shaman (heals and cures
