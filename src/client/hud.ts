@@ -4,6 +4,7 @@ import { isHoly } from '../sim/creed';
 import { fighting } from '../sim/calamity';
 import { MAX_RANK, RANK_NAMES, RANK_XP, HOLY_GUARD } from '../sim/hero';
 import { powersHeld } from '../sim/powers';
+import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
@@ -275,6 +276,11 @@ export class Hud {
           }
         }
       }
+      // The leader is dead: a soldier who has made a name can be raised in their place.
+      if (units.length === 1 && game.canAcclaim(pid, units[0])) {
+        const who = units[0];
+        out.push({ id: 'acclaim', icon: ico('warlord', '♛'), name: 'Raise on the shields', desc: `${who.name || 'This soldier'} becomes your leader: a Warlord, ${RANK_NAMES[rankForKills(who.kills ?? 0)]} for the ${who.kills} they have felled. The old leader's line ends here.`, act: () => { game.cmdAcclaim(pid, who.id); } });
+      }
       if (!units.every((u) => u.type === 'villager')) {
         while (out.length < 5) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
         const stances: [Stance, string, string, string][] = [
@@ -470,6 +476,7 @@ export class Hud {
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
       if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
       if (e.kills) extra += `<div${game.veteran(e) > 1 ? ' class="good"' : ''}>⚔️ ${e.kills} ${e.kills === 1 ? 'kill' : 'kills'}${game.veteran(e) > 1 ? `: a veteran, +${Math.round((game.veteran(e) - 1) * 100)}% damage` : ''}</div>`;
+      if (!e.hero && !e.merc && canLead(d.cls) && (e.kills ?? 0) >= CHAMPION_KILLS) extra += `<div class="hint">♛ Has made a name: if your leader falls, ${game.canAcclaim(e.owner, e) ? 'they can be raised to lead now' : 'they can be raised to lead'}.</div>`;
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
       // A villager's record: who they are and what has befallen them, set down like the entries on a form.
@@ -591,8 +598,11 @@ export class Hud {
       ['Build a House', 'Select a villager, press Q, then click a spot near the Town Center.', mine.some((b) => b.type === 'house' && b.complete)],
       ['Start a family', 'Select the house and press Q, or right-click it with a man and a woman.', mine.some((b) => b.residents.m && b.residents.f)],
       ['Grow to 10 people', 'Train villagers at the Town Center (H) and let your families raise children.', p.pop >= 10],
+      // Where there is water to fish and fight on, the Dock is taught while the town is still small.
+      ...(game.sea ? [['Take to the water', 'Villager → Dock, set at the water\'s edge. Select it to build a fishing boat, and later warships and transports.', units.some((u) => u.def.naval)] as [string, string, boolean]] : []),
       ['Raise an army', 'Villager → Military buildings (V) → Barracks, then train three soldiers.', units.filter((u) => game.isMilitary(u)).length >= 3],
       ['Advance to the Bronze Age', 'Select the Town Center (H) and press T once you have the food and wood.', p.age >= 1],
+      ['Choose what your town believes', 'Villager → Church or Tavern, then right-click it with villagers to station them inside. A Church makes your people pious, a Tavern decadent, and each changes what your town is good at.', mine.some((b) => (b.type === 'temple' || b.type === 'tavern') && b.complete && (b.staff?.length ?? 0) > 0)],
       ['Destroy your rivals', 'Scout with soldiers, then select your army, press Q and click their base.', game.winner === pid],
     ];
     const i = steps.findIndex((s) => !s[2]);

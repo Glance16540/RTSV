@@ -5,6 +5,7 @@ import { CIVS, CIV_IDS, UNITS, AGES, styleOf } from '../sim/data';
 import { DT, Game, GameEvent, SAVE_VERSION } from '../sim/game';
 import { artUrl, loadAssets, musicUrl } from './assets';
 import { loader, playOpening, Title } from './title';
+import { CampaignPrimer } from './primer';
 import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
@@ -373,7 +374,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // What the victor has standing stays standing: it is that land's town the next time it is fought over.
       const holder = won ? app.pid : 1;
       const town = cfg.field ? undefined : app.game.standing(holder);
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, champion: app.game.champion(app.pid) ?? undefined, town, ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -436,8 +437,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
-      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, town: r.town, ground: r.ground });
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; champion?: { name: string; kills: number; unit: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] } };
+      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, champion: r.champion, town: r.town, ground: r.ground });
       if (c.phase === 'ai') continueAI(c);
     }
     const fresh = !c;
@@ -446,8 +447,10 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     // The leader you have made for this people leads them here too; change them and the change holds from the next battle.
     state.factions[0].hero ??= savedHero(state.factions[0].civ);
     el('ow-hero').addEventListener('click', () => openHeroCreator(state.factions[0].civ, (h) => { state.factions[0].hero = h ?? undefined; writeCampaign(state); }));
+    // The first orders are told of every change by the same call that saves it.
+    let primer: CampaignPrimer | null = null;
     const ow = new Overworld(state, {
-      save: () => writeCampaign(state),
+      save: () => { writeCampaign(state); primer?.update(); },
       fight: () => { writeCampaign(state); go('?battle=1'); },
       newCampaign: (r, l, civ, leader) => {
         const made = newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined);
@@ -457,6 +460,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       exit: () => go(''),
     });
     // No campaign yet: first choose a people and who leads them.
+    primer = new CampaignPrimer(state);
     if (fresh) ow.askNew(true);
   }
 

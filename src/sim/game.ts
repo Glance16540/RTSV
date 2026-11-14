@@ -16,6 +16,7 @@ import { Pathfinder, rectDist } from './path';
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
 import { leaderAsMade, leaderDef, powersHeld } from './powers';
+import { CHAMPION_KILLS, Champion, canLead, championName, championSpec, rankForKills } from './champion';
 import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
@@ -213,6 +214,8 @@ const newStats = (): Stats => ({ gathered: 0, trained: 0, born: 0, kills: 0, los
 export interface Player extends HallState {
   /** The nation's leader as made in the creator, and the veterancy they will take the field with next. */
   hero?: HeroSpec; heroRank?: number;
+  /** Their leader has fallen in this battle; and the one leading now is a soldier raised in their place. */
+  heroFell?: boolean; acclaimed?: boolean;
   id: number;
   name: string;
   color: number;
@@ -676,6 +679,7 @@ export class Game {
         this.players[e.owner].heroRank = Math.max(0, e.hero.rank - 1);
         this.players[e.owner].hero = { ...this.heroOf(e.owner), name: heirName(e.name) };
         this.leaders[e.owner] = null;
+        this.players[e.owner].heroFell = true;
         this.msg(e.owner, `${e.name} has fallen.`);
       }
       const shelter = this.entities.get(e.inside);
@@ -2910,6 +2914,8 @@ export class Game {
       const s = this.players[owner].stats, ts = tp.stats;
       const killer = by ? this.entities.get(by) : undefined;
       if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) killer.kills = (killer.kills ?? 0) + 1;
+      // One who has felled enough is known by name from then on.
+      if (killer && killer.kind === 'unit' && !killer.name && !killer.hero && !killer.merc && canLead(killer.def.cls) && (killer.kills ?? 0) >= CHAMPION_KILLS && killer.owner !== this.wild) killer.name = championName(killer.id);
       if (t.kind === 'unit') { s.kills++; ts.lost++; } else { s.razed++; ts.buildingsLost++; }
       this.deed(owner, t);
       this.kill(t);
@@ -2944,6 +2950,35 @@ export class Game {
   }
 
   // ---- Buildings ----
+
+  /** Could this soldier be raised to lead? Only when the leader has fallen and nobody has taken their place. */
+  canAcclaim(owner: number, u: Unit): boolean {
+    const p = this.players[owner];
+    return !!p && !!p.heroFell && u.owner === owner && !u.dead && !u.hero && !u.merc && !u.inside && !u.captive && canLead(u.def.cls) &&
+      (u.kills ?? 0) >= CHAMPION_KILLS && !this.units.some((o) => o.owner === owner && o.hero);
+  }
+  /** Raise a soldier on the shields: they are the leader now, a Warlord, with a rank for every three they have felled. */
+  cmdAcclaim(owner: number, id: number): boolean {
+    const u = this.entities.get(id);
+    if (!u || u.kind !== 'unit' || !this.canAcclaim(owner, u)) return false;
+    const p = this.players[owner], old = this.heroOf(owner).name;
+    u.name ||= championName(u.id);
+    p.hero = championSpec(u.name);
+    p.heroRank = rankForKills(u.kills ?? 0);
+    p.acclaimed = true;
+    this.reequip(u, 'warlord');
+    u.hero = { xp: RANK_XP[p.heroRank], rank: p.heroRank };
+    this.fitLeader(u);
+    this.leaders[owner] = u;
+    this.msg(owner, `${u.name} is raised on the shields to lead in ${old.replace(/ (II|III|IV|V|VI|VII|VIII|IX|X)$/, '')}'s place.`);
+    return true;
+  }
+  /** The soldier of a player's with the most kills to their name, if any has made one. */
+  champion(owner: number): Champion | null {
+    let best: Unit | null = null;
+    for (const u of this.units) if (u.owner === owner && !u.hero && !u.merc && canLead(u.def.cls) && (u.kills ?? 0) >= CHAMPION_KILLS && (!best || (u.kills ?? 0) > (best.kills ?? 0))) best = u;
+    return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name } : null;
+  }
 
   /** Turn a unit into another type, keeping its place, orders and share of health. */
   private reequip(u: Unit, type: string): void {

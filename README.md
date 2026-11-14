@@ -226,6 +226,11 @@ swings the camera round to the game's view and play begins. The opening is playe
 a battle, the making of a leader) and the campaign's side page are on the same paper; their styles are
 the last block of `src/client/style.css`.
 
+**Teaching.** Every battle has a first-steps guide. The campaign has its own: a slip of *first orders*
+over the map, each marked done by what the player has done, and a page, *How the campaign works*, which
+opens from the slip and stands under *How to play* on the main menu. The orders and the page are worked
+out from the campaign's rules in `src/sim/primer.ts` and drawn by `src/client/primer.ts`.
+
 The main menu also has **Settings** (volume, music, edge scrolling, scroll speed) and a switch
 for whether villagers grow old.
 
