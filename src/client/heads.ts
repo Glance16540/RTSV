@@ -97,6 +97,39 @@ function recast(p: number[], fig: Sculpt, c: (typeof CASTS)[number]): Float32Arr
   return out;
 }
 
+/**
+ * The upper face is cast separately, so that the two together make many faces from one: how far apart the eyes are
+ * set and how large they are, how broad the cheekbones, how heavy the ridge of the brow, and the brows themselves,
+ * higher or lower, arched or level, heavy or fine.
+ */
+const UPPERS: { set: number; cheek: number; ridge: number; eye: number; up: number; tilt: number; thick: number }[] = [
+  { set: 0, cheek: 0, ridge: 0, eye: 1, up: 0, tilt: 0, thick: 1 },
+  { set: 0.0026, cheek: 0.055, ridge: 0.003, eye: 0.93, up: -0.0016, tilt: -0.07, thick: 1.3 },
+  { set: -0.0022, cheek: -0.045, ridge: -0.0012, eye: 1.08, up: 0.0022, tilt: 0.06, thick: 0.72 },
+  { set: 0.0012, cheek: 0.075, ridge: 0, eye: 1.02, up: 0.0012, tilt: 0.11, thick: 0.9 },
+  { set: -0.0012, cheek: -0.02, ridge: 0.0022, eye: 0.96, up: -0.001, tilt: -0.035, thick: 1.12 },
+];
+/** Recast the upper face of one piece of a head: its skin, its eyes or its brows, each moved by the same rule so they stay together. */
+function upper(out: Float32Array, fig: Sculpt, u: (typeof UPPERS)[number], kind: 'skin' | 'eyes' | 'brows'): Float32Array {
+  let mx = 0, my = 0, mz = 0, lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < out.length; i += 3) {
+    let x = out[i]; const y = out[i + 1]; let z = out[i + 2];
+    const side = Math.sign(x) || 1, ax = Math.abs(x), front = ease(fig.eyeZ - 0.09, fig.eyeZ - 0.03, z);
+    x += side * u.set * Math.exp(-(((ax - 0.033) / 0.03) ** 2 + ((y - fig.eyeY) / 0.028) ** 2)) * front;
+    x *= 1 + u.cheek * Math.exp(-(((y - (fig.eyeY - 0.028)) / 0.028) ** 2)) * ease(0.02, 0.06, ax) * front;
+    if (kind !== 'eyes') z += u.ridge * Math.exp(-(((y - (fig.eyeY + 0.02)) / 0.014) ** 2)) * front;
+    out[i] = x; out[i + 2] = z;
+    mx += Math.abs(x); my += y; mz += z; lo = Math.min(lo, y); hi = Math.max(hi, y);
+  }
+  const n = out.length / 3; mx /= n; my /= n; mz /= n;
+  if (kind === 'eyes') for (let i = 0; i < out.length; i += 3) {
+    const side = Math.sign(out[i]) || 1;
+    out[i] = side * mx + (out[i] - side * mx) * u.eye; out[i + 1] = my + (out[i + 1] - my) * u.eye; out[i + 2] = mz + (out[i + 2] - mz) * u.eye - (u.eye - 1) * 0.012;
+  }
+  if (kind === 'brows') { const mid = (lo + hi) / 2; for (let i = 0; i < out.length; i += 3) out[i + 1] = mid + (out[i + 1] - mid) * u.thick + u.up + u.tilt * (Math.abs(out[i]) - 0.035); }
+  return out;
+}
+
 /** A child's eyes are large in the face, and the brows over them fine: each eye is grown about its own middle, the brows thinned about theirs. */
 function childEyes(p: number[], grow: number): Float32Array {
   const out = new Float32Array(p);
@@ -161,6 +194,8 @@ export function sculptedHead(female: boolean, skin: number, hair: number, beard:
   // The picture is the face at half strength over its own average, so twice the person's colour gives it back in that colour.
   if (!sm) skins.set(key, (sm = new THREE.MeshStandardMaterial({ map: child ? childSkin() : pics.get('head_' + tag), color: new THREE.Color(skin).multiply(new THREE.Color(2.2, 2.08, 2.0)), roughness: 0.85 })));
   const cast = child ? 'c' : Math.abs(seed >> 3) % CASTS.length, shape = child ? CHILD : CASTS[cast as number];
+  // The upper face goes by other figures of the same number, so that it does not march in step with the lower.
+  const up = child ? 0 : Math.abs(seed * 13 + 5) % UPPERS.length, brow = UPPERS[up];
   // Hair is the same: a picture of the strands in light and shade, under the person's own colour. There are two sheets of it.
   const strands = (sheet: 1 | 2): THREE.Material => {
     const k = sheet + '|' + hair;
@@ -169,16 +204,20 @@ export function sculptedHead(female: boolean, skin: number, hair: number, beard:
     return m;
   };
   const g = new THREE.Group();
-  const add = (k: string, piece: Piece, m: THREE.Material, recastIt = false): void => {
-    const key = recastIt ? `${k}|${tag}${cast}` : k;
-    const mesh = new THREE.Mesh(geo(key, piece, recastIt && cast && !geos.has(key) ? recast(piece.p, fig, shape) : undefined), m);
+  const add = (k: string, piece: Piece, m: THREE.Material, kind: '' | 'skin' | 'eyes' | 'brows' | 'beard' = ''): void => {
+    const key = kind ? `${k}|${tag}${kind === 'eyes' || kind === 'brows' ? '' : cast}u${kind === 'beard' ? 0 : up}` : k;
+    let shaped: Float32Array | undefined;
+    if (kind && !geos.has(key)) {
+      shaped = (kind === 'skin' || kind === 'beard') && cast ? recast(piece.p, fig, shape) : new Float32Array(piece.p);
+      if (kind !== 'beard' && up) upper(shaped, fig, brow, kind);
+    }
+    const mesh = new THREE.Mesh(geo(key, piece, shaped), m);
     mesh.castShadow = true; g.add(mesh);
   };
-  add('skin' + tag, fig.skin, sm, true);
+  add('skin' + tag, fig.skin, sm, 'skin');
   if (child) { g.add(new THREE.Mesh(geo('eyesc', fig.eyes, geos.has('eyesc') ? undefined : childEyes(fig.eyes.p, 1.16)), eyes(Math.abs(seed) % EYES.length)), new THREE.Mesh(geo('browsc', fig.brows, geos.has('browsc') ? undefined : childBrows(fig.brows.p)), strands(2))); }
-  else add('eyes' + tag, fig.eyes, eyes(Math.abs(seed) % EYES.length));
-  if (!child) add('brows' + tag, fig.brows, strands(female ? 2 : 1));
-  if (beard && !female) add('beard', kit.beard, strands(1), true);
+  else { add('eyes' + tag, fig.eyes, eyes(Math.abs(seed) % EYES.length), 'eyes'); add('brows' + tag, fig.brows, strands(female ? 2 : 1), 'brows'); }
+  if (beard && !female) add('beard', kit.beard, strands(1), 'beard');
   if (cut) add('hair' + cut, kit.hair[cut], strands(cut === 'long' || cut === 'buns' ? 2 : 1));
   return { g, fig };
 }
