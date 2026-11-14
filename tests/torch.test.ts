@@ -11,14 +11,13 @@ function figure(weapon = 'sword'): RealPerson {
   fore.position.y = 0.3; hand.position.y = 0.28;
   body.add(arm); arm.add(fore); fore.add(hand);
   body.updateMatrixWorld(true);
-  return { body, bones: new Map<string, THREE.Object3D>([['DEF-upper_armL', arm], ['DEF-forearmL', fore], ['DEF-handL', hand]]), weapon, child: false } as unknown as RealPerson;
+  return { body, bones: new Map<string, THREE.Object3D>([['DEF-upper_armL', arm], ['DEF-forearmL', fore], ['DEF-handL', hand]]), weapon } as unknown as RealPerson;
 }
 
 describe('a torch in the hand', () => {
-  it('is not for those who need both hands, nor for a child', () => {
-    for (const w of ['bow', 'crossbow', 'musket', 'firetube']) expect(canCarryTorch({ weapon: w, child: false }), w).toBe(false);
-    for (const w of ['sword', 'spear', 'pike', 'club', '']) expect(canCarryTorch({ weapon: w, child: false }), w).toBe(true);
-    expect(canCarryTorch({ weapon: 'sword', child: true })).toBe(false);
+  it('is not for those who need both hands', () => {
+    for (const w of ['bow', 'crossbow', 'musket', 'firetube']) expect(canCarryTorch({ weapon: w }), w).toBe(false);
+    for (const w of ['sword', 'spear', 'pike', 'club', '']) expect(canCarryTorch({ weapon: w }), w).toBe(true);
   });
   it('is held up above the shoulder, upright, with its tip where the flame goes', () => {
     const p = figure();
