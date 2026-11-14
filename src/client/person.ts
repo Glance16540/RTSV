@@ -138,6 +138,8 @@ export interface Outfit {
   /** Build: 0 slight, 1 average, 2 heavy; and the chest, 0 small to 2 full (a woman's bust, a man's breadth). */
   girth: 0 | 1 | 2; chest: 0 | 1 | 2;
   skin: number; hair: number; seed: number;
+  /** Which face they have, if it is chosen and not left to the seed. */
+  face?: number;
   /** Cloth on the body and arms; `mail` paints them as ring mail instead. */
   top: number; mail?: boolean; sleeves: 'bare' | 'short' | 'long';
   /** 0 a closed collar, 1 open at the throat, 2 cut low. */
@@ -171,9 +173,11 @@ export interface Outfit {
 }
 
 /** A nation's leader as their maker dressed them: a man or a woman, and whatever of their look was chosen. */
-export function leaderOutfit(o: Outfit, female: boolean, look: { hair?: number; beard?: boolean; helmet?: string; cloak?: number; build?: number } = {}): Outfit {
+export function leaderOutfit(o: Outfit, female: boolean, look: { hair?: number; beard?: boolean; helmet?: string; cloak?: number; build?: number; skin?: number; face?: number } = {}): Outfit {
   const out: Outfit = { ...o, female, beard: !female && (look.beard ?? o.beard), hairStyle: female ? 'long' : o.hairStyle };
   if (look.hair != null) out.hair = look.hair;
+  if (look.skin != null) out.skin = look.skin;
+  if (look.face != null) out.face = look.face;
   if (look.cloak != null) out.cloak = look.cloak;
   if (look.build === 0 || look.build === 1 || look.build === 2) out.girth = look.build;
   if (look.helmet === 'none') { out.helmet = ''; out.hat = ''; }
@@ -668,7 +672,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const crop = !!o.helmet || o.hat === 'cap' || o.hat === 'fur' || o.hat === 'straw' || o.hat === 'turban';
   const hidden = o.hairStyle === 'covered' || o.hat === 'hood';
   const cut = hidden ? null : o.female || o.child ? (crop && o.hat !== 'turban' ? 'buzzedF' : o.child && !o.female ? 'buzzedF' : o.hairStyle === 'long' ? 'long' : o.hairStyle === 'bun' ? 'buns' : 'buzzedF') : crop || o.seed % 3 === 0 ? 'buzzed' : 'parted';
-  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard && !o.child, cut, o.seed, o.child); // a child of either sex has the smoother face: the man's is drawn with a shadow of beard
+  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard && !o.child, cut, o.face ?? o.seed, o.child); // a child of either sex has the smoother face: the man's is drawn with a shadow of beard
   if (sculpt) {
     const F = sculpt.fig, sc = (0.118 / (F.crown - F.eyeY)) * HEAD_FIT;
     // No two heads quite of a size: a little broader or narrower, longer or shorter, by the person.
