@@ -660,7 +660,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const crop = !!o.helmet || o.hat === 'cap' || o.hat === 'fur' || o.hat === 'straw' || o.hat === 'turban';
   const hidden = o.hairStyle === 'covered' || o.hat === 'hood';
   const cut = hidden ? null : o.female || o.child ? (crop && o.hat !== 'turban' ? 'buzzedF' : o.child && !o.female ? 'buzzedF' : o.hairStyle === 'long' ? 'long' : o.hairStyle === 'bun' ? 'buns' : 'buzzedF') : crop || o.seed % 3 === 0 ? 'buzzed' : 'parted';
-  const sculpt = sculptedHead(o.female || o.child, o.skin, o.hair, o.beard, cut, o.seed); // a child of either sex has the smoother face: the man's is drawn with a shadow of beard
+  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard && !o.child, cut, o.seed, o.child); // a child of either sex has the smoother face: the man's is drawn with a shadow of beard
   if (sculpt) {
     const F = sculpt.fig, sc = (0.118 / (F.crown - F.eyeY)) * HEAD_FIT;
     // No two heads quite of a size: a little broader or narrower, longer or shorter, by the person.
@@ -756,7 +756,8 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
       brim.rotation.x = -0.12;
       head.add(brim);
     } else if (o.helmet === 'iron') {
-      head.add(part(geo('nasal', () => new THREE.BoxGeometry(0.02, 0.1, 0.014)), metal, 0, hc.y + hr.y * 0.12, faceAt(eyeY - 0.02, 'mid') + 0.012));
+      // The nose guard: a slim bar from the rim to the bridge of the nose, no further, so the face still shows either side and below.
+      head.add(part(geo('nasal2', () => new THREE.BoxGeometry(0.011, 0.062, 0.009)), metal, 0, hc.y + hr.y * 0.12 + 0.02, faceAt(eyeY - 0.02, 'mid') + (sculpt ? 0.019 : 0.012)));
     } else if (o.helmet === 'bronze') {
       // A crest fore and aft.
       const crest = part(geo('crest', () => new THREE.BoxGeometry(0.022, 0.07, 0.24)), solid(o.skirtColor), 0, hc.y + hr.y * 1.06, hc.z - hr.z * 0.15);

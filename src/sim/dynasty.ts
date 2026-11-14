@@ -5,7 +5,9 @@
 
 import type { Army, Campaign } from './campaign';
 import { NAMES_F, NAMES_M } from './data';
-import { HeroSpec, MAX_RANK, RANK_NAMES, cleanHero } from './hero';
+import { HeroSpec, MAX_RANK, RANK_NAMES } from './hero';
+import { leaderOf } from './leaders';
+import { leaderAsMade } from './powers';
 
 export interface Heir { name: string; female: boolean; born: number }
 export interface House {
@@ -46,10 +48,14 @@ const pick = (c: Campaign, salt: number, n: number): number => {
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
   return ((h ^ (h >>> 16)) >>> 0) % n;
 };
-const leaderOfFaction = (c: Campaign, f: number): HeroSpec => cleanHero(c.factions[f].hero, c.factions[f].civ);
+const leaderOfFaction = (c: Campaign, f: number): HeroSpec => leaderAsMade(c.factions[f].hero, c.factions[f].civ, c.factions[f].isAI);
+/** The name of whoever leads a people now: the one a succession raised, the player's own making, or the leader as written. */
+export const rulerName = (c: Campaign, f: number): string => (c.factions[f].hero ? leaderOfFaction(c, f).name : leaderOf(c.factions[f].civ)?.name ?? leaderOfFaction(c, f).name);
 const say = (c: Campaign, f: number, text: string): void => {
   (c.chronicle ??= []).push({ turn: c.turn, text });
-  if (f === 0) c.log.push(text);
+  // A rival's succession is news too.
+  c.log.push(text);
+  void f;
 };
 const child = (c: Campaign, f: number, house: House, born: number): Heir => {
   const salt = f * 977 + house.line * 131 + house.births * 17;
@@ -136,13 +142,13 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
     fac.hero = { ...old, name: claim.name, female: claim.female, look: { ...old.look, beard: claim.female ? false : old.look?.beard } };
     house.heirs.splice(claim.i, 1);
     hostFor(c, f)!.hero = true;
-    say(c, f, `${claim.name} takes up the rule of the ${fac.id === 0 ? 'people' : fac.name}.`);
+    say(c, f, fac.id === 0 ? `${claim.name} takes up the rule of your people.` : `${old.name} of the ${fac.name} is dead. ${claim.name} rules them now.`);
   } else {
     // A soldier's soldier: strong in the arm, and no house behind them yet.
-    fac.hero = { name: claim.name, female: claim.female, calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, look: {} };
+    fac.hero = { name: claim.name, female: claim.female, calling: 'warlord', bent: 'strength', might: 3, guard: 2, vigour: 1, powers: [0, 1, 1], look: {} };
     house.heirs = [];
     c.armies.find((a) => a.id === claim.i)!.hero = true;
-    say(c, f, `${old.name}'s house is set aside: ${claim.name} is raised on the shields at ${c.territories[c.armies.find((a) => a.id === claim.i)!.at].name}.`);
+    say(c, f, `${old.name}'s house${fac.id === 0 ? '' : ` among the ${fac.name}`} is set aside: ${claim.name} is raised on the shields at ${c.territories[c.armies.find((a) => a.id === claim.i)!.at].name}.`);
   }
   fac.heroRank = claim.rank;
   fac.heroAlive = true;
