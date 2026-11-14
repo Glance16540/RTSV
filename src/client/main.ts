@@ -85,7 +85,7 @@ export class App {
   }
 
   nextIdle(): void {
-    const idle = this.game.units.filter((u) => u.owner === this.pid && u.type === 'villager' && !u.order && u.growT <= 0 && !u.inside);
+    const idle = this.game.units.filter((u) => u.owner === this.pid && u.type === 'villager' && !u.order && !u.inside);
     if (!idle.length) return;
     const u = idle[this.idleI++ % idle.length];
     this.select([u.id]);
@@ -100,7 +100,7 @@ export class App {
   private sound(ev: GameEvent): void {
     const mine = 'player' in ev && ev.player === this.pid;
     if (ev.t === 'age' && mine) sfx.play('age');
-    else if (ev.t === 'alert' && mine) { sfx.play('alert'); const v = this.game.units.find((u) => u.owner === this.pid && u.type === 'villager' && u.growT <= 0 && !u.inside); if (v) bark(this.game, v, 'fear'); }
+    else if (ev.t === 'alert' && mine) { sfx.play('alert'); const v = this.game.units.find((u) => u.owner === this.pid && u.type === 'villager' && !u.inside); if (v) bark(this.game, v, 'fear'); }
     else if (ev.t === 'wonder') sfx.play(mine ? 'age' : 'alert');
     else if (ev.t === 'birth' && mine) sfx.play('birth');
     else if (ev.t === 'grown' && mine) sfx.play('grown');

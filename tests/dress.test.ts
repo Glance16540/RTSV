@@ -3,7 +3,7 @@ import { nationDress, plainDress } from '../src/client/dress';
 import type { Outfit } from '../src/client/person';
 import { CIVS } from '../src/sim/data';
 
-const base = (over: Partial<Outfit> = {}): Outfit => ({ female: false, girth: 1, chest: 1, skin: 0xc89a70, hair: 0x3a2a1a, seed: 7, top: 0x3aa648, sleeves: 'short', neck: 1, legs: 0x6a5238, skirt: 'short', skirtColor: 0x3aa648, hairStyle: 'short', beard: false, helmet: '', plate: false, shield: null, weapon: '', metal: null, child: false, hat: '', hatColor: 0x8a6a48, cloak: null, mantle: false, apron: null, trim: null, ...over });
+const base = (over: Partial<Outfit> = {}): Outfit => ({ female: false, girth: 1, chest: 1, skin: 0xc89a70, hair: 0x3a2a1a, seed: 7, top: 0x3aa648, sleeves: 'short', neck: 1, legs: 0x6a5238, skirt: 'short', skirtColor: 0x3aa648, hairStyle: 'short', beard: false, helmet: '', plate: false, shield: null, weapon: '', metal: null, hat: '', hatColor: 0x8a6a48, cloak: null, mantle: false, apron: null, trim: null, ...over });
 
 describe('each nation dresses its own', () => {
   it('has a dress for every nation, and no two dress a village man alike', () => {
@@ -24,12 +24,8 @@ describe('each nation dresses its own', () => {
       expect(o.apron, civ).toBe(null);
     }
   });
-  it('gives a rider no skirt and a child no hat, cloak or beard', () => {
-    for (const civ of Object.keys(CIVS)) {
-      expect(nationDress(civ, 'rider', base({ skirt: 'none', helmet: 'leather' }), 0x3aa648).skirt, civ).toBe('none');
-      const kid = nationDress(civ, 'villager', base({ child: true }), 0x3aa648);
-      expect([kid.hat, kid.cloak, kid.beard, kid.mantle, kid.child], civ).toEqual(['', null, false, false, true]);
-    }
+  it('gives a rider no skirt', () => {
+    for (const civ of Object.keys(CIVS)) expect(nationDress(civ, 'rider', base({ skirt: 'none', helmet: 'leather' }), 0x3aa648).skirt, civ).toBe('none');
   });
   it('keeps a soldier in his armour and leaves a nation\'s own units alone', () => {
     for (const civ of Object.keys(CIVS)) {

@@ -114,7 +114,6 @@ export interface RealPerson {
   /** Seconds left of flinching from a blow. */
   flinch: number;
   weapon: Weapon;
-  child: boolean;
   /** Seconds of a blow still to play, and whether a blow was under way last frame. */
   strike: number;
   struck: boolean;
@@ -155,8 +154,6 @@ export interface Outfit {
   weapon: Weapon;
   /** The colour of helmet and plate, if not steel: bronze, or lacquer. */
   metal: number | null;
-  /** A child: small, with a child's large head. */
-  child: boolean;
   /** No boots. */
   barefoot?: boolean;
   /** Worn on the head when there is no helmet. */
@@ -210,20 +207,19 @@ export function roleOutfit(role: 'captive' | 'monk' | 'nun' | 'milkmaid' | 'patr
  * freer. `age` is the age the unit belongs to, which sets how well a plain soldier is armoured. `civ` is the nation,
  * which dresses its villagers and plain soldiers its own way (`dress.ts`).
  */
-export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; child?: boolean; naval?: boolean; civ?: string } = { cls: 'villager', age: 0 }): Outfit {
+export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; naval?: boolean; civ?: string } = { cls: 'villager', age: 0 }): Outfit {
   const o = plainOutfit(type, female, color, look, seed, wear, info);
   return info.civ && plainDress(type, NAMED.has(type)) ? nationDress(info.civ, type, o, color) : o;
 }
 /** Units with a dress of their own below. */
 const NAMED = new Set(['clubman', 'spearman', 'marauder', 'swordsman', 'pikeman', 'berserker', 'grenadier', 'slaver', 'slinger', 'javelineer', 'bowman', 'crossbowman', 'musketeer', 'shaman', 'priest', 'prophet', 'herbwife', 'warlord', 'strategist', 'hearthguard', 'zealot', 'shieldbearer', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai', 'firethrower', 'rider', 'knight', 'hussar', 'lancer', 'horsearcher', 'wolfrider', 'templar', 'companion', 'camelrider', 'mameluke', 'chariot', 'warchariot', 'longbowman', 'ashigaru']);
-function plainOutfit(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; child?: boolean; naval?: boolean }): Outfit {
+function plainOutfit(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; naval?: boolean }): Outfit {
   const s = Math.abs(seed | 0);
   const pick = (k: number): 0 | 1 | 2 => ([1, 0, 1, 2, 1, 1, 2, 0, 1][(s >> k) % 9] as 0 | 1 | 2);
   const fighter = info.cls === 'infantry' || info.cls === 'hero';
-  const base: Outfit = { female, girth: fighter ? (Math.max(1, pick(2)) as 1 | 2) : pick(2), chest: fighter ? 2 : pick(5), skin: look.skin, hair: look.hair, seed: s, top: color, sleeves: 'short', neck: 0, legs: [0x6a5238, 0x54483c, 0x7a6a4c, 0x4a4238][s % 4], skirt: 'short', skirtColor: color, hairStyle: 'short', beard: !female && s % 3 === 0, helmet: '', plate: false, shield: null, weapon: '', metal: null, child: false, hat: '', hatColor: 0x8a6a48, cloak: null, mantle: false, apron: null, trim: null };
+  const base: Outfit = { female, girth: fighter ? (Math.max(1, pick(2)) as 1 | 2) : pick(2), chest: fighter ? 2 : pick(5), skin: look.skin, hair: look.hair, seed: s, top: color, sleeves: 'short', neck: 0, legs: [0x6a5238, 0x54483c, 0x7a6a4c, 0x4a4238][s % 4], skirt: 'short', skirtColor: color, hairStyle: 'short', beard: !female && s % 3 === 0, helmet: '', plate: false, shield: null, weapon: '', metal: null, hat: '', hatColor: 0x8a6a48, cloak: null, mantle: false, apron: null, trim: null };
   const leather = 0x7a5232, hide = 0x8a6a48, linen = 0xe8e0cc;
   if (type === 'villager') {
-    if (info.child) return { ...base, child: true, girth: 0, chest: 0, beard: false, skirt: female ? 'long' : 'short', hairStyle: female ? 'long' : 'short', legs: female ? 0xd8cdb8 : base.legs };
     if (!female) return { ...base, sleeves: s % 3 === 1 ? 'long' : 'short', neck: 1, hat: s % 5 === 2 ? 'straw' : '' };
     return { ...base, skirt: 'long', apron: wear === 3 ? null : 0xe2d8c0, legs: 0xd8cdb8, sleeves: wear === 1 ? 'long' : wear >= 2 ? 'bare' : 'short', neck: wear === 3 ? 2 : wear === 2 ? 1 : 0, hairStyle: wear === 1 ? 'covered' : s % 2 ? 'long' : 'bun' };
   }
@@ -323,7 +319,7 @@ function neckline(o: Outfit, x: number): number {
 function trunk(o: Outfit, y: number): { kx: number; kz: number; belly: number } {
   const fat = [-0.07, 0, 0.13][o.girth];
   let kx = 1, kz = 1;
-  if (o.female && !o.child) {
+  if (o.female) {
     // A smaller ribcage, drawn well in at the waist, wide at the hip.
     const waist = bump(y, 1.13, 0.16), hip = bump(y, 0.9, 0.2), ribs = Math.min(1, Math.max(0, (y - 1.18) / 0.12));
     kx = 1 - waist * 0.2 + hip * 0.14 - ribs * 0.1; kz = 1 - waist * 0.14 + hip * 0.1 - ribs * 0.06;
@@ -340,7 +336,6 @@ function trunk(o: Outfit, y: number): { kx: number; kz: number; belly: number } 
  * across the breastbone so there is no cleft cut between them.
  */
 function bust(o: Outfit, x: number, y: number): number {
-  if (o.child) return 0;
   const size = [0.048, 0.068, 0.09][o.chest], at = 1.325 - size * 0.22;
   const dy = (y - at) / (y < at ? 0.055 + size * 0.2 : 0.12), dx = (Math.abs(x) - 0.07) / (0.062 + size * 0.2);
   // A dome, not a peak: full across its middle and falling away at its edge.
@@ -603,7 +598,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   if (!source) return null;
   const body = cloneSkinned(source.scene);
   body.updateMatrixWorld(true);
-  const key = [o.female, o.child, !!o.barefoot, o.girth, o.chest, o.skirt, o.skirtColor, o.skin, o.hair, o.top, o.mail, o.sleeves, o.neck, o.legs].join('|');
+  const key = [o.female, !!o.barefoot, o.girth, o.chest, o.skirt, o.skirtColor, o.skin, o.hair, o.top, o.mail, o.sleeves, o.neck, o.legs].join('|');
   let n = 0;
   const meshes: THREE.SkinnedMesh[] = [];
   const bones = new Map<string, THREE.Object3D>();
@@ -665,14 +660,14 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const sk = new THREE.Color(o.skin), rimT = Math.min(1, Math.max(0, (0.24 - (sk.r * 0.3 + sk.g * 0.6 + sk.b * 0.1)) / 0.2)), rimM = solid(sk.clone().lerp(new THREE.Color(0xe6dccc), 0.2 + rimT * 0.45).getHex());
   const mouthY = eyeY - 0.072;
   // A sculpted head, where there is one: set so its crown and its eyes fall where this figure's are, and a touch large.
-  // Hair of the kit's own goes with it, unless the head is covered. A boy wears the short cut made for the smoother head.
+  // Hair of the kit's own goes with it, unless the head is covered.
   const bare = !o.helmet && o.hairStyle !== 'covered' && o.hat !== 'hood' && o.hat !== 'cap' && o.hat !== 'fur';
   // Under a helmet, a cap or a fur hat the cropped cut shows at the temples and the nape; under a straw hat or a turban too,
   // which a fuller head of hair would stand up through. A hood or a coif covers the hair altogether.
   const crop = !!o.helmet || o.hat === 'cap' || o.hat === 'fur' || o.hat === 'straw' || o.hat === 'turban';
   const hidden = o.hairStyle === 'covered' || o.hat === 'hood';
-  const cut = hidden ? null : o.female || o.child ? (crop && o.hat !== 'turban' ? 'buzzedF' : o.child && !o.female ? 'buzzedF' : o.hairStyle === 'long' ? 'long' : o.hairStyle === 'bun' ? 'buns' : 'buzzedF') : crop || o.seed % 3 === 0 ? 'buzzed' : 'parted';
-  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard && !o.child, cut, o.face ?? o.seed, o.child); // a child of either sex has the smoother face: the man's is drawn with a shadow of beard
+  const cut = hidden ? null : o.female ? (crop && o.hat !== 'turban' ? 'buzzedF' : o.hairStyle === 'long' ? 'long' : o.hairStyle === 'bun' ? 'buns' : 'buzzedF') : crop || o.seed % 3 === 0 ? 'buzzed' : 'parted';
+  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard, cut, o.face ?? o.seed);
   if (sculpt) {
     const F = sculpt.fig, sc = (0.118 / (F.crown - F.eyeY)) * HEAD_FIT;
     // No two heads quite of a size: a little broader or narrower, longer or shorter, by the person.
@@ -688,7 +683,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     const ex = sx * 0.033;
     // One dark almond with a point of light: no white to stare with, and nothing set in front of anything else to slide about as the head turns.
     const eye = part(geo('eye', () => new THREE.SphereGeometry(0.0128, 12, 8)), iris, ex, eyeY - 0.0004, ez - 0.0042);
-    const big = o.child ? 1.22 : 1; // a child's eyes are large in the face
+    const big = 1;
     eye.scale.set((o.female ? 1.2 : 1.4) * big, (o.female ? 0.92 : 1.02) * big, 0.42);
     // On dark skin a dark eye would be lost, leaving only its point of light: a pale rim round it, even all the way round, keeps it an eye.
     if (rimT > 0.4) { const rim = part(geo('eyerim', () => new THREE.SphereGeometry(0.0128, 12, 8)), rimM, ex, eyeY - 0.0004, ez - 0.0052); rim.scale.set(o.female ? 1.5 : 1.7, o.female ? 1.2 : 1.22, 0.42); head.add(rim); }
@@ -874,7 +869,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     props.set(kind, t);
   };
   if (o.weapon) grip(o.weapon, true);
-  else if (!o.child) {
+  else {
     for (const k of ['hatchet', 'pick', 'hammer', 'hoe']) grip(k, false);
     // A load on the back: a sack of grain, ore or stone, or a bundle of cut wood.
     const s3 = at('DEF-spine.003');
@@ -885,11 +880,8 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
     logs.position.set(0, s3.y + 0.08, -0.19);
     for (const [k, piece] of [['sack', sack], ['logs', logs]] as const) { fit('DEF-spine.003', piece); piece.visible = false; props.set(k, piece); }
   }
-  // A child's head is large for the body. A boy's is also made rounder: the man's head it is cut from is long in the jaw,
-  // and at a child's size that left a tall mask with the features small in the middle of it.
-  if (o.child) { const hb2 = bones.get('DEF-head'); if (hb2) { if (o.female || headsReady()) hb2.scale.multiplyScalar(1.28); else hb2.scale.set(hb2.scale.x * 1.2, hb2.scale.y * 1.08, hb2.scale.z * 1.2); } }
 
-  const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(), props, toolKind: '', skins: [], whole: [], skin: o.skin, gear: [gearShield, gearHead, gearPlate].filter((l) => l.length > 0), spare, hurt: 0, female: o.female, seed: o.seed, strike: 0, struck: false, soldier: !!o.weapon, aim: o.weapon === 'bow' ? 'bow' : o.weapon === 'crossbow' || o.weapon === 'musket' || o.weapon === 'firetube' ? 'gun' : '', aimW: 0, flinch: 0, weapon: o.weapon, child: o.child };
+  const real: RealPerson = { mixer: new THREE.AnimationMixer(body), actions: new Map(), now: 'Idle_Loop', body, bones, rest: mine, palm: new THREE.Vector3(), props, toolKind: '', skins: [], whole: [], skin: o.skin, gear: [gearShield, gearHead, gearPlate].filter((l) => l.length > 0), spare, hurt: 0, female: o.female, seed: o.seed, strike: 0, struck: false, soldier: !!o.weapon, aim: o.weapon === 'bow' ? 'bow' : o.weapon === 'crossbow' || o.weapon === 'musket' || o.weapon === 'firetube' ? 'gun' : '', aimW: 0, flinch: 0, weapon: o.weapon, };
   for (const [name, clip] of source.clips) real.actions.set(name, real.mixer.clipAction(clip));
 
   body.scale.setScalar(SCALE * (o.female ? 0.91 : 1.01) * (0.97 + (o.seed % 7) * 0.01)); // people are not all one height
