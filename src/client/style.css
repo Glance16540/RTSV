@@ -644,3 +644,7 @@ kbd { color: var(--sepia); }
 #toasts { top: calc(52px + var(--hall-clock, 0px)); }
 @media (max-width: 900px) { #hall-clock { max-width: calc(100vw - 24px); top: 46px; } }
 @media (prefers-reduced-motion: reduce) { #hall-clock .last b { animation: none; } }
+
+/* ---- Campaign map detail: the choice of full or plainer map, added to Settings by detail.ts ---- */
+#settings .pref-map select { font: inherit; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 3px; padding: 2px 6px; }
+#settings .pref-map option { color: #24180f; background: #efe2c4; }
