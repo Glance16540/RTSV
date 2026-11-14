@@ -3527,6 +3527,8 @@ describe('fire, blight and the weather on the harvest', () => {
       const g = two();
       if (rain) { g.weather = 'rain'; g.weatherAmt = g.weatherWant = 1; }
       const tc = g.buildings.find((b) => b.owner === 1)!;
+      // Nobody at home to fight it (tests/fire-fighting.test.ts): this is what a fire does when it is left to itself.
+      for (const u of villagers(g, 1)) (g as unknown as { kill(e: unknown): void }).kill(u);
       const at = spot(g, 'house', 1);
       const a = g.spawnBuilding('house', 1, at.cx, at.cy, true), b = g.spawnBuilding('house', 1, at.cx + 3, at.cy, true), c = g.spawnBuilding('house', 1, at.cx + 6, at.cy, true);
       const far = g.spawnBuilding('house', 1, at.cx + 6, at.cy + 12 < g.size - 3 ? at.cy + 12 : at.cy - 12, true);
@@ -3552,7 +3554,7 @@ describe('fire, blight and the weather on the harvest', () => {
     expect(dry.lit.has(dry.far.id)).toBe(false); // one across the town does not
     expect(dry.g.buildings.every((x) => x.burnT <= 0)).toBe(true); // and in the end it is out
     const wet = burn(true);
-    expect(wet.lit.size).toBe(0);
+    expect(wet.said).toBe(false); // lightning may strike in the rain (src/sim/calamity.ts), but nothing catches from a neighbour
     expect(wet.a.maxHp - wet.a.hp).toBeLessThan(dry.a.maxHp - dry.a.hp);
   });
 

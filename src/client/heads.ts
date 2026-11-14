@@ -70,7 +70,7 @@ export const headsReady = (): boolean => !!kit;
  * The casts of face there are. One sculpted face would make every man a twin of every other, so the lower face is
  * reshaped a little for each cast: how wide the jaw is, how long the chin, how far the nose stands out and how broad it is.
  */
-const CASTS: { jaw: number; chin: number; nose: number; wide: number }[] = [
+const CASTS: { jaw: number; chin: number; nose: number; wide: number; cheek?: number }[] = [
   { jaw: 0, chin: 0, nose: 0, wide: 0 },
   { jaw: -0.085, chin: 0.007, nose: 0.003, wide: -0.1 },
   { jaw: 0.075, chin: -0.004, nose: 0.001, wide: 0.16 },
@@ -78,6 +78,8 @@ const CASTS: { jaw: number; chin: number; nose: number; wide: number }[] = [
   { jaw: 0.045, chin: 0.006, nose: -0.002, wide: -0.06 },
 ];
 export const FACE_CASTS = CASTS.length;
+/** A child's face: a small jaw and chin, a button of a nose, full cheeks. */
+const CHILD = { jaw: -0.11, chin: -0.011, nose: -0.005, wide: -0.14, cheek: 0.006 };
 const ease = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
 /** Reshape one piece of a head (its skin, or the beard that lies on it) to a cast of face. */
 function recast(p: number[], fig: Sculpt, c: (typeof CASTS)[number]): Float32Array {
@@ -89,9 +91,49 @@ function recast(p: number[], fig: Sculpt, c: (typeof CASTS)[number]): Float32Arr
     y -= c.chin * ease(fig.eyeY - 0.08, fig.eyeY - 0.13, y) * front;
     const nose = Math.exp(-((x / 0.024) ** 2 + ((y - (fig.eyeY - 0.04)) / 0.032) ** 2)) * ease(fig.eyeZ - 0.02, fig.eyeZ + 0.012, z);
     z += c.nose * nose; x *= 1 + c.wide * nose;
+    if (c.cheek) { const puff = Math.exp(-(((Math.abs(x) - 0.042) / 0.022) ** 2 + ((y - (fig.eyeY - 0.05)) / 0.03) ** 2)) * front; x += Math.sign(x) * c.cheek * puff; z += c.cheek * 0.7 * puff; }
     out[i] = x; out[i + 1] = y; out[i + 2] = z;
   }
   return out;
+}
+
+/** A child's eyes are large in the face, and the brows over them fine: each eye is grown about its own middle, the brows thinned about theirs. */
+function childEyes(p: number[], grow: number): Float32Array {
+  const out = new Float32Array(p);
+  let cx = 0, cy = 0, cz = 0;
+  for (let i = 0; i < out.length; i += 3) { cx += Math.abs(out[i]); cy += out[i + 1]; cz += out[i + 2]; }
+  const n = out.length / 3; cx /= n; cy /= n; cz /= n;
+  for (let i = 0; i < out.length; i += 3) {
+    const side = Math.sign(out[i]) || 1;
+    out[i] = side * cx + (out[i] - side * cx) * grow; out[i + 1] = cy + (out[i + 1] - cy) * grow; out[i + 2] = cz + (out[i + 2] - cz) * grow - (grow - 1) * 0.012;
+  }
+  return out;
+}
+function childBrows(p: number[]): Float32Array {
+  const out = new Float32Array(p);
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 1; i < out.length; i += 3) { lo = Math.min(lo, out[i]); hi = Math.max(hi, out[i]); }
+  const mid = (lo + hi) / 2;
+  for (let i = 0; i < out.length; i += 3) { out[i + 1] = mid + 0.004 + (out[i + 1] - mid) * 0.55; out[i + 2] -= 0.0012; }
+  return out;
+}
+/** The woman's face with its paint softened: the lined eyes and reddened lips blurred most of the way out, for a child. */
+let childPic: THREE.Texture | null = null;
+function childSkin(): THREE.Texture {
+  if (childPic) return childPic;
+  const src = pics.get('head_f')!, img = src.image as HTMLImageElement | undefined;
+  if (!img || typeof document === 'undefined') return src;
+  const cv = document.createElement('canvas'), small = document.createElement('canvas');
+  cv.width = img.width; cv.height = img.height; small.width = small.height = 96;
+  const x = cv.getContext('2d'), sx = small.getContext('2d');
+  if (!x || !sx) return src;
+  sx.drawImage(img, 0, 0, 96, 96); // drawn small and back up again: a blur that every browser can do
+  x.drawImage(img, 0, 0);
+  x.globalAlpha = 0.72; x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+  x.drawImage(small, 0, 0, cv.width, cv.height);
+  childPic = new THREE.CanvasTexture(cv);
+  childPic.flipY = false; childPic.colorSpace = THREE.SRGBColorSpace; childPic.anisotropy = 4;
+  return childPic;
 }
 
 function geo(key: string, piece: Piece, shaped?: Float32Array): THREE.BufferGeometry {
@@ -112,13 +154,13 @@ function geo(key: string, piece: Piece, shaped?: Float32Array): THREE.BufferGeom
  * they wear one. `cut` is how the hair is worn, or null for none (under a helmet or a hood). Returned in the kit's
  * space with the measures needed to set it on a figure, or null if the heads never came.
  */
-export function sculptedHead(female: boolean, skin: number, hair: number, beard: boolean, cut: HairCut | null, seed = 0): { g: THREE.Group; fig: Sculpt } | null {
+export function sculptedHead(female: boolean, skin: number, hair: number, beard: boolean, cut: HairCut | null, seed = 0, child = false): { g: THREE.Group; fig: Sculpt } | null {
   if (!kit) return null;
-  const tag = female ? 'f' : 'm', fig = kit[tag], key = tag + skin;
+  const tag = female || child ? 'f' : 'm', fig = kit[tag], key = (child ? 'c' : tag) + skin;
   let sm = skins.get(key);
   // The picture is the face at half strength over its own average, so twice the person's colour gives it back in that colour.
-  if (!sm) skins.set(key, (sm = new THREE.MeshStandardMaterial({ map: pics.get('head_' + tag), color: new THREE.Color(skin).multiply(new THREE.Color(2.2, 2.08, 2.0)), roughness: 0.85 })));
-  const cast = Math.abs(seed >> 3) % CASTS.length, shape = CASTS[cast];
+  if (!sm) skins.set(key, (sm = new THREE.MeshStandardMaterial({ map: child ? childSkin() : pics.get('head_' + tag), color: new THREE.Color(skin).multiply(new THREE.Color(2.2, 2.08, 2.0)), roughness: 0.85 })));
+  const cast = child ? 'c' : Math.abs(seed >> 3) % CASTS.length, shape = child ? CHILD : CASTS[cast as number];
   // Hair is the same: a picture of the strands in light and shade, under the person's own colour. There are two sheets of it.
   const strands = (sheet: 1 | 2): THREE.Material => {
     const k = sheet + '|' + hair;
@@ -133,8 +175,9 @@ export function sculptedHead(female: boolean, skin: number, hair: number, beard:
     mesh.castShadow = true; g.add(mesh);
   };
   add('skin' + tag, fig.skin, sm, true);
-  add('eyes' + tag, fig.eyes, eyes(Math.abs(seed) % EYES.length));
-  add('brows' + tag, fig.brows, strands(female ? 2 : 1));
+  if (child) { g.add(new THREE.Mesh(geo('eyesc', fig.eyes, geos.has('eyesc') ? undefined : childEyes(fig.eyes.p, 1.16)), eyes(Math.abs(seed) % EYES.length)), new THREE.Mesh(geo('browsc', fig.brows, geos.has('browsc') ? undefined : childBrows(fig.brows.p)), strands(2))); }
+  else add('eyes' + tag, fig.eyes, eyes(Math.abs(seed) % EYES.length));
+  if (!child) add('brows' + tag, fig.brows, strands(female ? 2 : 1));
   if (beard && !female) add('beard', kit.beard, strands(1), true);
   if (cut) add('hair' + cut, kit.hair[cut], strands(cut === 'long' || cut === 'buns' ? 2 : 1));
   return { g, fig };

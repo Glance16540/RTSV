@@ -8,6 +8,7 @@ import {
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { leaningWith } from './temper';
 import { rescue } from './rescue';
+import { calamity, douse } from './calamity';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
@@ -167,6 +168,7 @@ export interface Building extends Base {
   sheltered: number[]; // villagers hiding inside
   captives?: Captive[]; // a work camp's prisoners
   campT?: number; // progress towards the camp's next villager
+  douseAt?: number; douseN?: number; // the tick villagers last beat at a fire here, and how many (calamity.ts)
   rescueT?: number; // progress of soldiers at the gate towards letting the next captive out (rescue.ts)
   trystT?: number; // progress towards a tavern's next child born out of any household
   staff?: number[]; // villagers stationed here to work: clergy or tavern maids
@@ -2097,6 +2099,7 @@ export class Game {
     this.tick++;
     this.time += DT;
     this.stepWeather();
+    if (this.tick % 20 === 0) calamity(this);
     this.pathBudget = 16;
 
     for (const bucket of this.hash) bucket.length = 0;
@@ -2641,6 +2644,7 @@ export class Game {
           u.anchored = true;
           u.facing = Math.atan2(b.x - u.x, b.y - u.y);
           u.attackAnim = 0.3;
+          if (b.burnT > 0) { douse(this, b); break; } // the fire first: nothing is mended while it burns
           const p0 = this.players[u.owner];
           if (!b.complete) {
             const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build;
