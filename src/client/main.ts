@@ -15,7 +15,8 @@ import { HeroSpec, defaultHero } from '../sim/hero';
 import { LEADERS } from '../sim/leaders';
 import { Overworld } from './overworld';
 import { Input } from './input';
-import { Renderer } from './renderer';
+import { Outlook } from './outlook';
+import { PITCH, Renderer, YAW } from './renderer';
 import { sfx } from './sfx';
 import '@fontsource/im-fell-english/400.css';
 import '@fontsource/im-fell-english/400-italic.css';
@@ -30,6 +31,7 @@ export class App {
   r: Renderer;
   hud: Hud;
   input: Input;
+  outlook: Outlook;
   ai: AIController[] = [];
   pid = 0;
   sel: number[] = [];
@@ -61,6 +63,7 @@ export class App {
     for (const p of this.game.players) if (p.isAI && (!this.mission || this.mission.aiLevel !== null)) this.ai.push(new AIController(this.game, p.id));
     this.r = new Renderer(document.getElementById('game') as HTMLCanvasElement, this.game);
     this.hud = new Hud(this);
+    this.outlook = new Outlook(this.r, { yaw: YAW, pitch: PITCH }, () => (this.game.field ? 0 : this.game.dayT));
     this.input = new Input(this);
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -163,6 +166,7 @@ export class App {
     if (this.sel.some((id) => !game.entities.has(id))) this.sel = this.sel.filter((id) => game.entities.has(id));
 
     this.input.update(dt);
+    this.outlook.update(dt);
     this.r.frame(this.paused ? 1 : this.acc / DT, dt, this.sel);
     this.input.draw();
     this.hud.update(dt);

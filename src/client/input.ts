@@ -56,6 +56,7 @@ export class Input {
     window.addEventListener('blur', () => { this.inside = false; this.keys.clear(); });
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
+      if (this.app.outlook.wheel(e.deltaY)) return;
       this.app.r.dist *= e.deltaY > 0 ? 1.1 : 1 / 1.1;
       this.app.r.clampCamera();
     }, { passive: false });
@@ -313,6 +314,15 @@ export class Input {
       }
       case 'M':
         app.hud.toggleMute();
+        break;
+      case 'O':
+        if (app.outlook.toggle() && app.outlook.out) app.hud.toast('Looking out. O returns, [ and ] turn the view, the wheel raises your eyes.');
+        break;
+      case '[':
+        app.outlook.turn(-1);
+        break;
+      case ']':
+        app.outlook.turn(1);
         break;
     }
   }
