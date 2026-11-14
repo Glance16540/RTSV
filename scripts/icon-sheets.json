@@ -660,8 +660,1065 @@
     "house_low",
     "a shabby cottage with broken shutters, a sagging roof and empty bottles by the door"
    ]
+  ],
+  [
+   [
+    "wild_man_holy",
+    "a village man of the Norse, devout"
+   ],
+   [
+    "wild_man_plain",
+    "a village man of the Norse, ordinary"
+   ],
+   [
+    "wild_man_worldly",
+    "a village man of the Norse, worldly"
+   ],
+   [
+    "wild_man_low",
+    "a village man of the Norse, decadent"
+   ],
+   [
+    "wild_woman_holy",
+    "a grown village woman of the Norse, devout"
+   ],
+   [
+    "wild_woman_plain",
+    "a grown village woman of the Norse, ordinary"
+   ],
+   [
+    "wild_woman_worldly",
+    "a grown village woman of the Norse, worldly"
+   ],
+   [
+    "wild_woman_low",
+    "a grown village woman of the Norse, decadent"
+   ],
+   [
+    "wild_soldier_holy",
+    "a common soldier of the Norse, devout"
+   ],
+   [
+    "wild_soldier_plain",
+    "a common soldier of the Norse, ordinary"
+   ],
+   [
+    "wild_soldier_worldly",
+    "a common soldier of the Norse, worldly"
+   ],
+   [
+    "wild_soldier_low",
+    "a common soldier of the Norse, decadent"
+   ],
+   [
+    "wild_tavern_holy",
+    "a grown tavern woman of the Norse, devout"
+   ],
+   [
+    "wild_tavern_plain",
+    "a grown tavern woman of the Norse, ordinary"
+   ],
+   [
+    "wild_tavern_worldly",
+    "a grown tavern woman of the Norse, worldly"
+   ],
+   [
+    "wild_tavern_low",
+    "a grown tavern woman of the Norse, decadent"
+   ]
+  ],
+  [
+   [
+    "england_man_holy",
+    "a village man of medieval English, devout"
+   ],
+   [
+    "england_man_plain",
+    "a village man of medieval English, ordinary"
+   ],
+   [
+    "england_man_worldly",
+    "a village man of medieval English, worldly"
+   ],
+   [
+    "england_man_low",
+    "a village man of medieval English, decadent"
+   ],
+   [
+    "england_woman_holy",
+    "a grown village woman of medieval English, devout"
+   ],
+   [
+    "england_woman_plain",
+    "a grown village woman of medieval English, ordinary"
+   ],
+   [
+    "england_woman_worldly",
+    "a grown village woman of medieval English, worldly"
+   ],
+   [
+    "england_woman_low",
+    "a grown village woman of medieval English, decadent"
+   ],
+   [
+    "england_soldier_holy",
+    "a common soldier of medieval English, devout"
+   ],
+   [
+    "england_soldier_plain",
+    "a common soldier of medieval English, ordinary"
+   ],
+   [
+    "england_soldier_worldly",
+    "a common soldier of medieval English, worldly"
+   ],
+   [
+    "england_soldier_low",
+    "a common soldier of medieval English, decadent"
+   ],
+   [
+    "england_tavern_holy",
+    "a grown tavern woman of medieval English, devout"
+   ],
+   [
+    "england_tavern_plain",
+    "a grown tavern woman of medieval English, ordinary"
+   ],
+   [
+    "england_tavern_worldly",
+    "a grown tavern woman of medieval English, worldly"
+   ],
+   [
+    "england_tavern_low",
+    "a grown tavern woman of medieval English, decadent"
+   ]
+  ],
+  [
+   [
+    "hearth_man_holy",
+    "a village man of early medieval Franks, devout"
+   ],
+   [
+    "hearth_man_plain",
+    "a village man of early medieval Franks, ordinary"
+   ],
+   [
+    "hearth_man_worldly",
+    "a village man of early medieval Franks, worldly"
+   ],
+   [
+    "hearth_man_low",
+    "a village man of early medieval Franks, decadent"
+   ],
+   [
+    "hearth_woman_holy",
+    "a grown village woman of early medieval Franks, devout"
+   ],
+   [
+    "hearth_woman_plain",
+    "a grown village woman of early medieval Franks, ordinary"
+   ],
+   [
+    "hearth_woman_worldly",
+    "a grown village woman of early medieval Franks, worldly"
+   ],
+   [
+    "hearth_woman_low",
+    "a grown village woman of early medieval Franks, decadent"
+   ],
+   [
+    "hearth_soldier_holy",
+    "a common soldier of early medieval Franks, devout"
+   ],
+   [
+    "hearth_soldier_plain",
+    "a common soldier of early medieval Franks, ordinary"
+   ],
+   [
+    "hearth_soldier_worldly",
+    "a common soldier of early medieval Franks, worldly"
+   ],
+   [
+    "hearth_soldier_low",
+    "a common soldier of early medieval Franks, decadent"
+   ],
+   [
+    "hearth_tavern_holy",
+    "a grown tavern woman of early medieval Franks, devout"
+   ],
+   [
+    "hearth_tavern_plain",
+    "a grown tavern woman of early medieval Franks, ordinary"
+   ],
+   [
+    "hearth_tavern_worldly",
+    "a grown tavern woman of early medieval Franks, worldly"
+   ],
+   [
+    "hearth_tavern_low",
+    "a grown tavern woman of early medieval Franks, decadent"
+   ]
+  ],
+  [
+   [
+    "stonekin_man_holy",
+    "a village man of ancient Romans, devout"
+   ],
+   [
+    "stonekin_man_plain",
+    "a village man of ancient Romans, ordinary"
+   ],
+   [
+    "stonekin_man_worldly",
+    "a village man of ancient Romans, worldly"
+   ],
+   [
+    "stonekin_man_low",
+    "a village man of ancient Romans, decadent"
+   ],
+   [
+    "stonekin_woman_holy",
+    "a grown village woman of ancient Romans, devout"
+   ],
+   [
+    "stonekin_woman_plain",
+    "a grown village woman of ancient Romans, ordinary"
+   ],
+   [
+    "stonekin_woman_worldly",
+    "a grown village woman of ancient Romans, worldly"
+   ],
+   [
+    "stonekin_woman_low",
+    "a grown village woman of ancient Romans, decadent"
+   ],
+   [
+    "stonekin_soldier_holy",
+    "a common soldier of ancient Romans, devout"
+   ],
+   [
+    "stonekin_soldier_plain",
+    "a common soldier of ancient Romans, ordinary"
+   ],
+   [
+    "stonekin_soldier_worldly",
+    "a common soldier of ancient Romans, worldly"
+   ],
+   [
+    "stonekin_soldier_low",
+    "a common soldier of ancient Romans, decadent"
+   ],
+   [
+    "stonekin_tavern_holy",
+    "a grown tavern woman of ancient Romans, devout"
+   ],
+   [
+    "stonekin_tavern_plain",
+    "a grown tavern woman of ancient Romans, ordinary"
+   ],
+   [
+    "stonekin_tavern_worldly",
+    "a grown tavern woman of ancient Romans, worldly"
+   ],
+   [
+    "stonekin_tavern_low",
+    "a grown tavern woman of ancient Romans, decadent"
+   ]
+  ],
+  [
+   [
+    "greece_man_holy",
+    "a village man of ancient Greeks, devout"
+   ],
+   [
+    "greece_man_plain",
+    "a village man of ancient Greeks, ordinary"
+   ],
+   [
+    "greece_man_worldly",
+    "a village man of ancient Greeks, worldly"
+   ],
+   [
+    "greece_man_low",
+    "a village man of ancient Greeks, decadent"
+   ],
+   [
+    "greece_woman_holy",
+    "a grown village woman of ancient Greeks, devout"
+   ],
+   [
+    "greece_woman_plain",
+    "a grown village woman of ancient Greeks, ordinary"
+   ],
+   [
+    "greece_woman_worldly",
+    "a grown village woman of ancient Greeks, worldly"
+   ],
+   [
+    "greece_woman_low",
+    "a grown village woman of ancient Greeks, decadent"
+   ],
+   [
+    "greece_soldier_holy",
+    "a common soldier of ancient Greeks, devout"
+   ],
+   [
+    "greece_soldier_plain",
+    "a common soldier of ancient Greeks, ordinary"
+   ],
+   [
+    "greece_soldier_worldly",
+    "a common soldier of ancient Greeks, worldly"
+   ],
+   [
+    "greece_soldier_low",
+    "a common soldier of ancient Greeks, decadent"
+   ],
+   [
+    "greece_tavern_holy",
+    "a grown tavern woman of ancient Greeks, devout"
+   ],
+   [
+    "greece_tavern_plain",
+    "a grown tavern woman of ancient Greeks, ordinary"
+   ],
+   [
+    "greece_tavern_worldly",
+    "a grown tavern woman of ancient Greeks, worldly"
+   ],
+   [
+    "greece_tavern_low",
+    "a grown tavern woman of ancient Greeks, decadent"
+   ]
+  ],
+  [
+   [
+    "dawn_man_holy",
+    "a village man of ancient Arameans of Syria, devout"
+   ],
+   [
+    "dawn_man_plain",
+    "a village man of ancient Arameans of Syria, ordinary"
+   ],
+   [
+    "dawn_man_worldly",
+    "a village man of ancient Arameans of Syria, worldly"
+   ],
+   [
+    "dawn_man_low",
+    "a village man of ancient Arameans of Syria, decadent"
+   ],
+   [
+    "dawn_woman_holy",
+    "a grown village woman of ancient Arameans of Syria, devout"
+   ],
+   [
+    "dawn_woman_plain",
+    "a grown village woman of ancient Arameans of Syria, ordinary"
+   ],
+   [
+    "dawn_woman_worldly",
+    "a grown village woman of ancient Arameans of Syria, worldly"
+   ],
+   [
+    "dawn_woman_low",
+    "a grown village woman of ancient Arameans of Syria, decadent"
+   ],
+   [
+    "dawn_soldier_holy",
+    "a common soldier of ancient Arameans of Syria, devout"
+   ],
+   [
+    "dawn_soldier_plain",
+    "a common soldier of ancient Arameans of Syria, ordinary"
+   ],
+   [
+    "dawn_soldier_worldly",
+    "a common soldier of ancient Arameans of Syria, worldly"
+   ],
+   [
+    "dawn_soldier_low",
+    "a common soldier of ancient Arameans of Syria, decadent"
+   ],
+   [
+    "dawn_tavern_holy",
+    "a grown tavern woman of ancient Arameans of Syria, devout"
+   ],
+   [
+    "dawn_tavern_plain",
+    "a grown tavern woman of ancient Arameans of Syria, ordinary"
+   ],
+   [
+    "dawn_tavern_worldly",
+    "a grown tavern woman of ancient Arameans of Syria, worldly"
+   ],
+   [
+    "dawn_tavern_low",
+    "a grown tavern woman of ancient Arameans of Syria, decadent"
+   ]
+  ],
+  [
+   [
+    "babylon_man_holy",
+    "a village man of ancient Babylonians, devout"
+   ],
+   [
+    "babylon_man_plain",
+    "a village man of ancient Babylonians, ordinary"
+   ],
+   [
+    "babylon_man_worldly",
+    "a village man of ancient Babylonians, worldly"
+   ],
+   [
+    "babylon_man_low",
+    "a village man of ancient Babylonians, decadent"
+   ],
+   [
+    "babylon_woman_holy",
+    "a grown village woman of ancient Babylonians, devout"
+   ],
+   [
+    "babylon_woman_plain",
+    "a grown village woman of ancient Babylonians, ordinary"
+   ],
+   [
+    "babylon_woman_worldly",
+    "a grown village woman of ancient Babylonians, worldly"
+   ],
+   [
+    "babylon_woman_low",
+    "a grown village woman of ancient Babylonians, decadent"
+   ],
+   [
+    "babylon_soldier_holy",
+    "a common soldier of ancient Babylonians, devout"
+   ],
+   [
+    "babylon_soldier_plain",
+    "a common soldier of ancient Babylonians, ordinary"
+   ],
+   [
+    "babylon_soldier_worldly",
+    "a common soldier of ancient Babylonians, worldly"
+   ],
+   [
+    "babylon_soldier_low",
+    "a common soldier of ancient Babylonians, decadent"
+   ],
+   [
+    "babylon_tavern_holy",
+    "a grown tavern woman of ancient Babylonians, devout"
+   ],
+   [
+    "babylon_tavern_plain",
+    "a grown tavern woman of ancient Babylonians, ordinary"
+   ],
+   [
+    "babylon_tavern_worldly",
+    "a grown tavern woman of ancient Babylonians, worldly"
+   ],
+   [
+    "babylon_tavern_low",
+    "a grown tavern woman of ancient Babylonians, decadent"
+   ]
+  ],
+  [
+   [
+    "persia_man_holy",
+    "a village man of ancient Persians, devout"
+   ],
+   [
+    "persia_man_plain",
+    "a village man of ancient Persians, ordinary"
+   ],
+   [
+    "persia_man_worldly",
+    "a village man of ancient Persians, worldly"
+   ],
+   [
+    "persia_man_low",
+    "a village man of ancient Persians, decadent"
+   ],
+   [
+    "persia_woman_holy",
+    "a grown village woman of ancient Persians, devout"
+   ],
+   [
+    "persia_woman_plain",
+    "a grown village woman of ancient Persians, ordinary"
+   ],
+   [
+    "persia_woman_worldly",
+    "a grown village woman of ancient Persians, worldly"
+   ],
+   [
+    "persia_woman_low",
+    "a grown village woman of ancient Persians, decadent"
+   ],
+   [
+    "persia_soldier_holy",
+    "a common soldier of ancient Persians, devout"
+   ],
+   [
+    "persia_soldier_plain",
+    "a common soldier of ancient Persians, ordinary"
+   ],
+   [
+    "persia_soldier_worldly",
+    "a common soldier of ancient Persians, worldly"
+   ],
+   [
+    "persia_soldier_low",
+    "a common soldier of ancient Persians, decadent"
+   ],
+   [
+    "persia_tavern_holy",
+    "a grown tavern woman of ancient Persians, devout"
+   ],
+   [
+    "persia_tavern_plain",
+    "a grown tavern woman of ancient Persians, ordinary"
+   ],
+   [
+    "persia_tavern_worldly",
+    "a grown tavern woman of ancient Persians, worldly"
+   ],
+   [
+    "persia_tavern_low",
+    "a grown tavern woman of ancient Persians, decadent"
+   ]
+  ],
+  [
+   [
+    "arabs_man_holy",
+    "a village man of Abbasid Arabs, devout"
+   ],
+   [
+    "arabs_man_plain",
+    "a village man of Abbasid Arabs, ordinary"
+   ],
+   [
+    "arabs_man_worldly",
+    "a village man of Abbasid Arabs, worldly"
+   ],
+   [
+    "arabs_man_low",
+    "a village man of Abbasid Arabs, decadent"
+   ],
+   [
+    "arabs_woman_holy",
+    "a grown village woman of Abbasid Arabs, devout"
+   ],
+   [
+    "arabs_woman_plain",
+    "a grown village woman of Abbasid Arabs, ordinary"
+   ],
+   [
+    "arabs_woman_worldly",
+    "a grown village woman of Abbasid Arabs, worldly"
+   ],
+   [
+    "arabs_woman_low",
+    "a grown village woman of Abbasid Arabs, decadent"
+   ],
+   [
+    "arabs_soldier_holy",
+    "a common soldier of Abbasid Arabs, devout"
+   ],
+   [
+    "arabs_soldier_plain",
+    "a common soldier of Abbasid Arabs, ordinary"
+   ],
+   [
+    "arabs_soldier_worldly",
+    "a common soldier of Abbasid Arabs, worldly"
+   ],
+   [
+    "arabs_soldier_low",
+    "a common soldier of Abbasid Arabs, decadent"
+   ],
+   [
+    "arabs_tavern_holy",
+    "a grown tavern woman of Abbasid Arabs, devout"
+   ],
+   [
+    "arabs_tavern_plain",
+    "a grown tavern woman of Abbasid Arabs, ordinary"
+   ],
+   [
+    "arabs_tavern_worldly",
+    "a grown tavern woman of Abbasid Arabs, worldly"
+   ],
+   [
+    "arabs_tavern_low",
+    "a grown tavern woman of Abbasid Arabs, decadent"
+   ]
+  ],
+  [
+   [
+    "egypt_man_holy",
+    "a village man of ancient Egyptians, devout"
+   ],
+   [
+    "egypt_man_plain",
+    "a village man of ancient Egyptians, ordinary"
+   ],
+   [
+    "egypt_man_worldly",
+    "a village man of ancient Egyptians, worldly"
+   ],
+   [
+    "egypt_man_low",
+    "a village man of ancient Egyptians, decadent"
+   ],
+   [
+    "egypt_woman_holy",
+    "a grown village woman of ancient Egyptians, devout"
+   ],
+   [
+    "egypt_woman_plain",
+    "a grown village woman of ancient Egyptians, ordinary"
+   ],
+   [
+    "egypt_woman_worldly",
+    "a grown village woman of ancient Egyptians, worldly"
+   ],
+   [
+    "egypt_woman_low",
+    "a grown village woman of ancient Egyptians, decadent"
+   ],
+   [
+    "egypt_soldier_holy",
+    "a common soldier of ancient Egyptians, devout"
+   ],
+   [
+    "egypt_soldier_plain",
+    "a common soldier of ancient Egyptians, ordinary"
+   ],
+   [
+    "egypt_soldier_worldly",
+    "a common soldier of ancient Egyptians, worldly"
+   ],
+   [
+    "egypt_soldier_low",
+    "a common soldier of ancient Egyptians, decadent"
+   ],
+   [
+    "egypt_tavern_holy",
+    "a grown tavern woman of ancient Egyptians, devout"
+   ],
+   [
+    "egypt_tavern_plain",
+    "a grown tavern woman of ancient Egyptians, ordinary"
+   ],
+   [
+    "egypt_tavern_worldly",
+    "a grown tavern woman of ancient Egyptians, worldly"
+   ],
+   [
+    "egypt_tavern_low",
+    "a grown tavern woman of ancient Egyptians, decadent"
+   ]
+  ],
+  [
+   [
+    "steppe_man_holy",
+    "a village man of Mongols of the steppe, devout"
+   ],
+   [
+    "steppe_man_plain",
+    "a village man of Mongols of the steppe, ordinary"
+   ],
+   [
+    "steppe_man_worldly",
+    "a village man of Mongols of the steppe, worldly"
+   ],
+   [
+    "steppe_man_low",
+    "a village man of Mongols of the steppe, decadent"
+   ],
+   [
+    "steppe_woman_holy",
+    "a grown village woman of Mongols of the steppe, devout"
+   ],
+   [
+    "steppe_woman_plain",
+    "a grown village woman of Mongols of the steppe, ordinary"
+   ],
+   [
+    "steppe_woman_worldly",
+    "a grown village woman of Mongols of the steppe, worldly"
+   ],
+   [
+    "steppe_woman_low",
+    "a grown village woman of Mongols of the steppe, decadent"
+   ],
+   [
+    "steppe_soldier_holy",
+    "a common soldier of Mongols of the steppe, devout"
+   ],
+   [
+    "steppe_soldier_plain",
+    "a common soldier of Mongols of the steppe, ordinary"
+   ],
+   [
+    "steppe_soldier_worldly",
+    "a common soldier of Mongols of the steppe, worldly"
+   ],
+   [
+    "steppe_soldier_low",
+    "a common soldier of Mongols of the steppe, decadent"
+   ],
+   [
+    "steppe_tavern_holy",
+    "a grown tavern woman of Mongols of the steppe, devout"
+   ],
+   [
+    "steppe_tavern_plain",
+    "a grown tavern woman of Mongols of the steppe, ordinary"
+   ],
+   [
+    "steppe_tavern_worldly",
+    "a grown tavern woman of Mongols of the steppe, worldly"
+   ],
+   [
+    "steppe_tavern_low",
+    "a grown tavern woman of Mongols of the steppe, decadent"
+   ]
+  ],
+  [
+   [
+    "forge_man_holy",
+    "a village man of medieval Chinese, devout"
+   ],
+   [
+    "forge_man_plain",
+    "a village man of medieval Chinese, ordinary"
+   ],
+   [
+    "forge_man_worldly",
+    "a village man of medieval Chinese, worldly"
+   ],
+   [
+    "forge_man_low",
+    "a village man of medieval Chinese, decadent"
+   ],
+   [
+    "forge_woman_holy",
+    "a grown village woman of medieval Chinese, devout"
+   ],
+   [
+    "forge_woman_plain",
+    "a grown village woman of medieval Chinese, ordinary"
+   ],
+   [
+    "forge_woman_worldly",
+    "a grown village woman of medieval Chinese, worldly"
+   ],
+   [
+    "forge_woman_low",
+    "a grown village woman of medieval Chinese, decadent"
+   ],
+   [
+    "forge_soldier_holy",
+    "a common soldier of medieval Chinese, devout"
+   ],
+   [
+    "forge_soldier_plain",
+    "a common soldier of medieval Chinese, ordinary"
+   ],
+   [
+    "forge_soldier_worldly",
+    "a common soldier of medieval Chinese, worldly"
+   ],
+   [
+    "forge_soldier_low",
+    "a common soldier of medieval Chinese, decadent"
+   ],
+   [
+    "forge_tavern_holy",
+    "a grown tavern woman of medieval Chinese, devout"
+   ],
+   [
+    "forge_tavern_plain",
+    "a grown tavern woman of medieval Chinese, ordinary"
+   ],
+   [
+    "forge_tavern_worldly",
+    "a grown tavern woman of medieval Chinese, worldly"
+   ],
+   [
+    "forge_tavern_low",
+    "a grown tavern woman of medieval Chinese, decadent"
+   ]
+  ],
+  [
+   [
+    "japan_man_holy",
+    "a village man of medieval Japanese, devout"
+   ],
+   [
+    "japan_man_plain",
+    "a village man of medieval Japanese, ordinary"
+   ],
+   [
+    "japan_man_worldly",
+    "a village man of medieval Japanese, worldly"
+   ],
+   [
+    "japan_man_low",
+    "a village man of medieval Japanese, decadent"
+   ],
+   [
+    "japan_woman_holy",
+    "a grown village woman of medieval Japanese, devout"
+   ],
+   [
+    "japan_woman_plain",
+    "a grown village woman of medieval Japanese, ordinary"
+   ],
+   [
+    "japan_woman_worldly",
+    "a grown village woman of medieval Japanese, worldly"
+   ],
+   [
+    "japan_woman_low",
+    "a grown village woman of medieval Japanese, decadent"
+   ],
+   [
+    "japan_soldier_holy",
+    "a common soldier of medieval Japanese, devout"
+   ],
+   [
+    "japan_soldier_plain",
+    "a common soldier of medieval Japanese, ordinary"
+   ],
+   [
+    "japan_soldier_worldly",
+    "a common soldier of medieval Japanese, worldly"
+   ],
+   [
+    "japan_soldier_low",
+    "a common soldier of medieval Japanese, decadent"
+   ],
+   [
+    "japan_tavern_holy",
+    "a grown tavern woman of medieval Japanese, devout"
+   ],
+   [
+    "japan_tavern_plain",
+    "a grown tavern woman of medieval Japanese, ordinary"
+   ],
+   [
+    "japan_tavern_worldly",
+    "a grown tavern woman of medieval Japanese, worldly"
+   ],
+   [
+    "japan_tavern_low",
+    "a grown tavern woman of medieval Japanese, decadent"
+   ]
+  ],
+  [
+   [
+    "mali_man_holy",
+    "a village man of the empire of Mali, devout"
+   ],
+   [
+    "mali_man_plain",
+    "a village man of the empire of Mali, ordinary"
+   ],
+   [
+    "mali_man_worldly",
+    "a village man of the empire of Mali, worldly"
+   ],
+   [
+    "mali_man_low",
+    "a village man of the empire of Mali, decadent"
+   ],
+   [
+    "mali_woman_holy",
+    "a grown village woman of the empire of Mali, devout"
+   ],
+   [
+    "mali_woman_plain",
+    "a grown village woman of the empire of Mali, ordinary"
+   ],
+   [
+    "mali_woman_worldly",
+    "a grown village woman of the empire of Mali, worldly"
+   ],
+   [
+    "mali_woman_low",
+    "a grown village woman of the empire of Mali, decadent"
+   ],
+   [
+    "mali_soldier_holy",
+    "a common soldier of the empire of Mali, devout"
+   ],
+   [
+    "mali_soldier_plain",
+    "a common soldier of the empire of Mali, ordinary"
+   ],
+   [
+    "mali_soldier_worldly",
+    "a common soldier of the empire of Mali, worldly"
+   ],
+   [
+    "mali_soldier_low",
+    "a common soldier of the empire of Mali, decadent"
+   ],
+   [
+    "mali_tavern_holy",
+    "a grown tavern woman of the empire of Mali, devout"
+   ],
+   [
+    "mali_tavern_plain",
+    "a grown tavern woman of the empire of Mali, ordinary"
+   ],
+   [
+    "mali_tavern_worldly",
+    "a grown tavern woman of the empire of Mali, worldly"
+   ],
+   [
+    "mali_tavern_low",
+    "a grown tavern woman of the empire of Mali, decadent"
+   ]
+  ],
+  [
+   [
+    "kush_man_holy",
+    "a village man of the kingdom of Kush in Nubia, devout"
+   ],
+   [
+    "kush_man_plain",
+    "a village man of the kingdom of Kush in Nubia, ordinary"
+   ],
+   [
+    "kush_man_worldly",
+    "a village man of the kingdom of Kush in Nubia, worldly"
+   ],
+   [
+    "kush_man_low",
+    "a village man of the kingdom of Kush in Nubia, decadent"
+   ],
+   [
+    "kush_woman_holy",
+    "a grown village woman of the kingdom of Kush in Nubia, devout"
+   ],
+   [
+    "kush_woman_plain",
+    "a grown village woman of the kingdom of Kush in Nubia, ordinary"
+   ],
+   [
+    "kush_woman_worldly",
+    "a grown village woman of the kingdom of Kush in Nubia, worldly"
+   ],
+   [
+    "kush_woman_low",
+    "a grown village woman of the kingdom of Kush in Nubia, decadent"
+   ],
+   [
+    "kush_soldier_holy",
+    "a common soldier of the kingdom of Kush in Nubia, devout"
+   ],
+   [
+    "kush_soldier_plain",
+    "a common soldier of the kingdom of Kush in Nubia, ordinary"
+   ],
+   [
+    "kush_soldier_worldly",
+    "a common soldier of the kingdom of Kush in Nubia, worldly"
+   ],
+   [
+    "kush_soldier_low",
+    "a common soldier of the kingdom of Kush in Nubia, decadent"
+   ],
+   [
+    "kush_tavern_holy",
+    "a grown tavern woman of the kingdom of Kush in Nubia, devout"
+   ],
+   [
+    "kush_tavern_plain",
+    "a grown tavern woman of the kingdom of Kush in Nubia, ordinary"
+   ],
+   [
+    "kush_tavern_worldly",
+    "a grown tavern woman of the kingdom of Kush in Nubia, worldly"
+   ],
+   [
+    "kush_tavern_low",
+    "a grown tavern woman of the kingdom of Kush in Nubia, decadent"
+   ]
+  ],
+  [
+   [
+    "status_wounded",
+    "a soldier with a bandaged arm in a sling"
+   ],
+   [
+    "status_maimed",
+    "a badly wounded soldier on a crutch, bloodied bandage round his head"
+   ],
+   [
+    "status_captive_m",
+    "a captive man in iron shackles, head bowed"
+   ],
+   [
+    "status_captive_f",
+    "a captive woman in a plain rough shift with bound wrists, head bowed"
+   ],
+   [
+    "status_led",
+    "a captive led away on a rope"
+   ],
+   [
+    "status_freed",
+    "a freed man breaking his chains"
+   ],
+   [
+    "status_plague",
+    "a plague-sick man wrapped in a blanket"
+   ],
+   [
+    "status_hunger",
+    "a starving thin man with an empty bowl"
+   ],
+   [
+    "status_grief",
+    "a grieving widow in a black veil weeping"
+   ],
+   [
+    "status_elder",
+    "an old man leaning on a stick"
+   ],
+   [
+    "status_veteran",
+    "a grizzled scarred veteran with a laurel wreath"
+   ],
+   [
+    "status_towar",
+    "a man taking up a spear and kissing his wife goodbye at his door"
+   ],
+   [
+    "status_healer",
+    "a healer woman binding a soldier's wound"
+   ],
+   [
+    "status_deserter",
+    "a deserter running away dropping his spear"
+   ],
+   [
+    "status_rebel",
+    "an angry villager raising a pitchfork"
+   ],
+   [
+    "status_drunk",
+    "a drunk man staggering with a bottle"
+   ]
   ]
  ],
  "variants": "Sheet 10 holds pairs: the icon a pious town shows (_holy) and the one a decadent town shows (_low). Its prompt adds: The icons come in pairs: a virtuous version then a decadent version of the same subject.",
- "style_before_woodblock": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: "
+ "style_before_woodblock": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: ",
+ "nations_note": "Sheets 10 to 24 are one people each (key prefix = the nation's id), rows man / woman / soldier / tavern woman, columns holy / plain / worldly / low. Their prompts used the woodblock style above, the people's skin, hair, dress and arms, and this line, which must stay: Every woman is clothed: her gown always covers her chest, made of thick opaque cloth; no bare breasts, no nipples, no see-through cloth. Sheet 25 is the marks of a person's condition."
 }
