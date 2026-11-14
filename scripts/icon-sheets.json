@@ -1,5 +1,5 @@
 {
- "style": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: ",
+ "style": "Sixteen small prints in a strict 4 by 4 grid of equal squares, each a genuine fifteenth-century hand-cut woodblock print as in the Nuremberg Chronicle: crude, stiff, naive drawing cut by a craftsman's knife, thick uneven black lines with broken edges, simple parallel knife-cut shading, awkward honest proportions, flat faces with dots and short strokes. Sparse hand-brushed watercolour wash in dull ochre, brick red, grey-blue and a brown for skin and wood, loosely laid so it misses the lines. Every square is the same plain cream laid paper, clean, with no grid lines, no borders, no ghost printing and nothing behind the subject. Each subject is different from every other, fills its square with a clear margin, and reads when shrunk very small. People are shown from the knees up. Nothing polished, no modern illustration finish, no gradients, no glow, no text, no letters, no numbers. Reading left to right, top row first, the sixteen subjects are: ",
  "sheets": [
   [
    [
@@ -662,5 +662,6 @@
    ]
   ]
  ],
- "variants": "Sheet 10 holds pairs: the icon a pious town shows (_holy) and the one a decadent town shows (_low). Its prompt adds: The icons come in pairs: a virtuous version then a decadent version of the same subject."
+ "variants": "Sheet 10 holds pairs: the icon a pious town shows (_holy) and the one a decadent town shows (_low). Its prompt adds: The icons come in pairs: a virtuous version then a decadent version of the same subject.",
+ "style_before_woodblock": "A sheet of sixteen game icons in a strict 4 by 4 grid of equal squares, each icon centred in its own square with clear empty margin around it. Style: hand-carved medieval woodcut print, bold uneven black ink outlines, carved hatching for shade, flat colour laid in by hand from a small palette of ochre, rust red, slate blue, moss green and bone white, slightly off-register like an old printed broadsheet, on plain cream paper. No gradients, no gloss, no glow, no 3D rendering, no photorealism, no frames or borders around the squares, no text, no letters, no numbers. Each icon is one simple bold subject, readable when shrunk very small. Reading left to right, top row first, the sixteen subjects are: "
 }
