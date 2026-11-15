@@ -16,6 +16,7 @@
 import type { Campaign } from './campaign';
 import { leaderAt } from './court';
 import { folkOf } from './township';
+import { heardDecree } from './nobles';
 
 export type DecreeKind = 'church' | 'guards' | 'alms' | 'closeTavern' | 'tavernWomen';
 export interface Decree { kind: DecreeKind; until: number; strength: number }
@@ -68,6 +69,7 @@ export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKin
   c.factions[f].supplies -= d.cost;
   t.decrees = [...decreesAt(c, tid), { kind, until: c.turn + d.seasons - 1, strength }];
   if (kind === 'alms') folkOf(c, tid).stores.food += Math.round(ALMS_FOOD * strength);
+  heardDecree(c, f, tid, kind, strength); // it pleases some of the nobles and angers others (nobles.ts)
   if (f === 0) c.log.push(`${d.name}: decreed in ${t.name}${present ? '' : ', by messenger'}.`);
   return '';
 }

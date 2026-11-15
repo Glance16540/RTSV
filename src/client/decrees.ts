@@ -4,6 +4,7 @@ import type { Campaign } from '../sim/campaign';
 import { DECREES, DECREE_KINDS, decreeBar, decreesAt } from '../sim/decrees';
 import { townStanding } from '../sim/drift';
 import { folkOf } from '../sim/township';
+import { isAngry, noblesAt, sayOn, titleOf } from '../sim/nobles';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 
@@ -14,9 +15,14 @@ export function decreePanel(c: Campaign, tid: number): string {
   const grief = (f.grief ?? 0) > 0 ? ', grieving' : '';
   const gone = f.drifted ? [f.drifted.tavern ? `${f.drifted.tavern} of its women at the tavern` : '', f.drifted.mines ? `${f.drifted.mines} of its men at the mines` : ''].filter(Boolean).join(' and ') : '';
   let html = `<div class="hint">Standing ${Math.round(townStanding(c, tid))}, ${way}${grief}.${gone ? ` Drifted: ${gone}.` : ''}${now.length ? ' Decrees: ' + now.map((x) => `${DECREES[x.kind].name.toLowerCase()} (to turn ${x.until}${x.strength < 1 ? ', by messenger' : ''})`).join('; ') + '.' : ''}</div>`;
+  // The town's nobles and how they feel (src/sim/nobles.ts); each decree says whom it would please and anger.
+  const here = noblesAt(c, tid);
+  if (here.length) html += `<div class="hint">Nobles: ${here.map((n) => `${esc(titleOf(c, n))} (${n.leaning}, ${isAngry(n) ? 'angry' : n.mood >= 20 ? 'pleased' : n.mood <= -15 ? 'displeased' : 'content'})`).join('; ')}.</div>`;
+  const names = (xs: { name: string }[]): string => xs.slice(0, 3).map((n) => n.name).join(', ') + (xs.length > 3 ? ` and ${xs.length - 3} more` : '');
   for (const k of DECREE_KINDS) {
-    const bar = decreeBar(c, 0, tid, k), def = DECREES[k];
-    html += `<button data-act="decree:${k}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(bar || `${def.desc} ${def.cost} supplies, ${def.seasons} season${def.seasons === 1 ? '' : 's'}.`)}">📜 ${esc(def.name)}</button>`;
+    const bar = decreeBar(c, 0, tid, k), def = DECREES[k], say = sayOn(c, 0, tid, k);
+    const heard = `${say.pleased.length ? ` Pleases ${names(say.pleased)}.` : ''}${say.angered.length ? ` Angers ${names(say.angered)}.` : ''}`;
+    html += `<button data-act="decree:${k}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(bar || `${def.desc} ${def.cost} supplies, ${def.seasons} season${def.seasons === 1 ? '' : 's'}.${heard}`)}">📜 ${esc(def.name)}</button>`;
   }
   return html;
 }

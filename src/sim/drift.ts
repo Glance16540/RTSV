@@ -26,6 +26,7 @@ import { townMood } from './portrait';
 import { folkOf, grown } from './township';
 import { decreeEffect, decreesSeason, sensibleDecrees } from './decrees';
 import { leaderAt } from './court';
+import { nobleStrain, nobleWatch } from './nobles';
 
 declare module './township' {
   interface Folk {
@@ -80,7 +81,7 @@ export function driftTown(c: Campaign, tid: number): number {
   const famine = (c.events ?? []).some((x) => x.at === tid && x.kind === 'famine' && x.until >= c.turn - 1);
   const hunger = famine || food < LEAN_FOOD ? 1 : f.hungry ? 0.6 : 0;
   const e = decreeEffect(c, tid, isDecadent(townStanding(c, tid)));
-  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + STRAIN.sick * Number(mood.sick) + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid)) + STRAIN.grief * Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX)) * e.strainScale + e.strainAdd);
+  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + STRAIN.sick * Number(mood.sick) + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid)) + STRAIN.grief * Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX)) * e.strainScale + e.strainAdd + nobleStrain(c, tid));
   const church = t.buildings.includes('church'), tavern = t.buildings.includes('tavern') && !e.tavernShut;
   const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care);
   // Only the call to church raises a town here; the rest of its care is shown, and its church is counted by townfaith.ts.
@@ -142,7 +143,8 @@ export const driftedOf = (c: Campaign, tid: number): Drifted => folkOf(c, tid).d
 /** The share of a town's men still at their posts: men at the mines leave the walls thin. */
 export function watchOf(c: Campaign, tid: number): number {
   const men = folkOf(c, tid).men;
-  return men > 0 ? 1 - Math.min(men, driftedOf(c, tid).mines) / men : 1;
+  // An angry noble's town keeps a thinner watch while the leader is away (nobles.ts).
+  return (men > 0 ? 1 - Math.min(men, driftedOf(c, tid).mines) / men : 1) * nobleWatch(c, tid);
 }
 
 /** How a town stood at the last turn, for whoever decides on decrees. */
