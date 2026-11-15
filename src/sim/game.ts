@@ -14,6 +14,8 @@ import { leaningWith } from './temper';
 import { rescue } from './rescue';
 import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
 import { agesHere, birthPace, growPace, hireBar } from './birthonly';
+import { griefPace, griefSecond, mourn } from './grief';
+import { driftSecond } from './drift';
 import { Ages, GROWN_SEASON, LAST_SEASON, OLD_SEASON, SEASONS_A_YEAR, ageFor, childSeasons, cleanAges, leftFor, yearsOf } from './ageing';
 import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
@@ -739,6 +741,7 @@ export class Game {
     this.entities.delete(e.id);
     this.events.push({ t: 'remove', id: e.id, unit: e.kind === 'unit', x: e.x, y: e.y });
     if (e.kind === 'unit') {
+      mourn(this, e); // a house that loses its mother or a son grieves (grief.ts)
       this.units.splice(this.units.indexOf(e), 1);
       this.players[e.owner].pop -= e.def.pop;
       if (e.hero) {
@@ -2385,6 +2388,8 @@ export class Game {
     if (this.tick % 4 === 0) this.updateVision();
     if (this.tick % 600 === 0) for (const p of this.players) if (!p.neutral) p.history.push(this.score(p.id));
     if (this.tick % 20 === 0) {
+      griefSecond(this);
+      driftSecond(this); // in a campaign town, the strained drift to worse and the cared-for to better (drift.ts)
       this.upkeep();
       this.stepLair();
       this.checkVictory();
@@ -3034,7 +3039,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * (t.type === 'farm' ? p.mods.farm * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -3355,7 +3360,7 @@ export class Game {
           const was = q.who ? this.entities.get(q.who) : undefined;
           if (p.pop + def.pop - (was ? UNITS.villager.pop : 0) <= p.popCap) {
             b.queue.shift();
-            if (was && was.kind === 'unit') { was.inside = 0; this.kill(was); }
+            if (was && was.kind === 'unit') { was.inside = 0; was.enlisted = true; this.kill(was); }
             const u = this.spawnFrom(b, q.id, q.gender);
             // The same person, in arms: their name and their years go with them.
             if (was && was.kind === 'unit') {

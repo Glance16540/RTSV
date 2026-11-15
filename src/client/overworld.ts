@@ -22,6 +22,8 @@ import { heroFor } from '../sim/campaign';
 import { callArmies, called, courtOf, endCall, holdCourt, leaderReach, moveLeader } from '../sim/court';
 import { openHeroCreator, savedHero } from './herocreator';
 import { visitButton } from './visit';
+import { decreePanel } from './decrees';
+import { DecreeKind, issueDecree } from '../sim/decrees';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
 export type LeaderChoice = 'a' | 'b' | 'own';
@@ -131,6 +133,7 @@ export class Overworld {
       if (kind === 'gift') sendGift(this.c, Number(id));
       if (kind === 'age') advanceAge(this.c, 0);
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
+      if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
       this.changed();
     });
     $('ow-end').addEventListener('click', () => {
@@ -636,6 +639,7 @@ export class Overworld {
         html += `<button data-act="lead" ${can && c.phase === 'player' ? '' : 'disabled'} title="${can ? 'They travel here alone, leaving any army where it is. Once a turn.' : court.moved ? 'They have travelled already this turn.' : `They are in ${c.territories[court.at]?.name ?? 'the field'}: only a neighbouring land of yours can be reached in a turn.`}">♛ Bring ${heroFor(c, 0).name} here</button>`;
       }
       html += visitButton(c, t.id);
+      html += decreePanel(c, t.id); // drift and decrees (src/sim/drift.ts, decrees.ts)
       if (!me.heroAlive) html += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
       if (t.capital === 0) html += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
