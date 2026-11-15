@@ -1,10 +1,14 @@
 /**
  * A town left to itself (docs/DESIGN.md). It carries on with the last orders it was given: where its people
  * work, what was being built, what was being trained. Those are written down when the player leaves a battle or
- * a visit there (`Game.orders`). Season by season its people work as they were set to and eat, what was left
+ * a visit there (`Game.orders`). Season by season its people work as they were set to, what was left
  * half built is finished, and a governor fills the gaps sensibly: Farmland (and hands to the fields) when food
  * runs short, a house when couples have no roof, a Fortress when the town has been raided. He spends only what
  * the town itself holds in store. Every town on the map is kept so, the player's and a rival's alike.
+ *
+ * Where the people work decides what the town's yield is made of; it is earned once, when the season turns, by
+ * harvest.ts, which sets how much from the land, its farms and its hands and splits it by `shareOf` here. A town
+ * eats once, in larder.ts. The governor neither earns nor feeds: he sets the work, finishes and begins.
  */
 import type { Campaign, Territory } from './campaign';
 import { siteCost, slots } from './campaign';
@@ -17,8 +21,10 @@ export interface Orders { work?: Stores; build?: string[]; train?: string[]; tur
 export const GOVERN = {
   /** Where a town's people work when nobody has said: shares of its working people by what they bring in. */
   work: { food: 0.5, wood: 0.25, gold: 0.125, stone: 0.125 } as Stores,
-  /** What one person brings in a season at each kind of work, and what one person eats. */
-  yield: { food: 4, wood: 2, gold: 2, stone: 2 } as Stores, eat: 1,
+  /** What one person brings in at each kind of work, against the others: it weighs how a town's yield splits (harvest.ts). */
+  yield: { food: 4, wood: 2, gold: 2, stone: 2 } as Stores,
+  /** Farmland makes the fields bring in this much as much. */
+  farm: 1.5,
   /** Food in store per head under which a town is short, and the share of its people the governor then sends to the fields. */
   short: 15, fields: 0.75,
   /** How much of a building a season's work finishes. */
@@ -82,26 +88,31 @@ export function plotFor(t: Territory, type: string): { cx: number; cy: number } 
   return null;
 }
 
-export interface Governed { at: number; ate: number; brought: Stores; fields: boolean; finished: string[]; began?: string }
 /**
- * A season in one town left to itself: its people work where they were set and eat; what stood half built is
- * taken further; and where the town is in want the governor answers, one thing a season, out of its own stores.
+ * Where a town's people work this season, as shares that add to one: by its last orders, unless food is short,
+ * when the governor sends GOVERN.fields of them to the fields whatever the orders were. `fields`: he has.
+ */
+export function shareOf(c: Campaign, tid: number): { share: Stores; fields: boolean } {
+  const t = c.territories[tid], share = workOf(t);
+  if (!(wantsOf(c, tid).food && share.food < GOVERN.fields)) return { share, fields: false };
+  const rest = 1 - share.food || 1;
+  for (const k of STORE_KINDS) if (k !== 'food') share[k] = (share[k] / rest) * (1 - GOVERN.fields);
+  share.food = GOVERN.fields;
+  return { share, fields: true };
+}
+
+export interface Governed { at: number; fields: boolean; finished: string[]; began?: string }
+/**
+ * A season in one town left to itself: its people are set to their work (what it brings in is harvest.ts's, what
+ * they eat larder.ts's); what stood half built is taken further; and where the town is in want the governor
+ * answers, one thing a season, out of its own stores.
  */
 export function governTown(c: Campaign, tid: number): Governed | null {
   const t = c.territories[tid];
   if (!t || t.owner < 0 || t.horde) return null;
   const f = folkOf(c, tid), want = wantsOf(c, tid), mine = t.owner === 0;
-  const out: Governed = { at: tid, ate: 0, brought: { food: 0, wood: 0, gold: 0, stone: 0 }, fields: false, finished: [] };
-  // Work and bread. Short of food, the governor sends hands to the fields whatever the orders were.
-  const share = workOf(t), hands = f.men + f.women;
-  if (want.food && share.food < GOVERN.fields) {
-    const rest = 1 - share.food || 1;
-    for (const k of STORE_KINDS) if (k !== 'food') share[k] = (share[k] / rest) * (1 - GOVERN.fields);
-    share.food = GOVERN.fields; out.fields = true;
-  }
-  for (const k of STORE_KINDS) { out.brought[k] = Math.round(hands * share[k] * GOVERN.yield[k] * (k === 'food' && t.buildings.includes('farm') ? 1.5 : 1)); f.stores[k] += out.brought[k]; }
-  out.ate = Math.min(f.stores.food, headcount(f) * GOVERN.eat);
-  f.stores.food -= out.ate;
+  // Short of food, the governor sends hands to the fields whatever the orders were (shareOf): next season's yield is the more food for it.
+  const out: Governed = { at: tid, fields: shareOf(c, tid).fields, finished: [] };
   // What was left half built is taken further.
   if (t.town?.b) t.town.b = t.town.b.map((x) => {
     if (x[4] === undefined) return x;
