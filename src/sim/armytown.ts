@@ -9,6 +9,7 @@
  */
 import type { Army, Campaign } from './campaign';
 import { agesOf, countFrom, OLD_SEASON, LAST_SEASON } from './ageing';
+import { cameHome, enlist, fell, settleHouses } from './warhouse';
 import { folkOf, rememberVeteran } from './township';
 import { tally } from './ledger';
 
@@ -32,7 +33,7 @@ export const MEN_A_COMPANY = 2;
 /** An army's roll: how many companies it had when last reckoned, and the men with it by the town they came from (their ages, in seasons). */
 export interface Muster { size: number; men: Record<string, number[]>; /** Whose army it is, kept so its men can find their way home if it is broken. */ owner?: number }
 /** Men of a town who fell with an army. */
-export interface Fallen { town: number; army: number; dead: number; lost: boolean; /** Men of the lost companies who came home alive. */ home?: number }
+export interface Fallen { town: number; army: number; dead: number; lost: boolean; /** Men of the lost companies who came home alive. */ home?: number; /** The dead by name, each with his house (warhouse.ts). */ names?: string[] }
 
 const hash = (a: number, b: number): number => { let h = (Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35)) >>> 0; h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 13; return (h >>> 0) / 4294967296; };
 const sizeOf = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
@@ -73,6 +74,7 @@ export function menMustered(c: Campaign, a: Army, tid: number): number {
   const gone = new Set(young.map(([, i]) => i));
   (m.men[tid] ??= []).push(...young.map(([s]) => s));
   countFrom(f, { m: ages.m.filter((_, i) => !gone.has(i)), f: ages.f, k: ages.k });
+  enlist(c, tid, young.length); // each is of a house of the town, and stays on its record as away (warhouse.ts)
   return young.length;
 }
 /** Two armies of one people have met and shared out their companies: their men are shared out the same way. */
@@ -118,9 +120,12 @@ export function reckonArmies(c: Campaign): Fallen[] {
       const home = t && owner !== undefined && t.owner === owner && !t.horde ? fate.slice(killed).map((x) => x.age) : [];
       if (home.length && t) { const f = folkOf(c, t.id), ages = agesOf(c, t.id, f); countFrom(f, { m: [...ages.m, ...home], f: ages.f, k: ages.k }); }
       const dead = out0.length - home.length;
-      out.push({ town: Number(tid), army: id, dead, lost: !a, ...(home.length ? { home: home.length } : {}) });
+      // The dead are their houses' dead, and those who came home are under their own roofs again (warhouse.ts).
+      const names = t ? fell(c, t.id, dead, a ? 'fell with the army' : 'did not come back from the army').map((x) => `${x.name} ${x.family}`) : [];
+      if (t) cameHome(c, t.id, home.length);
+      out.push({ town: Number(tid), army: id, dead, lost: !a, ...(home.length ? { home: home.length } : {}), ...(names.length ? { names } : {}) });
       if (t) tally(c, t.id, 'fell', dead); // for the season's report (ledger.ts)
-      if (t && dead) c.log.push(`${dead} ${dead === 1 ? 'man' : 'men'} of ${t.name} ${a ? 'fell with the army' : 'did not come back: the army they marched with is no more'}${home.length ? `; ${home.length} came home hurt or routed` : ''}.`);
+      if (t && dead) c.log.push(`${dead} ${dead === 1 ? 'man' : 'men'} of ${t.name} ${a ? 'fell with the army' : 'did not come back: the army they marched with is no more'}${home.length ? `; ${home.length} came home hurt or routed` : ''}.${names.length ? ` ${names.length === 1 ? 'He was' : 'They were'} ${names.join(', ')}.` : ''}`);
       else if (t && home.length) c.log.push(`${home.length} ${home.length === 1 ? 'man' : 'men'} of ${t.name} came home hurt from the army.`);
     }
     if (a) m.size = now; else delete all[key];
@@ -130,7 +135,9 @@ export function reckonArmies(c: Campaign): Fallen[] {
 /** A season passes for the men with the armies, as it does for those at home; then the armies are counted. */
 export function seasonOfArmies(c: Campaign): Fallen[] {
   for (const m of Object.values(c.musters ?? {})) for (const tid of Object.keys(m.men)) m.men[tid] = m.men[tid].map((s) => Math.min(LAST_SEASON, s + 1));
-  return reckonArmies(c);
+  const fallen = reckonArmies(c);
+  settleHouses(c); // the houses' records are set level with the rolls (warhouse.ts)
+  return fallen;
 }
 
 /**
@@ -156,6 +163,7 @@ export function sendCompaniesHome(c: Campaign, armyId: number, companies: number
       const tid = c.territories[Number(key)]?.owner === a.owner ? Number(key) : a.at;
       const f = folkOf(c, tid), ages = agesOf(c, tid, f);
       countFrom(f, { m: [...ages.m, ...l.splice(0, back)], f: ages.f, k: ages.k });
+      cameHome(c, Number(key), back); // under their own roofs again, or let go by a house that is no longer theirs (warhouse.ts)
       if (!l.length) delete m.men[key];
       n += back;
     }
@@ -183,6 +191,7 @@ export function sendHome(c: Campaign, armyId: number): number {
     const tid = c.territories[Number(key)]?.owner === a.owner ? Number(key) : a.at;
     const f = folkOf(c, tid), ages = agesOf(c, tid, f);
     countFrom(f, { m: [...ages.m, ...l], f: ages.f, k: ages.k });
+    cameHome(c, Number(key), l.length); // under their own roofs again (warhouse.ts)
     n += l.length;
   }
   if (a.champion) rememberVeteran(c, home !== undefined && c.territories[home]?.owner === a.owner ? home : a.at, a.champion);
