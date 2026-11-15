@@ -15,7 +15,7 @@ import { folkOf, rememberVeteran } from './township';
  * Seasons an army rests in a town it has just taken before it marches again: it buries its dead, sets a watch
  * and brings the town to order. (It is what keeps a campaign from being a land a season.)
  */
-export const ARMY_REST = 5;
+export const ARMY_REST = 6;
 /** Is this army still resting from its last assault as this turn begins? */
 export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.turn;
 

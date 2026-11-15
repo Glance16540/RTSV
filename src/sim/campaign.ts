@@ -204,13 +204,13 @@ export const TRUCE_TURNS = 6;
 export const ALLIANCE_COST = 6;
 export const GIFT_COST = 4;
 /** Supplies to bring a whole people into the next age, from the Stone Age up. */
-export const AGE_COST = [18, 28, 40, 56];
+export const AGE_COST = [20, 30, 44, 60];
 /** Each age past the first makes a people's armies this much stronger. */
 export const AGE_EDGE = 0.1;
 export const MAX_FAVOR = 3;
 /** Hold this share of all the land for this many turns running and the campaign is won. */
 export const DOMINION_SHARE = 0.6;
-export const DOMINION_TURNS = 6;
+export const DOMINION_TURNS = 10;
 
 export function siteCost(t: Territory, site: string, civ = ''): number {
   if (site === 'fortress' && civ === 'stonekin') return 5;
