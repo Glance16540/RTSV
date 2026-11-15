@@ -25,7 +25,7 @@ describe('prices by kind', () => {
     }
     expect(priceOf('barracks', 5)).toEqual({ food: 0, wood: 500, gold: 0, stone: 0 });
     expect(priceOf('fortress', 9)).toEqual({ food: 0, wood: 0, gold: 0, stone: 900 });
-    expect(priceOf('company', 2)).toEqual({ food: 120, wood: 0, gold: 80, stone: 0 });
+    expect(priceOf('company', 2)).toEqual({ food: 60, wood: 40, gold: 100, stone: 0 });
     expect(priceText(priceOf('church', 5))).toBe('200 gold, 300 stone');
   });
 
