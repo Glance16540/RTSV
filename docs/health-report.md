@@ -1,6 +1,6 @@
 # Campaign health report
 
-Measured by `scripts/health.test.ts` against `docs/TUNING.md`: 24 campaigns (seeds 1 to 24, a player and two rivals), up to 200 seasons, the player played by the computer, each also played 80 seasons with no decrees, and 2 with every town visited. 6 in band, 16 out. Took 159 seconds.
+Measured by `scripts/health.test.ts` against `docs/TUNING.md`: 24 campaigns (seeds 1 to 24, a player and two rivals), up to 200 seasons, the player played by the computer, each also played 80 seasons with no decrees, and 2 with every town visited. 6 in band, 16 out. Took 178 seconds.
 
 | Area | Figure | Target band | Measured | |
 | --- | --- | --- | --- | --- |
