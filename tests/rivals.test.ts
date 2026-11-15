@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { EAT, eatTown } from '../src/sim/larder';
 import { Campaign, answerDemand, continueAI, endTurn, newCampaign, raise, resolvePending } from '../src/sim/campaign';
-import { awayFrom, musterOf } from '../src/sim/armytown';
+import { MEN, awayFrom, musterOf } from '../src/sim/armytown';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
 import { governTown } from '../src/sim/governor';
 import { nationWorth } from '../src/sim/stores';
@@ -51,11 +51,13 @@ describe('rivals live by the same rules', () => {
     if (!cap.buildings.includes('barracks')) cap.buildings.push('barracks');
     c.factions[1].supplies = 50;
     c.armies = c.armies.filter((a) => a.at !== cap.id);
-    const men = folkOf(c, cap.id).men;
+    const men = folkOf(c, cap.id).men, women = folkOf(c, cap.id).women;
+    // It gives what it can spare: a town keeps its husbands, a rival's as the player's (armytown.ts MEN).
+    const gave = Math.min(2, Math.max(0, men - Math.max(MEN.floor, Math.ceil(women * MEN.couples))));
     expect(raise(c, 1, cap.id, 'infantry')).toBe(true);
     const a = c.armies.find((x) => x.at === cap.id)!;
-    expect(folkOf(c, cap.id).men).toBe(Math.max(0, men - 2));
-    expect(awayFrom(c, cap.id)).toBe(Math.min(2, men));
+    expect(folkOf(c, cap.id).men).toBe(men - gave);
+    expect(awayFrom(c, cap.id)).toBe(gave);
     expect(musterOf(c, a.id)!.size).toBe(1);
     // The men gone with the army are not fed at home: the town eats for those on its record (larder.ts).
     const f = folkOf(c, cap.id);
