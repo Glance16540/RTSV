@@ -817,12 +817,16 @@ describe('conquest campaign', () => {
   });
 
   it('a lost defence costs the territory, and rivals fight the campaign to a finish', () => {
-    // Asked of several worlds, not one (owner's word, 15 November 2026): a single seed flipped on changes that had
-    // nothing to do with it. Hard, with a player who never fights in person.
-    const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
-    const MUST_FINISH = 7; // of the 8; all 8 did when this was written
-    let finished = 0;
-    for (const seed of SEEDS) {
+    // Asked of many worlds, not one (owner's word, 15 November 2026): a single seed flipped on changes that had
+    // nothing to do with it, and so did eight. Hard, with a player who never fights in person. Two things are asked.
+    // Measured when this was written, on these 32 worlds: 31 ended and a rival won 29. The two the player won were
+    // worlds where every rival died out (the last people alive win: docs/DESIGN.md); the one that never ended was a
+    // world gone to the marauders, with one rival left too poor to raise a company.
+    const WORLDS = 32;
+    const MUST_END = 29; // the campaign is over, whoever won it
+    const RIVAL_WINS = 26; // a passive player is conquered: wiped out, or a rival came to hold most of the land
+    let ended = 0, conquered = 0;
+    for (let seed = 1; seed <= WORLDS; seed++) {
       const c = newCampaign(seed, 2, 2);
       let guard = 0;
       // The guard is steps, not seasons; 400 encoded the faster pace before food spoiled (larder.ts).
@@ -832,13 +836,17 @@ describe('conquest campaign', () => {
         else if (c.phase === 'player') endTurn(c);
         else continueAI(c);
       }
-      // What must hold in every world, finished or not.
+      // What must hold in every world, ended or not.
       expect(c.territories.every((t) => t.buildings.length <= 4 && new Set(t.buildings).size === t.buildings.length)).toBe(true);
-      // A passive player is eventually conquered: wiped out, or a rival came to hold most of the land.
-      if (c.phase === 'over' && c.winner > 0 && (!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS)) finished++;
+      if (c.phase !== 'over') continue;
+      ended++;
+      // However it ended, it ended by the rules: someone alone is left alive, or someone held most of the land long enough.
+      expect(c.factions.filter((f) => f.alive).length === 1 || c.dominion.turns >= DOMINION_TURNS || !c.factions[0].alive).toBe(true);
+      if (c.winner > 0 && (!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS)) conquered++;
     }
-    expect(finished).toBeGreaterThanOrEqual(MUST_FINISH);
-  }, 60_000); // eight campaigns: more than the default five seconds when the whole suite runs
+    expect(ended).toBeGreaterThanOrEqual(MUST_END);
+    expect(conquered).toBeGreaterThanOrEqual(RIVAL_WINS);
+  }, 180_000); // thirty-two campaigns
 
   it('battle bonuses give each side its army in the real-time game', () => {
     const c = newCampaign(7);
