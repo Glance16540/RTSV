@@ -46,7 +46,7 @@ import { wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
 
-export type BandKind = 'raiders' | 'slavers' | 'pirates' | 'highwaymen';
+export type BandKind = 'raiders' | 'slavers' | 'pirates' | 'highwaymen' | 'marauders';
 /** People a band is holding: where they were taken from, whose they are, their ages when seized, and since when. */
 export interface Held { from: number; owner: number; men: number[]; women: number[]; since: number; names?: string[] }
 export interface Band {
@@ -55,8 +55,12 @@ export interface Band {
   at: number; to?: number;
   strength: number; since: number;
   held: Held[];
+  /** The season it last moved its place (bandroam.ts). */
+  moved?: number;
 }
 export type Outcome = 'held' | 'raided' | 'taken';
+/** Something a band did or had done to it that is not a strike: it came, moved, fled, settled, broke up, was fought, lost its captives. */
+export interface BandNote { turn: number; kind: 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran'; at: number; band: number; text: string; /** The peoples it concerns: whose captives, whose army, whose land. */ owners: number[] }
 /** What a town had to defend with, part by part, in the measure of companies. */
 export interface Defence { men: number; works: number; walls: number; army: number; guard: number; spirit: number; total: number }
 /** The report of one strike. */
@@ -78,6 +82,8 @@ declare module './campaign' {
     /** The reports of their strikes, the latest last. */
     raids?: Raid[];
     bandSeq?: number;
+    /** What the bands did besides striking, season by season, for the season's news (raidnews.ts). */
+    bandNews?: BandNote[];
   }
 }
 
@@ -96,6 +102,13 @@ export const THREATS = {
   man: 0.35, fortress: 3, raising: 0.5, tower: 1, towers: 3, wall: 0.1, walls: 2, capital: 1, sick: 0.7,
   /** The share of a town's men who die at the walls, by outcome; and of its stores lost. */
   dead: { held: 0, raided: 0.15, taken: 0.25 }, loot: { held: 0, raided: 0.25, taken: 0.4 }, pirateLoot: 0.2, road: 0.2,
+  /**
+   * And no more than they can carry: so many goods for each point of the band's force, by its kind. Pirates have
+   * ships to fill; slavers come for people; the marauders come for women, and take little else. (A nation's
+   * supplies are its towns' stores above their working stock, stores.ts: a band that emptied a town each time
+   * would beggar a nation in a few seasons.)
+   */
+  carry: { raiders: 30, slavers: 15, pirates: 45, highwaymen: 30, marauders: 10 } as Record<string, number>,
   /** The share of a town's women, and for slavers its men, carried off when it falls. */
   carried: 0.3,
   /** The chance raiders or pirates burn a farm. */
@@ -113,11 +126,13 @@ export const BANDS: Record<BandKind, { name: string; icon: string; place: string
   slavers: { name: 'Slavers', icon: '⛓️', place: 'camp', desc: 'They come for people, men and women both, and sell them on.' },
   pirates: { name: 'Pirates', icon: '🏴‍☠️', place: 'cove', desc: 'They reach every coast, loot heavily, and carry off women.' },
   highwaymen: { name: 'Highwaymen', icon: '🗡️', place: 'road', desc: 'They rob what passes on the road: stores, never people.' },
+  marauders: { name: 'Marauders', icon: '🏴', place: 'land', desc: 'They hold the land they sit on, grow every season, carry off women, and overrun the land next door when they are strong (bandhorde.ts).' },
 };
 const NAMES: Record<BandKind, string[]> = {
   raiders: ['the Ash Riders', 'the Red Hand', 'the Wolf\'s Sons', 'the Burnt Men', 'the Crows'],
   slavers: ['the Chain', 'the Long Coffle', 'the Buyers of Men', 'the Iron Market', 'the Tally-keepers'],
   pirates: ['the Black Sail', 'the Salt Wolves', 'the Drowned Men', 'the Gull\'s Brood', 'the Reavers of the Sound'],
+  marauders: ['the Marauders', 'the Black Banner', 'the Landless', 'the Wolves of the Waste', 'the Unbowed'],
   highwaymen: ['the Toll-takers', 'the Hedge Knights', 'the Night Road', 'the Purse-cutters', 'the Men of the Pass'],
 };
 
@@ -133,11 +148,11 @@ export function chance(c: Campaign, a: number, salt: number): number {
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 const held = (c: Campaign, t: Territory): boolean => t.owner >= 0 && !!c.factions[t.owner]?.alive;
 const whose = (c: Campaign, f: number): string => (f === 0 ? 'your' : `${c.factions[f].name}'s`);
-const mark = (c: Campaign, kind: EventKind, at: number): void => { (c.events ??= []).push({ kind, at, turn: c.turn, until: c.turn }); };
+export const mark = (c: Campaign, kind: EventKind, at: number): void => { (c.events ??= []).push({ kind, at, turn: c.turn, until: c.turn }); };
 const sick = (c: Campaign, tid: number): boolean => (c.events ?? []).some((e) => e.kind === 'plague' && e.at === tid && e.until >= c.turn);
 const coastal = (t: Territory): boolean => t.trait === 'coast';
 const count = (h: Held[]): number => h.reduce((n, x) => n + x.men.length + x.women.length, 0);
-const people = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
+export const people = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
 export const bandsAt = (c: Campaign, tid: number): Band[] => (c.bands ?? []).filter((b) => b.at === tid || b.to === tid);
 export const heldCount = (b: Band): number => count(b.held);
@@ -205,7 +220,7 @@ function placeFor(c: Campaign, kind: BandKind, salt: number): [number, number?] 
   return t ? [t.id] : null;
 }
 
-function appear(c: Campaign, out: string[]): Band | null {
+export function appear(c: Campaign, out: string[]): Band | null {
   const kinds = (['raiders', 'slavers', 'pirates', 'highwaymen'] as BandKind[]).map((k, i) => [chance(c, 301 + i, 7), k] as const).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   for (const kind of kinds) {
     if ((c.bands ?? []).filter((b) => b.kind === kind).length >= 2) continue;
@@ -238,7 +253,7 @@ function takeOut(c: Campaign, tid: number, sex: 'm' | 'f', n: number): number[] 
 }
 
 /** Captives come home, older by what being held has cost them. Returns how many. */
-function bringHome(c: Campaign, h: Held): number {
+export function bringHome(c: Campaign, h: Held): number {
   const t = c.territories[h.from];
   // If the land has changed hands they go to their own people's nearest town; failing that, to where they were taken from.
   const home = t.owner === h.owner ? t : c.territories.find((x) => x.owner === h.owner) ?? t;
@@ -251,17 +266,17 @@ function bringHome(c: Campaign, h: Held): number {
   return h.men.length + h.women.length;
 }
 
-function breakBand(c: Campaign, b: Band, out: string[], by?: Army): void {
+export function breakBand(c: Campaign, b: Band, out: string[], by?: Army): void {
   let freed = 0;
   for (const h of b.held) freed += bringHome(c, h);
-  if (freed) { mark(c, 'rescued', b.at); out.push(`${people(freed, 'person', 'people')} held by ${b.name} ${freed === 1 ? 'is' : 'are'} free and going home, the older for it.`); }
+  if (freed) { mark(c, 'rescued', b.at); note(c, out, 'freed', b, b.at, `${people(freed, 'person', 'people')} held by ${b.name} ${freed === 1 ? 'is' : 'are'} free and going home, the older for it.`, b.held.map((h) => h.owner)); }
   c.bands = (c.bands ?? []).filter((x) => x !== b);
   // What is taken back goes into the town where the army stands, if it is theirs; else to the nation as a whole.
   if (by && c.factions[by.owner]) { if (c.territories[by.at]?.owner === by.owner) stock(c, by.at, THREATS.prize * SUPPLY_UNITS); else c.factions[by.owner].supplies += THREATS.prize; }
 }
 
 /** One strike on one town. */
-function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
+export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const t = c.territories[tid], owner = t.owner, f = folkOf(c, tid);
   const road = b.kind === 'highwaymen';
   const defence = defenceOf(c, tid);
@@ -281,7 +296,10 @@ function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   } else {
     if (!road) raid.killed = takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - 1), Math.ceil(f.men * THREATS.dead[outcome]))).length;
     const share = road ? THREATS.road : THREATS.loot[outcome] + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
-    for (const k of STORE_KINDS) { const n = Math.floor(f.stores[k] * (k === 'food' || k === 'gold' || !road ? share : 0)); f.stores[k] -= n; raid.stores[k] = n; }
+    // What they would take, and then no more of it than they can carry.
+    const want = STORE_KINDS.map((k) => Math.floor(f.stores[k] * (k === 'food' || k === 'gold' || !road ? share : 0)));
+    const all = want.reduce((n, v) => n + v, 0), load = Math.min(1, (force * (THREATS.carry[b.kind] ?? 30)) / Math.max(1, all));
+    STORE_KINDS.forEach((k, i) => { const n = Math.floor(want[i] * load); f.stores[k] -= n; raid.stores[k] = n; });
     if ((b.kind === 'raiders' || b.kind === 'pirates') && t.buildings.includes('farm') && chance(c, b.id, 31) < THREATS.burn) { t.buildings.splice(t.buildings.indexOf('farm'), 1); raid.burnt = 'farm'; }
     if (outcome === 'taken') {
       const women = takeOut(c, tid, 'f', Math.min(Math.max(0, f.women - 1), Math.ceil(f.women * THREATS.carried)));
@@ -336,56 +354,56 @@ export function reportText(c: Campaign, r: Raid): string[] {
 /** The reports of this season's strikes on a land, the latest first. */
 export const raidsAt = (c: Campaign, tid: number, turn = c.turn): Raid[] => (c.raids ?? []).filter((r) => r.at === tid && r.turn === turn).reverse();
 
-/**
- * One season of the threats of men over the whole map. Called once a turn. Returns the season's reports; the
- * same are kept on the campaign, marked on the map and written in the log.
- */
-export function threatsOfMen(c: Campaign): Raid[] {
-  const out: string[] = [], raids: Raid[] = [];
-  const bands = (c.bands ??= []);
-  for (const b of [...bands]) {
-    // Its place is gone if the land it sat beside is no longer anyone's to rob.
-    mark(c, 'band', b.at);
-    // Captives held too long are lost.
+/** Set down something a band did, for the log and for the season's news. */
+export function note(c: Campaign, out: string[], kind: BandNote['kind'], b: Band, at: number, text: string, owners: number[] = []): void {
+  out.push(text);
+  const list = (c.bandNews ??= []);
+  list.push({ turn: c.turn, kind, at, band: b.id, text, owners: [...new Set(owners.filter((f) => f >= 0))] });
+  if (list.length > THREATS.kept * 2) list.splice(0, list.length - THREATS.kept * 2);
+}
+const cap = (name: string): string => name[0].toUpperCase() + name.slice(1);
+
+/** Captives held too long are lost; their people are warned a season before. */
+export function captivesSeason(c: Campaign, out: string[]): void {
+  for (const b of c.bands ?? []) {
     for (const h of [...b.held]) {
-      const left = seasonsLeft(c, h), n = h.men.length + h.women.length;
+      const left = seasonsLeft(c, h), n = h.men.length + h.women.length, from = c.territories[h.from].name;
       if (left <= 0) {
         b.held.splice(b.held.indexOf(h), 1);
-        out.push(`${people(n, 'person', 'people')} taken from ${c.territories[h.from].name} by ${b.name} ${n === 1 ? 'has' : 'have'} been ${b.kind === 'raiders' ? 'held too long: they are dead or gone for good' : 'sold on, and will not be seen again'}.`);
-        (c.chronicle ??= []).push({ turn: c.turn, text: `${people(n, 'person', 'people')} of ${c.territories[h.from].name}, carried off by ${b.name}, ${n === 1 ? 'was' : 'were'} never got back.` });
-      } else if (left === 1 && h.owner === 0) out.push(`One season is left to get back the ${people(n, 'person', 'people')} ${b.name} took from ${c.territories[h.from].name}: break the band at ${c.territories[b.at].name}.`);
+        note(c, out, 'lost', b, h.from, `${people(n, 'person', 'people')} taken from ${from} by ${b.name} ${n === 1 ? 'has' : 'have'} been ${b.kind === 'raiders' || b.kind === 'marauders' ? 'held too long: they are dead or gone for good' : 'sold on, and will not be seen again'}.`, [h.owner]);
+        (c.chronicle ??= []).push({ turn: c.turn, text: `${people(n, 'person', 'people')} of ${from}, carried off by ${b.name}, ${n === 1 ? 'was' : 'were'} never got back.` });
+      } else if (left === 1 && h.owner === 0) note(c, out, 'warned', b, b.at, `One season is left to get back the ${people(n, 'person', 'people')} ${b.name} took from ${from}: break the band at ${c.territories[b.at].name}.`, [0]);
     }
-    // An army standing where the band has its place fights it.
-    const a = c.armies.find((x) => (x.at === b.at || (b.to !== undefined && x.at === b.to)) && c.factions[x.owner]?.alive);
-    if (a) {
-      const mine = armyStrength(a), who = a.owner === 0 ? 'Your army' : `${c.factions[a.owner].name}'s army`;
-      if (mine >= b.strength) {
-        if (mine < b.strength * 1.5 && armySize(a) > 1) thin(a);
-        out.push(`${who} has broken ${b.name} at ${c.territories[a.at].name} and taken back ${THREATS.prize} supplies of what they stole.`);
-        breakBand(c, b, out, a);
-      } else {
-        if (armySize(a) > 1) thin(a);
-        b.strength = Math.max(1, b.strength - 1);
-        out.push(`${who} went against ${b.name} at ${c.territories[a.at].name} and was beaten off with the loss of a company.`);
-      }
-      continue;
-    }
-    if (c.turn > b.since && (c.turn - b.since) % THREATS.grow === 0) b.strength = Math.min(THREATS.max, b.strength + 1);
-    const reach = reachOf(c, b);
-    if (!reach.length) { if (!b.held.length) { c.bands = c.bands!.filter((x) => x !== b); out.push(`${b.name[0].toUpperCase() + b.name.slice(1)} have gone from ${c.territories[b.at].name}: there is nothing left there to rob.`); } continue; }
-    if (chance(c, b.id, 41) >= THREATS.strike) continue;
-    // The softest mark: least defence for what draws them, and the decadent draw them more.
-    const marks = reach.map((id) => ({ id, lure: wrathOf(c, c.territories[id].owner) / Math.max(0.5, defenceOf(c, id).total), tie: chance(c, b.id * 53 + id, 43) })).sort((x, y) => y.lure - x.lure || x.tie - y.tie);
-    const raid = strike(c, b, marks[0].id, out);
-    raids.push(raid);
-    if (raid.broken) { out.push(`${b.name[0].toUpperCase() + b.name.slice(1)} are broken and scattered.`); breakBand(c, b, out); }
   }
-  if (c.turn >= THREATS.from && (c.bands ?? []).length < wanted(c) && chance(c, 0, 47) < THREATS.appear) appear(c, out);
-  c.log.push(...out);
+}
+
+/** The softest mark in a band's reach: least defence for what draws it, and the decadent draw it more. */
+export function softest(c: Campaign, b: Band, reach = reachOf(c, b)): { id: number; lure: number } | null {
+  const marks = reach.map((id) => ({ id, lure: wrathOf(c, c.territories[id].owner) / Math.max(0.5, defenceOf(c, id).total), tie: chance(c, b.id * 53 + id, 43) })).sort((x, y) => y.lure - x.lure || x.tie - y.tie);
+  return marks[0] ?? null;
+}
+
+/** Every band but the marauders grows a little with time, and may strike the softest town in its reach. */
+export function strikeSeason(c: Campaign, out: string[]): Raid[] {
+  const raids: Raid[] = [];
+  for (const b of [...(c.bands ?? [])]) {
+    if (b.kind === 'marauders') continue; // they keep their own season (bandhorde.ts)
+    mark(c, 'band', b.at);
+    if (c.turn > b.since && (c.turn - b.since) % THREATS.grow === 0) b.strength = Math.min(THREATS.max, b.strength + 1);
+    const m = softest(c, b);
+    if (!m || chance(c, b.id, 41) >= THREATS.strike) continue;
+    const raid = strike(c, b, m.id, out);
+    raids.push(raid);
+    if (raid.broken) { note(c, out, 'broken', b, b.at, `${cap(b.name)} are broken and scattered.`, [raid.owner]); breakBand(c, b, out); }
+  }
   return raids;
 }
 
-function thin(a: Army): void {
-  const type = Object.keys(a.units).sort((x, y) => a.units[y] - a.units[x] || (x < y ? -1 : 1))[0];
-  if (--a.units[type] <= 0) delete a.units[type];
+/** A band that is missing appears, as often as not. Marauders are not counted: they come by their own rule. */
+export function appearSeason(c: Campaign, out: string[]): Band | null {
+  const about = (c.bands ?? []).filter((b) => b.kind !== 'marauders').length;
+  if (c.turn < THREATS.from || about >= wanted(c) || chance(c, 0, 47) >= THREATS.appear) return null;
+  const before = out.length, b = appear(c, out);
+  if (b) { const text = out.splice(before).join(' '); note(c, out, 'came', b, b.at, text, reachOf(c, b).map((id) => c.territories[id].owner)); }
+  return b;
 }
