@@ -31,7 +31,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
 | `birthonly` | 60 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
 | `calamity` | 179 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, famine, game, wrath | none of its own | not yet |
-| `campaign` | 1850 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, convoys, country, court, creed, data, drift, dynasty, game, governor, harvest, hero, larder, leaders, notableweight, powers, prices, seasonfolk, stores, story, temper, threats, townfaith, township | none of its own | not yet |
+| `campaign` | 1850 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, convoys, country, court, creed, data, drift, dynasty, game, governor, harvest, hero, larder, leaders, notableweight, orphans, powers, prices, seasonfolk, stores, story, temper, threats, townfaith, township | none of its own | not yet |
 | `captivity` | 129 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, data, game, nursery | captivity.test.ts | not yet |
 | `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
 | `conquered` | 108 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | ageing, campaign, court, township | conquered.test.ts | not yet |
@@ -62,6 +62,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `notable` | 50 | Notable people: the few a nation knows by name. Nothing here decides who they are; it reads what the rules | champion, game, hero | notable.test.ts | not yet |
 | `notableweight` | 113 | The weight of notable people: a home known for what it carries in, a veteran of their own town, and the grief and dip in standing a loss leaves (plain numbers for drift.ts to read). | game, township (types only) | notable-weight.test.ts | not yet |
 | `nursery` | 51 | Children. A child is never a unit on the map: it is an entry in the record of the house it was born to (its | data | nursery.test.ts | not yet |
+| `orphans` | 72 | Children taken in: a town left with no grown people sends its children, with their ages, to the nearest town of its own people (docs/DESIGN.md, "Children are never shown"). | ageing, campaign, township | orphans.test.ts | not yet |
 | `path` | 266 | Grid A* with rectangle goals and line-of-sight smoothing. | none | none of its own | not yet |
 | `portrait` | 240 | Portraits: which woodblock icon stands beside a person, and which marks sit over it (docs/DESIGN.md, "Icons tell | campaign, champion, conquered, famine, game, grief, household, notableweight, township | portrait.test.ts | not yet |
 | `powers` | 92 | What a leader learns as they rise. At three ranks of veterancy (Blooded, Veteran, Legend) a leader comes into one | data, hero | powers.test.ts | not yet |
