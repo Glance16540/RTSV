@@ -840,8 +840,8 @@ describe('conquest campaign', () => {
       expect(c.territories.every((t) => t.buildings.length <= 4 && new Set(t.buildings).size === t.buildings.length)).toBe(true);
       if (c.phase !== 'over') continue;
       ended++;
-      // However it ended, it ended by the rules: someone alone is left alive, or someone held most of the land long enough.
-      expect(c.factions.filter((f) => f.alive).length === 1 || c.dominion.turns >= DOMINION_TURNS || !c.factions[0].alive).toBe(true);
+      // However it ended, it ended by the rules: someone alone is left alive, someone held most of the land long enough, or it ended in ruin.
+      expect(c.factions.filter((f) => f.alive).length === 1 || c.dominion.turns >= DOMINION_TURNS || !c.factions[0].alive || c.ended === 'ruin').toBe(true); // or the age closed in ruin, with no winner (ruin.ts)
       if (c.winner > 0 && (!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS)) conquered++;
     }
     expect(ended).toBeGreaterThanOrEqual(MUST_END);
