@@ -8,6 +8,7 @@ import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
+import { intrigueSeason } from './intrigue';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { fieldReckoned, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
@@ -16,6 +17,7 @@ import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
 import { orphansSeason } from './orphans';
 import { deputyAt, kinSeasons } from './kin';
+import { noblesSeasons } from './nobles';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
@@ -38,7 +40,8 @@ import { settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
-import { mayAdvance, maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
+import { aimOrder, marchInto } from './rivalaim';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
@@ -1384,6 +1387,7 @@ export function continueAI(c: Campaign): void {
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       kinSeasons(c); // the leaders' households and inner circles (kin.ts)
+      noblesSeasons(c); // who is noble, and how they feel (nobles.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
@@ -1392,6 +1396,7 @@ export function continueAI(c: Campaign): void {
       mendTowns(c);
       turnEvent(c);
       storyTurn(c);
+      intrigueSeason(c); // stories inside the story: a thief, a killer to be found (intrigue.ts)
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
       seasonTurned(c); // what changed for the player's nation this season, for the card on the map (seasonreport.ts)
@@ -1600,14 +1605,15 @@ function aiStep(c: Campaign, f: Faction): boolean {
         raise(c, f.id, t.id, types[Math.floor(rand(c) * types.length)]);
       }
     }
+    poorMuster(c, f.id); // with men and nothing to spare it still raises a company, out of a town's own stores (rivalrule.ts)
     return false;
   }
   const army = c.armies.find((a) => a.owner === f.id && !a.moved);
   if (!army) return true;
   const here = c.territories[army.at];
   // Never march on someone we have a truce with.
-  const targets = reach(c, here.id).filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner))
-    .sort((a, b) => defence(c, a, army.units, civ) - defence(c, b, army.units, civ));
+  // The most wanted first: what it can take, weighed by the country it marches into and the town's faith (rivalaim.ts).
+  const targets = aimOrder(c, f.id, reach(c, here.id).filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner)), (id) => defence(c, id, army.units, civ));
   // A leader who has just been refused goes for the player before anyone else.
   // An ally goes first for whoever is at the player's borders.
   if (c.ally === f.id) {
@@ -1620,7 +1626,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     // Cautious leaders want better odds; a leader who has just been refused wants blood.
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
     const bySea = !here.adj.includes(t.id);
-    if (strengthVs(army, defenders(c, t.id), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
+    if (strengthVs(army, defenders(c, t.id), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, t.id) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
       moveArmy(c, army.id, t.id);
       return false;
     }
