@@ -151,6 +151,7 @@ export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
 export const BEATS: Record<string, string> = { cavalry: 'archers', archers: 'infantry', infantry: 'cavalry' };
 export const MAX_VETERAN = 3;
 import { HeroSpec, cleanHero, MAX_RANK } from './hero';
+import { seasonTurned } from './seasonreport';
 
 /** Some land is special. */
 export interface TraitDef { name: string; icon: string; desc: string }
@@ -1389,6 +1390,7 @@ export function continueAI(c: Campaign): void {
       storyTurn(c);
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
+      seasonTurned(c); // what changed for the player's nation this season, for the card on the map (seasonreport.ts)
       return;
     }
     if (f.alive && !aiStep(c, f)) continue; // aiStep returns false while the faction still has moves
