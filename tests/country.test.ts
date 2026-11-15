@@ -47,7 +47,7 @@ describe('country that matters', () => {
 
   it('a land yields by its country: less in desert and snow, more from a farm in green country', () => {
     const c = varied(), home = c.territories.find((t) => t.capital === 0)!, out = c.territories.find((t) => t.owner < 0)!;
-    home.buildings = []; out.owner = 0; out.buildings = []; out.taken = 0;
+    home.buildings = []; out.owner = 0; out.buildings = [];
     set(c, home.id, 'forest'); set(c, out.id, 'forest');
     const plain = income(c, 0);
     for (const k of ['desert', 'snow'] as Biome[]) {
@@ -65,10 +65,14 @@ describe('country that matters', () => {
 
   it('no land yields less than nothing, whatever the country', () => {
     const c = varied(), poor = c.territories.find((t) => t.owner === 0 && t.capital < 0) ?? c.territories.find((t) => t.owner < 0)!;
-    poor.owner = 0; poor.buildings = []; poor.trait = ''; poor.taken = 2;
+    poor.owner = 0; poor.buildings = []; poor.trait = '';
+    // A hard winter over the whole world and snow lying on the land: each costs it a supply. (The old count of
+    // "women carried off", which this used for the two, is gone: those taken are real people now.)
+    c.world = { kind: 'winter', until: c.turn + 9 } as typeof c.world;
+    c.fronts = [{ kind: 'snow', x: poor.x, y: poor.y, r: 5000, vx: 0, vy: 0 }];
     set(c, poor.id, 'grass');
     const before = income(c, 0);
-    set(c, poor.id, 'desert'); // 2 - 2 carried off - 1 for the desert: nothing, not a debt
+    set(c, poor.id, 'desert'); // 2 - 1 for the winter - 1 for the snow - 1 for the desert: nothing, not a debt
     expect(income(c, 0)).toBe(before);
   }, LONG);
 

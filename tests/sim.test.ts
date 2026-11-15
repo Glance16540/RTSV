@@ -3126,30 +3126,27 @@ describe('mountains and rivers on the campaign map', () => {
 });
 
 describe('marauders on the campaign map', () => {
-  it('women carried off cost a land its supplies until the camp next door is broken', () => {
+  it('a marauders\' camp taken is broken, and the victor is paid', () => {
     const c = newCampaign(5, 1, 1, 'hearth');
     c.fronts = [];
     const home = c.territories.find((t) => t.capital === 0)!;
     const camp = c.territories[home.adj.find((n) => c.territories[n].owner < 0)!];
-    const before = income(c, 0);
-    home.taken = 2;
-    expect(income(c, 0)).toBe(before - 2);
+    // (Women carried off are real people held by the band now, not a count on the land that cost it supplies:
+    // tests/bandhorde.test.ts has them coming home when the camp falls.)
     // The player takes the camp's land: next turn the news comes in.
     camp.horde = true;
     camp.owner = 0;
     const twin: Campaign = JSON.parse(JSON.stringify(c));
     twin.territories[camp.id].horde = false;
-    twin.territories[home.id].taken = 0;
     endTurn(c);
     endTurn(twin);
     expect(c.territories[camp.id].horde).toBe(false);
-    expect(c.territories[home.id].taken).toBe(0);
     expect(c.events!.some((e) => e.kind === 'freed' && e.at === camp.id)).toBe(true);
-    // The prize, less the two supplies the land was still short of when this turn's stores were counted, and less
+    // The prize, less
     // what of it spoiled in the towns it was laid down in (larder.ts): counted in goods, so the spoiling is exact.
     const goods = (x: Campaign) => x.territories.filter((t) => t.owner === 0).reduce((n, t) => { const s = folkOf(x, t.id).stores; return n + s.food + s.wood + s.gold + s.stone; }, 0);
     const rot = (x: Campaign) => x.territories.filter((t) => t.owner === 0).reduce((n, t) => n + (folkOf(x, t.id).rotted ?? 0), 0);
-    expect(goods(c) - goods(twin)).toBe((HORDE_PRIZE - 2) * SUPPLY_UNITS - (rot(c) - rot(twin)));
+    expect(goods(c) - goods(twin)).toBe(HORDE_PRIZE * SUPPLY_UNITS - (rot(c) - rot(twin)));
   });
 
   it('a camp left alone grows, and marauders appear in a long campaign', () => {
@@ -3681,7 +3678,7 @@ describe('the story of a campaign', () => {
     c.places = (['shrine', 'fair', 'keep', 'forge', 'library'] as const).map((kind, i) => ({ at: lands[i].id, kind, name: PLACES[kind].names[0], legend: PLACES[kind].legends[0] }));
     const [shrine, fair, keep, forge, library] = lands;
     const before = { income: income(c, 0), drift: virtueDrift(c, 0), age: ageCost(c, 0), keep: defence(c, keep.id) };
-    for (const t of lands) { t.owner = 0; t.buildings = []; t.trait = ''; t.taken = 0; t.horde = false; }
+    for (const t of lands) { t.owner = 0; t.buildings = []; t.trait = ''; t.horde = false; }
     c.armies = c.armies.filter((a) => !lands.some((t) => t.id === a.at));
     expect(income(c, 0)).toBe(before.income + 5 * 2 + PLACES.fair.supplies!);
     expect(virtueDrift(c, 0)).toBe(before.drift + PLACES.shrine.virtue!);
