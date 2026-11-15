@@ -1,35 +1,30 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
-import { creedOf } from '../sim/creed';
-import { PLACES, WORLD_EVENTS, epilogue } from '../sim/story';
-import { WORKS, canOpen, countryOf, countryYield, openBorder } from '../sim/country';
-import { nationHtml, townHtml } from './townpanel';
-import { canSendHome, menOf, sendHome } from '../sim/armytown';
-import { bandButtons, bandPrompt, newsHtml, threatHtml } from './threatpanel';
+import { PLACES, epilogue } from '../sim/story';
+import { openBorder } from '../sim/country';
+import { sendHome } from '../sim/armytown';
+import { bandPrompt, newsHtml } from './threatpanel';
 import { attackBand } from '../sim/bandfight';
-import { AGES, CIVS, CIV_IDS, styleOf } from '../sim/data';
-import { LEADERS, Speech, leaderOf } from '../sim/leaders';
+import { CIVS, CIV_IDS } from '../sim/data';
+import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
 import { WorldMap } from './worldmap';
 import {
   EVENTS, WEATHER, eventsAt, frontsOf, weatherAt,
-  Army, FAITH, faithOf, virtueOf, placeAt, placesOf, worldNow, taleNow, taleText, canAnswer, answerTale, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS, TRUCE_COST, ALLIANCE_COST, DOMINION_TURNS, canAlly, offerAlliance, ageCost, truceCost, giftCost, AGE_COST, AGE_EDGE, ageOf, canAdvance, advanceAge, reach, reach as reachOf, SEA_LANDING, canGift, sendGift, GIFT_COST, MAX_FAVOR, dominionNeed, landOf, answerDemand, atTruce, heroCost, homeEdge, offerTruce, MAP_H, MAP_W, SITES, traitOf, MAX_VETERAN, armyAt, armySize, armyStrength, build, canBuild, canRaise,
-  canSummonHero, continueAI, defence, endTurn, income, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, territoryIncome, companyCost, siteCost, winChance, BEATS,
-  WORLD_SHAPES, worldOf, lanesOf, onSea,
+  placeAt, placesOf, taleNow, taleText, canAnswer, answerTale, CAMPAIGN_EDGE, Campaign, LOCALS, offerAlliance, advanceAge, reach, reach as reachOf, SEA_LANDING, sendGift, answerDemand, atTruce, homeEdge, offerTruce, MAP_H, MAP_W, armyAt, armySize, build, 
+  continueAI, endTurn, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, winChance,
 } from '../sim/campaign';
 
 import { Claim, canSucceed, claimants, comesOfAge, houseOf, ofAge, rulerName, succeed } from '../sim/dynasty';
 import { RANK_NAMES } from '../sim/hero';
 import { heroFor } from '../sim/campaign';
-import { callArmies, called, courtOf, endCall, holdCourt, leaderReach, moveLeader } from '../sim/court';
+import { callArmies, endCall, holdCourt, moveLeader } from '../sim/court';
 import { openHeroCreator, savedHero } from './herocreator';
-import { visitButton } from './visit';
-import { MAX_NAME, Names, peopleName } from '../sim/naming';
+import { MAX_NAME, Names } from '../sim/naming';
 import { mountRoll, rollHtml } from './rollpanel';
-import { convoyHtml, sendFromPanel } from './convoypanel';
-import { priceOf, priceText } from '../sim/prices';
-import { decreePanel } from './decrees';
+import { sendFromPanel } from './convoypanel';
 import { seasonCard } from './seasoncard';
+import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
@@ -604,81 +599,11 @@ export class Overworld {
   }
 
   private renderSide(canMarch: boolean): void {
-    const c = this.c, me = c.factions[0];
-    const t = c.territories[this.sel];
-    const a = armyAt(c, this.sel);
-    const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
-    $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · <span title="What your towns hold in store above their working stock, counted in supplies (a hundred of goods each).">To spend <b>${me.supplies}</b> <small>supplies (+${income(c, 0)} each turn)</small></span>` +
-      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? peopleName(c, 0) + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
-      nationHtml(c) +
-      `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
-      `<div class="hint">${creedOf(virtueOf(c, 0)).icon} Your people are <b>${creedOf(virtueOf(c, 0)).name}</b> <small>(${virtueOf(c, 0) > 0 ? 'piety ' + virtueOf(c, 0) : virtueOf(c, 0) < 0 ? 'decadence ' + -virtueOf(c, 0) : 'in the middle'}${virtueDrift(c, 0) ? `, ${virtueDrift(c, 0) > 0 ? 'growing more pious' : 'growing more decadent'} by ${Math.abs(virtueDrift(c, 0))} a turn` : ''})</small>. ${FAITH[creedOf(virtueOf(c, 0)).id].desc} Your towns begin each battle as they stand here.</div>` +
-      (worldNow(c) ? `<div class="hint">${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].icon} <b>${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].name}.</b> ${WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS].desc} <small>(${c.world!.until - c.turn + 1} turns left)</small></div>` : '') +
-      `<div class="hint">🌍 ${WORLD_SHAPES[worldOf(c.seed).shape]}; ${worldOf(c.seed).temper}.</div>` +
-      `<div class="hint">👑 Win by taking every land, or by holding ${dominionNeed(c)} of ${c.territories.length} for ${DOMINION_TURNS} turns <small>(you hold ${landOf(c, 0)})</small>.` +
-      (c.dominion.f >= 0 ? ` <b class="${c.dominion.f === 0 ? 'good' : 'bad'}">${c.dominion.f === 0 ? 'You have' : c.factions[c.dominion.f].name + ' have'} held it for ${c.dominion.turns}.</b>` : '') + '</div>' +
-      (c.request && c.ally >= 0 ? `<div class="hint">📣 ${c.factions[c.ally].name} ask you to take land from ${c.factions[c.request.foe].name} before turn ${c.request.until}.</div>` : '');
-    const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ` · ♛ ${heroFor(c, army.owner).name}` : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
-    $('ow-sel').innerHTML = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}</h3>
-      <div style="color:${css(owner.color)}">${owner.name}</div>
-      <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · Defence ${defence(c, t.id)}</div>
-      ${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
-      ${threatHtml(c, t.id)}
-      <div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc} <i>${countryOf(c, t.id).rule}</i></div>
-      ${lanesOf(c, t.id).map((n) => `<div class="hint">⛵ Sea crossing to ${c.territories[n].name}${t.buildings.includes('harbour') ? '' : t.owner === 0 ? ': build a Harbour here to make it' : ': made from a Harbour'}.</div>`).join('')}
-      ${(c.barriers ?? []).filter((w) => w.a === t.id || w.b === t.id).map((w) => `<div class="hint">${BARRIERS[w.kind].icon} No march to ${c.territories[w.a === t.id ? w.b : w.a].name}: ${BARRIERS[w.kind].by} lie${w.kind === 'mountains' ? '' : 's'} between${w.kind !== 'water' ? `. ${WORKS[w.kind].name[0].toUpperCase() + WORKS[w.kind].name.slice(1)} would open it (${WORKS[w.kind].cost} supplies, built from either side)` : ''}.</div>`).join('')}
-      ${(c.works ?? []).filter((w) => w.a === t.id || w.b === t.id).map((w) => `<div class="hint">${WORKS[w.kind as 'river'].icon} ${WORKS[w.kind as 'river'].name[0].toUpperCase() + WORKS[w.kind as 'river'].name.slice(1)} leads to ${c.territories[w.a === t.id ? w.b : w.a].name}.</div>`).join('')}
-      ${t.trait ? `<div class="good">${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}: ${traitOf(t.trait)!.desc}</div>` : ''}
-      ${placeAt(c, t.id) ? `<div class="hint">${PLACES[placeAt(c, t.id)!.kind].icon} <b>${placeAt(c, t.id)!.name[0].toUpperCase() + placeAt(c, t.id)!.name.slice(1)}.</b> ${placeAt(c, t.id)!.legend} <i>${PLACES[placeAt(c, t.id)!.kind].desc}</i></div>` : ''}
-      ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
-      ${weatherAt(c, t.id) ? `<div class="bad">${WEATHER[weatherAt(c, t.id) as 'rain'].icon} ${WEATHER[weatherAt(c, t.id) as 'rain'].name}: ${WEATHER[weatherAt(c, t.id) as 'rain'].desc}</div>` : ''}
-      ${eventsAt(c, t.id).map((e) => `<div class="hint">${EVENTS[e.kind].icon} <b>${EVENTS[e.kind].name}</b>${e.until > c.turn ? ` <small>(${e.until - c.turn + 1} turns left)</small>` : e.kind === 'unrest' || e.kind === 'hoard' ? ' <small>(comes to a head next turn)</small>' : ''}: ${EVENTS[e.kind].desc}</div>`).join('')}
-      ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}
-      <div>${t.buildings.map((b) => `${SITES[b].icon} ${SITES[b].name}`).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>
-      ${t.town?.b.length && !t.town.coarse ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle${t.town.b.some((b) => b[3] !== undefined && b[4] === undefined) ? `, ${t.town.b.filter((b) => b[3] !== undefined && b[4] === undefined).length} of them damaged and being mended, a tenth each turn` : ''}${t.town.b.some((b) => b[4] !== undefined) ? `, ${t.town.b.filter((b) => b[4] !== undefined).length} left unfinished` : ''}${t.owner >= 0 && !styleOf(c.factions[t.owner].civ).raid && !t.town.b.some((b) => b[0] === 'towncenter') ? '. Its Town Center was razed and has not been raised again' : ''}. Whoever holds the land fights from it as it stands.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
-      ${t.ground && t.ground.gone.length + t.ground.left.length ? '<div class="hint">🪓 This ground has been worked: wood felled, berries picked or stone dug. None of it comes back.</div>' : ''}
-      ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a, c)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
-      <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 ? '' : 'Select one of your armies to march on this land.'}</div>`;
-    const btn = (act: string, label: string, cost: number, ok: boolean, tip = '') => `<button data-act="${act}" title="${tip}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label} <small>${cost}</small></button>`;
-    let html = '';
-    if (t.owner === 0) {
-      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}. Paid in ${priceText(priceOf(k === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
-      if (ageOf(c, 0) < AGE_COST.length) html += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
-      const court = courtOf(c, 0);
-      if (court && court.at === t.id) {
-        const away = called(c, 0).length;
-        html += `<div class="hint">♛ ${heroFor(c, 0).name} is here${a ? ', at the head of this army' : ', in the town'}. No unrest rises where your leader is, and they fight only in battles fought here${a && !court.holds ? ' or where this army marches' : ''}.${court.rally ? ` The armies are called: ${away} still on the way.` : ''}</div>`;
-        if (court.rally) html += `<button data-act="endcall" ${c.phase === 'player' ? '' : 'disabled'} title="The armies stay where they have got to.">♛ End the call</button>`;
-        else html += `<button data-act="call" ${c.phase === 'player' && away ? '' : 'disabled'} title="Every army of yours marches a land nearer each turn, through your own country, until all have come or you end the call. Lands they leave have no garrison.">♛ Call the armies here</button>`;
-        html += `<button data-act="hold:${court.holds ? 0 : 1}" ${c.phase === 'player' ? '' : 'disabled'} title="${court.holds ? 'They ride with the army here when it marches.' : 'An army that marches out of this land goes without them.'}">♛ ${court.holds ? 'Ride with the army' : 'Keep to the town'}</button>`;
-      } else if (court) {
-        const can = leaderReach(c, 0).includes(t.id);
-        html += `<button data-act="lead" ${can && c.phase === 'player' ? '' : 'disabled'} title="${can ? 'They travel here alone, leaving any army where it is. Once a turn.' : court.moved ? 'They have travelled already this turn.' : `They are in ${c.territories[court.at]?.name ?? 'the field'}: only a neighbouring land of yours can be reached in a turn.`}">♛ Bring ${heroFor(c, 0).name} here</button>`;
-      }
-      html += visitButton(c, t.id);
-      html += convoyHtml(c, t.id);
-      html += decreePanel(c, t.id); // drift and decrees (src/sim/drift.ts, decrees.ts)
-      if (!me.heroAlive) html += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
-      if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
-      if (t.capital === 0) html += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
-      if (a && a.owner === 0) { const men = menOf(c, a); html += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
-      for (const w of c.barriers ?? []) if ((w.a === t.id || w.b === t.id) && w.kind !== 'water') { const far = w.a === t.id ? w.b : w.a; html += btn('open:' + far, `${WORKS[w.kind].icon} Build ${WORKS[w.kind].name} to ${c.territories[far].name}`, WORKS[w.kind].cost, canOpen(c, 0, t.id, far), 'Opens this border for good, to you and to everyone else.'); }
-      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), `${d.desc} Paid in ${priceText(priceOf(k, siteCost(t, k, me.civ)))}.`);
-    } else if (t.owner > 0 && c.factions[t.owner].alive) {
-      const truce = c.truces.find((x) => x.with === t.owner);
-      if (c.ally === t.owner) html += `<div class="hint">🤝 ${c.factions[t.owner].name} are your allies. Their armies next to a battle of yours fight in it, and yours in theirs.</div>`;
-      else if (truce) {
-        html += `<div class="hint">🕊️ At truce with ${c.factions[t.owner].name} until turn ${truce.until}.</div>`;
-        if (c.ally < 0 && c.factions.filter((f) => f.alive).length >= 3) html += btn('ally:' + t.owner, `🤝 Offer ${rulerName(c, t.owner)} an alliance`, ALLIANCE_COST, canAlly(c, t.owner), c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts until one of you breaks it or only you two remain.');
-      }
-      else html += btn('truce:' + t.owner, `🕊️ Offer ${rulerName(c, t.owner)} a truce`, truceCost(me.civ), me.supplies >= truceCost(me.civ) && c.factions[t.owner].refused !== c.turn, c.factions[t.owner].refused === c.turn ? 'They have given their answer for this turn.' : c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts six turns.');
-    }
-    if (t.owner > 0 && c.factions[t.owner].alive) {
-      const fav = c.factions[t.owner].favor ?? 0;
-      html += btn('gift:' + t.owner, `🎁 Send ${c.factions[t.owner].name} supplies`, giftCost(me.civ), canGift(c, t.owner), c.ally === t.owner ? 'Your ally can spend them on troops.' : 'Earns goodwill: they will be readier to agree to a truce or an alliance.');
-      if (fav) html += `<div class="hint">Goodwill ${'●'.repeat(fav)}${'○'.repeat(MAX_FAVOR - fav)}</div>`;
-    }
-    $('ow-actions').innerHTML = html + bandButtons(c, t.id);
+    const c = this.c;
+    // The nation's bar, the land selected and what can be done there (landpanel.ts).
+    $('ow-status').innerHTML = nationBar(c);
+    $('ow-sel').innerHTML = landHtml(c, this.sel, canMarch);
+    $('ow-actions').innerHTML = actionsHtml(c, this.sel);
     ($('ow-end') as HTMLButtonElement).disabled = c.phase !== 'player' || !!c.pending || !!c.demand;
     $('ow-log').innerHTML = newsHtml(c) + c.log.slice(-7).reverse().map((l) => `<div>${l}</div>`).join('');
   }
