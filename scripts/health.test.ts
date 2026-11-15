@@ -28,6 +28,7 @@ import { BUILDINGS, CIV_IDS } from '../src/sim/data';
 import { GOVERN } from '../src/sim/governor';
 import { STORE_KINDS } from '../src/sim/township';
 import { folkOf, grown } from '../src/sim/township';
+import { ledgerSince } from '../src/sim/ledger';
 import { needOf } from '../src/sim/larder';
 import { faithSpread } from '../src/sim/townfaith';
 import { awayFrom, menOf } from '../src/sim/armytown';
@@ -111,6 +112,15 @@ const held = (c: Campaign) => c.territories.filter((t) => t.owner >= 0 && !t.hor
 // ---- What is watched, season by season ----
 
 interface TownSeason { tribe: boolean; hungry: boolean; farmed: boolean; /** No farm, and its governor could raise one: a free place and the stores for it (governor.ts). */ canFarm: boolean; convoy: boolean; drifted: boolean; strained: 'hungry' | 'raided' | 'taken' | ''; oneSex: boolean }
+/** What took a town's people in a season, by cause. */
+interface Losses { war: number; raids: number; hunger: number; plague: number; age: number; levy: number; other: number; born: number; grew: number; oneSex: boolean; taken: boolean }
+const CAUSES = ['war', 'raids', 'hunger', 'plague', 'age', 'levy', 'other'] as const;
+type Cause = (typeof CAUSES)[number];
+/** A town that died out: what took most of its people in the two years before, and what else was true of it then. */
+interface DeadTown { cause: Cause; noBirths: boolean; oneSex: boolean; taken: boolean; side: 'tribe' | 'player' | 'rival' }
+/** Seasons looked back over to say what emptied a town. */
+const DEAD_WINDOW = 8;
+
 interface Watch {
   decided: number; // the season the campaign was decided, or -1
   how: string; // who won it: 'player beaten', 'player', 'rival'
@@ -119,6 +129,8 @@ interface Watch {
   townSeasons: TownSeason[];
   stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
   townLives: number; diedOut: number; diedAfterAll: number;
+  /** Every town that died out (tribes' too), with what emptied it: see `whyDead`. */
+  dead: DeadTown[];
   hungerDead: Record<number, number>; // by people, over the first 20 years
   worstHunger: number; // the largest share of a town lost to hunger in one season
   storeSeasons: number[]; // each nation that had a stretch of peace: the median, over its seasons of peace, of the seasons of food it had in store
@@ -140,7 +152,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
@@ -155,6 +167,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const groups = new Map<string, { near: boolean; since: number }>();
   const takenAt = new Map<number, { since: number; owner: number; garrisoned: number; seen: number }>();
   let logAt = c.log.length;
+  const losses: Losses[][] = [];
   const names = new Map(c.factions.map((f) => [f.name, f.id]));
   for (let s = 1; s <= seasons; s++) {
     // Once a campaign is decided, the world is let go on turning until twenty years have passed, so that the
@@ -166,8 +179,30 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     }
     const owners = c.territories.map((t) => t.owner);
     for (const x of c.convoys ?? []) convoyTo.add(x.to);
+    const counted = c.territories.map((t) => ({ grown: grown(folkOf(c, t.id)), away: awayFrom(c, t.id) })), seq = c.ledgerSeq ?? 0;
     season(c, ruled);
     const now = c.turn;
+    // What took each town's people this season, by cause (the ledger, the raids, the levy); what is missing besides is `other`.
+    {
+      const got = c.territories.map((): Losses => ({ war: 0, raids: 0, hunger: 0, plague: 0, age: 0, levy: 0, other: 0, born: 0, grew: 0, oneSex: false, taken: false }));
+      for (const e of ledgerSince(c, seq)) {
+        const x = got[e.at];
+        if (!x) continue;
+        if (e.kind === 'fell') x.war += e.n; else if (e.kind === 'starved') x.hunger += e.n; else if (e.kind === 'sick') x.plague += e.n; else if (e.kind === 'aged') x.age += e.n; else if (e.kind === 'born') x.born += e.n; else if (e.kind === 'grew') x.grew += e.n;
+      }
+      for (const r of (c.raids ?? []).filter((x) => x.turn === now)) got[r.at].raids += r.killed + r.taken.men + r.taken.women;
+      for (const t of c.territories) {
+        const x = got[t.id], f = folkOf(c, t.id), away = awayFrom(c, t.id);
+        x.levy = Math.max(0, away - counted[t.id].away);
+        // Counted among the grown: the children a town loses when nobody grown is left (taken in elsewhere) are not what emptied it.
+        const gone = counted[t.id].grown + x.grew - grown(f), known = x.war + x.raids + x.hunger + x.plague + x.age + x.levy;
+        x.other = Math.max(0, gone - known);
+        x.oneSex = grown(f) > 0 && (f.men + away === 0 || f.women === 0);
+        x.taken = t.owner !== owners[t.id];
+        (losses[t.id] ??= []).push(x);
+        if (losses[t.id].length > DEAD_WINDOW) losses[t.id].shift();
+      }
+    }
     // Land that changed hands: both peoples were at war; a town taken by force carries a yoke (conquered.ts).
     for (const t of c.territories) {
       const was = owners[t.id];
@@ -233,6 +268,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     for (const t of c.territories) {
       if (t.horde) continue;
       const f = folkOf(c, t.id), any = grown(f) + f.children > 0;
+      if (alive[t.id] && !any) w.dead.push(whyDead(losses[t.id] ?? [], owners[t.id] < 0 ? 'tribe' : owners[t.id] === 0 ? 'player' : 'rival'));
       if (alive[t.id] && !any && (owners[t.id] >= 0 || t.owner >= 0)) {
         w.diedOut++;
         const x = strife[t.id], recent = (k: number) => now - k <= 8;
@@ -365,7 +401,50 @@ function realSieges(): { sieges: Siege[]; odds: number[]; ages: [number, number]
   return { sieges: out, odds, ages };
 }
 
+/** What emptied a town: the cause that took most of its people over the seasons looked back on. */
+function whyDead(window: Losses[], side: DeadTown['side']): DeadTown {
+  const sum = (k: Cause) => window.reduce((n, x) => n + x[k], 0);
+  const cause = CAUSES.reduce((best, k) => (sum(k) > sum(best) ? k : best), 'other' as Cause);
+  return { cause: CAUSES.some((k) => sum(k) > 0) ? cause : 'other', noBirths: window.every((x) => !x.born), oneSex: window.some((x) => x.oneSex), taken: window.some((x) => x.taken), side };
+}
+
 // ---- The report ----
+
+const CAUSE_WORDS: Record<Cause | 'ageBare', string> = {
+  war: 'War: men killed in battle, with the armies or in a town fought over',
+  raids: 'Raids: people killed or carried off by bands',
+  hunger: 'Hunger', plague: 'Plague',
+  age: 'Old age, with children still being born', ageBare: 'Old age, with no child born',
+  levy: 'Men levied away into the armies',
+  other: 'Moved away or not accounted for (convoys, children taken in elsewhere, resettled)',
+};
+/** What emptied the towns that died out, by cause, nations and tribes apart; and what else was true of them. */
+function deadSection(dead: DeadTown[]): string[] {
+  if (!dead.length) return [];
+  const key = (d: DeadTown): Cause | 'ageBare' => (d.cause === 'age' && d.noBirths ? 'ageBare' : d.cause);
+  const keys = (Object.keys(CAUSE_WORDS) as (Cause | 'ageBare')[]).filter((k) => dead.some((d) => key(d) === k));
+  const count = (list: DeadTown[], k: string) => list.filter((d) => key(d) === k).length;
+  const nations = dead.filter((d) => d.side !== 'tribe'), tribes = dead.filter((d) => d.side === 'tribe');
+  const player = dead.filter((d) => d.side === 'player'), rival = dead.filter((d) => d.side === 'rival');
+  const pc = (n: number, of: number) => (of ? `${n} (${Math.round((n / of) * 100)}%)` : '0');
+  const rows = keys.map((k) => ({ k, n: count(dead, k) })).sort((a, b) => b.n - a.n)
+    .map(({ k }) => `| ${CAUSE_WORDS[k]} | ${pc(count(dead, k), dead.length)} | ${count(nations, k)} | ${count(player, k)} | ${count(rival, k)} | ${count(tribes, k)} |`);
+  const flag = (p: (d: DeadTown) => boolean) => `${pc(dead.filter(p).length, dead.length)}; nations ${pc(nations.filter(p).length, nations.length)}, tribes ${pc(tribes.filter(p).length, tribes.length)}`;
+  return [
+    '## What emptied the towns that died out',
+    '',
+    `Every town that died out in the runs above, the tribes\' too (${dead.length}: ${nations.length} of nations, of them ${player.length} the player\'s and ${rival.length} rivals\', and ${tribes.length} of tribes), put down to whatever took most of its people in the ${DEAD_WINDOW} seasons before. Each season's losses among its grown people are read from the season\'s ledger (src/sim/ledger.ts: war, hunger, plague, old age), the raids (killed and carried off) and the men gone to the armies; whatever else the town lost is "moved away or not accounted for".`,
+    '',
+    '| What took most of its people | All | Nations | the player\'s | rivals\' | Tribes |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...rows,
+    '',
+    `- No child born in its last ${DEAD_WINDOW} seasons: ${flag((d) => d.noBirths)}.`,
+    `- Left all one sex at some time in them: ${flag((d) => d.oneSex)}.`,
+    `- Taken, or changed hands, in them: ${flag((d) => d.taken)}.`,
+    '',
+  ];
+}
 
 const median = (xs: number[]): number => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b), m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const quart = (xs: number[], q: number): number => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
@@ -524,6 +603,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     '| --- | --- | --- | --- | --- |',
     ...rows.map((r) => `| ${r.area} | ${r.figure} | ${r.band} | ${r.measured} | **${r.verdict}** |`),
     '',
+    ...deadSection(ruled.flatMap((w) => w.dead)),
     '## How each was read',
     '',
     ...rows.filter((r) => r.note).map((r) => `- **${r.figure}.** ${r.note}`),

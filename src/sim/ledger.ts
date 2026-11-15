@@ -1,9 +1,9 @@
 // The season's ledger: what the season's own systems did to each town's people that is not kept anywhere else
-// (born, came of age, died of age, died of hunger, fell with the army), noted as it happens so that a report of the
+// (born, came of age, died of age, of hunger or of plague, fell in battle), noted as it happens so that a report of the
 // season can be drawn from it (seasonreport.ts). Plain data on the campaign; nothing here decides anything.
 import type { Campaign } from './campaign';
 
-export type LedgerKind = 'born' | 'grew' | 'aged' | 'starved' | 'fell';
+export type LedgerKind = 'born' | 'grew' | 'aged' | 'starved' | 'fell' | 'sick';
 /** One thing that happened to a town's people: `seq` counts every entry ever made, so a report can take those since it last looked. */
 export interface LedgerEntry { seq: number; turn: number; at: number; owner: number; kind: LedgerKind; n: number }
 
