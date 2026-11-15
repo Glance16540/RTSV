@@ -44,6 +44,7 @@ import { drillTowns } from './townmuster';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy } from './rivalaim';
 import { suitorsSeason } from './suitors';
+import { ruinSeason } from './ruin';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
@@ -1407,6 +1408,7 @@ export function continueAI(c: Campaign): void {
       intrigueSeason(c); // stories inside the story: a thief, a killer to be found (intrigue.ts)
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
+      ruinSeason(c); // twenty years with no people gaining ground and the bands on much of the map: the age ends in ruin (ruin.ts)
       seasonTurned(c); // what changed for the player's nation this season, for the card on the map (seasonreport.ts)
       return;
     }

@@ -1,5 +1,6 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
+import { inRuin, ruinWords } from '../sim/ruin';
 import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
@@ -180,8 +181,8 @@ export class Overworld {
     this.render();
     const c = this.c;
     if (c.phase === 'over') {
-      this.dialog(c.winner === 0 ? 'The land is yours' : 'Your people are conquered',
-        (c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`) + `<span class="ow-chronicle ow-epilogue">${epilogue(c).slice(1).map((l) => `<div><i>${l}</i></div>`).join('')}</span>`,
+      this.dialog(inRuin(c) ? ruinWords(c).title : c.winner === 0 ? 'The land is yours' : 'Your people are conquered',
+        (inRuin(c) ? ruinWords(c).line : c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`) + `<span class="ow-chronicle ow-epilogue">${epilogue(c).slice(1).map((l) => `<div><i>${l}</i></div>`).join('')}</span>`,
         [['Read the chronicle', () => this.showChronicle()], ['New campaign', () => this.askNew()], ['Main menu', () => this.hooks.exit()]]);
     } else if (c.demand) this.askDemand();
     else if (c.pending) this.askBattle();
