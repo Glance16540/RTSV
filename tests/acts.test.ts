@@ -1,19 +1,24 @@
 // Acts of God on the map: a season of famine, plague and fire in every held land (src/sim/acts.ts).
 import { describe, expect, it } from 'vitest';
+import { folkOf } from '../src/sim/township';
 import { ACTS, actsOfGod, wrathOf } from '../src/sim/acts';
 import type { Struck } from '../src/sim/acts';
 import { EVENTS, endTurn, continueAI, eventsAt, newCampaign, territoryIncome } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 
 const HOLY = 100, PLAIN = 0, FALLEN = -100;
+/** Every town of the player's with so much of each store, and so many grown people. */
+const stock = (c: Campaign, n: number, people = 0) => {
+  for (const t of c.territories) if (t.owner === 0) { const k = folkOf(c, t.id); k.stores = { food: n, wood: n, gold: n, stone: n }; if (people) { k.men = people; k.women = people; k.elders = 0; delete k.ages; } }
+};
 /** A world in which the player's people stand where we say and have stores enough to pay for anything. */
 const world = (virtue: number, seed = 11) => {
   const c = newCampaign(seed, 2);
   c.factions[0].virtue = virtue;
-  c.factions[0].supplies = 1e6;
   // Eight lands of the player's, so that there is enough to count.
   for (const t of c.territories.filter((x) => x.owner !== 0 && x.capital < 0).slice(0, 7)) t.owner = 0;
   c.fronts = []; // no weather unless a test brings it
+  stock(c, 1e6, 20);
   return c;
 };
 /** Many seasons of chance over one world, with everything put back each season. Counts what fell on the player. */
@@ -25,7 +30,7 @@ function seasons(c: Campaign, n: number, each?: (s: Struck[]) => void) {
     c.turn = 10 + s;
     c.events = [];
     c.territories.forEach((t, i) => { t.buildings = [...works[i]]; });
-    c.factions[0].supplies = 1e6;
+    stock(c, 1e6, 20);
     const struck = actsOfGod(c).filter((x) => x.owner === 0 && x.from === undefined);
     for (const x of struck) { count[x.kind]++; if (x.hard) count.hard++; count.cost += x.cost; }
     each?.(struck);
@@ -68,12 +73,14 @@ describe('acts of God on the map', () => {
     expect(fallen.hard / all(fallen)).toBeGreaterThan(0.4);
   });
 
-  it('a failed harvest costs what the land would have yielded; struck hard with empty stores, the army there loses a company', () => {
+  it('a failed harvest eats from the town\'s granary what the land would have yielded; struck hard with the granary empty, the army there loses a company', () => {
     const c = world(PLAIN);
     let seen = 0;
     seasons(c, 3000, (struck) => {
       for (const x of struck.filter((s) => s.kind === 'famine')) {
         expect(x.cost).toBe(territoryIncome(c.territories[x.at], c.factions[0].civ));
+        expect(x.food).toBe(x.cost * 100);
+        expect(folkOf(c, x.at).stores.food).toBe(1e6 - x.food!);
         expect(eventsAt(c, x.at).some((e) => e.kind === 'famine')).toBe(true);
         seen++;
       }
@@ -85,7 +92,7 @@ describe('acts of God on the map', () => {
     const poor = world(FALLEN);
     let walked = 0, soft = 0;
     for (let s = 0; s < 3000; s++) {
-      poor.turn = 10 + s; poor.events = []; poor.factions[0].supplies = 0;
+      poor.turn = 10 + s; poor.events = []; stock(poor, 0);
       poor.armies = poor.territories.filter((t) => t.owner === 0).map((t, i) => ({ id: 900 + i, owner: 0, at: t.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false }));
       for (const x of actsOfGod(poor).filter((y) => y.owner === 0 && y.kind === 'famine')) {
         const a = poor.armies.find((y) => y.at === x.at)!;
@@ -96,7 +103,7 @@ describe('acts of God on the map', () => {
     expect(soft).toBeGreaterThan(0);
   });
 
-  it('fire costs supplies and leaves the land\'s town damaged; struck hard it burns down one of the land\'s works, never a fortress', () => {
+  it('fire burns food and wood in store, costs supplies to rebuild and leaves the land\'s town damaged; struck hard it burns down one of the land\'s works, never a fortress', () => {
     const c = world(PLAIN);
     for (const t of c.territories) if (t.owner === 0) { t.buildings = ['farm', 'fortress']; t.town = { at: 2, b: [['house', 10, 10], ['barracks', 14, 10, 0.5]] }; }
     const before = c.territories.map((t) => t.town && t.town.b.map((b) => [...b]));
@@ -105,6 +112,7 @@ describe('acts of God on the map', () => {
       for (const x of struck.filter((s) => s.kind === 'blaze')) {
         const t = c.territories[x.at];
         expect(x.cost).toBe(ACTS.rebuild);
+        expect(x.burnt).toEqual({ food: Math.floor(1e6 * ACTS.stores), wood: Math.floor(1e6 * ACTS.stores), gold: 0, stone: 0 }); // gold and stone do not burn
         expect(t.town!.b[0][3]).toBeCloseTo(1 - ACTS.burnt, 1);
         expect(t.town!.b[1][3]).toBeCloseTo(0.5 * (1 - ACTS.burnt), 1);
         expect(t.buildings.includes('fortress')).toBe(true);
@@ -131,12 +139,12 @@ describe('acts of God on the map', () => {
     expect(dry.plague / clear.plague).toBeLessThan(1.4);
   });
 
-  it('plague stays its seasons, costs the land a supply and the army there a company each season, and may pass next door', () => {
+  it('plague stays its seasons, kills a share of the town\'s grown people (never a child) and costs the army there a company each season, and may pass next door', () => {
     const c = world(PLAIN);
     // Find a season in which plague breaks out somewhere of the player's.
     let first: Struck | undefined;
     for (let turn = 10; turn < 4000 && !first; turn++) {
-      c.turn = turn; c.events = []; c.factions[0].supplies = 100;
+      c.turn = turn; c.events = []; stock(c, 1e4, 20);
       first = actsOfGod(c).find((x) => x.owner === 0 && x.kind === 'plague' && x.from === undefined && !x.hard);
     }
     expect(first).toBeDefined();
@@ -145,10 +153,17 @@ describe('acts of God on the map', () => {
     expect(eventsAt(c, t.id).some((e) => e.kind === 'plague')).toBe(true);
     c.armies = c.armies.filter((a) => a.at !== t.id);
     c.armies.push({ id: 950, owner: 0, at: t.id, units: { infantry: 3, archers: 1 }, hero: false, vet: 0, moved: false });
-    c.factions[0].supplies = 100;
+    stock(c, 1e4, 20);
+    const k = folkOf(c, t.id);
+    k.elders = 1; k.children = 6; delete k.ages;
     c.turn++;
     const toll = actsOfGod(c).find((x) => x.at === t.id && x.kind === 'plague' && x.from === undefined)!;
-    expect(toll.cost).toBe(ACTS.sick);
+    // It kills from the town's record, the old first, and never a child.
+    expect(toll.dead).toBe(Math.round(41 * ACTS.sick));
+    expect(k.elders).toBe(0);
+    expect(k.men + k.women).toBe(40 - (toll.dead! - 1));
+    expect(k.children).toBe(6);
+    expect(toll.cost).toBe(0);
     expect(toll.company).toBe(true);
     expect(c.armies.find((a) => a.id === 950)!.units).toEqual({ infantry: 2, archers: 1 });
     // The season after its last, it is gone and takes nothing more.

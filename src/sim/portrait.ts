@@ -20,6 +20,7 @@ import type { Building, Captive, Game, Unit } from './game';
 import type { Campaign } from './campaign';
 import { CHAMPION_KILLS } from './champion';
 import { want } from './famine';
+import { grieving } from './grief';
 import { folkOf } from './township';
 import { serving } from './household';
 import { townGrief } from './notableweight';
@@ -163,7 +164,7 @@ export function moodOf(g: Game, u: Unit): Mood {
     raided: !!p && (p.bell || (!!hit && g.time - hit.t < RAID_FOR && Math.hypot(hit.x - u.x, hit.y - u.y) < RAID_NEAR)),
     sick: u.plagueT > 0,
     starving: !!p && !p.neutral && want(p) !== '',
-    bereaved: !!home && home.type === 'house' && partner === 0 && home.children > 0,
+    bereaved: (!!home && home.type === 'house' && partner === 0 && home.children > 0) || grieving(home as Building | undefined),
   };
 }
 /** The marks of condition on a person in a battle. Maimed and deserter are not kept by the battle's rules. */

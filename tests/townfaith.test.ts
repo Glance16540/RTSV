@@ -69,6 +69,7 @@ describe('faith is a town\'s', () => {
     expect(faithAt(c, a.id) - mean).toBeLessThanOrEqual(limit + 4);
     expect(mean - faithAt(c, b.id)).toBeGreaterThan(limit - 12);
     expect(mean - faithAt(c, b.id)).toBeLessThanOrEqual(limit + 4);
+    expect(a.owner).toBe(0); expect(b.owner).toBe(0);
     expect(Math.abs(faithAt(c, home.id) - mean)).toBeLessThanOrEqual(4); // a town with neither stands with its nation
     expect(faithSpread(c, 0).spread).toBeLessThanOrEqual(2 * limit + 8);
   }, LONG);

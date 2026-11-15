@@ -23,6 +23,10 @@ import { heroFor } from '../sim/campaign';
 import { callArmies, called, courtOf, endCall, holdCourt, leaderReach, moveLeader } from '../sim/court';
 import { openHeroCreator, savedHero } from './herocreator';
 import { visitButton } from './visit';
+import { convoyHtml, sendFromPanel } from './convoypanel';
+import { priceOf, priceText } from '../sim/prices';
+import { decreePanel } from './decrees';
+import { DecreeKind, issueDecree } from '../sim/decrees';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
 export type LeaderChoice = 'a' | 'b' | 'own';
@@ -132,6 +136,8 @@ export class Overworld {
       if (kind === 'gift') sendGift(this.c, Number(id));
       if (kind === 'age') advanceAge(this.c, 0);
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
+      if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
+      if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
       if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
       this.changed();
     });
@@ -624,7 +630,7 @@ export class Overworld {
     const btn = (act: string, label: string, cost: number, ok: boolean, tip = '') => `<button data-act="${act}" title="${tip}" ${ok && c.phase === 'player' ? '' : 'disabled'}>${label} <small>${cost}</small></button>`;
     let html = '';
     if (t.owner === 0) {
-      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}.`);
+      for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) html += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}. Paid in ${priceText(priceOf(k === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
       if (ageOf(c, 0) < AGE_COST.length) html += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
       const court = courtOf(c, 0);
       if (court && court.at === t.id) {
@@ -638,12 +644,14 @@ export class Overworld {
         html += `<button data-act="lead" ${can && c.phase === 'player' ? '' : 'disabled'} title="${can ? 'They travel here alone, leaving any army where it is. Once a turn.' : court.moved ? 'They have travelled already this turn.' : `They are in ${c.territories[court.at]?.name ?? 'the field'}: only a neighbouring land of yours can be reached in a turn.`}">♛ Bring ${heroFor(c, 0).name} here</button>`;
       }
       html += visitButton(c, t.id);
+      html += convoyHtml(c, t.id);
+      html += decreePanel(c, t.id); // drift and decrees (src/sim/drift.ts, decrees.ts)
       if (!me.heroAlive) html += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
       if (t.capital === 0) html += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
       if (a && a.owner === 0) { const men = menOf(c, a); html += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
       for (const w of c.barriers ?? []) if ((w.a === t.id || w.b === t.id) && w.kind !== 'water') { const far = w.a === t.id ? w.b : w.a; html += btn('open:' + far, `${WORKS[w.kind].icon} Build ${WORKS[w.kind].name} to ${c.territories[far].name}`, WORKS[w.kind].cost, canOpen(c, 0, t.id, far), 'Opens this border for good, to you and to everyone else.'); }
-      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
+      if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), `${d.desc} Paid in ${priceText(priceOf(k, siteCost(t, k, me.civ)))}.`);
     } else if (t.owner > 0 && c.factions[t.owner].alive) {
       const truce = c.truces.find((x) => x.with === t.owner);
       if (c.ally === t.owner) html += `<div class="hint">🤝 ${c.factions[t.owner].name} are your allies. Their armies next to a battle of yours fight in it, and yours in theirs.</div>`;
