@@ -349,8 +349,8 @@ export const AREAS = [
     name: 'Behind the scenes',
     systems: [
       { name: 'Automated tests', status: 'solid', what: 'Checks that the rules still work after each change.',
-        has: ['{tests} tests, all passing'],
-        gaps: ['No person has played a full game start to finish'] },
+        has: ['{tests} tests, all passing', 'A health report (scripts/health.test.ts, HEALTH=1) plays two dozen whole campaigns by the computer in seconds and measures every figure docs/TUNING.md asks for against its band, into docs/health-report.md'],
+        gaps: ['No person has played a full game start to finish', 'The health report can watch only the battles put to the player (rivals settle theirs inside the turn), reads hunger deaths from the log, and lets a decided campaign go on turning to twenty years for the long figures; a visit to every town is measured only on request (VISITS=n), as each is ten minutes of a real battle'] },
       { name: 'Sharing the game', status: 'thin', what: 'How anyone else gets to play.',
         has: ['A private page only you can open'],
         gaps: ['Not hosted publicly: friends cannot play it yet'] },

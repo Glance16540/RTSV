@@ -1515,6 +1515,17 @@ function turnEvent(c: Campaign): void {
 }
 
 /** One decision for an AI faction. Returns true once it has nothing left to do this turn. */
+/**
+ * The player's turn, played by the computer as it plays a rival's: for trials that measure whole campaigns
+ * (scripts/health.test.ts). It changes no rule. Stops when the turn is spent or a battle is waiting to be settled
+ * (`c.pending`); call it again after settling one.
+ */
+export function playForPlayer(c: Campaign): void {
+  if (c.phase !== 'player' || c.pending || c.demand || !c.factions[0].alive) return;
+  if (c.cursor !== 0) { c.cursor = 0; c.spent = false; }
+  for (let i = 0; i < 60 && !c.pending && !c.demand; i++) if (aiStep(c, c.factions[0])) return;
+}
+
 function aiStep(c: Campaign, f: Faction): boolean {
   const me = habitsWith(f.civ, PERSONA[f.civ]);
   const civ = f.civ;
