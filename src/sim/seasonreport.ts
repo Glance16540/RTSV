@@ -6,6 +6,7 @@
 // How it is kept. When a season turns (campaign.ts calls `seasonTurned`), the report of the season just ended is
 // made from a snapshot taken when that season began, against the nation as it now is and the season's ledger
 // (ledger.ts), and a new snapshot is taken. The report waits on the campaign until the player has seen it.
+import { ruinWarning } from './ruin';
 import type { Campaign } from './campaign';
 import { ledgerSince } from './ledger';
 import { THREATS, reportLine } from './threats';
@@ -43,6 +44,8 @@ export interface SeasonReport {
   made: Named[]; gone: (Named & { how: string })[];
   /** Its towns that stand open, with nobody in them (deadtown.ts); and others' open towns its armies can reach. */
   open: string[]; openNear: string[];
+  /** The world is going to ruin: what the player is told when it is under twenty seasons off (ruin.ts). */
+  ruin?: string;
   /** The player has seen it. */
   seen?: boolean;
 }
@@ -119,13 +122,14 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
   r.open = now.towns.filter((t) => isOpen(c, t.id)).map((t) => c.territories[t.id].name);
   const near = new Set(c.armies.filter((a) => a.owner === f).flatMap((a) => reach(c, a.at)));
   r.openNear = c.territories.filter((t) => t.owner !== f && near.has(t.id) && isOpen(c, t.id)).map((t) => t.name);
+  if (ruinWarning(c)) r.ruin = ruinWarning(c);
   return r;
 }
 
 /** Whether anything at all happened in a season's report. */
 export const anything = (r: SeasonReport): boolean =>
   r.born + r.grew + r.aged + r.starved + r.fell + (r.sick ?? 0) + r.raidDead + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
-  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.household?.length ?? 0) + (r.stories?.length ?? 0) > 0;
+  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.household?.length ?? 0) + (r.stories?.length ?? 0) + (r.ruin ? 1 : 0) > 0;
 
 /** A season has turned: report the one just ended, and begin keeping the next. Called once a turn (campaign.ts). */
 export function seasonTurned(c: Campaign, f = 0): void {
@@ -170,5 +174,6 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   for (const t of r.open ?? []) add('land', 'bad', `${t} stands open: nobody is left in it, and anyone who marches on it has it. Send people by convoy, or an army to hold it.`);
   for (const t of r.openNear ?? []) add('land', 'good', `${t} stands open, within reach of your armies: march on it and it is yours.`);
   for (const x of r.stories ?? []) add('story', x.tone, x.text);
+  if (r.ruin) add('land', 'bad', r.ruin);
   return out;
 }
