@@ -4,6 +4,7 @@ import { creedOf } from '../sim/creed';
 import { PLACES, WORLD_EVENTS, epilogue } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield, openBorder } from '../sim/country';
 import { nationHtml, townHtml } from './townpanel';
+import { threatHtml } from './threatpanel';
 import { AGES, CIVS, CIV_IDS, styleOf } from '../sim/data';
 import { LEADERS, Speech, leaderOf } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -421,7 +422,7 @@ export class Overworld {
       if (sky) seals.push([WEATHER[sky].icon, '#dfe6ee']);
       const place = placeAt(c, t.id);
       if (place) seals.push([PLACES[place.kind].icon, '#e6dcc0']);
-      for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun' || e.kind === 'famine' || e.kind === 'plague' || e.kind === 'blaze' ? '#e8c0b0' : '#f0e2a8']);
+      for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun' || e.kind === 'famine' || e.kind === 'plague' || e.kind === 'blaze' || e.kind === 'band' || e.kind === 'raid' || e.kind === 'carried' ? '#e8c0b0' : '#f0e2a8']);
       seals.forEach(([icon, paper], k) => {
         const sx = t.x + 40 + (k % 2) * 4, sy = t.y + 12 + k * 24;
         ctx.beginPath(); ctx.arc(sx, sy, 12, 0, 6.3); ctx.fillStyle = paper; ctx.fill();
@@ -601,6 +602,7 @@ export class Overworld {
       <div style="color:${css(owner.color)}">${owner.name}</div>
       <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · Defence ${defence(c, t.id)}</div>
       ${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
+      ${threatHtml(c, t.id)}
       <div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc} <i>${countryOf(c, t.id).rule}</i></div>
       ${lanesOf(c, t.id).map((n) => `<div class="hint">⛵ Sea crossing to ${c.territories[n].name}${t.buildings.includes('harbour') ? '' : t.owner === 0 ? ': build a Harbour here to make it' : ': made from a Harbour'}.</div>`).join('')}
       ${(c.barriers ?? []).filter((w) => w.a === t.id || w.b === t.id).map((w) => `<div class="hint">${BARRIERS[w.kind].icon} No march to ${c.territories[w.a === t.id ? w.b : w.a].name}: ${BARRIERS[w.kind].by} lie${w.kind === 'mountains' ? '' : 's'} between${w.kind !== 'water' ? `. ${WORKS[w.kind].name[0].toUpperCase() + WORKS[w.kind].name.slice(1)} would open it (${WORKS[w.kind].cost} supplies, built from either side)` : ''}.</div>`).join('')}
