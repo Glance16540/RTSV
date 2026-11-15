@@ -15,6 +15,7 @@ import { bornOnVisit } from './seasonfolk';
 import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, shiftVirtue, slots, weatherAt } from './campaign';
 import { faithAt } from './townfaith';
 import { settleStores } from './stores';
+import { sideName } from './naming';
 import { Orders, keepOrders } from './governor';
 import type { Sky } from './campaign';
 import { driftBack, withDrift } from './driftintown';
@@ -102,7 +103,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
     seed: t.seed, size: t.trait === 'coast' ? 96 : 72, level: 0, humanAttacks: false, field: false, sea: t.trait === 'coast',
     title: `A visit to ${t.name}`,
     setups: [{
-      name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
+      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
         buildings: [...(fort ? ['tower', 'tower'] : []), ...works], ...(town.length ? { town } : {}),
