@@ -13,11 +13,11 @@
  * and its decrees are decrees.ts's `sensibleDecrees`.)
  */
 import type { Army, Campaign, Territory } from './campaign';
-import { SITE_BUILDING, armyAt, moveArmy } from './campaign';
+import { SITE_BUILDING, armyAt, armyStrength, atTruce, defence, moveArmy, reach } from './campaign';
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
-import { MEN_A_COMPANY, canSendHome, homeOf, menOf, sendCompaniesHome, sendHome } from './armytown';
+import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menOf, sendCompaniesHome, sendHome } from './armytown';
 import { revoltChance } from './conquered';
 import { bandsAt } from './threats';
 
@@ -31,6 +31,8 @@ export const RIVAL = {
   /** Seasons since a nation last won or lost land after which it is at peace; the share of its men it keeps under arms then;
    *  seasons of peace after which it musters for a campaign; and how many seasons it musters for before standing down again. */
   lull: 4, standing: 0.08, restless: 10, campaign: 8,
+  /** Seasons a town may stand with nobody at all in it before it is abandoned. */
+  empty: 24,
   /** A strained town down to this many men of working age is not asked for another company; and the strain that counts. */
   lastMen: 2, strain: 0.5,
 };
@@ -202,6 +204,84 @@ export function standDown(c: Campaign, f: number): number {
   return sent;
 }
 
+/**
+ * A town with nobody in it is not held by anyone. A town of a nation that has had no person at all on its record
+ * (grown or child, at home or away with its armies) for `RIVAL.empty` seasons is abandoned: it goes back to the
+ * wild, and to the marauders if they hold the land beside it. So a people whose towns have all died does not sit
+ * on the map for ever: with its last town gone it is gone (campaign.ts counts it out). The player's as a rival's.
+ * Returns the lands abandoned.
+ */
+export function abandonEmpty(c: Campaign): number[] {
+  const out: number[] = [], seen = (c.emptied ??= {});
+  for (const t of c.territories) {
+    const held = t.owner >= 0 && !t.horde && !!c.factions[t.owner]?.alive;
+    if (!held || headcount(folkOf(c, t.id)) + awayFrom(c, t.id) > 0) { delete seen[t.id]; continue; }
+    seen[t.id] = (seen[t.id] ?? 0) + 1;
+    if (seen[t.id] < RIVAL.empty) continue;
+    const was = t.owner, mine = was === 0;
+    c.log.push(`${t.name} stands empty: nobody is left there, and ${mine ? 'it is yours no longer' : `it is the ${c.factions[was].name}' no longer`}.`);
+    (c.chronicle ??= []).push({ turn: c.turn, text: `${t.name} stood empty, with nobody left alive in it, and ${mine ? 'was lost to you' : `was lost to the ${c.factions[was].name}`}.` });
+    t.owner = -1; t.capital = t.capital === was ? -1 : t.capital; t.militia = 1; delete t.yoke; delete t.town;
+    if (t.adj.some((n) => c.territories[n].horde)) t.horde = true;
+    // An army left standing in a land that is no longer its people's is of no town now: it breaks up.
+    c.armies = c.armies.filter((a) => !(a.at === t.id && a.owner === was && !c.territories.some((x) => x.owner === was)));
+    delete seen[t.id];
+    out.push(t.id);
+  }
+  return out;
+}
+
+/**
+ * A nation whose towns have no man of working age left, while its armies still hold men of theirs, sends them
+ * home: whole armies, and all but one company of the leader's. A people does not sit under arms while its towns
+ * die behind it. Returns how many armies gave men up.
+ */
+export function lastMenHome(c: Campaign, f: number): number {
+  const u = underArms(c, f);
+  if (u.home > 0 || u.away <= 0) return 0;
+  let sent = 0;
+  for (const a of c.armies.filter((x) => x.owner === f)) {
+    if (canSendHome(c, a.id)) { if (sendHome(c, a.id) >= 0) sent++; }
+    else if (sendCompaniesHome(c, a.id, 99) > 0) sent++;
+  }
+  return sent;
+}
+/**
+ * Armies that cannot win alone come together. When a nation is at war or mustering and not one of its armies is
+ * strong enough to take any land it can reach, the others march a step through their own land toward the
+ * strongest and join it, so that in time it can break out, to whoever stands between it and its last foe.
+ * Returns how many marched.
+ */
+export function massArmies(c: Campaign, f: number): number {
+  if (warFooting(c, f) === 'peace') return 0;
+  const mine = c.armies.filter((a) => a.owner === f && c.territories[a.at].owner === f);
+  if (mine.length < 2) return 0;
+  const can = (a: Army): boolean => reach(c, a.at).some((id) => c.territories[id].owner !== f && !atTruce(c, f, c.territories[id].owner) && armyStrength(a, c) >= defence(c, id, a.units, c.factions[f].civ));
+  if (mine.some(can)) return 0;
+  const strong = [...mine].sort((p, q) => armyStrength(q, c) - armyStrength(p, c) || p.id - q.id)[0];
+  let marched = 0;
+  for (const a of mine) {
+    if (a === strong || a.moved || a.at === strong.at) continue;
+    // The first step of the shortest way to it through their own land.
+    const prev = new Map<number, number>([[a.at, -1]]), queue = [a.at];
+    let found = false;
+    while (queue.length && !found) {
+      const cur = queue.shift()!;
+      for (const n of c.territories[cur].adj) {
+        if (prev.has(n) || c.territories[n].owner !== f) continue;
+        prev.set(n, cur);
+        if (n === strong.at) { found = true; break; }
+        queue.push(n);
+      }
+    }
+    if (!found) continue;
+    let step = strong.at;
+    while (prev.get(step) !== a.at) step = prev.get(step)!;
+    if (moveArmy(c, a.id, step) === 'moved') { marched++; const still = c.armies.find((x) => x.id === a.id); if (still) still.moved = true; }
+  }
+  return marched;
+}
+
 /** May another company be raised out of this town? Not the last men of a town that is strained, and not at peace beyond the standing force. */
 export function maySpare(c: Campaign, tid: number): boolean {
   const f = folkOf(c, tid);
@@ -218,6 +298,8 @@ export const threatened = (c: Campaign, tid: number): boolean => revoltChance(c,
  */
 export function rivalMoves(c: Campaign, f: number): number {
   standDown(c, f); // at peace, what is over the standing force goes home (whoever the computer is playing for)
+  lastMenHome(c, f); // and a people whose towns have no men left calls its men home
+  massArmies(c, f); // armies too weak to win alone come together
   if (!rival(c, f)) return 0;
   let moved = 0;
   // The garrison of a town that wants one holds. (Without an army in it the count is of a town left open.)

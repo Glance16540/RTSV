@@ -2,7 +2,7 @@
 // docs/TUNING.md's "men under arms: 10 to 25% in war, under 10% in peace".
 import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign, raise } from '../src/sim/campaign';
-import { RIVAL, mayMuster, maySpare, standDown, underArms, warFooting } from '../src/sim/rivalrule';
+import { RIVAL, abandonEmpty, lastMenHome, massArmies, mayMuster, maySpare, standDown, underArms, warFooting } from '../src/sim/rivalrule';
 import { MEN_A_COMPANY, awayFrom, musterOf, sendCompaniesHome } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
 
@@ -93,5 +93,59 @@ describe('war and peace', () => {
     expect(sendCompaniesHome(c, a.id, 1)).toBe(0);
     a.at = c.territories.find((t) => t.owner !== 1)!.id;
     expect(sendCompaniesHome(c, a.id, 1)).toBe(-1); // not from another people's land
+  }, LONG);
+});
+
+describe('a nation does not sit for ever', () => {
+  it('a people whose towns have no men left calls its men home from its armies', () => {
+    const { c, cap, f } = nation();
+    for (let i = 0; i < 4; i++) raise(c, 1, cap.id, 'infantry');
+    const a = c.armies.find((x) => x.at === cap.id)!;
+    expect(lastMenHome(c, 1)).toBe(0); // while there are men at home, nothing
+    const away = awayFrom(c, cap.id);
+    f.men = 0; delete f.ages; // plague, hunger, raiders: the town has no man left
+    expect(lastMenHome(c, 1)).toBe(1);
+    expect(c.armies.includes(a)).toBe(false);
+    expect(f.men).toBe(away);
+    expect(awayFrom(c, cap.id)).toBe(0);
+  }, LONG);
+
+  it('armies too weak to take anything alone come together', () => {
+    const { c, cap } = nation();
+    const mid = c.territories[cap.adj[0]];
+    Object.assign(mid, { owner: 1, capital: -1, horde: false, buildings: [] });
+    for (const t of c.territories) if (t.owner !== 1) Object.assign(t, { owner: -1, capital: -1, horde: false, militia: 40 }); // nothing they could take
+    c.armies = [];
+    const one = { id: 801, owner: 1, at: cap.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false };
+    const two = { id: 802, owner: 1, at: mid.id, units: { infantry: 1 }, hero: false, vet: 0, moved: false };
+    c.armies.push(one, two);
+    expect(massArmies(c, 1)).toBe(1); // the weaker marches to the stronger
+    expect(c.armies.length).toBe(1);
+    expect(c.armies[0].id).toBe(801);
+    expect(c.armies[0].units.infantry).toBe(4);
+    // At peace nobody marches; and an army that can win where it stands is left to.
+    c.armies.push({ id: 803, owner: 1, at: mid.id, units: { infantry: 1 }, hero: false, vet: 0, moved: false });
+    pass(c, RIVAL.lull + 1);
+    expect(warFooting(c, 1)).toBe('peace');
+    expect(massArmies(c, 1)).toBe(0);
+  }, LONG);
+
+  it('a town with nobody in it for six years is abandoned, and a people with no town is gone', () => {
+    const { c, cap, f } = nation();
+    Object.assign(f, { men: 0, women: 0, elders: 0, children: 0 }); delete f.ages;
+    for (let i = 0; i < RIVAL.empty - 1; i++) expect(abandonEmpty(c)).toEqual([]);
+    f.children = 1; // someone is there after all: the count begins again
+    expect(abandonEmpty(c)).toEqual([]);
+    f.children = 0; delete f.ages;
+    for (let i = 0; i < RIVAL.empty - 1; i++) expect(abandonEmpty(c)).toEqual([]);
+    expect(abandonEmpty(c)).toEqual([cap.id]);
+    expect(cap.owner).toBe(-1);
+    expect(c.log.join('\n')).toContain(`${cap.name} stands empty`);
+    expect(c.chronicle!.some((x) => x.text.includes(cap.name) && x.text.includes('stood empty'))).toBe(true);
+    // A town whose only people are away with its armies is not empty.
+    const b = nation(9);
+    for (let i = 0; i < 3; i++) raise(b.c, 1, b.cap.id, 'infantry');
+    Object.assign(b.f, { men: 0, women: 0, elders: 0, children: 0 }); delete b.f.ages;
+    for (let i = 0; i < RIVAL.empty + 2; i++) expect(abandonEmpty(b.c)).toEqual([]);
   }, LONG);
 });
