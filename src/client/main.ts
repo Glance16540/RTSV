@@ -47,6 +47,9 @@ export class App {
   /** Calamity waiting for a target click. */
   casting: string | null = null;
   paused = true;
+  /** Nothing of the battle is on screen (the campaign map is over it): it is neither stepped nor drawn. Drawing a whole
+   *  battlefield nobody sees, sixty times a second, kept the graphics busy under the map and starved the page. */
+  asleep = false;
   /** The main menu is up: the game's own keys and scrolling are set aside. */
   menu = false;
   speed = 1;
@@ -142,6 +145,7 @@ export class App {
   private frame(t: number): void {
     const dt = Math.min(0.1, (t - this.last) / 1000 || 0);
     this.last = t;
+    if (this.asleep) { requestAnimationFrame((n) => this.frame(n)); return; }
     const game = this.game;
     if (!this.paused && game.winner < 0) {
       this.acc += dt * this.speed;
@@ -460,6 +464,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   }
 
   if (mode === 'campaign') {
+    app.asleep = true; // the map is all there is to see: the battle behind it is not drawn
     let c = campaign;
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
