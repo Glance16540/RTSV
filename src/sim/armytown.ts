@@ -104,6 +104,37 @@ export function seasonOfArmies(c: Campaign): Fallen[] {
   return reckonArmies(c);
 }
 
+/**
+ * Send some of an army's companies home and keep the army: the most numerous kind first, never its last company.
+ * The men of those companies go back onto their towns' records (or settle where the army stands, if their town is
+ * no longer their people's). For an army that cannot be sent home whole: the leader's, or a nation's last.
+ * Returns how many men went home, or -1 if it cannot be done.
+ */
+export function sendCompaniesHome(c: Campaign, armyId: number, companies: number): number {
+  const a = c.armies.find((x) => x.id === armyId);
+  if (!a || c.pending || c.territories[a.at]?.owner !== a.owner) return -1;
+  reckonArmies(c);
+  const before = sizeOf(a), go = Math.max(0, Math.min(before - 1, Math.floor(companies)));
+  if (!go) return 0;
+  for (let i = 0; i < go; i++) { const type = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p] || p.localeCompare(q))[0]; if (--a.units[type] <= 0) delete a.units[type]; }
+  const m = musterOf(c, armyId);
+  let n = 0;
+  if (m) {
+    // The men go with their companies, in the share the companies went, town by town.
+    for (const key of Object.keys(m.men)) {
+      const l = m.men[key], back = Math.round((l.length * go) / before);
+      if (!back) continue;
+      const tid = c.territories[Number(key)]?.owner === a.owner ? Number(key) : a.at;
+      const f = folkOf(c, tid), ages = agesOf(c, tid, f);
+      countFrom(f, { m: [...ages.m, ...l.splice(0, back)], f: ages.f, k: ages.k });
+      if (!l.length) delete m.men[key];
+      n += back;
+    }
+    m.size = sizeOf(a);
+  }
+  return n;
+}
+
 /** Can this army be sent home? It must stand in a town of its own people, with nothing waiting to be fought. */
 export const canSendHome = (c: Campaign, armyId: number): boolean => {
   const a = c.armies.find((x) => x.id === armyId);
