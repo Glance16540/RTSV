@@ -10,6 +10,7 @@ import type { Campaign } from './campaign';
 import { ledgerSince } from './ledger';
 import { THREATS, reportLine } from './threats';
 import './intrigue';
+import './carriedoff';
 import { folkOf, living, type Notable } from './township';
 import { householdNews } from './kin';
 import { isOpen } from './deadtown';
@@ -22,7 +23,7 @@ export interface Snapshot {
   turn: number; seq: number;
   towns: { id: number; tavern: number; mines: number }[];
   notables: Named[];
-  /** Its people held by bands: each group by band, the season it was taken, and the land, with how many. */
+  /** Its people held by bands, or by a nation that led them away: each group, the season it was taken, with how many. */
   held: Record<string, { n: number; since: number }>;
 }
 export interface SeasonReport {
@@ -61,6 +62,8 @@ export function snapshot(c: Campaign, f = 0): Snapshot {
   const own = c.territories.filter((t) => t.owner === f && !t.horde);
   const held: Snapshot['held'] = {};
   for (const b of c.bands ?? []) for (const h of b.held) if (h.owner === f) held[`${b.id}:${h.since}:${h.from}`] = { n: h.men.length + h.women.length, since: h.since };
+  // And those a rival nation led away when it took a town (carriedoff.ts): they can be got back for as long as a band's captives.
+  for (const x of c.carried ?? []) if (x.held.owner === f) held[`nation:${x.id}`] = { n: x.held.men.length + x.held.women.length, since: x.held.since };
   return {
     turn: c.turn, seq: c.ledgerSeq ?? 0,
     towns: own.map((t) => { const d = folkOf(c, t.id).drifted; return { id: t.id, tavern: d?.tavern ?? 0, mines: d?.mines ?? 0 }; }),
