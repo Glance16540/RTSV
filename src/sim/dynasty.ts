@@ -4,6 +4,7 @@
 // Rules only: campaign.ts calls in here at the turn of the year and when a leader is lost.
 
 import { endHouse, houseName, houseTitle, ofHouse } from './naming';
+import { canBear, parentFor } from './kin';
 import { GROWN_SEASON } from './ageing';
 import type { Army, Campaign } from './campaign';
 import { NAMES_F, NAMES_M } from './data';
@@ -13,7 +14,8 @@ import { leaderAsMade } from './powers';
 import { rankForKills } from './champion';
 import { seat } from './court';
 
-export interface Heir { name: string; female: boolean; born: number }
+/** A child of the house. `parent`: the leader's husband or wife when they were born (kin.ts). */
+export interface Heir { name: string; female: boolean; born: number; parent?: string }
 export interface House {
   heirs: Heir[];
   /** How many have led this people in the campaign, the first leader included. */
@@ -71,7 +73,8 @@ const child = (c: Campaign, f: number, house: House, born: number): Heir => {
   // No two of one house share a name.
   for (let k = 1; house.heirs.some((h) => h.name === name) && k < names.length; k++) name = names[(pick(c, salt + 5, names.length) + k) % names.length];
   house.births++;
-  return { name, female, born };
+  const parent = parentFor(c, f);
+  return { name, female, born, ...(parent ? { parent } : {}) };
 };
 
 /** A people's ruling house. A leader comes to the campaign with one child already in their teens. */
@@ -92,7 +95,7 @@ export function tickHouses(c: Campaign): void {
   for (const fac of c.factions) {
     if (!fac.alive) continue;
     const house = houseOf(c, fac.id);
-    if (!fac.heroAlive || house.heirs.length >= MAX_HEIRS || c.turn < house.due) continue;
+    if (!fac.heroAlive || house.heirs.length >= MAX_HEIRS || c.turn < house.due || !canBear(c, fac.id)) continue; // no child without a living husband or wife (kin.ts)
     const heir = child(c, fac.id, house, c.turn);
     house.heirs.push(heir);
     house.due = c.turn + HEIR_EVERY;

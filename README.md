@@ -297,6 +297,10 @@ faction is a different people led by its own leader. You choose your people, or 
 Each turn you collect supplies from the land you hold and spend them, then march armies into
 neighbouring land.
 
+- **The leader's household** (`src/sim/kin.ts`). Your leader has a husband or wife, the other parent of
+  the heirs, who can die, be carried off or be widowed (a leader alone may marry again), and up to four
+  people stand closest to them, a right hand, a steward, a marshal and a priest or confidant, each with a
+  loyalty that moves with how the nation and their own town fare.
 - **Your people** (`src/sim/roll.ts`). A button beside the Chronicle opens the roll of your nation:
   your leader and house, the heirs and their ages, everyone known by name in each town with their face,
   the men away with the armies, those held captive and how long is left to get them back, and those lost

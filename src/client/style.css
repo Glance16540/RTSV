@@ -770,6 +770,7 @@ body.looking-out #visit { display: none; }
 .roll .roll-held, .roll .roll-lost { margin: 3px 0; }
 .roll .roll-bad { display: inline; color: var(--rubric); }
 .roll .likeness { display: inline-block; flex: none; }
+.roll .roll-spouse { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
 
 /* The map's side panel (src/client/landpanel.ts): the nation's bar, the land in sections, the lie of the land folded, the actions in groups. */
 #ow-status .lp-bar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
