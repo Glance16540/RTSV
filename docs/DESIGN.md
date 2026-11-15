@@ -131,6 +131,9 @@ town's dead. A veteran who comes home is one of its notable people.
 comes for it can take it over (the owner's word, 15 November 2026). It does not simply go back to the wild.
 A people that outlives every rival, however it came about, has won: being the last people alive is a
 victory (the owner's word, 15 November 2026).
+A world where no people has been able to take land for a long stretch (about twenty years) while bands
+hold much of the map ends in ruin: no winner, and the chronicle closes the age (the owner's word, 15
+November 2026).
 
 **A town taken.** Its people stay and become the taker's over time: resentful at first and likely
 to rise, sooner settled where they are ruled well.
