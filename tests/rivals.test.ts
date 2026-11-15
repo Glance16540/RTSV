@@ -1,0 +1,64 @@
+// Rivals live by the same rules (docs/DESIGN.md): an audit, by playing campaigns with the computer and looking at a
+// rival's towns for every system a player's town goes through. What a rival is still spared is listed on the board.
+import { describe, expect, it } from 'vitest';
+import { Campaign, answerDemand, continueAI, endTurn, newCampaign, raise, resolvePending } from '../src/sim/campaign';
+import { awayFrom, musterOf } from '../src/sim/armytown';
+import { faithAt, nationVirtue } from '../src/sim/townfaith';
+import { governTown } from '../src/sim/governor';
+import { nationWorth } from '../src/sim/stores';
+import { folkOf, headcount } from '../src/sim/township';
+
+const turn = (c: Campaign) => {
+  endTurn(c);
+  for (let i = 0; i < 60 && c.phase === 'ai'; i++) { if (c.demand) answerDemand(c, true); else if (c.pending) resolvePending(c, 'auto'); continueAI(c); }
+};
+
+describe('rivals live by the same rules', () => {
+  it('over a campaign a rival\'s towns have people with ages, stores, their own faith, and its figures are its towns\'', () => {
+    for (const seed of [11, 40]) {
+      const c = newCampaign(seed, 2, 1, 'hearth');
+      const first = c.territories.filter((t) => t.owner > 0).map((t) => ({ id: t.id, ages: [...(folkOf(c, t.id).ages?.m ?? [])] }));
+      for (let i = 0; i < 12 && c.phase !== 'over'; i++) turn(c);
+      const theirs = c.territories.filter((t) => t.owner > 0);
+      expect(theirs.length, `seed ${seed}`).toBeGreaterThan(0);
+      for (const t of theirs) {
+        const f = t.folk!;
+        expect(f, t.name).toBeDefined(); // a town with people on record
+        expect(f.ages, t.name).toBeDefined(); // each at an age
+        expect(f.ages!.m.length + f.ages!.f.length).toBe(f.men + f.women + f.elders);
+        expect(f.ages!.k.length).toBe(f.children);
+        expect(t.virtue, t.name).toBeDefined(); // its own standing
+        expect(faithAt(c, t.id)).toBe(t.virtue);
+        for (const k of ['food', 'wood', 'gold', 'stone'] as const) expect(f.stores[k]).toBeGreaterThanOrEqual(0);
+      }
+      for (const x of c.factions) if (x.id > 0 && x.alive && theirs.some((t) => t.owner === x.id)) {
+        expect(x.virtue, x.name).toBe(nationVirtue(c, x.id));
+        expect(x.supplies, x.name).toBe(nationWorth(c, x.id));
+      }
+      // Seasons have passed for them: children were born or came of age somewhere, and the grown are older.
+      const kept = first.filter((s) => c.territories[s.id].owner > 0 && s.ages.length);
+      if (kept.length) expect(kept.some((s) => Math.max(...(c.territories[s.id].folk!.ages!.m.length ? c.territories[s.id].folk!.ages!.m : [0])) > Math.max(...s.ages))).toBe(true);
+      // A town a rival took by force resents it as one the player took would.
+      const taken = theirs.filter((t) => t.yoke);
+      for (const t of taken) expect(t.yoke!.resent).toBeGreaterThan(0);
+    }
+  }, 180_000);
+
+  it('a rival\'s company is men of its town, and its governor keeps the town as a player\'s is kept', () => {
+    const c = newCampaign(7, 1, 1, 'hearth');
+    const cap = c.territories.find((t) => t.capital === 1)!;
+    if (!cap.buildings.includes('barracks')) cap.buildings.push('barracks');
+    c.factions[1].supplies = 50;
+    c.armies = c.armies.filter((a) => a.at !== cap.id);
+    const men = folkOf(c, cap.id).men;
+    expect(raise(c, 1, cap.id, 'infantry')).toBe(true);
+    const a = c.armies.find((x) => x.at === cap.id)!;
+    expect(folkOf(c, cap.id).men).toBe(Math.max(0, men - 2));
+    expect(awayFrom(c, cap.id)).toBe(Math.min(2, men));
+    expect(musterOf(c, a.id)!.size).toBe(1);
+    const heads = headcount(folkOf(c, cap.id)), food = folkOf(c, cap.id).stores.food;
+    const g = governTown(c, cap.id)!;
+    expect(g.ate).toBe(heads);
+    expect(folkOf(c, cap.id).stores.food).toBe(food + g.brought.food - g.ate);
+  }, 60_000);
+});

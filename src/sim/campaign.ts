@@ -29,6 +29,7 @@ import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
+import { Orders, governTowns, keepOrders } from './governor';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
@@ -256,6 +257,8 @@ export interface Territory {
   virtue?: number;
   /** A town taken by force, and how its people take it: see conquered.ts. */
   yoke?: Yoke;
+  /** The last orders this town was given, which it carries on with when left to itself: see governor.ts. */
+  orders?: Orders;
   /** Wood felled, berries picked and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
@@ -1408,6 +1411,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
@@ -1757,6 +1761,8 @@ export interface BattleAfter {
   town?: Standing[];
   /** What has been taken from the battlefield for good (`Game.ground()`), whoever won. */
   ground?: Ground;
+  /** What the player's town was set to as the battle ended (`Game.orders()`): it carries on with them (governor.ts). */
+  orders?: Partial<Orders>;
   /** The town that was fought over, counted as the battle ended (`Game.census()` of the side that held it when it began). */
   folk?: Partial<Census>;
 }
@@ -1779,6 +1785,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
+  if (land.owner === 0 && p.mode !== 'field') keepOrders(c, land.id, after.orders);
   settleStores(c); // what the town gathered or spent is its nation's gain or loss
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
   if (known && mine && !c.armies.includes(mine)) loseVeteran(c, 0, known);
