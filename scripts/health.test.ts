@@ -9,6 +9,8 @@
 //   PLAYER     'computer' (the player's turns are played as a rival's, campaign.ts `playForPlayer`) or 'passive'.
 //   SIEGES     how many real-time sieges the computer fights on both sides (the rival against a capital). Default 8.
 //   MINUTES    how long each may run before the town is counted as having held. Default 20.
+//   STORIES    'answer': the computer-played player answers the stories inside the story by a plain policy
+//              (src/sim/storypolicy.ts); left out, it answers none of them.
 //   VISITS     how many of the campaigns are played again with every town of the player's visited each season for
 //              twenty years (slow: a visit is ten minutes of a real battle). Default 0, and that figure is not measured.
 //   OUT        where the report is written. Default docs/health-report.md.
@@ -16,6 +18,7 @@
 // Every campaign is played twice from the same seed: as the rules stand, the player giving the decrees a sensible
 // ruler would ('ruled'), and with nobody giving decrees ('no decrees'). Every figure is read from the first, but
 // the decrees' own. Skipped unless HEALTH is set.
+import { sensibleAnswers } from '../src/sim/storypolicy';
 import { it } from 'vitest';
 import { writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
@@ -42,6 +45,8 @@ const CAMPAIGNS = +(process.env.CAMPAIGNS ?? 24);
 const SEASONS = +(process.env.SEASONS ?? 200);
 const PLAYER = process.env.PLAYER === 'passive' ? 'passive' : 'computer';
 const VISITS = +(process.env.VISITS ?? 0);
+/** 'answer': the computer-played player answers the stories inside the story by a plain policy (src/sim/storypolicy.ts); otherwise it answers none. */
+const STORIES = process.env.STORIES === 'answer' ? 'answer' : 'ignore';
 const OUT = process.env.OUT ?? 'docs/health-report.md';
 const SIEGES = +(process.env.SIEGES ?? 8);
 const MINUTES = +(process.env.MINUTES ?? 20);
@@ -82,6 +87,7 @@ function huntBands(c: Campaign): void {
 /** One season: the player's turn (played or let be), then everyone else's. */
 function season(c: Campaign, ruled: boolean): void {
   if (PLAYER === 'computer') {
+    if (STORIES === 'answer') sensibleAnswers(c, 0);
     huntBands(c);
     for (let i = 0; i < 40 && c.phase === 'player'; i++) {
       playForPlayer(c);
@@ -565,7 +571,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   add('Threats', 'Raids on a given town', 'about once in 3 to 5 years', raids.length ? `once in ${num(every, 1)} years (${raids.length} raids)` : 'no raids', within(every, 3, 5), 'Every strike by a band on a held town, the marauders\' included, per season it was held, over the whole run.');
   // Stories inside the story (intrigue.ts, courtstory.ts): how often one begins for the player's nation.
   const stories = ruled.reduce((k, w) => k + w.stories, 0), storyYears = ruled.reduce((k, w) => k + w.storyYears, 0), storyEvery = stories ? storyYears / stories : NaN;
-  add('Stories', 'A story begins for the player\'s nation', 'about once in 3 to 6 years', stories ? `once in ${num(storyEvery, 1)} years (${stories} stories in ${ruled.length} campaigns)` : 'no stories', within(storyEvery, 3, 6), 'Every story inside the story begun for the player (a thief, a killer, a rival king, a suitor, a plot), over the years the campaign ran. The computer-played player answers none of them.');
+  add('Stories', 'A story begins for the player\'s nation', 'about once in 3 to 6 years', stories ? `once in ${num(storyEvery, 1)} years (${stories} stories in ${ruled.length} campaigns)` : 'no stories', within(storyEvery, 3, 6), 'Every story inside the story begun for the player (a thief, a killer, a rival king, a suitor, a plot), over the years the campaign ran. ' + (STORIES === 'answer' ? 'The computer-played player answers them by a plain policy (STORIES=answer, src/sim/storypolicy.ts).' : 'The computer-played player answers none of them (STORIES=answer makes it answer).'));
   const out = (o: string) => share(raids, (r) => r.outcome === o);
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);
