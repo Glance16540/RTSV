@@ -101,6 +101,13 @@ export const THREATS = {
   man: 0.35, fortress: 3, raising: 0.5, tower: 1, towers: 3, wall: 0.1, walls: 2, capital: 1, sick: 0.7,
   /** The share of a town's men who die at the walls, by outcome; and of its stores lost. */
   dead: { held: 0, raided: 0.15, taken: 0.25 }, loot: { held: 0, raided: 0.25, taken: 0.4 }, pirateLoot: 0.2, road: 0.2,
+  /**
+   * And no more than they can carry: so many goods for each point of the band's force, by its kind. Pirates have
+   * ships to fill; slavers come for people; the marauders come for women, and take little else. (A nation's
+   * supplies are its towns' stores above their working stock, stores.ts: a band that emptied a town each time
+   * would beggar a nation in a few seasons.)
+   */
+  carry: { raiders: 30, slavers: 15, pirates: 45, highwaymen: 30, marauders: 10 } as Record<string, number>,
   /** The share of a town's women, and for slavers its men, carried off when it falls. */
   carried: 0.3,
   /** The chance raiders or pirates burn a farm. */
@@ -286,7 +293,10 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   } else {
     if (!road) raid.killed = takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - 1), Math.ceil(f.men * THREATS.dead[outcome]))).length;
     const share = road ? THREATS.road : THREATS.loot[outcome] + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
-    for (const k of STORE_KINDS) { const n = Math.floor(f.stores[k] * (k === 'food' || k === 'gold' || !road ? share : 0)); f.stores[k] -= n; raid.stores[k] = n; }
+    // What they would take, and then no more of it than they can carry.
+    const want = STORE_KINDS.map((k) => Math.floor(f.stores[k] * (k === 'food' || k === 'gold' || !road ? share : 0)));
+    const all = want.reduce((n, v) => n + v, 0), load = Math.min(1, (force * (THREATS.carry[b.kind] ?? 30)) / Math.max(1, all));
+    STORE_KINDS.forEach((k, i) => { const n = Math.floor(want[i] * load); f.stores[k] -= n; raid.stores[k] = n; });
     if ((b.kind === 'raiders' || b.kind === 'pirates') && t.buildings.includes('farm') && chance(c, b.id, 31) < THREATS.burn) { t.buildings.splice(t.buildings.indexOf('farm'), 1); raid.burnt = 'farm'; }
     if (outcome === 'taken') {
       const women = takeOut(c, tid, 'f', Math.min(Math.max(0, f.women - 1), Math.ceil(f.women * THREATS.carried)));

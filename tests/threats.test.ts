@@ -47,6 +47,13 @@ function untilStrike(c: Campaign, b: Band): Raid {
   throw new Error('the band never struck');
 }
 
+/** What a band takes of a town's stores (400 food, 200 wood, 200 gold, 100 stone): its share of each, and no more in all than it can carry. */
+function looted(r: Raid, share: number): { food: number; all: number } {
+  const want = [400, 200, 200, 100].map((n) => Math.floor(n * share)), all = want.reduce((a, b) => a + b, 0);
+  const load = Math.min(1, (r.force * THREATS.carry[r.kind]) / all);
+  return { food: Math.floor(want[0] * load), all: want.reduce((a, n) => a + Math.floor(n * load), 0) };
+}
+
 describe('what a town has to defend itself with', () => {
   it('its men, its fortress and barracks, the towers on its field by how whole they are, an army there, a capital\'s guard, and its people\'s spirit', () => {
     const { c, t } = world({ men: 10 });
@@ -113,7 +120,10 @@ describe('a band strikes a town', () => {
     expect(f.children).toBe(5);
     expect(f.ages!.k.length).toBe(5);
     expect(f.ages!.f.filter((s) => s < OLD_SEASON).length).toBe(f.women);
-    expect(r.stores.food).toBe(Math.floor(400 * THREATS.loot.taken));
+    expect(r.stores.food).toBe(looted(r, THREATS.loot.taken).food);
+    // No more than they can carry: so much for each point of their force.
+    expect(r.stores.food + r.stores.wood + r.stores.gold + r.stores.stone).toBeLessThanOrEqual(r.force * THREATS.carry.raiders);
+    expect(r.stores.food).toBeGreaterThan(0);
     expect(f.stores.food).toBe(400 - r.stores.food);
     expect(goods(nationStores(c, 0))).toBe(had - goods(r.stores)); // what was looted from the town is all the raid cost: the nation is not charged again
     expect(r.sway).toBe(THREATS.sway.taken);
@@ -142,7 +152,12 @@ describe('a band strikes a town', () => {
     const sea = world({ men: 2 });
     sea.t.trait = 'coast';
     const p = untilStrike(sea.c, band(sea.c, sea.t, 'pirates', 9));
-    expect(p.stores.food).toBe(Math.floor(400 * (THREATS.loot.taken + THREATS.pirateLoot)));
+    expect(p.stores.food).toBe(looted(p, THREATS.loot.taken + THREATS.pirateLoot).food);
+    // Pirates have ships to fill, slavers come for people, and the marauders take least of all in goods.
+    expect(THREATS.carry.pirates).toBeGreaterThan(THREATS.carry.raiders);
+    expect(THREATS.carry.raiders).toBeGreaterThan(THREATS.carry.slavers);
+    expect(THREATS.carry.slavers).toBeGreaterThan(THREATS.carry.marauders);
+    expect(s.stores.food).toBe(looted(s, THREATS.loot.taken).food);
 
     const mid = world({ men: 8 });
     mid.t.buildings = ['farm', 'barracks'];
@@ -151,7 +166,7 @@ describe('a band strikes a town', () => {
     expect(m.outcome).toBe('raided');
     expect(m.taken).toEqual({ men: 0, women: 0 });
     expect(m.killed).toBeGreaterThan(0);
-    expect(m.stores.food).toBe(Math.floor(400 * THREATS.loot.raided));
+    expect(m.stores.food).toBe(looted(m, THREATS.loot.raided).food);
   });
 
   it('a sacked people loses heart by its creed: the Righteous least, the Decadent most', () => {
