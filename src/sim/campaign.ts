@@ -10,7 +10,7 @@ import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
-import { tribeArms, tribeBeaten, tribeSide, tribesSeason, warriorsOf } from './tribes';
+import { fieldReckoned, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
 import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
@@ -1680,15 +1680,15 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       for (const [type, n] of Object.entries(army.units)) for (const [u, k] of Object.entries(COMPANIES[type].units)) add(u, k * n);
       if (army.hero) add(calling, 1);
     } else if (defending && t.owner >= 0 && leaderAt(c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
-    const wild = defending && t.owner < 0 ? tribeSide(c, t.id, field) : null; // a tribe's warriors are its own men (tribes.ts)
-    if (defending && (!wild || wild.clubmen)) add('clubman', wild ? wild.clubmen : 2); // the people of the land turn out too
+    const out = defending ? turnOut(c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere (tribes.ts)
+    if (out?.clubmen) add('clubman', out.clubmen);
     const fort = defending && t.buildings.includes('fortress');
     // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
     const works = defending && !field ? t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]) : [];
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
-      ...(wild?.warriors ? { warriors: wild.warriors } : {}),
+      ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id)) : {}),
@@ -1769,6 +1769,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const known = mine?.champion?.name;
   const camp = !!land.horde; // marauders hold no town
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
+  fieldReckoned(c, p, after.folk); // those of the town who marched out to a battle in the open and fell (tribes.ts)
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
