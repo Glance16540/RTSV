@@ -3,7 +3,7 @@
 // tests/driftintown.test.ts.
 import { describe, expect, it } from 'vitest';
 import { Campaign, endTurn, newCampaign } from '../src/sim/campaign';
-import { FALL, GO_MOST, MINE_GOLD, NATION_DIP, RISE, SHARE, TAVERN_GOLD, driftSeason, driftTown, driftedOf, townStanding, watchOf } from '../src/sim/drift';
+import { BACK_MOST, FALL, GO_MOST, MILD, MINE_GOLD, NATION_DIP, NEWLY_TAKEN, RISE, SHARE, TAVERN_GOLD, driftSeason, driftTown, driftedOf, newlyTaken, townStanding, watchOf } from '../src/sim/drift';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
 import { folkOf } from '../src/sim/township';
 import { couplesOf } from '../src/sim/seasonfolk';
@@ -112,5 +112,52 @@ describe('drift on the map', () => {
     driftSeason(c);
     expect(faithAt(c, tid)).toBeLessThan(was);
     expect(NATION_DIP).toBeGreaterThan(0);
+  });
+});
+describe('what strains a town enough to drift (tuned to docs/TUNING.md)', () => {
+  const world = (): { c: Campaign; tid: number } => {
+    const c = newCampaign(5, 1, 1, 'hearth');
+    return { c, tid: c.territories.find((t) => t.capital === 0)!.id };
+  };
+  const ready = (c: Campaign, tid: number): void => {
+    const f = folkOf(c, tid), t = c.territories[tid];
+    t.buildings = [...t.buildings.filter((b) => b !== 'tavern'), 'tavern'];
+    f.men = 8; f.women = 8; f.stores.food = 5000; delete f.hungry; delete f.drifted;
+  };
+
+  it('a larder that fell short this season, alone, is a mild strain: nobody new drifts', () => {
+    const { c, tid } = world();
+    ready(c, tid);
+    folkOf(c, tid).hungry = 1;
+    driftTown(c, tid);
+    expect(folkOf(c, tid).drift!.strain).toBeGreaterThan(0);
+    expect(folkOf(c, tid).drift!.strain).toBeLessThan(MILD);
+    expect(driftedOf(c, tid)).toEqual({ tavern: 0, mines: 0 });
+  });
+
+  it('under a mild strain the drifted come back, two a season', () => {
+    const { c, tid } = world();
+    ready(c, tid);
+    const f = folkOf(c, tid);
+    f.drifted = { tavern: 2, mines: 2 };
+    f.hungry = 1;
+    driftTown(c, tid);
+    const d = driftedOf(c, tid);
+    expect(d.tavern + d.mines).toBe(4 - (BACK_MOST - 1));
+  });
+
+  it('a town newly taken by force drifts, but its unrest does not lower its standing: the yoke weighs on it already', () => {
+    const { c, tid } = world();
+    ready(c, tid);
+    c.territories[tid].yoke = { from: 1, since: c.turn, resent: 0 };
+    expect(newlyTaken(c, tid)).toBe(true);
+    const was = faithAt(c, tid);
+    expect(driftTown(c, tid)).toBeGreaterThanOrEqual(0);
+    expect(faithAt(c, tid)).toBe(was);
+    const d = driftedOf(c, tid);
+    expect(d.tavern + d.mines).toBeGreaterThan(0);
+    // Settled, or long since taken, it is unsettled no more.
+    c.turn += NEWLY_TAKEN + 1;
+    expect(newlyTaken(c, tid)).toBe(false);
   });
 });

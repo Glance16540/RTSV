@@ -10,6 +10,7 @@ import type { Campaign } from './campaign';
 import { WAR_RENOWN } from './household';
 import { homeDeed, standingWith } from './notableweight';
 import { Ages, agesOf, cleanAges, countFrom } from './ageing';
+import { tally } from './ledger';
 
 export interface Stores { food: number; wood: number; gold: number; stone: number }
 export const STORE_KINDS = ['food', 'wood', 'gold', 'stone'] as const;
@@ -196,6 +197,7 @@ export function tollFolk(c: Campaign, tid: number, taken: boolean): number {
   const f = folkOf(c, tid), dead = Math.min(f.men, Math.ceil(f.men * (taken ? TOLL.taken : TOLL.held)));
   f.men -= dead;
   if (dead && f.ages) agesOf(c, tid, f); // the record of ages loses them too
+  tally(c, tid, 'fell', dead); // for the season's report (ledger.ts)
   if (taken) for (const k of STORE_KINDS) f.stores[k] = Math.floor(f.stores[k] * (1 - TOLL.looted));
   return dead;
 }
