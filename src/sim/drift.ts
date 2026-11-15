@@ -53,7 +53,7 @@ export const TAVERN_SWAY = 1;
 /** How far a nation's standing dips a season for its known people lately lost (notableweight.ts's `nationLoss`, 0 to 0.3). */
 export const NATION_DIP = 10;
 /** On the map: how far a town's standing falls in a season at full strain, and rises for a call to church at full strength. */
-export const FALL = 7;
+export const FALL = 8;
 export const RISE = 4;
 /** Food a head a town needs on hand not to be hungry on the map (beside the larder's own word, larder.ts), and to count as well fed. */
 export const LEAN_FOOD = 1;
