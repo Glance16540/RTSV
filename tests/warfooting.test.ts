@@ -2,7 +2,7 @@
 // docs/TUNING.md's "men under arms: 10 to 25% in war, under 10% in peace".
 import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign, raise } from '../src/sim/campaign';
-import { RIVAL, abandonEmpty, lastMenHome, massArmies, mayMuster, maySpare, standDown, underArms, warFooting } from '../src/sim/rivalrule';
+import { RIVAL, lastMenHome, massArmies, mayMuster, maySpare, standDown, underArms, warFooting } from '../src/sim/rivalrule';
 import { MEN_A_COMPANY, awayFrom, musterOf, sendCompaniesHome } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
 
@@ -128,24 +128,5 @@ describe('a nation does not sit for ever', () => {
     pass(c, RIVAL.lull + 1);
     expect(warFooting(c, 1)).toBe('peace');
     expect(massArmies(c, 1)).toBe(0);
-  }, LONG);
-
-  it('a town with nobody in it for six years is abandoned, and a people with no town is gone', () => {
-    const { c, cap, f } = nation();
-    Object.assign(f, { men: 0, women: 0, elders: 0, children: 0 }); delete f.ages;
-    for (let i = 0; i < RIVAL.empty - 1; i++) expect(abandonEmpty(c)).toEqual([]);
-    f.children = 1; // someone is there after all: the count begins again
-    expect(abandonEmpty(c)).toEqual([]);
-    f.children = 0; delete f.ages;
-    for (let i = 0; i < RIVAL.empty - 1; i++) expect(abandonEmpty(c)).toEqual([]);
-    expect(abandonEmpty(c)).toEqual([cap.id]);
-    expect(cap.owner).toBe(-1);
-    expect(c.log.join('\n')).toContain(`${cap.name} stands empty`);
-    expect(c.chronicle!.some((x) => x.text.includes(cap.name) && x.text.includes('stood empty'))).toBe(true);
-    // A town whose only people are away with its armies is not empty.
-    const b = nation(9);
-    for (let i = 0; i < 3; i++) raise(b.c, 1, b.cap.id, 'infantry');
-    Object.assign(b.f, { men: 0, women: 0, elders: 0, children: 0 }); delete b.f.ages;
-    for (let i = 0; i < RIVAL.empty + 2; i++) expect(abandonEmpty(b.c)).toEqual([]);
   }, LONG);
 });

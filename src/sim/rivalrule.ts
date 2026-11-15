@@ -31,8 +31,6 @@ export const RIVAL = {
   /** Seasons since a nation last won or lost land after which it is at peace; the share of its men it keeps under arms then;
    *  seasons of peace after which it musters for a campaign; and how many seasons it musters for before standing down again. */
   lull: 4, standing: 0.08, restless: 10, campaign: 8,
-  /** Seasons a town may stand with nobody at all in it before it is abandoned. */
-  empty: 24,
   /** A strained town down to this many men of working age is not asked for another company; and the strain that counts. */
   lastMen: 2, strain: 0.5,
 };
@@ -202,33 +200,6 @@ export function standDown(c: Campaign, f: number): number {
     if (sendCompaniesHome(c, a.id, over) > 0) sent++;
   }
   return sent;
-}
-
-/**
- * A town with nobody in it is not held by anyone. A town of a nation that has had no person at all on its record
- * (grown or child, at home or away with its armies) for `RIVAL.empty` seasons is abandoned: it goes back to the
- * wild, and to the marauders if they hold the land beside it. So a people whose towns have all died does not sit
- * on the map for ever: with its last town gone it is gone (campaign.ts counts it out). The player's as a rival's.
- * Returns the lands abandoned.
- */
-export function abandonEmpty(c: Campaign): number[] {
-  const out: number[] = [], seen = (c.emptied ??= {});
-  for (const t of c.territories) {
-    const held = t.owner >= 0 && !t.horde && !!c.factions[t.owner]?.alive;
-    if (!held || headcount(folkOf(c, t.id)) + awayFrom(c, t.id) > 0) { delete seen[t.id]; continue; }
-    seen[t.id] = (seen[t.id] ?? 0) + 1;
-    if (seen[t.id] < RIVAL.empty) continue;
-    const was = t.owner, mine = was === 0;
-    c.log.push(`${t.name} stands empty: nobody is left there, and ${mine ? 'it is yours no longer' : `it is the ${c.factions[was].name}' no longer`}.`);
-    (c.chronicle ??= []).push({ turn: c.turn, text: `${t.name} stood empty, with nobody left alive in it, and ${mine ? 'was lost to you' : `was lost to the ${c.factions[was].name}`}.` });
-    t.owner = -1; t.capital = t.capital === was ? -1 : t.capital; t.militia = 1; delete t.yoke; delete t.town;
-    if (t.adj.some((n) => c.territories[n].horde)) t.horde = true;
-    // An army left standing in a land that is no longer its people's is of no town now: it breaks up.
-    c.armies = c.armies.filter((a) => !(a.at === t.id && a.owner === was && !c.territories.some((x) => x.owner === was)));
-    delete seen[t.id];
-    out.push(t.id);
-  }
-  return out;
 }
 
 /**
