@@ -13,7 +13,7 @@ const face = (c: Campaign, it: Intrigue, p: Person, grief = false): string =>
 const row = (c: Campaign, it: Intrigue, p: Person, words: string, cls = ''): string =>
   `<div class="likeness-row story-person ${cls}">${face(c, it, p, cls === 'dead')}<span><b>${esc(fullName(p))}</b>${p.known ? ' <span title="Known by name in this town">★</span>' : ''} the ${esc(p.trade)}${words ? ` <small>${esc(words)}</small>` : ''}</span></div>`;
 
-const TITLE: Record<Intrigue['kind'], string> = { thief: 'A thief', killer: 'A killer', rival: 'A rival king', suitor: 'A suitor' };
+const TITLE: Record<Intrigue['kind'], string> = { thief: 'A thief', killer: 'A killer', rival: 'A rival king', suitor: 'A suitor', plot: 'A plot at court' };
 /** Someone of the leader's house or a rival's, by name alone, with a face. */
 const named = (c: Campaign, f: number, name: string | undefined, gender: 'm' | 'f', words: string): string =>
   (name ? `<div class="likeness-row story-person">${portraitHtml(notablePortrait(nationOf(c.factions[f]?.civ), { name, gender, kind: 'person' }, {}), '', 'sm')}<span><b>${esc(name)}</b> <small>${esc(words)}</small></span></div>` : '');
@@ -25,7 +25,12 @@ function storyHtml(c: Campaign, it: Intrigue): string {
     people = named(c, it.rival ?? 0, it.cast?.king, c.factions[it.rival ?? 0]?.hero?.female ? 'f' : 'm', `of the ${c.factions[it.rival ?? 0]?.name ?? 'rival people'}`) + named(c, 0, it.cast?.spouse, s?.female === false ? 'm' : 'f', s?.female === false ? 'your husband' : 'your wife');
   } else if (it.kind === 'suitor') {
     people = named(c, it.rival ?? 0, it.cast?.suitor, 'm', `a son of the house of ${it.cast?.king ?? 'a rival'}`) + named(c, 0, it.cast?.daughter, 'f', 'your daughter');
-  } else if (it.kind === 'thief') {
+  } else if (it.kind === 'plot') {
+    people = (it.nobles ?? []).map((n, i) => {
+      const cleared = it.cleared.includes(i), words = it.found && !cleared ? 'the plotter, held for your judgement' : cleared ? 'cleared' : 'is spoken of';
+      return `<div class="likeness-row story-person ${cleared ? 'cleared' : ''}">${portraitHtml(notablePortrait(nationOf(c.factions[0]?.civ), { name: n.name, gender: n.female ? 'f' : 'm', kind: 'person' }, {}), '', 'sm')}<span><b>${esc(n.title)}</b> <small>${words}</small></span></div>`;
+    }).join('') + it.clues.map((k) => `<div class="hint">🔎 ${esc(k.text)}</div>`).join('');
+
     people = it.caught !== undefined && it.thief
       ? row(c, it, it.thief, 'held for the robberies, awaiting your judgement')
       : it.people.map((p, i) => row(c, it, p, it.robbed[i] ? `robbed ${it.robbed[i] === 1 ? 'once' : `${it.robbed[i]} times`}` : 'not yet robbed')).join('');
