@@ -7,8 +7,10 @@
 //   A killer: set a watch, and accuse only when the clues have left one.
 //   A rival king: defy the demand, and keep a guard about the leader from then on.
 //   A suitor: ask the daughter; give her if she is willing, otherwise decline with gifts (or let him wait).
+//   An alliance by marriage: call on it.
 //   A plot: keep informers; send gifts once; pardon the plotter when found. Nobody is accused on a guess.
 import type { Campaign } from './campaign';
+import { callOn, callable } from './aftermath';
 import { Intrigue, choicesFor, choose, openIntrigues, suspected } from './intrigue';
 
 /** Answer every story of a people's that is waiting on them, by the policy above. Returns the choices made. */
@@ -27,5 +29,7 @@ export function sensibleAnswers(c: Campaign, f = 0): string[] {
       if (!it.sweetened) take(it, 'gifts');
     }
   }
+  // An alliance by marriage is called on as soon as there is one: its men are worth most early.
+  if (f === 0) for (const m of callable(c, 0)) { const did = callOn(c, m.id); if (did) made.push(`alliance:${did}`); }
   return made;
 }

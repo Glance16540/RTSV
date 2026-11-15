@@ -2,7 +2,7 @@
 // noble does to their town.
 import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign } from '../src/sim/campaign';
-import { NOBLES, angryAt, heardDecree, noblesAt, noblesOf, noblesSeason, nobleWork, sayOn, titleOf } from '../src/sim/nobles';
+import { NOBLES, angryAt, heardDecree, newLord, noblesAt, noblesOf, noblesSeason, nobleWork, sayOn, titleOf } from '../src/sim/nobles';
 import type { Noble } from '../src/sim/nobles';
 import { issueDecree } from '../src/sim/decrees';
 import { driftTown, watchOf } from '../src/sim/drift';
@@ -135,5 +135,28 @@ describe('an angry noble tells on their town', () => {
     const { c } = world();
     for (const x of c.factions) if (x.alive) noblesSeason(c, x.id);
     expect(c.factions.filter((x) => x.alive && x.id !== 0).every((x) => (x.nobles ?? []).length > 0)).toBe(true);
+  });
+});
+
+describe('a town whose lord is gone has a new one', () => {
+  it('of another name, with no grudge, kept from season to season; the lord before is not brought back', () => {
+    const { c, tid } = world();
+    big(c, tid);
+    fresh(c);
+    const old = lordOf(c, tid);
+    old.mood = -90;
+    const next = newLord(c, 0, tid)!;
+    expect(next).toBeTruthy();
+    expect(next.name).not.toBe(old.name);
+    expect(next.key).not.toBe(old.key);
+    expect(next.mood).toBe(0);
+    expect(noblesAt(c, tid).filter((n) => n.rank === 'lord')).toHaveLength(1);
+    next.mood = 30;
+    noblesSeason(c, 0);
+    expect(lordOf(c, tid).name).toBe(next.name);
+    expect(lordOf(c, tid).mood).toBeGreaterThan(0);
+    // And another after that.
+    const third = newLord(c, 0, tid)!;
+    expect(third.name).not.toBe(next.name);
   });
 });
