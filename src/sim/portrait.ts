@@ -15,6 +15,7 @@
 // that is about them; a town's header shows its standing, because that is about all of them. The marks of
 // condition go over either. Children are never shown (DESIGN.md): no child is given a portrait, and no key here
 // names one.
+import { resentful } from './conquered';
 import type { Building, Captive, Game, Unit } from './game';
 import type { Campaign } from './campaign';
 import { CHAMPION_KILLS } from './champion';
@@ -211,6 +212,7 @@ export function townMood(c: Campaign, tid: number): Mood & { lost: boolean } {
   const lost = folkOf(c, tid).notables.some((n) => n.lost && n.lost.turn >= c.turn - 1);
   return {
     rebel: has('unrest', 'revolt'),
+    conquered: resentful(c, tid), // taken by force and not yet settled (conquered.ts)
     raided: has('raiders', 'taken', 'overrun', 'horde', 'blaze'),
     sick: has('plague', 'fever'),
     starving: has('famine', 'hard'),

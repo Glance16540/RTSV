@@ -1,12 +1,25 @@
 // What the campaign screen says of a town's people and stores (src/sim/township.ts), and of the nation's added up.
 import type { Campaign } from '../sim/campaign';
 import { Stores, folkOf, headcount, living, nationNotables, nationPeople, nationStores } from '../sim/township';
-import { virtueOf } from '../sim/campaign';
+import { creedOf } from '../sim/creed';
+import { faithAt } from '../sim/townfaith';
+import { resentOf, revoltChance } from '../sim/conquered';
+import { awayFrom } from '../sim/armytown';
 import { standingHtml, townFaces } from './portrait';
 
 const esc = (s: string): string => s.replace(/[<>&"]/g, '');
 const storesHtml = (s: Stores): string => `🍖 ${s.food} · 🪵 ${s.wood} · 🪙 ${s.gold} · 🪨 ${s.stone}`;
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
+
+/** Where this town stands in faith, how it takes being held if it was taken by force, and how many of its men are away with the armies. */
+function stateHtml(c: Campaign, tid: number, mine: boolean): string {
+  const t = c.territories[tid], v = faithAt(c, tid), creed = creedOf(v), away = awayFrom(c, tid), y = t.yoke;
+  const faith = t.owner >= 0 ? `<div class="town-faith" title="This town's own standing between piety and decadence. Your people's standing is your towns' taken together.">${creed.icon} ${creed.name} <small>(${v > 0 ? 'piety ' + v : v < 0 ? 'decadence ' + -v : 'in the middle'})</small></div>` : '';
+  const from = y ? (y.from < 0 ? 'the local tribes' : y.from === 0 ? 'you' : 'the ' + esc(c.factions[y.from]?.name ?? 'others')) : '';
+  const yoke = y && t.owner >= 0 ? `<div class="town-yoke ${y.resent >= 50 ? 'bad' : 'hint'}" title="A town taken by force resents it. That eases every season, sooner with a Church, Farmland or your leader there, and under a pious people; a Tavern or a season of plague, famine, fire or raiders sets it back. Without an army in it a resentful town may rise.">😠 Taken from ${from} ${c.turn - y.since} ${c.turn - y.since === 1 ? 'season' : 'seasons'} ago: resentment ${Math.round(y.resent)}${mine ? ` · ${Math.round(revoltChance(c, tid) * 100)}% chance it rises this season` : ''}</div>` : '';
+  const gone = away && mine ? `<div class="town-away hint" title="Men of this town with your armies. Those who fall are this town's dead; the rest come back when the army is sent home.">⚔️ ${plural(away, 'man', 'men')} of this town ${away === 1 ? 'is' : 'are'} away with the armies</div>` : '';
+  return faith + yoke + gone;
+}
 
 /** A town's people by kind; for a town of the player's, its stores and those it knows by name as well. */
 export function townHtml(c: Campaign, tid: number, mine: boolean): string {
@@ -14,12 +27,13 @@ export function townHtml(c: Campaign, tid: number, mine: boolean): string {
   // The header shows the town's standing (its holder's morals) and the marks its people share; each notable's own
   // row shows how they are, in the town's present mood.
   const owner = c.territories[tid].owner, faces = townFaces(c, tid);
-  const standing = owner >= 0 ? standingHtml(c.factions[owner]?.civ ?? '', virtueOf(c, owner)) : '';
+  const standing = owner >= 0 ? standingHtml(c.factions[owner]?.civ ?? '', faithAt(c, tid)) : '';
   const people = `<div class="town-folk" title="The people of this town. They are who turns out when it is fought over, and whoever is lost then is gone.">👥 <b>${headcount(f)}</b> <small>${plural(f.men, 'man', 'men')} · ${plural(f.women, 'woman', 'women')} · ${f.elders} old · ${plural(f.children, 'child', 'children')}</small>${standing}${faces.marks}</div>`;
-  if (!mine) return people;
+  const state = stateHtml(c, tid, mine);
+  if (!mine) return people + state;
   const names = living(f).map((n) => `<div class="town-notable likeness-row">${faces.notable(n)}${n.kind === 'veteran' ? '⚔️' : '🏠'} <b>${esc(n.name)}</b>${n.family ? ' ' + esc(n.family) : ''}, who ${esc(n.deed)}</div>`).join('');
   const gone = f.notables.filter((n) => n.lost).slice(-2).map((n) => `<div class="town-notable gone">✝ ${esc(n.name)}, who ${esc(n.deed)}: ${esc(n.lost!.how)}, turn ${n.lost!.turn}</div>`).join('');
-  return `${people}<div class="town-stores" title="What this town has in store. A battle fought here is fought out of it, and what is left afterwards is kept.">In store: ${storesHtml(f.stores)}</div>${names}${gone}`;
+  return `${people}${state}<div class="town-stores" title="What this town has in store. A battle fought here is fought out of it, and what is left afterwards is kept.">In store: ${storesHtml(f.stores)}</div>${names}${gone}`;
 }
 
 /** The nation: its people and its stores, town by town added up. */

@@ -36,6 +36,7 @@
 // A band broken gives up everyone it holds and something of what it stole.
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
+import { swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaign';
 import { creedOf } from './creed';
@@ -297,8 +298,7 @@ function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   // Which way their morals sway: a people that held together is the better for it; one that was sacked loses heart.
   const down = THREATS.sway[outcome] < 0;
   raid.sway = round1(THREATS.sway[outcome] * (down ? wrathOf(c, owner) : 1));
-  const x = c.factions[owner];
-  x.virtue = Math.max(-100, Math.min(100, (x.virtue ?? 0) + raid.sway));
+  swayTown(c, tid, raid.sway); // it is the town struck whose morals sway, and its nation's with it (townfaith.ts)
   mark(c, outcome === 'held' ? 'heldoff' : outcome === 'taken' ? 'carried' : 'raid', tid);
   (c.raids ??= []).push(raid);
   if (c.raids.length > THREATS.kept) c.raids.splice(0, c.raids.length - THREATS.kept);
