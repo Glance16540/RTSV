@@ -328,7 +328,7 @@ export interface Campaign {
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
   /** How long each army has stood where it is, soldiers the map has given a name, and armies sent home this season: see rivalrule.ts. */
-  idle?: Record<string, { at: number; n: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
+  idle?: Record<string, { at: number; n: number }>; wars?: Record<string, { land: number; changed: number; muster?: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
   /** The men with each army, by the town they came from: see armytown.ts. */
   musters?: Record<string, Muster>;
   /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
