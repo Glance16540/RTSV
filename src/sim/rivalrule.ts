@@ -17,7 +17,7 @@ import { SITE_BUILDING, armyAt, moveArmy } from './campaign';
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
-import { canSendHome, homeOf, sendHome } from './armytown';
+import { MEN_A_COMPANY, canSendHome, homeOf, menOf, sendCompaniesHome, sendHome } from './armytown';
 import { revoltChance } from './conquered';
 import { bandsAt } from './threats';
 
@@ -28,6 +28,9 @@ export const RIVAL = {
   wins: 2, killsAWin: 3,
   /** The chance of a rising above which a town is garrisoned. */
   risk: 0.03,
+  /** Seasons since a nation last won or lost land after which it is at peace; the share of its men it keeps under arms then;
+   *  seasons of peace after which it musters for a campaign; and how many seasons it musters for before standing down again. */
+  lull: 4, standing: 0.08, restless: 10, campaign: 8,
   /** A strained town down to this many men of working age is not asked for another company; and the strain that counts. */
   lastMen: 2, strain: 0.5,
 };
@@ -150,9 +153,59 @@ export function rivalOrders(c: Campaign, tid: number): Stores | null {
   return work;
 }
 
-/** May another company be raised out of this town? Not the last men of a town that is strained. */
+/** A nation's men, at home and with its armies, and the share of them under arms. */
+export function underArms(c: Campaign, f: number): { away: number; home: number; share: number } {
+  const away = c.armies.filter((a) => a.owner === f).reduce((n, a) => n + menOf(c, a).town, 0);
+  const home = towns(c, f).reduce((n, t) => n + folkOf(c, t.id).men, 0);
+  return { away, home, share: away + home > 0 ? away / (away + home) : 0 };
+}
+/**
+ * War and peace, as a nation's armies know it. A nation is at war for `lull` seasons after it wins or loses land.
+ * At peace it keeps a standing force and no more; after `restless` seasons of peace it musters for a campaign,
+ * for `campaign` seasons, and if nothing comes of it stands down again. Kept on the campaign, by nation.
+ */
+export function warFooting(c: Campaign, f: number): 'war' | 'muster' | 'peace' {
+  const w = (c.wars ??= {})[f] ??= { land: towns(c, f).length, changed: c.turn };
+  const land = towns(c, f).length;
+  if (land !== w.land) { w.land = land; w.changed = c.turn; delete w.muster; }
+  if (c.turn - w.changed <= RIVAL.lull) return 'war';
+  if (w.muster !== undefined && c.turn <= w.muster) return 'muster';
+  if (w.muster !== undefined && c.turn > w.muster) { w.changed = c.turn - RIVAL.lull - 1; delete w.muster; return 'peace'; } // nothing came of it: stand down, and the wait begins again
+  if (c.turn - w.changed > RIVAL.lull + RIVAL.restless) { w.muster = c.turn + RIVAL.campaign; return 'muster'; }
+  return 'peace';
+}
+/** May a nation raise more men just now? At war or mustering, yes; at peace only while one more company keeps it within its standing force. */
+export const mayMuster = (c: Campaign, f: number): boolean => {
+  if (warFooting(c, f) !== 'peace') return true;
+  const u = underArms(c, f); // one more company must still leave it within its standing force
+  return u.away + u.home > 0 && (u.away + MEN_A_COMPANY) / (u.away + u.home) <= RIVAL.standing;
+};
+/**
+ * At peace a nation sends home what it holds over its standing force: armies standing in its own land, without
+ * the leader, the smallest first. Returns how many went home.
+ */
+export function standDown(c: Campaign, f: number): number {
+  if (warFooting(c, f) !== 'peace') return 0;
+  let sent = 0;
+  const size = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
+  for (const a of c.armies.filter((x) => x.owner === f).sort((p, q) => size(p) - size(q) || p.id - q.id)) {
+    if (underArms(c, f).share <= RIVAL.standing) break;
+    if (canSendHome(c, a.id) && sendHome(c, a.id) >= 0) sent++; // its last too: a small people at peace keeps no army but its leader's
+  }
+  // What cannot go home whole (the leader's army, the last one) sends home companies instead, down to the standing force.
+  for (const a of c.armies.filter((x) => x.owner === f).sort((p, q) => size(q) - size(p) || p.id - q.id)) {
+    const u = underArms(c, f);
+    if (u.share <= RIVAL.standing) break;
+    const over = Math.ceil((u.away - RIVAL.standing * (u.away + u.home)) / MEN_A_COMPANY);
+    if (sendCompaniesHome(c, a.id, over) > 0) sent++;
+  }
+  return sent;
+}
+
+/** May another company be raised out of this town? Not the last men of a town that is strained, and not at peace beyond the standing force. */
 export function maySpare(c: Campaign, tid: number): boolean {
   const f = folkOf(c, tid);
+  if (!mayMuster(c, c.territories[tid].owner)) return false;
   return !(f.men <= RIVAL.lastMen && (f.drift?.strain ?? 0) >= RIVAL.strain);
 }
 /** Does this town want an army in it? It is resentful enough to rise as things stand, or a band has come upon it. */
@@ -164,6 +217,7 @@ export const threatened = (c: Campaign, tid: number): boolean => revoltChance(c,
  * always left free to march. Returns how many moved.
  */
 export function rivalMoves(c: Campaign, f: number): number {
+  standDown(c, f); // at peace, what is over the standing force goes home (whoever the computer is playing for)
   if (!rival(c, f)) return 0;
   let moved = 0;
   // The garrison of a town that wants one holds. (Without an army in it the count is of a town left open.)
