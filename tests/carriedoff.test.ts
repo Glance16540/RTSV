@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign } from '../src/sim/campaign';
 import { CARRY, carriedAt, carriedLeft, carriedOf, carriedSeason, carriesOff, townFell } from '../src/sim/carriedoff';
+import { reportLines, reportSince, snapshot } from '../src/sim/seasonreport';
 import { folkOf, grown } from '../src/sim/township';
 
 const base = JSON.stringify(newCampaign(5, 2));
@@ -97,5 +98,21 @@ describe('people carried off by a nation', () => {
     seasons(c, 1);
     expect(c.carried).toHaveLength(0);
     expect(grown(f)).toBe(before + x.held.women.length + x.held.men.length);
+  });
+  it('are counted in the season\'s report with the captives: carried off, got back, or lost for good', () => {
+    const a = world(-90), s0 = snapshot(a.c);
+    a.c.turn++;
+    const x = townFell(a.c, a.town, 0, a.rival, a.hold)!, n = x.held.women.length + x.held.men.length;
+    const r1 = reportSince(a.c, s0);
+    expect(r1.taken).toBe(n);
+    expect(reportLines(r1).some((l) => l.kind === 'captives' && l.text.includes('carried off'))).toBe(true);
+    const s1 = snapshot(a.c);
+    a.c.turn++;
+    townFell(a.c, a.hold, a.rival, 0, a.town);
+    expect(reportSince(a.c, s1)).toMatchObject({ back: n, lostForGood: 0, taken: 0 });
+    const b = world(-90);
+    const y = townFell(b.c, b.town, 0, b.rival, b.hold)!, m = y.held.women.length + y.held.men.length, s2 = snapshot(b.c);
+    seasons(b.c, CARRY.seasons);
+    expect(reportSince(b.c, s2)).toMatchObject({ back: 0, lostForGood: m });
   });
 });
