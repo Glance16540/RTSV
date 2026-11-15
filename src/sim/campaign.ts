@@ -29,6 +29,7 @@ import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './tow
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { Muster, armiesJoined, homeOf, menMustered, reckonArmies, seasonOfArmies } from './armytown';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
+import { veteranTown } from './notableweight';
 
 /** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
 export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
@@ -1810,8 +1811,9 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const hero = heroFor(c, 0);
   const kept = cleanChampion(after.champion);
   if (kept) mine.champion = kept; else delete mine.champion;
-  // And is one of the notable people of the nation's chief town (or, if that is lost, of the land just fought over).
-  if (kept) { const from = homeOf(c, mine); rememberVeteran(c, from !== undefined && c.territories[from]?.owner === 0 ? from : (c.territories.find((t) => t.capital === 0 && t.owner === 0) ?? c.territories.find((t) => t.owner === 0) ?? land).id, kept); }
+  // And is one of the notable people of the town their army's men came from (armytown.ts); failing that of their own
+  // town, if their army knows it; else of the nation's chief town (notableweight.ts).
+  if (kept) { const from = homeOf(c, mine); rememberVeteran(c, from !== undefined && c.territories[from]?.owner === 0 ? from : veteranTown(c.territories, 0, kept.town, land.id), kept); }
   if (before.hero && !after.fell && !after.acclaimed && Array.isArray(after.powers) && c.factions[0].heroAlive) {
     const { rank: _rank, ...made } = hero;
     c.factions[0].hero = { ...made, powers: [0, 1, 2].map((t) => (after.powers![t] === 0 || after.powers![t] === 1 ? after.powers![t] : made.powers?.[t] ?? -1)) };

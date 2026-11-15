@@ -1,6 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import { coupleParted, creditKill, homeRecord, leaveForWar, settleHomes, warRenown } from './household';
+import { carriedIn, homeMade, madeRenown, restoreMade } from './notableweight';
 import { Census, MAX_KIND, PeopleIn, Stores } from './township';
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
@@ -179,6 +180,8 @@ export interface Building extends Base {
   children: number; // villagers this house has raised
   /** Foes felled by the people of this house while away at war (household.ts). */
   warKills?: number;
+  /** What its man and woman have carried in to the stores (notableweight.ts). */
+  made?: number;
   /** The children under this roof: a record, not people on the map (nursery.ts). */
   young?: Child[];
   /** Births that were due here and did not come: a note, and the whole of what a weak creed costs a town in children. */
@@ -550,7 +553,7 @@ export class Game {
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
         // The town's children are on the record of one of its roofs, part grown.
-        if (s.bonus.people?.named?.length && !field) settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f'));
+        if (s.bonus.people?.named?.length && !field) { settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f')); restoreMade(this, i, s.bonus.people.named); }
         if (s.bonus.people?.children && !field) this.cradled(i, s.bonus.people.children, cleanAges(s.bonus.people.ages)?.k);
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
@@ -701,7 +704,7 @@ export class Game {
 
   /** A family's standing: one rank for every few children raised, up to three. */
   renown(b: Building): number {
-    return Math.min(3, Math.floor(b.children / RENOWN_CHILDREN) + warRenown(b)); // children raised, and what its people have won in war (household.ts)
+    return Math.min(3, Math.floor(b.children / RENOWN_CHILDREN) + warRenown(b) + madeRenown(b)); // children raised, and what its people have won in war (household.ts)
   }
 
   spawnBuilding(type: string, owner: number, cx: number, cy: number, complete: boolean): Building {
@@ -971,7 +974,7 @@ export class Game {
       if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (woman) out.women++; else out.men++;
       const seasons = Math.round(yearsOf(u.age, u.lifespan) * SEASONS_A_YEAR), old = u.age >= u.lifespan * ELDER_AT;
       (woman ? ages.f : ages.m).push(old ? Math.max(OLD_SEASON, Math.min(LAST_SEASON, seasons)) : Math.max(GROWN_SEASON, Math.min(OLD_SEASON - 1, seasons)));
-      if (u.gender === 'f' && u.type === 'villager') { const home = homeRecord(this, u); if ((u.kids ?? 0) > 0 || home.war) out.named!.push({ name: u.name, gender: 'f', kids: u.kids ?? 0, ...(u.family ? { family: u.family } : {}), ...home }); }
+      if (u.gender === 'f' && u.type === 'villager') { const home = { ...homeRecord(this, u), ...homeMade(this, u) }; if ((u.kids ?? 0) > 0 || home.war || home.made) out.named!.push({ name: u.name, gender: 'f', kids: u.kids ?? 0, ...(u.family ? { family: u.family } : {}), ...home }); }
     }
     for (const b of this.buildings) {
       if (b.dead) continue;
@@ -2989,6 +2992,7 @@ export class Game {
       if (r === 'there') {
         p.res[u.carryType] += u.carryAmt;
         p.stats.gathered += u.carryAmt;
+        { const src = this.entities.get(o.id); carriedIn(this, u, u.carryAmt, !!src && src.kind === 'building' && src.type === 'farm'); }
         u.carryAmt = 0;
         o.phase = 'go';
         if (!o.id) this.setOrder(u, null); // was only asked to drop off
