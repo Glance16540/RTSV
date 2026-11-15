@@ -85,6 +85,7 @@ npm run sync     bring main into this branch
 npm run check    type-check, tests, build: the bar for every push
 npm test         tests alone (about two minutes)
 npm run board    rebuild docs/systems-board.html from scripts/systems.mjs
+npm run porting  rewrite docs/PORTING.md's line counts and dependencies from the sources
 ```
 
 ## Layout
