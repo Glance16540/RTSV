@@ -16,13 +16,21 @@
 //     which costs all goodwill with his people. Given against her will, it costs piety and loyalty. Left without
 //     an answer, he takes it as an insult.
 //
-// The third (a noble plotting for the throne) waits for the nobles.
+//   A plot. A noble who is angry (nobles.ts) means to take the leader's place. It begins as a whisper: a few nobles
+//     are spoken of, and the leader does not know which. Each season something may come out that clears one of
+//     them, likelier with a loyal confidant (kin.ts, plotWarning; a disloyal one hides it), with informers kept
+//     (paid each season), or with the court in the plotter's town. The leader may accuse one (wrongly, and that
+//     noble is made an enemy), or send gifts to all the nobles to sweeten them, which may end it. Once the plotter
+//     is known the leader pardons them or has them put to death. If the plot ripens unfound there is a rising:
+//     it is put down, or the leader is killed in it.
 import type { Campaign } from './campaign';
 import { MAX_FAVOR, atTruce, heroFor, shiftVirtue } from './campaign';
 import { NAMES_M } from './data';
-import { courtOf } from './court';
+import { courtOf, leaderAt } from './court';
 import { houseOf, ofAge, rulerName } from './dynasty';
-import { kinOf, spouseOf } from './kin';
+import { kinOf, plotWarning, spouseOf } from './kin';
+import { Noble, isAngry, noblesOf, titleOf } from './nobles';
+import { folkOf, living } from './township';
 import { canPayFor, payFor } from './prices';
 import { Choice, Intrigue, begin, chance, end, note } from './intrigue';
 
@@ -44,6 +52,8 @@ export const COURT = {
     knife: 1, within: 3,
     /** The chance it is foiled; what a guard adds, and its cost a season in supplies; what a loyal marshal or right hand adds. */
     foil: 0.35, guard: 0.35, guardCost: 1, loyal: 0.15, loyalAt: 60,
+    /** What the confidant's warning adds at its fullest (kin.ts, plotWarning, -1 to 1): a disloyal one takes as much away. */
+    warned: 0.15,
     /** Unfoiled, the chance the leader dies of it rather than is wounded. */
     slain: 0.2,
   },
@@ -57,6 +67,20 @@ export const COURT = {
     truce: 10, favor: 2, unwillingVirtue: -8, unwillingLoyalty: -6, willingVirtue: 2,
     /** Declined with gifts: their cost in supplies. Spurned: piety. */
     gifts: 3, spurnVirtue: -2,
+  },
+  plot: {
+    /** The chance a season while a noble of the player's is angry; the most nobles spoken of. */
+    chance: 0.06, spoken: 4,
+    /** The chance a season that something comes out; what a loyal confidant adds at the fullest, informers, and the court in the plotter's town. */
+    out: 0.2, warned: 0.25, informers: 0.25, informersCost: 1, court: 0.15,
+    /** Accused wrongly: how far that noble's mood falls. Gifts: their cost in supplies and what they add to every noble's mood. */
+    wronged: -40, gifts: 4, sweeten: 15,
+    /** A plotter whose mood has come back above this gives it up. */
+    cooled: -20,
+    /** Seasons until it ripens into a rising; the chance the rising kills the leader, more for each other angry noble, less with a loyal marshal or right hand. */
+    ripe: 6, rising: 0.35, each: 0.1, loyal: 0.2,
+    /** Pardon and death: piety, and what the other nobles make of it. */
+    pardonVirtue: 4, pardonMood: 5, deathVirtue: -4, deathMood: -8,
   },
 };
 
@@ -72,7 +96,7 @@ const loyalty = (c: Campaign, by: number): void => { for (const x of kinOf(c, 0)
 const truce = (c: Campaign, f: number, turns: number): void => { c.truces = c.truces.filter((t) => t.with !== f).concat({ with: f, until: c.turn + turns }); };
 /** The rival peoples a story could come from: living, led by the computer, and not the player's ally. */
 const rivals = (c: Campaign): number[] => c.factions.filter((f) => f.id > 0 && f.alive && f.isAI && c.ally !== f.id).map((f) => f.id);
-const running = (c: Campaign): boolean => (c.intrigues ?? []).some((x) => (x.kind === 'rival' || x.kind === 'suitor') && x.owner === 0 && (!x.ended || c.turn - x.ended.turn < COURT.rest));
+const running = (c: Campaign): boolean => (c.intrigues ?? []).some((x) => (x.kind === 'rival' || x.kind === 'suitor' || x.kind === 'plot') && x.owner === 0 && (!x.ended || c.turn - x.ended.turn < COURT.rest));
 /** A grown daughter of the leader's house, if there is one. Never a child. */
 export const daughterOfAge = (c: Campaign): { name: string } | undefined => houseOf(c, 0).heirs.find((h) => h.female && ofAge(c, h));
 
@@ -102,6 +126,7 @@ export function beginSuitor(c: Campaign, rival: number): Intrigue | null {
 export function courtBegin(c: Campaign): Intrigue[] {
   const R = COURT.rival, S = COURT.suitor, out: Intrigue[] = [];
   if (c.turn < COURT.from || !c.factions[0]?.alive || !c.factions[0].heroAlive || running(c)) return out;
+  if (chance(c, 305) < COURT.plot.chance) { const it = beginPlot(c); if (it) return [it]; }
   const rs = rivals(c);
   if (!rs.length) return out;
   const cold = rs.filter((f) => !atTruce(c, 0, f));
@@ -116,7 +141,7 @@ export function courtBegin(c: Campaign): Intrigue[] {
 function knife(c: Campaign, it: Intrigue): void {
   const R = COURT.rival, fac = c.factions[0], king = it.cast?.king ?? 'the rival king', k = kinOf(c, 0);
   const loyal = k.circle.find((x) => (x.post === 'marshal' || x.post === 'right') && x.loyalty >= R.loyalAt);
-  const odds = R.foil + (it.watch ? R.guard : 0) + (loyal ? R.loyal : 0);
+  const odds = R.foil + (it.watch ? R.guard : 0) + (loyal ? R.loyal : 0) + R.warned * plotWarning(c, 0);
   const where = c.territories[seatOf(c)]?.name ?? 'the court', who = leader(c);
   if (chance(c, it.id * 89 + 1) < odds) {
     end(c, it, 'foiled', `A man with a knife was taken at ${who}'s door in ${where}${it.watch ? ' by the guard' : loyal ? ` by ${loyal.name}` : ''}. He was sent by ${king}. ${who} lives, ${it.cast?.spouse ?? 'the household'} is safe, and every court will hear whose man he was.`, 'good');
@@ -143,6 +168,7 @@ function defy(c: Campaign, it: Intrigue, silent = false): void {
 export function courtStep(c: Campaign, it: Intrigue): void {
   const fac = c.factions[0], r = c.factions[it.rival ?? -1], king = it.cast?.king ?? 'The rival';
   if (seatOf(c) >= 0) it.at = seatOf(c); // the story is wherever the court is
+  if (it.kind === 'plot') { plotStep(c, it); return; }
   if (it.watch) { if (canPayFor(c, 0, 'dealing', COURT.rival.guardCost)) { payFor(c, 0, 'dealing', COURT.rival.guardCost); it.watched++; } else { it.watch = false; note(c, it, 'plain', 'The guard about the leader cannot be paid, and is stood down.'); } }
   if (!r?.alive) { end(c, it, 'outlived', it.kind === 'rival' ? `${king}, who wanted ${leader(c)} dead, has no people left to rule. The threat died with them.` : `${it.cast?.suitor}, who asked for ${it.cast?.daughter}, has no house left to offer her.`, 'good'); return; }
   if (!fac.alive || !fac.heroAlive) { end(c, it, 'outlived', it.kind === 'rival' ? `${king} wanted the leader dead, and the leader is dead by other hands.` : `${it.cast?.suitor} went home: there was nobody left to give him an answer.`, 'plain'); return; }
@@ -167,6 +193,7 @@ export function courtStep(c: Campaign, it: Intrigue): void {
 /** What the leader may do about a story of the house now. */
 export function courtChoices(c: Campaign, it: Intrigue): Choice[] {
   const R = COURT.rival, S = COURT.suitor;
+  if (it.kind === 'plot') return plotChoices(c, it);
   if (it.kind === 'rival') {
     const guard: Choice = it.watch ? { id: 'unwatch', label: 'Stand the guard down' } : { id: 'watch', label: `Keep a guard about the leader (${R.guardCost} supply a season)`, ...(canPayFor(c, 0, 'dealing', R.guardCost) ? {} : { bar: 'You have not the supplies.' }) };
     if (it.stage !== 1) return [guard];
@@ -188,6 +215,7 @@ export function courtChoices(c: Campaign, it: Intrigue): Choice[] {
 export function courtChoose(c: Campaign, it: Intrigue, choice: string): boolean {
   const ok = courtChoices(c, it).find((x) => x.id === choice), R = COURT.rival, S = COURT.suitor;
   if (!ok || ok.bar) return false;
+  if (it.kind === 'plot') return plotChoose(c, it, choice);
   const r = c.factions[it.rival ?? -1], king = it.cast?.king ?? 'the rival';
   if (choice === 'watch') { it.watch = true; note(c, it, 'plain', 'A guard is kept about the leader, day and night.'); return true; }
   if (choice === 'unwatch') { it.watch = false; note(c, it, 'plain', 'The guard about the leader is stood down.'); return true; }
@@ -239,9 +267,124 @@ export function courtChoose(c: Campaign, it: Intrigue, choice: string): boolean 
 
 /** One line on where a story of the house stands. */
 export function courtStanding(c: Campaign, it: Intrigue): string {
+  if (it.kind === 'plot') return plotStanding(it);
   const king = it.cast?.king ?? 'A rival';
   if (it.kind === 'rival') return it.stage === 0 ? `${king} of the ${people(c, it.rival!)} has sworn to have the leader's head and ${it.cast?.spouse} for ${their(queen(c, it))} own.`
     : it.stage === 1 ? `${king} demands ${it.cast?.spouse}, and waits for your answer until turn ${it.due}.`
     : `${king} has been defied, and is said to have sent a man with a knife.${it.watch ? ' A guard is kept.' : ''}`;
   return `${it.cast?.suitor} of the house of ${king} asks for your daughter ${it.cast?.daughter}, and waits until turn ${it.due}.${it.asked ? (it.willing ? ' She would have him.' : ' She would not have him.') : ''}`;
+}
+
+// ---- A noble plotting for the throne ----
+
+const spoken = (it: Intrigue): number[] => (it.nobles ?? []).map((_, i) => i).filter((i) => !it.cleared.includes(i));
+const nobleOf = (c: Campaign, it: Intrigue, i: number): Noble | undefined => noblesOf(c, 0).find((n) => n.key === it.nobles?.[i]?.key);
+const informers = (c: Campaign, it: Intrigue): Choice => (it.watch ? { id: 'unwatch', label: 'Call the informers off' } : { id: 'watch', label: `Keep informers among the nobles (${COURT.plot.informersCost} supply a season)`, ...(canPayFor(c, 0, 'dealing', COURT.plot.informersCost) ? {} : { bar: 'You have not the supplies.' }) });
+
+/** A plot begins: an angry noble of the player's means to take the leader's place, and a few are spoken of. For the season's chance, and for tests. */
+export function beginPlot(c: Campaign, key?: string): Intrigue | null {
+  const P = COURT.plot, all = noblesOf(c, 0), angry = all.filter(isAngry), seat = seatOf(c);
+  const who = key ? all.find((n) => n.key === key) : angry[Math.floor(chance(c, 311) * angry.length)];
+  if (!who || seat < 0 || all.length < 3) return null;
+  const it = begin(c, 'plot', seat);
+  // The others spoken of are the sourest of the rest: an angry noble is always a likely name.
+  const others = all.filter((n) => n.key !== who.key).sort((a, b) => a.mood - b.mood || a.key.localeCompare(b.key)).slice(0, P.spoken - 1);
+  const list = [who, ...others].sort((a, b) => a.key.localeCompare(b.key));
+  it.nobles = list.map((n) => ({ key: n.key, name: n.name, title: titleOf(c, n), female: n.female }));
+  it.culprit = list.indexOf(who); it.due = c.turn + P.ripe;
+  note(c, it, 'bad', `It is whispered at court that one of the great means to take ${leader(c)}'s place. ${it.nobles.length} are spoken of: ${it.nobles.map((n) => n.title).join('; ')}.`);
+  return it;
+}
+function laidBare(c: Campaign, it: Intrigue, how: string): void {
+  const p = it.nobles![it.culprit];
+  it.found = true; it.cleared = it.nobles!.map((_, i) => i).filter((i) => i !== it.culprit);
+  note(c, it, 'good', `${how} It is ${p.title} who plots for ${leader(c)}'s place. ${p.female ? 'She' : 'He'} is held, and waits on your judgement.`);
+}
+/** The plotter is gone from the nation's great: put to death, or dead in their own rising. */
+function remove(c: Campaign, n: Noble | undefined, how: string): void {
+  if (!n) return;
+  if (n.rank === 'close') { const k = kinOf(c, 0); k.circle = k.circle.filter((x) => !(x.name === n.name && x.post === n.post)); }
+  const rec = living(folkOf(c, n.town)).find((x) => x.name === n.name);
+  if (rec && n.rank !== 'lord') rec.lost = { turn: c.turn, how };
+  n.mood = 0; // whoever holds the place after them has learned from it
+}
+function plotStep(c: Campaign, it: Intrigue): void {
+  const P = COURT.plot, fac = c.factions[0], p = it.nobles![it.culprit], n = nobleOf(c, it, it.culprit);
+  if (!fac.alive || !fac.heroAlive) { end(c, it, 'outlived', `${p.title} plotted against a leader who is dead by other hands.`, 'plain'); return; }
+  if (!n) { end(c, it, 'nothing', `The whispers at court have stopped: ${p.title}, who was spoken of, is no longer among the great.`, 'plain'); return; }
+  if (it.found) return; // waits on judgement
+  if (n.mood > P.cooled) { end(c, it, 'nothing', `The whispers at court came to nothing. Whoever was sour has been sweetened.`, 'good'); return; }
+  const odds = P.out + P.warned * plotWarning(c, 0) + (it.watch ? P.informers : 0) + (leaderAt(c, 0, n.town) ? P.court : 0);
+  if (chance(c, it.id * 97 + 1) < odds) {
+    const left = spoken(it).filter((i) => i !== it.culprit);
+    if (left.length <= 1) { laidBare(c, it, it.watch ? 'Your informers have it.' : plotWarning(c, 0) > 0 ? 'Your confidant has it.' : 'A letter has been found.'); return; }
+    const i = left[Math.floor(chance(c, it.id * 97 + 2) * left.length)];
+    it.cleared.push(i);
+    it.clues.push({ turn: c.turn, clears: [i], text: `${it.nobles![i].title} has been watched, and is true.` });
+    note(c, it, 'good', `${it.nobles![i].title} has been watched, and is true. ${spoken(it).length} are still spoken of.`);
+  }
+  if (c.turn < (it.due ?? 0)) return;
+  // The plot is ripe: the rising.
+  const angry = noblesOf(c, 0).filter((x) => isAngry(x) && x.key !== n.key).length;
+  const loyal = kinOf(c, 0).circle.some((x) => (x.post === 'marshal' || x.post === 'right') && x.loyalty >= COURT.rival.loyalAt && x.name !== n.name);
+  const where = c.territories[n.town]?.name ?? 'the court';
+  if (chance(c, it.id * 97 + 3) < P.rising + P.each * angry - (loyal ? P.loyal : 0)) {
+    fac.heroAlive = false; fac.heroRank = Math.max(0, (fac.heroRank ?? 0) - 1);
+    remove(c, n, 'died in a rising of their own making');
+    end(c, it, 'usurped', `${p.title} rose against ${leader(c)} with the men of ${where}, and ${leader(c)} was killed in it. ${p.female ? 'She' : 'He'} did not live to take the seat.`, 'bad');
+    return;
+  }
+  remove(c, n, 'died in a rising of their own making');
+  end(c, it, 'foiled', `${p.title} rose against ${leader(c)} with the men of ${where}, and was put down. Nobody had named ${p.female ? 'her' : 'him'} in time.`, 'plain');
+}
+function plotChoices(c: Campaign, it: Intrigue): Choice[] {
+  const P = COURT.plot;
+  if (it.found) { const p = it.nobles![it.culprit]; return [{ id: 'pardon', label: `Pardon ${p.name}` }, { id: 'death', label: `Have ${p.name} put to death` }]; }
+  return [
+    ...spoken(it).map((i): Choice => ({ id: `accuse:${i}`, label: `Accuse ${it.nobles![i].title}` })),
+    { id: 'gifts', label: `Send gifts to all the nobles (${P.gifts} supplies)`, ...(canPayFor(c, 0, 'dealing', P.gifts) ? {} : { bar: 'You have not the supplies.' }) },
+    informers(c, it),
+  ];
+}
+function plotChoose(c: Campaign, it: Intrigue, choice: string): boolean {
+  const P = COURT.plot, p = it.nobles![it.culprit], n = nobleOf(c, it, it.culprit);
+  if (choice === 'watch') { it.watch = true; note(c, it, 'plain', 'Informers are set among the nobles.'); return true; }
+  if (choice === 'unwatch') { it.watch = false; note(c, it, 'plain', 'The informers are called off.'); return true; }
+  if (choice === 'gifts') {
+    payFor(c, 0, 'dealing', P.gifts);
+    it.sweetened = true;
+    for (const x of noblesOf(c, 0)) x.mood = Math.min(100, x.mood + P.sweeten);
+    note(c, it, 'plain', 'Gifts have gone out to every noble house. It may be enough.');
+    return true;
+  }
+  if (choice.startsWith('accuse:')) {
+    const i = Number(choice.split(':')[1]);
+    if (i === it.culprit) { laidBare(c, it, 'You named the right one.'); return true; }
+    const wrong = nobleOf(c, it, i);
+    if (wrong) wrong.mood = Math.max(-100, wrong.mood + P.wronged);
+    it.cleared.push(i);
+    note(c, it, 'bad', `You accused ${it.nobles![i].title}, and nothing could be shown against ${it.nobles![i].female ? 'her' : 'him'}. ${it.nobles![i].female ? 'She' : 'He'} will not forget it.`);
+    if (spoken(it).length === 1) laidBare(c, it, 'Only one is left.');
+    return true;
+  }
+  if (choice === 'pardon') {
+    if (n) n.mood = 10;
+    for (const x of noblesOf(c, 0)) if (x !== n) x.mood = Math.min(100, x.mood + P.pardonMood);
+    shiftVirtue(c, 0, P.pardonVirtue);
+    end(c, it, 'pardoned', `${p.title} plotted for ${leader(c)}'s place, was found out, and was pardoned before the court.`, 'good');
+    return true;
+  }
+  if (choice === 'death') {
+    remove(c, n, 'was put to death for plotting against the leader');
+    for (const x of noblesOf(c, 0)) if (x !== n) x.mood = Math.max(-100, x.mood + P.deathMood);
+    shiftVirtue(c, 0, P.deathVirtue);
+    end(c, it, 'executed', `${p.title} plotted for ${leader(c)}'s place, was found out, and was put to death. The other great houses took note.`, 'plain');
+    return true;
+  }
+  return false;
+}
+function plotStanding(it: Intrigue): string {
+  if (it.found) return `${it.nobles![it.culprit].title} plotted for the leader's place, and is held for your judgement.`;
+  const left = spoken(it);
+  return `One of the great plots for the leader's place. ${left.length} are spoken of.${it.watch ? ' Informers are kept.' : ''} It is thought to be ripe by turn ${it.due}.`;
 }

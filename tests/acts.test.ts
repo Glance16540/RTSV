@@ -179,6 +179,7 @@ describe('acts of God on the map', () => {
     const tries = 2000;
     for (let s = 0; s < tries; s++) {
       d.turn = 10 + s;
+      stock(d, 1e6, 20); // crowded towns each season, as the measure is for (ACTS.crowd: plague-crowding.test.ts has the hamlets)
       d.events = [{ kind: 'plague', at: home.id, turn: d.turn, until: d.turn }];
       if (actsOfGod(d).some((x) => x.from === home.id)) passed++;
     }

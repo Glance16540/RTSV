@@ -46,7 +46,7 @@ export const MAX_STORE = 20000;
 /** Children a woman must have raised for the nation to remember her, and kills for a soldier (as champion.ts). */
 export const MOTHER_KIDS = 3;
 /** The share of its men a town loses to a battle it was not seen to fight, held or taken; and of its stores when taken. */
-export const TOLL = { held: 0.15, taken: 0.3, looted: 0.5 };
+export const TOLL = { held: 0.15, taken: 0.3, looted: 0.5, /** Men a town with women in it is left with whatever the toll: someone lives to bury the rest. */ last: 1 };
 /** Notable people a town keeps the record of. */
 export const MAX_NOTABLES = 24;
 
@@ -194,7 +194,7 @@ export function loseVeteran(c: Campaign, f: number, name: string, how = 'fell in
  * taken is looted of half its stores. (Step 4 of the design replaces this with the town defending itself.)
  */
 export function tollFolk(c: Campaign, tid: number, taken: boolean): number {
-  const f = folkOf(c, tid), dead = Math.min(f.men, Math.ceil(f.men * (taken ? TOLL.taken : TOLL.held)));
+  const f = folkOf(c, tid), dead = Math.min(Math.max(0, f.men - (f.women > 0 ? TOLL.last : 0)), Math.ceil(f.men * (taken ? TOLL.taken : TOLL.held)));
   f.men -= dead;
   if (dead && f.ages) agesOf(c, tid, f); // the record of ages loses them too
   tally(c, tid, 'fell', dead); // for the season's report (ledger.ts)
