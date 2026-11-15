@@ -12,6 +12,11 @@
 // That is how the computer's peoples fight bands, and what the player gets by leaving a fight to the army.
 // The computer's peoples hunt the bands that sit in or beside their own lands, when they have the army for it.
 //
+// A band can come against an army, too (`ambushSeason`). An army that stands at a band's place or beside it and is
+// clearly the weaker (the band has AMBUSH.odds of its strength), or is seeing a convoy along the road and is no
+// stronger than the band, may be fallen on. A computer people's army fights it at once by its own means; the
+// player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
+//
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
 import { sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
@@ -24,6 +29,8 @@ declare module './campaign' {
   interface Pending {
     /** The battle is against this band and not against the land or whoever holds it: it takes no land (bandfight.ts). */
     band?: number;
+    /** The band came against the army, not the army against the band: it cannot be called off. */
+    ambush?: boolean;
   }
 }
 
@@ -85,13 +92,13 @@ export function attackBand(c: Campaign, armyId: number, bandId: number): 'battle
 }
 
 /** An army and a band fight with nobody watching: each by what it is, a little better or worse on the day. Returns whether the band was broken. */
-export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[]): boolean {
+export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambush = false): boolean {
   const day = (salt: number): number => 1 - FIGHT.day + 2 * FIGHT.day * chance(c, b.id * 97 + a.id, salt);
   const mine = armyStrength(a, c) * day(61), theirs = b.strength * day(67), at = c.territories[b.at].name;
   a.moved = true;
   if (mine >= theirs) {
     const lost = lose(a, Math.round(armySize(a) * FIGHT.cost * Math.min(1, theirs / mine)));
-    note(c, out, 'broken', b, b.at, `${whoseArmy(c, a)} has broken ${b.name} at ${at}${lost ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
+    note(c, out, 'broken', b, b.at, `${ambush ? `${cap(b.name)} fell on ${whoseArmy(c, a).replace(/^Your/, 'your')} at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
     breakBand(c, b, out, a);
     a.vet = Math.min(3, a.vet + 1);
     reckonArmies(c);
@@ -99,7 +106,7 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[]): bool
   }
   const lost = lose(a, Math.max(1, Math.round(armySize(a) * FIGHT.rout)));
   b.strength = Math.max(1, b.strength - Math.max(1, Math.round(mine * FIGHT.bled)));
-  note(c, out, 'beaten', b, b.at, `${whoseArmy(c, a)} went against ${b.name} at ${at} and was beaten off${lost ? `, losing ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
+  note(c, out, 'beaten', b, b.at, `${ambush ? `${cap(b.name)} fell on ${whoseArmy(c, a).replace(/^Your/, 'your')} at ${at} and routed it` : `${whoseArmy(c, a)} went against ${b.name} at ${at} and was beaten off`}${lost ? `, ${ambush ? 'with the loss of' : 'losing'} ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
   reckonArmies(c);
   return false;
 }
@@ -124,7 +131,7 @@ export function bandBattle(c: Campaign): BattleConfig | null {
     ...(sky ? { weather: sky } : {}),
     climate: BIOMES[biomeOf(c, p.to)].climate,
     seed: t.seed * 31 + b.id, size: 56, level: 0, humanAttacks: true, field: true, sea: false,
-    title: `The fight with ${b.name} at ${t.name}`,
+    title: p.ambush ? `${cap(b.name)} fall on your army at ${t.name}` : `The fight with ${b.name} at ${t.name}`,
     setups: [
       { name: sideName(c, a.owner), color: c.factions[a.owner].color, isAI: false, team: 0, civ: c.factions[a.owner].civ, hero, leaderAway: true, virtue: virtueOf(c, a.owner), bonus: { units: mine, res: 30 * p.aStr, age: ageOf(c, a.owner), armed: true, buildings: [], atk: a.vet } },
       // A band is a step behind a nation in its arms.
@@ -146,7 +153,7 @@ export function settleBandFight(c: Campaign, how: 'auto' | 'attacker' | 'defende
   if (!b || !a) return false;
   const out: string[] = [];
   let won: boolean;
-  if (how === 'auto') won = fightByMeans(c, a, b, out);
+  if (how === 'auto') won = fightByMeans(c, a, b, out, !!p.ambush);
   else {
     a.moved = true;
     won = how === 'attacker';
@@ -167,13 +174,13 @@ export function settleBandFight(c: Campaign, how: 'auto' | 'attacker' | 'defende
         a.units = units;
       }
       const lost = before - armySize(a);
-      note(c, out, 'broken', b, b.at, `${whoseArmy(c, a)} has broken ${b.name} at ${at}${lost > 0 ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
+      note(c, out, 'broken', b, b.at, `${p.ambush ? `${cap(b.name)} fell on your army at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost > 0 ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
       breakBand(c, b, out, a);
       a.vet = Math.min(3, a.vet + 1);
     } else {
       const lost = lose(a, Math.max(1, Math.round(before * FIGHT.rout)));
       b.strength = Math.max(1, b.strength - 1);
-      note(c, out, 'beaten', b, b.at, `${whoseArmy(c, a)} went against ${b.name} at ${at} and was routed${lost ? `, losing ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
+      note(c, out, 'beaten', b, b.at, `${p.ambush ? `${cap(b.name)} fell on your army at ${at} and routed it` : `${whoseArmy(c, a)} went against ${b.name} at ${at} and was routed`}${lost ? `, losing ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
     }
     reckonArmies(c);
   }
@@ -199,4 +206,48 @@ export function huntBands(c: Campaign, out: string[]): number {
     fights++;
   }
   return fights;
+}
+
+export const AMBUSH = {
+  /** A band falls on an army only if it has at least this many times the army's strength. */
+  odds: 1.25,
+  /** An army seeing a convoy along the road is worth falling on at even strength. */
+  escort: 1,
+  /** The chance, in a season, that a band with such an army within its reach does fall on it. */
+  dare: 0.35,
+};
+
+/** Is this army seeing a convoy of its people's along the road: standing on the road of one that is on its way? */
+export const escorting = (c: Campaign, a: Army): boolean => ((c as { convoys?: { owner: number; road: number[] }[] }).convoys ?? []).some((x) => x.owner === a.owner && x.road.includes(a.at));
+
+/** The armies a band could fall on now, the weakest first: those at its place or beside it that it outweighs enough. */
+export function prey(c: Campaign, b: Band): Army[] {
+  const near = new Set(placeOf(b).flatMap((id) => [id, ...c.territories[id].adj]));
+  return c.armies.filter((a) => near.has(a.at) && c.factions[a.owner]?.alive && b.strength >= armyStrength(a, c) * (escorting(c, a) ? AMBUSH.escort : AMBUSH.odds))
+    .sort((x, y) => armyStrength(x, c) - armyStrength(y, c) || x.id - y.id);
+}
+
+/**
+ * One season of bands coming against armies. A computer people's army fights at once by its own means; the
+ * player's becomes the pending battle (one at a time), which the player enters or leaves to the army.
+ * Returns how many armies were fallen on.
+ */
+export function ambushSeason(c: Campaign, out: string[]): number {
+  let n = 0;
+  for (const b of [...(c.bands ?? [])]) {
+    if (b.kind === 'marauders') continue;
+    const a = prey(c, b)[0];
+    if (!a || chance(c, b.id, 101) >= AMBUSH.dare) continue;
+    if (c.factions[a.owner].isAI) {
+      fightByMeans(c, a, b, out, true);
+      a.moved = false; // it happened in the turning of the season
+      n++;
+    } else if (!c.pending && !c.demand) {
+      const to = placeOf(b).find((id) => id === a.at || c.territories[a.at].adj.includes(id)) ?? b.at;
+      c.pending = { armyId: a.id, from: a.at, to, attacker: a.owner, defender: -1, aStr: armyStrength(a, c), dStr: b.strength, mode: 'field', band: b.id, ambush: true };
+      note(c, out, 'ambush', b, a.at, `${cap(b.name)} have fallen on your army at ${c.territories[a.at].name}${escorting(c, a) ? ', which was seeing a convoy along the road' : ''}!`, [a.owner]);
+      n++;
+    }
+  }
+  return n;
 }
