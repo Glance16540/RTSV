@@ -2,7 +2,8 @@
 // town struggles, more of them turn to what is worse for them; a well-kept town drifts toward the holy way instead.
 // It is cause and effect, read from what the rest of the game already keeps:
 //
-//   strain  hunger (famine.ts), raids (the town attacked, or carried off from on the map), grief (grief.ts),
+//   strain  hunger (famine.ts), raids (the town attacked, or carried off from on the map), grief (grief.ts; on
+//           the map, the loss of known people weighed by their fame, notableweight.ts),
 //           sickness (plague), and unrest on the map. 0 to 1.
 //   care    fed, safe and unbereaved, with a church, and on the map the leader there. 0 to 1, only with no strain.
 //
@@ -21,6 +22,7 @@ import { virtueOf } from './campaign';
 import { isDecadent } from './creed';
 import { want } from './famine';
 import { griefSeason, griefShare } from './grief';
+import { GRIEF_MAX, townGrief } from './notableweight';
 import { townMood } from './portrait';
 import { folkOf, grown } from './township';
 import { decreeEffect, decreesSeason, sensibleDecrees } from './decrees';
@@ -109,7 +111,7 @@ export function driftTown(c: Campaign, tid: number): number {
   const people = Math.max(1, grown(f) + f.children), food = f.stores.food / people;
   const hunger = mood.starving ? 1 : food < LEAN_FOOD ? 0.6 : 0;
   const e = decreeEffect(c, tid, isDecadent(townStanding(c, tid)));
-  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(mood.raided) + STRAIN.sick * Number(mood.sick) + STRAIN.rebel * Number(mood.rebel) + STRAIN.grief * Number((f.grief ?? 0) > 0)) * e.strainScale + e.strainAdd);
+  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(mood.raided) + STRAIN.sick * Number(mood.sick) + STRAIN.rebel * Number(mood.rebel) + STRAIN.grief * Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX)) * e.strainScale + e.strainAdd);
   const church = t.buildings.includes('church'), tavern = t.buildings.includes('tavern') && !e.tavernShut;
   const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care);
   // The men to the mines and the women to the tavern: gold, and a town with a tavern falls the faster for it.

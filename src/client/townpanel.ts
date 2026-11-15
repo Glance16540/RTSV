@@ -3,6 +3,7 @@ import type { Campaign } from '../sim/campaign';
 import { Stores, folkOf, headcount, living, nationNotables, nationPeople, nationStores } from '../sim/township';
 import { virtueOf } from '../sim/campaign';
 import { standingHtml, townFaces } from './portrait';
+import { mourned, townGrief } from '../sim/notableweight';
 
 const esc = (s: string): string => s.replace(/[<>&"]/g, '');
 const storesHtml = (s: Stores): string => `🍖 ${s.food} · 🪵 ${s.wood} · 🪙 ${s.gold} · 🪨 ${s.stone}`;
@@ -19,7 +20,9 @@ export function townHtml(c: Campaign, tid: number, mine: boolean): string {
   if (!mine) return people;
   const names = living(f).map((n) => `<div class="town-notable likeness-row">${faces.notable(n)}${n.kind === 'veteran' ? '⚔️' : '🏠'} <b>${esc(n.name)}</b>${n.family ? ' ' + esc(n.family) : ''}, who ${esc(n.deed)}</div>`).join('');
   const gone = f.notables.filter((n) => n.lost).slice(-2).map((n) => `<div class="town-notable gone">✝ ${esc(n.name)}, who ${esc(n.deed)}: ${esc(n.lost!.how)}, turn ${n.lost!.turn}</div>`).join('');
-  return `${people}<div class="town-stores" title="What this town has in store. A battle fought here is fought out of it, and what is left afterwards is kept.">In store: ${storesHtml(f.stores)}</div>${names}${gone}`;
+  const grief = townGrief(f.notables, c.turn), dead = mourned(f.notables, c.turn);
+  const mourning = grief > 0 ? `<div class="town-notable gone" title="A town grieves its known people for some seasons after they are lost.">🕯 The town mourns ${dead.slice(0, 2).map((n) => esc(n.name)).join(' and ')}${dead.length > 2 ? ' and others' : ''}</div>` : '';
+  return `${people}${mourning}<div class="town-stores" title="What this town has in store. A battle fought here is fought out of it, and what is left afterwards is kept.">In store: ${storesHtml(f.stores)}</div>${names}${gone}`;
 }
 
 /** The nation: its people and its stores, town by town added up. */

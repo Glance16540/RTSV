@@ -10,6 +10,7 @@
 // bereaved, portrait.ts) grieves for GRIEF_SEASONS. A grieving town's people strain toward worse (drift.ts).
 import type { Building, Game, Unit } from './game';
 import type { Folk } from './township';
+import { GRIEF_SEASONS as NOTABLE_GRIEF } from './notableweight';
 
 declare module './game' {
   interface Building { /** Seconds the house has left to grieve. */ griefT?: number }
@@ -22,7 +23,7 @@ declare module './township' {
 /** How long a house grieves in a town, how much more slowly its people work then, and how long a town grieves on the map. */
 export const GRIEF_SECONDS = 180;
 export const GRIEF_SLOW = 0.4;
-export const GRIEF_SEASONS = 2;
+export const GRIEF_SEASONS = NOTABLE_GRIEF; // as long as the loss of a known person is felt (notableweight.ts)
 
 /** How hard grief tells, by the town's standing: fully in a middling town, half as much at the holy or decadent end. */
 export const griefWeight = (virtue: number): number => 1 - 0.5 * Math.min(1, Math.abs(virtue) / 70);
