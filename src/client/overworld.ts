@@ -25,7 +25,7 @@ import { openHeroCreator, savedHero } from './herocreator';
 import { MAX_NAME, Names, foundHouse, houseToName, ownLine, peopleName } from '../sim/naming';
 import { mountRoll, rollHtml } from './rollpanel';
 import { sendFromPanel } from './convoypanel';
-import { seasonCard } from './seasoncard';
+import { seasonCard, showPastSeasons } from './seasoncard';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
 
@@ -152,7 +152,7 @@ export class Overworld {
     $('ow-exit').addEventListener('click', () => hooks.exit());
     $('ow-new').addEventListener('click', () => this.askNew());
     $('ow-chronicle').addEventListener('click', () => this.showChronicle());
-    mountRoll(() => this.dialog('Your people', rollHtml(this.c), [['Close', () => this.changed()]])); // the roll of your nation (rollpanel.ts)
+    mountRoll(() => this.dialog('Your people', rollHtml(this.c), [['Past seasons', () => { $('ow-dialog').classList.add('hidden'); showPastSeasons(this.c, () => this.changed()); }], ['Close', () => this.changed()]])); // the roll of your nation (rollpanel.ts), and the seasons past (seasoncard.ts)
     $('ow-speech').addEventListener('click', () => { this.speakT = 0; this.nextSpeech(); });
     $('overworld').classList.remove('hidden');
     this.changed();
