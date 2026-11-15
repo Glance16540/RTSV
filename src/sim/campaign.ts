@@ -44,12 +44,14 @@ import { drillTowns } from './townmuster';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy } from './rivalaim';
 import { suitorsSeason } from './suitors';
+import { ruinSeason } from './ruin';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
-import { ARMY_REST, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
+import { ARMY_REST, MEN_A_COMPANY, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
+import { creditArmy } from './warhouse';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
 
@@ -1237,7 +1239,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   settleFaith(c); // every town's own standing is written down before any changes hands
   settleStores(c); // and what each people has spent or earned is in its towns before any is lost (stores.ts)
   // A battle nobody watched is paid for by the town in men, and in stores if it falls.
-  if (how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde) tollFolk(c, p.to, attackerWon);
+  const toll = how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde ? tollFolk(c, p.to, attackerWon) : 0;
   // The rival leader has something to say about a battle against the player.
   if (p.attacker === 0 || p.defender === 0) {
     const won = attackerWon === (p.attacker === 0);
@@ -1247,6 +1249,9 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   const t = c.territories[p.to];
   const army = c.armies.find((x) => x.id === p.armyId);
   const defArmy = armyAt(c, p.to);
+  // What the victor felled is counted to the houses of its men (warhouse.ts): the companies it broke, and the town's dead.
+  if (attackerWon && army) creditArmy(c, army.id, (defArmy ? armySize(defArmy) * MEN_A_COMPANY : 0) + toll);
+  else if (!attackerWon && defArmy && army) creditArmy(c, defArmy.id, armySize(army) * MEN_A_COMPANY);
   if (attackerWon) {
     if (defArmy) destroyArmy(c, defArmy);
     if (army) {
@@ -1403,6 +1408,7 @@ export function continueAI(c: Campaign): void {
       intrigueSeason(c); // stories inside the story: a thief, a killer to be found (intrigue.ts)
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
+      ruinSeason(c); // twenty years with no people gaining ground and the bands on much of the map: the age ends in ruin (ruin.ts)
       seasonTurned(c); // what changed for the player's nation this season, for the card on the map (seasonreport.ts)
       return;
     }
@@ -1777,7 +1783,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const { virtue, heroRank, town: standing, ground } = after;
   const p = c.pending;
   if (!p) return;
-  if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors); return; }
+  if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors, { fell: after.fell, heroRank, acclaimed: after.acclaimed }); return; } // the leader fought beside the army, at the usual risk (bandfight.ts)
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.
   if (virtue !== undefined && Number.isFinite(virtue)) { if (p.attacker !== 0 && p.mode !== 'field') shiftVirtue(c, 0, (virtue - faithAt(c, p.to)) * BATTLE_VIRTUE, { at: p.to }); else shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE); }

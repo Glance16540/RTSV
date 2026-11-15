@@ -2,7 +2,7 @@
 // out while you are there, and the carrying of what you built back to the map. The rules are in src/sim/visit.ts.
 import type { BattleConfig, Campaign } from '../sim/campaign';
 import type { Ground, Standing } from '../sim/game';
-import { VISIT_SECONDS, beginVisit, canVisit, finishVisit, visitBar } from '../sim/visit';
+import { VISIT_SECONDS, beginVisit, canVisit, finishVisit, visitArms, visitBar } from '../sim/visit';
 import type { VisitAfter } from '../sim/visit';
 import { driftedIn } from '../sim/driftintown';
 import type { App } from './main';
@@ -61,6 +61,7 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
       town: app.game.standing(app.pid), orders: app.game.orders(app.pid), ground: app.game.ground(), virtue: app.game.players[app.pid].virtue, seconds: Math.min(VISIT_SECONDS, app.game.time),
       folk: app.game.census(app.pid), // its people and stores go home with it (township.ts)
       drifted: driftedIn(app.game, app.pid), // and who has drifted to the tavern and the mine (driftintown.ts)
+      arms: visitArms(app.game.units, app.pid), // and its soldiers: the army's losses, and companies trained here (visit.ts)
     };
     try { localStorage.setItem(RESULT_KEY, JSON.stringify(after)); localStorage.removeItem(VISIT_SAVE_KEY); } catch { /* storage unavailable */ }
     back();

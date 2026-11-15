@@ -38,7 +38,7 @@ import { awayFrom, menOf } from '../src/sim/armytown';
 import { driftOf, townStanding } from '../src/sim/drift';
 import { sensibleDecrees } from '../src/sim/decrees';
 import { THREATS } from '../src/sim/threats';
-import { VISIT_SECONDS, beginVisit, finishVisit, visitConfig } from '../src/sim/visit';
+import { VISIT_SECONDS, beginVisit, finishVisit, visitArms, visitConfig } from '../src/sim/visit';
 import { driftedIn } from '../src/sim/driftintown';
 
 const CAMPAIGNS = +(process.env.CAMPAIGNS ?? 24);
@@ -109,7 +109,7 @@ function visit(c: Campaign, tid: number): void {
   g.fixedAge = true; g.bornOnly = true;
   const ai = new AIController(g, 0); ai.setLevel(1);
   for (let s = 0; s < VISIT_SECONDS && !g.players[0].defeated; s++) { for (let i = 0; i < 20; i++) g.step(); g.events.length = 0; ai.update(); }
-  finishVisit(c, { town: g.standing(0), ground: g.ground(), virtue: g.players[0].virtue, seconds: g.time, orders: g.orders(0), folk: g.census(0), drifted: driftedIn(g, 0) }); // as the client does: its last orders (governor.ts) and who has drifted (driftintown.ts)
+  finishVisit(c, { town: g.standing(0), ground: g.ground(), virtue: g.players[0].virtue, seconds: g.time, orders: g.orders(0), folk: g.census(0), drifted: driftedIn(g, 0), arms: visitArms(g.units, 0) }); // as the client does: its last orders (governor.ts) and who has drifted (driftintown.ts)
 }
 
 const civOf = (seed: number): string => CIVS[seed % CIVS.length];
@@ -129,7 +129,7 @@ const DEAD_WINDOW = 8;
 
 interface Watch {
   decided: number; // the season the campaign was decided, or -1
-  how: string; // who won it: 'player beaten', 'player', 'rival'
+  how: string; // who won it: 'player beaten', 'player', 'rival', or 'ruin' (nobody: ruin.ts)
   ages: number[]; // seasons a rival took to reach each next age
   growth: number[]; // grown after 20 years over grown at the start, for towns held by one people throughout
   townSeasons: TownSeason[];
@@ -181,7 +181,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     // Once a campaign is decided, the world is let go on turning until twenty years have passed, so that the
     // twenty-year figures are read from every campaign; the campaign's figures are read from the decision.
     if (c.phase === 'over') {
-      if (w.decided < 0) { w.decided = c.turn; w.how = !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
+      if (w.decided < 0) { w.decided = c.turn; w.how = c.ended === 'ruin' ? 'ruin' : !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
       if (s > YEARS20) break;
       c.phase = 'player';
     }
@@ -352,7 +352,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   for (const xs of fed) if (xs.length) { w.storeSeasons.push(median(xs)); w.peaceSeasons += xs.length; }
   w.unsettled = takenAt.size;
   w.townLives = w.townSeasons.filter((x) => !x.tribe).length / YEARS20;
-  if (c.phase === 'over' && w.decided < 0) { w.decided = c.turn; w.how = !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
+  if (c.phase === 'over' && w.decided < 0) { w.decided = c.turn; w.how = c.ended === 'ruin' ? 'ruin' : !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
   return w;
 }
 
@@ -479,7 +479,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
 
   // Pace
   const decided = ruled.filter((w) => w.decided >= 0).map((w) => w.decided);
-  add('Pace', 'Seasons until a campaign is decided', '60 to 160', `median ${num(median(decided), 0)} (${decided.length} of ${ruled.length} decided; range ${decided.length ? Math.min(...decided) : '—'} to ${decided.length ? Math.max(...decided) : '—'}; ${['player', 'rival', 'player beaten'].map((h) => `${ruled.filter((w) => w.how === h).length} ${h === 'player' ? 'won by the player' : h === 'rival' ? 'won by a rival' : 'with the player beaten'}`).join(', ')})`, within(median(decided), 60, 160),
+  add('Pace', 'Seasons until a campaign is decided', '60 to 160', `median ${num(median(decided), 0)} (${decided.length} of ${ruled.length} decided; range ${decided.length ? Math.min(...decided) : '—'} to ${decided.length ? Math.max(...decided) : '—'}; ${['player', 'rival', 'player beaten', 'ruin'].map((h) => `${ruled.filter((w) => w.how === h).length} ${h === 'player' ? 'won by the player' : h === 'rival' ? 'won by a rival' : h === 'ruin' ? 'ended in ruin (ruin.ts)' : 'with the player beaten'}`).join(', ')})`, within(median(decided), 60, 160),
     'Decided means the campaign ended: one people rules beyond challenge, or the player is beaten. A campaign decided sooner is let go on turning to twenty years for the twenty-year figures, with nobody leaving it.');
   const undecided = share(ruled, (w) => w.decided < 0);
   add('Pace', `Campaigns undecided at ${SEASONS} seasons`, 'under 10%', pct(undecided), undecided < 0.1);
