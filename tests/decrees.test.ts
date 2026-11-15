@@ -58,13 +58,12 @@ describe('what each decree does to how a town drifts', () => {
     c.territories[other].owner = 0;
     seat(c, 0, other); // away, so that the church has room to draw the town further
     t.buildings = [...t.buildings.filter((b) => b !== 'church' && b !== 'tavern'), 'church', 'tavern'];
-    f.stores.food = 0; f.lean = 0;
+    f.stores.food = 0;
     const bare = driftTown(c, tid);
     issueDecree(c, 0, tid, 'guards');
-    f.lean = 0;
     expect(driftTown(c, tid)).toBeGreaterThan(bare);
     c.territories[tid].decrees = [];
-    f.stores.food = 5000; f.lean = 0;
+    f.stores.food = 5000;
     const quiet = driftTown(c, tid);
     issueDecree(c, 0, tid, 'church');
     expect(driftTown(c, tid)).toBeGreaterThan(quiet);
@@ -88,12 +87,12 @@ describe('what each decree does to how a town drifts', () => {
 describe('a sensible ruler', () => {
   it('feeds a hungry town, guards a raided one, and keeps supplies in hand', () => {
     const { c, tid } = world();
-    const given = sensibleDecrees(c, 0, () => ({ hungry: true, raided: false, lean: 0, standing: 0 }));
+    const given = sensibleDecrees(c, 0, () => ({ hungry: true, raided: false, moved: 0, standing: 0 }));
     expect(given).toBeGreaterThan(0);
     expect(decreesAt(c, tid).map((d) => d.kind)).toContain('alms');
     c.factions[0].supplies = 4;
     c.territories[tid].decrees = [];
-    expect(sensibleDecrees(c, 0, () => ({ hungry: true, raided: true, lean: -20, standing: 0 }))).toBe(0);
+    expect(sensibleDecrees(c, 0, () => ({ hungry: true, raided: true, moved: -5, standing: 0 }))).toBe(0);
   });
 
   it('the computer\'s peoples give their decrees when the season turns', () => {
@@ -102,6 +101,6 @@ describe('a sensible ruler', () => {
     c.factions[1].supplies = 30;
     seasonDrift(c);
     expect(c.territories.some((t) => t.owner === 1 && (t.decrees?.length ?? 0) > 0)).toBe(true);
-    expect(driftOf(c, c.territories.find((t) => t.owner === 1)!.id)).toHaveProperty('lean');
+    expect(driftOf(c, c.territories.find((t) => t.owner === 1)!.id)).toHaveProperty('moved');
   });
 });

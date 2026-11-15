@@ -27,12 +27,14 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `acts` | 139 | Acts of God on the map: a season of famine, plague and fire in every land that is held (docs/DESIGN.md). | campaign, creed | acts.test.ts | not yet |
 | `ageing` | 122 | A person ages only on the map, a season at a time (docs/DESIGN.md, "Time"). | campaign, data, township | ageing.test.ts | not yet |
 | `ai` | 937 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | birthonly, calamity, creed, data, game, map, muster, temper | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
+| `armytown` | 133 | Armies belong to towns (docs/DESIGN.md): a company's men leave their town's record for the army's roll, the army's dead are struck from it, and the rest come home when it is sent home. | ageing, campaign, township | armytown.test.ts | not yet |
 | `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
 | `birthonly` | 60 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
 | `calamity` | 179 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, famine, game, wrath | none of its own | not yet |
-| `campaign` | 1810 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, champion, country, court, creed, data, drift, dynasty, game, hero, leaders, notableweight, powers, seasonfolk, story, temper, threats, township | none of its own | not yet |
+| `campaign` | 1810 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, country, court, creed, data, drift, dynasty, game, hero, leaders, notableweight, powers, seasonfolk, story, temper, threats, townfaith, township | none of its own | not yet |
 | `captivity` | 129 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, data, game, nursery | captivity.test.ts | not yet |
 | `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
+| `conquered` | 108 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | campaign, court, township | conquered.test.ts | not yet |
 | `contagion` | 96 | Plague that comes from outside a town. | calamity, game | contagion.test.ts | not yet |
 | `country` | 81 | Country that matters on the campaign map, and the works that open a closed border. | campaign | country.test.ts | not yet |
 | `court` | 166 | Where the leader is. A leader is one person in one place on the campaign map: a land of their people's, in its | campaign | court.test.ts | not yet |
@@ -57,7 +59,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `notableweight` | 113 | The weight of notable people: a home known for what it carries in, a veteran of their own town, and the grief and dip in standing a loss leaves (plain numbers for drift.ts to read). | game, township (types only) | notable-weight.test.ts | not yet |
 | `nursery` | 51 | Children. A child is never a unit on the map: it is an entry in the record of the house it was born to (its | data | nursery.test.ts | not yet |
 | `path` | 266 | Grid A* with rectangle goals and line-of-sight smoothing. | none | none of its own | not yet |
-| `portrait` | 240 | Portraits: which woodblock icon stands beside a person, and which marks sit over it (docs/DESIGN.md, "Icons tell | campaign, champion, famine, game, grief, household, notableweight, township | portrait.test.ts | not yet |
+| `portrait` | 240 | Portraits: which woodblock icon stands beside a person, and which marks sit over it (docs/DESIGN.md, "Icons tell | campaign, champion, conquered, famine, game, grief, household, notableweight, township | portrait.test.ts | not yet |
 | `powers` | 92 | What a leader learns as they rise. At three ranks of veterancy (Blooded, Veteran, Legend) a leader comes into one | data, hero | powers.test.ts | not yet |
 | `primer` | 107 | Teaching the campaign: what a new player is told to do first, and the page that explains the rest. | beaten, campaign, champion, creed, hero, powers, story, visit | primer.test.ts | not yet |
 | `rescue` | 130 | Getting captives back without burning the camp down, and what a camp's keeper should do about it. | creed, game, path | rescue.test.ts | not yet |
@@ -66,7 +68,8 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `story` | 193 | The story of a campaign: places with names and a past, things that happen to the whole world, tales that are | campaign, creed | story.test.ts | not yet |
 | `tavernfall` | 24 | The tavern as a town falls. As a town grows less moral its tavern keeps later hours and takes more gold; what is | creed | tavernfall.test.ts | not yet |
 | `temper` | 127 | A leader's temperament, as answered by whoever plays them in the voice booth. It steers how the | none | none of its own | not yet |
-| `threats` | 390 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it. | acts, ageing, campaign, creed, township | threats.test.ts | not yet |
+| `threats` | 390 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it. | acts, ageing, campaign, creed, townfaith, township | threats.test.ts | not yet |
+| `townfaith` | 84 | Faith is a town's (docs/DESIGN.md): every town's own standing between piety and decadence, and the nation's as the mean of its towns'. | campaign, story | townfaith.test.ts | not yet |
 | `township` | 200 | Towns that keep their people and their stores (docs/DESIGN.md, step 2). | ageing, campaign, household, notableweight | township.test.ts | not yet |
-| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, game, township | visit.test.ts | not yet |
+| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, game, townfaith, township | visit.test.ts | not yet |
 | `wrath` | 29 | How hard acts of God fall on a people (docs/DESIGN.md, "Acts of God"). | game | wrath.test.ts | not yet |

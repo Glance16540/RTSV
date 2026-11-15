@@ -42,7 +42,7 @@ export const TAVERN_WOMEN_GOLD = 80;
 /** What each decree does to drift at full strength (drift.ts reads these). */
 export const CHURCH_CARE = 0.5;
 export const GUARDS_EASE = 0.5;
-export const TAVERN_WOMEN_LEAN = 6;
+export const TAVERN_WOMEN_SWAY = 6;
 export const CLOSED_ANGER = 0.3;
 
 /** The decrees in force in a town. */
@@ -73,15 +73,15 @@ export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKin
 }
 
 /** What the decrees in force in a town do to its drift this season. */
-export interface DecreeEffect { strainScale: number; strainAdd: number; care: number; holyBarred: boolean; lean: number; gold: number; tavernShut: boolean }
+export interface DecreeEffect { strainScale: number; strainAdd: number; care: number; holyBarred: boolean; sway: number; gold: number; tavernShut: boolean }
 export function decreeEffect(c: Campaign, tid: number, decadent: boolean): DecreeEffect {
-  const e: DecreeEffect = { strainScale: 1, strainAdd: 0, care: 0, holyBarred: false, lean: 0, gold: 0, tavernShut: false };
+  const e: DecreeEffect = { strainScale: 1, strainAdd: 0, care: 0, holyBarred: false, sway: 0, gold: 0, tavernShut: false };
   for (const d of decreesAt(c, tid)) {
     const s = d.strength;
     if (d.kind === 'church') e.care += CHURCH_CARE * s;
     if (d.kind === 'guards') { e.strainScale *= 1 - GUARDS_EASE * s; e.holyBarred = true; }
     if (d.kind === 'closeTavern') { e.tavernShut = true; if (decadent) e.strainAdd += CLOSED_ANGER * s; }
-    if (d.kind === 'tavernWomen') { e.lean -= TAVERN_WOMEN_LEAN * s; e.gold += Math.round(TAVERN_WOMEN_GOLD * s); }
+    if (d.kind === 'tavernWomen') { e.sway -= TAVERN_WOMEN_SWAY * s; e.gold += Math.round(TAVERN_WOMEN_GOLD * s); }
   }
   return e;
 }
@@ -93,10 +93,10 @@ export function decreesSeason(c: Campaign): void {
 
 /**
  * The decrees a sensible ruler gives, one to a town a season, keeping a few supplies in hand: food where the town is
- * hungry, guards where it is raided or rising, the church where it is sliding, the tavern shut where it is sliding
+ * hungry, guards where it is raided or rising, the church where it slid last season, the tavern shut where it slid
  * and not already lost to it. Reads how the town stood last season (`strainOf`, from drift.ts). Returns how many were given.
  */
-export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) => { hungry: boolean; raided: boolean; lean: number; standing: number }, keep = 4): number {
+export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) => { hungry: boolean; raided: boolean; moved: number; standing: number }, keep = 4): number {
   let given = 0;
   if (c.decreesOff) return 0;
   for (const t of c.territories) {
@@ -105,8 +105,8 @@ export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) 
     const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= keep && issueDecree(c, f, t.id, k) === '';
     if (s.hungry && tryGive('alms')) { given++; continue; }
     if (s.raided && tryGive('guards')) { given++; continue; }
-    if (s.lean < -10 && tryGive('church')) { given++; continue; }
-    if (s.lean < -10 && s.standing > -70 && tryGive('closeTavern')) given++;
+    if (s.moved < 0 && tryGive('church')) { given++; continue; }
+    if (s.moved < 0 && s.standing > -70 && tryGive('closeTavern')) given++;
   }
   return given;
 }

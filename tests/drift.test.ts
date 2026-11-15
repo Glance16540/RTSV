@@ -1,9 +1,10 @@
 // Drift (docs/DESIGN.md, step 5; src/sim/drift.ts): a strained town's people turn to what is worse for them, a
 // well-kept one drifts toward the holy way, in a town second by second and on the map season by season.
 import { describe, expect, it } from 'vitest';
-import { Campaign, endTurn, newCampaign, virtueOf } from '../src/sim/campaign';
+import { Campaign, endTurn, newCampaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
-import { FALL, MAX_LEAN, RISE, driftSecond, driftTown, townStanding, townStrain } from '../src/sim/drift';
+import { FALL, RISE, driftSecond, driftTown, townStanding, townStrain } from '../src/sim/drift';
+import { faithAt, nationVirtue } from '../src/sim/townfaith';
 import { folkOf } from '../src/sim/township';
 import { run, setups, spot } from './helpers';
 
@@ -61,34 +62,33 @@ describe('drift on the map', () => {
     return { c, tid: c.territories.find((t) => t.capital === 0)!.id };
   };
 
-  it('a hungry town falls by the season, and its men go to the mines; a fed and quiet one rises, faster with a church', () => {
+  it('a hungry town falls by the season, and its men go to the mines; a fed and quiet one stays where its church and tavern put it', () => {
     const { c, tid } = world(), f = folkOf(c, tid), t = c.territories[tid];
-    f.stores.food = 0; f.lean = 0;
-    const gold = f.stores.gold;
+    f.stores.food = 0;
+    const gold = f.stores.gold, was = faithAt(c, tid);
     expect(driftTown(c, tid)).toBeLessThan(0);
-    expect(f.lean).toBeLessThan(0);
+    expect(faithAt(c, tid)).toBeLessThan(was);
+    expect(townStanding(c, tid)).toBe(faithAt(c, tid));
+    expect(nationVirtue(c, 0)).toBe(c.factions[0].virtue); // the nation is its towns'
     expect(f.stores.gold).toBeGreaterThan(gold);
-    expect(townStanding(c, tid)).toBe(virtueOf(c, 0) + f.lean!);
-    f.stores.food = 5000; f.lean = 0;
+    f.stores.food = 5000;
     t.buildings = t.buildings.filter((b) => b !== 'church' && b !== 'tavern');
-    const plain = driftTown(c, tid);
-    expect(plain).toBeGreaterThan(0);
-    expect(plain).toBeLessThanOrEqual(RISE);
-    t.buildings.push('church');
-    expect(driftTown(c, tid)).toBeGreaterThan(plain);
+    expect(driftTown(c, tid)).toBe(0);
+    expect(f.drift!.care).toBeGreaterThan(0);
+    expect(RISE).toBeGreaterThan(0);
   });
 
-  it('a strained town with a tavern falls faster than one without, and no town leans past the bound', () => {
+  it('a strained town with a tavern falls faster than one without, and no town falls past the end of the scale', () => {
     const { c, tid } = world(), f = folkOf(c, tid), t = c.territories[tid];
     t.buildings = t.buildings.filter((b) => b !== 'tavern');
-    f.stores.food = 0; f.lean = 0;
+    f.stores.food = 0;
     const without = driftTown(c, tid);
     t.buildings.push('tavern');
     const withTavern = driftTown(c, tid);
     expect(withTavern).toBeLessThan(without);
     expect(without).toBeGreaterThanOrEqual(-FALL);
     for (let s = 0; s < 40; s++) driftTown(c, tid);
-    expect(f.lean).toBe(-MAX_LEAN);
+    expect(faithAt(c, tid)).toBe(-100);
   });
 
   it('every town drifts when a season passes', () => {

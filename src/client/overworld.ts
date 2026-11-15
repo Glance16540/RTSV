@@ -4,6 +4,7 @@ import { creedOf } from '../sim/creed';
 import { PLACES, WORLD_EVENTS, epilogue } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield, openBorder } from '../sim/country';
 import { nationHtml, townHtml } from './townpanel';
+import { canSendHome, menOf, sendHome } from '../sim/armytown';
 import { threatHtml } from './threatpanel';
 import { AGES, CIVS, CIV_IDS, styleOf } from '../sim/data';
 import { LEADERS, Speech, leaderOf } from '../sim/leaders';
@@ -134,6 +135,7 @@ export class Overworld {
       if (kind === 'age') advanceAge(this.c, 0);
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
+      if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
       this.changed();
     });
     $('ow-end').addEventListener('click', () => {
@@ -643,6 +645,7 @@ export class Overworld {
       if (!me.heroAlive) html += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
       if (t.capital === 0) html += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
+      if (a && a.owner === 0) { const men = menOf(c, a); html += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
       for (const w of c.barriers ?? []) if ((w.a === t.id || w.b === t.id) && w.kind !== 'water') { const far = w.a === t.id ? w.b : w.a; html += btn('open:' + far, `${WORKS[w.kind].icon} Build ${WORKS[w.kind].name} to ${c.territories[far].name}`, WORKS[w.kind].cost, canOpen(c, 0, t.id, far), 'Opens this border for good, to you and to everyone else.'); }
       if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
     } else if (t.owner > 0 && c.factions[t.owner].alive) {

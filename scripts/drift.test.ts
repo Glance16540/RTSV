@@ -18,11 +18,11 @@ const TURNS = +(process.env.TURNS ?? 20);
 const MODES = (process.env.MODES ?? 'none,sensible').split(',');
 
 function towns(c: Campaign) {
-  const out: { owner: number; lean: number; standing: number; strain: number; care: number; grief: number; gold: number; decrees: number }[] = [];
+  const out: { id: number; owner: number; standing: number; strain: number; care: number; grief: number; gold: number; decrees: number }[] = [];
   for (const t of c.territories) {
     if (t.horde) continue;
     const f = folkOf(c, t.id);
-    out.push({ owner: t.owner, lean: f.lean ?? 0, standing: townStanding(c, t.id), strain: f.drift?.strain ?? 0, care: f.drift?.care ?? 0, grief: f.grief ?? 0, gold: f.stores.gold, decrees: decreesAt(c, t.id).length });
+    out.push({ id: t.id, owner: t.owner, standing: townStanding(c, t.id), strain: f.drift?.strain ?? 0, care: f.drift?.care ?? 0, grief: f.grief ?? 0, gold: f.stores.gold, decrees: decreesAt(c, t.id).length });
   }
   return out;
 }
