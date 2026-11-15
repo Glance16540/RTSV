@@ -15,6 +15,7 @@ import { siteCost, slots } from './campaign';
 import { BUILDINGS } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount } from './township';
 import { couplesOf, housesOf, roomOf } from './seasonfolk';
+import { KEEP_SEASONS, needOf } from './larder';
 
 /** The last orders a town was given. `work`: how many of its people were at each kind of work. `turn`: when they were given. */
 export interface Orders { work?: Stores; build?: string[]; train?: string[]; turn: number }
@@ -27,6 +28,8 @@ export const GOVERN = {
   farm: 1.5,
   /** Food in store per head under which a town is short, and the share of its people the governor then sends to the fields. */
   short: 15, fields: 0.75,
+  /** With a full granary and no orders, the share of the usual hands kept at the fields. */
+  full: 0.5,
   /** How much of a building a season's work finishes. */
   build: 0.34,
   /** What a town keeps in store whatever the governor builds, and what he holds back of each kind when he pays for a house. */
@@ -94,6 +97,13 @@ export function plotFor(t: Territory, type: string): { cx: number; cy: number } 
  */
 export function shareOf(c: Campaign, tid: number): { share: Stores; fields: boolean } {
   const t = c.territories[tid], share = workOf(t);
+  // A full granary, and nobody's orders: the governor sends hands from the fields to work that keeps (larder.ts spoils food beyond what keeps).
+  if (!t.orders?.work && folkOf(c, tid).stores.food >= KEEP_SEASONS * needOf(c, tid) && needOf(c, tid) > 0) {
+    const was = share.food, now = was * GOVERN.full, rest = 1 - was || 1;
+    for (const k of STORE_KINDS) if (k !== 'food') share[k] = (share[k] / rest) * (1 - now);
+    share.food = now;
+    return { share, fields: false };
+  }
   if (!(wantsOf(c, tid).food && share.food < GOVERN.fields)) return { share, fields: false };
   const rest = 1 - share.food || 1;
   for (const k of STORE_KINDS) if (k !== 'food') share[k] = (share[k] / rest) * (1 - GOVERN.fields);

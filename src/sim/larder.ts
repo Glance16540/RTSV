@@ -11,7 +11,8 @@
 // and are records on their houses.
 //
 // Food does not keep for ever: what a town holds beyond KEEP_SEASONS of its own eating loses ROT of that excess each
-// season, so a town is not a granary of years.
+// season, so a town is not a granary of years. Never below FOOD_KEEP, the food in a town's working stock (stores.ts):
+// a small town can keep that much, or it could never hold its working stock at all.
 //
 // What fills a larder is the land's harvest (harvest.ts), which is mostly food where there is farmland: a farmed
 // town of about twenty is fed by its own fields, a town with none is not, and lives on convoys (convoys.ts) or on
@@ -25,6 +26,8 @@ declare module './township' {
   interface Folk {
     /** Seasons running the town has gone hungry (larder.ts). */
     hungry?: number;
+    /** Food that spoiled in the town last season (larder.ts). */
+    rotted?: number;
   }
 }
 
@@ -35,7 +38,9 @@ export const STARVE_AFTER = 2;
 export const STARVE_SHARE = 0.1;
 /** Food keeps: a town's food beyond KEEP_SEASONS of its own eating loses ROT of the excess each season. */
 export const KEEP_SEASONS = 2;
-export const ROT = 0.35;
+export const ROT = 0.2;
+/** Food never spoils below this: the food share of a town's working stock (stores.ts KEEP, at a supply's food share). */
+export const FOOD_KEEP = 240;
 
 /** What one town did this season: food needed and eaten, how long it has been hungry, and who died of it. */
 export interface Meal { at: number; owner: number; need: number; ate: number; hungry: number; dead: number; rotted: number }
@@ -80,8 +85,9 @@ export function eatTown(c: Campaign, tid: number): Meal {
   const dead = short && f.hungry > STARVE_AFTER ? starve(c, tid) : 0;
   if (!f.hungry) delete f.hungry;
   // Grain does not keep for ever: what is beyond a couple of seasons' eating spoils, a share a season.
-  const rotted = Math.floor(Math.max(0, f.stores.food - KEEP_SEASONS * need) * ROT);
+  const rotted = Math.floor(Math.max(0, f.stores.food - Math.max(KEEP_SEASONS * need, FOOD_KEEP)) * ROT);
   f.stores.food -= rotted;
+  if (rotted) f.rotted = rotted; else delete f.rotted;
   return { at: tid, owner: t.owner, need, ate, hungry: f.hungry ?? 0, dead, rotted };
 }
 

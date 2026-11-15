@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { answerDemand, continueAI, endTurn, landIncome, newCampaign, resolvePending } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
-import { EAT, KEEP_SEASONS, ROT, STARVE_AFTER, STARVE_SHARE, eatTown, larderSeason, mouths, needOf } from '../src/sim/larder';
+import { EAT, FOOD_KEEP, KEEP_SEASONS, ROT, STARVE_AFTER, STARVE_SHARE, eatTown, larderSeason, mouths, needOf } from '../src/sim/larder';
 import { driftTown } from '../src/sim/drift';
 import { spread, yieldShares } from '../src/sim/harvest';
 import { SUPPLY_UNITS } from '../src/sim/stores';
@@ -31,7 +31,7 @@ describe('towns eat their food on the map', () => {
     const m = eatTown(c, t.id);
     expect(m).toMatchObject({ need, ate: need, hungry: 0, dead: 0 });
     // What is left beyond KEEP_SEASONS of eating spoils, ROT of it.
-    const left = 1000 - need, rot = Math.floor((left - KEEP_SEASONS * need) * ROT);
+    const left = 1000 - need, rot = Math.floor((left - Math.max(KEEP_SEASONS * need, FOOD_KEEP)) * ROT);
     expect(m.rotted).toBe(rot);
     expect(f.stores.food).toBe(left - rot);
     expect(f.hungry).toBeUndefined();
@@ -40,12 +40,13 @@ describe('towns eat their food on the map', () => {
   it('food beyond a couple of seasons\' eating spoils, a share a season, and none below that', () => {
     const { c, t, f } = town({ men: 5, women: 5, elders: 0, children: 0 });
     const need = needOf(c, t.id);
-    f.stores.food = need * (1 + KEEP_SEASONS); // just enough to eat and keep
+    const keep = Math.max(KEEP_SEASONS * need, FOOD_KEEP);
+    f.stores.food = need + keep; // just enough to eat and keep
     expect(eatTown(c, t.id).rotted).toBe(0);
-    expect(f.stores.food).toBe(need * KEEP_SEASONS);
+    expect(f.stores.food).toBe(keep);
     f.stores.food = 100000; // a granary of years
     for (let s = 0; s < 30; s++) { c.turn++; eatTown(c, t.id); }
-    expect(f.stores.food).toBeLessThan(need * (KEEP_SEASONS + 1)); // spoiled down to about what keeps
+    expect(f.stores.food).toBeLessThan(Math.max(KEEP_SEASONS * need, FOOD_KEEP) + need); // spoiled down to about what keeps
   });
 
   it('those who have drifted to the mines or the tavern eat there, not at home', () => {
