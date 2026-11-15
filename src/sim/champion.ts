@@ -8,7 +8,7 @@ import { HeroSpec, MAX_RANK } from './hero';
 /** Foes a soldier must have felled to be known by name and fit to lead. */
 export const CHAMPION_KILLS = 3;
 /** A soldier remembered with an army on the campaign map: who they are, what they have done, and what they fight as. */
-export interface Champion { name: string; kills: number; unit: string; female?: boolean; type?: string }
+export interface Champion { name: string; kills: number; unit: string; female?: boolean; type?: string; /** The land they came from, when their army is a town's (notableweight.ts). */ town?: number }
 
 /** Only those who fight on foot or in the saddle can be raised: not engines, ships, beasts or holy men. */
 export const canLead = (cls: string): boolean => cls === 'infantry' || cls === 'ranged' || cls === 'cavalry';
@@ -26,5 +26,5 @@ export const championSpec = (name: string, female = false, fights?: string): Her
 /** Make safe a champion handed back from a battle. */
 export function cleanChampion(ch: Partial<Champion> | null | undefined): Champion | undefined {
   if (!ch || typeof ch !== 'object' || typeof ch.name !== 'string' || !ch.name) return undefined;
-  return { name: ch.name.replace(/[<>&"`\u0000-\u001f]/g, '').slice(0, 40), kills: Math.max(0, Math.round(Number(ch.kills) || 0)), unit: typeof ch.unit === 'string' ? ch.unit.replace(/[<>&"`]/g, '').slice(0, 30) : 'soldier', ...(ch.female ? { female: true } : {}), ...(typeof ch.type === 'string' && /^[a-z_]{1,24}$/.test(ch.type) ? { type: ch.type } : {}) };
+  return { name: ch.name.replace(/[<>&"`\u0000-\u001f]/g, '').slice(0, 40), kills: Math.max(0, Math.round(Number(ch.kills) || 0)), unit: typeof ch.unit === 'string' ? ch.unit.replace(/[<>&"`]/g, '').slice(0, 30) : 'soldier', ...(ch.female ? { female: true } : {}), ...(typeof ch.type === 'string' && /^[a-z_]{1,24}$/.test(ch.type) ? { type: ch.type } : {}), ...(Number.isInteger(ch.town) && ch.town! >= 0 ? { town: ch.town } : {}) };
 }
