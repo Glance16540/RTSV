@@ -1,7 +1,7 @@
 // A world that ends in ruin (docs/DESIGN.md, the owner's word; src/sim/ruin.ts).
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
-import { RUIN, RUIN_WARN, bandShare, bandsHoldMuch, groundGained, heldShare, inRuin, ruinIn, ruinSeason, ruinWarning, ruinWords } from '../src/sim/ruin';
+import { RUIN, RUIN_WARN, bandShare, bandsHoldMuch, bandsOften, groundGained, heldShare, inRuin, ruinIn, ruinSeason, ruinWarning, ruinWords } from '../src/sim/ruin';
 import { anything, reportLines, reportSince, snapshot } from '../src/sim/seasonreport';
 import { infoOf } from '../src/sim/slots';
 import { epilogue } from '../src/sim/story';
@@ -69,7 +69,22 @@ describe('a world ends in ruin', () => {
     // A band with its place on a land counts as holding it.
     c.bands = c.territories.filter((t) => !t.horde).slice(0, 6).map((t, i) => ({ id: 500 + i, kind: 'raiders' as const, name: 'the Test Men', at: t.id, strength: 3, since: 0, held: [] }));
     expect(bandShare(c)).toBeGreaterThanOrEqual(RUIN.bands);
+    // But a season of it is not the bands holding much of the map: they must have held it a quarter of the twenty years.
+    const need = Math.ceil(RUIN.seasons * RUIN.often);
+    expect(quiet(c, need - 1)).toBe(false);
+    expect(bandsOften(c)).toBeLessThan(RUIN.often);
     expect(quiet(c, 1)).toBe(true);
+  });
+
+  it('the bands\' hold is read over the years, so a band broken or newly camped does not turn it on and off', () => {
+    const c = world(6, 8);
+    quiet(c, RUIN.seasons - 2);
+    // The marauders are driven from all they hold for a season: by the moment the bands hold nothing.
+    const theirs = c.territories.filter((t) => t.horde);
+    for (const t of theirs) t.horde = false;
+    expect(bandShare(c)).toBe(0);
+    expect(bandsHoldMuch(c)).toBe(true); // they held it for years
+    expect(quiet(c, 3)).toBe(true); // and the twenty years are up as they would have been
   });
 
   it('a people that has died out is not waited for, and a warning can be given', () => {
