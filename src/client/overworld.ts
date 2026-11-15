@@ -243,7 +243,7 @@ export class Overworld {
       this.changed();
     };
     const band = bandPrompt(c);
-    if (band) { this.dialog(band.title, band.text, [['Fight it', () => this.hooks.fight()], ['Leave it to the army', settle], ['Call it off', () => { c.pending = null; this.changed(); }]]); return; }
+    if (band) { this.dialog(band.title, band.text, [['Fight it', () => this.hooks.fight()], ['Leave it to the army', settle], ...(band.decline ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]); return; }
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
       (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
         (p.sea ? ` ${attacking ? 'Your troops land' : 'They land'} from the sea, at ${Math.round(SEA_LANDING * 100)}% of their strength.` : '') +

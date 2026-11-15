@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { battleConfig, finishBattle, moveArmy, newCampaign, resolvePending } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
-import { FIGHT, armiesFor, attackBand, bandBattle, canAttackBand, fightByMeans, huntBands, settleBandFight } from '../src/sim/bandfight';
+import { AMBUSH, FIGHT, ambushSeason, armiesFor, attackBand, bandBattle, canAttackBand, escorting, fightByMeans, huntBands, prey, settleBandFight } from '../src/sim/bandfight';
 import type { Band, BandKind } from '../src/sim/threats';
 import { folkOf } from '../src/sim/township';
 import { Game } from '../src/sim/game';
@@ -189,5 +189,77 @@ describe('the computer\'s peoples hunt the bands in their lands', () => {
     expect(attackBand(c, a.id, b.id)).toBe('fought');
     expect(c.pending).toBeNull();
     expect(c.bands).not.toContain(b);
+  });
+});
+
+describe('a band comes against an army', () => {
+  it('only one it clearly outweighs, at its place or beside it; an army seeing a convoy along the road it will take on at even strength', () => {
+    const { c, t } = world();
+    const b = band(c, t, 5);
+    const a = army(c, t.id, 5);
+    expect(prey(c, b)).toEqual([]); // its match: let be
+    a.units.infantry = 4;
+    expect(prey(c, b)).toEqual([a]); // 5 against 4 is the odds it wants
+    expect(AMBUSH.odds).toBe(1.25);
+    a.units.infantry = 5;
+    (c as { convoys?: unknown[] }).convoys = [{ id: 1, owner: 0, from: t.id, to: t.adj[0], road: [t.id, t.adj[0]], cargo: { food: 100, wood: 0, gold: 0, stone: 0, men: [], women: [] }, since: c.turn }];
+    expect(escorting(c, a)).toBe(true);
+    expect(prey(c, b)).toEqual([a]); // the convoy is worth even odds
+    (c as { convoys?: unknown[] }).convoys = [];
+    a.units.infantry = 2;
+    const far = c.territories.find((x) => x.id !== t.id && !t.adj.includes(x.id))!;
+    a.at = far.id;
+    expect(prey(c, b)).toEqual([]); // out of its reach
+    b.kind = 'marauders'; a.at = t.id;
+    expect(ambushSeason(c, [])).toBe(0); // the marauders keep to their land
+  });
+
+  it('the player\'s army: a battle put to the player, which cannot be called off but can be entered or left to the army', () => {
+    const { c, t } = world();
+    const b = band(c, t, 8), a = army(c, t.id, 3);
+    const out: string[] = [];
+    let fell = 0;
+    for (c.turn = 10; c.turn < 80 && !fell; c.turn++) fell = ambushSeason(c, out);
+    c.turn--;
+    expect(fell).toBe(1);
+    expect(c.pending).toMatchObject({ armyId: a.id, attacker: 0, defender: -1, band: b.id, ambush: true, mode: 'field', dStr: 8 });
+    expect(out.join(' ')).toContain('have fallen on your army at');
+    expect(c.bandNews!.some((n) => n.kind === 'ambush' && n.owners.includes(0))).toBe(true);
+    expect(ambushSeason(c, [])).toBe(0); // one battle at a time
+    const cfg = battleConfig(c)!;
+    expect(cfg.field).toBe(true);
+    expect(cfg.title).toContain('fall on your army');
+    expect(resolvePending(c, 'auto')).toBe(false); // three companies against eight: routed
+    expect(c.pending).toBeNull();
+    expect(a.units.infantry).toBeLessThan(3);
+    expect(c.bands).toContain(b);
+    expect(c.log.some((l) => l.includes('fell on your army') && l.includes('routed it'))).toBe(true);
+  });
+
+  it('fought out and won, the band that came is broken', () => {
+    const { c, t } = world();
+    const b = band(c, t, 8), a = army(c, t.id, 3);
+    for (c.turn = 10; c.turn < 80 && !c.pending; c.turn++) ambushSeason(c, []);
+    expect(c.pending!.ambush).toBe(true);
+    finishBattle(c, true, { clubman: 6 });
+    expect(c.bands).not.toContain(b);
+    expect(a.units.infantry).toBe(3);
+    expect(c.log.some((l) => l.includes('fell on your army') && l.includes('were broken'))).toBe(true);
+  });
+
+  it('a computer people\'s army is fallen on and fights at once by its own means, with no battle left pending', () => {
+    const { c } = world();
+    const theirs = c.territories.find((x) => x.owner === 1)!;
+    c.armies = [];
+    const b = band(c, theirs, 9), a = army(c, theirs.id, 3, 1, 811);
+    const out: string[] = [];
+    let fell = 0;
+    for (c.turn = 10; c.turn < 80 && !fell; c.turn++) fell = ambushSeason(c, out);
+    expect(fell).toBe(1);
+    expect(c.pending).toBeNull();
+    expect(a.units.infantry).toBeLessThan(3);
+    expect(a.moved).toBe(false);
+    expect(out.join(' ')).toContain(`fell on ${c.factions[1].name}'s army`);
+    expect(c.bands).toContain(b);
   });
 });

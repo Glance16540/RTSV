@@ -305,12 +305,12 @@ neighbouring land.
   ruling house. The people you choose still decides dress, units and leaders; an heir rules as one of
   your house, and a house set aside takes its name with it.
 - **Paid in kind, earned by land** (`src/sim/prices.ts`, `src/sim/harvest.ts`). A Barracks is paid in
-  wood, a Fortress in stone, a company in food and gold, a truce in gold, at the old price in supplies,
+  wood, a Fortress in stone, a company in gold, food and some wood, a truce in gold, at the old price in supplies,
   from the town where it is done first; what your towns lack of a kind is made up in other goods. Each
   land's yield goes into its own town: as much as the land gives and the town has hands to work, made of
   what its people were set to work at and what the land leans to.
 - **Towns eat** (`src/sim/larder.ts`). Each season a town eats from its own food store: 16 food for a
-  grown man or woman, 12 for one of the old, 8 for a child. A farmed town of about twenty is fed by its own
+  grown man or woman, 12 for one of the old, 6 for a child. A farmed town of about twenty is fed by its own
   fields; a town with none needs food sent. A town that cannot eat goes hungry, and after two hungry seasons
   it loses a tenth of its grown people a season, the old first. No child dies of it.
   A town left with nobody grown sends its children to the nearest town of your people
@@ -433,7 +433,8 @@ seasons they are gone for good. No land changes hands.
 
 Bands move: they flee an army that is their match, drift toward softer towns, break up when old and weak, and
 raiders grown strong in a tribe's land take it and become marauders, who hold their land and are fought by marching
-into it. Rival peoples hunt the bands in their own lands. The season's news of all this is listed above the log;
+into it. Rival peoples hunt the bands in their own lands. A band may also fall on an army
+that is clearly weaker, or one seeing a convoy along the road: that is a battle you cannot call off. The season's news of all this is listed above the log;
 click a line to open the land it happened in.
 
 ## Controls

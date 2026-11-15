@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
-import { ROAM, armyOver, placesFrom, roamSeason } from '../src/sim/bandroam';
+import { ROAM, armyOver, placesFrom, roamSeason, wayTo, waysFrom } from '../src/sim/bandroam';
 import type { Band, BandKind } from '../src/sim/threats';
 import { folkOf } from '../src/sim/township';
 
@@ -145,5 +145,50 @@ describe('bands move', () => {
     c.armies.push({ id: 801, owner: 0, at: m.at, units: { infantry: 12 }, hero: false, vet: 0, moved: false });
     roamSeason(c, []);
     expect(m.at).toBe(t.adj[1]);
+  });
+
+  it('a camp plans a way of a few lands toward a softer mark and goes a land a season until it is there', () => {
+    const { c, t } = world();
+    const b = band(c, t, 4);
+    // Every town is walled but one that lies more than a land off.
+    const ways = waysFrom(c, b);
+    expect(Math.max(...ways.map((w) => w.steps))).toBeLessThanOrEqual(ROAM.range);
+    expect(ways.every((w) => w.to !== t.id && c.territories[w.to].capital < 0)).toBe(true);
+    const farthest = ways.filter((w) => w.steps >= 2).sort((x, y) => y.steps - x.steps || x.to - y.to)[0];
+    expect(farthest).toBeDefined();
+    const near = new Set([t.id, ...t.adj, ...ways.filter((w) => w.steps < farthest.steps).flatMap((w) => [w.to, ...c.territories[w.to].adj])]);
+    const soft = c.territories[farthest.to].adj.map((id) => c.territories[id]).find((x) => !near.has(x.id) && x.capital < 0) ?? c.territories[farthest.to];
+    for (const x of c.territories) if (x.id !== soft.id) x.buildings = ['fortress'];
+    Object.assign(folkOf(c, soft.id), { men: 0 });
+    const plan = wayTo(c, b)!;
+    expect(plan).not.toBeNull();
+    expect([plan.bound, ...c.territories[plan.bound].adj]).toContain(soft.id); // it would put the open town in reach
+    c.turn += ROAM.restless;
+    const out: string[] = [];
+    expect(roamSeason(c, out)).toBe(1);
+    expect(b.at).toBe(plan.next);
+    if (plan.steps > 1) {
+      expect(b.bound).toBe(plan.bound);
+      expect(out.join(' ')).toContain(`set out for ${c.territories[plan.bound].name}, ${plan.steps} lands off`);
+      // It keeps going, a land a season, without waiting to grow restless again.
+      for (let i = 1; i < plan.steps; i++) { c.turn++; expect(roamSeason(c, [])).toBe(1); }
+      expect(b.at).toBe(plan.bound);
+      expect(b.bound).toBeUndefined();
+    }
+    // Pirates and highwaymen do not plan a way overland.
+    expect(waysFrom(c, { ...b, kind: 'pirates' })).toEqual([]);
+    expect(waysFrom(c, { ...b, kind: 'highwaymen', to: t.adj[0] })).toEqual([]);
+  });
+
+  it('a way never runs through an army, another band\'s place, the marauders\' land or a capital', () => {
+    const { c, t } = world();
+    const b = band(c, t, 4);
+    const [first, second] = t.adj;
+    c.armies.push({ id: 801, owner: 0, at: first, units: { infantry: 2 }, hero: false, vet: 0, moved: false });
+    if (second !== undefined) c.territories[second].horde = true;
+    const ways = waysFrom(c, b);
+    expect(ways.some((w) => w.to === first || w.next === first)).toBe(false);
+    if (second !== undefined) expect(ways.some((w) => w.to === second || w.next === second)).toBe(false);
+    expect(ways.some((w) => c.territories[w.to].capital >= 0)).toBe(false);
   });
 });
