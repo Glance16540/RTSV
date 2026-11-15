@@ -1,7 +1,8 @@
 // Stories of the leader's own house: a rival king and a suitor (src/sim/courtstory.ts).
 import { describe, expect, it } from 'vitest';
 import { Campaign, atTruce, newCampaign } from '../src/sim/campaign';
-import { COURT, beginRival, beginSuitor, courtBegin, daughterOfAge } from '../src/sim/courtstory';
+import { COURT, beginPlot, beginRival, beginSuitor, courtBegin, daughterOfAge } from '../src/sim/courtstory';
+import { noblesOf } from '../src/sim/nobles';
 import { HEIR_AGE, houseOf } from '../src/sim/dynasty';
 import { choicesFor, choose, intrigueSeason, intriguesAt, openIntrigues, standing } from '../src/sim/intrigue';
 import { kinOf, spouseOf } from '../src/sim/kin';
@@ -155,6 +156,98 @@ describe('a suitor', () => {
   });
 });
 
+describe('a plot', () => {
+  /** A court of six nobles, one of them sour enough to plot; no confidant either way. */
+  const court = (seed = 5): { c: Campaign; key: string } => {
+    const { c } = world(seed), seat = c.territories.find((t) => t.owner === 0)!.id;
+    c.factions[0].nobles = ['Aldric', 'Bram', 'Cyra', 'Dunn', 'Edric', 'Faye'].map((name, i) => ({ key: `lord:${90 + i}:0`, name, female: name === 'Cyra' || name === 'Faye', town: seat, rank: 'lord' as const, leaning: 'martial' as const, mood: i === 2 ? -70 : i === 4 ? -30 : 0 }));
+    kinOf(c, 0).circle = kinOf(c, 0).circle.filter((x) => x.post !== 'confidant');
+    return { c, key: 'lord:92:0' };
+  };
+  // The nobles are reckoned afresh each season by nobles.ts; these tests step only the stories, so the court stands.
+  it('begins with an angry noble, hidden among a few who are spoken of', () => {
+    const { c, key } = court(), x = beginPlot(c)!;
+    expect(x.nobles).toHaveLength(COURT.plot.spoken);
+    expect(x.nobles![x.culprit].key).toBe(key);
+    expect(x.nobles!.some((n) => n.key === 'lord:94:0')).toBe(true); // the next sourest is a likely name too
+    expect(x.found).toBeUndefined();
+    expect(choicesFor(c, x).map((k) => k.id.split(':')[0])).toEqual(['accuse', 'accuse', 'accuse', 'accuse', 'gifts', 'watch']);
+    expect(standing(c, x)).not.toContain('Cyra');
+    const calm = court(); for (const n of noblesOf(calm.c, 0)) n.mood = 0;
+    expect(beginPlot(calm.c)).toBeNull(); // nobody is angry
+  });
+  it('is laid bare by naming the right one, and then judged: pardon or death', () => {
+    const judged = (choice: string) => {
+      const { c } = court(), x = beginPlot(c)!, v = virtue(c);
+      expect(choose(c, x.id, `accuse:${x.culprit}`)).toBe(true);
+      expect(x.found).toBe(true);
+      expect(choicesFor(c, x).map((k) => k.id)).toEqual(['pardon', 'death']);
+      for (let i = 0; i < 10; i++) season(c);
+      expect(x.ended).toBeUndefined(); // held: there is no rising
+      const others = noblesOf(c, 0).filter((n) => n.name !== 'Cyra').map((n) => n.mood);
+      expect(choose(c, x.id, choice)).toBe(true);
+      return { x, v: virtue(c) - v, others: noblesOf(c, 0).filter((n) => n.name !== 'Cyra').reduce((s, n, i) => s + n.mood - others[i], 0), mood: noblesOf(c, 0).find((n) => n.name === 'Cyra')!.mood, c };
+    };
+    const pardon = judged('pardon'), death = judged('death');
+    expect(pardon.x.ended!.how).toBe('pardoned');
+    expect(death.x.ended!.how).toBe('executed');
+    expect(pardon.v).toBeGreaterThan(0);
+    expect(death.v).toBeLessThan(0);
+    expect(pardon.others).toBeGreaterThan(0);
+    expect(death.others).toBeLessThan(0);
+    expect(pardon.mood).toBeGreaterThan(COURT.plot.cooled);
+    expect(death.c.chronicle!.at(-1)!.text).toContain('Lady Cyra');
+  });
+  it('named wrongly makes an enemy; with one left it is known', () => {
+    const { c } = court(), x = beginPlot(c)!;
+    const wrong = x.nobles!.map((_, i) => i).filter((i) => i !== x.culprit);
+    const was = noblesOf(c, 0).find((n) => n.key === x.nobles![wrong[0]].key)!.mood;
+    expect(choose(c, x.id, `accuse:${wrong[0]}`)).toBe(true);
+    expect(noblesOf(c, 0).find((n) => n.key === x.nobles![wrong[0]].key)!.mood).toBe(was + COURT.plot.wronged);
+    expect(x.found).toBeUndefined();
+    choose(c, x.id, `accuse:${wrong[1]}`); choose(c, x.id, `accuse:${wrong[2]}`);
+    expect(x.found).toBe(true);
+  });
+  it('is sweetened away by gifts, if they are enough', () => {
+    const { c } = court(), x = beginPlot(c)!;
+    for (let i = 0; i < 4; i++) expect(choose(c, x.id, 'gifts')).toBe(true);
+    season(c);
+    expect(x.ended!.how).toBe('nothing');
+    expect(c.factions[0].heroAlive).toBe(true);
+  });
+  it('comes out sooner with informers or a loyal confidant, later with a disloyal one', () => {
+    const outBy = (set: (c: Campaign, id: number) => void): number => {
+      let n = 0;
+      for (let seed = 1; seed <= 40; seed++) {
+        const { c } = court(seed), x = beginPlot(c)!;
+        set(c, x.id);
+        for (let i = 0; i < COURT.plot.ripe - 1; i++) season(c);
+        n += x.cleared.length;
+      }
+      return n;
+    };
+    const confidant = (loyalty: number) => (c: Campaign): void => { kinOf(c, 0).circle.push({ post: 'confidant', name: 'Isa', female: true, town: 0, loyalty, feeling: 'content', since: 0 }); };
+    const bare = outBy(() => undefined);
+    expect(outBy((c, id) => { choose(c, id, 'watch'); })).toBeGreaterThan(bare + 10);
+    expect(outBy(confidant(100))).toBeGreaterThan(bare + 10);
+    expect(outBy(confidant(0))).toBeLessThan(bare);
+  });
+  it('left to ripen ends in a rising: put down, or the leader is killed in it; never after it is found', () => {
+    const how: Record<string, number> = {};
+    for (let seed = 1; seed <= 60; seed++) {
+      const { c } = court(seed), x = beginPlot(c)!;
+      for (let i = 0; i < COURT.plot.ripe + 2 && !x.ended && !x.found; i++) season(c);
+      const k = x.ended ? x.ended.how : 'found';
+      how[k] = (how[k] ?? 0) + 1;
+      if (k === 'usurped') expect(c.factions[0].heroAlive).toBe(false);
+      if (k === 'foiled') expect(c.factions[0].heroAlive).toBe(true);
+    }
+    expect(how.usurped).toBeGreaterThan(3);
+    expect(how.foiled).toBeGreaterThan(how.usurped);
+    expect(how.found).toBeGreaterThan(0);
+  });
+});
+
 describe('stories of the house', () => {
   it('come by chance, one at a time, never before their season, and never touch a child', () => {
     let rivals = 0, suitors = 0;
@@ -165,7 +258,7 @@ describe('stories of the house', () => {
       for (let i = 0; i < 80; i++) {
         season(c);
         c.factions[0].heroAlive = true;
-        const open = openIntrigues(c).filter((x) => x.kind === 'rival' || x.kind === 'suitor');
+        const open = openIntrigues(c).filter((x) => x.kind === 'rival' || x.kind === 'suitor' || x.kind === 'plot');
         expect(open.length).toBeLessThanOrEqual(1);
       }
       for (const x of c.intrigues ?? []) { if (x.kind === 'rival') rivals++; if (x.kind === 'suitor') { suitors++; expect(x.cast!.daughter).not.toBe('Wyn'); } }
