@@ -822,3 +822,6 @@ body.looking-out #visit { display: none; }
 
 /* Going to marry (suitors.ts): what a town wants for, on its panel. */
 .town-want { margin-top: 4px; }
+
+/* ---- What stories left behind, on the roll (rollpanel.ts, aftermath.ts) ---- */
+.roll .roll-mark { display: block; font-style: italic; opacity: 0.85; }
