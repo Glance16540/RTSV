@@ -429,7 +429,7 @@ export function standing(c: Campaign, it: Intrigue): string {
   if (!ofTown(it)) return courtStanding(c, it);
   if (it.kind === 'thief') return it.caught !== undefined && it.thief
     ? `${fullName(it.thief)} the ${it.thief.trade} is held for the robberies in ${land(c, it.at)}. ${WHY[it.why ?? 'greed'](it.thief)}.`
-    : `A thief has robbed the same ${it.people.length} houses of ${land(c, it.at)} ${it.robbed.reduce((a, b) => a + b, 0)} times; ${it.taken} gold is gone.${it.watch ? ' A watch is kept.' : ''}`;
+    : `A thief has robbed the same ${it.people.length} houses of ${land(c, it.at)} ${((n) => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`))(it.robbed.reduce((a, b) => a + b, 0))}; ${it.taken} gold is gone.${it.watch ? ' A watch is kept.' : ''}`;
   const left = suspected(it);
   return `${it.victims.length} dead in ${land(c, it.at)}. ${left.length === 1 ? `Only ${fullName(it.people[left[0]])} is still spoken of.` : `${left.length} are spoken of.`}${it.watch ? ' A watch walks by night.' : ''}`;
 }
