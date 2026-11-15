@@ -482,8 +482,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     const ow = new Overworld(state, {
       save: () => { writeCampaign(state); primer?.update(); },
       fight: () => { writeCampaign(state); go('?battle=1'); },
-      newCampaign: (r, l, civ, leader) => {
-        const made = newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined);
+      newCampaign: (r, l, civ, leader, opts) => {
+        const made = newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined, { names: opts?.names });
         made.factions[0].hero = chosenLeader(made.factions[0].civ, civ ? leader : 'a');
         writeCampaign(made); go('?campaign=1');
       },
