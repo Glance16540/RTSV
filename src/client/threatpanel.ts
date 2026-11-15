@@ -2,7 +2,7 @@
 import type { Campaign } from '../sim/campaign';
 import { bodyOf, captiveKeys, nationOf } from '../sim/portrait';
 import type { Portrait } from '../sim/portrait';
-import { BANDS, Band, Raid, bandsAt, defenceOf, raidsAt, reportText, seasonsLeft } from '../sim/threats';
+import { BANDS, Band, Raid, bandsAt, defenceOf, heldFrom, raidsAt, reportText, seasonsLeft } from '../sim/threats';
 import { armiesFor } from '../sim/bandfight';
 import { seasonNews } from '../sim/raidnews';
 import { portraitHtml } from './portrait';
@@ -42,7 +42,13 @@ export function threatHtml(c: Campaign, tid: number): string {
   const bands = bandsAt(c, tid).map((b) => bandHtml(c, b)).join('');
   const d = t.owner === 0 ? defenceOf(c, tid) : null;
   const own = d && (c.bands ?? []).length ? `<div class="hint" title="What this town has to defend itself with against a band: its men, its fortress and barracks, the towers and walls on its battlefield, an army kept here, and the spirit of its people.">🛡️ Against a band this town can muster ${d.total}.</div>` : '';
-  return reports + bands + own;
+  // Those of this town who are in a band's hands: who, how many, where they are held and how long is left.
+  const gone = heldFrom(c, tid).map(({ band: b, held: h }) => {
+    const who = [h.women.length ? plural(h.women.length, 'woman', 'women') : '', h.men.length ? plural(h.men.length, 'man', 'men') : ''].filter(Boolean).join(' and ');
+    const left = seasonsLeft(c, h);
+    return `<div class="bad">⛓️ ${who} of this town ${h.women.length + h.men.length === 1 ? 'is' : 'are'} held by ${esc(b.name)} at ${esc(c.territories[b.at].name)}: ${plural(left, 'season', 'seasons')} left to get ${h.women.length + h.men.length === 1 ? (h.women.length ? 'her' : 'him') : 'them'} back${b.kind === 'marauders' ? ' by taking that land' : ' by breaking the band'}.</div>`;
+  }).join('');
+  return reports + bands + gone + own;
 }
 
 /** The orders a land's panel offers against the bands placed there: one for each army of the player's that could be sent. */

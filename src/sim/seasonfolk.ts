@@ -21,6 +21,7 @@ import { BIRTH_COST } from './data';
 import { GROWN_AT } from './nursery';
 import { Folk, MAX_KIND, folkOf, grown } from './township';
 import { ageTown } from './ageing';
+import { tally } from './ledger';
 
 declare module './township' {
   interface Folk {
@@ -73,7 +74,7 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
   const aged = ageTown(c, tid, f, MAX_KIND);
   grew = aged.grew; died = aged.died;
   const couples = couplesOf(t, f);
-  if (!couples) { f.due = 0; return { born, grew, missed, died }; }
+  if (!couples) { f.due = 0; tally(c, tid, 'grew', grew); tally(c, tid, 'aged', died); return { born, grew, missed, died }; }
   const slow = Math.min(3, 1 + 0.2 * (f.children / couples));
   f.due = Math.min(couples, (f.due ?? 0) + (couples * creed.birth) / (MAP_BIRTH * slow));
   while (f.due >= 1) {
@@ -87,6 +88,7 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
     born++;
   }
   if (missed) f.missed = (f.missed ?? 0) + missed;
+  tally(c, tid, 'born', born); tally(c, tid, 'grew', grew); tally(c, tid, 'aged', died); // for the season's report (ledger.ts)
   return { born, grew, missed, died };
 }
 
