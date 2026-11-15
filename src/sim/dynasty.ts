@@ -3,6 +3,7 @@
 // rather, a captain who has made a name in one of the armies can be raised in their place and founds a house anew.
 // Rules only: campaign.ts calls in here at the turn of the year and when a leader is lost.
 
+import { GROWN_SEASON } from './ageing';
 import type { Army, Campaign } from './campaign';
 import { NAMES_F, NAMES_M } from './data';
 import { HeroSpec, MAX_RANK, RANK_NAMES } from './hero';
@@ -24,7 +25,9 @@ export interface House {
   asked?: boolean;
 }
 
-export const HEIR_AGE = 6; // turns from birth until an heir can lead
+export const HEIR_AGE = GROWN_SEASON; // turns (seasons) from birth until an heir can lead: fifteen years, as for everyone
+/** The child a leader comes to the campaign with is in their teens, a couple of years from leading. */
+export const FIRST_HEIR_AGE = HEIR_AGE - 8;
 export const HEIR_EVERY = 5; // turns between children
 export const MAX_HEIRS = 3;
 /** A captain needs this many battles won behind their army before anyone would follow them. */
@@ -70,12 +73,12 @@ const child = (c: Campaign, f: number, house: House, born: number): Heir => {
   return { name, female, born };
 };
 
-/** A people's ruling house. A leader comes to the campaign with one child already half grown. */
+/** A people's ruling house. A leader comes to the campaign with one child already in their teens. */
 export function houseOf(c: Campaign, f: number): House {
   const fac = c.factions[f];
   if (!fac.house) {
     fac.house = { heirs: [], line: 1, births: 0, due: c.turn + HEIR_EVERY - 2 };
-    fac.house.heirs.push(child(c, f, fac.house, c.turn - Math.floor(HEIR_AGE / 2)));
+    fac.house.heirs.push(child(c, f, fac.house, c.turn - FIRST_HEIR_AGE));
   }
   return fac.house;
 }

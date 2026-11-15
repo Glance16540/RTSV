@@ -7,6 +7,8 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
+import { threatsOfMen } from './threats';
+import { seasonFolk } from './seasonfolk';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
 import { Answer, LEGENDS, COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
@@ -355,7 +357,7 @@ export const WEATHER: Record<Sky, { name: string; icon: string; march: number; d
   snow: { name: 'Snow', icon: '🌨️', march: 0.85, desc: 'An army attacking into it fights at 85% strength, and the land yields 1 supply less. A battle here is fought in the snow.' },
   dust: { name: 'Dust storm', icon: '🌪️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the dust.' },
 };
-export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze';
+export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued';
 export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
   harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
@@ -374,6 +376,11 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
   famine: { name: 'Famine', icon: '🥀', desc: 'The harvest failed here: its holder paid from the stores what the land would have yielded. It falls harder on the decadent than the holy.' },
   plague: { name: 'Plague', icon: '☠️', desc: 'Sickness is in this land. While it lasts the land costs its holder a supply a season, an army of theirs kept here loses a company a season, and it may pass to the land next door.' },
   blaze: { name: 'Fire in the town', icon: '🔥', desc: 'The town here burned. Its holder paid to rebuild, and its buildings will be found damaged by whoever next fights here.' },
+  band: { name: 'A band has its place here', icon: '⛺', desc: 'Men who belong to no nation: raiders, slavers, pirates or highwaymen. They strike the softest town in their reach. An army standing here when the season turns fights them, and breaking them frees whoever they hold.' },
+  raid: { name: 'Raided', icon: '🔥', desc: 'A band broke into the town here: men died at the walls and stores were lost.' },
+  heldoff: { name: 'Held off', icon: '🛡️', desc: 'A band came against the town here and was beaten back.' },
+  carried: { name: 'People carried off', icon: '⛓️', desc: 'The town here fell to a band and people were taken. They can be got back for a time by breaking the band where it has its place.' },
+  rescued: { name: 'Captives freed', icon: '🕊️', desc: 'A band was broken here and those it held have gone home.' },
   freed: { name: 'The women freed', icon: '🕊️', desc: 'The marauders\' camp is broken and those they held have come home.' },
 };
 export const UNREST_TURNS = 2;
@@ -1368,6 +1375,8 @@ export function continueAI(c: Campaign): void {
       }
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
+      threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       mendTowns(c);
       turnEvent(c);
       storyTurn(c);

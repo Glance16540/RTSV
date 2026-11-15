@@ -715,3 +715,10 @@ body.looking-out #visit { display: none; }
 .likeness-standing small { margin-left: 4px; font-style: italic; }
 .likeness-flag.ico { width: 20px; height: 20px; margin-left: 3px; }
 .likeness-row { display: flex; align-items: center; gap: 4px; }
+
+/* ---- A house's people away at war (housepanel.ts) ---- */
+.house-away { margin: 3px 0; padding-left: 6px; border-left: 2px solid currentColor; font-size: 0.94em; }
+
+/* Bands on the map and the reports of their strikes (threatpanel.ts) */
+#ow-sel .raid-report { margin-top: 6px; padding: 6px 8px; border-left: 3px solid currentColor; background: rgba(0, 0, 0, 0.2); }
+#ow-sel .raid-report div { color: var(--text); margin-top: 2px; }

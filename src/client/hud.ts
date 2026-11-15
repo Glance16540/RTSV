@@ -1,5 +1,6 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { awayHtml } from './housepanel';
 import { isHoly } from '../sim/creed';
 import { fighting } from '../sim/calamity';
 import { want } from '../sim/famine';
@@ -8,6 +9,7 @@ import { CALLS, CALL_RANK, CALL_REST, POWERS, POWER_RANKS, powersHeld } from '..
 import { CHAMPION_KILLS, canLead, rankForKills } from '../sim/champion';
 import { HALL_GRACE } from '../sim/beaten';
 import { needsPerson } from '../sim/muster';
+import { hireBar } from '../sim/birthonly';
 import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
@@ -344,6 +346,7 @@ export class Hud {
       if (d.civ && d.civ !== p.civ) continue; // another people's unit
       const locked = d.age > p.age ? `Requires the ${AGES[d.age].name}.` : game.creedBar(pid, d) ?? undefined;
       if (type === 'villager') {
+        const locked = (d.age > p.age ? `Requires the ${AGES[d.age].name}.` : null) ?? hireBar(game) ?? game.creedBar(pid, d) ?? undefined;
         out.push({ id: 't:vm', icon: MAN(), name: 'Train Villager (man)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'm') });
         out.push({ id: 't:vf', icon: WOMAN(), name: 'Train Villager (woman)', desc: d.desc, cost: d.cost, locked, act: () => game.cmdTrain(pid, least().id, type, 'f') });
       } else {
@@ -565,6 +568,7 @@ export class Hud {
         const r = b.residents;
         const nameOf = (id: number) => { const u = game.entities.get(id); return u && u.kind === 'unit' ? u.name + (u.trait ? ' ' + VILLAGER_TRAITS[u.trait].icon : '') + (u.trait2 ? VILLAGER_TRAITS[u.trait2].icon : '') : ''; };
         body += `<div class="family"><span class="${r.m ? 'in m' : ''}">♂ ${nameOf(r.m) || 'empty'}</span><span class="${r.f ? 'in f' : ''}">♀ ${nameOf(r.f) || 'empty'}</span></div>`;
+        body += awayHtml(game, b);
         if (b.family) body += `<div>The ${b.family} family${game.renown(b) ? ` · renown ${'★'.repeat(game.renown(b))}: +${game.renown(b)} room, children ${game.renown(b) * 10}% sooner` : ''}</div>`;
         if (r.m && r.f) {
           body += b.birthsPaused ? '<div>Not raising children (paused)</div>'
