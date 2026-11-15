@@ -1,5 +1,6 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
+import { assaultDue } from './besieger';
 import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
@@ -59,6 +60,8 @@ export class AIController {
   /** Marching on the marauders' camp, not on a rival. */
   private hunt = false;
   private knowsLair = false;
+  /** A besieger's first assault has gone in (besieger.ts): from then on it attacks by the usual rules. */
+  private stormed = false;
   /** Seconds before the first attack may launch. */
   firstAttack = 420;
   /** Multiplier on how large an army the AI wants. */
@@ -346,7 +349,10 @@ export class AIController {
       // A long war makes everyone bolder: the margin it waits for shrinks from the twenty-fifth minute.
       const margin = Math.max(1, 1.4 - Math.max(0, g.time - 1500) / 2250);
       const outweighs = this.level < 1 || foe < 0 || this.weight(pid, false) >= this.weight(foe, true) * margin || g.time - this.readyT > (g.time > 1800 ? 150 : 360);
-      if ((ready && outweighs) || (clock && fighters.length >= 3)) {
+      // A besieger does not wait: it came to assault the town, and goes in with what it brought (besieger.ts).
+      const storm = !this.stormed && assaultDue(g, pid, fighters.length, !!underAttack);
+      if (storm) this.stormed = true;
+      if ((ready && outweighs) || storm || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
         this.launched = fighters.length;

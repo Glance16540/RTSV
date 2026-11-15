@@ -48,6 +48,8 @@ const MINUTES = +(process.env.MINUTES ?? 20);
 const AT60 = 60 * SEASONS_A_YEAR, AT70 = 70 * SEASONS_A_YEAR;
 /** Twenty years, in seasons. */
 const YEARS20 = 80;
+/** Peace, for the stores figure: over the last PEACE_YEARS, a people fought for land in no more than PEACE_WAR_SEASONS seasons. */
+const PEACE_YEARS = 10, PEACE_WAR_SEASONS = 8;
 const CIVS = ['hearth', 'forge', 'greece', 'egypt', 'england', 'japan'];
 
 // ---- Playing a campaign ----
@@ -118,7 +120,8 @@ interface Watch {
   townLives: number; diedOut: number; diedAfterAll: number;
   hungerDead: Record<number, number>; // by people, over the first 20 years
   worstHunger: number; // the largest share of a town lost to hunger in one season
-  storeSeasons: number[]; // a nation at peace: seasons of food in store, at 20 years
+  storeSeasons: number[]; // each nation that had a stretch of peace: the median, over its seasons of peace, of the seasons of food it had in store
+  peaceSeasons: number; // the nation-seasons they were read from
   faithGaps: number[]; // widest gap between two towns of one nation, each nation-season
   holyMoves: number[]; // a nation with churches, fed: its standing over 20 years
   raids: { outcome: string }[]; raidTownYears: number;
@@ -136,13 +139,15 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
+  const w: Watch = { decided: -1, how: '', ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
   const churched = c.factions.map(() => 0), hungryOf = c.factions.map(() => 0), townSeasonsOf = c.factions.map(() => 0);
   const lastAge = c.factions.map((f) => ({ age: ageOf(c, f.id), at: 0 }));
   const war = c.factions.map(() => -99); // the last season each people fought for land
+  const warSeasons = c.factions.map(() => new Set<number>()); // every season each people fought for land
+  const fed = c.factions.map((): number[] => []); // a people's seasons of food in store, in each season of peace
   const strife = c.territories.map(() => ({ war: -99, famine: -99, plague: -99 })); // the last season of each at a town
   const alive = c.territories.map((t) => grown(folkOf(c, t.id)) + folkOf(c, t.id).children > 0);
   const convoyTo = new Set<number>();
@@ -167,7 +172,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       const was = owners[t.id];
       if (t.owner === was) continue;
       steady[t.id] = false;
-      for (const f of [was, t.owner]) if (f >= 0) war[f] = now;
+      for (const f of [was, t.owner]) if (f >= 0) { war[f] = now; warSeasons[f].add(now); }
       strife[t.id].war = now;
       const ev = (c.events ?? []).some((e) => e.at === t.id && e.turn === now && e.kind === 'revolt');
       const watched = takenAt.get(t.id);
@@ -259,6 +264,16 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       const away = c.armies.filter((a) => a.owner === f.id).reduce((k, a) => k + menOf(c, a).town, 0);
       const home = c.territories.filter((t) => t.owner === f.id && !t.horde).reduce((k, t) => k + folkOf(c, t.id).men, 0);
       if (away + home > 0) w.arms.push({ war: now - war[f.id] <= 4, share: away / (away + home) });
+      // A season of peace: ten years in, and the people fought for land in no more than two of the last ten.
+      if (now >= PEACE_YEARS * 4) {
+        let fought = 0;
+        for (let k = now - PEACE_YEARS * 4 + 1; k <= now; k++) if (warSeasons[f.id].has(k)) fought++;
+        if (fought <= PEACE_WAR_SEASONS) {
+          const own = c.territories.filter((t) => t.owner === f.id && !t.horde);
+          const food = own.reduce((k, t) => k + folkOf(c, t.id).stores.food, 0), need = own.reduce((k, t) => k + needOf(c, t.id), 0);
+          if (need > 0) fed[f.id].push(food / need);
+        }
+      }
     }
     // Captives held by bands: got back, or held too long.
     const seen = new Set<string>();
@@ -282,15 +297,12 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       for (const f of c.factions) {
         if (!f.alive) continue;
         const own = c.territories.filter((t) => t.owner === f.id && !t.horde);
-        if (now - war[f.id] > 8) {
-          const food = own.reduce((k, t) => k + folkOf(c, t.id).stores.food, 0), need = own.reduce((k, t) => k + needOf(c, t.id), 0);
-          if (need > 0) w.storeSeasons.push(food / need);
-        }
         if (churched[f.id] >= YEARS20 / 2 && townSeasonsOf[f.id] > 0 && hungryOf[f.id] / townSeasonsOf[f.id] < 0.05) w.holyMoves.push((f.virtue ?? 0) - virtue0[f.id]);
       }
     }
   }
   w.sieges = watched;
+  for (const xs of fed) if (xs.length) { w.storeSeasons.push(median(xs)); w.peaceSeasons += xs.length; }
   w.unsettled = takenAt.size;
   w.townLives = w.townSeasons.filter((x) => !x.tribe).length / YEARS20;
   if (c.phase === 'over' && w.decided < 0) { w.decided = c.turn; w.how = !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
@@ -329,6 +341,7 @@ function realSieges(): Siege[] {
 // ---- The report ----
 
 const median = (xs: number[]): number => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b), m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const quart = (xs: number[], q: number): number => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
 const mean = (xs: number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
 const pct = (x: number): string => (Number.isFinite(x) ? `${(x * 100).toFixed(1)}%` : '—');
 const num = (x: number, d = 1): string => (Number.isFinite(x) ? x.toFixed(d) : '—');
@@ -420,8 +433,8 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
 
   // Stores
   const stores = all('storeSeasons');
-  add('Stores', 'A nation\'s supplies after 20 years of peace', '2 to 4 seasons of full upkeep', `median ${num(median(stores), 1)} seasons (${stores.length} nations)`, within(median(stores), 2, 4),
-    'The map has no upkeep but what its towns eat, so this is the food in a nation\'s towns over what they eat in a season. Peace is taken as no land won or lost in the last two years.');
+  add('Stores', 'A nation\'s supplies after 20 years of peace', '2 to 4 seasons of full upkeep', `median ${num(median(stores), 1)} seasons (${stores.length} nations, ${ruled.reduce((k, w) => k + w.peaceSeasons, 0)} nation-seasons of peace; middle half ${num(quart(stores, 0.25), 1)} to ${num(quart(stores, 0.75), 1)})`, within(median(stores), 2, 4),
+    `The map has no upkeep but what its towns eat, so this is the food in a nation's towns over what they eat in a season. A season of peace is one at least ${PEACE_YEARS} years in, after a stretch of ${PEACE_YEARS} years in which the nation won or lost land in no more than ${PEACE_WAR_SEASONS} seasons (eight of the ten years without war). Each nation's seasons of peace are taken together as their median, and the figure is the median of the nations, so that one long-lived nation does not outweigh the rest.`);
 
   // Faith
   const gaps = all('faithGaps');
