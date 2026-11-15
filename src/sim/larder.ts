@@ -33,12 +33,12 @@ declare module './township' {
 }
 
 /** Food a season: a grown man or woman, one of the old, a child. */
-export const EAT = { grown: 16, old: 12, child: 8 };
+export const EAT = { grown: 16, old: 12, child: 6 };
 /** Seasons hungry in a row before people begin to die of it, and the share of the grown who die each season after. */
 export const STARVE_AFTER = 2;
 export const STARVE_SHARE = 0.1;
 /** Food keeps: a town's food beyond KEEP_SEASONS of its own eating loses ROT of the excess each season. */
-export const KEEP_SEASONS = 2;
+export const KEEP_SEASONS = 3;
 export const ROT = 0.2;
 /** Food never spoils below this: the food share of a town's working stock (stores.ts KEEP, at a supply's food share). */
 export const FOOD_KEEP = 240;
