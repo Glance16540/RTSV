@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import { convoysTurn } from '../src/sim/convoys';
-import { SUIT, suitorsOf, suitorsSeason, unmarried, wantOf, wantText } from '../src/sim/suitors';
+import { sparedMen } from '../src/sim/armytown';
+import { SUIT, couldSend, suitorsOf, suitorsSeason, unmarried, wantOf, wantText } from '../src/sim/suitors';
 import { TOLL, folkOf, tollFolk } from '../src/sim/township';
 
 /** The player's chief town and a town next to it, both theirs, with the people asked for. */
@@ -53,19 +54,30 @@ describe('going to marry', () => {
     expect(wantText(c, near.id)).toContain('few men');
   });
 
-  it('only the unmarried go: no town gives up a husband, a wife, or its last', () => {
+  it('the unmarried go first; to a town with no men at all, failing them, one man his town could spare to an army', () => {
     const { c, home, near, set } = pair();
+    // Five men and five women: no unmarried man, but the town keeps two men and a man for every other woman, so two could go to war.
     const a = set(home.id, 5, 5); set(near.id, 0, 5);
     expect(unmarried(c, home.id, 'men')).toBe(0);
-    expect(suitorsOf(c, 0)).toEqual([]);
-    expect(a.men).toBe(5);
+    expect(sparedMen(c, home.id)).toBe(2);
+    expect(couldSend(c, home.id, 'men', true)).toBe(SUIT.spared);
+    expect(suitorsOf(c, 0)).toEqual([{ from: home.id, to: near.id, sex: 'men', n: SUIT.spared }]);
+    expect(a.men).toBe(5 - SUIT.spared);
+    // Not to a town that is only short of men: that waits for the unmarried.
+    expect(couldSend(c, home.id, 'men', false)).toBe(0);
+    // A town at what it keeps sends nobody.
+    const again = pair();
+    const k = again.set(again.home.id, 3, 5); again.set(again.near.id, 0, 5);
+    expect(sparedMen(again.c, again.home.id)).toBe(0);
+    expect(suitorsOf(again.c, 0)).toEqual([]);
+    expect(k.men).toBe(3);
     // A town of men only keeps one of them at home whatever it could send.
-    set(home.id, 2, 0); set(near.id, 0, 5);
-    expect(unmarried(c, home.id, 'men')).toBe(1);
+    again.set(again.home.id, 2, 0);
+    expect(unmarried(again.c, again.home.id, 'men')).toBe(1);
     // A town that wants for one sex itself sends nobody of the other.
-    set(home.id, 9, 1); set(near.id, 0, 5);
-    expect(wantOf(c, home.id)!.sex).toBe('women');
-    expect(suitorsOf(c, 0)).toEqual([]);
+    again.set(again.home.id, 9, 1); again.set(again.near.id, 0, 5);
+    expect(wantOf(again.c, again.home.id)!.sex).toBe('women');
+    expect(suitorsOf(again.c, 0)).toEqual([]);
   });
 
   it('nobody goes without a road through their own lands, or to another people', () => {
