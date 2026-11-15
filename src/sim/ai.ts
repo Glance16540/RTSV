@@ -5,6 +5,7 @@ import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from '
 import { Building, Entity, Game, Unit } from './game';
 import { turnOut } from './calamity';
 import { mustering, needsPerson } from './muster';
+import { roomForCouples, unhousedCouples } from './birthonly';
 import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 
@@ -133,7 +134,7 @@ export class AIController {
     const wantAge = !g.fixedAge && p.age < AGES.length - 1 && !p.agingUp && villagers.length >= AGE_VILLAGERS[p.age] && count('barracks') > 0;
     const saving = wantAge && !underAttack;
 
-    if (tc && tc.complete && villagers.length < VILLAGER_TARGET[p.age] && tc.queue.length < 2 && !(saving && villagers.length >= AGE_VILLAGERS[p.age] + 2)) {
+    if (tc && tc.complete && !g.bornOnly && villagers.length < VILLAGER_TARGET[p.age] && tc.queue.length < 2 && !(saving && villagers.length >= AGE_VILLAGERS[p.age] + 2)) {
       g.cmdTrain(pid, tc.id, 'villager');
     }
     if (wantAge && tc && tc.complete && g.canAfford(p, AGES[p.age + 1].cost)) g.cmdAgeUp(pid, tc.id);
@@ -155,6 +156,8 @@ export class AIController {
     // Houses: keep population headroom, and fill them with couples.
     const housesBuilding = building.filter((b) => b.type === 'house').length;
     if (p.popCap - p.pop < 5 && p.popCap < 150 && housesBuilding < (p.age > 0 ? 2 : 1)) this.build('house', home, villagers, 5, 12);
+    // Where people come only by birth, a man and a woman with no roof are children never born: house them first.
+    else if (g.bornOnly && housesBuilding < 2 && roomForCouples(g, pid) < unhousedCouples(g, pid)) this.build('house', home, villagers, 5, 12);
     const enough = villagers.length >= VILLAGER_TARGET[p.age];
     for (const h of mine) {
       if (h.type !== 'house' || !h.complete) continue;

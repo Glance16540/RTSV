@@ -7,6 +7,8 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
+import { threatsOfMen } from './threats';
+import { seasonFolk } from './seasonfolk';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
 import { Answer, LEGENDS, COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
@@ -23,7 +25,12 @@ export const HERO_RANK_STRENGTH = 0.5;
 import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
+import { settleStores } from './stores';
+import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
+import { Yoke, seasonOfYoke, townTaken } from './conquered';
+import { Muster, armiesJoined, homeOf, menMustered, reckonArmies, seasonOfArmies } from './armytown';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
+import { veteranTown } from './notableweight';
 
 /** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
 export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
@@ -73,12 +80,13 @@ export function virtueDrift(c: Campaign, f: number): number {
   for (const t of c.territories) if (t.owner === f) n += (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0);
   return n + placeGood(c, f, 'virtue');
 }
-export function shiftVirtue(c: Campaign, f: number, by: number): void {
+export function shiftVirtue(c: Campaign, f: number, by: number, opts: { /** The one town of theirs that is moved; without it, every town of theirs is. */ at?: number } = {}): void {
   const x = c.factions[f];
   if (!x || !by) return;
   const was = creedOf(x.virtue ?? 0);
-  x.virtue = Math.max(-100, Math.min(100, Math.round((x.virtue ?? 0) + by)));
-  const now = creedOf(x.virtue);
+  // Faith is a town's (townfaith.ts): the nation's standing follows from its towns'.
+  if (opts.at !== undefined && c.territories[opts.at]?.owner === f) swayTown(c, opts.at, by); else swayNation(c, f, by);
+  const now = creedOf(x.virtue ?? 0);
   if (now.id !== was.id) {
     c.log.push(`${x.id === 0 ? 'Your people are' : `${x.name} are`} now ${now.name}. ${FAITH[now.id].desc}`);
     if (now.id === 'zealous' || now.id === 'decadent') tell(c, `${x.id === 0 ? 'Your people' : x.name} became ${now.name}.`);
@@ -157,6 +165,8 @@ export const CAMPAIGN_EDGE: Record<string, string> = {
   england: 'Archers cost 1 instead of 2.',
   arabs: 'A truce costs 1 instead of 3, and gifts cost 3 instead of 4.',
   japan: 'New armies are raised as veterans of one battle.',
+  mali: 'Gold country yields 2 more.',
+  kush: 'Every land of theirs is defended at 1 more: its bowmen turn out.',
 };
 
 /** How each leader plays: caution in attack, taste for forts and farms, openness to peace, and greed. */
@@ -174,6 +184,8 @@ export const PERSONA: Record<string, { margin: number; fort: number; farm: numbe
   england: { margin: 1, fort: 0.4, farm: 0.7, peace: 0.65, greed: 0.1 },
   arabs: { margin: 0, fort: 0.2, farm: 0.4, peace: 0.7, greed: 0.25 },
   japan: { margin: 0, fort: 0.4, farm: 0.6, peace: 0.4, greed: 0.15 },
+  mali: { margin: 1, fort: 0.2, farm: 0.5, peace: 0.7, greed: 0.3 },
+  kush: { margin: 0, fort: 0.4, farm: 0.5, peace: 0.4, greed: 0.2 },
 };
 export const TRUCE_COST = 3;
 export const TRUCE_TURNS = 6;
@@ -209,6 +221,10 @@ export interface Faction {
   court?: Court;
   /** Where this people stands between piety (100) and decadence (-100): see FAITH. */
   virtue?: number;
+  /** What stores.ts last worked out this people has to spend from its towns' stores: how it tells what `supplies` has gained or lost since. */
+  stock?: number;
+  /** The standing townfaith.ts last worked out from this people's towns: how it tells when `virtue` has been set by hand. */
+  faith?: number;
   age?: number; // the age this people has reached on the campaign map, 0 to 4
   favor?: number; // goodwill earned with gifts and help, up to MAX_FAVOR: makes them readier to deal
   refused?: number; // turn they last turned the player down: they will not be asked twice in a turn
@@ -231,6 +247,10 @@ export interface Territory {
   town?: Town;
   /** The town's people and stores between seasons: see township.ts. Founded the first time it is asked for. */
   folk?: Folk;
+  /** Where this town stands between piety and decadence: see townfaith.ts. */
+  virtue?: number;
+  /** A town taken by force, and how its people take it: see conquered.ts. */
+  yoke?: Yoke;
   /** Wood felled, berries picked and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
@@ -295,6 +315,8 @@ export interface Campaign {
   barriers?: Barrier[];
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
+  /** The men with each army, by the town they came from: see armytown.ts. */
+  musters?: Record<string, Muster>;
   /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
   works?: (Barrier & { /** Who built it. */ by?: number })[];
   rngState: number;
@@ -351,7 +373,7 @@ export const WEATHER: Record<Sky, { name: string; icon: string; march: number; d
   snow: { name: 'Snow', icon: '🌨️', march: 0.85, desc: 'An army attacking into it fights at 85% strength, and the land yields 1 supply less. A battle here is fought in the snow.' },
   dust: { name: 'Dust storm', icon: '🌪️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the dust.' },
 };
-export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze';
+export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued';
 export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
   harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
@@ -370,6 +392,11 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
   famine: { name: 'Famine', icon: '🥀', desc: 'The harvest failed here: its holder paid from the stores what the land would have yielded. It falls harder on the decadent than the holy.' },
   plague: { name: 'Plague', icon: '☠️', desc: 'Sickness is in this land. While it lasts the land costs its holder a supply a season, an army of theirs kept here loses a company a season, and it may pass to the land next door.' },
   blaze: { name: 'Fire in the town', icon: '🔥', desc: 'The town here burned. Its holder paid to rebuild, and its buildings will be found damaged by whoever next fights here.' },
+  band: { name: 'A band has its place here', icon: '⛺', desc: 'Men who belong to no nation: raiders, slavers, pirates or highwaymen. They strike the softest town in their reach. An army standing here when the season turns fights them, and breaking them frees whoever they hold.' },
+  raid: { name: 'Raided', icon: '🔥', desc: 'A band broke into the town here: men died at the walls and stores were lost.' },
+  heldoff: { name: 'Held off', icon: '🛡️', desc: 'A band came against the town here and was beaten back.' },
+  carried: { name: 'People carried off', icon: '⛓️', desc: 'The town here fell to a band and people were taken. They can be got back for a time by breaking the band where it has its place.' },
+  rescued: { name: 'Captives freed', icon: '🕊️', desc: 'A band was broken here and those it held have gone home.' },
   freed: { name: 'The women freed', icon: '🕊️', desc: 'The marauders\' camp is broken and those they held have come home.' },
 };
 export const UNREST_TURNS = 2;
@@ -900,6 +927,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
   placesOf(c);
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');
+  settleStores(c); // each people's supplies are goods in its chief town from the first (stores.ts)
   return c;
 }
 
@@ -961,7 +989,7 @@ export function income(c: Campaign, f: number): number {
 }
 export function territoryIncome(t: Territory, civ = ''): number {
   const hearth = civ === 'hearth' ? 1 : 0;
-  return 2 + (t.buildings.includes('farm') ? (t.trait === 'fertile' ? 4 : 2) + hearth : 0) + (t.capital >= 0 ? 2 + hearth : 0) + (t.trait === 'gold' ? 3 : t.trait === 'coast' ? 1 : 0);
+  return 2 + (t.buildings.includes('farm') ? (t.trait === 'fertile' ? 4 : 2) + hearth : 0) + (t.capital >= 0 ? 2 + hearth : 0) + (t.trait === 'gold' ? 3 + (civ === 'mali' ? 2 : 0) : t.trait === 'coast' ? 1 : 0);
 }
 
 /** The companies an attacker would face in a territory. Locals and town guards fight as infantry. */
@@ -979,7 +1007,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground) * faithOf(c, t.owner).defence * 10) / 10;
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * faithOf(c, t.owner).defence * 10) / 10;
 }
 
 /** True while the player and a rival are bound by a truce. */
@@ -1036,6 +1064,7 @@ export function raise(c: Campaign, f: number, tid: number, type: string): boolea
     c.armies.push(a);
   }
   a.units[type] = (a.units[type] ?? 0) + 1;
+  menMustered(c, a, tid); // its men are this town's (armytown.ts)
   return true;
 }
 
@@ -1092,6 +1121,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
       other.vet = Math.max(other.vet, a.vet);
       other.moved = other.moved || a.moved;
       if (!armySize(a)) c.armies.splice(c.armies.indexOf(a), 1);
+      armiesJoined(c, a, other);
     } else a.at = to;
     return 'moved';
   }
@@ -1223,6 +1253,8 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     attackerWon = a > d;
   }
   c.pending = null;
+  settleFaith(c); // every town's own standing is written down before any changes hands
+  settleStores(c); // and what each people has spent or earned is in its towns before any is lost (stores.ts)
   // A battle nobody watched is paid for by the town in men, and in stores if it falls.
   if (how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde) tollFolk(c, p.to, attackerWon);
   // The rival leader has something to say about a battle against the player.
@@ -1256,6 +1288,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       c.factions[p.attacker].supplies += loot;
       t.capital = -1;
     }
+    townTaken(c, t.id, p.defender, p.attacker); // its people stay, and resent it (conquered.ts)
     t.owner = p.attacker;
     if (c.ally >= 0 && c.factions[c.ally].alive) {
       const ally = c.factions[c.ally];
@@ -1281,6 +1314,9 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     if (p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You were thrown back from ${t.name} by the ${c.factions[p.defender].name}.` : `The ${c.factions[p.attacker].name} came against ${t.name} and you threw them back.`);
   }
   checkElimination(c);
+  settleStores(c);
+  if (how === 'auto') reckonArmies(c); // the dead are their towns' dead (armytown.ts); a battle fought in person counts its own
+  settleFaith(c);
   return attackerWon;
 }
 
@@ -1352,7 +1388,7 @@ export function continueAI(c: Campaign): void {
       for (const x of c.factions) x.angry = false;
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
       c.truces = c.truces.filter((tr) => tr.until >= c.turn);
-      for (const x of c.factions) if (x.alive) shiftVirtue(c, x.id, virtueDrift(c, x.id));
+      seasonOfFaith(c, (f, by, at) => shiftVirtue(c, f, by, { at })); // every town moves by its own church, tavern and holy place (townfaith.ts)
       for (const x of c.factions) if (x.alive) x.supplies += Math.round(income(c, x.id) * (x.isAI ? [0.8, 1, 1.25][c.level] : 1));
       c.log.push(`Turn ${c.turn}.`);
       if (c.request && (c.request.until < c.turn || c.ally < 0 || !c.factions[c.request.foe].alive)) c.request = null;
@@ -1364,9 +1400,15 @@ export function continueAI(c: Campaign): void {
       }
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
+      threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
+      seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
+      seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
+      settleFaith(c);
       mendTowns(c);
       turnEvent(c);
       storyTurn(c);
+      settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
       return;
     }
@@ -1621,6 +1663,7 @@ export interface BattleConfig { seed: number; size: number; level: number; title
 export function battleConfig(c: Campaign): BattleConfig | null {
   const p = c.pending;
   if (!p) return null;
+  settleStores(c); // a town fights out of what is in its stores now, after all that has been spent (stores.ts)
   const t = c.territories[p.to];
   const humanAttacks = p.attacker === 0;
   const field = p.mode === 'field';
@@ -1668,9 +1711,9 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...led(0, humanAttacks ? attackers : defenders), virtue: virtueOf(c, 0), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: virtueOf(c, foe),
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
@@ -1711,7 +1754,8 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const p = c.pending;
   if (!p) return;
   // What the town became under the player's hand goes home with the army: half of how far it moved.
-  if (virtue !== undefined && Number.isFinite(virtue)) shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE);
+  // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.
+  if (virtue !== undefined && Number.isFinite(virtue)) { if (p.attacker !== 0 && p.mode !== 'field') shiftVirtue(c, 0, (virtue - faithAt(c, p.to)) * BATTLE_VIRTUE, { at: p.to }); else shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE); }
   const humanAttacks = p.attacker === 0;
   const land = c.territories[p.to], home = homeCorner(land);
   const mine = humanAttacks ? c.armies.find((a) => a.id === p.armyId) : armyAt(c, p.to);
@@ -1724,6 +1768,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
+  settleStores(c); // what the town gathered or spent is its nation's gain or loss
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
   if (known && mine && !c.armies.includes(mine)) loseVeteran(c, 0, known);
   // Felled wood, picked berries and dug stone are gone whoever won. A field battle is fought on other ground.
@@ -1758,7 +1803,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
     if (after.fell) { c.factions[0].heroAlive = false; c.factions[0].heroRank = Math.max(0, rankBefore - 1); c.log.push(`${heroFor(c, 0).name} fell defending ${land.name}.`); }
     else if (heroRank != null) c.factions[0].heroRank = Math.max(0, Math.min(MAX_RANK, Math.round(heroRank)));
   }
-  if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) return;
+  if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) { reckonArmies(c); return; }
   const units: Record<string, number> = {};
   for (const [type, had] of Object.entries(before.units)) {
     const [unit, per] = unitsOf(type);
@@ -1771,11 +1816,13 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   // An army is never wiped out by a battle it won: its last company limps home.
   if (!Object.keys(units).length) units[Object.keys(before.units)[0] ?? 'infantry'] = 1;
   mine.units = units;
+  reckonArmies(c);
   const hero = heroFor(c, 0);
   const kept = cleanChampion(after.champion);
   if (kept) mine.champion = kept; else delete mine.champion;
-  // And is one of the notable people of the nation's chief town (or, if that is lost, of the land just fought over).
-  if (kept) rememberVeteran(c, (c.territories.find((t) => t.capital === 0 && t.owner === 0) ?? c.territories.find((t) => t.owner === 0) ?? land).id, kept);
+  // And is one of the notable people of the town their army's men came from (armytown.ts); failing that of their own
+  // town, if their army knows it; else of the nation's chief town (notableweight.ts).
+  if (kept) { const from = homeOf(c, mine); rememberVeteran(c, from !== undefined && c.territories[from]?.owner === 0 ? from : veteranTown(c.territories, 0, kept.town, land.id), kept); }
   if (before.hero && !after.fell && !after.acclaimed && Array.isArray(after.powers) && c.factions[0].heroAlive) {
     const { rank: _rank, ...made } = hero;
     c.factions[0].hero = { ...made, powers: [0, 1, 2].map((t) => (after.powers![t] === 0 || after.powers![t] === 1 ? after.powers![t] : made.powers?.[t] ?? -1)) };

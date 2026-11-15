@@ -1,15 +1,19 @@
 // A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch
 // of its season in real time. What is built stays built, as it does after a siege. docs/DESIGN.md, "A visit".
 //
-// What a visit loads today: the land's standing town (buildings, damage, what was never finished), its worked
-// ground, the weather over it, the nation's age and creed, and the soldiers of the army stationed there.
-// What it saves today: the standing town, the worked ground, half the town's change of creed, and any map
-// building (farm, barracks...) that was raised and has a place on the land. People and stores are not kept yet:
-// `VisitRecord` is where they come in, and `VisitAfter` is where they go out, when towns keep them.
+// What a visit loads: the land's standing town (buildings, damage, what was never finished), its worked ground,
+// the weather over it, the nation's age and creed, the soldiers of the army stationed there, and the town's own
+// people and stores as township.ts keeps them (its men, women and old, the children on its records, its notable
+// women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
+// building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
+// visit leaves them, as a siege does: everyone born there, less the dead and the taken.
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
 import type { BattleConfig, Campaign } from './campaign';
-import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, shiftVirtue, slots, virtueOf, weatherAt } from './campaign';
+import { Census, cleanCensus, musterFolk, settleFolk } from './township';
+import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, shiftVirtue, slots, weatherAt } from './campaign';
+import { faithAt } from './townfaith';
+import { settleStores } from './stores';
 import type { Sky } from './campaign';
 
 declare module './campaign' {
@@ -45,6 +49,8 @@ export interface VisitAfter {
   virtue?: number;
   /** How long the player stayed, in seconds. */
   seconds?: number;
+  /** The town's people and stores as the player left them (`Game.census()`). */
+  folk?: Partial<Census>;
 }
 
 /** Why this town cannot be visited now, or '' if it can. */
@@ -69,6 +75,7 @@ export function beginVisit(c: Campaign, tid: number): boolean {
 
 /** The town as a real-time match with nobody to fight: the player alone, on the ground a siege there is fought over. */
 export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig | null {
+  settleStores(c); // the town is visited with what is in its stores now
   const v = c.visit, t = v ? c.territories[v.to] : undefined;
   if (!v || !t || t.owner !== 0) return null;
   const army = armyAt(c, t.id);
@@ -88,10 +95,12 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
     seed: t.seed, size: t.trait === 'coast' ? 96 : 72, level: 0, humanAttacks: false, field: false, sea: t.trait === 'coast',
     title: `A visit to ${t.name}`,
     setups: [{
-      name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: virtueOf(c, 0),
+      name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
         buildings: [...(fort ? ['tower', 'tower'] : []), ...works], ...(town.length ? { town } : {}),
+        // The town's own people and stores (township.ts), in place of four founders and the usual stock.
+        ...musterFolk(c, t.id),
       },
     }],
   };
@@ -104,8 +113,13 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   if (!land || land.owner !== 0) return false;
   land.visited = c.turn;
   const { town, ground, virtue, seconds } = after;
+  // The town is as the visit left it: everyone born there, less the dead and the taken.
+  const census = cleanCensus(after.folk);
+  if (census) settleFolk(c, land.id, census);
+  settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
-  if (virtue !== undefined && Number.isFinite(virtue)) shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE);
+  // It is this town that was kept so, and this town that is moved (townfaith.ts).
+  if (virtue !== undefined && Number.isFinite(virtue)) shiftVirtue(c, 0, (virtue - faithAt(c, land.id)) * BATTLE_VIRTUE, { at: land.id });
   if (ground && Array.isArray(ground.gone) && Array.isArray(ground.left)) {
     land.ground = {
       gone: ground.gone.filter((k) => Number.isInteger(k) && k >= 0).slice(0, 20000),

@@ -34,7 +34,7 @@ describe('a town and its people', () => {
       expect(f.men, t.name).toBeGreaterThanOrEqual(2);
       expect(f.women, t.name).toBeGreaterThanOrEqual(2);
       expect(f.children, t.name).toBeGreaterThanOrEqual(1);
-      expect(f).toEqual(foundFolk(c, t.id));
+      expect({ ...f, stores: 0 }).toEqual({ ...foundFolk(c, t.id), stores: 0 }); // (a chief town also holds its nation's supplies as goods: stores.ts)
       expect(folkOf(c, t.id)).toBe(f); // and it is the one town, not a new one each time
     }
     const chief = home(c), plain = { ...chief, capital: -1 };
@@ -45,8 +45,8 @@ describe('a town and its people', () => {
 
   it('a campaign saved before towns kept their people still loads, and one saved after keeps them', () => {
     const c = world(), h = home(c);
-    expect(h.folk).toBeUndefined(); // nothing is stored until it is needed
     const old = JSON.parse(JSON.stringify(c)) as Campaign;
+    for (const t of old.territories) delete t.folk; // as it was saved before towns were kept
     expect(folkOf(old, h.id)).toEqual(foundFolk(c, h.id));
     folkOf(c, h.id).men = 11;
     folkOf(c, h.id).stores.food = 777;
@@ -117,6 +117,29 @@ describe('a battle is fought by the town and goes home to it', () => {
     expect(c.log.join('\n')).toMatch(/Of your people at .* died/);
     // And the next time it is fought over, that is who turns out.
     expect(musterFolk(c, h.id).people).toMatchObject({ women: had - 2, men: census.men });
+  }, LONG);
+
+  it('a man of the town trained to arms is still one of its men, and an army brought to the battle is not', () => {
+    const c = besieged(), h = home(c), f = folkOf(c, h.id);
+    f.men = 4; f.women = 3; f.elders = 0; f.children = 0;
+    f.stores = { food: 2000, wood: 2000, gold: 2000, stone: 2000 };
+    c.territories[h.id].buildings = ['barracks'];
+    const cfg = battleConfig(c)!, g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea);
+    const brought = g.units.filter((u) => u.owner === 0 && u.type !== 'villager').length;
+    expect(brought).toBeGreaterThan(0); // the army in the town, and those who turn out with it
+    expect(g.census(0)).toMatchObject({ men: 4, women: 3 }); // none of whom are counted as the town's
+    const barracks = g.buildings.find((b) => b.owner === 0 && b.type === 'barracks')!;
+    // The army marches out, which leaves room under the town's roofs for one of its own to take up arms.
+    const fell = g as unknown as { kill(u: unknown): void };
+    for (const u of g.units.filter((x) => x.owner === 0 && x.type !== 'villager')) fell.kill(u);
+    expect(g.cmdTrain(0, barracks.id, g.trainedAs(0, 'clubman'))).toBe(true);
+    run(g, 90);
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'villager' && u.gender === 'm').length).toBe(3);
+    expect(g.units.filter((u) => u.owner === 0 && u.type !== 'villager' && !u.dead).length).toBe(1);
+    const census = g.census(0);
+    expect(census.men + census.elders).toBeGreaterThanOrEqual(4); // he went into the ranks, not out of the town
+    finishBattle(c, true, { clubman: 4 }, { folk: JSON.parse(JSON.stringify(census)) as Census });
+    expect(folkOf(c, h.id).men).toBe(census.men);
   }, LONG);
 
   it('a town taken keeps the people who lived, and an empty one is settled by those who followed the army', () => {

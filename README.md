@@ -47,7 +47,7 @@ left in peace, each farm of the farmers makes room for one more villager, the sc
 technology they learn, the faithful are healed and cured round their Church, the traders' Markets earn gold by
 themselves, and a warrior strikes harder for every foe he has killed (every soldier's kills are shown on his panel).
 
-**Thirteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
+**Fifteen nations.** Choose yours on the start screen; rivals take others. Any of them can turn out
 pious or decadent: that is decided by how they are ruled, not by who they are.
 
 | People | Bonuses | Only they train |
@@ -65,6 +65,8 @@ pious or decadent: that is decided by how they are ruled, not by who they are.
 | English | Farms +10%, towers hit harder | Longbowman (Iron Age): out-ranges other archers; Billman (Middle Ages): bane of cavalry |
 | Abbasids | Cavalry 10% faster, research 10% cheaper | Camel Rider: rides down cavalry; Mameluke (Middle Ages): strikes from a few paces off |
 | Japanese | Soldiers +1 attack, villagers gather 5% faster | Samurai (Iron Age): quick, deadly to infantry; Ashigaru Gunner (Gunpowder Age): cheap matchlock |
+| Malians | Villagers carry 2 more, cavalry 10% cheaper | Sofa Archer: poisoned arrows, deadly to infantry; Mandekalu Horseman (Iron Age): quilted armour turns missiles |
+| Kushites | Towers shoot 1 tile further, game, berries and fish gathered 20% faster | Bowman of Ta-Seti: out-shoots other bowmen of his age; Guard of Meroe (Iron Age): fights harder near home |
 
 **Generations.** Villagers grow old: after a long working life they slow down as elders and
 eventually die, so a village lasts only as long as its families keep raising children. A child of
@@ -385,6 +387,21 @@ neighbouring land.
   neighbouring land add weight to the fight and join a real-time battle as allies.
 
 Rivals take their turns after yours and fight each other too. The campaign is saved in your browser after every action.
+
+## Bands on the map
+
+Raiders, slavers, pirates and highwaymen belong to no nation (`src/sim/threats.ts`). Each has a place on the
+campaign map: a camp in the wilds, a cove on a coast, a road between two of a people's lands. There is usually one
+about for every six held lands, and one more while any people is Worldly or Decadent. Most seasons a band strikes
+the softest town it can reach, and a decadent people draws it more.
+
+The town defends itself with what it has: its men, its fortress and barracks, the towers and walls on its
+battlefield, an army kept there, and the spirit of its people. It holds, is raided, or falls and has people carried
+off (never children). Select the struck land to read the report: who struck, what the town had, who was killed and
+taken, what was lost, and which way your people's standing swayed.
+
+Those taken are held at the band's place for four seasons. Stand an army there when the season turns and it fights
+the band; break it and they come home, the older for it. After four seasons they are gone for good.
 
 ## Controls
 

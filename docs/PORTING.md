@@ -1,0 +1,73 @@
+# Porting the rules to Unity
+
+The game is being rebuilt in Unity (C#, URP) by a session on the owner's own computer. Its project lives
+apart from this repository. This page is how the two stay apart and still meet.
+
+## How the two sides work
+
+- **This repository keeps finishing the systems.** Every system's rules live in `src/sim`, in a module of
+  their own: no DOM, no three.js, nothing from `src/client`. They talk through plain data (numbers,
+  strings, arrays, plain objects), so each can be rewritten in C# line for line.
+- **Every system has its own tests** in `tests/<module>.test.ts`. The Unity session ports the tests with
+  the module, and the C# version must pass them unchanged in meaning.
+- **Nothing here is pushed into the Unity project.** The Unity session pulls a system when it is ready for
+  it, ports it, and marks the row below `ported` (it may push that one-word change here, or tell the
+  gathering session to). Until then a system keeps being built and changed here.
+- **Order of porting** follows the dependencies column: a module can be ported once everything it
+  depends on has been. `data`, `map`, `path`, `temper`, `folk` and `leaders` depend on nothing.
+- **Hubs:** `game.ts` (a battle or visit) and `campaign.ts` (the map) tie the systems together. Port them
+  in pieces as their systems arrive, rather than whole.
+- **When a system here changes after it was ported,** its row says `changed since port`, with the commit,
+  so the Unity side can follow.
+
+## The systems
+
+| Module | Lines | What it is | Depends on | Tests | Unity |
+| --- | --- | --- | --- | --- | --- |
+| `acts` | 139 | Acts of God on the map: a season of famine, plague and fire in every land that is held (docs/DESIGN.md). | campaign, creed | acts.test.ts | not yet |
+| `ageing` | 122 | A person ages only on the map, a season at a time (docs/DESIGN.md, "Time"). | campaign, data, township | ageing.test.ts | not yet |
+| `ai` | 937 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | birthonly, calamity, creed, data, game, map, muster, temper | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
+| `armytown` | 133 | Armies belong to towns (docs/DESIGN.md): a company's men leave their town's record for the army's roll, the army's dead are struck from it, and the rest come home when it is sent home. | ageing, campaign, township | armytown.test.ts | not yet |
+| `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
+| `birthonly` | 60 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
+| `calamity` | 179 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, famine, game, wrath | none of its own | not yet |
+| `campaign` | 1810 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, country, court, creed, data, dynasty, game, hero, leaders, notableweight, powers, seasonfolk, stores, story, temper, threats, townfaith, township | none of its own | not yet |
+| `captivity` | 129 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, data, game, nursery | captivity.test.ts | not yet |
+| `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
+| `conquered` | 108 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | campaign, court, township | conquered.test.ts | not yet |
+| `contagion` | 96 | Plague that comes from outside a town. | calamity, game | contagion.test.ts | not yet |
+| `country` | 81 | Country that matters on the campaign map, and the works that open a closed border. | campaign | country.test.ts | not yet |
+| `court` | 166 | Where the leader is. A leader is one person in one place on the campaign map: a land of their people's, in its | campaign | court.test.ts | not yet |
+| `creed` | 112 | Piety against decadence: one scale per people, moved by how they answer the dilemmas that come | data | none of its own | not yet |
+| `data` | 1027 | Static game data: ages, units, buildings and technologies. | none | none of its own | not yet |
+| `daylight` | 18 | How the hours run. A day is a set number of seconds, and the last three tenths of it are night; the player | none | daylight.test.ts | not yet |
+| `dynasty` | 212 | Who leads a people when their leader falls. Every leader keeps a house: children are born to it as the turns go | ageing, campaign, champion, court, data, hero, leaders, powers | dynasty.test.ts | not yet |
+| `famine` | 185 | Famine: what happens to a town that has run out of food. | data, game, wrath | famine.test.ts | not yet |
+| `folk` | 145 | What the common people say: villagers at every job and warriors of every arm, each in three tempers. A town that | none | none of its own | not yet |
+| `game` | 3455 | Core simulation. No rendering or DOM access in here so it can run headless. | ageing, beaten, birthonly, calamity, captivity, champion, contagion, creed, data, daylight, hero, household, map, marauders, muster, notableweight, nursery, path, powers, rescue, tavernfall, temper, township, wrath | none of its own | not yet |
+| `hero` | 102 | A nation's leader on the field: who they are, how they were made, and what the battles they live through do for them. | leaders | none of its own | not yet |
+| `household` | 103 | A man at war is still of his house (docs/DESIGN.md). | game | household.test.ts | not yet |
+| `leaders` | 547 | The leader of each civilisation and everything they say. | none | none of its own | not yet |
+| `lessons` | 59 | Lessons for the moment they are needed: things a first battle's list of steps cannot teach in order, because | calamity, creed, data, famine, game | lessons.test.ts | not yet |
+| `map` | 310 | Procedural, point-symmetric two-player map generation. | none | none of its own | not yet |
+| `marauders` | 157 | The marauders over a long battle: they keep pace with the age, and a burnt camp is not the end of them. | game | marauders.test.ts | not yet |
+| `muster` | 50 | A soldier costs a person (docs/DESIGN.md, step 1). | data, game | muster.test.ts | not yet |
+| `notable` | 50 | Notable people: the few a nation knows by name. Nothing here decides who they are; it reads what the rules | champion, game, hero | notable.test.ts | not yet |
+| `notableweight` | 113 | The weight of notable people: a home known for what it carries in, a veteran of their own town, and the grief and dip in standing a loss leaves (plain numbers for drift.ts to read). | game, township (types only) | notable-weight.test.ts | not yet |
+| `nursery` | 51 | Children. A child is never a unit on the map: it is an entry in the record of the house it was born to (its | data | nursery.test.ts | not yet |
+| `path` | 266 | Grid A* with rectangle goals and line-of-sight smoothing. | none | none of its own | not yet |
+| `portrait` | 240 | Portraits: which woodblock icon stands beside a person, and which marks sit over it (docs/DESIGN.md, "Icons tell | campaign, champion, conquered, famine, game, household, notableweight, township | portrait.test.ts | not yet |
+| `powers` | 92 | What a leader learns as they rise. At three ranks of veterancy (Blooded, Veteran, Legend) a leader comes into one | data, hero | powers.test.ts | not yet |
+| `primer` | 107 | Teaching the campaign: what a new player is told to do first, and the page that explains the rest. | beaten, campaign, champion, creed, hero, powers, story, visit | primer.test.ts | not yet |
+| `rescue` | 130 | Getting captives back without burning the camp down, and what a camp's keeper should do about it. | creed, game, path | rescue.test.ts | not yet |
+| `scenario` | 415 | Scripted missions: a fixed set-up, a list of objectives and a win or lose condition. | creed, game, map, rescue | none of its own | not yet |
+| `seasonfolk` | 95 | A town's people on the map, season by season (docs/DESIGN.md, "People come only by birth"). | ageing, campaign, creed, data, nursery, township | none of its own | not yet |
+| `stores` | 94 | Stores replace supplies (docs/DESIGN.md, "Stores"): a nation's supplies are what its towns hold above their working stock, and every gain or loss on the map is carried into the towns. | campaign, township | stores.test.ts | not yet |
+| `story` | 193 | The story of a campaign: places with names and a past, things that happen to the whole world, tales that are | campaign, creed | story.test.ts | not yet |
+| `tavernfall` | 24 | The tavern as a town falls. As a town grows less moral its tavern keeps later hours and takes more gold; what is | creed | tavernfall.test.ts | not yet |
+| `temper` | 127 | A leader's temperament, as answered by whoever plays them in the voice booth. It steers how the | none | none of its own | not yet |
+| `threats` | 390 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it. | acts, ageing, campaign, creed, townfaith, township | threats.test.ts | not yet |
+| `townfaith` | 84 | Faith is a town's (docs/DESIGN.md): every town's own standing between piety and decadence, and the nation's as the mean of its towns'. | campaign, story | townfaith.test.ts | not yet |
+| `township` | 200 | Towns that keep their people and their stores (docs/DESIGN.md, step 2). | ageing, campaign, household, notableweight | township.test.ts | not yet |
+| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, game, stores, townfaith, township | visit.test.ts | not yet |
+| `wrath` | 29 | How hard acts of God fall on a people (docs/DESIGN.md, "Acts of God"). | game | wrath.test.ts | not yet |

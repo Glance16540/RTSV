@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { countryOf, countryYield } from '../src/sim/country';
+import { faithAt, nationVirtue } from '../src/sim/townfaith';
+import { nationWorth } from '../src/sim/stores';
 import { HeroSpec, HERO_POINTS, HERO_MIN_HURT, HOLY_GUARD, MIGHT_ATK, GUARD_ARMOR, VIGOUR_HP, RANK_ATK, RANK_ARMOR, RANK_HP, RANK_XP, TYRANT_BIND, cleanHero, heroBonus, rankOf } from '../src/sim/hero';
 import { PLACES, TALES, TALE_FROM, TALE_EVERY, WORLD_EVENTS, WORLD_FROM, COMET_VIRTUE } from '../src/sim/story';
 import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
@@ -700,7 +702,7 @@ describe('conquest campaign', () => {
         l.lines[ev].forEach((_, i) => keys.add(lineKey(l.civ, ev, i)));
       }
     }
-    expect(keys.size).toBe(520);
+    expect(keys.size).toBe(600);
     expect(keys.has('steppe_attack_2')).toBe(true);
     // In a campaign: the player attacks a rival, wins, and finally wipes them out.
     const c = newCampaign(7, 1);
@@ -1463,7 +1465,7 @@ describe('alliances and dominion', () => {
     expect(ok).toBe(true);
     expect(c.ally).toBe(1);
     expect(c.speech.some((s) => s.event === 'ally')).toBe(true);
-    expect(c.factions[0].supplies).toBe(40 - TRUCE_COST - ALLIANCE_COST);
+    expect(c.factions[0].supplies).toBe(40 - truceCost(c.factions[0].civ) - ALLIANCE_COST); // whoever the seed made the player: the Abbasids pay less
     expect(canAlly(c, 2)).toBe(false); // one alliance at a time
     c.truces = [];
     expect(atTruce(c, 0, 1)).toBe(true); // an alliance does not run out
@@ -1563,7 +1565,10 @@ describe('an active ally', () => {
     expect(moveArmy(c, mine.id, land.id)).toBe('battle');
     resolvePending(c, 'attacker');
     expect(c.request).toBeNull();
-    expect(c.factions[0].supplies).toBe(before + 4);
+    // The ally's thanks are 4 supplies. The land taken brings its own stores with it as well (stores.ts), so the figure is the towns'.
+    expect(c.log.join('\n')).toContain('thank you for answering their call and send 4 supplies');
+    expect(c.factions[0].supplies).toBeGreaterThanOrEqual(before + 4);
+    expect(c.factions[0].supplies).toBe(nationWorth(c, 0));
 
     // A rich ally shares with a poor friend at the turn.
     c.factions[0].supplies = 0; c.factions[1].supplies = 30;
@@ -2424,7 +2429,7 @@ describe('children who live to grow up', () => {
 
 describe('the thirteen nations', () => {
   it('every nation is complete: bonuses, two units of its own with a place to train them, a leader with every line, and campaign rules', () => {
-    expect(CIV_IDS.length).toBe(13);
+    expect(CIV_IDS.length).toBe(15);
     for (const id of CIV_IDS) {
       const civ = CIVS[id];
       expect(civ.bonuses.length).toBeGreaterThan(0);
@@ -2442,8 +2447,8 @@ describe('the thirteen nations', () => {
       expect(g.players[0].civ).toBe(id);
       expect(newCampaign(4, 2, 1, id).factions[0].civ).toBe(id);
     }
-    expect(new Set(CIV_IDS.map((id) => CIVS[id].name)).size).toBe(13);
-    expect(new Set(CIV_IDS.map((id) => LEADERS[id].name)).size).toBe(13);
+    expect(new Set(CIV_IDS.map((id) => CIVS[id].name)).size).toBe(15);
+    expect(new Set(CIV_IDS.map((id) => LEADERS[id].name)).size).toBe(15);
   });
 
   it('the new nations\' units and campaign rules do what they say', () => {
@@ -2498,7 +2503,7 @@ describe('men and women as leaders', () => {
       expect(lines.intro[0]).not.toBe(l.lines.intro[0]);
       for (const e of LEADER_EVENTS) for (const t of lines[e]) expect(l.lines[e]).not.toContain(t);
     }
-    expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(13);
+    expect(CIV_IDS.filter((id) => LEADERS[id].female || LEADERS[id].alt?.female).length).toBe(15);
     expect(leaderOf('england')!.name).toBe('Earl Godric of Wessex');
     setLeaderPersona('england', true);
     expect(leaderOf('england')!.name).toBe('Countess Edith of Wessex');
@@ -3512,8 +3517,11 @@ describe('faith on the campaign map', () => {
     expect(g.creed(1).id).toBe('decadent');
     // The player ran a tavern town in that battle: the people come home worldlier, by half of how far it went.
     finishBattle(c, true, undefined, { virtue: -20 });
-    expect(virtueOf(c, 0)).toBe(40 + (-20 - 40) * BATTLE_VIRTUE);
-    expect(faithOf(c, 0).defence).toBe(1);
+    // Faith is a town's now: their own town came home at 10, and the Decadent capital they took keeps its own standing.
+    expect(faithAt(c, next.id)).toBe(40 + (-20 - 40) * BATTLE_VIRTUE);
+    expect(faithAt(c, foeCap.id)).toBe(-75);
+    expect(virtueOf(c, 0)).toBe(nationVirtue(c, 0));
+    expect(virtueOf(c, 0)).toBeLessThan(10);
   });
 
   it('rival peoples build what they believe in', () => {

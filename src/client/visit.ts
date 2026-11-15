@@ -56,8 +56,9 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
   const leave = (): void => {
     if (gone) return;
     gone = true;
-    const after: { town: Standing[]; ground: Ground; virtue: number; seconds: number } = {
+    const after: VisitAfter = {
       town: app.game.standing(app.pid), ground: app.game.ground(), virtue: app.game.players[app.pid].virtue, seconds: Math.min(VISIT_SECONDS, app.game.time),
+      folk: app.game.census(app.pid), // its people and stores go home with it (township.ts)
     };
     try { localStorage.setItem(RESULT_KEY, JSON.stringify(after)); localStorage.removeItem(VISIT_SAVE_KEY); } catch { /* storage unavailable */ }
     back();

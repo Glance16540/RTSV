@@ -698,3 +698,30 @@ body.looking-out #guide, body.looking-out #lesson { display: none; }
 #visit button { width: 100%; }
 body.visiting #guide, body.visiting #concede-btn { display: none; }
 body.looking-out #visit { display: none; }
+
+/* Portraits (src/client/portrait.ts): a person's woodblock icon, with the marks of their condition small over its corner. */
+.likeness { position: relative; display: inline-block; vertical-align: middle; line-height: 0; flex: none; }
+.likeness > .ico { width: 100%; height: 100%; vertical-align: top; }
+.likeness.sm { width: 28px; height: 28px; margin-right: 4px; }
+.likeness.md { width: 40px; height: 40px; }
+.likeness.lg { width: 52px; height: 52px; }
+#info .icon .likeness > .ico { width: 100%; height: 100%; }
+.likeness-mark { position: absolute; width: 42%; height: 42%; object-fit: contain; border-radius: 50%; background: rgba(245, 236, 214, 0.92); box-shadow: 0 0 0 1px rgba(40, 25, 10, 0.55); }
+.likeness-mark.m0 { right: -4%; bottom: -4%; }
+.likeness-mark.m1 { left: -4%; bottom: -4%; }
+.likeness-mark.m2 { right: -4%; top: -4%; }
+.likeness-standing { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; margin-left: 6px; }
+.likeness-standing .ico { width: 30px; height: 30px; }
+.likeness-standing small { margin-left: 4px; font-style: italic; }
+.likeness-flag.ico { width: 20px; height: 20px; margin-left: 3px; }
+.likeness-row { display: flex; align-items: center; gap: 4px; }
+
+/* ---- A house's people away at war (housepanel.ts) ---- */
+.house-away { margin: 3px 0; padding-left: 6px; border-left: 2px solid currentColor; font-size: 0.94em; }
+
+/* Bands on the map and the reports of their strikes (threatpanel.ts) */
+#ow-sel .raid-report { margin-top: 6px; padding: 6px 8px; border-left: 3px solid currentColor; background: rgba(0, 0, 0, 0.2); }
+#ow-sel .raid-report div { color: var(--text); margin-top: 2px; }
+
+/* ---- A town's own faith, its resentment if taken, and its men away (townpanel.ts) ---- */
+.town-faith, .town-yoke, .town-away { font-size: 0.94em; }

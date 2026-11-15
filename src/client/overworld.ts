@@ -4,6 +4,8 @@ import { creedOf } from '../sim/creed';
 import { PLACES, WORLD_EVENTS, epilogue } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield, openBorder } from '../sim/country';
 import { nationHtml, townHtml } from './townpanel';
+import { canSendHome, menOf, sendHome } from '../sim/armytown';
+import { threatHtml } from './threatpanel';
 import { AGES, CIVS, CIV_IDS, styleOf } from '../sim/data';
 import { LEADERS, Speech, leaderOf } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -130,6 +132,7 @@ export class Overworld {
       if (kind === 'gift') sendGift(this.c, Number(id));
       if (kind === 'age') advanceAge(this.c, 0);
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
+      if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
       this.changed();
     });
     $('ow-end').addEventListener('click', () => {
@@ -421,7 +424,7 @@ export class Overworld {
       if (sky) seals.push([WEATHER[sky].icon, '#dfe6ee']);
       const place = placeAt(c, t.id);
       if (place) seals.push([PLACES[place.kind].icon, '#e6dcc0']);
-      for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun' || e.kind === 'famine' || e.kind === 'plague' || e.kind === 'blaze' ? '#e8c0b0' : '#f0e2a8']);
+      for (const e of eventsAt(c, t.id).slice(0, 2)) seals.push([EVENTS[e.kind].icon, e.kind === 'unrest' || e.kind === 'revolt' || e.kind === 'fever' || e.kind === 'raiders' || e.kind === 'hard' || e.kind === 'horde' || e.kind === 'taken' || e.kind === 'overrun' || e.kind === 'famine' || e.kind === 'plague' || e.kind === 'blaze' || e.kind === 'band' || e.kind === 'raid' || e.kind === 'carried' ? '#e8c0b0' : '#f0e2a8']);
       seals.forEach(([icon, paper], k) => {
         const sx = t.x + 40 + (k % 2) * 4, sy = t.y + 12 + k * 24;
         ctx.beginPath(); ctx.arc(sx, sy, 12, 0, 6.3); ctx.fillStyle = paper; ctx.fill();
@@ -586,7 +589,7 @@ export class Overworld {
     const t = c.territories[this.sel];
     const a = armyAt(c, this.sel);
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
-    $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
+    $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · <span title="What your towns hold in store above their working stock, counted in supplies (a hundred of goods each).">To spend <b>${me.supplies}</b> <small>supplies (+${income(c, 0)} each turn)</small></span>` +
       '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
       nationHtml(c) +
       `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
@@ -601,6 +604,7 @@ export class Overworld {
       <div style="color:${css(owner.color)}">${owner.name}</div>
       <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · Defence ${defence(c, t.id)}</div>
       ${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
+      ${threatHtml(c, t.id)}
       <div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc} <i>${countryOf(c, t.id).rule}</i></div>
       ${lanesOf(c, t.id).map((n) => `<div class="hint">⛵ Sea crossing to ${c.territories[n].name}${t.buildings.includes('harbour') ? '' : t.owner === 0 ? ': build a Harbour here to make it' : ': made from a Harbour'}.</div>`).join('')}
       ${(c.barriers ?? []).filter((w) => w.a === t.id || w.b === t.id).map((w) => `<div class="hint">${BARRIERS[w.kind].icon} No march to ${c.territories[w.a === t.id ? w.b : w.a].name}: ${BARRIERS[w.kind].by} lie${w.kind === 'mountains' ? '' : 's'} between${w.kind !== 'water' ? `. ${WORKS[w.kind].name[0].toUpperCase() + WORKS[w.kind].name.slice(1)} would open it (${WORKS[w.kind].cost} supplies, built from either side)` : ''}.</div>`).join('')}
@@ -637,6 +641,7 @@ export class Overworld {
       if (!me.heroAlive) html += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
       if (t.capital === 0) html += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
+      if (a && a.owner === 0) { const men = menOf(c, a); html += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
       for (const w of c.barriers ?? []) if ((w.a === t.id || w.b === t.id) && w.kind !== 'water') { const far = w.a === t.id ? w.b : w.a; html += btn('open:' + far, `${WORKS[w.kind].icon} Build ${WORKS[w.kind].name} to ${c.territories[far].name}`, WORKS[w.kind].cost, canOpen(c, 0, t.id, far), 'Opens this border for good, to you and to everyone else.'); }
       if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) html += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), d.desc);
     } else if (t.owner > 0 && c.factions[t.owner].alive) {

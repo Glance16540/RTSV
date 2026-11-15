@@ -71,6 +71,12 @@ export function ico(key: string, emoji: string): string {
   return file ? `<img class="ico" src="${BASE}icons/${file}" alt="" draggable="false">` : emoji;
 }
 
+/** The address of an icon's picture, if it is there (for src/client/portrait.ts). */
+export function iconSrc(key: string): string | null {
+  const file = manifest.icons[key];
+  return file ? `${BASE}icons/${file}` : null;
+}
+
 /** HTML for a leader's portrait: the picture their voice actor sent, else a painted `leader_<civ>` icon, else nothing. */
 export function portrait(civ: string): string {
   const own = manifest.portraits?.[civ];
