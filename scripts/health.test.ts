@@ -124,6 +124,7 @@ interface Watch {
   raids: { outcome: string }[]; raidTownYears: number;
   captives: { near: boolean; back: boolean }[];
   taken: { garrison: boolean; rose: boolean }[];
+  retaken: number; unsettled: number; // taken towns not counted: taken again by force within five years, or still followed when the run ended
   arms: { war: boolean; share: number }[];
   reached60: number[]; reached70: number[]; // by season: those who turned sixty, and seventy
   sieges: Siege[]; // settled on the map
@@ -135,7 +136,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
+  const w: Watch = { decided: -1, how: '', ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
@@ -170,8 +171,11 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       strife[t.id].war = now;
       const ev = (c.events ?? []).some((e) => e.at === t.id && e.turn === now && e.kind === 'revolt');
       const watched = takenAt.get(t.id);
-      if (watched && watched.owner === was) { if (now - watched.since <= 20) w.taken.push({ garrison: watched.garrisoned * 2 > watched.seen, rose: ev }); takenAt.delete(t.id); }
-      if (t.owner >= 0 && t.yoke && t.yoke.since === now) takenAt.set(t.id, { since: now, owner: t.owner, garrisoned: 0, seen: 0 });
+      // A town followed since it was taken: it rose, or it was taken again by force (and is not counted, having had no five years to settle).
+      if (watched && watched.owner === was) { if (ev && now - watched.since <= 20) w.taken.push({ garrison: watched.garrisoned * 2 > watched.seen, rose: true }); else w.retaken++; takenAt.delete(t.id); }
+      // Taken this season: the yoke is stamped with the season of the capture, which is the one just played (now - 1) or,
+      // for a capture after the season turned, this one. It is followed from then, once for this capture.
+      if (t.owner >= 0 && t.yoke && t.yoke.since >= now - 1) takenAt.set(t.id, { since: t.yoke.since, owner: t.owner, garrisoned: 0, seen: 0 });
     }
     for (const [tid, x] of takenAt) {
       const t = c.territories[tid];
@@ -287,6 +291,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     }
   }
   w.sieges = watched;
+  w.unsettled = takenAt.size;
   w.townLives = w.townSeasons.filter((x) => !x.tribe).length / YEARS20;
   if (c.phase === 'over' && w.decided < 0) { w.decided = c.turn; w.how = !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
   return w;
@@ -449,8 +454,8 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   // Conquest
   const taken = all('taken'), bareT = taken.filter((x) => !x.garrison), heldT = taken.filter((x) => x.garrison);
   const roseBare = share(bareT, (x) => x.rose), roseHeld = share(heldT, (x) => x.rose);
-  add('Conquest', 'Taken towns that rise if left ungarrisoned', '15 to 35% within 5 years; under 5% with an army in them', `${pct(roseBare)} ungarrisoned (${bareT.length}), ${pct(roseHeld)} garrisoned (${heldT.length})`, bareT.length ? within(roseBare, 0.15, 0.35) && (!heldT.length || roseHeld < 0.05) : null,
-    'A town taken by force (it bears a yoke), followed for twenty seasons; garrisoned if an army of its taker stood in it for over half of them.');
+  add('Conquest', 'Taken towns that rise if left ungarrisoned', '15 to 35% within 5 years; under 5% with an army in them', `${pct(roseBare)} ungarrisoned (${bareT.length}), ${pct(roseHeld)} garrisoned (${heldT.length}); not counted: ${ruled.reduce((k, w) => k + w.retaken, 0)} taken again within five years, ${ruled.reduce((k, w) => k + w.unsettled, 0)} still followed at the end`, bareT.length ? within(roseBare, 0.15, 0.35) && (!heldT.length || roseHeld < 0.05) : null,
+    'A town taken by force (it bears a yoke, stamped with the season of the capture), followed from then for twenty seasons, once for each capture; garrisoned if an army of its taker stood in it for over half of the seasons it was followed. One taken again by force before it rose or settled, or still followed when the run ended, is not counted either way.');
 
   // Armies
   const arms = all('arms');
