@@ -7,12 +7,14 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
-import { threatsOfMen } from './threats';
+import { threatsOfMen } from './bandseason';
+import { bandBattle, settleBandFight } from './bandfight';
 import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
 import { orphansSeason } from './orphans';
 import { seasonDrift } from './drift';
+import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
 import { Answer, LEGENDS, COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
@@ -31,6 +33,7 @@ import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
 import { Orders, governTowns, keepOrders } from './governor';
+import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
@@ -269,7 +272,7 @@ export interface Territory {
 }
 
 /** What stands on a land's battlefield between battles: the holder's corner of it, and each building with the damage it has taken. */
-export interface Town { at: number; b: Standing[] }
+export interface Town { at: number; b: Standing[]; /** Laid down for counting only (rivalrule.ts): not where things stand on a battlefield. */ coarse?: boolean }
 /** The building that stands on the battlefield for each building of the campaign map. */
 export const SITE_BUILDING: Record<string, string> = { farm: 'farm', barracks: 'barracks', range: 'range', stable: 'stable', harbour: 'dock', fortress: 'tower' };
 /** The corner of its battlefield a land's holder defends from. The attacker makes camp in the one opposite. */
@@ -324,6 +327,8 @@ export interface Campaign {
   barriers?: Barrier[];
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
+  /** How long each army has stood where it is, soldiers the map has given a name, and armies sent home this season: see rivalrule.ts. */
+  idle?: Record<string, { at: number; n: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
   /** The men with each army, by the town they came from: see armytown.ts. */
   musters?: Record<string, Muster>;
   /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
@@ -674,64 +679,7 @@ function mark(c: Campaign, kind: EventKind, at: number, turns = 0): void {
   (c.events ??= []).push({ kind, at, turn: c.turn, until: c.turn + turns });
 }
 
-/**
- * The marauders: a band that belongs to no people. They take root in some land of the local tribes far from any
- * capital, and from then on they grow each turn, carry off women from the lands next to them (which costs those
- * lands supplies until the women are freed), and when strong enough overrun a neighbour. Whoever takes a land
- * from them breaks that camp: the women it took go home, and the victor is the richer for it.
- */
-function hordeTurn(c: Campaign): void {
-  const lairs = c.territories.filter((t) => t.horde);
-  // A camp that has fallen to someone: those it held are free.
-  for (const t of lairs.filter((x) => x.owner >= 0)) {
-    t.horde = false;
-    const f = c.factions[t.owner];
-    let home = 0;
-    for (const n of [t.id, ...t.adj]) { home += c.territories[n].taken ?? 0; c.territories[n].taken = 0; }
-    f.supplies += HORDE_PRIZE;
-    mark(c, 'freed', t.id);
-    c.log.push(`${f.id === 0 ? 'You have' : `${f.name} have`} broken the marauders at ${t.name}${home ? ' and the women they took have come home' : ''}: ${HORDE_PRIZE} supplies.`);
-  }
-  const live = c.territories.filter((t) => t.horde && t.owner < 0);
-  if (!live.length) {
-    for (const t of c.territories) t.taken = 0; // no camp left to hold anyone
-    if (c.turn < HORDE_TURN || luck(c, 70) > 0.45) return;
-    const caps = c.territories.filter((t) => t.capital >= 0);
-    const wild = c.territories.filter((t) => t.owner < 0 && t.capital < 0)
-      .sort((a, b) => Math.min(...caps.map((k) => Math.hypot(k.x - b.x, k.y - b.y))) - Math.min(...caps.map((k) => Math.hypot(k.x - a.x, k.y - a.y))));
-    const t = wild[0];
-    if (!t) return;
-    t.horde = true;
-    t.militia = Math.max(t.militia, 4);
-    mark(c, 'horde', t.id, 1);
-    c.log.push(`Marauders have made camp at ${t.name}. They take women, and they grow.`);
-    return;
-  }
-  live.forEach((t, i) => {
-    t.militia = Math.min(HORDE_MAX, t.militia + 1);
-    // A raid on a neighbour: the weakest-held land next door.
-    const near = t.adj.map((n) => c.territories[n]).filter((x) => x.owner >= 0 && (x.taken ?? 0) < MAX_TAKEN)
-      .sort((a, b) => (armyAt(c, a.id) ? 1 : 0) - (armyAt(c, b.id) ? 1 : 0) || a.id - b.id);
-    const prey = near[Math.floor(luck(c, 80 + i) * Math.min(2, near.length))];
-    if (prey && luck(c, 90 + i) < 0.6) {
-      prey.taken = (prey.taken ?? 0) + 1;
-      mark(c, 'taken', prey.id);
-      c.log.push(`Marauders out of ${t.name} carry off women from ${prey.name}${prey.owner === 0 ? ': it yields a supply less until you break their camp' : ''}.`);
-    }
-    // Strong enough, they take the land next door for their own: a tribe's, or a people's that no army holds.
-    if (t.militia >= HORDE_SPREAD && luck(c, 100 + i) < 0.3) {
-      const open = t.adj.map((n) => c.territories[n]).filter((x) => !x.horde && x.capital < 0 && !(x.owner >= 0 && armyAt(c, x.id)));
-      const next = open[Math.floor(luck(c, 110 + i) * open.length)];
-      if (next) {
-        if (next.owner >= 0) c.log.push(`The marauders have overrun ${next.name} and thrown out ${next.owner === 0 ? 'your people' : c.factions[next.owner].name}.`);
-        else c.log.push(`The marauders have overrun ${next.name}.`);
-        next.owner = -1; next.horde = true; next.militia = Math.max(3, Math.floor(t.militia / 2));
-        t.militia -= 2;
-        mark(c, 'overrun', next.id);
-      }
-    }
-  });
-}
+// The marauders who hold a land are one kind of band now: see bandhorde.ts.
 
 /** A new turn on the map itself: the weather moves on, what was brewing comes to a head, and now and then something new begins. */
 function mapTurn(c: Campaign): void {
@@ -766,7 +714,6 @@ function mapTurn(c: Campaign): void {
   }
   c.events = ev.filter((x) => x.until >= c.turn - 1);
   const busy = new Set(c.events.filter((x) => x.until >= c.turn).map((x) => x.at));
-  hordeTurn(c);
   if (c.turn >= 3 && luck(c, 50) < 0.3) {
     const open = c.territories.filter((t) => t.owner >= 0 && t.capital < 0 && !busy.has(t.id) && !c.armies.some((a) => a.at === t.id && a.owner === t.owner) && !leaderAt(c, t.owner, t.id));
     const t = open[Math.floor(luck(c, 51) * open.length)];
@@ -1260,6 +1207,7 @@ export function answerDemand(c: Campaign, pay: boolean): void {
 export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender'): boolean {
   const p = c.pending;
   if (!p) return false;
+  if (p.band !== undefined) return settleBandFight(c, how); // against a band: no nation, and no land changes hands (bandfight.ts)
   let attackerWon = how === 'attacker';
   if (how === 'auto') {
     // Defenders fight on their own ground, which is worth a little.
@@ -1412,6 +1360,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
@@ -1607,7 +1556,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
     // Spend what is left on troops, growing existing armies before starting new ones.
-    const yards = own.filter((t) => Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
+    rivalMoves(c, f.id); // garrison what is resentful or beset, and keep that garrison there (rivalrule.ts)
+    const yards = own.filter((t) => maySpare(c, t.id) && Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
       .sort((a, b) => (armyAt(c, b.id) ? 1 : 0) - (armyAt(c, a.id) ? 1 : 0));
     for (const t of yards) {
       for (let guard = 0; guard < 12; guard++) {
@@ -1680,6 +1630,7 @@ export interface BattleConfig { seed: number; size: number; level: number; title
 export function battleConfig(c: Campaign): BattleConfig | null {
   const p = c.pending;
   if (!p) return null;
+  if (p.band !== undefined) return bandBattle(c);
   settleStores(c); // a town fights out of what is in its stores now, after all that has been spent (stores.ts)
   const t = c.territories[p.to];
   const humanAttacks = p.attacker === 0;
@@ -1707,9 +1658,9 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
-      ...(defending && !field && t.town?.b.length ? { town: t.town.b } : {}),
+      ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       // The town itself turns out: its own people, living off its own stores (township.ts).
-      ...(defending && !field && !t.horde ? musterFolk(c, t.id) : {}),
+      ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id)) : {}),
     };
   };
   // A siege is always fought over the same ground: the holder in the town's corner, the attacker opposite.
@@ -1767,11 +1718,14 @@ export interface BattleAfter {
   orders?: Partial<Orders>;
   /** The town that was fought over, counted as the battle ended (`Game.census()` of the side that held it when it began). */
   folk?: Partial<Census>;
+  /** Who of the town was drifted to the tavern and the mine as the battle ended (driftintown.ts). */
+  drifted?: { tavern?: number; mines?: number };
 }
 export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, after: BattleAfter = {}): void {
   const { virtue, heroRank, town: standing, ground } = after;
   const p = c.pending;
   if (!p) return;
+  if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors); return; }
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.
   if (virtue !== undefined && Number.isFinite(virtue)) { if (p.attacker !== 0 && p.mode !== 'field') shiftVirtue(c, 0, (virtue - faithAt(c, p.to)) * BATTLE_VIRTUE, { at: p.to }); else shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE); }
@@ -1787,6 +1741,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
+  if (census) driftBack(c, land.id, after.drifted); // who was at the tavern and the mine stays there (driftintown.ts)
   if (land.owner === 0 && p.mode !== 'field') keepOrders(c, land.id, after.orders);
   settleStores(c); // what the town gathered or spent is its nation's gain or loss
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.

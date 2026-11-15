@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { endTurn, continueAI, eventsAt, newCampaign } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
 import { OLD_SEASON, SEASONS_A_YEAR } from '../src/sim/ageing';
-import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, threatsOfMen, wanted } from '../src/sim/threats';
+import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, wanted } from '../src/sim/threats';
+import { threatsOfMen } from '../src/sim/bandseason';
+import { attackBand } from '../src/sim/bandfight';
+import { resolvePending } from '../src/sim/campaign';
 import { folkOf, nationStores } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
 import { SUPPLY_UNITS } from '../src/sim/stores';
@@ -42,6 +45,13 @@ function untilStrike(c: Campaign, b: Band): Raid {
     if (r) return r;
   }
   throw new Error('the band never struck');
+}
+
+/** What a band takes of a town's stores (400 food, 200 wood, 200 gold, 100 stone): its share of each, and no more in all than it can carry. */
+function looted(r: Raid, share: number): { food: number; all: number } {
+  const want = [400, 200, 200, 100].map((n) => Math.floor(n * share)), all = want.reduce((a, b) => a + b, 0);
+  const load = Math.min(1, (r.force * THREATS.carry[r.kind]) / all);
+  return { food: Math.floor(want[0] * load), all: want.reduce((a, n) => a + Math.floor(n * load), 0) };
 }
 
 describe('what a town has to defend itself with', () => {
@@ -110,7 +120,10 @@ describe('a band strikes a town', () => {
     expect(f.children).toBe(5);
     expect(f.ages!.k.length).toBe(5);
     expect(f.ages!.f.filter((s) => s < OLD_SEASON).length).toBe(f.women);
-    expect(r.stores.food).toBe(Math.floor(400 * THREATS.loot.taken));
+    expect(r.stores.food).toBe(looted(r, THREATS.loot.taken).food);
+    // No more than they can carry: so much for each point of their force.
+    expect(r.stores.food + r.stores.wood + r.stores.gold + r.stores.stone).toBeLessThanOrEqual(r.force * THREATS.carry.raiders);
+    expect(r.stores.food).toBeGreaterThan(0);
     expect(f.stores.food).toBe(400 - r.stores.food);
     expect(goods(nationStores(c, 0))).toBe(had - goods(r.stores)); // what was looted from the town is all the raid cost: the nation is not charged again
     expect(r.sway).toBe(THREATS.sway.taken);
@@ -139,7 +152,12 @@ describe('a band strikes a town', () => {
     const sea = world({ men: 2 });
     sea.t.trait = 'coast';
     const p = untilStrike(sea.c, band(sea.c, sea.t, 'pirates', 9));
-    expect(p.stores.food).toBe(Math.floor(400 * (THREATS.loot.taken + THREATS.pirateLoot)));
+    expect(p.stores.food).toBe(looted(p, THREATS.loot.taken + THREATS.pirateLoot).food);
+    // Pirates have ships to fill, slavers come for people, and the marauders take least of all in goods.
+    expect(THREATS.carry.pirates).toBeGreaterThan(THREATS.carry.raiders);
+    expect(THREATS.carry.raiders).toBeGreaterThan(THREATS.carry.slavers);
+    expect(THREATS.carry.slavers).toBeGreaterThan(THREATS.carry.marauders);
+    expect(s.stores.food).toBe(looted(s, THREATS.loot.taken).food);
 
     const mid = world({ men: 8 });
     mid.t.buildings = ['farm', 'barracks'];
@@ -148,7 +166,7 @@ describe('a band strikes a town', () => {
     expect(m.outcome).toBe('raided');
     expect(m.taken).toEqual({ men: 0, women: 0 });
     expect(m.killed).toBeGreaterThan(0);
-    expect(m.stores.food).toBe(Math.floor(400 * THREATS.loot.raided));
+    expect(m.stores.food).toBe(looted(m, THREATS.loot.raided).food);
   });
 
   it('a sacked people loses heart by its creed: the Righteous least, the Decadent most', () => {
@@ -223,7 +241,9 @@ describe('those who are taken', () => {
     c.turn += 2;
     expect(seasonsLeft(c, b.held[0])).toBe(THREATS.holdFor - 2);
     c.armies.push({ id: 801, owner: 0, at: t.id, units: { infantry: 12 }, hero: false, vet: 0, moved: false });
-    threatsOfMen(c);
+    expect(attackBand(c, 801, b.id)).toBe('battle');
+    expect(c.pending).toMatchObject({ band: b.id, armyId: 801, defender: -1 });
+    expect(resolvePending(c, 'auto')).toBe(true); // left to the army, which is far the stronger
     expect(c.bands!.includes(b)).toBe(false);
     expect(f.women + f.elders - 1).toBeGreaterThanOrEqual(women); // some may have come home old
     expect(f.men + f.women + f.elders).toBe(men + women + 1 + taken);
@@ -241,10 +261,11 @@ describe('those who are taken', () => {
     b.strength = 9;
     c.armies.push({ id: 801, owner: 0, at: t.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false });
     c.turn++;
-    threatsOfMen(c);
+    expect(attackBand(c, 801, b.id)).toBe('battle');
+    expect(resolvePending(c, 'auto')).toBe(false);
     expect(c.bands!.includes(b)).toBe(true);
-    expect(b.strength).toBe(8);
-    expect(c.armies.find((a) => a.id === 801)!.units.infantry).toBe(2);
+    expect(b.strength).toBeLessThan(9);
+    expect(c.armies.find((a) => a.id === 801)!.units.infantry).toBeLessThan(3);
   });
 
   it('after that they are lost: the player is warned a season before, and told when it happens', () => {
@@ -277,7 +298,8 @@ describe('those who are taken', () => {
       expect(reportText(w.c, r).join(' ')).toContain('Mira among them');
       w.c.armies.push({ id: 801, owner: 0, at: w.t.id, units: { infantry: 12 }, hero: false, vet: 0, moved: false });
       w.c.turn++;
-      threatsOfMen(w.c);
+      expect(attackBand(w.c, 801, b.id)).toBe('battle');
+      expect(resolvePending(w.c, 'auto')).toBe(true);
       expect(w.f.notables[0].lost).toBeUndefined();
     }
     expect(seen).toBe(true);
@@ -306,13 +328,13 @@ describe('bands on the map', () => {
     for (; c.turn < 80; c.turn++) {
       threatsOfMen(c);
       most = Math.max(most, c.bands!.length);
-      expect(c.bands!.length).toBeLessThanOrEqual(wanted(c) || 1);
+      expect(c.bands!.filter((b) => b.kind !== 'marauders').length).toBeLessThanOrEqual(wanted(c) || 1);
       for (const b of c.bands!) {
         kinds.add(b.kind);
         expect(c.territories[b.at]).toBeDefined();
         if (b.kind === 'pirates') expect(c.territories[b.at].trait).toBe('coast');
         if (b.kind === 'highwaymen') expect(c.territories[b.at].adj).toContain(b.to);
-        expect(b.strength).toBeLessThanOrEqual(THREATS.max);
+        if (b.kind !== 'marauders') expect(b.strength).toBeLessThanOrEqual(THREATS.max);
         expect(bandsAt(c, b.at)).toContain(b);
       }
     }
@@ -335,7 +357,11 @@ describe('bands on the map', () => {
         for (const r of (c.raids ?? []).slice(seen)) {
           raids++;
           // Children on the record only ever leave it by coming of age, a season at a time.
-          if (kids[r.at] >= 0) expect(folkOf(c, r.at).children).toBeGreaterThanOrEqual(kids[r.at] - 3);
+          // A town left with nobody grown that season has had its children taken in by the nearest town of their people
+          // (orphans.ts): they are gone from this town's record, unharmed, and the chronicle says where they went.
+          const f = folkOf(c, r.at), takenIn = f.men + f.women + f.elders === 0 && (c.chronicle ?? []).some((x) => x.turn === c.turn && x.text.includes(`of ${c.territories[r.at].name}, left with nobody grown`));
+          if (kids[r.at] >= 0 && !takenIn) expect(f.children).toBeGreaterThanOrEqual(kids[r.at] - 3);
+          if (takenIn) expect(f.children).toBe(0);
           expect(reportText(c, r).length).toBeGreaterThan(2);
         }
       }

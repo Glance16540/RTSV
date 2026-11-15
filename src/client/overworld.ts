@@ -5,7 +5,8 @@ import { PLACES, WORLD_EVENTS, epilogue } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield, openBorder } from '../sim/country';
 import { nationHtml, townHtml } from './townpanel';
 import { canSendHome, menOf, sendHome } from '../sim/armytown';
-import { threatHtml } from './threatpanel';
+import { bandButtons, bandPrompt, newsHtml, threatHtml } from './threatpanel';
+import { attackBand } from '../sim/bandfight';
 import { AGES, CIVS, CIV_IDS, styleOf } from '../sim/data';
 import { LEADERS, Speech, leaderOf } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -119,6 +120,7 @@ export class Overworld {
       const x = Math.floor(((e.clientX - r.left) / r.width) * MAP_W), y = Math.floor(((e.clientY - r.top) / r.height) * MAP_H);
       if (x >= 0 && y >= 0 && x < MAP_W && y < MAP_H) this.click(this.cell[y * MAP_W + x]);
     });
+    $('ow-log').addEventListener('click', (e) => { const at = (e.target as HTMLElement).closest<HTMLElement>('[data-land]')?.dataset.land; if (at !== undefined) { this.sel = Number(at); this.changed(); } });
     $('ow-actions').addEventListener('click', (e) => {
       const act = (e.target as HTMLElement).closest('button')?.dataset.act;
       if (!act || this.c.phase !== 'player') return;
@@ -128,6 +130,7 @@ export class Overworld {
       if (kind === 'hero') summonHero(this.c, 0, this.sel);
       if (kind === 'succession') { this.askSuccession(); return; }
       if (kind === 'lead') moveLeader(this.c, 0, this.sel);
+      if (kind === 'band') attackBand(this.c, Number(id.split('/')[0]), Number(id.split('/')[1]));
       if (kind === 'call') callArmies(this.c, 0);
       if (kind === 'endcall') endCall(this.c, 0);
       if (kind === 'hold') holdCourt(this.c, 0, id === '1');
@@ -231,6 +234,8 @@ export class Overworld {
       if (c.phase === 'ai') continueAI(c);
       this.changed();
     };
+    const band = bandPrompt(c);
+    if (band) { this.dialog(band.title, band.text, [['Fight it', () => this.hooks.fight()], ['Leave it to the army', settle], ['Call it off', () => { c.pending = null; this.changed(); }]]); return; }
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
       (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
         (p.sea ? ` ${attacking ? 'Your troops land' : 'They land'} from the sea, at ${Math.round(SEA_LANDING * 100)}% of their strength.` : '') +
@@ -623,7 +628,7 @@ export class Overworld {
       ${eventsAt(c, t.id).map((e) => `<div class="hint">${EVENTS[e.kind].icon} <b>${EVENTS[e.kind].name}</b>${e.until > c.turn ? ` <small>(${e.until - c.turn + 1} turns left)</small>` : e.kind === 'unrest' || e.kind === 'hoard' ? ' <small>(comes to a head next turn)</small>' : ''}: ${EVENTS[e.kind].desc}</div>`).join('')}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}
       <div>${t.buildings.map((b) => `${SITES[b].icon} ${SITES[b].name}`).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>
-      ${t.town?.b.length ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle${t.town.b.some((b) => b[3] !== undefined && b[4] === undefined) ? `, ${t.town.b.filter((b) => b[3] !== undefined && b[4] === undefined).length} of them damaged and being mended, a tenth each turn` : ''}${t.town.b.some((b) => b[4] !== undefined) ? `, ${t.town.b.filter((b) => b[4] !== undefined).length} left unfinished` : ''}${t.owner >= 0 && !styleOf(c.factions[t.owner].civ).raid && !t.town.b.some((b) => b[0] === 'towncenter') ? '. Its Town Center was razed and has not been raised again' : ''}. Whoever holds the land fights from it as it stands.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
+      ${t.town?.b.length && !t.town.coarse ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle${t.town.b.some((b) => b[3] !== undefined && b[4] === undefined) ? `, ${t.town.b.filter((b) => b[3] !== undefined && b[4] === undefined).length} of them damaged and being mended, a tenth each turn` : ''}${t.town.b.some((b) => b[4] !== undefined) ? `, ${t.town.b.filter((b) => b[4] !== undefined).length} left unfinished` : ''}${t.owner >= 0 && !styleOf(c.factions[t.owner].civ).raid && !t.town.b.some((b) => b[0] === 'towncenter') ? '. Its Town Center was razed and has not been raised again' : ''}. Whoever holds the land fights from it as it stands.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
       ${t.ground && t.ground.gone.length + t.ground.left.length ? '<div class="hint">🪓 This ground has been worked: wood felled, berries picked or stone dug. None of it comes back.</div>' : ''}
       ${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a, c)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 ? '' : 'Select one of your armies to march on this land.'}</div>`;
@@ -666,8 +671,8 @@ export class Overworld {
       html += btn('gift:' + t.owner, `🎁 Send ${c.factions[t.owner].name} supplies`, giftCost(me.civ), canGift(c, t.owner), c.ally === t.owner ? 'Your ally can spend them on troops.' : 'Earns goodwill: they will be readier to agree to a truce or an alliance.');
       if (fav) html += `<div class="hint">Goodwill ${'●'.repeat(fav)}${'○'.repeat(MAX_FAVOR - fav)}</div>`;
     }
-    $('ow-actions').innerHTML = html;
+    $('ow-actions').innerHTML = html + bandButtons(c, t.id);
     ($('ow-end') as HTMLButtonElement).disabled = c.phase !== 'player' || !!c.pending || !!c.demand;
-    $('ow-log').innerHTML = c.log.slice(-7).reverse().map((l) => `<div>${l}</div>`).join('');
+    $('ow-log').innerHTML = newsHtml(c) + c.log.slice(-7).reverse().map((l) => `<div>${l}</div>`).join('');
   }
 }

@@ -1,60 +1,16 @@
-// Drift (docs/DESIGN.md, step 5; src/sim/drift.ts): a strained town's people turn to what is worse for them, a
-// well-kept one drifts toward the holy way, in a town second by second and on the map season by season.
+// Drift on the map (docs/DESIGN.md, step 5; src/sim/drift.ts): a strained town's people drift a few a season, women
+// to the tavern and men to the mines, and its standing falls; a well-kept town has them back. Drift inside a town is
+// tests/driftintown.test.ts.
 import { describe, expect, it } from 'vitest';
 import { Campaign, endTurn, newCampaign } from '../src/sim/campaign';
-import { Game } from '../src/sim/game';
-import { FALL, RISE, driftSecond, driftTown, townStanding, townStrain } from '../src/sim/drift';
+import { FALL, GO_MOST, MINE_GOLD, NATION_DIP, RISE, SHARE, TAVERN_GOLD, driftSeason, driftTown, driftedOf, townStanding, watchOf } from '../src/sim/drift';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
 import { folkOf } from '../src/sim/township';
-import { run, setups, spot } from './helpers';
-
-/** A campaign town with a tavern and a church, plenty in store. */
-const town = (campaign = true) => {
-  const g = new Game(7, setups);
-  g.bornOnly = campaign;
-  const p = g.players[0];
-  Object.assign(p.res, { food: 2000, wood: 2000, gold: 500, stone: 500 });
-  p.popCap = 200;
-  for (const type of ['tavern', 'temple']) { const at = spot(g, type, 0); g.spawnBuilding(type, 0, at.cx, at.cy, true); }
-  const tc = g.buildings.find((b) => b.owner === 0 && b.type === 'towncenter')!;
-  for (let k = 0; k < 6; k++) g.spawnUnit('villager', 0, tc.x + 3 + (k % 3), tc.y + 3 + Math.floor(k / 3), k % 2 ? 'm' : 'f');
-  return { g, p, tc };
-};
-const raid = (g: Game, x: number, y: number) => { g.players[0].lastAttacked = { x, y, t: g.time }; };
-
-describe('drift in a town', () => {
-  it('what strains a town: raids and hunger; and what cares for it: fed, safe, a church', () => {
-    const { g, p, tc } = town();
-    run(g, 200);
-    expect(townStrain(g, p)).toMatchObject({ strain: 0 });
-    expect(townStrain(g, p).care).toBeGreaterThan(0.5);
-    raid(g, tc.x, tc.y);
-    expect(townStrain(g, p).strain).toBeGreaterThan(0);
-    expect(townStrain(g, p).care).toBe(0);
-    p.hunger = 1000; p.res.food = 0;
-    expect(townStrain(g, p).strain).toBeGreaterThan(0.5);
-  });
-
-  it('a raided campaign town loses people from their work to the tavern and the mine; a skirmish does not', () => {
-    for (const campaign of [true, false]) {
-      const { g, p, tc } = town(campaign);
-      run(g, 900, () => raid(g, tc.x, tc.y));
-      const d = p.drifted ?? { tavern: 0, mine: 0 };
-      if (campaign) expect(d.tavern + d.mine).toBeGreaterThan(0);
-      else expect(d.tavern + d.mine).toBe(0);
-    }
-  }, 60_000);
-
-  it('a well-kept campaign town draws its people back from the tavern and to the church', () => {
-    const { g, p } = town();
-    const tavern = g.buildings.find((b) => b.type === 'tavern')!;
-    const woman = g.units.find((u) => u.owner === 0 && u.type === 'villager' && u.gender === 'f')!;
-    g.cmdTarget(0, [woman.id], tavern.id);
-    run(g, 1500);
-    expect((p.drifted?.back ?? 0) + (p.drifted?.church ?? 0)).toBeGreaterThan(0);
-    driftSecond(g);
-  }, 60_000);
-});
+import { couplesOf } from '../src/sim/seasonfolk';
+import { defenceOf } from '../src/sim/threats';
+import { mouths } from '../src/sim/larder';
+import { issueDecree } from '../src/sim/decrees';
+import { seat } from '../src/sim/court';
 
 describe('drift on the map', () => {
   const world = (): { c: Campaign; tid: number } => {
@@ -78,16 +34,19 @@ describe('drift on the map', () => {
     expect(RISE).toBeGreaterThan(0);
   });
 
-  it('a strained town with a tavern falls faster than one without, and no town falls past the end of the scale', () => {
-    const { c, tid } = world(), f = folkOf(c, tid), t = c.territories[tid];
-    t.buildings = t.buildings.filter((b) => b !== 'tavern');
+  it('a strained town with a tavern falls faster than one without, as its women drift there, and no town falls past the end of the scale', () => {
+    const fall = (tavern: boolean): number => {
+      const { c, tid } = world(), f = folkOf(c, tid), t = c.territories[tid];
+      t.buildings = [...t.buildings.filter((b) => b !== 'tavern'), ...(tavern ? ['tavern'] : [])];
+      f.men = 8; f.women = 8; f.stores.food = 0;
+      let sum = 0;
+      for (let s = 0; s < 4; s++) { c.turn++; const m = driftTown(c, tid); expect(m).toBeGreaterThanOrEqual(-FALL - 4); sum += m; }
+      return sum;
+    };
+    expect(fall(true)).toBeLessThan(fall(false));
+    const { c, tid } = world(), f = folkOf(c, tid);
     f.stores.food = 0;
-    const without = driftTown(c, tid);
-    t.buildings.push('tavern');
-    const withTavern = driftTown(c, tid);
-    expect(withTavern).toBeLessThan(without);
-    expect(without).toBeGreaterThanOrEqual(-FALL);
-    for (let s = 0; s < 40; s++) driftTown(c, tid);
+    for (let s = 0; s < 80; s++) driftTown(c, tid);
     expect(faithAt(c, tid)).toBe(-100);
   });
 
@@ -96,4 +55,62 @@ describe('drift on the map', () => {
     for (let s = 0; s < 2; s++) { endTurn(c); }
     expect(folkOf(c, tid).drift).toBeDefined();
   }, 60_000);
+
+  it('the drifted are counted on the town\'s record: a few a season under strain, up to half of each, and back with care', () => {
+    const { c, tid } = world(), f = folkOf(c, tid), t = c.territories[tid];
+    t.buildings = [...t.buildings.filter((b) => b !== 'tavern'), 'tavern'];
+    f.men = 8; f.women = 8; f.stores.food = 0;
+    driftTown(c, tid);
+    const d = driftedOf(c, tid);
+    expect(d.tavern + d.mines).toBeGreaterThan(0);
+    expect(d.tavern + d.mines).toBeLessThanOrEqual(GO_MOST);
+    for (let s = 0; s < 20; s++) { c.turn++; driftTown(c, tid); }
+    expect(driftedOf(c, tid)).toEqual({ tavern: 8 * SHARE, mines: 8 * SHARE });
+    const gold = f.stores.gold;
+    driftTown(c, tid);
+    expect(f.stores.gold - gold).toBe(4 * MINE_GOLD + 4 * TAVERN_GOLD);
+    f.stores.food = 5000;
+    for (let s = 0; s < 20; s++) { c.turn++; driftTown(c, tid); }
+    expect(driftedOf(c, tid)).toEqual({ tavern: 0, mines: 0 });
+    expect(f.drifted).toBeUndefined();
+  });
+
+  it('what the drifted do to the rest: thin walls, fewer wives, and they eat where they work', () => {
+    const { c, tid } = world(), f = folkOf(c, tid), t = c.territories[tid];
+    f.men = 8; f.women = 8; delete t.town;
+    const whole = defenceOf(c, tid), wives = couplesOf(t, f), eat = mouths(c, tid);
+    f.drifted = { tavern: 3, mines: 4 };
+    expect(watchOf(c, tid)).toBe(0.5);
+    expect(defenceOf(c, tid).men).toBeLessThan(whole.men);
+    expect(defenceOf(c, tid).total).toBeLessThan(whole.total);
+    expect(couplesOf(t, f)).toBe(wives - 3);
+    expect(mouths(c, tid)).toMatchObject({ men: eat.men - 4, women: eat.women - 3 });
+  });
+
+  it('a shut tavern sends its women home; women ordered into it stay there', () => {
+    const { c, tid } = world(), f = folkOf(c, tid), t = c.territories[tid];
+    t.buildings = [...t.buildings.filter((b) => b !== 'tavern'), 'tavern'];
+    f.men = 8; f.women = 8; f.stores.food = 5000;
+    c.factions[0].supplies = 30;
+    seat(c, 0, tid);
+    expect(issueDecree(c, 0, tid, 'tavernWomen')).toBe('');
+    driftTown(c, tid);
+    expect(driftedOf(c, tid).tavern).toBe(8 * SHARE);
+    t.decrees = [];
+    f.drifted = { tavern: 3, mines: 0 };
+    expect(issueDecree(c, 0, tid, 'closeTavern')).toBe('');
+    driftTown(c, tid);
+    expect(driftedOf(c, tid).tavern).toBe(0);
+  });
+
+  it('a nation that has lately lost a known person dips in standing, every town together', () => {
+    const { c, tid } = world(), f = folkOf(c, tid);
+    driftSeason(c);
+    const was = faithAt(c, tid);
+    f.notables.push({ name: 'Maren', gender: 'f', kind: 'mother', deed: 'raised 9 children', kids: 9, turn: 1, lost: { turn: c.turn, how: 'killed' } });
+    f.stores.food = 5000;
+    driftSeason(c);
+    expect(faithAt(c, tid)).toBeLessThan(was);
+    expect(NATION_DIP).toBeGreaterThan(0);
+  });
 });

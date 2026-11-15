@@ -1,0 +1,38 @@
+# What the numbers should produce
+
+Nearly every rate in `src/sim` was a first guess. This page says what a campaign should *feel* like, as
+figures a computer-played campaign can be measured against, so the rates can be tuned toward them.
+These targets are the gathering session's proposal from the owner's design (`docs/DESIGN.md`); the
+owner may change any of them. Measure with `scripts/health.test.ts` (run with `HEALTH=1`): many
+computer-played campaigns, the player let be or played by the computer, and one report of every
+figure below against its band.
+
+A season is three months; a campaign is meant to be won or lost over a few generations, not a few years.
+
+| Area | Figure | Target band |
+| --- | --- | --- |
+| Pace | Seasons until a campaign is decided | 60 to 160 (15 to 40 years) |
+| Pace | Campaigns undecided at 200 seasons | under 10% |
+| Pace | Seasons until a rival reaches its next age | 20 to 60 |
+| People | A town left alone, grown people after 20 years | 1.3 to 2 times what it began with, held by its houses and food |
+| People | A town visited every season vs left alone, after 20 years | visited ends 10 to 40% larger |
+| People | Towns that die out (no people at all) per 100 town-lifetimes | under 3, and only after war, famine or plague together |
+| People | Towns left all one sex | under 5% |
+| Food | Share of seasons a farmed town is hungry | under 2% |
+| Food | Share of seasons an unfarmed town with no convoy is hungry | 15 to 40% |
+| Food | Deaths from hunger in a nation, per 20 years | some (1 to 10), never most of a town at once unless besieged or cut off |
+| Stores | A nation's supplies after 20 years of peace | enough for 2 to 4 seasons of its full upkeep, not hoards |
+| Faith | Widest gap between two towns of one nation | 20 to 60 most of the time |
+| Faith | A nation that builds churches and keeps its towns fed, over 20 years | moves toward the holy end by 15 to 40 |
+| Drift | Share of town-seasons with anyone drifted | 5 to 20%, more in hungry, raided or newly taken towns |
+| Drift | With sensible decrees vs none | clearly fewer falling towns (at least a third fewer) |
+| Threats | Raids on a given town | about once in 3 to 5 years |
+| Threats | Outcome of raids | held off 30 to 50%, raided 40 to 60%, taken under 15% |
+| Threats | Captives got back when the player has an army near | about half |
+| Conquest | Taken towns that rise if left ungarrisoned | 15 to 35% within 5 years; under 5% with an army in them |
+| Armies | A nation's men under arms | 10 to 25% of its grown men in war, under 10% in peace |
+| Sieges | A besieged town defended with walls and men | holds 60 to 85% (not every time) |
+
+When tuning: change one area's rates at a time, keep a short before/after table in the commit, and
+never loosen a test to make a number fit; change the test only where its figure was itself a guess,
+and say so.

@@ -16,6 +16,7 @@ import { faithAt } from './townfaith';
 import { settleStores } from './stores';
 import { Orders, keepOrders } from './governor';
 import type { Sky } from './campaign';
+import { driftBack, withDrift } from './driftintown';
 
 declare module './campaign' {
   interface Campaign {
@@ -52,6 +53,8 @@ export interface VisitAfter {
   seconds?: number;
   /** The town's people and stores as the player left them (`Game.census()`). */
   folk?: Partial<Census>;
+  /** Who of the town was drifted to the tavern and the mine as the player left (driftintown.ts). */
+  drifted?: { tavern?: number; mines?: number };
   /** What the town was set to as the player left (`Game.orders()`): it carries on with them (governor.ts). */
   orders?: Partial<Orders>;
 }
@@ -90,7 +93,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
   if (!(army && army.owner === 0 && army.hero)) delete hero.fights;
   const fort = t.buildings.includes('fortress');
   const works = t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]);
-  const town = record.town ?? t.town?.b ?? [];
+  const town = record.town ?? (t.town?.coarse ? undefined : t.town?.b) ?? [];
   return {
     ...(weatherAt(c, t.id) ? { weather: weatherAt(c, t.id) as Sky } : {}),
     climate: BIOMES[biomeOf(c, t.id)].climate,
@@ -103,7 +106,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
         buildings: [...(fort ? ['tower', 'tower'] : []), ...works], ...(town.length ? { town } : {}),
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
-        ...musterFolk(c, t.id),
+        ...withDrift(c, t.id, musterFolk(c, t.id)),
       },
     }],
   };
@@ -119,6 +122,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   // The town is as the visit left it: everyone born there, less the dead and the taken.
   const census = cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census);
+  if (census) driftBack(c, land.id, after.drifted);
   keepOrders(c, land.id, after.orders);
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
