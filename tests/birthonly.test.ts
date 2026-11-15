@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { AIController } from '../src/sim/ai';
 import { Game } from '../src/sim/game';
-import { BORN_ONLY, roomForCouples, unhousedCouples } from '../src/sim/birthonly';
+import { BORN_ONLY, TOWN_BIRTH, roomForCouples, unhousedCouples } from '../src/sim/birthonly';
 import { VISIT_SECONDS } from '../src/sim/visit';
 import { run, setups, spot, villagers } from './helpers';
 
@@ -36,7 +36,7 @@ describe('in the campaign a town\'s people are born, not bought', () => {
     expect(skirmish.g.cmdTrain(0, skirmish.tc.id, 'villager')).toBe(true);
   });
 
-  it('a housed couple raises about one child in a visit, who does not come of age in it; a skirmish is as fast as ever', () => {
+  it('a housed couple raises its first child in a little more than a visit, who does not come of age; a skirmish is as fast as ever', () => {
     const born = (campaign: boolean, seconds: number) => {
       const { g, p } = town();
       g.bornOnly = campaign;
@@ -48,7 +48,9 @@ describe('in the campaign a town\'s people are born, not bought', () => {
       run(g, seconds);
       return { born: p.stats.born, grew: villagers(g, 0).length - before, young: h.young?.length ?? 0 };
     };
-    const visit = born(true, VISIT_SECONDS);
+    // The first child takes TOWN_BIRTH seconds (birthonly.ts): none in a short stay, at most one in a visit, one soon after.
+    expect(born(true, VISIT_SECONDS).born).toBeLessThanOrEqual(1);
+    const visit = born(true, TOWN_BIRTH + 30);
     expect(visit.born).toBe(1);
     expect(visit.grew).toBe(0);
     expect(visit.young).toBe(1);
@@ -89,7 +91,7 @@ describe('in the campaign a town\'s people are born, not bought', () => {
     const ais = [new AIController(g, 0), new AIController(g, 1)];
     ais.forEach((a) => a.setLevel(1));
     let hired = false;
-    run(g, 60 * 12, () => {
+    run(g, 60 * 20, () => {
       ais.forEach((a) => a.update());
       for (const b of g.buildings) if (b.queue.some((q) => q.id === 'villager')) hired = true;
     });
