@@ -30,7 +30,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
 | `birthonly` | 60 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
 | `calamity` | 179 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, famine, game, wrath | none of its own | not yet |
-| `campaign` | 1809 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, champion, country, court, creed, data, dynasty, game, hero, leaders, powers, seasonfolk, story, temper, threats, township | none of its own | not yet |
+| `campaign` | 1810 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, champion, country, court, creed, data, dynasty, game, hero, leaders, notableweight, powers, seasonfolk, story, temper, threats, township | none of its own | not yet |
 | `captivity` | 129 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, data, game, nursery | captivity.test.ts | not yet |
 | `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
 | `contagion` | 96 | Plague that comes from outside a town. | calamity, game | contagion.test.ts | not yet |
@@ -42,7 +42,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `dynasty` | 212 | Who leads a people when their leader falls. Every leader keeps a house: children are born to it as the turns go | ageing, campaign, champion, court, data, hero, leaders, powers | dynasty.test.ts | not yet |
 | `famine` | 185 | Famine: what happens to a town that has run out of food. | data, game, wrath | famine.test.ts | not yet |
 | `folk` | 145 | What the common people say: villagers at every job and warriors of every arm, each in three tempers. A town that | none | none of its own | not yet |
-| `game` | 3451 | Core simulation. No rendering or DOM access in here so it can run headless. | ageing, beaten, birthonly, calamity, captivity, champion, contagion, creed, data, daylight, hero, household, map, marauders, muster, nursery, path, powers, rescue, tavernfall, temper, township, wrath | none of its own | not yet |
+| `game` | 3455 | Core simulation. No rendering or DOM access in here so it can run headless. | ageing, beaten, birthonly, calamity, captivity, champion, contagion, creed, data, daylight, hero, household, map, marauders, muster, notableweight, nursery, path, powers, rescue, tavernfall, temper, township, wrath | none of its own | not yet |
 | `hero` | 102 | A nation's leader on the field: who they are, how they were made, and what the battles they live through do for them. | leaders | none of its own | not yet |
 | `household` | 103 | A man at war is still of his house (docs/DESIGN.md). | game | household.test.ts | not yet |
 | `leaders` | 547 | The leader of each civilisation and everything they say. | none | none of its own | not yet |
@@ -51,9 +51,10 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `marauders` | 157 | The marauders over a long battle: they keep pace with the age, and a burnt camp is not the end of them. | game | marauders.test.ts | not yet |
 | `muster` | 50 | A soldier costs a person (docs/DESIGN.md, step 1). | data, game | muster.test.ts | not yet |
 | `notable` | 50 | Notable people: the few a nation knows by name. Nothing here decides who they are; it reads what the rules | champion, game, hero | notable.test.ts | not yet |
+| `notableweight` | 113 | The weight of notable people: a home known for what it carries in, a veteran of their own town, and the grief and dip in standing a loss leaves (plain numbers for drift.ts to read). | game, township (types only) | notable-weight.test.ts | not yet |
 | `nursery` | 51 | Children. A child is never a unit on the map: it is an entry in the record of the house it was born to (its | data | nursery.test.ts | not yet |
 | `path` | 266 | Grid A* with rectangle goals and line-of-sight smoothing. | none | none of its own | not yet |
-| `portrait` | 236 | Portraits: which woodblock icon stands beside a person, and which marks sit over it (docs/DESIGN.md, "Icons tell | campaign, champion, famine, game, township | portrait.test.ts | not yet |
+| `portrait` | 240 | Portraits: which woodblock icon stands beside a person, and which marks sit over it (docs/DESIGN.md, "Icons tell | campaign, champion, famine, game, household, notableweight, township | portrait.test.ts | not yet |
 | `powers` | 92 | What a leader learns as they rise. At three ranks of veterancy (Blooded, Veteran, Legend) a leader comes into one | data, hero | powers.test.ts | not yet |
 | `primer` | 107 | Teaching the campaign: what a new player is told to do first, and the page that explains the rest. | beaten, campaign, champion, creed, hero, powers, story, visit | primer.test.ts | not yet |
 | `rescue` | 130 | Getting captives back without burning the camp down, and what a camp's keeper should do about it. | creed, game, path | rescue.test.ts | not yet |
@@ -63,6 +64,6 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `tavernfall` | 24 | The tavern as a town falls. As a town grows less moral its tavern keeps later hours and takes more gold; what is | creed | tavernfall.test.ts | not yet |
 | `temper` | 127 | A leader's temperament, as answered by whoever plays them in the voice booth. It steers how the | none | none of its own | not yet |
 | `threats` | 390 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it. | acts, ageing, campaign, creed, township | threats.test.ts | not yet |
-| `township` | 197 | Towns that keep their people and their stores (docs/DESIGN.md, step 2). | ageing, campaign, household | township.test.ts | not yet |
+| `township` | 200 | Towns that keep their people and their stores (docs/DESIGN.md, step 2). | ageing, campaign, household, notableweight | township.test.ts | not yet |
 | `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, game, township | visit.test.ts | not yet |
 | `wrath` | 29 | How hard acts of God fall on a people (docs/DESIGN.md, "Acts of God"). | game | wrath.test.ts | not yet |
