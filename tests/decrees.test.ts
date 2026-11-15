@@ -23,10 +23,16 @@ describe('a decree', () => {
     expect(c.factions[0].supplies).toBe(before - DECREES.guards.cost);
     expect(decreesAt(c, tid)).toHaveLength(1);
     expect(decreeBar(c, 0, tid, 'guards')).toMatch(/already in force/);
+    // Given in the player's part of a season, it holds through the turn that follows (when towns drift), and its seasons from there.
+    expect(c.phase).toBe('player');
     c.turn += DECREES.guards.seasons;
+    decreesSeason(c);
+    expect(decreesAt(c, tid)).toHaveLength(1);
+    c.turn += 1;
     decreesSeason(c);
     expect(decreesAt(c, tid)).toHaveLength(0);
   });
+
 
   it('is given only to a town of your own, with what it needs there, and what you can pay for', () => {
     const { c, tid, other } = world(), t = c.territories[tid];

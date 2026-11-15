@@ -22,7 +22,10 @@ import { sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
 import { BIOMES, COMPANIES, ageOf, armySize, armyStrength, biomeOf, heroFor, reach, virtueOf, weatherAt } from './campaign';
 import { CIV_IDS, TECHS } from './data';
-import { reckonArmies } from './armytown';
+import { MEN_A_COMPANY, reckonArmies } from './armytown';
+import { creditArmy } from './warhouse';
+import { raisedInBattle } from './dynasty';
+import { HeroSpec, MAX_RANK } from './hero';
 import { Band, breakBand, chance, note } from './threats';
 
 declare module './campaign' {
@@ -39,6 +42,8 @@ export const FIGHT = {
   day: 0.15,
   /** The share of its companies an army loses beating a band its equal, and when it is beaten. */
   cost: 0.25, rout: 0.4,
+  /** The chance a leader riding with an army routed by a band, with nobody watching, is among the fallen. */
+  leaderFalls: 0.1,
   /** What a band loses when it beats an army off: this share of the army's strength, and never less than one. */
   bled: 0.3,
   /**
@@ -99,16 +104,42 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
   if (mine >= theirs) {
     const lost = lose(a, Math.round(armySize(a) * FIGHT.cost * Math.min(1, theirs / mine)));
     note(c, out, 'broken', b, b.at, `${ambush ? `${cap(b.name)} fell on ${whoseArmy(c, a).replace(/^Your/, 'your')} at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
+    const felled = b.strength * MEN_A_COMPANY;
     breakBand(c, b, out, a);
     a.vet = Math.min(3, a.vet + 1);
+    creditArmy(c, a.id, felled); // counted to the houses of its men (warhouse.ts)
+    leaderAfter(c, a, true, out, { band: b.name });
     reckonArmies(c);
     return true;
   }
   const lost = lose(a, Math.max(1, Math.round(armySize(a) * FIGHT.rout)));
   b.strength = Math.max(1, b.strength - Math.max(1, Math.round(mine * FIGHT.bled)));
   note(c, out, 'beaten', b, b.at, `${ambush ? `${cap(b.name)} fell on ${whoseArmy(c, a).replace(/^Your/, 'your')} at ${at} and routed it` : `${whoseArmy(c, a)} went against ${b.name} at ${at} and was beaten off`}${lost ? `, ${ambush ? 'with the loss of' : 'losing'} ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
+  leaderAfter(c, a, false, out, { band: b.name, fell: a.hero && chance(c, b.id * 131 + a.id, 71) < FIGHT.leaderFalls });
   reckonArmies(c);
   return false;
+}
+
+/** How the leader came out of a fight with a band, if they rode with the army. `fell`, `heroRank`, `acclaimed`, `survivors`: as a battle fought in person hands them back (campaign.ts's finishBattle). */
+export interface LeaderAfter { fell?: boolean; heroRank?: number; acclaimed?: Partial<HeroSpec>; survivors?: Record<string, number>; band?: string }
+/**
+ * The leader rode with the army against a band, at the usual risk: fallen, they are dead and the people's
+ * standing in war is a rank the less (or, if the army raised one of its own on the field, that one leads now);
+ * come through a fight won, they are the more seasoned for it.
+ */
+function leaderAfter(c: Campaign, a: Army, won: boolean, out: string[], after: LeaderAfter): void {
+  if (!a.hero) return;
+  const fac = c.factions[a.owner], hero = heroFor(c, a.owner), rank = fac.heroRank ?? 0, alive = after.survivors;
+  if (after.acclaimed && alive && (alive[after.acclaimed.fights ?? ''] ?? alive.warlord) > 0) { raisedInBattle(c, a.owner, after.acclaimed, after.heroRank ?? 0); return; }
+  if (after.fell || (alive && !hero.fights && !(alive[hero.calling] > 0))) {
+    a.hero = false;
+    fac.heroAlive = false;
+    fac.heroRank = Math.max(0, rank - 1);
+    out.push(`${hero.name} fell in the fight with ${after.band ?? 'the band'}.`);
+    return;
+  }
+  if (after.heroRank != null && Number.isFinite(after.heroRank)) fac.heroRank = Math.max(0, Math.min(MAX_RANK, Math.round(after.heroRank)));
+  else if (won) fac.heroRank = Math.min(MAX_RANK, rank + 1);
 }
 
 /** The pending battle with a band as a real-time match: the army's own companies against the band's men, on open ground. */
@@ -121,9 +152,10 @@ export function bandBattle(c: Campaign): BattleConfig | null {
   for (const [type, n] of Object.entries(a.units)) add(mine, type, n);
   const bows = Math.floor(b.strength * FIGHT.bows);
   add(theirs, 'archers', bows); add(theirs, 'infantry', Math.max(1, b.strength - bows));
-  // The leader keeps to the camp while the army clears a band: nobody's fate but the army's rides on it.
+  // The leader fights beside the army they ride with (docs/DESIGN.md has him with his army), and may fall there;
+  // an army without them fights alone.
   const hero = heroFor(c, a.owner);
-  delete hero.fights;
+  if (!a.hero) delete hero.fights;
   // A band is the same people every time, and never the player's own.
   const civ = CIV_IDS.filter((id) => id !== c.factions[a.owner].civ)[(t.seed + b.id) % (CIV_IDS.length - 1)];
   const sky = weatherAt(c, p.to);
@@ -133,7 +165,7 @@ export function bandBattle(c: Campaign): BattleConfig | null {
     seed: t.seed * 31 + b.id, size: 56, level: 0, humanAttacks: true, field: true, sea: false,
     title: p.ambush ? `${cap(b.name)} fall on your army at ${t.name}` : `The fight with ${b.name} at ${t.name}`,
     setups: [
-      { name: sideName(c, a.owner), color: c.factions[a.owner].color, isAI: false, team: 0, civ: c.factions[a.owner].civ, hero, leaderAway: true, virtue: virtueOf(c, a.owner), bonus: { units: mine, res: 30 * p.aStr, age: ageOf(c, a.owner), armed: true, buildings: [], atk: a.vet } },
+      { name: sideName(c, a.owner), color: c.factions[a.owner].color, isAI: false, team: 0, civ: c.factions[a.owner].civ, hero, ...(a.hero ? {} : { leaderAway: true }), virtue: virtueOf(c, a.owner), bonus: { units: mine, res: 30 * p.aStr, age: ageOf(c, a.owner), armed: true, buildings: [], atk: a.vet } },
       // A band is a step behind a nation in its arms.
       { name: cap(b.name), color: FIGHT.color, isAI: true, team: 1, civ, bonus: { units: theirs, res: 30 * b.strength, age: Math.max(0, ageOf(c, a.owner) - 1), armed: true, buildings: [], atk: 0 } },
     ],
@@ -145,7 +177,7 @@ export function bandBattle(c: Campaign): BattleConfig | null {
  * `attacker` / `defender`: it was fought out and the army won or lost; `survivors` (its units left, by kind) say
  * who of a winning army lived. Returns whether the band was broken.
  */
-export function settleBandFight(c: Campaign, how: 'auto' | 'attacker' | 'defender', survivors?: Record<string, number>): boolean {
+export function settleBandFight(c: Campaign, how: 'auto' | 'attacker' | 'defender', survivors?: Record<string, number>, lead: LeaderAfter = {}): boolean {
   const p = c.pending;
   if (!p || p.band === undefined) return false;
   c.pending = null;
@@ -175,13 +207,16 @@ export function settleBandFight(c: Campaign, how: 'auto' | 'attacker' | 'defende
       }
       const lost = before - armySize(a);
       note(c, out, 'broken', b, b.at, `${p.ambush ? `${cap(b.name)} fell on your army at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost > 0 ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
+      const felled = b.strength * MEN_A_COMPANY;
       breakBand(c, b, out, a);
       a.vet = Math.min(3, a.vet + 1);
+      creditArmy(c, a.id, felled); // counted to the houses of its men (warhouse.ts)
     } else {
       const lost = lose(a, Math.max(1, Math.round(before * FIGHT.rout)));
       b.strength = Math.max(1, b.strength - 1);
       note(c, out, 'beaten', b, b.at, `${p.ambush ? `${cap(b.name)} fell on your army at ${at} and routed it` : `${whoseArmy(c, a)} went against ${b.name} at ${at} and was routed`}${lost ? `, losing ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
     }
+    leaderAfter(c, a, won, out, { ...lead, survivors, band: b.name });
     reckonArmies(c);
   }
   c.log.push(...out);

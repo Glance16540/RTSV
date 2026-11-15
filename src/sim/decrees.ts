@@ -98,7 +98,9 @@ export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKin
   if (bar) return bar;
   const t = c.territories[tid], d = DECREES[kind], present = leaderAt(c, f, tid), strength = present ? 1 : MESSENGER;
   c.factions[f].supplies -= d.cost;
-  t.decrees = [...decreesAt(c, tid), { kind, until: c.turn + d.seasons - 1, strength }];
+  // A decree given in the player's part of a season holds through the season's turn that follows, which is when
+  // towns drift (drift.ts): it acts in the season it is given, as one given while the season turns does.
+  t.decrees = [...decreesAt(c, tid), { kind, until: c.turn + d.seasons - 1 + (c.phase === 'player' ? 1 : 0), strength }];
   if (kind === 'alms') sendAlms(c, f, tid, Math.round(ALMS_FOOD * strength));
   heardDecree(c, f, tid, kind, strength); // it pleases some of the nobles and angers others (nobles.ts)
   if (f === 0) c.log.push(`${d.name}: decreed in ${t.name}${present ? '' : ', by messenger'}.`);
