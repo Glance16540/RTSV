@@ -8,6 +8,7 @@ import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
 import { threatsOfMen } from './threats';
+import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
@@ -26,6 +27,8 @@ import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
+import { canPayFor, payFor } from './prices';
+import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { Muster, armiesJoined, homeOf, menMustered, reckonArmies, seasonOfArmies } from './armytown';
@@ -947,12 +950,12 @@ export const truceCost = (civ: string): number => (civ === 'arabs' ? 1 : TRUCE_C
 export const giftCost = (civ: string): number => (civ === 'arabs' ? 3 : GIFT_COST);
 export const ageOf = (c: Campaign, f: number): number => (f < 0 ? 0 : c.factions[f].age ?? 0);
 const ageEdge = (c: Campaign, f: number): number => 1 + AGE_EDGE * ageOf(c, f);
-export const canAdvance = (c: Campaign, f: number): boolean => ageOf(c, f) < AGE_COST.length && c.factions[f].alive && c.factions[f].supplies >= ageCost(c, f);
+export const canAdvance = (c: Campaign, f: number): boolean => ageOf(c, f) < AGE_COST.length && c.factions[f].alive && canPayFor(c, f, 'age', ageCost(c, f));
 /** Bring a people into the next age: stronger armies everywhere, and battles begin in that age with its weapons. */
 export function advanceAge(c: Campaign, f: number): boolean {
   if (!canAdvance(c, f)) return false;
   const fac = c.factions[f];
-  fac.supplies -= ageCost(c, f);
+  payFor(c, f, 'age', ageCost(c, f));
   fac.age = ageOf(c, f) + 1;
   c.log.push(`${f === 0 ? 'Your people have' : `${fac.name} have`} entered the ${AGES[fac.age].name}.`);
   if (f === 0) advise(c, 'p_ageup');
@@ -980,12 +983,17 @@ export function strengthVs(a: Army, foe: Record<string, number> = {}, heroRank =
 export const armyStrength = (a: Army, c?: Campaign): number => strengthVs(a, {}, c ? rankWith(c, a) : 0);
 const rankWith = (c: Campaign, a: Army): number => (a.hero ? c.factions[a.owner]?.heroRank ?? 0 : 0);
 
+/** What one land of this people yields in a season, in supplies: it goes into the land's own town (harvest.ts). */
+export function landIncome(c: Campaign, f: number, t: Territory): number {
+  const world = worldNow(c);
+  return Math.max(0, territoryIncome(t, c.factions[f].civ) + countryYield(c, t.id) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0));
+}
+/** What a people earns as a whole in a season, beyond its lands' yield: it goes into its chief town. */
+export const wholeIncome = (c: Campaign, f: number): number => placeGood(c, f, 'supplies') + (c.factions[f].civ === 'persia' ? Math.floor(landOf(c, f) / 3) : 0);
 export function income(c: Campaign, f: number): number {
   let n = 0;
-  let held = 0;
-  const world = worldNow(c);
-  for (const t of c.territories) if (t.owner === f) { n += Math.max(0, territoryIncome(t, c.factions[f].civ) + countryYield(c, t.id) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0)); held++; }
-  return n + placeGood(c, f, 'supplies') + (c.factions[f].civ === 'persia' ? Math.floor(held / 3) : 0);
+  for (const t of c.territories) if (t.owner === f) n += landIncome(c, f, t);
+  return n + wholeIncome(c, f);
 }
 export function territoryIncome(t: Territory, civ = ''): number {
   const hearth = civ === 'hearth' ? 1 : 0;
@@ -1033,23 +1041,23 @@ export function winChance(aStr: number, dStr: number, home = 1.1): number {
 
 export function canBuild(c: Campaign, f: number, tid: number, site: string): boolean {
   const t = c.territories[tid];
-  return t.owner === f && !!SITES[site] && (site !== 'harbour' || onSea(c, tid)) && !t.buildings.includes(site) && t.buildings.length < slots(t) && c.factions[f].supplies >= siteCost(t, site, c.factions[f].civ);
+  return t.owner === f && !!SITES[site] && (site !== 'harbour' || onSea(c, tid)) && !t.buildings.includes(site) && t.buildings.length < slots(t) && canPayFor(c, f, site, siteCost(t, site, c.factions[f].civ));
 }
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && c.factions[f].supplies >= companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid)) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
+  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid))) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
   const a = armyAt(c, tid);
-  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && c.factions[f].supplies >= heroCost(c.factions[f].civ);
+  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && canPayFor(c, f, 'hero', heroCost(c.factions[f].civ));
 }
 
 // ---- Actions ----
 
 export function build(c: Campaign, f: number, tid: number, site: string): boolean {
   if (!canBuild(c, f, tid, site)) return false;
-  c.factions[f].supplies -= siteCost(c.territories[tid], site, c.factions[f].civ);
+  payFor(c, f, site, siteCost(c.territories[tid], site, c.factions[f].civ), { at: tid });
   c.territories[tid].buildings.push(site);
   return true;
 }
@@ -1057,7 +1065,7 @@ export function build(c: Campaign, f: number, tid: number, site: string): boolea
 /** Raise one company. It joins the army standing in the territory, or forms a new one. */
 export function raise(c: Campaign, f: number, tid: number, type: string): boolean {
   if (!canRaise(c, f, tid, type)) return false;
-  c.factions[f].supplies -= companyCost(c.territories[tid], type, c.factions[f].civ, hireOff(c, f, tid));
+  payFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(c.territories[tid], type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid });
   let a = armyAt(c, tid);
   if (!a) {
     a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, vet: c.factions[f].civ === 'japan' ? 1 : 0, moved: true }; // fresh troops march next turn
@@ -1070,7 +1078,7 @@ export function raise(c: Campaign, f: number, tid: number, type: string): boolea
 
 export function summonHero(c: Campaign, f: number, tid: number): boolean {
   if (!canSummonHero(c, f, tid)) return false;
-  c.factions[f].supplies -= heroCost(c.factions[f].civ);
+  payFor(c, f, 'hero', heroCost(c.factions[f].civ), { at: tid });
   strangerLeads(c, f);
   c.factions[f].heroAlive = true;
   seat(c, f, tid);
@@ -1166,7 +1174,7 @@ export const homeEdge = (c: Campaign, attacker: number): number => (c.factions[a
  */
 export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
-  if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || c.factions[0].supplies < truceCost(c.factions[0].civ) || c.phase !== 'player' || fac.refused === c.turn) return false;
+  if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || !canPayFor(c, 0, 'dealing', truceCost(c.factions[0].civ)) || c.phase !== 'player' || fac.refused === c.turn) return false;
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
   const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0);
   if (c.honor < 0 || rand(c) > willing) {
@@ -1175,7 +1183,7 @@ export function offerTruce(c: Campaign, f: number): boolean {
     c.log.push(`${fac.name} will not hear of a truce.`);
     return false;
   }
-  c.factions[0].supplies -= truceCost(c.factions[0].civ);
+  payFor(c, 0, 'dealing', truceCost(c.factions[0].civ));
   c.truces.push({ with: f, until: c.turn + TRUCE_TURNS });
   say(c, f, 'truce');
   c.log.push(`A truce with ${fac.name} until turn ${c.turn + TRUCE_TURNS}.`);
@@ -1190,7 +1198,7 @@ export function offerTruce(c: Campaign, f: number): boolean {
 export function canAlly(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   return !!fac && fac.isAI && fac.alive && fac.refused !== c.turn && c.ally < 0 && c.phase === 'player' && c.honor >= 0 && c.truces.some((t) => t.with === f && t.until >= c.turn)
-    && c.factions.filter((x) => x.alive).length >= 3 && c.factions[0].supplies >= ALLIANCE_COST;
+    && c.factions.filter((x) => x.alive).length >= 3 && canPayFor(c, 0, 'dealing', ALLIANCE_COST);
 }
 export function offerAlliance(c: Campaign, f: number): boolean {
   if (!canAlly(c, f)) return false;
@@ -1203,7 +1211,7 @@ export function offerAlliance(c: Campaign, f: number): boolean {
     c.log.push(`${fac.name} will not bind themselves to you.`);
     return false;
   }
-  c.factions[0].supplies -= ALLIANCE_COST;
+  payFor(c, 0, 'dealing', ALLIANCE_COST);
   c.ally = f;
   say(c, f, 'ally');
   c.log.push(`${fac.name} are now your allies.`);
@@ -1213,12 +1221,12 @@ export function offerAlliance(c: Campaign, f: number): boolean {
 /** Send a rival supplies. It earns goodwill, and an ally can spend them on troops. */
 export function canGift(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
-  return !!fac && fac.isAI && fac.alive && c.phase === 'player' && c.honor >= 0 && c.factions[0].supplies >= giftCost(c.factions[0].civ) && (c.ally === f || (fac.favor ?? 0) < MAX_FAVOR);
+  return !!fac && fac.isAI && fac.alive && c.phase === 'player' && c.honor >= 0 && canPayFor(c, 0, 'dealing', giftCost(c.factions[0].civ)) && (c.ally === f || (fac.favor ?? 0) < MAX_FAVOR);
 }
 export function sendGift(c: Campaign, f: number): boolean {
   if (!canGift(c, f)) return false;
   const fac = c.factions[f];
-  c.factions[0].supplies -= giftCost(c.factions[0].civ);
+  payFor(c, 0, 'dealing', giftCost(c.factions[0].civ));
   fac.supplies += GIFT_COST;
   fac.favor = Math.min(MAX_FAVOR, (fac.favor ?? 0) + 1);
   c.log.push(`You sent ${fac.name} supplies.`);
@@ -1231,8 +1239,8 @@ export function answerDemand(c: Campaign, pay: boolean): void {
   if (!d) return;
   const fac = c.factions[d.from];
   c.demand = null;
-  if (pay && c.factions[0].supplies >= d.amount) {
-    c.factions[0].supplies -= d.amount;
+  if (pay && canPayFor(c, 0, 'dealing', d.amount)) {
+    payFor(c, 0, 'dealing', d.amount);
     fac.supplies += d.amount;
     c.truces.push({ with: d.from, until: c.turn + 4 });
     c.log.push(`You paid ${fac.name} ${d.amount} supplies. They will leave you be until turn ${c.turn + 4}.`);
@@ -1282,10 +1290,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     if (t.capital >= 0 && t.capital !== p.attacker) tell(c, `${t.name}, chief town of ${fname(c, t.capital)}, fell to ${fname(c, p.attacker)}.`);
     if (p.defender < 0 && c.factions[p.attacker].civ === 'wild') c.factions[p.attacker].supplies += 2; // plunder
     if (t.capital >= 0 && t.capital !== p.attacker) {
-      // Sacking a capital carries off its stores.
-      const loot = Math.floor(c.factions[t.capital].supplies / 2);
-      c.factions[t.capital].supplies -= loot;
-      c.factions[p.attacker].supplies += loot;
+      // Sacking a capital carries off its stores: they are in the town, which is the taker's now (stores.ts).
       t.capital = -1;
     }
     townTaken(c, t.id, p.defender, p.attacker); // its people stay, and resent it (conquered.ts)
@@ -1389,7 +1394,7 @@ export function continueAI(c: Campaign): void {
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
       c.truces = c.truces.filter((tr) => tr.until >= c.turn);
       seasonOfFaith(c, (f, by, at) => shiftVirtue(c, f, by, { at })); // every town moves by its own church, tavern and holy place (townfaith.ts)
-      for (const x of c.factions) if (x.alive) x.supplies += Math.round(income(c, x.id) * (x.isAI ? [0.8, 1, 1.25][c.level] : 1));
+      harvest(c, (f, t) => landIncome(c, f, t), (f) => wholeIncome(c, f), (f) => (c.factions[f].isAI ? [0.8, 1, 1.25][c.level] : 1)); // each land's yield into its own town (harvest.ts)
       c.log.push(`Turn ${c.turn}.`);
       if (c.request && (c.request.until < c.turn || c.ally < 0 || !c.factions[c.request.foe].alive)) c.request = null;
       if (c.ally >= 0 && c.factions[c.ally].supplies >= 12 && c.factions[0].supplies < 6) {
@@ -1401,6 +1406,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
@@ -1429,7 +1435,7 @@ export const taleNow = (c: Campaign): Tale | undefined => (c.tale ? TALES.find((
 /** Can the player afford this answer to the tale before them? */
 export function canAnswer(c: Campaign, choice: 'a' | 'b'): boolean {
   const tale = taleNow(c);
-  return !!tale && c.phase === 'player' && c.factions[0].supplies + tale[choice].supplies >= 0;
+  return !!tale && c.phase === 'player' && (tale[choice].supplies >= 0 || canPayFor(c, 0, 'dealing', -tale[choice].supplies));
 }
 /** The player answers the tale before them. */
 export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
@@ -1439,7 +1445,7 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
   const result = taleText(c, ch.result);
   c.tale = null;
   (c.answers ??= []).push({ id: tale.id, choice, turn: c.turn, land: t.land, rival: t.rival, tribe: t.tribe });
-  me.supplies += ch.supplies;
+  if (ch.supplies < 0) payFor(c, 0, 'dealing', -ch.supplies, { at: t.land }); else me.supplies += ch.supplies;
   if (ch.favor && t.rival > 0) c.factions[t.rival].favor = Math.max(-MAX_FAVOR, Math.min(MAX_FAVOR, (c.factions[t.rival].favor ?? 0) + ch.favor));
   if (ch.militia && c.territories[t.tribe]?.owner < 0) c.territories[t.tribe].militia = Math.max(1, c.territories[t.tribe].militia + ch.militia);
   if (ch.join && c.territories[t.tribe]?.owner < 0 && !c.territories[t.tribe].horde) {
@@ -1568,6 +1574,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     // A people that has lost its leader looks first to the house, then to its captains, and only then hires one.
     if (!f.heroAlive) autoSucceed(c, f.id);
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
+    relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
     // A people with stores to spare moves with the times.
     if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8) advanceAge(c, f.id);
     // A people shut in by the sea builds a harbour before anything else.

@@ -30,13 +30,13 @@ describe('stores replace supplies', () => {
     const { c, home } = world();
     c.factions[0].supplies = 20;
     settleStores(c);
-    const before = units(nationStores(c, 0)), food = folkOf(c, home.id).stores.food;
+    const before = units(nationStores(c, 0)), wood = folkOf(c, home.id).stores.wood;
     home.buildings = [];
     expect(build(c, 0, home.id, 'barracks')).toBe(true);
     expect(c.factions[0].supplies).toBe(20 - SITES.barracks.cost); // the price is what it was
     settleStores(c);
     expect(units(nationStores(c, 0))).toBe(before - SITES.barracks.cost * SUPPLY_UNITS);
-    expect(folkOf(c, home.id).stores.food).toBeLessThan(food);
+    expect(folkOf(c, home.id).stores.wood).toBe(wood - SITES.barracks.cost * SUPPLY_UNITS); // a Barracks is paid in timber, in the town where it stands (prices.ts)
     expect(c.factions[0].supplies).toBe(20 - SITES.barracks.cost);
     // A season's income is goods in store.
     const then = units(nationStores(c, 0)), due = income(c, 0), had = c.factions[0].supplies;

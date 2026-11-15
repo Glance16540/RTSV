@@ -62,12 +62,16 @@ describe('faith is a town\'s', () => {
   it('the pull: a church or a tavern holds a town apart from its nation only so far', () => {
     const { c, home, a, b } = realm();
     a.buildings = ['church']; b.buildings = ['tavern'];
-    for (let i = 0; i < 80; i++) turn(c);
+    // A garrison in each, so that neither rises and is lost over the eighty seasons: the pull is measured on the player's own towns.
+    for (const t of [a, b]) c.armies.push({ id: c.nextArmy++, owner: 0, at: t.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false });
+    // And no bands about: a raid sways the town it strikes, and one striking every season moves the nation's mean.
+    for (let i = 0; i < 80; i++) { c.bands = []; turn(c); }
     const mean = virtueOf(c, 0), limit = CHURCH_VIRTUE / PULL; // where a season's 6 is what the pull takes back
     expect(faithAt(c, a.id) - mean).toBeGreaterThan(limit - 12);
     expect(faithAt(c, a.id) - mean).toBeLessThanOrEqual(limit + 4);
     expect(mean - faithAt(c, b.id)).toBeGreaterThan(limit - 12);
     expect(mean - faithAt(c, b.id)).toBeLessThanOrEqual(limit + 4);
+    expect(a.owner).toBe(0); expect(b.owner).toBe(0);
     expect(Math.abs(faithAt(c, home.id) - mean)).toBeLessThanOrEqual(4); // a town with neither stands with its nation
     expect(faithSpread(c, 0).spread).toBeLessThanOrEqual(2 * limit + 8);
   }, LONG);

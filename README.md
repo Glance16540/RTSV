@@ -172,9 +172,11 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   town and how long those fires burn, how readily fire spreads, how often a harvest fails and on how many fields, and how fast a famine takes people. It does not
   soften what an enemy does directly: a Prophet's fire burns the building it falls on for as long as ever.
 - *On the campaign map* (`src/sim/acts.ts`): every season each held land may be struck by one of the three, by
-  the same measure of its holder's creed. A failed harvest costs what the land would have yielded. Plague stays
-  two seasons, costs a supply a season, takes a company a season from an army kept there and may pass to the land
-  next door. Fire costs supplies to rebuild and leaves the land's town damaged for the next battle there. A hard
+  the same measure of its holder's creed, and it falls on the land's own town. A failed harvest eats what the land
+  would have yielded from the town's stored food. Plague stays two seasons, kills a tenth of the town's grown people
+  a season (the old first, never a child), takes a company a season from an army kept there and may pass to the land
+  next door. Fire burns a share of the town's food and wood, is rebuilt out of the town's own stores and leaves the
+  land's town damaged for the next battle there. Nothing is charged to the nation besides. A hard
   strike (rare, and very rare for the Righteous) does more: unfed soldiers walk away, or a farm or barracks burns
   down. No famine or fire where it rains; twice as many under dust. Each is marked on the map and told in the log.
 
@@ -294,6 +296,14 @@ faction is a different people led by its own leader. You choose your people, or 
 
 Each turn you collect supplies from the land you hold and spend them, then march armies into
 neighbouring land.
+
+- **Paid in kind, earned by land** (`src/sim/prices.ts`, `src/sim/harvest.ts`). A Barracks is paid in
+  wood, a Fortress in stone, a company in food and gold, a truce in gold, at the old price in supplies,
+  from the town where it is done first; what your towns lack of a kind is made up in other goods. Each
+  land's yield goes into its own town, in the kinds the land gives.
+- **Convoys** (`src/sim/convoys.ts`). From a town's panel, send food, goods or a couple to another of
+  your towns by a road through your own lands. They arrive next season. Highwaymen take half the goods
+  of a convoy they catch with no army of yours on its road as strong as they are.
 
 - **Leaders.** Each rival is led by a named leader who speaks when you first meet, when armies
   march, when battles are won and lost, and when they fall. All 520 lines are written and shown
