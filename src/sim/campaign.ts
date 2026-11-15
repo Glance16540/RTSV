@@ -16,6 +16,7 @@ import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
 import { orphansSeason } from './orphans';
+import { kinSeasons } from './kin';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
@@ -1382,6 +1383,7 @@ export function continueAI(c: Campaign): void {
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
+      kinSeasons(c); // the leaders' households and inner circles (kin.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
