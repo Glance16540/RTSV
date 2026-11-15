@@ -58,16 +58,22 @@ export function bandButtons(c: Campaign, tid: number): string {
     `<button data-act="band:${a.id}/${b.id}" title="A battle you can enter: your army's own companies against the band's men on open ground. Nothing changes hands but the band's captives and what it stole.">⚔️ Send the army at ${esc(c.territories[a.at].name)} against ${esc(b.name)}</button>`)).join('');
 }
 
-/** What to ask the player when an army of theirs is about to fight a band. */
-export function bandPrompt(c: Campaign): { title: string; text: string } | null {
+/** What to ask the player when an army of theirs is about to fight a band; `decline`: whether the fight can be called off (not when the band came against the army). */
+export function bandPrompt(c: Campaign): { title: string; text: string; decline: boolean } | null {
   const p = c.pending, b = (c.bands ?? []).find((x) => x.id === p?.band);
   if (!p || !b) return null;
   const held = b.held.reduce((n, h) => n + h.men.length + h.women.length, 0);
+  const odds = `Your army's strength of ${p.aStr} against ${BANDS[b.kind].name.toLowerCase()} of strength ${b.strength}, at ${esc(c.territories[p.from].name)}. ` +
+    (held ? `They hold ${plural(held, 'person', 'people')}, who go free if the band is broken. ` : '');
+  if (p.ambush) return {
+    title: `${b.name[0].toUpperCase() + b.name.slice(1)} fall on your army!`,
+    text: `They have come against it in the open. ${odds}Fight it yourself, or leave it to the army, which will do as well or as badly as its strength allows. It cannot be called off.`,
+    decline: false,
+  };
   return {
     title: `Fight ${b.name}?`,
-    text: `Your army's strength of ${p.aStr} against ${BANDS[b.kind].name.toLowerCase()} of strength ${b.strength}, at ${esc(c.territories[p.to].name)}. ` +
-      (held ? `They hold ${plural(held, 'person', 'people')}, who go free if the band is broken. ` : '') +
-      'Fight it yourself on open ground, or leave it to the army, which will do as well or as badly as its strength allows. No land changes hands.',
+    text: `${odds}Fight it yourself on open ground, or leave it to the army, which will do as well or as badly as its strength allows. No land changes hands.`,
+    decline: true,
   };
 }
 
