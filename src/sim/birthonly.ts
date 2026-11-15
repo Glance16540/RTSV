@@ -12,12 +12,12 @@ import { BIRTH_TIME } from './data';
 
 /**
  * The pace of births in a campaign town, slower than a skirmish's (the owner's word: faster than on the map, but
- * far from a child every half minute, and "you can slow the birth rate"). A housed couple's first child takes over
- * thirteen minutes, a little more than a visit, unless its creed, clergy or renown hasten it; later ones come more
+ * far from a child every half minute, and "you can slow the birth rate"). A housed couple's first child takes about
+ * fifteen minutes, half again a visit, unless its creed, clergy or renown hasten it; later ones come more
  * slowly still, as in any house. What is born in a visit counts against the season's births on the map
  * (seasonfolk.ts, bornOnVisit), so a town visited every season ends some way larger than one left alone.
  */
-export const TOWN_BIRTH = 800;
+export const TOWN_BIRTH = 885;
 /** How much longer a birth takes here than the usual BIRTH_TIME. */
 export const birthPace = (g: Game): number => (g.bornOnly ? TOWN_BIRTH / BIRTH_TIME : 1);
 /**
