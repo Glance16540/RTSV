@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Campaign, armyAt, finishBattle, heroFor, moveArmy, newCampaign, raise, summonHero } from '../src/sim/campaign';
-import { HEIR_AGE, HEIR_EVERY, MAX_HEIRS, autoSucceed, canSucceed, claimants, comesOfAge, houseOf, ofAge, succeed, tickHouses } from '../src/sim/dynasty';
+import { FIRST_HEIR_AGE, HEIR_AGE, HEIR_EVERY, MAX_HEIRS, autoSucceed, canSucceed, claimants, comesOfAge, houseOf, ofAge, succeed, tickHouses } from '../src/sim/dynasty';
 import { Game } from '../src/sim/game';
 import { heirName } from '../src/sim/hero';
 import { leaderAt } from '../src/sim/court';
@@ -26,7 +26,7 @@ describe('the ruling house', () => {
     const house = houseOf(c, 0);
     expect(house.heirs.length).toBe(1);
     expect(ofAge(c, house.heirs[0])).toBe(false);
-    expect(comesOfAge(c, house.heirs[0])).toBe(HEIR_AGE - Math.floor(HEIR_AGE / 2));
+    expect(comesOfAge(c, house.heirs[0])).toBe(HEIR_AGE - FIRST_HEIR_AGE);
     expect(claimants(c, 0)).toEqual([]); // the leader lives
     for (let i = 0; i < HEIR_EVERY * (MAX_HEIRS + 2); i++) { c.turn++; tickHouses(c); }
     expect(house.heirs.length).toBe(MAX_HEIRS);

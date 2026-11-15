@@ -48,7 +48,7 @@ export const AREAS = [
           'The creator also sets the leader\'s skin (eight shades from fair to dark, or left to their people) and face (eight that differ in both halves, or left to chance); both are kept with the hero and worn in battle and on the campaign map', 'Each rank adds health, and strength or armour as chosen in the creator: all to the arm, all to armour, or the two by turns',
           'They are still flesh: however armoured, a leader takes at least three tenths of every blow, and one who falls is raised again a rank lower',
           'Starting a campaign asks for your people and who leads them: the nation\'s leader as written, that leader\'s other self, or one of your own making',
-          'Every leader keeps a house: one child half grown at the start, another every five turns while the leader lives, up to three; an heir comes of age at six turns',
+          'Every leader keeps a house: one child in their teens at the start (of age in two years), another every five turns while the leader lives, up to three; an heir comes of age at fifteen years (60 seasons), as everyone does',
           'When your leader falls you are asked who follows: an heir of age keeps the parent\'s gifts and the house, and begins with half their veterancy; or a captain from an army that has won a battle takes command where they stand with that army\'s veterancy, and the old house ends',
           'You may decide later, or hire a stranger at the capital as before; the stranger is a new person and ends the house',
           'Rival peoples settle their own succession the same way: eldest heir of age, else their best captain, else a hired stranger',

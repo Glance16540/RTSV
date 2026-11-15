@@ -14,7 +14,8 @@
 // home with her and they are written into a roof of her town to grow up there. Lost, they are lost with her.
 // (A people that takes captives into itself, as raiders do, gains the person outright at once: that is in
 // game.ts, and holds no one long enough for any of this.)
-import { GROW_TIME, LIFESPAN, NAMES_F, NAMES_M } from './data';
+import { ELDER_AT, GROW_TIME, LIFESPAN, NAMES_F, NAMES_M } from './data';
+import { GROWN_YEARS, OLD_YEARS } from './ageing';
 import type { Building, Captive, Game, Unit } from './game';
 import { Child, wardFor } from './nursery';
 
@@ -25,7 +26,8 @@ export const CAPTIVE_WARN = 120;
 /** Years of life a captive loses if held the whole time, and the years a whole adult life runs to. */
 export const YEARS_MAN = 20;
 export const YEARS_WOMAN = 30;
-export const LIFE_YEARS = 54;
+/** The years a whole adult life runs to, as the town's record reckons them (ageing.ts), so the years lost match. */
+export const LIFE_YEARS = (OLD_YEARS - GROWN_YEARS) / ELDER_AT;
 /** What each child born in captivity adds to the keeper's output, counted in men's labour. */
 export const CHILD_WORK = 0.5;
 /** Gold a Work Camp's keeper is paid for a captive sold on. */
