@@ -758,7 +758,10 @@ describe('conquest campaign', () => {
     expect(winChance(1, 6)).toBe(0);
     const cfg = battleConfig(c)!;
     expect(cfg.setups[0].bonus!.units).toEqual({ clubman: 6, slinger: 2, warlord: 1 });
-    expect(cfg.setups[1].bonus!.units).toEqual({ clubman: target.militia * 2 });
+    // The tribe's warriors are its own town's men in arms, two to a band, and no clubmen besides (tribes.ts).
+    expect(cfg.setups[1].bonus!.units).toEqual({});
+    expect(cfg.setups[1].bonus!.warriors).toBe(target.militia * 2);
+    expect(cfg.setups[1].bonus!.people!.men).toBeGreaterThanOrEqual(target.militia * 2);
     expect(cfg.setups[1].name).toBe('Local Tribe');
     expect(cfg.level).toBe(0);
     endTurn(c);
