@@ -38,7 +38,7 @@ import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
-import { Muster, armiesJoined, homeOf, menMustered, reckonArmies, seasonOfArmies } from './armytown';
+import { ARMY_REST, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
 
@@ -202,13 +202,13 @@ export const TRUCE_TURNS = 6;
 export const ALLIANCE_COST = 6;
 export const GIFT_COST = 4;
 /** Supplies to bring a whole people into the next age, from the Stone Age up. */
-export const AGE_COST = [10, 16, 24, 34];
+export const AGE_COST = [18, 28, 40, 56];
 /** Each age past the first makes a people's armies this much stronger. */
 export const AGE_EDGE = 0.1;
 export const MAX_FAVOR = 3;
 /** Hold this share of all the land for this many turns running and the campaign is won. */
 export const DOMINION_SHARE = 0.6;
-export const DOMINION_TURNS = 3;
+export const DOMINION_TURNS = 6;
 
 export function siteCost(t: Territory, site: string, civ = ''): number {
   if (site === 'fortress' && civ === 'stonekin') return 5;
@@ -293,6 +293,8 @@ export function mendTowns(c: Campaign): void {
 }
 
 export interface Army {
+  /** The last turn it rests after storming a town: it does not march until then is past (armytown.ts). */
+  rest?: number;
   id: number;
   owner: number;
   at: number;
@@ -1240,6 +1242,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       if (army.hero) seasonHero(c, army.owner);
       army.at = p.to;
       army.moved = true;
+      army.rest = c.turn + ARMY_REST; // it holds what it took before it marches again
     }
     c.log.push(`${fname(c, p.attacker, true)} took ${t.name} from ${fname(c, p.defender)}.`);
     const place = placeAt(c, t.id);
@@ -1346,7 +1349,7 @@ export function continueAI(c: Campaign): void {
       c.turn++;
       c.phase = 'player';
       tickHouses(c);
-      for (const a of c.armies) { a.moved = false; a.marched = false; }
+      for (const a of c.armies) { a.moved = resting(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts)
       courtTurn(c);
       for (const x of c.factions) x.angry = false;
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);

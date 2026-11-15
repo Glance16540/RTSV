@@ -1,7 +1,7 @@
 // Armies belong to towns (docs/DESIGN.md; src/sim/armytown.ts).
 import { describe, expect, it } from 'vitest';
 import { Campaign, armyAt, finishBattle, moveArmy, newCampaign, raise } from '../src/sim/campaign';
-import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menOf, musterOf, reckonArmies, seasonOfArmies, sendHome } from '../src/sim/armytown';
+import { ARMY_REST, MEN_A_COMPANY, resting, awayFrom, canSendHome, homeOf, menOf, musterOf, reckonArmies, seasonOfArmies, sendHome } from '../src/sim/armytown';
 import { agesOf, GROWN_SEASON } from '../src/sim/ageing';
 import { folkOf, living } from '../src/sim/township';
 
@@ -142,6 +142,25 @@ describe('armies belong to towns', () => {
     a.at = next.id;
     expect(sendHome(c, a.id)).toBe(4);
     expect(living(folkOf(c, next.id)).map((n) => n.name)).toEqual(['Osric']);
+  }, LONG);
+
+  it('an army that has stormed a town rests there before it marches again', () => {
+    const { c, home } = town();
+    for (let i = 0; i < 6; i++) raise(c, 0, home.id, 'infantry');
+    const a = army(c, home.id), to = home.adj.map((n) => c.territories[n]).find((t) => t.owner !== 0)!;
+    Object.assign(to, { owner: -1, horde: false, militia: 1, capital: -1 });
+    a.moved = false;
+    expect(moveArmy(c, a.id, to.id)).toBe('battle');
+    finishBattle(c, true, { clubman: 12 });
+    expect(a.at).toBe(to.id);
+    expect(a.rest).toBe(c.turn + ARMY_REST);
+    expect(resting(c, a)).toBe(true);
+    c.turn += ARMY_REST;
+    expect(resting(c, a)).toBe(true); // through the last season of its rest
+    c.turn += 1;
+    expect(resting(c, a)).toBe(false);
+    // An army that has fought nothing is free to march.
+    expect(resting(c, { ...a, rest: undefined })).toBe(false);
   }, LONG);
 
   it('an army is not sent home from another people\'s land, with the leader in it, or with a battle waiting', () => {
