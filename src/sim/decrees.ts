@@ -17,6 +17,7 @@ import type { Campaign } from './campaign';
 import { leaderAt } from './court';
 import { folkOf } from './township';
 import { heardDecree } from './nobles';
+import { needOf } from './larder';
 
 export type DecreeKind = 'church' | 'guards' | 'alms' | 'closeTavern' | 'tavernWomen';
 export interface Decree { kind: DecreeKind; until: number; strength: number }
@@ -29,7 +30,7 @@ declare module './campaign' {
 export const DECREES: Record<DecreeKind, { name: string; cost: number; seasons: number; needs?: string; desc: string }> = {
   church: { name: 'Call them to church', cost: 2, seasons: 4, needs: 'church', desc: 'The church calls the people back: the town is drawn toward the holy way.' },
   guards: { name: 'Post guards', cost: 3, seasons: 4, desc: 'Order kept by force: what strains the town tells half as much, but nothing draws it to the holy way meanwhile.' },
-  alms: { name: 'Give food', cost: 3, seasons: 1, desc: 'Food from the nation\'s stores fills the town\'s larder and removes the cause.' },
+  alms: { name: 'Give food', cost: 0, seasons: 1, desc: 'Food fills the town\'s larder and removes the cause: bought with the town\'s own goods first, then sent from the towns beside it.' },
   closeTavern: { name: 'Close the tavern', cost: 1, seasons: 4, needs: 'tavern', desc: 'Nobody drifts to the tavern and it makes no gold; a decadent town is angered by it.' },
   tavernWomen: { name: 'Order the women into the tavern', cost: 0, seasons: 4, needs: 'tavern', desc: 'Gold every season, and the town\'s standing falls.' },
 };
@@ -46,6 +47,35 @@ export const GUARDS_EASE = 0.5;
 export const TAVERN_WOMEN_SWAY = 6;
 export const CLOSED_ANGER = 0.3;
 
+/** The least food a decree of alms must find to be given. */
+export const ALMS_LEAST = 50;
+/** Seasons of their own eating the towns beside it keep before they send any. */
+export const ALMS_KEEP = 2;
+
+// Food for a hungry town is paid in goods, not supplies (stores.ts): first the town's own other goods buy it, at par;
+// then the towns of the nation beside it send what they have beyond ALMS_KEEP seasons of their own eating.
+const givers = (c: Campaign, f: number, tid: number): number[] => (c.territories[tid]?.adj ?? []).filter((n) => c.territories[n].owner === f && !c.territories[n].horde);
+const ownGoods = (c: Campaign, tid: number): number => { const s = folkOf(c, tid).stores; return Math.max(0, s.wood) + Math.max(0, s.gold) + Math.max(0, s.stone); };
+const spareFood = (c: Campaign, tid: number): number => Math.max(0, Math.floor(folkOf(c, tid).stores.food - ALMS_KEEP * needOf(c, tid)));
+/** How much food a decree of alms could find for a town now. */
+export function almsCanFind(c: Campaign, f: number, tid: number): number {
+  return ownGoods(c, tid) + givers(c, f, tid).reduce((n, g) => n + spareFood(c, g), 0);
+}
+/** Find `want` food for a town, as far as it can be had, and put it in its larder. Returns how much came. */
+export function sendAlms(c: Campaign, f: number, tid: number, want: number): number {
+  const s = folkOf(c, tid).stores;
+  let left = want;
+  for (const k of ['gold', 'wood', 'stone'] as const) { const take = Math.min(Math.max(0, s[k]), left); s[k] -= take; left -= take; }
+  for (const g of givers(c, f, tid).sort((a, b) => spareFood(c, b) - spareFood(c, a) || a - b)) {
+    if (left <= 0) break;
+    const take = Math.min(spareFood(c, g), left);
+    folkOf(c, g).stores.food -= take; left -= take;
+  }
+  const came = want - left;
+  s.food += came;
+  return came;
+}
+
 /** The decrees in force in a town. */
 export const decreesAt = (c: Campaign, tid: number): Decree[] => (c.territories[tid]?.decrees ?? []).filter((d) => d.until >= c.turn);
 
@@ -58,6 +88,7 @@ export function decreeBar(c: Campaign, f: number, tid: number, kind: DecreeKind)
   if (d.needs && !t.buildings.includes(d.needs)) return `There is no ${d.needs} in ${t.name}.`;
   if (decreesAt(c, tid).some((x) => x.kind === kind)) return 'That decree is already in force here.';
   if (fac.supplies < d.cost) return `It costs ${d.cost} supplies.`;
+  if (kind === 'alms' && almsCanFind(c, f, tid) < ALMS_LEAST) return `There is no food to be had for ${t.name}: its own goods are spent and the towns beside it have none to spare.`;
   return '';
 }
 
@@ -68,7 +99,7 @@ export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKin
   const t = c.territories[tid], d = DECREES[kind], present = leaderAt(c, f, tid), strength = present ? 1 : MESSENGER;
   c.factions[f].supplies -= d.cost;
   t.decrees = [...decreesAt(c, tid), { kind, until: c.turn + d.seasons - 1, strength }];
-  if (kind === 'alms') folkOf(c, tid).stores.food += Math.round(ALMS_FOOD * strength);
+  if (kind === 'alms') sendAlms(c, f, tid, Math.round(ALMS_FOOD * strength));
   heardDecree(c, f, tid, kind, strength); // it pleases some of the nobles and angers others (nobles.ts)
   if (f === 0) c.log.push(`${d.name}: decreed in ${t.name}${present ? '' : ', by messenger'}.`);
   return '';
@@ -104,7 +135,8 @@ export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) 
   for (const t of c.territories) {
     if (t.owner !== f || t.horde) continue;
     const s = strainOf(t.id), fac = c.factions[f];
-    const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= keep && issueDecree(c, f, t.id, k) === '';
+    // A decree that costs no supplies (food, paid in goods) needs none kept in hand.
+    const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= (DECREES[k].cost ? keep : 0) && issueDecree(c, f, t.id, k) === '';
     if (s.hungry && tryGive('alms')) { given++; continue; }
     if (s.raided && tryGive('guards')) { given++; continue; }
     if (s.moved < 0 && tryGive('church')) { given++; continue; }
