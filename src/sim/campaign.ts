@@ -40,6 +40,7 @@ import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
 import { mayAdvance, maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { aimOrder, marchInto } from './rivalaim';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
@@ -1608,8 +1609,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
   if (!army) return true;
   const here = c.territories[army.at];
   // Never march on someone we have a truce with.
-  const targets = reach(c, here.id).filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner))
-    .sort((a, b) => defence(c, a, army.units, civ) - defence(c, b, army.units, civ));
+  // The most wanted first: what it can take, weighed by the country it marches into and the town's faith (rivalaim.ts).
+  const targets = aimOrder(c, f.id, reach(c, here.id).filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner)), (id) => defence(c, id, army.units, civ));
   // A leader who has just been refused goes for the player before anyone else.
   // An ally goes first for whoever is at the player's borders.
   if (c.ally === f.id) {
@@ -1622,7 +1623,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     // Cautious leaders want better odds; a leader who has just been refused wants blood.
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
     const bySea = !here.adj.includes(t.id);
-    if (strengthVs(army, defenders(c, t.id), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
+    if (strengthVs(army, defenders(c, t.id), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, t.id) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
       moveArmy(c, army.id, t.id);
       return false;
     }
