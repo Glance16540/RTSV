@@ -414,7 +414,9 @@ the softest town it can reach, and a decadent people draws it more.
 
 The town defends itself with what it has: its men, its fortress and barracks, the towers and walls on its
 battlefield, an army kept there, and the spirit of its people. It holds, is raided, or falls and has people carried
-off (never children). A band takes a share of the town's stores, but no more than it can carry. Select the struck land to read the report: who struck, what the town had, who was killed and
+off (never children). A band takes a share of the town's stores, but no more than it can carry. It leaves a town
+two seasons of food, never takes more than half its women or its last two, and does not take from a town whose
+people it still holds. Select the struck land to read the report: who struck, what the town had, who was killed and
 taken, what was lost, and which way your people's standing swayed.
 
 Those taken are held at the band's place for four seasons. Select the band's land and send an army that stands there

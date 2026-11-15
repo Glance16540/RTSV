@@ -9,6 +9,7 @@ import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
 import { bandBattle, settleBandFight } from './bandfight';
+import { wallsEdge } from './sieges';
 import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
@@ -1216,7 +1217,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   let attackerWon = how === 'attacker';
   if (how === 'auto') {
     // Defenders fight on their own ground, which is worth a little.
-    const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * homeEdge(c, p.attacker) * (0.75 + rand(c) * 0.5);
+    const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * homeEdge(c, p.attacker) * wallsEdge(c, p) * (0.75 + rand(c) * 0.5); // walls are worth more than their sum (sieges.ts)
     attackerWon = a > d;
   }
   for (const watch of battleWatchers) watch(c, p, attackerWon, how);
