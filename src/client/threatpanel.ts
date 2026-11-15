@@ -3,8 +3,6 @@ import type { Campaign } from '../sim/campaign';
 import { bodyOf, captiveKeys, nationOf } from '../sim/portrait';
 import type { Portrait } from '../sim/portrait';
 import { BANDS, Band, Raid, bandsAt, defenceOf, raidsAt, reportText, seasonsLeft } from '../sim/threats';
-import { armiesFor } from '../sim/bandfight';
-import { seasonNews } from '../sim/raidnews';
 import { portraitHtml } from './portrait';
 
 const esc = (s: string): string => s.replace(/[<>&"]/g, '');
@@ -19,14 +17,14 @@ function heldFace(c: Campaign, owner: number, sex: 'm' | 'f', kind: Band['kind']
 
 function bandHtml(c: Campaign, b: Band): string {
   const k = BANDS[b.kind];
-  const where = b.kind === 'marauders' ? 'hold this land' : b.kind === 'highwaymen' ? `on the road between ${esc(c.territories[b.at].name)} and ${esc(c.territories[b.to!].name)}` : `has its ${k.place} here`;
+  const where = b.kind === 'highwaymen' ? `on the road between ${esc(c.territories[b.at].name)} and ${esc(c.territories[b.to!].name)}` : `has its ${k.place} here`;
   const held = b.held.map((h) => {
     const who = [h.women.length ? plural(h.women.length, 'woman', 'women') : '', h.men.length ? plural(h.men.length, 'man', 'men') : ''].filter(Boolean).join(' and ');
     const left = seasonsLeft(c, h);
     const faces = (h.women.length ? heldFace(c, h.owner, 'f', b.kind, `${b.id}|${h.from}|f`) : '') + (h.men.length ? heldFace(c, h.owner, 'm', b.kind, `${b.id}|${h.from}|m`) : '');
     return `<div class="likeness-row">${faces}Holding ${who} of ${h.owner === 0 ? 'yours' : esc(c.factions[h.owner]?.name ?? 'another people') + '\'s'} from ${esc(c.territories[h.from].name)}${h.names?.length ? ` (${h.names.map(esc).join(', ')} among them)` : ''}: ${plural(left, 'season', 'seasons')} left to get them back.</div>`;
   }).join('');
-  return `<div class="bad">${k.icon} <b>${esc(b.name[0].toUpperCase() + b.name.slice(1))}</b>, ${k.name.toLowerCase()}, ${where}. Strength ${b.strength}. ${k.desc}${held}<div class="hint">${b.kind === 'marauders' ? 'They hold this land: march an army into it to break them.' : 'Send an army that stands here or next door against them. Breaking them frees whoever they hold.'}</div></div>`;
+  return `<div class="bad">${k.icon} <b>${esc(b.name[0].toUpperCase() + b.name.slice(1))}</b>, ${k.name.toLowerCase()}, ${where}. Strength ${b.strength}. ${k.desc}${held}<div class="hint">An army standing here when the season turns fights them. Breaking them frees whoever they hold.</div></div>`;
 }
 
 function raidHtml(c: Campaign, r: Raid): string {
@@ -43,31 +41,4 @@ export function threatHtml(c: Campaign, tid: number): string {
   const d = t.owner === 0 ? defenceOf(c, tid) : null;
   const own = d && (c.bands ?? []).length ? `<div class="hint" title="What this town has to defend itself with against a band: its men, its fortress and barracks, the towers and walls on its battlefield, an army kept here, and the spirit of its people.">🛡️ Against a band this town can muster ${d.total}.</div>` : '';
   return reports + bands + own;
-}
-
-/** The orders a land's panel offers against the bands placed there: one for each army of the player's that could be sent. */
-export function bandButtons(c: Campaign, tid: number): string {
-  if (c.phase !== 'player') return '';
-  return bandsAt(c, tid).flatMap((b) => armiesFor(c, b.id).map((a) =>
-    `<button data-act="band:${a.id}/${b.id}" title="A battle you can enter: your army's own companies against the band's men on open ground. Nothing changes hands but the band's captives and what it stole.">⚔️ Send the army at ${esc(c.territories[a.at].name)} against ${esc(b.name)}</button>`)).join('');
-}
-
-/** What to ask the player when an army of theirs is about to fight a band. */
-export function bandPrompt(c: Campaign): { title: string; text: string } | null {
-  const p = c.pending, b = (c.bands ?? []).find((x) => x.id === p?.band);
-  if (!p || !b) return null;
-  const held = b.held.reduce((n, h) => n + h.men.length + h.women.length, 0);
-  return {
-    title: `Fight ${b.name}?`,
-    text: `Your army's strength of ${p.aStr} against ${BANDS[b.kind].name.toLowerCase()} of strength ${b.strength}, at ${esc(c.territories[p.to].name)}. ` +
-      (held ? `They hold ${plural(held, 'person', 'people')}, who go free if the band is broken. ` : '') +
-      'Fight it yourself on open ground, or leave it to the army, which will do as well or as badly as its strength allows. No land changes hands.',
-  };
-}
-
-/** The season's news of the bands, each line opening the land it happened in. */
-export function newsHtml(c: Campaign): string {
-  const news = seasonNews(c);
-  if (!news.length) return '';
-  return `<div class="raid-news">${news.map((n) => `<div class="${n.tone === 'good' ? 'good' : n.tone === 'bad' ? 'bad' : ''}" data-land="${n.at}" title="Open ${esc(n.land)}">${esc(n.headline)}</div>`).join('')}</div>`;
 }
