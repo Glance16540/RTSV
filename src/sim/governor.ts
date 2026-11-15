@@ -26,8 +26,11 @@ export const GOVERN = {
   yield: { food: 4, wood: 2, gold: 2, stone: 2 } as Stores,
   /** Farmland makes the fields bring in this much as much. */
   farm: 2.5,
-  /** Food in store per head under which a town is short, and the share of its people the governor then sends to the fields. */
-  short: 15, fields: 0.6,
+  /**
+   * Food in store per head under which a town is short (two seasons of a grown person's eating, larder.ts EAT), and the
+   * share of its people the governor then sends to the fields: soon enough that the next harvest comes in before the granary is bare.
+   */
+  short: 32, fields: 0.8,
   /** With a full granary and no orders, the share of the usual hands kept at the fields. */
   full: 0.5,
   /** How much of a building a season's work finishes. */
