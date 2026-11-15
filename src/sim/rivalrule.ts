@@ -31,7 +31,7 @@ export const RIVAL = {
   risk: 0.03,
   /** Seasons since a nation last won or lost land after which it is at peace; the share of its men it keeps under arms then;
    *  seasons of peace after which it musters for a campaign; and how many seasons it musters for before standing down again. */
-  lull: 4, standing: 0.08, restless: 10, campaign: 8,
+  lull: 4, standing: 0.05, restless: 10, campaign: 8,
   /** A strained town down to this many men of working age is not asked for another company; and the strain that counts. */
   lastMen: 2, strain: 0.5,
   /** Seasons a people lives in an age before it takes the next, however rich it is: five years. */

@@ -6,10 +6,12 @@
 // How it is kept. When a season turns (campaign.ts calls `seasonTurned`), the report of the season just ended is
 // made from a snapshot taken when that season began, against the nation as it now is and the season's ledger
 // (ledger.ts), and a new snapshot is taken. The report waits on the campaign until the player has seen it.
+import { ruinWarning } from './ruin';
 import type { Campaign } from './campaign';
 import { ledgerSince } from './ledger';
 import { THREATS, reportLine } from './threats';
 import './intrigue';
+import './carriedoff';
 import { folkOf, living, type Notable } from './township';
 import { householdNews } from './kin';
 import { isOpen } from './deadtown';
@@ -22,7 +24,7 @@ export interface Snapshot {
   turn: number; seq: number;
   towns: { id: number; tavern: number; mines: number }[];
   notables: Named[];
-  /** Its people held by bands: each group by band, the season it was taken, and the land, with how many. */
+  /** Its people held by bands, or by a nation that led them away: each group, the season it was taken, with how many. */
   held: Record<string, { n: number; since: number }>;
 }
 export interface SeasonReport {
@@ -42,6 +44,8 @@ export interface SeasonReport {
   made: Named[]; gone: (Named & { how: string })[];
   /** Its towns that stand open, with nobody in them (deadtown.ts); and others' open towns its armies can reach. */
   open: string[]; openNear: string[];
+  /** The world is going to ruin: what the player is told when it is under twenty seasons off (ruin.ts). */
+  ruin?: string;
   /** The player has seen it. */
   seen?: boolean;
 }
@@ -61,6 +65,8 @@ export function snapshot(c: Campaign, f = 0): Snapshot {
   const own = c.territories.filter((t) => t.owner === f && !t.horde);
   const held: Snapshot['held'] = {};
   for (const b of c.bands ?? []) for (const h of b.held) if (h.owner === f) held[`${b.id}:${h.since}:${h.from}`] = { n: h.men.length + h.women.length, since: h.since };
+  // And those a rival nation led away when it took a town (carriedoff.ts): they can be got back for as long as a band's captives.
+  for (const x of c.carried ?? []) if (x.held.owner === f) held[`nation:${x.id}`] = { n: x.held.men.length + x.held.women.length, since: x.held.since };
   return {
     turn: c.turn, seq: c.ledgerSeq ?? 0,
     towns: own.map((t) => { const d = folkOf(c, t.id).drifted; return { id: t.id, tavern: d?.tavern ?? 0, mines: d?.mines ?? 0 }; }),
@@ -116,13 +122,14 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
   r.open = now.towns.filter((t) => isOpen(c, t.id)).map((t) => c.territories[t.id].name);
   const near = new Set(c.armies.filter((a) => a.owner === f).flatMap((a) => reach(c, a.at)));
   r.openNear = c.territories.filter((t) => t.owner !== f && near.has(t.id) && isOpen(c, t.id)).map((t) => t.name);
+  if (ruinWarning(c)) r.ruin = ruinWarning(c);
   return r;
 }
 
 /** Whether anything at all happened in a season's report. */
 export const anything = (r: SeasonReport): boolean =>
   r.born + r.grew + r.aged + r.starved + r.fell + (r.sick ?? 0) + r.raidDead + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
-  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.household?.length ?? 0) + (r.stories?.length ?? 0) > 0;
+  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.household?.length ?? 0) + (r.stories?.length ?? 0) + (r.ruin ? 1 : 0) > 0;
 
 /** A season has turned: report the one just ended, and begin keeping the next. Called once a turn (campaign.ts). */
 export function seasonTurned(c: Campaign, f = 0): void {
@@ -167,5 +174,6 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   for (const t of r.open ?? []) add('land', 'bad', `${t} stands open: nobody is left in it, and anyone who marches on it has it. Send people by convoy, or an army to hold it.`);
   for (const t of r.openNear ?? []) add('land', 'good', `${t} stands open, within reach of your armies: march on it and it is yours.`);
   for (const x of r.stories ?? []) add('story', x.tone, x.text);
+  if (r.ruin) add('land', 'bad', r.ruin);
   return out;
 }

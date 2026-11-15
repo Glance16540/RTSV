@@ -194,3 +194,16 @@ describe('the season\'s report names the changes in the household', () => {
     expect(lines.some((l) => l.includes('has married again'))).toBe(true);
   });
 });
+
+describe('names in the household', () => {
+  it('no child of the house shares a name with the spouse or anyone in the circle, in any new world', () => {
+    for (let seed = 1; seed <= 12; seed++) {
+      const c = newCampaign(seed, 2, 1, 'hearth');
+      for (const f of c.factions) {
+        const k = kinOf(c, f.id), heirs = (f.house?.heirs ?? []).map((h) => h.name);
+        const others = [...(k.spouse ? [k.spouse.name] : []), ...k.circle.map((x) => x.name)];
+        for (const h of heirs) expect(others, `seed ${seed}, ${f.name}: ${h}`).not.toContain(h);
+      }
+    }
+  });
+});
