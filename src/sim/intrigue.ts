@@ -60,7 +60,7 @@ export interface Intrigue {
   /** A story of the leader's house (courtstory.ts): the rival people in it, how far it has gone, the turn its next step falls, and who is in it by name. */
   rival?: number; stage?: number; due?: number; cast?: { spouse?: string; daughter?: string; suitor?: string; king?: string }; willing?: boolean; asked?: boolean;
   /** A plot (courtstory.ts): the nobles suspected, by their key in nobles.ts; `culprit` is which, and `found` that it is known. */
-  nobles?: { key: string; name: string; title: string; female: boolean }[]; found?: boolean;
+  nobles?: { key: string; name: string; title: string; female: boolean }[]; found?: boolean; /** Gifts have gone out to the nobles over this plot. */ sweetened?: boolean;
   ended?: { turn: number; how: 'hanged' | 'banished' | 'worked' | 'pardoned' | 'unfound' | 'lost' | 'yielded' | 'bought' | 'foiled' | 'slain' | 'wounded' | 'wed' | 'refused' | 'spurned' | 'outlived' | 'executed' | 'usurped' | 'nothing'; text: string };
 }
 /** Something a story did in a season, for the report. `who`: the person it is about, for a face. */
