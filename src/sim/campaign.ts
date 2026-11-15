@@ -33,6 +33,7 @@ import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
+import { Names, houseName, nameNation, peopleName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
@@ -204,13 +205,13 @@ export const TRUCE_TURNS = 6;
 export const ALLIANCE_COST = 6;
 export const GIFT_COST = 4;
 /** Supplies to bring a whole people into the next age, from the Stone Age up. */
-export const AGE_COST = [18, 28, 40, 56];
+export const AGE_COST = [20, 30, 44, 60];
 /** Each age past the first makes a people's armies this much stronger. */
 export const AGE_EDGE = 0.1;
 export const MAX_FAVOR = 3;
 /** Hold this share of all the land for this many turns running and the campaign is won. */
 export const DOMINION_SHARE = 0.6;
-export const DOMINION_TURNS = 6;
+export const DOMINION_TURNS = 10;
 
 export function siteCost(t: Territory, site: string, civ = ''): number {
   if (site === 'fortress' && civ === 'stonekin') return 5;
@@ -782,7 +783,7 @@ export function territoryAt(ts: { x: number; y: number }[], px: number, py: numb
  * lies and which peoples are in play all vary with the seed. Every faction is a different people;
  * `playerCiv` fixes the player's, otherwise that is random too.
  */
-export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: string): Campaign {
+export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: string, opts: { names?: Names } = {}): Campaign {
   const c: Campaign = {
     v: CAMPAIGN_VERSION, seed, rngState: seed >>> 0, level, turn: 1, phase: 'player', cursor: 0, spent: false,
     factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [], truces: [], honor: 0, demand: null, ally: -1, dominion: { f: -1, turns: 0 },
@@ -882,8 +883,9 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     if (rim && !t.trait && t.capital < 0 && t.seed % 2 === 0) t.trait = 'coast';
   }
   raiseBarriers(c);
-  c.log.push(`Turn 1. You lead the ${CIVS[mine].name}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
-  tell(c, `The ${[CIVS[mine].name, ...c.factions.slice(1).map((f) => `the ${f.name}`)].join(', ').replace(/, ([^,]*)$/, ' and $1')} came into a country of ${c.territories.length} lands, and each meant to have all of it.`);
+  nameNation(c, 0, opts.names); // the player's own names for their people and house (naming.ts)
+  c.log.push(`Turn 1. You lead the ${peopleName(c, 0)}${houseName(c, 0) ? `, under the House of ${houseName(c, 0)}` : ''}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
+  tell(c, `The ${[peopleName(c, 0), ...c.factions.slice(1).map((f) => `the ${f.name}`)].join(', ').replace(/, ([^,]*)$/, ' and $1')} came into a country of ${c.territories.length} lands, and each meant to have all of it.`);
   placesOf(c);
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');

@@ -3,6 +3,7 @@
 // rather, a captain who has made a name in one of the armies can be raised in their place and founds a house anew.
 // Rules only: campaign.ts calls in here at the turn of the year and when a leader is lost.
 
+import { endHouse, houseName, houseTitle, ofHouse } from './naming';
 import { GROWN_SEASON } from './ageing';
 import type { Army, Campaign } from './campaign';
 import { NAMES_F, NAMES_M } from './data';
@@ -116,7 +117,7 @@ export function claimants(c: Campaign, f: number): Claim[] {
   house.heirs.forEach((h, i) => {
     if (!ofAge(c, h)) return;
     // Raised at their parent's side, an heir has half the name their parent made.
-    out.push({ kind: 'heir', i, name: `${h.name}, ${h.female ? 'daughter' : 'son'} of ${fallen.name}`.slice(0, 60), female: h.female, rank: Math.floor((fac.heroRank ?? 0) / 2), what: `${h.female ? 'Daughter' : 'Son'} of ${fallen.name}, ${c.turn - h.born} turns old. Keeps their parent's gifts and the house.` });
+    out.push({ kind: 'heir', i, name: `${h.name}, ${h.female ? 'daughter' : 'son'} of ${fallen.name}`.slice(0, 60), female: h.female, rank: Math.floor((fac.heroRank ?? 0) / 2), what: `${h.female ? 'Daughter' : 'Son'} of ${fallen.name}, ${c.turn - h.born} turns old. Keeps their parent's gifts and ${houseName(c, f) ? `the House of ${houseName(c, f)}` : 'the house'}.` });
   });
   out.sort((a, b) => house.heirs[a.i].born - house.heirs[b.i].born);
   const armies = c.armies.filter((a) => a.owner === f && (a.vet >= CAPTAIN_VET || !!a.champion)).sort((a, b) => b.vet - a.vet || a.id - b.id).slice(0, 2);
@@ -155,7 +156,7 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
     house.heirs.splice(claim.i, 1);
     fac.heroAlive = true;
     seat(c, f, homeFor(c, f));
-    say(c, f, fac.id === 0 ? `${claim.name} takes up the rule of your people.` : `${old.name} of the ${fac.name} is dead. ${claim.name} rules them now.`);
+    say(c, f, fac.id === 0 ? `${ofHouse(c, f, claim.name)} takes up the rule of your people.` : `${old.name} of the ${fac.name} is dead. ${claim.name} rules them now.`);
   } else {
     // A soldier's soldier: strong in the arm, and no house behind them yet.
     // One the player watched make a name goes on fighting as what they were, and the player chooses what they learn.
@@ -165,7 +166,8 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
     fac.heroAlive = true;
     seat(c, f, c.armies.find((a) => a.id === claim.i)!.at);
     delete c.armies.find((a) => a.id === claim.i)!.champion;
-    say(c, f, `${old.name}'s house${fac.id === 0 ? '' : ` among the ${fac.name}`} is set aside: ${claim.name} is raised on the shields at ${c.territories[c.armies.find((a) => a.id === claim.i)!.at].name}.`);
+    say(c, f, `${houseTitle(c, f, old.name)[0].toUpperCase() + houseTitle(c, f, old.name).slice(1)}${fac.id === 0 ? '' : ` among the ${fac.name}`} is set aside: ${claim.name} is raised on the shields at ${c.territories[c.armies.find((a) => a.id === claim.i)!.at].name}.`);
+    endHouse(c, f);
   }
   fac.heroRank = claim.rank;
   fac.heroAlive = true;
@@ -187,7 +189,8 @@ export function raisedInBattle(c: Campaign, f: number, who: Partial<HeroSpec>, r
   house.births = 0;
   house.due = c.turn + HEIR_EVERY;
   house.asked = false;
-  say(c, f, `${old.name} fell in the fighting. ${fac.hero.name} was raised on the shields where they stood, and ${old.name}'s house is ended.`);
+  say(c, f, `${old.name} fell in the fighting. ${fac.hero.name} was raised on the shields where they stood, and ${houseTitle(c, f, old.name)} is ended.`);
+  endHouse(c, f);
 }
 
 /** A rival people settles its own succession: the eldest heir of age, else its best captain. */
@@ -208,5 +211,6 @@ export function strangerLeads(c: Campaign, f: number): void {
   house.births = 0;
   house.due = c.turn + HEIR_EVERY;
   house.asked = false;
-  say(c, f, `${fac.hero.name} is paid to lead the ${fac.id === 0 ? 'people' : fac.name}. ${old.name}'s house is ended.`);
+  say(c, f, `${fac.hero.name} is paid to lead the ${fac.id === 0 ? 'people' : fac.name}. ${houseTitle(c, f, old.name)[0].toUpperCase() + houseTitle(c, f, old.name).slice(1)} is ended.`);
+  endHouse(c, f);
 }
