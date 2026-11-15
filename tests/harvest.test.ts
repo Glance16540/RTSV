@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { landIncome, newCampaign, wholeIncome, income } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
-import { MIX, harvest, putIn, spread, yieldShares } from '../src/sim/harvest';
+import { HANDS_FULL, handsShare, harvest, putIn, spread, yieldShares } from '../src/sim/harvest';
+import { keepOrders } from '../src/sim/governor';
 import { SUPPLY_UNITS, settleStores } from '../src/sim/stores';
 import { MAX_STORE, STORE_KINDS, folkOf } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
@@ -21,6 +22,8 @@ describe('income goes into the land that yields it', () => {
   it('each land\'s yield goes into its own town, and what the people earns as a whole into its chief town', () => {
     const { c, home, lands } = world();
     const before = new Map(c.territories.map((t) => [t.id, units(folkOf(c, t.id).stores)]));
+    // Every town with the hands to work its land in full, so that it yields all the land gives.
+    for (const t of [home, ...lands]) { const f = folkOf(c, t.id); f.men = Math.max(f.men, HANDS_FULL); delete f.ages; }
     const had = c.factions[0].supplies, due = income(c, 0);
     const got = reap(c);
     for (const t of lands) expect(units(folkOf(c, t.id).stores) - before.get(t.id)!, t.name).toBe(landIncome(c, 0, t) * SUPPLY_UNITS);
@@ -31,14 +34,34 @@ describe('income goes into the land that yields it', () => {
     for (const t of c.territories) if (t.owner !== 0 && t.owner !== 1) expect(units(folkOf(c, t.id).stores)).toBe(before.get(t.id));
   });
 
-  it('a land leans to what it is: farmland to food, gold hills to gold', () => {
+  it('a town with fewer hands than its land wants brings in that much less, and one with none brings in nothing', () => {
+    const { c, lands } = world();
+    const t = lands[0], f = folkOf(c, t.id);
+    f.men = 1; f.women = 2; delete f.ages;
+    expect(handsShare(c, t.id)).toBeCloseTo(3 / HANDS_FULL, 5);
+    const was = units(f.stores);
+    reap(c);
+    expect(units(f.stores) - was).toBe(Math.round(landIncome(c, 0, t) * SUPPLY_UNITS * 3 / HANDS_FULL));
+    f.men = 0; f.women = 0;
+    const now = units(f.stores);
+    reap(c);
+    expect(units(f.stores)).toBe(now);
+  });
+
+  it('a land leans to what it is and to where its people work: farmland to food, gold hills to gold', () => {
     const { c, home, lands } = world();
     const share = (tid: number, k: keyof Stores) => { const s = yieldShares(c, tid); return s[k] / units(s); };
-    expect(home.buildings).toContain('farm');
-    expect(share(home.id, 'food')).toBeGreaterThan(MIX.food);
     const t = lands[0];
+    t.buildings = []; t.trait = '';
+    const plain = { food: share(t.id, 'food'), gold: share(t.id, 'gold') };
+    expect(home.buildings).toContain('farm');
+    t.buildings = ['farm'];
+    expect(share(t.id, 'food')).toBeGreaterThan(plain.food);
     t.buildings = []; t.trait = 'gold';
-    expect(share(t.id, 'gold')).toBeGreaterThan(0.3);
+    expect(share(t.id, 'gold')).toBeGreaterThan(plain.gold * 2.5);
+    // Set to dig, its people bring in gold above all.
+    keepOrders(c, t.id, { work: { food: 0, wood: 0, gold: 10, stone: 0 } });
+    expect(share(t.id, 'gold')).toBe(1);
     const g = spread(1000, yieldShares(c, t.id));
     expect(units(g)).toBe(1000);
     expect(g.gold).toBeGreaterThan(g.food);
