@@ -172,8 +172,8 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   town and how long those fires burn, how readily fire spreads, how often a harvest fails and on how many fields, and how fast a famine takes people. It does not
   soften what an enemy does directly: a Prophet's fire burns the building it falls on for as long as ever.
 - *On the campaign map* (`src/sim/acts.ts`): every season each held land may be struck by one of the three, by
-  the same measure of its holder's creed, and it falls on the land's own town. A failed harvest eats what the land
-  would have yielded from the town's stored food. Plague stays two seasons, kills a tenth of the town's grown people
+  the same measure of its holder's creed, and it falls on the land's own town. A failed harvest eats a season and a
+  half of the town's own eating from its stored food. Plague stays two seasons, kills a tenth of the town's grown people
   a season (the old first, never a child), takes a company a season from an army kept there and may pass to the land
   next door. Fire burns a share of the town's food and wood, is rebuilt out of the town's own stores and leaves the
   land's town damaged for the next battle there. Nothing is charged to the nation besides. A hard
