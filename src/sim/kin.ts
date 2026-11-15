@@ -99,7 +99,8 @@ function wed(c: Campaign, f: number, salt: number): Spouse {
 /** Fill the empty places in the circle: notable people of the nation first, then people of the seat, named. */
 function fill(c: Campaign, f: number, k: Kin): void {
   const posts: Post[] = ['right', 'steward', 'marshal', c.territories.some((t) => t.owner === f && t.buildings.includes('church')) ? 'priest' : 'confidant'];
-  const taken = new Set(k.circle.map((x) => x.name));
+  // Nobody close to the leader shares a name with the household: the spouse, the heirs, the circle.
+  const taken = new Set([...k.circle.map((x) => x.name), ...(k.spouse ? [k.spouse.name] : []), ...(c.factions[f]?.house?.heirs ?? []).map((h) => h.name)]);
   const known = c.territories.filter((t) => t.owner === f).flatMap((t) => living(folkOf(c, t.id)).map((n) => ({ n, town: t.id })));
   for (const post of posts) {
     if (k.circle.length >= KIN.most || k.circle.some((x) => x.post === post)) continue;
@@ -235,6 +236,8 @@ export function deputyAt(c: Campaign, f: number, tid: number): Close | undefined
 }
 /** How well a people is warned of plots against it: its confidant's sway (-1 to 1), 0 with none. For the intrigue to read. */
 export const plotWarning = (c: Campaign, f: number): number => { const x = c.factions[f]?.kin?.circle.find((y) => y.post === 'confidant'); return x ? sway(x) : 0; };
+/** The names already in a leader's household (the spouse and those closest), for a child of the house to be named apart from. */
+export const householdNames = (c: Campaign, f: number): string[] => { const k = c.factions[f]?.kin; return k ? [...(k.spouse ? [k.spouse.name] : []), ...k.circle.map((x) => x.name)] : []; };
 /** The household's news since a season (for the season's report). */
 export const householdNews = (c: Campaign, f: number, since: number): KinNews[] => (c.factions[f]?.kin?.news ?? []).filter((n) => n.turn > since);
 const chronicleLast = (c: Campaign): string => c.chronicle![c.chronicle!.length - 1].text;
