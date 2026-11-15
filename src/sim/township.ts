@@ -195,6 +195,7 @@ export function loseVeteran(c: Campaign, f: number, name: string, how = 'fell in
 export function tollFolk(c: Campaign, tid: number, taken: boolean): number {
   const f = folkOf(c, tid), dead = Math.min(f.men, Math.ceil(f.men * (taken ? TOLL.taken : TOLL.held)));
   f.men -= dead;
+  if (dead && f.ages) agesOf(c, tid, f); // the record of ages loses them too
   if (taken) for (const k of STORE_KINDS) f.stores[k] = Math.floor(f.stores[k] * (1 - TOLL.looted));
   return dead;
 }

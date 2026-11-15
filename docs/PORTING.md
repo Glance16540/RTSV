@@ -35,10 +35,10 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
 | `birthonly` | 60 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
 | `calamity` | 179 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, famine, game, wrath | none of its own | not yet |
-| `campaign` | 1850 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, convoys, country, court, creed, data, drift, dynasty, game, harvest, hero, leaders, notableweight, powers, prices, seasonfolk, stores, story, temper, bandfight, bandseason, townfaith, township | none of its own | not yet |
+| `campaign` | 1850 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, bandfight, bandseason, champion, conquered, convoys, country, court, creed, data, drift, dynasty, game, governor, harvest, hero, larder, leaders, notableweight, powers, prices, seasonfolk, stores, story, temper, townfaith, township | none of its own | not yet |
 | `captivity` | 129 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, data, game, nursery | captivity.test.ts | not yet |
 | `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
-| `conquered` | 108 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | campaign, court, township | conquered.test.ts | not yet |
+| `conquered` | 108 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | ageing, campaign, court, township | conquered.test.ts | not yet |
 | `contagion` | 96 | Plague that comes from outside a town. | calamity, game | contagion.test.ts | not yet |
 | `convoys` | 195 | Convoys by road between a people's own towns: food, goods or people, a season on the way, robbed by highwaymen (docs/DESIGN.md, "Stores"). | ageing, campaign, township | convoys.test.ts | not yet |
 | `country` | 82 | Country that matters on the campaign map, and the works that open a closed border. | campaign, prices | country.test.ts | not yet |
@@ -52,10 +52,12 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `famine` | 185 | Famine: what happens to a town that has run out of food. | data, game, wrath | famine.test.ts | not yet |
 | `folk` | 145 | What the common people say: villagers at every job and warriors of every arm, each in three tempers. A town that | none | none of its own | not yet |
 | `game` | 3455 | Core simulation. No rendering or DOM access in here so it can run headless. | ageing, beaten, birthonly, calamity, captivity, champion, contagion, creed, data, daylight, drift, grief, hero, household, map, marauders, muster, notableweight, nursery, path, powers, rescue, tavernfall, temper, township, wrath | none of its own | not yet |
-| `harvest` | 71 | Income credited to the land that yields it: each land's yield into its own town's stores, in the kinds the land gives (docs/DESIGN.md, "Stores"). | campaign, stores, township | harvest.test.ts | not yet |
+| `governor` | 141 | A town left to itself (docs/DESIGN.md): it carries on with its last orders, its people work and eat each season, and a governor answers its wants out of its own stores. | campaign, data, seasonfolk, township | governor.test.ts | not yet |
 | `grief` | 71 | Grief (docs/DESIGN.md, "Grief"). A home that loses its mother or its sons works more slowly for a time, most in a town of middling morals; a bereaved town grieves for seasons on the map. | game, notableweight, township | grief.test.ts | not yet |
+| `harvest` | 71 | Income credited to the land that yields it: each land's yield into its own town's stores, in the kinds the land gives (docs/DESIGN.md, "Stores"). | campaign, stores, township | harvest.test.ts | not yet |
 | `hero` | 102 | A nation's leader on the field: who they are, how they were made, and what the battles they live through do for them. | leaders | none of its own | not yet |
 | `household` | 103 | A man at war is still of his house (docs/DESIGN.md). | game | household.test.ts | not yet |
+| `larder` | 97 | Towns eat their food on the map: each season a town's people eat from its food store, a town that cannot goes hungry, and one hungry long enough loses its grown people, never a child (docs/DESIGN.md, "Stores"). | campaign, township | larder.test.ts | not yet |
 | `leaders` | 547 | The leader of each civilisation and everything they say. | none | none of its own | not yet |
 | `lessons` | 59 | Lessons for the moment they are needed: things a first battle's list of steps cannot teach in order, because | calamity, creed, data, famine, game | lessons.test.ts | not yet |
 | `map` | 310 | Procedural, point-symmetric two-player map generation. | none | none of its own | not yet |
@@ -80,5 +82,5 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `threats` | 396 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it: who the bands are, how a town struck defends itself, the report, and captives held and got back. | acts, ageing, campaign, creed, stores, townfaith, township | threats.test.ts | not yet |
 | `townfaith` | 84 | Faith is a town's (docs/DESIGN.md): every town's own standing between piety and decadence, and the nation's as the mean of its towns'. | campaign, story | townfaith.test.ts | not yet |
 | `township` | 200 | Towns that keep their people and their stores (docs/DESIGN.md, step 2). | ageing, campaign, household, notableweight | township.test.ts | not yet |
-| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, game, stores, townfaith, township | visit.test.ts | not yet |
+| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, game, governor, stores, townfaith, township | visit.test.ts | not yet |
 | `wrath` | 29 | How hard acts of God fall on a people (docs/DESIGN.md, "Acts of God"). | game | wrath.test.ts | not yet |

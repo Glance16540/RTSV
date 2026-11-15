@@ -1,7 +1,8 @@
 // Faith is a town's (docs/DESIGN.md; src/sim/townfaith.ts).
 import { describe, expect, it } from 'vitest';
+import { folkOf } from '../src/sim/township';
 import { BATTLE_VIRTUE, CHURCH_VIRTUE, Campaign, TAVERN_VIRTUE, answerDemand, battleConfig, continueAI, endTurn, finishBattle, moveArmy, newCampaign, resolvePending, shiftVirtue, virtueOf } from '../src/sim/campaign';
-import { PULL, faithAt, faithSpread, nationVirtue, pullTogether, settleFaith, swayNation, swayTown, townDrift } from '../src/sim/townfaith';
+import { PULL, faithAt, faithSpread, nationVirtue, pullTogether, seasonOfFaith, settleFaith, swayNation, swayTown, townDrift } from '../src/sim/townfaith';
 
 const LONG = 60_000;
 const turn = (c: Campaign) => {
@@ -62,10 +63,8 @@ describe('faith is a town\'s', () => {
   it('the pull: a church or a tavern holds a town apart from its nation only so far', () => {
     const { c, home, a, b } = realm();
     a.buildings = ['church']; b.buildings = ['tavern'];
-    // A garrison in each, so that neither rises and is lost over the eighty seasons: the pull is measured on the player's own towns.
-    for (const t of [a, b]) c.armies.push({ id: c.nextArmy++, owner: 0, at: t.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false });
-    // And no bands about: a raid sways the town it strikes, and one striking every season moves the nation's mean.
-    for (let i = 0; i < 80; i++) { c.bands = []; turn(c); }
+    // Eighty seasons of faith alone: nothing else that befalls a town on the map is in play here.
+    for (let i = 0; i < 80; i++) seasonOfFaith(c, (f, by, at) => shiftVirtue(c, f, by, { at }));
     const mean = virtueOf(c, 0), limit = CHURCH_VIRTUE / PULL; // where a season's 6 is what the pull takes back
     expect(faithAt(c, a.id) - mean).toBeGreaterThan(limit - 12);
     expect(faithAt(c, a.id) - mean).toBeLessThanOrEqual(limit + 4);
