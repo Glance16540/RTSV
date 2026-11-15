@@ -1,5 +1,6 @@
 // Acts of God on the map: a season of famine, plague and fire in every held land (src/sim/acts.ts).
 import { describe, expect, it } from 'vitest';
+import { needOf } from '../src/sim/larder';
 import { folkOf } from '../src/sim/township';
 import { ACTS, actsOfGod, wrathOf } from '../src/sim/acts';
 import type { Struck } from '../src/sim/acts';
@@ -73,13 +74,13 @@ describe('acts of God on the map', () => {
     expect(fallen.hard / all(fallen)).toBeGreaterThan(0.4);
   });
 
-  it('a failed harvest eats from the town\'s granary what the land would have yielded; struck hard with the granary empty, the army there loses a company', () => {
+  it('a failed harvest eats from the town\'s granary a season and a half of its own eating; struck hard with the granary empty, the army there loses a company', () => {
     const c = world(PLAIN);
     let seen = 0;
     seasons(c, 3000, (struck) => {
       for (const x of struck.filter((s) => s.kind === 'famine')) {
-        expect(x.cost).toBe(territoryIncome(c.territories[x.at], c.factions[0].civ));
-        expect(x.food).toBe(x.cost * 100);
+        expect(x.food).toBe(Math.round(ACTS.hunger * needOf(c, x.at))); // a season and a half of the town's own eating
+        expect(x.cost).toBe(Math.round(x.food! / 100));
         expect(folkOf(c, x.at).stores.food).toBe(1e6 - x.food!);
         expect(eventsAt(c, x.at).some((e) => e.kind === 'famine')).toBe(true);
         seen++;
