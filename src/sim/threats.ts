@@ -44,6 +44,7 @@ import { OLD_SEASON, SEASONS_A_YEAR, agesOf, countFrom } from './ageing';
 import { STORE_KINDS, folkOf, living } from './township';
 import { wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
+import { watchOf } from './drift';
 
 export type BandKind = 'raiders' | 'slavers' | 'pirates' | 'highwaymen' | 'marauders';
 /** People a band is holding: where they were taken from, whose they are, their ages when seized, and since when. */
@@ -169,7 +170,9 @@ export function wanted(c: Campaign): number {
 /** What a town has to defend itself with. */
 export function defenceOf(c: Campaign, tid: number): Defence {
   const t = c.territories[tid], f = folkOf(c, tid);
-  const men = f.men * THREATS.man;
+  // Men gone to the mines are not at the walls (drift.ts): the walls are left thin.
+  const watch = watchOf(c, tid);
+  const men = f.men * THREATS.man * watch;
   const works = (t.buildings.includes('fortress') ? THREATS.fortress : 0) + t.buildings.filter((b) => b === 'barracks' || b === 'range' || b === 'stable').length * THREATS.raising;
   let towers = 0, wall = 0;
   for (const b of t.town?.b ?? []) {
@@ -178,7 +181,7 @@ export function defenceOf(c: Campaign, tid: number): Defence {
     if (b[0] === 'tower') towers += whole * THREATS.tower;
     else if (b[0] === 'palisade' || b[0] === 'wall' || b[0] === 'gate') wall += whole * THREATS.wall;
   }
-  const walls = Math.min(THREATS.towers, towers) + Math.min(THREATS.walls, wall);
+  const walls = (Math.min(THREATS.towers, towers) + Math.min(THREATS.walls, wall)) * (0.5 + 0.5 * watch);
   const a = c.armies.find((x) => x.at === tid && x.owner === t.owner);
   const army = a ? armyStrength(a) : 0;
   const guard = t.capital >= 0 ? THREATS.capital : 0;

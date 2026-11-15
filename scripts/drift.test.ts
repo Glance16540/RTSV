@@ -10,7 +10,7 @@ import { appendFileSync } from 'node:fs';
 import { answerDemand, continueAI, endTurn, newCampaign, resolvePending } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { decreesAt, sensibleDecrees } from '../src/sim/decrees';
-import { driftOf, townStanding } from '../src/sim/drift';
+import { driftOf, townStanding, watchOf } from '../src/sim/drift';
 import { folkOf } from '../src/sim/township';
 
 const [lo, hi] = (process.env.SEEDS ?? '1-2').split('-').map(Number);
@@ -18,11 +18,11 @@ const TURNS = +(process.env.TURNS ?? 20);
 const MODES = (process.env.MODES ?? 'none,sensible').split(',');
 
 function towns(c: Campaign) {
-  const out: { id: number; owner: number; standing: number; strain: number; care: number; grief: number; gold: number; decrees: number }[] = [];
+  const out: { id: number; owner: number; standing: number; tavern: number; mines: number; watch: number; strain: number; care: number; grief: number; gold: number; decrees: number }[] = [];
   for (const t of c.territories) {
     if (t.horde) continue;
     const f = folkOf(c, t.id);
-    out.push({ id: t.id, owner: t.owner, standing: townStanding(c, t.id), strain: f.drift?.strain ?? 0, care: f.drift?.care ?? 0, grief: f.grief ?? 0, gold: f.stores.gold, decrees: decreesAt(c, t.id).length });
+    out.push({ id: t.id, owner: t.owner, standing: townStanding(c, t.id), strain: f.drift?.strain ?? 0, care: f.drift?.care ?? 0, grief: f.grief ?? 0, gold: f.stores.gold, tavern: f.drifted?.tavern ?? 0, mines: f.drifted?.mines ?? 0, watch: watchOf(c, t.id), decrees: decreesAt(c, t.id).length });
   }
   return out;
 }

@@ -595,7 +595,7 @@ export class AIController {
     if (!pious) {
       // It likes the tavern's gold but knows where the road ends: a Decadent town's own people die out. Near the
       // edge it empties the tavern, and does not fill it again until it has drawn well back.
-      if (p.virtue <= -60) { for (const b of mine) if (b.type === 'tavern' && b.staff?.length) g.cmdUnstaff(pid, b.id, true); return; }
+      if (p.virtue <= -60) { for (const b of mine) if (b.type === 'tavern' && b.staff?.length && !b.staff.some((id) => (g.entities.get(id) as Unit | undefined)?.drifted)) g.cmdUnstaff(pid, b.id, true); return; }
       if (p.virtue <= -45) return;
     }
     const want = villagers.length >= 26 ? 4 : 2;
@@ -608,7 +608,7 @@ export class AIController {
     }
     // Anyone already walking there counts.
     if (villagers.some((v) => v.order?.t === 'staff')) return;
-    const free = villagers.filter((v) => !v.inside && (!v.order || v.order.t === 'gather'));
+    const free = villagers.filter((v) => !v.inside && !v.drifted && (!v.order || v.order.t === 'gather'));
     const v = free.sort((a, b) => Math.hypot(a.x - house.x, a.y - house.y) - Math.hypot(b.x - house.x, b.y - house.y))[0];
     if (v) g.cmdTarget(pid, [v.id], house.id);
   }
@@ -873,6 +873,7 @@ export class AIController {
     const idle: Unit[] = [];
     let hunters = 0;
     for (const v of villagers) {
+      if (v.drifted) continue; // drifted from their work under strain (driftintown.ts): not the computer's to set back
       if (scraping && v.order?.t === 'gather' && !lack(v.order.res) && !v.inside) { g.cmdStop(pid, [v.id]); idle.push(v); } // called off at once
       else if (v.order?.t === 'gather') have[v.order.res]++;
       else if (v.order?.t === 'attack') { have.food++; hunters++; }
@@ -891,7 +892,7 @@ export class AIController {
       const sorted = order.slice().sort((a, b) => deficit(b) - deficit(a));
       const need = sorted[0], over = sorted[3];
       if (deficit(need) - deficit(over) > 2) {
-        const v = villagers.find((u) => u.order?.t === 'gather' && u.order.res === over);
+        const v = villagers.find((u) => u.order?.t === 'gather' && u.order.res === over && !u.drifted);
         if (v) { idle.push(v); have[over]--; }
       }
     }

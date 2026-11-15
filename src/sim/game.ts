@@ -16,7 +16,7 @@ import { rescue } from './rescue';
 import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
 import { agesHere, birthPace, growPace, hireBar } from './birthonly';
 import { griefPace, griefSecond, mourn } from './grief';
-import { driftSecond } from './drift';
+import { driftSecond } from './driftintown';
 import { Ages, GROWN_SEASON, LAST_SEASON, OLD_SEASON, SEASONS_A_YEAR, ageFor, childSeasons, cleanAges, leftFor, yearsOf } from './ageing';
 import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
@@ -2935,7 +2935,7 @@ export class Game {
           if (b.burnT > 0) { douse(this, b); break; } // the fire first: nothing is mended while it burns
           const p0 = this.players[u.owner];
           if (!b.complete) {
-            const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build;
+            const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build * griefPace(this, u);
             b.progress += work;
             b.hp = Math.min(b.maxHp, b.hp + b.maxHp * work);
             if (b.progress >= 1) {
@@ -3127,7 +3127,7 @@ export class Game {
 
   private strike(u: Unit, t: Entity): void {
     const p = this.players[u.owner];
-    u.cooldown = u.def.cooldown * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1) * (this.calledAt(u.owner, u.x, u.y) === 'warlord' ? CALLS.warlord.haste! : 1);
+    u.cooldown = (u.def.cooldown / griefPace(this, u)) * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1) * (this.calledAt(u.owner, u.x, u.y) === 'warlord' ? CALLS.warlord.haste! : 1);
     u.attackAnim = 0.35;
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
