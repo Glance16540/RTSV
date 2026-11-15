@@ -15,7 +15,7 @@ import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
 import { orphansSeason } from './orphans';
-import { kinSeasons } from './kin';
+import { deputyAt, kinSeasons } from './kin';
 import { noblesSeasons } from './nobles';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
@@ -702,6 +702,7 @@ function mapTurn(c: Campaign): void {
       const a = armyAt(c, t.id), f = c.factions[t.owner];
       const faith = faithOf(c, t.owner);
       if (leaderAt(c, t.owner, t.id)) { mark(c, 'calm', t.id); c.log.push(`${f.id === 0 ? 'Your leader is' : `The leader of the ${f.name} is`} in ${t.name}: the unrest there passes.`); }
+      else if (deputyAt(c, t.owner, t.id)) { mark(c, 'calm', t.id); c.log.push(`${deputyAt(c, t.owner, t.id)!.name}, ${f.id === 0 ? 'your' : `the ${f.name}'s`} right hand, is in ${t.name}: the unrest there passes.`); }
       else if (faith.steadfast) { mark(c, 'calm', t.id); c.log.push(`${t.name} keeps faith with ${f.id === 0 ? 'you' : f.name}: the unrest passes.`); }
       else if (a && a.owner === t.owner && !(faith.restless && armySize(a) < 2)) { mark(c, 'calm', t.id); c.log.push(`The garrison keeps order in ${t.name}.`); }
       else {
