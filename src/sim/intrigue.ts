@@ -100,7 +100,7 @@ export const INTRIGUE = {
     chance: 0.02, strained: 2, grown: 8,
     suspects: 5,
     /** The chance of a killing each season after the first, and the fewest grown people it leaves a town. */
-    strike: 0.45, leave: 6,
+    strike: 0.3, leave: 7,
     /** The chance a killing is of one of the suspected (who is thereby cleared). */
     among: 0.25,
     /** The chance of a clue a season; more with the leader's court in the town, or an army. */
