@@ -21,10 +21,12 @@ import { writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
 import { Game } from '../src/sim/game';
 import type { Campaign } from '../src/sim/campaign';
-import { ageOf, answerDemand, armyAt, armyStrength, battleConfig, battleWatchers, continueAI, endTurn, moveArmy, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
+import { ageOf, answerDemand, siteCost, slots, armyAt, armyStrength, battleConfig, battleWatchers, continueAI, endTurn, moveArmy, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
 import { armiesFor, attackBand } from '../src/sim/bandfight';
 import { SEASONS_A_YEAR } from '../src/sim/ageing';
 import { BUILDINGS, CIV_IDS } from '../src/sim/data';
+import { GOVERN } from '../src/sim/governor';
+import { STORE_KINDS } from '../src/sim/township';
 import { folkOf, grown } from '../src/sim/township';
 import { needOf } from '../src/sim/larder';
 import { faithSpread } from '../src/sim/townfaith';
@@ -105,7 +107,7 @@ const held = (c: Campaign) => c.territories.filter((t) => t.owner >= 0 && !t.hor
 
 // ---- What is watched, season by season ----
 
-interface TownSeason { tribe: boolean; hungry: boolean; farmed: boolean; convoy: boolean; drifted: boolean; strained: 'hungry' | 'raided' | 'taken' | ''; oneSex: boolean }
+interface TownSeason { tribe: boolean; hungry: boolean; farmed: boolean; /** No farm, and its governor could raise one: a free place and the stores for it (governor.ts). */ canFarm: boolean; convoy: boolean; drifted: boolean; strained: 'hungry' | 'raided' | 'taken' | ''; oneSex: boolean }
 interface Watch {
   decided: number; // the season the campaign was decided, or -1
   how: string; // who won it: 'player beaten', 'player', 'rival'
@@ -191,7 +193,9 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       const raided = raidsNow.some((r) => r.at === t.id) || (c.raids ?? []).some((r) => r.at === t.id && r.turn === now - 1);
       const newly = !!t.yoke && now - t.yoke.since <= 8;
       const drifted = (f.drifted?.tavern ?? 0) + (f.drifted?.mines ?? 0) > 0;
-      w.townSeasons.push({ tribe: false, hungry: !!f.hungry, farmed: t.buildings.includes('farm'), convoy: convoyTo.has(t.id), drifted, strained: f.hungry ? 'hungry' : raided ? 'raided' : newly ? 'taken' : '', oneSex: g + away > 0 && (f.men + away === 0 || f.women === 0) });
+      const goods = STORE_KINDS.reduce((k, x) => k + Math.max(0, f.stores[x]), 0);
+      const canFarm = !t.buildings.includes('farm') && t.buildings.length < slots(t) && goods - siteCost(t, 'farm', c.factions[t.owner].civ) * 100 >= GOVERN.floor;
+      w.townSeasons.push({ tribe: false, hungry: !!f.hungry, farmed: t.buildings.includes('farm'), canFarm, convoy: convoyTo.has(t.id), drifted, strained: f.hungry ? 'hungry' : raided ? 'raided' : newly ? 'taken' : '', oneSex: g + away > 0 && (f.men + away === 0 || f.women === 0) });
       if (s <= YEARS20) {
         townSeasonsOf[t.owner]++;
         if (f.hungry) hungryOf[t.owner]++;
@@ -202,7 +206,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     for (const t of c.territories) {
       if (t.owner >= 0 || t.horde) continue;
       const f = folkOf(c, t.id), g = grown(f);
-      if (g > 0) w.townSeasons.push({ tribe: true, hungry: false, farmed: false, convoy: true, drifted: false, strained: '', oneSex: f.men === 0 || f.women === 0 });
+      if (g > 0) w.townSeasons.push({ tribe: true, hungry: false, farmed: false, canFarm: false, convoy: true, drifted: false, strained: '', oneSex: f.men === 0 || f.women === 0 });
     }
     // Who turned sixty and seventy this season, in every town that keeps its people's ages (ageing.ts).
     let r60 = 0, r70 = 0;
@@ -395,9 +399,12 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const ts = all('townSeasons').filter((x) => !x.tribe);
   const farmedHungry = share(ts.filter((x) => x.farmed), (x) => x.hungry);
   add('Food', 'Share of seasons a farmed town is hungry', 'under 2%', `${pct(farmedHungry)} (${ts.filter((x) => x.farmed).length} town-seasons)`, farmedHungry < 0.02);
-  const bareTowns = ts.filter((x) => !x.farmed && !x.convoy);
-  const bareHungry = share(bareTowns, (x) => x.hungry);
-  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry', '15 to 40%', `${pct(bareHungry)} (${bareTowns.length} town-seasons)`, within(bareHungry, 0.15, 0.4), 'No convoy means none was on the road to it as the season began.');
+  const bareTowns = ts.filter((x) => !x.farmed && !x.convoy), could = bareTowns.filter((x) => x.canFarm), couldNot = bareTowns.filter((x) => !x.canFarm);
+  const couldHungry = share(could, (x) => x.hungry), couldNotHungry = share(couldNot, (x) => x.hungry);
+  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where its governor can still raise a farm', 'under 10%', `${pct(couldHungry)} (${could.length} town-seasons)`, could.length ? couldHungry < 0.1 : null,
+    'No convoy means none was on the road to it as the season began. Can still raise a farm is the governor\'s own test (governor.ts), read at the end of the season: a free place among its buildings, and its stores, less the farm\'s price, at or above his floor.');
+  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised', '15 to 40%', `${pct(couldNotHungry)} (${couldNot.length} town-seasons)`, couldNot.length ? within(couldNotHungry, 0.15, 0.4) : null,
+    'The rest of the unfarmed towns with no convoy: no free place, or not the stores.');
   const dead = ruled.flatMap((w) => Object.values(w.hungerDead));
   const nations = ruled.length * 3; // a player and two rivals in each
   const perNation = dead.reduce((a, b) => a + b, 0) / nations;
@@ -462,7 +469,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const lines = [
     '# Campaign health report',
     '',
-    `Measured by \`scripts/health.test.ts\` against \`docs/TUNING.md\`: ${CAMPAIGNS} campaigns (seeds 1 to ${CAMPAIGNS}, a player and two rivals), up to ${SEASONS} seasons, the player ${PLAYER === 'computer' ? 'played by the computer' : 'let be'}, each also played ${YEARS20} seasons with no decrees${VISITS ? `, and ${VISITS} with every town visited` : ''}. ${inN} in band, ${outN} out. Took ${secs} seconds.`,
+    `Measured by \`scripts/health.test.ts\` against \`docs/TUNING.md\`: ${CAMPAIGNS} campaigns (seeds 1 to ${CAMPAIGNS}, a player and two rivals), up to ${SEASONS} seasons, the player ${PLAYER === 'computer' ? 'played by the computer' : 'let be'}, each also played ${YEARS20} seasons with no decrees${VISITS ? `, and ${VISITS} told again with the player's first towns visited every season` : ''}. ${inN} in band, ${outN} out. Took ${secs} seconds.`,
     '',
     '| Area | Figure | Target band | Measured | |',
     '| --- | --- | --- | --- | --- |',
