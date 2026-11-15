@@ -9,6 +9,8 @@
 //   PLAYER     'computer' (the player's turns are played as a rival's, campaign.ts `playForPlayer`) or 'passive'.
 //   SIEGES     how many real-time sieges the computer fights on both sides (the rival against a capital). Default 8.
 //   MINUTES    how long each may run before the town is counted as having held. Default 20.
+//   STORIES    'answer': the computer-played player answers the stories inside the story by a plain policy
+//              (src/sim/storypolicy.ts); left out, it answers none of them.
 //   VISITS     how many of the campaigns are played again with every town of the player's visited each season for
 //              twenty years (slow: a visit is ten minutes of a real battle). Default 0, and that figure is not measured.
 //   OUT        where the report is written. Default docs/health-report.md.
@@ -16,6 +18,7 @@
 // Every campaign is played twice from the same seed: as the rules stand, the player giving the decrees a sensible
 // ruler would ('ruled'), and with nobody giving decrees ('no decrees'). Every figure is read from the first, but
 // the decrees' own. Skipped unless HEALTH is set.
+import { sensibleAnswers } from '../src/sim/storypolicy';
 import { it } from 'vitest';
 import { writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
@@ -35,13 +38,15 @@ import { awayFrom, menOf } from '../src/sim/armytown';
 import { driftOf, townStanding } from '../src/sim/drift';
 import { sensibleDecrees } from '../src/sim/decrees';
 import { THREATS } from '../src/sim/threats';
-import { VISIT_SECONDS, beginVisit, finishVisit, visitConfig } from '../src/sim/visit';
+import { VISIT_SECONDS, beginVisit, finishVisit, visitArms, visitConfig } from '../src/sim/visit';
 import { driftedIn } from '../src/sim/driftintown';
 
 const CAMPAIGNS = +(process.env.CAMPAIGNS ?? 24);
 const SEASONS = +(process.env.SEASONS ?? 200);
 const PLAYER = process.env.PLAYER === 'passive' ? 'passive' : 'computer';
 const VISITS = +(process.env.VISITS ?? 0);
+/** 'answer': the computer-played player answers the stories inside the story by a plain policy (src/sim/storypolicy.ts); otherwise it answers none. */
+const STORIES = process.env.STORIES === 'answer' ? 'answer' : 'ignore';
 const OUT = process.env.OUT ?? 'docs/health-report.md';
 const SIEGES = +(process.env.SIEGES ?? 8);
 const MINUTES = +(process.env.MINUTES ?? 20);
@@ -82,6 +87,7 @@ function huntBands(c: Campaign): void {
 /** One season: the player's turn (played or let be), then everyone else's. */
 function season(c: Campaign, ruled: boolean): void {
   if (PLAYER === 'computer') {
+    if (STORIES === 'answer') sensibleAnswers(c, 0);
     huntBands(c);
     for (let i = 0; i < 40 && c.phase === 'player'; i++) {
       playForPlayer(c);
@@ -103,7 +109,7 @@ function visit(c: Campaign, tid: number): void {
   g.fixedAge = true; g.bornOnly = true;
   const ai = new AIController(g, 0); ai.setLevel(1);
   for (let s = 0; s < VISIT_SECONDS && !g.players[0].defeated; s++) { for (let i = 0; i < 20; i++) g.step(); g.events.length = 0; ai.update(); }
-  finishVisit(c, { town: g.standing(0), ground: g.ground(), virtue: g.players[0].virtue, seconds: g.time, orders: g.orders(0), folk: g.census(0), drifted: driftedIn(g, 0) }); // as the client does: its last orders (governor.ts) and who has drifted (driftintown.ts)
+  finishVisit(c, { town: g.standing(0), ground: g.ground(), virtue: g.players[0].virtue, seconds: g.time, orders: g.orders(0), folk: g.census(0), drifted: driftedIn(g, 0), arms: visitArms(g.units, 0) }); // as the client does: its last orders (governor.ts) and who has drifted (driftintown.ts)
 }
 
 const civOf = (seed: number): string => CIVS[seed % CIVS.length];
@@ -123,7 +129,7 @@ const DEAD_WINDOW = 8;
 
 interface Watch {
   decided: number; // the season the campaign was decided, or -1
-  how: string; // who won it: 'player beaten', 'player', 'rival'
+  how: string; // who won it: 'player beaten', 'player', 'rival', or 'ruin' (nobody: ruin.ts)
   ages: number[]; // seasons a rival took to reach each next age
   growth: number[]; // grown after 20 years over grown at the start, for towns held by one people throughout
   townSeasons: TownSeason[];
@@ -175,7 +181,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     // Once a campaign is decided, the world is let go on turning until twenty years have passed, so that the
     // twenty-year figures are read from every campaign; the campaign's figures are read from the decision.
     if (c.phase === 'over') {
-      if (w.decided < 0) { w.decided = c.turn; w.how = !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
+      if (w.decided < 0) { w.decided = c.turn; w.how = c.ended === 'ruin' ? 'ruin' : !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
       if (s > YEARS20) break;
       c.phase = 'player';
     }
@@ -346,7 +352,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   for (const xs of fed) if (xs.length) { w.storeSeasons.push(median(xs)); w.peaceSeasons += xs.length; }
   w.unsettled = takenAt.size;
   w.townLives = w.townSeasons.filter((x) => !x.tribe).length / YEARS20;
-  if (c.phase === 'over' && w.decided < 0) { w.decided = c.turn; w.how = !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
+  if (c.phase === 'over' && w.decided < 0) { w.decided = c.turn; w.how = c.ended === 'ruin' ? 'ruin' : !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
   return w;
 }
 
@@ -473,7 +479,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
 
   // Pace
   const decided = ruled.filter((w) => w.decided >= 0).map((w) => w.decided);
-  add('Pace', 'Seasons until a campaign is decided', '60 to 160', `median ${num(median(decided), 0)} (${decided.length} of ${ruled.length} decided; range ${decided.length ? Math.min(...decided) : '—'} to ${decided.length ? Math.max(...decided) : '—'}; ${['player', 'rival', 'player beaten'].map((h) => `${ruled.filter((w) => w.how === h).length} ${h === 'player' ? 'won by the player' : h === 'rival' ? 'won by a rival' : 'with the player beaten'}`).join(', ')})`, within(median(decided), 60, 160),
+  add('Pace', 'Seasons until a campaign is decided', '60 to 160', `median ${num(median(decided), 0)} (${decided.length} of ${ruled.length} decided; range ${decided.length ? Math.min(...decided) : '—'} to ${decided.length ? Math.max(...decided) : '—'}; ${['player', 'rival', 'player beaten', 'ruin'].map((h) => `${ruled.filter((w) => w.how === h).length} ${h === 'player' ? 'won by the player' : h === 'rival' ? 'won by a rival' : h === 'ruin' ? 'ended in ruin (ruin.ts)' : 'with the player beaten'}`).join(', ')})`, within(median(decided), 60, 160),
     'Decided means the campaign ended: one people rules beyond challenge, or the player is beaten. A campaign decided sooner is let go on turning to twenty years for the twenty-year figures, with nobody leaving it.');
   const undecided = share(ruled, (w) => w.decided < 0);
   add('Pace', `Campaigns undecided at ${SEASONS} seasons`, 'under 10%', pct(undecided), undecided < 0.1);
@@ -568,7 +574,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   add('Threats', 'Raids on a given town', 'about once in 3 to 5 years', raids.length ? `once in ${num(every, 1)} years (${raids.length} raids)` : 'no raids', within(every, 3, 5), 'Every strike by a band on a held town, the marauders\' included, per season it was held, over the whole run.');
   // Stories inside the story (intrigue.ts, courtstory.ts): how often one begins for the player's nation.
   const stories = ruled.reduce((k, w) => k + w.stories, 0), storyYears = ruled.reduce((k, w) => k + w.storyYears, 0), storyEvery = stories ? storyYears / stories : NaN;
-  add('Stories', 'A story begins for the player\'s nation', 'about once in 3 to 6 years', stories ? `once in ${num(storyEvery, 1)} years (${stories} stories in ${ruled.length} campaigns)` : 'no stories', within(storyEvery, 3, 6), 'Every story inside the story begun for the player (a thief, a killer, a rival king, a suitor, a plot), over the years the campaign ran. The computer-played player answers none of them.');
+  add('Stories', 'A story begins for the player\'s nation', 'about once in 3 to 6 years', stories ? `once in ${num(storyEvery, 1)} years (${stories} stories in ${ruled.length} campaigns)` : 'no stories', within(storyEvery, 3, 6), 'Every story inside the story begun for the player (a thief, a killer, a rival king, a suitor, a plot), over the years the campaign ran. ' + (STORIES === 'answer' ? 'The computer-played player answers them by a plain policy (STORIES=answer, src/sim/storypolicy.ts).' : 'The computer-played player answers none of them (STORIES=answer makes it answer).'));
   const out = (o: string) => share(raids, (r) => r.outcome === o);
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);

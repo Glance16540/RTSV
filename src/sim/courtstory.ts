@@ -29,7 +29,7 @@ import { NAMES_M } from './data';
 import { courtOf, leaderAt } from './court';
 import { houseOf, ofAge, rulerName } from './dynasty';
 import { kinOf, plotWarning, spouseOf } from './kin';
-import { Noble, isAngry, noblesOf, titleOf } from './nobles';
+import { Noble, isAngry, newLord, noblesOf, titleOf } from './nobles';
 import { folkOf, living } from './township';
 import { canPayFor, payFor } from './prices';
 import { Choice, Intrigue, begin, chance, end, note } from './intrigue';
@@ -307,6 +307,7 @@ function remove(c: Campaign, n: Noble | undefined, how: string): void {
   const rec = living(folkOf(c, n.town)).find((x) => x.name === n.name);
   if (rec && n.rank !== 'lord') rec.lost = { turn: c.turn, how };
   n.mood = 0; // whoever holds the place after them has learned from it
+  if (n.rank === 'lord') newLord(c, 0, n.town, n); // the town has a new lord, of another name (nobles.ts)
 }
 function plotStep(c: Campaign, it: Intrigue): void {
   const P = COURT.plot, fac = c.factions[0], p = it.nobles![it.culprit], n = nobleOf(c, it, it.culprit);
@@ -352,6 +353,7 @@ function plotChoose(c: Campaign, it: Intrigue, choice: string): boolean {
   if (choice === 'unwatch') { it.watch = false; note(c, it, 'plain', 'The informers are called off.'); return true; }
   if (choice === 'gifts') {
     payFor(c, 0, 'dealing', P.gifts);
+    it.sweetened = true;
     for (const x of noblesOf(c, 0)) x.mood = Math.min(100, x.mood + P.sweeten);
     note(c, it, 'plain', 'Gifts have gone out to every noble house. It may be enough.');
     return true;

@@ -23,10 +23,16 @@ describe('a decree', () => {
     expect(c.factions[0].supplies).toBe(before - DECREES.guards.cost);
     expect(decreesAt(c, tid)).toHaveLength(1);
     expect(decreeBar(c, 0, tid, 'guards')).toMatch(/already in force/);
+    // Given in the player's part of a season, it holds through the turn that follows (when towns drift), and its seasons from there.
+    expect(c.phase).toBe('player');
     c.turn += DECREES.guards.seasons;
+    decreesSeason(c);
+    expect(decreesAt(c, tid)).toHaveLength(1);
+    c.turn += 1;
     decreesSeason(c);
     expect(decreesAt(c, tid)).toHaveLength(0);
   });
+
 
   it('is given only to a town of your own, with what it needs there, and what you can pay for', () => {
     const { c, tid, other } = world(), t = c.territories[tid];
@@ -35,7 +41,13 @@ describe('a decree', () => {
     expect(decreeBar(c, 0, tid, 'church')).toMatch(/no church/);
     expect(decreeBar(c, 0, tid, 'tavernWomen')).toMatch(/no tavern/);
     c.factions[0].supplies = 0;
-    expect(decreeBar(c, 0, tid, 'alms')).toMatch(/costs/);
+    expect(decreeBar(c, 0, tid, 'guards')).toMatch(/costs/);
+    // Food is paid in goods, not supplies: the town's own first, then what the towns beside it can spare.
+    expect(decreeBar(c, 0, tid, 'alms')).toBe('');
+    const s = folkOf(c, tid).stores;
+    s.gold = 0; s.wood = 0; s.stone = 0;
+    for (const n of c.territories[tid].adj) if (c.territories[n].owner === 0) folkOf(c, n).stores.food = 0;
+    expect(decreeBar(c, 0, tid, 'alms')).toMatch(/no food to be had/);
   });
 
   it('given in person is whole; sent by messenger, the leader being elsewhere, half as strong', () => {
@@ -93,7 +105,11 @@ describe('a sensible ruler', () => {
     expect(decreesAt(c, tid).map((d) => d.kind)).toContain('alms');
     c.factions[0].supplies = 4;
     c.territories[tid].decrees = [];
-    expect(sensibleDecrees(c, 0, () => ({ hungry: true, raided: true, moved: -5, standing: 0 }))).toBe(0);
+    // With only the supplies it keeps in hand, it gives nothing that costs supplies; food, paid in goods, still goes.
+    expect(sensibleDecrees(c, 0, () => ({ hungry: false, raided: true, moved: -5, standing: 0 }))).toBe(0);
+    expect(sensibleDecrees(c, 0, () => ({ hungry: true, raided: true, moved: -5, standing: 0 }))).toBe(1);
+    expect(decreesAt(c, tid).map((d) => d.kind)).toEqual(['alms']);
+    expect(c.factions[0].supplies).toBe(4);
   });
 
   it('the computer\'s peoples give their decrees when the season turns', () => {

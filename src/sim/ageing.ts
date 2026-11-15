@@ -24,8 +24,8 @@ export const OLD_YEARS = 60;
 export const GROWN_SEASON = GROWN_YEARS * SEASONS_A_YEAR;
 export const OLD_SEASON = OLD_YEARS * SEASONS_A_YEAR;
 /** The chance each season that an old person dies: DEATH_AT_60 at sixty, and DEATH_A_YEAR more for every year past it. */
-export const DEATH_AT_60 = 0.01;
-export const DEATH_A_YEAR = 0.005;
+export const DEATH_AT_60 = 0.008;
+export const DEATH_A_YEAR = 0.004;
 /** Nobody on the record is older than this. */
 export const LAST_SEASON = 100 * SEASONS_A_YEAR;
 

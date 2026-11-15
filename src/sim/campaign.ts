@@ -9,6 +9,7 @@ import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
+import { townFell } from './carriedoff';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { fieldReckoned, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
@@ -41,14 +42,16 @@ import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
-import { aimOrder, marchInto } from './rivalaim';
+import { aimOrder, marchInto, redeploy } from './rivalaim';
 import { suitorsSeason } from './suitors';
+import { ruinSeason } from './ruin';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
-import { ARMY_REST, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
+import { ARMY_REST, MEN_A_COMPANY, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
+import { creditArmy } from './warhouse';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
 
@@ -1236,7 +1239,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   settleFaith(c); // every town's own standing is written down before any changes hands
   settleStores(c); // and what each people has spent or earned is in its towns before any is lost (stores.ts)
   // A battle nobody watched is paid for by the town in men, and in stores if it falls.
-  if (how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde) tollFolk(c, p.to, attackerWon);
+  const toll = how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde ? tollFolk(c, p.to, attackerWon) : 0;
   // The rival leader has something to say about a battle against the player.
   if (p.attacker === 0 || p.defender === 0) {
     const won = attackerWon === (p.attacker === 0);
@@ -1246,6 +1249,9 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   const t = c.territories[p.to];
   const army = c.armies.find((x) => x.id === p.armyId);
   const defArmy = armyAt(c, p.to);
+  // What the victor felled is counted to the houses of its men (warhouse.ts): the companies it broke, and the town's dead.
+  if (attackerWon && army) creditArmy(c, army.id, (defArmy ? armySize(defArmy) * MEN_A_COMPANY : 0) + toll);
+  else if (!attackerWon && defArmy && army) creditArmy(c, defArmy.id, armySize(army) * MEN_A_COMPANY);
   if (attackerWon) {
     if (defArmy) destroyArmy(c, defArmy);
     if (army) {
@@ -1267,6 +1273,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       t.capital = -1;
     }
     townTaken(c, t.id, p.defender, p.attacker); // its people stay, and resent it (conquered.ts)
+    townFell(c, t.id, p.defender, p.attacker, p.from); // those held in it go free, and a worldly taker leads some of its people away (carriedoff.ts)
     t.owner = p.attacker;
     if (c.ally >= 0 && c.factions[c.ally].alive) {
       const ally = c.factions[c.ally];
@@ -1401,6 +1408,7 @@ export function continueAI(c: Campaign): void {
       intrigueSeason(c); // stories inside the story: a thief, a killer to be found (intrigue.ts)
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
+      ruinSeason(c); // twenty years with no people gaining ground and the bands on much of the map: the age ends in ruin (ruin.ts)
       seasonTurned(c); // what changed for the player's nation this season, for the card on the map (seasonreport.ts)
       return;
     }
@@ -1623,19 +1631,27 @@ function aiStep(c: Campaign, f: Faction): boolean {
     targets.sort((a, b) => foe(a) - foe(b));
   }
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
-  if (targets.length) {
-    const t = c.territories[targets[0]];
-    // Cautious leaders want better odds; a leader who has just been refused wants blood.
+  // Cautious leaders want better odds; a leader who has just been refused wants blood.
+  const dares = (from: number, to: number): boolean => {
+    const t = c.territories[to];
+    if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
-    const bySea = !here.adj.includes(t.id);
-    if (strengthVs(army, defenders(c, t.id), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, t.id) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
-      moveArmy(c, army.id, t.id);
-      return false;
-    }
+    const bySea = !c.territories[from].adj.includes(to);
+    return strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * ageEdge(c, f.id) >= defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin;
+  };
+  // It marches on the most wanted land it dares, not only the most wanted of all.
+  const dared = targets.find((id) => dares(here.id, id));
+  if (dared !== undefined) {
+    moveArmy(c, army.id, dared);
+    return false;
   }
   if (!reach(c, here.id).some((id) => c.territories[id].owner !== f.id)) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
+    if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
+  } else {
+    // On a border with nothing it dares: it goes by its own lands to a border where there is something (rivalaim.ts).
+    const next = redeploy(c, f.id, army.at, (from) => reach(c, from).some((id) => dares(from, id)), (id) => reach(c, id));
     if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
   }
   army.moved = true;
@@ -1767,7 +1783,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const { virtue, heroRank, town: standing, ground } = after;
   const p = c.pending;
   if (!p) return;
-  if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors); return; }
+  if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors, { fell: after.fell, heroRank, acclaimed: after.acclaimed }); return; } // the leader fought beside the army, at the usual risk (bandfight.ts)
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.
   if (virtue !== undefined && Number.isFinite(virtue)) { if (p.attacker !== 0 && p.mode !== 'field') shiftVirtue(c, 0, (virtue - faithAt(c, p.to)) * BATTLE_VIRTUE, { at: p.to }); else shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE); }

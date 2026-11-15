@@ -19,6 +19,9 @@ import { sideName } from './naming';
 import { Orders, keepOrders } from './governor';
 import type { Sky } from './campaign';
 import { driftBack, withDrift } from './driftintown';
+import { companyOf } from './townmuster';
+import { menMustered, reckonArmies } from './armytown';
+import type { Army } from './campaign';
 
 declare module './campaign' {
   interface Campaign {
@@ -59,6 +62,73 @@ export interface VisitAfter {
   drifted?: { tavern?: number; mines?: number };
   /** What the town was set to as the player left (`Game.orders()`): it carries on with them (governor.ts). */
   orders?: Partial<Orders>;
+  /** Who of the player's bore arms as they left, by company (`visitArms`): the army's soldiers, and townsmen trained there. */
+  arms?: VisitArms;
+}
+
+/** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
+export interface VisitArms { army: Record<string, number>; trained: Record<string, number> }
+/**
+ * Count who bears arms as a visit ends. A soldier the army brought in has no span of life of his own (lifespan 0);
+ * a townsman trained there keeps his (muster.ts), and is still counted among the town's men by its census.
+ */
+export function visitArms(units: { owner: number; type: string; dead?: boolean; lifespan: number }[], owner: number): VisitArms {
+  const out: VisitArms = { army: {}, trained: {} };
+  for (const u of units) {
+    if (u.owner !== owner || u.dead) continue;
+    const kind = companyOf(u.type);
+    if (!kind) continue;
+    const into = u.lifespan > 0 ? out.trained : out.army;
+    into[kind] = (into[kind] ?? 0) + 1;
+  }
+  return out;
+}
+const cleanCount = (x: unknown): Record<string, number> => {
+  const out: Record<string, number> = {};
+  if (x && typeof x === 'object') for (const [k, v] of Object.entries(x as Record<string, unknown>)) if (COMPANIES[k] && Number.isFinite(v) && Number(v) > 0) out[k] = Math.min(200, Math.floor(Number(v)));
+  return out;
+};
+
+/**
+ * The town's soldiers go home to the map. Companies of the army stationed there that were lost in the visit are
+ * lost on the map (armytown.ts counts their men: some dead, the rest home hurt); townsmen trained there make up new
+ * companies, a company for every two of a kind, that join the army there or form one, and the men of each are taken
+ * onto its roll from the town as any company raised is (armytown.ts, warhouse.ts).
+ */
+function armsHome(c: Campaign, tid: number, arms: VisitArms, before: Record<string, number> | undefined): void {
+  const army = cleanCount(arms.army), trained = cleanCount(arms.trained), t = c.territories[tid];
+  let a: Army | undefined = armyAt(c, tid);
+  if (a && a.owner !== 0) return;
+  if (a && before) {
+    const units: Record<string, number> = {};
+    for (const [kind, had] of Object.entries(before)) {
+      const per = Object.values(COMPANIES[kind]?.units ?? {})[0] ?? 2;
+      const left = Math.min(had, Math.ceil((army[kind] ?? 0) / per));
+      if (left > 0) units[kind] = left;
+    }
+    const lost = Object.values(before).reduce((n, k) => n + k, 0) - Object.values(units).reduce((n, k) => n + k, 0);
+    if (lost > 0) {
+      // The leader's army keeps a company about them; any other army that lost every man is gone.
+      if (!Object.keys(units).length && a.hero) units[Object.keys(before)[0]] = 1;
+      if (Object.keys(units).length) a.units = units; else { c.armies.splice(c.armies.indexOf(a), 1); a = undefined; }
+      c.log.push(`${lost} ${lost === 1 ? 'company' : 'companies'} of the army in ${t.name} ${lost === 1 ? 'was' : 'were'} lost while you were there.`);
+      reckonArmies(c);
+    }
+  }
+  for (const [kind, n] of Object.entries(trained)) {
+    const per = Object.values(COMPANIES[kind].units)[0] ?? 2;
+    for (let k = 0; k < Math.floor(n / per); k++) {
+      const fresh = !a;
+      if (!a) { a = { id: c.nextArmy++, owner: 0, at: tid, units: {}, hero: false, vet: c.factions[0].civ === 'japan' ? 1 : 0, moved: true }; c.armies.push(a); }
+      a.units[kind] = (a.units[kind] ?? 0) + 1;
+      if (!menMustered(c, a, tid)) { // nobody to go after all: no company
+        a.units[kind]--; if (!a.units[kind]) delete a.units[kind];
+        if (fresh) { c.armies.splice(c.armies.indexOf(a), 1); delete c.musters?.[a.id]; a = undefined; }
+        break;
+      }
+      c.log.push(`The ${COMPANIES[kind].name.toLowerCase()} you trained in ${t.name} ${fresh ? 'form an army there' : 'join the army there'}.`);
+    }
+  }
 }
 
 /** Why this town cannot be visited now, or '' if it can. */
@@ -124,10 +194,12 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   // The town is as the visit left it: everyone born there, less the dead and the taken.
   const census = cleanCensus(after.folk);
   const before = folkOf(c, land.id).children;
+  const had = armyAt(c, land.id)?.owner === 0 ? { ...armyAt(c, land.id)!.units } : undefined;
   if (census) settleFolk(c, land.id, census);
   if (census) bornOnVisit(c, land.id, folkOf(c, land.id).children - before);
   if (census) driftBack(c, land.id, after.drifted);
   keepOrders(c, land.id, after.orders);
+  if (after.arms) armsHome(c, land.id, after.arms, had); // its soldiers go home to the map: the army's losses, and companies trained there
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
   // It is this town that was kept so, and this town that is moved (townfaith.ts).

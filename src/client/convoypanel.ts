@@ -15,7 +15,7 @@ export function convoyHtml(c: Campaign, tid: number): string {
   if (!to.length) return '';
   const going = onTheRoad(c, 0).filter((x) => x.from === tid || x.to === tid);
   const first = to[0].id;
-  return `<div class="ow-convoy"><div class="hint">🐂 Send by road, a season on the way${going.length ? ` (${going.length} on the road to or from here)` : ''}. Highwaymen rob convoys they catch unescorted: ${Math.round(CONVOYS.rob * 100)}% of the goods, never the people.</div>
+  return `<div class="ow-convoy"><div class="hint">🐂 Send by road, or over a sea lane from a Harbour, a season on the way${going.length ? ` (${going.length} on the road to or from here)` : ''}. Highwaymen on the road and pirates at sea rob convoys they catch unescorted: ${Math.round(CONVOYS.rob * 100)}% of the goods, never the people.</div>
     <select id="ow-convoy-to">${to.map((t) => `<option value="${t.id}">${t.name}</option>`).join('')}</select>
     ${Object.entries(LOADS).map(([k, l]) => { const why = cannotSend(c, 0, tid, first, l.what); return `<button data-act="convoy:${k}" title="${l.tip}${why ? ' ' + why : ''}" ${c.phase === 'player' && !why ? '' : 'disabled'}>${l.label}</button>`; }).join('')}</div>`;
 }

@@ -2,8 +2,10 @@
 // or a suitor at the leader's court, the people it turns on by name and face, what has been found out, and what the leader may do. The rules are src/sim/intrigue.ts.
 // The sim knows who the killer is; nothing here reads it.
 import type { Campaign } from '../sim/campaign';
-import { Intrigue, Person, choicesFor, fullName, intriguesAt, standing, suspected } from '../sim/intrigue';
+import { Intrigue, Person, choicesFor, choose, fullName, intriguesAt, standing, suspected } from '../sim/intrigue';
 import '../sim/kin';
+import { callOn, callable, live, marksOf } from '../sim/aftermath';
+import { courtOf } from '../sim/court';
 import { nationOf, notablePortrait } from '../sim/portrait';
 import { portraitHtml } from './portrait';
 
@@ -43,15 +45,28 @@ function storyHtml(c: Campaign, it: Intrigue): string {
   const title = it.kind === 'rival' && c.factions[it.rival ?? 0]?.hero?.female ? 'A rival queen' : TITLE[it.kind];
   return `<div class="story-box"><b>🕯️ ${title}${it.kind === 'thief' || it.kind === 'killer' ? ` in ${esc(c.territories[it.at].name)}` : ''}</b><div>${esc(standing(c, it))}</div>${people}</div>`;
 }
-/** The stories running in a land of the player's: its town's, and those of the leader's house where the court is. */
+const MARK_ICON: Record<string, string> = { warmed: '🌤️', eased: '🌤️', soured: '🌧️', resentful: '🌧️', feud: '🗡️', bought: '💰', alliance: '💍', pardoned: '⚖️' };
+/** What stories have left behind that shows in this land: on its town, and at the court what stands between the leader and other peoples and nobles. */
+function marksHtml(c: Campaign, tid: number): string {
+  const court = courtOf(c, 0)?.at === tid;
+  const marks = marksOf(c, 0).filter((m) => live(c, m) && (m.kind !== 'pardoned' || m.shown) && m.kind !== 'bought' && (m.at === tid || (m.at === undefined && court)));
+  return marks.map((m) => `<div class="hint story-mark" title="Remembered until turn ${m.until}">${MARK_ICON[m.kind] ?? '🕯️'} ${esc(m.text)}</div>`).join('');
+}
+/** The stories running in a land of the player's: its town's, and those of the leader's house where the court is; and what earlier ones left behind. */
 export function intrigueHtml(c: Campaign, tid: number): string {
-  return intriguesAt(c, tid).filter((it) => it.owner === 0).map((it) => storyHtml(c, it)).join('');
+  return intriguesAt(c, tid).filter((it) => it.owner === 0).map((it) => storyHtml(c, it)).join('') + marksHtml(c, tid);
 }
 
 /** What the leader may do about them: each a button for the land's panel. */
 export function intrigueButtons(c: Campaign, tid: number): string {
   if (c.phase !== 'player') return '';
-  return intriguesAt(c, tid).filter((it) => it.owner === 0).flatMap((it) => choicesFor(c, it).map((k) => `<button data-act="story:${it.id}/${k.id.replace(':', '.')}"${k.bar ? ` disabled title="${esc(k.bar)}"` : ''}>${esc(k.label)}</button>`)).join('');
+  const calls = courtOf(c, 0)?.at === tid ? callable(c, 0).map((m) => `<button data-act="story:m${m.id}/call" title="It can be asked once. They may send companies to your army here, or refuse.">💍 Call on ${esc(c.factions[m.rival ?? 0]?.name ?? 'them')}, ${esc(m.name ?? 'your daughter')}'s people by marriage</button>`).join('') : '';
+  return calls + intriguesAt(c, tid).filter((it) => it.owner === 0).flatMap((it) => choicesFor(c, it).map((k) => `<button data-act="story:${it.id}/${k.id.replace(':', '.')}"${k.bar ? ` disabled title="${esc(k.bar)}"` : ''}>${esc(k.label)}</button>`)).join('');
 }
 /** The act a button above carries, as the story and the choice. */
 export const intrigueAct = (id: string): [number, string] => [Number(id.split('/')[0]), (id.split('/')[1] ?? '').replace('.', ':')];
+/** Do what a button above asks: settle something in a story, or call on an alliance. */
+export function intrigueDo(c: Campaign, id: string): void {
+  if (id.startsWith('m')) { callOn(c, Number(id.slice(1).split('/')[0])); return; }
+  choose(c, ...intrigueAct(id));
+}

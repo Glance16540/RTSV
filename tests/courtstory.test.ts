@@ -184,9 +184,10 @@ describe('a plot', () => {
       expect(choicesFor(c, x).map((k) => k.id)).toEqual(['pardon', 'death']);
       for (let i = 0; i < 10; i++) season(c);
       expect(x.ended).toBeUndefined(); // held: there is no rising
-      const others = noblesOf(c, 0).filter((n) => n.name !== 'Cyra').map((n) => n.mood);
+      const others = new Map(noblesOf(c, 0).filter((n) => n.name !== 'Cyra').map((n) => [n.key, n.mood]));
       expect(choose(c, x.id, choice)).toBe(true);
-      return { x, v: virtue(c) - v, others: noblesOf(c, 0).filter((n) => n.name !== 'Cyra').reduce((s, n, i) => s + n.mood - others[i], 0), mood: noblesOf(c, 0).find((n) => n.name === 'Cyra')!.mood, c };
+      // Put to death, a lord is followed by a new one of another name (nobles.ts, newLord); the others are as they were.
+      return { x, v: virtue(c) - v, others: noblesOf(c, 0).filter((n) => others.has(n.key)).reduce((s, n) => s + n.mood - others.get(n.key)!, 0), mood: noblesOf(c, 0).find((n) => n.name === 'Cyra')?.mood, lords: noblesOf(c, 0).filter((n) => n.rank === 'lord').length, c };
     };
     const pardon = judged('pardon'), death = judged('death');
     expect(pardon.x.ended!.how).toBe('pardoned');
@@ -197,6 +198,8 @@ describe('a plot', () => {
     expect(death.others).toBeLessThan(0);
     expect(pardon.mood).toBeGreaterThan(COURT.plot.cooled);
     expect(death.c.chronicle!.at(-1)!.text).toContain('Lady Cyra');
+    expect(death.mood).toBeUndefined(); // she is gone, and a new lord holds her place
+    expect(death.lords).toBe(pardon.lords);
   });
   it('named wrongly makes an enemy; with one left it is known', () => {
     const { c } = court(), x = beginPlot(c)!;
