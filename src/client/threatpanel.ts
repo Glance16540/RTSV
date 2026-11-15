@@ -1,4 +1,5 @@
 // What the campaign screen says of the bands on the map and of what they have done (src/sim/threats.ts).
+import { carriedLeft } from '../sim/carriedoff';
 import type { Campaign } from '../sim/campaign';
 import { bodyOf, captiveKeys, nationOf } from '../sim/portrait';
 import type { Portrait } from '../sim/portrait';
@@ -48,7 +49,15 @@ export function threatHtml(c: Campaign, tid: number): string {
     const left = seasonsLeft(c, h);
     return `<div class="bad">⛓️ ${who} of this town ${h.women.length + h.men.length === 1 ? 'is' : 'are'} held by ${esc(b.name)} at ${esc(c.territories[b.at].name)}: ${plural(left, 'season', 'seasons')} left to get ${h.women.length + h.men.length === 1 ? (h.women.length ? 'her' : 'him') : 'them'} back${b.kind === 'marauders' ? ' by taking that land' : ' by breaking the band'}.</div>`;
   }).join('');
-  return reports + bands + gone + own;
+  // Those a nation has led away: where they are held, and the town they were taken from (carriedoff.ts).
+  const led = (c.carried ?? []).filter((x) => x.at === tid || x.held.from === tid).map((x) => {
+    const who = [x.held.women.length ? plural(x.held.women.length, 'woman', 'women') : '', x.held.men.length ? plural(x.held.men.length, 'man', 'men') : ''].filter(Boolean).join(' and ');
+    const whose = x.held.owner === 0 ? 'yours' : esc(c.factions[x.held.owner]?.name ?? 'another people') + '\'s', left = carriedLeft(c, x);
+    return x.at === tid
+      ? `<div class="bad">⛓️ ${who} of ${whose} from ${esc(c.territories[x.held.from].name)} ${x.held.women.length + x.held.men.length === 1 ? 'is' : 'are'} held here by the ${esc(c.factions[x.by]?.name ?? 'holders')}: ${plural(left, 'season', 'seasons')} until they are theirs for good. Whoever takes this land sets them free.</div>`
+      : `<div class="bad">⛓️ ${who} of this town ${x.held.women.length + x.held.men.length === 1 ? 'was' : 'were'} led away by the ${esc(c.factions[x.by]?.name ?? 'takers')} to ${esc(c.territories[x.at].name)}: ${plural(left, 'season', 'seasons')} left to get them back by taking it.</div>`;
+  }).join('');
+  return reports + bands + gone + led + own;
 }
 
 /** The orders a land's panel offers against the bands placed there: one for each army of the player's that could be sent. */

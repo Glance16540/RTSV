@@ -8,6 +8,7 @@ import { beginKiller, beginThief, choose, intrigueSeason, openIntrigues, suspect
 import { kinOf } from '../src/sim/kin';
 import { noblesOf } from '../src/sim/nobles';
 import { faithAt } from '../src/sim/townfaith';
+import { rollOf } from '../src/sim/roll';
 import { folkOf } from '../src/sim/township';
 
 const base = JSON.stringify(newCampaign(5, 2));
@@ -145,6 +146,18 @@ describe('what a story leaves behind', () => {
     }
     expect(fates.loyal).toBeGreaterThan(5);
     expect(fates.again).toBeGreaterThan(5);
+  });
+  it('shows on the roll, under the town, the noble or the leader it is about', () => {
+    const { c, at, rival } = world(7), k = beginKiller(c, at);
+    choose(c, k.id, `accuse:${suspected(k).find((i) => i !== k.culprit)}`);
+    const s = beginSuitor(c, rival)!; choose(c, s.id, 'give');
+    const close = kinOf(c, 0).circle[0];
+    (c.marks ??= []).push({ id: 99, kind: 'pardoned', from: 'plot', story: 0, owner: 0, since: c.turn, until: c.turn + 9, noble: `close:${close.post}:${close.name}`, name: close.name, text: `${close.name} plotted and was pardoned.`, shown: true, fate: 'loyal' });
+    const roll = rollOf(c);
+    expect(roll.towns.find((t) => t.id === at)!.marks.join(' ')).toContain('did not do');
+    expect(roll.marks.join(' ')).toContain('married into the house');
+    expect(roll.circle.find((x) => x.name === close.name)!.marks).toEqual([`${close.name} plotted and was pardoned.`]);
+    expect(roll.towns.filter((t) => t.id !== at).every((t) => t.marks.length === 0)).toBe(true);
   });
   it('is plain data, and a campaign with none of it runs as before', () => {
     const { c, at } = world(7), k = beginKiller(c, at);
