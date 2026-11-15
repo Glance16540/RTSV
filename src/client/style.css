@@ -740,3 +740,18 @@ body.looking-out #visit { display: none; }
 .sheet .mapsize input { margin-left: 8px; padding: 4px 6px; width: 12em; font: 17px var(--book); text-transform: none; letter-spacing: 0; color: var(--ink); background: rgba(255, 250, 235, 0.35); border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; }
 .sheet .mapsize input:focus { background: rgba(255, 250, 235, 0.7); outline: 0; border-bottom-color: var(--rubric); }
 .sheet .mapsize input::placeholder { color: var(--sepia); font-style: italic; }
+
+/* The "Your people" roll (src/client/rollpanel.ts). Inline elements laid out as blocks, since the map's dialog sets its text in a paragraph. */
+.roll { display: block; max-height: 62vh; overflow-y: auto; text-align: left; font-size: 15px; font-style: normal; }
+.roll span { display: block; }
+.roll .roll-person > span, .roll small, .roll b { display: inline; }
+.roll .roll-person > span:last-child { display: block; }
+.roll .roll-h { margin: 14px 0 4px; font: 15px var(--caps); letter-spacing: 0.05em; text-transform: lowercase; color: var(--rubric); border-bottom: 1px solid rgba(60, 40, 20, 0.25); }
+.roll .roll-head { font-size: 19px; }
+.roll .roll-town { margin: 8px 0 10px; }
+.roll .roll-townhead small { color: var(--sepia); }
+.roll .roll-people { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px; }
+.roll .roll-person { display: flex; align-items: center; gap: 6px; max-width: 260px; line-height: 1.2; }
+.roll .roll-held, .roll .roll-lost { margin: 3px 0; }
+.roll .roll-bad { display: inline; color: var(--rubric); }
+.roll .likeness { display: inline-block; flex: none; }

@@ -80,6 +80,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `raidnews` | 49 | The season's news of the bands as plain data, one entry point (`seasonNews`) for whatever shows it; and a campaign's tally. | campaign, threats | raidnews.test.ts | not yet |
 | `rescue` | 130 | Getting captives back without burning the camp down, and what a camp's keeper should do about it. | creed, game, path | rescue.test.ts | not yet |
 | `rivalrule` | 178 | Rivals live by the same rules (docs/DESIGN.md): a computer-led nation's towns on record, idle armies sent home, names made on the map, and garrisons where its towns need them. | armytown, campaign, conquered, data, seasonfolk, threats, township | rivalrule.test.ts | not yet |
+| `roll` | 70 | The roll of a people for the "Your people" screen: leader and house, heirs, the known by name town by town, men away, captives, the lost; children only counted. Read only. | ageing, armytown, campaign, dynasty, hero, naming, threats, township | roll.test.ts | not yet |
 | `scenario` | 415 | Scripted missions: a fixed set-up, a list of objectives and a win or lose condition. | creed, game, map, rescue | none of its own | not yet |
 | `seasonfolk` | 95 | A town's people on the map, season by season (docs/DESIGN.md, "People come only by birth"). | ageing, campaign, creed, data, nursery, township | none of its own | not yet |
 | `sieges` | 38 | A siege nobody watches: a walled, manned town's defence counts for more when the battle is settled on the map. | campaign, data, township | sieges.test.ts | not yet |
