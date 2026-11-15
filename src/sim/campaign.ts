@@ -33,7 +33,7 @@ import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
 import { Orders, governTowns, keepOrders } from './governor';
-import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { abandonEmpty, maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
@@ -70,8 +70,8 @@ export const SITES: Record<string, SiteDef> = {
  * company (swords for hire). `age`: added to the cost of the next age. `steadfast`: its lands never rise in revolt.
  * `restless`: a land of theirs in unrest rises even with a garrison in it if that garrison is a single company.
  */
-export const CHURCH_VIRTUE = 6;
-export const TAVERN_VIRTUE = 6;
+export const CHURCH_VIRTUE = 3;
+export const TAVERN_VIRTUE = 3;
 /** How much of what a town became in a battle the whole people takes home with it. */
 export const BATTLE_VIRTUE = 0.5;
 export interface FaithDef { defence: number; tavern: number; raise: number; age: number; steadfast?: boolean; restless?: boolean; desc: string }
@@ -330,7 +330,7 @@ export interface Campaign {
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
   /** How long each army has stood where it is, soldiers the map has given a name, and armies sent home this season: see rivalrule.ts. */
-  idle?: Record<string, { at: number; n: number }>; wars?: Record<string, { land: number; changed: number; muster?: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
+  idle?: Record<string, { at: number; n: number }>; emptied?: Record<string, number>; wars?: Record<string, { land: number; changed: number; muster?: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
   /** The men with each army, by the town they came from: see armytown.ts. */
   musters?: Record<string, Muster>;
   /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
@@ -1367,6 +1367,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      if (abandonEmpty(c).length) checkElimination(c); // a town with nobody left in it is nobody's, and a people with no town is gone (rivalrule.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
