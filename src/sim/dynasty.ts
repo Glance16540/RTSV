@@ -4,7 +4,7 @@
 // Rules only: campaign.ts calls in here at the turn of the year and when a leader is lost.
 
 import { endHouse, houseName, houseTitle, ofHouse } from './naming';
-import { canBear, parentFor } from './kin';
+import { canBear, householdNames, parentFor } from './kin';
 import { GROWN_SEASON } from './ageing';
 import type { Army, Campaign } from './campaign';
 import { NAMES_F, NAMES_M } from './data';
@@ -69,11 +69,12 @@ const child = (c: Campaign, f: number, house: House, born: number): Heir => {
   const salt = f * 977 + house.line * 131 + house.births * 17;
   const female = pick(c, salt, 2) === 1;
   const names = female ? NAMES_F : NAMES_M;
-  let name = names[pick(c, salt + 5, names.length)];
-  // No two of one house share a name.
-  for (let k = 1; house.heirs.some((h) => h.name === name) && k < names.length; k++) name = names[(pick(c, salt + 5, names.length) + k) % names.length];
-  house.births++;
   const parent = parentFor(c, f);
+  let name = names[pick(c, salt + 5, names.length)];
+  // No two of one house share a name, nor a child the name of a parent or of one close to the leader (kin.ts).
+  const others = householdNames(c, f);
+  for (let k = 1; (house.heirs.some((h) => h.name === name) || others.includes(name)) && k < names.length; k++) name = names[(pick(c, salt + 5, names.length) + k) % names.length];
+  house.births++;
   return { name, female, born, ...(parent ? { parent } : {}) };
 };
 
