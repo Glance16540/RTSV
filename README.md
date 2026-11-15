@@ -410,8 +410,15 @@ battlefield, an army kept there, and the spirit of its people. It holds, is raid
 off (never children). Select the struck land to read the report: who struck, what the town had, who was killed and
 taken, what was lost, and which way your people's standing swayed.
 
-Those taken are held at the band's place for four seasons. Stand an army there when the season turns and it fights
-the band; break it and they come home, the older for it. After four seasons they are gone for good.
+Those taken are held at the band's place for four seasons. Select the band's land and send an army that stands there
+or next door against it. That is a battle you can enter, your army's own companies against the band's men on open
+ground, or you can leave it to the army. Break the band and its captives come home, the older for it; after four
+seasons they are gone for good. No land changes hands.
+
+Bands move: they flee an army that is their match, drift toward softer towns, break up when old and weak, and
+raiders grown strong in a tribe's land take it and become marauders, who hold their land and are fought by marching
+into it. Rival peoples hunt the bands in their own lands. The season's news of all this is listed above the log;
+click a line to open the land it happened in.
 
 ## Controls
 
