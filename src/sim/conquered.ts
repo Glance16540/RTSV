@@ -8,7 +8,7 @@
 import type { Campaign } from './campaign';
 import { armyAt, armySize, faithOf } from './campaign';
 import { leaderAt } from './court';
-import { folkOf } from './township';
+import { folkOf, headcount } from './township';
 import { agesOf } from './ageing';
 
 /** `from`: whose it was (-1 for a tribe). `since`: the turn it was taken. `resent`: how its people take it, 0 to 100. */
@@ -49,6 +49,7 @@ export function townTaken(c: Campaign, tid: number, from: number, to: number): v
   const t = c.territories[tid];
   if (!t || to < 0 || from === to) { if (t) delete t.yoke; return; }
   if (t.yoke && t.yoke.from === to) { delete t.yoke; return; } // its own people have it back
+  if (headcount(folkOf(c, tid)) === 0) { delete t.yoke; return; } // a dead town: there is nobody in it to resent anything (deadtown.ts)
   t.yoke = { from, since: c.turn, resent: Math.min(100, (from < 0 ? YOKE.tribe : YOKE.nation) + (t.capital >= 0 && t.capital === from ? YOKE.capital : 0)) };
 }
 /** How much resentment a season of this rule takes off (or, where rule is bad, puts on: a negative number). */
