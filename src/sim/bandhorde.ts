@@ -8,13 +8,14 @@
 //
 // What they now share with every band: their raids are strikes on a town that defends itself with what it has,
 // with a report; the women they take are real people held with their ages, who come home, the older for it, when
-// the camp falls, and are lost after the same four seasons. `Territory.taken`, the supply a land is short for each
-// raid still unredeemed, is kept as it was and counted from those held.
+// the camp falls, and are lost after the same four seasons. There is no other count of them: the old tally of
+// "women carried off" on a land, and the supply it cost each turn, is gone. A town is the poorer for those it
+// has lost by having fewer hands and fewer births, like any other loss.
 //
 // A land marked as the marauders' with no band on record (a campaign saved before this, or a land made so by hand)
 // is taken up as one the first season it is seen.
 import type { Campaign, Territory } from './campaign';
-import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN, MAX_TAKEN } from './campaign';
+import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN } from './campaign';
 import { Band, Raid, bringHome, chance, mark, note, reachOf, softest, strike } from './threats';
 
 export const HORDE = {
@@ -44,6 +45,9 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
   const raids: Raid[] = [];
   // A land of theirs with no band on record is taken up as one.
   for (const t of c.territories) if (t.horde && !bandAt(c, t.id)) raise(c, t);
+  // The old count of "women carried off" a land once carried (a supply short for each raid) is gone: those taken
+  // are real people now, held by a band. A campaign saved with it loads, and the count is dropped here.
+  for (const t of c.territories) delete (t as { taken?: number }).taken;
   // A camp that has fallen to someone, or is no longer theirs: those it held are free.
   for (const b of (c.bands ?? []).filter((x) => x.kind === 'marauders')) {
     const t = c.territories[b.at];
@@ -52,7 +56,6 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
     t.horde = false;
     let home = 0;
     for (const h of b.held) home += bringHome(c, h);
-    for (const n of [t.id, ...t.adj]) { home += c.territories[n].taken ?? 0; c.territories[n].taken = 0; }
     c.bands = (c.bands ?? []).filter((x) => x !== b);
     if (!fell) continue;
     const f = c.factions[t.owner];
@@ -62,7 +65,6 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
   }
   const live = (c.bands ?? []).filter((b) => b.kind === 'marauders');
   if (!live.length) {
-    for (const t of c.territories) t.taken = 0; // no camp left to hold anyone
     if (c.turn < HORDE_TURN || chance(c, 0, 71) > HORDE.appear) return raids;
     const caps = c.territories.filter((t) => t.capital >= 0);
     const far = (t: Territory): number => Math.min(...caps.map((k) => Math.hypot(k.x - t.x, k.y - t.y)));
@@ -108,11 +110,5 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
       }
     }
   });
-  // What each land is short: a supply for each raid of theirs still unredeemed, up to two.
-  for (const t of c.territories) {
-    const groups = live.reduce((n, b) => n + b.held.filter((h) => h.from === t.id).length, 0);
-    if (groups) t.taken = Math.min(MAX_TAKEN, groups);
-    else if (!t.adj.some((n) => c.territories[n].horde)) t.taken = 0;
-  }
   return raids;
 }

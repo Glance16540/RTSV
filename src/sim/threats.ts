@@ -163,6 +163,8 @@ const coastal = (t: Territory): boolean => t.trait === 'coast';
 const count = (h: Held[]): number => h.reduce((n, x) => n + x.men.length + x.women.length, 0);
 export const people = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
+/** The people of this town whom some band holds: each group with the band that has them. The one record of who has been taken. */
+export const heldFrom = (c: Campaign, tid: number): { band: Band; held: Held }[] => (c.bands ?? []).flatMap((b) => b.held.filter((h) => h.from === tid).map((held) => ({ band: b, held })));
 export const bandsAt = (c: Campaign, tid: number): Band[] => (c.bands ?? []).filter((b) => b.at === tid || b.to === tid);
 export const heldCount = (b: Band): number => count(b.held);
 /** Seasons left in which these captives can still be got back. */
