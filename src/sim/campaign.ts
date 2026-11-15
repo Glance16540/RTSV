@@ -12,6 +12,7 @@ import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
 import { seasonDrift } from './drift';
+import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
 import { Answer, LEGENDS, COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
@@ -1707,7 +1708,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
       ...(defending && !field && t.town?.b.length ? { town: t.town.b } : {}),
       // The town itself turns out: its own people, living off its own stores (township.ts).
-      ...(defending && !field && !t.horde ? musterFolk(c, t.id) : {}),
+      ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id)) : {}),
     };
   };
   // A siege is always fought over the same ground: the holder in the town's corner, the attacker opposite.
@@ -1765,6 +1766,8 @@ export interface BattleAfter {
   orders?: Partial<Orders>;
   /** The town that was fought over, counted as the battle ended (`Game.census()` of the side that held it when it began). */
   folk?: Partial<Census>;
+  /** Who of the town was drifted to the tavern and the mine as the battle ended (driftintown.ts). */
+  drifted?: { tavern?: number; mines?: number };
 }
 export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, after: BattleAfter = {}): void {
   const { virtue, heroRank, town: standing, ground } = after;
@@ -1785,6 +1788,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
+  if (census) driftBack(c, land.id, after.drifted); // who was at the tavern and the mine stays there (driftintown.ts)
   if (land.owner === 0 && p.mode !== 'field') keepOrders(c, land.id, after.orders);
   settleStores(c); // what the town gathered or spent is its nation's gain or loss
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.

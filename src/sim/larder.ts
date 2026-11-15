@@ -2,8 +2,8 @@
 //
 // Each season every held town's people eat from its food store: a grown man or woman EAT.grown, one of the old
 // EAT.old, a child EAT.child. Who eats there is who is there: men away with an army are off the town's record
-// already (armytown.ts), and those who have drifted from their work (drift.ts: on the map, a share of the men at the
-// mines and of the women at the tavern, as much as the town was strained last season) eat where they work.
+// already (armytown.ts), and those who have drifted from their work (drift.ts: the men at the mines and the women
+// at the tavern, as the town's record counts them) eat where they work.
 //
 // A town that cannot eat in full eats what there is and goes hungry: its granary is empty, which drift.ts reads as
 // strain. A town hungry STARVE_AFTER seasons running begins to lose people from the record, STARVE_SHARE of its
@@ -42,8 +42,8 @@ const hash = (c: Campaign, a: number, salt: number): number => {
 
 /** Who eats in a town this season: those on its record, less those who have drifted to the mines or the tavern. */
 export function mouths(c: Campaign, tid: number): { men: number; women: number; elders: number; children: number } {
-  const t = c.territories[tid], f = folkOf(c, tid), strain = Math.max(0, Math.min(1, f.drift?.strain ?? 0));
-  const mines = Math.floor(f.men * strain), tavern = t.buildings.includes('tavern') ? Math.floor(f.women * strain) : 0;
+  // Who has drifted is kept on the town's record (drift.ts): they eat where they work.
+  const f = folkOf(c, tid), mines = Math.min(f.men, f.drifted?.mines ?? 0), tavern = Math.min(f.women, f.drifted?.tavern ?? 0);
   return { men: f.men - mines, women: f.women - tavern, elders: f.elders, children: f.children };
 }
 /** The food a town needs this season. */
