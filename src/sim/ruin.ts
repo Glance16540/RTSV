@@ -49,16 +49,29 @@ export function groundGained(c: Campaign): boolean {
   const then = past[past.length - RUIN.seasons]; // the season that many before this one
   return c.factions.some((f) => f.alive && landsOf(c, f.id) > (then[f.id] ?? 0));
 }
-/** Seasons left before a world that goes on as it is ends in ruin, or -1 if it is not heading there. For a warning. */
+/** How near to ruin the player is warned of it. */
+export const RUIN_WARN = 20;
+/**
+ * Seasons left before a world that goes on exactly as it stands ends in ruin, or -1 if it is not heading there
+ * (the bands do not hold much of the map, or it is over). It is the first season ahead at which no living people
+ * would hold more land than it held `RUIN.seasons` before; at the latest that is `RUIN.seasons` from now, when the
+ * comparison is with today.
+ */
 export function ruinIn(c: Campaign): number {
   const past = c.grounds ?? [];
-  if (c.phase === 'over' || !bandsHoldMuch(c) || !past.length) return -1;
-  // The oldest season on record that some living people has since bettered: ruin comes RUIN.seasons after it.
-  for (let back = Math.min(RUIN.seasons, past.length); back >= 1; back--) {
+  if (c.phase === 'over' || !bandsHoldMuch(c)) return -1;
+  for (let k = 1; k <= RUIN.seasons; k++) {
+    const back = RUIN.seasons + 1 - k; // at that season the record looked to is this many entries back from the latest (1: the latest itself)
+    if (back > past.length) continue; // further back than the record goes: it cannot be judged then
     const then = past[past.length - back];
-    if (c.factions.some((f) => f.alive && landsOf(c, f.id) > (then[f.id] ?? 0))) return Math.max(1, RUIN.seasons - back);
+    if (!c.factions.some((f) => f.alive && landsOf(c, f.id) > (then[f.id] ?? 0))) return k;
   }
-  return Math.max(1, RUIN.seasons - Math.min(RUIN.seasons, past.length));
+  return RUIN.seasons;
+}
+/** The warning the player is given when ruin is near, or nothing. */
+export function ruinWarning(c: Campaign): string {
+  const left = ruinIn(c);
+  return left > 0 && left < RUIN_WARN ? `The land is going to ruin: no people has gained ground in years, and the bands hold much of it. In ${left} ${left === 1 ? 'season' : 'seasons'} the age ends with no winner, unless some people takes land and keeps it.` : '';
 }
 /**
  * A season has turned: the ground each people holds is written down, and a world twenty years without any of
