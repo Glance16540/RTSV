@@ -98,7 +98,7 @@ export const THREATS = {
   /** The chance a band strikes in a season. */
   strike: 0.75,
   /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
-  hold: 0.85, fall: 0.6,
+  hold: 0.78, fall: 0.6,
   /** What those on a road can do for themselves with no army to escort them, in companies: enough to see off a small band. */
   wayfarers: 2.5,
   /** What counts toward a town's defence, in companies. */

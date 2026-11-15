@@ -1,8 +1,8 @@
 // The marauders: the band that holds a land. This was a rule of its own in campaign.ts (`hordeTurn`); it is now
 // one kind of band among the others (threats.ts), so there is one system of threats and not two.
 //
-// What is theirs alone: they hold the land they sit on (`Territory.horde`, with the land's militia as their
-// strength), so they are fought by marching an army into it like any other land, and the land is the victor's.
+// What is theirs alone: they hold the land they sit on (`Territory.horde`; their strength is their band's, and the
+// land's old militia number is kept as its mirror), so they are fought by marching an army into it like any other land, and the land is the victor's.
 // They appear in a tribe's land far from any capital, grow every season, and when strong may overrun the land
 // next door, which becomes a camp of theirs too.
 //
@@ -81,8 +81,9 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
   live.forEach((b, i) => {
     const t = c.territories[b.at];
     const top = Math.min(HORDE_MAX, HORDE.max);
-    if (t.militia < top && (c.turn - b.since) % HORDE.grow === 0) t.militia++;
-    b.strength = t.militia;
+    // Their strength is the band's; the land's old number is kept as its mirror (tribes.ts).
+    if (b.strength < top && (c.turn - b.since) % HORDE.grow === 0) b.strength++;
+    t.militia = b.strength;
     // A raid on the softest town next door: it defends itself, like any town struck by a band.
     const m = softest(c, b, reachOf(c, b).filter((id) => id !== t.id));
     if (m && chance(c, b.id, 73 + i) < HORDE.raid) {
@@ -90,20 +91,20 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
       // A camp that holds a land is not scattered by one beating: it is the weaker for it, and still there.
       if (b.strength <= 0) b.strength = 1;
       delete r.broken;
-      t.militia = Math.max(1, Math.min(HORDE_MAX, HORDE.max, b.strength));
-      b.strength = t.militia;
+      b.strength = Math.max(1, Math.min(HORDE_MAX, HORDE.max, b.strength));
+      t.militia = b.strength;
       if (r.outcome === 'taken') mark(c, 'taken', m.id);
       raids.push(r);
     }
     // Strong enough, they take a tribe's land next door for their own, while the map will bear another camp. (They
     // no longer throw a people out of its town: a town falls to those who fight for it, and its people are counted.)
-    if (t.militia >= HORDE_SPREAD && (c.bands ?? []).filter((k) => k.kind === 'marauders').length < campsBorne(c) && chance(c, b.id, 79 + i) < HORDE.overrun) {
+    if (b.strength >= HORDE_SPREAD && (c.bands ?? []).filter((k) => k.kind === 'marauders').length < campsBorne(c) && chance(c, b.id, 79 + i) < HORDE.overrun) {
       const open = t.adj.map((n) => c.territories[n]).filter((x) => !x.horde && x.capital < 0 && x.owner < 0 && !(c.bands ?? []).some((k) => k.at === x.id));
       const next = open[Math.floor(chance(c, b.id, 83 + i) * open.length)];
       if (next) {
         const was = next.owner;
-        next.owner = -1; next.horde = true; next.militia = Math.max(HORDE.spawn, Math.floor(t.militia / 2));
-        t.militia -= 2; b.strength = t.militia;
+        next.owner = -1; next.horde = true; next.militia = Math.max(HORDE.spawn, Math.floor(b.strength / 2));
+        b.strength -= 2; t.militia = b.strength;
         const k = raise(c, next);
         mark(c, 'overrun', next.id);
         note(c, out, 'overran', k, next.id, was >= 0 ? `The marauders have overrun ${next.name} and thrown out ${was === 0 ? 'your people' : c.factions[was].name}.` : `The marauders have overrun ${next.name}.`, [was, ...next.adj.map((n) => c.territories[n].owner)]);
