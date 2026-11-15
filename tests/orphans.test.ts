@@ -56,14 +56,40 @@ describe('children taken in', () => {
     expect(k.children).toBe(MAX_KIND);
   });
 
-  it('a people with no other town keeps its children where they are, and hunger never touches them', () => {
-    const { c, near, f } = world();
+  it('a people with no other town: the nearest other people takes its children in, and they grow up as theirs', () => {
+    const { c, near, f, ages } = world();
     for (const t of c.territories) if (t.owner === 0 && t.id !== near.id) t.owner = -1;
-    expect(takeIn(c, near.id)).toEqual([]);
-    expect(f.children).toBe(4);
-    f.stores.food = 0;
-    for (let s = 0; s < 6; s++) { c.turn++; eatTown(c, near.id); }
-    expect(f.children).toBe(4);
+    const d = (id: number) => Math.hypot(c.territories[id].x - near.x, c.territories[id].y - near.y);
+    const nearest = c.territories.filter((t) => t.owner !== 0 && !t.horde).sort((a, b) => d(a.id) - d(b.id) || a.id - b.id)[0];
+    const g = folkOf(c, nearest.id), had = g.children;
+    const moved = takeIn(c, near.id);
+    expect(moved).toEqual([{ from: near.id, to: nearest.id, children: 4, stranger: true }]);
+    expect(f.children).toBe(0);
+    expect(g.children).toBe(had + 4);
+    for (const s of ages) expect(g.ages!.k).toContain(s);
+    // Told: the player's last children have gone to another people.
+    const c2 = world();
+    for (const t of c2.c.territories) if (t.owner === 0 && t.id !== c2.near.id) t.owner = -1;
+    orphansSeason(c2.c);
+    expect(c2.c.log.join('\n')).toMatch(/the last of your people, have been taken in by .* and will grow up as theirs/);
+    // Never to the marauders.
+    const c3 = world();
+    for (const t of c3.c.territories) { if (t.owner === 0 && t.id !== c3.near.id) t.owner = -1; if (t.id !== c3.near.id) t.horde = t.owner < 0; }
+    for (const x of takeIn(c3.c, c3.near.id)) expect(c3.c.territories[x.to].horde).toBeFalsy();
+  });
+
+  it('a rival\'s last children may be taken in by the player, and grow up as the player\'s', () => {
+    const { c, near, home, f } = world();
+    near.owner = 1; // the rival's last town, next to the player's capital
+    for (const t of c.territories) if (t.owner === 1 && t.id !== near.id) t.owner = -1;
+    for (const t of c.territories) if (t.owner < 0) t.owner = 0; // and nobody else about but the player
+    home.owner = 0;
+    const g = folkOf(c, home.id), had = g.children;
+    orphansSeason(c);
+    expect(f.children).toBe(0);
+    const total = c.territories.filter((t) => t.owner === 0).reduce((n, t) => n + folkOf(c, t.id).children, 0);
+    expect(total).toBeGreaterThanOrEqual(had + 4);
+    expect(c.log.join('\n')).toMatch(/will grow up as yours/);
   });
 
   it('once a season, every such town; the player is told and the chronicle keeps it', () => {
