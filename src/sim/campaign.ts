@@ -36,6 +36,7 @@ import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
+import { drillTowns } from './townmuster';
 import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
@@ -1376,6 +1377,7 @@ export function continueAI(c: Campaign): void {
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
+      drillTowns(c); // a town of the player's left training goes on raising, from its own men and stores (townmuster.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)

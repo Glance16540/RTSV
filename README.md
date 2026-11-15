@@ -297,6 +297,10 @@ faction is a different people led by its own leader. You choose your people, or 
 Each turn you collect supplies from the land you hold and spend them, then march armies into
 neighbouring land.
 
+- **Your people** (`src/sim/roll.ts`). A button beside the Chronicle opens the roll of your nation:
+  your leader and house, the heirs and their ages, everyone known by name in each town with their face,
+  the men away with the armies, those held captive and how long is left to get them back, and those lost
+  of late. Children are counted, never listed.
 - **Your own names** (`src/sim/naming.ts`). When a campaign begins you may name your people and your
   ruling house. The people you choose still decides dress, units and leaders; an heir rules as one of
   your house, and a house set aside takes its name with it.

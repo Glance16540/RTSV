@@ -10,7 +10,8 @@
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
 import type { BattleConfig, Campaign } from './campaign';
-import { Census, cleanCensus, musterFolk, settleFolk } from './township';
+import { Census, cleanCensus, folkOf, musterFolk, settleFolk } from './township';
+import { bornOnVisit } from './seasonfolk';
 import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, shiftVirtue, slots, weatherAt } from './campaign';
 import { faithAt } from './townfaith';
 import { settleStores } from './stores';
@@ -121,7 +122,9 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   const { town, ground, virtue, seconds } = after;
   // The town is as the visit left it: everyone born there, less the dead and the taken.
   const census = cleanCensus(after.folk);
+  const before = folkOf(c, land.id).children;
   if (census) settleFolk(c, land.id, census);
+  if (census) bornOnVisit(c, land.id, folkOf(c, land.id).children - before);
   if (census) driftBack(c, land.id, after.drifted);
   keepOrders(c, land.id, after.orders);
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)

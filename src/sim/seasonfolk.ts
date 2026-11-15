@@ -8,8 +8,8 @@
 //    many roofs as it has finished houses; a town nobody has fought over or visited is kept by its governor, who
 //    houses its couples. Each birth costs the same food as in a town, and needs room: five to a house and ten to
 //    the hall, as in a town, for every grown person and child.
-//  - How often: a couple raises a child about every MAP_BIRTH seasons (a year and a half) at first, more slowly the more children the
-//    town already has on its records (as a house slows in a town), and sooner or later by the town's creed, which
+//  - How often: a couple raises a child about every MAP_BIRTH seasons (a year) at first, more slowly the more children
+//    under five the town has on its records (as a house slows in a town), and sooner or later by the town's creed, which
 //    also decides how many of the births due do not come (the same shares as in a town). No child dies.
 //  - Children are on the town's record, with their ages, and are never shown. Everyone ages a season at a time
 //    (ageing.ts): a child comes of age at fifteen into a man or a woman of working age, the grown are old at sixty,
@@ -32,8 +32,10 @@ declare module './township' {
   }
 }
 
-/** Seasons between a housed couple's children on the map, before creed and the slowing with more children. */
-export const MAP_BIRTH = 6;
+/** Seasons between a housed couple's children on the map, before creed and the slowing with more young children. */
+export const MAP_BIRTH = 4;
+/** Children under this many seasons (five years) are the ones who slow a couple's next. */
+export const YOUNG_SEASONS = 20;
 /** Seasons a child on the map takes to come of age. */
 export const GROWN_SEASONS = GROWN_AT * 4;
 /** Room in a town, as in a battle: so many to a finished house and so many to the hall. */
@@ -75,7 +77,8 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
   grew = aged.grew; died = aged.died;
   const couples = couplesOf(t, f);
   if (!couples) { f.due = 0; tally(c, tid, 'grew', grew); tally(c, tid, 'aged', died); return { born, grew, missed, died }; }
-  const slow = Math.min(3, 1 + 0.2 * (f.children / couples));
+  const young = (f.ages?.k ?? []).filter((s) => s < YOUNG_SEASONS).length;
+  const slow = Math.min(3, 1 + 0.2 * (young / couples));
   f.due = Math.min(couples, (f.due ?? 0) + (couples * creed.birth) / (MAP_BIRTH * slow));
   while (f.due >= 1) {
     if (grown(f) + f.children + 1 > roomOf(t) || f.stores.food < BIRTH_COST || f.children >= MAX_KIND) { f.due = Math.min(f.due, 1); break; }
@@ -90,6 +93,17 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
   if (missed) f.missed = (f.missed ?? 0) + missed;
   tally(c, tid, 'born', born); tally(c, tid, 'grew', grew); tally(c, tid, 'aged', died); // for the season's report (ledger.ts)
   return { born, grew, missed, died };
+}
+
+/**
+ * Children born in a visit to a town are the season's births there, not more on top of them: births are one record
+ * whether the player is in the town or not. They are counted against what the town's couples have due on the map,
+ * so a town visited every season bears about as a visit bears, and one left alone as the map does.
+ */
+export function bornOnVisit(c: Campaign, tid: number, born: number): void {
+  if (born <= 0) return;
+  const f = folkOf(c, tid);
+  f.due = (f.due ?? 0) - born;
 }
 
 /** A season passes for the people of every town on the map that is not held by marauders. */
