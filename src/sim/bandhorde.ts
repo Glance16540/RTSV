@@ -1,0 +1,109 @@
+// The marauders: the band that holds a land. This was a rule of its own in campaign.ts (`hordeTurn`); it is now
+// one kind of band among the others (threats.ts), so there is one system of threats and not two.
+//
+// What is theirs alone: they hold the land they sit on (`Territory.horde`, with the land's militia as their
+// strength), so they are fought by marching an army into it like any other land, and the land is the victor's.
+// They appear in a tribe's land far from any capital, grow every season, and when strong may overrun the land
+// next door, which becomes a camp of theirs too.
+//
+// What they now share with every band: their raids are strikes on a town that defends itself with what it has,
+// with a report; the women they take are real people held with their ages, who come home, the older for it, when
+// the camp falls, and are lost after the same four seasons. `Territory.taken`, the supply a land is short for each
+// raid still unredeemed, is kept as it was and counted from those held.
+//
+// A land marked as the marauders' with no band on record (a campaign saved before this, or a land made so by hand)
+// is taken up as one the first season it is seen.
+import type { Campaign, Territory } from './campaign';
+import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN, MAX_TAKEN } from './campaign';
+import { Band, Raid, bringHome, chance, mark, note, reachOf, softest, strike } from './threats';
+
+export const HORDE = {
+  /** The chance marauders appear in a season when there are none, the chance a camp raids, and the chance a strong one overruns a neighbour. */
+  appear: 0.45, raid: 0.6, overrun: 0.3,
+  /** The militia a new camp has at the least, and what a land they overrun starts with at the least. */
+  first: 4, spawn: 3,
+};
+
+const bandAt = (c: Campaign, tid: number): Band | undefined => (c.bands ?? []).find((b) => b.kind === 'marauders' && b.at === tid);
+function raise(c: Campaign, t: Territory, name?: string): Band {
+  const id = (c.bandSeq = (c.bandSeq ?? 0) + 1);
+  const b: Band = { id, kind: 'marauders', name: name ?? 'the marauders', at: t.id, strength: t.militia, since: c.turn, held: [] };
+  (c.bands ??= []).push(b);
+  return b;
+}
+
+/** One season of the marauders. Returns the reports of their raids. */
+export function hordeSeason(c: Campaign, out: string[]): Raid[] {
+  const raids: Raid[] = [];
+  // A land of theirs with no band on record is taken up as one.
+  for (const t of c.territories) if (t.horde && !bandAt(c, t.id)) raise(c, t);
+  // A camp that has fallen to someone, or is no longer theirs: those it held are free.
+  for (const b of (c.bands ?? []).filter((x) => x.kind === 'marauders')) {
+    const t = c.territories[b.at];
+    if (t.horde && t.owner < 0) continue;
+    const fell = t.horde && t.owner >= 0;
+    t.horde = false;
+    let home = 0;
+    for (const h of b.held) home += bringHome(c, h);
+    for (const n of [t.id, ...t.adj]) { home += c.territories[n].taken ?? 0; c.territories[n].taken = 0; }
+    c.bands = (c.bands ?? []).filter((x) => x !== b);
+    if (!fell) continue;
+    const f = c.factions[t.owner];
+    f.supplies += HORDE_PRIZE;
+    mark(c, 'freed', t.id);
+    note(c, out, 'broken', b, t.id, `${f.id === 0 ? 'You have' : `${f.name} have`} broken the marauders at ${t.name}${home ? ' and the women they took have come home' : ''}: ${HORDE_PRIZE} supplies.`, [t.owner, ...b.held.map((h) => h.owner)]);
+  }
+  const live = (c.bands ?? []).filter((b) => b.kind === 'marauders');
+  if (!live.length) {
+    for (const t of c.territories) t.taken = 0; // no camp left to hold anyone
+    if (c.turn < HORDE_TURN || chance(c, 0, 71) > HORDE.appear) return raids;
+    const caps = c.territories.filter((t) => t.capital >= 0);
+    const far = (t: Territory): number => Math.min(...caps.map((k) => Math.hypot(k.x - t.x, k.y - t.y)));
+    const taken = new Set((c.bands ?? []).map((b) => b.at));
+    const t = c.territories.filter((x) => x.owner < 0 && x.capital < 0 && !taken.has(x.id)).sort((a, b) => far(b) - far(a) || a.id - b.id)[0];
+    if (!t) return raids;
+    t.horde = true;
+    t.militia = Math.max(t.militia, HORDE.first);
+    const b = raise(c, t);
+    (c.events ??= []).push({ kind: 'horde', at: t.id, turn: c.turn, until: c.turn + 1 });
+    note(c, out, 'came', b, t.id, `Marauders have made camp at ${t.name}. They take women, and they grow.`, t.adj.map((n) => c.territories[n].owner));
+    return raids;
+  }
+  live.forEach((b, i) => {
+    const t = c.territories[b.at];
+    t.militia = Math.min(HORDE_MAX, t.militia + 1);
+    b.strength = t.militia;
+    // A raid on the softest town next door: it defends itself, like any town struck by a band.
+    const m = softest(c, b, reachOf(c, b).filter((id) => id !== t.id));
+    if (m && chance(c, b.id, 73 + i) < HORDE.raid) {
+      const r = strike(c, b, m.id, out);
+      // A camp that holds a land is not scattered by one beating: it is the weaker for it, and still there.
+      if (b.strength <= 0) b.strength = 1;
+      delete r.broken;
+      t.militia = Math.max(1, Math.min(HORDE_MAX, b.strength));
+      b.strength = t.militia;
+      if (r.outcome === 'taken') mark(c, 'taken', m.id);
+      raids.push(r);
+    }
+    // Strong enough, they take the land next door for their own: a tribe's, or a people's that no army holds.
+    if (t.militia >= HORDE_SPREAD && chance(c, b.id, 79 + i) < HORDE.overrun) {
+      const open = t.adj.map((n) => c.territories[n]).filter((x) => !x.horde && x.capital < 0 && !(x.owner >= 0 && c.armies.some((a) => a.at === x.id)) && !(c.bands ?? []).some((k) => k.at === x.id));
+      const next = open[Math.floor(chance(c, b.id, 83 + i) * open.length)];
+      if (next) {
+        const was = next.owner;
+        next.owner = -1; next.horde = true; next.militia = Math.max(HORDE.spawn, Math.floor(t.militia / 2));
+        t.militia -= 2; b.strength = t.militia;
+        const k = raise(c, next);
+        mark(c, 'overrun', next.id);
+        note(c, out, 'overran', k, next.id, was >= 0 ? `The marauders have overrun ${next.name} and thrown out ${was === 0 ? 'your people' : c.factions[was].name}.` : `The marauders have overrun ${next.name}.`, [was, ...next.adj.map((n) => c.territories[n].owner)]);
+      }
+    }
+  });
+  // What each land is short: a supply for each raid of theirs still unredeemed, up to two.
+  for (const t of c.territories) {
+    const groups = live.reduce((n, b) => n + b.held.filter((h) => h.from === t.id).length, 0);
+    if (groups) t.taken = Math.min(MAX_TAKEN, groups);
+    else if (!t.adj.some((n) => c.territories[n].horde)) t.taken = 0;
+  }
+  return raids;
+}
