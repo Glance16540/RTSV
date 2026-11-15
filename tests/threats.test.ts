@@ -335,7 +335,11 @@ describe('bands on the map', () => {
         for (const r of (c.raids ?? []).slice(seen)) {
           raids++;
           // Children on the record only ever leave it by coming of age, a season at a time.
-          if (kids[r.at] >= 0) expect(folkOf(c, r.at).children).toBeGreaterThanOrEqual(kids[r.at] - 3);
+          // A town left with nobody grown that season has had its children taken in by the nearest town of their people
+          // (orphans.ts): they are gone from this town's record, unharmed, and the chronicle says where they went.
+          const f = folkOf(c, r.at), takenIn = f.men + f.women + f.elders === 0 && (c.chronicle ?? []).some((x) => x.turn === c.turn && x.text.includes(`of ${c.territories[r.at].name}, left with nobody grown`));
+          if (kids[r.at] >= 0 && !takenIn) expect(f.children).toBeGreaterThanOrEqual(kids[r.at] - 3);
+          if (takenIn) expect(f.children).toBe(0);
           expect(reportText(c, r).length).toBeGreaterThan(2);
         }
       }
