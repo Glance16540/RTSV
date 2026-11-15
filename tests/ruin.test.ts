@@ -1,7 +1,8 @@
 // A world that ends in ruin (docs/DESIGN.md, the owner's word; src/sim/ruin.ts).
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
-import { RUIN, bandShare, bandsHoldMuch, groundGained, heldShare, inRuin, ruinIn, ruinSeason, ruinWords } from '../src/sim/ruin';
+import { RUIN, RUIN_WARN, bandShare, bandsHoldMuch, groundGained, heldShare, inRuin, ruinIn, ruinSeason, ruinWarning, ruinWords } from '../src/sim/ruin';
+import { anything, reportLines, reportSince, snapshot } from '../src/sim/seasonreport';
 import { infoOf } from '../src/sim/slots';
 import { epilogue } from '../src/sim/story';
 
@@ -88,5 +89,41 @@ describe('a world ends in ruin', () => {
     expect(c.grounds!.length).toBe(1);
     quiet(c, RUIN.seasons + 20);
     expect(c.grounds!.length).toBeLessThanOrEqual(RUIN.seasons); // only what it needs is kept
+  });
+
+  it('the seasons left are counted exactly, and the player is warned when they are under twenty', () => {
+    const c = world(6, 8);
+    quiet(c, 1);
+    // Nothing has changed since the first season on record: ruin comes when that season is twenty years back.
+    expect(ruinIn(c)).toBe(RUIN.seasons);
+    expect(ruinWarning(c)).toBe('');
+    quiet(c, RUIN.seasons - RUIN_WARN);
+    expect(ruinIn(c)).toBe(RUIN_WARN);
+    expect(ruinWarning(c)).toBe(''); // twenty is not under twenty
+    const before = snapshot(c, 0);
+    quiet(c, 1);
+    expect(ruinIn(c)).toBe(RUIN_WARN - 1);
+    expect(ruinWarning(c)).toContain(`In ${RUIN_WARN - 1} seasons`);
+    // It is in the season's report, and the report is worth showing for it alone.
+    const r = reportSince(c, before, 0);
+    expect(r.ruin).toBe(ruinWarning(c));
+    expect(anything(r)).toBe(true);
+    expect(reportLines(r).some((l) => l.tone === 'bad' && l.text.includes('going to ruin'))).toBe(true);
+    // The count runs down to the season it ends.
+    for (let left = RUIN_WARN - 2; left >= 1; left--) { expect(quiet(c, 1)).toBe(false); expect(ruinIn(c)).toBe(left); }
+    expect(ruinWarning(c)).toContain('In 1 season the age ends');
+    expect(quiet(c, 1)).toBe(true);
+    expect(ruinWarning(c)).toBe(''); // over: nothing left to warn of
+  });
+
+  it('ground gained and kept sets the count back, and the warning is withdrawn', () => {
+    const c = world(6, 8);
+    quiet(c, RUIN.seasons - 5);
+    expect(ruinWarning(c)).not.toBe('');
+    c.territories.find((t) => t.owner < 0 && !t.horde)!.owner = 1;
+    quiet(c, 1);
+    expect(ruinIn(c)).toBe(RUIN.seasons);
+    expect(ruinWarning(c)).toBe('');
+    expect(reportSince(c, snapshot(c, 0), 0).ruin).toBeUndefined();
   });
 });
