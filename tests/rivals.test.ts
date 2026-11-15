@@ -40,7 +40,7 @@ describe('rivals live by the same rules', () => {
       const kept = first.filter((s) => c.territories[s.id].owner > 0 && s.ages.length);
       if (kept.length) expect(kept.some((s) => Math.max(...(c.territories[s.id].folk!.ages!.m.length ? c.territories[s.id].folk!.ages!.m : [0])) > Math.max(...s.ages))).toBe(true);
       // A town a rival took by force resents it as one the player took would.
-      const taken = theirs.filter((t) => t.yoke);
+      const taken = theirs.filter((t) => t.yoke && !t.yoke.settled); // (a town that has settled is remembered as taken, and resents nothing)
       for (const t of taken) expect(t.yoke!.resent).toBeGreaterThan(0);
     }
   }, 180_000);

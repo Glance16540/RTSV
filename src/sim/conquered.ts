@@ -12,18 +12,22 @@ import { folkOf } from './township';
 import { agesOf } from './ageing';
 
 /** `from`: whose it was (-1 for a tribe). `since`: the turn it was taken. `resent`: how its people take it, 0 to 100. */
-export interface Yoke { from: number; since: number; resent: number }
+export interface Yoke { from: number; since: number; resent: number; /** The last turn an army of its holder stood in it. */ held?: number; /** It has settled: it resents nothing more, and is remembered as taken until `YOKE.memory` seasons are up. */ settled?: boolean }
 export const YOKE = {
   /** How a town taken from a nation, or from a tribe, feels at first; more if it was their chief town. */
-  nation: 70, tribe: 50, capital: 20,
+  nation: 80, tribe: 65, capital: 20,
   /** What a season takes off by itself, and what good rule adds to that. */
-  ease: 4, church: 3, farm: 2, leader: 4, pious: 2,
+  ease: 3, church: 3, farm: 2, leader: 4, pious: 2,
   /** What bad rule puts back: a tavern in a town that did not ask for one, and a season in which the town was struck and not protected. */
   tavern: 2, struck: 6,
-  /** Under this a town is settled enough not to rise. At 100 an ungarrisoned town rises this often in a season. */
-  quiet: 20, revolt: 0.3,
+  /** Under this a town is settled enough not to rise. `revolt` scales the chance, which grows with the square of the resentment above `quiet` and is never more than certain. */
+  quiet: 15, revolt: 2.4,
   /** An army in the town makes a rising this much less likely; putting one down adds this to the resentment. */
-  garrison: 0.4, putDown: 10,
+  garrison: 0.03, putDown: 10,
+  /** A town that has had an army in it settles this much faster each such season, and for this many seasons after the army leaves it is cowed: a rising is this much less likely (at 0 it does not rise). */
+  order: 8, cowed: 3, cowedBy: 0,
+  /** Seasons a town is remembered as taken. For that long it rises only by its resentment, never by the common run of unrest (campaign.ts). */
+  memory: 20,
 };
 /** The kinds of thing that befall a town and are held against whoever rules it. */
 const STRUCK = ['raid', 'carried', 'famine', 'plague', 'blaze', 'raiders', 'taken'];
@@ -55,13 +59,14 @@ export function goodRule(c: Campaign, tid: number): number {
   return YOKE.ease + (t.buildings.includes('church') ? YOKE.church : 0) + (t.buildings.includes('farm') ? YOKE.farm : 0) + (leaderAt(c, t.owner, tid) ? YOKE.leader : 0)
     + (faithOf(c, t.owner).defence > 1 ? YOKE.pious : 0) - (t.buildings.includes('tavern') ? YOKE.tavern : 0) - (struck ? YOKE.struck : 0);
 }
-/** The chance a town rises this season, as things stand. */
-export function revoltChance(c: Campaign, tid: number): number {
+/** The chance a town rises this season, as things stand; or, with `bare`, as it would be with no army in it or lately gone from it. */
+export function revoltChance(c: Campaign, tid: number, opts: { bare?: boolean } = {}): number {
   const t = c.territories[tid], r = resentOf(c, tid);
   if (!t || t.owner < 0 || r <= YOKE.quiet || leaderAt(c, t.owner, tid)) return 0;
-  const a = armyAt(c, tid), held = !!a && a.owner === t.owner;
+  const a = armyAt(c, tid), y = t.yoke!;
+  const held = !opts.bare && !!a && a.owner === t.owner, cowed = !opts.bare && !held && y.held !== undefined && c.turn - y.held <= YOKE.cowed;
   const faith = faithOf(c, t.owner);
-  return Math.min(1, YOKE.revolt * ((r - YOKE.quiet) / (100 - YOKE.quiet)) ** 2 * (held ? YOKE.garrison : 1) * (faith.steadfast ? 0.5 : faith.restless ? 1.5 : 1));
+  return Math.min(1, YOKE.revolt * ((r - YOKE.quiet) / (100 - YOKE.quiet)) ** 2 * (held ? YOKE.garrison : cowed ? YOKE.cowedBy : 1) * (faith.steadfast ? 0.5 : faith.restless ? 1.5 : 1));
 }
 
 export interface YokeNews { at: number; kind: 'rose' | 'put down' | 'settled'; owner: number; to?: number }
@@ -76,6 +81,8 @@ export function seasonOfYoke(c: Campaign): YokeNews[] {
     if (!y) continue;
     if (t.owner < 0 || t.horde) { delete t.yoke; continue; }
     const owner = t.owner, mine = owner === 0;
+    const garrison = armyAt(c, t.id);
+    if (garrison && garrison.owner === owner) y.held = c.turn;
     if (hash(c.seed * 131 + t.id, c.turn * 977 + 5) < revoltChance(c, t.id)) {
       const a = armyAt(c, t.id), f = folkOf(c, t.id);
       if (a && a.owner === owner) {
@@ -98,9 +105,11 @@ export function seasonOfYoke(c: Campaign): YokeNews[] {
       news.push({ at: t.id, kind: 'rose', owner, to: back });
       continue;
     }
-    y.resent = Math.max(0, Math.min(100, y.resent - goodRule(c, t.id)));
+    if (y.settled) { if (c.turn - y.since >= YOKE.memory) delete t.yoke; continue; }
+    y.resent = Math.max(0, Math.min(100, y.resent - goodRule(c, t.id) - (y.held === c.turn ? YOKE.order : 0)));
     if (y.resent <= 0) {
-      delete t.yoke;
+      y.settled = true;
+      if (c.turn - y.since >= YOKE.memory) delete t.yoke;
       c.log.push(`The people of ${t.name} now count themselves ${mine ? 'yours' : `${nameOf(c, owner)}'s`}.`);
       news.push({ at: t.id, kind: 'settled', owner });
     }
