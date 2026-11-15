@@ -297,6 +297,9 @@ faction is a different people led by its own leader. You choose your people, or 
 Each turn you collect supplies from the land you hold and spend them, then march armies into
 neighbouring land.
 
+- **Your own names** (`src/sim/naming.ts`). When a campaign begins you may name your people and your
+  ruling house. The people you choose still decides dress, units and leaders; an heir rules as one of
+  your house, and a house set aside takes its name with it.
 - **Paid in kind, earned by land** (`src/sim/prices.ts`, `src/sim/harvest.ts`). A Barracks is paid in
   wood, a Fortress in stone, a company in food and gold, a truce in gold, at the old price in supplies,
   from the town where it is done first; what your towns lack of a kind is made up in other goods. Each
