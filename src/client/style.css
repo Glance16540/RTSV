@@ -819,3 +819,6 @@ body.looking-out #visit { display: none; }
 .story-person.cleared { opacity: 0.55; }
 .story-person.cleared b { text-decoration: line-through; }
 .story-person.dead b { color: #e0705a; }
+
+/* Going to marry (suitors.ts): what a town wants for, on its panel. */
+.town-want { margin-top: 4px; }
