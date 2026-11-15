@@ -72,24 +72,32 @@ describe('a town taken', () => {
     });
   }, LONG);
 
-  it('the chance of a rising falls with time, with an army in the town, and is nothing with the leader there', () => {
+  it('the chance of a rising falls with time, is far less with an army in the town, nothing just after one has left, and nothing with the leader there', () => {
     const { c, t } = held();
+    const at = (r: number) => Math.min(1, YOKE.revolt * ((r - YOKE.quiet) / (100 - YOKE.quiet)) ** 2);
     const fresh = revoltChance(c, t.id);
     expect(fresh).toBeGreaterThan(0);
-    expect(fresh).toBeCloseTo(YOKE.revolt * ((YOKE.nation - YOKE.quiet) / (100 - YOKE.quiet)) ** 2, 6);
+    expect(fresh).toBeCloseTo(at(YOKE.nation), 6);
     t.yoke!.resent = 40;
     expect(revoltChance(c, t.id)).toBeLessThan(fresh);
+    expect(revoltChance(c, t.id)).toBeCloseTo(at(40), 6);
     t.yoke!.resent = YOKE.quiet;
     expect(revoltChance(c, t.id)).toBe(0);
-    t.yoke!.resent = YOKE.nation;
+    t.yoke!.resent = 40;
     c.armies.push({ id: 90, owner: 0, at: t.id, units: { infantry: 2 }, hero: false, vet: 0, moved: false });
-    expect(revoltChance(c, t.id)).toBeCloseTo(fresh * YOKE.garrison, 6);
+    expect(revoltChance(c, t.id)).toBeCloseTo(at(40) * YOKE.garrison, 6);
+    expect(revoltChance(c, t.id, { bare: true })).toBeCloseTo(at(40), 6); // what it would be if the army left
     c.armies.pop();
     c.factions[0].virtue = 90; // the Righteous are followed more willingly
-    expect(revoltChance(c, t.id)).toBeCloseTo(fresh * 0.5, 6);
+    expect(revoltChance(c, t.id)).toBeCloseTo(at(40) * 0.5, 6);
     c.factions[0].virtue = -90;
-    expect(revoltChance(c, t.id)).toBeCloseTo(fresh * 1.5, 6);
+    expect(revoltChance(c, t.id)).toBeCloseTo(Math.min(1, at(40) * 1.5), 6);
     c.factions[0].virtue = 0;
+    // An army has just been there: for a few seasons after it leaves the town is cowed.
+    t.yoke!.held = c.turn - 1;
+    expect(revoltChance(c, t.id)).toBe(at(40) * YOKE.cowedBy);
+    t.yoke!.held = c.turn - YOKE.cowed - 1;
+    expect(revoltChance(c, t.id)).toBeCloseTo(at(40), 6);
     seat(c, 0, t.id);
     expect(revoltChance(c, t.id)).toBe(0);
   }, LONG);
@@ -97,10 +105,11 @@ describe('a town taken', () => {
   it('a town left to settle becomes the taker\'s own', () => {
     const { c, t } = held();
     t.buildings = ['church', 'farm'];
-    let seasons = 0;
-    sure(0, () => { while (t.yoke && seasons < 40) { seasonOfYoke(c); c.turn++; seasons++; } });
+    let seasons = 0, settledAt = -1;
+    sure(0, () => { while (t.yoke && seasons < 40) { seasonOfYoke(c); c.turn++; seasons++; if (settledAt < 0 && t.yoke?.settled) settledAt = seasons; } });
+    expect(settledAt).toBe(Math.ceil(YOKE.nation / (YOKE.ease + YOKE.church + YOKE.farm)));
     expect(t.yoke).toBeUndefined();
-    expect(seasons).toBe(Math.ceil(YOKE.nation / (YOKE.ease + YOKE.church + YOKE.farm)));
+    expect(seasons).toBe(YOKE.memory + 1); // it is remembered as taken for five years, settled or not
     expect(t.owner).toBe(0);
     expect(c.log.join('\n')).toContain(`The people of ${t.name} now count themselves yours.`);
     expect(resentful(c, t.id)).toBe(false);

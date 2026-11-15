@@ -155,8 +155,8 @@ export function maySpare(c: Campaign, tid: number): boolean {
   const f = folkOf(c, tid);
   return !(f.men <= RIVAL.lastMen && (f.drift?.strain ?? 0) >= RIVAL.strain);
 }
-/** Does this town want an army in it? It is resentful enough to rise, or a band has come upon it. */
-export const threatened = (c: Campaign, tid: number): boolean => revoltChance(c, tid) > RIVAL.risk || bandsAt(c, tid).length > 0;
+/** Does this town want an army in it? Left bare it is resentful enough to rise, or a band has come upon it. */
+export const threatened = (c: Campaign, tid: number): boolean => revoltChance(c, tid, { bare: true }) > RIVAL.risk || bandsAt(c, tid).length > 0;
 
 /**
  * Before a rival spends and marches: an army beside a town of its own that wants one, and has none, goes there;

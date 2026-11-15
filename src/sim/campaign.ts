@@ -715,7 +715,7 @@ function mapTurn(c: Campaign): void {
   c.events = ev.filter((x) => x.until >= c.turn - 1);
   const busy = new Set(c.events.filter((x) => x.until >= c.turn).map((x) => x.at));
   if (c.turn >= 3 && luck(c, 50) < 0.3) {
-    const open = c.territories.filter((t) => t.owner >= 0 && t.capital < 0 && !busy.has(t.id) && !c.armies.some((a) => a.at === t.id && a.owner === t.owner) && !leaderAt(c, t.owner, t.id));
+    const open = c.territories.filter((t) => t.owner >= 0 && t.capital < 0 && !t.yoke && !busy.has(t.id) && !c.armies.some((a) => a.at === t.id && a.owner === t.owner) && !leaderAt(c, t.owner, t.id));
     const t = open[Math.floor(luck(c, 51) * open.length)];
     if (t) {
       mark(c, 'unrest', t.id, UNREST_TURNS - 1);
