@@ -11,6 +11,14 @@ import type { Army, Campaign } from './campaign';
 import { agesOf, countFrom, OLD_SEASON, LAST_SEASON } from './ageing';
 import { folkOf, rememberVeteran } from './township';
 
+/**
+ * Seasons an army rests in a town it has just taken before it marches again: it buries its dead, sets a watch
+ * and brings the town to order. (It is what keeps a campaign from being a land a season.)
+ */
+export const ARMY_REST = 5;
+/** Is this army still resting from its last assault as this turn begins? */
+export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.turn;
+
 /** Men in a company. */
 export const MEN_A_COMPANY = 2;
 /** An army's roll: how many companies it had when last reckoned, and the men with it by the town they came from (their ages, in seasons). */
