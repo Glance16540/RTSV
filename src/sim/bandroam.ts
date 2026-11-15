@@ -13,6 +13,7 @@
 import type { Campaign, Territory } from './campaign';
 import { armyStrength } from './campaign';
 import { Band, mark, note, reachOf, softest } from './threats';
+import { campsBorne } from './bandhorde';
 
 export const ROAM = {
   /** A band flees an army at its place that is at least this many times its strength. */
@@ -22,7 +23,7 @@ export const ROAM = {
   /** A band this many seasons old and no stronger than `weak` breaks up, if it holds nobody. */
   old: 16, weak: 2,
   /** Raiders or slavers this strong and this many seasons old, camped in a tribe's land, take it for their own. */
-  settle: 8, settled: 6,
+  settle: 9, settled: 10,
 };
 
 const cap = (name: string): string => name[0].toUpperCase() + name.slice(1);
@@ -81,7 +82,7 @@ export function roamSeason(c: Campaign, out: string[]): number {
     // Old and still weak, holding nobody: they drift apart.
     if (age >= ROAM.old && b.strength <= ROAM.weak && !b.held.length) { gone(`${cap(b.name)} have come to nothing and drifted apart.`); continue; }
     // Grown strong in a tribe's land: they take it for their own.
-    if ((b.kind === 'raiders' || b.kind === 'slavers') && b.strength >= ROAM.settle && age >= ROAM.settled && here.owner < 0 && !here.horde && here.capital < 0) {
+    if ((b.kind === 'raiders' || b.kind === 'slavers') && b.strength >= ROAM.settle && age >= ROAM.settled && here.owner < 0 && !here.horde && here.capital < 0 && (c.bands ?? []).filter((k) => k.kind === 'marauders').length < campsBorne(c)) {
       b.kind = 'marauders';
       here.horde = true; here.militia = Math.max(here.militia, b.strength);
       c.events = [...(c.events ?? []), { kind: 'horde', at: here.id, turn: c.turn, until: c.turn + 1 }];
