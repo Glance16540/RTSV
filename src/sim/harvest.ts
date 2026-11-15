@@ -18,6 +18,7 @@ import { biomeOf } from './campaign';
 import { MAX_STORE, STORE_KINDS, folkOf } from './township';
 import type { Stores } from './township';
 import { SUPPLY_UNITS, settleStores } from './stores';
+import { nobleWork } from './nobles';
 import { GOVERN, shareOf } from './governor';
 
 /** Grown men and women a town needs to work its land in full. */
@@ -81,7 +82,7 @@ export function harvest(c: Campaign, landYield: (f: number, t: Territory) => num
     // A land the marauders still sit in has no town of its people's to keep its yield: that goes to the chief town.
     for (const t of held) {
       // A land the marauders sit in yields what its own town's hands bring in, but into the chief town.
-      const into = t.horde ? chief : t, n = Math.round(landYield(x.id, t) * k * SUPPLY_UNITS * handsShare(c, t.id));
+      const into = t.horde ? chief : t, n = Math.round(landYield(x.id, t) * k * SUPPLY_UNITS * handsShare(c, t.id) * nobleWork(c, t.id)); // an angry noble's town works slacker (nobles.ts)
       goods += n; lost += putIn(c, into.id, spread(n, yieldShares(c, into.id)));
     }
     const extra = Math.round(whole(x.id) * k * SUPPLY_UNITS);
