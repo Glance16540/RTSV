@@ -127,6 +127,7 @@ interface Watch {
   ages: number[]; // seasons a rival took to reach each next age
   growth: number[]; // grown after 20 years over grown at the start, for towns held by one people throughout
   townSeasons: TownSeason[];
+  stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
   townLives: number; diedOut: number; diedAfterAll: number;
   /** Every town that died out (tribes' too), with what emptied it: see `whyDead`. */
   dead: DeadTown[];
@@ -151,7 +152,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
@@ -338,6 +339,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     }
   }
   w.sieges = watched;
+  w.stories = c.intrigueSeq ?? 0; w.storyYears = c.turn / 4;
   for (const xs of fed) if (xs.length) { w.storeSeasons.push(median(xs)); w.peaceSeasons += xs.length; }
   w.unsettled = takenAt.size;
   w.townLives = w.townSeasons.filter((x) => !x.tribe).length / YEARS20;
@@ -561,6 +563,9 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const raids = all('raids'), years = ruled.reduce((k, w) => k + w.raidTownYears, 0);
   const every = raids.length ? years / raids.length : NaN;
   add('Threats', 'Raids on a given town', 'about once in 3 to 5 years', raids.length ? `once in ${num(every, 1)} years (${raids.length} raids)` : 'no raids', within(every, 3, 5), 'Every strike by a band on a held town, the marauders\' included, per season it was held, over the whole run.');
+  // Stories inside the story (intrigue.ts, courtstory.ts): how often one begins for the player's nation.
+  const stories = ruled.reduce((k, w) => k + w.stories, 0), storyYears = ruled.reduce((k, w) => k + w.storyYears, 0), storyEvery = stories ? storyYears / stories : NaN;
+  add('Stories', 'A story begins for the player\'s nation', 'about once in 3 to 6 years', stories ? `once in ${num(storyEvery, 1)} years (${stories} stories in ${ruled.length} campaigns)` : 'no stories', within(storyEvery, 3, 6), 'Every story inside the story begun for the player (a thief, a killer, a rival king, a suitor, a plot), over the years the campaign ran. The computer-played player answers none of them.');
   const out = (o: string) => share(raids, (r) => r.outcome === o);
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);
