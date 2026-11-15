@@ -7,6 +7,8 @@
 //   CAMPAIGNS  how many campaigns (seeds 1..n, fixed so runs compare). Default 24.
 //   SEASONS    the longest a campaign is played. Default 200.
 //   PLAYER     'computer' (the player's turns are played as a rival's, campaign.ts `playForPlayer`) or 'passive'.
+//   SIEGES     how many real-time sieges the computer fights on both sides (the rival against a capital). Default 8.
+//   MINUTES    how long each may run before the town is counted as having held. Default 20.
 //   VISITS     how many of the campaigns are played again with every town of the player's visited each season for
 //              twenty years (slow: a visit is ten minutes of a real battle). Default 0, and that figure is not measured.
 //   OUT        where the report is written. Default docs/health-report.md.
@@ -19,7 +21,10 @@ import { writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
 import { Game } from '../src/sim/game';
 import type { Campaign } from '../src/sim/campaign';
-import { ageOf, answerDemand, armyAt, continueAI, endTurn, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
+import { ageOf, answerDemand, armyAt, armyStrength, battleConfig, battleWatchers, continueAI, endTurn, moveArmy, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
+import { armiesFor, attackBand } from '../src/sim/bandfight';
+import { SEASONS_A_YEAR } from '../src/sim/ageing';
+import { BUILDINGS, CIV_IDS } from '../src/sim/data';
 import { folkOf, grown } from '../src/sim/township';
 import { needOf } from '../src/sim/larder';
 import { faithSpread } from '../src/sim/townfaith';
@@ -34,36 +39,53 @@ const SEASONS = +(process.env.SEASONS ?? 200);
 const PLAYER = process.env.PLAYER === 'passive' ? 'passive' : 'computer';
 const VISITS = +(process.env.VISITS ?? 0);
 const OUT = process.env.OUT ?? 'docs/health-report.md';
+const SIEGES = +(process.env.SIEGES ?? 8);
+const MINUTES = +(process.env.MINUTES ?? 20);
+/** Sixty and seventy years old, in seasons (ageing.ts). */
+const AT60 = 60 * SEASONS_A_YEAR, AT70 = 70 * SEASONS_A_YEAR;
 /** Twenty years, in seasons. */
 const YEARS20 = 80;
 const CIVS = ['hearth', 'forge', 'greece', 'egypt', 'england', 'japan'];
 
 // ---- Playing a campaign ----
 
-/** A battle the campaign put to the player, as it was before it was settled. */
-interface Siege { defender: number; walls: boolean; men: boolean; held: boolean }
-
-/** Settle a battle waiting on the player, from the map, and note how a besieged town fared. */
-function settle(c: Campaign, sieges: Siege[]): void {
-  const p = c.pending!;
+/** A siege of a nation's town settled on the map: whether it had walls and its men (or an army) in it, and whether it held. */
+interface Siege { walls: boolean; men: boolean; held: boolean }
+/** Every siege settled on the map in the campaign being played, the rivals' among themselves included (campaign.ts `battleWatchers`). */
+let watched: Siege[] = [];
+battleWatchers.push((c, p, attackerWon) => {
+  if (p.band !== undefined || p.mode === 'field' || p.defender < 0) return;
   const t = c.territories[p.to];
-  const defender = p.defender, walls = t.buildings.includes('fortress'), men = !!armyAt(c, p.to) && armyAt(c, p.to)!.owner === defender;
-  resolvePending(c, 'auto');
-  if (defender >= 0) sieges.push({ defender, walls, men, held: c.territories[p.to].owner === defender });
+  const walls = t.buildings.includes('fortress') || !!t.town?.b.some(([type]) => type === 'tower' || !!BUILDINGS[type]?.wall);
+  const men = (armyAt(c, p.to)?.owner === p.defender) || folkOf(c, p.to).men > 0;
+  watched.push({ walls, men, held: !attackerWon });
+});
+
+/** Settle a battle waiting on the player, from the map. */
+const settle = (c: Campaign): void => { resolvePending(c, 'auto'); };
+
+/** The computer-played player sends an army against a band it can reach and is strong enough for (bandfight.ts), settled unwatched. */
+function huntBands(c: Campaign): void {
+  for (const b of c.bands ?? []) {
+    if (b.kind === 'marauders' || c.pending) continue;
+    const a = armiesFor(c, b.id, 0).find((x) => armyStrength(x, c) >= b.strength);
+    if (a && attackBand(c, a.id, b.id) === 'battle') settle(c);
+  }
 }
 
 /** One season: the player's turn (played or let be), then everyone else's. */
-function season(c: Campaign, ruled: boolean, sieges: Siege[]): void {
+function season(c: Campaign, ruled: boolean): void {
   if (PLAYER === 'computer') {
+    huntBands(c);
     for (let i = 0; i < 40 && c.phase === 'player'; i++) {
       playForPlayer(c);
-      if (c.pending) settle(c, sieges); else break;
+      if (c.pending) settle(c); else break;
     }
   }
   if (ruled) sensibleDecrees(c, 0, (tid) => driftOf(c, tid));
   endTurn(c);
-  for (let i = 0; i < 200 && c.phase === 'ai'; i++) { if (c.demand) answerDemand(c, true); else if (c.pending) settle(c, sieges); continueAI(c); }
-  if (c.pending) settle(c, sieges);
+  for (let i = 0; i < 200 && c.phase === 'ai'; i++) { if (c.demand) answerDemand(c, true); else if (c.pending) settle(c); continueAI(c); }
+  if (c.pending) settle(c);
 }
 
 /** A visit to one town, the computer keeping it for the player for the whole of it (as scripts/seasons.test.ts). */
@@ -83,7 +105,7 @@ const held = (c: Campaign) => c.territories.filter((t) => t.owner >= 0 && !t.hor
 
 // ---- What is watched, season by season ----
 
-interface TownSeason { hungry: boolean; farmed: boolean; convoy: boolean; drifted: boolean; strained: 'hungry' | 'raided' | 'taken' | ''; oneSex: boolean }
+interface TownSeason { tribe: boolean; hungry: boolean; farmed: boolean; convoy: boolean; drifted: boolean; strained: 'hungry' | 'raided' | 'taken' | ''; oneSex: boolean }
 interface Watch {
   decided: number; // the season the campaign was decided, or -1
   how: string; // who won it: 'player beaten', 'player', 'rival'
@@ -100,15 +122,17 @@ interface Watch {
   captives: { near: boolean; back: boolean }[];
   taken: { garrison: boolean; rose: boolean }[];
   arms: { war: boolean; share: number }[];
-  sieges: Siege[];
+  reached60: number[]; reached70: number[]; // by season: those who turned sixty, and seventy
+  sieges: Siege[]; // settled on the map
   falling: number; // towns whose standing fell 10 or more over 20 years, held by one people throughout
   fallingTowns: number;
 }
 
 function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
+  watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], arms: [], sieges: [], falling: 0, fallingTowns: 0 };
+  const w: Watch = { decided: -1, how: '', ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
@@ -132,7 +156,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     }
     const owners = c.territories.map((t) => t.owner);
     for (const x of c.convoys ?? []) convoyTo.add(x.to);
-    season(c, ruled, w.sieges);
+    season(c, ruled);
     const now = c.turn;
     // Land that changed hands: both peoples were at war; a town taken by force carries a yoke (conquered.ts).
     for (const t of c.territories) {
@@ -159,7 +183,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       if (e.kind === 'plague' || e.kind === 'fever') strife[e.at].plague = now;
     }
     const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
-    for (const r of raidsNow) { w.raids.push({ outcome: r.outcome }); if (r.outcome !== 'held') strife[r.at].war = now; }
+    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome }); if (r.outcome !== 'held') strife[r.at].war = now; }
     // Every held town.
     for (const t of held(c)) {
       const f = folkOf(c, t.id), g = grown(f), away = awayFrom(c, t.id);
@@ -167,13 +191,27 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       const raided = raidsNow.some((r) => r.at === t.id) || (c.raids ?? []).some((r) => r.at === t.id && r.turn === now - 1);
       const newly = !!t.yoke && now - t.yoke.since <= 8;
       const drifted = (f.drifted?.tavern ?? 0) + (f.drifted?.mines ?? 0) > 0;
-      w.townSeasons.push({ hungry: !!f.hungry, farmed: t.buildings.includes('farm'), convoy: convoyTo.has(t.id), drifted, strained: f.hungry ? 'hungry' : raided ? 'raided' : newly ? 'taken' : '', oneSex: g + away > 0 && (f.men + away === 0 || f.women === 0) });
+      w.townSeasons.push({ tribe: false, hungry: !!f.hungry, farmed: t.buildings.includes('farm'), convoy: convoyTo.has(t.id), drifted, strained: f.hungry ? 'hungry' : raided ? 'raided' : newly ? 'taken' : '', oneSex: g + away > 0 && (f.men + away === 0 || f.women === 0) });
       if (s <= YEARS20) {
         townSeasonsOf[t.owner]++;
         if (f.hungry) hungryOf[t.owner]++;
-        w.raidTownYears += 0.25;
       }
+      w.raidTownYears += 0.25;
     }
+    // The tribes' towns, for the one figure that is theirs.
+    for (const t of c.territories) {
+      if (t.owner >= 0 || t.horde) continue;
+      const f = folkOf(c, t.id), g = grown(f);
+      if (g > 0) w.townSeasons.push({ tribe: true, hungry: false, farmed: false, convoy: true, drifted: false, strained: '', oneSex: f.men === 0 || f.women === 0 });
+    }
+    // Who turned sixty and seventy this season, in every town that keeps its people's ages (ageing.ts).
+    let r60 = 0, r70 = 0;
+    for (const t of c.territories) {
+      const a = t.folk?.ages;
+      if (!a) continue;
+      for (const x of [...a.m, ...a.f]) { if (x === AT60) r60++; else if (x === AT70) r70++; }
+    }
+    w.reached60.push(r60); w.reached70.push(r70);
     convoyTo.clear();
     for (const f of c.factions) if (f.alive && c.territories.some((t) => t.owner === f.id && t.buildings.includes('church'))) churched[f.id]++;
     // Towns that die out: nobody grown and no child left.
@@ -218,7 +256,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     for (const b of c.bands ?? []) for (const h of b.held) {
       const key = `${b.id}:${h.since}:${h.from}`;
       seen.add(key);
-      const near = c.armies.some((a) => a.owner === h.owner && (a.at === b.at || c.territories[a.at].adj.includes(b.at)));
+      const near = c.armies.some((a) => a.owner === h.owner && [b.at, b.to].some((p) => p !== undefined && (a.at === p || c.territories[a.at].adj.includes(p))));
       const g = groups.get(key) ?? { near: false, since: h.since };
       groups.set(key, { near: g.near || near, since: h.since });
     }
@@ -243,9 +281,39 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       }
     }
   }
-  w.townLives = w.townSeasons.length / YEARS20;
+  w.sieges = watched;
+  w.townLives = w.townSeasons.filter((x) => !x.tribe).length / YEARS20;
   if (c.phase === 'over' && w.decided < 0) { w.decided = c.turn; w.how = !c.factions[0].alive ? 'player beaten' : c.winner === 0 ? 'player' : 'rival'; }
   return w;
+}
+
+/** Real-time sieges, computer against computer: a rival's army against a capital, as scripts/sieges.test.ts sets one up. */
+function realSieges(): Siege[] {
+  const out: Siege[] = [];
+  const peoples = CIV_IDS.filter((id) => id !== 'wild');
+  for (let k = 1; k <= SIEGES; k++) {
+    const seed = k * 2;
+    const c = newCampaign(seed, 1, 1, peoples[seed % peoples.length]);
+    const home = c.territories.find((t) => t.capital === 0)!;
+    if (!home.buildings.includes('fortress')) home.buildings.push('fortress'); // the case the figure asks about: a walled town
+    c.armies.push({ id: 99, owner: 1, at: home.adj[0], units: { infantry: 2 + (seed % 3), archers: 1 + (seed % 2) }, hero: false, vet: 0, moved: false });
+    c.territories[home.adj[0]].owner = 1;
+    if (moveArmy(c, 99, home.id) !== 'battle') continue;
+    c.pending!.mode = 'siege';
+    const cfg = battleConfig(c);
+    if (!cfg) continue;
+    const setups = cfg.setups.map((x) => ({ ...x, isAI: true }));
+    const g = new Game(cfg.seed, setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
+    if (cfg.ground) g.wear(cfg.ground);
+    g.fixedAge = true; g.bornOnly = true;
+    const ais = setups.map((_, i) => { const a = new AIController(g, i); a.setLevel(1); return a; });
+    const def = cfg.humanAttacks ? 1 : 0;
+    const walls = g.buildings.some((b) => b.owner === def && !b.dead && (b.def.wall || b.type === 'tower' || b.type === 'gate'));
+    const men = g.units.some((u) => u.owner === def && !u.dead && (u.type === 'villager' || g.isMilitary(u)));
+    for (let sec = 0; sec < MINUTES * 60 && g.winner < 0; sec++) { for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; } ais.forEach((a) => a.update()); }
+    out.push({ walls, men, held: g.winner < 0 || g.players[g.winner].team === g.players[def].team });
+  }
+  return out;
 }
 
 // ---- The report ----
@@ -294,7 +362,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
         for (let s = 1; s <= YEARS20; s++) {
           if (c.phase === 'over') c.phase = 'player'; // let go on turning, as in play()
           if (visits) for (const id of own) if (c.territories[id].owner === 0) visit(c, id);
-          season(c, true, []);
+          season(c, true);
         }
         return new Map(own.filter((id) => c.territories[id].owner === 0).map((id) => [id, grown(folkOf(c, id))]));
       };
@@ -309,11 +377,18 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const per100 = lives ? (died / lives) * 100 : NaN;
   add('People', 'Towns that die out (no people at all) per 100 town-lifetimes', 'under 3, and only after war, famine or plague together', `${num(per100, 2)} (${died} died out, ${afterAll} of them after war, famine and plague together)`, per100 < 3 && afterAll === died,
     'A town-lifetime is taken as twenty years of a held town, and only held towns are counted. Together means each of the three within the two years before.');
-  const oneSex = share(all('townSeasons'), (x) => x.oneSex);
-  add('People', 'Towns left all one sex', 'under 5%', `${pct(oneSex)} of town-seasons`, oneSex < 0.05, 'Of held towns with anyone grown in them; men away with its armies are counted as the town\'s (armytown.ts).');
+  const oneNation = share(all('townSeasons').filter((x) => !x.tribe), (x) => x.oneSex), oneTribe = share(all('townSeasons').filter((x) => x.tribe), (x) => x.oneSex);
+  add('People', 'Towns left all one sex', 'a nation\'s towns under 5%; tribes\' towns under 20%', `nations' ${pct(oneNation)}, tribes' ${pct(oneTribe)} of town-seasons`, oneNation < 0.05 && oneTribe < 0.2,
+    'Of towns with anyone grown in them. A nation\'s men away with its armies are counted as their town\'s (armytown.ts).');
+  // Those who turned sixty early enough to have reached seventy within the run, against those who turned seventy.
+  let r60 = 0, r70 = 0;
+  for (const w of ruled) { const n = w.reached60.length, gap = AT70 - AT60; for (let i = 0; i + gap < n; i++) r60 += w.reached60[i]; for (let i = gap; i < n; i++) r70 += w.reached70[i]; }
+  const deadBy70 = r60 ? 1 - r70 / r60 : NaN;
+  add('People', 'Of those who reach 60, the share dead by 70', '50 to 85%', r60 ? `${pct(deadBy70)} (${r60} turned sixty, ${r70} turned seventy)` : 'nobody turned sixty', r60 ? within(deadBy70, 0.5, 0.85) : null,
+    'Counted by cohort: everyone who turned sixty in a season early enough to have turned seventy before the run ended, against everyone who turned seventy from ten years in. People are not followed one by one, so those who move town, are carried off or come home older (threats.ts adds the years held) blur it a little.');
 
   // Food
-  const ts = all('townSeasons');
+  const ts = all('townSeasons').filter((x) => !x.tribe);
   const farmedHungry = share(ts.filter((x) => x.farmed), (x) => x.hungry);
   add('Food', 'Share of seasons a farmed town is hungry', 'under 2%', `${pct(farmedHungry)} (${ts.filter((x) => x.farmed).length} town-seasons)`, farmedHungry < 0.02);
   const bareTowns = ts.filter((x) => !x.farmed && !x.convoy);
@@ -351,13 +426,13 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   // Threats
   const raids = all('raids'), years = ruled.reduce((k, w) => k + w.raidTownYears, 0);
   const every = raids.length ? years / raids.length : NaN;
-  add('Threats', 'Raids on a given town', 'about once in 3 to 5 years', raids.length ? `once in ${num(every, 1)} years (${raids.length} raids)` : 'no raids', within(every, 3, 5), 'Over the first twenty years of every held town.');
+  add('Threats', 'Raids on a given town', 'about once in 3 to 5 years', raids.length ? `once in ${num(every, 1)} years (${raids.length} raids)` : 'no raids', within(every, 3, 5), 'Every strike by a band on a held town, the marauders\' included, per season it was held, over the whole run.');
   const out = (o: string) => share(raids, (r) => r.outcome === o);
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);
   const back = share(caps, (x) => x.back);
   add('Threats', 'Captives got back when the player has an army near', 'about half', caps.length ? `${pct(back)} (${caps.length} groups)` : 'none', caps.length ? within(back, 0.35, 0.65) : null,
-    'Every people\'s captives, as the player is computer-played: those whose people had an army at the band\'s place or next to it while they were held. About half is taken as 35 to 65%.');
+    'Every people\'s captives, the player\'s included: those whose people had an army at the band\'s place (either end of a highwaymen\'s road) or next door while they were held. The computer-played player sends an army it can reach and that is as strong as the band (attackBand, settled unwatched); rivals hunt as they do. Gone before the four seasons were up is got back. About half is taken as 35 to 65%.');
 
   // Conquest
   const taken = all('taken'), bareT = taken.filter((x) => !x.garrison), heldT = taken.filter((x) => x.garrison);
@@ -372,10 +447,11 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     'Men with its armies (armytown.ts) over those and the men in its towns. In war is a season within a year of the nation winning or losing land.');
 
   // Sieges
-  const sieges = all('sieges').filter((x) => x.walls && x.men);
-  const holds = share(sieges, (x) => x.held);
-  add('Sieges', 'A besieged town defended with walls and men', 'holds 60 to 85%', sieges.length ? `${pct(holds)} (${sieges.length} sieges)` : 'none', sieges.length ? within(holds, 0.6, 0.85) : null,
-    'Only battles put to the player can be watched (rivals settle their own inside the campaign\'s turn): those in which a people defended a town with a Fortress and an army of its own in it, settled from the map. For sieges fought in person see scripts/sieges.test.ts.');
+  const sieges = all('sieges').filter((x) => x.walls && x.men), live = realSieges();
+  const holds = share(sieges, (x) => x.held), liveHolds = share(live.filter((x) => x.walls && x.men), (x) => x.held);
+  const both = [...sieges, ...live.filter((x) => x.walls && x.men)], bothHolds = share(both, (x) => x.held);
+  add('Sieges', 'A besieged town with walls or a fortress and its men (or an army) in it', 'holds 60 to 85%', both.length ? `${pct(bothHolds)} in all: on the map ${pct(holds)} (${sieges.length}), in real time ${pct(liveHolds)} (${live.filter((x) => x.walls && x.men).length} of ${live.length} fought)` : 'none', both.length ? within(bothHolds, 0.6, 0.85) : null,
+    `On the map: every siege of a nation's town settled in resolvePending, the rivals' among themselves included (campaign.ts battleWatchers), with a Fortress or a tower, wall or gate standing in its town, and its men or an army of its own in it. In real time: ${SIEGES} sieges of a rival against a capital given a Fortress (it stands as a tower in its town; otherwise as scripts/sieges.test.ts sets them up), the computer playing both sides for up to ${MINUTES} minutes; a town still standing then is counted as having held. Holds means the attacker was thrown back.`);
 
   const secs = ((Date.now() - t0) / 1000).toFixed(0);
   const inN = rows.filter((r) => r.verdict === 'IN').length, outN = rows.filter((r) => r.verdict === 'OUT').length;
