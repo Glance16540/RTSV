@@ -9,6 +9,7 @@ import { surplusOf, treasury } from '../sim/stores';
 import { ordersText } from '../sim/governor';
 import { drillText } from '../sim/townmuster';
 import { awayText } from '../sim/warhouse';
+import { wantText } from '../sim/suitors';
 import { standingHtml, townFaces } from './portrait';
 import { mourned, townGrief } from '../sim/notableweight';
 
@@ -24,7 +25,8 @@ function stateHtml(c: Campaign, tid: number, mine: boolean): string {
   const yoke = y && !y.settled && t.owner >= 0 ? `<div class="town-yoke ${y.resent >= 50 ? 'bad' : 'hint'}" title="A town taken by force resents it. That eases every season, sooner with a Church, Farmland or your leader there, and under a pious people; a Tavern or a season of plague, famine, fire or raiders sets it back. Without an army in it a resentful town may rise.">😠 Taken from ${from} ${c.turn - y.since} ${c.turn - y.since === 1 ? 'season' : 'seasons'} ago: resentment ${Math.round(y.resent)}${mine ? ` · ${Math.round(revoltChance(c, tid) * 100)}% chance it rises this season` : ''}</div>` : '';
   const gone = away && mine ? `<div class="town-away hint" title="Men of this town with your armies. Those who fall are this town's dead; the rest come back when the army is sent home.">⚔️ ${plural(away, 'man', 'men')} of this town ${away === 1 ? 'is' : 'are'} away with the armies${awayText(c, tid) ? `: ${esc(awayText(c, tid))}` : ''}</div>` : '';
   const kept = mine ? `<div class="town-orders hint" title="A town left to itself carries on with the last orders you gave it in a battle or a visit. Its people work and eat every season, and a governor answers its wants out of the town's own stores: Farmland when food is short, a house when couples have no roof, a Fortress when it has been raided.">📜 ${esc(ordersText(t))}${drillText(c, tid) ? ' ' + esc(drillText(c, tid)) : ''}</div>` : '';
-  return faith + yoke + gone + kept;
+  const want = mine && wantText(c, tid) ? `<div class="town-want hint">💍 ${esc(wantText(c, tid))}</div>` : '';
+  return faith + yoke + gone + want + kept;
 }
 
 /** A town's people by kind; for a town of the player's, its stores and those it knows by name as well. */

@@ -27,10 +27,11 @@ import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, weatherAt } from './campaign';
 import { creedOf } from './creed';
 import { faithAt } from './townfaith';
-import { STORE_KINDS, folkOf } from './township';
+import { STORE_KINDS, folkOf, headcount } from './township';
 import type { Stores } from './township';
 import { SUPPLY_UNITS } from './stores';
 import { needOf } from './larder';
+import { tally } from './ledger';
 
 export const ACTS = {
   /** The season from which they may come. */
@@ -45,6 +46,8 @@ export const ACTS = {
   hard: 0.25,
   /** Plague: seasons it lasts for an ordinary people, the share of the town's grown people it kills a season (one at least), and the chance each season of its passing next door. */
   seasons: 2, sick: 0.1, spread: 0.25,
+  /** Crowding breeds plague: a town of this many people or more is struck, passed to and killed in full; a smaller one in proportion. */
+  crowd: 20,
   /** Fire: supplies it costs an ordinary people to rebuild, the share of their strength the town's buildings lose, and the share of its food and wood that burns. */
   rebuild: 3, burnt: 0.35, stores: 0.3,
   /** Works a fire cannot burn down. */
@@ -85,16 +88,25 @@ function thin(a: Army | undefined): boolean {
   return true;
 }
 
+/**
+ * How crowded a town is, for plague: its people (the men away with its armies not among them) over ACTS.crowd, at
+ * most 1. A hamlet of a few people is seldom struck, seldom passed to, and loses fewer; a town of ACTS.crowd or
+ * more is as it ever was. The holder's creed is measured apart (wrathAt) and is not changed by it.
+ */
+export const crowding = (c: Campaign, tid: number): number => Math.min(1, headcount(folkOf(c, tid)) / ACTS.crowd);
 /** A season of plague in a town: a share of its grown people die, the old first, then men and women in turn. Never a child. */
 export function sicken(c: Campaign, t: Territory): number {
   const k = folkOf(c, t.id), grownNow = k.men + k.women + k.elders;
-  let n = Math.min(grownNow, Math.max(1, Math.round(grownNow * ACTS.sick))), dead = 0, man = chance(c, t.id, 53) < 0.5;
+  // The share it kills, less in a small town; what is less than one whole person is a chance of one.
+  const due = grownNow * ACTS.sick * crowding(c, t.id), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
+  let n = Math.min(grownNow, crowding(c, t.id) >= 1 ? Math.max(1, Math.round(due)) : whole), dead = 0, man = chance(c, t.id, 53) < 0.5;
   while (n-- > 0) {
     if (k.elders > 0) k.elders--;
     else if ((man && k.men > 0) || k.women <= 0) { if (k.men <= 0) break; k.men--; man = false; }
     else { k.women--; man = true; }
     dead++;
   }
+  tally(c, t.id, 'sick', dead); // for the season's report (ledger.ts)
   return dead; // the ages on the record follow the counts the next time they are read (ageing.ts)
 }
 
@@ -160,7 +172,7 @@ export function actsOfGod(c: Campaign): Struck[] {
     if (!next.length) continue;
     const n = next[Math.floor(chance(c, t.id, 31) * next.length)];
     const w = wrathAt(c, n.id);
-    if (chance(c, t.id, 37) < ACTS.spread * w) out.push(plague(c, n, w, false, t.id));
+    if (chance(c, t.id, 37) < ACTS.spread * w * crowding(c, n.id)) out.push(plague(c, n, w, false, t.id)); // it passes to a crowded town sooner than a hamlet
   }
   if (c.turn < ACTS.from) return out;
   const fresh = new Set(out.filter((s) => s.from !== undefined).map((s) => s.at));
@@ -170,7 +182,7 @@ export function actsOfGod(c: Campaign): Struck[] {
     const dry = sky === 'rain' ? 0 : sky === 'dust' ? ACTS.dry : 1;
     // One roll decides which, if any: a land is struck by one thing in a season at most.
     const r = chance(c, t.id, 3), hard = chance(c, t.id, 5) < ACTS.hard * w * w;
-    const pFamine = ACTS.famine * w * dry, pPlague = sickAt(c, t.id) ? 0 : ACTS.plague * w, pFire = ACTS.fire * w * dry;
+    const pFamine = ACTS.famine * w * dry, pPlague = sickAt(c, t.id) ? 0 : ACTS.plague * w * crowding(c, t.id), pFire = ACTS.fire * w * dry;
     if (r < pFamine) out.push(famine(c, t, w, hard));
     else if (r < pFamine + pPlague) out.push(plague(c, t, w, hard));
     else if (r < pFamine + pPlague + pFire) out.push(blaze(c, t, w, hard));

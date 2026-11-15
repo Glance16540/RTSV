@@ -87,8 +87,8 @@ export function seasonOfYoke(c: Campaign): YokeNews[] {
     if (hash(c.seed * 131 + t.id, c.turn * 977 + 5) < revoltChance(c, t.id)) {
       const a = armyAt(c, t.id), f = folkOf(c, t.id);
       if (a && a.owner === owner) {
-        // Put down: a man of the town dies for it, the garrison is the worse for it, and nobody forgets.
-        if (f.men > 0) { f.men--; if (f.ages) agesOf(c, t.id, f); }
+        // Put down: a man of the town dies for it (unless he is its last), the garrison is the worse for it, and nobody forgets.
+        if (f.men > (f.women > 0 ? 1 : 0)) { f.men--; if (f.ages) agesOf(c, t.id, f); } // never the last man of a town with women in it (as township.ts's toll)
         if (armySize(a) > 1) { const type = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p])[0]; if (--a.units[type] <= 0) delete a.units[type]; }
         y.resent = Math.min(100, y.resent + YOKE.putDown);
         c.log.push(`${t.name} rose against ${mine ? 'you' : nameOf(c, owner)} and the garrison put it down. It is not forgotten there.`);

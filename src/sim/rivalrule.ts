@@ -13,11 +13,12 @@
  * and its decrees are decrees.ts's `sensibleDecrees`.)
  */
 import type { Army, Campaign, Territory } from './campaign';
-import { SITE_BUILDING, armyAt, armyStrength, atTruce, defence, moveArmy, reach } from './campaign';
+import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atTruce, canRaise, companyCost, defence, hireOff, moveArmy, reach } from './campaign';
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
-import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menOf, sendCompaniesHome, sendHome } from './armytown';
+import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menMustered, menOf, sendCompaniesHome, sendHome, sparedMen } from './armytown';
+import { SUPPLY_UNITS } from './stores';
 import { revoltChance } from './conquered';
 import { bandsAt } from './threats';
 
@@ -35,6 +36,8 @@ export const RIVAL = {
   lastMen: 2, strain: 0.5,
   /** Seasons a people lives in an age before it takes the next, however rich it is: five years. */
   settle: 20,
+  /** A people with men and no supplies to spare raises a company out of a town's own stores, down to this share of them. */
+  stock: 0.5,
 };
 declare module './campaign' {
   interface Campaign { /** The age each rival was last seen in, and the turn it came to it (rivalrule.ts). */ aged?: Record<string, { age: number; at: number }> }
@@ -298,6 +301,47 @@ export function rivalMoves(c: Campaign, f: number): number {
 }
 
 /** A season of a rival's rule, for every computer-led nation; and the naming of soldiers, for all. */
+/**
+ * A poor people still musters. A rival at war or mustering that cannot pay for a company out of what its towns
+ * can spare (its supplies: stores.ts counts only what is over each town's keep) raises one all the same, out of
+ * the working stock of one town, so long as the price is no more than `RIVAL.stock` of what that town holds: its
+ * bread last. It is raised at a town with a yard, or failing any at its chief town, as plain infantry; its men
+ * are the people's own, within what a town keeps (armytown.ts). One company a season, and none at peace.
+ * Without this a people ruined by war, with men in its last town and nothing over its keep, sat a thousand
+ * seasons unable to raise a spear. Returns the land it was raised in, or -1.
+ */
+export function poorMuster(c: Campaign, f: number): number {
+  if (!rival(c, f) || warFooting(c, f) === 'peace') return -1;
+  const own = towns(c, f);
+  const kinds = Object.keys(COMPANIES);
+  if (own.some((t) => kinds.some((k) => canRaise(c, f, t.id, k)))) return -1; // it can pay in the ordinary way
+  if (!own.some((t) => sparedMen(c, t.id) > 0)) return -1; // nobody to send
+  const stock = (t: Territory): number => STORE_KINDS.reduce((n, k) => n + Math.max(0, folkOf(c, t.id).stores[k]), 0);
+  const free = (t: Territory): boolean => { const a = armyAt(c, t.id); return !a || (a.owner === f && armySize(a) < MAX_ARMY); };
+  const yards = own.filter((t) => free(t) && kinds.some((k) => t.buildings.includes(COMPANIES[k].needs)));
+  const chief = own.find((t) => t.capital === f) ?? [...own].sort((a, b) => headcount(folkOf(c, b.id)) - headcount(folkOf(c, a.id)) || a.id - b.id)[0];
+  const places = yards.length ? yards : chief && free(chief) ? [chief] : [];
+  for (const t of [...places].sort((a, b) => stock(b) - stock(a) || a.id - b.id)) {
+    const kind = kinds.filter((k) => t.buildings.includes(COMPANIES[k].needs)).sort((a, b) => COMPANIES[a].cost - COMPANIES[b].cost)[0] ?? 'infantry';
+    const price = companyCost(t, kind, c.factions[f].civ, hireOff(c, f, t.id)) * SUPPLY_UNITS;
+    if (price > stock(t) * RIVAL.stock) continue;
+    let a = armyAt(c, t.id);
+    const fresh = !a;
+    if (!a) { a = { id: c.nextArmy++, owner: f, at: t.id, units: {}, hero: false, vet: c.factions[f].civ === 'japan' ? 1 : 0, moved: true }; c.armies.push(a); }
+    a.units[kind] = (a.units[kind] ?? 0) + 1;
+    if (!menMustered(c, a, t.id)) { // nobody of an age to go after all: nothing is raised and nothing spent
+      if (--a.units[kind] <= 0) delete a.units[kind];
+      if (fresh) { c.armies.splice(c.armies.indexOf(a), 1); delete c.musters?.[a.id]; } else if (c.musters?.[a.id]) c.musters[a.id].size = armySize(a);
+      continue;
+    }
+    const s = folkOf(c, t.id).stores;
+    let left = price;
+    for (const k of [...STORE_KINDS].filter((x) => x !== 'food').sort((x, y) => s[y] - s[x])) { const part = Math.min(Math.max(0, s[k]), left); s[k] -= part; left -= part; }
+    if (left > 0) s.food = Math.max(0, s.food - left);
+    return t.id;
+  }
+  return -1;
+}
 /** Note the age a rival is in, and when it came to it. */
 function sawAge(c: Campaign, f: number): void {
   const age = Math.max(0, Math.round(Number(c.factions[f]?.age) || 0)), seen = (c.aged ??= {})[f];

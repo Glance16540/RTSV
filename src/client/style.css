@@ -812,3 +812,13 @@ body.looking-out #visit { display: none; }
 #t-panel .slots button { padding: 4px 14px; font: inherit; color: var(--ink); background: rgba(255, 250, 235, 0.45); border: 1px solid var(--ink); border-radius: 0; box-shadow: 1px 1px 0 rgba(36, 24, 15, 0.3); cursor: pointer; }
 #t-panel .slots button:hover:not(:disabled) { background: var(--ink); color: var(--vellum); }
 #t-panel .slots button:disabled { opacity: 0.45; cursor: default; }
+
+/* ---- Stories inside the story (intriguepanel.ts) ---- */
+.story-box { border-left: 3px solid #b08a3c; padding: 4px 6px; margin: 4px 0; background: rgba(176, 138, 60, 0.08); }
+.story-person small { opacity: 0.8; }
+.story-person.cleared { opacity: 0.55; }
+.story-person.cleared b { text-decoration: line-through; }
+.story-person.dead b { color: #e0705a; }
+
+/* Going to marry (suitors.ts): what a town wants for, on its panel. */
+.town-want { margin-top: 4px; }
