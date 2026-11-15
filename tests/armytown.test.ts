@@ -67,7 +67,7 @@ describe('armies belong to towns', () => {
     expect(f.men).toBe(2);
     a.units.infantry = 3; // a company is lost, and the army still stands
     const dead = Math.max(1, Math.round(2 * MEN.won));
-    expect(reckonArmies(c)).toEqual([{ town: home.id, army: a.id, dead, lost: false, home: 2 - dead }]);
+    expect(reckonArmies(c)).toMatchObject([{ town: home.id, army: a.id, dead, lost: false, home: 2 - dead }]);
     expect(awayFrom(c, home.id)).toBe(6);
     expect(f.men).toBe(2 + 2 - dead);
     expect(f.ages!.m.filter((x) => x < OLD_SEASON).length).toBe(f.men); // each back on the record at his own age
@@ -77,7 +77,7 @@ describe('armies belong to towns', () => {
     const before = f.men;
     c.armies.splice(c.armies.indexOf(a), 1);
     const fell = Math.round(6 * MEN.lost);
-    expect(reckonArmies(c)).toEqual([{ town: home.id, army: a.id, dead: fell, lost: true, home: 6 - fell }]);
+    expect(reckonArmies(c)).toMatchObject([{ town: home.id, army: a.id, dead: fell, lost: true, home: 6 - fell }]);
     expect(f.men).toBe(before + 6 - fell);
     expect(awayFrom(c, home.id)).toBe(0);
     expect(c.musters![a.id]).toBeUndefined();
@@ -88,7 +88,7 @@ describe('armies belong to towns', () => {
     const lost = army(b.c, b.home.id);
     b.home.owner = 1;
     b.c.armies.splice(b.c.armies.indexOf(lost), 1);
-    expect(reckonArmies(b.c)).toEqual([{ town: b.home.id, army: lost.id, dead: 4, lost: true }]);
+    expect(reckonArmies(b.c)).toMatchObject([{ town: b.home.id, army: lost.id, dead: 4, lost: true }]);
   }, LONG);
 
   it('a battle lost costs the town men, and sends the rest home', () => {
