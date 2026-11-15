@@ -27,6 +27,7 @@ import { visitButton } from './visit';
 import { convoyHtml, sendFromPanel } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
 import { decreePanel } from './decrees';
+import { seasonCard } from './seasoncard';
 import { DecreeKind, issueDecree } from '../sim/decrees';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
@@ -187,6 +188,7 @@ export class Overworld {
     else if (c.tale && c.phase === 'player' && taleNow(c)) this.askTale();
     else if (c.phase === 'player' && c.factions[0].alive && !c.factions[0].heroAlive && !houseOf(c, 0).asked) this.askSuccession();
     else $('ow-dialog').classList.add('hidden');
+    seasonCard(c, !$('ow-dialog').classList.contains('hidden'), () => this.hooks.save()); // what the season brought (seasoncard.ts)
   }
 
   private click(tid: number): void {
