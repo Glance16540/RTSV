@@ -39,3 +39,29 @@ export function aimText(c: Campaign, f: number, tid: number): string {
   const said = [m < 1 ? 'a hard march' : m > 1 ? 'open ground' : '', y > 0 ? 'good country' : y < 0 ? 'thin country' : '', gap >= 60 ? 'a faith far from theirs' : gap <= 15 ? 'a faith like theirs' : ''].filter(Boolean);
   return said.join(', ');
 }
+
+/**
+ * An army stands on a border with nothing in reach it dares to march on. Somewhere else along its people's own
+ * lands there may be a border where it would dare: it goes there, a land a season. Returns the first step of the
+ * shortest way through its own lands to such a place, or -1 if there is none within `REDEPLOY` lands (or it
+ * stands in one already). `daresFrom`: would this army dare any march from that land? `reachOf`: the lands an
+ * army can go to from a land.
+ */
+export const REDEPLOY = 6;
+export function redeploy(c: Campaign, f: number, from: number, daresFrom: (land: number) => boolean, reachOf: (land: number) => number[]): number {
+  if (daresFrom(from)) return -1;
+  const first = new Map<number, number>([[from, -1]]), depth = new Map<number, number>([[from, 0]]);
+  const queue = [from];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    if ((depth.get(cur) ?? 0) >= REDEPLOY) continue;
+    for (const n of reachOf(cur)) {
+      if (first.has(n) || c.territories[n]?.owner !== f) continue;
+      first.set(n, cur === from ? n : first.get(cur)!);
+      depth.set(n, (depth.get(cur) ?? 0) + 1);
+      if (daresFrom(n)) return first.get(n)!;
+      queue.push(n);
+    }
+  }
+  return -1;
+}
