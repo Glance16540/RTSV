@@ -29,6 +29,7 @@ import { agesOf } from './ageing';
 import { leaderAt } from './court';
 import { needOf } from './larder';
 import { folkOf, grown, living } from './township';
+import { aftermathSeason, remember, rememberWronged } from './aftermath';
 import { courtBegin, courtChoices, courtChoose, courtStanding, courtStep } from './courtstory';
 
 export type IntrigueKind = 'thief' | 'killer' | 'rival' | 'suitor' | 'plot';
@@ -181,6 +182,7 @@ export function end(c: Campaign, it: Intrigue, how: NonNullable<Intrigue['ended'
   delete it.caught; it.watch = false;
   note(c, it, tone, text, who);
   (c.chronicle ??= []).push({ turn: c.turn, text }); // a mark on the record, whatever came of it
+  remember(c, it); // and what it leaves behind in the town or the court (aftermath.ts)
   const all = (c.intrigues ??= []), done = all.filter((x) => x.ended);
   if (done.length > INTRIGUE.kept) all.splice(all.indexOf(done[0]), 1);
 }
@@ -320,6 +322,7 @@ function hang(c: Campaign, it: Intrigue, i: number, by: 'you' | 'town'): void {
     return;
   }
   it.cleared.push(i); (it.wronged ??= []).push(p);
+  rememberWronged(c, it, p);
   shiftVirtue(c, it.owner, K.virtue.wrong, { at: it.at });
   note(c, it, 'bad', `${who} ${fullName(p)} the ${p.trade} for the deaths in ${land(c, it.at)}, and ${they(p)} was hanged swearing ${they(p)} had done nothing. ${they(p)[0].toUpperCase() + they(p).slice(1)} had not.`, p);
   (c.chronicle ??= []).push({ turn: c.turn, text: `${fullName(p)} of ${land(c, it.at)} was hanged for killings ${they(p)} did not do.` });
@@ -391,8 +394,8 @@ export function choose(c: Campaign, id: number, choice: string): boolean {
   } else if (choice === 'pardon') {
     shiftVirtue(c, it.owner, T.virtue.pardoned, { at: it.at });
     const again = (why === 'drink' || why === 'greed') && chance(c, it.id * 53 + 7) < T.again;
-    end(c, it, 'pardoned', `${n} of ${where}, taken for a thief, was pardoned before the whole town.${again ? ' It is said the lesson did not take.' : why === 'hunger' ? ' Bread was sent to the house.' : ''}`, 'good', p);
     if (again) it.again = true; // the town is not left alone for long
+    end(c, it, 'pardoned', `${n} of ${where}, taken for a thief, was pardoned before the whole town.${again ? ' It is said the lesson did not take.' : why === 'hunger' ? ' Bread was sent to the house.' : ''}`, 'good', p);
   } else return false;
   return true;
 }
@@ -402,6 +405,7 @@ export function choose(c: Campaign, id: number, choice: string): boolean {
  * chance, where a town of the player's is fit for it, a new one begins. Only the player's people have them yet.
  */
 export function intrigueSeason(c: Campaign): Intrigue[] {
+  aftermathSeason(c); // what earlier stories left behind goes on
   const T = INTRIGUE.thief, K = INTRIGUE.killer, began: Intrigue[] = [];
   for (const it of [...(c.intrigues ?? [])]) {
     if (it.ended) continue;
