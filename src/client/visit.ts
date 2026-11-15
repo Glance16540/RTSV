@@ -4,6 +4,7 @@ import type { BattleConfig, Campaign } from '../sim/campaign';
 import type { Ground, Standing } from '../sim/game';
 import { VISIT_SECONDS, beginVisit, canVisit, finishVisit, visitBar } from '../sim/visit';
 import type { VisitAfter } from '../sim/visit';
+import { driftedIn } from '../sim/driftintown';
 import type { App } from './main';
 
 const RESULT_KEY = 'rtsv-visit-result';
@@ -59,6 +60,7 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
     const after: VisitAfter = {
       town: app.game.standing(app.pid), orders: app.game.orders(app.pid), ground: app.game.ground(), virtue: app.game.players[app.pid].virtue, seconds: Math.min(VISIT_SECONDS, app.game.time),
       folk: app.game.census(app.pid), // its people and stores go home with it (township.ts)
+      drifted: driftedIn(app.game, app.pid), // and who has drifted to the tavern and the mine (driftintown.ts)
     };
     try { localStorage.setItem(RESULT_KEY, JSON.stringify(after)); localStorage.removeItem(VISIT_SAVE_KEY); } catch { /* storage unavailable */ }
     back();
