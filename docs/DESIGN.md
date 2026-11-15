@@ -149,6 +149,27 @@ and steadies the town he is in. He can call armies to meet him and move with the
 **Grief.** A home that loses its mother or its sons works more slowly for a time. It tells most in
 a town of middling morals, and less in a holy or a decadent one.
 
+**Relationships** (the owner's word, 15 November 2026). Taking land is not enough to bring a player
+back; people are. The leader is a person among people, and what happens to those close to them matters
+as much as what happens to the nation.
+
+- *The leader's own household.* The leader has a spouse, and children who have a mother or a father,
+  with names, ages and faces. They can be threatened, married off, lost or taken, like anyone.
+- *The inner circle.* A few named people stand closest to the leader: a right hand, a steward, a
+  marshal, a priest or a confidant. Each has a name, a face, a mood and a loyalty that can turn.
+- *Nobles.* Some people rise into a noble class through what they did or the post they were given:
+  a veteran captain, a governor, a matron of a great house. Nobles have a say in decrees. A decree
+  pleases some and angers others, and their moods tell on the towns: an angry lord's town is slacker,
+  readier to drift and less watchful against raiders while the leader is away.
+- *Stories inside the story.* Personal matters come up by chance, out of the systems already running,
+  and play out over seasons: a rival king who wants the leader dead and their spouse for his own; a
+  suitor for the leader's daughter; a noble plotting to take the throne; a thief who keeps robbing the
+  same houses; a killer in a town whom the leader's people must find. Each is told through named people
+  and their faces, has a choice or a search in it, and leaves a mark on the record whatever comes of it.
+  None touches a child, and nothing is shown of what is done to a captive.
+- *Several campaigns.* A player can keep more than one world, each with its own history, and go back to
+  any of them.
+
 ## The order of building
 
 Each step is to be playable by itself.
@@ -169,7 +190,7 @@ Each step is to be playable by itself.
 | Births | Yes, on the map and in a town, one record (`src/sim/seasonfolk.ts`, `src/sim/birthonly.ts`). Rates chosen: on the map a housed couple bears about one child every 4 seasons at first, more slowly as children under five add up; in a campaign battle or visit a couple's first child takes over 13 minutes (a little more than a visit), and what is born in a visit counts against the season's births on the map. Over twenty computer-run years a town left alone ends at 1.33 times its grown people. A child comes of age at fifteen years (60 seasons), on the map only. Each birth costs 25 food and needs room (5 to a house, 10 to the hall). A skirmish keeps a child every 32 seconds, grown in 25. |
 | People age on the map only | Yes (`src/sim/ageing.ts`): each person's age is on the town's record in seasons; a battle or visit loads them at those ages and writes back the same, and nobody ages or dies of age there. On the map a child is grown at 15, a person old at 60, and the old die over the years after (1% a season at 60, half a percent more each year past it; about half are gone by 67). Skirmish and missions keep their ageing. The leader's heirs come of age at 15 years too (`dynasty.ts`), and a captive held the whole time comes home 20 years older (a woman 30) on the record. |
 | Notable people | In part: a woman who has raised three children or more, and the best soldier to live through a battle, are kept by name on a town, turn out again by name (the woman), and are recorded as lost (`src/sim/township.ts`). A house's output also counts (`src/sim/notableweight.ts`): what its man and woman carry in, a well-kept field's food at half again, raises its standing, so a woman can be notable by her home's work alone; veterans are listed by their own town; a notable's loss gives a measure of the town's grief and the nation's dip, fading over four seasons. Not yet: anything applies that weight (drift and grief will read it), and veterans' towns wait on armies belonging to towns. |
-| A man at war is still of his house | In part (`src/sim/household.ts`): a husband trained to arms keeps his place in his house, a son stays on the record of the house he was born in, the foes he fells raise the house's renown, no child is begun while he is away, and a notable home is kept with its man between seasons. Not yet: no soldier can come home inside one sitting, ordinary homes are not kept by name, and an army on the map is not tied to any house. |
+| A man at war is still of his house | In part (`src/sim/household.ts`, `src/sim/warhouse.ts`): a husband trained to arms keeps his place in his house, a son stays on the record of the house he was born in, the foes he fells raise the house's renown, no child is begun while he is away, and a notable home is kept with its man between seasons. On the map an army's men are of named houses of their towns: a company's men are taken an unmarried son before a husband, each stays on his house's record as away, a man who falls is his house's loss (the town grieves, and where the house is one the nation knows he is listed with its lost), and he is home again when the army is sent home. Not yet: no soldier can come home inside one sitting, a house on the map is kept by name only while it has a man away or lately fallen, and what a man fells in a battle on the map is not counted to his house. |
 | Armies belong to towns | In part (`src/sim/armytown.ts`): a company raised takes two men off its town's record onto the army's roll, companies lost are those towns' dead, and an army sent home puts its men back and its veteran among the town's notable people. Not yet: a company is still raised when its town has no men for it, armies that began the campaign are of no town, and no man with an army is tied to his house. |
 | A town taken | In part (`src/sim/conquered.ts`): a town taken by force resents it (a state on the town, 0 to 100) and may rise; resentment eases each season, sooner under good rule, and a town that settles is the taker's own. Not yet: its people are not counted as another people's within the town, and resentment costs the holder nothing but the risk. |
 | Faith is a town's | Yes (`src/sim/townfaith.ts`): every town has its own standing and moves by its own church, tavern, battles and raids; the nation's standing is the mean of its towns'; and each season every town is drawn 15% of the way toward its nation's, so a church or tavern holds a town 30 to 40 apart and no further. Not yet: acts of God, births and a town's own defence still read the nation's creed rather than the town's. |

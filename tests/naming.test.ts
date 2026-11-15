@@ -1,9 +1,9 @@
 // Your people's name and your house's (src/sim/naming.ts).
 import { describe, expect, it } from 'vitest';
-import { Campaign, armyAt, finishBattle, moveArmy, newCampaign, raise } from '../src/sim/campaign';
+import { Campaign, armyAt, battleConfig, finishBattle, moveArmy, newCampaign, raise } from '../src/sim/campaign';
 import { CIVS } from '../src/sim/data';
 import { HEIR_AGE, claimants, houseOf, strangerLeads, succeed } from '../src/sim/dynasty';
-import { MAX_NAME, cleanName, houseName, nameNation, peopleName } from '../src/sim/naming';
+import { MAX_NAME, cleanName, foundHouse, houseName, houseToName, nameNation, ownLine, ownWords, peopleName, renameOwn } from '../src/sim/naming';
 
 /** A named campaign whose leader has just fallen with their army. */
 const bereft = (names = { people: 'Ashfolk', house: 'Varn' }): { c: Campaign; home: number } => {
@@ -79,5 +79,56 @@ describe('naming your people and your house', () => {
     strangerLeads(b.c, 0);
     expect(b.c.chronicle!.at(-1)!.text).toContain('The House of Varn is ended');
     expect(houseName(b.c, 0)).toBeUndefined();
+  });
+
+  it('a new house founded by a captain or a stranger can be named by the player, with a name offered', () => {
+    const { c, home } = bereft();
+    c.turn += HEIR_AGE;
+    c.factions[0].supplies = 20;
+    raise(c, 0, home, 'infantry');
+    armyAt(c, home)!.vet = 2;
+    const captain = claimants(c, 0).find((x) => x.kind === 'captain')!;
+    expect(succeed(c, 0, captain)).toBe(true);
+    const offered = houseToName(c, 0)!;
+    expect(offered).toBe(captain.name.replace(/^Captain /, '').split(' ')[0]); // the captain's name, without the rank
+    expect(foundHouse(c, 0, 'Iron Hand')).toBe('Iron Hand');
+    expect(houseName(c, 0)).toBe('Iron Hand');
+    expect(houseToName(c, 0)).toBeUndefined();
+    expect(c.chronicle!.at(-1)!.text).toBe('A new house rules the Ashfolk: the House of Iron Hand.');
+    expect(foundHouse(c, 0, 'Again')).toBe(''); // only once, while it waits
+
+    const b = bereft();
+    strangerLeads(b.c, 0);
+    expect(houseToName(b.c, 0)).toBe(b.c.factions[0].hero!.name!.replace(/ the Hired$/, ''));
+    expect(foundHouse(b.c, 0, '   ')).toBe(''); // left unnamed
+    expect(houseName(b.c, 0)).toBeUndefined();
+    expect(houseToName(b.c, 0)).toBeUndefined();
+
+    // A rival's new house is not offered a name.
+    const r = newCampaign(3, 1, 1, 'japan');
+    r.factions[1].heroAlive = false;
+    strangerLeads(r, 1);
+    expect(houseToName(r, 1)).toBeUndefined();
+  });
+
+  it('in a battle the player\'s side bears their people\'s name', () => {
+    const c = newCampaign(5, 1, 1, 'japan', { names: { people: 'Ashfolk' } });
+    const home = c.territories.find((t) => t.capital === 0)!;
+    expect(moveArmy(c, armyAt(c, home.id)!.id, home.adj[0])).toBe('battle');
+    expect(battleConfig(c)!.setups[0].name).toBe('Ashfolk');
+    const plain = newCampaign(5, 1, 1, 'japan');
+    const h = plain.territories.find((t) => t.capital === 0)!;
+    moveArmy(plain, armyAt(plain, h.id)!.id, h.adj[0]);
+    expect(battleConfig(plain)!.setups[0].name).toBe(CIVS.japan.name);
+  });
+
+  it('the player\'s own leader\'s lines are shown with the name given to their people', () => {
+    expect(ownWords('kush')).toEqual(expect.arrayContaining(['Kush', CIVS.kush.name]));
+    const c = newCampaign(5, 1, 1, 'kush', { names: { people: 'Ashfolk' } });
+    expect(ownLine(c, 'A new age. Let Kush be first in it.')).toBe('A new age. Let Ashfolk be first in it.');
+    expect(ownLine(c, 'Kushite steel.')).toBe('Kushite steel.'); // only the whole word
+    expect(renameOwn('Let Kush be first.', 'kush', undefined)).toBe('Let Kush be first.');
+    const plain = newCampaign(5, 1, 1, 'kush');
+    expect(ownLine(plain, 'Let Kush be first in it.')).toBe('Let Kush be first in it.');
   });
 });

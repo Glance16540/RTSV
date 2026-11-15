@@ -758,7 +758,10 @@ describe('conquest campaign', () => {
     expect(winChance(1, 6)).toBe(0);
     const cfg = battleConfig(c)!;
     expect(cfg.setups[0].bonus!.units).toEqual({ clubman: 6, slinger: 2, warlord: 1 });
-    expect(cfg.setups[1].bonus!.units).toEqual({ clubman: target.militia * 2 });
+    // The tribe's warriors are its own town's men in arms, two to a band, and no clubmen besides (tribes.ts).
+    expect(cfg.setups[1].bonus!.units).toEqual({});
+    expect(cfg.setups[1].bonus!.warriors).toBe(target.militia * 2);
+    expect(cfg.setups[1].bonus!.people!.men).toBeGreaterThanOrEqual(target.militia * 2);
     expect(cfg.setups[1].name).toBe('Local Tribe');
     expect(cfg.level).toBe(0);
     endTurn(c);
@@ -981,7 +984,8 @@ describe('conquest reserves', () => {
     moveArmy(c, army.id, target.id);
     expect(c.pending!.aStr).toBeCloseTo(5 + 4 * 0.3, 1);
     const cfg = battleConfig(c)!;
-    expect(cfg.setups.map((s) => [s.name, s.team])).toEqual([['You', 0], ['Local Tribe', 1], ['Your reserve', 0]]);
+    // Your side bears your people's name in a campaign battle (naming.ts); it was "You".
+    expect(cfg.setups.map((s) => [s.name, s.team])).toEqual([[CIVS[c.factions[0].civ].name, 0], ['Local Tribe', 1], ['Your reserve', 0]]);
     expect(cfg.setups[2].bonus!.units).toEqual({ slinger: 8 });
     const g = new Game(cfg.seed, cfg.setups, cfg.size);
     expect(g.hostile(0, 2)).toBe(false);

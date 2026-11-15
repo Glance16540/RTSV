@@ -1,5 +1,6 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { renameOwn } from '../sim/naming';
 import { awayHtml } from './housepanel';
 import { isHoly } from '../sim/creed';
 import { fighting } from '../sim/calamity';
@@ -156,7 +157,9 @@ export class Hud {
     const civ = this.app.game.players[this.app.pid].civ;
     if (!LEADERS[civ]) return;
     const s = { civ, event, index: Math.floor(Math.random() * LEADERS[civ].lines[event].length) };
-    this.toast(speechHtml(s, this.app.game.heroOf(this.app.pid).name), 'leader', true);
+    // In a campaign battle your side bears your people's name (naming.ts): your leader's lines are shown with it.
+    const named = this.app.game.players[this.app.pid].name;
+    this.toast(speechHtml(s, this.app.game.heroOf(this.app.pid).name, named && named !== 'You' && named !== CIVS[civ]?.name ? { own: (t) => renameOwn(t, civ, named) } : {}), 'leader', true);
     playLine(s);
   }
 

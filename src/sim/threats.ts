@@ -36,7 +36,7 @@
 // A band broken gives up everyone it holds and something of what it stole.
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
-import { swayTown } from './townfaith';
+import { faithAt, swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaign';
 import { creedOf } from './creed';
@@ -98,7 +98,7 @@ export const THREATS = {
   /** The chance a band strikes in a season. */
   strike: 0.75,
   /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
-  hold: 0.85, fall: 0.6,
+  hold: 0.78, fall: 0.6,
   /** What those on a road can do for themselves with no army to escort them, in companies: enough to see off a small band. */
   wayfarers: 2.5,
   /** What counts toward a town's defence, in companies. */
@@ -196,7 +196,7 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   const a = c.armies.find((x) => x.at === tid && x.owner === t.owner);
   const army = a ? armyStrength(a) : 0;
   const guard = t.capital >= 0 ? THREATS.capital : 0;
-  const spirit = (t.owner >= 0 ? creedOf(c.factions[t.owner].virtue ?? 0).morale : 1) * (sick(c, tid) ? THREATS.sick : 1);
+  const spirit = (t.owner >= 0 ? creedOf(faithAt(c, tid)).morale : 1) * (sick(c, tid) ? THREATS.sick : 1); // the town's own standing (townfaith.ts)
   return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit) };
 }
 

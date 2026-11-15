@@ -10,6 +10,7 @@ import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
+import { fieldReckoned, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
 import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
@@ -33,7 +34,7 @@ import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
-import { Names, houseName, nameNation, peopleName } from './naming';
+import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
 import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
@@ -963,7 +964,7 @@ export function defenders(c: Campaign, tid: number): Record<string, number> {
   const t = c.territories[tid];
   const a = armyAt(c, tid);
   if (t.owner >= 0 && a && a.owner === t.owner) return a.units;
-  return { infantry: t.owner < 0 ? t.militia : 1 };
+  return { infantry: t.owner < 0 ? Math.max(1, warriorsOf(c, tid)) : 1 }; // a tribe's bands are its town's men (tribes.ts)
 }
 
 /** Everything that defends a territory, optionally against a particular mix of attackers. */
@@ -972,10 +973,10 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   const open = openDefence(c, tid); // a dead town with no army in it has nobody on its walls (deadtown.ts)
   if (open !== null) return open;
   const ground = (t.trait === 'hills' ? 2 : 0) + countryOf(c, tid).defence + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.defence ?? 0);
-  if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
+  if (t.owner < 0) return Math.max(1, warriorsOf(c, tid) - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * faithOf(c, t.owner).defence * 10) / 10;
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * FAITH[creedOf(faithAt(c, tid)).id].defence * 10) / 10; // the town's own standing (townfaith.ts)
 }
 
 /** True while the player and a rival are bound by a truce. */
@@ -1280,7 +1281,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   } else {
     if (army) destroyArmy(c, army);
     if (defArmy) { casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
-    else if (t.owner < 0) t.militia = Math.max(1, t.militia - Math.floor(p.aStr * 0.3));
+    else if (t.owner < 0) tribeBeaten(c, t.id, Math.floor(p.aStr * 0.3)); // the bands it lost are men of its town (tribes.ts)
     c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and ${p.attacker === 0 ? 'were' : 'was'} thrown back.`);
     if (p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You were thrown back from ${t.name} by the ${c.factions[p.defender].name}.` : `The ${c.factions[p.attacker].name} came against ${t.name} and you threw them back.`);
   }
@@ -1372,6 +1373,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      tribesSeason(c); // a tribe's bands are counted from its town's men (tribes.ts)
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
@@ -1421,7 +1423,7 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
   (c.answers ??= []).push({ id: tale.id, choice, turn: c.turn, land: t.land, rival: t.rival, tribe: t.tribe });
   if (ch.supplies < 0) payFor(c, 0, 'dealing', -ch.supplies, { at: t.land }); else me.supplies += ch.supplies;
   if (ch.favor && t.rival > 0) c.factions[t.rival].favor = Math.max(-MAX_FAVOR, Math.min(MAX_FAVOR, (c.factions[t.rival].favor ?? 0) + ch.favor));
-  if (ch.militia && c.territories[t.tribe]?.owner < 0) c.territories[t.tribe].militia = Math.max(1, c.territories[t.tribe].militia + ch.militia);
+  if (ch.militia && c.territories[t.tribe]?.owner < 0) tribeArms(c, t.tribe, ch.militia);
   if (ch.join && c.territories[t.tribe]?.owner < 0 && !c.territories[t.tribe].horde) {
     const land = c.territories[t.tribe];
     land.owner = 0;
@@ -1678,13 +1680,15 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       for (const [type, n] of Object.entries(army.units)) for (const [u, k] of Object.entries(COMPANIES[type].units)) add(u, k * n);
       if (army.hero) add(calling, 1);
     } else if (defending && t.owner >= 0 && leaderAt(c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
-    if (defending) add('clubman', t.owner < 0 ? t.militia * 2 : 2); // the people of the land turn out too
+    const out = defending ? turnOut(c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere (tribes.ts)
+    if (out?.clubmen) add('clubman', out.clubmen);
     const fort = defending && t.buildings.includes('fortress');
     // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
     const works = defending && !field ? t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]) : [];
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
+      ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id)) : {}),
@@ -1706,7 +1710,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
         name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
@@ -1765,6 +1769,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const known = mine?.champion?.name;
   const camp = !!land.horde; // marauders hold no town
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
+  fieldReckoned(c, p, after.folk); // those of the town who marched out to a battle in the open and fell (tribes.ts)
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
