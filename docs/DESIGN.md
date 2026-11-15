@@ -165,5 +165,5 @@ Each step is to be playable by itself.
 | A town defends itself | Against a band, in part: a town struck on the map is weighed by what it has (its men, works, towers and walls, an army there, its creed), comes out held, raided or taken, and the player is given the report (`src/sim/threats.ts`). It is still a sum, not a fight. Against a rival nation, no: a battle not fought is settled by strength numbers. |
 | Threats on the map | Yes, coarsely: raiders, slavers, pirates and highwaymen have places on the map, choose the softest town in reach each season and strike it; those they take are held there for four seasons and can be got back by an army (`src/sim/threats.ts`). Not yet: the army's fight with a band is settled by strength, and bands do not move. |
 | Drift | No: the parts exist as separate rules, not as cause and effect. |
-| Children never shown | No: children are drawn as small figures that walk the town and can be hurt. |
+| Children never shown | Yes: children are records on their house and town (`src/sim/nursery.ts`, `src/sim/township.ts`), never drawn, never in the path of harm; they step out grown when they come of age. |
 | Age on the map only | Yes for a campaign battle and a visit (`Game.fixedAge`). Skirmish and missions still age up. |

@@ -9,6 +9,15 @@ work from breaking another's. They apply to every session, whatever it was asked
 town in it, people persist, and a soldier costs a person. Read it before starting a piece of work,
 build toward it, and do not build against it. Change it only on the owner's word.
 
+## Systems stay separate, for the move to Unity
+
+The game is being rebuilt in Unity by a session on the owner's computer; it pulls systems from here
+when it is ready for them (see `docs/PORTING.md`). So every system's rules go in a module of their own
+in `src/sim`, with no DOM, no three.js and nothing from `src/client`, talking through plain data, with
+its own tests in `tests/<module>.test.ts`. Keep the hubs (`game.ts`, `campaign.ts`) to one import and a
+call or two per system. Add a new module's row to `docs/PORTING.md` in the same commit, and mark a
+ported row `changed since port` (with the commit) when you change it. Never push into the Unity project.
+
 ## The trunk
 
 `main` is the game as it stands: everything that is finished, fitted together, with the tests passing
