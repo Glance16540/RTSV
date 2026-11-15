@@ -31,7 +31,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
 | `birthonly` | 60 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
 | `calamity` | 179 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, famine, game, wrath | none of its own | not yet |
-| `campaign` | 1850 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, convoys, country, court, creed, data, drift, dynasty, game, governor, harvest, hero, leaders, notableweight, powers, prices, seasonfolk, stores, story, temper, threats, townfaith, township | none of its own | not yet |
+| `campaign` | 1850 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, convoys, country, court, creed, data, drift, dynasty, game, governor, harvest, hero, larder, leaders, notableweight, powers, prices, seasonfolk, stores, story, temper, threats, townfaith, township | none of its own | not yet |
 | `captivity` | 129 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, data, game, nursery | captivity.test.ts | not yet |
 | `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
 | `conquered` | 108 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | ageing, campaign, court, township | conquered.test.ts | not yet |
@@ -53,6 +53,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `harvest` | 71 | Income credited to the land that yields it: each land's yield into its own town's stores, in the kinds the land gives (docs/DESIGN.md, "Stores"). | campaign, stores, township | harvest.test.ts | not yet |
 | `hero` | 102 | A nation's leader on the field: who they are, how they were made, and what the battles they live through do for them. | leaders | none of its own | not yet |
 | `household` | 103 | A man at war is still of his house (docs/DESIGN.md). | game | household.test.ts | not yet |
+| `larder` | 97 | Towns eat their food on the map: each season a town's people eat from its food store, a town that cannot goes hungry, and one hungry long enough loses its grown people, never a child (docs/DESIGN.md, "Stores"). | campaign, township | larder.test.ts | not yet |
 | `leaders` | 547 | The leader of each civilisation and everything they say. | none | none of its own | not yet |
 | `lessons` | 59 | Lessons for the moment they are needed: things a first battle's list of steps cannot teach in order, because | calamity, creed, data, famine, game | lessons.test.ts | not yet |
 | `map` | 310 | Procedural, point-symmetric two-player map generation. | none | none of its own | not yet |

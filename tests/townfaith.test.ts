@@ -1,5 +1,6 @@
 // Faith is a town's (docs/DESIGN.md; src/sim/townfaith.ts).
 import { describe, expect, it } from 'vitest';
+import { folkOf } from '../src/sim/township';
 import { BATTLE_VIRTUE, CHURCH_VIRTUE, Campaign, TAVERN_VIRTUE, answerDemand, battleConfig, continueAI, endTurn, finishBattle, moveArmy, newCampaign, resolvePending, shiftVirtue, virtueOf } from '../src/sim/campaign';
 import { PULL, faithAt, faithSpread, nationVirtue, pullTogether, seasonOfFaith, settleFaith, swayNation, swayTown, townDrift } from '../src/sim/townfaith';
 

@@ -42,9 +42,10 @@ describe('stores replace supplies', () => {
     const then = units(nationStores(c, 0)), due = income(c, 0), had = c.factions[0].supplies;
     turn(c);
     expect(c.factions[0].supplies).toBeGreaterThanOrEqual(had + due - 4); // (a season may also bring a loss: acts of God, raiders)
-    // The town's own work and eating that season are in its stores too (governor.ts), so the goods moved by at least the supplies gained.
-    expect(units(nationStores(c, 0)) - then).toBeGreaterThanOrEqual((c.factions[0].supplies - had) * SUPPLY_UNITS);
-    expect(units(nationStores(c, 0)) - then).toBeLessThan((c.factions[0].supplies - had + 1) * SUPPLY_UNITS);
+    // The figure is whole supplies, and a town eats food that is not (larder.ts): the goods and the figure agree to within a supply.
+    const moved = units(nationStores(c, 0)) - then, said = (c.factions[0].supplies - had) * SUPPLY_UNITS;
+    expect(moved).toBeGreaterThan(said - SUPPLY_UNITS);
+    expect(moved).toBeLessThan(said + SUPPLY_UNITS);
     expect(c.factions[0].supplies).toBe(nationWorth(c, 0));
   }, LONG);
 
