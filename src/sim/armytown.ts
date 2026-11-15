@@ -27,7 +27,7 @@ export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.tur
  * own towns. And what raising may take: a town keeps `floor` men at the least, and a man for every woman of
  * working age up to `couples` of them, so that it still has husbands.
  */
-export const MEN = { won: 0.3, lost: 0.4, floor: 2, couples: 0.5 };
+export const MEN = { won: 0.3, lost: 0.4, floor: 2, couples: 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true };
 /** Men in a company. */
 export const MEN_A_COMPANY = 2;
 /** An army's roll: how many companies it had when last reckoned, and the men with it by the town they came from (their ages, in seasons). */
@@ -57,25 +57,37 @@ export function homeOf(c: Campaign, a: Army): number | undefined {
   return best ? Number(best[0]) : undefined;
 }
 
-/**
- * A company has just been raised in this town and joined this army: its men are the town's. The youngest grown
- * men go, as many as a company takes or as the town can spare (`MEN.floor`, `MEN.couples`). Returns how many of the
- * town's men went.
- */
-export function menMustered(c: Campaign, a: Army, tid: number): number {
-  const m = (rolls(c)[a.id] ??= { size: 0, men: {} });
-  m.size = sizeOf(a); m.owner = a.owner;
-  const t = c.territories[tid];
-  if (!t || t.owner !== a.owner) return 0;
+/** Men a town can send without going below what it keeps: `MEN.floor`, and a man for every woman up to `MEN.couples`. */
+export const sparedMen = (c: Campaign, tid: number): number => { const f = folkOf(c, tid); return Math.max(0, f.men - Math.max(MEN.floor, Math.ceil(f.women * MEN.couples))); };
+/** Take up to `want` of a town's youngest grown men onto this roll, never below what the town keeps. Returns how many went. */
+function take(c: Campaign, m: Muster, tid: number, want: number): number {
   const f = folkOf(c, tid), ages = agesOf(c, tid, f);
-  const spare = Math.max(0, f.men - Math.max(MEN.floor, Math.ceil(f.women * MEN.couples))); // the town keeps its husbands
-  const young = ages.m.map((s, i) => [s, i] as [number, number]).filter(([s]) => s < OLD_SEASON).sort((p, q) => p[0] - q[0] || p[1] - q[1]).slice(0, Math.min(MEN_A_COMPANY, spare));
+  const young = ages.m.map((s, i) => [s, i] as [number, number]).filter(([s]) => s < OLD_SEASON).sort((p, q) => p[0] - q[0] || p[1] - q[1]).slice(0, Math.min(want, sparedMen(c, tid)));
   if (!young.length) return 0;
   const gone = new Set(young.map(([, i]) => i));
   (m.men[tid] ??= []).push(...young.map(([s]) => s));
   countFrom(f, { m: ages.m.filter((_, i) => !gone.has(i)), f: ages.f, k: ages.k });
   enlist(c, tid, young.length); // each is of a house of the town, and stays on its record as away (warhouse.ts)
   return young.length;
+}
+/**
+ * A company has just been raised in this town and joined this army: its men are the town's. The youngest grown
+ * men go, as many as a company takes or as the town can spare (`MEN.floor`, `MEN.couples`). Where the town cannot
+ * man the company in full, the rest are called from the other towns of its people, the town with most men to
+ * spare first, each within what it keeps (`MEN.levy`: no, and the rest are men of no town). Returns how many
+ * men went, from all towns.
+ */
+export function menMustered(c: Campaign, a: Army, tid: number): number {
+  const m = (rolls(c)[a.id] ??= { size: 0, men: {} });
+  m.size = sizeOf(a); m.owner = a.owner;
+  const t = c.territories[tid];
+  if (!t || t.owner !== a.owner) return 0;
+  let went = take(c, m, tid, MEN_A_COMPANY);
+  if (went < MEN_A_COMPANY && MEN.levy) {
+    const others = c.territories.filter((x) => x.owner === a.owner && !x.horde && x.id !== tid && x.folk).map((x) => ({ id: x.id, spare: sparedMen(c, x.id) })).filter((x) => x.spare > 0).sort((p, q) => q.spare - p.spare || p.id - q.id);
+    for (const o of others) { if (went >= MEN_A_COMPANY) break; went += take(c, m, o.id, MEN_A_COMPANY - went); }
+  }
+  return went;
 }
 /** Two armies of one people have met and shared out their companies: their men are shared out the same way. */
 export function armiesJoined(c: Campaign, a: Army, other: Army): void {

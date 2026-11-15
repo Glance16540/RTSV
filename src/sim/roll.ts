@@ -12,6 +12,9 @@ import { foundFolk, living } from './township';
 import type { Notable } from './township';
 import { BANDS, seasonsLeft } from './threats';
 import { houseName, peopleName } from './naming';
+import { POST_NAMES } from './kin';
+import type { Post } from './kin';
+import type { Feeling } from './portrait';
 
 /** Seasons back that the lost are listed for. */
 export const RECENT = 8;
@@ -24,7 +27,11 @@ export interface RollLost extends RollPerson { how: string; turn: number }
 export interface Roll {
   people: string; house?: string;
   leader: { name: string; female: boolean; rank: string; alive: boolean; at?: string };
-  heirs: { name: string; female: boolean; years: number; ofAge: boolean }[];
+  heirs: { name: string; female: boolean; years: number; ofAge: boolean; parent?: string }[];
+  /** The leader's husband or wife (kin.ts), with their age; `lost`: widowed, dead or taken, and when. */
+  spouse?: { name: string; female: boolean; years: number; lost?: { turn: number; how: string } };
+  /** The inner circle (kin.ts). */
+  circle: { post: Post; postName: string; name: string; female: boolean; family?: string; kind?: string; unit?: string; town: number; townName: string; loyalty: number; feeling: Feeling }[];
   towns: RollTown[];
   captives: RollCaptives[];
   lost: RollLost[];
@@ -42,7 +49,11 @@ export function rollOf(c: Campaign, f = 0): Roll {
   const ridingWith = fac.heroAlive ? c.armies.find((x) => x.owner === f && x.hero) : undefined;
   const seatAt = ridingWith?.at ?? fac.court?.at ?? c.territories.find((t) => t.capital === f && t.owner === f)?.id;
   const at = fac.heroAlive && seatAt !== undefined && c.territories[seatAt] ? c.territories[seatAt].name : undefined;
-  const heirs = houseOf(c, f).heirs.map((h) => ({ name: h.name, female: h.female, years: Math.floor((c.turn - h.born) / SEASONS_A_YEAR), ofAge: c.turn - h.born >= HEIR_AGE }));
+  const heirs = (fac.house?.heirs ?? houseOf(c, f).heirs).map((h) => ({ name: h.name, female: h.female, years: Math.floor((c.turn - h.born) / SEASONS_A_YEAR), ofAge: c.turn - h.born >= HEIR_AGE, ...(h.parent ? { parent: h.parent } : {}) }));
+  // The household as it stands on record (kin.ts makes it the first time a season turns): read, not made here.
+  const kin = fac.kin, sp = kin?.spouse;
+  const spouse = sp ? { name: sp.name, female: sp.female, years: Math.floor((c.turn - sp.born) / SEASONS_A_YEAR), ...(sp.lost ? { lost: { ...sp.lost } } : {}) } : undefined;
+  const circle = (kin?.circle ?? []).map((x) => ({ post: x.post, postName: POST_NAMES[x.post], name: x.name, female: x.female, ...(x.family ? { family: x.family } : {}), ...(x.kind ? { kind: x.kind } : {}), ...(x.unit ? { unit: x.unit } : {}), town: x.town, townName: c.territories[x.town]?.name ?? '', loyalty: x.loyalty, feeling: x.feeling }));
   const towns: RollTown[] = [], lost: RollLost[] = [];
   for (const t of c.territories) {
     // A notable lost of late is listed with the people, wherever their town has gone since.
@@ -61,7 +72,7 @@ export function rollOf(c: Campaign, f = 0): Roll {
   return {
     people: peopleName(c, f), ...(houseName(c, f) ? { house: houseName(c, f) } : {}),
     leader: { name: hero.name, female: !!hero.female, rank: RANK_NAMES[hero.rank ?? 0] ?? '', alive: fac.heroAlive, ...(at ? { at } : {}) },
-    heirs, towns, captives, lost,
+    heirs, ...(spouse ? { spouse } : {}), circle, towns, captives, lost,
     totals: {
       grown: towns.reduce((n, t) => n + t.men + t.women + t.elders, 0), children: towns.reduce((n, t) => n + t.children, 0),
       away: towns.reduce((n, t) => n + t.away, 0), held: captives.reduce((n, x) => n + x.men + x.women, 0), known: towns.reduce((n, t) => n + t.notables.length, 0),
