@@ -2,6 +2,8 @@
 // ages, every person the nation knows by name and where, the men away with the armies, those held captive and
 // for how long yet, and those lost of late. Read only: it gathers what the rest of the game keeps, as plain data.
 // Children are never listed as people, only counted, town by town (docs/DESIGN.md, "Children are never shown").
+import { carriedLeft } from './carriedoff';
+import { live, marksAt, marksOf, marksOfNoble } from './aftermath';
 import type { Campaign } from './campaign';
 import { heroFor } from './campaign';
 import { HEIR_AGE, houseOf } from './dynasty';
@@ -21,7 +23,7 @@ export const RECENT = 8;
 
 /** Someone the nation knows by name, and the town they belong to. */
 export interface RollPerson { name: string; family?: string; gender: 'm' | 'f'; kind: Notable['kind']; deed: string; unit?: string; town: number; townName: string }
-export interface RollTown { id: number; name: string; men: number; women: number; elders: number; children: number; away: number; notables: RollPerson[] }
+export interface RollTown { id: number; name: string; men: number; women: number; elders: number; children: number; away: number; notables: RollPerson[]; /** What stories have left behind here that still tells (aftermath.ts), in words. */ marks: string[] }
 export interface RollCaptives { band: string; kind: string; place: string; from: string; men: number; women: number; seasonsLeft: number; names: string[] }
 export interface RollLost extends RollPerson { how: string; turn: number }
 export interface Roll {
@@ -31,8 +33,10 @@ export interface Roll {
   /** The leader's husband or wife (kin.ts), with their age; `lost`: widowed, dead or taken, and when. */
   spouse?: { name: string; female: boolean; years: number; lost?: { turn: number; how: string; final?: boolean } };
   /** The inner circle (kin.ts). */
-  circle: { post: Post; postName: string; name: string; female: boolean; family?: string; kind?: string; unit?: string; town: number; townName: string; loyalty: number; feeling: Feeling }[];
+  circle: { post: Post; postName: string; name: string; female: boolean; family?: string; kind?: string; unit?: string; town: number; townName: string; loyalty: number; feeling: Feeling; /** What a story has left on them (aftermath.ts). */ marks: string[] }[];
   towns: RollTown[];
+  /** What stories have left between the leader and other peoples: a feud, an alliance by marriage (aftermath.ts). */
+  marks: string[];
   captives: RollCaptives[];
   lost: RollLost[];
   totals: { grown: number; children: number; away: number; held: number; known: number };
@@ -53,14 +57,16 @@ export function rollOf(c: Campaign, f = 0): Roll {
   // The household as it stands on record (kin.ts makes it the first time a season turns): read, not made here.
   const kin = fac.kin, sp = kin?.spouse;
   const spouse = sp ? { name: sp.name, female: sp.female, years: Math.floor((c.turn - sp.born) / SEASONS_A_YEAR), ...(sp.lost ? { lost: { ...sp.lost } } : {}) } : undefined;
-  const circle = (kin?.circle ?? []).map((x) => ({ post: x.post, postName: POST_NAMES[x.post], name: x.name, female: x.female, ...(x.family ? { family: x.family } : {}), ...(x.kind ? { kind: x.kind } : {}), ...(x.unit ? { unit: x.unit } : {}), town: x.town, townName: c.territories[x.town]?.name ?? '', loyalty: x.loyalty, feeling: x.feeling }));
+  const circle = (kin?.circle ?? []).map((x) => ({ post: x.post, postName: POST_NAMES[x.post], name: x.name, female: x.female, ...(x.family ? { family: x.family } : {}), ...(x.kind ? { kind: x.kind } : {}), ...(x.unit ? { unit: x.unit } : {}), town: x.town, townName: c.territories[x.town]?.name ?? '', loyalty: x.loyalty, feeling: x.feeling , marks: marksOfNoble(c, `close:${x.post}:${x.name}`).map((m) => m.text) }));
   const towns: RollTown[] = [], lost: RollLost[] = [];
   for (const t of c.territories) {
     // A notable lost of late is listed with the people, wherever their town has gone since.
     if (t.folk) for (const n of t.folk.notables) if (n.lost && c.turn - n.lost.turn <= RECENT && (t.owner === f || n.lost.how.startsWith('carried off'))) lost.push({ ...person(n, t.id, t.name), how: n.lost.how, turn: n.lost.turn });
     if (t.owner !== f) continue;
     const k = t.folk ?? foundFolk(c, t.id); // a town nobody has asked after yet, as it would be founded: read, not written
-    towns.push({ id: t.id, name: t.name, men: k.men, women: k.women, elders: k.elders, children: k.children, away: awayFrom(c, t.id), notables: living(k).map((n) => person(n, t.id, t.name)) });
+    towns.push({ id: t.id, name: t.name, men: k.men, women: k.women, elders: k.elders, children: k.children, away: awayFrom(c, t.id), notables: living(k).map((n) => person(n, t.id, t.name)),
+      // Marks on the town itself, and on a noble of the town who is not of the inner circle (they are listed above).
+      marks: [...marksAt(c, t.id), ...marksOf(c, f).filter((m) => live(c, m) && m.shown && m.noble && !m.noble.startsWith('close:') && m.noble.split(':')[1] === String(t.id))].map((m) => m.text) });
   }
   towns.sort((a, b) => (c.territories[b.id].capital === f ? 1 : 0) - (c.territories[a.id].capital === f ? 1 : 0) || b.notables.length - a.notables.length || a.id - b.id);
   const captives: RollCaptives[] = [];
@@ -68,11 +74,14 @@ export function rollOf(c: Campaign, f = 0): Roll {
     if (h.owner !== f) continue;
     captives.push({ band: b.name, kind: BANDS[b.kind].name, place: c.territories[b.at]?.name ?? '', from: c.territories[h.from]?.name ?? '', men: h.men.length, women: h.women.length, seasonsLeft: seasonsLeft(c, h), names: [...(h.names ?? [])] });
   }
+  // Those a nation led away when it took a town (carriedoff.ts): held in a land of its own until they are its people.
+  for (const x of c.carried ?? []) if (x.held.owner === f) captives.push({ band: `the ${c.factions[x.by]?.name ?? 'takers'}`, kind: 'A rival nation', place: c.territories[x.at]?.name ?? '', from: c.territories[x.held.from]?.name ?? '', men: x.held.men.length, women: x.held.women.length, seasonsLeft: carriedLeft(c, x), names: [] });
   lost.sort((a, b) => b.turn - a.turn);
   return {
     people: peopleName(c, f), ...(houseName(c, f) ? { house: houseName(c, f) } : {}),
     leader: { name: hero.name, female: !!hero.female, rank: RANK_NAMES[hero.rank ?? 0] ?? '', alive: fac.heroAlive, ...(at ? { at } : {}) },
     heirs, ...(spouse ? { spouse } : {}), circle, towns, captives, lost,
+    marks: marksOf(c, f).filter((m) => live(c, m) && m.rival !== undefined && m.kind !== 'bought').map((m) => m.text),
     totals: {
       grown: towns.reduce((n, t) => n + t.men + t.women + t.elders, 0), children: towns.reduce((n, t) => n + t.children, 0),
       away: towns.reduce((n, t) => n + t.away, 0), held: captives.reduce((n, x) => n + x.men + x.women, 0), known: towns.reduce((n, t) => n + t.notables.length, 0),

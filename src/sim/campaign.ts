@@ -9,6 +9,7 @@ import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
+import { townFell } from './carriedoff';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { fieldReckoned, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
@@ -1271,6 +1272,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       t.capital = -1;
     }
     townTaken(c, t.id, p.defender, p.attacker); // its people stay, and resent it (conquered.ts)
+    townFell(c, t.id, p.defender, p.attacker, p.from); // those held in it go free, and a worldly taker leads some of its people away (carriedoff.ts)
     t.owner = p.attacker;
     if (c.ally >= 0 && c.factions[c.ally].alive) {
       const ally = c.factions[c.ally];
