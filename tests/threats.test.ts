@@ -189,6 +189,8 @@ describe('a band strikes a town', () => {
     const far = c.territories[t.adj[0]];
     far.owner = 0;
     c.armies = c.armies.filter((a) => a.at !== far.id);
+    // Both towns have food well beyond their own eating: a band takes food only above a town's larder.
+    for (const id of [t.id, far.id]) folkOf(c, id).stores.food = 2000;
     const b = band(c, t, 'highwaymen', 6, far.id);
     expect(reachOf(c, b).sort()).toEqual([t.id, far.id].sort());
     const people = () => [t.id, far.id].map((id) => { const k = folkOf(c, id); return k.men + k.women + k.children; });
@@ -199,6 +201,7 @@ describe('a band strikes a town', () => {
     expect(r.taken).toEqual({ men: 0, women: 0 });
     expect(people()).toEqual(before);
     expect(r.stores.food).toBeGreaterThan(0);
+    expect(folkOf(c, r.at).stores.food).toBeGreaterThanOrEqual(THREATS.larder * needOf(c, r.at)); // and the larder is left
     expect(r.stores.wood).toBe(0);
     expect(b.held).toHaveLength(0);
     expect(f.women).toBe(6);

@@ -98,7 +98,9 @@ export const THREATS = {
   /** The chance a band strikes in a season. */
   strike: 0.75,
   /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
-  hold: 0.9, fall: 0.55,
+  hold: 0.85, fall: 0.6,
+  /** What those on a road can do for themselves with no army to escort them, in companies: enough to see off a small band. */
+  wayfarers: 2.5,
   /** What counts toward a town's defence, in companies. */
   man: 0.45, fortress: 3, raising: 0.5, tower: 1, towers: 3, wall: 0.1, walls: 2, capital: 1, sick: 0.7,
   /** The share of a town's men who die at the walls, by outcome; and of its stores lost. */
@@ -288,7 +290,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const road = b.kind === 'highwaymen';
   const defence = defenceOf(c, tid);
   // On the road it is the escort that counts: an army at either end.
-  const guard = road ? Math.max(...[b.at, b.to!].map((id) => { const a = c.armies.find((x) => x.at === id && x.owner === owner); return a ? armyStrength(a) : 0; })) + 1 : defence.total;
+  const guard = road ? Math.max(...[b.at, b.to!].map((id) => { const a = c.armies.find((x) => x.at === id && x.owner === owner); return a ? armyStrength(a) : 0; })) + THREATS.wayfarers : defence.total;
   const force = round1(b.strength * (0.8 + 0.4 * chance(c, b.id, 29)));
   const r = guard / Math.max(0.1, force);
   // A town that already has people in some band's hands has no more to give: it is raided, not taken again.
