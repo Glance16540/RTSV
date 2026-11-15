@@ -22,6 +22,7 @@ import type { Stores } from './township';
 import { MAX_STORE, STORE_KINDS, folkOf } from './township';
 import { OLD_SEASON, agesOf, countFrom } from './ageing';
 import { armyStrength } from './campaign';
+import { needOf } from './larder';
 
 /** What a convoy carries: stores, and grown people by their ages in seasons. */
 export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[] }
@@ -42,8 +43,13 @@ export const CONVOYS = {
   rob: 0.5, meet: 0.75,
   /** The most convoys a people may have on the road at once. */
   most: 6,
-  /** The computer player: a town with less food than `hungry` is sent `relief` by the town with the most to spare, which keeps `keep`. */
-  hungry: 150, relief: 300, keep: 300,
+  /**
+   * The computer player feeds its hungry towns (`relieve`). A town is short when its food is under `hungry` or under
+   * what it will eat next season; it is sent `seasons` seasons of its own eating less what it has, and never less
+   * than `relief`. The town with the most to spare sends it, or as much of it as it can: a town keeps `seasons`
+   * seasons of its own eating (never less than `keep`), and sends nothing under `least`.
+   */
+  hungry: 150, relief: 300, keep: 100, seasons: 2, least: 100,
 };
 
 /** What a convoy would carry: so many of these stores, so many men and women. */
@@ -183,12 +189,17 @@ export function convoysTurn(c: Campaign): Arrival[] {
 export function relieve(c: Campaign, f: number): Convoy[] {
   const sent: Convoy[] = [];
   const mine = c.territories.filter((t) => t.owner === f);
+  const food = (id: number): number => folkOf(c, id).stores.food;
+  // What a town can give: what it has over its own next seasons of eating.
+  const spare = (id: number): number => food(id) - Math.max(CONVOYS.keep, CONVOYS.seasons * needOf(c, id));
   for (const t of mine) {
-    if (folkOf(c, t.id).stores.food >= CONVOYS.hungry || onTheRoad(c, f).some((x) => x.to === t.id && x.cargo.food > 0)) continue;
-    const giver = mine.filter((g) => g.id !== t.id && folkOf(c, g.id).stores.food >= CONVOYS.relief + CONVOYS.keep && roadBetween(c, f, g.id, t.id))
-      .sort((a, b) => folkOf(c, b.id).stores.food - folkOf(c, a.id).stores.food || a.id - b.id)[0];
+    const need = needOf(c, t.id);
+    if (food(t.id) >= Math.max(CONVOYS.hungry, need) || onTheRoad(c, f).some((x) => x.to === t.id && x.cargo.food > 0)) continue;
+    const want = Math.max(CONVOYS.relief, CONVOYS.seasons * need - food(t.id));
+    const giver = mine.filter((g) => g.id !== t.id && spare(g.id) >= CONVOYS.least && roadBetween(c, f, g.id, t.id))
+      .sort((a, b) => spare(b.id) - spare(a.id) || a.id - b.id)[0];
     if (!giver) continue;
-    const x = sendConvoy(c, f, giver.id, t.id, { food: CONVOYS.relief });
+    const x = sendConvoy(c, f, giver.id, t.id, { food: Math.min(want, Math.floor(spare(giver.id))) });
     if (x) sent.push(x);
   }
   return sent;

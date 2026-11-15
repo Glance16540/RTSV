@@ -1,5 +1,6 @@
 // Convoys by road between a people's own towns (src/sim/convoys.ts, docs/DESIGN.md "Stores").
 import { describe, expect, it } from 'vitest';
+import { needOf } from '../src/sim/larder';
 import { CONVOYS, cannotSend, convoysTurn, homeTown, onTheRoad, relieve, roadBetween, sendConvoy, worth } from '../src/sim/convoys';
 import { newCampaign } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
@@ -127,12 +128,44 @@ describe('convoys by road', () => {
     a.capital = 1;
     folkOf(c, z.id).stores.food = 20;
     folkOf(c, b.id).stores.food = 900;
+    const want = Math.max(CONVOYS.relief, CONVOYS.seasons * needOf(c, z.id) - 20);
     const sent = relieve(c, 1);
     expect(sent).toHaveLength(1);
     expect(sent[0].from).toBe(b.id);
     expect(sent[0].to).toBe(z.id);
+    // Two seasons of the town's own eating, less what it has, and never less than CONVOYS.relief.
+    expect(sent[0].cargo.food).toBe(want);
     expect(relieve(c, 1)).toHaveLength(0); // food is already on the way
     season(c);
-    expect(folkOf(c, z.id).stores.food).toBe(20 + CONVOYS.relief);
+    expect(folkOf(c, z.id).stores.food).toBe(20 + want);
+  });
+
+  it('a big town that will not be fed next season is relieved though it holds more than CONVOYS.hungry', () => {
+    const { c, a, b, z } = road();
+    for (const t of [a, b, z]) t.owner = 1;
+    const k = folkOf(c, z.id);
+    k.men = 20; k.women = 20; delete k.ages;
+    k.stores.food = 300; // more than CONVOYS.hungry, less than forty eat in a season
+    expect(needOf(c, z.id)).toBeGreaterThan(300);
+    folkOf(c, b.id).stores.food = 5000;
+    const sent = relieve(c, 1);
+    expect(sent.map((x) => x.to)).toContain(z.id);
+  });
+
+  it('a town short of 600 food can still spare what is over two seasons of its own eating', () => {
+    const { c, a, b, z } = road();
+    for (const t of [a, b, z]) t.owner = 1;
+    folkOf(c, a.id).stores.food = Math.max(CONVOYS.hungry, needOf(c, a.id)); // fed, with nothing to give
+    folkOf(c, z.id).stores.food = 0;
+    const g = folkOf(c, b.id);
+    g.stores.food = CONVOYS.seasons * needOf(c, b.id) + 250;
+    const sent = relieve(c, 1).filter((x) => x.to === z.id);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].from).toBe(b.id);
+    expect(sent[0].cargo.food).toBe(250); // all it can spare
+    // And none at all from a town that has only its own eating.
+    g.stores.food = CONVOYS.seasons * needOf(c, b.id) + CONVOYS.least - 1;
+    c.convoys = [];
+    expect(relieve(c, 1).filter((x) => x.to === z.id)).toHaveLength(0);
   });
 });
