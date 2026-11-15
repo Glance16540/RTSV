@@ -9,6 +9,7 @@
 import type { Campaign } from './campaign';
 import { ledgerSince } from './ledger';
 import { THREATS, reportLine } from './threats';
+import './intrigue';
 import { folkOf, living, type Notable } from './township';
 import { householdNews } from './kin';
 import { isOpen } from './deadtown';
@@ -36,6 +37,8 @@ export interface SeasonReport {
   /** Changes in the leader's household and circle: married, widowed, carried off, freed, someone leaving (kin.ts). */
   household?: { text: string; tone: 'good' | 'bad' | 'plain' }[];
   rose: string[]; lost: string[]; won: string[];
+  /** What the stories inside the story did (intrigue.ts): each a line, and the land it is in. */
+  stories?: { at: number; land: string; tone: 'good' | 'bad' | 'plain'; text: string }[];
   made: Named[]; gone: (Named & { how: string })[];
   /** Its towns that stand open, with nobody in them (deadtown.ts); and others' open towns its armies can reach. */
   open: string[]; openNear: string[];
@@ -73,6 +76,9 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
   for (const e of ledgerSince(c, s.seq)) if (e.owner === f) r[e.kind] += e.n;
   // Raids on its towns, with how they went.
   for (const x of c.raids ?? []) if (x.owner === f && x.turn > s.turn) { r.raids.push({ at: x.at, land: c.territories[x.at].name, outcome: x.outcome, line: reportLine(c, x) }); r.raidDead += x.killed; }
+  // The stories inside the story: what each did this season.
+  const stories = (c.intrigueNews ?? []).filter((n) => n.owner === f && n.turn > s.turn).map((n) => ({ at: n.at, land: c.territories[n.at].name, tone: n.tone, text: n.text }));
+  if (stories.length) r.stories = stories;
   // Its people held by bands: those newly taken, those got back, and those held too long.
   const now = snapshot(c, f);
   for (const [k, g] of Object.entries(now.held)) if (!s.held[k]) r.taken += g.n;
@@ -116,7 +122,7 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
 /** Whether anything at all happened in a season's report. */
 export const anything = (r: SeasonReport): boolean =>
   r.born + r.grew + r.aged + r.starved + r.fell + r.raidDead + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
-  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.household?.length ?? 0) > 0;
+  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.household?.length ?? 0) + (r.stories?.length ?? 0) > 0;
 
 /** A season has turned: report the one just ended, and begin keeping the next. Called once a turn (campaign.ts). */
 export function seasonTurned(c: Campaign, f = 0): void {
@@ -134,7 +140,7 @@ export const pastSeasons = (c: Campaign): SeasonReport[] => [...(c.seasonPast ??
 export const reportDue = (c: Campaign): SeasonReport | null => (c.seasonReport && !c.seasonReport.seen ? c.seasonReport : null);
 
 /** The report as lines of words, only those with something in them. Counts for everyone; known people are in `made` and `gone`. */
-export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'captives' | 'raid' | 'drift' | 'land'; tone: 'good' | 'bad' | 'plain'; text: string }[] {
+export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'captives' | 'raid' | 'drift' | 'land' | 'story'; tone: 'good' | 'bad' | 'plain'; text: string }[] {
   const n = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`;
   const out: ReturnType<typeof reportLines> = [];
   const add = (kind: (typeof out)[number]['kind'], tone: (typeof out)[number]['tone'], text: string): void => { out.push({ kind, tone, text }); };
@@ -159,5 +165,6 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   for (const x of r.household ?? []) add('people', x.tone, x.text);
   for (const t of r.open ?? []) add('land', 'bad', `${t} stands open: nobody is left in it, and anyone who marches on it has it. Send people by convoy, or an army to hold it.`);
   for (const t of r.openNear ?? []) add('land', 'good', `${t} stands open, within reach of your armies: march on it and it is yours.`);
+  for (const x of r.stories ?? []) add('story', x.tone, x.text);
   return out;
 }
