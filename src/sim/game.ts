@@ -22,6 +22,7 @@ import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
+import { armMen } from './tribes';
 import { calamity, douse, roll } from './calamity';
 import { boughtIn } from './contagion';
 import { wrath } from './wrath';
@@ -342,7 +343,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; people?: PeopleIn; stores?: Partial<Stores> };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; people?: PeopleIn; stores?: Partial<Stores> };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -562,6 +563,7 @@ export class Game {
           // In a field battle the army forms up where the town would have been.
           for (let j = 0; j < n; j++, k++) this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir);
         }
+        if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
       }
     });
     this.wild = this.players.length;
