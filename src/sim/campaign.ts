@@ -34,7 +34,8 @@ import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
 import { Orders, governTowns, keepOrders } from './governor';
-import { abandonEmpty, maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
@@ -331,7 +332,7 @@ export interface Campaign {
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
   /** How long each army has stood where it is, soldiers the map has given a name, and armies sent home this season: see rivalrule.ts. */
-  idle?: Record<string, { at: number; n: number }>; emptied?: Record<string, number>; wars?: Record<string, { land: number; changed: number; muster?: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
+  idle?: Record<string, { at: number; n: number }>; emptied?: Record<string, number>; emptiedOf?: Record<string, number>; extinct?: Record<string, number>; wars?: Record<string, { land: number; changed: number; muster?: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
   /** The men with each army, by the town they came from: see armytown.ts. */
   musters?: Record<string, Muster>;
   /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
@@ -967,6 +968,8 @@ export function defenders(c: Campaign, tid: number): Record<string, number> {
 /** Everything that defends a territory, optionally against a particular mix of attackers. */
 export function defence(c: Campaign, tid: number, vs: Record<string, number> = {}, attackerCiv = ''): number {
   const t = c.territories[tid];
+  const open = openDefence(c, tid); // a dead town with no army in it has nobody on its walls (deadtown.ts)
+  if (open !== null) return open;
   const ground = (t.trait === 'hills' ? 2 : 0) + countryOf(c, tid).defence + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.defence ?? 0);
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
@@ -1368,7 +1371,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
-      if (abandonEmpty(c).length) checkElimination(c); // a town with nobody left in it is nobody's, and a people with no town is gone (rivalrule.ts)
+      if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
@@ -1577,6 +1580,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     }
     // Spend what is left on troops, growing existing armies before starting new ones.
     rivalMoves(c, f.id); // garrison what is resentful or beset, and keep that garrison there (rivalrule.ts)
+    if (seizeOpen(c, f.id)) return false; // a dead town within reach is taken for the asking (deadtown.ts)
     const yards = own.filter((t) => maySpare(c, t.id) && Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
       .sort((a, b) => (armyAt(c, b.id) ? 1 : 0) - (armyAt(c, a.id) ? 1 : 0));
     for (const t of yards) {
@@ -1699,9 +1703,9 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
