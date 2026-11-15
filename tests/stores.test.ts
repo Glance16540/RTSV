@@ -42,7 +42,10 @@ describe('stores replace supplies', () => {
     const then = units(nationStores(c, 0)), due = income(c, 0), had = c.factions[0].supplies;
     turn(c);
     expect(c.factions[0].supplies).toBeGreaterThanOrEqual(had + due - 4); // (a season may also bring a loss: acts of God, raiders)
-    expect(units(nationStores(c, 0)) - then).toBe((c.factions[0].supplies - had) * SUPPLY_UNITS);
+    // The figure is whole supplies, and a town eats food that is not (larder.ts): the goods and the figure agree to within a supply.
+    const moved = units(nationStores(c, 0)) - then, said = (c.factions[0].supplies - had) * SUPPLY_UNITS;
+    expect(moved).toBeGreaterThan(said - SUPPLY_UNITS);
+    expect(moved).toBeLessThan(said + SUPPLY_UNITS);
   }, LONG);
 
   it('earnings are shared among a nation\'s towns, and spending is drawn from those with most to give', () => {
