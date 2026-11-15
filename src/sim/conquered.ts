@@ -9,6 +9,7 @@ import type { Campaign } from './campaign';
 import { armyAt, armySize, faithOf } from './campaign';
 import { leaderAt } from './court';
 import { folkOf } from './township';
+import { agesOf } from './ageing';
 
 /** `from`: whose it was (-1 for a tribe). `since`: the turn it was taken. `resent`: how its people take it, 0 to 100. */
 export interface Yoke { from: number; since: number; resent: number }
@@ -79,7 +80,7 @@ export function seasonOfYoke(c: Campaign): YokeNews[] {
       const a = armyAt(c, t.id), f = folkOf(c, t.id);
       if (a && a.owner === owner) {
         // Put down: a man of the town dies for it, the garrison is the worse for it, and nobody forgets.
-        if (f.men > 0) f.men--;
+        if (f.men > 0) { f.men--; if (f.ages) agesOf(c, t.id, f); }
         if (armySize(a) > 1) { const type = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p])[0]; if (--a.units[type] <= 0) delete a.units[type]; }
         y.resent = Math.min(100, y.resent + YOKE.putDown);
         c.log.push(`${t.name} rose against ${mine ? 'you' : nameOf(c, owner)} and the garrison put it down. It is not forgotten there.`);

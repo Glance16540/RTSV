@@ -46,6 +46,7 @@ describe('stores replace supplies', () => {
     const moved = units(nationStores(c, 0)) - then, said = (c.factions[0].supplies - had) * SUPPLY_UNITS;
     expect(moved).toBeGreaterThan(said - SUPPLY_UNITS);
     expect(moved).toBeLessThan(said + SUPPLY_UNITS);
+    expect(c.factions[0].supplies).toBe(nationWorth(c, 0));
   }, LONG);
 
   it('earnings are shared among a nation\'s towns, and spending is drawn from those with most to give', () => {

@@ -14,6 +14,7 @@ import { Census, cleanCensus, musterFolk, settleFolk } from './township';
 import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, shiftVirtue, slots, weatherAt } from './campaign';
 import { faithAt } from './townfaith';
 import { settleStores } from './stores';
+import { Orders, keepOrders } from './governor';
 import type { Sky } from './campaign';
 
 declare module './campaign' {
@@ -51,6 +52,8 @@ export interface VisitAfter {
   seconds?: number;
   /** The town's people and stores as the player left them (`Game.census()`). */
   folk?: Partial<Census>;
+  /** What the town was set to as the player left (`Game.orders()`): it carries on with them (governor.ts). */
+  orders?: Partial<Orders>;
 }
 
 /** Why this town cannot be visited now, or '' if it can. */
@@ -116,6 +119,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   // The town is as the visit left it: everyone born there, less the dead and the taken.
   const census = cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census);
+  keepOrders(c, land.id, after.orders);
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
   // It is this town that was kept so, and this town that is moved (townfaith.ts).
