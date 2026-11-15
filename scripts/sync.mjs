@@ -57,8 +57,11 @@ if (git('diff', '--name-only', `${start}...${trunk}`, '--', 'package-lock.json')
 try {
   npm('assets');
   for (const script of new Set(Object.values(BUILT))) npm(script);
+  // The porting table's line counts and dependencies are written from the merged sources (scripts/porting-check.mjs).
+  // What only a person can settle there is left for `npm run check` to say.
+  spawnSync('node', ['scripts/porting-check.mjs', '--fix'], { stdio: 'inherit' });
 } catch (e) { if (CHECK) undo(); stop(String(e.message)); }
-tryGit('add', '--', ...Object.keys(BUILT));
+tryGit('add', '--', ...Object.keys(BUILT), 'docs/PORTING.md');
 if (clashes.length) tryGit(...id, 'commit', '--quiet', '--no-edit');
 else if (git('diff', '--cached', '--name-only')) tryGit(...id, 'commit', '--quiet', '-m', `Rebuild the pages built by script after merging ${TRUNK}`);
 
