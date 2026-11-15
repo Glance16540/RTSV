@@ -80,8 +80,8 @@ export function harvest(c: Campaign, landYield: (f: number, t: Territory) => num
     let goods = 0, lost = 0;
     // A land the marauders still sit in has no town of its people's to keep its yield: that goes to the chief town.
     for (const t of held) {
-      // A land the marauders sit in is worked by nobody of the town's: what it yields is counted whole, into the chief town.
-      const into = t.horde ? chief : t, n = Math.round(landYield(x.id, t) * k * SUPPLY_UNITS * (t.horde ? 1 : handsShare(c, t.id)));
+      // A land the marauders sit in yields what its own town's hands bring in, but into the chief town.
+      const into = t.horde ? chief : t, n = Math.round(landYield(x.id, t) * k * SUPPLY_UNITS * handsShare(c, t.id));
       goods += n; lost += putIn(c, into.id, spread(n, yieldShares(c, into.id)));
     }
     const extra = Math.round(whole(x.id) * k * SUPPLY_UNITS);
