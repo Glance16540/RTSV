@@ -46,7 +46,9 @@ export const yearsOf = (age: number, lifespan: number): number => GROWN_YEARS + 
 export const ageFor = (years: number, lifespan: number): number => Math.max(1, ((years - GROWN_YEARS) / (OLD_YEARS - GROWN_YEARS)) * ELDER_AT * lifespan);
 /** A child's age in seasons from how far it is from coming of age in a battle (`left` of `grow` seconds), and back. */
 export const childSeasons = (left: number, grow: number): number => Math.max(0, Math.min(GROWN_SEASON - 1, Math.round(GROWN_SEASON * (1 - left / grow))));
-export const leftFor = (seasons: number, grow: number): number => Math.max(1, grow * (1 - seasons / GROWN_SEASON));
+// A child on the record at 59 seasons has under a second left in a battle's measure: kept exactly (above nothing),
+// so that a visit hands back the same age and a child visited every season still comes of age.
+export const leftFor = (seasons: number, grow: number): number => Math.max(grow / (4 * GROWN_SEASON), grow * (1 - seasons / GROWN_SEASON));
 
 const clean = (a: unknown, lo: number, hi: number): number[] => (Array.isArray(a) ? a : []).filter((x) => Number.isFinite(x)).map((x) => Math.max(lo, Math.min(hi, Math.round(Number(x))))).slice(0, 200);
 /** Make safe a record of ages handed back from a battle. Nothing if it is not one. */

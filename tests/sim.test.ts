@@ -1527,7 +1527,9 @@ describe('alliances and dominion', () => {
     c.truces = [{ with: 1, until: 99 }, { with: 2, until: 99 }];
     for (const t of c.territories) if (t.owner === 0) t.buildings = ['fortress'];
     let turns = 0;
-    while (c.phase !== 'over' && turns < 10) { endTurn(c); turns++; }
+    // (The lands were handed over with no army in them, and dominion is now held for longer than unrest takes to come to a head:
+    // nothing is to rise while we count, as nothing had time to when this was written for three turns.)
+    while (c.phase !== 'over' && turns < DOMINION_TURNS + 4) { c.events = (c.events ?? []).filter((e) => e.kind !== 'unrest'); endTurn(c); turns++; }
     expect(c.territories.filter((t) => t.owner === 0).length).toBeGreaterThanOrEqual(need);
     expect(c.winner).toBe(0);
     expect(turns).toBe(DOMINION_TURNS);

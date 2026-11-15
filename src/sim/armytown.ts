@@ -11,12 +11,27 @@ import type { Army, Campaign } from './campaign';
 import { agesOf, countFrom, OLD_SEASON, LAST_SEASON } from './ageing';
 import { folkOf, rememberVeteran } from './township';
 
+/**
+ * Seasons an army rests in a town it has just taken before it marches again: it buries its dead, sets a watch
+ * and brings the town to order. (It is what keeps a campaign from being a land a season.)
+ */
+export const ARMY_REST = 5;
+/** Is this army still resting from its last assault as this turn begins? */
+export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.turn;
+
+/**
+ * What a battle costs in men. Of the men of the companies an army loses, this share are dead when the army still
+ * stands (`won`) and when it is broken (`lost`); the rest are wounded or routed, and make their way home to their
+ * own towns. And what raising may take: a town keeps `floor` men at the least, and a man for every woman of
+ * working age up to `couples` of them, so that it still has husbands.
+ */
+export const MEN = { won: 0.3, lost: 0.4, floor: 2, couples: 0.5 };
 /** Men in a company. */
 export const MEN_A_COMPANY = 2;
 /** An army's roll: how many companies it had when last reckoned, and the men with it by the town they came from (their ages, in seasons). */
-export interface Muster { size: number; men: Record<string, number[]> }
+export interface Muster { size: number; men: Record<string, number[]>; /** Whose army it is, kept so its men can find their way home if it is broken. */ owner?: number }
 /** Men of a town who fell with an army. */
-export interface Fallen { town: number; army: number; dead: number; lost: boolean }
+export interface Fallen { town: number; army: number; dead: number; lost: boolean; /** Men of the lost companies who came home alive. */ home?: number }
 
 const hash = (a: number, b: number): number => { let h = (Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35)) >>> 0; h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 13; return (h >>> 0) / 4294967296; };
 const sizeOf = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
@@ -42,15 +57,17 @@ export function homeOf(c: Campaign, a: Army): number | undefined {
 
 /**
  * A company has just been raised in this town and joined this army: its men are the town's. The youngest grown
- * men go, as many as a company takes or as the town has. Returns how many of the town's men went.
+ * men go, as many as a company takes or as the town can spare (`MEN.floor`, `MEN.couples`). Returns how many of the
+ * town's men went.
  */
 export function menMustered(c: Campaign, a: Army, tid: number): number {
   const m = (rolls(c)[a.id] ??= { size: 0, men: {} });
-  m.size = sizeOf(a);
+  m.size = sizeOf(a); m.owner = a.owner;
   const t = c.territories[tid];
   if (!t || t.owner !== a.owner) return 0;
   const f = folkOf(c, tid), ages = agesOf(c, tid, f);
-  const young = ages.m.map((s, i) => [s, i] as [number, number]).filter(([s]) => s < OLD_SEASON).sort((p, q) => p[0] - q[0] || p[1] - q[1]).slice(0, MEN_A_COMPANY);
+  const spare = Math.max(0, f.men - Math.max(MEN.floor, Math.ceil(f.women * MEN.couples))); // the town keeps its husbands
+  const young = ages.m.map((s, i) => [s, i] as [number, number]).filter(([s]) => s < OLD_SEASON).sort((p, q) => p[0] - q[0] || p[1] - q[1]).slice(0, Math.min(MEN_A_COMPANY, spare));
   if (!young.length) return 0;
   const gone = new Set(young.map(([, i]) => i));
   (m.men[tid] ??= []).push(...young.map(([s]) => s));
@@ -64,7 +81,7 @@ export function armiesJoined(c: Campaign, a: Army, other: Army): void {
   const sa = c.armies.includes(a) ? sizeOf(a) : 0, so = sizeOf(other);
   const pooled: Record<string, number[]> = {};
   for (const m of [mo, ma]) for (const [tid, l] of Object.entries(m?.men ?? {})) (pooled[tid] ??= []).push(...l);
-  const to: Muster = { size: so, men: {} }, stay: Muster = { size: sa, men: {} };
+  const to: Muster = { size: so, men: {}, owner: other.owner }, stay: Muster = { size: sa, men: {}, owner: a.owner };
   // The men go with the companies, in the share the companies went.
   for (const [tid, l] of Object.entries(pooled)) { const keep = sa + so ? Math.round((l.length * sa) / (sa + so)) : 0; if (keep) stay.men[tid] = l.slice(0, keep); if (l.length - keep) to.men[tid] = l.slice(keep); }
   all[other.id] = to;
@@ -73,8 +90,8 @@ export function armiesJoined(c: Campaign, a: Army, other: Army): void {
 
 /**
  * Count the armies against their rolls. Where an army has fewer companies than when it was last counted, men
- * are dead in that share, and an army that is gone has lost them all: they are struck from the roll, and that is
- * where a town's men at war are lost to it. Returns the dead by town, and says so in the log.
+ * are lost to it in that share, and an army that is gone has lost them all: they are struck from the roll. Some
+ * of them are dead (`MEN.won`, `MEN.lost`); the rest come home to their towns, wounded or routed. Returns the dead by town, and says so in the log.
  */
 export function reckonArmies(c: Campaign): Fallen[] {
   const out: Fallen[] = [], all = rolls(c);
@@ -87,12 +104,22 @@ export function reckonArmies(c: Campaign): Fallen[] {
     const pool = Object.entries(m.men).flatMap(([tid, l]) => l.map((_, i) => ({ tid, i, lot: hash(c.seed * 7 + id * 131 + Number(tid), c.turn * 31 + i) }))).sort((p, q) => p.lot - q.lot).slice(0, dead);
     const byTown: Record<string, Set<number>> = {};
     for (const p of pool) (byTown[p.tid] ??= new Set()).add(p.i);
+    const owner = a?.owner ?? m.owner;
     for (const [tid, gone] of Object.entries(byTown)) {
+      const out0 = m.men[tid].filter((_, i) => gone.has(i));
       m.men[tid] = m.men[tid].filter((_, i) => !gone.has(i));
       if (!m.men[tid].length) delete m.men[tid];
       const t = c.territories[Number(tid)];
-      out.push({ town: Number(tid), army: id, dead: gone.size, lost: !a });
-      if (t) c.log.push(`${gone.size} ${gone.size === 1 ? 'man' : 'men'} of ${t.name} ${a ? 'fell with the army' : 'did not come back: the army they marched with is no more'}.`);
+      // Not all who are lost to the army are dead: the rest are wounded or routed, and come home if home is still theirs.
+      const share = a ? MEN.won : MEN.lost;
+      const fate = out0.map((age, i) => ({ age, lot: hash(c.seed * 11 + id * 17 + Number(tid), c.turn * 13 + i + 500) })).sort((p, q) => p.lot - q.lot);
+      const killed = Math.min(out0.length, Math.max(out0.length ? 1 : 0, Math.round(out0.length * share)));
+      const home = t && owner !== undefined && t.owner === owner && !t.horde ? fate.slice(killed).map((x) => x.age) : [];
+      if (home.length && t) { const f = folkOf(c, t.id), ages = agesOf(c, t.id, f); countFrom(f, { m: [...ages.m, ...home], f: ages.f, k: ages.k }); }
+      const dead = out0.length - home.length;
+      out.push({ town: Number(tid), army: id, dead, lost: !a, ...(home.length ? { home: home.length } : {}) });
+      if (t && dead) c.log.push(`${dead} ${dead === 1 ? 'man' : 'men'} of ${t.name} ${a ? 'fell with the army' : 'did not come back: the army they marched with is no more'}${home.length ? `; ${home.length} came home hurt or routed` : ''}.`);
+      else if (t && home.length) c.log.push(`${home.length} ${home.length === 1 ? 'man' : 'men'} of ${t.name} came home hurt from the army.`);
     }
     if (a) m.size = now; else delete all[key];
   }
@@ -102,6 +129,37 @@ export function reckonArmies(c: Campaign): Fallen[] {
 export function seasonOfArmies(c: Campaign): Fallen[] {
   for (const m of Object.values(c.musters ?? {})) for (const tid of Object.keys(m.men)) m.men[tid] = m.men[tid].map((s) => Math.min(LAST_SEASON, s + 1));
   return reckonArmies(c);
+}
+
+/**
+ * Send some of an army's companies home and keep the army: the most numerous kind first, never its last company.
+ * The men of those companies go back onto their towns' records (or settle where the army stands, if their town is
+ * no longer their people's). For an army that cannot be sent home whole: the leader's, or a nation's last.
+ * Returns how many men went home, or -1 if it cannot be done.
+ */
+export function sendCompaniesHome(c: Campaign, armyId: number, companies: number): number {
+  const a = c.armies.find((x) => x.id === armyId);
+  if (!a || c.pending || c.territories[a.at]?.owner !== a.owner) return -1;
+  reckonArmies(c);
+  const before = sizeOf(a), go = Math.max(0, Math.min(before - 1, Math.floor(companies)));
+  if (!go) return 0;
+  for (let i = 0; i < go; i++) { const type = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p] || p.localeCompare(q))[0]; if (--a.units[type] <= 0) delete a.units[type]; }
+  const m = musterOf(c, armyId);
+  let n = 0;
+  if (m) {
+    // The men go with their companies, in the share the companies went, town by town.
+    for (const key of Object.keys(m.men)) {
+      const l = m.men[key], back = Math.round((l.length * go) / before);
+      if (!back) continue;
+      const tid = c.territories[Number(key)]?.owner === a.owner ? Number(key) : a.at;
+      const f = folkOf(c, tid), ages = agesOf(c, tid, f);
+      countFrom(f, { m: [...ages.m, ...l.splice(0, back)], f: ages.f, k: ages.k });
+      if (!l.length) delete m.men[key];
+      n += back;
+    }
+    m.size = sizeOf(a);
+  }
+  return n;
 }
 
 /** Can this army be sent home? It must stand in a town of its own people, with nothing waiting to be fought. */
