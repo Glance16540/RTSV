@@ -24,6 +24,7 @@ import type { Campaign, Territory } from './campaign';
 import type { Game, Unit } from './game';
 import { OLD_SEASON, agesOf, countFrom } from './ageing';
 import { folkOf } from './township';
+import { needOf } from './larder';
 
 declare module './campaign' {
   interface Territory {
@@ -39,6 +40,8 @@ export const TRIBE = {
   men: 2,
   /** A tribe's town is made up with this many women to a man. */
   women: 0.8,
+  /** And with this many seasons of its own eating in store. */
+  larder: 3,
   /** A tribe beaten off is never left with fewer bands than this. */
   least: 1,
 };
@@ -60,6 +63,8 @@ function makeUp(c: Campaign, t: Territory): void {
   f.men = men;
   f.women = Math.max(f.women, Math.round(men * TRIBE.women));
   delete f.ages; // their ages are drawn afresh for those there now (ageing.ts)
+  // And a larder to match its mouths: a town of this size was not living on a hamlet's store.
+  f.stores.food = Math.max(f.stores.food, Math.round(TRIBE.larder * needOf(c, t.id)));
 }
 
 /** The bands a land of no nation can field: a tribe's from its town's men under arms, the marauders' their band's strength. */
