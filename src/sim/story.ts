@@ -2,6 +2,7 @@
 // put to the player to decide, and the chronicle that all of it is written into. Words and numbers only: the
 // rules that use them are in campaign.ts.
 
+import { inRuin } from './ruin';
 import type { Campaign } from './campaign';
 import { creedOf } from './creed';
 
@@ -179,7 +180,8 @@ export function epilogue(c: Campaign): string[] {
   const me = c.factions[0], out: string[] = [];
   const left = c.factions.filter((f) => f.alive && f.id > 0);
   if (c.phase !== 'over') return out;
-  out.push(c.winner === 0
+  if (inRuin(c)) out.push(`After ${c.turn} turns the land lay in ruin: for twenty years no people had gained ground, the bands held much of it, and nobody ruled.`);
+  else out.push(c.winner === 0
     ? (left.length ? `After ${c.turn} turns your people held so much of the land that no one could challenge them.` : `After ${c.turn} turns your people were the only ones left in the land.`)
     : `After ${c.turn} turns the ${c.factions[c.winner]?.name ?? 'others'} ruled, and your people did not.`);
   const creed = creedOf(me.virtue ?? 0);
