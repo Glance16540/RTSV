@@ -770,3 +770,26 @@ body.looking-out #visit { display: none; }
 .roll .roll-held, .roll .roll-lost { margin: 3px 0; }
 .roll .roll-bad { display: inline; color: var(--rubric); }
 .roll .likeness { display: inline-block; flex: none; }
+
+/* The map's side panel (src/client/landpanel.ts): the nation's bar, the land in sections, the lie of the land folded, the actions in groups. */
+#ow-status .lp-bar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+#ow-status .lp-bar b.good, #ow-status .lp-bar b.bad { font-size: 13px; }
+.ow-side .lp-fold { margin-top: 6px; border-top: 1px solid rgba(36, 24, 15, 0.35); padding-top: 2px; }
+.ow-side .lp-fold > summary { cursor: pointer; list-style: none; padding: 4px 0; color: var(--rubric); font: 400 17px var(--caps); text-transform: lowercase; user-select: none; }
+.ow-side .lp-fold > summary::-webkit-details-marker { display: none; }
+.ow-side .lp-fold > summary::before { content: '▸'; display: inline-block; width: 1em; color: var(--sepia); transition: transform 0.15s; }
+.ow-side .lp-fold[open] > summary::before { transform: rotate(90deg); }
+.ow-side .lp-fold > summary small { margin-left: 4px; font: 400 13px var(--book); text-transform: none; color: var(--sepia); }
+#ow-sel .lp-section { margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(36, 24, 15, 0.25); }
+#ow-sel .lp-signs { font-weight: 400; letter-spacing: 2px; text-transform: none; }
+#ow-actions .lp-group { display: flex; flex-direction: column; gap: 6px; }
+#ow-actions .lp-group + .lp-group { margin-top: 8px; }
+#ow-actions .lp-group > h4 { margin: 0; font: 400 15px var(--caps); text-transform: lowercase; color: var(--sepia); border-bottom: 1px solid rgba(36, 24, 15, 0.25); }
+/* At phone width the buttons of a group sit two to a row; notes and headings keep the whole row. */
+@media (max-width: 760px) {
+  #ow-actions .lp-group { flex-direction: row; flex-wrap: wrap; }
+  #ow-actions .lp-group > * { flex: 1 1 100%; }
+  #ow-actions .lp-group > button { flex: 1 1 calc(50% - 6px); min-width: 0; }
+  /* The buttons at the panel's foot wrap rather than run off the side of a phone. */
+  .ow-side .ow-foot { flex-wrap: wrap; }
+}
