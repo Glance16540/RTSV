@@ -9,6 +9,13 @@ work from breaking another's. They apply to every session, whatever it was asked
 town in it, people persist, and a soldier costs a person. Read it before starting a piece of work,
 build toward it, and do not build against it. Change it only on the owner's word.
 
+## Where jobs come from
+
+By the owner's wish (15 November 2026), new jobs are handed out through the gathering session
+(session_01BwJQLwsM6z6825CA6c3og9), so that no two sessions take the same work. When you finish a job,
+report to it and wait for the next; do not pick your own next system. If the owner gives you a job
+directly, tell the gathering session what it is, so it can keep the others clear of it.
+
 ## Systems stay separate, for the move to Unity
 
 The game is being rebuilt in Unity by a session on the owner's computer; it pulls systems from here
