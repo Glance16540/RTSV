@@ -31,7 +31,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
 | `birthonly` | 60 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
 | `calamity` | 179 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, famine, game, wrath | none of its own | not yet |
-| `campaign` | 1850 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, convoys, country, court, creed, data, dynasty, game, harvest, hero, leaders, notableweight, powers, prices, seasonfolk, stores, story, temper, threats, townfaith, township | none of its own | not yet |
+| `campaign` | 1850 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, convoys, country, court, creed, data, drift, dynasty, game, harvest, hero, leaders, notableweight, powers, prices, seasonfolk, stores, story, temper, threats, townfaith, township | none of its own | not yet |
 | `captivity` | 129 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, data, game, nursery | captivity.test.ts | not yet |
 | `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
 | `conquered` | 108 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | campaign, court, township | conquered.test.ts | not yet |
@@ -42,6 +42,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `creed` | 112 | Piety against decadence: one scale per people, moved by how they answer the dilemmas that come | data | none of its own | not yet |
 | `data` | 1027 | Static game data: ages, units, buildings and technologies. | none | none of its own | not yet |
 | `daylight` | 18 | How the hours run. A day is a set number of seconds, and the last three tenths of it are night; the player | none | daylight.test.ts | not yet |
+| `drift` | 167 | Drift under pressure, and the leader's decrees (docs/DESIGN.md, step 5), for a town on the map. | campaign, conquered, court, townfaith, township | drift.test.ts | not yet |
 | `dynasty` | 212 | Who leads a people when their leader falls. Every leader keeps a house: children are born to it as the turns go | ageing, campaign, champion, court, data, hero, leaders, powers | dynasty.test.ts | not yet |
 | `famine` | 185 | Famine: what happens to a town that has run out of food. | data, game, wrath | famine.test.ts | not yet |
 | `folk` | 145 | What the common people say: villagers at every job and warriors of every arm, each in three tempers. A town that | none | none of its own | not yet |

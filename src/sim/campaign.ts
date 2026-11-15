@@ -29,6 +29,7 @@ import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
+import { DecreeKind, Drifted, seasonOfDrift } from './drift';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { Muster, armiesJoined, homeOf, menMustered, reckonArmies, seasonOfArmies } from './armytown';
@@ -254,6 +255,8 @@ export interface Territory {
   virtue?: number;
   /** A town taken by force, and how its people take it: see conquered.ts. */
   yoke?: Yoke;
+  /** Who of this town has drifted to the taverns and the mines, and the decree it is under: see drift.ts. */
+  drift?: Drifted; decree?: DecreeKind;
   /** Wood felled, berries picked and stone and gold dug on this land's battlefield in sieges fought in person: it stays gone. */
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
@@ -1410,6 +1413,7 @@ export function continueAI(c: Campaign): void {
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
+      seasonOfDrift(c); // towns under pressure lose people to the taverns and the mines; decrees answer it (drift.ts)
       settleFaith(c);
       mendTowns(c);
       turnEvent(c);

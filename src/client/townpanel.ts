@@ -6,6 +6,7 @@ import { faithAt } from '../sim/townfaith';
 import { resentOf, revoltChance } from '../sim/conquered';
 import { awayFrom } from '../sim/armytown';
 import { surplusOf, treasury } from '../sim/stores';
+import { DECREES, DRIFT, decreeOf, driftOf, pressureOf } from '../sim/drift';
 import { standingHtml, townFaces } from './portrait';
 import { mourned, townGrief } from '../sim/notableweight';
 
@@ -20,7 +21,10 @@ function stateHtml(c: Campaign, tid: number, mine: boolean): string {
   const from = y ? (y.from < 0 ? 'the local tribes' : y.from === 0 ? 'you' : 'the ' + esc(c.factions[y.from]?.name ?? 'others')) : '';
   const yoke = y && t.owner >= 0 ? `<div class="town-yoke ${y.resent >= 50 ? 'bad' : 'hint'}" title="A town taken by force resents it. That eases every season, sooner with a Church, Farmland or your leader there, and under a pious people; a Tavern or a season of plague, famine, fire or raiders sets it back. Without an army in it a resentful town may rise.">😠 Taken from ${from} ${c.turn - y.since} ${c.turn - y.since === 1 ? 'season' : 'seasons'} ago: resentment ${Math.round(y.resent)}${mine ? ` · ${Math.round(revoltChance(c, tid) * 100)}% chance it rises this season` : ''}</div>` : '';
   const gone = away && mine ? `<div class="town-away hint" title="Men of this town with your armies. Those who fall are this town's dead; the rest come back when the army is sent home.">⚔️ ${plural(away, 'man', 'men')} of this town ${away === 1 ? 'is' : 'are'} away with the armies</div>` : '';
-  return faith + yoke + gone;
+  const d = driftOf(c, tid), p = t.owner >= 0 ? pressureOf(c, tid) : null, law = decreeOf(c, tid);
+  const drift = mine && p && (p.total > 0 || d.tavern || d.mines) ? `<div class="town-drift ${p.total > DRIFT.press ? 'bad' : 'hint'}" title="A town under pressure loses people to the taverns and the mines, a few each season, and its walls are left thin. Feed it, protect it, build a Church, bring your leader, or rule by decree. Well kept, they come back.">🌀 Pressure ${p.total}${p.causes.length ? ` <small>(${p.causes.join(', ')})</small>` : ''}${d.tavern || d.mines ? ` · ${[d.tavern ? plural(d.tavern, 'woman', 'women') + ' at the taverns' : '', d.mines ? plural(d.mines, 'man', 'men') + ' at the mines' : ''].filter(Boolean).join(', ')}` : ''}${d.anger ? ` · anger ${Math.round(d.anger)}` : ''}</div>` : '';
+  const order = mine && law ? `<div class="town-drift hint">${DECREES[law].icon} By decree: ${DECREES[law].name.toLowerCase()}${DECREES[law].cost ? ` <small>(${DECREES[law].cost} a season)</small>` : ''}</div>` : '';
+  return faith + yoke + gone + drift + order;
 }
 
 /** A town's people by kind; for a town of the player's, its stores and those it knows by name as well. */
