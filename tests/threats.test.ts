@@ -3,10 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { endTurn, continueAI, eventsAt, newCampaign } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
 import { OLD_SEASON, SEASONS_A_YEAR } from '../src/sim/ageing';
-import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, wanted } from '../src/sim/threats';
-import { threatsOfMen } from '../src/sim/bandseason';
-import { attackBand } from '../src/sim/bandfight';
-import { resolvePending } from '../src/sim/campaign';
+import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, threatsOfMen, wanted } from '../src/sim/threats';
 import { folkOf, nationStores } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
 import { SUPPLY_UNITS } from '../src/sim/stores';
@@ -226,9 +223,7 @@ describe('those who are taken', () => {
     c.turn += 2;
     expect(seasonsLeft(c, b.held[0])).toBe(THREATS.holdFor - 2);
     c.armies.push({ id: 801, owner: 0, at: t.id, units: { infantry: 12 }, hero: false, vet: 0, moved: false });
-    expect(attackBand(c, 801, b.id)).toBe('battle');
-    expect(c.pending).toMatchObject({ band: b.id, armyId: 801, defender: -1 });
-    expect(resolvePending(c, 'auto')).toBe(true); // left to the army, which is far the stronger
+    threatsOfMen(c);
     expect(c.bands!.includes(b)).toBe(false);
     expect(f.women + f.elders - 1).toBeGreaterThanOrEqual(women); // some may have come home old
     expect(f.men + f.women + f.elders).toBe(men + women + 1 + taken);
@@ -246,11 +241,10 @@ describe('those who are taken', () => {
     b.strength = 9;
     c.armies.push({ id: 801, owner: 0, at: t.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false });
     c.turn++;
-    expect(attackBand(c, 801, b.id)).toBe('battle');
-    expect(resolvePending(c, 'auto')).toBe(false);
+    threatsOfMen(c);
     expect(c.bands!.includes(b)).toBe(true);
-    expect(b.strength).toBeLessThan(9);
-    expect(c.armies.find((a) => a.id === 801)!.units.infantry).toBeLessThan(3);
+    expect(b.strength).toBe(8);
+    expect(c.armies.find((a) => a.id === 801)!.units.infantry).toBe(2);
   });
 
   it('after that they are lost: the player is warned a season before, and told when it happens', () => {
@@ -283,8 +277,7 @@ describe('those who are taken', () => {
       expect(reportText(w.c, r).join(' ')).toContain('Mira among them');
       w.c.armies.push({ id: 801, owner: 0, at: w.t.id, units: { infantry: 12 }, hero: false, vet: 0, moved: false });
       w.c.turn++;
-      expect(attackBand(w.c, 801, b.id)).toBe('battle');
-      expect(resolvePending(w.c, 'auto')).toBe(true);
+      threatsOfMen(w.c);
       expect(w.f.notables[0].lost).toBeUndefined();
     }
     expect(seen).toBe(true);
@@ -313,13 +306,13 @@ describe('bands on the map', () => {
     for (; c.turn < 80; c.turn++) {
       threatsOfMen(c);
       most = Math.max(most, c.bands!.length);
-      expect(c.bands!.filter((b) => b.kind !== 'marauders').length).toBeLessThanOrEqual(wanted(c) || 1);
+      expect(c.bands!.length).toBeLessThanOrEqual(wanted(c) || 1);
       for (const b of c.bands!) {
         kinds.add(b.kind);
         expect(c.territories[b.at]).toBeDefined();
         if (b.kind === 'pirates') expect(c.territories[b.at].trait).toBe('coast');
         if (b.kind === 'highwaymen') expect(c.territories[b.at].adj).toContain(b.to);
-        if (b.kind !== 'marauders') expect(b.strength).toBeLessThanOrEqual(THREATS.max);
+        expect(b.strength).toBeLessThanOrEqual(THREATS.max);
         expect(bandsAt(c, b.at)).toContain(b);
       }
     }

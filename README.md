@@ -300,7 +300,8 @@ neighbouring land.
 - **Paid in kind, earned by land** (`src/sim/prices.ts`, `src/sim/harvest.ts`). A Barracks is paid in
   wood, a Fortress in stone, a company in food and gold, a truce in gold, at the old price in supplies,
   from the town where it is done first; what your towns lack of a kind is made up in other goods. Each
-  land's yield goes into its own town, in the kinds the land gives.
+  land's yield goes into its own town: as much as the land gives and the town has hands to work, made of
+  what its people were set to work at and what the land leans to.
 - **Towns eat** (`src/sim/larder.ts`). Each season a town eats from its own food store: 12 food for a
   grown man or woman, 9 for one of the old, 6 for a child. A farmed town of about twenty is fed by its own
   fields; a town with none needs food sent. A town that cannot eat goes hungry, and after two hungry seasons
@@ -414,15 +415,8 @@ battlefield, an army kept there, and the spirit of its people. It holds, is raid
 off (never children). Select the struck land to read the report: who struck, what the town had, who was killed and
 taken, what was lost, and which way your people's standing swayed.
 
-Those taken are held at the band's place for four seasons. Select the band's land and send an army that stands there
-or next door against it. That is a battle you can enter, your army's own companies against the band's men on open
-ground, or you can leave it to the army. Break the band and its captives come home, the older for it; after four
-seasons they are gone for good. No land changes hands.
-
-Bands move: they flee an army that is their match, drift toward softer towns, break up when old and weak, and
-raiders grown strong in a tribe's land take it and become marauders, who hold their land and are fought by marching
-into it. Rival peoples hunt the bands in their own lands. The season's news of all this is listed above the log;
-click a line to open the land it happened in.
+Those taken are held at the band's place for four seasons. Stand an army there when the season turns and it fights
+the band; break it and they come home, the older for it. After four seasons they are gone for good.
 
 ## Controls
 
