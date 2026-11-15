@@ -131,6 +131,8 @@ interface Watch {
   townLives: number; diedOut: number; diedAfterAll: number;
   /** Every town that died out (tribes' too), with what emptied it: see `whyDead`. */
   dead: DeadTown[];
+  /** People killed by plague in the first twenty years, every people and the tribes together (the season's ledger). */
+  plagueDead: number;
   hungerDead: Record<number, number>; // by people, over the first 20 years
   worstHunger: number; // the largest share of a town lost to hunger in one season
   storeSeasons: number[]; // each nation that had a stretch of peace: the median, over its seasons of peace, of the seasons of food it had in store
@@ -152,7 +154,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
@@ -188,6 +190,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       for (const e of ledgerSince(c, seq)) {
         const x = got[e.at];
         if (!x) continue;
+        if (e.kind === 'sick' && s <= YEARS20) w.plagueDead += e.n;
         if (e.kind === 'fell') x.war += e.n; else if (e.kind === 'starved') x.hunger += e.n; else if (e.kind === 'sick') x.plague += e.n; else if (e.kind === 'aged') x.age += e.n; else if (e.kind === 'born') x.born += e.n; else if (e.kind === 'grew') x.grew += e.n;
       }
       for (const r of (c.raids ?? []).filter((x) => x.turn === now)) got[r.at].raids += r.killed + r.taken.men + r.taken.women;
@@ -604,6 +607,8 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     ...rows.map((r) => `| ${r.area} | ${r.figure} | ${r.band} | ${r.measured} | **${r.verdict}** |`),
     '',
     ...deadSection(ruled.flatMap((w) => w.dead)),
+    `Plague killed ${(ruled.reduce((k, w) => k + w.plagueDead, 0) / (ruled.length * 3)).toFixed(1)} people a nation in the first twenty years (the season's ledger, every people and the tribes together, over three peoples a campaign).`,
+    '',
     '## How each was read',
     '',
     ...rows.filter((r) => r.note).map((r) => `- **${r.figure}.** ${r.note}`),
