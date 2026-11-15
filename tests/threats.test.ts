@@ -4,7 +4,11 @@ import { endTurn, continueAI, eventsAt, newCampaign } from '../src/sim/campaign'
 import type { Campaign, Territory } from '../src/sim/campaign';
 import { OLD_SEASON, SEASONS_A_YEAR } from '../src/sim/ageing';
 import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, threatsOfMen, wanted } from '../src/sim/threats';
-import { folkOf } from '../src/sim/township';
+import { folkOf, nationStores } from '../src/sim/township';
+import type { Stores } from '../src/sim/township';
+import { SUPPLY_UNITS } from '../src/sim/stores';
+/** All the goods in a store. */
+const goods = (s: Stores): number => s.food + s.wood + s.gold + s.stone;
 
 /** A world with one town of the player's set apart: its neighbours are the local tribes', so a band placed there has only it to strike. */
 function world(opts: { men?: number; women?: number; children?: number; virtue?: number; seed?: number } = {}) {
@@ -95,7 +99,7 @@ describe('a band strikes a town', () => {
   it('an undefended town falls to raiders: men die, women are carried off, stores are lost, and no child is touched', () => {
     const { c, t, f } = world({ men: 2, women: 8, children: 5 });
     const b = band(c, t, 'raiders', 8);
-    const supplies = c.factions[0].supplies;
+    const had = goods(nationStores(c, 0));
     const r = untilStrike(c, b);
     expect(r.outcome).toBe('taken');
     expect(r.killed).toBe(1);
@@ -108,7 +112,7 @@ describe('a band strikes a town', () => {
     expect(f.ages!.f.filter((s) => s < OLD_SEASON).length).toBe(f.women);
     expect(r.stores.food).toBe(Math.floor(400 * THREATS.loot.taken));
     expect(f.stores.food).toBe(400 - r.stores.food);
-    expect(c.factions[0].supplies).toBe(supplies - THREATS.supplies.taken);
+    expect(goods(nationStores(c, 0))).toBe(had - goods(r.stores)); // what was looted from the town is all the raid cost: the nation is not charged again
     expect(r.sway).toBe(THREATS.sway.taken);
     // Held at the band's place, with their ages, since this season.
     expect(b.held).toHaveLength(1);
@@ -214,7 +218,7 @@ describe('those who are taken', () => {
     const { c, t, f, b, r } = sacked();
     const taken = r.taken.men + r.taken.women;
     expect(taken).toBeGreaterThan(0);
-    const women = f.women, men = f.men, oldest = Math.max(...b.held[0].women), supplies = c.factions[0].supplies;
+    const women = f.women, men = f.men, oldest = Math.max(...b.held[0].women), stored = goods(f.stores);
     expect(seasonsLeft(c, b.held[0])).toBe(THREATS.holdFor);
     c.turn += 2;
     expect(seasonsLeft(c, b.held[0])).toBe(THREATS.holdFor - 2);
@@ -226,7 +230,7 @@ describe('those who are taken', () => {
     expect(f.children).toBe(5);
     // Half the time held: a woman is about fifteen years older, a man ten.
     expect(Math.max(...f.ages!.f)).toBeGreaterThanOrEqual(oldest + Math.round(THREATS.yearsWoman * SEASONS_A_YEAR * 0.5));
-    expect(c.factions[0].supplies).toBe(supplies + THREATS.prize);
+    expect(goods(f.stores)).toBe(stored + THREATS.prize * SUPPLY_UNITS); // taken back into the town where the army stands
     expect(c.log.some((l) => l.includes('Your army has broken the Test Men'))).toBe(true);
     expect(c.log.some((l) => l.includes('free and going home'))).toBe(true);
     expect(eventsAt(c, t.id).some((e) => e.kind === 'rescued')).toBe(true);

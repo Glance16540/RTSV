@@ -7,22 +7,28 @@
 // often a thing comes and how bad it is, so that a Righteous people has them a third as often and a third as
 // hard, and is very rarely struck hard at all.
 //
-//   Famine. The harvest fails: the holder loses what the land would have yielded this season, by that measure.
-//     Struck hard, a people that cannot make up the loss from its stores sees the army standing there lose a
-//     company: men walk away unfed. Never where rain is over the land; twice as often under dust.
-//   Plague. Sickness is in the land for a season or more. While it lasts the land costs its holder a supply a
-//     season, an army of the holder's standing there loses a company a season, and each season it may pass to a
-//     held land next door, by that land's holder's creed.
-//   Fire. The town burns: the holder pays to rebuild, and the town on that land's battlefield, if there is one,
-//     is found damaged by whoever next fights there. Struck hard, one of the land's works (a farm, a barracks...)
-//     burns down. Never where rain is over the land; twice as often under dust.
+// They fall on the real town on the land: its stores and its people as township.ts keeps them (stores.ts).
+//
+//   Famine. The harvest fails: the town eats from its own granary what the land would have yielded this season,
+//     by that measure, in food. Struck hard, a town whose granary cannot cover it sees the army standing there
+//     lose a company: men walk away unfed. Never where rain is over the land; twice as often under dust.
+//   Plague. Sickness is in the land for a season or more. Each season it lasts it kills a share of the town's
+//     grown people from the record, the old first, an army of the holder's standing there loses a company, and it
+//     may pass to a held land next door, by that land's holder's creed. Children are never harmed.
+//   Fire. The town burns: a share of its food and wood goes up (gold and stone do not burn), the holder pays to
+//     rebuild out of the town's own stores, and the town on that land's battlefield, if there is one, is found damaged by
+//     whoever next fights there. Struck hard, one of the land's works (a farm, a barracks...) burns down. Never
+//     where rain is over the land; twice as often under dust.
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was. Faith is still a
-// people's and not yet a town's, so every land of a people stands the same; and a land's own people and stores
-// are not yet kept, so what is lost is counted in supplies and companies, not in names.
+// people's and not yet a town's, so every land of a people stands the same; and the dead of plague are counted,
+// not named.
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, territoryIncome, weatherAt } from './campaign';
 import { creedOf } from './creed';
+import { STORE_KINDS, folkOf } from './township';
+import type { Stores } from './township';
+import { SUPPLY_UNITS } from './stores';
 
 export const ACTS = {
   /** The season from which they may come. */
@@ -33,16 +39,20 @@ export const ACTS = {
   dry: 2,
   /** A strike is a hard one with this chance, times the measure squared: one in forty for the Righteous. */
   hard: 0.25,
-  /** Plague: seasons it lasts for an ordinary people, what the land costs a season, and the chance each season of its passing next door. */
-  seasons: 2, sick: 1, spread: 0.25,
-  /** Fire: supplies it costs an ordinary people, and the share of their strength the town's buildings lose. */
-  rebuild: 3, burnt: 0.35,
+  /** Plague: seasons it lasts for an ordinary people, the share of the town's grown people it kills a season (one at least), and the chance each season of its passing next door. */
+  seasons: 2, sick: 0.1, spread: 0.25,
+  /** Fire: supplies it costs an ordinary people to rebuild, the share of their strength the town's buildings lose, and the share of its food and wood that burns. */
+  rebuild: 3, burnt: 0.35, stores: 0.3,
   /** Works a fire cannot burn down. */
   stone: ['fortress'] as string[],
 };
 
 export type Act = 'famine' | 'plague' | 'blaze';
-export interface Struck { kind: Act; at: number; owner: number; hard: boolean; cost: number; company: boolean; lost?: string; seasons?: number; from?: number }
+/**
+ * What fell where. `cost`: supplies paid (famine: the food eaten, in supplies; fire: the rebuilding). `food`: food
+ * a famine ate. `dead`: grown people plague killed. `burnt`: stores fire burnt.
+ */
+export interface Struck { kind: Act; at: number; owner: number; hard: boolean; cost: number; company: boolean; lost?: string; seasons?: number; from?: number; food?: number; dead?: number; burnt?: Stores }
 
 /** How hard acts of God fall on this people: the same measure as in a battle (wrath.ts). 1 for the local tribes. */
 export const wrathOf = (c: Campaign, f: number): number => (f < 0 || !c.factions[f] ? 1 : creedOf(c.factions[f].virtue ?? 0).plague);
@@ -60,7 +70,6 @@ const whose = (c: Campaign, f: number): string => (f === 0 ? 'your' : `${c.facti
 const who = (c: Campaign, f: number): string => (f === 0 ? 'you' : c.factions[f].name);
 const mark = (c: Campaign, kind: EventKind, at: number, turns = 0): void => { (c.events ??= []).push({ kind, at, turn: c.turn, until: c.turn + turns }); };
 const sickAt = (c: Campaign, tid: number): boolean => (c.events ?? []).some((e) => e.kind === 'plague' && e.at === tid && e.until >= c.turn);
-const pay = (c: Campaign, f: number, n: number): number => { const x = c.factions[f], paid = Math.min(x.supplies, n); x.supplies -= paid; return paid; };
 const ownArmy = (c: Campaign, t: Territory): Army | undefined => c.armies.find((a) => a.at === t.id && a.owner === t.owner);
 /** An army loses a company, though never its last. Returns whether it did. */
 function thin(a: Army | undefined): boolean {
@@ -70,28 +79,51 @@ function thin(a: Army | undefined): boolean {
   return true;
 }
 
+/** A season of plague in a town: a share of its grown people die, the old first, then men and women in turn. Never a child. */
+export function sicken(c: Campaign, t: Territory): number {
+  const k = folkOf(c, t.id), grownNow = k.men + k.women + k.elders;
+  let n = Math.min(grownNow, Math.max(1, Math.round(grownNow * ACTS.sick))), dead = 0, man = chance(c, t.id, 53) < 0.5;
+  while (n-- > 0) {
+    if (k.elders > 0) k.elders--;
+    else if ((man && k.men > 0) || k.women <= 0) { if (k.men <= 0) break; k.men--; man = false; }
+    else { k.women--; man = true; }
+    dead++;
+  }
+  return dead; // the ages on the record follow the counts the next time they are read (ageing.ts)
+}
+
 function famine(c: Campaign, t: Territory, w: number, hard: boolean): Struck {
   const f = t.owner;
   const due = Math.max(1, Math.round(territoryIncome(t, c.factions[f].civ) * w));
-  const paid = pay(c, f, due);
-  const company = hard && paid < due && thin(ownArmy(c, t));
+  // The town eats from its own granary what the land did not give.
+  const store = folkOf(c, t.id).stores, food = Math.min(store.food, due * SUPPLY_UNITS);
+  store.food -= food;
+  const short = food < due * SUPPLY_UNITS, paid = Math.floor(food / SUPPLY_UNITS);
+  const company = hard && short && thin(ownArmy(c, t));
   mark(c, 'famine', t.id);
-  c.log.push(`The harvest has failed in ${t.name}: ${paid} of ${whose(c, f)} supplies go to feed it${paid < due ? ', and it is not enough' : ''}.${company ? ` Unfed, a company of ${whose(c, f)} army there has walked away.` : ''}`);
-  return { kind: 'famine', at: t.id, owner: f, hard, cost: paid, company };
+  c.log.push(`The harvest has failed in ${t.name}: the town eats ${food} of its stored food${short ? ', and it is not enough: the granary is empty' : ''}.${company ? ` Unfed, a company of ${whose(c, f)} army there has walked away.` : ''}`);
+  return { kind: 'famine', at: t.id, owner: f, hard, cost: paid, company, food };
 }
 
 function plague(c: Campaign, t: Territory, w: number, hard: boolean, from?: number): Struck {
   const seasons = Math.max(1, Math.round(ACTS.seasons * w)) + (hard ? 1 : 0);
   mark(c, 'plague', t.id, seasons - 1);
   c.log.push(from === undefined
-    ? `Plague has broken out in ${t.name}. While it lasts the land costs ${who(c, t.owner)} a supply a season, and an army kept there will sicken.`
+    ? `Plague has broken out in ${t.name}. While it lasts it will take ${whose(c, t.owner)} people there a season at a time, and an army kept there will sicken.`
     : `The plague in ${c.territories[from].name} has passed to ${t.name}.`);
   return { kind: 'plague', at: t.id, owner: t.owner, hard, cost: 0, company: false, seasons, ...(from === undefined ? {} : { from }) };
 }
 
 function blaze(c: Campaign, t: Territory, w: number, hard: boolean): Struck {
   const f = t.owner;
-  const paid = pay(c, f, Math.max(1, Math.round(ACTS.rebuild * w)));
+  // Food and timber go up; gold and stone do not burn. Then the town is rebuilt out of what is left.
+  const store = folkOf(c, t.id).stores, share = Math.min(0.9, ACTS.stores * w), burnt: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
+  for (const k of ['food', 'wood'] as const) { burnt[k] = Math.floor(store[k] * share); store[k] -= burnt[k]; }
+  // The town is rebuilt out of its own stores, wood and stone first: never out of the nation's other towns.
+  const owed = Math.max(1, Math.round(ACTS.rebuild * w)) * SUPPLY_UNITS;
+  let left = owed;
+  for (const k of ['wood', 'stone', 'gold', 'food'] as const) { const n = Math.min(store[k], left); store[k] -= n; left -= n; }
+  const paid = Math.floor((owed - left) / SUPPLY_UNITS);
   if (t.town) for (const b of t.town.b) b[3] = Math.max(0.1, Math.round((b[3] ?? 1) * (1 - Math.min(0.9, ACTS.burnt * w)) * 100) / 100);
   let lost: string | undefined;
   if (hard) {
@@ -99,8 +131,9 @@ function blaze(c: Campaign, t: Territory, w: number, hard: boolean): Struck {
     if (burns.length) { lost = burns[Math.floor(chance(c, t.id, 47) * burns.length)]; t.buildings.splice(t.buildings.indexOf(lost), 1); }
   }
   mark(c, 'blaze', t.id);
-  c.log.push(`Fire has gone through the town at ${t.name}: it costs ${who(c, f)} ${paid} ${paid === 1 ? 'supply' : 'supplies'} to rebuild${lost ? `, and the ${lost} there is burnt to the ground` : ''}.`);
-  return { kind: 'blaze', at: t.id, owner: f, hard, cost: paid, company: false, ...(lost ? { lost } : {}) };
+  const went = STORE_KINDS.filter((k) => burnt[k]).map((k) => `${burnt[k]} ${k}`).join(' and ');
+  c.log.push(`Fire has gone through the town at ${t.name}${went ? `: ${went} burnt in store, and` : ':'} it costs ${who(c, f)} ${paid} ${paid === 1 ? 'supply' : 'supplies'} to rebuild${lost ? `, and the ${lost} there is burnt to the ground` : ''}.`);
+  return { kind: 'blaze', at: t.id, owner: f, hard, cost: paid, company: false, burnt, ...(lost ? { lost } : {}) };
 }
 
 /**
@@ -112,10 +145,11 @@ export function actsOfGod(c: Campaign): Struck[] {
   // Plague that is already in a land: it takes its toll, and may pass next door.
   for (const t of c.territories) {
     if (t.owner < 0 || !c.factions[t.owner]?.alive || !sickAt(c, t.id)) continue;
-    const paid = pay(c, t.owner, ACTS.sick);
+    const dead = sicken(c, t);
     const company = thin(ownArmy(c, t));
+    if (dead) c.log.push(`Plague in ${t.name} has killed ${dead} of ${whose(c, t.owner)} people there this season.`);
     if (company) c.log.push(`Plague in ${t.name} costs ${whose(c, t.owner)} army there a company.`);
-    out.push({ kind: 'plague', at: t.id, owner: t.owner, hard: false, cost: paid, company });
+    out.push({ kind: 'plague', at: t.id, owner: t.owner, hard: false, cost: 0, company, dead });
     const next = t.adj.map((id) => c.territories[id]).filter((n) => n.owner >= 0 && c.factions[n.owner]?.alive && !sickAt(c, n.id));
     if (!next.length) continue;
     const n = next[Math.floor(chance(c, t.id, 31) * next.length)];

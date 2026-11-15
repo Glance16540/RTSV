@@ -725,3 +725,7 @@ body.looking-out #visit { display: none; }
 
 /* ---- A town's own faith, its resentment if taken, and its men away (townpanel.ts) ---- */
 .town-faith, .town-yoke, .town-away { font-size: 0.94em; }
+
+/* Convoys by road (src/client/convoypanel.ts) */
+.ow-convoy { margin-top: 6px; }
+.ow-convoy select { margin: 4px 4px 4px 0; max-width: 100%; }
