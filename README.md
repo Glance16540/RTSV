@@ -301,6 +301,10 @@ neighbouring land.
   wood, a Fortress in stone, a company in food and gold, a truce in gold, at the old price in supplies,
   from the town where it is done first; what your towns lack of a kind is made up in other goods. Each
   land's yield goes into its own town, in the kinds the land gives.
+- **Towns eat** (`src/sim/larder.ts`). Each season a town eats from its own food store: 12 food for a
+  grown man or woman, 9 for one of the old, 6 for a child. A farmed town of about twenty is fed by its own
+  fields; a town with none needs food sent. A town that cannot eat goes hungry, and after two hungry seasons
+  it loses a tenth of its grown people a season, the old first. No child dies of it.
 - **Convoys** (`src/sim/convoys.ts`). From a town's panel, send food, goods or a couple to another of
   your towns by a road through your own lands. They arrive next season. Highwaymen take half the goods
   of a convoy they catch with no army of yours on its road as strong as they are.

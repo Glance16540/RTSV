@@ -10,6 +10,7 @@ import { actsOfGod } from './acts';
 import { threatsOfMen } from './threats';
 import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
+import { larderSeason } from './larder';
 import { seasonDrift } from './drift';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
@@ -1408,6 +1409,7 @@ export function continueAI(c: Campaign): void {
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
+      larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
