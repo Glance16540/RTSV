@@ -366,13 +366,14 @@ export class Hud {
       const locked = t.age > p.age ? `Requires the ${AGES[t.age].name}.` : t.requires && !p.techs.has(t.requires) ? `Requires ${TECHS[t.requires].name}.` : undefined;
       out.push({ id: 'r:' + id, icon: ico(id, t.icon), name: 'Research ' + t.name, desc: t.desc, cost: game.techCost(pid, id), locked, act: () => game.cmdResearch(pid, b.id, id) });
     }
-    if (b.type === 'towncenter' && p.age < AGES.length - 1) {
+    // In a campaign town (a battle or a visit) the age is the nation's, advanced on the map: no button for it here.
+    if (b.type === 'towncenter' && p.age < AGES.length - 1 && !game.fixedAge) {
       const next = AGES[p.age + 1];
       while (out.length < 4) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
       out.push({
         id: 'age' + p.age, icon: ico('ageup', '⏫'), name: `Advance to the ${next.name}`, cost: next.cost,
         desc: 'Unlocks new buildings, units and technologies, and gives your settlement a new look.',
-        locked: game.fixedAge ? 'A town is in its nation\'s age: advance it on the map.' : p.agingUp ? 'Already advancing.' : undefined, act: () => game.cmdAgeUp(pid, b.id),
+        locked: p.agingUp ? 'Already advancing.' : undefined, act: () => game.cmdAgeUp(pid, b.id),
       });
     }
     if (b.type === 'towncenter') {
