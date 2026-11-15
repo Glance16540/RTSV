@@ -25,6 +25,8 @@ import { openHeroCreator, savedHero } from './herocreator';
 import { visitButton } from './visit';
 import { convoyHtml, sendFromPanel } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
+import { decreePanel } from './decrees';
+import { DecreeKind, issueDecree } from '../sim/decrees';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
 export type LeaderChoice = 'a' | 'b' | 'own';
@@ -135,6 +137,7 @@ export class Overworld {
       if (kind === 'age') advanceAge(this.c, 0);
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
       if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
+      if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
       if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
       this.changed();
     });
@@ -642,6 +645,7 @@ export class Overworld {
       }
       html += visitButton(c, t.id);
       html += convoyHtml(c, t.id);
+      html += decreePanel(c, t.id); // drift and decrees (src/sim/drift.ts, decrees.ts)
       if (!me.heroAlive) html += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
       if (t.capital === 0 && !me.heroAlive) html += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
       if (t.capital === 0) html += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
