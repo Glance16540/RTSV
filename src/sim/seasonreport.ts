@@ -10,6 +10,8 @@ import type { Campaign } from './campaign';
 import { ledgerSince } from './ledger';
 import { THREATS, reportLine } from './threats';
 import { folkOf, living, type Notable } from './township';
+import { isOpen } from './deadtown';
+import { reach } from './campaign';
 
 /** A known person, as the report names them. */
 export interface Named { name: string; family?: string; gender: 'm' | 'f'; kind: Notable['kind']; deed: string; unit?: string; kids?: number; at: number; land: string }
@@ -25,17 +27,21 @@ export interface SeasonReport {
   /** The season it covers: from the turn its snapshot was taken to the turn it was made. */
   from: number; turn: number;
   born: number; grew: number; aged: number; starved: number; fell: number;
+  /** Men killed in raids on its towns: counted here once, from the raids' own reports, and in no other count. */
+  raidDead: number;
   taken: number; back: number; lostForGood: number;
   raids: { at: number; land: string; outcome: 'held' | 'raided' | 'taken'; line: string }[];
   drifted: { tavern: number; mines: number; home: number };
   rose: string[]; lost: string[]; won: string[];
   made: Named[]; gone: (Named & { how: string })[];
+  /** Its towns that stand open, with nobody in them (deadtown.ts); and others' open towns its armies can reach. */
+  open: string[]; openNear: string[];
   /** The player has seen it. */
   seen?: boolean;
 }
 
 declare module './campaign' {
-  interface Campaign { /** The nation when this season began, and the report of the last one (seasonreport.ts). */ seasonFrom?: Snapshot; seasonReport?: SeasonReport }
+  interface Campaign { /** The nation when this season began, the report of the last one, and the last few to look back on (seasonreport.ts). */ seasonFrom?: Snapshot; seasonReport?: SeasonReport; seasonPast?: SeasonReport[] }
 }
 
 const named = (c: Campaign, at: number, n: Notable): Named => ({
@@ -59,11 +65,11 @@ export function snapshot(c: Campaign, f = 0): Snapshot {
 
 /** What changed for people `f` since the snapshot `s` was taken. */
 export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
-  const r: SeasonReport = { from: s.turn, turn: c.turn, born: 0, grew: 0, aged: 0, starved: 0, fell: 0, taken: 0, back: 0, lostForGood: 0, raids: [], drifted: { tavern: 0, mines: 0, home: 0 }, rose: [], lost: [], won: [], made: [], gone: [] };
+  const r: SeasonReport = { from: s.turn, turn: c.turn, born: 0, grew: 0, aged: 0, starved: 0, fell: 0, raidDead: 0, open: [], openNear: [], taken: 0, back: 0, lostForGood: 0, raids: [], drifted: { tavern: 0, mines: 0, home: 0 }, rose: [], lost: [], won: [], made: [], gone: [] };
   // The season's own ledger: births, coming of age, deaths of age and hunger, and the fallen.
   for (const e of ledgerSince(c, s.seq)) if (e.owner === f) r[e.kind] += e.n;
   // Raids on its towns, with how they went.
-  for (const x of c.raids ?? []) if (x.owner === f && x.turn > s.turn) r.raids.push({ at: x.at, land: c.territories[x.at].name, outcome: x.outcome, line: reportLine(c, x) });
+  for (const x of c.raids ?? []) if (x.owner === f && x.turn > s.turn) { r.raids.push({ at: x.at, land: c.territories[x.at].name, outcome: x.outcome, line: reportLine(c, x) }); r.raidDead += x.killed; }
   // Its people held by bands: those newly taken, those got back, and those held too long.
   const now = snapshot(c, f);
   for (const [k, g] of Object.entries(now.held)) if (!s.held[k]) r.taken += g.n;
@@ -95,22 +101,30 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
     const rec = c.territories[n.at].folk?.notables.find((x) => x.name === n.name);
     if (rec?.lost) r.gone.push({ ...n, how: rec.lost.how });
   }
+  // Towns standing open: its own, and others' its armies could walk into.
+  r.open = now.towns.filter((t) => isOpen(c, t.id)).map((t) => c.territories[t.id].name);
+  const near = new Set(c.armies.filter((a) => a.owner === f).flatMap((a) => reach(c, a.at)));
+  r.openNear = c.territories.filter((t) => t.owner !== f && near.has(t.id) && isOpen(c, t.id)).map((t) => t.name);
   return r;
 }
 
 /** Whether anything at all happened in a season's report. */
 export const anything = (r: SeasonReport): boolean =>
-  r.born + r.grew + r.aged + r.starved + r.fell + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
-  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length > 0;
+  r.born + r.grew + r.aged + r.starved + r.fell + r.raidDead + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
+  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) > 0;
 
 /** A season has turned: report the one just ended, and begin keeping the next. Called once a turn (campaign.ts). */
 export function seasonTurned(c: Campaign, f = 0): void {
   if (c.seasonFrom && c.factions[f]?.alive) {
     const r = reportSince(c, c.seasonFrom, f);
-    if (anything(r)) c.seasonReport = r; else delete c.seasonReport;
+    if (anything(r)) { c.seasonReport = r; c.seasonPast = [...(c.seasonPast ?? []), { ...r }].slice(-PAST_SEASONS); } else delete c.seasonReport;
   }
   c.seasonFrom = snapshot(c, f);
 }
+/** Seasons' reports kept to look back on. */
+export const PAST_SEASONS = 8;
+/** The seasons' reports kept, newest first. */
+export const pastSeasons = (c: Campaign): SeasonReport[] => [...(c.seasonPast ?? [])].reverse();
 /** The report waiting for the player, if there is one they have not yet seen. */
 export const reportDue = (c: Campaign): SeasonReport | null => (c.seasonReport && !c.seasonReport.seen ? c.seasonReport : null);
 
@@ -123,7 +137,10 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   if (r.grew) add('people', 'good', `${n(r.grew, 'child came', 'children came')} of age.`);
   if (r.aged) add('loss', 'plain', `${n(r.aged, 'died', 'died')} of old age.`);
   if (r.starved) add('loss', 'bad', `${n(r.starved, 'died', 'died')} of hunger.`);
-  if (r.fell) add('loss', 'bad', `${n(r.fell, 'man was', 'men were')} killed with the armies.`);
+  if (r.fell) add('loss', 'bad', `${n(r.fell, 'man was', 'men were')} killed in battle.`);
+  if (r.raidDead) add('loss', 'bad', `${n(r.raidDead, 'man was', 'men were')} killed in raids.`);
+  const dead = r.aged + r.starved + r.fell + (r.raidDead ?? 0);
+  if ([r.aged, r.starved, r.fell, r.raidDead ?? 0].filter(Boolean).length > 1) add('loss', 'plain', `${dead} died in all.`);
   if (r.taken) add('captives', 'bad', `${n(r.taken, 'was', 'were')} carried off.`);
   if (r.back) add('captives', 'good', `${n(r.back, 'was', 'were')} got back.`);
   if (r.lostForGood) add('captives', 'bad', `${n(r.lostForGood, 'was', 'were')} held too long and will not be seen again.`);
@@ -134,5 +151,7 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   for (const t of r.rose) add('land', 'bad', `${t} rose and threw you off.`);
   for (const t of r.lost) add('land', 'bad', `${t} was lost.`);
   for (const t of r.won) add('land', 'good', `${t} is yours.`);
+  for (const t of r.open ?? []) add('land', 'bad', `${t} stands open: nobody is left in it, and anyone who marches on it has it. Send people by convoy, or an army to hold it.`);
+  for (const t of r.openNear ?? []) add('land', 'good', `${t} stands open, within reach of your armies: march on it and it is yours.`);
   return out;
 }
