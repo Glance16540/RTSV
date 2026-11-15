@@ -27,7 +27,7 @@ export interface Snapshot {
 export interface SeasonReport {
   /** The season it covers: from the turn its snapshot was taken to the turn it was made. */
   from: number; turn: number;
-  born: number; grew: number; aged: number; starved: number; fell: number;
+  born: number; grew: number; aged: number; starved: number; fell: number; sick: number;
   /** Men killed in raids on its towns: counted here once, from the raids' own reports, and in no other count. */
   raidDead: number;
   taken: number; back: number; lostForGood: number;
@@ -68,7 +68,7 @@ export function snapshot(c: Campaign, f = 0): Snapshot {
 
 /** What changed for people `f` since the snapshot `s` was taken. */
 export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
-  const r: SeasonReport = { from: s.turn, turn: c.turn, born: 0, grew: 0, aged: 0, starved: 0, fell: 0, raidDead: 0, open: [], openNear: [], taken: 0, back: 0, lostForGood: 0, raids: [], drifted: { tavern: 0, mines: 0, home: 0 }, rose: [], lost: [], won: [], made: [], gone: [] };
+  const r: SeasonReport = { from: s.turn, turn: c.turn, born: 0, grew: 0, aged: 0, starved: 0, fell: 0, sick: 0, raidDead: 0, open: [], openNear: [], taken: 0, back: 0, lostForGood: 0, raids: [], drifted: { tavern: 0, mines: 0, home: 0 }, rose: [], lost: [], won: [], made: [], gone: [] };
   // The season's own ledger: births, coming of age, deaths of age and hunger, and the fallen.
   for (const e of ledgerSince(c, s.seq)) if (e.owner === f) r[e.kind] += e.n;
   // Raids on its towns, with how they went.
@@ -115,7 +115,7 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
 
 /** Whether anything at all happened in a season's report. */
 export const anything = (r: SeasonReport): boolean =>
-  r.born + r.grew + r.aged + r.starved + r.fell + r.raidDead + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
+  r.born + r.grew + r.aged + r.starved + r.fell + (r.sick ?? 0) + r.raidDead + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
   r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.household?.length ?? 0) > 0;
 
 /** A season has turned: report the one just ended, and begin keeping the next. Called once a turn (campaign.ts). */
@@ -142,10 +142,11 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   if (r.grew) add('people', 'good', `${n(r.grew, 'child came', 'children came')} of age.`);
   if (r.aged) add('loss', 'plain', `${n(r.aged, 'died', 'died')} of old age.`);
   if (r.starved) add('loss', 'bad', `${n(r.starved, 'died', 'died')} of hunger.`);
+  if (r.sick) add('loss', 'bad', `${n(r.sick, 'died', 'died')} of plague.`);
   if (r.fell) add('loss', 'bad', `${n(r.fell, 'man was', 'men were')} killed in battle.`);
   if (r.raidDead) add('loss', 'bad', `${n(r.raidDead, 'man was', 'men were')} killed in raids.`);
-  const dead = r.aged + r.starved + r.fell + (r.raidDead ?? 0);
-  if ([r.aged, r.starved, r.fell, r.raidDead ?? 0].filter(Boolean).length > 1) add('loss', 'plain', `${dead} died in all.`);
+  const dead = r.aged + r.starved + r.fell + (r.sick ?? 0) + (r.raidDead ?? 0);
+  if ([r.aged, r.starved, r.fell, r.sick ?? 0, r.raidDead ?? 0].filter(Boolean).length > 1) add('loss', 'plain', `${dead} died in all.`);
   if (r.taken) add('captives', 'bad', `${n(r.taken, 'was', 'were')} carried off.`);
   if (r.back) add('captives', 'good', `${n(r.back, 'was', 'were')} got back.`);
   if (r.lostForGood) add('captives', 'bad', `${n(r.lostForGood, 'was', 'were')} held too long and will not be seen again.`);

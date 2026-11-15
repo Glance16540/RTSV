@@ -31,6 +31,7 @@ import { STORE_KINDS, folkOf } from './township';
 import type { Stores } from './township';
 import { SUPPLY_UNITS } from './stores';
 import { needOf } from './larder';
+import { tally } from './ledger';
 
 export const ACTS = {
   /** The season from which they may come. */
@@ -95,6 +96,7 @@ export function sicken(c: Campaign, t: Territory): number {
     else { k.women--; man = true; }
     dead++;
   }
+  tally(c, t.id, 'sick', dead); // for the season's report (ledger.ts)
   return dead; // the ages on the record follow the counts the next time they are read (ageing.ts)
 }
 
