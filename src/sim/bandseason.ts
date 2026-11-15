@@ -4,7 +4,7 @@
 // (bandhorde.ts). What came of the season is read back as plain data from raidnews.ts.
 import type { Campaign } from './campaign';
 import { Raid, appearSeason, captivesSeason, strikeSeason } from './threats';
-import { huntBands } from './bandfight';
+import { ambushSeason, huntBands } from './bandfight';
 import { roamSeason } from './bandroam';
 import { hordeSeason } from './bandhorde';
 
@@ -17,6 +17,7 @@ export function threatsOfMen(c: Campaign): Raid[] {
   roamSeason(c, out); // bands flee, roam, settle and break up
   const raids = [...strikeSeason(c, out), ...hordeSeason(c, out)];
   appearSeason(c, out);
+  ambushSeason(c, out); // a band may fall on an army that is weak, or seeing a convoy along the road
   c.log.push(...out);
   return raids;
 }

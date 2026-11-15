@@ -58,10 +58,12 @@ export interface Band {
   held: Held[];
   /** The season it last moved its place (bandroam.ts). */
   moved?: number;
+  /** The land it has set out for, a few lands off, and is making its way to a land at a time (bandroam.ts). */
+  bound?: number;
 }
 export type Outcome = 'held' | 'raided' | 'taken';
 /** Something a band did or had done to it that is not a strike: it came, moved, fled, settled, broke up, was fought, lost its captives. */
-export interface BandNote { turn: number; kind: 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran'; at: number; band: number; text: string; /** The peoples it concerns: whose captives, whose army, whose land. */ owners: number[] }
+export interface BandNote { turn: number; kind: 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush'; at: number; band: number; text: string; /** The peoples it concerns: whose captives, whose army, whose land. */ owners: number[] }
 /** What a town had to defend with, part by part, in the measure of companies. */
 export interface Defence { men: number; works: number; walls: number; army: number; guard: number; spirit: number; total: number }
 /** The report of one strike. */
@@ -98,7 +100,7 @@ export const THREATS = {
   /** The chance a band strikes in a season. */
   strike: 0.75,
   /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
-  hold: 0.78, fall: 0.6,
+  hold: 0.78, fall: 0.52,
   /** What those on a road can do for themselves with no army to escort them, in companies: enough to see off a small band. */
   wayfarers: 2.5,
   /** What counts toward a town's defence, in companies. */
