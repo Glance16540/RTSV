@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { battleConfig, defence, defenders, moveArmy, newCampaign, resolvePending } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
-import { TRIBE, armMen, tribeArms, tribeBeaten, tribeSide, tribesSeason, warriorsOf } from '../src/sim/tribes';
+import { TRIBE, armMen, fieldReckoned, setTribe, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from '../src/sim/tribes';
+import { finishBattle } from '../src/sim/campaign';
 import { folkOf } from '../src/sim/township';
 
 function world(seed = 11) {
@@ -119,16 +120,86 @@ describe('a tribe\'s bands are its town\'s men', () => {
 });
 
 describe('a tribe\'s town fought over in person', () => {
-  it('fields its own men in arms and no clubmen from nowhere; in the open, and for the marauders, two clubmen to a band as before', () => {
+  it('fields its own men in arms and no clubmen from nowhere, in its town or in the open; the marauders, who have no town, two clubmen to a point of strength', () => {
     const { c, tribe } = world();
     tribe.militia = 4;
-    expect(tribeSide(c, tribe.id, false)).toEqual({ clubmen: 0, warriors: 4 * TRIBE.men });
-    expect(tribeSide(c, tribe.id, true)).toEqual({ clubmen: 8, warriors: 0 });
-    const camp = world().tribe;
+    expect(turnOut(c, tribe.id, false)).toEqual({ clubmen: 0, warriors: 4 * TRIBE.men });
+    const open = turnOut(c, tribe.id, true);
+    expect(open).toMatchObject({ clubmen: 0, warriors: 4 * TRIBE.men, people: { men: 4 * TRIBE.men, women: 0, elders: 0, children: 0 } });
+    expect(open.people!.ages!.m).toHaveLength(4 * TRIBE.men); // the men who march are men of the town, at their own ages
+    expect(folkOf(c, tribe.id).men).toBe(4 * TRIBE.men); // and are still on its record until the fight is counted
     const w = world();
     w.tribe.horde = true; w.tribe.militia = 5;
-    expect(tribeSide(w.c, w.tribe.id, false)).toEqual({ clubmen: 10, warriors: 0 });
-    expect(camp.horde).toBeFalsy();
+    expect(turnOut(w.c, w.tribe.id, false)).toEqual({ clubmen: 10, warriors: 0 });
+  });
+
+  it('a nation\'s own town turns out two of its men, where two clubmen used to come from nowhere; a town with one man, one', () => {
+    const { c, home } = world();
+    const f = folkOf(c, home.id);
+    f.men = 5;
+    expect(turnOut(c, home.id, false)).toEqual({ clubmen: 0, warriors: TRIBE.town });
+    f.men = 1;
+    expect(turnOut(c, home.id, false)).toEqual({ clubmen: 0, warriors: 1 });
+    expect(turnOut(c, home.id, true).people).toMatchObject({ men: 1 });
+    f.men = 0;
+    expect(turnOut(c, home.id, true)).toEqual({ clubmen: 0, warriors: 0 });
+    // In a siege of it the defender's side has no clubmen but those its own men become.
+    f.men = 5; delete f.ages;
+    const next = c.territories[home.adj[0]];
+    next.owner = 1;
+    c.armies = c.armies.filter((a) => a.at !== home.id && a.at !== next.id);
+    c.armies.push({ id: 802, owner: 1, at: next.id, units: { infantry: 4 }, hero: false, vet: 0, moved: false });
+    c.phase = 'ai';
+    expect(moveArmy(c, 802, home.id)).toBe('battle');
+    c.pending!.mode = 'siege';
+    const cfg = battleConfig(c)!;
+    expect(cfg.setups[0].bonus!.units!.clubman).toBeUndefined();
+    expect(cfg.setups[0].bonus!.warriors).toBe(TRIBE.town);
+    const g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
+    const mine = g.units.filter((u) => u.owner === 0 && !u.dead);
+    expect(mine.filter((u) => u.type === 'clubman' || g.trainedAs(0, 'clubman') === u.type).filter((u) => u.lifespan > 0)).toHaveLength(TRIBE.town);
+    expect(g.census(0).men).toBe(5);
+  });
+
+  it('met in the open, those who fall are struck from the town and those who live go home', () => {
+    const { c, home, tribe } = world();
+    tribe.militia = 4; tribe.buildings = []; tribe.trait = '';
+    c.armies = c.armies.filter((a) => a.owner !== 0);
+    c.armies.push({ id: 801, owner: 0, at: home.id, units: { infantry: 8 }, hero: false, vet: 0, moved: false });
+    expect(moveArmy(c, 801, tribe.id)).toBe('battle');
+    c.pending!.mode = 'field';
+    const cfg = battleConfig(c)!;
+    expect(cfg.field).toBe(true);
+    expect(cfg.setups[1].bonus!.units).toEqual({});
+    expect(cfg.setups[1].bonus).toMatchObject({ warriors: 8, people: { men: 8 } });
+    expect(c.pending!.turnedOut).toBe(8);
+    const g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
+    const theirs = g.units.filter((u) => u.owner === 1 && !u.dead);
+    expect(theirs).toHaveLength(8);
+    expect(theirs.every((u) => g.isMilitary(u) && u.lifespan > 0)).toBe(true);
+    // Five of them fall; the count of their side as the battle ends says so.
+    for (const u of theirs.slice(0, 5)) g.perish(u);
+    const f = folkOf(c, tribe.id), men = f.men, women = f.women;
+    expect(g.census(1).men).toBe(3);
+    finishBattle(c, true, { clubman: 12 }, { folk: g.census(1) });
+    expect(f.men).toBe(men - 5);
+    expect(f.women).toBe(women);
+    expect(f.ages!.m.length + f.ages!.f.length).toBe(f.men + f.women + f.elders);
+    // With no count to go by, nobody is struck.
+    const pend = { armyId: 1, from: 0, to: tribe.id, attacker: 0, defender: -1, aStr: 1, dStr: 1, mode: 'field' as const, turnedOut: 3 };
+    expect(fieldReckoned(c, pend, undefined)).toBe(0);
+    expect(fieldReckoned(c, { ...pend, mode: 'siege' }, { men: 0 })).toBe(0);
+    expect(fieldReckoned(c, pend, { men: 1, elders: 0 })).toBe(2);
+  });
+
+  it('setTribe gives a town a real record of men for so many bands, which is what its strength then is', () => {
+    const { c, tribe } = world();
+    setTribe(c, tribe.id, 7);
+    expect(folkOf(c, tribe.id).men).toBe(7 * TRIBE.men);
+    expect(warriorsOf(c, tribe.id)).toBe(7);
+    expect(tribe.militia).toBe(7);
+    setTribe(c, tribe.id, 500); // no town is larger than a town can be
+    expect(warriorsOf(c, tribe.id)).toBe(30);
   });
 
   it('in the battle those men are the same people in arms, and are counted with the town when it is over', () => {

@@ -75,7 +75,9 @@ describe('a battle is fought by the town and goes home to it', () => {
     expect(cfg.setups[0].bonus!.stores).toEqual(f.stores);
     expect(cfg.setups[1].bonus!.people).toBeUndefined(); // the attackers are an army, not a town
     c.pending!.mode = 'field';
-    expect(battleConfig(c)!.setups[0].bonus!.people).toBeUndefined();
+    // In the open the town is not on the field: only the two of its men who march out with the army are (tribes.ts), and none of its stores.
+    expect(battleConfig(c)!.setups[0].bonus!.people).toMatchObject({ men: Math.min(2, f.men), women: 0, elders: 0, children: 0 });
+    expect(battleConfig(c)!.setups[0].bonus!.stores).toBeUndefined();
     const far = assault();
     expect(battleConfig(far.c)!.setups[1].bonus!.people).toMatchObject({ men: folkOf(far.c, far.to).men }); // the tribe's town is a town too
     expect(battleConfig(far.c)!.setups[0].bonus!.people).toBeUndefined();
@@ -86,10 +88,12 @@ describe('a battle is fought by the town and goes home to it', () => {
     f.men = 5; f.women = 4; f.elders = 3; f.children = 6;
     f.stores = { food: 321, wood: 210, gold: 55, stone: 7 };
     const cfg = battleConfig(c)!, g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea);
-    const mine = g.units.filter((u) => u.owner === 0 && u.type === 'villager');
+    // Two of its men have taken up arms to turn out with the army (tribes.ts): they are of the population still.
+    const mine = g.units.filter((u) => u.owner === 0 && (u.type === 'villager' || u.lifespan > 0));
     expect(mine.length).toBe(12);
+    expect(mine.filter((u) => u.type !== 'villager').length).toBe(2);
     expect(mine.filter((u) => u.age >= u.lifespan * ELDER_AT).length).toBe(3);
-    expect(mine.filter((u) => u.gender === 'm' && u.age < u.lifespan * ELDER_AT).length).toBe(5);
+    expect(mine.filter((u) => (u.gender === 'm' || u.type !== 'villager') && u.age < u.lifespan * ELDER_AT).length).toBe(5); // a man in arms carries no mark of it, as any soldier
     expect(g.players[0].res).toMatchObject({ food: 321, wood: 210, gold: 55, stone: 7 });
     expect(g.census(0)).toMatchObject({ men: 5, women: 4, elders: 3, children: 6, taken: 0, stores: { food: 321, wood: 210, gold: 55, stone: 7 } });
     expect(g.units.filter((u) => u.owner === 1 && u.type === 'villager').length).toBe(4); // a camp still has its four
@@ -131,11 +135,12 @@ describe('a battle is fought by the town and goes home to it', () => {
     const barracks = g.buildings.find((b) => b.owner === 0 && b.type === 'barracks')!;
     // The army marches out, which leaves room under the town's roofs for one of its own to take up arms.
     const fell = g as unknown as { kill(u: unknown): void };
-    for (const u of g.units.filter((x) => x.owner === 0 && x.type !== 'villager')) fell.kill(u);
+    for (const u of g.units.filter((x) => x.owner === 0 && x.type !== 'villager' && !(x.lifespan > 0))) fell.kill(u); // the army, not the two townsmen who turned out
     expect(g.cmdTrain(0, barracks.id, g.trainedAs(0, 'clubman'))).toBe(true);
     run(g, 90);
-    expect(g.units.filter((u) => u.owner === 0 && u.type === 'villager' && u.gender === 'm').length).toBe(3);
-    expect(g.units.filter((u) => u.owner === 0 && u.type !== 'villager' && !u.dead).length).toBe(1);
+    // Of its four men, two turned out in arms as the battle began and one more has now been trained.
+    expect(g.units.filter((u) => u.owner === 0 && u.type === 'villager' && u.gender === 'm').length).toBe(1);
+    expect(g.units.filter((u) => u.owner === 0 && u.type !== 'villager' && !u.dead).length).toBe(3);
     const census = g.census(0);
     expect(census.men + census.elders).toBeGreaterThanOrEqual(4); // he went into the ranks, not out of the town
     finishBattle(c, true, { clubman: 4 }, { folk: JSON.parse(JSON.stringify(census)) as Census });
