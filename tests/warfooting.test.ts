@@ -1,6 +1,7 @@
 // War and peace as a nation's armies know it (src/sim/rivalrule.ts, src/sim/armytown.ts): tuned toward
 // docs/TUNING.md's "men under arms: 10 to 25% in war, under 10% in peace".
 import { describe, expect, it } from 'vitest';
+import { setTribe } from '../src/sim/tribes';
 import { Campaign, newCampaign, raise } from '../src/sim/campaign';
 import { RIVAL, lastMenHome, massArmies, mayMuster, maySpare, standDown, underArms, warFooting } from '../src/sim/rivalrule';
 import { MEN_A_COMPANY, awayFrom, musterOf, sendCompaniesHome } from '../src/sim/armytown';
@@ -114,7 +115,8 @@ describe('a nation does not sit for ever', () => {
     const { c, cap } = nation();
     const mid = c.territories[cap.adj[0]];
     Object.assign(mid, { owner: 1, capital: -1, horde: false, buildings: [] });
-    for (const t of c.territories) if (t.owner !== 1) Object.assign(t, { owner: -1, capital: -1, horde: false, militia: 40 }); // nothing they could take
+    // Every other land a tribe's, with a town of sixty men, thirty bands of them: nothing they could take.
+    for (const t of c.territories) if (t.owner !== 1) { Object.assign(t, { owner: -1, capital: -1, horde: false }); setTribe(c, t.id, 30); }
     c.armies = [];
     const one = { id: 801, owner: 1, at: cap.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false };
     const two = { id: 802, owner: 1, at: mid.id, units: { infantry: 1 }, hero: false, vet: 0, moved: false };

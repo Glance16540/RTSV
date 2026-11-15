@@ -563,6 +563,8 @@ export class Game {
           // In a field battle the army forms up where the town would have been.
           for (let j = 0; j < n; j++, k++) this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir);
         }
+        // In a battle in the open there is no town on the field: the men of it who marched out stand with the army (tribes.ts).
+        if (field && s.bonus.people) this.peopled(i, s.bonus.people, st, dir);
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
       }
     });

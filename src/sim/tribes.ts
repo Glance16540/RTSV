@@ -10,8 +10,9 @@
 //   - A tribe beaten off in an unwatched battle loses bands, and that is men of its town (`tribeBeaten`).
 //   - What a tale does to a tribe's readiness for war (story.ts: "fewer men will take up a spear") stands down so
 //     many bands of its men; nobody is made or unmade (`tribeArms`).
-//   - In a siege fought in person the tribe's warriors are its own men in arms, no clubmen besides (`tribeSide`,
-//     `armMen`): those who fall are gone from the town, and those who live are counted home.
+//   - When a land is fought over in person the warriors are its own men in arms, no clubmen besides (`turnOut`,
+//     `armMen`): in its town or in the open, those who fall are gone from the town and those who live are counted
+//     home. A nation's own town turns out two of its men the same way, where two clubmen used to appear.
 //
 // So that a tribe is as strong as it was, each tribe's town is made up, once, to the men its old militia stood
 // for, with women in proportion (`makeUp`), the first time anything looks into the town. A land that goes back to the tribes later (a revolt) is the town
@@ -20,10 +21,11 @@
 // The marauders are not a tribe: they hold a land with no town, and their strength is their band's
 // (bandhorde.ts). `Territory.militia` is kept as a mirror of the truth, for the screens that read it and for
 // campaigns saved before this.
-import type { Campaign, Territory } from './campaign';
+import type { Campaign, Pending, Territory } from './campaign';
 import type { Game, Unit } from './game';
 import { OLD_SEASON, agesOf, countFrom } from './ageing';
-import { folkOf } from './township';
+import { MAX_KIND, folkOf } from './township';
+import type { Census, PeopleIn } from './township';
 import { needOf } from './larder';
 
 declare module './campaign' {
@@ -32,6 +34,10 @@ declare module './campaign' {
     tribal?: boolean;
     /** Bands of a tribe's men who have stood down: they are of the town, and do not take up arms (tribes.ts). */
     stoodDown?: number;
+  }
+  interface Pending {
+    /** The men of the land's town who marched out to a battle in the open (tribes.ts). */
+    turnedOut?: number;
   }
 }
 
@@ -44,6 +50,8 @@ export const TRIBE = {
   larder: 3,
   /** A tribe beaten off is never left with fewer bands than this. */
   least: 1,
+  /** Men of a nation's own town who take up arms when it is fought over, beside whatever army stands there. */
+  town: 2,
 };
 
 const tribe = (t: Territory): boolean => t.owner < 0 && !t.horde;
@@ -103,14 +111,7 @@ export function tribeBeaten(c: Campaign, tid: number, bands: number): number {
   }
   folkOf(c, tid); makeUp(c, t);
   const f = folkOf(c, tid), lose = Math.max(0, Math.min(bands * TRIBE.men, f.men - TRIBE.least * TRIBE.men));
-  if (lose > 0) {
-    // The young men stood in front.
-    const ages = agesOf(c, tid, f);
-    const young = ages.m.map((s, i) => [s, i] as const).filter(([s]) => s < OLD_SEASON).sort((a, b) => a[0] - b[0] || a[1] - b[1]).slice(0, lose);
-    const gone = new Set(young.map(([, i]) => i));
-    ages.m = ages.m.filter((_, i) => !gone.has(i));
-    countFrom(f, ages);
-  }
+  if (lose > 0) strike(c, tid, lose); // the young men stood in front
   mirror(c, tid);
   return lose;
 }
@@ -127,16 +128,64 @@ export function tribeArms(c: Campaign, tid: number, bands: number): void {
 }
 
 /**
- * What a land of no nation fields when it is fought over in person. A tribe in its town: so many of its own men
- * take up arms (`warriors`), and no clubmen besides. A tribe met in the open, away from its town, and the
- * marauders, who have none: two clubmen to a band, as before.
+ * Give a tribe's town a real record of men for so many bands, with women and a larder in proportion: for setting a
+ * world up (a test, a scenario), where the old way was to write a number into `militia`.
  */
-export function tribeSide(c: Campaign, tid: number, field: boolean): { clubmen: number; warriors: number } {
+export function setTribe(c: Campaign, tid: number, bands: number): void {
+  const t = c.territories[tid], f = folkOf(c, tid);
+  t.tribal = true;
+  delete t.stoodDown;
+  f.men = Math.max(0, Math.min(MAX_KIND, Math.round(bands) * TRIBE.men));
+  f.women = Math.min(MAX_KIND, Math.max(f.women, Math.round(f.men * TRIBE.women)));
+  delete f.ages;
+  f.stores.food = Math.max(f.stores.food, Math.round(TRIBE.larder * needOf(c, tid)));
+  mirror(c, tid);
+}
+
+/** The youngest so many grown men of a town, by their ages on its record. */
+function youngest(c: Campaign, tid: number, n: number): number[] {
+  const f = folkOf(c, tid);
+  return agesOf(c, tid, f).m.filter((s) => s < OLD_SEASON).sort((a, b) => a - b).slice(0, Math.max(0, n));
+}
+/** So many of a town's grown men are dead: struck from its record, the youngest first. Returns how many. */
+function strike(c: Campaign, tid: number, n: number): number {
+  const f = folkOf(c, tid), ages = agesOf(c, tid, f);
+  const gone = new Set(ages.m.map((s, i) => [s, i] as const).filter(([s]) => s < OLD_SEASON).sort((a, b) => a[0] - b[0] || a[1] - b[1]).slice(0, Math.max(0, n)).map(([, i]) => i));
+  ages.m = ages.m.filter((_, i) => !gone.has(i));
+  countFrom(f, ages);
+  return gone.size;
+}
+
+/**
+ * Who turns out of a land's town when it is fought over in person, beside any army there. Nobody comes from nowhere:
+ *   a tribe in its town   its bands, as so many of its own men taking up arms (`warriors`); the town's people are
+ *                         all there already (township.ts musterFolk);
+ *   a nation's town       TRIBE.town of its own men take up arms, where two clubmen used to appear;
+ *   either, in the open   a field battle has no town on it, so those same men march out as its people (`people`,
+ *                         with their ages) and take up arms; who falls is struck from the town after (`fieldReckoned`);
+ *   the marauders         have no town: two clubmen to a point of their band's strength, as before.
+ */
+export function turnOut(c: Campaign, tid: number, field: boolean, p?: Pending | null): { clubmen: number; warriors: number; people?: PeopleIn } {
   const t = c.territories[tid];
-  if (!t.horde && !field) { folkOf(c, tid); makeUp(c, t); } // the town turns out, so its record is made up now
-  const bands = warriorsOf(c, tid);
-  if (t.horde || field) return { clubmen: bands * 2, warriors: 0 };
-  return { clubmen: 0, warriors: Math.min(folkOf(c, tid).men, bands * TRIBE.men) };
+  if (t.horde) return { clubmen: warriorsOf(c, tid) * 2, warriors: 0 };
+  const f = folkOf(c, tid);
+  if (t.owner < 0) makeUp(c, t); // the town turns out, so its record is made up now
+  const n = Math.min(f.men, t.owner < 0 ? warriorsOf(c, tid) * TRIBE.men : TRIBE.town);
+  if (!field) return { clubmen: 0, warriors: n };
+  if (p && p.to === tid) p.turnedOut = n;
+  return { clubmen: 0, warriors: n, ...(n ? { people: { men: n, women: 0, elders: 0, children: 0, ages: { m: youngest(c, tid, n), f: [], k: [] } } } : {}) };
+}
+
+/**
+ * A battle in the open over a land has been fought out. Those of its town who marched out and are not among the
+ * living (`folk`, the count of their side as it ended) are struck from the town. Returns how many fell.
+ */
+export function fieldReckoned(c: Campaign, p: Pending, folk?: Partial<Census> | null): number {
+  if (p.mode !== 'field' || p.band !== undefined || !p.turnedOut || !folk) return 0;
+  const alive = Math.max(0, Math.round(Number(folk.men) || 0) + Math.round(Number(folk.elders) || 0));
+  const fell = strike(c, p.to, Math.max(0, p.turnedOut - alive));
+  if (c.territories[p.to].owner < 0) mirror(c, p.to);
+  return fell;
 }
 
 /**
