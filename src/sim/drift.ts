@@ -40,8 +40,8 @@ export interface Drifted { tavern: number; mines: number }
 
 /** Weights of what strains a town on the map (they add to at most 1). */
 export const STRAIN = { hunger: 0.35, raided: 0.25, grief: 0.2, sick: 0.2, rebel: 0.2, taken: 0.25 };
-/** Seasons after a town is taken by force (conquered.ts) that its people are still unsettled by it. */
-export const NEWLY_TAKEN = 8;
+/** Seasons after a town is taken by force (conquered.ts) that its people are still unsettled by it: two, as towns change hands often. */
+export const NEWLY_TAKEN = 2;
 /** On the map, a season: the most who drift at full strain, the most who come back at full care, and the most of a town's women or men who drift. */
 export const GO_MOST = 2;
 export const BACK_MOST = 3;
