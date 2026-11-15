@@ -21,6 +21,7 @@
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
 import type { Campaign } from './campaign';
 import { folkOf, grown } from './township';
+import { tally } from './ledger';
 
 declare module './township' {
   interface Folk {
@@ -32,7 +33,7 @@ declare module './township' {
 }
 
 /** Food a season: a grown man or woman, one of the old, a child. */
-export const EAT = { grown: 12, old: 9, child: 6 };
+export const EAT = { grown: 16, old: 12, child: 8 };
 /** Seasons hungry in a row before people begin to die of it, and the share of the grown who die each season after. */
 export const STARVE_AFTER = 2;
 export const STARVE_SHARE = 0.1;
@@ -83,6 +84,7 @@ export function eatTown(c: Campaign, tid: number): Meal {
   const short = ate < need;
   f.hungry = short ? (f.hungry ?? 0) + 1 : 0;
   const dead = short && f.hungry > STARVE_AFTER ? starve(c, tid) : 0;
+  tally(c, tid, 'starved', dead); // for the season's report (ledger.ts)
   if (!f.hungry) delete f.hungry;
   // Grain does not keep for ever: what is beyond a couple of seasons' eating spoils, a share a season.
   const rotted = Math.floor(Math.max(0, f.stores.food - Math.max(KEEP_SEASONS * need, FOOD_KEEP)) * ROT);

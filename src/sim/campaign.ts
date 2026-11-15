@@ -9,6 +9,7 @@ import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
 import { bandBattle, settleBandFight } from './bandfight';
+import { wallsEdge } from './sieges';
 import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
@@ -32,8 +33,10 @@ import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
+import { Names, houseName, nameNation, peopleName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
-import { abandonEmpty, maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
@@ -148,6 +151,7 @@ export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
 export const BEATS: Record<string, string> = { cavalry: 'archers', archers: 'infantry', infantry: 'cavalry' };
 export const MAX_VETERAN = 3;
 import { HeroSpec, cleanHero, MAX_RANK } from './hero';
+import { seasonTurned } from './seasonreport';
 
 /** Some land is special. */
 export interface TraitDef { name: string; icon: string; desc: string }
@@ -202,13 +206,13 @@ export const TRUCE_TURNS = 6;
 export const ALLIANCE_COST = 6;
 export const GIFT_COST = 4;
 /** Supplies to bring a whole people into the next age, from the Stone Age up. */
-export const AGE_COST = [18, 28, 40, 56];
+export const AGE_COST = [20, 30, 44, 60];
 /** Each age past the first makes a people's armies this much stronger. */
 export const AGE_EDGE = 0.1;
 export const MAX_FAVOR = 3;
 /** Hold this share of all the land for this many turns running and the campaign is won. */
 export const DOMINION_SHARE = 0.6;
-export const DOMINION_TURNS = 6;
+export const DOMINION_TURNS = 10;
 
 export function siteCost(t: Territory, site: string, civ = ''): number {
   if (site === 'fortress' && civ === 'stonekin') return 5;
@@ -267,8 +271,6 @@ export interface Territory {
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
   horde?: boolean;
-  /** Women carried off from here by marauders: each costs the land a supply a turn until they are freed. */
-  taken?: number;
 }
 
 /** What stands on a land's battlefield between battles: the holder's corner of it, and each building with the damage it has taken. */
@@ -330,7 +332,7 @@ export interface Campaign {
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
   /** How long each army has stood where it is, soldiers the map has given a name, and armies sent home this season: see rivalrule.ts. */
-  idle?: Record<string, { at: number; n: number }>; emptied?: Record<string, number>; wars?: Record<string, { land: number; changed: number; muster?: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
+  idle?: Record<string, { at: number; n: number }>; emptied?: Record<string, number>; emptiedOf?: Record<string, number>; extinct?: Record<string, number>; wars?: Record<string, { land: number; changed: number; muster?: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
   /** The men with each army, by the town they came from: see armytown.ts. */
   musters?: Record<string, Muster>;
   /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
@@ -403,7 +405,7 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
   hoard: { name: 'A hoard', icon: '💰', desc: 'Word of buried treasure. Whoever holds this land when the digging is done gains 5 supplies.' },
   found: { name: 'Treasure found', icon: '👑', desc: 'Its holder gained 5 supplies.' },
   horde: { name: 'Marauders', icon: '🏴', desc: 'A band that belongs to no people has made camp here. It grows every turn, carries off women from the lands around, and will spread if it is left alone. Take this land to break it.' },
-  taken: { name: 'Women carried off', icon: '⛓️', desc: 'Marauders have taken women from here. The land yields a supply less for each raid, up to two, until their camp is broken.' },
+  taken: { name: 'Women carried off', icon: '⛓️', desc: 'Marauders have taken women from the town here. They are held at the marauders\' camp, and can be got back for a time by taking that land.' },
   overrun: { name: 'Overrun', icon: '🏴', desc: 'The marauders have taken this land for their own.' },
   famine: { name: 'Famine', icon: '🥀', desc: 'The harvest failed here: its holder paid from the stores what the land would have yielded. It falls harder on the decadent than the holy.' },
   plague: { name: 'Plague', icon: '☠️', desc: 'Sickness is in this land. While it lasts the land costs its holder a supply a season, an army of theirs kept here loses a company a season, and it may pass to the land next door.' },
@@ -423,7 +425,6 @@ export const HORDE_TURN = 4;
 export const HORDE_MAX = 12;
 export const HORDE_SPREAD = 6;
 export const HORDE_PRIZE = 4;
-export const MAX_TAKEN = 2;
 
 /** A run of chances of its own for weather and the lasting events, so the rest of the campaign's luck is left as it was. */
 function luck(c: Campaign, k: number): number {
@@ -780,7 +781,7 @@ export function territoryAt(ts: { x: number; y: number }[], px: number, py: numb
  * lies and which peoples are in play all vary with the seed. Every faction is a different people;
  * `playerCiv` fixes the player's, otherwise that is random too.
  */
-export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: string): Campaign {
+export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: string, opts: { names?: Names } = {}): Campaign {
   const c: Campaign = {
     v: CAMPAIGN_VERSION, seed, rngState: seed >>> 0, level, turn: 1, phase: 'player', cursor: 0, spent: false,
     factions: [], territories: [], armies: [], pending: null, nextArmy: 1, winner: -1, log: [], speech: [], truces: [], honor: 0, demand: null, ally: -1, dominion: { f: -1, turns: 0 },
@@ -880,8 +881,9 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     if (rim && !t.trait && t.capital < 0 && t.seed % 2 === 0) t.trait = 'coast';
   }
   raiseBarriers(c);
-  c.log.push(`Turn 1. You lead the ${CIVS[mine].name}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
-  tell(c, `The ${[CIVS[mine].name, ...c.factions.slice(1).map((f) => `the ${f.name}`)].join(', ').replace(/, ([^,]*)$/, ' and $1')} came into a country of ${c.territories.length} lands, and each meant to have all of it.`);
+  nameNation(c, 0, opts.names); // the player's own names for their people and house (naming.ts)
+  c.log.push(`Turn 1. You lead the ${peopleName(c, 0)}${houseName(c, 0) ? `, under the House of ${houseName(c, 0)}` : ''}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
+  tell(c, `The ${[peopleName(c, 0), ...c.factions.slice(1).map((f) => `the ${f.name}`)].join(', ').replace(/, ([^,]*)$/, ' and $1')} came into a country of ${c.territories.length} lands, and each meant to have all of it.`);
   placesOf(c);
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');
@@ -941,7 +943,7 @@ const rankWith = (c: Campaign, a: Army): number => (a.hero ? c.factions[a.owner]
 /** What one land of this people yields in a season, in supplies: it goes into the land's own town (harvest.ts). */
 export function landIncome(c: Campaign, f: number, t: Territory): number {
   const world = worldNow(c);
-  return Math.max(0, territoryIncome(t, c.factions[f].civ) + countryYield(c, t.id) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0));
+  return Math.max(0, territoryIncome(t, c.factions[f].civ) + countryYield(c, t.id) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0));
 }
 /** What a people earns as a whole in a season, beyond its lands' yield: it goes into its chief town. */
 export const wholeIncome = (c: Campaign, f: number): number => placeGood(c, f, 'supplies') + (c.factions[f].civ === 'persia' ? Math.floor(landOf(c, f) / 3) : 0);
@@ -966,6 +968,8 @@ export function defenders(c: Campaign, tid: number): Record<string, number> {
 /** Everything that defends a territory, optionally against a particular mix of attackers. */
 export function defence(c: Campaign, tid: number, vs: Record<string, number> = {}, attackerCiv = ''): number {
   const t = c.territories[tid];
+  const open = openDefence(c, tid); // a dead town with no army in it has nobody on its walls (deadtown.ts)
+  if (open !== null) return open;
   const ground = (t.trait === 'hills' ? 2 : 0) + countryOf(c, tid).defence + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.defence ?? 0);
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
@@ -1216,7 +1220,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   let attackerWon = how === 'attacker';
   if (how === 'auto') {
     // Defenders fight on their own ground, which is worth a little.
-    const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * homeEdge(c, p.attacker) * (0.75 + rand(c) * 0.5);
+    const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * homeEdge(c, p.attacker) * wallsEdge(c, p) * (0.75 + rand(c) * 0.5); // walls are worth more than their sum (sieges.ts)
     attackerWon = a > d;
   }
   for (const watch of battleWatchers) watch(c, p, attackerWon, how);
@@ -1367,7 +1371,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
-      if (abandonEmpty(c).length) checkElimination(c); // a town with nobody left in it is nobody's, and a people with no town is gone (rivalrule.ts)
+      if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
@@ -1383,6 +1387,7 @@ export function continueAI(c: Campaign): void {
       storyTurn(c);
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
+      seasonTurned(c); // what changed for the player's nation this season, for the card on the map (seasonreport.ts)
       return;
     }
     if (f.alive && !aiStep(c, f)) continue; // aiStep returns false while the faction still has moves
@@ -1576,6 +1581,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     }
     // Spend what is left on troops, growing existing armies before starting new ones.
     rivalMoves(c, f.id); // garrison what is resentful or beset, and keep that garrison there (rivalrule.ts)
+    if (seizeOpen(c, f.id)) return false; // a dead town within reach is taken for the asking (deadtown.ts)
     const yards = own.filter((t) => maySpare(c, t.id) && Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
       .sort((a, b) => (armyAt(c, b.id) ? 1 : 0) - (armyAt(c, a.id) ? 1 : 0));
     for (const t of yards) {
@@ -1698,9 +1704,9 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: 'You', color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.

@@ -172,8 +172,8 @@ Hussars, and a second hero, the Strategist, whose presence saps enemy damage and
   town and how long those fires burn, how readily fire spreads, how often a harvest fails and on how many fields, and how fast a famine takes people. It does not
   soften what an enemy does directly: a Prophet's fire burns the building it falls on for as long as ever.
 - *On the campaign map* (`src/sim/acts.ts`): every season each held land may be struck by one of the three, by
-  the same measure of its holder's creed, and it falls on the land's own town. A failed harvest eats what the land
-  would have yielded from the town's stored food. Plague stays two seasons, kills a tenth of the town's grown people
+  the same measure of its holder's creed, and it falls on the land's own town. A failed harvest eats a season and a
+  half of the town's own eating from its stored food. Plague stays two seasons, kills a tenth of the town's grown people
   a season (the old first, never a child), takes a company a season from an army kept there and may pass to the land
   next door. Fire burns a share of the town's food and wood, is rebuilt out of the town's own stores and leaves the
   land's town damaged for the next battle there. Nothing is charged to the nation besides. A hard
@@ -297,13 +297,20 @@ faction is a different people led by its own leader. You choose your people, or 
 Each turn you collect supplies from the land you hold and spend them, then march armies into
 neighbouring land.
 
+- **Your people** (`src/sim/roll.ts`). A button beside the Chronicle opens the roll of your nation:
+  your leader and house, the heirs and their ages, everyone known by name in each town with their face,
+  the men away with the armies, those held captive and how long is left to get them back, and those lost
+  of late. Children are counted, never listed.
+- **Your own names** (`src/sim/naming.ts`). When a campaign begins you may name your people and your
+  ruling house. The people you choose still decides dress, units and leaders; an heir rules as one of
+  your house, and a house set aside takes its name with it.
 - **Paid in kind, earned by land** (`src/sim/prices.ts`, `src/sim/harvest.ts`). A Barracks is paid in
   wood, a Fortress in stone, a company in food and gold, a truce in gold, at the old price in supplies,
   from the town where it is done first; what your towns lack of a kind is made up in other goods. Each
   land's yield goes into its own town: as much as the land gives and the town has hands to work, made of
   what its people were set to work at and what the land leans to.
-- **Towns eat** (`src/sim/larder.ts`). Each season a town eats from its own food store: 12 food for a
-  grown man or woman, 9 for one of the old, 6 for a child. A farmed town of about twenty is fed by its own
+- **Towns eat** (`src/sim/larder.ts`). Each season a town eats from its own food store: 16 food for a
+  grown man or woman, 12 for one of the old, 8 for a child. A farmed town of about twenty is fed by its own
   fields; a town with none needs food sent. A town that cannot eat goes hungry, and after two hungry seasons
   it loses a tenth of its grown people a season, the old first. No child dies of it.
   A town left with nobody grown sends its children to the nearest town of your people
@@ -414,7 +421,9 @@ the softest town it can reach, and a decadent people draws it more.
 
 The town defends itself with what it has: its men, its fortress and barracks, the towers and walls on its
 battlefield, an army kept there, and the spirit of its people. It holds, is raided, or falls and has people carried
-off (never children). A band takes a share of the town's stores, but no more than it can carry. Select the struck land to read the report: who struck, what the town had, who was killed and
+off (never children). A band takes a share of the town's stores, but no more than it can carry. It leaves a town
+two seasons of food, never takes more than half its women or its last two, and does not take from a town whose
+people it still holds. Select the struck land to read the report: who struck, what the town had, who was killed and
 taken, what was lost, and which way your people's standing swayed.
 
 Those taken are held at the band's place for four seasons. Select the band's land and send an army that stands there

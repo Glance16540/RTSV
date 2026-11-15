@@ -9,7 +9,7 @@
 //
 // They fall on the real town on the land: its stores and its people as township.ts keeps them (stores.ts).
 //
-//   Famine. The harvest fails: the town eats from its own granary what the land would have yielded this season,
+//   Famine. The harvest fails: the town eats from its own granary ACTS.hunger seasons of its own eating (larder.ts),
 //     by that measure, in food. Struck hard, a town whose granary cannot cover it sees the army standing there
 //     lose a company: men walk away unfed. Never where rain is over the land; twice as often under dust.
 //   Plague. Sickness is in the land for a season or more. Each season it lasts it kills a share of the town's
@@ -24,17 +24,20 @@
 // people's and not yet a town's, so every land of a people stands the same; and the dead of plague are counted,
 // not named.
 import type { Army, Campaign, EventKind, Territory } from './campaign';
-import { armySize, territoryIncome, weatherAt } from './campaign';
+import { armySize, weatherAt } from './campaign';
 import { creedOf } from './creed';
 import { STORE_KINDS, folkOf } from './township';
 import type { Stores } from './township';
 import { SUPPLY_UNITS } from './stores';
+import { needOf } from './larder';
 
 export const ACTS = {
   /** The season from which they may come. */
   from: 3,
   /** The chance, each season, that a land of an ordinary people is struck by each. */
   famine: 0.02, plague: 0.015, fire: 0.02,
+  /** Famine: seasons of the town's own eating a failed harvest takes from its granary, for an ordinary people. */
+  hunger: 1.5,
   /** Fire and famine: this many times as likely where dust is over the land. Neither comes where it rains. */
   dry: 2,
   /** A strike is a hard one with this chance, times the measure squared: one in forty for the Righteous. */
@@ -94,11 +97,11 @@ export function sicken(c: Campaign, t: Territory): number {
 
 function famine(c: Campaign, t: Territory, w: number, hard: boolean): Struck {
   const f = t.owner;
-  const due = Math.max(1, Math.round(territoryIncome(t, c.factions[f].civ) * w));
-  // The town eats from its own granary what the land did not give.
-  const store = folkOf(c, t.id).stores, food = Math.min(store.food, due * SUPPLY_UNITS);
+  // The town eats from its own granary for as long as the harvest failed: ACTS.hunger seasons of its own eating, by the measure.
+  const due = Math.max(1, Math.round(ACTS.hunger * needOf(c, t.id) * w));
+  const store = folkOf(c, t.id).stores, food = Math.min(store.food, due);
   store.food -= food;
-  const short = food < due * SUPPLY_UNITS, paid = Math.floor(food / SUPPLY_UNITS);
+  const short = food < due, paid = Math.round(food / SUPPLY_UNITS);
   const company = hard && short && thin(ownArmy(c, t));
   mark(c, 'famine', t.id);
   c.log.push(`The harvest has failed in ${t.name}: the town eats ${food} of its stored food${short ? ', and it is not enough: the granary is empty' : ''}.${company ? ` Unfed, a company of ${whose(c, f)} army there has walked away.` : ''}`);

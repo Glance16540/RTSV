@@ -10,12 +10,13 @@
 import type { Army, Campaign } from './campaign';
 import { agesOf, countFrom, OLD_SEASON, LAST_SEASON } from './ageing';
 import { folkOf, rememberVeteran } from './township';
+import { tally } from './ledger';
 
 /**
  * Seasons an army rests in a town it has just taken before it marches again: it buries its dead, sets a watch
  * and brings the town to order. (It is what keeps a campaign from being a land a season.)
  */
-export const ARMY_REST = 5;
+export const ARMY_REST = 6;
 /** Is this army still resting from its last assault as this turn begins? */
 export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.turn;
 
@@ -118,6 +119,7 @@ export function reckonArmies(c: Campaign): Fallen[] {
       if (home.length && t) { const f = folkOf(c, t.id), ages = agesOf(c, t.id, f); countFrom(f, { m: [...ages.m, ...home], f: ages.f, k: ages.k }); }
       const dead = out0.length - home.length;
       out.push({ town: Number(tid), army: id, dead, lost: !a, ...(home.length ? { home: home.length } : {}) });
+      if (t) tally(c, t.id, 'fell', dead); // for the season's report (ledger.ts)
       if (t && dead) c.log.push(`${dead} ${dead === 1 ? 'man' : 'men'} of ${t.name} ${a ? 'fell with the army' : 'did not come back: the army they marched with is no more'}${home.length ? `; ${home.length} came home hurt or routed` : ''}.`);
       else if (t && home.length) c.log.push(`${home.length} ${home.length === 1 ? 'man' : 'men'} of ${t.name} came home hurt from the army.`);
     }

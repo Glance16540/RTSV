@@ -814,21 +814,28 @@ describe('conquest campaign', () => {
   });
 
   it('a lost defence costs the territory, and rivals fight the campaign to a finish', () => {
-    const c = newCampaign(3, 2, 2);
-    let guard = 0;
-    // The guard is steps, not seasons; 400 encoded the faster pace before food spoiled (larder.ts).
-    while (c.phase !== 'over' && guard++ < 1600) {
-      if (c.demand) answerDemand(c, false);
-      else if (c.pending) resolvePending(c, 'auto'); // the player never fights in person here
-      else if (c.phase === 'player') endTurn(c);
-      else continueAI(c);
+    // Asked of several worlds, not one (owner's word, 15 November 2026): a single seed flipped on changes that had
+    // nothing to do with it. Hard, with a player who never fights in person.
+    const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
+    const MUST_FINISH = 7; // of the 8; all 8 did when this was written
+    let finished = 0;
+    for (const seed of SEEDS) {
+      const c = newCampaign(seed, 2, 2);
+      let guard = 0;
+      // The guard is steps, not seasons; 400 encoded the faster pace before food spoiled (larder.ts).
+      while (c.phase !== 'over' && guard++ < 1600) {
+        if (c.demand) answerDemand(c, false);
+        else if (c.pending) resolvePending(c, 'auto'); // the player never fights in person here
+        else if (c.phase === 'player') endTurn(c);
+        else continueAI(c);
+      }
+      // What must hold in every world, finished or not.
+      expect(c.territories.every((t) => t.buildings.length <= 4 && new Set(t.buildings).size === t.buildings.length)).toBe(true);
+      // A passive player is eventually conquered: wiped out, or a rival came to hold most of the land.
+      if (c.phase === 'over' && c.winner > 0 && (!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS)) finished++;
     }
-    expect(c.phase).toBe('over');
-    expect(c.winner).toBeGreaterThan(0); // a passive player is eventually conquered
-    // Either wiped out, or a rival came to hold most of the land.
-    expect(!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS).toBe(true);
-    expect(c.territories.every((t) => t.buildings.length <= 4 && new Set(t.buildings).size === t.buildings.length)).toBe(true);
-  });
+    expect(finished).toBeGreaterThanOrEqual(MUST_FINISH);
+  }, 60_000); // eight campaigns: more than the default five seconds when the whole suite runs
 
   it('battle bonuses give each side its army in the real-time game', () => {
     const c = newCampaign(7);
@@ -1872,11 +1879,18 @@ describe('ages on the campaign map', () => {
   });
 
   it('rivals advance too once they have the stores', () => {
-    const c = newCampaign(3, 2, 2);
-    // docs/TUNING.md wants a rival's next age in 20 to 60 seasons; 40 seasons encoded the faster pace before food spoiled (larder.ts).
-    for (let i = 0; i < 80 && c.phase !== 'over'; i++) { endTurn(c); while (c.pending || c.demand) { if (c.demand) answerDemand(c, false); else resolvePending(c, 'auto'); continueAI(c); } }
-    expect(c.factions.slice(1).some((f) => (f.age ?? 0) > 0)).toBe(true);
-  });
+    // Several worlds, not one (owner's word, 15 November 2026). docs/TUNING.md wants a rival's next age in 20 to 60
+    // seasons; 40 seasons encoded the faster pace before food spoiled (larder.ts).
+    const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
+    const MUST_ADVANCE = 6; // of the 8; all 8 did when this was written
+    let advanced = 0;
+    for (const seed of SEEDS) {
+      const c = newCampaign(seed, 2, 2);
+      for (let i = 0; i < 80 && c.phase !== 'over'; i++) { endTurn(c); while (c.pending || c.demand) { if (c.demand) answerDemand(c, false); else resolvePending(c, 'auto'); continueAI(c); } }
+      if (c.factions.slice(1).some((f) => (f.age ?? 0) > 0)) advanced++;
+    }
+    expect(advanced).toBeGreaterThanOrEqual(MUST_ADVANCE);
+  }, 60_000); // eight campaigns: more than the default five seconds when the whole suite runs
 });
 
 describe('second unique units', () => {
@@ -3126,30 +3140,27 @@ describe('mountains and rivers on the campaign map', () => {
 });
 
 describe('marauders on the campaign map', () => {
-  it('women carried off cost a land its supplies until the camp next door is broken', () => {
+  it('a marauders\' camp taken is broken, and the victor is paid', () => {
     const c = newCampaign(5, 1, 1, 'hearth');
     c.fronts = [];
     const home = c.territories.find((t) => t.capital === 0)!;
     const camp = c.territories[home.adj.find((n) => c.territories[n].owner < 0)!];
-    const before = income(c, 0);
-    home.taken = 2;
-    expect(income(c, 0)).toBe(before - 2);
+    // (Women carried off are real people held by the band now, not a count on the land that cost it supplies:
+    // tests/bandhorde.test.ts has them coming home when the camp falls.)
     // The player takes the camp's land: next turn the news comes in.
     camp.horde = true;
     camp.owner = 0;
     const twin: Campaign = JSON.parse(JSON.stringify(c));
     twin.territories[camp.id].horde = false;
-    twin.territories[home.id].taken = 0;
     endTurn(c);
     endTurn(twin);
     expect(c.territories[camp.id].horde).toBe(false);
-    expect(c.territories[home.id].taken).toBe(0);
     expect(c.events!.some((e) => e.kind === 'freed' && e.at === camp.id)).toBe(true);
-    // The prize, less the two supplies the land was still short of when this turn's stores were counted, and less
+    // The prize, less
     // what of it spoiled in the towns it was laid down in (larder.ts): counted in goods, so the spoiling is exact.
     const goods = (x: Campaign) => x.territories.filter((t) => t.owner === 0).reduce((n, t) => { const s = folkOf(x, t.id).stores; return n + s.food + s.wood + s.gold + s.stone; }, 0);
     const rot = (x: Campaign) => x.territories.filter((t) => t.owner === 0).reduce((n, t) => n + (folkOf(x, t.id).rotted ?? 0), 0);
-    expect(goods(c) - goods(twin)).toBe((HORDE_PRIZE - 2) * SUPPLY_UNITS - (rot(c) - rot(twin)));
+    expect(goods(c) - goods(twin)).toBe(HORDE_PRIZE * SUPPLY_UNITS - (rot(c) - rot(twin)));
   });
 
   it('a camp left alone grows, and marauders appear in a long campaign', () => {
@@ -3681,7 +3692,7 @@ describe('the story of a campaign', () => {
     c.places = (['shrine', 'fair', 'keep', 'forge', 'library'] as const).map((kind, i) => ({ at: lands[i].id, kind, name: PLACES[kind].names[0], legend: PLACES[kind].legends[0] }));
     const [shrine, fair, keep, forge, library] = lands;
     const before = { income: income(c, 0), drift: virtueDrift(c, 0), age: ageCost(c, 0), keep: defence(c, keep.id) };
-    for (const t of lands) { t.owner = 0; t.buildings = []; t.trait = ''; t.taken = 0; t.horde = false; }
+    for (const t of lands) { t.owner = 0; t.buildings = []; t.trait = ''; t.horde = false; }
     c.armies = c.armies.filter((a) => !lands.some((t) => t.id === a.at));
     expect(income(c, 0)).toBe(before.income + 5 * 2 + PLACES.fair.supplies!);
     expect(virtueDrift(c, 0)).toBe(before.drift + PLACES.shrine.virtue!);

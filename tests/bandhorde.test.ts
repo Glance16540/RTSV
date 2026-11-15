@@ -4,7 +4,7 @@ import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN, eventsAt, income, new
 import type { Campaign } from '../src/sim/campaign';
 import { hordeSeason } from '../src/sim/bandhorde';
 import { OLD_SEASON } from '../src/sim/ageing';
-import { THREATS } from '../src/sim/threats';
+import { THREATS, heldFrom } from '../src/sim/threats';
 import { folkOf } from '../src/sim/township';
 
 function world(seed = 5) {
@@ -62,7 +62,8 @@ describe('the marauders are a band', () => {
     expect(f.children).toBe(3);
     const [b] = marauders(c);
     expect(b.held[0].women.every((s) => s < OLD_SEASON)).toBe(true);
-    expect(home.taken).toBe(1); // the land is a supply short for it
+    expect(heldFrom(c, home.id)).toEqual([{ band: b, held: b.held[0] }]); // the one record of who was taken
+    expect('taken' in home).toBe(false); // and no count of them on the land
     expect(eventsAt(c, home.id).some((e) => e.kind === 'taken' || e.kind === 'carried')).toBe(true);
     expect(c.bands).toContain(b); // a camp is not scattered by a raid, won or lost
     for (let i = 0; i < 30; i++) { c.turn++; hordeSeason(c, []); }
@@ -93,7 +94,7 @@ describe('the marauders are a band', () => {
     const [b] = marauders(c);
     const f = folkOf(c, home.id), women = f.women;
     b.held.push({ from: home.id, owner: 0, men: [], women: [80, 88], since: c.turn });
-    home.taken = 1;
+    (home as { taken?: number }).taken = 1; // as a campaign saved before the count was retired would have it
     const before = income(c, 0), supplies = c.factions[0].supplies;
     camp.owner = 0;
     c.turn++;
@@ -102,8 +103,9 @@ describe('the marauders are a band', () => {
     expect(camp.horde).toBe(false);
     expect(marauders(c)).toHaveLength(0);
     expect(f.women + f.elders).toBeGreaterThanOrEqual(women + 2);
-    expect(home.taken).toBe(0);
-    expect(income(c, 0)).toBeGreaterThan(before);
+    expect('taken' in home).toBe(false); // the old count is dropped on the way
+    expect(heldFrom(c, home.id)).toEqual([]);
+    expect(income(c, 0)).toBeGreaterThanOrEqual(before);
     expect(c.factions[0].supplies).toBe(supplies + HORDE_PRIZE);
     expect(eventsAt(c, camp.id).some((e) => e.kind === 'freed')).toBe(true);
     expect(out.join(' ')).toContain('You have broken the marauders at');

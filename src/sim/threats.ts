@@ -45,6 +45,7 @@ import { STORE_KINDS, folkOf, living } from './township';
 import { wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
+import { needOf } from './larder';
 
 export type BandKind = 'raiders' | 'slavers' | 'pirates' | 'highwaymen' | 'marauders';
 /** People a band is holding: where they were taken from, whose they are, their ages when seized, and since when. */
@@ -91,17 +92,19 @@ export const THREATS = {
   /** The season from which bands may appear. */
   from: 3,
   /** Held lands for each band that is meant to be about, the most at once, and the chance a missing one appears in a season. */
-  lands: 6, most: 5, appear: 0.5,
+  lands: 5, most: 5, appear: 0.7,
   /** A new band's strength (least and most), the most one grows to, and the seasons between its growing by itself. */
   start: [2, 4], max: 10, grow: 3,
   /** The chance a band strikes in a season. */
-  strike: 0.55,
+  strike: 0.75,
   /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
-  hold: 1.2, fall: 0.6,
+  hold: 0.85, fall: 0.6,
+  /** What those on a road can do for themselves with no army to escort them, in companies: enough to see off a small band. */
+  wayfarers: 2.5,
   /** What counts toward a town's defence, in companies. */
-  man: 0.35, fortress: 3, raising: 0.5, tower: 1, towers: 3, wall: 0.1, walls: 2, capital: 1, sick: 0.7,
+  man: 0.45, fortress: 3, raising: 0.5, tower: 1, towers: 3, wall: 0.1, walls: 2, capital: 1, sick: 0.7,
   /** The share of a town's men who die at the walls, by outcome; and of its stores lost. */
-  dead: { held: 0, raided: 0.15, taken: 0.25 }, loot: { held: 0, raided: 0.25, taken: 0.4 }, pirateLoot: 0.2, road: 0.2,
+  dead: { held: 0, raided: 0.1, taken: 0.2 }, loot: { held: 0, raided: 0.25, taken: 0.4 }, pirateLoot: 0.2, road: 0.2,
   /**
    * And no more than they can carry: so many goods for each point of the band's force, by its kind. Pirates have
    * ships to fill; slavers come for people; the marauders come for women, and take little else. (A nation's
@@ -109,8 +112,14 @@ export const THREATS = {
    * would beggar a nation in a few seasons.)
    */
   carry: { raiders: 30, slavers: 15, pirates: 45, highwaymen: 30, marauders: 10 } as Record<string, number>,
-  /** The share of a town's women, and for slavers its men, carried off when it falls. */
-  carried: 0.3,
+  /**
+   * The share of a town's women, and for slavers its men, carried off when it falls; and the share of them a band
+   * leaves behind whatever its appetite, so that a town is bled and not emptied. A town whose people are still held
+   * by some band is not taken from again: it can be raided, and no more.
+   */
+  carried: 0.25, left: 0.5, last: 2,
+  /** Seasons of its own eating a band leaves in a town's larder: it takes food only above that (larder.ts). */
+  larder: 2,
   /** The chance raiders or pirates burn a farm. */
   burn: 0.5,
   /** How a strike sways a people: up when they hold, down when raided or taken (and by creed, on the way down). */
@@ -154,6 +163,8 @@ const coastal = (t: Territory): boolean => t.trait === 'coast';
 const count = (h: Held[]): number => h.reduce((n, x) => n + x.men.length + x.women.length, 0);
 export const people = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
+/** The people of this town whom some band holds: each group with the band that has them. The one record of who has been taken. */
+export const heldFrom = (c: Campaign, tid: number): { band: Band; held: Held }[] => (c.bands ?? []).flatMap((b) => b.held.filter((h) => h.from === tid).map((held) => ({ band: b, held })));
 export const bandsAt = (c: Campaign, tid: number): Band[] => (c.bands ?? []).filter((b) => b.at === tid || b.to === tid);
 export const heldCount = (b: Band): number => count(b.held);
 /** Seasons left in which these captives can still be got back. */
@@ -281,10 +292,12 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const road = b.kind === 'highwaymen';
   const defence = defenceOf(c, tid);
   // On the road it is the escort that counts: an army at either end.
-  const guard = road ? Math.max(...[b.at, b.to!].map((id) => { const a = c.armies.find((x) => x.at === id && x.owner === owner); return a ? armyStrength(a) : 0; })) + 1 : defence.total;
+  const guard = road ? Math.max(...[b.at, b.to!].map((id) => { const a = c.armies.find((x) => x.at === id && x.owner === owner); return a ? armyStrength(a) : 0; })) + THREATS.wayfarers : defence.total;
   const force = round1(b.strength * (0.8 + 0.4 * chance(c, b.id, 29)));
   const r = guard / Math.max(0.1, force);
-  let outcome: Outcome = r >= THREATS.hold ? 'held' : r < THREATS.fall && !road ? 'taken' : 'raided';
+  // A town that already has people in some band's hands has no more to give: it is raided, not taken again.
+  const bled = (c.bands ?? []).some((k) => k.held.some((h) => h.from === tid));
+  let outcome: Outcome = r >= THREATS.hold ? 'held' : r < THREATS.fall && !road && !bled ? 'taken' : 'raided';
   const raid: Raid = {
     turn: c.turn, band: b.id, kind: b.kind, name: b.name, at: tid, owner, outcome, force, defence: road ? { ...defence, total: round1(guard) } : defence,
     killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0,
@@ -294,16 +307,20 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
     if (r < 1.6 && !road && f.men > 1) raid.killed = takeOut(c, tid, 'm', 1).length;
     if (b.strength <= 0) raid.broken = true;
   } else {
-    if (!road) raid.killed = takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - 1), Math.ceil(f.men * THREATS.dead[outcome]))).length;
+    if (!road) raid.killed = takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - 1), Math.round(f.men * THREATS.dead[outcome]))).length;
     const share = road ? THREATS.road : THREATS.loot[outcome] + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
     // What they would take, and then no more of it than they can carry.
-    const want = STORE_KINDS.map((k) => Math.floor(f.stores[k] * (k === 'food' || k === 'gold' || !road ? share : 0)));
+    // Of the food, only what the town holds beyond a couple of seasons of its own eating: a town robbed is poorer, not starved.
+    const spare = Math.max(0, f.stores.food - THREATS.larder * needOf(c, tid));
+    const want = STORE_KINDS.map((k) => Math.floor((k === 'food' ? Math.min(f.stores.food, spare / Math.max(share, 0.01)) : f.stores[k]) * (k === 'food' || k === 'gold' || !road ? share : 0)));
     const all = want.reduce((n, v) => n + v, 0), load = Math.min(1, (force * (THREATS.carry[b.kind] ?? 30)) / Math.max(1, all));
     STORE_KINDS.forEach((k, i) => { const n = Math.floor(want[i] * load); f.stores[k] -= n; raid.stores[k] = n; });
     if ((b.kind === 'raiders' || b.kind === 'pirates') && t.buildings.includes('farm') && chance(c, b.id, 31) < THREATS.burn) { t.buildings.splice(t.buildings.indexOf('farm'), 1); raid.burnt = 'farm'; }
     if (outcome === 'taken') {
-      const women = takeOut(c, tid, 'f', Math.min(Math.max(0, f.women - 1), Math.ceil(f.women * THREATS.carried)));
-      const men = b.kind === 'slavers' ? takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - 1), Math.ceil(f.men * THREATS.carried))) : [];
+      // Never a town's last two women, nor its last two men.
+      const most = (n: number): number => Math.max(0, Math.min(n - THREATS.last, Math.floor(n * (1 - THREATS.left)), Math.ceil(n * THREATS.carried)));
+      const women = takeOut(c, tid, 'f', most(f.women));
+      const men = b.kind === 'slavers' ? takeOut(c, tid, 'm', most(f.men)) : [];
       if (women.length + men.length) {
         // A woman the nation knows by name may be among them.
         const names: string[] = [];

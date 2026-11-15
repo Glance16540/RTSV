@@ -8,7 +8,7 @@
 import type { Campaign } from './campaign';
 import { armyAt, armySize, faithOf } from './campaign';
 import { leaderAt } from './court';
-import { folkOf } from './township';
+import { folkOf, headcount } from './township';
 import { agesOf } from './ageing';
 
 /** `from`: whose it was (-1 for a tribe). `since`: the turn it was taken. `resent`: how its people take it, 0 to 100. */
@@ -24,8 +24,8 @@ export const YOKE = {
   quiet: 15, revolt: 8.0,
   /** An army in the town makes a rising this much less likely; putting one down adds this to the resentment. */
   garrison: 0.03, putDown: 10,
-  /** A town that has had an army in it settles this much faster each such season, and for this many seasons after the army leaves it is cowed: a rising is this much less likely (at 0 it does not rise). */
-  order: 2, cowed: 8, cowedBy: 0,
+  /** A town that has had an army in it settles this much faster each such season, and for this many seasons after the army leaves it is cowed: a rising is `cowedBy` as likely (at 0 it does not rise). */
+  order: 3, cowed: 8, cowedBy: 0,
   /** Seasons a town is remembered as taken. For that long it rises only by its resentment, never by the common run of unrest (campaign.ts). */
   memory: 20,
 };
@@ -49,6 +49,7 @@ export function townTaken(c: Campaign, tid: number, from: number, to: number): v
   const t = c.territories[tid];
   if (!t || to < 0 || from === to) { if (t) delete t.yoke; return; }
   if (t.yoke && t.yoke.from === to) { delete t.yoke; return; } // its own people have it back
+  if (headcount(folkOf(c, tid)) === 0) { delete t.yoke; return; } // a dead town: there is nobody in it to resent anything (deadtown.ts)
   t.yoke = { from, since: c.turn, resent: Math.min(100, (from < 0 ? YOKE.tribe : YOKE.nation) + (t.capital >= 0 && t.capital === from ? YOKE.capital : 0)) };
 }
 /** How much resentment a season of this rule takes off (or, where rule is bad, puts on: a negative number). */
@@ -91,7 +92,7 @@ export function seasonOfYoke(c: Campaign): YokeNews[] {
         if (armySize(a) > 1) { const type = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p])[0]; if (--a.units[type] <= 0) delete a.units[type]; }
         y.resent = Math.min(100, y.resent + YOKE.putDown);
         c.log.push(`${t.name} rose against ${mine ? 'you' : nameOf(c, owner)} and the garrison put it down. It is not forgotten there.`);
-        (c.events ??= []).push({ kind: 'unrest', at: t.id, turn: c.turn, until: c.turn });
+        (c.events ??= []).push({ kind: 'calm', at: t.id, turn: c.turn, until: c.turn }); // put down, and over: not the common run of unrest, which would come to a head again next season (campaign.ts)
         news.push({ at: t.id, kind: 'put down', owner });
         continue;
       }

@@ -24,9 +24,12 @@ import { heroFor } from '../sim/campaign';
 import { callArmies, called, courtOf, endCall, holdCourt, leaderReach, moveLeader } from '../sim/court';
 import { openHeroCreator, savedHero } from './herocreator';
 import { visitButton } from './visit';
+import { MAX_NAME, Names, peopleName } from '../sim/naming';
+import { mountRoll, rollHtml } from './rollpanel';
 import { convoyHtml, sendFromPanel } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
 import { decreePanel } from './decrees';
+import { seasonCard } from './seasoncard';
 import { DecreeKind, issueDecree } from '../sim/decrees';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
@@ -38,7 +41,7 @@ export interface OverworldHooks {
   save(): void;
   /** Leave for the real-time battle described by `campaign.pending`. */
   fight(): void;
-  newCampaign(rivals: number, level: number, civ: string, leader: LeaderChoice): void;
+  newCampaign(rivals: number, level: number, civ: string, leader: LeaderChoice, opts?: { names?: Names }): void;
   exit(): void;
 }
 
@@ -151,6 +154,7 @@ export class Overworld {
     $('ow-exit').addEventListener('click', () => hooks.exit());
     $('ow-new').addEventListener('click', () => this.askNew());
     $('ow-chronicle').addEventListener('click', () => this.showChronicle());
+    mountRoll(() => this.dialog('Your people', rollHtml(this.c), [['Close', () => this.changed()]])); // the roll of your nation (rollpanel.ts)
     $('ow-speech').addEventListener('click', () => { this.speakT = 0; this.nextSpeech(); });
     $('overworld').classList.remove('hidden');
     this.changed();
@@ -187,6 +191,7 @@ export class Overworld {
     else if (c.tale && c.phase === 'player' && taleNow(c)) this.askTale();
     else if (c.phase === 'player' && c.factions[0].alive && !c.factions[0].heroAlive && !houseOf(c, 0).asked) this.askSuccession();
     else $('ow-dialog').classList.add('hidden');
+    seasonCard(c, !$('ow-dialog').classList.contains('hidden'), () => this.hooks.save()); // what the season brought (seasoncard.ts)
   }
 
   private click(tid: number): void {
@@ -308,6 +313,8 @@ export class Overworld {
       <label class="mapsize">Your people <select id="ow-civ"><option value="">Surprise me</option>${CIV_IDS.map((id) => `<option value="${id}">${CIVS[id].icon} ${CIVS[id].name}</option>`).join('')}</select></label>
       <label class="mapsize">Your leader <select id="ow-leader"></select></label>
       <button id="ow-make" class="secondary" type="button">Make your own leader</button><br>
+      <label class="mapsize">Name your people <input id="ow-people" maxlength="${MAX_NAME}" placeholder="as they are called" autocomplete="off"></label>
+      <label class="mapsize">Name your house <input id="ow-house" maxlength="${MAX_NAME}" placeholder="none" autocomplete="off"></label>
       <label class="mapsize">Difficulty <select id="ow-level"><option value="0">Easy</option><option value="1" selected>Normal</option><option value="2">Hard</option></select></label>
       <div class="levels"><button id="ow-go">Begin</button><button id="ow-cancel">${first ? 'Keep the world as dealt' : 'Cancel'}</button></div></div>`;
     const civSel = $('ow-civ') as HTMLSelectElement, leadSel = $('ow-leader') as HTMLSelectElement;
@@ -324,7 +331,8 @@ export class Overworld {
     civSel.addEventListener('change', () => leaders());
     $('ow-make').addEventListener('click', () => openHeroCreator(civSel.value, (h) => leaders(h ? 'own' : 'a')));
     el.classList.remove('hidden');
-    $('ow-go').addEventListener('click', () => this.hooks.newCampaign(Number(($('ow-rivals') as HTMLSelectElement).value), Number(($('ow-level') as HTMLSelectElement).value), ($('ow-civ') as HTMLSelectElement).value, ($('ow-leader') as HTMLSelectElement).value as LeaderChoice));
+    $('ow-go').addEventListener('click', () => this.hooks.newCampaign(Number(($('ow-rivals') as HTMLSelectElement).value), Number(($('ow-level') as HTMLSelectElement).value), ($('ow-civ') as HTMLSelectElement).value, ($('ow-leader') as HTMLSelectElement).value as LeaderChoice,
+      { names: { people: ($('ow-people') as HTMLInputElement).value, house: ($('ow-house') as HTMLInputElement).value } }));
     $('ow-cancel').addEventListener('click', () => this.changed());
     const edge = document.createElement('p');
     edge.className = 'lead';
@@ -601,7 +609,7 @@ export class Overworld {
     const a = armyAt(c, this.sel);
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
     $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · <span title="What your towns hold in store above their working stock, counted in supplies (a hundred of goods each).">To spend <b>${me.supplies}</b> <small>supplies (+${income(c, 0)} each turn)</small></span>` +
-      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
+      '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? peopleName(c, 0) + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
       nationHtml(c) +
       `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
       `<div class="hint">${creedOf(virtueOf(c, 0)).icon} Your people are <b>${creedOf(virtueOf(c, 0)).name}</b> <small>(${virtueOf(c, 0) > 0 ? 'piety ' + virtueOf(c, 0) : virtueOf(c, 0) < 0 ? 'decadence ' + -virtueOf(c, 0) : 'in the middle'}${virtueDrift(c, 0) ? `, ${virtueDrift(c, 0) > 0 ? 'growing more pious' : 'growing more decadent'} by ${Math.abs(virtueDrift(c, 0))} a turn` : ''})</small>. ${FAITH[creedOf(virtueOf(c, 0)).id].desc} Your towns begin each battle as they stand here.</div>` +
@@ -623,7 +631,6 @@ export class Overworld {
       ${t.trait ? `<div class="good">${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}: ${traitOf(t.trait)!.desc}</div>` : ''}
       ${placeAt(c, t.id) ? `<div class="hint">${PLACES[placeAt(c, t.id)!.kind].icon} <b>${placeAt(c, t.id)!.name[0].toUpperCase() + placeAt(c, t.id)!.name.slice(1)}.</b> ${placeAt(c, t.id)!.legend} <i>${PLACES[placeAt(c, t.id)!.kind].desc}</i></div>` : ''}
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
-      ${t.taken ? `<div class="bad">⛓️ Women carried off from here: ${t.taken} supply less each turn until the marauders' camp next door is broken.</div>` : ''}
       ${weatherAt(c, t.id) ? `<div class="bad">${WEATHER[weatherAt(c, t.id) as 'rain'].icon} ${WEATHER[weatherAt(c, t.id) as 'rain'].name}: ${WEATHER[weatherAt(c, t.id) as 'rain'].desc}</div>` : ''}
       ${eventsAt(c, t.id).map((e) => `<div class="hint">${EVENTS[e.kind].icon} <b>${EVENTS[e.kind].name}</b>${e.until > c.turn ? ` <small>(${e.until - c.turn + 1} turns left)</small>` : e.kind === 'unrest' || e.kind === 'hoard' ? ' <small>(comes to a head next turn)</small>' : ''}: ${EVENTS[e.kind].desc}</div>`).join('')}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}
