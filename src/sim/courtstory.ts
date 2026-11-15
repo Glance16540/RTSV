@@ -352,6 +352,7 @@ function plotChoose(c: Campaign, it: Intrigue, choice: string): boolean {
   if (choice === 'unwatch') { it.watch = false; note(c, it, 'plain', 'The informers are called off.'); return true; }
   if (choice === 'gifts') {
     payFor(c, 0, 'dealing', P.gifts);
+    it.sweetened = true;
     for (const x of noblesOf(c, 0)) x.mood = Math.min(100, x.mood + P.sweeten);
     note(c, it, 'plain', 'Gifts have gone out to every noble house. It may be enough.');
     return true;
