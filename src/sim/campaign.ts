@@ -42,7 +42,7 @@ import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
-import { aimOrder, marchInto } from './rivalaim';
+import { aimOrder, marchInto, redeploy } from './rivalaim';
 import { suitorsSeason } from './suitors';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
@@ -1625,19 +1625,27 @@ function aiStep(c: Campaign, f: Faction): boolean {
     targets.sort((a, b) => foe(a) - foe(b));
   }
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
-  if (targets.length) {
-    const t = c.territories[targets[0]];
-    // Cautious leaders want better odds; a leader who has just been refused wants blood.
+  // Cautious leaders want better odds; a leader who has just been refused wants blood.
+  const dares = (from: number, to: number): boolean => {
+    const t = c.territories[to];
+    if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
-    const bySea = !here.adj.includes(t.id);
-    if (strengthVs(army, defenders(c, t.id), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, t.id) * ageEdge(c, f.id) >= defence(c, t.id, army.units, civ) * ageEdge(c, t.owner) + margin) {
-      moveArmy(c, army.id, t.id);
-      return false;
-    }
+    const bySea = !c.territories[from].adj.includes(to);
+    return strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * ageEdge(c, f.id) >= defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin;
+  };
+  // It marches on the most wanted land it dares, not only the most wanted of all.
+  const dared = targets.find((id) => dares(here.id, id));
+  if (dared !== undefined) {
+    moveArmy(c, army.id, dared);
+    return false;
   }
   if (!reach(c, here.id).some((id) => c.territories[id].owner !== f.id)) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
+    if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
+  } else {
+    // On a border with nothing it dares: it goes by its own lands to a border where there is something (rivalaim.ts).
+    const next = redeploy(c, f.id, army.at, (from) => reach(c, from).some((id) => dares(from, id)), (id) => reach(c, id));
     if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
   }
   army.moved = true;

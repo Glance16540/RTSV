@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { biomeOf, newCampaign } from '../src/sim/campaign';
 import { COUNTRY, countryYield } from '../src/sim/country';
-import { AIM, aimAt, aimOrder, aimText, faithGap, marchInto } from '../src/sim/rivalaim';
+import { AIM, REDEPLOY, aimAt, aimOrder, aimText, faithGap, marchInto, redeploy } from '../src/sim/rivalaim';
 import { nationVirtue } from '../src/sim/townfaith';
 
 /** A world with a land of each of the two kinds of country asked for, neither the rival's: the country is the map's, so worlds are tried until one has both. */
@@ -61,5 +61,41 @@ describe('a rival weighs the country and the town\'s faith when it chooses where
     const { c, a, b } = world();
     expect(aimOrder(c, 1, [b, a], () => 3)).toEqual([b, a]);
     expect(aimOrder(c, 1, [], () => 3)).toEqual([]);
+  });
+});
+
+describe('an army with nothing it dares goes to a border where there is something', () => {
+  /** A row of lands 0-1-2-3-4, all the rival's but the last. */
+  const row = () => {
+    const c = newCampaign(7, 2, 1);
+    c.territories = c.territories.slice(0, 5);
+    c.territories.forEach((t, i) => { t.id = i; t.adj = [i - 1, i + 1].filter((n) => n >= 0 && n < 5); t.owner = i < 4 ? 1 : 2; t.horde = false; });
+    const reachOf = (id: number) => c.territories[id].adj;
+    return { c, reachOf };
+  };
+
+  it('it takes the first step of the shortest way through its own lands', () => {
+    const { c, reachOf } = row();
+    const dares = (land: number) => land === 3; // only from the land next to the foe
+    expect(redeploy(c, 1, 0, dares, reachOf)).toBe(1);
+    expect(redeploy(c, 1, 2, dares, reachOf)).toBe(3);
+  });
+
+  it('it stays where it already dares, and where there is nowhere to go', () => {
+    const { c, reachOf } = row();
+    expect(redeploy(c, 1, 3, (land) => land === 3, reachOf)).toBe(-1);
+    expect(redeploy(c, 1, 0, () => false, reachOf)).toBe(-1);
+  });
+
+  it('it goes by its own people\'s lands only, and no further than REDEPLOY of them', () => {
+    const { c, reachOf } = row();
+    c.territories[2].owner = 2; // the way is cut
+    expect(redeploy(c, 1, 0, (land) => land === 3, reachOf)).toBe(-1);
+    const long = newCampaign(7, 2, 1);
+    long.territories = long.territories.slice(0, 10);
+    long.territories.forEach((t, i) => { t.id = i; t.adj = [i - 1, i + 1].filter((n) => n >= 0 && n < 10); t.owner = 1; t.horde = false; });
+    const reachLong = (id: number) => long.territories[id].adj;
+    expect(redeploy(long, 1, 0, (land) => land === REDEPLOY, reachLong)).toBe(1);
+    expect(redeploy(long, 1, 0, (land) => land === REDEPLOY + 1, reachLong)).toBe(-1);
   });
 });
