@@ -66,13 +66,16 @@ export const townStanding = (c: Campaign, tid: number): number => faithAt(c, tid
 /** A season passes for one town on the map: its grief, its strain and care, and how far its standing moves. Returns the move. */
 export function driftTown(c: Campaign, tid: number): number {
   const t = c.territories[tid], f = folkOf(c, tid), mood = townMood(c, tid);
-  griefSeason(f, !!mood.bereaved);
+  // A band's raid (threats.ts marks it 'raid', or 'carried' when it took people) is a raid, and people carried off are mourned.
+  const struck = (kinds: string[]): boolean => (c.events ?? []).some((x) => x.at === tid && kinds.includes(x.kind) && x.until >= c.turn - 1);
+  const raided = !!mood.raided || struck(['raid', 'carried']);
+  griefSeason(f, !!mood.bereaved || struck(['carried']));
   const people = Math.max(1, grown(f) + f.children), food = f.stores.food / people;
   // Hunger is the town's own larder, or a famine on its land (acts.ts); a hard season on the map costs supplies, not food.
   const famine = (c.events ?? []).some((x) => x.at === tid && x.kind === 'famine' && x.until >= c.turn - 1);
   const hunger = famine ? 1 : food < LEAN_FOOD ? 0.6 : 0;
   const e = decreeEffect(c, tid, isDecadent(townStanding(c, tid)));
-  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(mood.raided) + STRAIN.sick * Number(mood.sick) + STRAIN.rebel * Number(mood.rebel) + STRAIN.grief * Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX)) * e.strainScale + e.strainAdd);
+  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + STRAIN.sick * Number(mood.sick) + STRAIN.rebel * Number(mood.rebel) + STRAIN.grief * Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX)) * e.strainScale + e.strainAdd);
   const church = t.buildings.includes('church'), tavern = t.buildings.includes('tavern') && !e.tavernShut;
   const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care);
   // Only the call to church raises a town here; the rest of its care is shown, and its church is counted by townfaith.ts.
@@ -104,7 +107,7 @@ export function driftTown(c: Campaign, tid: number): number {
   let carry = (f.drift?.carry ?? 0) + moved;
   const step = Math.trunc(carry);
   if (step) { swayTown(c, tid, step); carry -= step; }
-  f.drift = { strain, care, moved, hungry: hunger > 0, raided: !!(mood.raided || mood.rebel), carry };
+  f.drift = { strain, care, moved, hungry: hunger > 0, raided: raided || !!mood.rebel, carry };
   return moved;
 }
 const leaderHere = (c: Campaign, tid: number): boolean => leaderAt(c, c.territories[tid].owner, tid);

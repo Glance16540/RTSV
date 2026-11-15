@@ -41,7 +41,9 @@ describe('stores replace supplies', () => {
     // A season's income is goods in store.
     const then = units(nationStores(c, 0)), due = income(c, 0), had = c.factions[0].supplies;
     turn(c);
-    expect(c.factions[0].supplies).toBeGreaterThanOrEqual(had + due - 4); // (a season may also bring a loss: acts of God, raiders)
+    // A season may also bring a loss: acts of God, raiders, and food that spoils beyond what keeps (larder.ts), counted here by name.
+    const rotted = c.territories.filter((t) => t.owner === 0).reduce((n, t) => n + (folkOf(c, t.id).rotted ?? 0), 0);
+    expect(c.factions[0].supplies).toBeGreaterThanOrEqual(had + due - 4 - Math.ceil(rotted / SUPPLY_UNITS));
     // The figure is whole supplies, and a town eats food that is not (larder.ts): the goods and the figure agree to within a supply.
     const moved = units(nationStores(c, 0)) - then, said = (c.factions[0].supplies - had) * SUPPLY_UNITS;
     expect(moved).toBeGreaterThan(said - SUPPLY_UNITS);

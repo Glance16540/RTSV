@@ -199,8 +199,15 @@ describe('a rival weighs how its towns are', () => {
     expect(rivalMoves(c, 1)).toBe(1);
     expect(a.at).toBe(mid.id);
     a.moved = false;
+    // Its only army is never pinned: a nation with every army held at home has stopped fighting its war.
     expect(rivalMoves(c, 1)).toBe(0);
-    expect(a.moved).toBe(true); // behind the lines, it holds the town
+    expect(a.moved).toBe(false);
+    // With another army free to march, the one holding a town that still wants it stays, behind the lines.
+    army(c, far.id, 2, 777);
+    c.bands = [{ id: 1, kind: 'raiders', name: 'the Burnt Men', at: mid.id, strength: 3, since: c.turn, held: [] }];
+    expect(threatened(c, mid.id)).toBe(true);
+    rivalMoves(c, 1);
+    expect(a.moved).toBe(true);
     // At the front an army goes on with the war, resentful town or not.
     const b = realm(9);
     b.c.armies = b.c.armies.filter((x) => x.owner !== 1);

@@ -26,7 +26,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | --- | --- | --- | --- | --- | --- |
 | `acts` | 173 | Acts of God on the map: a season of famine, plague and fire in every land that is held, falling on that land's town: its food, its people and its stores (docs/DESIGN.md). | campaign, creed, stores, township | acts.test.ts | not yet |
 | `ageing` | 122 | A person ages only on the map, a season at a time (docs/DESIGN.md, "Time"). | campaign, data, township | ageing.test.ts | not yet |
-| `ai` | 937 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | birthonly, calamity, creed, data, game, map, muster, temper | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
+| `ai` | 937 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | birthonly, calamity, creed, data, game, keeper, map, muster, temper | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
 | `armytown` | 133 | Armies belong to towns (docs/DESIGN.md): a company's men leave their town's record for the army's roll, the army's dead are struck from it, and the rest come home when it is sent home. | ageing, campaign, township | armytown.test.ts | not yet |
 | `bandfight` | 197 | An army against a band: a battle the player can enter (a pending battle against no nation that takes no land, turned into a field battle), an army's own means when nobody is there, and the computer's peoples hunting bands in their lands. | armytown, campaign, data, threats | bandfight.test.ts | not yet |
 | `bandhorde` | 109 | The marauders, the band that holds a land: one kind of band among the others, with its raids as strikes on a town that defends itself. Was `hordeTurn` in campaign.ts. | campaign, threats | bandhorde.test.ts | not yet |
@@ -58,6 +58,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `harvest` | 93 | Income credited to the land that yields it, the only place a town earns: the land's yield as far as the town has hands, split by where its people work and what the land leans to (docs/DESIGN.md, "Stores"). | campaign, governor, stores, township | harvest.test.ts | not yet |
 | `hero` | 102 | A nation's leader on the field: who they are, how they were made, and what the battles they live through do for them. | leaders | none of its own | not yet |
 | `household` | 103 | A man at war is still of his house (docs/DESIGN.md). | game | household.test.ts | not yet |
+| `keeper` | 19 | A town kept in peace: a campaign town kept by the computer with nobody hostile about raises no works of war (docs/DESIGN.md, "A visit"). | game | keeper.test.ts | not yet |
 | `larder` | 97 | Towns eat their food on the map: each season a town's people eat from its food store, a town that cannot goes hungry, and one hungry long enough loses its grown people, never a child (docs/DESIGN.md, "Stores"). | campaign, drift, township | larder.test.ts | not yet |
 | `leaders` | 547 | The leader of each civilisation and everything they say. | none | none of its own | not yet |
 | `lessons` | 59 | Lessons for the moment they are needed: things a first battle's list of steps cannot teach in order, because | calamity, creed, data, famine, game | lessons.test.ts | not yet |

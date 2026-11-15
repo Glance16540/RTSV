@@ -33,12 +33,12 @@ import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
 import { Orders, governTowns, keepOrders } from './governor';
-import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { abandonEmpty, maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
-import { Muster, armiesJoined, homeOf, menMustered, reckonArmies, seasonOfArmies } from './armytown';
+import { ARMY_REST, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
 
@@ -70,8 +70,8 @@ export const SITES: Record<string, SiteDef> = {
  * company (swords for hire). `age`: added to the cost of the next age. `steadfast`: its lands never rise in revolt.
  * `restless`: a land of theirs in unrest rises even with a garrison in it if that garrison is a single company.
  */
-export const CHURCH_VIRTUE = 6;
-export const TAVERN_VIRTUE = 6;
+export const CHURCH_VIRTUE = 3;
+export const TAVERN_VIRTUE = 3;
 /** How much of what a town became in a battle the whole people takes home with it. */
 export const BATTLE_VIRTUE = 0.5;
 export interface FaithDef { defence: number; tavern: number; raise: number; age: number; steadfast?: boolean; restless?: boolean; desc: string }
@@ -202,13 +202,13 @@ export const TRUCE_TURNS = 6;
 export const ALLIANCE_COST = 6;
 export const GIFT_COST = 4;
 /** Supplies to bring a whole people into the next age, from the Stone Age up. */
-export const AGE_COST = [10, 16, 24, 34];
+export const AGE_COST = [18, 28, 40, 56];
 /** Each age past the first makes a people's armies this much stronger. */
 export const AGE_EDGE = 0.1;
 export const MAX_FAVOR = 3;
 /** Hold this share of all the land for this many turns running and the campaign is won. */
 export const DOMINION_SHARE = 0.6;
-export const DOMINION_TURNS = 3;
+export const DOMINION_TURNS = 6;
 
 export function siteCost(t: Territory, site: string, civ = ''): number {
   if (site === 'fortress' && civ === 'stonekin') return 5;
@@ -293,6 +293,8 @@ export function mendTowns(c: Campaign): void {
 }
 
 export interface Army {
+  /** The last turn it rests after storming a town: it does not march until then is past (armytown.ts). */
+  rest?: number;
   id: number;
   owner: number;
   at: number;
@@ -328,7 +330,7 @@ export interface Campaign {
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
   /** How long each army has stood where it is, soldiers the map has given a name, and armies sent home this season: see rivalrule.ts. */
-  idle?: Record<string, { at: number; n: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
+  idle?: Record<string, { at: number; n: number }>; emptied?: Record<string, number>; wars?: Record<string, { land: number; changed: number; muster?: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
   /** The men with each army, by the town they came from: see armytown.ts. */
   musters?: Record<string, Muster>;
   /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
@@ -715,7 +717,7 @@ function mapTurn(c: Campaign): void {
   c.events = ev.filter((x) => x.until >= c.turn - 1);
   const busy = new Set(c.events.filter((x) => x.until >= c.turn).map((x) => x.at));
   if (c.turn >= 3 && luck(c, 50) < 0.3) {
-    const open = c.territories.filter((t) => t.owner >= 0 && t.capital < 0 && !busy.has(t.id) && !c.armies.some((a) => a.at === t.id && a.owner === t.owner) && !leaderAt(c, t.owner, t.id));
+    const open = c.territories.filter((t) => t.owner >= 0 && t.capital < 0 && !t.yoke && !busy.has(t.id) && !c.armies.some((a) => a.at === t.id && a.owner === t.owner) && !leaderAt(c, t.owner, t.id));
     const t = open[Math.floor(luck(c, 51) * open.length)];
     if (t) {
       mark(c, 'unrest', t.id, UNREST_TURNS - 1);
@@ -1204,6 +1206,9 @@ export function answerDemand(c: Campaign, pay: boolean): void {
 }
 
 /** Settle the pending battle by dice, or record the result of one that was fought out. */
+/** Told of every battle settled here, before it changes anything: for trials that measure campaigns (scripts/health.test.ts). Nothing in the game listens. */
+export const battleWatchers: ((c: Campaign, p: Pending, attackerWon: boolean, how: 'auto' | 'attacker' | 'defender') => void)[] = [];
+
 export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender'): boolean {
   const p = c.pending;
   if (!p) return false;
@@ -1214,6 +1219,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * homeEdge(c, p.attacker) * (0.75 + rand(c) * 0.5);
     attackerWon = a > d;
   }
+  for (const watch of battleWatchers) watch(c, p, attackerWon, how);
   c.pending = null;
   settleFaith(c); // every town's own standing is written down before any changes hands
   settleStores(c); // and what each people has spent or earned is in its towns before any is lost (stores.ts)
@@ -1236,6 +1242,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       if (army.hero) seasonHero(c, army.owner);
       army.at = p.to;
       army.moved = true;
+      army.rest = c.turn + ARMY_REST; // it holds what it took before it marches again
     }
     c.log.push(`${fname(c, p.attacker, true)} took ${t.name} from ${fname(c, p.defender)}.`);
     const place = placeAt(c, t.id);
@@ -1342,7 +1349,7 @@ export function continueAI(c: Campaign): void {
       c.turn++;
       c.phase = 'player';
       tickHouses(c);
-      for (const a of c.armies) { a.moved = false; a.marched = false; }
+      for (const a of c.armies) { a.moved = resting(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts)
       courtTurn(c);
       for (const x of c.factions) x.angry = false;
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
@@ -1360,6 +1367,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      if (abandonEmpty(c).length) checkElimination(c); // a town with nobody left in it is nobody's, and a people with no town is gone (rivalrule.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)

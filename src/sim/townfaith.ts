@@ -81,10 +81,10 @@ export function seasonOfFaith(c: Campaign, shift: (f: number, by: number, at: nu
 /**
  * The pull: every season each town is drawn `PULL` of the way toward where its nation stands, so a Church or a
  * Tavern can hold a town apart only so far (where what it adds each season equals what the pull takes back:
- * 6 a season against a pull of 0.15 leaves it 30 to 40 from the nation's standing). All towns move from where they stood as
+ * 3 a season against a pull of 0.10 leaves it about 25 to 30 from the nation's standing). All towns move from where they stood as
  * the season began, so the nation's own standing is not moved by it, beyond a point of rounding.
  */
-export const PULL = 0.15;
+export const PULL = 0.10;
 export function pullTogether(c: Campaign): void {
   settleFaith(c);
   for (const x of c.factions) {

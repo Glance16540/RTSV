@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { countryOf, countryYield } from '../src/sim/country';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
-import { nationWorth } from '../src/sim/stores';
+import { SUPPLY_UNITS, nationWorth } from '../src/sim/stores';
+import { folkOf } from '../src/sim/township';
 import { HeroSpec, HERO_POINTS, HERO_MIN_HURT, HOLY_GUARD, MIGHT_ATK, GUARD_ARMOR, VIGOUR_HP, RANK_ATK, RANK_ARMOR, RANK_HP, RANK_XP, TYRANT_BIND, cleanHero, heroBonus, rankOf } from '../src/sim/hero';
 import { PLACES, TALES, TALE_FROM, TALE_EVERY, WORLD_EVENTS, WORLD_FROM, COMET_VIRTUE } from '../src/sim/story';
 import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
@@ -815,7 +816,8 @@ describe('conquest campaign', () => {
   it('a lost defence costs the territory, and rivals fight the campaign to a finish', () => {
     const c = newCampaign(3, 2, 2);
     let guard = 0;
-    while (c.phase !== 'over' && guard++ < 400) {
+    // The guard is steps, not seasons; 400 encoded the faster pace before food spoiled (larder.ts).
+    while (c.phase !== 'over' && guard++ < 1600) {
       if (c.demand) answerDemand(c, false);
       else if (c.pending) resolvePending(c, 'auto'); // the player never fights in person here
       else if (c.phase === 'player') endTurn(c);
@@ -1525,7 +1527,9 @@ describe('alliances and dominion', () => {
     c.truces = [{ with: 1, until: 99 }, { with: 2, until: 99 }];
     for (const t of c.territories) if (t.owner === 0) t.buildings = ['fortress'];
     let turns = 0;
-    while (c.phase !== 'over' && turns < 10) { endTurn(c); turns++; }
+    // (The lands were handed over with no army in them, and dominion is now held for longer than unrest takes to come to a head:
+    // nothing is to rise while we count, as nothing had time to when this was written for three turns.)
+    while (c.phase !== 'over' && turns < DOMINION_TURNS + 4) { c.events = (c.events ?? []).filter((e) => e.kind !== 'unrest'); endTurn(c); turns++; }
     expect(c.territories.filter((t) => t.owner === 0).length).toBeGreaterThanOrEqual(need);
     expect(c.winner).toBe(0);
     expect(turns).toBe(DOMINION_TURNS);
@@ -1869,7 +1873,8 @@ describe('ages on the campaign map', () => {
 
   it('rivals advance too once they have the stores', () => {
     const c = newCampaign(3, 2, 2);
-    for (let i = 0; i < 40 && c.phase !== 'over'; i++) { endTurn(c); while (c.pending || c.demand) { if (c.demand) answerDemand(c, false); else resolvePending(c, 'auto'); continueAI(c); } }
+    // docs/TUNING.md wants a rival's next age in 20 to 60 seasons; 40 seasons encoded the faster pace before food spoiled (larder.ts).
+    for (let i = 0; i < 80 && c.phase !== 'over'; i++) { endTurn(c); while (c.pending || c.demand) { if (c.demand) answerDemand(c, false); else resolvePending(c, 'auto'); continueAI(c); } }
     expect(c.factions.slice(1).some((f) => (f.age ?? 0) > 0)).toBe(true);
   });
 });
@@ -3140,8 +3145,11 @@ describe('marauders on the campaign map', () => {
     expect(c.territories[camp.id].horde).toBe(false);
     expect(c.territories[home.id].taken).toBe(0);
     expect(c.events!.some((e) => e.kind === 'freed' && e.at === camp.id)).toBe(true);
-    // The prize, less the two supplies the land was still short of when this turn's stores were counted.
-    expect(c.factions[0].supplies - twin.factions[0].supplies).toBe(HORDE_PRIZE - 2);
+    // The prize, less the two supplies the land was still short of when this turn's stores were counted, and less
+    // what of it spoiled in the towns it was laid down in (larder.ts): counted in goods, so the spoiling is exact.
+    const goods = (x: Campaign) => x.territories.filter((t) => t.owner === 0).reduce((n, t) => { const s = folkOf(x, t.id).stores; return n + s.food + s.wood + s.gold + s.stone; }, 0);
+    const rot = (x: Campaign) => x.territories.filter((t) => t.owner === 0).reduce((n, t) => n + (folkOf(x, t.id).rotted ?? 0), 0);
+    expect(goods(c) - goods(twin)).toBe((HORDE_PRIZE - 2) * SUPPLY_UNITS - (rot(c) - rot(twin)));
   });
 
   it('a camp left alone grows, and marauders appear in a long campaign', () => {
