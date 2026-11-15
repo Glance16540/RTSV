@@ -29,8 +29,12 @@ import { agesOf } from './ageing';
 import { leaderAt } from './court';
 import { needOf } from './larder';
 import { folkOf, grown } from './township';
+import { courtBegin, courtChoices, courtChoose, courtStanding, courtStep } from './courtstory';
 
-export type IntrigueKind = 'thief' | 'killer';
+export type IntrigueKind = 'thief' | 'killer' | 'rival' | 'suitor';
+/** The stories of a town, and those of the leader's own house (courtstory.ts). */
+export const TOWN_KINDS: IntrigueKind[] = ['thief', 'killer'];
+export const ofTown = (it: { kind: IntrigueKind }): boolean => TOWN_KINDS.includes(it.kind);
 /** A grown person of the town a story turns on. */
 export interface Person { name: string; family: string; gender: 'm' | 'f'; trade: string }
 export interface Clue { turn: number; text: string; /** Those of `people` it clears, by place in the list. */ clears: number[] }
@@ -53,7 +57,9 @@ export interface Intrigue {
   again?: boolean;
   /** An innocent was hanged for it. */
   wronged?: Person[];
-  ended?: { turn: number; how: 'hanged' | 'banished' | 'worked' | 'pardoned' | 'unfound' | 'lost'; text: string };
+  /** A story of the leader's house (courtstory.ts): the rival people in it, how far it has gone, the turn its next step falls, and who is in it by name. */
+  rival?: number; stage?: number; due?: number; cast?: { spouse?: string; daughter?: string; suitor?: string; king?: string }; willing?: boolean; asked?: boolean;
+  ended?: { turn: number; how: 'hanged' | 'banished' | 'worked' | 'pardoned' | 'unfound' | 'lost' | 'yielded' | 'bought' | 'foiled' | 'slain' | 'wounded' | 'wed' | 'refused' | 'spurned' | 'outlived'; text: string };
 }
 /** Something a story did in a season, for the report. `who`: the person it is about, for a face. */
 export interface IntrigueNote { turn: number; id: number; kind: IntrigueKind; at: number; owner: number; tone: 'good' | 'bad' | 'plain'; text: string; who?: Person }
@@ -68,12 +74,12 @@ declare module './campaign' {
 
 export const INTRIGUE = {
   /** No story before this season; a town has one at a time and is left alone this long after one ends; a people has this many open at once. */
-  from: 6, rest: 8, open: 2,
+  from: 6, rest: 8, open: 1,
   /** Ended stories kept on record, and notes kept for the report. */
   kept: 30, notes: 60,
   thief: {
-    /** The chance each season in a town that has the gold; times `strained` where it is hungry or drinks. */
-    chance: 0.03, strained: 2.5, gold: 80,
+    /** The chance each season, for the whole nation, in a town that has the gold; times `strained` where it is hungry or drinks. */
+    chance: 0.04, strained: 2, gold: 80,
     houses: 3,
     /** The share of the town's gold a robbery takes, and the most. */
     share: 0.06, most: 30,
@@ -87,10 +93,10 @@ export const INTRIGUE = {
     again: 0.5,
   },
   killer: {
-    chance: 0.012, strained: 2.5, grown: 8,
+    chance: 0.02, strained: 2, grown: 8,
     suspects: 5,
     /** The chance of a killing each season after the first, and the fewest grown people it leaves a town. */
-    strike: 0.55, leave: 5,
+    strike: 0.45, leave: 6,
     /** The chance a killing is of one of the suspected (who is thereby cleared). */
     among: 0.25,
     /** The chance of a clue a season; more with the leader's court in the town, or an army. */
@@ -107,7 +113,7 @@ const TRADES = ['miller', 'smith', 'carter', 'weaver', 'herder', 'brewer', 'that
 const PLACES = ['the mill', 'the forge', 'the well', 'the far field', 'the church', 'the ford', 'the granary', 'the tavern'];
 
 /** A chance of this story's own: by the campaign, the season and a salt. */
-function chance(c: Campaign, salt: number): number {
+export function chance(c: Campaign, salt: number): number {
   let h = (Math.imul(c.seed ^ 0x51ed270b, 0x9e3779b1) ^ Math.imul(c.turn + 0x1b873593, 0x85ebca6b) ^ Math.imul(salt + 0x27d4eb2f, 0xc2b2ae35)) >>> 0;
   h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 12; h = Math.imul(h, 0x297a2d39) >>> 0; h ^= h >>> 15;
   return (h >>> 0) / 4294967296;
@@ -138,13 +144,13 @@ function strike(c: Campaign, at: number, gender: 'm' | 'f'): boolean {
   if (f.ages) agesOf(c, at, f); // the record of ages loses them too
   return true;
 }
-function note(c: Campaign, it: Intrigue, tone: IntrigueNote['tone'], text: string, who?: Person): void {
+export function note(c: Campaign, it: Intrigue, tone: IntrigueNote['tone'], text: string, who?: Person): void {
   const news = (c.intrigueNews ??= []);
   news.push({ turn: c.turn, id: it.id, kind: it.kind, at: it.at, owner: it.owner, tone, text, ...(who ? { who } : {}) });
   if (news.length > INTRIGUE.notes) news.splice(0, news.length - INTRIGUE.notes);
   if (it.owner === 0) c.log.push(text);
 }
-function end(c: Campaign, it: Intrigue, how: NonNullable<Intrigue['ended']>['how'], text: string, tone: IntrigueNote['tone'], who?: Person): void {
+export function end(c: Campaign, it: Intrigue, how: NonNullable<Intrigue['ended']>['how'], text: string, tone: IntrigueNote['tone'], who?: Person): void {
   it.ended = { turn: c.turn, how, text };
   delete it.caught; it.watch = false;
   note(c, it, tone, text, who);
@@ -155,7 +161,9 @@ function end(c: Campaign, it: Intrigue, how: NonNullable<Intrigue['ended']>['how
 
 /** The stories of a people still running (the player's by default), and all of them, ended too. */
 export const openIntrigues = (c: Campaign, f = 0): Intrigue[] => (c.intrigues ?? []).filter((x) => x.owner === f && !x.ended);
-export const intrigueAt = (c: Campaign, at: number): Intrigue | undefined => (c.intrigues ?? []).find((x) => x.at === at && !x.ended);
+export const intrigueAt = (c: Campaign, at: number): Intrigue | undefined => (c.intrigues ?? []).find((x) => x.at === at && !x.ended && ofTown(x));
+/** Every story running in a land: its town's, and the leader's house's if the court is kept there. */
+export const intriguesAt = (c: Campaign, at: number): Intrigue[] => (c.intrigues ?? []).filter((x) => x.at === at && !x.ended);
 /** Those of a killer's suspects not yet cleared, by place in the list. */
 export const suspected = (it: Intrigue): number[] => it.people.map((_, i) => i).filter((i) => !it.cleared.includes(i));
 /** What a season's stories did that concerns a people, for the report. */
@@ -170,9 +178,9 @@ export function strained(c: Campaign, at: number): boolean {
 function free(c: Campaign, at: number): boolean {
   const t = c.territories[at];
   if (t.owner < 0 || t.horde) return false;
-  return !(c.intrigues ?? []).some((x) => x.at === at && (!x.ended || (!x.again && c.turn - x.ended.turn < INTRIGUE.rest)));
+  return !(c.intrigues ?? []).some((x) => ofTown(x) && x.at === at && (!x.ended || (!x.again && c.turn - x.ended.turn < INTRIGUE.rest)));
 }
-function begin(c: Campaign, kind: IntrigueKind, at: number): Intrigue {
+export function begin(c: Campaign, kind: IntrigueKind, at: number): Intrigue {
   const it: Intrigue = { id: (c.intrigueSeq = (c.intrigueSeq ?? 0) + 1), kind, owner: c.territories[at].owner, at, since: c.turn, people: [], culprit: -1, victims: [], taken: 0, robbed: [], clues: [], cleared: [], watched: 0 };
   (c.intrigues ??= []).push(it);
   return it;
@@ -305,6 +313,7 @@ function killerSeason(c: Campaign, it: Intrigue): void {
 /** What the leader may do about a story now. Empty for one that is over, or that is not the player's to settle. */
 export function choicesFor(c: Campaign, it: Intrigue): Choice[] {
   if (it.ended) return [];
+  if (!ofTown(it)) return courtChoices(c, it);
   const f = folkOf(c, it.at), T = INTRIGUE.thief;
   const watch: Choice = it.watch ? { id: 'unwatch', label: 'Stand the watch down' } : { id: 'watch', label: `Set a watch (${T.cost} gold a season from the town)`, ...(f.stores.gold < T.cost ? { bar: 'The town has not the gold.' } : {}) };
   if (it.kind === 'thief') {
@@ -323,6 +332,7 @@ export function choicesFor(c: Campaign, it: Intrigue): Choice[] {
 export function choose(c: Campaign, id: number, choice: string): boolean {
   const it = (c.intrigues ?? []).find((x) => x.id === id), T = INTRIGUE.thief;
   if (!it || it.ended) return false;
+  if (!ofTown(it)) return courtChoose(c, it, choice);
   const ok = choicesFor(c, it).find((x) => x.id === choice);
   if (!ok || ok.bar) return false;
   const f = folkOf(c, it.at), where = land(c, it.at);
@@ -362,23 +372,28 @@ export function intrigueSeason(c: Campaign): Intrigue[] {
   const T = INTRIGUE.thief, K = INTRIGUE.killer, began: Intrigue[] = [];
   for (const it of [...(c.intrigues ?? [])]) {
     if (it.ended) continue;
+    if (!ofTown(it)) { courtStep(c, it); continue; }
     const t = c.territories[it.at];
     if (!t || t.owner !== it.owner || t.horde) { end(c, it, 'lost', `${t?.name ?? 'The town'} was lost, and what was afoot there (${it.kind === 'thief' ? 'a thief' : 'a killer'} never taken) went with it.`, 'plain'); continue; }
     if (it.kind === 'thief') thiefSeason(c, it); else killerSeason(c, it);
   }
+  began.push(...courtBegin(c));
   if (c.turn < INTRIGUE.from) return began;
-  for (const t of c.territories) {
-    if (t.owner !== 0 || !t.folk || openIntrigues(c, 0).length >= INTRIGUE.open || !free(c, t.id)) continue;
-    const f = folkOf(c, t.id), k = strained(c, t.id);
-    if (grown(f) >= K.grown && chance(c, t.id * 131 + 7) < K.chance * (k ? K.strained : 1)) began.push(beginKiller(c, t.id));
-    else if (f.stores.gold >= T.gold && grown(f) >= 4 && chance(c, t.id * 131 + 8) < T.chance * (k ? T.strained : 1)) began.push(beginThief(c, t.id));
-  }
+  // One town of the player's is looked at each season, a strained one for choice: the chance is the nation's, not each town's.
+  if (openIntrigues(c, 0).filter(ofTown).length >= INTRIGUE.open) return began;
+  const towns = c.territories.filter((t) => t.owner === 0 && !t.horde && t.folk && free(c, t.id));
+  if (!towns.length) return began;
+  const hard = towns.filter((t) => strained(c, t.id)), from = hard.length && chance(c, 5) < 0.7 ? hard : towns;
+  const t = from[Math.floor(chance(c, 6) * from.length)], f = folkOf(c, t.id), k = strained(c, t.id);
+  if (grown(f) >= K.grown && chance(c, 7) < K.chance * (k ? K.strained : 1)) began.push(beginKiller(c, t.id));
+  else if (f.stores.gold >= T.gold && grown(f) >= 4 && chance(c, 8) < T.chance * (k ? T.strained : 1)) began.push(beginThief(c, t.id));
   return began;
 }
 
 /** One line on where a story stands, for a panel. */
 export function standing(c: Campaign, it: Intrigue): string {
   if (it.ended) return it.ended.text;
+  if (!ofTown(it)) return courtStanding(c, it);
   if (it.kind === 'thief') return it.caught !== undefined && it.thief
     ? `${fullName(it.thief)} the ${it.thief.trade} is held for the robberies in ${land(c, it.at)}. ${WHY[it.why ?? 'greed'](it.thief)}.`
     : `A thief has robbed the same ${it.people.length} houses of ${land(c, it.at)} ${it.robbed.reduce((a, b) => a + b, 0)} times; ${it.taken} gold is gone.${it.watch ? ' A watch is kept.' : ''}`;
