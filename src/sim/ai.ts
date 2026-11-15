@@ -5,6 +5,7 @@ import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from '
 import { Building, Entity, Game, Unit } from './game';
 import { turnOut } from './calamity';
 import { mustering, needsPerson } from './muster';
+import { MILITARY_WORKS, inPeace } from './keeper';
 import { roomForCouples, unhousedCouples } from './birthonly';
 import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
@@ -172,7 +173,9 @@ export class AIController {
       // A full treasury and too few places to spend it: more barracks, ranges and stables, so an army lost can be raised again quickly.
       const idleWealth = Math.min((p.res.food + p.res.wood + p.res.gold) / 3, Math.max(p.res.food, p.res.wood) / 2);
       const more = this.level >= 1 && p.age >= 2 ? Math.min(3, Math.floor(idleWealth / 900)) : 0;
+      const peace = inPeace(g, pid); // a town kept in peace raises no works of war (keeper.ts)
       for (const step of BUILD_ORDER) {
+        if (peace && MILITARY_WORKS.includes(step.type)) continue;
         if (marketFirst && step.type !== 'market') continue;
         const extra = step.type === 'barracks' || step.type === 'range' || step.type === 'stable' ? more : 0;
         if (step.age > p.age || villagers.length < step.villagers || count(step.type) >= step.count + extra) continue;
@@ -196,7 +199,7 @@ export class AIController {
     const stalled = building.filter((b) => b.def.wall);
     this.wallT = stalled.length ? this.wallT + 1 : 0;
     if (this.wallT > 45) { g.cmdDelete(pid, stalled.map((b) => b.id)); this.wallT = 0; }
-    if (!saving && !underAttack) this.buildWalls(home, villagers, stalled.length > 0);
+    if (!saving && !underAttack && !inPeace(g, pid)) this.buildWalls(home, villagers, stalled.length > 0);
 
     this.assignWorkers(villagers, mine, home);
     if (!underAttack) this.staffHouses(mine, villagers, home);
