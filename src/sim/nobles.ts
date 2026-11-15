@@ -41,6 +41,8 @@ declare module './campaign' {
   interface Faction {
     /** The nation's nobles (nobles.ts). */
     nobles?: Noble[];
+    /** How many lords each town of the nation has had and lost, by town (nobles.ts, `newLord`). */
+    lordsGone?: Record<number, number>;
   }
 }
 
@@ -93,7 +95,7 @@ function reckon(c: Campaign, f: number, was: Noble[]): Noble[] {
   const add = (key: string, name: string, female: boolean, town: number, rank: Rank, post?: Post): void => {
     if (out.some((n) => n.key === key)) return;
     const o = old.get(key);
-    out.push({ key, name, female, town, rank, leaning: o?.leaning ?? leaningOf(c, key, rank, post), mood: o?.mood ?? 0, ...(post ? { post } : {}) });
+    out.push({ key, name: o?.name ?? name, female: o?.female ?? female, town, rank, leaning: o?.leaning ?? leaningOf(c, key, rank, post), mood: o?.mood ?? 0, ...(post ? { post } : {}) });
   };
   for (const x of kinOf(c, f).circle) add(`close:${x.post}:${x.name}`, x.name, x.female, x.town, 'close', x.post);
   for (const t of c.territories) {
@@ -104,11 +106,41 @@ function reckon(c: Campaign, f: number, was: Noble[]): Noble[] {
     if (vet) add(`captain:${t.id}:${vet.name}`, vet.name, vet.gender === 'f', t.id, 'captain');
     if (mother) add(`matron:${t.id}:${mother.name}`, mother.name, true, t.id, 'matron');
     if (grown(folk) >= NOBLES.lordAt) {
-      const female = hash(c.seed, t.id * 131 + f, 2) < 0.2, list = female ? NAMES_F : NAMES_M;
-      add(`lord:${t.id}:${f}`, list[Math.floor(hash(c.seed, t.id * 977 + f, 3) * list.length)], female, t.id, 'lord');
+      // The lord of this town, or the one after them if lords have been lost here (newLord): each has a name of their own.
+      const gen = c.factions[f]?.lordsGone?.[t.id] ?? 0, before = gen ? lordName(c, f, t.id, gen - 1).name : '';
+      const lord = lordName(c, f, t.id, gen, before);
+      add(`lord:${t.id}:${f}${gen ? `:${gen}` : ''}`, lord.name, lord.female, t.id, 'lord');
     }
   }
   return out;
+}
+
+/** The name of a town's lord, the `gen`th it has had (0 the first), never the same as the one before. */
+function lordName(c: Campaign, f: number, tid: number, gen: number, not = ''): { name: string; female: boolean } {
+  const female = hash(c.seed, tid * 131 + f + gen * 7919, 2) < 0.2, list = female ? NAMES_F : NAMES_M;
+  let i = Math.floor(hash(c.seed, tid * 977 + f + gen * 104729, 3) * list.length);
+  if (list[i] === not) i = (i + 1) % list.length;
+  return { name: list[i], female };
+}
+
+/**
+ * A town's lord is gone (dead, put to death, fled): the town has a new lord at once, of another name, who comes to it
+ * with no grudge (mood nothing). Returns the new lord, or undefined if the town is too small to have one now.
+ */
+export function newLord(c: Campaign, f: number, tid: number, was?: Noble): Noble | undefined {
+  const fac = c.factions[f];
+  if (!fac) return undefined;
+  const list = (fac.nobles ??= []), i = list.findIndex((n) => (was ? n === was || n.key === was.key : n.rank === 'lord' && n.town === tid));
+  const old = i >= 0 ? list[i] : undefined;
+  const gone = (fac.lordsGone ??= {});
+  gone[tid] = (gone[tid] ?? 0) + 1;
+  if (grown(folkOf(c, tid)) < NOBLES.lordAt && !old) return undefined;
+  // In the place of the one gone, so that the rest of the nobles stand as they were.
+  const gen = gone[tid], who = lordName(c, f, tid, gen, old?.name ?? lordName(c, f, tid, gen - 1).name);
+  const lord: Noble = { key: `lord:${tid}:${f}:${gen}`, name: who.name, female: who.female, town: tid, rank: 'lord', leaning: leaningOf(c, `lord:${tid}:${f}:${gen}`, 'lord'), mood: 0 };
+  if (i >= 0) list[i] = lord; else list.push(lord);
+  if (f === 0) c.log.push(`${titleOf(c, lord)} now holds the town for you.`);
+  return lord;
 }
 
 /** A nation's nobles, reckoned the first time they are asked after. */
