@@ -309,20 +309,43 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   return w;
 }
 
-/** Real-time sieges, computer against computer: a rival's army against a capital, as scripts/sieges.test.ts sets one up. */
-function realSieges(): Siege[] {
-  const out: Siege[] = [];
+/** The odds the map gives a real-time siege's attacker: its army's map strength over the town's defence (TUNING.md). */
+const SIEGE_ODDS = [1.0, 1.6];
+/** Real-time sieges, computer against computer, drawn like the sieges that happen in a campaign: the campaign is played
+ * on by the computer for some years, so each people is at its own age, and then the rival comes against the player's
+ * capital (given a Fortress, the case the figure asks about) with an army the map rates at SIEGE_ODDS of the town's
+ * defence. Returns the sieges, and the odds and ages each was fought at. */
+function realSieges(): { sieges: Siege[]; odds: number[]; ages: [number, number][] } {
+  const out: Siege[] = [], odds: number[] = [], ages: [number, number][] = [];
+  const kept = watched; watched = []; // these sieges' own map battles are not the campaigns'
   const peoples = CIV_IDS.filter((id) => id !== 'wild');
-  for (let k = 1; k <= SIEGES; k++) {
+  for (let k = 1; out.length < SIEGES && k <= SIEGES * 4; k++) {
     const seed = k * 2;
     const c = newCampaign(seed, 1, 1, peoples[seed % peoples.length]);
-    const home = c.territories.find((t) => t.capital === 0)!;
-    if (!home.buildings.includes('fortress')) home.buildings.push('fortress'); // the case the figure asks about: a walled town
-    c.armies.push({ id: 99, owner: 1, at: home.adj[0], units: { infantry: 2 + (seed % 3), archers: 1 + (seed % 2) }, hero: false, vet: 0, moved: false });
-    c.territories[home.adj[0]].owner = 1;
-    if (moveArmy(c, 99, home.id) !== 'battle') continue;
-    c.pending!.mode = 'siege';
-    const cfg = battleConfig(c);
+    // Years of the campaign first, so that both peoples are at the age they have come to.
+    const years = 20 + ((k * 7) % 29);
+    for (let s = 0; s < years; s++) { if (c.phase === 'over') c.phase = 'player'; season(c, true); }
+    const home = c.territories.find((t) => t.capital === 0 && t.owner === 0);
+    if (!home || !c.factions[1].alive || c.pending) continue;
+    if (!home.buildings.includes('fortress')) home.buildings.push('fortress');
+    const from = home.adj.find((n) => c.territories[n].owner === 1) ?? home.adj[0];
+    // The army, grown a company at a time until the map rates the assault within SIEGE_ODDS; each try on a copy.
+    const want = SIEGE_ODDS[0] + (SIEGE_ODDS[1] - SIEGE_ODDS[0]) * ((k * 0.37) % 1);
+    let chosen: Campaign | null = null, ratio = 0;
+    for (let n = 1; n <= 40 && !chosen; n++) {
+      const t = structuredClone(c);
+      t.phase = 'player'; t.demand = null; t.pending = null;
+      t.territories[from].owner = 1;
+      const units: Record<string, number> = { infantry: Math.ceil(n / 2), archers: Math.floor(n / 2) };
+      t.armies = t.armies.filter((a) => a.at !== from);
+      t.armies.push({ id: 9999, owner: 1, at: from, units, hero: false, vet: 0, moved: false });
+      if (moveArmy(t, 9999, home.id) !== 'battle' || !t.pending) break;
+      ratio = t.pending.aStr / Math.max(0.1, t.pending.dStr);
+      if (ratio >= want || ratio >= SIEGE_ODDS[1]) chosen = t;
+    }
+    if (!chosen || ratio < SIEGE_ODDS[0] || ratio > SIEGE_ODDS[1]) continue;
+    chosen.pending!.mode = 'siege';
+    const cfg = battleConfig(chosen);
     if (!cfg) continue;
     const setups = cfg.setups.map((x) => ({ ...x, isAI: true }));
     const g = new Game(cfg.seed, setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
@@ -334,8 +357,10 @@ function realSieges(): Siege[] {
     const men = g.units.some((u) => u.owner === def && !u.dead && (u.type === 'villager' || g.isMilitary(u)));
     for (let sec = 0; sec < MINUTES * 60 && g.winner < 0; sec++) { for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; } ais.forEach((a) => a.update()); }
     out.push({ walls, men, held: g.winner < 0 || g.players[g.winner].team === g.players[def].team });
+    odds.push(ratio); ages.push([ageOf(chosen, 1), ageOf(chosen, 0)]);
   }
-  return out;
+  watched = kept;
+  return { sieges: out, odds, ages };
 }
 
 // ---- The report ----
@@ -477,11 +502,11 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     'Men with its armies (armytown.ts) over those and the men in its towns. In war is a season within a year of the nation winning or losing land.');
 
   // Sieges
-  const sieges = all('sieges').filter((x) => x.walls && x.men), live = realSieges();
+  const sieges = all('sieges').filter((x) => x.walls && x.men), drawn = realSieges(), live = drawn.sieges;
   const holds = share(sieges, (x) => x.held), liveHolds = share(live.filter((x) => x.walls && x.men), (x) => x.held);
   const both = [...sieges, ...live.filter((x) => x.walls && x.men)], bothHolds = share(both, (x) => x.held);
-  add('Sieges', 'A besieged town with walls or a fortress and its men (or an army) in it', 'holds 60 to 85%', both.length ? `${pct(bothHolds)} in all: on the map ${pct(holds)} (${sieges.length}), in real time ${pct(liveHolds)} (${live.filter((x) => x.walls && x.men).length} of ${live.length} fought)` : 'none', both.length ? within(bothHolds, 0.6, 0.85) : null,
-    `On the map: every siege of a nation's town settled in resolvePending, the rivals' among themselves included (campaign.ts battleWatchers), with a Fortress or a tower, wall or gate standing in its town, and its men or an army of its own in it. In real time: ${SIEGES} sieges of a rival against a capital given a Fortress (it stands as a tower in its town; otherwise as scripts/sieges.test.ts sets them up), the computer playing both sides for up to ${MINUTES} minutes; a town still standing then is counted as having held. Holds means the attacker was thrown back.`);
+  add('Sieges', 'A besieged town with walls or a fortress and its men (or an army) in it', 'holds 60 to 85%', both.length ? `${pct(bothHolds)} in all: on the map ${pct(holds)} (${sieges.length}), in real time ${pct(liveHolds)} (${live.filter((x) => x.walls && x.men).length} of ${live.length} fought, at odds ${drawn.odds.length ? `${num(Math.min(...drawn.odds), 2)} to ${num(Math.max(...drawn.odds), 2)}` : '—'}; attacker's age ${drawn.ages.map((a) => a[0]).join(',')} against ${drawn.ages.map((a) => a[1]).join(',')})` : 'none', both.length ? within(bothHolds, 0.6, 0.85) : null,
+    `On the map: every siege of a nation's town settled in resolvePending, the rivals' among themselves included (campaign.ts battleWatchers), with a Fortress or a tower, wall or gate standing in its town, and its men or an army of its own in it. In real time: ${SIEGES} sieges drawn like those a campaign has. A campaign is played on by the computer for 20 to 48 seasons, so that each people is at its own age, and then the rival comes against the player\'s capital (given a Fortress: it stands as towers in its town) with infantry and archers grown until the map rates the assault at ${SIEGE_ODDS[0]} to ${SIEGE_ODDS[1]} times the town\'s defence (its own measure, as in resolvePending); the computer plays both sides for up to ${MINUTES} minutes; a town still standing then is counted as having held. Holds means the attacker was thrown back.`);
 
   const secs = ((Date.now() - t0) / 1000).toFixed(0);
   const inN = rows.filter((r) => r.verdict === 'IN').length, outN = rows.filter((r) => r.verdict === 'OUT').length;
