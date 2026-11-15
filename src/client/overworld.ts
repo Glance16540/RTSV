@@ -25,6 +25,7 @@ import { callArmies, called, courtOf, endCall, holdCourt, leaderReach, moveLeade
 import { openHeroCreator, savedHero } from './herocreator';
 import { visitButton } from './visit';
 import { MAX_NAME, Names, peopleName } from '../sim/naming';
+import { mountRoll, rollHtml } from './rollpanel';
 import { convoyHtml, sendFromPanel } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
 import { decreePanel } from './decrees';
@@ -153,6 +154,7 @@ export class Overworld {
     $('ow-exit').addEventListener('click', () => hooks.exit());
     $('ow-new').addEventListener('click', () => this.askNew());
     $('ow-chronicle').addEventListener('click', () => this.showChronicle());
+    mountRoll(() => this.dialog('Your people', rollHtml(this.c), [['Close', () => this.changed()]])); // the roll of your nation (rollpanel.ts)
     $('ow-speech').addEventListener('click', () => { this.speakT = 0; this.nextSpeech(); });
     $('overworld').classList.remove('hidden');
     this.changed();
