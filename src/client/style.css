@@ -725,6 +725,3 @@ body.looking-out #visit { display: none; }
 
 /* ---- A town's own faith, its resentment if taken, and its men away (townpanel.ts) ---- */
 .town-faith, .town-yoke, .town-away { font-size: 0.94em; }
-
-/* ---- A town's pressure, who has drifted, and its decree (townpanel.ts, drift.ts) ---- */
-.town-drift { font-size: 0.94em; }
