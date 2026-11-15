@@ -19,7 +19,7 @@
 // army of its holder there, a capital's guard, and its people's creed, which stiffens or slackens all of it.
 // A land with plague in it defends worse. That is weighed against the band and comes out one of three ways:
 //   held off    the band is beaten back and weakened; a weak band is broken altogether.
-//   raided      men die at the walls, stores and supplies are lost, and raiders or pirates may burn a farm.
+//   raided      men die at the walls, the town's stores are looted, and raiders or pirates may burn a farm.
 //   taken       all of that, worse, and people are carried off.
 // Children are never killed and never taken: they are records on their houses (docs/DESIGN.md).
 //
@@ -36,12 +36,14 @@
 // A band broken gives up everyone it holds and something of what it stole.
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
+import { swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaign';
 import { creedOf } from './creed';
 import { OLD_SEASON, SEASONS_A_YEAR, agesOf, countFrom } from './ageing';
 import { STORE_KINDS, folkOf, living } from './township';
 import { wrathOf } from './acts';
+import { SUPPLY_UNITS, stock } from './stores';
 
 export type BandKind = 'raiders' | 'slavers' | 'pirates' | 'highwaymen';
 /** People a band is holding: where they were taken from, whose they are, their ages when seized, and since when. */
@@ -61,7 +63,7 @@ export interface Raid {
   turn: number; band: number; kind: BandKind; name: string; at: number; owner: number;
   outcome: Outcome; force: number; defence: Defence;
   killed: number; taken: { men: number; women: number }; names: string[];
-  stores: { food: number; wood: number; gold: number; stone: number }; supplies: number; burnt?: string;
+  stores: { food: number; wood: number; gold: number; stone: number }; burnt?: string;
   /** Which way the people's standing moved, and by how much (piety up, decadence down). */
   sway: number;
   /** The band was broken in the attempt. */
@@ -93,8 +95,6 @@ export const THREATS = {
   man: 0.35, fortress: 3, raising: 0.5, tower: 1, towers: 3, wall: 0.1, walls: 2, capital: 1, sick: 0.7,
   /** The share of a town's men who die at the walls, by outcome; and of its stores lost. */
   dead: { held: 0, raided: 0.15, taken: 0.25 }, loot: { held: 0, raided: 0.25, taken: 0.4 }, pirateLoot: 0.2, road: 0.2,
-  /** Supplies lost on the map, by outcome. */
-  supplies: { held: 0, raided: 2, taken: 3 },
   /** The share of a town's women, and for slavers its men, carried off when it falls. */
   carried: 0.3,
   /** The chance raiders or pirates burn a farm. */
@@ -103,7 +103,7 @@ export const THREATS = {
   sway: { held: 2, raided: -2, taken: -4 },
   /** Seasons captives can be got back for, and the years of life the whole of it costs a man and a woman. */
   holdFor: 4, yearsMan: 20, yearsWoman: 30,
-  /** Supplies an army wins by breaking a band, and how many reports are kept. */
+  /** Supplies an army wins back by breaking a band (into the town where it stands, else its chief town), and how many reports are kept. */
   prize: 3, kept: 40,
 };
 
@@ -253,7 +253,8 @@ function breakBand(c: Campaign, b: Band, out: string[], by?: Army): void {
   for (const h of b.held) freed += bringHome(c, h);
   if (freed) { mark(c, 'rescued', b.at); out.push(`${people(freed, 'person', 'people')} held by ${b.name} ${freed === 1 ? 'is' : 'are'} free and going home, the older for it.`); }
   c.bands = (c.bands ?? []).filter((x) => x !== b);
-  if (by && c.factions[by.owner]) c.factions[by.owner].supplies += THREATS.prize;
+  // What is taken back goes into the town where the army stands, if it is theirs; else to the nation as a whole.
+  if (by && c.factions[by.owner]) { if (c.territories[by.at]?.owner === by.owner) stock(c, by.at, THREATS.prize * SUPPLY_UNITS); else c.factions[by.owner].supplies += THREATS.prize; }
 }
 
 /** One strike on one town. */
@@ -268,7 +269,7 @@ function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   let outcome: Outcome = r >= THREATS.hold ? 'held' : r < THREATS.fall && !road ? 'taken' : 'raided';
   const raid: Raid = {
     turn: c.turn, band: b.id, kind: b.kind, name: b.name, at: tid, owner, outcome, force, defence: road ? { ...defence, total: round1(guard) } : defence,
-    killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, supplies: 0, sway: 0,
+    killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0,
   };
   if (outcome === 'held') {
     b.strength -= r >= 2 ? 2 : 1;
@@ -278,8 +279,6 @@ function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
     if (!road) raid.killed = takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - 1), Math.ceil(f.men * THREATS.dead[outcome]))).length;
     const share = road ? THREATS.road : THREATS.loot[outcome] + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
     for (const k of STORE_KINDS) { const n = Math.floor(f.stores[k] * (k === 'food' || k === 'gold' || !road ? share : 0)); f.stores[k] -= n; raid.stores[k] = n; }
-    raid.supplies = Math.min(c.factions[owner].supplies, THREATS.supplies[outcome]);
-    c.factions[owner].supplies -= raid.supplies;
     if ((b.kind === 'raiders' || b.kind === 'pirates') && t.buildings.includes('farm') && chance(c, b.id, 31) < THREATS.burn) { t.buildings.splice(t.buildings.indexOf('farm'), 1); raid.burnt = 'farm'; }
     if (outcome === 'taken') {
       const women = takeOut(c, tid, 'f', Math.min(Math.max(0, f.women - 1), Math.ceil(f.women * THREATS.carried)));
@@ -297,8 +296,7 @@ function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   // Which way their morals sway: a people that held together is the better for it; one that was sacked loses heart.
   const down = THREATS.sway[outcome] < 0;
   raid.sway = round1(THREATS.sway[outcome] * (down ? wrathOf(c, owner) : 1));
-  const x = c.factions[owner];
-  x.virtue = Math.max(-100, Math.min(100, (x.virtue ?? 0) + raid.sway));
+  swayTown(c, tid, raid.sway); // it is the town struck whose morals sway, and its nation's with it (townfaith.ts)
   mark(c, outcome === 'held' ? 'heldoff' : outcome === 'taken' ? 'carried' : 'raid', tid);
   (c.raids ??= []).push(raid);
   if (c.raids.length > THREATS.kept) c.raids.splice(0, c.raids.length - THREATS.kept);
@@ -328,7 +326,7 @@ export function reportText(c: Campaign, r: Raid): string[] {
   if (r.killed) lines.push(`Killed: ${people(r.killed, 'man', 'men')} of the town.`);
   if (r.taken.men + r.taken.women) lines.push(`Taken: ${[r.taken.women ? people(r.taken.women, 'woman', 'women') : '', r.taken.men ? people(r.taken.men, 'man', 'men') : ''].filter(Boolean).join(' and ')}${r.names.length ? `, ${r.names.join(' and ')} among them` : ''}. No child was touched. They can be got back for ${THREATS.holdFor} seasons by breaking the band.`);
   const goods = STORE_KINDS.filter((k) => r.stores[k]).map((k) => `${r.stores[k]} ${k}`);
-  if (goods.length || r.supplies || r.burnt) lines.push(`Lost: ${[...goods, r.supplies ? people(r.supplies, 'supply', 'supplies') : '', r.burnt ? `the ${r.burnt}land, burnt` : ''].filter(Boolean).join(', ')}.`);
+  if (goods.length || r.burnt) lines.push(`Lost: ${[...goods, r.burnt ? `the ${r.burnt}land, burnt` : ''].filter(Boolean).join(', ')}.`);
   lines.push(r.sway > 0 ? `The people stood together and are the better for it (standing +${r.sway}).` : r.sway < 0 ? `The people have lost heart, and some turn to worse comforts (standing ${r.sway}).` : 'The people\'s standing is as it was.');
   return lines;
 }

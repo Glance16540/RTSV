@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { fundFor } from '../src/sim/prices';
 import { BIOMES, Biome, Campaign, MAP_H, MAP_W, answerDemand, armyAt, biomeAt, biomeOf, continueAI, defence, endTurn, income, moveArmy, newCampaign, reach, resolvePending } from '../src/sim/campaign';
 import { COUNTRY, WORKS, barrierBetween, canOpen, countryOf, countryYield, openBorder, rivalOpens, workFor } from '../src/sim/country';
 
@@ -35,6 +36,9 @@ const barred = (): { c: Campaign; from: number; to: number } => {
   }
   throw new Error('no world has a closed border');
 };
+
+/** What the work across this border is made of (prices.ts). */
+const madeOf = (c: Campaign, a: number, b: number) => (barrierBetween(c, a, b)!.kind === 'river' ? 'bridge' : 'pass');
 
 describe('country that matters', () => {
   it('every kind of country says what it does', () => {
@@ -98,13 +102,13 @@ describe('country that matters', () => {
 
 describe('opening a closed border', () => {
   it('a bridge or a pass road is paid for once and opens the border both ways for good', () => {
-    const { c, from, to } = barred(), work = workFor(c, from, to)!, me = c.factions[0];
+    const { c, from, to } = barred(), work = workFor(c, from, to)!, me = c.factions[0], kind = madeOf(c, from, to);
     expect(work).toBe(WORKS[barrierBetween(c, from, to)!.kind as 'river']);
     expect(reach(c, from)).not.toContain(to);
-    me.supplies = work.cost - 1;
+    fundFor(c, 0, kind, work.cost - 1);
     expect(canOpen(c, 0, from, to)).toBe(false);
     expect(openBorder(c, 0, from, to)).toBe(false);
-    me.supplies = work.cost + 3;
+    fundFor(c, 0, kind, work.cost + 3); // in what it is made of: timber and stone for a bridge, stone for a pass
     const told = c.chronicle?.length ?? 0;
     expect(openBorder(c, 0, from, to)).toBe(true);
     expect(me.supplies).toBe(3);
@@ -130,12 +134,12 @@ describe('opening a closed border', () => {
   }, LONG);
 
   it('a rival opens a border when it has stores to spare, and at once if it has no other way out', () => {
-    const { c, from, to } = barred(), cost = workFor(c, from, to)!.cost, rival = c.factions[1];
+    const { c, from, to } = barred(), cost = workFor(c, from, to)!.cost, rival = c.factions[1], kind = madeOf(c, from, to);
     for (const t of c.territories) if (t.owner === 1) t.owner = -1;
     c.territories[from].owner = 1;
-    rival.supplies = cost + 2;
+    fundFor(c, 1, kind, cost + 2);
     expect(rivalOpens(c, 1)).toBe(false); // it has roads enough, and nothing to spare
-    rival.supplies = 60;
+    fundFor(c, 1, kind, 60);
     expect(rivalOpens(c, 1)).toBe(true);
     expect(rival.supplies).toBeLessThan(60);
     expect((c.works ?? []).length).toBe(1);
@@ -147,7 +151,7 @@ describe('opening a closed border', () => {
     land.owner = 1;
     for (const n of land.adj) shut.c.territories[n].adj = shut.c.territories[n].adj.filter((x) => x !== land.id);
     land.adj = [];
-    shut.c.factions[1].supplies = workFor(shut.c, shut.from, shut.to)!.cost;
+    fundFor(shut.c, 1, madeOf(shut.c, shut.from, shut.to), workFor(shut.c, shut.from, shut.to)!.cost);
     expect(rivalOpens(shut.c, 1)).toBe(true);
     expect(shut.c.factions[1].supplies).toBe(0);
   }, LONG);

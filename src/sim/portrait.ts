@@ -15,11 +15,15 @@
 // that is about them; a town's header shows its standing, because that is about all of them. The marks of
 // condition go over either. Children are never shown (DESIGN.md): no child is given a portrait, and no key here
 // names one.
+import { resentful } from './conquered';
 import type { Building, Captive, Game, Unit } from './game';
 import type { Campaign } from './campaign';
 import { CHAMPION_KILLS } from './champion';
 import { want } from './famine';
+import { grieving } from './grief';
 import { folkOf } from './township';
+import { serving } from './household';
+import { townGrief } from './notableweight';
 
 export const NATIONS = ['wild', 'england', 'hearth', 'stonekin', 'greece', 'dawn', 'babylon', 'persia', 'arabs', 'egypt', 'steppe', 'forge', 'japan', 'mali', 'kush'] as const;
 export type Sex = 'm' | 'f';
@@ -160,10 +164,10 @@ export function moodOf(g: Game, u: Unit): Mood {
     raided: !!p && (p.bell || (!!hit && g.time - hit.t < RAID_FOR && Math.hypot(hit.x - u.x, hit.y - u.y) < RAID_NEAR)),
     sick: u.plagueT > 0,
     starving: !!p && !p.neutral && want(p) !== '',
-    bereaved: !!home && home.type === 'house' && partner === 0 && home.children > 0,
+    bereaved: (!!home && home.type === 'house' && partner === 0 && home.children > 0) || grieving(home as Building | undefined),
   };
 }
-/** The marks of condition on a person in a battle. Maimed, deserter and gone to war are not kept by the battle's rules. */
+/** The marks of condition on a person in a battle. Maimed and deserter are not kept by the battle's rules. */
 export function marksOf(g: Game, u: Unit, mood: Mood = moodOf(g, u)): Mark[] {
   const p = g.players[u.owner];
   const m: Mark[] = [];
@@ -174,6 +178,7 @@ export function marksOf(g: Game, u: Unit, mood: Mood = moodOf(g, u)): Mark[] {
   if (g.isElder(u)) m.push('old');
   if ((u.kills ?? 0) >= CHAMPION_KILLS || (u.hero?.rank ?? 0) > 0) m.push('veteran');
   if (u.freed) m.push('freed');
+  if (serving(u) && !u.hero) m.push('towar'); // one of the town's own, under arms (household.ts)
   const at = g.entities.get(u.inside);
   if (at && at.kind === 'building' && at.type === 'tavern' && u.gender === 'm') m.push('drunk');
   return sorted(m);
@@ -208,9 +213,11 @@ export function townMood(c: Campaign, tid: number): Mood & { lost: boolean } {
   const now = (c.events ?? []).filter((e) => e.at === tid && e.until >= c.turn - 1);
   const has = (...k: string[]): boolean => now.some((e) => k.includes(e.kind));
   const t = c.territories[tid];
-  const lost = folkOf(c, tid).notables.some((n) => n.lost && n.lost.turn >= c.turn - 1);
+  // A town mourns its known people for some seasons after they are lost (notableweight.ts).
+  const lost = townGrief(folkOf(c, tid).notables, c.turn) > 0;
   return {
     rebel: has('unrest', 'revolt'),
+    conquered: resentful(c, tid), // taken by force and not yet settled (conquered.ts)
     raided: has('raiders', 'taken', 'overrun', 'horde', 'blaze'),
     sick: has('plague', 'fever'),
     starving: has('famine', 'hard'),

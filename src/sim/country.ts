@@ -6,6 +6,7 @@
  */
 import type { Barrier, Biome, Campaign } from './campaign';
 import { biomeOf } from './campaign';
+import { canPayFor, payFor } from './prices';
 
 /**
  * `supplies`: added to what the land yields each turn. `farm`: added again where Farmland stands.
@@ -44,7 +45,7 @@ export const workFor = (c: Campaign, a: number, b: number): WorkDef | undefined 
 /** Whether this people can open the border from a land of theirs to the land across it. */
 export function canOpen(c: Campaign, f: number, from: number, to: number): boolean {
   const work = workFor(c, from, to);
-  return !!work && c.territories[from]?.owner === f && c.factions[f].supplies >= work.cost;
+  return !!work && c.territories[from]?.owner === f && canPayFor(c, f, work === WORKS.river ? 'bridge' : 'pass', work.cost);
 }
 /**
  * Open a closed border for good. The work is paid for by the people who hold `from`; once it stands, anyone may
@@ -54,7 +55,7 @@ export function openBorder(c: Campaign, f: number, from: number, to: number): bo
   if (!canOpen(c, f, from, to)) return false;
   const w = barrierBetween(c, from, to)!, work = workFor(c, from, to)!;
   const A = c.territories[from], B = c.territories[to];
-  c.factions[f].supplies -= work.cost;
+  payFor(c, f, work === WORKS.river ? 'bridge' : 'pass', work.cost, { at: from });
   c.barriers = (c.barriers ?? []).filter((x) => x !== w);
   if (!A.adj.includes(to)) A.adj.push(to);
   if (!B.adj.includes(from)) B.adj.push(from);

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { countryOf, countryYield } from '../src/sim/country';
+import { faithAt, nationVirtue } from '../src/sim/townfaith';
+import { nationWorth } from '../src/sim/stores';
 import { HeroSpec, HERO_POINTS, HERO_MIN_HURT, HOLY_GUARD, MIGHT_ATK, GUARD_ARMOR, VIGOUR_HP, RANK_ATK, RANK_ARMOR, RANK_HP, RANK_XP, TYRANT_BIND, cleanHero, heroBonus, rankOf } from '../src/sim/hero';
 import { PLACES, TALES, TALE_FROM, TALE_EVERY, WORLD_EVENTS, WORLD_FROM, COMET_VIRTUE } from '../src/sim/story';
 import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
@@ -1563,7 +1565,10 @@ describe('an active ally', () => {
     expect(moveArmy(c, mine.id, land.id)).toBe('battle');
     resolvePending(c, 'attacker');
     expect(c.request).toBeNull();
-    expect(c.factions[0].supplies).toBe(before + 4);
+    // The ally's thanks are 4 supplies. The land taken brings its own stores with it as well (stores.ts), so the figure is the towns'.
+    expect(c.log.join('\n')).toContain('thank you for answering their call and send 4 supplies');
+    expect(c.factions[0].supplies).toBeGreaterThanOrEqual(before + 4);
+    expect(c.factions[0].supplies).toBe(nationWorth(c, 0));
 
     // A rich ally shares with a poor friend at the turn.
     c.factions[0].supplies = 0; c.factions[1].supplies = 30;
@@ -3512,8 +3517,11 @@ describe('faith on the campaign map', () => {
     expect(g.creed(1).id).toBe('decadent');
     // The player ran a tavern town in that battle: the people come home worldlier, by half of how far it went.
     finishBattle(c, true, undefined, { virtue: -20 });
-    expect(virtueOf(c, 0)).toBe(40 + (-20 - 40) * BATTLE_VIRTUE);
-    expect(faithOf(c, 0).defence).toBe(1);
+    // Faith is a town's now: their own town came home at 10, and the Decadent capital they took keeps its own standing.
+    expect(faithAt(c, next.id)).toBe(40 + (-20 - 40) * BATTLE_VIRTUE);
+    expect(faithAt(c, foeCap.id)).toBe(-75);
+    expect(virtueOf(c, 0)).toBe(nationVirtue(c, 0));
+    expect(virtueOf(c, 0)).toBeLessThan(10);
   });
 
   it('rival peoples build what they believe in', () => {
