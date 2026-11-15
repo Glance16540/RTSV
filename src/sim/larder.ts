@@ -32,7 +32,7 @@ declare module './township' {
 }
 
 /** Food a season: a grown man or woman, one of the old, a child. */
-export const EAT = { grown: 12, old: 9, child: 6 };
+export const EAT = { grown: 16, old: 12, child: 8 };
 /** Seasons hungry in a row before people begin to die of it, and the share of the grown who die each season after. */
 export const STARVE_AFTER = 2;
 export const STARVE_SHARE = 0.1;

@@ -27,7 +27,7 @@ export const GOVERN = {
   /** Farmland makes the fields bring in this much as much. */
   farm: 1.5,
   /** Food in store per head under which a town is short, and the share of its people the governor then sends to the fields. */
-  short: 15, fields: 0.75,
+  short: 15, fields: 0.6,
   /** With a full granary and no orders, the share of the usual hands kept at the fields. */
   full: 0.5,
   /** How much of a building a season's work finishes. */
