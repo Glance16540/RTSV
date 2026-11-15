@@ -35,7 +35,8 @@ describe('the roll of your people', () => {
     expect(r.leader.alive).toBe(true);
     expect(r.leader.name.length).toBeGreaterThan(0);
     const h = houseOf(c, 0).heirs[0];
-    expect(r.heirs[0]).toEqual({ name: h.name, female: h.female, years: Math.floor((c.turn - h.born) / 4), ofAge: c.turn - h.born >= HEIR_AGE });
+    expect(r.heirs[0]).toEqual({ name: h.name, female: h.female, years: Math.floor((c.turn - h.born) / 4), ofAge: c.turn - h.born >= HEIR_AGE, parent: h.parent });
+    expect(h.parent).toBe(r.spouse!.name); // the other parent is the leader's husband or wife (kin.ts)
   });
 
   it('lists every person known by name town by town, and counts the children without listing them', () => {
