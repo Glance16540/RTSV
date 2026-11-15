@@ -20,13 +20,14 @@ export function playLine(s: Speech): void {
 
 /** A leader's portrait, name and line as HTML. Until a portrait exists they are shown by a seal in their nation's colour. */
 /** `as`: the name of whoever leads that people now, where it is no longer the leader as written. */
-export function speechHtml(s: Speech, as?: string): string {
+/** `opts.own`: how a line of the player's own leader is shown (naming.ts: their people's name in place of the written one). */
+export function speechHtml(s: Speech, as?: string, opts: { own?: (text: string) => string } = {}): string {
   const written = leaderOf(s.civ);
   if (!written) return '';
   const l = as ? { ...written, name: as.replace(/[<>&"]/g, '') } : written;
   const color = '#' + CIV_COLOR[s.civ].toString(16).padStart(6, '0');
   return `<div class="speech"><span class="portrait" style="border-color:${color}">${portrait(s.civ) || `<span class="seal" style="background:${color}">${monogram(l.name)}</span>`}</span>` +
-    `<div><b style="color:${color}">${l.name}</b> <small>${s.event.startsWith('p_') ? 'your leader' : CIVS[s.civ].name}${voiceCredit(s.civ) ? ` · voiced by ${voiceCredit(s.civ).replace(/[<>&]/g, '')}` : ''}</small><p>\u201c${speechText(s)}\u201d</p></div></div>`;
+    `<div><b style="color:${color}">${l.name}</b> <small>${s.event.startsWith('p_') ? 'your leader' : CIVS[s.civ].name}${voiceCredit(s.civ) ? ` · voiced by ${voiceCredit(s.civ).replace(/[<>&]/g, '')}` : ''}</small><p>\u201c${s.event.startsWith('p_') && opts.own ? opts.own(speechText(s)) : speechText(s)}\u201d</p></div></div>`;
 }
 
 // ---- the common people ----

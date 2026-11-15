@@ -28,7 +28,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `ageing` | 122 | A person ages only on the map, a season at a time (docs/DESIGN.md, "Time"). | campaign, data, township | ageing.test.ts | not yet |
 | `ai` | 937 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | besieger, birthonly, calamity, creed, data, game, keeper, map, muster, temper | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
 | `armytown` | 194 | Armies belong to towns (docs/DESIGN.md): a company's men leave their town's record for the army's roll, the army's dead are struck from it, and the rest come home when it is sent home. | ageing, campaign, ledger, township | armytown.test.ts | not yet |
-| `bandfight` | 197 | An army against a band: a battle the player can enter (a pending battle against no nation that takes no land, turned into a field battle), an army's own means when nobody is there, and the computer's peoples hunting bands in their lands. | armytown, campaign, data, threats | bandfight.test.ts | not yet |
+| `bandfight` | 197 | An army against a band: a battle the player can enter (a pending battle against no nation that takes no land, turned into a field battle), an army's own means when nobody is there, and the computer's peoples hunting bands in their lands. | armytown, campaign, data, naming, threats | bandfight.test.ts | not yet |
 | `bandhorde` | 109 | The marauders, the band that holds a land: one kind of band among the others, with its raids as strikes on a town that defends itself. Was `hordeTurn` in campaign.ts. | campaign, threats | bandhorde.test.ts | not yet |
 | `bandroam` | 110 | Bands move: they flee strong armies, roam toward softer marks, settle as marauders and break up. | campaign, threats | bandroam.test.ts | not yet |
 | `bandseason` | 22 | One season of the threats of men: the one call the campaign makes for all of it. | bandfight, bandhorde, bandroam, campaign, threats | threats.test.ts | not yet |
@@ -68,7 +68,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `map` | 310 | Procedural, point-symmetric two-player map generation. | none | none of its own | not yet |
 | `marauders` | 157 | The marauders over a long battle: they keep pace with the age, and a burnt camp is not the end of them. | game | marauders.test.ts | not yet |
 | `muster` | 50 | A soldier costs a person (docs/DESIGN.md, step 1). | data, game | muster.test.ts | not yet |
-| `naming` | 52 | Your own names: the name the player gives their people and their ruling house, made safe and kept, used where the game names them. | data | naming.test.ts | not yet |
+| `naming` | 100 | Your own names: the name the player gives their people and their ruling house, made safe and kept, used where the game names them. | data, leaders | naming.test.ts | not yet |
 | `notable` | 50 | Notable people: the few a nation knows by name. Nothing here decides who they are; it reads what the rules | champion, game, hero | notable.test.ts | not yet |
 | `notableweight` | 113 | The weight of notable people: a home known for what it carries in, a veteran of their own town, and the grief and dip in standing a loss leaves (plain numbers for drift.ts to read). | game, township (types only) | notable-weight.test.ts | not yet |
 | `nursery` | 51 | Children. A child is never a unit on the map: it is an entry in the record of the house it was born to (its | data | nursery.test.ts | not yet |
@@ -93,5 +93,5 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `threats` | 396 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it: who the bands are, how a town struck defends itself, the report, and captives held and got back. | acts, ageing, campaign, creed, drift, stores, townfaith, township | threats.test.ts | not yet |
 | `townfaith` | 84 | Faith is a town's (docs/DESIGN.md): every town's own standing between piety and decadence, and the nation's as the mean of its towns'. | campaign, story | townfaith.test.ts | not yet |
 | `township` | 200 | Towns that keep their people and their stores (docs/DESIGN.md, step 2). | ageing, campaign, household, notableweight | township.test.ts | not yet |
-| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, driftintown, game, governor, stores, townfaith, township | visit.test.ts | not yet |
+| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, driftintown, game, governor, naming, stores, townfaith, township | visit.test.ts | not yet |
 | `wrath` | 29 | How hard acts of God fall on a people (docs/DESIGN.md, "Acts of God"). | game | wrath.test.ts | not yet |

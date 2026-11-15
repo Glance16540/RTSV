@@ -24,7 +24,7 @@ import { heroFor } from '../sim/campaign';
 import { callArmies, called, courtOf, endCall, holdCourt, leaderReach, moveLeader } from '../sim/court';
 import { openHeroCreator, savedHero } from './herocreator';
 import { visitButton } from './visit';
-import { MAX_NAME, Names, peopleName } from '../sim/naming';
+import { MAX_NAME, Names, foundHouse, houseToName, ownLine, peopleName } from '../sim/naming';
 import { mountRoll, rollHtml } from './rollpanel';
 import { convoyHtml, sendFromPanel } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
@@ -170,7 +170,7 @@ export class Overworld {
     if (!s) return;
     this.speaking = s;
     this.speakT = Date.now() + 4500;
-    $('ow-speech').innerHTML = speechHtml(s, rulerName(this.c, Math.max(0, this.c.factions.findIndex((f) => f.civ === s.civ && (s.event.startsWith('p_') ? f.id === 0 : f.id > 0)))));
+    $('ow-speech').innerHTML = speechHtml(s, rulerName(this.c, Math.max(0, this.c.factions.findIndex((f) => f.civ === s.civ && (s.event.startsWith('p_') ? f.id === 0 : f.id > 0)))), { own: (t) => ownLine(this.c, t) });
     playLine(s);
     this.hooks.save();
     if (this.c.speech.length) setTimeout(() => this.nextSpeech(), 4600);
@@ -190,6 +190,7 @@ export class Overworld {
     else if (c.pending) this.askBattle();
     else if (c.tale && c.phase === 'player' && taleNow(c)) this.askTale();
     else if (c.phase === 'player' && c.factions[0].alive && !c.factions[0].heroAlive && !houseOf(c, 0).asked) this.askSuccession();
+    else if (c.phase === 'player' && c.factions[0].heroAlive && houseToName(c, 0) !== undefined) this.askHouse();
     else $('ow-dialog').classList.add('hidden');
     seasonCard(c, !$('ow-dialog').classList.contains('hidden'), () => this.hooks.save()); // what the season brought (seasoncard.ts)
   }
@@ -213,6 +214,13 @@ export class Overworld {
     }
     this.sel = tid;
     this.render();
+  }
+
+  /** A new house rules your people: name it, with the name offered (naming.ts), or leave it unnamed. */
+  private askHouse(): void {
+    const offered = houseToName(this.c, 0) ?? '';
+    this.dialog('A new house', `${heroFor(this.c, 0).name} founds a new house to rule the ${peopleName(this.c, 0)}. What is it to be called?<br><label class="mapsize">The House of <input id="ow-newhouse" maxlength="${MAX_NAME}" value="${offered.replace(/"/g, '')}" autocomplete="off"></label>`,
+      [['Name it', () => { foundHouse(this.c, 0, ($('ow-newhouse') as HTMLInputElement).value); this.changed(); }], ['Leave it unnamed', () => { foundHouse(this.c, 0, ''); this.changed(); }]]);
   }
 
   private dialog(title: string, text: string, buttons: [string, () => void][]): void {
