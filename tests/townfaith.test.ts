@@ -53,11 +53,11 @@ describe('faith is a town\'s', () => {
     expect(townDrift(c, home.id)).toBe(0);
     turn(c);
     // Each moved by its own house, and was then drawn a little way back toward the nation (which stands at 0).
-    const back = Math.round(CHURCH_VIRTUE * PULL);
-    expect(faithAt(c, a.id)).toBe(CHURCH_VIRTUE - back);
-    expect(faithAt(c, b.id)).toBe(-TAVERN_VIRTUE + back);
+    expect(faithAt(c, a.id)).toBe(CHURCH_VIRTUE - Math.round(CHURCH_VIRTUE * PULL));
+    expect(faithAt(c, b.id)).toBe(-TAVERN_VIRTUE + Math.round(TAVERN_VIRTUE * PULL));
     expect(faithAt(c, home.id)).toBe(0);
-    expect(virtueOf(c, 0)).toBe(0);
+    // The nation stands at the mean of its towns: a Church and a Tavern of different weight leave it a point off 0 at most.
+    expect(Math.abs(virtueOf(c, 0))).toBeLessThanOrEqual(1);
   }, LONG);
 
   it('the pull: a church or a tavern holds a town apart from its nation only so far', () => {
@@ -65,13 +65,16 @@ describe('faith is a town\'s', () => {
     a.buildings = ['church']; b.buildings = ['tavern'];
     // Eighty seasons of faith alone: nothing else that befalls a town on the map is in play here.
     for (let i = 0; i < 80; i++) seasonOfFaith(c, (f, by, at) => shiftVirtue(c, f, by, { at }));
-    const mean = virtueOf(c, 0), limit = CHURCH_VIRTUE / PULL; // where a season's 6 is what the pull takes back
-    expect(faithAt(c, a.id) - mean).toBeGreaterThan(limit - 12);
-    expect(faithAt(c, a.id) - mean).toBeLessThanOrEqual(limit + 4);
-    expect(mean - faithAt(c, b.id)).toBeGreaterThan(limit - 12);
-    expect(mean - faithAt(c, b.id)).toBeLessThanOrEqual(limit + 4);
+    // Where a season's move is what the pull takes back: a Church's and a Tavern's each its own.
+    const mean = virtueOf(c, 0), up = CHURCH_VIRTUE / PULL, down = TAVERN_VIRTUE / PULL, limit = Math.max(up, down);
+    expect(faithAt(c, a.id) - mean).toBeGreaterThan(up - 12);
+    expect(faithAt(c, a.id) - mean).toBeLessThanOrEqual(up + 4);
+    expect(mean - faithAt(c, b.id)).toBeGreaterThan(down - 12);
+    expect(mean - faithAt(c, b.id)).toBeLessThanOrEqual(down + 4);
     expect(a.owner).toBe(0); expect(b.owner).toBe(0);
-    expect(Math.abs(faithAt(c, home.id) - mean)).toBeLessThanOrEqual(4); // a town with neither stands with its nation
+    // A town with neither stands with its nation, behind it only as far as the nation moves a season (the Church and the
+    // Tavern of unequal weight move it (C - T) / 3 a season) against the pull.
+    expect(Math.abs(faithAt(c, home.id) - mean)).toBeLessThanOrEqual(4 + Math.abs(CHURCH_VIRTUE - TAVERN_VIRTUE) / 3 / PULL);
     expect(faithSpread(c, 0).spread).toBeLessThanOrEqual(2 * limit + 8);
   }, LONG);
 
