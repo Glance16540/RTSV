@@ -45,7 +45,7 @@ export const COURT = {
     /** The chance it is foiled; what a guard adds, and its cost a season in supplies; what a loyal marshal or right hand adds. */
     foil: 0.35, guard: 0.35, guardCost: 1, loyal: 0.15, loyalAt: 60,
     /** Unfoiled, the chance the leader dies of it rather than is wounded. */
-    slain: 0.3,
+    slain: 0.2,
   },
   suitor: {
     chance: 0.04,

@@ -89,6 +89,8 @@ export const INTRIGUE = {
     cost: 15, catch: 0.3, surer: 0.2,
     /** The chance the thief is caught without one, and seasons until they stop of their own accord. */
     luck: 0.05, lasts: 10,
+    /** Seasons a thief who is taken waits for the leader's judgement before the town's elders give their own. */
+    wait: 3,
     /** What each judgement does to the people's piety, and the share of what was taken that is worked off or got back. */
     virtue: { hanged: -6, banished: -1, worked: 3, pardoned: 5 }, hungerHanged: -6, back: { worked: 0.6, hanged: 0.3, banished: 0.3, pardoned: 0 },
     /** The chance a pardoned thief who stole for drink or greed is at it again. */
@@ -247,7 +249,14 @@ function catchThief(c: Campaign, it: Intrigue): void {
 }
 function thiefSeason(c: Campaign, it: Intrigue): void {
   const T = INTRIGUE.thief, f = folkOf(c, it.at);
-  if (it.caught !== undefined) return; // waits on judgement
+  if (it.caught !== undefined) {
+    // The leader's judgement is waited for, but not for ever: the town's elders give their own, and it is a mild one.
+    if (c.turn - it.caught >= T.wait && it.thief) {
+      const g = Math.round(it.taken * T.back.worked); f.stores.gold += g;
+      end(c, it, 'worked', `No judgement came for ${fullName(it.thief)} of ${land(c, it.at)}, taken for a thief, so the elders gave their own: ${they(it.thief)} works off what ${they(it.thief)} stole. ${g} gold came back to the town.`, 'plain', it.thief);
+    }
+    return;
+  }
   if (it.watch) {
     if (f.stores.gold >= T.cost) { f.stores.gold -= T.cost; it.watched++; }
     else { it.watch = false; note(c, it, 'plain', `${land(c, it.at)} cannot pay its watch, and the watch is stood down.`); }
