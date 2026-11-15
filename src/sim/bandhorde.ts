@@ -19,10 +19,17 @@ import { Band, Raid, bringHome, chance, mark, note, reachOf, softest, strike } f
 
 export const HORDE = {
   /** The chance marauders appear in a season when there are none, the chance a camp raids, and the chance a strong one overruns a neighbour. */
-  appear: 0.45, raid: 0.6, overrun: 0.3,
+  appear: 0.45, raid: 0.45, overrun: 0.12,
   /** The militia a new camp has at the least, and what a land they overrun starts with at the least. */
   first: 4, spawn: 3,
+  /** A camp grows by one every so many seasons, and no stronger than this (never past the old limit, HORDE_MAX). */
+  grow: 2, max: 8,
+  /** Camps there may be at once: one for every so many lands of the map, and never fewer than one. Past that they neither overrun nor are joined. */
+  lands: 10,
 };
+
+/** How many camps of the marauders the map will bear. */
+export const campsBorne = (c: Campaign): number => Math.max(1, Math.floor(c.territories.length / HORDE.lands));
 
 const bandAt = (c: Campaign, tid: number): Band | undefined => (c.bands ?? []).find((b) => b.kind === 'marauders' && b.at === tid);
 function raise(c: Campaign, t: Territory, name?: string): Band {
@@ -71,7 +78,8 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
   }
   live.forEach((b, i) => {
     const t = c.territories[b.at];
-    t.militia = Math.min(HORDE_MAX, t.militia + 1);
+    const top = Math.min(HORDE_MAX, HORDE.max);
+    if (t.militia < top && (c.turn - b.since) % HORDE.grow === 0) t.militia++;
     b.strength = t.militia;
     // A raid on the softest town next door: it defends itself, like any town struck by a band.
     const m = softest(c, b, reachOf(c, b).filter((id) => id !== t.id));
@@ -80,14 +88,15 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
       // A camp that holds a land is not scattered by one beating: it is the weaker for it, and still there.
       if (b.strength <= 0) b.strength = 1;
       delete r.broken;
-      t.militia = Math.max(1, Math.min(HORDE_MAX, b.strength));
+      t.militia = Math.max(1, Math.min(HORDE_MAX, HORDE.max, b.strength));
       b.strength = t.militia;
       if (r.outcome === 'taken') mark(c, 'taken', m.id);
       raids.push(r);
     }
-    // Strong enough, they take the land next door for their own: a tribe's, or a people's that no army holds.
-    if (t.militia >= HORDE_SPREAD && chance(c, b.id, 79 + i) < HORDE.overrun) {
-      const open = t.adj.map((n) => c.territories[n]).filter((x) => !x.horde && x.capital < 0 && !(x.owner >= 0 && c.armies.some((a) => a.at === x.id)) && !(c.bands ?? []).some((k) => k.at === x.id));
+    // Strong enough, they take a tribe's land next door for their own, while the map will bear another camp. (They
+    // no longer throw a people out of its town: a town falls to those who fight for it, and its people are counted.)
+    if (t.militia >= HORDE_SPREAD && (c.bands ?? []).filter((k) => k.kind === 'marauders').length < campsBorne(c) && chance(c, b.id, 79 + i) < HORDE.overrun) {
+      const open = t.adj.map((n) => c.territories[n]).filter((x) => !x.horde && x.capital < 0 && x.owner < 0 && !(c.bands ?? []).some((k) => k.at === x.id));
       const next = open[Math.floor(chance(c, b.id, 83 + i) * open.length)];
       if (next) {
         const was = next.owner;
