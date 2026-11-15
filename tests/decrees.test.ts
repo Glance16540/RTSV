@@ -60,6 +60,7 @@ describe('what each decree does to how a town drifts', () => {
     t.buildings = [...t.buildings.filter((b) => b !== 'church' && b !== 'tavern'), 'church', 'tavern'];
     f.stores.food = 0;
     const bare = driftTown(c, tid);
+    delete f.drifted; // the same town, with nobody yet gone
     issueDecree(c, 0, tid, 'guards');
     expect(driftTown(c, tid)).toBeGreaterThan(bare);
     c.territories[tid].decrees = [];

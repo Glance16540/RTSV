@@ -17,13 +17,11 @@
 // calling it to church; drift adds no rise of its own there, so as not to count the church twice. A strained town's men go to the mines and its women to its tavern, if it has one: gold
 // comes in, and a town with a tavern falls the faster. The nation's standing is its towns' (townfaith.ts), so it
 // follows them.
-import type { Building, Game, Player, Unit } from './game';
 import type { Campaign } from './campaign';
-import { faithAt, swayTown } from './townfaith';
+import { faithAt, swayNation, swayTown } from './townfaith';
 import { isDecadent } from './creed';
-import { want } from './famine';
-import { griefSeason, griefShare } from './grief';
-import { GRIEF_MAX, townGrief } from './notableweight';
+import { griefSeason } from './grief';
+import { GRIEF_MAX, nationLoss, townGrief } from './notableweight';
 import { townMood } from './portrait';
 import { folkOf, grown } from './township';
 import { decreeEffect, decreesSeason, sensibleDecrees } from './decrees';
@@ -33,71 +31,34 @@ declare module './township' {
   interface Folk {
     /** How the town stood at the last season's turn, and the part of a step of standing not yet taken. */
     drift?: { strain: number; care: number; moved: number; hungry: boolean; raided: boolean; carry?: number };
+    /** Who of the town has drifted from their work: women at the tavern, men at the mines. */
+    drifted?: Drifted;
   }
 }
-declare module './game' {
-  interface Player { /** Who has drifted in this battle, and where to. */ drifted?: { tavern: number; mine: number; church: number; back: number } }
-}
+/** Who of a town has drifted from their work. */
+export interface Drifted { tavern: number; mines: number }
 
-/** Weights of what strains a town (they add to at most 1). */
+/** Weights of what strains a town on the map (they add to at most 1). */
 export const STRAIN = { hunger: 0.35, raided: 0.25, grief: 0.2, sick: 0.2, rebel: 0.2 };
-/** In a town: the chance a second, at full strain, that someone drifts to worse; at full care, to better. */
-export const DRIFT_RATE = 1 / 40;
-export const HOLY_RATE = 1 / 90;
+/** On the map, a season: the most who drift at full strain, the most who come back at full care, and the most of a town's women or men who drift. */
+export const GO_MOST = 3;
+export const BACK_MOST = 2;
+export const SHARE = 0.5;
+/** Standing a season for every two women at the tavern. */
+export const TAVERN_SWAY = 1;
+/** How far a nation's standing dips a season for its known people lately lost (notableweight.ts's `nationLoss`, 0 to 0.3). */
+export const NATION_DIP = 20;
 /** On the map: how far a town's standing falls in a season at full strain, and rises for a call to church at full strength. */
 export const FALL = 10;
 export const RISE = 4;
 /** Food a head a town needs on hand not to be hungry on the map, and to count as well fed. */
 export const LEAN_FOOD = 10;
 export const FED_FOOD = 30;
-/** Gold a season from each man gone to the mines, and each woman gone to the tavern, at full strain. */
-export const MINE_GOLD = 8;
-export const TAVERN_GOLD = 12;
+/** Gold a season from each man at the mines, and each woman at the tavern. */
+export const MINE_GOLD = 4;
+export const TAVERN_GOLD = 6;
 
 const clamp = (v: number, lo = 0, hi = 1): number => Math.max(lo, Math.min(hi, v));
-
-/** How a people in a town stands: how strained and how cared for. */
-export function townStrain(g: Game, p: Player): { strain: number; care: number } {
-  const w = want(p), hunger = w === 'famine' ? 1 : w === 'hungry' ? 0.6 : p.res.food < 50 ? 0.3 : 0;
-  const raided = p.lastAttacked && g.time - p.lastAttacked.t < 60 ? 1 : 0;
-  let people = 0, sick = 0;
-  for (const u of g.units) if (u.owner === p.id && u.type === 'villager') { people++; if (u.plagueT > 0) sick++; }
-  const sickShare = people ? clamp((3 * sick) / people) : 0, grief = griefShare(g, p.id);
-  const strain = clamp(STRAIN.hunger * hunger + STRAIN.raided * raided + STRAIN.grief * grief + STRAIN.sick * sickShare);
-  const safe = !p.lastAttacked || g.time - p.lastAttacked.t > 180;
-  const church = g.buildings.some((b) => b.owner === p.id && b.type === 'temple' && b.complete && !b.dead);
-  const care = strain > 0 ? 0 : clamp((p.res.food > 300 ? 0.3 : 0) + (safe ? 0.3 : 0) + (grief === 0 ? 0.2 : 0) + (church ? 0.2 : 0));
-  return { strain, care };
-}
-
-const roomIn = (b: Building | undefined): boolean => !!b && b.complete && !b.dead && (b.staff?.length ?? 0) < (b.def.staff ?? 0);
-/** Someone at work or idle, out in the open, free to wander off: not called to arms, not freed, not a child. */
-const loose = (g: Game, u: Unit, owner: number): boolean => u.owner === owner && u.type === 'villager' && !u.dead && !u.inside && u.growT <= 0 && !u.freed && !u.enlisted && u.order?.t !== 'enlist';
-
-/** A second passes in a campaign town: someone may drift from their work, to worse or to better. */
-export function driftSecond(g: Game): void {
-  if (!g.bornOnly) return;
-  for (const p of g.players) {
-    if (p.neutral || p.defeated) continue;
-    const { strain, care } = townStrain(g, p);
-    const d = (p.drifted ??= { tavern: 0, mine: 0, church: 0, back: 0 });
-    const mine = (type: string) => g.buildings.find((b) => b.owner === p.id && b.type === type && roomIn(b));
-    if (strain > 0 && g.rng() < strain * DRIFT_RATE) {
-      const tavern = mine('tavern');
-      const woman = tavern ? g.units.find((u) => loose(g, u, p.id) && u.gender === 'f' && !(u.order?.t === 'gather' && u.order.id === tavern.id)) : undefined;
-      if (tavern && woman) { g.cmdTarget(p.id, [woman.id], tavern.id); d.tavern++; say(g, p, `${woman.name} has left her work for the tavern.`); continue; }
-      const man = g.units.find((u) => loose(g, u, p.id) && u.gender === 'm' && !(u.order?.t === 'gather' && g.entities.get(u.order.id)?.type === 'gold'));
-      const gold = man ? g.findResourceNear(man.x, man.y, 'gold', p.id, 30) : null;
-      if (man && gold) { g.cmdTarget(p.id, [man.id], gold.id); d.mine++; say(g, p, `${man.name} has left his work for the gold mine.`); }
-    } else if (care > 0 && g.rng() < care * HOLY_RATE) {
-      const tavern = g.buildings.find((b) => b.owner === p.id && b.type === 'tavern' && (b.staff?.length ?? 0) > 0);
-      if (tavern && g.cmdUnstaff(p.id, tavern.id) > 0) { d.back++; say(g, p, 'One of the tavern\'s women has come back to honest work.'); continue; }
-      const church = mine('temple'), who = church ? g.units.find((u) => loose(g, u, p.id) && !u.order) : undefined;
-      if (church && who) { g.cmdTarget(p.id, [who.id], church.id); d.church++; say(g, p, `${who.name} has gone to serve at the church.`); }
-    }
-  }
-}
-const say = (g: Game, p: Player, text: string): void => { g.events.push({ t: 'msg', player: p.id, text }); };
 
 /** A town's own standing (townfaith.ts). */
 export const townStanding = (c: Campaign, tid: number): number => faithAt(c, tid);
@@ -116,9 +77,29 @@ export function driftTown(c: Campaign, tid: number): number {
   const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care);
   // Only the call to church raises a town here; the rest of its care is shown, and its church is counted by townfaith.ts.
   const rise = strain > 0 || e.holyBarred ? 0 : RISE * Math.min(1, e.care);
-  // The men to the mines and the women to the tavern: gold, and a town with a tavern falls the faster for it.
-  f.stores.gold += Math.round(MINE_GOLD * strain * f.men + (tavern ? TAVERN_GOLD * strain * f.women : 0)) + e.gold;
-  const moved = rise - FALL * strain * (tavern ? 1.2 : 1) + e.sway;
+  // Who drifts: under strain a few a season, women to the tavern and men to the mines by turns, up to half of each;
+  // with care and no strain, a few come back. A shut tavern sends its women home; the women ordered into it stay.
+  const d: Drifted = { ...(f.drifted ?? { tavern: 0, mines: 0 }) };
+  const capW = tavern ? Math.floor(f.women * SHARE) : 0, capM = Math.floor(f.men * SHARE);
+  if (!tavern) d.tavern = 0;
+  if (strain > 0) {
+    let go = Math.ceil(strain * GO_MOST);
+    for (let i = 0; go > 0 && i < 2 * GO_MOST; i++) {
+      const woman = (c.turn + tid + i) % 2 === 0;
+      if (woman && d.tavern < capW) { d.tavern++; go--; } else if (!woman && d.mines < capM) { d.mines++; go--; }
+    }
+  } else if (care > 0) {
+    let back = care >= 0.5 ? BACK_MOST : 1;
+    const kept = e.tavernWomen ? Math.floor(f.women * SHARE * e.tavernWomen) : 0;
+    while (back > 0 && d.tavern > kept) { d.tavern--; back--; }
+    while (back > 0 && d.mines > 0) { d.mines--; back--; }
+  }
+  if (e.tavernWomen && tavern) d.tavern = Math.max(d.tavern, Math.floor(f.women * SHARE * e.tavernWomen));
+  d.tavern = Math.min(d.tavern, f.women); d.mines = Math.min(d.mines, f.men);
+  if (d.tavern || d.mines) f.drifted = d; else delete f.drifted;
+  // What they bring in: gold from the mines and the tavern. A town with women at the tavern falls the faster.
+  f.stores.gold += d.mines * MINE_GOLD + d.tavern * TAVERN_GOLD + e.gold;
+  const moved = rise - FALL * strain - TAVERN_SWAY * Math.floor(d.tavern / 2) + e.sway;
   // The town's standing moves in whole steps; what is left over is carried to the next season.
   let carry = (f.drift?.carry ?? 0) + moved;
   const step = Math.trunc(carry);
@@ -128,10 +109,24 @@ export function driftTown(c: Campaign, tid: number): number {
 }
 const leaderHere = (c: Campaign, tid: number): boolean => leaderAt(c, c.territories[tid].owner, tid);
 
-/** A season passes on the map: spent decrees are struck off and every town drifts. */
+/** A season passes on the map: spent decrees are struck off, every town drifts, and a nation that has lately lost
+ * known people (notableweight.ts) dips in standing, all its towns together. */
 export function driftSeason(c: Campaign): void {
   decreesSeason(c);
   for (const t of c.territories) if (!t.horde) driftTown(c, t.id);
+  for (const x of c.factions) {
+    if (!x.alive) continue;
+    const loss = nationLoss(c.territories.filter((t) => t.owner === x.id && t.folk).map((t) => t.folk!.notables), c.turn);
+    if (loss > 0) swayNation(c, x.id, -Math.round(loss * NATION_DIP));
+  }
+}
+
+/** Who of a town has drifted from their work (nobody, for a town never strained). */
+export const driftedOf = (c: Campaign, tid: number): Drifted => folkOf(c, tid).drifted ?? { tavern: 0, mines: 0 };
+/** The share of a town's men still at their posts: men at the mines leave the walls thin. */
+export function watchOf(c: Campaign, tid: number): number {
+  const men = folkOf(c, tid).men;
+  return men > 0 ? 1 - Math.min(men, driftedOf(c, tid).mines) / men : 1;
 }
 
 /** How a town stood at the last turn, for whoever decides on decrees. */

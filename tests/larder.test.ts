@@ -36,9 +36,10 @@ describe('towns eat their food on the map', () => {
 
   it('those who have drifted to the mines or the tavern eat there, not at home', () => {
     const { c, t, f } = town({ men: 6, women: 6, elders: 0, children: 0 });
-    f.drift = { strain: 0.5, care: 0, moved: 0, hungry: false, raided: false };
+    f.drifted = { tavern: 0, mines: 3 }; // who has drifted is on the town's record (drift.ts)
     expect(mouths(c, t.id)).toMatchObject({ men: 3, women: 6 }); // no tavern: the women stay
     t.buildings = ['tavern'];
+    f.drifted = { tavern: 3, mines: 3 };
     expect(mouths(c, t.id)).toMatchObject({ men: 3, women: 3 });
     expect(needOf(c, t.id)).toBe(6 * EAT.grown);
   });

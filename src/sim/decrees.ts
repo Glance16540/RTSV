@@ -8,7 +8,7 @@
 //  - alms:        food from the nation's stores removes the cause: the town's larder is filled at once.
 //  - closeTavern: the tavern is shut. Nobody drifts to it, and the gold it made stops; a town already given over
 //                 to decadence is angered by it and strains the harder.
-//  - tavernWomen: the women are ordered into the tavern. It brings in gold every season and lowers the town's
+//  - tavernWomen: half the women are ordered into the tavern (drift.ts keeps them there). It brings in gold every season and lowers the town's
 //                 standing. Needs a tavern there.
 //
 // The leader gives a decree in person in the town where they are (court.ts); anywhere else it goes by messenger
@@ -73,15 +73,15 @@ export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKin
 }
 
 /** What the decrees in force in a town do to its drift this season. */
-export interface DecreeEffect { strainScale: number; strainAdd: number; care: number; holyBarred: boolean; sway: number; gold: number; tavernShut: boolean }
+export interface DecreeEffect { strainScale: number; strainAdd: number; care: number; holyBarred: boolean; sway: number; gold: number; tavernShut: boolean; /** The strength of an order sending the women into the tavern, 0 if none. */ tavernWomen: number }
 export function decreeEffect(c: Campaign, tid: number, decadent: boolean): DecreeEffect {
-  const e: DecreeEffect = { strainScale: 1, strainAdd: 0, care: 0, holyBarred: false, sway: 0, gold: 0, tavernShut: false };
+  const e: DecreeEffect = { strainScale: 1, strainAdd: 0, care: 0, holyBarred: false, sway: 0, gold: 0, tavernShut: false, tavernWomen: 0 };
   for (const d of decreesAt(c, tid)) {
     const s = d.strength;
     if (d.kind === 'church') e.care += CHURCH_CARE * s;
     if (d.kind === 'guards') { e.strainScale *= 1 - GUARDS_EASE * s; e.holyBarred = true; }
     if (d.kind === 'closeTavern') { e.tavernShut = true; if (decadent) e.strainAdd += CLOSED_ANGER * s; }
-    if (d.kind === 'tavernWomen') { e.sway -= TAVERN_WOMEN_SWAY * s; e.gold += Math.round(TAVERN_WOMEN_GOLD * s); }
+    if (d.kind === 'tavernWomen') { e.tavernWomen = Math.max(e.tavernWomen, s); e.sway -= TAVERN_WOMEN_SWAY * s; e.gold += Math.round(TAVERN_WOMEN_GOLD * s); }
   }
   return e;
 }
