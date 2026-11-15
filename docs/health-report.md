@@ -1,32 +1,48 @@
 # Campaign health report
 
-Measured by `scripts/health.test.ts` against `docs/TUNING.md`: 96 campaigns (seeds 1 to 96, a player and two rivals), up to 200 seasons, the player played by the computer, each also played 80 seasons with no decrees, and 8 told again with the player's first towns visited every season. 12 in band, 11 out. Took 876 seconds.
+Measured by `scripts/health.test.ts` against `docs/TUNING.md`: 96 campaigns (seeds 1 to 96, a player and two rivals), up to 200 seasons, the player played by the computer, each also played 80 seasons with no decrees, and 8 told again with the player's first towns visited every season. 15 in band, 8 out. Took 868 seconds.
 
 | Area | Figure | Target band | Measured | |
 | --- | --- | --- | --- | --- |
-| Pace | Seasons until a campaign is decided | 60 to 160 | median 72 (90 of 96 decided; range 30 to 192; 68 won by the player, 12 won by a rival, 10 with the player beaten) | **IN** |
+| Pace | Seasons until a campaign is decided | 60 to 160 | median 73 (90 of 96 decided; range 17 to 197; 64 won by the player, 11 won by a rival, 15 with the player beaten) | **IN** |
 | Pace | Campaigns undecided at 200 seasons | under 10% | 6.3% | **IN** |
-| Pace | Seasons until a rival reaches its next age | 20 to 60 | median 21 (268 advances) | **IN** |
-| People | A town left alone, grown people after 20 years | 1.3 to 2 times | median 1.24× (160 towns held by one people throughout) | **OUT** |
-| People | A town visited every season vs left alone, after 20 years | visited 10 to 40% larger | 128.0% larger in all (7 town pairs from 7 of 8 campaigns; median town 138.9%) | **OUT** |
-| People | Towns that die out (no people at all) per 100 town-lifetimes | under 3, and only after war, famine or plague together | 12.76 (283 died out, 67 of them after war, famine and plague together) | **OUT** |
-| People | Towns left all one sex | a nation's towns under 5%; tribes' towns under 20% | nations' 14.0%, tribes' 2.6% of town-seasons | **OUT** |
-| People | Of those who reach 60, the share dead by 70 | 50 to 85% | 87.4% (5672 turned sixty, 717 turned seventy) | **OUT** |
-| Food | Share of seasons a farmed town is hungry | under 2% | 2.2% (160660 town-seasons) | **OUT** |
-| Food | Share of seasons an unfarmed town with no convoy is hungry, where its governor can still raise a farm | under 10% | 0.7% (2924 town-seasons) | **IN** |
-| Food | Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised | 15 to 40% | 18.0% (13831 town-seasons) | **IN** |
-| Food | Deaths from hunger in a nation, per 20 years | 1 to 10, never most of a town at once | 2.3 a nation (the worst season took 25.0% of a town of four or more) | **IN** |
-| Stores | A nation's supplies after 20 years of peace | 2 to 4 seasons of full upkeep | median 1.9 seasons (84 nations, 1798 nation-seasons of peace; middle half 1.2 to 2.6) | **OUT** |
-| Faith | Widest gap between two towns of one nation | 20 to 60 most of the time | 48.0% of nation-seasons in band (median 31) | **OUT** |
-| Faith | A nation that builds churches and keeps its towns fed, over 20 years | toward the holy end by 15 to 40 | mean 31.4 (67 nations) | **IN** |
-| Drift | Share of town-seasons with anyone drifted | 5 to 20%, more in hungry, raided or newly taken towns | 33.8% (hungry 80.3%, raided 48.6%, newly taken 27.5%, otherwise 31.0%) | **OUT** |
-| Drift | With sensible decrees vs none | at least a third fewer falling towns | 55.6% falling with decrees, 64.7% without (14.0% fewer) | **OUT** |
-| Threats | Raids on a given town | about once in 3 to 5 years | once in 3.1 years (14454 raids) | **IN** |
-| Threats | Outcome of raids | held off 30 to 50%, raided 40 to 60%, taken under 15% | held off 35.8%, raided 48.7%, taken 15.5% | **OUT** |
-| Threats | Captives got back when the player has an army near | about half | 46.8% (1144 groups) | **IN** |
-| Conquest | Taken towns that rise if left ungarrisoned | 15 to 35% within 5 years; under 5% with an army in them | 22.4% ungarrisoned (2184), 1.9% garrisoned (1154); not counted: 1651 taken again within five years, 760 still followed at the end | **IN** |
-| Armies | A nation's men under arms | 10 to 25% in war, under 10% in peace | median 18.8% in war, 5.6% in peace | **IN** |
-| Sieges | A besieged town with walls or a fortress and its men (or an army) in it | holds 60 to 85% | 67.8% in all: on the map 67.8% (1033), in real time 75.0% (8 of 8 fought, at odds 1.09 to 1.58; attacker's age 1,2,0,1,0,1,0,1 against 1,1,1,1,0,0,1,0) | **IN** |
+| Pace | Seasons until a rival reaches its next age | 20 to 60 | median 21 (285 advances) | **IN** |
+| People | A town left alone, grown people after 20 years | 1.3 to 2 times | median 1.30× (152 towns held by one people throughout) | **IN** |
+| People | A town visited every season vs left alone, after 20 years | visited 10 to 40% larger | 57.3% larger in all (8 town pairs from 8 of 8 campaigns; median town 60.6%) | **OUT** |
+| People | Towns that die out (no people at all) per 100 town-lifetimes | under 3, and only after war, famine or plague together | 8.06 (178 died out, 46 of them after war, famine and plague together) | **OUT** |
+| People | Towns left all one sex | a nation's towns under 5%; tribes' towns under 20% | nations' 13.5%, tribes' 2.0% of town-seasons | **OUT** |
+| People | Of those who reach 60, the share dead by 70 | 50 to 85% | 87.5% (5615 turned sixty, 703 turned seventy) | **OUT** |
+| Food | Share of seasons a farmed town is hungry | under 2% | 4.0% (161008 town-seasons) | **OUT** |
+| Food | Share of seasons an unfarmed town with no convoy is hungry, where its governor can still raise a farm | under 10% | 1.0% (2611 town-seasons) | **IN** |
+| Food | Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised | 15 to 40% | 21.4% (12991 town-seasons) | **IN** |
+| Food | Deaths from hunger in a nation, per 20 years | 1 to 10, never most of a town at once | 2.2 a nation (the worst season took 25.0% of a town of four or more) | **IN** |
+| Stores | A nation's supplies after 20 years of peace | 2 to 4 seasons of full upkeep | median 1.2 seasons (80 nations, 1986 nation-seasons of peace; middle half 0.6 to 2.4) | **OUT** |
+| Faith | Widest gap between two towns of one nation | 20 to 60 most of the time | 50.8% of nation-seasons in band (median 33) | **IN** |
+| Faith | A nation that builds churches and keeps its towns fed, over 20 years | toward the holy end by 15 to 40 | mean 47.1 (60 nations) | **OUT** |
+| Drift | Share of town-seasons with anyone drifted | 5 to 20%, more in hungry, raided or newly taken towns | 16.8% (hungry 71.8%, raided 33.5%, newly taken 19.4%, otherwise 8.6%) | **IN** |
+| Drift | With sensible decrees vs none | at least a third fewer falling towns | 35.5% falling with decrees, 39.2% without (9.3% fewer) | **OUT** |
+| Threats | Raids on a given town | about once in 3 to 5 years | once in 3.1 years (14179 raids) | **IN** |
+| Threats | Outcome of raids | held off 30 to 50%, raided 40 to 60%, taken under 15% | held off 37.6%, raided 47.8%, taken 14.6% | **IN** |
+| Threats | Captives got back when the player has an army near | about half | 48.3% (960 groups) | **IN** |
+| Conquest | Taken towns that rise if left ungarrisoned | 15 to 35% within 5 years; under 5% with an army in them | 19.2% ungarrisoned (2093), 1.0% garrisoned (1122); not counted: 1709 taken again within five years, 766 still followed at the end | **IN** |
+| Armies | A nation's men under arms | 10 to 25% in war, under 10% in peace | median 18.8% in war, 5.1% in peace | **IN** |
+| Sieges | A besieged town with walls or a fortress and its men (or an army) in it | holds 60 to 85% | 65.8% in all: on the map 65.8% (1089), in real time 62.5% (8 of 8 fought, at odds 1.08 to 1.56; attacker's age 1,2,0,0,0,1,1,1 against 1,1,1,1,1,0,1,1) | **IN** |
+
+## What emptied the towns that died out
+
+Every town that died out in the runs above, the tribes' too (178: 174 of nations, of them 58 the player's and 116 rivals', and 4 of tribes), put down to whatever took most of its people in the 8 seasons before. Each season's losses among its grown people are read from the season's ledger (src/sim/ledger.ts: war, hunger, plague, old age), the raids (killed and carried off) and the men gone to the armies; whatever else the town lost is "moved away or not accounted for".
+
+| What took most of its people | All | Nations | the player's | rivals' | Tribes |
+| --- | --- | --- | --- | --- | --- |
+| Plague | 127 (71%) | 125 | 42 | 83 | 2 |
+| Hunger | 32 (18%) | 31 | 11 | 20 | 1 |
+| War: men killed in battle, with the armies or in a town fought over | 11 (6%) | 10 | 2 | 8 | 1 |
+| Moved away or not accounted for (convoys, children taken in elsewhere, resettled) | 5 (3%) | 5 | 1 | 4 | 0 |
+| Old age, with no child born | 3 (2%) | 3 | 2 | 1 | 0 |
+
+- No child born in its last 8 seasons: 151 (85%); nations 148 (85%), tribes 3 (75%).
+- Left all one sex at some time in them: 168 (94%); nations 166 (95%), tribes 2 (50%).
+- Taken, or changed hands, in them: 76 (43%); nations 72 (41%), tribes 4 (100%).
 
 ## How each was read
 
