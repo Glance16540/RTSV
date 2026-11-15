@@ -37,7 +37,7 @@ import { settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
-import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { mayAdvance, maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
@@ -208,7 +208,7 @@ export const TRUCE_TURNS = 6;
 export const ALLIANCE_COST = 6;
 export const GIFT_COST = 4;
 /** Supplies to bring a whole people into the next age, from the Stone Age up. */
-export const AGE_COST = [36, 52, 72, 96];
+export const AGE_COST = [20, 30, 44, 60];
 /** Each age past the first makes a people's armies this much stronger. */
 export const AGE_EDGE = 0.1;
 export const MAX_FAVOR = 3;
@@ -1563,7 +1563,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
     // A people with stores to spare moves with the times.
-    if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8) advanceAge(c, f.id);
+    if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8 && mayAdvance(c, f.id)) advanceAge(c, f.id); // and has lived in this age long enough (rivalrule.ts)
     // A people shut in by the sea builds a harbour before anything else.
     const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
     if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }

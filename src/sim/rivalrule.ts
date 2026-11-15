@@ -33,7 +33,12 @@ export const RIVAL = {
   lull: 4, standing: 0.08, restless: 10, campaign: 8,
   /** A strained town down to this many men of working age is not asked for another company; and the strain that counts. */
   lastMen: 2, strain: 0.5,
+  /** Seasons a people lives in an age before it takes the next, however rich it is: five years. */
+  settle: 20,
 };
+declare module './campaign' {
+  interface Campaign { /** The age each rival was last seen in, and the turn it came to it (rivalrule.ts). */ aged?: Record<string, { age: number; at: number }> }
+}
 const hash = (a: number, b: number): number => { let h = (Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35)) >>> 0; h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 13; return (h >>> 0) / 4294967296; };
 const rival = (c: Campaign, f: number): boolean => f > 0 && !!c.factions[f]?.isAI && c.factions[f].alive;
 const towns = (c: Campaign, f: number): Territory[] => c.territories.filter((t) => t.owner === f && !t.horde);
@@ -293,6 +298,21 @@ export function rivalMoves(c: Campaign, f: number): number {
 }
 
 /** A season of a rival's rule, for every computer-led nation; and the naming of soldiers, for all. */
+/** Note the age a rival is in, and when it came to it. */
+function sawAge(c: Campaign, f: number): void {
+  const age = Math.max(0, Math.round(Number(c.factions[f]?.age) || 0)), seen = (c.aged ??= {})[f];
+  if (!seen || seen.age !== age) c.aged[f] = { age, at: seen ? c.turn : 0 };
+}
+/**
+ * May this rival take its next age yet? A people lives in an age `RIVAL.settle` seasons before the next, however
+ * full its stores: without this a rich rival took two ages within a few seasons of each other. Its first age waits
+ * only on its stores. The player is not held to it.
+ */
+export function mayAdvance(c: Campaign, f: number): boolean {
+  sawAge(c, f);
+  const seen = c.aged![f];
+  return seen.age === 0 || c.turn - seen.at >= RIVAL.settle;
+}
 export function rivalSeason(c: Campaign): { laid: number; home: number; named: number; homes: number } {
   const out = { laid: 0, home: 0, named: 0, homes: 0 };
   out.laid = layTowns(c);
@@ -300,6 +320,7 @@ export function rivalSeason(c: Campaign): { laid: number; home: number; named: n
     if (!rival(c, x.id)) continue;
     for (const t of towns(c, x.id)) { if (notableHome(c, t.id)) out.homes++; rivalOrders(c, t.id); }
     out.home += homeIdle(c, x.id);
+    sawAge(c, x.id);
   }
   out.named = nameVeterans(c).named;
   return out;
