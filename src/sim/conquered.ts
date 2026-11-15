@@ -17,15 +17,15 @@ export const YOKE = {
   /** How a town taken from a nation, or from a tribe, feels at first; more if it was their chief town. */
   nation: 80, tribe: 65, capital: 20,
   /** What a season takes off by itself, and what good rule adds to that. */
-  ease: 3, church: 3, farm: 2, leader: 4, pious: 2,
+  ease: 1, church: 3, farm: 2, leader: 4, pious: 2,
   /** What bad rule puts back: a tavern in a town that did not ask for one, and a season in which the town was struck and not protected. */
   tavern: 2, struck: 6,
   /** Under this a town is settled enough not to rise. `revolt` scales the chance, which grows with the square of the resentment above `quiet` and is never more than certain. */
-  quiet: 15, revolt: 2.4,
+  quiet: 15, revolt: 8.0,
   /** An army in the town makes a rising this much less likely; putting one down adds this to the resentment. */
   garrison: 0.03, putDown: 10,
   /** A town that has had an army in it settles this much faster each such season, and for this many seasons after the army leaves it is cowed: a rising is this much less likely (at 0 it does not rise). */
-  order: 8, cowed: 3, cowedBy: 0,
+  order: 2, cowed: 8, cowedBy: 0,
   /** Seasons a town is remembered as taken. For that long it rises only by its resentment, never by the common run of unrest (campaign.ts). */
   memory: 20,
 };
