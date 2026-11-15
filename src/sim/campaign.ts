@@ -15,6 +15,7 @@ import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
 import { orphansSeason } from './orphans';
+import { kinSeasons } from './kin';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
@@ -37,7 +38,7 @@ import { settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
-import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { mayAdvance, maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
@@ -1381,6 +1382,7 @@ export function continueAI(c: Campaign): void {
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
+      kinSeasons(c); // the leaders' households and inner circles (kin.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
@@ -1563,7 +1565,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
     // A people with stores to spare moves with the times.
-    if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8) advanceAge(c, f.id);
+    if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8 && mayAdvance(c, f.id)) advanceAge(c, f.id); // and has lived in this age long enough (rivalrule.ts)
     // A people shut in by the sea builds a harbour before anything else.
     const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
     if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }
