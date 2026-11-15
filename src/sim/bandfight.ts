@@ -13,6 +13,7 @@
 // The computer's peoples hunt the bands that sit in or beside their own lands, when they have the army for it.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
+import { sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
 import { BIOMES, COMPANIES, ageOf, armySize, armyStrength, biomeOf, heroFor, reach, virtueOf, weatherAt } from './campaign';
 import { CIV_IDS, TECHS } from './data';
@@ -125,7 +126,7 @@ export function bandBattle(c: Campaign): BattleConfig | null {
     seed: t.seed * 31 + b.id, size: 56, level: 0, humanAttacks: true, field: true, sea: false,
     title: `The fight with ${b.name} at ${t.name}`,
     setups: [
-      { name: 'You', color: c.factions[a.owner].color, isAI: false, team: 0, civ: c.factions[a.owner].civ, hero, leaderAway: true, virtue: virtueOf(c, a.owner), bonus: { units: mine, res: 30 * p.aStr, age: ageOf(c, a.owner), armed: true, buildings: [], atk: a.vet } },
+      { name: sideName(c, a.owner), color: c.factions[a.owner].color, isAI: false, team: 0, civ: c.factions[a.owner].civ, hero, leaderAway: true, virtue: virtueOf(c, a.owner), bonus: { units: mine, res: 30 * p.aStr, age: ageOf(c, a.owner), armed: true, buildings: [], atk: a.vet } },
       // A band is a step behind a nation in its arms.
       { name: cap(b.name), color: FIGHT.color, isAI: true, team: 1, civ, bonus: { units: theirs, res: 30 * b.strength, age: Math.max(0, ageOf(c, a.owner) - 1), armed: true, buildings: [], atk: 0 } },
     ],
