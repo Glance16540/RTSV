@@ -131,8 +131,9 @@ to rise, sooner settled where they are ruled well.
 bled by raids as the player can.
 
 **Faith is a town's.** Each town stands where it stands between piety and decadence, and towns of
-one nation may stand at different levels. The nation's standing is the sum of its towns', as its
-stores are.
+one nation may stand at different levels. The nation's standing is made from its towns': their
+average, so that a nation's creed does not swing with every town won or lost. A nation also pulls its
+towns toward its own standing, so they may drift apart only so far.
 
 **The leader is one person in one place.** He moves about the map, is in a town or with an army,
 and steadies the town he is in. He can call armies to meet him and move with them as one.
