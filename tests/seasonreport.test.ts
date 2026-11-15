@@ -1,11 +1,12 @@
 // The season's report (src/sim/seasonreport.ts, src/sim/ledger.ts): what changed in the player's nation in a season,
 // and for whom.
 import { describe, expect, it } from 'vitest';
-import { answerDemand, continueAI, endTurn, newCampaign, resolvePending } from '../src/sim/campaign';
+import { answerDemand, armyAt, continueAI, endTurn, newCampaign, resolvePending } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { LEDGER_SEASONS, ledgerSince, tally } from '../src/sim/ledger';
-import { anything, reportDue, reportLines, reportSince, seasonTurned, snapshot } from '../src/sim/seasonreport';
-import { folkOf } from '../src/sim/township';
+import { PAST_SEASONS, anything, pastSeasons, reportDue, reportLines, reportSince, seasonTurned, snapshot } from '../src/sim/seasonreport';
+import { DEAD, isOpen } from '../src/sim/deadtown';
+import { folkOf, tollFolk } from '../src/sim/township';
 import { THREATS } from '../src/sim/threats';
 
 const world = (): Campaign => newCampaign(5, 1, 1, 'hearth');
@@ -118,5 +119,64 @@ describe('as the seasons turn', () => {
     c.seasonFrom = s;
     seasonTurned(c);
     expect(reportDue(c)).toBeNull();
+  });
+});
+
+describe('men killed in raids, and in battles settled on the map', () => {
+  it('a raid\'s dead are in the death count once, from the raid itself, and in its line', () => {
+    const c = world(), h = home(c), s = snapshot(c);
+    (c.raids ??= []).push({ turn: c.turn + 1, band: 1, kind: 'raiders', name: 'the Crows', at: h.id, owner: 0, outcome: 'raided', force: 3, defence: { total: 2 }, killed: 2, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0 } as unknown as NonNullable<Campaign['raids']>[number]);
+    tally(c, h.id, 'aged', 1);
+    c.turn++;
+    const r = reportSince(c, s);
+    expect(r.raidDead).toBe(2);
+    expect(r.fell).toBe(0); // not counted again among the fallen
+    const lines = reportLines(r).map((l) => l.text);
+    expect(lines).toContain('2 men were killed in raids.');
+    expect(lines).toContain('3 died in all.');
+    expect(r.raids[0].line).toMatch(/2 men killed/);
+  });
+  it('the men a town loses in a battle nobody watched are counted among the fallen', () => {
+    const c = world(), h = home(c), s = snapshot(c);
+    const dead = tollFolk(c, h.id, false);
+    expect(dead).toBeGreaterThan(0);
+    expect(reportSince(c, s).fell).toBe(dead);
+  });
+});
+
+describe('towns that stand open', () => {
+  it('warns of a town of the player\'s that stands open, and of another\'s open town within reach of the player\'s armies', () => {
+    const c = world(), h = home(c);
+    const mine = c.territories.find((t) => t.owner < 0 && !t.horde && t.id !== h.id)!;
+    mine.owner = 0;
+    const theirs = h.adj.map((n) => c.territories[n]).find((t) => t.id !== mine.id && !t.horde)!;
+    theirs.owner = 1;
+    for (const t of [mine, theirs]) { const f = folkOf(c, t.id); f.men = f.women = f.elders = f.children = 0; delete f.ages; (c.emptied ??= {})[t.id] = DEAD.open; }
+    expect(isOpen(c, mine.id) && isOpen(c, theirs.id)).toBe(true);
+    const s = snapshot(c);
+    const r = reportSince(c, s);
+    expect(r.open).toEqual([mine.name]);
+    expect(armyAt(c, h.id)?.owner).toBe(0);
+    expect(r.openNear).toContain(theirs.name);
+    expect(anything(r)).toBe(true);
+    expect(reportLines(r).some((l) => l.text.startsWith(`${mine.name} stands open`))).toBe(true);
+  });
+});
+
+describe('the seasons past', () => {
+  it('keeps the last few seasons\' reports, newest first, and they survive being saved', () => {
+    const c = world(), h = home(c);
+    seasonTurned(c);
+    for (let i = 0; i < PAST_SEASONS + 3; i++) { c.turn++; tally(c, h.id, 'born', i + 1); seasonTurned(c); }
+    expect(c.seasonPast).toHaveLength(PAST_SEASONS);
+    const past = pastSeasons(c);
+    expect(past[0].turn).toBe(c.turn);
+    expect(past[0].born).toBe(PAST_SEASONS + 3);
+    expect(past[PAST_SEASONS - 1].born).toBe(4);
+    // Seeing the card does not touch what is kept.
+    c.seasonReport!.seen = true;
+    expect(pastSeasons(c).every((r) => !r.seen)).toBe(true);
+    const back = JSON.parse(JSON.stringify(c)) as Campaign;
+    expect(pastSeasons(back).map((r) => r.born)).toEqual(past.map((r) => r.born));
   });
 });
