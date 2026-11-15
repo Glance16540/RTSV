@@ -271,8 +271,6 @@ export interface Territory {
   ground?: Ground;
   /** Marauders have made this land their own: they grow here, carry off women from the lands around, and spread. */
   horde?: boolean;
-  /** Women carried off from here by marauders: each costs the land a supply a turn until they are freed. */
-  taken?: number;
 }
 
 /** What stands on a land's battlefield between battles: the holder's corner of it, and each building with the damage it has taken. */
@@ -407,7 +405,7 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
   hoard: { name: 'A hoard', icon: '💰', desc: 'Word of buried treasure. Whoever holds this land when the digging is done gains 5 supplies.' },
   found: { name: 'Treasure found', icon: '👑', desc: 'Its holder gained 5 supplies.' },
   horde: { name: 'Marauders', icon: '🏴', desc: 'A band that belongs to no people has made camp here. It grows every turn, carries off women from the lands around, and will spread if it is left alone. Take this land to break it.' },
-  taken: { name: 'Women carried off', icon: '⛓️', desc: 'Marauders have taken women from here. The land yields a supply less for each raid, up to two, until their camp is broken.' },
+  taken: { name: 'Women carried off', icon: '⛓️', desc: 'Marauders have taken women from the town here. They are held at the marauders\' camp, and can be got back for a time by taking that land.' },
   overrun: { name: 'Overrun', icon: '🏴', desc: 'The marauders have taken this land for their own.' },
   famine: { name: 'Famine', icon: '🥀', desc: 'The harvest failed here: its holder paid from the stores what the land would have yielded. It falls harder on the decadent than the holy.' },
   plague: { name: 'Plague', icon: '☠️', desc: 'Sickness is in this land. While it lasts the land costs its holder a supply a season, an army of theirs kept here loses a company a season, and it may pass to the land next door.' },
@@ -427,7 +425,6 @@ export const HORDE_TURN = 4;
 export const HORDE_MAX = 12;
 export const HORDE_SPREAD = 6;
 export const HORDE_PRIZE = 4;
-export const MAX_TAKEN = 2;
 
 /** A run of chances of its own for weather and the lasting events, so the rest of the campaign's luck is left as it was. */
 function luck(c: Campaign, k: number): number {
@@ -946,7 +943,7 @@ const rankWith = (c: Campaign, a: Army): number => (a.hero ? c.factions[a.owner]
 /** What one land of this people yields in a season, in supplies: it goes into the land's own town (harvest.ts). */
 export function landIncome(c: Campaign, f: number, t: Territory): number {
   const world = worldNow(c);
-  return Math.max(0, territoryIncome(t, c.factions[f].civ) + countryYield(c, t.id) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0) - (t.taken ?? 0));
+  return Math.max(0, territoryIncome(t, c.factions[f].civ) + countryYield(c, t.id) + (t.buildings.includes('tavern') ? faithOf(c, f).tavern : 0) + (world === 'plenty' && t.buildings.includes('farm') ? 1 : 0) - (world === 'winter' ? 1 : 0) - (weatherAt(c, t.id) === 'snow' ? 1 : 0));
 }
 /** What a people earns as a whole in a season, beyond its lands' yield: it goes into its chief town. */
 export const wholeIncome = (c: Campaign, f: number): number => placeGood(c, f, 'supplies') + (c.factions[f].civ === 'persia' ? Math.floor(landOf(c, f) / 3) : 0);

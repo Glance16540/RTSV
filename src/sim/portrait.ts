@@ -221,7 +221,7 @@ export function townMood(c: Campaign, tid: number): Mood & { lost: boolean } {
     raided: has('raiders', 'taken', 'overrun', 'horde', 'blaze'),
     sick: has('plague', 'fever'),
     starving: has('famine', 'hard'),
-    bereaved: lost || (t.taken ?? 0) > 0,
+    bereaved: lost || (c.bands ?? []).some((b) => b.held.some((h) => h.from === tid)), // some of its people are in a band's hands (threats.ts)
     lost,
   };
 }
