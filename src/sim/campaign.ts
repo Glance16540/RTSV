@@ -37,7 +37,7 @@ import { settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
-import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { mayAdvance, maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
@@ -1563,7 +1563,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
     // A people with stores to spare moves with the times.
-    if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8) advanceAge(c, f.id);
+    if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8 && mayAdvance(c, f.id)) advanceAge(c, f.id); // and has lived in this age long enough (rivalrule.ts)
     // A people shut in by the sea builds a harbour before anything else.
     const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
     if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }
