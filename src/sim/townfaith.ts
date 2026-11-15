@@ -4,8 +4,10 @@
  * A nation's standing is its towns' taken together: `Faction.virtue` is kept as the mean of them, so everything
  * that reads a nation's standing goes on working and is now reading its towns.
  *
- * Decided here: "the sum of its towns'" is taken as their mean, not their total. On a scale that ends at 100 a
- * total would make ten mildly pious towns a Righteous nation, and a nation would change creed by taking land.
+ * The nation's standing is the mean of its towns', by the owner's word ("use the average"). On a scale that ends
+ * at 100 a total would make ten mildly pious towns a Righteous nation, and a nation would change creed by taking land.
+ *
+ * Every season each town is also drawn some way toward its nation's standing (`PULL`).
  *
  * What moves a town: its own Church or Tavern and a holy place on its land, each season; how it was ruled in a
  * battle or visit fought there in person; a raid it held off or was broken by. What moves every town of a nation
@@ -74,6 +76,24 @@ export function townDrift(c: Campaign, tid: number): number {
 export function seasonOfFaith(c: Campaign, shift: (f: number, by: number, at: number) => void): void {
   settleFaith(c);
   for (const t of c.territories) { const by = t.owner >= 0 && c.factions[t.owner].alive ? townDrift(c, t.id) : 0; if (by) shift(t.owner, by, t.id); }
+  pullTogether(c);
+}
+/**
+ * The pull: every season each town is drawn `PULL` of the way toward where its nation stands, so a Church or a
+ * Tavern can hold a town apart only so far (where what it adds each season equals what the pull takes back:
+ * 6 a season against a pull of 0.15 leaves it 30 to 40 from the nation's standing). All towns move from where they stood as
+ * the season began, so the nation's own standing is not moved by it, beyond a point of rounding.
+ */
+export const PULL = 0.15;
+export function pullTogether(c: Campaign): void {
+  settleFaith(c);
+  for (const x of c.factions) {
+    const mine = owned(c, x.id);
+    if (mine.length < 2) continue;
+    const mean = mine.reduce((n, t) => n + (t.virtue ?? 0), 0) / mine.length;
+    for (const t of mine) t.virtue = clamp((t.virtue ?? 0) + Math.round((mean - (t.virtue ?? 0)) * PULL));
+    synced(c, x.id);
+  }
 }
 /** How far the towns of one nation stand apart: the lowest, the highest, and the gap between them. */
 export function faithSpread(c: Campaign, f: number): { low: number; high: number; spread: number; towns: number } {

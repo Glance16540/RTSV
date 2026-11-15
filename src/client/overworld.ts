@@ -592,7 +592,7 @@ export class Overworld {
     const t = c.territories[this.sel];
     const a = armyAt(c, this.sel);
     const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
-    $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · Supplies <b>${me.supplies}</b> <small>(+${income(c, 0)} each turn)</small>` +
+    $('ow-status').innerHTML = `<b>Turn ${c.turn}</b> · <span title="What your towns hold in store above their working stock, counted in supplies (a hundred of goods each).">To spend <b>${me.supplies}</b> <small>supplies (+${income(c, 0)} each turn)</small></span>` +
       '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? CIVS[f.civ].name + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>' +
       nationHtml(c) +
       `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +

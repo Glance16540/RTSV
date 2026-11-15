@@ -74,7 +74,7 @@ export const headcount = (f: Folk): number => grown(f) + f.children;
 /** The notable people of a town who are still with it. */
 export const living = (f: Folk): Notable[] => f.notables.filter((n) => !n.lost);
 
-/** A nation's stores are the sum of its towns'. (The map still spends supplies: see scripts/systems.mjs.) */
+/** A nation's stores are the sum of its towns'. (What it has to spend on the map is worked out from them: stores.ts.) */
 export function nationStores(c: Campaign, f: number): Stores {
   const sum: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
   for (const t of c.territories) if (t.owner === f) for (const k of STORE_KINDS) sum[k] += folkOf(c, t.id).stores[k];

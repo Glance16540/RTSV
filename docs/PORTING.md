@@ -31,7 +31,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
 | `birthonly` | 60 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
 | `calamity` | 179 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, famine, game, wrath | none of its own | not yet |
-| `campaign` | 1810 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, country, court, creed, data, drift, dynasty, game, hero, leaders, notableweight, powers, seasonfolk, story, temper, threats, townfaith, township | none of its own | not yet |
+| `campaign` | 1810 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, armytown, champion, conquered, country, court, creed, data, drift, dynasty, game, hero, leaders, notableweight, powers, seasonfolk, stores, story, temper, threats, townfaith, township | none of its own | not yet |
 | `captivity` | 129 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, data, game, nursery | captivity.test.ts | not yet |
 | `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
 | `conquered` | 108 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | campaign, court, township | conquered.test.ts | not yet |
@@ -65,11 +65,12 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `rescue` | 130 | Getting captives back without burning the camp down, and what a camp's keeper should do about it. | creed, game, path | rescue.test.ts | not yet |
 | `scenario` | 415 | Scripted missions: a fixed set-up, a list of objectives and a win or lose condition. | creed, game, map, rescue | none of its own | not yet |
 | `seasonfolk` | 95 | A town's people on the map, season by season (docs/DESIGN.md, "People come only by birth"). | ageing, campaign, creed, data, nursery, township | none of its own | not yet |
+| `stores` | 94 | Stores replace supplies (docs/DESIGN.md, "Stores"): a nation's supplies are what its towns hold above their working stock, and every gain or loss on the map is carried into the towns. | campaign, township | stores.test.ts | not yet |
 | `story` | 193 | The story of a campaign: places with names and a past, things that happen to the whole world, tales that are | campaign, creed | story.test.ts | not yet |
 | `tavernfall` | 24 | The tavern as a town falls. As a town grows less moral its tavern keeps later hours and takes more gold; what is | creed | tavernfall.test.ts | not yet |
 | `temper` | 127 | A leader's temperament, as answered by whoever plays them in the voice booth. It steers how the | none | none of its own | not yet |
 | `threats` | 390 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it. | acts, ageing, campaign, creed, townfaith, township | threats.test.ts | not yet |
 | `townfaith` | 84 | Faith is a town's (docs/DESIGN.md): every town's own standing between piety and decadence, and the nation's as the mean of its towns'. | campaign, story | townfaith.test.ts | not yet |
 | `township` | 200 | Towns that keep their people and their stores (docs/DESIGN.md, step 2). | ageing, campaign, household, notableweight | township.test.ts | not yet |
-| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, game, townfaith, township | visit.test.ts | not yet |
+| `visit` | 144 | A visit: from the campaign map the player enters a town of their own, with no enemy there, and plays a stretch | campaign, data, game, stores, townfaith, township | visit.test.ts | not yet |
 | `wrath` | 29 | How hard acts of God fall on a people (docs/DESIGN.md, "Acts of God"). | game | wrath.test.ts | not yet |
