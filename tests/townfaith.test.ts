@@ -1,7 +1,7 @@
 // Faith is a town's (docs/DESIGN.md; src/sim/townfaith.ts).
 import { describe, expect, it } from 'vitest';
 import { BATTLE_VIRTUE, CHURCH_VIRTUE, Campaign, TAVERN_VIRTUE, answerDemand, battleConfig, continueAI, endTurn, finishBattle, moveArmy, newCampaign, resolvePending, shiftVirtue, virtueOf } from '../src/sim/campaign';
-import { faithAt, faithSpread, nationVirtue, settleFaith, swayNation, swayTown, townDrift } from '../src/sim/townfaith';
+import { PULL, faithAt, faithSpread, nationVirtue, pullTogether, settleFaith, swayNation, swayTown, townDrift } from '../src/sim/townfaith';
 
 const LONG = 60_000;
 const turn = (c: Campaign) => {
@@ -50,11 +50,46 @@ describe('faith is a town\'s', () => {
     expect(townDrift(c, a.id)).toBe(CHURCH_VIRTUE);
     expect(townDrift(c, b.id)).toBe(-TAVERN_VIRTUE);
     expect(townDrift(c, home.id)).toBe(0);
-    turn(c); turn(c);
-    expect(faithAt(c, a.id)).toBe(2 * CHURCH_VIRTUE);
-    expect(faithAt(c, b.id)).toBe(-2 * TAVERN_VIRTUE);
+    turn(c);
+    // Each moved by its own house, and was then drawn a little way back toward the nation (which stands at 0).
+    const back = Math.round(CHURCH_VIRTUE * PULL);
+    expect(faithAt(c, a.id)).toBe(CHURCH_VIRTUE - back);
+    expect(faithAt(c, b.id)).toBe(-TAVERN_VIRTUE + back);
     expect(faithAt(c, home.id)).toBe(0);
-    expect(virtueOf(c, 0)).toBe(Math.round((2 * CHURCH_VIRTUE - 2 * TAVERN_VIRTUE) / 3));
+    expect(virtueOf(c, 0)).toBe(0);
+  }, LONG);
+
+  it('the pull: a church or a tavern holds a town apart from its nation only so far', () => {
+    const { c, home, a, b } = realm();
+    a.buildings = ['church']; b.buildings = ['tavern'];
+    for (let i = 0; i < 80; i++) turn(c);
+    const mean = virtueOf(c, 0), limit = CHURCH_VIRTUE / PULL; // where a season's 6 is what the pull takes back
+    expect(faithAt(c, a.id) - mean).toBeGreaterThan(limit - 12);
+    expect(faithAt(c, a.id) - mean).toBeLessThanOrEqual(limit + 4);
+    expect(mean - faithAt(c, b.id)).toBeGreaterThan(limit - 12);
+    expect(mean - faithAt(c, b.id)).toBeLessThanOrEqual(limit + 4);
+    expect(Math.abs(faithAt(c, home.id) - mean)).toBeLessThanOrEqual(4); // a town with neither stands with its nation
+    expect(faithSpread(c, 0).spread).toBeLessThanOrEqual(2 * limit + 8);
+  }, LONG);
+
+  it('the pull draws towns together and leaves the nation where it stood', () => {
+    const { c, home, a, b } = realm();
+    swayTown(c, a.id, 90); swayTown(c, b.id, -60);
+    const mean = virtueOf(c, 0), gap = faithSpread(c, 0).spread;
+    pullTogether(c);
+    expect(faithAt(c, a.id)).toBe(90 + Math.round((mean - 90) * PULL));
+    expect(faithAt(c, b.id)).toBe(-60 + Math.round((mean + 60) * PULL));
+    expect(faithSpread(c, 0).spread).toBeLessThan(gap);
+    expect(Math.abs(virtueOf(c, 0) - mean)).toBeLessThanOrEqual(1);
+    for (let i = 0; i < 60; i++) pullTogether(c);
+    expect(faithSpread(c, 0).spread).toBeLessThanOrEqual(8); // left alone they come to stand together (to within rounding)
+    // A nation of one town has nothing to be drawn toward.
+    const one = realm(9);
+    for (const t of [one.a, one.b]) t.owner = -1;
+    swayTown(one.c, one.home.id, 40);
+    pullTogether(one.c);
+    expect(faithAt(one.c, one.home.id)).toBe(40);
+    expect(home.owner).toBe(0);
   }, LONG);
 
   it('what befalls the whole people moves every town; what happens in one town moves that town', () => {
