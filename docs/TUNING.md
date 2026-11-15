@@ -13,6 +13,7 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | --- | --- | --- |
 | Pace | Seasons until a campaign is decided | 60 to 160 (15 to 40 years) |
 | Pace | Campaigns undecided at 200 seasons | under 10% |
+| Pace | Campaigns ending in ruin | rare: under 3 in 100 |
 | Pace | Seasons until a rival reaches its next age | 20 to 60 |
 | People | A town left alone, grown people after 20 years | 1.3 to 2 times what it began with, held by its houses and food |
 | People | A town visited every season vs left alone, after 20 years | visited ends 10 to 40% larger |
