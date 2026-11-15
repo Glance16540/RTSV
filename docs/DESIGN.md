@@ -149,6 +149,27 @@ and steadies the town he is in. He can call armies to meet him and move with the
 **Grief.** A home that loses its mother or its sons works more slowly for a time. It tells most in
 a town of middling morals, and less in a holy or a decadent one.
 
+**Relationships** (the owner's word, 15 November 2026). Taking land is not enough to bring a player
+back; people are. The leader is a person among people, and what happens to those close to them matters
+as much as what happens to the nation.
+
+- *The leader's own household.* The leader has a spouse, and children who have a mother or a father,
+  with names, ages and faces. They can be threatened, married off, lost or taken, like anyone.
+- *The inner circle.* A few named people stand closest to the leader: a right hand, a steward, a
+  marshal, a priest or a confidant. Each has a name, a face, a mood and a loyalty that can turn.
+- *Nobles.* Some people rise into a noble class through what they did or the post they were given:
+  a veteran captain, a governor, a matron of a great house. Nobles have a say in decrees. A decree
+  pleases some and angers others, and their moods tell on the towns: an angry lord's town is slacker,
+  readier to drift and less watchful against raiders while the leader is away.
+- *Stories inside the story.* Personal matters come up by chance, out of the systems already running,
+  and play out over seasons: a rival king who wants the leader dead and their spouse for his own; a
+  suitor for the leader's daughter; a noble plotting to take the throne; a thief who keeps robbing the
+  same houses; a killer in a town whom the leader's people must find. Each is told through named people
+  and their faces, has a choice or a search in it, and leaves a mark on the record whatever comes of it.
+  None touches a child, and nothing is shown of what is done to a captive.
+- *Several campaigns.* A player can keep more than one world, each with its own history, and go back to
+  any of them.
+
 ## The order of building
 
 Each step is to be playable by itself.
