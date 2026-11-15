@@ -204,7 +204,7 @@ export const UNITS: Record<string, UnitDef> = {
   berserker: U({
     id: 'berserker', name: 'Berserker', icon: '🪓',
     desc: 'Unarmoured shock infantry. The more wounded a Berserker is, the faster it strikes. Pagan: a town that keeps the faith will not train him.', pagan: true,
-    cost: { food: 70, gold: 25 }, time: 16, age: 2, hp: 95, atk: 12, armor: 0, range: 0.5, speed: 2.5,
+    cost: { food: 70, gold: 25 }, time: 16, age: 2, hp: 110, atk: 14, armor: 0, range: 0.5, speed: 2.5,
     cooldown: 1.5, sight: 7, pop: 1, cls: 'infantry', radius: 0.3, frenzy: true,
   }),
   pikeman: U({
