@@ -2,7 +2,8 @@
  * Rivals live by the same rules (docs/DESIGN.md): what a computer-led nation needs so that its towns go through
  * everything a player's do, and so that it rules them with an eye to how they are.
  *  - Its towns have buildings on record, laid down coarsely from what the map knows, so they are held to the room
- *    of their houses and their governors can build.
+ *    of their houses and their governors can build. (The player's unvisited towns are laid down the same way, so
+ *    neither side is spared.)
  *  - It sends an army home that has stood idle deep in its own land, and its men go back to their towns.
  *  - Named soldiers, notable homes and orders arise for it from what happens on the map, since nobody fights its
  *    battles in person or visits its towns.
@@ -49,6 +50,22 @@ export function layTown(c: Campaign, tid: number): boolean {
   for (let i = 0; i < roofs; i++) b.push(['house', 18 + 4 * (i % 8), 38 + 4 * Math.floor(i / 8)]);
   t.town = { at: 2, b, coarse: true };
   return true;
+}
+
+/**
+ * Every nation's towns are on record, the player's as a rival's: a town of a living people with no buildings on
+ * record is given a coarse one, so both sides are held to the room of their houses and both governors can build.
+ * A town the player fights over or visits in person has its real record from then on, in place of the coarse one.
+ * A coarse record does not outlast its people's hold: a town gone back to a tribe or to marauders is unrecorded again.
+ */
+export function layTowns(c: Campaign): number {
+  let laid = 0;
+  for (const t of c.territories) {
+    const held = t.owner >= 0 && !t.horde && !!c.factions[t.owner]?.alive;
+    if (!held) { if (t.town?.coarse) delete t.town; continue; }
+    if (layTown(c, t.id)) laid++;
+  }
+  return laid;
 }
 
 /** How long each army has stood where it is: kept on the campaign, by army. */
@@ -166,13 +183,12 @@ export function rivalMoves(c: Campaign, f: number): number {
 /** A season of a rival's rule, for every computer-led nation; and the naming of soldiers, for all. */
 export function rivalSeason(c: Campaign): { laid: number; home: number; named: number; homes: number } {
   const out = { laid: 0, home: 0, named: 0, homes: 0 };
+  out.laid = layTowns(c);
   for (const x of c.factions) {
     if (!rival(c, x.id)) continue;
-    for (const t of towns(c, x.id)) { if (layTown(c, t.id)) out.laid++; if (notableHome(c, t.id)) out.homes++; rivalOrders(c, t.id); }
+    for (const t of towns(c, x.id)) { if (notableHome(c, t.id)) out.homes++; rivalOrders(c, t.id); }
     out.home += homeIdle(c, x.id);
   }
-  // A coarse record is a rival's way of counting: a town that has passed out of a rival's hands is unrecorded again.
-  for (const t of c.territories) if (t.town?.coarse && !rival(c, t.owner)) delete t.town;
   out.named = nameVeterans(c).named;
   return out;
 }
