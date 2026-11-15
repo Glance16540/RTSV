@@ -11,6 +11,7 @@ import { ledgerSince } from './ledger';
 import { THREATS, reportLine } from './threats';
 import './intrigue';
 import { folkOf, living, type Notable } from './township';
+import { householdNews } from './kin';
 import { isOpen } from './deadtown';
 import { reach } from './campaign';
 
@@ -33,6 +34,8 @@ export interface SeasonReport {
   taken: number; back: number; lostForGood: number;
   raids: { at: number; land: string; outcome: 'held' | 'raided' | 'taken'; line: string }[];
   drifted: { tavern: number; mines: number; home: number };
+  /** Changes in the leader's household and circle: married, widowed, carried off, freed, someone leaving (kin.ts). */
+  household?: { text: string; tone: 'good' | 'bad' | 'plain' }[];
   rose: string[]; lost: string[]; won: string[];
   /** What the stories inside the story did (intrigue.ts): each a line, and the land it is in. */
   stories?: { at: number; land: string; tone: 'good' | 'bad' | 'plain'; text: string }[];
@@ -107,6 +110,8 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
     const rec = c.territories[n.at].folk?.notables.find((x) => x.name === n.name);
     if (rec?.lost) r.gone.push({ ...n, how: rec.lost.how });
   }
+  const home = householdNews(c, f, s.turn);
+  if (home.length) r.household = home.map((x) => ({ text: x.text, tone: x.tone }));
   // Towns standing open: its own, and others' its armies could walk into.
   r.open = now.towns.filter((t) => isOpen(c, t.id)).map((t) => c.territories[t.id].name);
   const near = new Set(c.armies.filter((a) => a.owner === f).flatMap((a) => reach(c, a.at)));
@@ -117,7 +122,7 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
 /** Whether anything at all happened in a season's report. */
 export const anything = (r: SeasonReport): boolean =>
   r.born + r.grew + r.aged + r.starved + r.fell + r.raidDead + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
-  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.stories?.length ?? 0) > 0;
+  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.open?.length ?? 0) + (r.openNear?.length ?? 0) + (r.household?.length ?? 0) + (r.stories?.length ?? 0) > 0;
 
 /** A season has turned: report the one just ended, and begin keeping the next. Called once a turn (campaign.ts). */
 export function seasonTurned(c: Campaign, f = 0): void {
@@ -157,6 +162,7 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   for (const t of r.rose) add('land', 'bad', `${t} rose and threw you off.`);
   for (const t of r.lost) add('land', 'bad', `${t} was lost.`);
   for (const t of r.won) add('land', 'good', `${t} is yours.`);
+  for (const x of r.household ?? []) add('people', x.tone, x.text);
   for (const t of r.open ?? []) add('land', 'bad', `${t} stands open: nobody is left in it, and anyone who marches on it has it. Send people by convoy, or an army to hold it.`);
   for (const t of r.openNear ?? []) add('land', 'good', `${t} stands open, within reach of your armies: march on it and it is yours.`);
   for (const x of r.stories ?? []) add('story', x.tone, x.text);
