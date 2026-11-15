@@ -794,3 +794,7 @@ body.looking-out #visit { display: none; }
   /* The buttons at the panel's foot wrap rather than run off the side of a phone. */
   .ow-side .ow-foot { flex-wrap: wrap; }
 }
+/* Past seasons (src/client/seasoncard.ts): the last few seasons' reports, each folded but the newest. */
+#season-card .season-past-item { border-top: 1px solid rgba(60, 40, 20, 0.25); padding: 4px 0; }
+#season-card .season-past-item > summary { cursor: pointer; font-weight: 600; }
+#season-card .season-foot button + button { margin-left: 8px; }
