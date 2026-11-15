@@ -21,10 +21,12 @@ import { writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
 import { Game } from '../src/sim/game';
 import type { Campaign } from '../src/sim/campaign';
-import { ageOf, answerDemand, armyAt, armyStrength, battleConfig, battleWatchers, continueAI, endTurn, moveArmy, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
+import { ageOf, answerDemand, siteCost, slots, armyAt, armyStrength, battleConfig, battleWatchers, continueAI, endTurn, moveArmy, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
 import { armiesFor, attackBand } from '../src/sim/bandfight';
 import { SEASONS_A_YEAR } from '../src/sim/ageing';
 import { BUILDINGS, CIV_IDS } from '../src/sim/data';
+import { GOVERN } from '../src/sim/governor';
+import { STORE_KINDS } from '../src/sim/township';
 import { folkOf, grown } from '../src/sim/township';
 import { needOf } from '../src/sim/larder';
 import { faithSpread } from '../src/sim/townfaith';
@@ -105,7 +107,7 @@ const held = (c: Campaign) => c.territories.filter((t) => t.owner >= 0 && !t.hor
 
 // ---- What is watched, season by season ----
 
-interface TownSeason { tribe: boolean; hungry: boolean; farmed: boolean; convoy: boolean; drifted: boolean; strained: 'hungry' | 'raided' | 'taken' | ''; oneSex: boolean }
+interface TownSeason { tribe: boolean; hungry: boolean; farmed: boolean; /** No farm, and its governor could raise one: a free place and the stores for it (governor.ts). */ canFarm: boolean; convoy: boolean; drifted: boolean; strained: 'hungry' | 'raided' | 'taken' | ''; oneSex: boolean }
 interface Watch {
   decided: number; // the season the campaign was decided, or -1
   how: string; // who won it: 'player beaten', 'player', 'rival'
@@ -191,7 +193,9 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       const raided = raidsNow.some((r) => r.at === t.id) || (c.raids ?? []).some((r) => r.at === t.id && r.turn === now - 1);
       const newly = !!t.yoke && now - t.yoke.since <= 8;
       const drifted = (f.drifted?.tavern ?? 0) + (f.drifted?.mines ?? 0) > 0;
-      w.townSeasons.push({ tribe: false, hungry: !!f.hungry, farmed: t.buildings.includes('farm'), convoy: convoyTo.has(t.id), drifted, strained: f.hungry ? 'hungry' : raided ? 'raided' : newly ? 'taken' : '', oneSex: g + away > 0 && (f.men + away === 0 || f.women === 0) });
+      const goods = STORE_KINDS.reduce((k, x) => k + Math.max(0, f.stores[x]), 0);
+      const canFarm = !t.buildings.includes('farm') && t.buildings.length < slots(t) && goods - siteCost(t, 'farm', c.factions[t.owner].civ) * 100 >= GOVERN.floor;
+      w.townSeasons.push({ tribe: false, hungry: !!f.hungry, farmed: t.buildings.includes('farm'), canFarm, convoy: convoyTo.has(t.id), drifted, strained: f.hungry ? 'hungry' : raided ? 'raided' : newly ? 'taken' : '', oneSex: g + away > 0 && (f.men + away === 0 || f.women === 0) });
       if (s <= YEARS20) {
         townSeasonsOf[t.owner]++;
         if (f.hungry) hungryOf[t.owner]++;
@@ -202,7 +206,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     for (const t of c.territories) {
       if (t.owner >= 0 || t.horde) continue;
       const f = folkOf(c, t.id), g = grown(f);
-      if (g > 0) w.townSeasons.push({ tribe: true, hungry: false, farmed: false, convoy: true, drifted: false, strained: '', oneSex: f.men === 0 || f.women === 0 });
+      if (g > 0) w.townSeasons.push({ tribe: true, hungry: false, farmed: false, canFarm: false, convoy: true, drifted: false, strained: '', oneSex: f.men === 0 || f.women === 0 });
     }
     // Who turned sixty and seventy this season, in every town that keeps its people's ages (ageing.ts).
     let r60 = 0, r70 = 0;
@@ -353,26 +357,30 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   add('People', 'A town left alone, grown people after 20 years', '1.3 to 2 times', `median ${num(median(growth), 2)}× (${growth.length} towns held by one people throughout)`, within(median(growth), 1.3, 2),
     'Nobody visits any town in these runs, so every town is left alone. Whether it is held by its houses and food is not judged.');
   if (VISITS > 0) {
-    const pairs: number[] = [];
+    // The same campaign told twice: every town of the player's visited every season, and none. Each town the
+    // player held from the start to twenty years on in both tellings is one pair.
+    let left = 0, seen = 0, pairs = 0, campaigns = 0;
+    const each: number[] = [];
     for (let seed = 1; seed <= VISITS; seed++) {
-      // The same campaign twice, the player's towns visited every season and not, compared at 20 years.
-      const sum = (visits: boolean) => {
+      const tell = (visits: boolean): Map<number, number> => {
         const c = newCampaign(seed, 2, 1, civOf(seed));
-        const own = c.territories.filter((t) => t.owner === 0).map((t) => t.id);
+        const steady = new Set(c.territories.filter((t) => t.owner === 0).map((t) => t.id));
         for (let s = 1; s <= YEARS20; s++) {
           if (c.phase === 'over') c.phase = 'player'; // let go on turning, as in play()
-          if (visits) for (const id of own) if (c.territories[id].owner === 0) visit(c, id);
+          if (visits) for (const id of steady) visit(c, id); // only the towns that can make a pair: a visit is costly
           season(c, true);
+          for (const id of [...steady]) if (c.territories[id].owner !== 0) steady.delete(id);
         }
-        return new Map(own.filter((id) => c.territories[id].owner === 0).map((id) => [id, grown(folkOf(c, id))]));
+        return new Map([...steady].map((id) => [id, grown(folkOf(c, id))]));
       };
-      // Only towns still the player's in both tellings are compared.
-      const left = sum(false), seen = sum(true), both = [...left.keys()].filter((id) => seen.has(id));
-      const a = both.reduce((k, id) => k + left.get(id)!, 0), b = both.reduce((k, id) => k + seen.get(id)!, 0);
-      if (a > 0) pairs.push(b / a - 1);
+      const a = tell(false), b = tell(true), both = [...a.keys()].filter((id) => b.has(id));
+      if (both.length) campaigns++;
+      for (const id of both) { pairs++; left += a.get(id)!; seen += b.get(id)!; if (a.get(id)! > 0) each.push(b.get(id)! / a.get(id)! - 1); }
     }
-    add('People', 'A town visited every season vs left alone, after 20 years', 'visited 10 to 40% larger', `${pct(mean(pairs))} larger (${pairs.length} campaigns)`, within(mean(pairs), 0.1, 0.4), 'The player\'s first towns, all of them visited each season, against the same campaign unvisited; only towns still the player\'s after twenty years in both are compared.');
-  } else rows.push({ area: 'People', figure: 'A town visited every season vs left alone, after 20 years', band: 'visited 10 to 40% larger', measured: '—', verdict: 'not measured', note: 'A visit is ten minutes of a real battle; run with VISITS=n to measure it on n campaigns.' });
+    const larger = left > 0 ? seen / left - 1 : NaN;
+    add('People', 'A town visited every season vs left alone, after 20 years', 'visited 10 to 40% larger', pairs ? `${pct(larger)} larger in all (${pairs} town pairs from ${campaigns} of ${VISITS} campaigns; median town ${pct(median(each))})` : 'no town pair', pairs ? within(larger, 0.1, 0.4) : null,
+      'The same campaign told twice, the player\'s first towns visited each season while they are still the player\'s (the computer keeping it for the whole ten minutes) and none; each town the player held from the start to twenty years on in both tellings is a pair, and their grown people are added up. The two tellings part ways as the campaign goes on, so a pair is a town in two different histories, not only visited and not.');
+  } else rows.push({ area: 'People', figure: 'A town visited every season vs left alone, after 20 years', band: 'visited 10 to 40% larger', measured: '—', verdict: 'not measured', note: 'A visit is ten minutes of a real battle; run with VISITS=n to measure it on n campaigns (about two minutes each).' });
   const lives = ruled.reduce((k, w) => k + w.townLives, 0), died = ruled.reduce((k, w) => k + w.diedOut, 0), afterAll = ruled.reduce((k, w) => k + w.diedAfterAll, 0);
   const per100 = lives ? (died / lives) * 100 : NaN;
   add('People', 'Towns that die out (no people at all) per 100 town-lifetimes', 'under 3, and only after war, famine or plague together', `${num(per100, 2)} (${died} died out, ${afterAll} of them after war, famine and plague together)`, per100 < 3 && afterAll === died,
@@ -391,9 +399,12 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const ts = all('townSeasons').filter((x) => !x.tribe);
   const farmedHungry = share(ts.filter((x) => x.farmed), (x) => x.hungry);
   add('Food', 'Share of seasons a farmed town is hungry', 'under 2%', `${pct(farmedHungry)} (${ts.filter((x) => x.farmed).length} town-seasons)`, farmedHungry < 0.02);
-  const bareTowns = ts.filter((x) => !x.farmed && !x.convoy);
-  const bareHungry = share(bareTowns, (x) => x.hungry);
-  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry', '15 to 40%', `${pct(bareHungry)} (${bareTowns.length} town-seasons)`, within(bareHungry, 0.15, 0.4), 'No convoy means none was on the road to it as the season began.');
+  const bareTowns = ts.filter((x) => !x.farmed && !x.convoy), could = bareTowns.filter((x) => x.canFarm), couldNot = bareTowns.filter((x) => !x.canFarm);
+  const couldHungry = share(could, (x) => x.hungry), couldNotHungry = share(couldNot, (x) => x.hungry);
+  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where its governor can still raise a farm', 'under 10%', `${pct(couldHungry)} (${could.length} town-seasons)`, could.length ? couldHungry < 0.1 : null,
+    'No convoy means none was on the road to it as the season began. Can still raise a farm is the governor\'s own test (governor.ts), read at the end of the season: a free place among its buildings, and its stores, less the farm\'s price, at or above his floor.');
+  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised', '15 to 40%', `${pct(couldNotHungry)} (${couldNot.length} town-seasons)`, couldNot.length ? within(couldNotHungry, 0.15, 0.4) : null,
+    'The rest of the unfarmed towns with no convoy: no free place, or not the stores.');
   const dead = ruled.flatMap((w) => Object.values(w.hungerDead));
   const nations = ruled.length * 3; // a player and two rivals in each
   const perNation = dead.reduce((a, b) => a + b, 0) / nations;
@@ -458,7 +469,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const lines = [
     '# Campaign health report',
     '',
-    `Measured by \`scripts/health.test.ts\` against \`docs/TUNING.md\`: ${CAMPAIGNS} campaigns (seeds 1 to ${CAMPAIGNS}, a player and two rivals), up to ${SEASONS} seasons, the player ${PLAYER === 'computer' ? 'played by the computer' : 'let be'}, each also played ${YEARS20} seasons with no decrees${VISITS ? `, and ${VISITS} with every town visited` : ''}. ${inN} in band, ${outN} out. Took ${secs} seconds.`,
+    `Measured by \`scripts/health.test.ts\` against \`docs/TUNING.md\`: ${CAMPAIGNS} campaigns (seeds 1 to ${CAMPAIGNS}, a player and two rivals), up to ${SEASONS} seasons, the player ${PLAYER === 'computer' ? 'played by the computer' : 'let be'}, each also played ${YEARS20} seasons with no decrees${VISITS ? `, and ${VISITS} told again with the player's first towns visited every season` : ''}. ${inN} in band, ${outN} out. Took ${secs} seconds.`,
     '',
     '| Area | Figure | Target band | Measured | |',
     '| --- | --- | --- | --- | --- |',
