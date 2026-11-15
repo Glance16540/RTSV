@@ -54,7 +54,7 @@ export const NOBLES = {
   /** At or below this a noble is angry. */
   angry: -40,
   /** What an angry noble's town suffers: a share of its harvest lost, strain added to its drift, and a share of its watch gone while the leader is away. */
-  slack: 0.08, strain: 0.1, watch: 0.2,
+  slack: 0.05, strain: 0.1, watch: 0.2,
   /** A decree's effect on one of the inner circle's loyalty, as a share of its effect on their mood; and how far the mood of their town's nobles draws on it a season. */
   loyal: 0.4, pull: 0.05,
 };
