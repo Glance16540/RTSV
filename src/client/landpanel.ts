@@ -2,6 +2,7 @@
 // then the land selected, leading with what matters (its name and holder, its people and stores, what threatens it,
 // the army there), then what can be done there in groups, and last the lie of the land folded under "The land".
 // Nothing here decides anything: overworld.ts keeps the logic and the clicks (every button keeps its `data-act`).
+import { ruinWarning } from '../sim/ruin';
 import { creedOf } from '../sim/creed';
 import { PLACES, WORLD_EVENTS } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield } from '../sim/country';
@@ -64,6 +65,7 @@ export function nationBar(c: Campaign): string {
   const peoples = '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? peopleName(c, 0) + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>';
   const hold = c.dominion.f >= 0 ? ` <b class="${c.dominion.f === 0 ? 'good' : 'bad'}" title="Held for ${c.dominion.turns} of the ${DOMINION_TURNS} turns that decide it.">👑 ${c.dominion.f === 0 ? 'You hold' : c.factions[c.dominion.f].name + ' hold'} most of the land: ${c.dominion.turns}/${DOMINION_TURNS}</b>` : '';
   const top = `<div class="lp-bar"><b>Turn ${c.turn}</b><span title="What your towns hold in store above their working stock, counted in supplies (a hundred of goods each).">To spend <b>${me.supplies}</b> <small>supplies (+${income(c, 0)} each turn)</small></span>${hold}</div>` + peoples +
+    (ruinWarning(c) ? `<div class="hint bad lp-ruin">🏚️ ${ruinWarning(c)}</div>` : '') +
     (c.request && c.ally >= 0 ? `<div class="hint">📣 ${c.factions[c.ally].name} ask you to take land from ${c.factions[c.request.foe].name} before turn ${c.request.until}.</div>` : '');
   const world = worldNow(c) ? WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS] : null;
   const rest = nationHtml(c) +
