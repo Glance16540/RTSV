@@ -36,7 +36,7 @@
 // A band broken gives up everyone it holds and something of what it stole.
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
-import { swayTown } from './townfaith';
+import { faithAt, swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaign';
 import { creedOf } from './creed';
@@ -196,7 +196,7 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   const a = c.armies.find((x) => x.at === tid && x.owner === t.owner);
   const army = a ? armyStrength(a) : 0;
   const guard = t.capital >= 0 ? THREATS.capital : 0;
-  const spirit = (t.owner >= 0 ? creedOf(c.factions[t.owner].virtue ?? 0).morale : 1) * (sick(c, tid) ? THREATS.sick : 1);
+  const spirit = (t.owner >= 0 ? creedOf(faithAt(c, tid)).morale : 1) * (sick(c, tid) ? THREATS.sick : 1); // the town's own standing (townfaith.ts)
   return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit) };
 }
 

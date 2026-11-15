@@ -26,6 +26,7 @@
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, weatherAt } from './campaign';
 import { creedOf } from './creed';
+import { faithAt } from './townfaith';
 import { STORE_KINDS, folkOf } from './township';
 import type { Stores } from './township';
 import { SUPPLY_UNITS } from './stores';
@@ -59,6 +60,8 @@ export interface Struck { kind: Act; at: number; owner: number; hard: boolean; c
 
 /** How hard acts of God fall on this people: the same measure as in a battle (wrath.ts). 1 for the local tribes. */
 export const wrathOf = (c: Campaign, f: number): number => (f < 0 || !c.factions[f] ? 1 : creedOf(c.factions[f].virtue ?? 0).plague);
+/** How hard acts of God fall on this town: by its own standing (townfaith.ts), as faith is a town's. 1 for the local tribes. */
+export const wrathAt = (c: Campaign, tid: number): number => (c.territories[tid]?.owner < 0 ? 1 : creedOf(faithAt(c, tid)).plague);
 
 /** A chance in [0, 1) from the campaign's seed, the season, a land and a number of its own. */
 export function chance(c: Campaign, land: number, salt: number): number {
@@ -156,14 +159,14 @@ export function actsOfGod(c: Campaign): Struck[] {
     const next = t.adj.map((id) => c.territories[id]).filter((n) => n.owner >= 0 && c.factions[n.owner]?.alive && !sickAt(c, n.id));
     if (!next.length) continue;
     const n = next[Math.floor(chance(c, t.id, 31) * next.length)];
-    const w = wrathOf(c, n.owner);
+    const w = wrathAt(c, n.id);
     if (chance(c, t.id, 37) < ACTS.spread * w) out.push(plague(c, n, w, false, t.id));
   }
   if (c.turn < ACTS.from) return out;
   const fresh = new Set(out.filter((s) => s.from !== undefined).map((s) => s.at));
   for (const t of c.territories) {
     if (t.owner < 0 || !c.factions[t.owner]?.alive || fresh.has(t.id)) continue;
-    const w = wrathOf(c, t.owner), sky = weatherAt(c, t.id);
+    const w = wrathAt(c, t.id), sky = weatherAt(c, t.id);
     const dry = sky === 'rain' ? 0 : sky === 'dust' ? ACTS.dry : 1;
     // One roll decides which, if any: a land is struck by one thing in a season at most.
     const r = chance(c, t.id, 3), hard = chance(c, t.id, 5) < ACTS.hard * w * w;

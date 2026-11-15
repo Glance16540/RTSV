@@ -24,7 +24,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 
 | Module | Lines | What it is | Depends on | Tests | Unity |
 | --- | --- | --- | --- | --- | --- |
-| `acts` | 173 | Acts of God on the map: a season of famine, plague and fire in every land that is held, falling on that land's town: its food, its people and its stores (docs/DESIGN.md). | campaign, creed, stores, township | acts.test.ts | not yet |
+| `acts` | 179 | Acts of God on the map: a season of famine, plague and fire in every land that is held, falling on that land's town: its food, its people and its stores (docs/DESIGN.md). | campaign, creed, stores, townfaith, township | acts.test.ts | not yet |
 | `ageing` | 122 | A person ages only on the map, a season at a time (docs/DESIGN.md, "Time"). | campaign, data, township | ageing.test.ts | not yet |
 | `ai` | 937 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | besieger, birthonly, calamity, creed, data, game, keeper, map, muster, temper | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
 | `armytown` | 194 | Armies belong to towns (docs/DESIGN.md): a company's men leave their town's record for the army's roll, the army's dead are struck from it, and the rest come home when it is sent home. | ageing, campaign, ledger, township | armytown.test.ts | not yet |
@@ -83,7 +83,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `rivalrule` | 178 | Rivals live by the same rules (docs/DESIGN.md): a computer-led nation's towns on record, idle armies sent home, names made on the map, and garrisons where its towns need them. | armytown, campaign, conquered, data, seasonfolk, threats, township | rivalrule.test.ts | not yet |
 | `roll` | 70 | The roll of a people for the "Your people" screen: leader and house, heirs, the known by name town by town, men away, captives, the lost; children only counted. Read only. | ageing, armytown, campaign, dynasty, hero, naming, threats, township | roll.test.ts | not yet |
 | `scenario` | 415 | Scripted missions: a fixed set-up, a list of objectives and a win or lose condition. | creed, game, map, rescue | none of its own | not yet |
-| `seasonfolk` | 98 | A town's people on the map, season by season (docs/DESIGN.md, "People come only by birth"). | ageing, campaign, creed, data, ledger, nursery, township | none of its own | not yet |
+| `seasonfolk` | 98 | A town's people on the map, season by season (docs/DESIGN.md, "People come only by birth"). | ageing, campaign, creed, data, ledger, nursery, townfaith, township | none of its own | not yet |
 | `seasonreport` | 138 | The season's report: what changed in the player's nation in a season and for whom (people, captives, raids, drift, towns, notable people), from a snapshot and the ledger. | ledger, threats, township | seasonreport.test.ts | not yet |
 | `sieges` | 38 | A siege nobody watches: a walled, manned town's defence counts for more when the battle is settled on the map. | campaign, data, township | sieges.test.ts | not yet |
 | `stores` | 94 | Stores replace supplies (docs/DESIGN.md, "Stores"): a nation's supplies are what its towns hold above their working stock, and every gain or loss on the map is carried into the towns. | campaign, township | stores.test.ts | not yet |

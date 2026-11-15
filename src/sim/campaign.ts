@@ -975,7 +975,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   if (t.owner < 0) return Math.max(1, t.militia - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * faithOf(c, t.owner).defence * 10) / 10;
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * FAITH[creedOf(faithAt(c, tid)).id].defence * 10) / 10; // the town's own standing (townfaith.ts)
 }
 
 /** True while the player and a rival are bound by a truce. */
