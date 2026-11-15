@@ -20,7 +20,8 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | People | Towns left all one sex | a nation's towns under 5%; tribes' towns under 20% (war takes their men, by design) |
 | People | Of those who reach 60, the share dead by 70 | 50 to 85% |
 | Food | Share of seasons a farmed town is hungry | under 2% |
-| Food | Share of seasons an unfarmed town with no convoy is hungry | 15 to 40% |
+| Food | Share of seasons an unfarmed town with no convoy is hungry, where its governor can still raise a farm | under 10% (a governed town answers want) |
+| Food | Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised (no free place, or not the stores) | 15 to 40% (it must live on convoys or the decree that sends food) |
 | Food | Deaths from hunger in a nation, per 20 years | some (1 to 10), never most of a town at once unless besieged or cut off |
 | Stores | A nation's supplies after 20 years of peace | enough for 2 to 4 seasons of its full upkeep, not hoards |
 | Faith | Widest gap between two towns of one nation | 20 to 60 most of the time |
