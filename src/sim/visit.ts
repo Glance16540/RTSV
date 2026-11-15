@@ -13,6 +13,7 @@ import type { BattleConfig, Campaign } from './campaign';
 import { Census, cleanCensus, musterFolk, settleFolk } from './township';
 import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, shiftVirtue, slots, weatherAt } from './campaign';
 import { faithAt } from './townfaith';
+import { settleStores } from './stores';
 import type { Sky } from './campaign';
 
 declare module './campaign' {
@@ -74,6 +75,7 @@ export function beginVisit(c: Campaign, tid: number): boolean {
 
 /** The town as a real-time match with nobody to fight: the player alone, on the ground a siege there is fought over. */
 export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig | null {
+  settleStores(c); // the town is visited with what is in its stores now
   const v = c.visit, t = v ? c.territories[v.to] : undefined;
   if (!v || !t || t.owner !== 0) return null;
   const army = armyAt(c, t.id);
@@ -114,6 +116,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   // The town is as the visit left it: everyone born there, less the dead and the taken.
   const census = cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census);
+  settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
   // It is this town that was kept so, and this town that is moved (townfaith.ts).
   if (virtue !== undefined && Number.isFinite(virtue)) shiftVirtue(c, 0, (virtue - faithAt(c, land.id)) * BATTLE_VIRTUE, { at: land.id });

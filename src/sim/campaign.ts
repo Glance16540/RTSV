@@ -25,6 +25,7 @@ export const HERO_RANK_STRENGTH = 0.5;
 import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
+import { settleStores } from './stores';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { Muster, armiesJoined, homeOf, menMustered, reckonArmies, seasonOfArmies } from './armytown';
@@ -220,6 +221,8 @@ export interface Faction {
   court?: Court;
   /** Where this people stands between piety (100) and decadence (-100): see FAITH. */
   virtue?: number;
+  /** What stores.ts last worked out this people has to spend from its towns' stores: how it tells what `supplies` has gained or lost since. */
+  stock?: number;
   /** The standing townfaith.ts last worked out from this people's towns: how it tells when `virtue` has been set by hand. */
   faith?: number;
   age?: number; // the age this people has reached on the campaign map, 0 to 4
@@ -924,6 +927,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
   placesOf(c);
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');
+  settleStores(c); // each people's supplies are goods in its chief town from the first (stores.ts)
   return c;
 }
 
@@ -1250,6 +1254,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   }
   c.pending = null;
   settleFaith(c); // every town's own standing is written down before any changes hands
+  settleStores(c); // and what each people has spent or earned is in its towns before any is lost (stores.ts)
   // A battle nobody watched is paid for by the town in men, and in stores if it falls.
   if (how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde) tollFolk(c, p.to, attackerWon);
   // The rival leader has something to say about a battle against the player.
@@ -1309,6 +1314,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     if (p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You were thrown back from ${t.name} by the ${c.factions[p.defender].name}.` : `The ${c.factions[p.attacker].name} came against ${t.name} and you threw them back.`);
   }
   checkElimination(c);
+  settleStores(c);
   if (how === 'auto') reckonArmies(c); // the dead are their towns' dead (armytown.ts); a battle fought in person counts its own
   settleFaith(c);
   return attackerWon;
@@ -1402,6 +1408,7 @@ export function continueAI(c: Campaign): void {
       mendTowns(c);
       turnEvent(c);
       storyTurn(c);
+      settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
       return;
     }
@@ -1656,6 +1663,7 @@ export interface BattleConfig { seed: number; size: number; level: number; title
 export function battleConfig(c: Campaign): BattleConfig | null {
   const p = c.pending;
   if (!p) return null;
+  settleStores(c); // a town fights out of what is in its stores now, after all that has been spent (stores.ts)
   const t = c.territories[p.to];
   const humanAttacks = p.attacker === 0;
   const field = p.mode === 'field';
@@ -1760,6 +1768,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
+  settleStores(c); // what the town gathered or spent is its nation's gain or loss
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
   if (known && mine && !c.armies.includes(mine)) loseVeteran(c, 0, known);
   // Felled wood, picked berries and dug stone are gone whoever won. A field battle is fought on other ground.
