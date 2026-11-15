@@ -1,9 +1,9 @@
 // Stories inside the story: a thief and a killer (src/sim/intrigue.ts).
 import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign } from '../src/sim/campaign';
-import { INTRIGUE, beginKiller, beginThief, choicesFor, choose, fullName, intrigueNews, intrigueSeason, openIntrigues, standing, suspected } from '../src/sim/intrigue';
+import { INTRIGUE, onRecord, beginKiller, beginThief, choicesFor, choose, fullName, intrigueNews, intrigueSeason, openIntrigues, standing, suspected } from '../src/sim/intrigue';
 import { reportLines, reportSince, snapshot } from '../src/sim/seasonreport';
-import { folkOf, grown } from '../src/sim/township';
+import { folkOf, grown, living } from '../src/sim/township';
 
 /** A campaign with one roomy, well-found town of the player's, and that town. */
 const base = JSON.stringify(newCampaign(5, 2));
@@ -217,5 +217,49 @@ describe('every story', () => {
     const back: Campaign = JSON.parse(JSON.stringify(c));
     expect(back.intrigues).toEqual(c.intrigues);
     expect(choose(back, x.id, `accuse:${x.culprit}`)).toBe(true);
+  });
+});
+
+describe('the people in a town\'s story', () => {
+  /** A town whose record knows six people by name: four notable, two of them women with a man of the house. */
+  const known = (seed: number): { c: Campaign; at: number } => {
+    const w = world(seed), f = folkOf(w.c, w.at);
+    f.notables = [
+      { name: 'Hild', family: 'Marsh', gender: 'f', kind: 'mother', deed: 'raised four children', turn: 2, kids: 4, husband: 'Bram' },
+      { name: 'Orla', family: 'Pike', gender: 'f', kind: 'mother', deed: 'raised three children', turn: 3, kids: 3, husband: 'Kell' },
+      { name: 'Rolf', family: 'Thorne', gender: 'm', kind: 'veteran', deed: 'felled 5 in battle as a spearman', turn: 4, kills: 5, unit: 'Spearman' },
+      { name: 'Edric', family: 'Oakes', gender: 'm', kind: 'veteran', deed: 'felled 3 in battle as an archer', turn: 5, kills: 3, unit: 'Archer' },
+    ];
+    return w;
+  };
+  it('are, some of them, the people its record already knows by name', () => {
+    const { c, at } = known(1);
+    expect(onRecord(c, at).map(fullName).sort()).toEqual(['Bram Marsh', 'Edric Oakes', 'Hild Marsh', 'Kell Pike', 'Orla Pike', 'Rolf Thorne']);
+    let onIt = 0, all = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const w = known(seed), x = seed % 2 ? beginKiller(w.c, w.at) : beginThief(w.c, w.at);
+      expect(new Set(x.people.map(fullName)).size).toBe(x.people.length); // nobody twice
+      onIt += x.people.filter((p) => p.known).length; all += x.people.length;
+    }
+    expect(onIt).toBeGreaterThan(all * 0.25);
+    expect(onIt).toBeLessThan(all);
+  });
+  it('are struck from that record when the story takes them, with how', () => {
+    let killed = 0, hanged = 0, widowed = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const { c, at } = known(seed), f = folkOf(c, at), x = beginKiller(c, at);
+      for (let i = 0; i < 4 && !x.ended; i++) season(c);
+      const wrong = suspected(x).find((i) => i !== x.culprit && x.people[i].known === 'notable');
+      if (wrong !== undefined && !x.ended) { choose(c, x.id, `accuse:${wrong}`); hanged++; expect(f.notables.find((n) => n.name === x.people[wrong].name)!.lost!.how).toContain('did not do'); }
+      for (const v of x.victims) {
+        if (v.known === 'notable') { killed++; expect(f.notables.find((n) => n.name === v.name)!.lost).toMatchObject({ how: 'was killed in the night' }); }
+        if (v.known === 'husband') { widowed++; expect(f.notables.find((n) => n.family === v.family)!.husband).toBeUndefined(); }
+      }
+      expect(living(f).length).toBeLessThanOrEqual(4);
+      expect(f.children).toBe(6); // and never a child
+    }
+    expect(killed).toBeGreaterThan(0);
+    expect(hanged).toBeGreaterThan(0);
+    expect(widowed).toBeGreaterThan(0);
   });
 });

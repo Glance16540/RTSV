@@ -28,7 +28,7 @@ import { FAMILY_NAMES, NAMES_F, NAMES_M } from './data';
 import { agesOf } from './ageing';
 import { leaderAt } from './court';
 import { needOf } from './larder';
-import { folkOf, grown } from './township';
+import { folkOf, grown, living } from './township';
 import { courtBegin, courtChoices, courtChoose, courtStanding, courtStep } from './courtstory';
 
 export type IntrigueKind = 'thief' | 'killer' | 'rival' | 'suitor';
@@ -36,7 +36,7 @@ export type IntrigueKind = 'thief' | 'killer' | 'rival' | 'suitor';
 export const TOWN_KINDS: IntrigueKind[] = ['thief', 'killer'];
 export const ofTown = (it: { kind: IntrigueKind }): boolean => TOWN_KINDS.includes(it.kind);
 /** A grown person of the town a story turns on. */
-export interface Person { name: string; family: string; gender: 'm' | 'f'; trade: string }
+export interface Person { name: string; family: string; gender: 'm' | 'f'; trade: string; /** They are on the town's own record (township.ts): one of its notable people, or the man of a notable house. */ known?: 'notable' | 'husband' }
 export interface Clue { turn: number; text: string; /** Those of `people` it clears, by place in the list. */ clears: number[] }
 export interface Intrigue {
   id: number; kind: IntrigueKind; owner: number; at: number; since: number;
@@ -77,6 +77,8 @@ export const INTRIGUE = {
   from: 6, rest: 8, open: 1,
   /** Ended stories kept on record, and notes kept for the report. */
   kept: 30, notes: 60,
+  /** The chance someone in a town's story is one of the people its record knows by name, where it knows any. */
+  known: 0.5,
   thief: {
     /** The chance each season, for the whole nation, in a town that has the gold; times `strained` where it is hungry or drinks. */
     chance: 0.04, strained: 2, gold: 80,
@@ -119,29 +121,49 @@ export function chance(c: Campaign, salt: number): number {
   return (h >>> 0) / 4294967296;
 }
 const pick = <T>(xs: readonly T[], r: number): T => xs[Math.min(xs.length - 1, Math.floor(r * xs.length))];
-export const fullName = (p: Person): string => `${p.name} ${p.family}`;
+export const fullName = (p: Person): string => `${p.name} ${p.family}`.trim();
 const they = (p: Person): string => (p.gender === 'f' ? 'she' : 'he');
 const their = (p: Person): string => (p.gender === 'f' ? 'her' : 'his');
 const land = (c: Campaign, at: number): string => c.territories[at].name;
 
-/** A grown person of a town, by name: of one of the houses on its record where it has any. `not`: names already used. */
+/** The people a town's record already knows by name: its notable people still living, and the men of its notable houses. */
+export function onRecord(c: Campaign, at: number): Person[] {
+  const out: Person[] = [];
+  for (const n of living(folkOf(c, at))) {
+    const r = chance(c, at * 577 + n.name.length * 31 + n.turn);
+    out.push({ name: n.name, family: n.family ?? '', gender: n.gender, trade: n.kind === 'veteran' ? 'veteran' : pick(TRADES, r), known: 'notable' });
+    if (n.kind === 'mother' && n.husband) out.push({ name: n.husband.split(' ')[0], family: n.family ?? n.husband.split(' ').slice(1).join(' '), gender: 'm', trade: pick(TRADES, 1 - r), known: 'husband' });
+  }
+  return out;
+}
+const same = (a: Person, b: Person): boolean => a.name === b.name && a.family === b.family;
+/**
+ * A grown person of a town, by name. Where the town's record knows people by name, some of a story's people are
+ * those people (`INTRIGUE.known` of the time); the rest are made up, of one of the houses on its record where it
+ * has any. `not`: those already in the story.
+ */
 function person(c: Campaign, at: number, salt: number, not: Person[], gender?: 'm' | 'f'): Person {
   const f = folkOf(c, at), houses = ((f as { houses?: { family?: string }[] }).houses ?? []).map((h) => h?.family).filter((x): x is string => !!x && x !== 'Nameless');
+  const known = onRecord(c, at).filter((p) => (!gender || p.gender === gender) && !not.some((x) => same(x, p)));
+  if (known.length && chance(c, salt * 97 + at * 1009 + 77) < INTRIGUE.known) return pick(known, chance(c, salt * 97 + at * 1009 + 78));
   for (let k = 0; ; k++) {
     const r = (n: number): number => chance(c, salt * 97 + k * 13 + n + at * 1009);
     const g = gender ?? (r(1) < (f.men + 0.5) / (f.men + f.women + 1) ? 'm' : 'f');
     const p: Person = { name: pick(g === 'f' ? NAMES_F : NAMES_M, r(2)), family: houses.length && r(3) < 0.6 ? pick(houses, r(4)) : pick(FAMILY_NAMES, r(4)), gender: g, trade: pick(TRADES, r(5)) };
-    if (k > 40 || !not.some((x) => x.name === p.name && x.family === p.family)) return p;
+    if (k > 40 || !not.some((x) => same(x, p))) return p;
   }
 }
 /** One grown person is gone from the town's count, a man or a woman as near as the town has them. Never a child. */
-function strike(c: Campaign, at: number, gender: 'm' | 'f'): boolean {
-  const f = folkOf(c, at);
+function strike(c: Campaign, at: number, p: Person, how: string): boolean {
+  const f = folkOf(c, at), gender = p.gender;
   if (gender === 'f' ? f.women > 0 : f.men > 0) { if (gender === 'f') f.women--; else f.men--; }
   else if (f.elders > 0) f.elders--;
   else if (f.men + f.women > 0) { if (f.men > 0) f.men--; else f.women--; }
   else return false;
   if (f.ages) agesOf(c, at, f); // the record of ages loses them too
+  // Someone the town knew by name is struck from its record as lost, and how.
+  if (p.known === 'notable') { const n = living(f).find((x) => x.name === p.name && (x.family ?? '') === p.family); if (n) n.lost = { turn: c.turn, how }; }
+  if (p.known === 'husband') { const n = living(f).find((x) => x.kind === 'mother' && !!x.husband && x.husband.split(' ')[0] === p.name && (x.family ?? '') === p.family); if (n) delete n.husband; }
   return true;
 }
 export function note(c: Campaign, it: Intrigue, tone: IntrigueNote['tone'], text: string, who?: Person): void {
@@ -255,7 +277,7 @@ function kill(c: Campaign, it: Intrigue, first = false): boolean {
     const i = pick(left, chance(c, it.id * 59 + 3));
     dead = it.people[i]; it.cleared.push(i); // nobody suspects the dead
   } else dead = person(c, it.at, it.id * 67 + it.victims.length, [...it.people, ...it.victims]);
-  if (!strike(c, it.at, dead.gender)) return false;
+  if (!strike(c, it.at, dead, 'was killed in the night')) return false;
   it.victims.push({ ...dead, turn: c.turn });
   const names = suspected(it).map((i) => fullName(it.people[i]));
   note(c, it, 'bad', first
@@ -280,7 +302,7 @@ function clue(c: Campaign, it: Intrigue): void {
 }
 function hang(c: Campaign, it: Intrigue, i: number, by: 'you' | 'town'): void {
   const K = INTRIGUE.killer, p = it.people[i], who = by === 'you' ? 'You accused' : `The people of ${land(c, it.at)} did not wait for you: they took`;
-  strike(c, it.at, p.gender);
+  strike(c, it.at, p, i === it.culprit ? 'was hanged for a killer' : `was hanged for killings ${they(p)} did not do`);
   if (i === it.culprit) {
     shiftVirtue(c, it.owner, K.virtue.found, { at: it.at });
     end(c, it, 'hanged', `${who} ${fullName(p)} the ${p.trade} for the ${it.victims.length === 1 ? 'death' : `${it.victims.length} deaths`} in ${land(c, it.at)}, and ${they(p)} confessed it and was hanged. The town sleeps again.`, 'good', p);
@@ -342,12 +364,12 @@ export function choose(c: Campaign, id: number, choice: string): boolean {
   const p = it.thief!, why = it.why ?? 'greed', n = fullName(p);
   const back = (share: number): number => { const g = Math.round(it.taken * share); f.stores.gold += g; return g; };
   if (choice === 'hang') {
-    strike(c, it.at, p.gender);
+    strike(c, it.at, p, 'was hanged for a thief');
     shiftVirtue(c, it.owner, T.virtue.hanged + (why === 'hunger' || why === 'widow' ? T.hungerHanged : 0), { at: it.at });
     const g = back(T.back.hanged);
     end(c, it, 'hanged', `${n} of ${where} was hanged for a thief${why === 'hunger' ? ', who had stolen to eat' : why === 'widow' ? ', a soldier\'s widow' : ''}. ${g} gold was found under ${their(p)} floor.`, why === 'hunger' || why === 'widow' ? 'bad' : 'plain', p);
   } else if (choice === 'banish') {
-    strike(c, it.at, p.gender);
+    strike(c, it.at, p, 'was banished for a thief');
     shiftVirtue(c, it.owner, T.virtue.banished, { at: it.at });
     const g = back(T.back.banished);
     end(c, it, 'banished', `${n} was put out of ${where} for a thief, with what ${they(p)} could carry. ${g} gold was got back.`, 'plain', p);

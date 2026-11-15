@@ -11,7 +11,7 @@ const esc = (s: string): string => s.replace(/[<>&"]/g, '');
 const face = (c: Campaign, it: Intrigue, p: Person, grief = false): string =>
   portraitHtml(notablePortrait(nationOf(c.factions[it.owner]?.civ), { name: p.name, family: p.family, gender: p.gender, kind: 'person' }, grief ? { bereaved: true } : {}), '', 'sm');
 const row = (c: Campaign, it: Intrigue, p: Person, words: string, cls = ''): string =>
-  `<div class="likeness-row story-person ${cls}">${face(c, it, p, cls === 'dead')}<span><b>${esc(fullName(p))}</b> the ${esc(p.trade)}${words ? ` <small>${esc(words)}</small>` : ''}</span></div>`;
+  `<div class="likeness-row story-person ${cls}">${face(c, it, p, cls === 'dead')}<span><b>${esc(fullName(p))}</b>${p.known ? ' <span title="Known by name in this town">★</span>' : ''} the ${esc(p.trade)}${words ? ` <small>${esc(words)}</small>` : ''}</span></div>`;
 
 const TITLE: Record<Intrigue['kind'], string> = { thief: 'A thief', killer: 'A killer', rival: 'A rival king', suitor: 'A suitor' };
 /** Someone of the leader's house or a rival's, by name alone, with a face. */
