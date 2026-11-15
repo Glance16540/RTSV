@@ -798,3 +798,17 @@ body.looking-out #visit { display: none; }
 #season-card .season-past-item { border-top: 1px solid rgba(60, 40, 20, 0.25); padding: 4px 0; }
 #season-card .season-past-item > summary { cursor: pointer; font-weight: 600; }
 #season-card .season-foot button + button { margin-left: 8px; }
+
+/* The worlds kept (src/client/slotspanel.ts): the Campaign page of the main menu. */
+#t-panel .slots .slots-lead { margin-top: 0; }
+#t-panel .slot { padding: 8px 0; border-top: 1px solid rgba(36, 24, 15, 0.25); }
+#t-panel .slot.playing .slot-who b { color: var(--rubric); }
+#t-panel .slot-when { font-size: 0.9em; color: var(--sepia); }
+#t-panel .slot-do { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+#t-panel .slot-do button.sure { color: var(--rubric); border-color: var(--rubric); }
+#t-panel .slots-new { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(36, 24, 15, 0.4); display: flex; flex-direction: column; gap: 4px; }
+#t-panel .slots .good { color: #2f6b2a; }
+#t-panel .slots .bad { color: var(--rubric); }
+#t-panel .slots button { padding: 4px 14px; font: inherit; color: var(--ink); background: rgba(255, 250, 235, 0.45); border: 1px solid var(--ink); border-radius: 0; box-shadow: 1px 1px 0 rgba(36, 24, 15, 0.3); cursor: pointer; }
+#t-panel .slots button:hover:not(:disabled) { background: var(--ink); color: var(--vellum); }
+#t-panel .slots button:disabled { opacity: 0.45; cursor: default; }

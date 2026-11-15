@@ -7,7 +7,9 @@ import { artUrl, loadAssets, musicUrl } from './assets';
 import { loader, playOpening, Title } from './title';
 import { CampaignPrimer } from './primer';
 import { DAY_LENGTHS } from '../sim/daylight';
-import { Campaign, CAMPAIGN_VERSION, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
+import { Campaign, battleConfig, continueAI, finishBattle, newCampaign } from '../sim/campaign';
+import { activeSlot, beginNew, readSlot, writeSlot } from '../sim/slots';
+import { campaignsNote, openCampaigns } from './slotspanel';
 import { Mission, MissionStatus, missionById, MISSIONS, runMission } from '../sim/scenario';
 import { Hud } from './hud';
 import { keepHero, openHeroCreator, savedHero } from './herocreator';
@@ -197,7 +199,6 @@ const seed = Number(params.get('seed')) || Math.floor(Math.random() * 1e6) + 1;
 /** skirmish: a single match. campaign: the Conquest map. battle: a Conquest battle fought in real time. */
 const mode = params.has('battle') ? 'battle' : params.has('visit') ? 'visit' : params.has('campaign') ? 'campaign' : missionById(params.get('mission') ?? '') ? 'mission' : 'skirmish';
 const SAVE_KEY = mode === 'battle' ? 'rtsv-battle-save' : mode === 'visit' ? VISIT_SAVE_KEY : mode === 'mission' ? 'rtsv-mission-save' : 'rtsv-save';
-const CAMPAIGN_KEY = 'rtsv-campaign';
 const RESULT_KEY = 'rtsv-battle-result';
 interface Saved { game: string; ai: object[]; cam: { x: number; y: number; d: number }; tag?: string }
 
@@ -210,13 +211,9 @@ function readSave(): Saved | null {
   }
 }
 
+/** The world being played: the campaign in the slot chosen on the menu (slots.ts; slot 1 is the old `rtsv-campaign`). */
 function readCampaign(): Campaign | null {
-  try {
-    const c = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) ?? 'null') as Campaign | null;
-    return c && c.v === CAMPAIGN_VERSION ? c : null;
-  } catch {
-    return null;
-  }
+  try { return readSlot(localStorage, activeSlot(localStorage)); } catch { return null; }
 }
 /** The leader a campaign begins under: the nation's own as written, that leader's other self, or the player's making. */
 const chosenLeader = (civ: string, pick: string): HeroSpec | undefined => {
@@ -225,7 +222,7 @@ const chosenLeader = (civ: string, pick: string): HeroSpec | undefined => {
   const who = pick === 'b' && L?.alt ? L.alt : L;
   return who ? { ...defaultHero(civ), name: who.name, female: who.female } : undefined;
 };
-const writeCampaign = (c: Campaign) => { try { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(c)); } catch { /* storage unavailable */ } };
+const writeCampaign = (c: Campaign) => { try { writeSlot(localStorage, activeSlot(localStorage), c); } catch { /* storage unavailable */ } };
 const go = (query: string) => {
   try {
     sessionStorage.setItem('rtsv-boot', query);
@@ -322,8 +319,9 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   sizeSel.addEventListener('change', regenerate);
   landSel.addEventListener('change', regenerate);
   aiSel.addEventListener('change', regenerate);
-  if (mode === 'skirmish' && readCampaign()) el('conquest-btn').querySelector('b')!.textContent = 'Continue the campaign';
-  el('conquest-btn').addEventListener('click', () => go(`?campaign=1&ai=${aiSel.value}&civ=${(el('civ') as HTMLSelectElement).value}`));
+  // The worlds kept (slots.ts): the Campaign button opens them, or begins the first (slotspanel.ts).
+  if (mode === 'skirmish' && campaignsNote()) el('conquest-btn').querySelector('small')!.textContent = campaignsNote();
+  el('conquest-btn').addEventListener('click', () => openCampaigns({ show: (name) => title.show(name), go, newQuery: () => `ai=${aiSel.value}&civ=${(el('civ') as HTMLSelectElement).value}` }));
 
   await loader.step(0.8, 'Building the world');
   const app = new App(game);
@@ -485,6 +483,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       newCampaign: (r, l, civ, leader, opts) => {
         const made = newCampaign(Math.floor(Math.random() * 1e6) + 1, r, l, civ || undefined, { names: opts?.names });
         made.factions[0].hero = chosenLeader(made.factions[0].civ, civ ? leader : 'a');
+        // A new world goes in a slot of its own, and the one left is kept (slots.ts); the world first dealt is only replaced.
+        if (!fresh) beginNew(localStorage);
         writeCampaign(made); go('?campaign=1');
       },
       exit: () => go(''),
