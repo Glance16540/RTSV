@@ -49,7 +49,11 @@ import { needOf } from './larder';
 
 export type BandKind = 'raiders' | 'slavers' | 'pirates' | 'highwaymen' | 'marauders';
 /** People a band is holding: where they were taken from, whose they are, their ages when seized, and since when. */
-export interface Held { from: number; owner: number; men: number[]; women: number[]; since: number; names?: string[] }
+export interface Held {
+  from: number; owner: number; men: number[]; women: number[]; since: number; names?: string[];
+  /** Children born to the women while held (bandborn.ts): how many of the women have borne one, and the seasons those still with their mothers were born. Records only. */
+  bore?: number; kids?: number[];
+}
 export interface Band {
   id: number; kind: BandKind; name: string;
   /** The land where it has its place; for highwaymen, one end of their road, and `to` is the other. */
@@ -274,6 +278,8 @@ export function bringHome(c: Campaign, h: Held): number {
   const share = Math.min(1, (c.turn - h.since) / THREATS.holdFor);
   for (const s of h.men) ages.m.push(s + Math.round(THREATS.yearsMan * SEASONS_A_YEAR * share));
   for (const s of h.women) ages.f.push(s + Math.round(THREATS.yearsWoman * SEASONS_A_YEAR * share));
+  // Children born to them while held are theirs, and come home with them at their own ages (bandborn.ts).
+  if (h.women.length) for (const born of h.kids ?? []) ages.k.push(Math.max(0, c.turn - born));
   countFrom(f, ages);
   for (const name of h.names ?? []) for (const x of c.territories) { const n = x.folk?.notables.find((k) => k.name === name && k.lost?.how.startsWith('carried off')); if (n) delete n.lost; }
   return h.men.length + h.women.length;
@@ -281,8 +287,9 @@ export function bringHome(c: Campaign, h: Held): number {
 
 export function breakBand(c: Campaign, b: Band, out: string[], by?: Army): void {
   let freed = 0;
+  const kids = b.held.reduce((n, h) => n + (h.women.length ? h.kids?.length ?? 0 : 0), 0);
   for (const h of b.held) freed += bringHome(c, h);
-  if (freed) { mark(c, 'rescued', b.at); note(c, out, 'freed', b, b.at, `${people(freed, 'person', 'people')} held by ${b.name} ${freed === 1 ? 'is' : 'are'} free and going home, the older for it.`, b.held.map((h) => h.owner)); }
+  if (freed) { mark(c, 'rescued', b.at); note(c, out, 'freed', b, b.at, `${people(freed, 'person', 'people')} held by ${b.name} ${freed === 1 ? 'is' : 'are'} free and going home, the older for it${kids ? `, and with ${people(kids, 'child', 'children')} born while they were held` : ''}.`, b.held.map((h) => h.owner)); }
   c.bands = (c.bands ?? []).filter((x) => x !== b);
   // What is taken back goes into the town where the army stands, if it is theirs; else to the nation as a whole.
   if (by && c.factions[by.owner]) { if (c.territories[by.at]?.owner === by.owner) stock(c, by.at, THREATS.prize * SUPPLY_UNITS); else c.factions[by.owner].supplies += THREATS.prize; }

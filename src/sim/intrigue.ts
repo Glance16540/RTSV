@@ -31,7 +31,7 @@ import { needOf } from './larder';
 import { folkOf, grown, living } from './township';
 import { courtBegin, courtChoices, courtChoose, courtStanding, courtStep } from './courtstory';
 
-export type IntrigueKind = 'thief' | 'killer' | 'rival' | 'suitor';
+export type IntrigueKind = 'thief' | 'killer' | 'rival' | 'suitor' | 'plot';
 /** The stories of a town, and those of the leader's own house (courtstory.ts). */
 export const TOWN_KINDS: IntrigueKind[] = ['thief', 'killer'];
 export const ofTown = (it: { kind: IntrigueKind }): boolean => TOWN_KINDS.includes(it.kind);
@@ -59,7 +59,9 @@ export interface Intrigue {
   wronged?: Person[];
   /** A story of the leader's house (courtstory.ts): the rival people in it, how far it has gone, the turn its next step falls, and who is in it by name. */
   rival?: number; stage?: number; due?: number; cast?: { spouse?: string; daughter?: string; suitor?: string; king?: string }; willing?: boolean; asked?: boolean;
-  ended?: { turn: number; how: 'hanged' | 'banished' | 'worked' | 'pardoned' | 'unfound' | 'lost' | 'yielded' | 'bought' | 'foiled' | 'slain' | 'wounded' | 'wed' | 'refused' | 'spurned' | 'outlived'; text: string };
+  /** A plot (courtstory.ts): the nobles suspected, by their key in nobles.ts; `culprit` is which, and `found` that it is known. */
+  nobles?: { key: string; name: string; title: string; female: boolean }[]; found?: boolean;
+  ended?: { turn: number; how: 'hanged' | 'banished' | 'worked' | 'pardoned' | 'unfound' | 'lost' | 'yielded' | 'bought' | 'foiled' | 'slain' | 'wounded' | 'wed' | 'refused' | 'spurned' | 'outlived' | 'executed' | 'usurped' | 'nothing'; text: string };
 }
 /** Something a story did in a season, for the report. `who`: the person it is about, for a face. */
 export interface IntrigueNote { turn: number; id: number; kind: IntrigueKind; at: number; owner: number; tone: 'good' | 'bad' | 'plain'; text: string; who?: Person }
