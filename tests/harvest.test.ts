@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { landIncome, newCampaign, wholeIncome, income } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { HANDS_FULL, handsShare, harvest, putIn, spread, yieldShares } from '../src/sim/harvest';
-import { keepOrders } from '../src/sim/governor';
+import { GOVERN, keepOrders, shareOf } from '../src/sim/governor';
+import { KEEP_SEASONS, needOf } from '../src/sim/larder';
 import { SUPPLY_UNITS, settleStores } from '../src/sim/stores';
 import { MAX_STORE, STORE_KINDS, folkOf } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
@@ -73,5 +74,21 @@ describe('income goes into the land that yields it', () => {
     for (const k of STORE_KINDS) s[k] = MAX_STORE - 10;
     expect(putIn(c, home.id, { food: 100, wood: 5, gold: 0, stone: 30 })).toBe(90 + 20);
     for (const k of STORE_KINDS) expect(s[k]).toBeLessThanOrEqual(MAX_STORE);
+  });
+
+  it('with a full granary and no orders, the governor sends half his field hands to work that keeps', () => {
+    const { c, lands } = world();
+    const t = lands[0], f = folkOf(c, t.id);
+    f.men = 6; f.women = 6; f.elders = 0; f.children = 0; delete f.ages; delete t.orders;
+    f.stores.food = 0;
+    const lean = shareOf(c, t.id).share.food; // short of food: to the fields
+    f.stores.food = KEEP_SEASONS * needOf(c, t.id) + 1;
+    const full = shareOf(c, t.id).share;
+    expect(full.food).toBeCloseTo(GOVERN.work.food * GOVERN.full, 5);
+    expect(full.food).toBeLessThan(lean);
+    expect(full.food + full.wood + full.gold + full.stone).toBeCloseTo(1, 5);
+    // The player's own orders are never overridden.
+    keepOrders(c, t.id, { work: { food: 9, wood: 1, gold: 0, stone: 0 } });
+    expect(shareOf(c, t.id).share.food).toBeCloseTo(0.9, 5);
   });
 });

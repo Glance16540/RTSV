@@ -1204,6 +1204,9 @@ export function answerDemand(c: Campaign, pay: boolean): void {
 }
 
 /** Settle the pending battle by dice, or record the result of one that was fought out. */
+/** Told of every battle settled here, before it changes anything: for trials that measure campaigns (scripts/health.test.ts). Nothing in the game listens. */
+export const battleWatchers: ((c: Campaign, p: Pending, attackerWon: boolean, how: 'auto' | 'attacker' | 'defender') => void)[] = [];
+
 export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender'): boolean {
   const p = c.pending;
   if (!p) return false;
@@ -1214,6 +1217,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * homeEdge(c, p.attacker) * (0.75 + rand(c) * 0.5);
     attackerWon = a > d;
   }
+  for (const watch of battleWatchers) watch(c, p, attackerWon, how);
   c.pending = null;
   settleFaith(c); // every town's own standing is written down before any changes hands
   settleStores(c); // and what each people has spent or earned is in its towns before any is lost (stores.ts)
