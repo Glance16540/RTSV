@@ -722,3 +722,6 @@ body.looking-out #visit { display: none; }
 /* Bands on the map and the reports of their strikes (threatpanel.ts) */
 #ow-sel .raid-report { margin-top: 6px; padding: 6px 8px; border-left: 3px solid currentColor; background: rgba(0, 0, 0, 0.2); }
 #ow-sel .raid-report div { color: var(--text); margin-top: 2px; }
+
+/* ---- A town's own faith, its resentment if taken, and its men away (townpanel.ts) ---- */
+.town-faith, .town-yoke, .town-away { font-size: 0.94em; }
