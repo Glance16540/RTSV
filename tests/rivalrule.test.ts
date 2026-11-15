@@ -1,7 +1,7 @@
 // What a computer-led nation needs to live by the same rules (docs/DESIGN.md; src/sim/rivalrule.ts).
 import { describe, expect, it } from 'vitest';
-import { Campaign, battleConfig, moveArmy, newCampaign, raise } from '../src/sim/campaign';
-import { RIVAL, homeIdle, layTown, maySpare, nameVeterans, notableHome, rivalMoves, rivalOrders, rivalSeason, threatened } from '../src/sim/rivalrule';
+import { Campaign, battleConfig, finishBattle, moveArmy, newCampaign, raise } from '../src/sim/campaign';
+import { RIVAL, homeIdle, layTown, layTowns, maySpare, nameVeterans, notableHome, rivalMoves, rivalOrders, rivalSeason, threatened } from '../src/sim/rivalrule';
 import { awayFrom } from '../src/sim/armytown';
 import { townTaken } from '../src/sim/conquered';
 import { governTown } from '../src/sim/governor';
@@ -53,7 +53,7 @@ describe('a rival\'s towns have buildings on record', () => {
     expect(governTown(c, mid.id)!.began).toBe('house');
   }, LONG);
 
-  it('a coarse record is for counting: it is not where things stand in a battle, and it does not outlast the rival\'s hold', () => {
+  it('a coarse record is for counting: it is not where things stand in a battle, and a tribe\'s town has none', () => {
     const { c, mid } = realm();
     layTown(c, mid.id);
     const mine = c.armies.find((a) => a.owner === 0)!;
@@ -63,12 +63,34 @@ describe('a rival\'s towns have buildings on record', () => {
     c.pending!.mode = 'siege';
     expect(battleConfig(c)!.setups[1].bonus!.town).toBeUndefined();
     c.pending = null;
-    mid.owner = 0;
+    mid.owner = -1; // gone back to its tribe
     rivalSeason(c);
     expect(mid.town).toBeUndefined();
-    // The player's own unvisited towns are not laid down for them.
+  }, LONG);
+
+  it('the player\'s unvisited towns are laid down the same way, and the real record takes its place when one is fought over in person', () => {
+    const { c } = realm();
     const home = c.territories.find((t) => t.capital === 0)!;
     expect(home.town).toBeUndefined();
+    expect(layTowns(c)).toBeGreaterThan(0);
+    expect(home.town).toMatchObject({ coarse: true });
+    expect(housesOf(home)).toBeGreaterThanOrEqual(1);
+    expect(roomOf(home)).toBeGreaterThanOrEqual(headcount(folkOf(c, home.id)));
+    for (const t of c.territories) expect(!!t.town, t.name).toBe(t.owner >= 0 && !t.horde); // every held town, and no other
+    expect(layTowns(c)).toBe(0);
+    // A rival comes against it and the player fights in person: the town is what the battle left standing.
+    c.truces = [];
+    c.armies.push({ id: 99, owner: 1, at: home.adj[0], units: { infantry: 1 }, hero: false, vet: 0, moved: false });
+    c.territories[home.adj[0]].owner = 1;
+    expect(moveArmy(c, 99, home.id)).toBe('battle');
+    c.pending!.mode = 'siege';
+    expect(battleConfig(c)!.setups[0].bonus!.town).toBeUndefined(); // the coarse record is not handed to the battle
+    finishBattle(c, true, { clubman: 2 }, { town: [['towncenter', 12, 12], ['house', 18, 12], ['house', 18, 16]] });
+    expect(home.town!.coarse).toBeUndefined();
+    expect(home.town!.b).toEqual([['towncenter', 12, 12], ['house', 18, 12], ['house', 18, 16]]);
+    expect(housesOf(home)).toBe(2);
+    layTowns(c);
+    expect(home.town!.coarse).toBeUndefined(); // and it is not laid over again
   }, LONG);
 });
 
