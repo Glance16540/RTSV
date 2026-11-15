@@ -10,6 +10,7 @@ import { actsOfGod } from './acts';
 import { threatsOfMen } from './threats';
 import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
+import { seasonDrift } from './drift';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
 import { Answer, LEGENDS, COMET_VIRTUE, PLACES, Place, PlaceKind, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
@@ -1411,6 +1412,7 @@ export function continueAI(c: Campaign): void {
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
       settleFaith(c);
+      seasonDrift(c); // towns drift by what strains them, and rulers give decrees (drift.ts, decrees.ts)
       mendTowns(c);
       turnEvent(c);
       storyTurn(c);
