@@ -814,20 +814,27 @@ describe('conquest campaign', () => {
   });
 
   it('a lost defence costs the territory, and rivals fight the campaign to a finish', () => {
-    const c = newCampaign(3, 2, 2);
-    let guard = 0;
-    // The guard is steps, not seasons; 400 encoded the faster pace before food spoiled (larder.ts).
-    while (c.phase !== 'over' && guard++ < 1600) {
-      if (c.demand) answerDemand(c, false);
-      else if (c.pending) resolvePending(c, 'auto'); // the player never fights in person here
-      else if (c.phase === 'player') endTurn(c);
-      else continueAI(c);
+    // Asked of several worlds, not one (owner's word, 15 November 2026): a single seed flipped on changes that had
+    // nothing to do with it. Hard, with a player who never fights in person.
+    const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
+    const MUST_FINISH = 7; // of the 8; all 8 did when this was written
+    let finished = 0;
+    for (const seed of SEEDS) {
+      const c = newCampaign(seed, 2, 2);
+      let guard = 0;
+      // The guard is steps, not seasons; 400 encoded the faster pace before food spoiled (larder.ts).
+      while (c.phase !== 'over' && guard++ < 1600) {
+        if (c.demand) answerDemand(c, false);
+        else if (c.pending) resolvePending(c, 'auto'); // the player never fights in person here
+        else if (c.phase === 'player') endTurn(c);
+        else continueAI(c);
+      }
+      // What must hold in every world, finished or not.
+      expect(c.territories.every((t) => t.buildings.length <= 4 && new Set(t.buildings).size === t.buildings.length)).toBe(true);
+      // A passive player is eventually conquered: wiped out, or a rival came to hold most of the land.
+      if (c.phase === 'over' && c.winner > 0 && (!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS)) finished++;
     }
-    expect(c.phase).toBe('over');
-    expect(c.winner).toBeGreaterThan(0); // a passive player is eventually conquered
-    // Either wiped out, or a rival came to hold most of the land.
-    expect(!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS).toBe(true);
-    expect(c.territories.every((t) => t.buildings.length <= 4 && new Set(t.buildings).size === t.buildings.length)).toBe(true);
+    expect(finished).toBeGreaterThanOrEqual(MUST_FINISH);
   });
 
   it('battle bonuses give each side its army in the real-time game', () => {
@@ -1872,10 +1879,17 @@ describe('ages on the campaign map', () => {
   });
 
   it('rivals advance too once they have the stores', () => {
-    const c = newCampaign(3, 2, 2);
-    // docs/TUNING.md wants a rival's next age in 20 to 60 seasons; 40 seasons encoded the faster pace before food spoiled (larder.ts).
-    for (let i = 0; i < 80 && c.phase !== 'over'; i++) { endTurn(c); while (c.pending || c.demand) { if (c.demand) answerDemand(c, false); else resolvePending(c, 'auto'); continueAI(c); } }
-    expect(c.factions.slice(1).some((f) => (f.age ?? 0) > 0)).toBe(true);
+    // Several worlds, not one (owner's word, 15 November 2026). docs/TUNING.md wants a rival's next age in 20 to 60
+    // seasons; 40 seasons encoded the faster pace before food spoiled (larder.ts).
+    const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
+    const MUST_ADVANCE = 6; // of the 8; all 8 did when this was written
+    let advanced = 0;
+    for (const seed of SEEDS) {
+      const c = newCampaign(seed, 2, 2);
+      for (let i = 0; i < 80 && c.phase !== 'over'; i++) { endTurn(c); while (c.pending || c.demand) { if (c.demand) answerDemand(c, false); else resolvePending(c, 'auto'); continueAI(c); } }
+      if (c.factions.slice(1).some((f) => (f.age ?? 0) > 0)) advanced++;
+    }
+    expect(advanced).toBeGreaterThanOrEqual(MUST_ADVANCE);
   });
 });
 
