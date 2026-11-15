@@ -81,7 +81,7 @@ export const SITES: Record<string, SiteDef> = {
  * company (swords for hire). `age`: added to the cost of the next age. `steadfast`: its lands never rise in revolt.
  * `restless`: a land of theirs in unrest rises even with a garrison in it if that garrison is a single company.
  */
-export const CHURCH_VIRTUE = 3;
+export const CHURCH_VIRTUE = 2;
 export const TAVERN_VIRTUE = 3;
 /** How much of what a town became in a battle the whole people takes home with it. */
 export const BATTLE_VIRTUE = 0.5;
