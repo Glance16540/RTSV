@@ -835,7 +835,7 @@ describe('conquest campaign', () => {
       if (c.phase === 'over' && c.winner > 0 && (!c.factions[0].alive || c.dominion.turns >= DOMINION_TURNS)) finished++;
     }
     expect(finished).toBeGreaterThanOrEqual(MUST_FINISH);
-  });
+  }, 60_000); // eight campaigns: more than the default five seconds when the whole suite runs
 
   it('battle bonuses give each side its army in the real-time game', () => {
     const c = newCampaign(7);
@@ -1890,7 +1890,7 @@ describe('ages on the campaign map', () => {
       if (c.factions.slice(1).some((f) => (f.age ?? 0) > 0)) advanced++;
     }
     expect(advanced).toBeGreaterThanOrEqual(MUST_ADVANCE);
-  });
+  }, 60_000); // eight campaigns: more than the default five seconds when the whole suite runs
 });
 
 describe('second unique units', () => {
