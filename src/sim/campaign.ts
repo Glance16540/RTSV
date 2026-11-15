@@ -8,6 +8,7 @@ import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
+import { intrigueSeason } from './intrigue';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { fieldReckoned, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
@@ -1389,6 +1390,7 @@ export function continueAI(c: Campaign): void {
       mendTowns(c);
       turnEvent(c);
       storyTurn(c);
+      intrigueSeason(c); // stories inside the story: a thief, a killer to be found (intrigue.ts)
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
       seasonTurned(c); // what changed for the player's nation this season, for the card on the map (seasonreport.ts)

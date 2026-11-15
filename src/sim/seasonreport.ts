@@ -9,6 +9,7 @@
 import type { Campaign } from './campaign';
 import { ledgerSince } from './ledger';
 import { THREATS, reportLine } from './threats';
+import './intrigue';
 import { folkOf, living, type Notable } from './township';
 
 /** A known person, as the report names them. */
@@ -29,6 +30,8 @@ export interface SeasonReport {
   raids: { at: number; land: string; outcome: 'held' | 'raided' | 'taken'; line: string }[];
   drifted: { tavern: number; mines: number; home: number };
   rose: string[]; lost: string[]; won: string[];
+  /** What the stories inside the story did (intrigue.ts): each a line, and the land it is in. */
+  stories?: { at: number; land: string; tone: 'good' | 'bad' | 'plain'; text: string }[];
   made: Named[]; gone: (Named & { how: string })[];
   /** The player has seen it. */
   seen?: boolean;
@@ -64,6 +67,9 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
   for (const e of ledgerSince(c, s.seq)) if (e.owner === f) r[e.kind] += e.n;
   // Raids on its towns, with how they went.
   for (const x of c.raids ?? []) if (x.owner === f && x.turn > s.turn) r.raids.push({ at: x.at, land: c.territories[x.at].name, outcome: x.outcome, line: reportLine(c, x) });
+  // The stories inside the story: what each did this season.
+  const stories = (c.intrigueNews ?? []).filter((n) => n.owner === f && n.turn > s.turn).map((n) => ({ at: n.at, land: c.territories[n.at].name, tone: n.tone, text: n.text }));
+  if (stories.length) r.stories = stories;
   // Its people held by bands: those newly taken, those got back, and those held too long.
   const now = snapshot(c, f);
   for (const [k, g] of Object.entries(now.held)) if (!s.held[k]) r.taken += g.n;
@@ -101,7 +107,7 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
 /** Whether anything at all happened in a season's report. */
 export const anything = (r: SeasonReport): boolean =>
   r.born + r.grew + r.aged + r.starved + r.fell + r.taken + r.back + r.lostForGood + r.drifted.tavern + r.drifted.mines + r.drifted.home > 0 ||
-  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length > 0;
+  r.raids.length + r.rose.length + r.lost.length + r.won.length + r.made.length + r.gone.length + (r.stories?.length ?? 0) > 0;
 
 /** A season has turned: report the one just ended, and begin keeping the next. Called once a turn (campaign.ts). */
 export function seasonTurned(c: Campaign, f = 0): void {
@@ -115,7 +121,7 @@ export function seasonTurned(c: Campaign, f = 0): void {
 export const reportDue = (c: Campaign): SeasonReport | null => (c.seasonReport && !c.seasonReport.seen ? c.seasonReport : null);
 
 /** The report as lines of words, only those with something in them. Counts for everyone; known people are in `made` and `gone`. */
-export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'captives' | 'raid' | 'drift' | 'land'; tone: 'good' | 'bad' | 'plain'; text: string }[] {
+export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'captives' | 'raid' | 'drift' | 'land' | 'story'; tone: 'good' | 'bad' | 'plain'; text: string }[] {
   const n = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`;
   const out: ReturnType<typeof reportLines> = [];
   const add = (kind: (typeof out)[number]['kind'], tone: (typeof out)[number]['tone'], text: string): void => { out.push({ kind, tone, text }); };
@@ -134,5 +140,6 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   for (const t of r.rose) add('land', 'bad', `${t} rose and threw you off.`);
   for (const t of r.lost) add('land', 'bad', `${t} was lost.`);
   for (const t of r.won) add('land', 'good', `${t} is yours.`);
+  for (const x of r.stories ?? []) add('story', x.tone, x.text);
   return out;
 }

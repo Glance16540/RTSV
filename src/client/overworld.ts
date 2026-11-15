@@ -4,6 +4,8 @@ import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
 import { bandPrompt, newsHtml } from './threatpanel';
+import { choose } from '../sim/intrigue';
+import { intrigueAct } from './intriguepanel';
 import { attackBand } from '../sim/bandfight';
 import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
@@ -128,6 +130,7 @@ export class Overworld {
       if (kind === 'hero') summonHero(this.c, 0, this.sel);
       if (kind === 'succession') { this.askSuccession(); return; }
       if (kind === 'lead') moveLeader(this.c, 0, this.sel);
+      if (kind === 'story') choose(this.c, ...intrigueAct(id));
       if (kind === 'band') attackBand(this.c, Number(id.split('/')[0]), Number(id.split('/')[1]));
       if (kind === 'call') callArmies(this.c, 0);
       if (kind === 'endcall') endCall(this.c, 0);

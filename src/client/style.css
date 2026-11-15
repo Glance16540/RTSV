@@ -793,3 +793,10 @@ body.looking-out #visit { display: none; }
   /* The buttons at the panel's foot wrap rather than run off the side of a phone. */
   .ow-side .ow-foot { flex-wrap: wrap; }
 }
+
+/* ---- Stories inside the story (intriguepanel.ts) ---- */
+.story-box { border-left: 3px solid #b08a3c; padding: 4px 6px; margin: 4px 0; background: rgba(176, 138, 60, 0.08); }
+.story-person small { opacity: 0.8; }
+.story-person.cleared { opacity: 0.55; }
+.story-person.cleared b { text-decoration: line-through; }
+.story-person.dead b { color: #e0705a; }
