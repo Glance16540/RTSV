@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { Campaign, finishBattle, moveArmy, newCampaign, siteCost } from '../src/sim/campaign';
 import { BUILDINGS } from '../src/sim/data';
 import { Game } from '../src/sim/game';
-import { GOVERN, cleanOrders, governTown, governTowns, keepOrders, ordersText, plotFor, wantsOf, workOf } from '../src/sim/governor';
+import { GOVERN, cleanOrders, governTown, governTowns, keepOrders, ordersText, plotFor, shareOf, wantsOf, workOf } from '../src/sim/governor';
+import { landLean, yieldShares } from '../src/sim/harvest';
 import { housesOf } from '../src/sim/seasonfolk';
 import { STORE_KINDS, Stores, folkOf, headcount } from '../src/sim/township';
 import { setups } from './helpers';
@@ -63,25 +64,24 @@ describe('a town carries on with its last orders', () => {
     expect(home.orders).toEqual({ work: { food: 1, wood: 0, gold: 3, stone: 0 }, turn: c.turn });
   }, LONG);
 
-  it('season by season its people work where they were set, and eat', () => {
+  it('season by season its people work where they were set: that is what the town\'s yield is made of (harvest.ts), and the governor neither earns nor feeds', () => {
     const { c, t, f } = town();
     keepOrders(c, t.id, { work: { food: 6, wood: 6, gold: 0, stone: 0 } });
     const was = { ...f.stores };
     const g = governTown(c, t.id)!;
-    expect(g.brought).toEqual({ food: 12 * 0.5 * GOVERN.yield.food, wood: 12 * 0.5 * GOVERN.yield.wood, gold: 0, stone: 0 });
-    expect(g.ate).toBe(headcount(f) * GOVERN.eat);
-    expect(f.stores.food).toBe(was.food + g.brought.food - g.ate);
-    expect(f.stores.wood).toBe(was.wood + g.brought.wood);
-    expect(f.stores.gold).toBe(was.gold);
+    expect(g.began).toBeUndefined();
+    expect(f.stores).toEqual(was); // earned once, in harvest.ts; eaten once, in larder.ts
+    const lean = landLean(c, t.id);
+    expect(yieldShares(c, t.id)).toEqual({ food: 0.5 * GOVERN.yield.food * lean.food, wood: 0.5 * GOVERN.yield.wood * lean.wood, gold: 0, stone: 0 });
     // Farmland makes the fields yield half as much again.
     t.buildings = ['farm'];
-    expect(governTown(c, t.id)!.brought.food).toBe(Math.round(12 * 0.5 * GOVERN.yield.food * 1.5));
-    // Set to no field work at all, the town eats its stores down.
+    expect(yieldShares(c, t.id).food).toBe(0.5 * GOVERN.yield.food * GOVERN.farm * lean.food);
+    // Set to no field work at all, the town grows no food (while it has food in store).
     keepOrders(c, t.id, { work: { food: 0, wood: 0, gold: 12, stone: 0 } });
     t.buildings = [];
-    const food = f.stores.food;
-    governTown(c, t.id);
-    expect(f.stores.food).toBe(food - headcount(f) * GOVERN.eat);
+    expect(yieldShares(c, t.id).food).toBe(0);
+    expect(yieldShares(c, t.id).gold).toBeGreaterThan(0);
+    expect(headcount(f)).toBeGreaterThan(0);
   }, LONG);
 });
 
@@ -94,10 +94,10 @@ describe('a governor fills the gaps', () => {
     const goods = units(f.stores), had = c.factions[0].supplies;
     const g = governTown(c, t.id)!;
     expect(g.fields).toBe(true);
-    expect(g.brought.food).toBe(Math.round(12 * GOVERN.fields * GOVERN.yield.food));
+    expect(shareOf(c, t.id).share.food).toBe(GOVERN.fields);
     expect(g.began).toBe('farm');
     expect(t.buildings).toEqual(['farm']);
-    expect(units(f.stores)).toBe(goods + units(g.brought) - g.ate - siteCost(t, 'farm', 'hearth') * 100);
+    expect(units(f.stores)).toBe(goods - siteCost(t, 'farm', 'hearth') * 100);
     expect(c.factions[0].supplies).toBe(had); // it is the town's own goods he spends, not an order on the nation
     expect(c.log.join('\n')).toContain(`The governor of ${t.name} has raised Farmland`);
     expect(t.orders!.work).toEqual({ food: 0, wood: 12, gold: 0, stone: 0 }); // the orders stand; he only answers the want
@@ -124,7 +124,7 @@ describe('a governor fills the gaps', () => {
     const wood = f.stores.wood, cost = BUILDINGS.house.cost.wood ?? 0;
     const g = governTown(c, t.id)!;
     expect(g.began).toBe('house');
-    expect(f.stores.wood).toBe(wood + g.brought.wood - cost);
+    expect(f.stores.wood).toBe(wood - cost);
     const begun = t.town.b[t.town.b.length - 1];
     expect(begun[0]).toBe('house');
     expect(begun[4]).toBe(0);
@@ -147,8 +147,8 @@ describe('a governor fills the gaps', () => {
     t.town = { at: 2, b: [['towncenter', 30, 30], ['barracks', 36, 30, 0.5, 0.5], ['house', 30, 36]] };
     f.men = 1; f.women = 1; // one couple and a roof for them: nobody wants for one
     const wood = f.stores.wood;
-    const a = governTown(c, t.id)!;
-    expect(f.stores.wood).toBe(wood + a.brought.wood);
+    governTown(c, t.id);
+    expect(f.stores.wood).toBe(wood); // nothing paid for it
     const b = governTown(c, t.id)!;
     expect(b.finished).toEqual(['barracks']);
     expect(t.town.b[1]).toEqual(['barracks', 36, 30, 0.5]); // finished, and as battered as it was left
@@ -162,7 +162,7 @@ describe('a governor fills the gaps', () => {
     const g = governTown(c, t.id)!;
     expect(g.began).toBe('fortress');
     expect(t.buildings).toEqual(['fortress']);
-    expect(units(f.stores)).toBe(goods + units(g.brought) - g.ate - siteCost(t, 'fortress', 'hearth') * 100);
+    expect(units(f.stores)).toBe(goods - siteCost(t, 'fortress', 'hearth') * 100);
     expect(wantsOf(c, t.id).wall).toBe(false);
     c.turn += GOVERN.raided;
     t.buildings = [];

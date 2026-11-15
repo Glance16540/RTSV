@@ -1,6 +1,7 @@
 // Rivals live by the same rules (docs/DESIGN.md): an audit, by playing campaigns with the computer and looking at a
 // rival's towns for every system a player's town goes through. What a rival is still spared is listed on the board.
 import { describe, expect, it } from 'vitest';
+import { EAT, eatTown } from '../src/sim/larder';
 import { Campaign, answerDemand, continueAI, endTurn, newCampaign, raise, resolvePending } from '../src/sim/campaign';
 import { awayFrom, musterOf } from '../src/sim/armytown';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
@@ -56,9 +57,11 @@ describe('rivals live by the same rules', () => {
     expect(folkOf(c, cap.id).men).toBe(Math.max(0, men - 2));
     expect(awayFrom(c, cap.id)).toBe(Math.min(2, men));
     expect(musterOf(c, a.id)!.size).toBe(1);
-    const heads = headcount(folkOf(c, cap.id)), food = folkOf(c, cap.id).stores.food;
-    const g = governTown(c, cap.id)!;
-    expect(g.ate).toBe(heads);
-    expect(folkOf(c, cap.id).stores.food).toBe(food + g.brought.food - g.ate);
+    // The men gone with the army are not fed at home: the town eats for those on its record (larder.ts).
+    const f = folkOf(c, cap.id);
+    delete f.drift;
+    f.stores.food = 5000;
+    expect(eatTown(c, cap.id).need).toBe((f.men + f.women) * EAT.grown + f.elders * EAT.old + f.children * EAT.child);
+    expect(headcount(f)).toBe(f.men + f.women + f.elders + f.children);
   }, 60_000);
 });
