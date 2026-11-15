@@ -388,6 +388,21 @@ neighbouring land.
 
 Rivals take their turns after yours and fight each other too. The campaign is saved in your browser after every action.
 
+## Bands on the map
+
+Raiders, slavers, pirates and highwaymen belong to no nation (`src/sim/threats.ts`). Each has a place on the
+campaign map: a camp in the wilds, a cove on a coast, a road between two of a people's lands. There is usually one
+about for every six held lands, and one more while any people is Worldly or Decadent. Most seasons a band strikes
+the softest town it can reach, and a decadent people draws it more.
+
+The town defends itself with what it has: its men, its fortress and barracks, the towers and walls on its
+battlefield, an army kept there, and the spirit of its people. It holds, is raided, or falls and has people carried
+off (never children). Select the struck land to read the report: who struck, what the town had, who was killed and
+taken, what was lost, and which way your people's standing swayed.
+
+Those taken are held at the band's place for four seasons. Stand an army there when the season turns and it fights
+the band; break it and they come home, the older for it. After four seasons they are gone for good.
+
 ## Controls
 
 | Input | Action |
