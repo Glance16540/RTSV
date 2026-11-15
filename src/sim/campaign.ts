@@ -33,6 +33,7 @@ import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
 import { Orders, governTowns, keepOrders } from './governor';
+import { maySpare, rivalMoves, rivalSeason } from './rivalrule';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
@@ -271,7 +272,7 @@ export interface Territory {
 }
 
 /** What stands on a land's battlefield between battles: the holder's corner of it, and each building with the damage it has taken. */
-export interface Town { at: number; b: Standing[] }
+export interface Town { at: number; b: Standing[]; /** Laid down for counting only (rivalrule.ts): not where things stand on a battlefield. */ coarse?: boolean }
 /** The building that stands on the battlefield for each building of the campaign map. */
 export const SITE_BUILDING: Record<string, string> = { farm: 'farm', barracks: 'barracks', range: 'range', stable: 'stable', harbour: 'dock', fortress: 'tower' };
 /** The corner of its battlefield a land's holder defends from. The attacker makes camp in the one opposite. */
@@ -326,6 +327,8 @@ export interface Campaign {
   barriers?: Barrier[];
   /** Crossings by open water between two lands: an army makes one only from a land with a Harbour. */
   lanes?: { a: number; b: number }[];
+  /** How long each army has stood where it is, soldiers the map has given a name, and armies sent home this season: see rivalrule.ts. */
+  idle?: Record<string, { at: number; n: number }>; captains?: Record<string, { name: string; f: number }>; homecoming?: number[];
   /** The men with each army, by the town they came from: see armytown.ts. */
   musters?: Record<string, Muster>;
   /** Borders that were closed and have been opened by a bridge or a road over the pass: see country.ts. */
@@ -1357,6 +1360,7 @@ export function continueAI(c: Campaign): void {
       mapTurn(c);
       actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
@@ -1511,6 +1515,17 @@ function turnEvent(c: Campaign): void {
 }
 
 /** One decision for an AI faction. Returns true once it has nothing left to do this turn. */
+/**
+ * The player's turn, played by the computer as it plays a rival's: for trials that measure whole campaigns
+ * (scripts/health.test.ts). It changes no rule. Stops when the turn is spent or a battle is waiting to be settled
+ * (`c.pending`); call it again after settling one.
+ */
+export function playForPlayer(c: Campaign): void {
+  if (c.phase !== 'player' || c.pending || c.demand || !c.factions[0].alive) return;
+  if (c.cursor !== 0) { c.cursor = 0; c.spent = false; }
+  for (let i = 0; i < 60 && !c.pending && !c.demand; i++) if (aiStep(c, c.factions[0])) return;
+}
+
 function aiStep(c: Campaign, f: Faction): boolean {
   const me = habitsWith(f.civ, PERSONA[f.civ]);
   const civ = f.civ;
@@ -1552,7 +1567,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
     // Spend what is left on troops, growing existing armies before starting new ones.
-    const yards = own.filter((t) => Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
+    rivalMoves(c, f.id); // garrison what is resentful or beset, and keep that garrison there (rivalrule.ts)
+    const yards = own.filter((t) => maySpare(c, t.id) && Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
       .sort((a, b) => (armyAt(c, b.id) ? 1 : 0) - (armyAt(c, a.id) ? 1 : 0));
     for (const t of yards) {
       for (let guard = 0; guard < 12; guard++) {
@@ -1653,7 +1669,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
-      ...(defending && !field && t.town?.b.length ? { town: t.town.b } : {}),
+      ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id)) : {}),
     };

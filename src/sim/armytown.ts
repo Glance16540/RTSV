@@ -127,6 +127,7 @@ export function sendHome(c: Campaign, armyId: number): number {
   }
   if (a.champion) rememberVeteran(c, home !== undefined && c.territories[home]?.owner === a.owner ? home : a.at, a.champion);
   delete rolls(c)[armyId];
+  (c.homecoming ??= []).push(armyId); // sent home, not lost (rivalrule.ts keeps its named soldier living)
   c.armies.splice(c.armies.indexOf(a), 1);
   c.log.push(`${a.owner === 0 ? 'Your army' : 'An army'} at ${c.territories[a.at].name} has been sent home${n ? `: ${n} ${n === 1 ? 'man goes' : 'men go'} back to ${n === 1 ? 'his own town' : 'their own towns'}` : ''}.`);
   return n;

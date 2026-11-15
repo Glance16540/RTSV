@@ -72,6 +72,11 @@ These are the places that have clashed in practice.
 - **`package.json` and `package-lock.json`.** Add a dependency only when the work needs it, and say
   so in the commit.
 
+## Tuning
+
+`docs/TUNING.md` holds what the numbers should produce. Tune toward it with the shared report
+(`HEALTH=1`), one area at a time, and only the area you were given.
+
 ## Commands
 
 ```

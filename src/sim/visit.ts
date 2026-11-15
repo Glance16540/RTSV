@@ -93,7 +93,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
   if (!(army && army.owner === 0 && army.hero)) delete hero.fights;
   const fort = t.buildings.includes('fortress');
   const works = t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]);
-  const town = record.town ?? t.town?.b ?? [];
+  const town = record.town ?? (t.town?.coarse ? undefined : t.town?.b) ?? [];
   return {
     ...(weatherAt(c, t.id) ? { weather: weatherAt(c, t.id) as Sky } : {}),
     climate: BIOMES[biomeOf(c, t.id)].climate,
