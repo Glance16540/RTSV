@@ -38,7 +38,7 @@ import { settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, sideName } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
-import { mayAdvance, maySpare, rivalMoves, rivalSeason } from './rivalrule';
+import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto } from './rivalaim';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
@@ -1601,6 +1601,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
         raise(c, f.id, t.id, types[Math.floor(rand(c) * types.length)]);
       }
     }
+    poorMuster(c, f.id); // with men and nothing to spare it still raises a company, out of a town's own stores (rivalrule.ts)
     return false;
   }
   const army = c.armies.find((a) => a.owner === f.id && !a.moved);
