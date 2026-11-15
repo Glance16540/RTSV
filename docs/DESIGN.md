@@ -57,7 +57,8 @@ parents, age, what it may inherit) and is not seen, does not leave the house and
 taken or harmed until it comes of age, when it steps out as a grown villager. No violence is ever
 done to a child, on screen or in the rules.
 A child whose town is left with no grown people is taken in by the nearest town of its own people,
-with the record of the house it belongs to.
+with the record of the house it belongs to. If its people has no town left, the nearest
+other people takes it in and it grows up as one of theirs.
 
 **A man at war is still of his house.** A man who leaves to fight stays a member of his household:
 what he earns and wins in war counts to the house's output and renown as his work at home did, and
