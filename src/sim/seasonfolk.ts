@@ -15,8 +15,8 @@
 //    (ageing.ts): a child comes of age at fifteen into a man or a woman of working age, the grown are old at sixty,
 //    and the old die over the years after.
 import type { Campaign, Territory } from './campaign';
-import { virtueOf } from './campaign';
 import { creedOf } from './creed';
+import { faithAt } from './townfaith';
 import { BIRTH_COST } from './data';
 import { GROWN_AT } from './nursery';
 import { Folk, MAX_KIND, folkOf, grown } from './township';
@@ -70,7 +70,7 @@ export function roomOf(t: Territory): number {
 
 /** One season in one town: children born to its couples, and children come of age. Returns how many were born and grew up. */
 export function seasonTown(c: Campaign, tid: number): { born: number; grew: number; missed: number; died: number } {
-  const t = c.territories[tid], f = folkOf(c, tid), creed = creedOf(virtueOf(c, t.owner));
+  const t = c.territories[tid], f = folkOf(c, tid), creed = creedOf(faithAt(c, tid)); // the town's own standing (townfaith.ts)
   let born = 0, grew = 0, missed = 0, died = 0;
   // The town's people are a season older first (ageing.ts): children come of age, the grown grow old, the old die.
   const aged = ageTown(c, tid, f, MAX_KIND);
