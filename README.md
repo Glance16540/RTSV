@@ -305,7 +305,7 @@ neighbouring land.
   ruling house. The people you choose still decides dress, units and leaders; an heir rules as one of
   your house, and a house set aside takes its name with it.
 - **Paid in kind, earned by land** (`src/sim/prices.ts`, `src/sim/harvest.ts`). A Barracks is paid in
-  wood, a Fortress in stone, a company in food and gold, a truce in gold, at the old price in supplies,
+  wood, a Fortress in stone, a company in gold, food and some wood, a truce in gold, at the old price in supplies,
   from the town where it is done first; what your towns lack of a kind is made up in other goods. Each
   land's yield goes into its own town: as much as the land gives and the town has hands to work, made of
   what its people were set to work at and what the land leans to.
