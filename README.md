@@ -433,7 +433,8 @@ seasons they are gone for good. No land changes hands.
 
 Bands move: they flee an army that is their match, drift toward softer towns, break up when old and weak, and
 raiders grown strong in a tribe's land take it and become marauders, who hold their land and are fought by marching
-into it. Rival peoples hunt the bands in their own lands. The season's news of all this is listed above the log;
+into it. Rival peoples hunt the bands in their own lands. A band may also fall on an army
+that is clearly weaker, or one seeing a convoy along the road: that is a battle you cannot call off. The season's news of all this is listed above the log;
 click a line to open the land it happened in.
 
 ## Controls
