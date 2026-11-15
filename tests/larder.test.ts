@@ -93,6 +93,7 @@ describe('towns eat their food on the map', () => {
     const fed = (land: Territory) => spread(landIncome(c, 0, land) * SUPPLY_UNITS, yieldShares(c, land.id)).food;
     t.buildings = ['farm'];
     const need = needOf(c, t.id);
+    f.stores.food = need; // an ordinary store, not a full granary (which sends hands from the fields: governor.ts)
     expect(fed(t)).toBeGreaterThanOrEqual(need * 0.8);
     t.buildings = [];
     expect(fed(t)).toBeLessThan(need * 0.6);
