@@ -591,6 +591,8 @@ export interface BuildingDef {
   atk?: number;
   range?: number;
   cooldown?: number;
+  /** It can be raised on the map, on a town's record, out of the town's stores (townworks.ts), and the governor finishes it. */
+  onMap?: boolean;
 }
 
 const B = (d: BuildingDef) => d;
@@ -739,6 +741,14 @@ export interface TechDef {
   /** Re-equips every unit of the first type as the second, now and in future training. */
   upgrade?: [string, string];
   apply: (m: Mods) => void;
+  /**
+   * A study of the nation's, kept on the map (studies.ts): what in the systems it answers. The computer's peoples
+   * learn one where that is pressing: 'hunger', 'plague', 'unrest', 'raids', 'crime', 'plots', 'nobles', 'faith',
+   * 'rule', 'roads' or 'births'. A tech without it is a battle's only, as before.
+   */
+  answers?: string;
+  /** The building that teaches it, where no building's `techs` list says (studies.ts). */
+  taughtAt?: string;
 }
 
 const T = (d: TechDef) => d;
