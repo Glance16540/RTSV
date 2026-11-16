@@ -16,12 +16,12 @@ import { BUILDINGS } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount } from './township';
 import { couplesOf, housesOf, roomOf } from './seasonfolk';
 import { KEEP_SEASONS, needOf } from './larder';
-import { buildPace } from './ownstudies';
 import { granaryWanted } from './granary';
 import { millWanted } from './mill';
 import { crowdOf, wellWanted } from './well';
 import { infirmaryWanted } from './infirmary';
 import { ACTS } from './acts';
+import { buildPace } from './ownstudies';
 
 /** The last orders a town was given. `work`: how many of its people were at each kind of work. `turn`: when they were given. */
 export interface Orders { work?: Stores; build?: string[]; train?: string[]; turn: number }

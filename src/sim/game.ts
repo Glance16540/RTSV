@@ -32,10 +32,10 @@ export const DT = 1 / 20;
 import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
 import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND } from './hero';
-import { mayLearn, researchAt } from './ownstudies';
 import { millPace } from './mill'; // food and health: a Mill
 import { wellGuard } from './well';
 import { sickCare } from './infirmary';
+import { mayLearn, researchAt } from './ownstudies';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
