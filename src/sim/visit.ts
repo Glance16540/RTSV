@@ -22,6 +22,7 @@ import { Orders, keepOrders } from './governor';
 import type { Sky } from './campaign';
 import { driftBack, withDrift } from './driftintown';
 import { companyOf } from './townmuster';
+import { studiedHome, studiesOf } from './studies';
 import { menMustered, reckonArmies } from './armytown';
 import type { Army } from './campaign';
 
@@ -66,6 +67,8 @@ export interface VisitAfter {
   orders?: Partial<Orders>;
   /** Who of the player's bore arms as they left, by company (`visitArms`): the army's soldiers, and townsmen trained there. */
   arms?: VisitArms;
+  /** The studies researched in the town (`learnedIn(player.techs)`): they come home to the nation (studies.ts). */
+  studies?: string[];
 }
 
 /** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
@@ -181,6 +184,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         buildings: [...(fort ? ['tower', 'tower'] : []), ...works], ...(town.length ? { town } : {}),
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
+        studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
       },
     }],
   };
@@ -202,6 +206,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   if (census) driftBack(c, land.id, after.drifted);
   keepOrders(c, land.id, after.orders);
   if (after.arms) armsHome(c, land.id, after.arms, had); // its soldiers go home to the map: the army's losses, and companies trained there
+  if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
   // It is this town that was kept so, and this town that is moved (townfaith.ts).
