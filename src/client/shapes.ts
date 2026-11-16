@@ -202,6 +202,8 @@ export interface Look {
   wall: number; roofColor: number; team: number; post: number; age: number;
   roofKind: 'pitched' | 'low' | 'steep' | 'flat' | 'dome' | 'pagoda' | 'yurt';
   leaning: '' | 'holy' | 'low';
+  /** Whose people built it, where a building shows their faith or their ways; '' or absent for none. */
+  civ?: string;
   /** Roofs that are not pitched (domes, pagodas, flat roofs with a parapet, felt tents) are drawn by the caller. */
   otherRoof: (p: THREE.Object3D, half: number, h: number, x: number, y: number, z: number) => THREE.Object3D;
 }
@@ -391,6 +393,19 @@ function hall(o: Look): THREE.Group {
   barrel(g, 1.25, 1.6); barrel(g, 1.6, 1.75, 0.85);
   return g;
 }
+/** What a people sets on a house of its faith: a cross, a crescent, an ankh, a star, a flame, a spire of rings; nothing where its faith keeps no such sign. */
+export type Faith = 'cross' | 'crescent' | 'ankh' | 'star' | 'flame' | 'rings' | '';
+const FAITH_SIGN: Record<string, Faith> = { hearth: 'cross', england: 'cross', stonekin: 'cross', greece: 'cross', arabs: 'crescent', mali: 'crescent', egypt: 'ankh', kush: 'ankh', babylon: 'star', dawn: 'star', persia: 'flame', japan: 'rings', forge: 'rings' };
+export const faithOf = (civ: string | undefined): Faith => FAITH_SIGN[civ ?? ''] ?? '';
+/** The sign of a people's faith standing on a roof or a spire at (x, y, z), `k` its size. */
+export function sign(p: THREE.Object3D, faith: Faith, m: THREE.Material, x: number, y: number, z: number, k = 1): void {
+  if (faith === 'cross') { bx(p, 0.05 * k, 0.42 * k, 0.05 * k, m, x, y + 0.21 * k, z); bx(p, 0.24 * k, 0.05 * k, 0.05 * k, m, x, y + 0.28 * k, z); }
+  else if (faith === 'crescent') { bx(p, 0.03 * k, 0.16 * k, 0.03 * k, m, x, y + 0.08 * k, z); mesh(p, new THREE.TorusGeometry(0.11 * k, 0.025 * k, 6, 14, Math.PI * 1.3), m, x, y + 0.27 * k, z).rotation.z = -Math.PI * 0.15 + Math.PI / 2; }
+  else if (faith === 'ankh') { bx(p, 0.05 * k, 0.26 * k, 0.05 * k, m, x, y + 0.13 * k, z); bx(p, 0.22 * k, 0.05 * k, 0.05 * k, m, x, y + 0.27 * k, z); mesh(p, new THREE.TorusGeometry(0.07 * k, 0.022 * k, 6, 12), m, x, y + 0.38 * k, z).scale.y = 1.3; }
+  else if (faith === 'star') { bx(p, 0.03 * k, 0.16 * k, 0.03 * k, m, x, y + 0.08 * k, z); for (let i = 0; i < 4; i++) bx(p, 0.3 * k, 0.05 * k, 0.03 * k, m, x, y + 0.3 * k, z).rotation.z = (i * Math.PI) / 4; }
+  else if (faith === 'flame') { mesh(p, new THREE.CylinderGeometry(0.1 * k, 0.07 * k, 0.1 * k, 10), m, x, y + 0.05 * k, z); mesh(p, new THREE.ConeGeometry(0.07 * k, 0.24 * k, 8), toon(0xff9030, '', 0xcc5010), x, y + 0.22 * k, z).castShadow = false; }
+  else if (faith === 'rings') { mesh(p, new THREE.CylinderGeometry(0.02 * k, 0.02 * k, 0.5 * k, 6), m, x, y + 0.25 * k, z); for (let i = 0; i < 5; i++) mesh(p, new THREE.CylinderGeometry((0.09 - i * 0.012) * k, (0.09 - i * 0.012) * k, 0.025 * k, 10), m, x, y + (0.1 + i * 0.07) * k, z); mesh(p, new THREE.SphereGeometry(0.05 * k, 8, 6), m, x, y + 0.52 * k, z); }
+}
 /** A church let go to ruin: roof fallen in, tower broken off short, ivy on stained walls, the cross askew. */
 function ruin(o: Look): THREE.Group {
   const g = new THREE.Group();
@@ -413,9 +428,9 @@ function ruin(o: Look): THREE.Group {
   bx(g, 0.5, 0.55, 1.0, st, 0.05, 1.75, 1.45).rotation.z = 0.2;
   bx(g, 0.3, 0.3, 0.5, st, 0.6, 1.62, 1.2).rotation.y = 0.5;
   pane(g, 'door', 0.46, 0.8, 0.3, 0.42, 1.96).rotation.z = 0.12;
-  const gold = toon(0x7a6a3a);
-  bx(g, 0.06, 0.55, 0.06, gold, 0.5, 2.0, 1.45).rotation.z = -0.6;
-  bx(g, 0.3, 0.06, 0.06, gold, 0.58, 2.1, 1.45).rotation.z = -0.6;
+  // Its people's sign, tarnished and fallen askew on the broken tower.
+  const askew = new THREE.Group(); askew.position.set(0.45, 1.85, 1.45); askew.rotation.z = -0.6; g.add(askew);
+  sign(askew, faithOf(o.civ), toon(0x7a6a3a), 0, 0, 0, 1.2);
   // Ivy up the walls and weeds at their foot.
   for (const [x, y, z, w, h, side] of [[0.3, 0.7, 1.97, 0.5, 1.0, 0], [-0.46, 0.6, 0.3, 0.6, 1.0, 1], [0.5, 0.5, -1.36, 0.8, 0.7, 0], [1.06, 0.4, -0.6, 0.5, 0.6, 1], [0.82, 0.9, 1.45, 0.5, 0.9, 1]]) bx(g, side ? 0.04 : w, h, side ? w : 0.04, ivy, x, y, z).castShadow = false;
   for (const [x, z] of [[0.9, 1.2], [1.2, 0.2], [-0.9, -0.9], [-0.3, 2.1], [0.4, -0.2], [0.7, -1.0]]) mesh(g, wobble(new THREE.IcosahedronGeometry(0.17, 1), 0.3, x * 7), ivy, x, 0.12, z).castShadow = false;
@@ -443,7 +458,7 @@ function church(o: Look): THREE.Group {
   for (const [dx, dz, ry] of [[0, 0.51, 0], [0.51, 0, Math.PI / 2], [-0.51, 0, Math.PI / 2], [0, -0.51, 0]]) pane(g, 'arch', 0.28, 0.5, 0.3 + dx, 2.1, 1.45 + dz, ry);
   mesh(g, new THREE.ConeGeometry(0.72, 1.7, 8), slate, 0.3, 3.5, 1.45);
   const cs = holy ? 1.5 : 1;
-  bx(g, 0.05 * cs, 0.5 * cs, 0.05 * cs, gold, 0.3, 4.35 + 0.25 * cs, 1.45); bx(g, 0.28 * cs, 0.05 * cs, 0.05 * cs, gold, 0.3, 4.35 + 0.33 * cs, 1.45);
+  sign(g, faithOf(o.civ), gold, 0.3, 4.35, 1.45, cs * 1.15); // its people's sign on the spire, larger where the town is holy
   pane(g, 'door', 0.46, 0.8, 0.3, 0.42, 1.96);
   bx(g, 0.7, 0.06, 0.3, st, 0.3, 0.03, 2.1);
   for (const [x, z] of [[-1.0, 0.6], [-1.15, 0.0], [-0.95, -0.6]]) bx(g, 0.16, 0.26, 0.05, toon(0xb8b4aa, 'stone'), x, 0.13, z).rotation.y = x * 2;
