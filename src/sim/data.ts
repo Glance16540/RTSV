@@ -782,6 +782,8 @@ export interface TechDef {
   requires?: string;
   /** Re-equips every unit of the first type as the second, now and in future training. */
   upgrade?: [string, string];
+  /** A study of one people's own: only this nation may learn it (ownstudies.ts). */
+  civ?: string;
   apply: (m: Mods) => void;
   /**
    * A study of the nation's, kept on the map (studies.ts): what in the systems it answers. The computer's peoples
@@ -887,6 +889,24 @@ export const TECHS: Record<string, TechDef> = {
     id: 'up_bombard', name: 'Cannon Founding', icon: '💣', desc: 'All Catapults become Bombards.',
     cost: { wood: 300, gold: 300 }, time: 55, age: 4, upgrade: ['catapult', 'bombard'], apply: () => {},
   }),
+  // ---- Each people its own (ownstudies.ts): one study that only its nation can learn (`civ`). Each is a study of the
+  // nation's kept on the map (studies.ts: `answers`), taught at the Town Center. What each does on the map is in
+  // ownstudies.ts; what is in `apply` is its worth inside a town. Costs, ages and strengths are first guesses.
+  own_kinship: T({ id: 'own_kinship', civ: 'hearth', answers: 'rule', taughtAt: 'towncenter', name: 'Kinship', icon: '👪', desc: 'A study of the Franks alone. On the map their couples raise children a fifth sooner; in a town families raise them a fifth faster.', cost: { food: 200, wood: 100 }, time: 40, age: 1, apply: (m) => { m.birth *= 1.2; } }),
+  own_code: T({ id: 'own_code', civ: 'babylon', answers: 'unrest', taughtAt: 'towncenter', name: 'The King\'s Code', icon: '📜', desc: 'A study of the Babylonians alone. On the map a town they have taken settles sooner under written law and unrest is a fifth less likely; in a town research costs a tenth less.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.techCost *= 0.9; } }),
+  own_caravans: T({ id: 'own_caravans', civ: 'mali', answers: 'rule', taughtAt: 'towncenter', name: 'Caravans', icon: '🐪', desc: 'A study of the Malians alone. On the map every town of theirs brings in 12 gold a season; in a town villagers carry 2 more.', cost: { wood: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }),
+  own_bow: T({ id: 'own_bow', civ: 'kush', answers: 'raids', taughtAt: 'towncenter', name: 'The Land of the Bow', icon: '🏹', desc: 'A study of the Kushites alone. On the map every town of theirs with men in it is harder to take; in a town towers and Town Centers shoot 1 tile further.', cost: { food: 150, wood: 200 }, time: 40, age: 1, apply: (m) => { m.towerRange += 1; } }),
+  own_walls: T({ id: 'own_walls', civ: 'stonekin', answers: 'raids', taughtAt: 'towncenter', name: 'Great Walls', icon: '🧱', desc: 'A study of the Romans alone. On the map a Fortress of theirs is worth 2 more defence; in a town buildings have 15% more health.', cost: { wood: 150, stone: 200 }, time: 45, age: 1, apply: (m) => { m.buildingHp *= 1.15; } }),
+  own_remounts: T({ id: 'own_remounts', civ: 'steppe', answers: 'rule', taughtAt: 'towncenter', name: 'Remounts', icon: '🐎', desc: 'A study of the Mongols alone. On the map an army of theirs rests two seasons fewer after storming a town; in a town cavalry moves a tenth faster.', cost: { food: 250, gold: 100 }, time: 40, age: 1, apply: (m) => { m.cavSpeed *= 1.1; } }),
+  own_examinations: T({ id: 'own_examinations', civ: 'forge', answers: 'rule', taughtAt: 'towncenter', name: 'Examinations', icon: '🖌️', desc: 'A study of the Chinese alone. On the map their governors finish what is building half as fast again; in a town research is 15% faster.', cost: { food: 200, gold: 200 }, time: 45, age: 2, apply: (m) => { m.techTime *= 0.85; } }),
+  own_flood: T({ id: 'own_flood', civ: 'egypt', answers: 'hunger', taughtAt: 'towncenter', name: 'The Flood Calendar', icon: '🌾', desc: 'A study of the Egyptians alone. On the map every town of theirs with Farmland brings in 20 more food a season; in a town farms yield 15% more.', cost: { food: 150, wood: 150 }, time: 40, age: 1, apply: (m) => { m.farm *= 1.15; } }),
+  own_satrapies: T({ id: 'own_satrapies', civ: 'persia', answers: 'unrest', taughtAt: 'towncenter', name: 'Satrapies', icon: '🦁', desc: 'A study of the Persians alone. On the map a town they take resents it less from the first and settles sooner; in a town war beasts cost a tenth less.', cost: { food: 150, gold: 200 }, time: 40, age: 1, apply: (m) => { m.beastCost *= 0.9; } }),
+  own_assembly: T({ id: 'own_assembly', civ: 'greece', answers: 'unrest', taughtAt: 'towncenter', name: 'The Assembly', icon: '🏛️', desc: 'A study of the Greeks alone. On the map unrest is two fifths less likely in their towns; in a town villagers build a tenth faster.', cost: { food: 150, wood: 150 }, time: 40, age: 1, apply: (m) => { m.build *= 1.1; } }),
+  own_yeomen: T({ id: 'own_yeomen', civ: 'england', answers: 'raids', taughtAt: 'towncenter', name: 'Yeomanry', icon: '🎯', desc: 'A study of the English alone. On the map a town of theirs stands a quarter better against raiders, slavers and pirates; in a town towers and Town Centers hit harder.', cost: { food: 150, wood: 200 }, time: 40, age: 1, apply: (m) => { m.towerAtk += 2; } }),
+  own_caravanserai: T({ id: 'own_caravanserai', civ: 'arabs', answers: 'raids', taughtAt: 'towncenter', name: 'Caravanserais', icon: '🕌', desc: 'A study of the Abbasids alone. On the map highwaymen meet their convoys far less often; in a town villagers carry 2 more.', cost: { wood: 200, gold: 100 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }),
+  own_bond: T({ id: 'own_bond', civ: 'japan', answers: 'nobles', taughtAt: 'towncenter', name: 'The Bond of Service', icon: '⛩️', desc: 'A study of the Japanese alone. On the map an angry noble of theirs comes round half as fast again; in a town soldiers have 1 more attack.', cost: { food: 200, gold: 200 }, time: 45, age: 2, apply: (m) => { m.atk += 1; } }),
+  own_schools: T({ id: 'own_schools', civ: 'dawn', answers: 'faith', taughtAt: 'towncenter', name: 'Schools of the Prophets', icon: '🕯️', desc: 'A study of the Arameans alone. On the map a town of theirs with a church grows more pious each season; in a town prophets regain faith a quarter faster.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.faith *= 1.25; } }),
+  own_winter: T({ id: 'own_winter', civ: 'wild', answers: 'hunger', taughtAt: 'towncenter', name: 'Winter Stores', icon: '❄️', desc: 'A study of the Norse alone. On the map snow and desert cost their towns nothing; in a town game, berries and fish are gathered 15% faster.', cost: { food: 150, wood: 100 }, time: 35, age: 0, apply: (m) => { m.hunt *= 1.15; } }),
 };
 
 /** Civilisations: each has standing bonuses and one unit nobody else can train. */

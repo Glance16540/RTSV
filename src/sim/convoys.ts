@@ -27,6 +27,7 @@ import { MAX_STORE, STORE_KINDS, folkOf } from './township';
 import { OLD_SEASON, agesOf, countFrom } from './ageing';
 import { armyStrength, lanesOf } from './campaignbase';
 import { needOf } from './larder';
+import { roadRisk } from './ownstudies';
 
 /** What a convoy carries: stores, and grown people by their ages in seasons. */
 export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[] }
@@ -172,7 +173,7 @@ export function convoysTurn(c: Campaign): Arrival[] {
     const mine = x.owner === 0;
     // Highwaymen on the road, or pirates at sea, unless an escort of the people's own as strong as they are stands on it.
     const band = waylaid(c, x);
-    if (band && hash(c, x.id, 3) < CONVOYS.meet) {
+    if (band && hash(c, x.id, 3) < CONVOYS.meet * roadRisk(c, x.owner)) { // less often, for a people whose convoys rest behind walls (ownstudies.ts)
       const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
       if (escort < band.strength && worth(x.cargo) > 0) {
         const took = empty();

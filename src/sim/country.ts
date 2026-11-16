@@ -7,6 +7,7 @@
 import type { Barrier, Biome, Campaign } from './campaign';
 import { biomeOf } from './campaignbase';
 import { canPayFor, payFor } from './prices';
+import { thinCountrySpared } from './ownstudies';
 
 /**
  * `supplies`: added to what the land yields each turn. `farm`: added again where Farmland stands.
@@ -25,7 +26,7 @@ export const countryOf = (c: Campaign, tid: number): CountryDef => COUNTRY[biome
 /** What the country adds to (or takes from) a land's yield each turn, with whatever is built on it. */
 export const countryYield = (c: Campaign, tid: number): number => {
   const k = countryOf(c, tid), t = c.territories[tid];
-  return (t.capital >= 0 ? Math.max(0, k.supplies) : k.supplies) + (t.buildings.includes('farm') ? k.farm : 0); // a capital is fed from all its country
+  return (t.capital >= 0 || thinCountrySpared(c, tid) ? Math.max(0, k.supplies) : k.supplies) + (t.buildings.includes('farm') ? k.farm : 0); // a capital is fed from all its country
 };
 
 /** The works that open a closed border. Open water is not among them: that is what a Harbour is for. */

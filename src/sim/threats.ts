@@ -49,6 +49,7 @@ import { wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
 import { needOf } from './larder';
+import { bandStand } from './ownstudies';
 
 export type BandKind = 'raiders' | 'slavers' | 'pirates' | 'highwaymen' | 'marauders';
 /** People a band is holding: where they were taken from, whose they are, their ages when seized, and since when. */
@@ -166,7 +167,7 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   const army = a ? armyStrength(a) : 0;
   const guard = t.capital >= 0 ? THREATS.capital : 0;
   const spirit = (t.owner >= 0 ? creedOf(faithAt(c, tid)).morale : 1) * (sick(c, tid) ? THREATS.sick : 1); // the town's own standing (townfaith.ts)
-  return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit) };
+  return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit * bandStand(c, tid)) }; // a people's own study may stiffen it (ownstudies.ts)
 }
 
 /** The lands a band can reach to strike. */

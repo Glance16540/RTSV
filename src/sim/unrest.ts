@@ -19,6 +19,7 @@ import { armyAt, faithOf } from './campaignbase';
 import { leaderAt } from './court';
 import { angryAt, noblesAt } from './nobles';
 import { folkOf, headcount } from './township';
+import { unrestEase } from './ownstudies';
 
 declare module './campaign' {
   interface Campaign { /** Who has held each land, and since when (unrest.ts). */ heldSince?: Record<string, { owner: number; since: number }> }
@@ -86,7 +87,7 @@ export function unrestChance(c: Campaign, tid: number, busy?: ReadonlySet<number
   if (!mayStir(c, tid, busy)) return 0;
   if (faithOf(c, c.territories[tid].owner).steadfast) return 0; // a steadfast people's towns keep faith
   const w = unrestWeights(c, tid);
-  return Math.min(UNREST.most, UNREST.base * w.hungry * w.church * w.farm * w.tavern * w.pious * w.held * w.nobles);
+  return Math.min(UNREST.most, UNREST.base * w.hungry * w.church * w.farm * w.tavern * w.pious * w.held * w.nobles * unrestEase(c, tid)); // and a people's own study (ownstudies.ts)
 }
 /**
  * A season of it: every town is asked by its own chance. Returns the towns where unrest has begun, and marks it
