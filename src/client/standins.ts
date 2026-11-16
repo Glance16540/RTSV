@@ -12,6 +12,7 @@ export const STAND_INS: Record<string, StandIn> = {
   // ---- Rule, law, nobles and faith (the people session) ----
   hall: { as: 'temple', scale: 1, tall: 1.15, tint: 0xc9a85a }, // a Hall of Judgement: a church's frame, taller and gilded (hall.ts)
   manor: { as: 'house', scale: 1.5, tint: 0x8a5a9a }, // a Noble's Manor: a house half again as wide, washed purple (manor.ts)
+  monastery: { as: 'temple', scale: 1.33, tint: 0xeee6cc }, // a Monastery or Convent: a church grown to its footprint, washed pale (monastery.ts)
 };
 
 /** A building's look: its own model, or its stand-in until it has one. Takes what `makeBuilding` takes. */

@@ -581,7 +581,7 @@ export interface BuildingDef {
   dropoff?: boolean;
   walkable?: boolean;
   /** Only a decadent town can build it. */
-  needs?: 'decadent';
+  needs?: 'decadent' | 'holy';
   /** A work camp: how many captives it holds. */
   camp?: number;
   /** How many villagers can be stationed inside to work there (clergy in a church, maids in a tavern). */
@@ -666,6 +666,12 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     desc: 'The lord\'s own house, in a town of twelve grown people or more. He grows the more content for it, season by season, but he has the more say: every decree pleases or angers him twice as much.',
     cost: { wood: 180, stone: 60, gold: 60 }, time: 38, age: 1, hp: 1000, size: 3, pop: 0, sight: 6,
     trains: [], techs: [], onMap: true, townAt: 12,
+  }),
+  monastery: B({
+    id: 'monastery', name: 'Monastery', icon: '🕍',
+    desc: 'Only a town that keeps the faith can build it: the Righteous town\'s great house (a Convent where its women are the more). Up to six villagers live here as monks and nuns, counted as clergy. The town is drawn toward the holy way each season, the drifted come back to it the sooner, and it takes in the sick and the bereaved, so sickness and grief weigh on the town half as much.',
+    cost: { wood: 220, stone: 160, gold: 60 }, time: 46, age: 1, hp: 1300, size: 4, pop: 0, sight: 6,
+    trains: [], techs: [], staff: 6, needs: 'holy', onMap: true,
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',

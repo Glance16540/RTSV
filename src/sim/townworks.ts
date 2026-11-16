@@ -14,6 +14,8 @@ import { plotFor } from './governor';
 import { ageOf } from './campaignbase';
 import { standsAt } from './studies';
 import { layTown } from './rivalrule';
+import { faithAt } from './townfaith';
+import { isDecadent, isHoly } from './creed';
 
 /** The buildings that can be raised on the map. */
 export const mapWorks = (): string[] => Object.values(BUILDINGS).filter((b) => b.onMap).map((b) => b.id);
@@ -31,6 +33,8 @@ export function raiseBar(c: Campaign, f: number, tid: number, type: string, chec
   if (begunAt(c, tid, type)) return `There is a ${b.name} there already.`;
   if (ageOf(c, f) < b.age) return 'It needs the nation in a later age.';
   if (b.townAt && grown(folkOf(c, tid)) < b.townAt) return `Only in a town of ${b.townAt} grown people or more.`;
+  if (b.needs === 'holy' && !isHoly(faithAt(c, tid))) return 'Only a town that keeps the faith (Devout or better) has one.';
+  if (b.needs === 'decadent' && !isDecadent(faithAt(c, tid))) return 'Only a Decadent town would have one.';
   const own = check?.(c, tid);
   if (own) return own;
   const s = folkOf(c, tid).stores;
