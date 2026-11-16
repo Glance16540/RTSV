@@ -1,44 +1,41 @@
-// How the governor raises the food and health works (governor.ts with granary.ts, mill.ts, well.ts, infirmary.ts):
-// only once a town has Farmland, only out of plenty, and leaving a place for a wall.
+// How the governor raises the food and health works (governor.ts with granary.ts, mill.ts, well.ts, infirmary.ts): on
+// the town's record (townworks.ts), only once a town has Farmland, and only out of plenty.
 import { describe, expect, it } from 'vitest';
-import { newCampaign } from '../src/sim/campaign';
-import { slots } from '../src/sim/campaignbase';
 import { governTown } from '../src/sim/governor';
-import { folkOf } from '../src/sim/township';
+import { standsAt } from '../src/sim/studies';
+import { WORKS, begun, town } from './foodtown';
 
-function town(buildings: string[], goods = 900) {
-  const c = newCampaign(7, 1, 1, 'hearth');
-  c.fronts = [];
-  const home = c.territories.find((t) => t.capital === 0)!;
-  const t = c.territories.find((x) => x.owner < 0 && home.adj.includes(x.id))!;
-  t.owner = 0; t.buildings = buildings;
-  const f = folkOf(c, t.id);
-  f.men = 11; f.women = 11; f.elders = 2; f.children = 6;
-  delete f.ages; delete f.drift;
-  f.stores = { food: 2000, wood: goods, gold: goods, stone: goods };
-  f.grief = 3; // a grieving town of thirty: an Infirmary is wanted
-  return { c, t, f };
+/** A grieving town of thirty with fields, unless told otherwise: an Infirmary is wanted. */
+function grieving(buildings: string[], goods = 900) {
+  const x = town(buildings, { goods });
+  x.f.grief = 3;
+  x.c.factions[0].age = 1; // the Infirmary is of the Bronze Age
+  return x;
 }
-const WORKS = ['granary', 'mill', 'well', 'infirmary'];
+const anyBegun = (x: ReturnType<typeof town>): boolean => WORKS.some((w) => begun(x.c, x.t.id, w));
 
 describe('the governor and the food and health works', () => {
-  it('raises one once the town has Farmland, and none before', () => {
-    const fed = town(['farm']);
+  it('begins one on the town\'s record once the town has Farmland, takes no place of the land\'s, and finishes it in time', () => {
+    const fed = grieving(['farm', 'mill']);
+    const places = fed.t.buildings.length;
     governTown(fed.c, fed.t.id);
-    expect(fed.t.buildings.some((b) => WORKS.includes(b))).toBe(true);
-    const bare = town([]);
-    bare.f.stores.food = 2000;
+    expect(begun(fed.c, fed.t.id, 'infirmary')).toBe(true);
+    expect(fed.t.buildings.length).toBe(places);
+    expect(standsAt(fed.c, fed.t.id, 'infirmary')).toBe(false); // begun, not yet standing
+    for (let s = 0; s < 6; s++) governTown(fed.c, fed.t.id);
+    expect(standsAt(fed.c, fed.t.id, 'infirmary')).toBe(true);
+    const bare = grieving([]);
     governTown(bare.c, bare.t.id);
-    expect(bare.t.buildings.some((b) => WORKS.includes(b))).toBe(false);
+    expect(anyBegun(bare)).toBe(false);
+    const young = grieving(['farm', 'mill']);
+    young.c.factions[0].age = 0;
+    governTown(young.c, young.t.id);
+    expect(begun(young.c, young.t.id, 'infirmary')).toBe(false); // not before its age
   });
 
-  it('leaves a place for a wall until there is one, and buys only out of plenty', () => {
-    const full = town(['farm']);
-    full.t.buildings.push(...Array.from({ length: slots(full.t) - 2 }, (_, i) => `stand${i}`));
-    governTown(full.c, full.t.id);
-    expect(full.t.buildings, `slots ${slots(full.t)}`).toEqual(full.t.buildings.filter((b) => !WORKS.includes(b))); // one place left: the wall's
-    const poor = town(['farm'], 150);
+  it('buys only out of plenty, counted in goods other than bread', () => {
+    const poor = grieving(['farm', 'mill'], 100);
     governTown(poor.c, poor.t.id);
-    expect(poor.t.buildings, 'poor').toEqual(['farm']);
+    expect(begun(poor.c, poor.t.id, 'infirmary')).toBe(false);
   });
 });

@@ -1,7 +1,6 @@
 // The Infirmary (src/sim/infirmary.ts): plague takes fewer and grief passes sooner, on the map and in a town.
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
-import { SITES } from '../src/sim/campaignbase';
 import { BUILDINGS } from '../src/sim/data';
 import { sicken } from '../src/sim/acts';
 import { governTown } from '../src/sim/governor';
@@ -9,25 +8,14 @@ import { GRIEF_SEASONS, griefSecond, griefSeason } from '../src/sim/grief';
 import { driftTown } from '../src/sim/drift';
 import { INFIRMARY, griefEase, infirmaryWanted, sickCare } from '../src/sim/infirmary';
 import { Game } from '../src/sim/game';
-import { folkOf } from '../src/sim/township';
 import { setups, spot } from './helpers';
+import { begun, town as foodTown } from './foodtown';
 
-function town(buildings: string[], people = 30) {
-  const c = newCampaign(7, 1, 1, 'hearth');
-  c.fronts = [];
-  const home = c.territories.find((t) => t.capital === 0)!;
-  const t = c.territories.find((x) => x.owner < 0 && home.adj.includes(x.id))!;
-  t.owner = 0; t.buildings = buildings;
-  const f = folkOf(c, t.id);
-  f.men = Math.round(people * 0.35); f.women = Math.round(people * 0.35); f.elders = 2; f.children = people - f.men - f.women - 2;
-  delete f.ages; delete f.drift;
-  f.stores = { food: 2000, wood: 900, gold: 900, stone: 900 };
-  return { c, t, f };
-}
+const town = (buildings: string[], people = 30) => foodTown(buildings, { people });
 
 describe('the Infirmary on the map', () => {
-  it('is a building of the map and of the town', () => {
-    expect(SITES.infirmary.name).toBe('Infirmary');
+  it('is a building of the town, raised from the map too', () => {
+    expect(BUILDINGS.infirmary.onMap).toBe(true);
     expect(BUILDINGS.infirmary.name).toBe('Infirmary');
   });
 
@@ -55,14 +43,15 @@ describe('the Infirmary on the map', () => {
   });
 
   it('the governor raises one in a town of some size that has had plague or is grieving', () => {
-    const quiet = town(['farm']);
+    const quiet = town(['farm', 'mill']);
     governTown(quiet.c, quiet.t.id);
-    expect(quiet.t.buildings).not.toContain('infirmary');
-    const sad = town(['farm']);
+    expect(begun(quiet.c, quiet.t.id, 'infirmary')).toBe(false);
+    const sad = town(['farm', 'mill']);
     sad.f.grief = 2;
+    sad.c.factions[0].age = 1; // the Infirmary is of the Bronze Age
     expect(infirmaryWanted(sad.c, sad.t.id)).toBe(true);
     governTown(sad.c, sad.t.id);
-    expect(sad.t.buildings).toContain('infirmary');
+    expect(begun(sad.c, sad.t.id, 'infirmary')).toBe(true);
     const small = town([], 8);
     small.f.grief = 2;
     expect(infirmaryWanted(small.c, small.t.id)).toBe(false);

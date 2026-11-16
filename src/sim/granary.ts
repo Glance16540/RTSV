@@ -1,8 +1,8 @@
 // The Granary (docs/DESIGN.md, "Buildings and research that answer the systems": "a Granary keeps food against a
 // failed harvest, so a town goes hungry later and drifts less in famine").
 //
-// On the map it is a building on the land's record (SITES.granary), raised by the player or by the governor. It
-// keeps grain dry and safe, so:
+// On the map it is a building on the town's record (townworks.ts: raised from the map, finished by the governor), and
+// counts once it stands finished. It keeps grain dry and safe, so:
 //   - what a town lays by spoils later: GRANARY.keep more seasons of its own eating are kept from spoiling
 //     (larder.ts asks `granaryKeeps`);
 //   - a failed harvest eats less of the store: the town draws only GRANARY.famine of what it would have drawn
@@ -21,6 +21,7 @@
 import type { Campaign } from './campaign';
 import type { Game } from './game';
 import { folkOf } from './township';
+import { onRecord as begunAt, standing as standsAt } from './townrecord';
 
 export const GRANARY = {
   /** Seasons of a town's own eating kept from spoiling, beyond what the larder keeps without one. */
@@ -33,8 +34,8 @@ export const GRANARY = {
   grace: 2,
 };
 
-/** Whether a land has a Granary on its record. */
-export const hasGranary = (c: Campaign, tid: number): boolean => !!c.territories[tid]?.buildings.includes('granary');
+/** Whether a Granary stands finished on the town's record. */
+export const hasGranary = (c: Campaign, tid: number): boolean => standsAt(c, tid, 'granary');
 /** Seasons of eating beyond the larder's own that a town's granary keeps from spoiling (larder.ts). */
 export const granaryKeeps = (c: Campaign, tid: number): number => (hasGranary(c, tid) ? GRANARY.keep : 0);
 /** The share of a failed harvest's draw on the store that this town makes (acts.ts): less with a granary. */
@@ -43,7 +44,7 @@ export const famineShare = (c: Campaign, tid: number): number => (hasGranary(c, 
 /** Whether the governor wants a Granary here: a town of fields that has lately gone hungry or lost a harvest, and has none. */
 export function granaryWanted(c: Campaign, tid: number): boolean {
   const t = c.territories[tid];
-  if (!t || hasGranary(c, tid) || !t.buildings.includes('farm')) return false;
+  if (!t || begunAt(c, tid, 'granary') || !t.buildings.includes('farm')) return false;
   const lately = (c.events ?? []).some((e) => e.at === tid && e.kind === 'famine' && e.turn > c.turn - GRANARY.recall);
   return lately || !!folkOf(c, tid).hungry;
 }
