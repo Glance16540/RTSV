@@ -33,6 +33,7 @@ import { folkOf, grown, living } from './township';
 import { aftermathSeason, rememberWronged } from './aftermath';
 import { Choice, Clue, Intrigue, IntrigueKind, IntrigueNote, KEEP, Person, begin, chance, end, fullName, note, ofTown } from './intriguebase';
 export * from './intriguebase'; // the record of a story and its plumbing, where they were found before they were moved
+import { governWatch, watchEdge } from './watchhouse';
 import { courtBegin, courtChoices, courtChoose, courtStanding, courtStep } from './courtstory';
 
 export const INTRIGUE = {
@@ -198,7 +199,7 @@ function thiefSeason(c: Campaign, it: Intrigue): void {
     if (f.stores.gold >= T.cost) { f.stores.gold -= T.cost; it.watched++; }
     else { it.watch = false; note(c, it, 'plain', `${land(c, it.at)} cannot pay its watch, and the watch is stood down.`); }
   }
-  const odds = it.watch ? T.catch + T.surer * (it.watched - 1) : T.luck;
+  const odds = (it.watch ? T.catch + T.surer * (it.watched - 1) : T.luck) + watchEdge(c, it.at).thief; // a Watch House takes them sooner (watchhouse.ts)
   if (chance(c, it.id * 53 + 2) < odds) { catchThief(c, it); return; }
   if (c.turn - it.since >= T.lasts) { end(c, it, 'unfound', `The thief of ${land(c, it.at)} was never taken. The robberies stopped, and ${it.taken} gold was never seen again.`, 'plain'); return; }
   rob(c, it);
@@ -262,7 +263,7 @@ function hang(c: Campaign, it: Intrigue, i: number, by: 'you' | 'town'): void {
 }
 function killerSeason(c: Campaign, it: Intrigue): void {
   const K = INTRIGUE.killer, t = c.territories[it.at];
-  const odds = K.clue + (seatAt(c, it.owner, it.at) ? K.court : 0) /* the court, or a Hall of Judgement there (hall.ts) */ + (c.armies.some((a) => a.owner === it.owner && a.at === it.at) ? K.army : 0);
+  const odds = K.clue + (seatAt(c, it.owner, it.at) ? K.court : 0) /* the court, or a Hall of Judgement there (hall.ts) */ + (c.armies.some((a) => a.owner === it.owner && a.at === it.at) ? K.army : 0) + watchEdge(c, it.at).clue; // and a Watch House in the town (watchhouse.ts)
   if (chance(c, it.id * 59 + 4) < odds) clue(c, it);
   const left = suspected(it);
   // Once only one is left the town will not wait for ever.
@@ -276,7 +277,7 @@ function killerSeason(c: Campaign, it: Intrigue): void {
     return;
   }
   if (it.watch) { const f = folkOf(c, it.at); if (f.stores.gold >= INTRIGUE.thief.cost) { f.stores.gold -= INTRIGUE.thief.cost; it.watched++; } else it.watch = false; }
-  if (chance(c, it.id * 59 + 5) < K.strike * (it.watch ? 0.5 : 1)) kill(c, it);
+  if (chance(c, it.id * 59 + 5) < K.strike * (it.watch ? 0.5 : 1) * watchEdge(c, it.at).strike) kill(c, it);
 }
 
 /** What the leader may do about a story now. Empty for one that is over, or that is not the player's to settle. */
@@ -339,6 +340,7 @@ export function choose(c: Campaign, id: number, choice: string): boolean {
  */
 export function intrigueSeason(c: Campaign): Intrigue[] {
   aftermathSeason(c); // what earlier stories left behind goes on
+  governWatch(c); // a town that has had cause raises a Watch House (watchhouse.ts)
   const T = INTRIGUE.thief, K = INTRIGUE.killer, began: Intrigue[] = [];
   for (const it of [...(c.intrigues ?? [])]) {
     if (it.ended) continue;
