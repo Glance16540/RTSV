@@ -7,6 +7,7 @@ import { sendHome } from '../sim/armytown';
 import { bandPrompt, newsHtml } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
 import { attackBand } from '../sim/bandfight';
+import { meetBand, meetStory, storyToMeet } from './encounter';
 import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -189,6 +190,7 @@ export class Overworld {
     else if (c.tale && c.phase === 'player' && taleNow(c)) this.askTale();
     else if (c.phase === 'player' && c.factions[0].alive && !c.factions[0].heroAlive && !houseOf(c, 0).asked) this.askSuccession();
     else if (c.phase === 'player' && c.factions[0].heroAlive && houseToName(c, 0) !== undefined) this.askHouse();
+    else if (storyToMeet(c) && meetStory(c, storyToMeet(c)!, () => this.changed())) $('ow-dialog').classList.add('hidden'); // a story waiting on your word, face to face (encounter.ts)
     else $('ow-dialog').classList.add('hidden');
     seasonCard(c, !$('ow-dialog').classList.contains('hidden'), () => this.hooks.save()); // what the season brought (seasoncard.ts)
   }
@@ -246,7 +248,12 @@ export class Overworld {
       this.changed();
     };
     const band = bandPrompt(c);
-    if (band) { this.dialog(band.title, band.text, [['Fight it', () => this.hooks.fight()], ['Leave it to the army', settle], ...(band.decline ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]); return; }
+    if (band) {
+      const choices: [string, () => void][] = [['Fight it', () => this.hooks.fight()], ['Leave it to the army', settle], ...(band.decline ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])];
+      // Met face to face (encounter.ts), or as a plain question where the figures cannot be drawn.
+      if (meetBand(c, band, choices)) $('ow-dialog').classList.add('hidden'); else this.dialog(band.title, band.text, choices);
+      return;
+    }
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
       (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} marches with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
         (p.sea ? ` ${attacking ? 'Your troops land' : 'They land'} from the sea, at ${Math.round(SEA_LANDING * 100)}% of their strength.` : '') +
