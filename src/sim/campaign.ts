@@ -2,6 +2,9 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
+import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront, HUB } from './campaignbase';
+import type { Biome, CompanyDef, FaithDef, Front, SiteDef, Sky, World, WorldShape } from './campaignbase';
+export * from './campaignbase'; // what the systems share, below all of them: found here as before
 import type { Ground, PlayerSetup, Standing } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
@@ -24,20 +27,14 @@ import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
-import { placeAt, placeGood, placeWorth, placesOf, worldNow } from './places';
+import { hireOff, placeAt, placeGood, placeWorth, placesOf, worldNow } from './places';
+export { hireOff } from './places'; // where it was found before it was moved
 export { placeAt, placesOf, worldNow } from './places'; // where they were found before they were moved
 import { storyTurn } from './storyturn';
 export { answerTale, canAnswer, taleNow, taleText } from './storyturn'; // where they were found before they were moved
 
-export const MAP_W = 1300;
-export const MAP_H = 800;
-export const CAMPAIGN_VERSION = 8;
 
-export const MAX_ARMY = 12; // companies in one army
 export const HERO_COST = 8;
-export const HERO_STRENGTH = 2;
-/** What each rank of a leader's veterancy adds to the army they march with, when a battle is settled on the map. */
-export const HERO_RANK_STRENGTH = 0.5;
 import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
@@ -53,91 +50,28 @@ import { unrestSeason } from './unrest';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
-import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
+import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
+export { shiftVirtue } from './townfaith'; // where it was found before it was moved
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { ARMY_REST, MEN_A_COMPANY, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
-import { BattleHooks, BattleNote } from './battlehooks';
+import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
 
-/** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
-export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
-export const COMPANIES: Record<string, CompanyDef> = {
-  infantry: { name: 'Infantry', icon: '🗡️', cost: 2, str: 1, needs: 'barracks', units: { clubman: 2 } },
-  archers: { name: 'Archers', icon: '🏹', cost: 2, str: 1, needs: 'range', units: { slinger: 2 } },
-  cavalry: { name: 'Cavalry', icon: '🐎', cost: 4, str: 2, needs: 'stable', units: { rider: 2 } },
-};
 
-/** Buildings that can stand on a territory. */
-export interface SiteDef { name: string; icon: string; cost: number; desc: string }
-export const SITES: Record<string, SiteDef> = {
-  farm: { name: 'Farmland', icon: '🌾', cost: 4, desc: '+2 supplies each turn.' },
-  barracks: { name: 'Barracks', icon: '🗡️', cost: 5, desc: 'Raise infantry here.' },
-  range: { name: 'Archery Range', icon: '🏹', cost: 5, desc: 'Raise archers here.' },
-  stable: { name: 'Stable', icon: '🐴', cost: 7, desc: 'Raise cavalry here.' },
-  harbour: { name: 'Harbour', icon: '⚓', cost: 6, desc: 'On the sea only. An army here can make the sea crossings from this land, and from an open coast can sail to any other. Troops landing from the sea fight at four-fifths strength.' },
-  church: { name: 'Church', icon: '⛪', cost: 5, desc: 'Your people grow more pious every turn.' },
-  tavern: { name: 'Tavern', icon: '🍺', cost: 4, desc: '+1 supply each turn, more among a worldly people. Your people grow more decadent every turn.' },
-  fortress: { name: 'Fortress', icon: '🏰', cost: 9, desc: '+3 defence. In battle the defender starts in the Bronze Age with towers.' },
-};
-/**
- * Piety and decadence on the campaign map. A people's standing (`Faction.virtue`, the same scale as a town's in
- * battle, -100 to 100) is moved each turn by its churches and taverns, sets the creed its towns begin every battle
- * in, and is moved in turn by how the player ruled the town in a battle fought in person.
- * `defence`: how hard its own land is to take. `tavern`: supplies a Tavern pays. `raise`: taken off the cost of a
- * company (swords for hire). `age`: added to the cost of the next age. `steadfast`: its lands never rise in revolt.
- * `restless`: a land of theirs in unrest rises even with a garrison in it if that garrison is a single company.
- */
-export const CHURCH_VIRTUE = 2;
-export const TAVERN_VIRTUE = 3;
-/** How much of what a town became in a battle the whole people takes home with it. */
-export const BATTLE_VIRTUE = 0.5;
-export interface FaithDef { defence: number; tavern: number; raise: number; age: number; steadfast?: boolean; restless?: boolean; desc: string }
-export const FAITH: Record<string, FaithDef> = {
-  zealous: { defence: 1.2, tavern: 0, raise: 0, age: 3, steadfast: true, desc: 'Their own land is a fifth harder to take and never rises in revolt. Taverns pay nothing, and each new age costs 3 more.' },
-  devout: { defence: 1.1, tavern: 1, raise: 0, age: 1, desc: 'Their own land is a tenth harder to take. Each new age costs 1 more.' },
-  temperate: { defence: 1, tavern: 1, raise: 0, age: 0, desc: 'Neither saints nor sinners: nothing is changed.' },
-  worldly: { defence: 0.95, tavern: 2, raise: 0, age: 0, desc: 'Taverns pay double. Their own land is a little easier to take.' },
-  decadent: { defence: 0.85, tavern: 3, raise: 1, age: 0, restless: true, desc: 'Taverns pay threefold and every company costs 1 less. Their own land is easier to take, and a land in unrest rises unless two companies or more hold it down.' },
-};
-export const virtueOf = (c: Campaign, f: number): number => (f < 0 ? 0 : c.factions[f]?.virtue ?? 0);
-export const faithOf = (c: Campaign, f: number): FaithDef => FAITH[creedOf(virtueOf(c, f)).id];
 /** How far a people's churches and taverns will move it next turn. */
 export function virtueDrift(c: Campaign, f: number): number {
   let n = 0;
   for (const t of c.territories) if (t.owner === f) n += (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0);
   return n + placeGood(c, f, 'virtue');
 }
-export function shiftVirtue(c: Campaign, f: number, by: number, opts: { /** The one town of theirs that is moved; without it, every town of theirs is. */ at?: number } = {}): void {
-  const x = c.factions[f];
-  if (!x || !by) return;
-  const was = creedOf(x.virtue ?? 0);
-  // Faith is a town's (townfaith.ts): the nation's standing follows from its towns'.
-  if (opts.at !== undefined && c.territories[opts.at]?.owner === f) swayTown(c, opts.at, by); else swayNation(c, f, by);
-  const now = creedOf(x.virtue ?? 0);
-  if (now.id !== was.id) {
-    c.log.push(`${x.id === 0 ? 'Your people are' : `${x.name} are`} now ${now.name}. ${FAITH[now.id].desc}`);
-    if (now.id === 'zealous' || now.id === 'decadent') tell(c, `${x.id === 0 ? 'Your people' : x.name} became ${now.name}.`);
-  }
-}
-/** Write a line of the campaign's story. */
-export function tell(c: Campaign, text: string): void {
-  (c.chronicle ??= []).push({ turn: c.turn, text });
-}
 const hash = (a: number, b: number): number => {
   let t = (Math.imul(a | 0, 2654435761) ^ Math.imul(b + 17, 40503)) >>> 0;
   t = Math.imul(t ^ (t >>> 15), t | 1);
   return ((t ^ (t >>> 13)) >>> 0) / 4294967296;
 };
-/** Supplies off a company raised by this people in this land: swords for hire, iron in the ground, a season of iron. */
-export const hireOff = (c: Campaign, f: number, tid: number): number =>
-  faithOf(c, f).raise + placeWorth(c, tid, 'raise') + (worldNow(c) === 'iron' ? 1 : 0);
-export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
 
-/** What each troop type is good against: its companies fight up to 30% harder against that type. */
-export const BEATS: Record<string, string> = { cavalry: 'archers', archers: 'infantry', infantry: 'cavalry' };
-export const MAX_VETERAN = 3;
 import { HeroSpec, cleanHero, MAX_RANK } from './hero';
 import { seasonTurned } from './seasonreport';
 
@@ -189,27 +123,12 @@ export const PERSONA: Record<string, { margin: number; fort: number; farm: numbe
   mali: { margin: 1, fort: 0.2, farm: 0.5, peace: 0.7, greed: 0.3 },
   kush: { margin: 0, fort: 0.4, farm: 0.5, peace: 0.4, greed: 0.2 },
 };
-export const TRUCE_COST = 3;
-export const TRUCE_TURNS = 6;
-export const ALLIANCE_COST = 6;
 export const GIFT_COST = 4;
 /** Supplies to bring a whole people into the next age, from the Stone Age up. */
 export const AGE_COST = [20, 30, 44, 60];
 /** Each age past the first makes a people's armies this much stronger. */
 export const AGE_EDGE = 0.1;
-export const MAX_FAVOR = 3;
-/** Hold this share of all the land for this many turns running and the campaign is won. */
-export const DOMINION_SHARE = 0.6;
-export const DOMINION_TURNS = 10;
 
-export function siteCost(t: Territory, site: string, civ = ''): number {
-  if (site === 'fortress' && civ === 'stonekin') return 5;
-  if (site === 'farm' && civ === 'egypt') return 2;
-  return Math.max(2, SITES[site].cost - (site === 'stable' && t.trait === 'horses' ? 2 : 0) - (civ === 'forge' ? 1 : 0));
-}
-export function companyCost(t: Territory, type: string, civ = '', hire = 0): number {
-  return Math.max(1, COMPANIES[type].cost - hire - (type === 'cavalry' && t.trait === 'horses' ? 1 : 0) - (type === 'cavalry' && civ === 'steppe' ? 1 : 0) - ((type === 'infantry' && civ === 'greece') || (type === 'archers' && civ === 'england') ? 1 : 0));
-}
 export const heroCost = (civ: string): number => (civ === 'dawn' ? HERO_COST / 2 : HERO_COST);
 
 export interface Faction {
@@ -263,10 +182,6 @@ export interface Territory {
 
 /** What stands on a land's battlefield between battles: the holder's corner of it, and each building with the damage it has taken. */
 export interface Town { at: number; b: Standing[]; /** Laid down for counting only (rivalrule.ts): not where things stand on a battlefield. */ coarse?: boolean }
-/** The building that stands on the battlefield for each building of the campaign map. */
-export const SITE_BUILDING: Record<string, string> = { farm: 'farm', barracks: 'barracks', range: 'range', stable: 'stable', harbour: 'dock', fortress: 'tower' };
-/** The corner of its battlefield a land's holder defends from. The attacker makes camp in the one opposite. */
-export const homeCorner = (t: Territory): number => t.town?.at ?? 2;
 const MAX_TOWN = 240;
 /** The share of a building's full health that the people of a land mend in a turn. */
 export const TOWN_MEND = 0.1;
@@ -360,14 +275,6 @@ export interface Campaign {
   chronicle?: { turn: number; text: string }[];
 }
 
-export type Sky = 'rain' | 'snow' | 'dust';
-export interface Front { kind: Sky; x: number; y: number; r: number; vx: number; vy: number }
-/** What weather does on the map. `march` is what is left of an attacker's strength after marching into it. */
-export const WEATHER: Record<Sky, { name: string; icon: string; march: number; desc: string }> = {
-  rain: { name: 'Heavy rain', icon: '🌧️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the rain.' },
-  snow: { name: 'Snow', icon: '🌨️', march: 0.85, desc: 'An army attacking into it fights at 85% strength, and the land yields 1 supply less. A battle here is fought in the snow.' },
-  dust: { name: 'Dust storm', icon: '🌪️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the dust.' },
-};
 export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued';
 export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
@@ -397,83 +304,13 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
 export const UNREST_TURNS = 2;
 export const HOARD_TURNS = 3;
 export const HOARD_PRIZE = 5;
-/** Marauders on the map: the turn they may first appear, how strong a camp grows, and what breaking one is worth. */
-export const HORDE_TURN = 4;
-export const HORDE_MAX = 12;
-export const HORDE_SPREAD = 6;
-export const HORDE_PRIZE = 4;
 
-/** A run of chances of its own for weather and the lasting events, so the rest of the campaign's luck is left as it was. */
-export function luck(c: Campaign, k: number): number {
-  let t = (Math.imul(c.seed | 0, 2654435761) ^ Math.imul(c.turn + 11, 40503) ^ Math.imul(k + 7, 69069)) >>> 0;
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-}
 
-/** Smooth noise that comes out the same on every machine (whole-number hashing, no sines). */
-export function landNoise(x: number, y: number, seed: number): number {
-  const h = (i: number, j: number): number => {
-    let t = (Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(seed | 0, 1274126177)) | 0;
-    t = Math.imul(t ^ (t >>> 13), 1103515245);
-    return ((t ^ (t >>> 16)) >>> 0) / 4294967296;
-  };
-  const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
-  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-  const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
-  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
-}
 
-/** The kinds of country a world is made of. Every campaign lays them out differently. */
-export type Biome = 'grass' | 'forest' | 'marsh' | 'steppe' | 'desert' | 'snow';
-export const BIOMES: Record<Biome, { name: string; icon: string; desc: string; climate: 'temperate' | 'desert' | 'steppe' | 'snow' }> = {
-  grass: { name: 'Green country', icon: '🌾', desc: 'Meadow and scattered woods.', climate: 'temperate' },
-  forest: { name: 'Deep forest', icon: '🌲', desc: 'Old woods, thick with timber.', climate: 'temperate' },
-  marsh: { name: 'Marshland', icon: '🪷', desc: 'Low, wet ground and reeds.', climate: 'temperate' },
-  steppe: { name: 'Steppe', icon: '🐎', desc: 'Dry grass under a wide sky.', climate: 'steppe' },
-  desert: { name: 'Desert', icon: '🏜️', desc: 'Sand, rock and the odd oasis.', climate: 'desert' },
-  snow: { name: 'The frozen north', icon: '❄️', desc: 'Snow and fir.', climate: 'snow' },
-};
-/** How warm (0 cold to 1 hot) and how wet (0 dry to 1 wet) a point of a world is. Which end is cold, and where the dry lands lie, differ from world to world. */
-/** The broad make of a world: how its land is broken up by the sea, and its temper. Every seed has its own. */
-export type WorldShape = 'continent' | 'continents' | 'twin' | 'innersea' | 'archipelago';
 export const WORLD_SHAPES: Record<WorldShape, string> = {
   continent: 'One great continent', continents: 'Several continents, parted by straits', twin: 'Two lands with a sea between',
   innersea: 'Lands round an inner sea', archipelago: 'An archipelago of many islands',
 };
-export interface World { shape: WorldShape; temper: string; warm: number; wet: number; band: number; peaks: number; lakes: number; turn: number; cut: number }
-const worlds = new Map<number, World>();
-export function worldOf(seed: number): World {
-  const had = worlds.get(seed);
-  if (had) return had;
-  const r = (k: number): number => landNoise(k * 3 + 1, seed % 9973, (seed % 100000) + 500 + k);
-  const pick = r(0);
-  const shape: WorldShape = pick < 0.16 ? 'continent' : pick < 0.44 ? 'continents' : pick < 0.62 ? 'twin' : pick < 0.8 ? 'innersea' : 'archipelago';
-  const warm = (r(1) - 0.5) * 0.3, wet = (r(2) - 0.5) * 0.3, band = 0.6 + r(3) * 0.45;
-  const temper = warm < -0.08 ? 'a cold world' : warm > 0.08 ? (wet < -0.04 ? 'a parched world' : 'a hot world') : wet > 0.08 ? 'a green, rainy world' : wet < -0.08 ? 'a dry world' : 'a mild world';
-  const w: World = { shape, temper, warm, wet, band, peaks: (r(4) - 0.5) * 0.14, lakes: (r(5) - 0.5) * 0.12, turn: r(6) * Math.PI, cut: 0.8 + r(7) * 0.5 };
-  worlds.set(seed, w);
-  return w;
-}
-export function climateAt(seed: number, x: number, y: number): { warm: number; wet: number } {
-  const W = worldOf(seed);
-  const flip = (seed >>> 1) % 2 === 1, turn = ((seed >>> 3) % 5) / 5 - 0.4; // cold in the south for half of all worlds; the cold line tilts
-  const lat = y / MAP_H + (x / MAP_W - 0.5) * turn;
-  const warm = 0.5 + ((flip ? 1 - lat : lat) - 0.5) * 0.85 * W.band + 0.005 + W.warm + (landNoise(x / 190, y / 190, seed + 11) - 0.5) * 0.26;
-  const side = (seed >>> 6) % 2 === 1 ? x / MAP_W : 1 - x / MAP_W; // the rain comes from one side
-  const wet = 0.2 + W.wet + side * 0.3 + landNoise(x / 150, y / 150, seed + 23) * 0.6;
-  return { warm, wet };
-}
-export function biomeAt(seed: number, x: number, y: number): Biome {
-  const { warm, wet } = climateAt(seed, x, y);
-  if (warm < 0.3) return 'snow';
-  if (warm > 0.68 && wet < 0.55) return 'desert';
-  if (wet < 0.44) return 'steppe';
-  if (wet > 0.8 && warm > 0.42) return 'marsh';
-  if (wet > 0.62) return 'forest';
-  return 'grass';
-}
-export const biomeOf = (c: Campaign, tid: number): Biome => biomeAt(c.seed, c.territories[tid].x, c.territories[tid].y);
 
 /** Map points between the heights of the land. */
 export const LAND_STEP = 3;
@@ -491,37 +328,57 @@ export function terrainOf(c: Campaign): Terrain {
   if (had) return had;
   const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
   const gw = Math.floor(MAP_W / LAND_STEP) + 1, gh = Math.floor(MAP_H / LAND_STEP) + 1, ts = c.territories;
-  const H = new Float32Array(gw * gh), W = worldOf(c.seed), ca = Math.cos(W.turn), sa = Math.sin(W.turn);
+  const H = new Float32Array(gw * gh), W = worldOf(c.seed), ca = Math.cos(W.turn), sa = Math.sin(W.turn), sq = new Float64Array(ts.length);
   for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
     const px = Math.min(MAP_W - 1, i * LAND_STEP), py = Math.min(MAP_H - 1, j * LAND_STEP);
     // Whose land this is, and how far inside it (half the difference between the nearest town and the next).
     const wx = px + 16 * Math.sin(py / 37), wy = py + 16 * Math.sin(px / 43);
+    // The nearest town and the next. The distance proper (Math.hypot) is slow, and only the two smallest matter: so
+    // the squares are compared first, and the distance proper is taken only for towns no farther off than the second
+    // nearest by its square (with a hair to spare, far more than the two ways of reckoning can differ by). The two
+    // distances and the town chosen come out the very same as taking it for every town.
+    let s1 = Infinity, s2 = Infinity;
+    for (let k = 0; k < ts.length; k++) { const dx = ts[k].x - wx, dy = ts[k].y - wy, q = dx * dx + dy * dy; sq[k] = q; if (q < s1) { s2 = s1; s1 = q; } else if (q < s2) s2 = q; }
+    const within = s2 * 1.000001;
     let best = 0, d1 = Infinity, d2 = Infinity;
-    for (let k = 0; k < ts.length; k++) { const d = Math.hypot(ts[k].x - wx, ts[k].y - wy); if (d < d1) { d2 = d1; d1 = d; best = k; } else if (d < d2) d2 = d; }
+    for (let k = 0; k < ts.length; k++) { if (sq[k] > within) continue; const d = Math.hypot(ts[k].x - wx, ts[k].y - wy); if (d < d1) { d2 = d1; d1 = d; best = k; } else if (d < d2) d2 = d; }
     const t = ts[best], inside = (d2 - d1) / 2, dC = Math.hypot(px - t.x, py - t.y);
     // The coast: a ragged shore with deep bays, though every land keeps firm ground under its town.
     const rim = Math.min(px, py, MAP_W - 1 - px, MAP_H - 1 - py);
     // Land rises round the towns and nowhere else: a ragged shore with deep bays, though every land keeps firm ground under its town.
     const shore = 1 - ease(84, 132, dC + (N(px / 150, py / 150, 2) - 0.5) * 110 + (N(px / 40, py / 40, 3) - 0.5) * 30 + (t.trait === 'coast' ? 12 : 0));
-    // The world's edge is ragged too, so no shore runs straight, and small isles stand off it.
-    const rag = rim + (N(px / 115, py / 115, 17) - 0.5) * 110 + (N(px / 30, py / 30, 14) - 0.5) * 34 + (N(px / 10, py / 10, 15) - 0.5) * 9 - 12;
-    const isle = ease(0.7, 0.78, N(px / 20, py / 20, 16)) * ease(6, 16, rim) * 0.7 * ease(W.shape === 'archipelago' ? 0.3 : 0.52, 0.62, N(px / 130, py / 130, 18));
-    const keep = (1 - ease(30, 66, dC)), firm = 1 - ease(22, 40, dC), edge = ease(6, 36, rag);
-    // The sea breaks the world up after its own fashion: straits between continents, one sea down the middle, a sea at the heart, or islands.
-    const bend = (N(px / 120, py / 120, 22) - 0.5) * 150, cx = px - MAP_W / 2, cy = py - MAP_H / 2;
-    const vein = (sc: number, k: number, wide: number): number => 1 - ease(wide, wide + 0.06, Math.abs(N(px / sc, py / sc, k) * 2 - 1));
-    let cut = 0;
-    if (W.shape === 'continents') cut = vein(230, 20, 0.1 * W.cut);
-    else if (W.shape === 'archipelago') cut = Math.max(vein(170, 20, 0.13 * W.cut), vein(140, 21, 0.11 * W.cut));
-    else if (W.shape === 'twin') cut = 1 - ease(34 * W.cut, 34 * W.cut + 30, Math.abs(cx * ca * 0.6 + cy * sa + bend));
-    else if (W.shape === 'innersea') cut = 1 - ease(0.75, 1.05, Math.hypot(cx / (250 * W.cut), cy / (140 * W.cut)) + (N(px / 90, py / 90, 22) - 0.5) * 0.7);
+    // (Where the first factors come to nothing the last is not reckoned: nothing times anything is nothing.)
+    const isle0 = ease(0.7, 0.78, N(px / 20, py / 20, 16)) * ease(6, 16, rim) * 0.7;
+    const isle = isle0 === 0 ? 0 : isle0 * ease(W.shape === 'archipelago' ? 0.3 : 0.52, 0.62, N(px / 130, py / 130, 18));
+    const keep = (1 - ease(30, 66, dC)), firm = 1 - ease(22, 40, dC), reach = Math.max(shore, keep);
+    // Open sea: out of reach of every town's shore and with no isle, there is no land at all, whatever the ragged
+    // edge, the straits and the lakes would have made of it. Its height is the sea's floor, and none of the rest is
+    // reckoned for it (most of a world is sea).
+    if (reach === 0 && firm === 0 && isle === 0) { H[j * gw + i] = -1.6; continue; }
+    let coast = 0;
+    if (reach !== 0) { // the ragged edge and the straits only shape a shore that is there to be shaped
+      // The world's edge is ragged too, so no shore runs straight, and small isles stand off it.
+      const rag = rim + (N(px / 115, py / 115, 17) - 0.5) * 110 + (N(px / 30, py / 30, 14) - 0.5) * 34 + (N(px / 10, py / 10, 15) - 0.5) * 9 - 12;
+      const edge = ease(6, 36, rag);
+      // The sea breaks the world up after its own fashion: straits between continents, one sea down the middle, a sea at the heart, or islands.
+      const cx = px - MAP_W / 2, cy = py - MAP_H / 2;
+      const vein = (sc: number, k: number, wide: number): number => 1 - ease(wide, wide + 0.06, Math.abs(N(px / sc, py / sc, k) * 2 - 1));
+      let cut = 0;
+      if (W.shape === 'continents') cut = vein(230, 20, 0.1 * W.cut);
+      else if (W.shape === 'archipelago') cut = Math.max(vein(170, 20, 0.13 * W.cut), vein(140, 21, 0.11 * W.cut));
+      else if (W.shape === 'twin') cut = 1 - ease(34 * W.cut, 34 * W.cut + 30, Math.abs(cx * ca * 0.6 + cy * sa + (N(px / 120, py / 120, 22) - 0.5) * 150));
+      else if (W.shape === 'innersea') cut = 1 - ease(0.75, 1.05, Math.hypot(cx / (250 * W.cut), cy / (140 * W.cut)) + (N(px / 90, py / 90, 22) - 0.5) * 0.7);
+      coast = reach * (1 - cut) * edge;
+    }
     // Lakes and inland seas lie between the lands, never on a town.
-    const lake = ease(0.7 + W.lakes, 0.8 + W.lakes, N(px / 110, py / 110, 5)) * ease(50, 85, dC);
-    const land = Math.max(Math.max(shore, keep) * (1 - cut) * edge, firm, isle) * (1 - lake * (1 - firm)) * ease(0, 9, rim); // and the sea lies all round
+    const lakeAt = ease(50, 85, dC), lake = lakeAt === 0 ? 0 : ease(0.7 + W.lakes, 0.8 + W.lakes, N(px / 110, py / 110, 5)) * lakeAt; // no lake by a town, so nothing to reckon there
+    const land = Math.max(coast, firm, isle) * (1 - lake * (1 - firm)) * ease(0, 9, rim); // and the sea lies all round
+    // Where that comes to no land at all (a lake, a strait, the world's rim), it is sea too.
+    if (land === 0) { H[j * gw + i] = -1.6; continue; }
     const { warm, wet } = climateAt(c.seed, px, py);
     const hot = ease(0.62, 0.72, warm) * (1 - ease(0.5, 0.6, wet)), marsh = ease(0.76, 0.84, wet) * ease(0.4, 0.46, warm);
     let roll = 0.5 + N(px / 85, py / 85, 6) * 0.75 + N(px / 20, py / 20, 8) * 0.16;
-    roll += hot * Math.abs(Math.sin((px + py * 0.6) / 13 + N(px / 50, py / 50, 12) * 5)) * 0.3; // dunes
+    if (hot !== 0) roll += hot * Math.abs(Math.sin((px + py * 0.6) / 13 + N(px / 50, py / 50, 12) * 5)) * 0.3; // dunes, where it is hot and dry
     roll += (0.2 - roll) * marsh; // fen lies flat and low
     // Mountain ranges cross the world where the seed puts them, and stand on high ground and gold hills; clear of the towns.
     const range = Math.min(1.25, ease(0.56 + W.peaks, 0.72 + W.peaks, N(px / 170, py / 170, 7)) + (t.trait === 'hills' ? 0.85 : t.trait === 'gold' ? 0.55 : 0) * ease(4, 34, inside));
@@ -587,15 +444,6 @@ function crossing(c: Campaign, a: number, b: number): { kind: BarrierKind; n: nu
   const kind: BarrierKind | '' = count.mountains >= 9 ? 'mountains' : count.water >= 10 ? 'water' : count.river >= 1 ? 'river' : '';
   return kind ? { kind, n: kind === 'river' ? 14 + count.river : count[kind] } : null; // a river counts as a ridge some thirty points deep
 }
-/**
- * Close the borders an army cannot cross. A march goes by the straight road from town to town; where mountains, a
- * river or open water lie across it, the two lands are no longer neighbours. Passes and fords are left wherever
- * closing a border would cut the world in two, leave a land with a single way in, or close more than a quarter of all borders.
- */
-/** The lands a sea lane runs to from this one. */
-export const lanesOf = (c: Campaign, tid: number): number[] => (c.lanes ?? []).filter((l) => l.a === tid || l.b === tid).map((l) => (l.a === tid ? l.b : l.a));
-/** Whether ships can put out from this land: it lies on the open coast, or a sea lane runs from it. */
-export const onSea = (c: Campaign, tid: number): boolean => c.territories[tid].trait === 'coast' || lanesOf(c, tid).length > 0;
 function raiseBarriers(c: Campaign): void {
   const ts = c.territories, found: (Barrier & { n: number })[] = [];
   for (const t of ts) for (const o of t.adj) if (o > t.id) { const x = crossing(c, t.id, o); if (x) found.push({ a: t.id, b: o, kind: x.kind, n: x.n }); }
@@ -628,27 +476,8 @@ function raiseBarriers(c: Campaign): void {
   }
 }
 
-/** A front of the kind that suits the country it starts over: snow in the cold lands, dust in the dry, rain elsewhere. */
-function newFront(c: Campaign, k: number, edge: boolean): Front {
-  const y = MAP_H * (0.1 + luck(c, k) * 0.8);
-  const b = biomeAt(c.seed, MAP_W / 2, y);
-  const kind: Sky = b === 'snow' ? 'snow' : b === 'desert' || b === 'steppe' ? 'dust' : 'rain';
-  const east = luck(c, k + 1) < 0.75; // most weather comes out of the west
-  return { kind, x: edge ? (east ? -80 : MAP_W + 80) : MAP_W * luck(c, k + 2), y, r: 95 + luck(c, k + 3) * 45, vx: (east ? 1 : -1) * (70 + luck(c, k + 4) * 50), vy: (luck(c, k + 5) - 0.5) * 50 };
-}
 
-/** The weather fronts on the map, made the first time they are asked for. */
-export function frontsOf(c: Campaign): Front[] {
-  return (c.fronts ??= [0, 1, 2].map((i) => newFront(c, i * 10, false)));
-}
 
-/** The weather lying over a territory this turn, if any. */
-export function weatherAt(c: Campaign, tid: number): Sky | '' {
-  const t = c.territories[tid];
-  if (!t) return '';
-  for (const f of frontsOf(c)) if (Math.hypot(f.x - t.x, f.y - t.y) < f.r) return f.kind;
-  return '';
-}
 
 /** What is marked on a territory this turn: the newest thing first. */
 export function eventsAt(c: Campaign, tid: number): MapEvent[] {
@@ -867,19 +696,10 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
 
 // ---- Queries ----
 
-/** Where an army in this territory can go in one march: next door, or from a harbour along its sea lanes and to any other open coast. */
-export function reach(c: Campaign, tid: number): number[] {
-  const t = c.territories[tid];
-  if (!t.buildings.includes('harbour')) return t.adj;
-  const lanes = lanesOf(c, tid);
-  return [...t.adj, ...lanes, ...(t.trait === 'coast' ? c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id) && !lanes.includes(x.id)).map((x) => x.id) : [])];
-}
-export const SEA_LANDING = 0.8;
 /** What the next age costs this people. */
 export const ageCost = (c: Campaign, f: number): number => Math.max(1, (AGE_COST[ageOf(c, f)] ?? Infinity) + faithOf(c, f).age - placeGood(c, f, 'age') - (c.factions[f].civ === 'babylon' ? 3 : 0));
 export const truceCost = (civ: string): number => (civ === 'arabs' ? 1 : TRUCE_COST);
 export const giftCost = (civ: string): number => (civ === 'arabs' ? 3 : GIFT_COST);
-export const ageOf = (c: Campaign, f: number): number => (f < 0 ? 0 : c.factions[f].age ?? 0);
 const ageEdge = (c: Campaign, f: number): number => 1 + AGE_EDGE * ageOf(c, f);
 export const canAdvance = (c: Campaign, f: number): boolean => ageOf(c, f) < AGE_COST.length && c.factions[f].alive && canPayFor(c, f, 'age', ageCost(c, f));
 /** Bring a people into the next age: stronger armies everywhere, and battles begin in that age with its weapons. */
@@ -895,24 +715,6 @@ export function advanceAge(c: Campaign, f: number): boolean {
 }
 /** A leader who comes through a battle won is the more seasoned for it. */
 const seasonHero = (c: Campaign, f: number): void => { c.factions[f].heroRank = Math.min(MAX_RANK, (c.factions[f].heroRank ?? 0) + 1); };
-/** A faction's leader as they take the field: their making, and the veterancy the campaign has given them. */
-export const heroFor = (c: Campaign, f: number): HeroSpec => ({ ...leaderAsMade(c.factions[f].hero, c.factions[f].civ, c.factions[f].isAI), rank: c.factions[f].heroRank ?? 0 });
-export const armyAt = (c: Campaign, tid: number): Army | undefined => c.armies.find((a) => a.at === tid);
-/** Number of companies in an army. */
-export const armySize = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
-/** An army's strength against a given mix of enemy companies (none: its plain strength). */
-export function strengthVs(a: Army, foe: Record<string, number> = {}, heroRank = 0): number {
-  const total = Object.values(foe).reduce((n, v) => n + v, 0);
-  let s = (a.hero ? HERO_STRENGTH + heroRank * HERO_RANK_STRENGTH : 0) + a.vet;
-  for (const [type, n] of Object.entries(a.units)) {
-    const edge = total ? (0.3 * (foe[BEATS[type]] ?? 0)) / total : 0;
-    s += n * COMPANIES[type].str * (1 + edge);
-  }
-  return Math.round(s * 10) / 10;
-}
-/** An army's plain strength. Give the campaign and its leader's veterancy is counted too. */
-export const armyStrength = (a: Army, c?: Campaign): number => strengthVs(a, {}, c ? rankWith(c, a) : 0);
-const rankWith = (c: Campaign, a: Army): number => (a.hero ? c.factions[a.owner]?.heroRank ?? 0 : 0);
 
 /** What one land of this people yields in a season, in supplies: it goes into the land's own town (harvest.ts). */
 export function landIncome(c: Campaign, f: number, t: Territory): number {
@@ -936,7 +738,7 @@ export function defenders(c: Campaign, tid: number): Record<string, number> {
   const t = c.territories[tid];
   const a = armyAt(c, tid);
   if (t.owner >= 0 && a && a.owner === t.owner) return a.units;
-  return { infantry: t.owner < 0 ? Math.max(1, warriorsOf(c, tid)) : 1 }; // a tribe's bands are its town's men (tribes.ts)
+  return { infantry: t.owner < 0 ? Math.max(1, BATTLE_ANSWERS.ask('warriors', c, tid)) : 1 }; // a tribe's bands are its town's men
 }
 
 /** Everything that defends a territory, optionally against a particular mix of attackers. */
@@ -945,22 +747,14 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   const open = openDefence(c, tid); // a dead town with no army in it has nobody on its walls (deadtown.ts)
   if (open !== null) return open;
   const ground = (t.trait === 'hills' ? 2 : 0) + countryOf(c, tid).defence + placeWorth(c, tid, 'defence');
-  if (t.owner < 0) return Math.max(1, warriorsOf(c, tid) - (attackerCiv === 'wild' ? 1 : 0)) + ground;
+  if (t.owner < 0) return Math.max(1, BATTLE_ANSWERS.ask('warriors', c, tid) - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
   return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * FAITH[creedOf(faithAt(c, tid)).id].defence * 10) / 10; // the town's own standing (townfaith.ts)
 }
 
-/** True while the player and a rival are bound by a truce. */
-export function atTruce(c: Campaign, a: number, b: number): boolean {
-  const other = a === 0 ? b : b === 0 ? a : -1;
-  return other > 0 && (other === c.ally || c.truces.some((t) => t.with === other && t.until >= c.turn));
-}
 /** The faction fighting at this one's side, or -1: the player and their ally stand together. */
 export const allyOf = (c: Campaign, f: number): number => (c.ally < 0 ? -1 : f === 0 ? c.ally : f === c.ally ? 0 : -1);
-/** How many territories a faction must hold to rule by dominion. */
-export const dominionNeed = (c: Campaign): number => Math.ceil(c.territories.length * DOMINION_SHARE);
-export const landOf = (c: Campaign, f: number): number => c.territories.filter((t) => t.owner === f).length;
 export const totalStrength = (c: Campaign, f: number): number => c.armies.filter((a) => a.owner === f).reduce((n, a) => n + armyStrength(a), 0);
 
 /** Chance (0..1) that the attacker wins an auto-resolved battle at these strengths. */
@@ -1018,13 +812,6 @@ export function summonHero(c: Campaign, f: number, tid: number): boolean {
   return true;
 }
 
-/** Remove `n` companies from an army, taking from its most numerous type first. It keeps at least one. */
-export function casualties(a: Army, n: number): void {
-  for (let i = 0; i < n && armySize(a) > 1; i++) {
-    const type = Object.keys(a.units).sort((x, y) => a.units[y] - a.units[x])[0];
-    if (--a.units[type] <= 0) delete a.units[type];
-  }
-}
 
 function destroyArmy(c: Campaign, a: Army): void {
   if (a.hero) { c.factions[a.owner].heroAlive = false; c.factions[a.owner].heroRank = Math.max(0, (c.factions[a.owner].heroRank ?? 0) - 1); }
@@ -1215,6 +1002,26 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
   .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
   .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
+
+// What only the hub can do is lent to the systems below it (campaignbase.ts): they call it there, and import nothing from here.
+Object.assign(HUB, { moveArmy, defence, canRaise });
+
+/** What a battle asks, and of whom (battlehooks.ts): each question has one system that answers it. */
+export type BattleQuestions = {
+  /** How many warriors a land held by no people fields. */
+  warriors: (c: Campaign, tid: number) => number;
+  /** The people of a land who turn out when it is attacked. */
+  turnOut: (c: Campaign, tid: number, field: boolean, p?: Pending | null) => ReturnType<typeof turnOut>;
+  /** Is this people's leader in this land? */
+  leaderAt: (c: Campaign, f: number, tid: number) => boolean;
+  /** Set a people's court straight before its leader is looked for: where they are and who is with them. */
+  court: (c: Campaign, f: number) => unknown;
+};
+export const BATTLE_ANSWERS = new BattleAnswers<BattleQuestions>()
+  .provide('warriors', 'tribes', (c, tid) => warriorsOf(c, tid))
+  .provide('turnOut', 'tribes', (c, tid, field, p) => turnOut(c, tid, field, p))
+  .provide('leaderAt', 'court', (c, f, tid) => leaderAt(c, f, tid))
+  .provide('court', 'court', (c, f) => courtOf(c, f));
 
 export const battleWatchers: ((c: Campaign, p: Pending, attackerWon: boolean, how: 'auto' | 'attacker' | 'defender') => void)[] = [];
 
@@ -1589,8 +1396,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const defenders = armyAt(c, p.to);
   // A leader raised from the ranks fights as a common soldier does: only the army they march with has them.
   // The leader is in this battle only if it is fought where they are: with the army that attacks, or in the land attacked.
-  for (const f of [p.attacker, p.defender]) if (f >= 0) courtOf(c, f);
-  const present = (f: number, army: Army | undefined): boolean => f >= 0 && (!!army?.hero || (f === p.defender && leaderAt(c, f, p.to)));
+  for (const f of [p.attacker, p.defender]) if (f >= 0) BATTLE_ANSWERS.ask('court', c, f);
+  const present = (f: number, army: Army | undefined): boolean => f >= 0 && (!!army?.hero || (f === p.defender && BATTLE_ANSWERS.ask('leaderAt', c, f, p.to)));
   const led = (f: number, army: Army | undefined): { hero: HeroSpec; leaderAway?: boolean } => { const h = heroFor(c, f); if (present(f, army)) return { hero: h }; delete h.fights; return { hero: h, leaderAway: true }; };
   const side = (army: Army | undefined, defending: boolean, str: number, age = 0) => {
     const calling = army && c.factions[army.owner] ? leaderType(heroFor(c, army.owner)) : 'warlord';
@@ -1599,8 +1406,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     if (army) {
       for (const [type, n] of Object.entries(army.units)) for (const [u, k] of Object.entries(COMPANIES[type].units)) add(u, k * n);
       if (army.hero) add(calling, 1);
-    } else if (defending && t.owner >= 0 && leaderAt(c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
-    const out = defending ? turnOut(c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere (tribes.ts)
+    } else if (defending && t.owner >= 0 && BATTLE_ANSWERS.ask('leaderAt', c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
+    const out = defending ? BATTLE_ANSWERS.ask('turnOut', c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere
     if (out?.clubmen) add('clubman', out.clubmen);
     const fort = defending && t.buildings.includes('fortress');
     // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
@@ -1683,7 +1490,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const humanAttacks = p.attacker === 0;
   const land = c.territories[p.to], home = homeCorner(land);
   const mine = humanAttacks ? c.armies.find((a) => a.id === p.armyId) : armyAt(c, p.to);
-  const sat = !humanAttacks && leaderAt(c, 0, p.to); // the leader was in the town that was attacked
+  const sat = !humanAttacks && BATTLE_ANSWERS.ask('leaderAt', c, 0, p.to); // the leader was in the town that was attacked
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   const rankBefore = c.factions[0].heroRank ?? 0;
   const known = mine?.champion?.name;

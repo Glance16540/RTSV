@@ -3,10 +3,8 @@
 
 import { VISIT_SECONDS } from './visit';
 import { creedOf } from './creed';
-import {
-  ALLIANCE_COST, BEATS, COMPANIES, Campaign, DOMINION_SHARE, DOMINION_TURNS, FAITH, HERO_RANK_STRENGTH, MAX_ARMY, SEA_LANDING, SITES, TRUCE_COST, TRUCE_TURNS,
-  ageOf, dominionNeed, landOf,
-} from './campaign';
+import type { Campaign } from './campaign';
+import { ALLIANCE_COST, BEATS, COMPANIES, DOMINION_SHARE, DOMINION_TURNS, FAITH, HERO_RANK_STRENGTH, MAX_ARMY, SEA_LANDING, SITES, TRUCE_COST, TRUCE_TURNS, ageOf, dominionNeed, landOf } from './campaignbase';
 import { HALL_GRACE } from './beaten';
 import { CHAMPION_KILLS } from './champion';
 import { RANK_NAMES } from './hero';

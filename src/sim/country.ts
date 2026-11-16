@@ -5,7 +5,7 @@
  * by the people who hold one side of it: a road over the pass, or a bridge.
  */
 import type { Barrier, Biome, Campaign } from './campaign';
-import { biomeOf } from './campaign';
+import { biomeOf } from './campaignbase';
 import { canPayFor, payFor } from './prices';
 
 /**

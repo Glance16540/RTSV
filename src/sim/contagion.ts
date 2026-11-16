@@ -14,7 +14,7 @@
 //
 // Decided without the game's dice, like the rest of the calamities.
 import type { Building, Game, Player, Unit } from './game';
-import { roll } from './calamity';
+import { roll } from './wrath';
 
 export const CONTAGION = {
   /** How near a plagued stranger must stand, in tiles, and the chance each second of catching it from them. */

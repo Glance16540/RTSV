@@ -12,28 +12,26 @@ import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNO
 import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
-import { rescue } from './rescue';
 import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
 import { agesHere, birthPace, growPace, hireBar } from './birthonly';
 import { griefPace, griefSecond, mourn } from './grief';
 import { driftSecond } from './driftintown';
 import { censusOf, cradledOf, peopled } from './battlefolk';
 import { tavernTrade } from './tavernfall';
-import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
+import { adopt, breakOut, campWithRoom, canSeize, freeCaptive, hearthOf, spared, takes, unwatched, updateCamps } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
-import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
+import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
-import { calamity, douse, roll } from './calamity';
+import { calamity, douse, spreadFire } from './calamity';
 import { boughtIn } from './contagion';
-import { wrath } from './wrath';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
 import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
-import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
+import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
@@ -86,11 +84,7 @@ export interface Captive { from: number; name: string; family: string; gender: G
   /** Children borne in captivity: the count, and the records of them (captivity.ts). */ born?: number; young?: Child[];
   /** When they were seized: the clock on getting them back runs from here. Told once that it is running out. */ taken?: number; warned?: boolean; /** Held by marauders, not in a people's work camp. */ held?: boolean;
   /** The people they were born to, if not their home's (portrait.ts). */ people?: string }
-/** When the marauders make camp, how often each woman they hold bears them a child, how often they raid, and how many they can grow to. */
-export const LAIR_AT = 240;
-export const LAIR_BIRTH = 120;
-export const LAIR_RAID = 150;
-export const LAIR_MAX = 28;
+export { LAIR_AT, LAIR_BIRTH, LAIR_MAX, LAIR_RAID } from './data'; // the marauders' camp's numbers, where they were found before they were moved
 
 export interface Unit extends Base {
   kind: 'unit';
@@ -393,7 +387,7 @@ export class Game {
   marauders = false;
   /** How the marauders stand over the whole battle: camps made, and whether they are coming back (marauders.ts). */
   band?: BandState;
-  private lairT = 0; private lairRaid = 0; private lairSeen = false; private lairMade = false;
+  lairT = 0; lairRaid = 0; lairSeen = false; lairMade = false;
   /** Player id that owns wild animals. */
   wild = -1;
   /** Seeded generator whose state is saved with the game, so a loaded game plays out identically. */
@@ -413,7 +407,7 @@ export class Game {
   private strategists: Unit[] = [];
   /** Each player's leader, while they are alive and in the open. */
   leaders: (Unit | null)[] = [];
-  private tcs: Building[][] = [];
+  tcs: Building[][] = [];
 
   /**
    * @param field A field battle: no towns or villagers, just each side's army. A side is beaten
@@ -638,7 +632,7 @@ export class Game {
   tyrant(u: Unit): boolean {
     return !!u.hero && !this.raider(u.owner) && isDecadent(this.players[u.owner].virtue);
   }
-  private slaves(u: Unit): boolean { return !!u.def.slaver || this.tyrant(u); }
+  slaves(u: Unit): boolean { return !!u.def.slaver || this.tyrant(u); }
   /** Whoever this unit carries off joins its own people, not a camp. */
   private adopts(u: Unit): boolean { return !u.def.slaver && (!u.hero || this.raider(u.owner)); }
   /** Armour lent by a holy town's leader to those of theirs who stand near. */
@@ -726,7 +720,7 @@ export class Game {
       if (shelter && shelter.kind === 'building') { shelter.sheltered = shelter.sheltered.filter((id) => id !== e.id); if (shelter.staff) shelter.staff = shelter.staff.filter((id) => id !== e.id); }
       if (shelter && shelter.kind === 'unit' && shelter.cargo) shelter.cargo = shelter.cargo.filter((id) => id !== e.id);
       // Everyone aboard a sinking ship goes down with it.
-      if (e.captive) { this.freeCaptive(e.captive, e.x, e.y); e.captive = null; }
+      if (e.captive) { freeCaptive(this, e.captive, e.x, e.y); e.captive = null; }
       for (const id of e.cargo ?? []) { const c = this.entities.get(id); if (c && c.kind === 'unit') { c.inside = 0; this.kill(c); } }
       if (e.type === 'deer') {
         // The hunters carve up what they killed.
@@ -744,7 +738,7 @@ export class Game {
       for (const q of e.queue) this.discharge(e, q);
       this.rehome(e);
       // A fallen camp's prisoners go home.
-      (e.captives ?? []).forEach((c, i) => this.freeCaptive(c, e.x - 1.5 + (i % 4), e.y + e.size / 2 + 0.6 + Math.floor(i / 4) * 0.6));
+      (e.captives ?? []).forEach((c, i) => freeCaptive(this, c, e.x - 1.5 + (i % 4), e.y + e.size / 2 + 0.6 + Math.floor(i / 4) * 0.6));
       e.captives = [];
       this.buildings.splice(this.buildings.indexOf(e), 1);
       this.setCells(e.cx, e.cy, e.size, 0, true);
@@ -811,39 +805,8 @@ export class Game {
   ageFor(owner: number, def: BuildingDef): number {
     return def.id === 'towncenter' && (this.raider(owner) || !this.buildings.some((b) => b.owner === owner && b.type === 'towncenter' && !b.dead)) ? 0 : def.age;
   }
-  /** Can this unit carry a villager off? Slavers always; among raiders, any fighter on foot or horse. */
-  canSeize(u: Unit): boolean {
-    return this.slaves(u) || (this.raider(u.owner) && !u.def.naval && (u.def.cls === 'infantry' || u.def.cls === 'cavalry' || u.def.cls === 'ranged' || u.def.cls === 'hero'));
-  }
-  /** Raiders do not cut down a grown villager on sight: they are worth more alive. */
-  private spared(u: Unit, e: Entity): boolean {
-    return e.kind === 'unit' && e.type === 'villager' && e.growT <= 0 && !this.slaves(u) && this.canSeize(u) && e.owner !== this.wild;
-  }
-  /** Is this villager free for this raider to take: he has his hands free, there is room, and no comrade is already at it. */
-  private takes(u: Unit, e: Entity): boolean {
-    if (u.captive || this.players[u.owner].pop >= POP_LIMIT) return false;
-    for (const o of this.units) if (o !== u && o.owner === u.owner && o.order?.t === 'capture' && o.order.id === e.id) return false;
-    return true;
-  }
-  /** Where a raider takes a captive to join the tribe: the nearest hall, else any roof of theirs. */
-  private hearthOf(u: Unit): Building | null {
-    let best: Building | null = null, bd = Infinity;
-    for (const b of this.buildings) {
-      if (b.owner !== u.owner || !b.complete || b.def.wall || b.type === 'farm') continue;
-      const d = Math.hypot(b.x - u.x, b.y - u.y) + (b.type === 'towncenter' ? 0 : b.type === 'house' ? 6 : 14);
-      if (d < bd) { bd = d; best = b; }
-    }
-    return best;
-  }
-  /** A captive taken into a raiding tribe becomes one of its own villagers. */
-  private adopt(owner: number, c: Captive, x: number, y: number): void {
-    const at = this.landPf.nearestFree(x, y);
-    const v = this.spawnUnit('villager', owner, at.x, at.y, c.gender);
-    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
-    v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: `Taken into the ${this.players[owner].name}` }];
-    v.people = c.people ?? this.players[c.from]?.civ;
-    this.msg(owner, `${c.name} has been taken into the tribe.`);
-  }
+  /** Can this unit carry a villager off? Slavers always; among raiders, any fighter on foot or horse (captivity.ts). */
+  canSeize(u: Unit): boolean { return canSeize(this, u); }
 
   isMilitary(u: Unit): boolean {
     return u.def.cls !== 'villager' && u.def.cls !== 'support';
@@ -1054,10 +1017,10 @@ export class Game {
   private foeFor(u: Unit, radius: number): Entity | null {
     const noShips = !u.def.naval && u.def.range < 1.5;
     const e = this.findEnemy(u.owner, u.x, u.y, radius, u.def.minRange, u.def.siegeOnly, noShips);
-    if (!e || !this.spared(u, e)) return e;
+    if (!e || !spared(this, u, e)) return e;
     const other = this.findEnemy(u.owner, u.x, u.y, radius, u.def.minRange, u.def.siegeOnly, noShips, true);
     if (other && other.kind === 'unit') return other;
-    return this.takes(u, e) ? e : other;
+    return takes(this, u, e) ? e : other;
   }
 
   nearestDropoff(u: Unit): Building | null {
@@ -1109,7 +1072,7 @@ export class Game {
     return out;
   }
 
-  private setOrder(u: Unit, o: Order | null): void {
+  setOrder(u: Unit, o: Order | null): void {
     if (!o && u.queue.length) o = u.queue.shift()!;
     u.order = o;
     u.path = null;
@@ -1188,7 +1151,7 @@ export class Game {
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
       } else if (this.slaves(u) && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && this.hostile(t.owner, owner) && t.owner !== this.wild) {
         if (u.captive) this.msg(owner, 'He already has a captive to lead home.');
-        else if (!this.campWithRoom(u)) this.msg(owner, 'There is no Work Camp with room for a captive.');
+        else if (!campWithRoom(this, u)) this.msg(owner, 'There is no Work Camp with room for a captive.');
         else this.setOrder(u, { t: 'capture', id: t.id });
       } else if (!this.slaves(u) && this.canSeize(u) && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && !u.captive && this.hostile(t.owner, owner) && t.owner !== this.wild && this.players[owner].pop < POP_LIMIT) {
         // Raiders take people alive. A fighter already leading one home fights instead.
@@ -1581,152 +1544,10 @@ export class Game {
     return null;
   }
 
-  /** The nearest of a Slaver's own work camps that can take another captive. */
-  private campWithRoom(u: Unit): Building | null {
-    let best: Building | null = null, bd = Infinity;
-    for (const b of this.buildings) {
-      if (b.owner !== u.owner || !b.def.camp || !b.complete || (b.captives?.length ?? 0) >= b.def.camp) continue;
-      const d = Math.hypot(b.x - u.x, b.y - u.y);
-      if (d < bd) { bd = d; best = b; }
-    }
-    return best;
-  }
-
-  /** A captive set free returns to their own people as they were, if those people still stand. */
-  private freeCaptive(c: Captive, x: number, y: number): void {
-    const home = this.players[c.from];
-    if (!home || home.defeated) return;
-    const at = this.landPf.nearestFree(x, y);
-    const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
-    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
-    v.kids = c.kids; v.captiveKids = c.born;
-    if (c.people) v.people = c.people;
-    v.story = [...(c.story ?? []), { t: this.time, s: 'Freed, and came home' }];
-    // What the marauders did to her is not undone by burning their camp: she will bear no more children. But she
-    // has come through it, and works like one who means to live.
-    if (c.held && c.gender === 'f') v.freed = true;
-    comeHome(this, c, v);
-    this.msg(c.from, c.held ? `${c.name} is free of the marauders and has come home${c.born ? `, having borne them ${c.born} ${c.born === 1 ? 'child' : 'children'}` : ''}.` : `${c.name} is free and has come home.`);
-  }
-
-  /** Captives drive the town's work and, held together, still raise children for their captors. */
-  /**
-   * The marauders: a band that belongs to no people. Some minutes in they make camp in the wilds, as far from every
-   * town as they can get. From there they come out to carry off women, and every woman they hold bears them
-   * children, so the band grows the longer the camp stands. Burn it and everyone held there goes free.
-   */
-  private stepLair(): void {
-    if (!this.marauders || this.field || this.scenario) return;
-    const wild = this.wild;
-    let lair = this.buildings.find((b) => b.type === 'lair') ?? null;
-    if (!lair) {
-      if ((this.lairMade && !bandReturns(this)) || this.time < LAIR_AT) return;
-      this.lairMade = true; this.lairSeen = false;
-      // As far from every town as the land allows.
-      let best: { cx: number; cy: number } | null = null, bd = 0;
-      for (let cy = 4; cy < this.size - 7; cy += 3) for (let cx = 4; cx < this.size - 7; cx += 3) {
-        if (!this.canPlace('lair', cx, cy) || nearAshes(this, cx, cy)) continue;
-        let d = Infinity;
-        for (const b of this.buildings) if (b.owner !== wild) d = Math.min(d, Math.hypot(b.x - cx - 1.5, b.y - cy - 1.5));
-        for (const st of this.spec.starts) d = Math.min(d, Math.hypot(st.x - cx - 1.5, st.y - cy - 1.5));
-        if (d > bd) { bd = d; best = { cx, cy }; }
-      }
-      if (!best || bd < 18) return;
-      lair = this.spawnBuilding('lair', wild, best.cx, best.cy, true);
-      for (let k = 0; k < 4; k++) this.spawnUnit('marauder', wild, lair.x - 1.5 + k, lair.y + 2.4);
-      this.lairRaid = LAIR_RAID * 0.6;
-      for (const p of this.players) if (!p.neutral) this.msg(p.id, '🏴 Smoke in the wilds: marauders have made camp somewhere out there. They take women. Find the camp and burn it.');
-      return;
-    }
-    tendBand(this, lair);
-    tendCaptives(this, lair);
-    const band = this.units.filter((u) => u.def.marauder), held = lair.captives ?? [], women = held.filter((c) => c.gender === 'f');
-    // Every woman held bears the band children, who are raised to it; and men drift in to a camp that prospers.
-    this.lairT += women.length / LAIR_BIRTH + 1 / 110;
-    if (this.lairT >= 1) {
-      this.lairT = 0;
-      const mother = women.length ? women.reduce((a, b) => ((a.born ?? 0) <= (b.born ?? 0) ? a : b)) : null;
-      if (mother && this.rng() < women.length / (women.length + 0.7)) bearCaptive(this, mother);
-      if (band.length < Math.min(LAIR_MAX, 5 + women.length * 3)) this.spawnUnit('marauder', wild, lair.x - 1 + this.rng() * 2, lair.y + 2.2);
-    }
-    // Those who have strayed, with nothing in hand, go back to the fire.
-    for (const u of band) if (!u.order && !u.captive && Math.hypot(u.x - lair.x, u.y - lair.y) > 9) this.setOrder(u, { t: 'move', x: lair.x - 1.5 + this.rng() * 3, y: lair.y + 2.4 });
-    for (const u of band) if (u.captive && u.order?.t !== 'deliver') this.setOrder(u, { t: 'deliver', id: lair.id });
-    if ((this.lairRaid -= 1) > 0 || held.length >= (lair.def.camp ?? 0)) return;
-    this.lairRaid = LAIR_RAID;
-    const home = band.filter((u) => !u.order && !u.captive && Math.hypot(u.x - lair!.x, u.y - lair!.y) < 12);
-    const party = home.slice(0, Math.min(home.length - 1, 2 + Math.floor(this.time / 360), 6));
-    if (party.length < 2) return;
-    // The nearest people's women, one to a man.
-    const prey = this.units.filter((v) => v.type === 'villager' && v.gender === 'f' && v.growT <= 0 && !v.inside && v.owner !== wild && !this.players[v.owner].neutral && !this.players[v.owner].defeated)
-      .sort((a, b) => Math.hypot(a.x - lair!.x, a.y - lair!.y) - Math.hypot(b.x - lair!.x, b.y - lair!.y));
-    if (!prey.length) return;
-    const town = prey[0].owner;
-    const marks = prey.filter((v) => v.owner === town);
-    party.forEach((u, i) => this.setOrder(u, { t: 'capture', id: marks[i % marks.length].id }));
-    this.msg(town, '🏴 Marauders are coming for your women.');
-  }
-
-  /** How many of a camp's captives its guards cannot keep an eye on. */
-  unwatched(b: Building): number { return Math.max(0, (b.captives?.length ?? 0) - GUARD_WATCH * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)); }
+  /** How many of a camp's captives its guards cannot keep an eye on (captivity.ts, as the next is). */
+  unwatched(b: Building): number { return unwatched(b); }
   /** One captive gets out of a camp and makes for home on foot: they can be run down again on the way. */
-  breakOut(b: Building, i: number): void {
-    const c = b.captives!.splice(i, 1)[0], home = this.players[c.from];
-    if (!home || home.defeated) return;
-    const at = this.landPf.nearestFree(b.x, b.y + b.size / 2 + 0.8);
-    const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
-    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
-    v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: 'Got out of the camp' }];
-    if (c.people) v.people = c.people;
-    comeHome(this, c, v);
-    const tc = this.tcs[c.from]?.[0];
-    if (tc) this.cmdMove(c.from, [v.id], tc.x, tc.y + tc.size / 2 + 1);
-    this.msg(c.from, `${c.name} has got out of the camp and is running for home.`);
-  }
-  /**
-   * What holding people costs. By night, a captive no guard is watching may slip away; and a camp with enough men
-   * unwatched may rise: they fire the place and half of all it holds break out at once. Each guard posted watches
-   * three. (Decided without the game's dice, so the rest of the match is not disturbed by it.)
-   */
-  private campNight(p: Player, b: Building): void {
-    const loose = this.unwatched(b);
-    if (!loose) return;
-    const roll = (salt: number): number => (((this.seed * 31 + b.id * 2654435761 + Math.floor(this.time) * 40503 + salt * 7919) >>> 0) % 100000) / 100000;
-    const menLoose = Math.min(loose, b.captives!.filter((c) => c.gender === 'm').length);
-    if (menLoose >= REVOLT_MEN && roll(1) < 1 / REVOLT_TIME) {
-      const out = Math.ceil(b.captives!.length / 2);
-      for (let k = 0; k < out; k++) this.breakOut(b, b.captives!.length - 1);
-      b.burnT = Math.max(b.burnT, 10);
-      b.hp = Math.max(1, b.hp - b.maxHp * 0.25);
-      this.msg(p.id, `⛓️ The work camp has risen in the night! ${out} captives have broken out and the stockade is burning. Post more guards.`);
-      this.events.push({ t: 'alert', player: p.id, x: b.x, y: b.y });
-      return;
-    }
-    if (roll(2) < 1 / ESCAPE_TIME) { // one at a time, about one a night: a trickle, where a rising is a flood
-      this.breakOut(b, b.captives!.length - 1); // the last brought in is the least watched
-      this.msg(p.id, '⛓️ A captive has slipped away from the work camp in the night. A guard would have seen it.');
-    }
-  }
-
-  private updateCamps(p: Player): void {
-    p.captives = 0;
-    p.captiveMen = 0;
-    for (const b of this.buildings) {
-      if (b.owner !== p.id || !b.captives?.length) continue;
-      if (tendCaptives(this, b) && !b.captives.length) continue;
-      // The men are put to work; the women held there bear children, who are theirs and are kept on their records.
-      const men = b.captives.filter((c) => c.gender === 'm').length, women = b.captives.length - men;
-      p.captives += b.captives.length;
-      // Men under a guard's eye are driven harder.
-      p.captiveMen += men * (1 + GUARD_DRIVE * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)) + campLabour(b);
-      // Under a decadent leader's eye the camps are made to fill the town far faster.
-      b.campT = (b.campT ?? 0) + (women / CAMP_BIRTH) * (this.leaders[p.id] && !this.leaders[p.id]!.dead && isDecadent(p.virtue) ? TYRANT_BIRTH : 1);
-      if (b.campT >= 1) { b.campT = 0; campChild(this, b); }
-      if (rescue(this, b) && !b.captives.length) continue;
-      if (this.night) this.campNight(p, b);
-    }
-    if (p.captives) this.shiftVirtue(p.id, (-Math.min(CAPTIVE_CAP, p.captives) * CAPTIVE_VIRTUE) / 60);
-  }
+  breakOut(b: Building, i: number): void { breakOut(this, b, i); }
 
   /** What a tavern asks, in gold, for a hired sword of this kind (as this player would field it). */
   hireCost(owner: number, type: string): number {
@@ -1842,7 +1663,7 @@ export class Game {
     return creedOf(this.players[owner]?.virtue ?? 0);
   }
 
-  private shiftVirtue(owner: number, by: number): void {
+  shiftVirtue(owner: number, by: number): void {
     const p = this.players[owner];
     const was = this.creed(owner);
     p.virtue = Math.max(-100, Math.min(100, p.virtue + by));
@@ -1924,7 +1745,7 @@ export class Game {
         this.tavernBirth(p, b);
       }
       this.payMercenaries(p);
-      this.updateCamps(p);
+      updateCamps(this, p); // what holding people brings and costs (captivity.ts)
       this.styleUpkeep(p);
       const clergy = Math.min(STAFF_CAP, p.clergy), maids = Math.min(STAFF_CAP, p.maids);
       const pull = (clergy * CLERGY_VIRTUE - maids * MAID_VIRTUE) / 60;
@@ -2297,7 +2118,7 @@ export class Game {
       griefSecond(this);
       driftSecond(this); // in a campaign town, the strained drift to worse and the cared-for to better (drift.ts)
       this.upkeep();
-      this.stepLair();
+      stepLair(this); // the marauders' camp (marauders.ts)
       this.checkVictory();
     }
   }
@@ -2585,7 +2406,7 @@ export class Game {
           // Units holding their ground only strike what is already within reach.
           const hold = u.stance === 'hold';
           const e = this.foeFor(u, hold ? this.reachOf(u) + 1.2 : this.sightOf(u));
-          if (e && this.spared(u, e)) { if (!hold && this.takes(u, e)) this.setOrder(u, { t: 'capture', id: e.id }); }
+          if (e && spared(this, u, e)) { if (!hold && takes(this, u, e)) this.setOrder(u, { t: 'capture', id: e.id }); }
           else if (e && (!hold || this.dist(u, e) <= this.reachOf(u) + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
         }
       }
@@ -2603,7 +2424,7 @@ export class Game {
         if (u.scanT <= 0) {
           u.scanT = 0.4;
           const e = this.foeFor(u, u.def.sight);
-          if (e && this.spared(u, e)) { if (this.takes(u, e)) { this.setOrder(u, { t: 'capture', id: e.id }); break; } }
+          if (e && spared(this, u, e)) { if (takes(this, u, e)) { this.setOrder(u, { t: 'capture', id: e.id }); break; } }
           else if (e) {
             o.started = false;
             this.setOrder(u, { t: 'attack', id: e.id, then: o });
@@ -2671,9 +2492,9 @@ export class Game {
         this.players[v.owner].stats.lost++;
         this.kill(v);
         this.shiftVirtue(u.owner, raid ? BAND.virtue : -3);
-        const camp = raid ? this.hearthOf(u) : this.campWithRoom(u);
+        const camp = raid ? hearthOf(this, u) : campWithRoom(this, u);
         // A band with no roof of its own takes them in where it stands.
-        if (raid && !camp) { this.adopt(u.owner, u.captive, u.x, u.y); u.captive = null; }
+        if (raid && !camp) { adopt(this, u.owner, u.captive, u.x, u.y); u.captive = null; }
         this.setOrder(u, camp ? { t: 'deliver', id: camp.id } : null);
         break;
       }
@@ -2683,13 +2504,13 @@ export class Game {
         if (u.captive && this.adopts(u)) {
           const r = camp && camp.kind === 'building' && !camp.dead ? this.approach(u, camp, REACH) : 'fail';
           if (r === 'moving') break;
-          this.adopt(u.owner, u.captive, u.x, u.y);
+          adopt(this, u.owner, u.captive, u.x, u.y);
           u.captive = null;
           this.setOrder(u, null);
           break;
         }
         if (!u.captive || !camp || camp.kind !== 'building' || camp.dead || !camp.complete || (camp.captives?.length ?? 0) >= (camp.def.camp ?? 0)) {
-          const other = u.captive ? this.campWithRoom(u) : null;
+          const other = u.captive ? campWithRoom(this, u) : null;
           this.setOrder(u, other && other.id !== o.id ? { t: 'deliver', id: other.id } : null);
           break;
         }
@@ -3186,33 +3007,13 @@ export class Game {
     return u;
   }
 
-  /**
-   * Once a second a burning building may set a neighbour alight, whoever owns it. Never in rain, never a wall, and
-   * a building that has caught once does not catch again for a while, so a town burns through and the fire dies.
-   * (Decided without the game's dice, so that the rest of a match is not disturbed by it.)
-   */
-  private spreadFire(b: Building): void {
-    if (this.foul === 'rain') return;
-    const h = b.size / 2;
-    for (const n of this.buildings) {
-      if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && this.time - n.litAt < CALAMITY.scorched)) continue;
-      const k = n.size / 2;
-      if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
-      const w = wrath(this, n.owner); // it catches less readily among the holy, and burns a shorter time (wrath.ts)
-      if (roll(this, b.id * 8191 + n.id) >= CALAMITY.spread * w) continue;
-      n.burnT = CALAMITY.caught * w;
-      n.litAt = this.time;
-      if (!this.players[n.owner].neutral) this.msg(n.owner, `Fire has spread to your ${n.def.name}!`);
-    }
-  }
-
   private updateBuilding(b: Building): void {
     if (b.young?.length) this.tendYoung(b.owner, b.young, DT, b);
     if (b.burnT > 0) {
       b.burnT -= this.foul === 'rain' ? DT * 2.5 : DT; // rain puts fires out
       b.hp -= 5 * DT;
       if (b.hp <= 0) { this.kill(b); return; }
-      if ((this.tick + b.id) % 20 === 0) this.spreadFire(b);
+      if ((this.tick + b.id) % 20 === 0) spreadFire(this, b); // it may catch a neighbour (calamity.ts)
     }
     if (b.blightT) b.blightT = Math.max(0, b.blightT - DT);
     if (!b.complete) return;

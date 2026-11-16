@@ -15,7 +15,7 @@ import './carriedoff';
 import { folkOf, living, type Notable } from './township';
 import { householdNews } from './kin';
 import { isOpen } from './deadtown';
-import { reach } from './campaign';
+import { reach } from './campaignbase';
 
 /** A known person, as the report names them. */
 export interface Named { name: string; family?: string; gender: 'm' | 'f'; kind: Notable['kind']; deed: string; unit?: string; kids?: number; at: number; land: string }

@@ -30,8 +30,8 @@ import { NAMES_F, NAMES_M } from './data';
 import { folkOf, living } from './township';
 import type { Notable } from './township';
 import type { Feeling } from './portrait';
-import { MAX_VETERAN } from './campaign';
-import { THREATS } from './threats';
+import { MAX_VETERAN } from './campaignbase';
+import { THREATS } from './threatsbase';
 import { needOf } from './larder';
 import { swayTown } from './townfaith';
 

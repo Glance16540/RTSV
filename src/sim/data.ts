@@ -1025,3 +1025,9 @@ export const RES_ICON: Record<ResType, string> = { food: '🍖', wood: '🪵', g
 export function costText(c: Cost): string {
   return RES_TYPES.filter((r) => c[r]).map((r) => `${RES_ICON[r]}${c[r]}`).join(' ');
 }
+
+/** When the marauders make camp, how often each woman they hold bears them a child, how often they raid, and how many they can grow to. */
+export const LAIR_AT = 240;
+export const LAIR_BIRTH = 120;
+export const LAIR_RAID = 150;
+export const LAIR_MAX = 28;

@@ -17,10 +17,11 @@
 // Each mark is kept on the campaign with the town, noble or people it is about, and words for it, so that a
 // town's panel, the roll and the season's report can show it. One call a season (from intrigue.ts).
 import type { Campaign } from './campaign';
-import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, shiftVirtue } from './campaign';
+import { shiftVirtue } from './townfaith';
+import { MAX_ARMY, MAX_FAVOR, armyAt, armySize } from './campaignbase';
 import { courtOf } from './court';
 import { beginPlot, beginRival } from './courtstory';
-import { Intrigue, IntrigueKind, Person, chance, fullName } from './intrigue';
+import { ENDINGS, Intrigue, IntrigueKind, Person, chance, fullName } from './intriguebase';
 import { spouseOf } from './kin';
 import { noblesOf } from './nobles';
 
@@ -102,6 +103,8 @@ export function remember(c: Campaign, it: Intrigue): Mark | undefined {
   }
   return undefined;
 }
+ENDINGS.push(remember); // told of every story's ending, as this module loads (intriguebase.ts)
+
 /** An innocent was hanged for a killing: the town does not forget it. Called by intrigue.ts when it happens. */
 export function rememberWronged(c: Campaign, it: Intrigue, p: Person): Mark {
   return add(c, it, 'resentful', AFTER.resentful.seasons, `${land(c, it.at)} remembers that ${fullName(p)} was hanged for killings ${p.gender === 'f' ? 'she' : 'he'} did not do.`, { at: it.at, name: fullName(p) });

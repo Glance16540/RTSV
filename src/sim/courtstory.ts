@@ -24,7 +24,8 @@
 //     is known the leader pardons them or has them put to death. If the plot ripens unfound there is a rising:
 //     it is put down, or the leader is killed in it.
 import type { Campaign } from './campaign';
-import { MAX_FAVOR, atTruce, heroFor, shiftVirtue } from './campaign';
+import { shiftVirtue } from './townfaith';
+import { MAX_FAVOR, atTruce, heroFor } from './campaignbase';
 import { NAMES_M } from './data';
 import { courtOf, leaderAt } from './court';
 import { houseOf, ofAge, rulerName } from './dynasty';
@@ -32,7 +33,7 @@ import { kinOf, plotWarning, spouseOf } from './kin';
 import { Noble, isAngry, newLord, noblesOf, titleOf } from './nobles';
 import { folkOf, living } from './township';
 import { canPayFor, payFor } from './prices';
-import { Choice, Intrigue, begin, chance, end, note } from './intrigue';
+import { Choice, Intrigue, begin, chance, end, note } from './intriguebase';
 
 export const COURT = {
   /** No story of the house before this season; one at a time; this long between them. */

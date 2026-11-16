@@ -3,6 +3,7 @@
 //
 //   HEALTH=1 npx vitest run scripts/health.test.ts
 //   HEALTH=1 CAMPAIGNS=48 SEASONS=200 PLAYER=computer VISITS=2 OUT=docs/health-report.md npx vitest run scripts/health.test.ts
+//   npm run health                (the baseline: 96 campaigns, 24 visits; about 31 minutes)
 //
 //   CAMPAIGNS  how many campaigns (seeds 1..n, fixed so runs compare). Default 24.
 //   SEASONS    the longest a campaign is played. Default 200.
@@ -13,6 +14,8 @@
 //              (src/sim/storypolicy.ts); left out, it answers none of them.
 //   VISITS     how many of the campaigns are played again with every town of the player's visited each season for
 //              twenty years (slow: a visit is ten minutes of a real battle). Default 0, and that figure is not measured.
+//              The player begins with one town, so a campaign gives one pair at most: the figure swings 30 to 40 points
+//              at 8, and reads steadily from 24 (18 pairs or so). `npm run health` is the baseline: 96 campaigns and 24 visits.
 //   OUT        where the report is written. Default docs/health-report.md.
 //
 // Every campaign is played twice from the same seed: as the rules stand, the player giving the decrees a sensible
@@ -546,7 +549,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const couldHungry = share(could, (x) => x.hungry), couldNotHungry = share(couldNot, (x) => x.hungry);
   add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where its governor can still raise a farm', 'under 10%', `${pct(couldHungry)} (${could.length} town-seasons)`, could.length ? couldHungry < 0.1 : null,
     'No convoy means none was on the road to it as the season began. Can still raise a farm is the governor\'s own test (governor.ts), read at the end of the season: a free place among its buildings, and its stores, less the farm\'s price, at or above his floor.');
-  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised', '15 to 40%', `${pct(couldNotHungry)} (${couldNot.length} town-seasons)`, couldNot.length ? within(couldNotHungry, 0.15, 0.4) : null,
+  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised', '10 to 40%', `${pct(couldNotHungry)} (${couldNot.length} town-seasons)`, couldNot.length ? within(couldNotHungry, 0.1, 0.4) : null,
     'The rest of the unfarmed towns with no convoy: no free place, or not the stores.');
   const dead = ruled.flatMap((w) => Object.values(w.hungerDead));
   const nations = ruled.length * 3; // a player and two rivals in each

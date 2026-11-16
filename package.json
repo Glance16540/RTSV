@@ -15,6 +15,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "trials": "TRIALS=1 OUT=trials.txt vitest run scripts/trials.test.ts",
+    "health": "HEALTH=1 CAMPAIGNS=96 VISITS=24 vitest run scripts/health.test.ts",
     "porting": "node scripts/porting-check.mjs --fix",
     "check": "node scripts/porting-check.mjs && tsc --noEmit && vitest run && npm run build",
     "sync": "node scripts/sync.mjs"
