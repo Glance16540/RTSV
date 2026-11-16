@@ -6,7 +6,8 @@
 // marked `onMap`): begun from the land's panel out of the town's own stores, and finished by its governor. It counts
 // once it stands finished. A town's governor begins one of its own accord once the town has had cause: a thief or a
 // killer has been at work there two seasons, or was within the last two years, and the town does not want for
-// food or a roof, which come first. It stays with the town whoever holds it.
+// food or a roof, which come first. A rival's governor begins one in a town a band has struck within two years,
+// once it has its wall. It stays with the town whoever holds it.
 //
 // In a town. It is a real building, raised by villagers like any other, and what stands in the town is what the
 // map's record keeps. While one stands, the watch raises the town to any fire: villagers are called off their work
@@ -54,6 +55,15 @@ export function governWatch(c: Campaign): number[] {
     c.log.length = log; // said in the governor's own words
     begun.push(it.at);
     if (t.owner === 0) c.log.push(`The governor of ${t.name} has begun a Watch House, after what happened there.`);
+  }
+  // A rival's town that a band has struck of late has cause too: its Watch House is where Town Watch is taught
+  // (townwatch.ts), and with that it stands the better against the next band.
+  for (const r of c.raids ?? []) {
+    const t = c.territories[r.at];
+    if (!t || t.owner < 0 || t.owner !== r.owner || !c.factions[t.owner]?.isAI || c.turn - r.turn > WATCH.since || begun.includes(r.at) || begunAt(c, r.at, 'watchhouse')) continue;
+    const wants = wantsOf(c, r.at);
+    if (wants.food || wants.roof || wants.wall) continue; // bread, a roof and a wall first
+    if (raiseWork(c, t.owner, r.at, 'watchhouse') === '') begun.push(r.at);
   }
   return begun;
 }
