@@ -42,7 +42,7 @@ import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
-import { Names, houseName, nameNation, peopleName, sideName } from './naming';
+import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
@@ -57,6 +57,7 @@ import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './tow
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { ARMY_REST, MEN_A_COMPANY, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
+import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
 
@@ -674,12 +675,12 @@ function mapTurn(c: Campaign): void {
       const a = armyAt(c, t.id), f = c.factions[t.owner];
       const faith = faithOf(c, t.owner);
       if (leaderAt(c, t.owner, t.id)) { mark(c, 'calm', t.id); c.log.push(`${f.id === 0 ? 'Your leader is' : `The leader of the ${f.name} is`} in ${t.name}: the unrest there passes.`); }
-      else if (deputyAt(c, t.owner, t.id)) { mark(c, 'calm', t.id); c.log.push(`${deputyAt(c, t.owner, t.id)!.name}, ${f.id === 0 ? 'your' : `the ${f.name}'s`} right hand, is in ${t.name}: the unrest there passes.`); }
+      else if (deputyAt(c, t.owner, t.id)) { mark(c, 'calm', t.id); c.log.push(`${deputyAt(c, t.owner, t.id)!.name}, ${whoseOf(c, f.id)} right hand, is in ${t.name}: the unrest there passes.`); }
       else if (faith.steadfast) { mark(c, 'calm', t.id); c.log.push(`${t.name} keeps faith with ${f.id === 0 ? 'you' : f.name}: the unrest passes.`); }
       else if (a && a.owner === t.owner && !(faith.restless && armySize(a) < 2)) { mark(c, 'calm', t.id); c.log.push(`The garrison keeps order in ${t.name}.`); }
       else {
-        c.log.push(`${t.name} has risen and thrown off ${f.id === 0 ? 'your' : `${f.name}'s`} rule.`);
-        if (placeAt(c, t.id)) tell(c, `${t.name} rose and threw off ${f.id === 0 ? 'your' : `${f.name}'s`} rule, and ${placeAt(c, t.id)!.name} with it.`);
+        c.log.push(`${t.name} has risen and thrown off ${whoseOf(c, f.id)} rule.`);
+        if (placeAt(c, t.id)) tell(c, `${t.name} rose and threw off ${whoseOf(c, f.id)} rule, and ${placeAt(c, t.id)!.name} with it.`);
         t.owner = -1; t.militia = 2;
         mark(c, 'revolt', t.id);
       }
@@ -935,7 +936,7 @@ export function defenders(c: Campaign, tid: number): Record<string, number> {
   const t = c.territories[tid];
   const a = armyAt(c, tid);
   if (t.owner >= 0 && a && a.owner === t.owner) return a.units;
-  return { infantry: t.owner < 0 ? Math.max(1, warriorsOf(c, tid)) : 1 }; // a tribe's bands are its town's men (tribes.ts)
+  return { infantry: t.owner < 0 ? Math.max(1, BATTLE_ANSWERS.ask('warriors', c, tid)) : 1 }; // a tribe's bands are its town's men
 }
 
 /** Everything that defends a territory, optionally against a particular mix of attackers. */
@@ -944,7 +945,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   const open = openDefence(c, tid); // a dead town with no army in it has nobody on its walls (deadtown.ts)
   if (open !== null) return open;
   const ground = (t.trait === 'hills' ? 2 : 0) + countryOf(c, tid).defence + placeWorth(c, tid, 'defence');
-  if (t.owner < 0) return Math.max(1, warriorsOf(c, tid) - (attackerCiv === 'wild' ? 1 : 0)) + ground;
+  if (t.owner < 0) return Math.max(1, BATTLE_ANSWERS.ask('warriors', c, tid) - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
   return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * FAITH[creedOf(faithAt(c, tid)).id].defence * 10) / 10; // the town's own standing (townfaith.ts)
@@ -1178,12 +1179,60 @@ export function answerDemand(c: Campaign, pay: boolean): void {
     c.log.push(`You paid ${fac.name} ${d.amount} supplies. They will leave you be until turn ${c.turn + 4}.`);
   } else {
     fac.angry = true;
-    c.log.push(`You refused ${fac.name}'s demand.`);
+    c.log.push(`You refused ${possessive(fac.name)} demand.`);
   }
 }
 
 /** Settle the pending battle by dice, or record the result of one that was fought out. */
 /** Told of every battle settled here, before it changes anything: for trials that measure campaigns (scripts/health.test.ts). Nothing in the game listens. */
+/**
+ * Who acts at each moment of a battle on the map, in the order they act (battlehooks.ts). The battle functions
+ * below run the phases and name no system; this table is the one place a system is tied to a battle.
+ */
+export const BATTLE_HOOKS = new BattleHooks()
+  // settling: decided and no longer pending; nothing has changed hands yet.
+  .on('settling', 'townfaith', (c) => settleFaith(c)) // every town's own standing is written down before any changes hands
+  .on('settling', 'stores', (c) => settleStores(c)) // and what each people has spent or earned is in its towns before any is lost
+  // counted: the armies are known and the town's toll is taken.
+  .on('counted', 'warhouse', (c, _p, b) => { // what the victor felled is counted to the houses of its men: the companies it broke, and the town's dead
+    if (b.attackerWon && b.army) creditArmy(c, b.army.id, (b.defArmy ? armySize(b.defArmy) * MEN_A_COMPANY : 0) + (b.toll ?? 0));
+    else if (!b.attackerWon && b.defArmy && b.army) creditArmy(c, b.defArmy.id, armySize(b.army) * MEN_A_COMPANY);
+  })
+  // taken: the attacker has won and the town is about to change hands.
+  .on('taken', 'conquered', (c, p) => townTaken(c, p.to, p.defender, p.attacker)) // its people stay, and resent it
+  .on('taken', 'carriedoff', (c, p) => townFell(c, p.to, p.defender, p.attacker, p.from)) // those held in it go free, and a worldly taker leads some of its people away
+  // repulsed: the attacker was thrown back.
+  .on('repulsed', 'tribes', (c, p, b) => { if (!b.defArmy && c.territories[p.to].owner < 0) tribeBeaten(c, p.to, Math.floor(p.aStr * 0.3)); }) // the bands a tribe lost are men of its town
+  // settled: all of it is done, and whoever is beaten is gone from the map.
+  .on('settled', 'stores', (c) => settleStores(c))
+  .on('settled', 'armytown', (c, _p, b) => { if (b.how === 'auto') reckonArmies(c); }) // the dead are their towns' dead; a battle fought in person counts its own
+  .on('settled', 'townfaith', (c) => settleFaith(c))
+  // setup: a battle is about to be laid out for play.
+  .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
+  // written: a battle fought in person has been settled and its field is being read back.
+  .on('written', 'tribes', (c, p, b) => fieldReckoned(c, p, b.after?.folk)) // those of the town who marched out to a battle in the open and fell
+  // housed: the town's people and stores are as that battle left them.
+  .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
+  .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
+  .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
+
+/** What a battle asks, and of whom (battlehooks.ts): each question has one system that answers it. */
+export type BattleQuestions = {
+  /** How many warriors a land held by no people fields. */
+  warriors: (c: Campaign, tid: number) => number;
+  /** The people of a land who turn out when it is attacked. */
+  turnOut: (c: Campaign, tid: number, field: boolean, p?: Pending | null) => ReturnType<typeof turnOut>;
+  /** Is this people's leader in this land? */
+  leaderAt: (c: Campaign, f: number, tid: number) => boolean;
+  /** Set a people's court straight before its leader is looked for: where they are and who is with them. */
+  court: (c: Campaign, f: number) => unknown;
+};
+export const BATTLE_ANSWERS = new BattleAnswers<BattleQuestions>()
+  .provide('warriors', 'tribes', (c, tid) => warriorsOf(c, tid))
+  .provide('turnOut', 'tribes', (c, tid, field, p) => turnOut(c, tid, field, p))
+  .provide('leaderAt', 'court', (c, f, tid) => leaderAt(c, f, tid))
+  .provide('court', 'court', (c, f) => courtOf(c, f));
+
 export const battleWatchers: ((c: Campaign, p: Pending, attackerWon: boolean, how: 'auto' | 'attacker' | 'defender') => void)[] = [];
 
 export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender'): boolean {
@@ -1198,10 +1247,10 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   }
   for (const watch of battleWatchers) watch(c, p, attackerWon, how);
   c.pending = null;
-  settleFaith(c); // every town's own standing is written down before any changes hands
-  settleStores(c); // and what each people has spent or earned is in its towns before any is lost (stores.ts)
+  const note: BattleNote = { how, attackerWon };
+  BATTLE_HOOKS.run('settling', c, p, note); // every town's standing and stores are written down before any changes hands
   // A battle nobody watched is paid for by the town in men, and in stores if it falls.
-  const toll = how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde ? tollFolk(c, p.to, attackerWon) : 0;
+  note.toll = how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde ? tollFolk(c, p.to, attackerWon) : 0;
   // The rival leader has something to say about a battle against the player.
   if (p.attacker === 0 || p.defender === 0) {
     const won = attackerWon === (p.attacker === 0);
@@ -1211,9 +1260,8 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   const t = c.territories[p.to];
   const army = c.armies.find((x) => x.id === p.armyId);
   const defArmy = armyAt(c, p.to);
-  // What the victor felled is counted to the houses of its men (warhouse.ts): the companies it broke, and the town's dead.
-  if (attackerWon && army) creditArmy(c, army.id, (defArmy ? armySize(defArmy) * MEN_A_COMPANY : 0) + toll);
-  else if (!attackerWon && defArmy && army) creditArmy(c, defArmy.id, armySize(army) * MEN_A_COMPANY);
+  note.army = army; note.defArmy = defArmy;
+  BATTLE_HOOKS.run('counted', c, p, note); // what the victor felled is counted
   if (attackerWon) {
     if (defArmy) destroyArmy(c, defArmy);
     if (army) {
@@ -1234,8 +1282,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
       // Sacking a capital carries off its stores: they are in the town, which is the taker's now (stores.ts).
       t.capital = -1;
     }
-    townTaken(c, t.id, p.defender, p.attacker); // its people stay, and resent it (conquered.ts)
-    townFell(c, t.id, p.defender, p.attacker, p.from); // those held in it go free, and a worldly taker leads some of its people away (carriedoff.ts)
+    BATTLE_HOOKS.run('taken', c, p, note); // the town is about to change hands
     t.owner = p.attacker;
     if (c.ally >= 0 && c.factions[c.ally].alive) {
       const ally = c.factions[c.ally];
@@ -1256,14 +1303,12 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   } else {
     if (army) destroyArmy(c, army);
     if (defArmy) { casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
-    else if (t.owner < 0) tribeBeaten(c, t.id, Math.floor(p.aStr * 0.3)); // the bands it lost are men of its town (tribes.ts)
+    BATTLE_HOOKS.run('repulsed', c, p, note); // the attacker was thrown back
     c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and ${p.attacker === 0 ? 'were' : 'was'} thrown back.`);
     if (p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You were thrown back from ${t.name} by the ${c.factions[p.defender].name}.` : `The ${c.factions[p.attacker].name} came against ${t.name} and you threw them back.`);
   }
   checkElimination(c);
-  settleStores(c);
-  if (how === 'auto') reckonArmies(c); // the dead are their towns' dead (armytown.ts); a battle fought in person counts its own
-  settleFaith(c);
+  BATTLE_HOOKS.run('settled', c, p, note); // all of it is done
   return attackerWon;
 }
 
@@ -1388,7 +1433,7 @@ function turnEvent(c: Campaign): void {
   const t = owned[Math.floor(rand(c) * owned.length)];
   if (!t) return;
   const f = c.factions[t.owner];
-  const who = f.id === 0 ? 'your' : `${f.name}'s`;
+  const who = whoseOf(c, f.id);
   const a = armyAt(c, t.id);
   const roll = rand(c);
   if (roll < 0.3) {
@@ -1552,7 +1597,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const p = c.pending;
   if (!p) return null;
   if (p.band !== undefined) return bandBattle(c);
-  settleStores(c); // a town fights out of what is in its stores now, after all that has been spent (stores.ts)
+  BATTLE_HOOKS.run('setup', c, p); // a town fights out of what is in its stores now, after all that has been spent
   const t = c.territories[p.to];
   const humanAttacks = p.attacker === 0;
   const field = p.mode === 'field';
@@ -1561,8 +1606,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const defenders = armyAt(c, p.to);
   // A leader raised from the ranks fights as a common soldier does: only the army they march with has them.
   // The leader is in this battle only if it is fought where they are: with the army that attacks, or in the land attacked.
-  for (const f of [p.attacker, p.defender]) if (f >= 0) courtOf(c, f);
-  const present = (f: number, army: Army | undefined): boolean => f >= 0 && (!!army?.hero || (f === p.defender && leaderAt(c, f, p.to)));
+  for (const f of [p.attacker, p.defender]) if (f >= 0) BATTLE_ANSWERS.ask('court', c, f);
+  const present = (f: number, army: Army | undefined): boolean => f >= 0 && (!!army?.hero || (f === p.defender && BATTLE_ANSWERS.ask('leaderAt', c, f, p.to)));
   const led = (f: number, army: Army | undefined): { hero: HeroSpec; leaderAway?: boolean } => { const h = heroFor(c, f); if (present(f, army)) return { hero: h }; delete h.fights; return { hero: h, leaderAway: true }; };
   const side = (army: Army | undefined, defending: boolean, str: number, age = 0) => {
     const calling = army && c.factions[army.owner] ? leaderType(heroFor(c, army.owner)) : 'warlord';
@@ -1571,8 +1616,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     if (army) {
       for (const [type, n] of Object.entries(army.units)) for (const [u, k] of Object.entries(COMPANIES[type].units)) add(u, k * n);
       if (army.hero) add(calling, 1);
-    } else if (defending && t.owner >= 0 && leaderAt(c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
-    const out = defending ? turnOut(c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere (tribes.ts)
+    } else if (defending && t.owner >= 0 && BATTLE_ANSWERS.ask('leaderAt', c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
+    const out = defending ? BATTLE_ANSWERS.ask('turnOut', c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere
     if (out?.clubmen) add('clubman', out.clubmen);
     const fort = defending && t.buildings.includes('fortress');
     // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
@@ -1655,19 +1700,19 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const humanAttacks = p.attacker === 0;
   const land = c.territories[p.to], home = homeCorner(land);
   const mine = humanAttacks ? c.armies.find((a) => a.id === p.armyId) : armyAt(c, p.to);
-  const sat = !humanAttacks && leaderAt(c, 0, p.to); // the leader was in the town that was attacked
+  const sat = !humanAttacks && BATTLE_ANSWERS.ask('leaderAt', c, 0, p.to); // the leader was in the town that was attacked
   const before = mine ? { units: { ...mine.units }, hero: mine.hero } : null;
   const rankBefore = c.factions[0].heroRank ?? 0;
   const known = mine?.champion?.name;
   const camp = !!land.horde; // marauders hold no town
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
-  fieldReckoned(c, p, after.folk); // those of the town who marched out to a battle in the open and fell (tribes.ts)
+  const note: BattleNote = { playerWon, after };
+  BATTLE_HOOKS.run('written', c, p, note); // the field is being read back
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
-  if (census) driftBack(c, land.id, after.drifted); // who was at the tavern and the mine stays there (driftintown.ts)
-  if (land.owner === 0 && p.mode !== 'field') keepOrders(c, land.id, after.orders);
-  settleStores(c); // what the town gathered or spent is its nation's gain or loss
+  note.census = !!census;
+  BATTLE_HOOKS.run('housed', c, p, note); // the town's people and stores are as the battle left them
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
   if (known && mine && !c.armies.includes(mine)) loseVeteran(c, 0, known);
   // Felled wood, picked berries and dug stone are gone whoever won. A field battle is fought on other ground.
