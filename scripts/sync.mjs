@@ -6,6 +6,7 @@
 //
 // The trunk is `main`. Set TRUNK=some-branch to try against another.
 import { execFileSync, spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const TRUNK = process.env.TRUNK || 'main';
 const CHECK = process.argv.includes('--ci');
@@ -35,7 +36,32 @@ const undo = () => { tryGit('merge', '--abort'); tryGit('reset', '--quiet', '--h
 
 const merged = tryGit(...id, 'merge', '--no-ff', '--no-edit', '-m', `Merge ${TRUNK} into ${branch}`, trunk);
 const clashes = git('diff', '--name-only', '--diff-filter=U').split('\n').filter(Boolean);
-const real = clashes.filter((f) => !BUILT[f]);
+/**
+ * The porting table is half written by a script: its line counts and dependencies (scripts/porting-check.mjs).
+ * Where the two sides of a clash in it differ only in those two columns, there is nothing for a person to settle:
+ * either side is taken and the script writes the columns again from the merged sources, further down. Where they
+ * differ in anything written by hand (a row's words, its tests, its Unity column, or which rows there are), it is
+ * left for a person. Returns whether it was settled.
+ */
+function settlePorting() {
+  const file = 'docs/PORTING.md', lines = readFileSync(file, 'utf8').split('\n'), out = [];
+  const hand = (row) => { const c = row.split(' | '); return c.length === 6 ? [c[0], c[2], c[4], c[5]].join(' | ') : row; };
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].startsWith('<<<<<<< ')) { out.push(lines[i]); continue; }
+    const mid = lines.indexOf('=======', i), end = lines.findIndex((l, k) => k > mid && l.startsWith('>>>>>>> '));
+    if (mid < 0 || end < 0) return false;
+    const ours = lines.slice(i + 1, mid), theirs = lines.slice(mid + 1, end);
+    if (ours.some((l) => l.startsWith('|||||||')) || ours.length !== theirs.length || ours.some((row, k) => hand(row) !== hand(theirs[k]))) return false;
+    out.push(...theirs);
+    i = end;
+  }
+  writeFileSync(file, out.join('\n'));
+  tryGit('add', '--', file);
+  return true;
+}
+const SETTLED = clashes.includes('docs/PORTING.md') && settlePorting() ? ['docs/PORTING.md'] : [];
+if (SETTLED.length) say('docs/PORTING.md clashed only in the columns its script writes: settled, and written again below.');
+const real = clashes.filter((f) => !BUILT[f] && !SETTLED.includes(f));
 if (real.length) {
   console.error(`sync: ${branch} and ${TRUNK} have both changed the same lines in:\n${real.map((f) => `  ${f}`).join('\n')}`);
   if (CHECK) { undo(); stop('this branch no longer fits the trunk. Run `npm run sync` on it and settle these.'); }
@@ -45,7 +71,7 @@ if (real.length) {
 } else if (merged.status && !clashes.length) {
   stop(`the merge failed:\n${merged.stdout}${merged.stderr}`);
 }
-for (const f of clashes) { tryGit('checkout', '--ours', '--', f); tryGit('add', '--', f); }
+for (const f of clashes.filter((f) => !SETTLED.includes(f))) { tryGit('checkout', '--ours', '--', f); tryGit('add', '--', f); }
 
 // If the trunk brought new packages, they are installed before anything is built or tested.
 if (git('diff', '--name-only', `${start}...${trunk}`, '--', 'package-lock.json')) {
