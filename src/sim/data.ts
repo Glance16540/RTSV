@@ -765,13 +765,19 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'watchhouse', name: 'Watch House', icon: '🔔',
     desc: 'The town keeps a watch. On the map a thief is caught sooner and a killer\'s clues are found faster. In the town the watch calls villagers off their work to any fire.',
     cost: { wood: 120, stone: 40 }, time: 30, age: 1, hp: 520, size: 2, pop: 0, sight: 12,
-    trains: [], techs: ['townwatch'], onMap: true,
+    trains: [], techs: ['townwatch', 'heralds'], onMap: true,
   }),
   fortress: B({
     id: 'fortress', name: 'Fortress', icon: '🏰',
     desc: 'A stronghold. It does not shoot, but takes in twelve people when the bell rings and stands a long time. On the map a town with one stands three companies stronger against a band, and loses half as many people to one.',
     cost: { wood: 100, stone: 350 }, time: 70, age: 1, hp: 1600, size: 3, pop: 0, sight: 12,
     trains: [], techs: [], shelter: 12,
+  }),
+  inn: B({
+    id: 'inn', name: 'Inn', icon: '🛏️',
+    desc: 'A house on the road. A convoy whose road passes through this town is half as likely to be met by highwaymen. Paved Roads and Escorts are studied here.',
+    cost: { wood: 150, gold: 50 }, time: 36, age: 1, hp: 600, size: 2, pop: 0, sight: 8,
+    trains: [], techs: ['escorts', 'pavedroads'], onMap: true,
   }),
   // ---- end of order and roads ----
 };
@@ -929,6 +935,21 @@ export const TECHS: Record<string, TechDef> = {
     id: 'townwatch', name: 'Town Watch', icon: '🔔', answers: 'crime',
     desc: 'A proper watch in every town with a Watch House: such a town stands a company stronger against a band, and fewer thieves and killers begin among your people. In a town, villagers turn out to any fire.',
     cost: { wood: 150, gold: 100 }, time: 40, age: 1, apply: () => {},
+  }),
+  heralds: T({
+    id: 'heralds', name: 'Heralds', icon: '📯', answers: 'raids',
+    desc: 'Raid news a season sooner: you are told of every band that has a town of yours for its mark before it strikes, and a town so warned stands half a company stronger against it.',
+    cost: { food: 80, gold: 120 }, time: 40, age: 1, apply: () => {},
+  }),
+  escorts: T({
+    id: 'escorts', name: 'Escorts', icon: '🛡️', answers: 'raids',
+    desc: 'Every convoy goes with a few hired men: a band that stops one takes half as much.',
+    cost: { food: 100, gold: 150 }, time: 40, age: 1, apply: () => {},
+  }),
+  pavedroads: T({
+    id: 'pavedroads', name: 'Paved Roads', icon: '🛤️', answers: 'hunger',
+    desc: 'Your convoys are not a season on the way: they come in as soon as they are sent.',
+    cost: { stone: 300, gold: 100 }, time: 60, age: 2, apply: () => {},
   }),
   // ---- end of order and roads ----
   up_frigate: T({

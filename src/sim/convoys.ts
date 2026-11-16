@@ -28,6 +28,7 @@ import { OLD_SEASON, agesOf, countFrom } from './ageing';
 import { armyStrength, lanesOf } from './campaignbase';
 import { needOf } from './larder';
 import { roadRisk } from './ownstudies';
+import { escortEdge, innRisk, paved } from './roads';
 
 /** What a convoy carries: stores, and grown people by their ages in seasons. */
 export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[] }
@@ -137,7 +138,9 @@ export function sendConvoy(c: Campaign, f: number, from: number, to: number, wha
   const convoy: Convoy = { id: (c.convoySeq = (c.convoySeq ?? 0) + 1), owner: f, from, to, road: roadBetween(c, f, from, to)!, cargo, since: c.turn };
   (c.convoys ??= []).push(convoy);
   const goods = STORE_KINDS.filter((s) => cargo[s]).map((s) => `${cargo[s]} ${s}`), folk = [cargo.men.length ? `${cargo.men.length} ${cargo.men.length === 1 ? 'man' : 'men'}` : '', cargo.women.length ? `${cargo.women.length} ${cargo.women.length === 1 ? 'woman' : 'women'}` : ''].filter(Boolean);
-  if (f === 0) c.log.push(`A convoy has left ${c.territories[from].name} for ${c.territories[to].name} with ${[...goods, ...folk].join(', ')}. It will come in next season.`);
+  if (f === 0) c.log.push(`A convoy has left ${c.territories[from].name} for ${c.territories[to].name} with ${[...goods, ...folk].join(', ')}. ${paved(c, f) ? 'The road is paved: it is there within the season.' : 'It will come in next season.'}`);
+  // On Paved Roads it is not a season on the way (roads.ts): it comes in now, by the same rules, and no other convoy with it.
+  if (paved(c, f)) { const rest = c.convoys.filter((y) => y !== convoy); c.convoys = [convoy]; convoy.since = c.turn - 1; convoysTurn(c); c.convoys = [...rest, ...c.convoys]; }
   return convoy;
 }
 
@@ -173,11 +176,11 @@ export function convoysTurn(c: Campaign): Arrival[] {
     const mine = x.owner === 0;
     // Highwaymen on the road, or pirates at sea, unless an escort of the people's own as strong as they are stands on it.
     const band = waylaid(c, x);
-    if (band && hash(c, x.id, 3) < CONVOYS.meet * roadRisk(c, x.owner)) { // less often, for a people whose convoys rest behind walls (ownstudies.ts)
+    if (band && hash(c, x.id, 3) < CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road)) { // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
       const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
       if (escort < band.strength && worth(x.cargo) > 0) {
         const took = empty();
-        for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob); x.cargo[s] -= took[s]; }
+        for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
         if (worth(took) > 0) {
           a.robbed = { by: band.name, took };
           band.band.strength = Math.min(10, band.band.strength + 1);
