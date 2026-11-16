@@ -25,21 +25,35 @@ const PLAIN = 0x7a6a54, GOLD = 0xd8b040, LINEN = 0xcfc3a6;
 /** The colours a band's kit runs to, kind by kind: rust for raiders, iron for slavers, sea blue for pirates, the green of the woods for highwaymen, old blood for marauders. */
 const KIT: Record<string, number> = { raiders: 0x8a3e26, slavers: 0x3e3c46, pirates: 0x2a5478, highwaymen: 0x4e6230, marauders: 0x6a2a24 };
 
+/** Cloth as it was dyed: a nation's colour taken down to half its strength and darkened a little. */
+function dyed(color: number): number {
+  const c = new THREE.Color(color), hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  return c.setHSL(hsl.h, hsl.s * 0.55, hsl.l * 0.78).getHex();
+}
+const GREY = 0x8a8680, DARK_HAIR = 0x3a2a1c;
+
 /** How a figure goes dressed, by the same road the battle dresses its people (person.ts outfitFor, with their nation's look and dress). */
 function outfitOf(f: Figure): Outfit {
-  const look = lookOf(f.civ, f.seed), color = f.band ? KIT[f.band] ?? PLAIN : f.civ ? CIV_COLOR[f.civ] ?? PLAIN : PLAIN;
+  const look = lookOf(f.civ, f.seed), color = dyed(f.band ? KIT[f.band] ?? PLAIN : f.civ ? CIV_COLOR[f.civ] ?? PLAIN : PLAIN);
   const u = f.dress === 'villager' || f.dress === 'noble' || f.dress === 'envoy' ? undefined : UNITS[f.dress];
   if (u) {
     const o = outfitFor(f.dress, f.female, color, look, f.seed, 0, { cls: u.cls === 'hero' ? 'hero' : 'infantry', age: u.age ?? 1 });
-    // A band's own kit: its colour in the hems and on the head, and its leader in a cloak of it.
-    return f.band ? { ...o, trim: color, hatColor: o.hat ? color : o.hatColor, skirtColor: color, ...(f.role === 'leader' ? { cloak: color } : {}) } : o;
+    if (!f.band) return o;
+    // A band's own kit: its colour in the hems and on the head, and its leader in a cloak of it. No fur ring at the neck,
+    // which reads as a collar of rope this close; and a sword where the axe would show only its flat head.
+    return { ...o, trim: color, hatColor: o.hat ? color : o.hatColor, skirtColor: color, mantle: false, weapon: o.weapon === 'axe' ? 'sword' : o.weapon, ...(f.role === 'leader' ? { cloak: color } : {}) };
   }
   // The plain people as their town dresses them (wear 1: the most covered), in their nation's dress.
   const base = outfitFor('villager', f.female, color, look, f.seed, 1, { cls: 'villager', age: 0, civ: f.civ || undefined });
-  // A captive: whole plain long garments of undyed cloth, a headcloth on a woman.
+  // A captive: whole plain long garments of undyed cloth.
   if (f.role === 'captive') return { ...base, top: LINEN, skirtColor: LINEN, legs: 0xa89a7e, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: null, mantle: false, hat: '', trim: 0x9a8a6c, ...(f.female ? { hairStyle: 'long' } : {}) };
-  if (f.dress === 'noble') return { ...base, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: color, trim: GOLD, mantle: false, hat: f.female ? 'circlet' : 'cap', hatColor: f.female ? GOLD : 0x2a2228, girth: 1 };
-  if (f.dress === 'envoy') return { ...base, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: color, trim: GOLD, hat: 'cap', hatColor: 0x2a2228 };
+  if (f.dress === 'noble' || f.dress === 'envoy') {
+    // A man of rank: a belted tunic over dark hose, a cloak behind; his own hair, a young man's for a suitor. A woman of rank: a long gown and a circlet.
+    const hair = f.dress === 'noble' && base.hair === GREY ? DARK_HAIR : base.hair;
+    if (f.female) return { ...base, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: color, trim: GOLD, mantle: false, hairStyle: 'long', hat: 'circlet', hatColor: GOLD };
+    return { ...base, hair, top: color, skirtColor: color, skirt: 'short', legs: 0x2e2824, sleeves: 'long', neck: 0, apron: null, cloak: dyed(0x5a4a3a), trim: GOLD, mantle: false, hat: '', girth: 1 };
+  }
   // A townsman or townswoman, as the town dresses them, her hair worn plain.
   return { ...base, sleeves: 'long', neck: 0, ...(f.female ? { hairStyle: 'long', hat: '' } : {}) };
 }
@@ -61,13 +75,18 @@ function place(figs: Figure[]): { x: number; z: number; yaw: number }[] {
 }
 
 const dir = new THREE.Vector3(), turn = new THREE.Quaternion();
-/** One brought before the leader stands humbly: arms down, hands together in front, head a little bowed. Over the motion that plays. */
-function stoop(p: RealPerson, g: THREE.Object3D): void {
+/** One brought before the leader stands humbly: arms down, hands together in front, head a little bowed; one of rank stands upright, hands at his sides. Over the motion that plays. */
+function stoop(p: RealPerson, g: THREE.Object3D, bow: boolean): void {
   g.updateWorldMatrix(true, false); g.getWorldQuaternion(turn);
   const to = (x: number, y: number, z: number) => dir.set(x, y, z).normalize().applyQuaternion(turn);
-  point(p.bones.get('DEF-upper_armL'), to(0.12, -1, 0.18), 1); point(p.bones.get('DEF-forearmL'), to(-0.75, -0.55, 0.5), 1);
-  point(p.bones.get('DEF-upper_armR'), to(-0.12, -1, 0.18), 1); point(p.bones.get('DEF-forearmR'), to(0.75, -0.55, 0.5), 1);
-  p.bones.get('DEF-head')?.rotateX(0.22);
+  if (bow) {
+    point(p.bones.get('DEF-upper_armL'), to(0.12, -1, 0.18), 1); point(p.bones.get('DEF-forearmL'), to(-0.75, -0.55, 0.5), 1);
+    point(p.bones.get('DEF-upper_armR'), to(-0.12, -1, 0.18), 1); point(p.bones.get('DEF-forearmR'), to(0.75, -0.55, 0.5), 1);
+    p.bones.get('DEF-head')?.rotateX(0.22);
+  } else {
+    point(p.bones.get('DEF-upper_armL'), to(0.16, -1, 0.02), 1); point(p.bones.get('DEF-forearmL'), to(0.06, -1, 0.12), 1);
+    point(p.bones.get('DEF-upper_armR'), to(-0.16, -1, 0.02), 1); point(p.bones.get('DEF-forearmR'), to(-0.06, -1, 0.12), 1);
+  }
 }
 
 let open: { close: () => void } | null = null;
@@ -121,7 +140,7 @@ export function openEncounter(m: Meeting): boolean {
   // As sharp as the screen allows, and never less than twice over.
   gl.setPixelRatio(Math.min(3, Math.max(2, window.devicePixelRatio || 1))); gl.setSize(W, H, false); gl.toneMapping = THREE.NeutralToneMapping;
   gl.shadowMap.enabled = true; gl.shadowMap.type = THREE.PCFSoftShadowMap;
-  const people: RealPerson[] = [], turning: THREE.Object3D[] = [], humble: { p: RealPerson; g: THREE.Object3D }[] = [];
+  const people: RealPerson[] = [], turning: THREE.Object3D[] = [], humble: { p: RealPerson; g: THREE.Object3D; bow: boolean }[] = [];
   const stand = (): void => {
     if (!alive) return;
     const at = place(m.figures);
@@ -133,7 +152,7 @@ export function openEncounter(m: Meeting): boolean {
       scene.add(made.g);
       people.push(made.real);
       if (!wide) turning.push(made.g);
-      if (f.pose === 'idle') humble.push({ p: made.real, g: made.g });
+      if (f.pose === 'humble' || f.pose === 'stand') humble.push({ p: made.real, g: made.g, bow: f.pose === 'humble' });
       play(made.real, f.pose === 'talk' ? 'Idle_Talking_Loop' : f.pose === 'ready' ? 'Idle_Loop' : f.pose === 'sit' ? 'Sitting_Idle_Loop' : 'Idle_Loop', 0.8 + ((f.seed % 7) / 30));
       made.real.mixer.update((f.seed % 13) / 5); // not all in step
     });
@@ -143,7 +162,7 @@ export function openEncounter(m: Meeting): boolean {
     if (!alive) return;
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     for (const p of people) p.mixer.update(dt);
-    for (const h of humble) stoop(h.p, h.g);
+    for (const h of humble) stoop(h.p, h.g, h.bow);
     for (const g of turning) g.rotation.y = 0.15 + Math.sin(now / 4000) * 0.45; // one alone turns slowly, to be seen from either side
     gl!.render(scene, cam);
     requestAnimationFrame(frame);
