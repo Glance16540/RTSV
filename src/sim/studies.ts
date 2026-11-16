@@ -9,8 +9,8 @@
 //   Learning on the map. A study can be learned in a town of the nation where the building that teaches it stands
 //   finished on the town's record, once the nation has reached its age and anything it requires; it is paid in
 //   goods, from that town's stores first and then from the nation's other towns, the one with most of each kind first.
-//   Learning in a town. In a visit the nation's studies are known from the start (Game setup `bonus.studies`), and any
-//   study researched there comes home (`learnedIn`, `studiedHome`).
+//   Learning in a town. In a visit or a battle the nation's studies are known from the start (Game setup
+//   `bonus.studies`: `withStudies`), and any study researched there comes home (`learnedIn`, `studiedHome`).
 //   The computer. Each season a rival nation learns at most one study, the one answering what presses most on its
 //   towns, if it can pay for it and keep a working stock (KEEP) in its towns. The player's are the player's own
 //   choice: the governor learns none for them.
@@ -27,6 +27,8 @@ declare module './campaign' {
   }
 }
 
+/** Gold under which a town is short of it, for a study that answers trade. */
+export const TRADE_SHORT = 100;
 /** Goods a nation keeps in each of its towns, beyond which a rival will pay for a study. */
 export const STUDY_KEEP = 600;
 
@@ -91,6 +93,11 @@ export function learn(c: Campaign, f: number, id: string, at: number): string {
   return '';
 }
 
+/**
+ * A battle's side begins with what its nation has learned, as a visit's does: the setup's `bonus` with the nation's
+ * studies on it (`Game` reads `bonus.studies`). A side that is no nation's (a tribe, a band) has none.
+ */
+export const withStudies = <B extends object>(c: Campaign, f: number, bonus: B): B & { studies: string[] } => ({ ...bonus, studies: f >= 0 ? studiesOf(c, f) : [] });
 /** The studies among the techs a side ended a battle or visit with. */
 export const learnedIn = (techs: Iterable<string>): string[] => [...techs].filter(isStudy);
 /** Studies learned in a town come home to the nation. Whatever a saved game or the page sends, only studies count. */
@@ -115,6 +122,8 @@ export function pressing(c: Campaign, f: number, answers: string): number {
     case 'raids': case 'crime': return share((tid) => event(tid, ['raid', 'carried']));
     case 'faith': return Math.max(0, Math.min(1, -(c.factions[f].virtue ?? 0) / 50));
     case 'nobles': case 'plots': case 'rule': return share((tid) => (folkOf(c, tid).drift?.strain ?? 0) > 0.25);
+    case 'births': return share((tid) => { const k = folkOf(c, tid); return Math.min(k.men, k.women) > 0 && k.children < Math.min(k.men, k.women); }); // towns with fewer children than couples
+    case 'trade': return share((tid) => folkOf(c, tid).stores.gold < TRADE_SHORT); // towns short of gold
     default: return 0;
   }
 }

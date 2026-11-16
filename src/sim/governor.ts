@@ -10,8 +10,9 @@
  * harvest.ts, which sets how much from the land, its farms and its hands and splits it by `shareOf` here. A town
  * eats once, in larder.ts. The governor neither earns nor feeds: he sets the work, finishes and begins.
  */
+import { stewardPace } from './stewardship'; // a better governor (stewardship.ts)
 import type { Campaign, Territory } from './campaign';
-import { siteCost, slots } from './campaignbase';
+import { ageOf, siteCost, slots } from './campaignbase';
 import { BUILDINGS } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount } from './township';
 import { couplesOf, housesOf, roomOf } from './seasonfolk';
@@ -135,19 +136,27 @@ export function governTown(c: Campaign, tid: number): Governed | null {
   // What was left half built is taken further.
   if (t.town?.b) t.town.b = t.town.b.map((x) => {
     if (x[4] === undefined) return x;
-    const done = Math.round((x[4] + GOVERN.build * buildPace(c, tid)) * 100) / 100; // faster under governors chosen for merit (ownstudies.ts)
+    const done = Math.round((x[4] + GOVERN.build * buildPace(c, tid) * stewardPace(c, tid)) * 100) / 100; // faster under governors chosen for merit (ownstudies.ts)
     if (done < 1) return [x[0], x[1], x[2], x[3] ?? 0.01, done] as typeof x;
     out.finished.push(x[0]);
     return (x[3] !== undefined && x[3] < 1 && x[3] > 0.01 ? [x[0], x[1], x[2], x[3]] : [x[0], x[1], x[2]]) as typeof x;
   });
   // One thing a season, by need: bread first, then a roof, then a wall.
   const civ = c.factions[t.owner].civ, room = t.buildings.length < slots(t);
-  // The food and health works (granary.ts, mill.ts, well.ts, infirmary.ts) come after Farmland, whose place and price they
-  // would otherwise take, and leave a place for a wall until there is one.
-  const spare = t.buildings.includes('farm') && t.buildings.length < slots(t) - (t.buildings.includes('fortress') ? 0 : 1);
   const afford = (site: string): boolean => units(f.stores) - siteCost(t, site, civ) * 100 >= GOVERN.floor;
-  // The food and health works are bought only out of plenty: twice what the town keeps, after paying, in goods other than its bread.
-  const ample = (site: string): boolean => units(f.stores) - f.stores.food - siteCost(t, site, civ) * 100 >= 2 * GOVERN.floor;
+  // The food and health works (granary.ts, mill.ts, well.ts, infirmary.ts) stand on the town's record (townworks.ts), not
+  // in the land's places. They come after Farmland, and are bought only where the town keeps what it must, after paying,
+  // in goods other than its bread. Begun here, they are finished as anything half built is.
+  const farmed = t.buildings.includes('farm');
+  const ample = (type: string): boolean => units(f.stores) - f.stores.food - STORE_KINDS.reduce((n, k) => n + (BUILDINGS[type]?.cost[k] ?? 0), 0) >= GOVERN.floor;
+  // Begun as townworks.ts begins one (raiseWork), here, so that the governor and the works need not import each other.
+  const work = (type: string): boolean => {
+    const b = BUILDINGS[type], at = b && ample(type) && ageOf(c, t.owner) >= b.age && t.town?.b?.length && STORE_KINDS.every((k) => f.stores[k] >= (b.cost[k] ?? 0)) ? plotFor(t, type) : null;
+    if (!at) return false;
+    for (const k of STORE_KINDS) f.stores[k] -= b.cost[k] ?? 0;
+    t.town!.b.push([type, at.cx, at.cy, 0.01, 0]);
+    return true;
+  };
   const pay = (goods: number): void => { let left = goods; for (const k of [...STORE_KINDS].sort((a, b) => f.stores[b] - f.stores[a])) { const part = Math.min(f.stores[k], k === 'food' ? 0 : left); f.stores[k] -= part; left -= part; } if (left > 0) f.stores.food = Math.max(0, f.stores.food - left); };
   if (want.food && !t.buildings.includes('farm') && room && afford('farm')) { pay(siteCost(t, 'farm', civ) * 100); t.buildings.push('farm'); out.began = 'farm'; }
   else if (want.roof && !t.town!.b.some((x) => x[0] === 'house' && x[4] !== undefined)) {
@@ -157,11 +166,11 @@ export function governTown(c: Campaign, tid: number): Governed | null {
       t.town!.b.push(['house', at.cx, at.cy, 0.01, 0]); out.began = 'house';
     }
   } else if (want.wall && room && afford('fortress')) { pay(siteCost(t, 'fortress', civ) * 100); t.buildings.push('fortress'); out.began = 'fortress'; }
-  else if (spare && millWanted(c, tid, want.food) && ample('mill')) { pay(siteCost(t, 'mill', civ) * 100); t.buildings.push('mill'); out.began = 'mill'; } // mill.ts
-  else if (spare && wellWanted(c, tid, crowdOf(c, tid, ACTS.crowd)) && ample('well')) { pay(siteCost(t, 'well', civ) * 100); t.buildings.push('well'); out.began = 'well'; } // well.ts
-  else if (spare && infirmaryWanted(c, tid) && ample('infirmary')) { pay(siteCost(t, 'infirmary', civ) * 100); t.buildings.push('infirmary'); out.began = 'infirmary'; } // infirmary.ts
-  else if (spare && granaryWanted(c, tid) && ample('granary')) { pay(siteCost(t, 'granary', civ) * 100); t.buildings.push('granary'); out.began = 'granary'; } // granary.ts
-  if (mine && out.began) c.log.push(out.began === 'house' ? `The governor of ${t.name} has begun a house: there are couples there with no roof.` : `The governor of ${t.name} has raised ${out.began === 'farm' ? 'Farmland: food was running short' : out.began === 'granary' ? 'a Granary: the town has known hunger' : out.began === 'mill' ? 'a Mill: food was running short' : out.began === 'well' ? 'a Well: plague has been near a crowded town' : out.began === 'infirmary' ? 'an Infirmary: the town has had plague or grief' : 'a Fortress: the town was raided'}, out of the town's own stores.`);
+  else if (farmed && millWanted(c, tid, want.food) && work('mill')) out.began = 'mill'; // mill.ts
+  else if (farmed && wellWanted(c, tid, crowdOf(c, tid, ACTS.crowd)) && work('well')) out.began = 'well'; // well.ts
+  else if (farmed && infirmaryWanted(c, tid) && work('infirmary')) out.began = 'infirmary'; // infirmary.ts
+  else if (farmed && granaryWanted(c, tid) && work('granary')) out.began = 'granary'; // granary.ts
+  if (mine && out.began) c.log.push(out.began === 'house' ? `The governor of ${t.name} has begun a house: there are couples there with no roof.` : `The governor of ${t.name} has ${['granary', 'mill', 'well', 'infirmary'].includes(out.began) ? 'begun' : 'raised'} ${out.began === 'farm' ? 'Farmland: food was running short' : out.began === 'granary' ? 'a Granary: the town has known hunger' : out.began === 'mill' ? 'a Mill: food was running short' : out.began === 'well' ? 'a Well: plague has been near a crowded town' : out.began === 'infirmary' ? 'an Infirmary: the town has had plague or grief' : 'a Fortress: the town was raided'}, out of the town's own stores.`);
   if (mine && out.finished.length) c.log.push(`${out.finished.map((b) => `The ${BUILDINGS[b]?.name.toLowerCase() ?? b}`).join(' and ')} begun at ${t.name} ${out.finished.length === 1 ? 'is' : 'are'} finished.`);
   if (mine && out.fields) c.log.push(`Food is short at ${t.name}: the governor has sent more of its people to the fields.`);
   return out;

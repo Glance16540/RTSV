@@ -334,8 +334,6 @@ export interface PlayerSetup {
   hero?: Partial<HeroSpec>;
   /** The leader is elsewhere on the campaign map: nobody raised in this battle is the leader in person. */
   leaderAway?: boolean;
-  /** The studies of its own this people has already learned on the campaign map (ownstudies.ts). */
-  ownStudies?: string[];
   /** Where this people's town stands between piety and decadence as the battle opens (Conquest carries it over). */
   virtue?: number;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
@@ -489,8 +487,6 @@ export class Game {
         defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: Math.max(-100, Math.min(100, s.virtue ?? 0)), clergy: 0, captives: 0, captiveMen: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
-      // What its nation has learned on the map of its own studies it has here from the first (ownstudies.ts).
-      for (const id of s.ownStudies ?? []) if (TECHS[id] && mayLearn(this.players[i].civ, id) && !this.players[i].techs.has(id)) { this.players[i].techs.add(id); TECHS[id].apply(this.players[i].mods); }
       this.heroes.push([]);
       this.leaders.push(null);
       if (s.hero) { this.players[i].hero = cleanHero(s.hero, this.players[i].civ); this.players[i].heroRank = this.players[i].hero!.rank ?? 0; }
@@ -526,7 +522,7 @@ export class Game {
           for (const t of Object.values(TECHS)) if (t.upgrade && t.age <= p.age) { p.techs.add(t.id); p.upgrades[t.upgrade[0]] = t.upgrade[1]; }
         }
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
-        for (const id of s.bonus.studies ?? []) if (TECHS[id] && !p.techs.has(id)) { p.techs.add(id); TECHS[id].apply(p.mods); } // the nation's studies (studies.ts)
+        for (const id of s.bonus.studies ?? []) if (TECHS[id] && !p.techs.has(id) && mayLearn(p.civ, id)) { p.techs.add(id); TECHS[id].apply(p.mods); } // the nation's studies (studies.ts)
         // A town fights out of its own stores, not out of the usual stock.
         if (s.bonus.stores) for (const r of RES_TYPES) p.res[r] = Math.max(0, Math.round(Number(s.bonus.stores[r]) || 0));
         // What was left standing here after the last battle still stands, unless another camp is pitched on it.
@@ -1226,6 +1222,7 @@ export class Game {
     if (!def || this.ageFor(owner, def) > p.age) return null;
     const bar = this.creedBar(owner, def);
     if (bar) { this.msg(owner, bar); return null; }
+    if (def.townAt && this.units.filter((u) => u.owner === owner && u.type === 'villager' && !u.dead && u.growT <= 0).length < def.townAt) { this.msg(owner, `Only a town of ${def.townAt} grown people or more has a ${def.name}.`); return null; } // townworks.ts
     if (!this.canPlace(type, cx, cy, owner === this.humanId && !p.isAI)) { this.msg(owner, 'Cannot build there.'); return null; }
     if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return null; }
     this.pay(p, def.cost);

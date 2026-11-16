@@ -2,31 +2,19 @@
 // readily among a people's own in a town.
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
-import { SITES } from '../src/sim/campaignbase';
 import { BUILDINGS } from '../src/sim/data';
 import { ACTS, crowding, sicken } from '../src/sim/acts';
 import { governTown } from '../src/sim/governor';
 import { WELL, wellGuard, wellWanted } from '../src/sim/well';
 import { Game } from '../src/sim/game';
-import { folkOf } from '../src/sim/township';
 import { run, setups, spot, villagers } from './helpers';
+import { begun, town as foodTown } from './foodtown';
 
-function town(buildings: string[], people = 30) {
-  const c = newCampaign(7, 1, 1, 'hearth');
-  c.fronts = [];
-  const home = c.territories.find((t) => t.capital === 0)!;
-  const t = c.territories.find((x) => x.owner < 0 && home.adj.includes(x.id))!;
-  t.owner = 0; t.buildings = buildings;
-  const f = folkOf(c, t.id);
-  f.men = Math.round(people * 0.35); f.women = Math.round(people * 0.35); f.elders = 2; f.children = people - f.men - f.women - 2;
-  delete f.ages; delete f.drift;
-  f.stores = { food: 2000, wood: 900, gold: 900, stone: 900 };
-  return { c, t, f };
-}
+const town = (buildings: string[], people = 30) => foodTown(buildings, { people });
 
 describe('the Well on the map', () => {
-  it('is a building of the map and of the town', () => {
-    expect(SITES.well.name).toBe('Well');
+  it('is a building of the town, raised from the map too', () => {
+    expect(BUILDINGS.well.onMap).toBe(true);
     expect(BUILDINGS.well.name).toBe('Well');
   });
 
@@ -44,18 +32,18 @@ describe('the Well on the map', () => {
   });
 
   it('the governor raises one in a crowded town where plague has lately been, there or next door', () => {
-    const quiet = town(['farm']);
+    const quiet = town(['farm', 'mill']);
     governTown(quiet.c, quiet.t.id);
-    expect(quiet.t.buildings).not.toContain('well');
-    const near = town(['farm']);
+    expect(begun(quiet.c, quiet.t.id, 'well')).toBe(false);
+    const near = town(['farm', 'mill']);
     (near.c.events ??= []).push({ kind: 'plague', at: near.t.adj[0], turn: near.c.turn, until: near.c.turn + 1 });
     expect(wellWanted(near.c, near.t.id, 1)).toBe(true);
     governTown(near.c, near.t.id);
-    expect(near.t.buildings).toContain('well');
-    const hamlet = town(['farm'], 6);
+    expect(begun(near.c, near.t.id, 'well')).toBe(true);
+    const hamlet = town(['farm', 'mill'], 6);
     (hamlet.c.events ??= []).push({ kind: 'plague', at: hamlet.t.id, turn: hamlet.c.turn, until: hamlet.c.turn + 1 });
     governTown(hamlet.c, hamlet.t.id);
-    expect(hamlet.t.buildings).not.toContain('well'); // plague seldom troubles a hamlet
+    expect(begun(hamlet.c, hamlet.t.id, 'well')).toBe(false); // plague seldom troubles a hamlet
     expect(ACTS.crowd).toBeGreaterThan(6);
   });
 });
