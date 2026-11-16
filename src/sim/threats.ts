@@ -43,6 +43,7 @@ import { whoseOf } from './naming';
 import { creedOf } from './creed';
 import { OLD_SEASON, SEASONS_A_YEAR, agesOf, countFrom } from './ageing';
 import { STORE_KINDS, folkOf, living } from './township';
+import { THREATS } from './threatsbase';
 import { wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
@@ -95,47 +96,7 @@ declare module './campaign' {
   }
 }
 
-export const THREATS = {
-  /** The season from which bands may appear. */
-  from: 3,
-  /** Held lands for each band that is meant to be about, the most at once, and the chance a missing one appears in a season. */
-  lands: 5, most: 5, appear: 0.7,
-  /** A new band's strength (least and most), the most one grows to, and the seasons between its growing by itself. */
-  start: [2, 4], max: 10, grow: 3,
-  /** The chance a band strikes in a season. */
-  strike: 0.75,
-  /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
-  hold: 0.78, fall: 0.4,
-  /** What those on a road can do for themselves with no army to escort them, in companies: enough to see off a small band. */
-  wayfarers: 2.5,
-  /** What counts toward a town's defence, in companies. */
-  man: 0.45, fortress: 3, raising: 0.5, tower: 1, towers: 3, wall: 0.1, walls: 2, capital: 1, sick: 0.7,
-  /** The share of a town's men who die at the walls, by outcome; and of its stores lost. */
-  dead: { held: 0, raided: 0.1, taken: 0.2 }, loot: { held: 0, raided: 0.25, taken: 0.4 }, pirateLoot: 0.2, road: 0.2,
-  /**
-   * And no more than they can carry: so many goods for each point of the band's force, by its kind. Pirates have
-   * ships to fill; slavers come for people; the marauders come for women, and take little else. (A nation's
-   * supplies are its towns' stores above their working stock, stores.ts: a band that emptied a town each time
-   * would beggar a nation in a few seasons.)
-   */
-  carry: { raiders: 30, slavers: 15, pirates: 45, highwaymen: 30, marauders: 10 } as Record<string, number>,
-  /**
-   * The share of a town's women, and for slavers its men, carried off when it falls; and the share of them a band
-   * leaves behind whatever its appetite, so that a town is bled and not emptied. A town whose people are still held
-   * by some band is not taken from again: it can be raided, and no more.
-   */
-  carried: 0.25, left: 0.5, last: 2,
-  /** Seasons of its own eating a band leaves in a town's larder: it takes food only above that (larder.ts). */
-  larder: 2,
-  /** The chance raiders or pirates burn a farm. */
-  burn: 0.5,
-  /** How a strike sways a people: up when they hold, down when raided or taken (and by creed, on the way down). */
-  sway: { held: 2, raided: -2, taken: -4 },
-  /** Seasons captives can be got back for, and the years of life the whole of it costs a man and a woman. */
-  holdFor: 4, yearsMan: 20, yearsWoman: 30,
-  /** Supplies an army wins back by breaking a band (into the town where it stands, else its chief town), and how many reports are kept. */
-  prize: 3, kept: 40,
-};
+export { THREATS }; // the numbers themselves are in threatsbase.ts, where a system below this one can read them
 
 export const BANDS: Record<BandKind, { name: string; icon: string; place: string; desc: string }> = {
   raiders: { name: 'Raiders', icon: '🔥', place: 'camp', desc: 'They burn and loot, and carry off women.' },

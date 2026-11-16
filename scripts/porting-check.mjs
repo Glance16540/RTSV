@@ -9,7 +9,7 @@
 //   - no module in src/sim imports from src/client or three.js, or reaches for the DOM (the porting rule);
 //   - every test file a row names exists, and every row names one;
 //   - the "Depends on" column names the modules it really imports (--fix adds "(types only)" where it imports only types);
-//   - no module joins an import cycle (imports of types alone aside): the knots that exist are listed below, and may only shrink;
+//   - no import cycle among the rules modules (imports of types alone aside);
 //   - the "Lines" column is within a fifth of the truth (it is a size to plan by, not a count to keep exact).
 // The last two are what --fix writes; `npm run sync` runs --fix after a merge. The words in "What it is", the
 // tests named and the Unity column are written by hand and never touched here.
@@ -49,12 +49,11 @@ function importsOf(name) {
  * Imports of types alone do not count (they vanish when the code is run, and C# has no trouble with them); what
  * counts is one module calling or reading another that, by whatever road, calls or reads it back.
  *
- * These modules are in such a knot today: the map's systems call campaign.ts for what it keeps, and it calls them
- * each season; and an army and its men's houses call each other. They are listed so that the knot cannot grow: a
- * module that is not listed and is found in a cycle fails the check. Untying it is work for the hub's battle and
- * season hooks; when a module here is found free of every cycle, the check says so, and it should be struck off.
+ * There are none today: the last knots were untied on 16 November 2026, and this list is empty, so any import
+ * cycle among the rules modules fails the check. (The list is kept for the day one has to be let through for a
+ * while: a module named here may be in a cycle; the check says when it no longer is, to be struck off again.)
  */
-const KNOTTED = new Set(['acts', 'aftermath', 'courtstory', 'decrees', 'drift', 'intrigue', 'kin', 'nobles', 'threats']);
+const KNOTTED = new Set([]);
 /** The knots among the rules modules: each a set of two or more that reach one another by imports that are not of types alone. */
 function knots(graph) {
   let n = 0; const stack = [], on = new Set(), index = {}, low = {}, out = [];
