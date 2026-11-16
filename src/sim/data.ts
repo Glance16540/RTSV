@@ -652,6 +652,13 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
     trains: ['shaman', 'priest', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
   }),
+  // ---- Rule, law, nobles and faith (the people session; hall.ts, manor.ts, monastery.ts). Costs, ages and strengths are first guesses. ----
+  hall: B({
+    id: 'hall', name: 'Hall of Judgement', icon: '⚖️',
+    desc: 'The leader\'s seat in this town. A decree given to the town has its full strength, as if the leader were here; thieves, killers and plotters are judged here, so they are found the sooner; and the nation\'s nobles gather at it, so their tempers cool the faster and an angry lord here keeps his watch.',
+    cost: { wood: 200, stone: 150, gold: 50 }, time: 45, age: 1, hp: 1400, size: 3, pop: 0, sight: 7,
+    trains: [], techs: [], onMap: true,
+  }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',
     desc: 'Station up to four villagers here. Milkmaids (women) bring in gold; patrons (men) drink your food away but speed up the training of soldiers. With anyone inside you can hire mercenaries for gold. All of it makes your people more decadent, slows the town\'s work, empties their own cradles, and in a worldly town invites plague.',
