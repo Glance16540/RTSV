@@ -32,6 +32,7 @@ import type { Stores } from './township';
 import { SUPPLY_UNITS } from './stores';
 import { needOf } from './larder';
 import { tally } from './ledger';
+import { tendedPlague } from './decrees';
 
 export const ACTS = {
   /** The season from which they may come. */
@@ -98,7 +99,8 @@ export const crowding = (c: Campaign, tid: number): number => Math.min(1, headco
 export function sicken(c: Campaign, t: Territory): number {
   const k = folkOf(c, t.id), grownNow = k.men + k.women + k.elders;
   // The share it kills, less in a small town; what is less than one whole person is a chance of one.
-  const due = grownNow * ACTS.sick * crowding(c, t.id), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
+  // The church tending the sick spares some (decrees.ts).
+  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
   let n = Math.min(grownNow, crowding(c, t.id) >= 1 ? Math.max(1, Math.round(due)) : whole), dead = 0, man = chance(c, t.id, 53) < 0.5;
   while (n-- > 0) {
     if (k.elders > 0) k.elders--;

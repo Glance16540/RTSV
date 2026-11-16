@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign } from '../src/sim/campaign';
 import { seat } from '../src/sim/court';
-import { ALMS_A_SEASON, ALMS_FOOD, DECREES, MESSENGER, TAVERN_WOMEN_GOLD, decreeBar, decreeEffect, decreesAt, decreesSeason, issueDecree, sensibleDecrees } from '../src/sim/decrees';
+import { ALMS_A_SEASON, ALMS_FOOD, DECREES, TEND_EASE, TEND_GOLD, TEND_PLAGUE, tendedPlague, MESSENGER, TAVERN_WOMEN_GOLD, decreeBar, decreeEffect, decreesAt, decreesSeason, issueDecree, sensibleDecrees } from '../src/sim/decrees';
 import { driftOf, driftTown, seasonDrift } from '../src/sim/drift';
 import { folkOf } from '../src/sim/township';
 
@@ -125,6 +125,28 @@ describe('a sensible ruler', () => {
     c.factions[0].supplies = 30;
     sensibleDecrees(c, 0, () => ({ hungry: true, raided: false, moved: 0, standing: 0 }));
     expect(c.territories.filter((t) => decreesAt(c, t.id).some((d) => d.kind === 'alms')).length).toBe(ALMS_A_SEASON);
+  });
+
+  it('the church tends the sick and the mourning: it needs a church and gold, lightens sickness and grief, and spares some of plague\'s dead', () => {
+    const { c, tid } = world(), t = c.territories[tid], f = folkOf(c, tid);
+    t.buildings = t.buildings.filter((b) => b !== 'church');
+    expect(decreeBar(c, 0, tid, 'tend')).toMatch(/no church/);
+    t.buildings = [...t.buildings, 'church'];
+    f.stores.gold = TEND_GOLD - 1;
+    expect(decreeBar(c, 0, tid, 'tend')).toMatch(/gold/);
+    f.stores.gold = 500; f.stores.food = 100000; f.grief = 3;
+    driftTown(c, tid);
+    const grieving = f.drift!.strain;
+    expect(grieving).toBeGreaterThan(0);
+    expect(issueDecree(c, 0, tid, 'tend')).toBe('');
+    expect(f.stores.gold).toBe(500 - TEND_GOLD);
+    expect(tendedPlague(c, tid)).toBe(TEND_PLAGUE);
+    driftTown(c, tid);
+    expect(f.drift!.strain).toBeCloseTo(grieving * (1 - TEND_EASE), 5);
+    // The sensible ruler gives it where sickness or grief strain a town.
+    t.decrees = [];
+    expect(sensibleDecrees(c, 0, () => ({ hungry: false, raided: false, moved: 0, standing: 0, grieving: true }))).toBe(1);
+    expect(decreesAt(c, tid).map((d) => d.kind)).toEqual(['tend']);
   });
 
   it('the computer\'s peoples give their decrees when the season turns', () => {
