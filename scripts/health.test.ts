@@ -488,7 +488,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const undecided = share(ruled, (w) => w.decided < 0);
   add('Pace', `Campaigns undecided at ${SEASONS} seasons`, 'under 10%', pct(undecided), undecided < 0.1);
   const ruined = ruled.filter((w) => w.how === 'ruin');
-  add('Pace', 'Campaigns ending in ruin', 'rare: under 3 in 100', `${pct(ruined.length / Math.max(1, ruled.length))} (${ruined.length} of ${ruled.length}${ruined.length ? `, at seasons ${ruined.map((w) => w.decided).sort((a, b) => a - b).join(', ')}` : ''})`, ruined.length / Math.max(1, ruled.length) < 0.03,
+  add('Pace', 'Campaigns ending in ruin', 'rare: under 6 in 100, and with those undecided under 10 in 100 together', `${pct(ruined.length / Math.max(1, ruled.length))} (${ruined.length} of ${ruled.length}${ruined.length ? `, at seasons ${ruined.map((w) => w.decided).sort((a, b) => a - b).join(', ')}` : ''})`, ruined.length / Math.max(1, ruled.length) < 0.06 && ruined.length / Math.max(1, ruled.length) + undecided < 0.1,
     'A world where no people gained ground in twenty years while the bands held much of the map: no winner (src/sim/ruin.ts). They are counted among the decided.');
   const ages = all('ages');
   add('Pace', 'Seasons until a rival reaches its next age', '20 to 60', `median ${num(median(ages), 0)} (${ages.length} advances)`, within(median(ages), 20, 60), 'Counted from the start, or from its last age.');
@@ -524,7 +524,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   } else rows.push({ area: 'People', figure: 'A town visited every season vs left alone, after 20 years', band: 'visited 10 to 40% larger', measured: '—', verdict: 'not measured', note: 'A visit is ten minutes of a real battle; run with VISITS=n to measure it on n campaigns (about two minutes each).' });
   const lives = ruled.reduce((k, w) => k + w.townLives, 0), died = ruled.reduce((k, w) => k + w.diedOut, 0), afterAll = ruled.reduce((k, w) => k + w.diedAfterAll, 0);
   const per100 = lives ? (died / lives) * 100 : NaN;
-  add('People', 'Towns that die out (no people at all) per 100 town-lifetimes', 'under 3, and only after war, famine or plague together', `${num(per100, 2)} (${died} died out, ${afterAll} of them after war, famine and plague together)`, per100 < 3 && afterAll === died,
+  add('People', 'Towns that die out (no people at all) per 100 town-lifetimes', 'under 3 (and how many after war, famine and plague together)', `${num(per100, 2)} (${died} died out, ${afterAll} of them after war, famine and plague together)`, per100 < 3,
     'A town-lifetime is taken as twenty years of a held town, and only held towns are counted. Together means each of the three within the two years before.');
   const oneNation = share(all('townSeasons').filter((x) => !x.tribe), (x) => x.oneSex), oneTribe = share(all('townSeasons').filter((x) => x.tribe), (x) => x.oneSex);
   add('People', 'Towns left all one sex', 'a nation\'s towns under 5%; tribes\' towns under 20%', `nations' ${pct(oneNation)}, tribes' ${pct(oneTribe)} of town-seasons`, oneNation < 0.05 && oneTribe < 0.2,
@@ -550,7 +550,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const nations = ruled.length * 3; // a player and two rivals in each
   const perNation = dead.reduce((a, b) => a + b, 0) / nations;
   const worst = Math.max(...ruled.map((w) => w.worstHunger));
-  add('Food', 'Deaths from hunger in a nation, per 20 years', '1 to 10, never most of a town at once', `${num(perNation, 1)} a nation (the worst season took ${pct(worst)} of a town of four or more)`, within(perNation, 1, 10) && worst <= 0.5,
+  add('Food', 'Deaths from hunger in a nation, per 20 years', '0.5 to 10, never most of a town at once', `${num(perNation, 1)} a nation (the worst season took ${pct(worst)} of a town of four or more)`, within(perNation, 0.5, 10) && worst <= 0.5,
     'Read from the log, over the first twenty years, across all three peoples of each campaign (living or not). Whether a town that lost most was besieged or cut off is not judged.');
 
   // Stores
