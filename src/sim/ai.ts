@@ -253,7 +253,8 @@ export class AIController {
     const spare = Math.max(0, Math.min((p.res.food + p.res.wood + p.res.gold) / 3, Math.max(p.res.food, p.res.wood) / 2) - 300);
     const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale) + (this.level >= 1 ? Math.min(24, Math.floor(spare / 110)) : 0);
     this.castCalamities(army);
-    if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0)) {
+    // A town kept in peace raises no soldiers: they would be its men taken to the army (keeper.ts, visit.ts).
+    if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0) && !inPeace(g, pid)) {
       // The civilisation's own unit turns up often once its age is reached.
       const own = CIVS[p.civ]?.unique;
       const own2 = CIVS[p.civ]?.unique2;
