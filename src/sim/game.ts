@@ -32,6 +32,10 @@ export const DT = 1 / 20;
 import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
 import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND } from './hero';
+import { millPace } from './mill'; // food and health: a Mill
+import { wellGuard } from './well';
+import { sickCare } from './infirmary';
+import { mayLearn, researchAt } from './ownstudies';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
@@ -330,6 +334,8 @@ export interface PlayerSetup {
   hero?: Partial<HeroSpec>;
   /** The leader is elsewhere on the campaign map: nobody raised in this battle is the leader in person. */
   leaderAway?: boolean;
+  /** The studies of its own this people has already learned on the campaign map (ownstudies.ts). */
+  ownStudies?: string[];
   /** Where this people's town stands between piety and decadence as the battle opens (Conquest carries it over). */
   virtue?: number;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
@@ -483,6 +489,8 @@ export class Game {
         defeated: false, lastAttacked: null, alertT: -100, neutral: false, bell: false, virtue: Math.max(-100, Math.min(100, s.virtue ?? 0)), clergy: 0, captives: 0, captiveMen: 0, maids: 0, patrons: 0, plagueAt: -1e9, dilemma: null, dilemmaT: 180, dilemmas: 0, signal: null, attackTarget: 0, stats: newStats(), history: [],
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
+      // What its nation has learned on the map of its own studies it has here from the first (ownstudies.ts).
+      for (const id of s.ownStudies ?? []) if (TECHS[id] && mayLearn(this.players[i].civ, id) && !this.players[i].techs.has(id)) { this.players[i].techs.add(id); TECHS[id].apply(this.players[i].mods); }
       this.heroes.push([]);
       this.leaders.push(null);
       if (s.hero) { this.players[i].hero = cleanHero(s.hero, this.players[i].civ); this.players[i].heroRank = this.players[i].hero!.rank ?? 0; }
@@ -1438,14 +1446,14 @@ export class Game {
 
   techAvailable(p: Player, id: string): boolean {
     const t = TECHS[id];
-    return !!t && !p.techs.has(id) && !p.pending.has(id) && t.age <= p.age && (!t.requires || p.techs.has(t.requires));
+    return !!t && !p.techs.has(id) && !p.pending.has(id) && t.age <= p.age && (!t.requires || p.techs.has(t.requires)) && mayLearn(p.civ, id); // a people's own study is that people's alone (ownstudies.ts)
   }
 
   cmdResearch(owner: number, bid: number, id: string): boolean {
     const b = this.entities.get(bid);
     const p = this.players[owner];
     const t = TECHS[id];
-    if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || !t || !b.def.techs.includes(id)) return false;
+    if (!b || b.kind !== 'building' || b.owner !== owner || !b.complete || !t || !researchAt(b.type, p.civ, b.def.techs).includes(id)) return false;
     if (!this.techAvailable(p, id)) { this.msg(owner, 'Not available yet.'); return false; }
     if (b.queue.length >= 8) { this.msg(owner, 'Queue is full.'); return false; }
     const cost = this.techCost(owner, id);
@@ -2359,11 +2367,11 @@ export class Game {
     }
     if (u.plagueT > 0) {
       u.plagueT -= DT;
-      u.hp -= 2.5 * DT;
+      u.hp -= 2.5 * DT * sickCare(this, u.owner); // nursed in an Infirmary, slower (infirmary.ts)
       if (u.hp <= 0) { this.kill(u); return; }
       if ((this.tick + u.id) % 20 === 0) {
         for (const v of this.unitsNear(u.x, u.y, 1.3, this.scratch)) {
-          if (v.owner === u.owner && v.plagueT <= 0 && this.rng() < 0.3 && Math.hypot(v.x - u.x, v.y - u.y) <= 1.3) v.plagueT = u.plagueT * 0.8;
+          if (v.owner === u.owner && v.plagueT <= 0 && this.rng() < 0.3 * wellGuard(this, u.owner) && Math.hypot(v.x - u.x, v.y - u.y) <= 1.3) v.plagueT = u.plagueT * 0.8;
         }
       }
     }
@@ -2768,7 +2776,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * millPace(this, u.owner) * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;

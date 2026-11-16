@@ -22,6 +22,7 @@ import { GROWN_AT } from './nursery';
 import { Folk, MAX_KIND, folkOf, grown } from './township';
 import { ageTown } from './ageing';
 import { tally } from './ledger';
+import { birthPace } from './ownstudies';
 
 declare module './township' {
   interface Folk {
@@ -79,7 +80,7 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
   if (!couples) { f.due = 0; tally(c, tid, 'grew', grew); tally(c, tid, 'aged', died); return { born, grew, missed, died }; }
   const young = (f.ages?.k ?? []).filter((s) => s < YOUNG_SEASONS).length;
   const slow = Math.min(3, 1 + 0.2 * (young / couples));
-  f.due = Math.min(couples, (f.due ?? 0) + (couples * creed.birth) / (MAP_BIRTH * slow));
+  f.due = Math.min(couples, (f.due ?? 0) + (couples * creed.birth * birthPace(c, tid)) / (MAP_BIRTH * slow)); // a people's own study may bring them sooner (ownstudies.ts)
   while (f.due >= 1) {
     if (grown(f) + f.children + 1 > roomOf(t) || f.stores.food < BIRTH_COST || f.children >= MAX_KIND) { f.due = Math.min(f.due, 1); break; }
     f.due -= 1;

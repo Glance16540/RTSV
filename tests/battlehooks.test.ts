@@ -46,7 +46,7 @@ describe('battle hooks', () => {
       'repulsed: tribes',
       'settled: stores', 'settled: armytown', 'settled: townfaith',
       'setup: stores',
-      'written: tribes',
+      'written: ownstudies', 'written: tribes',
       'housed: driftintown', 'housed: governor', 'housed: stores',
     ]);
     for (const phase of BATTLE_PHASES) expect(BATTLE_HOOKS.order(phase).length).toBeGreaterThan(0); // no phase is run for nobody

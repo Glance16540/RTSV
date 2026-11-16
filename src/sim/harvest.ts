@@ -20,6 +20,7 @@ import type { Stores } from './township';
 import { SUPPLY_UNITS, settleStores } from './stores';
 import { nobleWork } from './nobles';
 import { GOVERN, shareOf } from './governor';
+import { millYield } from './mill';
 
 /** Grown men and women a town needs to work its land in full. */
 export const HANDS_FULL = 6;
@@ -40,7 +41,7 @@ export function landLean(c: Campaign, tid: number): Stores {
 /** The shares of a town's yield: where its people work (governor.ts), what a hand brings in there, and what the land leans to. */
 export function yieldShares(c: Campaign, tid: number): Stores {
   const t = c.territories[tid], { share } = shareOf(c, tid), lean = landLean(c, tid), s: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
-  for (const k of STORE_KINDS) s[k] = share[k] * GOVERN.yield[k] * (k === 'food' && t.buildings.includes('farm') ? GOVERN.farm : 1) * lean[k];
+  for (const k of STORE_KINDS) s[k] = share[k] * GOVERN.yield[k] * (k === 'food' && t.buildings.includes('farm') ? GOVERN.farm : 1) * (k === 'food' ? millYield(c, tid) : 1) * lean[k]; // a Mill grinds more (mill.ts)
   return STORE_KINDS.some((k) => s[k] > 0) ? s : { food: 1, wood: 0, gold: 0, stone: 0 };
 }
 /** How much of its land's yield a town has the hands to bring in: 1 with HANDS_FULL grown men and women or more. */

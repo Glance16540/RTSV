@@ -33,6 +33,7 @@ import { LEADERS, LeaderEvent } from '../sim/leaders';
 import type { App } from './main';
 import { playLine, speechHtml } from './voice';
 import { sfx } from './sfx';
+import { researchAt } from '../sim/ownstudies';
 
 export const SLOT_KEYS = 'QWERTASDFGZXCVB';
 
@@ -361,7 +362,7 @@ export class Hud {
         });
       }
     }
-    for (const id of b.def.techs) {
+    for (const id of researchAt(b.type, p.civ, b.def.techs)) { // its own people's study among them (ownstudies.ts)
       const t = TECHS[id];
       if (p.techs.has(id) || p.pending.has(id)) continue;
       const locked = t.age > p.age ? `Requires the ${AGES[t.age].name}.` : t.requires && !p.techs.has(t.requires) ? `Requires ${TECHS[t.requires].name}.` : undefined;

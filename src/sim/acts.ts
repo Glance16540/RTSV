@@ -35,6 +35,9 @@ import { SUPPLY_UNITS } from './stores';
 import { needOf } from './larder';
 import { tally } from './ledger';
 import { tendedPlague } from './decrees';
+import { famineShare } from './granary';
+import { wellEase } from './well';
+import { infirmaryCare } from './infirmary';
 
 export const ACTS = {
   /** The season from which they may come. */
@@ -96,13 +99,13 @@ function thin(a: Army | undefined): boolean {
  * most 1. A hamlet of a few people is seldom struck, seldom passed to, and loses fewer; a town of ACTS.crowd or
  * more is as it ever was. The holder's creed is measured apart (wrathAt) and is not changed by it.
  */
-export const crowding = (c: Campaign, tid: number): number => Math.min(1, headcount(folkOf(c, tid)) / ACTS.crowd);
+export const crowding = (c: Campaign, tid: number): number => Math.min(1, headcount(folkOf(c, tid)) / ACTS.crowd) * wellEase(c, tid); // a Well eases it (well.ts)
 /** A season of plague in a town: a share of its grown people die, the old first, then men and women in turn. Never a child. */
 export function sicken(c: Campaign, t: Territory): number {
   const k = folkOf(c, t.id), grownNow = k.men + k.women + k.elders;
   // The share it kills, less in a small town; what is less than one whole person is a chance of one.
-  // The church tending the sick spares some (decrees.ts).
-  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
+  // The church tending the sick spares some (decrees.ts), and so does an Infirmary (infirmary.ts).
+  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)) * infirmaryCare(c, t.id), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
   let n = Math.min(grownNow, crowding(c, t.id) >= 1 ? Math.max(1, Math.round(due)) : whole), dead = 0, man = chance(c, t.id, 53) < 0.5;
   while (n-- > 0) {
     if (k.elders > 0) k.elders--;
@@ -117,7 +120,7 @@ export function sicken(c: Campaign, t: Territory): number {
 function famine(c: Campaign, t: Territory, w: number, hard: boolean): Struck {
   const f = t.owner;
   // The town eats from its own granary for as long as the harvest failed: ACTS.hunger seasons of its own eating, by the measure.
-  const due = Math.max(1, Math.round(ACTS.hunger * needOf(c, t.id) * w));
+  const due = Math.max(1, Math.round(ACTS.hunger * needOf(c, t.id) * w * famineShare(c, t.id))); // less from a Granary's store (granary.ts)
   const store = folkOf(c, t.id).stores, food = Math.min(store.food, due);
   store.food -= food;
   const short = food < due, paid = Math.round(food / SUPPLY_UNITS);
