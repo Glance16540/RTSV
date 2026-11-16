@@ -1,13 +1,14 @@
 // Each people its own: the studies only one nation can learn (docs/DESIGN.md; src/sim/ownstudies.ts).
 import { describe, expect, it } from 'vitest';
 import { BATTLE_HOOKS, ageOf, defence, newCampaign } from '../src/sim/campaign';
-import { CIVS, CIV_IDS, baseMods } from '../src/sim/data';
+import { CIVS, CIV_IDS, TECHS, baseMods } from '../src/sim/data';
 import { Game } from '../src/sim/game';
 import { ARMY_REST } from '../src/sim/armytown';
 import { resentOf, townTaken, goodRule } from '../src/sim/conquered';
 import { countryYield } from '../src/sim/country';
-import { OWN, STUDY_HALL, birthPace, buildPace, defenceAdd, faithPull, knownIn, knows, mayLearn, moodEase, nationOf, ownStudies, ownStudiesSeason, researchAt, restSpared, roadRisk, studiesOf, unrestEase, yokeEase, yokeSpared } from '../src/sim/ownstudies';
-import { isStudy, learn, learnedIn, studiedHome, studyBar, studySeason, teacherOf } from '../src/sim/studies';
+import { OWN, STUDY_HALL, birthPace, buildPace, defenceAdd, faithPull, knows, mayLearn, moodEase, nationOf, ownStudies, ownStudiesSeason, researchAt, restSpared, roadRisk, studiesOf, unrestEase, yokeEase, yokeSpared } from '../src/sim/ownstudies';
+import { TRADE_SHORT, isStudy, learn, learnedIn, pressing, studiedHome, studyBar, studySeason, teacherOf, withStudies } from '../src/sim/studies';
+import { AIController } from '../src/sim/ai';
 import { defenceOf } from '../src/sim/threats';
 import { townDrift } from '../src/sim/townfaith';
 import { folkOf } from '../src/sim/township';
@@ -84,23 +85,24 @@ describe('each people has a study of its own', () => {
     expect(studyBar(c, 0, 'own_examinations', town.id)).toBe('');
   });
 
-  it('a nation that has learned it begins a battle with it, and what is learned in a battle goes home', () => {
+  it('a nation that has learned it begins a battle with it, and what is researched in a battle goes home', () => {
     const { c } = taught('kush', 'own_bow');
-    expect(knownIn(c, 0)).toEqual(['own_bow']);
-    expect(knownIn(c, -1)).toEqual([]);
-    const g = new Game(5, [{ ...setups[0], civ: 'kush', ownStudies: knownIn(c, 0) }, { ...setups[1], civ: 'hearth', ownStudies: ['own_bow'] }]);
+    // studies.ts carries it, as any study: the setup's bonus has what the nation knows.
+    expect(withStudies(c, 0, { age: 1 })).toEqual({ age: 1, studies: ['own_bow'] });
+    expect(withStudies(c, -1, {})).toEqual({ studies: [] });
+    const g = new Game(5, [{ ...setups[0], civ: 'kush', bonus: withStudies(c, 0, {}) }, { ...setups[1], civ: 'hearth', bonus: { studies: ['own_bow'] } }]);
     expect(g.players[0].techs.has('own_bow')).toBe(true);
     expect(g.players[0].mods.towerRange).toBe(baseModsFor('kush').towerRange + 1);
     expect(g.players[1].techs.has('own_bow')).toBe(false); // not theirs, whatever the setup says
-    // Home again, by the battle's hook: studies.ts keeps what the side had learned.
-    expect(BATTLE_HOOKS.order('written')).toContain('ownstudies');
+    // Home again, by the battle's hook: studies.ts keeps what the side had researched.
+    expect(BATTLE_HOOKS.order('written')).toContain('studies');
     const fresh = world('babylon');
     expect(studiedHome(fresh.c, 0, learnedIn(new Set(['stonetools', 'own_code'])))).toEqual(['own_code']);
     expect(knows(fresh.c, 0, 'own_code')).toBe(true);
-    // A record meddled with gives a people nothing that is another's.
+    // A record meddled with gives a people nothing of another's: its effects ask whose the study is.
     fresh.c.factions[0].studies = ['own_bow', 'own_code'];
-    expect(knownIn(fresh.c, 0)).toEqual(['own_code']);
     expect(knows(fresh.c, 0, 'own_bow')).toBe(false);
+    expect(defenceAdd(fresh.c, fresh.town.id)).toBe(0);
   });
 
   it('a computer-led people learns its own by what presses on it, and never another\'s', () => {
@@ -116,6 +118,58 @@ describe('each people has a study of its own', () => {
     expect(learned.filter((id) => nationOf(id)).every((id) => nationOf(id) === rival.civ)).toBe(true);
   });
 });
+describe('what presses on a people chooses its study', () => {
+  it('births: towns with fewer children than couples; trade: towns short of gold', () => {
+    const { c, town, home } = world('hearth');
+    for (const t of c.territories) if (t.owner === 0) Object.assign(folkOf(c, t.id), { men: 5, women: 5, children: 9 });
+    expect(pressing(c, 0, 'births')).toBe(0);
+    folkOf(c, town.id).children = 1;
+    expect(pressing(c, 0, 'births')).toBeCloseTo(1 / c.territories.filter((t) => t.owner === 0).length);
+    Object.assign(folkOf(c, town.id), { men: 0 }); // nobody to have them: not a want a study answers
+    expect(pressing(c, 0, 'births')).toBe(0);
+    expect(pressing(c, 0, 'trade')).toBeLessThan(1);
+    for (const t of c.territories) if (t.owner === 0) folkOf(c, t.id).stores.gold = TRADE_SHORT - 1;
+    expect(pressing(c, 0, 'trade')).toBe(1);
+    folkOf(c, home.id).stores.gold = TRADE_SHORT;
+    expect(pressing(c, 0, 'trade')).toBeLessThan(1);
+    expect(TECHS.own_kinship.answers).toBe('births');
+    expect(TECHS.own_caravans.answers).toBe('trade');
+  });
+
+  it('a computer-led people short of children learns Kinship, and one short of gold Caravans', () => {
+    for (const [civ, id, short] of [['hearth', 'own_kinship', 'children'], ['mali', 'own_caravans', 'gold']] as const) {
+      const c = newCampaign(7, 2, 1, 'greece');
+      const rival = c.factions[1];
+      rival.civ = civ; rival.age = 2; rival.virtue = 60;
+      for (const t of c.territories.filter((x) => x.owner === 1)) {
+        t.town = { at: 2, b: [['towncenter', 30, 30]] };
+        const k = folkOf(c, t.id);
+        Object.assign(k, { men: 5, women: 5, children: short === 'children' ? 0 : 9 });
+        k.stores = { food: 9000, wood: 9000, gold: short === 'gold' ? TRADE_SHORT - 1 : 9000, stone: 9000 };
+        delete k.hungry; delete t.yoke;
+      }
+      c.events = [];
+      expect(TECHS.own_caravans.cost.gold).toBeUndefined(); // it answers a want of gold, so gold is not in its price
+      expect(studySeason(c, 1), civ).toBe(id);
+      expect(knows(c, 1, id)).toBe(true);
+    }
+  });
+});
+
+describe('the computer in a battle', () => {
+  it('researches its own nation\'s study at its Town Center, and never another\'s', () => {
+    const g = new Game(5, [{ ...setups[0], civ: 'kush', isAI: true }, { ...setups[1], civ: 'hearth', isAI: true }]);
+    const ais = [new AIController(g, 0), new AIController(g, 1)];
+    for (const p of g.players) { p.age = 1; p.res = { food: 9000, wood: 9000, gold: 9000, stone: 9000 }; }
+    for (let s = 0; s < 240 && !(g.players[0].techs.has('own_bow') && g.players[1].techs.has('own_kinship')); s++) { for (let i = 0; i < 20; i++) g.step(); g.events.length = 0; for (const ai of ais) ai.update(); for (const p of g.players) p.res = { food: 9000, wood: 9000, gold: 9000, stone: 9000 }; }
+    expect(g.players[0].techs.has('own_bow')).toBe(true);
+    expect(g.players[1].techs.has('own_kinship')).toBe(true);
+    expect(g.players[0].techs.has('own_kinship') || g.players[0].pending.has('own_kinship')).toBe(false);
+    expect(g.players[1].techs.has('own_bow') || g.players[1].pending.has('own_bow')).toBe(false);
+  }, 120_000);
+});
+
+
 const baseModsFor = (civ: string) => { const m = baseMods(); CIVS[civ].apply(m); return m; };
 
 describe('what each study does on the map', () => {
