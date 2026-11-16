@@ -21,7 +21,7 @@ import { censusOf, cradledOf, peopled } from './battlefolk';
 import { tavernTrade } from './tavernfall';
 import { adopt, bearCaptive, campChild, campLabour, campWithRoom, canSeize, comeHome, freeCaptive, hearthOf, spared, takes, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
-import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
+import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { boughtIn } from './contagion';
@@ -392,7 +392,7 @@ export class Game {
   marauders = false;
   /** How the marauders stand over the whole battle: camps made, and whether they are coming back (marauders.ts). */
   band?: BandState;
-  private lairT = 0; private lairRaid = 0; private lairSeen = false; private lairMade = false;
+  lairT = 0; lairRaid = 0; lairSeen = false; lairMade = false;
   /** Player id that owns wild animals. */
   wild = -1;
   /** Seeded generator whose state is saved with the game, so a loaded game plays out identically. */
@@ -1077,7 +1077,7 @@ export class Game {
     return out;
   }
 
-  private setOrder(u: Unit, o: Order | null): void {
+  setOrder(u: Unit, o: Order | null): void {
     if (!o && u.queue.length) o = u.queue.shift()!;
     u.order = o;
     u.path = null;
@@ -1547,64 +1547,6 @@ export class Game {
     if (def.needs === 'holy' && !isHoly(v)) return `Only a Devout town can call a ${def.name}.`;
     if (def.needs === 'decadent' && !isDecadent(v)) return `Only a Decadent town would have a ${def.name}.`;
     return null;
-  }
-
-  /** Captives drive the town's work and, held together, still raise children for their captors. */
-  /**
-   * The marauders: a band that belongs to no people. Some minutes in they make camp in the wilds, as far from every
-   * town as they can get. From there they come out to carry off women, and every woman they hold bears them
-   * children, so the band grows the longer the camp stands. Burn it and everyone held there goes free.
-   */
-  private stepLair(): void {
-    if (!this.marauders || this.field || this.scenario) return;
-    const wild = this.wild;
-    let lair = this.buildings.find((b) => b.type === 'lair') ?? null;
-    if (!lair) {
-      if ((this.lairMade && !bandReturns(this)) || this.time < LAIR_AT) return;
-      this.lairMade = true; this.lairSeen = false;
-      // As far from every town as the land allows.
-      let best: { cx: number; cy: number } | null = null, bd = 0;
-      for (let cy = 4; cy < this.size - 7; cy += 3) for (let cx = 4; cx < this.size - 7; cx += 3) {
-        if (!this.canPlace('lair', cx, cy) || nearAshes(this, cx, cy)) continue;
-        let d = Infinity;
-        for (const b of this.buildings) if (b.owner !== wild) d = Math.min(d, Math.hypot(b.x - cx - 1.5, b.y - cy - 1.5));
-        for (const st of this.spec.starts) d = Math.min(d, Math.hypot(st.x - cx - 1.5, st.y - cy - 1.5));
-        if (d > bd) { bd = d; best = { cx, cy }; }
-      }
-      if (!best || bd < 18) return;
-      lair = this.spawnBuilding('lair', wild, best.cx, best.cy, true);
-      for (let k = 0; k < 4; k++) this.spawnUnit('marauder', wild, lair.x - 1.5 + k, lair.y + 2.4);
-      this.lairRaid = LAIR_RAID * 0.6;
-      for (const p of this.players) if (!p.neutral) this.msg(p.id, '🏴 Smoke in the wilds: marauders have made camp somewhere out there. They take women. Find the camp and burn it.');
-      return;
-    }
-    tendBand(this, lair);
-    tendCaptives(this, lair);
-    const band = this.units.filter((u) => u.def.marauder), held = lair.captives ?? [], women = held.filter((c) => c.gender === 'f');
-    // Every woman held bears the band children, who are raised to it; and men drift in to a camp that prospers.
-    this.lairT += women.length / LAIR_BIRTH + 1 / 110;
-    if (this.lairT >= 1) {
-      this.lairT = 0;
-      const mother = women.length ? women.reduce((a, b) => ((a.born ?? 0) <= (b.born ?? 0) ? a : b)) : null;
-      if (mother && this.rng() < women.length / (women.length + 0.7)) bearCaptive(this, mother);
-      if (band.length < Math.min(LAIR_MAX, 5 + women.length * 3)) this.spawnUnit('marauder', wild, lair.x - 1 + this.rng() * 2, lair.y + 2.2);
-    }
-    // Those who have strayed, with nothing in hand, go back to the fire.
-    for (const u of band) if (!u.order && !u.captive && Math.hypot(u.x - lair.x, u.y - lair.y) > 9) this.setOrder(u, { t: 'move', x: lair.x - 1.5 + this.rng() * 3, y: lair.y + 2.4 });
-    for (const u of band) if (u.captive && u.order?.t !== 'deliver') this.setOrder(u, { t: 'deliver', id: lair.id });
-    if ((this.lairRaid -= 1) > 0 || held.length >= (lair.def.camp ?? 0)) return;
-    this.lairRaid = LAIR_RAID;
-    const home = band.filter((u) => !u.order && !u.captive && Math.hypot(u.x - lair!.x, u.y - lair!.y) < 12);
-    const party = home.slice(0, Math.min(home.length - 1, 2 + Math.floor(this.time / 360), 6));
-    if (party.length < 2) return;
-    // The nearest people's women, one to a man.
-    const prey = this.units.filter((v) => v.type === 'villager' && v.gender === 'f' && v.growT <= 0 && !v.inside && v.owner !== wild && !this.players[v.owner].neutral && !this.players[v.owner].defeated)
-      .sort((a, b) => Math.hypot(a.x - lair!.x, a.y - lair!.y) - Math.hypot(b.x - lair!.x, b.y - lair!.y));
-    if (!prey.length) return;
-    const town = prey[0].owner;
-    const marks = prey.filter((v) => v.owner === town);
-    party.forEach((u, i) => this.setOrder(u, { t: 'capture', id: marks[i % marks.length].id }));
-    this.msg(town, '🏴 Marauders are coming for your women.');
   }
 
   /** How many of a camp's captives its guards cannot keep an eye on. */
@@ -2237,7 +2179,7 @@ export class Game {
       griefSecond(this);
       driftSecond(this); // in a campaign town, the strained drift to worse and the cared-for to better (drift.ts)
       this.upkeep();
-      this.stepLair();
+      stepLair(this); // the marauders' camp (marauders.ts)
       this.checkVictory();
     }
   }
