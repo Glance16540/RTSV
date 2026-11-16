@@ -6,6 +6,7 @@ import { BUILDINGS } from '../sim/data';
 import { Gender } from '../sim/game';
 import { generatedModel } from './assets';
 import { banner, boxGeo, shapedBuilding, Surface, toon } from './shapes';
+import './civic'; // the buildings that answer the systems add their makers to shapedBuilding (civic.ts)
 
 /**
  * What each colour of the building in hand is made of, so its walls, roof and timbers are painted as such.
