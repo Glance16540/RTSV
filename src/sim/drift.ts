@@ -31,7 +31,7 @@ import { nobleStrain, nobleWatch } from './nobles';
 declare module './township' {
   interface Folk {
     /** How the town stood at the last season's turn, and the part of a step of standing not yet taken. */
-    drift?: { strain: number; care: number; moved: number; hungry: boolean; raided: boolean; carry?: number };
+    drift?: { strain: number; care: number; moved: number; hungry: boolean; raided: boolean; carry?: number; /** Standing lost to drift alone this season (its strain, the tavern, the women ordered into it), before any rise. */ lost?: number };
     /** Who of the town has drifted from their work: women at the tavern, men at the mines. */
     drifted?: Drifted;
   }
@@ -116,7 +116,8 @@ export function driftTown(c: Campaign, tid: number): number {
   let carry = (f.drift?.carry ?? 0) + moved;
   const step = Math.trunc(carry);
   if (step) { swayTown(c, tid, step); carry -= step; }
-  f.drift = { strain, care, moved, hungry: hunger > 0, raided: raided || !!mood.rebel, carry };
+  const lost = FALL * (strain - unsettled) + TAVERN_SWAY * Math.floor(d.tavern / 2) + Math.max(0, -e.sway);
+  f.drift = { strain, care, moved, hungry: hunger > 0, raided: raided || !!mood.rebel, carry, lost };
   return moved;
 }
 const leaderHere = (c: Campaign, tid: number): boolean => leaderAt(c, c.territories[tid].owner, tid);
