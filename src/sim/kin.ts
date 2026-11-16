@@ -31,7 +31,7 @@ import { folkOf, living } from './township';
 import type { Notable } from './township';
 import type { Feeling } from './portrait';
 import { MAX_VETERAN } from './campaignbase';
-import { THREATS } from './threats';
+import { THREATS } from './threatsbase';
 import { needOf } from './larder';
 import { swayTown } from './townfaith';
 
