@@ -23,7 +23,7 @@ import { orphansSeason } from './orphans';
 import { deputyAt, kinSeasons } from './kin';
 import { noblesSeasons } from './nobles';
 import { widowsSeason } from './widowhood';
-import { studiesSeason } from './studies';
+import { studiedHome, studiesSeason } from './studies';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
@@ -48,7 +48,7 @@ import { aimOrder, marchInto, redeploy } from './rivalaim';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
 import { unrestSeason } from './unrest';
-import { defenceAdd, keepLearned, knownIn, ownStudiesSeason, restSpared, rivalLearns } from './ownstudies';
+import { defenceAdd, knownIn, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
@@ -999,7 +999,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   // setup: a battle is about to be laid out for play.
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
   // written: a battle fought in person has been settled and its field is being read back.
-  .on('written', 'ownstudies', (c, _p, b) => { keepLearned(c, 0, b.after?.ownStudies); }) // what the player's side learned of its own in the fighting is the nation's
+  .on('written', 'ownstudies', (c, _p, b) => { studiedHome(c, 0, b.after?.ownStudies); }) // what the player's side learned of its own in the fighting is the nation's (kept by studies.ts)
   .on('written', 'tribes', (c, p, b) => fieldReckoned(c, p, b.after?.folk)) // those of the town who marched out to a battle in the open and fell
   // housed: the town's people and stores are as that battle left them.
   .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
@@ -1287,7 +1287,6 @@ function aiStep(c: Campaign, f: Faction): boolean {
     relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
     // A people with stores to spare moves with the times.
     if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8 && mayAdvance(c, f.id)) advanceAge(c, f.id); // and has lived in this age long enough (rivalrule.ts)
-    rivalLearns(c, f.id); // and learns what is its own people's to learn (ownstudies.ts)
     // A people shut in by the sea builds a harbour before anything else.
     const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
     if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }

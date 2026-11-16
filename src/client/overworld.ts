@@ -29,7 +29,6 @@ import { sendFromPanel } from './convoypanel';
 import { seasonCard, showPastSeasons } from './seasoncard';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
-import { learn as learnOwn } from '../sim/ownstudies';
 import { raiseWork } from '../sim/townworks';
 import { learn } from '../sim/studies';
 
@@ -143,7 +142,6 @@ export class Overworld {
       if (kind === 'ally') offerAlliance(this.c, Number(id));
       if (kind === 'gift') sendGift(this.c, Number(id));
       if (kind === 'age') advanceAge(this.c, 0);
-      if (kind === 'ownstudy') learnOwn(this.c, 0, id); // a study of the people's own (ownstudies.ts)
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
       if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);

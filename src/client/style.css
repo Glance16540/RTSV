@@ -845,6 +845,3 @@ body.looking-out #visit { display: none; }
 .encounter .enc-choices { display: flex; flex-wrap: wrap; gap: 8px; }
 .encounter .enc-choices button { flex: 1 1 160px; white-space: normal; padding: 9px 14px; }
 @media (max-width: 760px) { .encounter .enc-sheet { flex-direction: column; } .encounter .enc-view { width: 100%; } }
-
-/* Each people its own (ownstudies.ts): a study the nation has learned, in the map's panel. */
-.lp-study { margin-top: 4px; }

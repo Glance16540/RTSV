@@ -31,7 +31,7 @@ import '@fontsource/im-fell-french-canon/400-italic.css';
 import { mountDetailSetting } from './detail';
 import type { Census } from '../sim/township';
 import './style.css';
-import { ownAmong } from '../sim/ownstudies';
+import { learnedIn } from '../sim/studies';
 
 export class App {
   game: Game;
@@ -399,7 +399,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // The town fought over is counted as the battle leaves it: the people and stores of the side that held it.
       const folk = app.game.census(cfg.humanAttacks ? 1 : app.pid); // in the open too: the town's men who marched out are counted back (tribes.ts)
       const drifted = cfg.field ? undefined : driftedIn(app.game, cfg.humanAttacks ? 1 : app.pid); // driftintown.ts
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, ownStudies: ownAmong(app.game.players[app.pid].techs, app.game.players[app.pid].civ), champion: app.game.champion(app.pid) ?? undefined, town, folk, drifted, orders: cfg.field ? undefined : app.game.orders(app.pid), ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, ownStudies: learnedIn(app.game.players[app.pid].techs), champion: app.game.champion(app.pid) ?? undefined, town, folk, drifted, orders: cfg.field ? undefined : app.game.orders(app.pid), ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';

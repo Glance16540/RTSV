@@ -1,12 +1,13 @@
 // Each people its own: the studies only one nation can learn (docs/DESIGN.md; src/sim/ownstudies.ts).
 import { describe, expect, it } from 'vitest';
 import { BATTLE_HOOKS, ageOf, defence, newCampaign } from '../src/sim/campaign';
-import { CIVS, CIV_IDS, TECHS, baseMods } from '../src/sim/data';
+import { CIVS, CIV_IDS, baseMods } from '../src/sim/data';
 import { Game } from '../src/sim/game';
 import { ARMY_REST } from '../src/sim/armytown';
 import { resentOf, townTaken, goodRule } from '../src/sim/conquered';
 import { countryYield } from '../src/sim/country';
-import { OWN, OWN_STUDIES, STUDY_HALL, birthPace, buildPace, canLearn, cannotLearn, defenceAdd, faithPull, keepLearned, knownIn, knows, learn, mayLearn, moodEase, nationOf, ownAmong, ownStudiesSeason, researchAt, restSpared, rivalLearns, roadRisk, studiesOf, studyList, unrestEase, yokeEase, yokeSpared } from '../src/sim/ownstudies';
+import { OWN, STUDY_HALL, birthPace, buildPace, defenceAdd, faithPull, knownIn, knows, mayLearn, moodEase, nationOf, ownStudies, ownStudiesSeason, researchAt, restSpared, roadRisk, studiesOf, unrestEase, yokeEase, yokeSpared } from '../src/sim/ownstudies';
+import { isStudy, learn, learnedIn, studiedHome, studyBar, studySeason, teacherOf } from '../src/sim/studies';
 import { defenceOf } from '../src/sim/threats';
 import { townDrift } from '../src/sim/townfaith';
 import { folkOf } from '../src/sim/township';
@@ -26,35 +27,38 @@ const world = (civ: string) => {
   Object.assign(folkOf(c, town.id), { men: 6, women: 6, elders: 0, children: 2 });
   return { c, home, town };
 };
-const taught = (civ: string, id: string) => { const w = world(civ); expect(learn(w.c, 0, id)).toBe(true); return w; };
+/** That world, with the nation's study learned. */
+const taught = (civ: string, id: string) => { const w = world(civ); expect(nationOf(id)).toBe(civ); (w.c.factions[0].studies ??= []).push(id); return w; };
 
 describe('each people has a study of its own', () => {
-  it('every nation has one, in the tech table under the same id and marked as that nation\'s', () => {
+  it('every nation has one: a study kept on the map, taught at the Town Center, marked as that nation\'s', () => {
     for (const civ of CIV_IDS) expect(studiesOf(civ).length, civ).toBeGreaterThanOrEqual(1);
-    expect(new Set(OWN_STUDIES.map((s) => s.id)).size).toBe(OWN_STUDIES.length);
-    for (const s of OWN_STUDIES) {
-      expect(CIVS[s.civ], s.id).toBeDefined();
-      expect(TECHS[s.id], s.id).toBeDefined();
-      expect(TECHS[s.id].civ).toBe(s.civ);
-      expect(TECHS[s.id].name).toBe(s.name);
-      expect(TECHS[s.id].age).toBe(s.age);
-      expect(TECHS[s.id].desc).toContain(CIVS[s.civ].name); // the research list names the nation
+    expect(ownStudies().length).toBe(CIV_IDS.length);
+    for (const t of ownStudies()) {
+      expect(CIVS[t.civ!], t.id).toBeDefined();
+      expect(isStudy(t.id), t.id).toBe(true); // studies.ts keeps it for the nation
+      expect(teacherOf(t.id)).toBe(STUDY_HALL);
+      expect(t.desc).toContain(`A study of the ${CIVS[t.civ!].name} alone`); // the research list names the nation
+      expect(t.desc).toContain('On the map');
       const m = baseMods(), before = JSON.stringify(m);
-      TECHS[s.id].apply(m);
-      expect(JSON.stringify(m), s.id).not.toBe(before); // it does something in a town too
+      t.apply(m);
+      expect(JSON.stringify(m), t.id).not.toBe(before); // it does something in a town too
     }
-    // And no study in the table claims a nation without being on the list here.
-    for (const t of Object.values(TECHS)) if (t.civ) expect(nationOf(t.id)).toBe(t.civ);
   });
 
   it('only its own nation may learn it: on the map, and in a town', () => {
-    const { c } = world('hearth');
+    const { c, town } = world('hearth');
+    town.town = { at: 2, b: [['towncenter', 30, 30]] };
     expect(mayLearn('hearth', 'own_kinship')).toBe(true);
     expect(mayLearn('babylon', 'own_kinship')).toBe(false);
     expect(mayLearn('babylon', 'stonetools')).toBe(true); // anyone's study is anyone's
-    expect(canLearn(c, 0, 'own_kinship')).toBe(true);
-    expect(canLearn(c, 0, 'own_code')).toBe(false);
-    expect(cannotLearn(c, 0, 'own_code')).toBe('Not a study of this people.');
+    // On the map (studies.ts asks whose it is): theirs can be learned, another people's is barred.
+    expect(studyBar(c, 0, 'own_kinship', town.id)).toBe('');
+    expect(studyBar(c, 0, 'own_code', town.id)).toBe('A study of another people alone.');
+    expect(learn(c, 0, 'own_code', town.id)).not.toBe('');
+    expect(learn(c, 0, 'own_kinship', town.id)).toBe('');
+    expect(knows(c, 0, 'own_kinship')).toBe(true);
+    expect(c.log.at(-1)).toContain('Kinship');
     // In a town: listed at the Town Center for its nation alone, and refused to anyone else.
     expect(researchAt(STUDY_HALL, 'hearth', ['a'])).toEqual(['a', 'own_kinship']);
     expect(researchAt(STUDY_HALL, 'babylon', [])).toEqual(['own_code']);
@@ -70,28 +74,17 @@ describe('each people has a study of its own', () => {
     expect(g.cmdResearch(1, tc.id, 'own_code')).toBe(true);
   });
 
-  it('on the map it is learned once, for supplies, at its age, and kept', () => {
-    const { c } = world('forge');
+  it('it is not learned before its age, nor without a Town Center standing in the town', () => {
+    const { c, town } = world('forge');
+    expect(studyBar(c, 0, 'own_examinations', town.id)).toContain('taught at');
+    town.town = { at: 2, b: [['towncenter', 30, 30]] };
     c.factions[0].age = 1;
-    expect(cannotLearn(c, 0, 'own_examinations')).toBe('Needs a later age.');
+    expect(studyBar(c, 0, 'own_examinations', town.id)).toContain('later age');
     c.factions[0].age = 2;
-    const had = c.territories.filter((t) => t.owner === 0).reduce((n, t) => n + Object.values(folkOf(c, t.id).stores).reduce((a, b) => a + b, 0), 0);
-    expect(learn(c, 0, 'own_examinations')).toBe(true);
-    const has = c.territories.filter((t) => t.owner === 0).reduce((n, t) => n + Object.values(folkOf(c, t.id).stores).reduce((a, b) => a + b, 0), 0);
-    expect(had - has).toBe(OWN_STUDIES.find((s) => s.id === 'own_examinations')!.cost * 100);
-    expect(knows(c, 0, 'own_examinations')).toBe(true);
-    expect(learn(c, 0, 'own_examinations')).toBe(false);
-    expect(cannotLearn(c, 0, 'own_examinations')).toBe('Already learned.');
-    expect(c.log.at(-1)).toContain('Examinations');
-    expect(studyList(c, 0)).toMatchObject([{ learned: true, can: false }]);
-    // A poor people cannot.
-    const poor = world('greece');
-    for (const t of poor.c.territories) if (t.owner === 0) folkOf(poor.c, t.id).stores = { food: 100, wood: 100, gold: 50, stone: 50 };
-    poor.c.factions[0].supplies = 0;
-    expect(canLearn(poor.c, 0, 'own_assembly')).toBe(false);
+    expect(studyBar(c, 0, 'own_examinations', town.id)).toBe('');
   });
 
-  it('a nation that has learned it begins a battle with it, and what is learned in a town goes home', () => {
+  it('a nation that has learned it begins a battle with it, and what is learned in a battle goes home', () => {
     const { c } = taught('kush', 'own_bow');
     expect(knownIn(c, 0)).toEqual(['own_bow']);
     expect(knownIn(c, -1)).toEqual([]);
@@ -99,36 +92,28 @@ describe('each people has a study of its own', () => {
     expect(g.players[0].techs.has('own_bow')).toBe(true);
     expect(g.players[0].mods.towerRange).toBe(baseModsFor('kush').towerRange + 1);
     expect(g.players[1].techs.has('own_bow')).toBe(false); // not theirs, whatever the setup says
-    // Home again: only its own studies are kept, each once.
-    expect(ownAmong(new Set(['stonetools', 'own_bow', 'own_code']), 'kush')).toEqual(['own_bow']);
-    const fresh = world('babylon');
-    expect(keepLearned(fresh.c, 0, ['own_code', 'own_bow', 'stonetools', 7, 'own_code'])).toEqual(['own_code']);
-    expect(knows(fresh.c, 0, 'own_code')).toBe(true);
-    expect(fresh.c.factions[0].studies).toEqual(['own_code']);
-    // The list is shared with the studies anyone may learn: learning one of its own leaves those where they were.
-    const both = world('greece');
-    both.c.factions[0].studies = ['some_general_study'];
-    expect(learn(both.c, 0, 'own_assembly')).toBe(true);
-    expect(both.c.factions[0].studies).toEqual(['some_general_study', 'own_assembly']);
-    expect(knownIn(both.c, 0)).toEqual(['own_assembly']);
+    // Home again, by the battle's hook: studies.ts keeps what the side had learned.
     expect(BATTLE_HOOKS.order('written')).toContain('ownstudies');
-    // A record meddled with keeps nothing that is not the nation's.
-    fresh.c.factions[0].studies = ['own_bow', 'own_code', 'own_code'];
+    const fresh = world('babylon');
+    expect(studiedHome(fresh.c, 0, learnedIn(new Set(['stonetools', 'own_code'])))).toEqual(['own_code']);
+    expect(knows(fresh.c, 0, 'own_code')).toBe(true);
+    // A record meddled with gives a people nothing that is another's.
+    fresh.c.factions[0].studies = ['own_bow', 'own_code'];
     expect(knownIn(fresh.c, 0)).toEqual(['own_code']);
     expect(knows(fresh.c, 0, 'own_bow')).toBe(false);
   });
 
-  it('a computer-led people learns its own when it can well afford it', () => {
+  it('a computer-led people learns its own by what presses on it, and never another\'s', () => {
     const c = newCampaign(7, 2, 1, 'hearth');
-    const rival = c.factions[1], own = studiesOf(rival.civ)[0];
+    const rival = c.factions[1];
     rival.age = 2;
-    for (const t of c.territories) if (t.owner === 1) folkOf(c, t.id).stores = { food: 100, wood: 100, gold: 100, stone: 100 };
-    rival.supplies = own.cost + OWN.reserve - 1;
-    expect(rivalLearns(c, 1)).toEqual([]);
-    for (const t of c.territories) if (t.owner === 1) folkOf(c, t.id).stores = { food: 9000, wood: 9000, gold: 9000, stone: 9000 };
-    rival.supplies = own.cost + OWN.reserve;
-    expect(rivalLearns(c, 1)).toEqual([own.id]);
-    expect(knows(c, 1, own.id)).toBe(true);
+    const towns = c.territories.filter((t) => t.owner === 1);
+    for (const t of towns) { folkOf(c, t.id).stores = { food: 9000, wood: 9000, gold: 9000, stone: 9000 }; t.town = { at: 2, b: [['towncenter', 30, 30]] }; folkOf(c, t.id).hungry = 2; }
+    c.events = towns.map((t) => ({ kind: 'unrest' as const, at: t.id, turn: c.turn, until: c.turn + 1 }));
+    for (let i = 0; i < 12; i++) studySeason(c, 1);
+    const learned = rival.studies ?? [];
+    for (const id of learned) expect(mayLearn(rival.civ, id), id).toBe(true);
+    expect(learned.filter((id) => nationOf(id)).every((id) => nationOf(id) === rival.civ)).toBe(true);
   });
 });
 const baseModsFor = (civ: string) => { const m = baseMods(); CIVS[civ].apply(m); return m; };

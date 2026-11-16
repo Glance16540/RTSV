@@ -25,7 +25,6 @@ import { companyOf } from './townmuster';
 import { studiedHome, studiesOf } from './studies';
 import { menMustered, reckonArmies } from './armytown';
 import type { Army } from './campaign';
-import { keepLearned, knownIn } from './ownstudies';
 
 declare module './campaign' {
   interface Campaign {
@@ -54,8 +53,6 @@ export interface VisitRecord {
 
 /** What comes back from a visit. Everything is by name, so that more can be carried home without changing who calls this. */
 export interface VisitAfter {
-  /** The studies of its own the player had learned in the town by the end (ownstudies.ts). */
-  ownStudies?: string[];
   town?: Standing[];
   ground?: Ground;
   /** Where the town's creed stood when the player left. */
@@ -181,7 +178,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
     seed: t.seed, size: t.trait === 'coast' ? 96 : 72, level: 0, humanAttacks: false, field: false, sea: t.trait === 'coast',
     title: `A visit to ${t.name}`,
     setups: [{
-      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ownStudies: knownIn(c, 0), start: homeCorner(t), hero, virtue: faithAt(c, t.id),
+      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
         buildings: [...(fort ? ['tower', 'tower'] : []), ...works], ...(town.length ? { town } : {}),
@@ -208,7 +205,6 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   if (census) bornOnVisit(c, land.id, folkOf(c, land.id).children - before);
   if (census) driftBack(c, land.id, after.drifted);
   keepOrders(c, land.id, after.orders);
-  keepLearned(c, 0, after.ownStudies); // what was learned in the town of the nation's own studies is the nation's (ownstudies.ts)
   if (after.arms) armsHome(c, land.id, after.arms, had); // its soldiers go home to the map: the army's losses, and companies trained there
   if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
