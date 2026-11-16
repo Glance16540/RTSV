@@ -33,7 +33,7 @@ import { kinOf, plotWarning, spouseOf } from './kin';
 import { Noble, isAngry, newLord, noblesOf, titleOf } from './nobles';
 import { folkOf, living } from './township';
 import { canPayFor, payFor } from './prices';
-import { Choice, Intrigue, begin, chance, end, note } from './intrigue';
+import { Choice, Intrigue, begin, chance, end, note } from './intriguebase';
 
 export const COURT = {
   /** No story of the house before this season; one at a time; this long between them. */

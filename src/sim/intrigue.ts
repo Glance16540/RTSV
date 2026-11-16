@@ -29,57 +29,16 @@ import { agesOf } from './ageing';
 import { leaderAt } from './court';
 import { needOf } from './larder';
 import { folkOf, grown, living } from './township';
-import { aftermathSeason, remember, rememberWronged } from './aftermath';
+import { aftermathSeason, rememberWronged } from './aftermath';
+import { Choice, Clue, Intrigue, IntrigueKind, IntrigueNote, KEEP, Person, begin, chance, end, fullName, note, ofTown } from './intriguebase';
+export * from './intriguebase'; // the record of a story and its plumbing, where they were found before they were moved
 import { courtBegin, courtChoices, courtChoose, courtStanding, courtStep } from './courtstory';
-
-export type IntrigueKind = 'thief' | 'killer' | 'rival' | 'suitor' | 'plot';
-/** The stories of a town, and those of the leader's own house (courtstory.ts). */
-export const TOWN_KINDS: IntrigueKind[] = ['thief', 'killer'];
-export const ofTown = (it: { kind: IntrigueKind }): boolean => TOWN_KINDS.includes(it.kind);
-/** A grown person of the town a story turns on. */
-export interface Person { name: string; family: string; gender: 'm' | 'f'; trade: string; /** They are on the town's own record (township.ts): one of its notable people, or the man of a notable house. */ known?: 'notable' | 'husband' }
-export interface Clue { turn: number; text: string; /** Those of `people` it clears, by place in the list. */ clears: number[] }
-export interface Intrigue {
-  id: number; kind: IntrigueKind; owner: number; at: number; since: number;
-  /** A thief: the houses robbed, by the head of each. A killer: those suspected. */
-  people: Person[];
-  /** A killer: which of `people` it is. A thief: who it is, once caught. Not for showing. */
-  culprit: number; thief?: Person; why?: 'hunger' | 'widow' | 'drink' | 'greed';
-  /** A killer's dead. */
-  victims: (Person & { turn: number })[];
-  /** A thief: gold gone from the town's store, and how often each house was robbed. */
-  taken: number; robbed: number[];
-  clues: Clue[]; cleared: number[];
-  /** A watch is kept (it costs the town gold each season), and for how many seasons it has been. */
-  watch?: boolean; watched: number;
-  /** A thief stands before the leader for judgement since this turn. */
-  caught?: number;
-  /** A pardoned thief the lesson did not take with: the town may have another story at once. */
-  again?: boolean;
-  /** An innocent was hanged for it. */
-  wronged?: Person[];
-  /** A story of the leader's house (courtstory.ts): the rival people in it, how far it has gone, the turn its next step falls, and who is in it by name. */
-  rival?: number; stage?: number; due?: number; cast?: { spouse?: string; daughter?: string; suitor?: string; king?: string }; willing?: boolean; asked?: boolean;
-  /** A plot (courtstory.ts): the nobles suspected, by their key in nobles.ts; `culprit` is which, and `found` that it is known. */
-  nobles?: { key: string; name: string; title: string; female: boolean }[]; found?: boolean; /** Gifts have gone out to the nobles over this plot. */ sweetened?: boolean;
-  ended?: { turn: number; how: 'hanged' | 'banished' | 'worked' | 'pardoned' | 'unfound' | 'lost' | 'yielded' | 'bought' | 'foiled' | 'slain' | 'wounded' | 'wed' | 'refused' | 'spurned' | 'outlived' | 'executed' | 'usurped' | 'nothing'; text: string };
-}
-/** Something a story did in a season, for the report. `who`: the person it is about, for a face. */
-export interface IntrigueNote { turn: number; id: number; kind: IntrigueKind; at: number; owner: number; tone: 'good' | 'bad' | 'plain'; text: string; who?: Person }
-export interface Choice { id: string; label: string; /** Why it cannot be taken now, if it cannot. */ bar?: string; who?: Person }
-
-declare module './campaign' {
-  interface Campaign {
-    /** Stories inside the story, open and ended (intrigue.ts). */
-    intrigues?: Intrigue[]; intrigueSeq?: number; intrigueNews?: IntrigueNote[];
-  }
-}
 
 export const INTRIGUE = {
   /** No story before this season; a town has one at a time and is left alone this long after one ends; a people has this many open at once. */
   from: 6, rest: 8, open: 1,
   /** Ended stories kept on record, and notes kept for the report. */
-  kept: 30, notes: 60,
+  kept: KEEP.kept, notes: KEEP.notes,
   /** The chance someone in a town's story is one of the people its record knows by name, where it knows any. */
   known: 0.5,
   thief: {
@@ -119,14 +78,7 @@ export const INTRIGUE = {
 const TRADES = ['miller', 'smith', 'carter', 'weaver', 'herder', 'brewer', 'thatcher', 'fowler', 'tanner', 'potter', 'cooper', 'baker'];
 const PLACES = ['the mill', 'the forge', 'the well', 'the far field', 'the church', 'the ford', 'the granary', 'the tavern'];
 
-/** A chance of this story's own: by the campaign, the season and a salt. */
-export function chance(c: Campaign, salt: number): number {
-  let h = (Math.imul(c.seed ^ 0x51ed270b, 0x9e3779b1) ^ Math.imul(c.turn + 0x1b873593, 0x85ebca6b) ^ Math.imul(salt + 0x27d4eb2f, 0xc2b2ae35)) >>> 0;
-  h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 12; h = Math.imul(h, 0x297a2d39) >>> 0; h ^= h >>> 15;
-  return (h >>> 0) / 4294967296;
-}
 const pick = <T>(xs: readonly T[], r: number): T => xs[Math.min(xs.length - 1, Math.floor(r * xs.length))];
-export const fullName = (p: Person): string => `${p.name} ${p.family}`.trim();
 const they = (p: Person): string => (p.gender === 'f' ? 'she' : 'he');
 const their = (p: Person): string => (p.gender === 'f' ? 'her' : 'his');
 const land = (c: Campaign, at: number): string => c.territories[at].name;
@@ -171,21 +123,6 @@ function strike(c: Campaign, at: number, p: Person, how: string): boolean {
   if (p.known === 'husband') { const n = living(f).find((x) => x.kind === 'mother' && !!x.husband && x.husband.split(' ')[0] === p.name && (x.family ?? '') === p.family); if (n) delete n.husband; }
   return true;
 }
-export function note(c: Campaign, it: Intrigue, tone: IntrigueNote['tone'], text: string, who?: Person): void {
-  const news = (c.intrigueNews ??= []);
-  news.push({ turn: c.turn, id: it.id, kind: it.kind, at: it.at, owner: it.owner, tone, text, ...(who ? { who } : {}) });
-  if (news.length > INTRIGUE.notes) news.splice(0, news.length - INTRIGUE.notes);
-  if (it.owner === 0) c.log.push(text);
-}
-export function end(c: Campaign, it: Intrigue, how: NonNullable<Intrigue['ended']>['how'], text: string, tone: IntrigueNote['tone'], who?: Person): void {
-  it.ended = { turn: c.turn, how, text };
-  delete it.caught; it.watch = false;
-  note(c, it, tone, text, who);
-  (c.chronicle ??= []).push({ turn: c.turn, text }); // a mark on the record, whatever came of it
-  remember(c, it); // and what it leaves behind in the town or the court (aftermath.ts)
-  const all = (c.intrigues ??= []), done = all.filter((x) => x.ended);
-  if (done.length > INTRIGUE.kept) all.splice(all.indexOf(done[0]), 1);
-}
 
 /** The stories of a people still running (the player's by default), and all of them, ended too. */
 export const openIntrigues = (c: Campaign, f = 0): Intrigue[] => (c.intrigues ?? []).filter((x) => x.owner === f && !x.ended);
@@ -207,11 +144,6 @@ function free(c: Campaign, at: number): boolean {
   const t = c.territories[at];
   if (t.owner < 0 || t.horde) return false;
   return !(c.intrigues ?? []).some((x) => ofTown(x) && x.at === at && (!x.ended || (!x.again && c.turn - x.ended.turn < INTRIGUE.rest)));
-}
-export function begin(c: Campaign, kind: IntrigueKind, at: number): Intrigue {
-  const it: Intrigue = { id: (c.intrigueSeq = (c.intrigueSeq ?? 0) + 1), kind, owner: c.territories[at].owner, at, since: c.turn, people: [], culprit: -1, victims: [], taken: 0, robbed: [], clues: [], cleared: [], watched: 0 };
-  (c.intrigues ??= []).push(it);
-  return it;
 }
 
 /** A thief begins on a town: the houses are chosen, and the first is robbed. For the season's chance, and for tests. */
