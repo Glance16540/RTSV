@@ -19,7 +19,7 @@ import { folkOf } from './township';
 import { heardDecree } from './nobles';
 import { needOf } from './larder';
 
-export type DecreeKind = 'church' | 'guards' | 'alms' | 'closeTavern' | 'tavernWomen';
+export type DecreeKind = 'church' | 'guards' | 'alms' | 'closeTavern' | 'tavernWomen' | 'tend';
 export interface Decree { kind: DecreeKind; until: number; strength: number }
 
 declare module './campaign' {
@@ -33,6 +33,7 @@ export const DECREES: Record<DecreeKind, { name: string; cost: number; seasons: 
   alms: { name: 'Give food', cost: 0, seasons: 1, desc: 'Food from the towns beside it fills the town\'s larder and removes the cause: what they have beyond two seasons of their own eating.' },
   closeTavern: { name: 'Close the tavern', cost: 1, seasons: 4, needs: 'tavern', desc: 'Nobody drifts to the tavern and it makes no gold; a decadent town is angered by it.' },
   tavernWomen: { name: 'Order the women into the tavern', cost: 0, seasons: 4, needs: 'tavern', desc: 'Gold every season, and the town\'s standing falls.' },
+  tend: { name: 'Tend the sick and the mourning', cost: 0, seasons: 4, needs: 'church', desc: 'The church takes in the sick and sits with the bereaved: sickness and grief weigh on the town half as much, and plague kills fewer. Paid in gold from the town.' },
 };
 export const DECREE_KINDS = Object.keys(DECREES) as DecreeKind[];
 
@@ -77,6 +78,13 @@ export function sendAlms(c: Campaign, f: number, tid: number, want: number): num
   return came;
 }
 
+/** The church's tending: gold it costs the town, how much less sickness and grief weigh at full strength, and how much less plague kills. */
+export const TEND_GOLD = 40;
+export const TEND_EASE = 0.5;
+export const TEND_PLAGUE = 0.25;
+/** The share of plague's toll the church's tending spares in a town this season (acts.ts). */
+export const tendedPlague = (c: Campaign, tid: number): number => TEND_PLAGUE * decreesAt(c, tid).filter((d) => d.kind === 'tend').reduce((m, d) => Math.max(m, d.strength), 0);
+
 /** The decrees in force in a town. */
 export const decreesAt = (c: Campaign, tid: number): Decree[] => (c.territories[tid]?.decrees ?? []).filter((d) => d.until >= c.turn);
 
@@ -89,6 +97,7 @@ export function decreeBar(c: Campaign, f: number, tid: number, kind: DecreeKind)
   if (d.needs && !t.buildings.includes(d.needs)) return `There is no ${d.needs} in ${t.name}.`;
   if (decreesAt(c, tid).some((x) => x.kind === kind)) return 'That decree is already in force here.';
   if (fac.supplies < d.cost) return `It costs ${d.cost} supplies.`;
+  if (kind === 'tend' && folkOf(c, tid).stores.gold < TEND_GOLD) return `It costs ${TEND_GOLD} gold from ${t.name}.`;
   if (kind === 'alms' && almsCanFind(c, f, tid) < ALMS_LEAST) return `There is no food to be had for ${t.name}: the towns beside it have none to spare.`;
   return '';
 }
@@ -103,20 +112,22 @@ export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKin
   // towns drift (drift.ts): it acts in the season it is given, as one given while the season turns does.
   t.decrees = [...decreesAt(c, tid), { kind, until: c.turn + d.seasons - 1 + (c.phase === 'player' ? 1 : 0), strength }];
   if (kind === 'alms') sendAlms(c, f, tid, Math.round(ALMS_FOOD * strength));
+  if (kind === 'tend') folkOf(c, tid).stores.gold -= TEND_GOLD;
   heardDecree(c, f, tid, kind, strength); // it pleases some of the nobles and angers others (nobles.ts)
   if (f === 0) c.log.push(`${d.name}: decreed in ${t.name}${present ? '' : ', by messenger'}.`);
   return '';
 }
 
 /** What the decrees in force in a town do to its drift this season. */
-export interface DecreeEffect { strainScale: number; strainAdd: number; care: number; holyBarred: boolean; sway: number; gold: number; tavernShut: boolean; /** The strength of an order sending the women into the tavern, 0 if none. */ tavernWomen: number }
+export interface DecreeEffect { strainScale: number; strainAdd: number; care: number; holyBarred: boolean; sway: number; gold: number; tavernShut: boolean; /** The strength of an order sending the women into the tavern, 0 if none. */ tavernWomen: number; /** The strength of the church's tending of the sick and the mourning, 0 if none. */ tend: number }
 export function decreeEffect(c: Campaign, tid: number, decadent: boolean): DecreeEffect {
-  const e: DecreeEffect = { strainScale: 1, strainAdd: 0, care: 0, holyBarred: false, sway: 0, gold: 0, tavernShut: false, tavernWomen: 0 };
+  const e: DecreeEffect = { strainScale: 1, strainAdd: 0, care: 0, holyBarred: false, sway: 0, gold: 0, tavernShut: false, tavernWomen: 0, tend: 0 };
   for (const d of decreesAt(c, tid)) {
     const s = d.strength;
     if (d.kind === 'church') e.care += CHURCH_CARE * s;
     if (d.kind === 'guards') { e.strainScale *= 1 - GUARDS_EASE * s; e.holyBarred = true; }
     if (d.kind === 'closeTavern') { e.tavernShut = true; if (decadent) e.strainAdd += CLOSED_ANGER * s; }
+    if (d.kind === 'tend') e.tend = Math.max(e.tend, s);
     if (d.kind === 'tavernWomen') { e.tavernWomen = Math.max(e.tavernWomen, s); e.sway -= TAVERN_WOMEN_SWAY * s; e.gold += Math.round(TAVERN_WOMEN_GOLD * s); }
   }
   return e;
@@ -132,7 +143,7 @@ export function decreesSeason(c: Campaign): void {
  * hungry, guards where it is raided or rising, the church where it slid last season, the tavern shut where it slid
  * and not already lost to it. Reads how the town stood last season (`strainOf`, from drift.ts). Returns how many were given.
  */
-export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) => { hungry: boolean; raided: boolean; moved: number; standing: number }, keep = 4): number {
+export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) => { hungry: boolean; raided: boolean; moved: number; standing: number; sick?: boolean; grieving?: boolean }, keep = 4): number {
   let given = 0, fed = 0;
   if (c.decreesOff) return 0;
   for (const t of c.territories) {
@@ -143,6 +154,7 @@ export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) 
     const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= (DECREES[k].cost ? keep : 0) && issueDecree(c, f, t.id, k) === '';
     if (s.hungry && fed < ALMS_A_SEASON && tryGive('alms')) { given++; fed++; continue; }
     if (s.raided && tryGive('guards')) { given++; continue; }
+    if ((s.sick || s.grieving) && tryGive('tend')) { given++; continue; }
     if (s.moved < 0 && tryGive('church')) { given++; continue; }
     if (s.moved < 0 && s.standing > -70 && tryGive('closeTavern')) given++;
   }

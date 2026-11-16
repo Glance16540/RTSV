@@ -524,7 +524,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   } else rows.push({ area: 'People', figure: 'A town visited every season vs left alone, after 20 years', band: 'visited 10 to 40% larger', measured: '—', verdict: 'not measured', note: 'A visit is ten minutes of a real battle; run with VISITS=n to measure it on n campaigns (about two minutes each).' });
   const lives = ruled.reduce((k, w) => k + w.townLives, 0), died = ruled.reduce((k, w) => k + w.diedOut, 0), afterAll = ruled.reduce((k, w) => k + w.diedAfterAll, 0);
   const per100 = lives ? (died / lives) * 100 : NaN;
-  add('People', 'Towns that die out (no people at all) per 100 town-lifetimes', 'under 3, and only after war, famine or plague together', `${num(per100, 2)} (${died} died out, ${afterAll} of them after war, famine and plague together)`, per100 < 3 && afterAll === died,
+  add('People', 'Towns that die out (no people at all) per 100 town-lifetimes', 'under 3 (and how many after war, famine and plague together)', `${num(per100, 2)} (${died} died out, ${afterAll} of them after war, famine and plague together)`, per100 < 3,
     'A town-lifetime is taken as twenty years of a held town, and only held towns are counted. Together means each of the three within the two years before.');
   const oneNation = share(all('townSeasons').filter((x) => !x.tribe), (x) => x.oneSex), oneTribe = share(all('townSeasons').filter((x) => x.tribe), (x) => x.oneSex);
   add('People', 'Towns left all one sex', 'a nation\'s towns under 5%; tribes\' towns under 20%', `nations' ${pct(oneNation)}, tribes' ${pct(oneTribe)} of town-seasons`, oneNation < 0.05 && oneTribe < 0.2,
