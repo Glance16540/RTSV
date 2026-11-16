@@ -24,7 +24,8 @@ export interface Figure {
   /** Picks the face, the build and the hair, the same each time it is shown. */
   seed: number;
   /** What they do while they stand there. */
-  pose: 'talk' | 'ready' | 'idle' | 'sit';
+  /** 'talk': speaking with his hands; 'ready': at ease with his arms; 'stand': upright, hands down; 'humble': brought before the leader, head a little bowed; 'sit': seated. */
+  pose: 'talk' | 'ready' | 'stand' | 'humble' | 'sit';
   /** The kind of band they are of, for the colours of its kit. */
   band?: BandKind;
 }
@@ -93,10 +94,10 @@ export const wordKey = (it: Intrigue): string => `${it.id}:${it.kind}:${it.stage
 export function askerOf(c: Campaign, it: Intrigue): Figure | null {
   if (!awaitsWord(it)) return null;
   const seed = it.id * 131 + 17;
-  if (it.kind === 'suitor') return { role: 'asker', dress: 'noble', female: false, civ: civ(c, it.rival), seed, pose: 'talk' };
-  if (it.kind === 'rival') return { role: 'asker', dress: 'envoy', female: false, civ: civ(c, it.rival), seed, pose: 'talk' };
-  if (it.kind === 'plot') { const n = it.nobles?.[it.culprit]; return { role: 'asker', dress: 'noble', female: !!n?.female, civ: civ(c, 0), seed, pose: 'idle' }; }
-  return { role: 'asker', dress: 'villager', female: it.thief?.gender === 'f', civ: civ(c, 0), seed, pose: 'idle' };
+  if (it.kind === 'suitor') return { role: 'asker', dress: 'noble', female: false, civ: civ(c, it.rival), seed, pose: 'stand' };
+  if (it.kind === 'rival') return { role: 'asker', dress: 'envoy', female: false, civ: civ(c, it.rival), seed, pose: 'stand' };
+  if (it.kind === 'plot') { const n = it.nobles?.[it.culprit]; return { role: 'asker', dress: 'noble', female: !!n?.female, civ: civ(c, 0), seed, pose: 'humble' }; }
+  return { role: 'asker', dress: 'villager', female: it.thief?.gender === 'f', civ: civ(c, 0), seed, pose: 'humble' };
 }
 /** The stories of the player's that wait on their word, oldest first. */
 export const awaiting = (c: Campaign): Intrigue[] => (c.intrigues ?? []).filter(awaitsWord);
