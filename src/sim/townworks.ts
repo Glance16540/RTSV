@@ -9,7 +9,7 @@
 // `onMap` in its own data.ts entries; nothing here lists them.
 import type { Campaign } from './campaign';
 import { BUILDINGS } from './data';
-import { STORE_KINDS, folkOf } from './township';
+import { STORE_KINDS, folkOf, grown } from './township';
 import { plotFor } from './governor';
 import { ageOf } from './campaignbase';
 import { standsAt } from './studies';
@@ -30,6 +30,7 @@ export function raiseBar(c: Campaign, f: number, tid: number, type: string, chec
   if (!t.town?.b?.length) return 'The town has no buildings on record to raise it beside.';
   if (begunAt(c, tid, type)) return `There is a ${b.name} there already.`;
   if (ageOf(c, f) < b.age) return 'It needs the nation in a later age.';
+  if (b.townAt && grown(folkOf(c, tid)) < b.townAt) return `Only in a town of ${b.townAt} grown people or more.`;
   const own = check?.(c, tid);
   if (own) return own;
   const s = folkOf(c, tid).stores;

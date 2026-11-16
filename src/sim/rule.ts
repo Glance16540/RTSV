@@ -3,7 +3,8 @@
 // decrees, drift and nobles, so that raising them (townworks.ts) is not in a ring with those.
 import type { Campaign } from './campaign';
 import { BUILDINGS } from './data';
-import { STORE_KINDS, folkOf } from './township';
+import { STORE_KINDS, folkOf, grown } from './township';
+import { manorNeeds } from './manor';
 import { begunAt, raiseBar, raiseWork } from './townworks';
 import { STUDY_KEEP } from './studies';
 
@@ -24,7 +25,19 @@ export function hallSeason(c: Campaign, f: number): boolean {
   return raiseWork(c, f, chief.id, 'hall') === '';
 }
 
-/** A season for every rival nation's works of rule and faith. */
+/** A season for one rival nation: it raises a Noble's Manor in its largest town that has none, when it can spare the stores there. */
+export function manorSeason(c: Campaign, f: number): boolean {
+  const fac = c.factions[f];
+  if (!fac?.alive || !fac.isAI) return false;
+  const big = c.territories.filter((t) => t.owner === f && !t.horde && !begunAt(c, t.id, 'manor') && grown(folkOf(c, t.id)) >= manorNeeds()).sort((a, b) => grown(folkOf(c, b.id)) - grown(folkOf(c, a.id)) || a.id - b.id)[0];
+  if (!big) return false;
+  const s = folkOf(c, big.id).stores, cost = BUILDINGS.manor.cost;
+  const left = STORE_KINDS.reduce((n, k) => n + s[k] - (cost[k] ?? 0), 0);
+  if (left < RULE_KEEP * STUDY_KEEP || raiseBar(c, f, big.id, 'manor')) return false;
+  return raiseWork(c, f, big.id, 'manor') === '';
+}
+
+/** A season for every rival nation's works of rule and faith: at most one begun a season, the Hall first. */
 export function rulesSeason(c: Campaign): void {
-  for (const x of c.factions) hallSeason(c, x.id);
+  for (const x of c.factions) { if (!hallSeason(c, x.id)) manorSeason(c, x.id); }
 }

@@ -593,6 +593,8 @@ export interface BuildingDef {
   cooldown?: number;
   /** It can be raised on the map, on a town's record, out of the town's stores (townworks.ts), and the governor finishes it. */
   onMap?: boolean;
+  /** Only in a town of this many grown people or more (townworks.ts; in a town, the same count of its villagers). */
+  townAt?: number;
 }
 
 const B = (d: BuildingDef) => d;
@@ -658,6 +660,12 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     desc: 'The leader\'s seat in this town. A decree given to the town has its full strength, as if the leader were here; thieves, killers and plotters are judged here, so they are found the sooner; and the nation\'s nobles gather at it, so their tempers cool the faster and an angry lord here keeps his watch.',
     cost: { wood: 200, stone: 150, gold: 50 }, time: 45, age: 1, hp: 1400, size: 3, pop: 0, sight: 7,
     trains: [], techs: [], onMap: true,
+  }),
+  manor: B({
+    id: 'manor', name: "Noble's Manor", icon: '🏛️',
+    desc: 'The lord\'s own house, in a town of twelve grown people or more. He grows the more content for it, season by season, but he has the more say: every decree pleases or angers him twice as much.',
+    cost: { wood: 180, stone: 60, gold: 60 }, time: 38, age: 1, hp: 1000, size: 3, pop: 0, sight: 6,
+    trains: [], techs: [], onMap: true, townAt: 12,
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',

@@ -29,6 +29,7 @@ import type { Post } from './kin';
 import { folkOf, grown, living } from './township';
 import { leaderAt } from './court';
 import { nobleEase, seatAt } from './hall';
+import { lordContent, lordSay } from './manor';
 
 export type Rank = 'lord' | 'captain' | 'matron' | 'close';
 export type Leaning = 'pious' | 'martial' | 'worldly' | 'kindly';
@@ -163,7 +164,8 @@ export const angryAt = (c: Campaign, tid: number): boolean => noblesAt(c, tid).s
 
 /** How a decree to this town would move each noble of the nation: the change in mood, at this strength. */
 export function moodsFor(c: Campaign, f: number, tid: number, kind: DecreeKind, strength = 1): { noble: Noble; by: number }[] {
-  return noblesOf(c, f).map((noble) => ({ noble, by: Math.round(NOBLES.sway * LIKES[noble.leaning][kind] * strength * (noble.town === tid ? 1 : NOBLES.far)) })).filter((x) => x.by !== 0);
+  // A lord with a manor has the more say (manor.ts).
+  return noblesOf(c, f).map((noble) => ({ noble, by: Math.round(NOBLES.sway * LIKES[noble.leaning][kind] * strength * (noble.town === tid ? 1 : NOBLES.far) * (noble.rank === 'lord' ? lordSay(c, noble.town) : 1)) })).filter((x) => x.by !== 0);
 }
 
 /** Who a decree to this town would please and who it would anger (most moved first), for the player to weigh. */
@@ -204,7 +206,7 @@ export function noblesSeason(c: Campaign, f: number): void {
   for (const n of nobles) {
     const folk = folkOf(c, n.town);
     const sour = (struckAt(c, n.town, ['raid', 'carried']) ? NOBLES.raided : 0) + (folk.hungry ? NOBLES.hungry : 0) + (struckAt(c, n.town, ['plague']) ? NOBLES.sick : 0);
-    n.mood = clamp(Math.round(n.mood * (1 - NOBLES.ease * nobleEase(c, f)) + sour), -100, 100); // they cool the faster with a Hall to bring their grievances to (hall.ts)
+    n.mood = clamp(Math.round(n.mood * (1 - NOBLES.ease * nobleEase(c, f)) + sour + (n.rank === 'lord' ? lordContent(c, n.town) : 0)), -100, 100); // and a lord in his manor grows content (manor.ts) // they cool the faster with a Hall to bring their grievances to (hall.ts)
   }
   fac.nobles = nobles;
   // The inner circle is drawn by the nobles of their town.
