@@ -836,9 +836,9 @@ body.looking-out #visit { display: none; }
 
 /* ---- Meeting them face to face (encounter.ts): the ones met as figures, the choices beside them ---- */
 .encounter { z-index: 55; }
-.encounter .enc-sheet { width: min(940px, 100%); display: flex; gap: 22px; align-items: center; text-align: left; transform: rotate(-0.2deg); }
+.encounter .enc-sheet { width: min(1000px, 100%); display: flex; gap: 22px; align-items: center; text-align: left; transform: rotate(-0.2deg); }
 .encounter .enc-view { flex: 0 0 auto; border: 3px double var(--ink); background: radial-gradient(ellipse at 50% 40%, #e8d2a4, #8a6a44 80%); }
-.encounter .enc-view canvas { display: block; width: 460px; height: 340px; max-width: 100%; height: auto; aspect-ratio: 460 / 340; }
+.encounter .enc-view canvas { display: block; width: 520px; max-width: 100%; height: auto; aspect-ratio: 520 / 400; }
 .encounter .enc-side { flex: 1 1 260px; min-width: 0; }
 .encounter .enc-side h1 { font-size: 34px; }
 .encounter .enc-who { display: block; margin-bottom: 6px; }
