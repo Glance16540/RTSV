@@ -262,3 +262,44 @@ export function casualties(a: Army, n: number): void {
     if (--a.units[type] <= 0) delete a.units[type];
   }
 }
+
+export type Sky = 'rain' | 'snow' | 'dust';
+
+export interface Front { kind: Sky; x: number; y: number; r: number; vx: number; vy: number }
+
+/** What weather does on the map. `march` is what is left of an attacker's strength after marching into it. */
+export const WEATHER: Record<Sky, { name: string; icon: string; march: number; desc: string }> = {
+  rain: { name: 'Heavy rain', icon: '🌧️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the rain.' },
+  snow: { name: 'Snow', icon: '🌨️', march: 0.85, desc: 'An army attacking into it fights at 85% strength, and the land yields 1 supply less. A battle here is fought in the snow.' },
+  dust: { name: 'Dust storm', icon: '🌪️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the dust.' },
+};
+
+/** A front of the kind that suits the country it starts over: snow in the cold lands, dust in the dry, rain elsewhere. */
+export function newFront(c: Campaign, k: number, edge: boolean): Front {
+  const y = MAP_H * (0.1 + luck(c, k) * 0.8);
+  const b = biomeAt(c.seed, MAP_W / 2, y);
+  const kind: Sky = b === 'snow' ? 'snow' : b === 'desert' || b === 'steppe' ? 'dust' : 'rain';
+  const east = luck(c, k + 1) < 0.75; // most weather comes out of the west
+  return { kind, x: edge ? (east ? -80 : MAP_W + 80) : MAP_W * luck(c, k + 2), y, r: 95 + luck(c, k + 3) * 45, vx: (east ? 1 : -1) * (70 + luck(c, k + 4) * 50), vy: (luck(c, k + 5) - 0.5) * 50 };
+}
+
+/** The weather fronts on the map, made the first time they are asked for. */
+export function frontsOf(c: Campaign): Front[] {
+  return (c.fronts ??= [0, 1, 2].map((i) => newFront(c, i * 10, false)));
+}
+
+/** The weather lying over a territory this turn, if any. */
+export function weatherAt(c: Campaign, tid: number): Sky | '' {
+  const t = c.territories[tid];
+  if (!t) return '';
+  for (const f of frontsOf(c)) if (Math.hypot(f.x - t.x, f.y - t.y) < f.r) return f.kind;
+  return '';
+}
+
+/** Where an army in this territory can go in one march: next door, or from a harbour along its sea lanes and to any other open coast. */
+export function reach(c: Campaign, tid: number): number[] {
+  const t = c.territories[tid];
+  if (!t.buildings.includes('harbour')) return t.adj;
+  const lanes = lanesOf(c, tid);
+  return [...t.adj, ...lanes, ...(t.trait === 'coast' ? c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id) && !lanes.includes(x.id)).map((x) => x.id) : [])];
+}

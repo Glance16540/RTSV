@@ -3,7 +3,8 @@
 // land they are in (no unrest rises there), can travel between their people's lands, and can call the armies to them.
 // Rules only: campaign.ts asks here where the leader is, and dynasty.ts seats a new one.
 
-import { Army, Campaign, moveArmy, reach } from './campaign';
+import { Army, Campaign, moveArmy } from './campaign';
+import { reach } from './campaignbase';
 
 export interface Court {
   /** The land the leader is in. */

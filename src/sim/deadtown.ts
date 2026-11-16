@@ -14,7 +14,8 @@
  *   wandering band of marauders, wherever it lies.
  */
 import type { Army, Campaign, Territory } from './campaign';
-import { moveArmy, reach } from './campaign';
+import { moveArmy } from './campaign';
+import { reach } from './campaignbase';
 import { armyAt, atTruce } from './campaignbase';
 import { awayFrom } from './armytown';
 import { folkOf, headcount } from './township';

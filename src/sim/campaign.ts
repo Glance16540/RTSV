@@ -2,8 +2,8 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
-import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor } from './campaignbase';
-import type { Biome, CompanyDef, FaithDef, SiteDef, World, WorldShape } from './campaignbase';
+import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront } from './campaignbase';
+import type { Biome, CompanyDef, FaithDef, Front, SiteDef, Sky, World, WorldShape } from './campaignbase';
 export * from './campaignbase'; // what the systems share, below all of them: found here as before
 import type { Ground, PlayerSetup, Standing } from './game';
 import { LEADERS, LeaderEvent, Speech } from './leaders';
@@ -27,7 +27,8 @@ import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
-import { placeAt, placeGood, placeWorth, placesOf, worldNow } from './places';
+import { hireOff, placeAt, placeGood, placeWorth, placesOf, worldNow } from './places';
+export { hireOff } from './places'; // where it was found before it was moved
 export { placeAt, placesOf, worldNow } from './places'; // where they were found before they were moved
 import { storyTurn } from './storyturn';
 export { answerTale, canAnswer, taleNow, taleText } from './storyturn'; // where they were found before they were moved
@@ -49,7 +50,8 @@ import { unrestSeason } from './unrest';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
-import { faithAt, seasonOfFaith, settleFaith, swayNation, swayTown } from './townfaith';
+import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
+export { shiftVirtue } from './townfaith'; // where it was found before it was moved
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { ARMY_REST, MEN_A_COMPANY, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
@@ -64,26 +66,11 @@ export function virtueDrift(c: Campaign, f: number): number {
   for (const t of c.territories) if (t.owner === f) n += (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0);
   return n + placeGood(c, f, 'virtue');
 }
-export function shiftVirtue(c: Campaign, f: number, by: number, opts: { /** The one town of theirs that is moved; without it, every town of theirs is. */ at?: number } = {}): void {
-  const x = c.factions[f];
-  if (!x || !by) return;
-  const was = creedOf(x.virtue ?? 0);
-  // Faith is a town's (townfaith.ts): the nation's standing follows from its towns'.
-  if (opts.at !== undefined && c.territories[opts.at]?.owner === f) swayTown(c, opts.at, by); else swayNation(c, f, by);
-  const now = creedOf(x.virtue ?? 0);
-  if (now.id !== was.id) {
-    c.log.push(`${x.id === 0 ? 'Your people are' : `${x.name} are`} now ${now.name}. ${FAITH[now.id].desc}`);
-    if (now.id === 'zealous' || now.id === 'decadent') tell(c, `${x.id === 0 ? 'Your people' : x.name} became ${now.name}.`);
-  }
-}
 const hash = (a: number, b: number): number => {
   let t = (Math.imul(a | 0, 2654435761) ^ Math.imul(b + 17, 40503)) >>> 0;
   t = Math.imul(t ^ (t >>> 15), t | 1);
   return ((t ^ (t >>> 13)) >>> 0) / 4294967296;
 };
-/** Supplies off a company raised by this people in this land: swords for hire, iron in the ground, a season of iron. */
-export const hireOff = (c: Campaign, f: number, tid: number): number =>
-  faithOf(c, f).raise + placeWorth(c, tid, 'raise') + (worldNow(c) === 'iron' ? 1 : 0);
 
 import { HeroSpec, cleanHero, MAX_RANK } from './hero';
 import { seasonTurned } from './seasonreport';
@@ -288,14 +275,6 @@ export interface Campaign {
   chronicle?: { turn: number; text: string }[];
 }
 
-export type Sky = 'rain' | 'snow' | 'dust';
-export interface Front { kind: Sky; x: number; y: number; r: number; vx: number; vy: number }
-/** What weather does on the map. `march` is what is left of an attacker's strength after marching into it. */
-export const WEATHER: Record<Sky, { name: string; icon: string; march: number; desc: string }> = {
-  rain: { name: 'Heavy rain', icon: '🌧️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the rain.' },
-  snow: { name: 'Snow', icon: '🌨️', march: 0.85, desc: 'An army attacking into it fights at 85% strength, and the land yields 1 supply less. A battle here is fought in the snow.' },
-  dust: { name: 'Dust storm', icon: '🌪️', march: 0.9, desc: 'An army attacking into it fights at nine tenths strength. A battle here is fought in the dust.' },
-};
 export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued';
 export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
@@ -477,27 +456,8 @@ function raiseBarriers(c: Campaign): void {
   }
 }
 
-/** A front of the kind that suits the country it starts over: snow in the cold lands, dust in the dry, rain elsewhere. */
-function newFront(c: Campaign, k: number, edge: boolean): Front {
-  const y = MAP_H * (0.1 + luck(c, k) * 0.8);
-  const b = biomeAt(c.seed, MAP_W / 2, y);
-  const kind: Sky = b === 'snow' ? 'snow' : b === 'desert' || b === 'steppe' ? 'dust' : 'rain';
-  const east = luck(c, k + 1) < 0.75; // most weather comes out of the west
-  return { kind, x: edge ? (east ? -80 : MAP_W + 80) : MAP_W * luck(c, k + 2), y, r: 95 + luck(c, k + 3) * 45, vx: (east ? 1 : -1) * (70 + luck(c, k + 4) * 50), vy: (luck(c, k + 5) - 0.5) * 50 };
-}
 
-/** The weather fronts on the map, made the first time they are asked for. */
-export function frontsOf(c: Campaign): Front[] {
-  return (c.fronts ??= [0, 1, 2].map((i) => newFront(c, i * 10, false)));
-}
 
-/** The weather lying over a territory this turn, if any. */
-export function weatherAt(c: Campaign, tid: number): Sky | '' {
-  const t = c.territories[tid];
-  if (!t) return '';
-  for (const f of frontsOf(c)) if (Math.hypot(f.x - t.x, f.y - t.y) < f.r) return f.kind;
-  return '';
-}
 
 /** What is marked on a territory this turn: the newest thing first. */
 export function eventsAt(c: Campaign, tid: number): MapEvent[] {
@@ -716,13 +676,6 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
 
 // ---- Queries ----
 
-/** Where an army in this territory can go in one march: next door, or from a harbour along its sea lanes and to any other open coast. */
-export function reach(c: Campaign, tid: number): number[] {
-  const t = c.territories[tid];
-  if (!t.buildings.includes('harbour')) return t.adj;
-  const lanes = lanesOf(c, tid);
-  return [...t.adj, ...lanes, ...(t.trait === 'coast' ? c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id) && !lanes.includes(x.id)).map((x) => x.id) : [])];
-}
 /** What the next age costs this people. */
 export const ageCost = (c: Campaign, f: number): number => Math.max(1, (AGE_COST[ageOf(c, f)] ?? Infinity) + faithOf(c, f).age - placeGood(c, f, 'age') - (c.factions[f].civ === 'babylon' ? 3 : 0));
 export const truceCost = (civ: string): number => (civ === 'arabs' ? 1 : TRUCE_COST);

@@ -24,7 +24,7 @@
 // people's and not yet a town's, so every land of a people stands the same; and the dead of plague are counted,
 // not named.
 import type { Army, Campaign, EventKind, Territory } from './campaign';
-import { weatherAt } from './campaign';
+import { weatherAt } from './campaignbase';
 import { armySize } from './campaignbase';
 import { whoseOf } from './naming';
 import { creedOf } from './creed';

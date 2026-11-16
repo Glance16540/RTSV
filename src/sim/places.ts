@@ -3,6 +3,7 @@
 // good of it. Chosen and named by the campaign's seed, once, and the same in every telling. Moved out of campaign.ts
 // as it stood, with nothing changed.
 import type { Campaign } from './campaign';
+import { faithOf } from './campaignbase';
 import { LEGENDS, PLACES, Place, PlaceKind, WorldKind } from './story';
 
 declare module './campaign' {
@@ -51,3 +52,7 @@ export const placeGood = (c: Campaign, f: number, what: 'virtue' | 'supplies' | 
 export const worldNow = (c: Campaign): WorldKind | '' => (c.world && c.world.until >= c.turn ? c.world.kind : '');
 /** What the named place in a land, if there is one, is worth of one kind: its defence, or supplies off a company raised there. */
 export const placeWorth = (c: Campaign, tid: number, what: 'defence' | 'raise'): number => PLACES[placeAt(c, tid)?.kind as PlaceKind]?.[what] ?? 0;
+
+/** Supplies off a company raised by this people in this land: swords for hire, iron in the ground, a season of iron. */
+export const hireOff = (c: Campaign, f: number, tid: number): number =>
+  faithOf(c, f).raise + placeWorth(c, tid, 'raise') + (worldNow(c) === 'iron' ? 1 : 0);

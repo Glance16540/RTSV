@@ -17,7 +17,7 @@
 // Each mark is kept on the campaign with the town, noble or people it is about, and words for it, so that a
 // town's panel, the roll and the season's report can show it. One call a season (from intrigue.ts).
 import type { Campaign } from './campaign';
-import { shiftVirtue } from './campaign';
+import { shiftVirtue } from './townfaith';
 import { MAX_ARMY, MAX_FAVOR, armyAt, armySize } from './campaignbase';
 import { courtOf } from './court';
 import { beginPlot, beginRival } from './courtstory';

@@ -23,7 +23,7 @@
 // puts it to the player, `intrigueNews` for whoever reports it. Chances are a run of their own, so the rest of a
 // campaign's luck is left as it was. `culprit` is the sim's own knowledge: a client must not show it.
 import type { Campaign } from './campaign';
-import { shiftVirtue } from './campaign';
+import { shiftVirtue } from './townfaith';
 import { FAMILY_NAMES, NAMES_F, NAMES_M } from './data';
 import { agesOf } from './ageing';
 import { leaderAt } from './court';
