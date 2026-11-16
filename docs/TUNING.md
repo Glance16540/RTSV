@@ -33,6 +33,9 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Threats | Outcome of raids | held off 30 to 50%, raided 40 to 60%, taken under 15% |
 | Threats | Captives got back, of those whose people had an army at the band's place or next door within the four seasons (the computer-played player sends it with `attackBand` and settles it unwatched) | about half |
 | Stories | A story inside the story begins for the player's nation (a thief, a killer, a rival king, a suitor, a plot: `src/sim/intrigue.ts`, `src/sim/courtstory.ts`), over the years the campaign ran | about once in 3 to 6 years |
+| Crime | Seasons a thief or a killer is at large in a town, with a Watch House against without | to be set from the first readings (the report measures it; the band follows) |
+| Rule | Rival nations with a Hall of Judgement by 20 years | most (over half) |
+| Faith | Holy towns with a Monastery or Convent by 20 years | some (5 to 30%) |
 | Conquest | Taken towns that rise if left ungarrisoned | 15 to 35% within 5 years; under 5% with an army in them |
 | Armies | A nation's men under arms | 10 to 25% of its grown men in war, under 10% in peace |
 | Sieges | A besieged town with walls or a fortress and its men (or an army) in it: the attacker thrown back, both in a siege settled unwatched on the map and in a computer-played real-time siege | holds 60 to 85% (not every time) |

@@ -630,30 +630,31 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 50 }, time: 10, age: 0, hp: 250, size: 3, pop: 0, sight: 3,
     trains: [], techs: [], walkable: true,
   }),
-  // Food and health (the food-health job: granary.ts and the rest). Costs, ages and strengths are first guesses.
+  // Food and health (the food-health job: granary.ts and the rest). Each stands on the town's record and can be raised
+  // from the map (townworks.ts). Costs, ages and strengths are first guesses.
   granary: B({
     id: 'granary', name: 'Granary', icon: '🌾',
     desc: 'Keeps grain dry and safe: a bare store takes twice as long to turn to hunger and to famine. On the map, food in store spoils later and a failed harvest takes less of it.',
-    cost: { wood: 120, stone: 40 }, time: 30, age: 0, hp: 700, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [],
+    cost: { wood: 150 }, time: 30, age: 0, hp: 700, size: 2, pop: 0, sight: 4,
+    trains: [], techs: [], onMap: true,
   }),
   mill: B({
     id: 'mill', name: 'Mill', icon: '⚙️',
     desc: 'Grinds the harvest: your farms yield a fifth more food. On the map, a land with Farmland yields a fifth more.',
     cost: { wood: 150 }, time: 30, age: 0, hp: 650, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [],
+    trains: [], techs: [], onMap: true,
   }),
   well: B({
     id: 'well', name: 'Well', icon: '🪣',
     desc: 'Clean water: plague passes among your people half as readily. On the map, a crowded town is struck less and loses fewer.',
-    cost: { stone: 80 }, time: 16, age: 0, hp: 400, size: 1, pop: 0, sight: 3,
-    trains: [], techs: [],
+    cost: { wood: 60, stone: 20 }, time: 16, age: 0, hp: 400, size: 1, pop: 0, sight: 3,
+    trains: [], techs: [], onMap: true,
   }),
   infirmary: B({
     id: 'infirmary', name: 'Infirmary', icon: '⚕️',
     desc: 'Tends the sick and the grieving: plague wears your people down more slowly, and a grieving house mourns half as long.',
-    cost: { wood: 120, gold: 60 }, time: 30, age: 1, hp: 700, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [],
+    cost: { wood: 120, gold: 30 }, time: 30, age: 1, hp: 700, size: 2, pop: 0, sight: 4,
+    trains: [], techs: [], onMap: true,
   }),
   barracks: B({
     id: 'barracks', name: 'Barracks', icon: '🗡️',
@@ -802,7 +803,7 @@ export interface TechDef {
   /**
    * A study of the nation's, kept on the map (studies.ts): what in the systems it answers. The computer's peoples
    * learn one where that is pressing: 'hunger', 'plague', 'unrest', 'raids', 'crime', 'plots', 'nobles', 'faith',
-   * 'rule', 'roads' or 'births'. A tech without it is a battle's only, as before.
+   * 'rule', 'roads', 'births' or 'trade'. A tech without it is a battle's only, as before.
    */
   answers?: string;
   /** The building that teaches it, where no building's `techs` list says (studies.ts). */
@@ -899,9 +900,9 @@ export const TECHS: Record<string, TechDef> = {
   // ---- Each people its own (ownstudies.ts): one study that only its nation can learn (`civ`). Each is a study of the
   // nation's kept on the map (studies.ts: `answers`), taught at the Town Center. What each does on the map is in
   // ownstudies.ts; what is in `apply` is its worth inside a town. Costs, ages and strengths are first guesses.
-  own_kinship: T({ id: 'own_kinship', civ: 'hearth', answers: 'rule', taughtAt: 'towncenter', name: 'Kinship', icon: '👪', desc: 'A study of the Franks alone. On the map their couples raise children a fifth sooner; in a town families raise them a fifth faster.', cost: { food: 200, wood: 100 }, time: 40, age: 1, apply: (m) => { m.birth *= 1.2; } }),
+  own_kinship: T({ id: 'own_kinship', civ: 'hearth', answers: 'births', taughtAt: 'towncenter', name: 'Kinship', icon: '👪', desc: 'A study of the Franks alone. On the map their couples raise children a fifth sooner; in a town families raise them a fifth faster.', cost: { food: 200, wood: 100 }, time: 40, age: 1, apply: (m) => { m.birth *= 1.2; } }),
   own_code: T({ id: 'own_code', civ: 'babylon', answers: 'unrest', taughtAt: 'towncenter', name: 'The King\'s Code', icon: '📜', desc: 'A study of the Babylonians alone. On the map a town they have taken settles sooner under written law and unrest is a fifth less likely; in a town research costs a tenth less.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.techCost *= 0.9; } }),
-  own_caravans: T({ id: 'own_caravans', civ: 'mali', answers: 'rule', taughtAt: 'towncenter', name: 'Caravans', icon: '🐪', desc: 'A study of the Malians alone. On the map every town of theirs brings in 12 gold a season; in a town villagers carry 2 more.', cost: { wood: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }),
+  own_caravans: T({ id: 'own_caravans', civ: 'mali', answers: 'trade', taughtAt: 'towncenter', name: 'Caravans', icon: '🐪', desc: 'A study of the Malians alone. On the map every town of theirs brings in 12 gold a season; in a town villagers carry 2 more.', cost: { food: 150, wood: 150 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }), // no gold in its price: it answers a want of gold
   own_bow: T({ id: 'own_bow', civ: 'kush', answers: 'raids', taughtAt: 'towncenter', name: 'The Land of the Bow', icon: '🏹', desc: 'A study of the Kushites alone. On the map every town of theirs with men in it is harder to take; in a town towers and Town Centers shoot 1 tile further.', cost: { food: 150, wood: 200 }, time: 40, age: 1, apply: (m) => { m.towerRange += 1; } }),
   own_walls: T({ id: 'own_walls', civ: 'stonekin', answers: 'raids', taughtAt: 'towncenter', name: 'Great Walls', icon: '🧱', desc: 'A study of the Romans alone. On the map a Fortress of theirs is worth 2 more defence; in a town buildings have 15% more health.', cost: { wood: 150, stone: 200 }, time: 45, age: 1, apply: (m) => { m.buildingHp *= 1.15; } }),
   own_remounts: T({ id: 'own_remounts', civ: 'steppe', answers: 'rule', taughtAt: 'towncenter', name: 'Remounts', icon: '🐎', desc: 'A study of the Mongols alone. On the map an army of theirs rests two seasons fewer after storming a town; in a town cavalry moves a tenth faster.', cost: { food: 250, gold: 100 }, time: 40, age: 1, apply: (m) => { m.cavSpeed *= 1.1; } }),

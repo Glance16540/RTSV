@@ -101,8 +101,7 @@ describe('a governor fills the gaps', () => {
     expect(c.factions[0].supplies).toBe(had); // it is the town's own goods he spends, not an order on the nation
     expect(c.log.join('\n')).toContain(`The governor of ${t.name} has raised Farmland`);
     expect(t.orders!.work).toEqual({ food: 0, wood: 12, gold: 0, stone: 0 }); // the orders stand; he only answers the want
-    expect(governTown(c, t.id)!.began).toBe('mill'); // then a Mill to grind more from it (mill.ts)
-    expect(governTown(c, t.id)!.began).toBeUndefined(); // and that is all there is to raise for food
+    expect(governTown(c, t.id)!.began).toBeUndefined(); // one farm is all there is to raise
   }, LONG);
 
   it('he does not spend a town below what it must keep, nor build where there is no room', () => {

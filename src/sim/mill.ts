@@ -1,9 +1,9 @@
 // The Mill (docs/DESIGN.md, "Buildings and research that answer the systems": "a Mill makes farms yield more").
 //
-// On the map it is a building on the land's record (SITES.mill), raised by the player or by the governor. A land
-// with Farmland and a Mill yields MILL.yield times the food it would (harvest.ts asks `millYield`); without
-// Farmland it grinds nothing. The governor raises one where food runs short in a town that already has its
-// Farmland (the Farm comes first), has a place free and can pay for it. Rivals' towns have governors too.
+// On the map it is a building on the town's record (townworks.ts: raised from the map, finished by the governor). A land
+// with Farmland and a finished Mill yields MILL.yield times the food it would (harvest.ts asks `millYield`); without
+// Farmland it grinds nothing. The governor raises one where a town that already has its Farmland (the Farm comes
+// first) runs short of food or has grown to MILL.big people, and can pay for it. Rivals' towns have governors too.
 //
 // In a town (a battle or a visit) a finished Mill makes its people's farms yield MILL.yield times as fast
 // (game.ts asks `millPace` as a farm is worked).
@@ -11,23 +11,25 @@
 // The numbers are first guesses.
 import type { Campaign } from './campaign';
 import type { Game } from './game';
+import { onRecord as begunAt, standing as standsAt } from './townrecord';
+import { folkOf, headcount } from './township';
 
 export const MILL = {
   /** How many times the food a farmed land yields, or a farm is worked for. */
   yield: 1.2,
+  /** A farmed town of this many people wants one before its food runs short. */
+  big: 16,
 };
 
-/** Whether a land has a Mill on its record. */
-export const hasMill = (c: Campaign, tid: number): boolean => !!c.territories[tid]?.buildings.includes('mill');
+/** Whether a Mill stands finished on the town's record. */
+export const hasMill = (c: Campaign, tid: number): boolean => standsAt(c, tid, 'mill');
 /** The food a land yields, times this (harvest.ts): MILL.yield with Farmland and a Mill, else 1. */
 export const millYield = (c: Campaign, tid: number): number => {
-  const b = c.territories[tid]?.buildings ?? [];
-  return b.includes('mill') && b.includes('farm') ? MILL.yield : 1;
+  return hasMill(c, tid) && !!c.territories[tid]?.buildings.includes('farm') ? MILL.yield : 1;
 };
-/** Whether the governor wants a Mill here: food is short, the town has Farmland, and no Mill. */
+/** Whether the governor wants a Mill here: the town has Farmland and no Mill, and its food is short or it is of MILL.big people or more. */
 export const millWanted = (c: Campaign, tid: number, foodShort: boolean): boolean => {
-  const b = c.territories[tid]?.buildings ?? [];
-  return foodShort && b.includes('farm') && !b.includes('mill');
+  return (foodShort || headcount(folkOf(c, tid)) >= MILL.big) && !!c.territories[tid]?.buildings.includes('farm') && !begunAt(c, tid, 'mill');
 };
 
 /** Who has a finished Mill, worked out once a tick, since this is asked every time a farm is worked. */
