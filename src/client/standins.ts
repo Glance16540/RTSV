@@ -10,6 +10,7 @@ export interface StandIn { as: string; scale?: number; tall?: number; tint?: num
 
 export const STAND_INS: Record<string, StandIn> = {
   // ---- Rule, law, nobles and faith (the people session) ----
+  hall: { as: 'temple', scale: 1, tall: 1.15, tint: 0xc9a85a }, // a Hall of Judgement: a church's frame, taller and gilded (hall.ts)
   // ---- Food and health (the food-health job) ----
   granary: { as: 'storehouse', tall: 1.35, tint: 0xd9b45a }, // a tall barn, the colour of grain
   mill: { as: 'house', tall: 1.6, tint: 0xb8a07a }, // a tall narrow house of weathered wood

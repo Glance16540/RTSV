@@ -10,6 +10,7 @@ import { armyAt, armySize, faithOf } from './campaignbase';
 import { leaderAt } from './court';
 import { folkOf, headcount } from './township';
 import { agesOf } from './ageing';
+import { yokeEase, yokeSpared } from './ownstudies';
 
 /** `from`: whose it was (-1 for a tribe). `since`: the turn it was taken. `resent`: how its people take it, 0 to 100. */
 export interface Yoke { from: number; since: number; resent: number; /** The last turn an army of its holder stood in it. */ held?: number; /** It has settled: it resents nothing more, and is remembered as taken until `YOKE.memory` seasons are up. */ settled?: boolean }
@@ -50,14 +51,14 @@ export function townTaken(c: Campaign, tid: number, from: number, to: number): v
   if (!t || to < 0 || from === to) { if (t) delete t.yoke; return; }
   if (t.yoke && t.yoke.from === to) { delete t.yoke; return; } // its own people have it back
   if (headcount(folkOf(c, tid)) === 0) { delete t.yoke; return; } // a dead town: there is nobody in it to resent anything (deadtown.ts)
-  t.yoke = { from, since: c.turn, resent: Math.min(100, (from < 0 ? YOKE.tribe : YOKE.nation) + (t.capital >= 0 && t.capital === from ? YOKE.capital : 0)) };
+  t.yoke = { from, since: c.turn, resent: Math.max(0, Math.min(100, (from < 0 ? YOKE.tribe : YOKE.nation) + (t.capital >= 0 && t.capital === from ? YOKE.capital : 0)) - yokeSpared(c, to)) }; // less under a people whose own study it is to rule others (ownstudies.ts)
 }
 /** How much resentment a season of this rule takes off (or, where rule is bad, puts on: a negative number). */
 export function goodRule(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   if (!t || t.owner < 0) return 0;
   const struck = (c.events ?? []).some((e) => e.at === tid && e.turn === c.turn && STRUCK.includes(e.kind));
-  return YOKE.ease + (t.buildings.includes('church') ? YOKE.church : 0) + (t.buildings.includes('farm') ? YOKE.farm : 0) + (leaderAt(c, t.owner, tid) ? YOKE.leader : 0)
+  return YOKE.ease + yokeEase(c, tid) + (t.buildings.includes('church') ? YOKE.church : 0) + (t.buildings.includes('farm') ? YOKE.farm : 0) + (leaderAt(c, t.owner, tid) ? YOKE.leader : 0)
     + (faithOf(c, t.owner).defence > 1 ? YOKE.pious : 0) - (t.buildings.includes('tavern') ? YOKE.tavern : 0) - (struck ? YOKE.struck : 0);
 }
 /** The chance a town rises this season, as things stand; or, with `bare`, as it would be with no army in it or lately gone from it. */
