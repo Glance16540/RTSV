@@ -11,6 +11,11 @@ export interface StandIn { as: string; scale?: number; tall?: number; tint?: num
 export const STAND_INS: Record<string, StandIn> = {
   // ---- Rule, law, nobles and faith (the people session) ----
   hall: { as: 'temple', scale: 1, tall: 1.15, tint: 0xc9a85a }, // a Hall of Judgement: a church's frame, taller and gilded (hall.ts)
+  // ---- Food and health (the food-health job) ----
+  granary: { as: 'storehouse', tall: 1.35, tint: 0xd9b45a }, // a tall barn, the colour of grain
+  mill: { as: 'house', tall: 1.6, tint: 0xb8a07a }, // a tall narrow house of weathered wood
+  well: { as: 'tower', scale: 0.5, tall: 0.5, tint: 0x8fa6b8 }, // a low round of stone, a little blue (a tower is twice its size)
+  infirmary: { as: 'temple', scale: 0.67, tall: 0.8, tint: 0xe8e2d4 }, // a low pale house of care (a temple is half again its size)
 };
 
 /** A building's look: its own model, or its stand-in until it has one. Takes what `makeBuilding` takes. */
