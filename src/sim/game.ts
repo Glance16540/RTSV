@@ -31,8 +31,8 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-import { calledAt, callHaste, callWard, canCall, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
-import { CHAMPION_KILLS, Champion, canLead, championFemale, championName, championSpec, rankForKills } from './champion';
+import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
+import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
 import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
@@ -3124,32 +3124,11 @@ export class Game {
   calledAt(owner: number, x: number, y: number): 'warlord' | 'strategist' | null { return calledAt(this, owner, x, y); }
 
   /** Could this soldier be raised to lead? Only when the leader has fallen and nobody has taken their place. */
-  canAcclaim(owner: number, u: Unit): boolean {
-    const p = this.players[owner];
-    return !!p && !!p.heroFell && u.owner === owner && !u.dead && !u.hero && !u.merc && !u.inside && !u.captive && canLead(u.def.cls) &&
-      (u.kills ?? 0) >= CHAMPION_KILLS && !this.units.some((o) => o.owner === owner && o.hero);
-  }
+  canAcclaim(owner: number, u: Unit): boolean { return canAcclaim(this, owner, u); }
   /** Raise a soldier on the shields: they are the leader now, fighting as they always have, with a rank for every three they have felled. */
-  cmdAcclaim(owner: number, id: number): boolean {
-    const u = this.entities.get(id);
-    if (!u || u.kind !== 'unit' || !this.canAcclaim(owner, u)) return false;
-    const p = this.players[owner], old = this.heroOf(owner).name;
-    u.name ||= championName(u.id);
-    p.hero = championSpec(u.name, championFemale(u.id), u.type);
-    p.heroRank = rankForKills(u.kills ?? 0);
-    p.acclaimed = true;
-    u.hero = { xp: RANK_XP[p.heroRank], rank: p.heroRank };
-    this.fitLeader(u);
-    this.leaders[owner] = u;
-    this.msg(owner, `${u.name} is raised on the shields to lead in ${old.replace(/ (II|III|IV|V|VI|VII|VIII|IX|X)$/, '')}'s place.`);
-    return true;
-  }
+  cmdAcclaim(owner: number, id: number): boolean { return cmdAcclaim(this, owner, id); }
   /** The soldier of a player's with the most kills to their name, if any has made one. */
-  champion(owner: number): Champion | null {
-    let best: Unit | null = null;
-    for (const u of this.units) if (u.owner === owner && !u.hero && !u.merc && canLead(u.def.cls) && (u.kills ?? 0) >= CHAMPION_KILLS && (!best || (u.kills ?? 0) > (best.kills ?? 0))) best = u;
-    return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name, female: championFemale(best.id), type: best.type } : null;
-  }
+  champion(owner: number): Champion | null { return champion(this, owner); }
 
   /** Turn a unit into another type, keeping its place, orders and share of health. */
   private reequip(u: Unit, type: string): void {

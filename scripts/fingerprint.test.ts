@@ -97,6 +97,18 @@ it.skipIf(!process.env.FINGERPRINT)('the fingerprint of a fixed set of battles',
       if ((s + 1) % 120 === 0) out.push(`${label} at ${(s + 1) / 60}m: ${hash(g.serialize())}`);
     }
     out.push(`${label} end: tick ${g.tick} leaders ${leaders.map((l) => (l.dead ? 'fell' : `rank ${l.hero?.rank}`)).join(', ')} calls ${calls} powers learnt ${learnt} ${hash(g.serialize())}`);
+    // Then each leader falls, and the soldier of theirs with the most to their name is raised on the shields in
+    // their place (a soldier is given the kills for it if none has them), and the battle goes on a minute.
+    const raised: string[] = [];
+    for (const i of [0, 1]) {
+      if (!leaders[i].dead) g.perish(leaders[i]);
+      for (let k = 0; k < 20; k++) g.step();
+      const soldier = g.units.find((u) => u.owner === i && !u.dead && g.isMilitary(u) && !u.hero && !u.inside) ?? g.spawnUnit(g.trainedAs(i, 'clubman'), i, leaders[i].x, leaders[i].y);
+      soldier.kills = Math.max(soldier.kills ?? 0, 7);
+      raised.push(`${JSON.stringify(g.champion(i))} ${g.canAcclaim(i, soldier)} ${g.cmdAcclaim(i, soldier.id)} ${g.heroOf(i).name}`);
+    }
+    for (let sec = 0; sec < 60 && g.winner < 0; sec++) { for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; } ais.forEach((a) => a.update()); }
+    out.push(`${label} after the leaders fell: ${hash(raised.join('|'))} acclaimed ${g.players.map((p) => !!p.acclaimed).join('/')} ${hash(g.serialize())}`);
   }
   writeFileSync(process.env.OUT ?? 'fingerprint.txt', out.join('\n') + '\n');
 }, 3_600_000);
