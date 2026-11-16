@@ -70,7 +70,7 @@ export function contagion(g: Game): number {
       v.plagueT = Math.max(CONTAGION.least, u.plagueT * CONTAGION.share);
       caught++;
       const from = g.players[u.owner];
-      warn(g, v.owner, `☠️ Plague has come among your people${from && !from.neutral && u.owner !== g.wild ? ` from ${from.name}'s` : ''}: keep the sick away from the town.`);
+      warn(g, v.owner, `☠️ Plague has come among your people${from && !from.neutral && u.owner !== g.wild ? ` from the ${from.name}` : ''}: keep the sick away from the town.`);
     }
   }
   return caught;

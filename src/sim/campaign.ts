@@ -42,7 +42,7 @@ import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
-import { Names, houseName, nameNation, peopleName, sideName } from './naming';
+import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
@@ -675,12 +675,12 @@ function mapTurn(c: Campaign): void {
       const a = armyAt(c, t.id), f = c.factions[t.owner];
       const faith = faithOf(c, t.owner);
       if (leaderAt(c, t.owner, t.id)) { mark(c, 'calm', t.id); c.log.push(`${f.id === 0 ? 'Your leader is' : `The leader of the ${f.name} is`} in ${t.name}: the unrest there passes.`); }
-      else if (deputyAt(c, t.owner, t.id)) { mark(c, 'calm', t.id); c.log.push(`${deputyAt(c, t.owner, t.id)!.name}, ${f.id === 0 ? 'your' : `the ${f.name}'s`} right hand, is in ${t.name}: the unrest there passes.`); }
+      else if (deputyAt(c, t.owner, t.id)) { mark(c, 'calm', t.id); c.log.push(`${deputyAt(c, t.owner, t.id)!.name}, ${whoseOf(c, f.id)} right hand, is in ${t.name}: the unrest there passes.`); }
       else if (faith.steadfast) { mark(c, 'calm', t.id); c.log.push(`${t.name} keeps faith with ${f.id === 0 ? 'you' : f.name}: the unrest passes.`); }
       else if (a && a.owner === t.owner && !(faith.restless && armySize(a) < 2)) { mark(c, 'calm', t.id); c.log.push(`The garrison keeps order in ${t.name}.`); }
       else {
-        c.log.push(`${t.name} has risen and thrown off ${f.id === 0 ? 'your' : `${f.name}'s`} rule.`);
-        if (placeAt(c, t.id)) tell(c, `${t.name} rose and threw off ${f.id === 0 ? 'your' : `${f.name}'s`} rule, and ${placeAt(c, t.id)!.name} with it.`);
+        c.log.push(`${t.name} has risen and thrown off ${whoseOf(c, f.id)} rule.`);
+        if (placeAt(c, t.id)) tell(c, `${t.name} rose and threw off ${whoseOf(c, f.id)} rule, and ${placeAt(c, t.id)!.name} with it.`);
         t.owner = -1; t.militia = 2;
         mark(c, 'revolt', t.id);
       }
@@ -1179,7 +1179,7 @@ export function answerDemand(c: Campaign, pay: boolean): void {
     c.log.push(`You paid ${fac.name} ${d.amount} supplies. They will leave you be until turn ${c.turn + 4}.`);
   } else {
     fac.angry = true;
-    c.log.push(`You refused ${fac.name}'s demand.`);
+    c.log.push(`You refused ${possessive(fac.name)} demand.`);
   }
 }
 
@@ -1433,7 +1433,7 @@ function turnEvent(c: Campaign): void {
   const t = owned[Math.floor(rand(c) * owned.length)];
   if (!t) return;
   const f = c.factions[t.owner];
-  const who = f.id === 0 ? 'your' : `${f.name}'s`;
+  const who = whoseOf(c, f.id);
   const a = armyAt(c, t.id);
   const roll = rand(c);
   if (roll < 0.3) {

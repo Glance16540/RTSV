@@ -35,7 +35,7 @@ describe('plague from outside', () => {
     expect(near.plagueT).toBeGreaterThan(0);
     expect(far.plagueT).toBe(0);
     expect(caught).toBe(1);
-    expect(g.events.filter((e) => e.t === 'msg' && e.player === 1 && e.text.includes('Plague has come among your people from A')).length).toBe(1);
+    expect(g.events.filter((e) => e.t === 'msg' && e.player === 1 && e.text.includes('Plague has come among your people from the A')).length).toBe(1);
   });
 
   it('the Righteous take it too, but about a third as readily', () => {
