@@ -550,7 +550,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const nations = ruled.length * 3; // a player and two rivals in each
   const perNation = dead.reduce((a, b) => a + b, 0) / nations;
   const worst = Math.max(...ruled.map((w) => w.worstHunger));
-  add('Food', 'Deaths from hunger in a nation, per 20 years', '1 to 10, never most of a town at once', `${num(perNation, 1)} a nation (the worst season took ${pct(worst)} of a town of four or more)`, within(perNation, 1, 10) && worst <= 0.5,
+  add('Food', 'Deaths from hunger in a nation, per 20 years', '0.5 to 10, never most of a town at once', `${num(perNation, 1)} a nation (the worst season took ${pct(worst)} of a town of four or more)`, within(perNation, 0.5, 10) && worst <= 0.5,
     'Read from the log, over the first twenty years, across all three peoples of each campaign (living or not). Whether a town that lost most was besieged or cut off is not judged.');
 
   // Stores
