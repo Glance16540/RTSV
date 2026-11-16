@@ -22,7 +22,7 @@ export const SIEGE = {
 /** Has this land walls: a Fortress, or towers or walls standing (finished) on its battlefield? */
 export function walled(c: Campaign, tid: number): boolean {
   const t = c.territories[tid];
-  return t.buildings.includes('fortress') || !!t.town?.b.some((b) => b[4] === undefined && (b[0] === 'tower' || !!BUILDINGS[b[0]]?.wall));
+  return t.buildings.includes('fortress') || !!t.town?.b.some((b) => b[4] === undefined && (b[0] === 'tower' || b[0] === 'fortress' || !!BUILDINGS[b[0]]?.wall));
 }
 /** Has it men to hold them: an army of its holder's standing there, or grown men of the town? */
 export function manned(c: Campaign, tid: number): boolean {
