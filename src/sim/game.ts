@@ -1226,6 +1226,7 @@ export class Game {
     if (!def || this.ageFor(owner, def) > p.age) return null;
     const bar = this.creedBar(owner, def);
     if (bar) { this.msg(owner, bar); return null; }
+    if (def.townAt && this.units.filter((u) => u.owner === owner && u.type === 'villager' && !u.dead && u.growT <= 0).length < def.townAt) { this.msg(owner, `Only a town of ${def.townAt} grown people or more has a ${def.name}.`); return null; } // townworks.ts
     if (!this.canPlace(type, cx, cy, owner === this.humanId && !p.isAI)) { this.msg(owner, 'Cannot build there.'); return null; }
     if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return null; }
     this.pay(p, def.cost);
