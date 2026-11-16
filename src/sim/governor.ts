@@ -145,10 +145,12 @@ export function governTown(c: Campaign, tid: number): Governed | null {
   const civ = c.factions[t.owner].civ, room = t.buildings.length < slots(t);
   const afford = (site: string): boolean => units(f.stores) - siteCost(t, site, civ) * 100 >= GOVERN.floor;
   // The food and health works (granary.ts, mill.ts, well.ts, infirmary.ts) stand on the town's record (townworks.ts), not
-  // in the land's places. They come after Farmland, and are bought only where the town keeps what it must, after paying,
-  // in goods other than its bread. Begun here, they are finished as anything half built is.
+  // in the land's places. They come after Farmland, and are bought only out of plenty: four times what the town keeps, after
+  // paying, in goods other than its bread. A town buys bread with those goods when it is hungry (decrees.ts, alms), and a
+  // nation's supplies are those goods: spent more freely, they left the player's towns short of bread and the player of
+  // armies (192 campaigns: player's wins 116 to 98, and towns given no decrees drifting as little as towns given them). Begun here, they are finished as anything half built is.
   const farmed = t.buildings.includes('farm');
-  const ample = (type: string): boolean => units(f.stores) - f.stores.food - STORE_KINDS.reduce((n, k) => n + (BUILDINGS[type]?.cost[k] ?? 0), 0) >= GOVERN.floor;
+  const ample = (type: string): boolean => units(f.stores) - f.stores.food - STORE_KINDS.reduce((n, k) => n + (BUILDINGS[type]?.cost[k] ?? 0), 0) >= 4 * GOVERN.floor;
   // Begun as townworks.ts begins one (raiseWork), here, so that the governor and the works need not import each other.
   const work = (type: string): boolean => {
     const b = BUILDINGS[type], at = b && ample(type) && ageOf(c, t.owner) >= b.age && t.town?.b?.length && STORE_KINDS.every((k) => f.stores[k] >= (b.cost[k] ?? 0)) ? plotFor(t, type) : null;
