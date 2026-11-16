@@ -19,7 +19,7 @@ import { griefPace, griefSecond, mourn } from './grief';
 import { driftSecond } from './driftintown';
 import { censusOf, cradledOf, peopled } from './battlefolk';
 import { tavernTrade } from './tavernfall';
-import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
+import { adopt, bearCaptive, campChild, campLabour, campWithRoom, canSeize, comeHome, freeCaptive, hearthOf, spared, takes, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
 import { armMen } from './tribes';
@@ -637,7 +637,7 @@ export class Game {
   tyrant(u: Unit): boolean {
     return !!u.hero && !this.raider(u.owner) && isDecadent(this.players[u.owner].virtue);
   }
-  private slaves(u: Unit): boolean { return !!u.def.slaver || this.tyrant(u); }
+  slaves(u: Unit): boolean { return !!u.def.slaver || this.tyrant(u); }
   /** Whoever this unit carries off joins its own people, not a camp. */
   private adopts(u: Unit): boolean { return !u.def.slaver && (!u.hero || this.raider(u.owner)); }
   /** Armour lent by a holy town's leader to those of theirs who stand near. */
@@ -725,7 +725,7 @@ export class Game {
       if (shelter && shelter.kind === 'building') { shelter.sheltered = shelter.sheltered.filter((id) => id !== e.id); if (shelter.staff) shelter.staff = shelter.staff.filter((id) => id !== e.id); }
       if (shelter && shelter.kind === 'unit' && shelter.cargo) shelter.cargo = shelter.cargo.filter((id) => id !== e.id);
       // Everyone aboard a sinking ship goes down with it.
-      if (e.captive) { this.freeCaptive(e.captive, e.x, e.y); e.captive = null; }
+      if (e.captive) { freeCaptive(this, e.captive, e.x, e.y); e.captive = null; }
       for (const id of e.cargo ?? []) { const c = this.entities.get(id); if (c && c.kind === 'unit') { c.inside = 0; this.kill(c); } }
       if (e.type === 'deer') {
         // The hunters carve up what they killed.
@@ -743,7 +743,7 @@ export class Game {
       for (const q of e.queue) this.discharge(e, q);
       this.rehome(e);
       // A fallen camp's prisoners go home.
-      (e.captives ?? []).forEach((c, i) => this.freeCaptive(c, e.x - 1.5 + (i % 4), e.y + e.size / 2 + 0.6 + Math.floor(i / 4) * 0.6));
+      (e.captives ?? []).forEach((c, i) => freeCaptive(this, c, e.x - 1.5 + (i % 4), e.y + e.size / 2 + 0.6 + Math.floor(i / 4) * 0.6));
       e.captives = [];
       this.buildings.splice(this.buildings.indexOf(e), 1);
       this.setCells(e.cx, e.cy, e.size, 0, true);
@@ -810,39 +810,8 @@ export class Game {
   ageFor(owner: number, def: BuildingDef): number {
     return def.id === 'towncenter' && (this.raider(owner) || !this.buildings.some((b) => b.owner === owner && b.type === 'towncenter' && !b.dead)) ? 0 : def.age;
   }
-  /** Can this unit carry a villager off? Slavers always; among raiders, any fighter on foot or horse. */
-  canSeize(u: Unit): boolean {
-    return this.slaves(u) || (this.raider(u.owner) && !u.def.naval && (u.def.cls === 'infantry' || u.def.cls === 'cavalry' || u.def.cls === 'ranged' || u.def.cls === 'hero'));
-  }
-  /** Raiders do not cut down a grown villager on sight: they are worth more alive. */
-  private spared(u: Unit, e: Entity): boolean {
-    return e.kind === 'unit' && e.type === 'villager' && e.growT <= 0 && !this.slaves(u) && this.canSeize(u) && e.owner !== this.wild;
-  }
-  /** Is this villager free for this raider to take: he has his hands free, there is room, and no comrade is already at it. */
-  private takes(u: Unit, e: Entity): boolean {
-    if (u.captive || this.players[u.owner].pop >= POP_LIMIT) return false;
-    for (const o of this.units) if (o !== u && o.owner === u.owner && o.order?.t === 'capture' && o.order.id === e.id) return false;
-    return true;
-  }
-  /** Where a raider takes a captive to join the tribe: the nearest hall, else any roof of theirs. */
-  private hearthOf(u: Unit): Building | null {
-    let best: Building | null = null, bd = Infinity;
-    for (const b of this.buildings) {
-      if (b.owner !== u.owner || !b.complete || b.def.wall || b.type === 'farm') continue;
-      const d = Math.hypot(b.x - u.x, b.y - u.y) + (b.type === 'towncenter' ? 0 : b.type === 'house' ? 6 : 14);
-      if (d < bd) { bd = d; best = b; }
-    }
-    return best;
-  }
-  /** A captive taken into a raiding tribe becomes one of its own villagers. */
-  private adopt(owner: number, c: Captive, x: number, y: number): void {
-    const at = this.landPf.nearestFree(x, y);
-    const v = this.spawnUnit('villager', owner, at.x, at.y, c.gender);
-    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
-    v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: `Taken into the ${this.players[owner].name}` }];
-    v.people = c.people ?? this.players[c.from]?.civ;
-    this.msg(owner, `${c.name} has been taken into the tribe.`);
-  }
+  /** Can this unit carry a villager off? Slavers always; among raiders, any fighter on foot or horse (captivity.ts). */
+  canSeize(u: Unit): boolean { return canSeize(this, u); }
 
   isMilitary(u: Unit): boolean {
     return u.def.cls !== 'villager' && u.def.cls !== 'support';
@@ -1053,10 +1022,10 @@ export class Game {
   private foeFor(u: Unit, radius: number): Entity | null {
     const noShips = !u.def.naval && u.def.range < 1.5;
     const e = this.findEnemy(u.owner, u.x, u.y, radius, u.def.minRange, u.def.siegeOnly, noShips);
-    if (!e || !this.spared(u, e)) return e;
+    if (!e || !spared(this, u, e)) return e;
     const other = this.findEnemy(u.owner, u.x, u.y, radius, u.def.minRange, u.def.siegeOnly, noShips, true);
     if (other && other.kind === 'unit') return other;
-    return this.takes(u, e) ? e : other;
+    return takes(this, u, e) ? e : other;
   }
 
   nearestDropoff(u: Unit): Building | null {
@@ -1187,7 +1156,7 @@ export class Game {
         else this.setOrder(u, { t: 'move', x: t.x, y: t.y });
       } else if (this.slaves(u) && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && this.hostile(t.owner, owner) && t.owner !== this.wild) {
         if (u.captive) this.msg(owner, 'He already has a captive to lead home.');
-        else if (!this.campWithRoom(u)) this.msg(owner, 'There is no Work Camp with room for a captive.');
+        else if (!campWithRoom(this, u)) this.msg(owner, 'There is no Work Camp with room for a captive.');
         else this.setOrder(u, { t: 'capture', id: t.id });
       } else if (!this.slaves(u) && this.canSeize(u) && t.kind === 'unit' && t.type === 'villager' && t.growT <= 0 && !u.captive && this.hostile(t.owner, owner) && t.owner !== this.wild && this.players[owner].pop < POP_LIMIT) {
         // Raiders take people alive. A fighter already leading one home fights instead.
@@ -1578,34 +1547,6 @@ export class Game {
     if (def.needs === 'holy' && !isHoly(v)) return `Only a Devout town can call a ${def.name}.`;
     if (def.needs === 'decadent' && !isDecadent(v)) return `Only a Decadent town would have a ${def.name}.`;
     return null;
-  }
-
-  /** The nearest of a Slaver's own work camps that can take another captive. */
-  private campWithRoom(u: Unit): Building | null {
-    let best: Building | null = null, bd = Infinity;
-    for (const b of this.buildings) {
-      if (b.owner !== u.owner || !b.def.camp || !b.complete || (b.captives?.length ?? 0) >= b.def.camp) continue;
-      const d = Math.hypot(b.x - u.x, b.y - u.y);
-      if (d < bd) { bd = d; best = b; }
-    }
-    return best;
-  }
-
-  /** A captive set free returns to their own people as they were, if those people still stand. */
-  private freeCaptive(c: Captive, x: number, y: number): void {
-    const home = this.players[c.from];
-    if (!home || home.defeated) return;
-    const at = this.landPf.nearestFree(x, y);
-    const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
-    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
-    v.kids = c.kids; v.captiveKids = c.born;
-    if (c.people) v.people = c.people;
-    v.story = [...(c.story ?? []), { t: this.time, s: 'Freed, and came home' }];
-    // What the marauders did to her is not undone by burning their camp: she will bear no more children. But she
-    // has come through it, and works like one who means to live.
-    if (c.held && c.gender === 'f') v.freed = true;
-    comeHome(this, c, v);
-    this.msg(c.from, c.held ? `${c.name} is free of the marauders and has come home${c.born ? `, having borne them ${c.born} ${c.born === 1 ? 'child' : 'children'}` : ''}.` : `${c.name} is free and has come home.`);
   }
 
   /** Captives drive the town's work and, held together, still raise children for their captors. */
@@ -2584,7 +2525,7 @@ export class Game {
           // Units holding their ground only strike what is already within reach.
           const hold = u.stance === 'hold';
           const e = this.foeFor(u, hold ? this.reachOf(u) + 1.2 : this.sightOf(u));
-          if (e && this.spared(u, e)) { if (!hold && this.takes(u, e)) this.setOrder(u, { t: 'capture', id: e.id }); }
+          if (e && spared(this, u, e)) { if (!hold && takes(this, u, e)) this.setOrder(u, { t: 'capture', id: e.id }); }
           else if (e && (!hold || this.dist(u, e) <= this.reachOf(u) + 0.3)) this.setOrder(u, { t: 'attack', id: e.id, auto: true, ox: u.x, oy: u.y });
         }
       }
@@ -2602,7 +2543,7 @@ export class Game {
         if (u.scanT <= 0) {
           u.scanT = 0.4;
           const e = this.foeFor(u, u.def.sight);
-          if (e && this.spared(u, e)) { if (this.takes(u, e)) { this.setOrder(u, { t: 'capture', id: e.id }); break; } }
+          if (e && spared(this, u, e)) { if (takes(this, u, e)) { this.setOrder(u, { t: 'capture', id: e.id }); break; } }
           else if (e) {
             o.started = false;
             this.setOrder(u, { t: 'attack', id: e.id, then: o });
@@ -2670,9 +2611,9 @@ export class Game {
         this.players[v.owner].stats.lost++;
         this.kill(v);
         this.shiftVirtue(u.owner, raid ? BAND.virtue : -3);
-        const camp = raid ? this.hearthOf(u) : this.campWithRoom(u);
+        const camp = raid ? hearthOf(this, u) : campWithRoom(this, u);
         // A band with no roof of its own takes them in where it stands.
-        if (raid && !camp) { this.adopt(u.owner, u.captive, u.x, u.y); u.captive = null; }
+        if (raid && !camp) { adopt(this, u.owner, u.captive, u.x, u.y); u.captive = null; }
         this.setOrder(u, camp ? { t: 'deliver', id: camp.id } : null);
         break;
       }
@@ -2682,13 +2623,13 @@ export class Game {
         if (u.captive && this.adopts(u)) {
           const r = camp && camp.kind === 'building' && !camp.dead ? this.approach(u, camp, REACH) : 'fail';
           if (r === 'moving') break;
-          this.adopt(u.owner, u.captive, u.x, u.y);
+          adopt(this, u.owner, u.captive, u.x, u.y);
           u.captive = null;
           this.setOrder(u, null);
           break;
         }
         if (!u.captive || !camp || camp.kind !== 'building' || camp.dead || !camp.complete || (camp.captives?.length ?? 0) >= (camp.def.camp ?? 0)) {
-          const other = u.captive ? this.campWithRoom(u) : null;
+          const other = u.captive ? campWithRoom(this, u) : null;
           this.setOrder(u, other && other.id !== o.id ? { t: 'deliver', id: other.id } : null);
           break;
         }
