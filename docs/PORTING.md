@@ -39,6 +39,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `bandhorde` | 115 | The marauders, the band that holds a land: one kind of band among the others, with its raids as strikes on a town that defends itself. Was `hordeTurn` in campaign.ts. | campaign, threats | bandhorde.test.ts | not yet |
 | `bandroam` | 168 | Bands move: they flee strong armies, plan a way of a few lands toward softer marks, settle as marauders and break up. | bandhorde, campaign, threats | bandroam.test.ts | not yet |
 | `bandseason` | 27 | One season of the threats of men: the one call the campaign makes for all of it. | bandborn, bandfight, bandhorde, bandroam, campaign, carriedoff, threats | threats.test.ts | not yet |
+| `battlehooks` | 51 | The phases of a battle on the map (set up, settled, written back) and the table of systems registered for each, so that the battle functions in campaign.ts name no system. | campaign | battlehooks.test.ts | not yet |
 | `beaten` | 52 | When a people is beaten. A town used to stand until its last building fell, which left a won war to drag on | none | beaten.test.ts | not yet |
 | `besieger` | 31 | A besieger assaults: the computer on the attacking side of a campaign siege forms up for a minute and goes in with what it brought. | game | besieger.test.ts | not yet |
 | `birthonly` | 62 | People come only by birth (docs/DESIGN.md). | data, game | birthonly.test.ts | not yet |
