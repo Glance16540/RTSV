@@ -34,6 +34,7 @@ import { aftermathSeason, rememberWronged } from './aftermath';
 import { Choice, Clue, Intrigue, IntrigueKind, IntrigueNote, KEEP, Person, begin, chance, end, fullName, note, ofTown } from './intriguebase';
 export * from './intriguebase'; // the record of a story and its plumbing, where they were found before they were moved
 import { governWatch, watchEdge } from './watchhouse';
+import { crimeEdge } from './townwatch';
 import { courtBegin, courtChoices, courtChoose, courtStanding, courtStep } from './courtstory';
 
 export const INTRIGUE = {
@@ -357,8 +358,8 @@ export function intrigueSeason(c: Campaign): Intrigue[] {
   if (!towns.length) return began;
   const hard = towns.filter((t) => strained(c, t.id)), from = hard.length && chance(c, 5) < 0.7 ? hard : towns;
   const t = from[Math.floor(chance(c, 6) * from.length)], f = folkOf(c, t.id), k = strained(c, t.id);
-  if (grown(f) >= K.grown && chance(c, 7) < K.chance * (k ? K.strained : 1)) began.push(beginKiller(c, t.id));
-  else if (f.stores.gold >= T.gold && grown(f) >= 4 && chance(c, 8) < T.chance * (k ? T.strained : 1)) began.push(beginThief(c, t.id));
+  if (grown(f) >= K.grown && chance(c, 7) < K.chance * (k ? K.strained : 1) * crimeEdge(c, 0)) began.push(beginKiller(c, t.id));
+  else if (f.stores.gold >= T.gold && grown(f) >= 4 && chance(c, 8) < T.chance * (k ? T.strained : 1) * crimeEdge(c, 0)) began.push(beginThief(c, t.id));
   return began;
 }
 

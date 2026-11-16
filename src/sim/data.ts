@@ -765,7 +765,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'watchhouse', name: 'Watch House', icon: '🔔',
     desc: 'The town keeps a watch. On the map a thief is caught sooner and a killer\'s clues are found faster. In the town the watch calls villagers off their work to any fire.',
     cost: { wood: 120, stone: 40 }, time: 30, age: 1, hp: 520, size: 2, pop: 0, sight: 12,
-    trains: [], techs: [], onMap: true,
+    trains: [], techs: ['townwatch'], onMap: true,
   }),
   // ---- end of order and roads ----
 };
@@ -894,6 +894,13 @@ export const TECHS: Record<string, TechDef> = {
     id: 'ballistics', name: 'Fortified Arrows', icon: '🏰', desc: 'Towers and Town Centers +4 attack.',
     cost: { wood: 150, stone: 100 }, time: 35, age: 2, apply: (m) => { m.towerAtk += 4; },
   }),
+  // ---- Order and roads (the order-and-roads job: townwatch.ts and its fellows). One block; costs are first guesses. ----
+  townwatch: T({
+    id: 'townwatch', name: 'Town Watch', icon: '🔔', answers: 'crime',
+    desc: 'A proper watch in every town with a Watch House: such a town stands a company stronger against a band, and fewer thieves and killers begin among your people. In a town, villagers turn out to any fire.',
+    cost: { wood: 150, gold: 100 }, time: 40, age: 1, apply: () => {},
+  }),
+  // ---- end of order and roads ----
   up_frigate: T({
     id: 'up_frigate', name: 'Ships of the Line', icon: '🚢', desc: 'All War Galleys become Frigates, and Galleys are built as Frigates from now on.',
     cost: { wood: 300, gold: 250 }, time: 50, age: 4, upgrade: ['galley', 'frigate'], apply: () => {},
