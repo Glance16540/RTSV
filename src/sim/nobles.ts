@@ -63,10 +63,10 @@ export const NOBLES = {
 
 /** How each leaning takes each decree, -1 to 1. */
 export const LIKES: Record<Leaning, Record<DecreeKind, number>> = {
-  pious: { church: 1, guards: 0, alms: 0.5, closeTavern: 1, tavernWomen: -1 },
-  martial: { church: 0, guards: 1, alms: -0.5, closeTavern: 0, tavernWomen: 0 },
-  worldly: { church: -0.5, guards: 0, alms: -0.5, closeTavern: -1, tavernWomen: 1 },
-  kindly: { church: 0.5, guards: -0.5, alms: 1, closeTavern: 0, tavernWomen: -1 },
+  pious: { church: 1, guards: 0, alms: 0.5, closeTavern: 1, tavernWomen: -1, tend: 1 },
+  martial: { church: 0, guards: 1, alms: -0.5, closeTavern: 0, tavernWomen: 0, tend: 0 },
+  worldly: { church: -0.5, guards: 0, alms: -0.5, closeTavern: -1, tavernWomen: 1, tend: -0.5 },
+  kindly: { church: 0.5, guards: -0.5, alms: 1, closeTavern: 0, tavernWomen: -1, tend: 1 },
 };
 
 const hash = (a: number, b: number, k: number): number => {
