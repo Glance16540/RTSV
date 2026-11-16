@@ -3,7 +3,7 @@
 //
 //   HEALTH=1 npx vitest run scripts/health.test.ts
 //   HEALTH=1 CAMPAIGNS=48 SEASONS=200 PLAYER=computer VISITS=2 OUT=docs/health-report.md npx vitest run scripts/health.test.ts
-//   npm run health                (the baseline: 96 campaigns, 24 visits)
+//   npm run health                (the baseline: 96 campaigns, 24 visits; about 31 minutes)
 //
 //   CAMPAIGNS  how many campaigns (seeds 1..n, fixed so runs compare). Default 24.
 //   SEASONS    the longest a campaign is played. Default 200.
