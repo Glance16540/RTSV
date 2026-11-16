@@ -38,7 +38,7 @@
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
 import { faithAt, swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
-import { armySize, armyStrength } from './campaign';
+import { armySize, armyStrength } from './campaignbase';
 import { whoseOf } from './naming';
 import { creedOf } from './creed';
 import { OLD_SEASON, SEASONS_A_YEAR, agesOf, countFrom } from './ageing';

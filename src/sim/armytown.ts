@@ -9,7 +9,7 @@
  */
 import type { Army, Campaign } from './campaign';
 import { agesOf, countFrom, OLD_SEASON, LAST_SEASON } from './ageing';
-import { cameHome, enlist, fell, levelArmies, settleHouses } from './warhouse';
+import { awayFrom, cameHome, enlist, fell, levelArmies, settleHouses } from './warhouse';
 import { folkOf, rememberVeteran } from './township';
 import { tally } from './ledger';
 
@@ -47,8 +47,7 @@ export function menOf(c: Campaign, a: Army): { town: number; none: number } {
   const town = musterOf(c, a.id) ? total(musterOf(c, a.id)!) : 0;
   return { town, none: Math.max(0, sizeOf(a) * MEN_A_COMPANY - town) };
 }
-/** Men of this town who are away with the armies. */
-export const awayFrom = (c: Campaign, tid: number): number => Object.values(c.musters ?? {}).reduce((n, m) => n + (m.men[tid]?.length ?? 0), 0);
+export { awayFrom } from './warhouse'; // men of a town away with the armies: read off the rolls there, so that warhouse.ts need not import this module
 /** The town most of an army's men came from: where its veterans are remembered. */
 export function homeOf(c: Campaign, a: Army): number | undefined {
   const m = musterOf(c, a.id);

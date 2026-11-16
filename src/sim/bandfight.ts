@@ -20,7 +20,8 @@
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
 import { peoplesArmy, sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
-import { BIOMES, COMPANIES, ageOf, armySize, armyStrength, biomeOf, heroFor, reach, virtueOf, weatherAt } from './campaign';
+import { reach, weatherAt } from './campaignbase';
+import { BIOMES, COMPANIES, ageOf, armySize, armyStrength, biomeOf, heroFor, virtueOf } from './campaignbase';
 import { CIV_IDS, TECHS } from './data';
 import { MEN_A_COMPANY, reckonArmies } from './armytown';
 import { creditArmy } from './warhouse';

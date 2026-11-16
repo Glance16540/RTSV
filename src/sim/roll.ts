@@ -5,7 +5,7 @@
 import { carriedLeft } from './carriedoff';
 import { live, marksAt, marksOf, marksOfNoble } from './aftermath';
 import type { Campaign } from './campaign';
-import { heroFor } from './campaign';
+import { heroFor } from './campaignbase';
 import { HEIR_AGE, houseOf } from './dynasty';
 import { RANK_NAMES } from './hero';
 import { SEASONS_A_YEAR } from './ageing';

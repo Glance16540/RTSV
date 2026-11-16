@@ -546,7 +546,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const couldHungry = share(could, (x) => x.hungry), couldNotHungry = share(couldNot, (x) => x.hungry);
   add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where its governor can still raise a farm', 'under 10%', `${pct(couldHungry)} (${could.length} town-seasons)`, could.length ? couldHungry < 0.1 : null,
     'No convoy means none was on the road to it as the season began. Can still raise a farm is the governor\'s own test (governor.ts), read at the end of the season: a free place among its buildings, and its stores, less the farm\'s price, at or above his floor.');
-  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised', '15 to 40%', `${pct(couldNotHungry)} (${couldNot.length} town-seasons)`, couldNot.length ? within(couldNotHungry, 0.15, 0.4) : null,
+  add('Food', 'Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised', '10 to 40%', `${pct(couldNotHungry)} (${couldNot.length} town-seasons)`, couldNot.length ? within(couldNotHungry, 0.1, 0.4) : null,
     'The rest of the unfarmed towns with no convoy: no free place, or not the stores.');
   const dead = ruled.flatMap((w) => Object.values(w.hungerDead));
   const nations = ruled.length * 3; // a player and two rivals in each

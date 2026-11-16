@@ -8,7 +8,7 @@
 // files are the same, the battles were fought the same.
 //
 //   FINGERPRINT=1 OUT=before.txt npx vitest run scripts/fingerprint.test.ts
-//   (SKIRMISHES=6 SIEGES=6 DRILLS=6 MINUTES=8: how many of each, and how long each is fought)
+//   (SKIRMISHES=6 SIEGES=6 DRILLS=6 CAMPS=4 MINUTES=8: how many of each, and how long each is fought)
 //
 // Skipped unless FINGERPRINT is set. It measures nothing and judges nothing: it only tells two runs apart.
 import { it } from 'vitest';
@@ -20,7 +20,7 @@ import { CIV_IDS } from '../src/sim/data';
 import { Game } from '../src/sim/game';
 import { leaderType } from '../src/sim/powers';
 
-const SKIRMISHES = +(process.env.SKIRMISHES ?? 6), SIEGES = +(process.env.SIEGES ?? 6), DRILLS = +(process.env.DRILLS ?? 6), MINUTES = +(process.env.MINUTES ?? 8);
+const SKIRMISHES = +(process.env.SKIRMISHES ?? 6), SIEGES = +(process.env.SIEGES ?? 6), DRILLS = +(process.env.DRILLS ?? 6), CAMPS = +(process.env.CAMPS ?? 4), MINUTES = +(process.env.MINUTES ?? 8);
 const hash = (s: string): string => createHash('sha256').update(s).digest('hex').slice(0, 16);
 
 /** Fight a battle with every side played by the computer; its state hashed every two minutes and at the end. */
@@ -111,6 +111,44 @@ it.skipIf(!process.env.FINGERPRINT)('the fingerprint of a fixed set of battles',
     }
     for (let sec = 0; sec < 60 && g.winner < 0; sec++) { for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; } ais.forEach((a) => a.update()); }
     out.push(`${label} after the leaders fell: ${hash(raised.join('|'))} acclaimed ${g.players.map((p) => !!p.acclaimed).join('/')} ${hash(g.serialize())}`);
+  }
+  // Camp drills: one people is made Decadent and given a work camp with one guard, and Slavers who are sent after the
+  // other people's villagers, so that a work camp fills, is watched too thinly, loses people by night and has its
+  // captives' children; and the marauders are about. Then, with people in them, the marauders' camp and the work camp
+  // are burnt down, so that everyone held goes free. What happened is written with the hashes.
+  for (let seed = 1; seed <= CAMPS; seed++) {
+    const settled = civs.filter((id) => id !== 'wild');
+    const setups = [0, 1].map((i) => ({ name: 'AB'[i], color: [0x3366ff, 0xff3333][i], isAI: true, civ: settled[(seed * 5 + i * 2) % settled.length] }));
+    const g = new Game(200 + seed, setups);
+    g.marauders = true;
+    const ais = g.players.map((_, i) => { const a = new AIController(g, i); a.setLevel(1); return a; });
+    const label = `camp drill ${seed} (${setups.map((x) => x.civ).join(' v ')})`;
+    g.players[0].virtue = -90; // a Decadent people may keep a work camp and Slavers
+    const one = g.units.find((u) => u.owner === 0)!, hall = { cx: Math.floor(one.x), cy: Math.floor(one.y) }; // beside their people, wherever they begin
+    let camp = null as ReturnType<Game['spawnBuilding']> | null;
+    for (let r = 6; r < 30 && !camp; r++) for (let dy = -r; dy <= r && !camp; dy += 2) for (let dx = -r; dx <= r && !camp; dx += 2)
+      if (g.canPlace('workcamp', hall.cx + dx, hall.cy + dy)) camp = g.spawnBuilding('workcamp', 0, hall.cx + dx, hall.cy + dy, true);
+    const slavers = camp ? Array.from({ length: 6 }, (_, k) => g.spawnUnit('slaver', 0, camp!.x - 2 + k, camp!.y + 3)) : [];
+    let mostHeld = 0, mostInLair = 0, burnt = 0;
+    const story = (text: string): number => g.units.filter((u) => u.story?.some((x) => x.s === text)).length;
+    for (let s = 0; s < MINUTES * 60 && g.winner < 0; s++) {
+      for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; }
+      ais.forEach((a) => a.update());
+      g.players[0].virtue = Math.min(g.players[0].virtue, -80); // kept Decadent, whatever the town does
+      // Every twenty seconds each Slaver with his hands free is sent after one of the other people's grown villagers.
+      if (s % 20 === 5) {
+        const prey = g.units.filter((u) => u.owner === 1 && u.type === 'villager' && !u.dead && u.growT <= 0 && !u.inside && !u.captive);
+        slavers.forEach((u, k) => { if (!u.dead && !u.captive && prey.length) g.cmdTarget(0, [u.id], prey[(k + s) % prey.length].id); });
+      }
+      const lair = g.buildings.find((b) => b.type === 'lair' && !b.dead);
+      mostHeld = Math.max(mostHeld, camp && !camp.dead ? camp.captives?.length ?? 0 : 0);
+      mostInLair = Math.max(mostInLair, lair?.captives?.length ?? 0);
+      // Late on, the marauders' camp is burnt down with whoever is in it; and later the work camp.
+      if (s === Math.floor(MINUTES * 60 * 0.75) && lair) { lair.burnT = 60; lair.hp = 5; burnt++; }
+      if (s === Math.floor(MINUTES * 60 * 0.9) && camp && !camp.dead) { camp.burnT = 60; camp.hp = 5; burnt++; }
+      if ((s + 1) % 120 === 0) out.push(`${label} at ${(s + 1) / 60}m: ${hash(g.serialize())}`);
+    }
+    out.push(`${label} end: tick ${g.tick} most held in the work camp ${mostHeld}, most in the marauders' camp ${mostInLair}, camps burnt ${burnt}, freed and home ${story('Freed, and came home')}, got out by night ${story('Got out of the camp')} ${hash(g.serialize())}`);
   }
   writeFileSync(process.env.OUT ?? 'fingerprint.txt', out.join('\n') + '\n');
 }, 3_600_000);

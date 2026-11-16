@@ -14,7 +14,9 @@
  * at once: a tale answered, a comet. A town taken keeps its own standing under its new holder.
  */
 import type { Campaign } from './campaign';
-import { CHURCH_VIRTUE, TAVERN_VIRTUE, placeAt } from './campaign';
+import { placeAt } from './places';
+import { CHURCH_VIRTUE, FAITH, TAVERN_VIRTUE, tell } from './campaignbase';
+import { creedOf } from './creed';
 import { PLACES } from './story';
 
 const clamp = (v: number): number => Math.max(-100, Math.min(100, Math.round(v)));
@@ -101,4 +103,17 @@ export function faithSpread(c: Campaign, f: number): { low: number; high: number
   if (!all.length) return { low: 0, high: 0, spread: 0, towns: 0 };
   const low = Math.min(...all), high = Math.max(...all);
   return { low, high, spread: high - low, towns: all.length };
+}
+
+export function shiftVirtue(c: Campaign, f: number, by: number, opts: { /** The one town of theirs that is moved; without it, every town of theirs is. */ at?: number } = {}): void {
+  const x = c.factions[f];
+  if (!x || !by) return;
+  const was = creedOf(x.virtue ?? 0);
+  // Faith is a town's (townfaith.ts): the nation's standing follows from its towns'.
+  if (opts.at !== undefined && c.territories[opts.at]?.owner === f) swayTown(c, opts.at, by); else swayNation(c, f, by);
+  const now = creedOf(x.virtue ?? 0);
+  if (now.id !== was.id) {
+    c.log.push(`${x.id === 0 ? 'Your people are' : `${x.name} are`} now ${now.name}. ${FAITH[now.id].desc}`);
+    if (now.id === 'zealous' || now.id === 'decadent') tell(c, `${x.id === 0 ? 'Your people' : x.name} became ${now.name}.`);
+  }
 }
