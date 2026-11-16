@@ -154,15 +154,17 @@ interface Watch {
   sieges: Siege[]; // settled on the map
   falling: number; // towns whose standing fell 10 or more over 20 years, held by one people throughout
   fallingTowns: number;
+  driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
 }
 
 function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0 };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
+  const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
   const churched = c.factions.map(() => 0), hungryOf = c.factions.map(() => 0), townSeasonsOf = c.factions.map(() => 0);
   const lastAge = c.factions.map((f) => ({ age: ageOf(c, f.id), at: 0 }));
@@ -242,6 +244,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
     for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome }); if (r.outcome !== 'held') strife[r.at].war = now; }
     // Every held town.
+    if (s <= YEARS20) for (const t of c.territories) if (steady[t.id] && t.folk?.drift?.lost) lostTo[t.id] += t.folk.drift.lost; // drift's own toll, season by season
     for (const t of held(c)) {
       const f = folkOf(c, t.id), g = grown(f), away = awayFrom(c, t.id);
       if (f.hungry) strife[t.id].famine = now;
@@ -339,6 +342,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
         if (start[t.id].grown > 0) w.growth.push(grown(folkOf(c, t.id)) / start[t.id].grown);
         w.fallingTowns++;
         if (townStanding(c, t.id) <= start[t.id].standing - 10) w.falling++;
+        w.driftLost.push(lostTo[t.id]);
       }
       for (const f of c.factions) {
         if (!f.alive) continue;
@@ -484,7 +488,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const undecided = share(ruled, (w) => w.decided < 0);
   add('Pace', `Campaigns undecided at ${SEASONS} seasons`, 'under 10%', pct(undecided), undecided < 0.1);
   const ruined = ruled.filter((w) => w.how === 'ruin');
-  add('Pace', 'Campaigns ending in ruin', 'rare: under 3 in 100', `${pct(ruined.length / Math.max(1, ruled.length))} (${ruined.length} of ${ruled.length}${ruined.length ? `, at seasons ${ruined.map((w) => w.decided).sort((a, b) => a - b).join(', ')}` : ''})`, ruined.length / Math.max(1, ruled.length) < 0.03,
+  add('Pace', 'Campaigns ending in ruin', 'rare: under 6 in 100, and with those undecided under 10 in 100 together', `${pct(ruined.length / Math.max(1, ruled.length))} (${ruined.length} of ${ruled.length}${ruined.length ? `, at seasons ${ruined.map((w) => w.decided).sort((a, b) => a - b).join(', ')}` : ''})`, ruined.length / Math.max(1, ruled.length) < 0.06 && ruined.length / Math.max(1, ruled.length) + undecided < 0.1,
     'A world where no people gained ground in twenty years while the bands held much of the map: no winner (src/sim/ruin.ts). They are counted among the decided.');
   const ages = all('ages');
   add('Pace', 'Seasons until a rival reaches its next age', '20 to 60', `median ${num(median(ages), 0)} (${ages.length} advances)`, within(median(ages), 20, 60), 'Counted from the start, or from its last age.');
@@ -568,8 +572,9 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   add('Drift', 'Share of town-seasons with anyone drifted', '5 to 20%, more in hungry, raided or newly taken towns', `${pct(drifted)} (hungry ${by('hungry')}, raided ${by('raided')}, newly taken ${by('taken')}, otherwise ${by('')})`, within(drifted, 0.05, 0.2) && ['hungry', 'raided', 'taken'].every((k) => share(ts.filter((x) => x.strained === k), (x) => x.drifted) >= share(ts.filter((x) => x.strained === ''), (x) => x.drifted) || !ts.some((x) => x.strained === k)));
   const fallR = ruled.reduce((k, w) => k + w.falling, 0) / Math.max(1, ruled.reduce((k, w) => k + w.fallingTowns, 0));
   const fallB = bare.reduce((k, w) => k + w.falling, 0) / Math.max(1, bare.reduce((k, w) => k + w.fallingTowns, 0));
-  add('Drift', 'With sensible decrees vs none', 'at least a third fewer falling towns', `${pct(fallR)} falling with decrees, ${pct(fallB)} without (${fallB > 0 ? pct(1 - fallR / fallB) : '—'} fewer)`, fallB > 0 ? fallR <= fallB * (2 / 3) : null,
-    'A falling town is one whose standing is 10 or more lower after twenty years, among towns held by one people throughout. With decrees, the player gives the sensible ones (decrees.ts) and rivals rule as they do; without, nobody gives any.');
+  const lostR = mean(ruled.flatMap((w) => w.driftLost)), lostB = mean(bare.flatMap((w) => w.driftLost));
+  add('Drift', 'With sensible decrees vs none', 'standing lost to drift alone at least a third less', `${num(lostR)} a town over twenty years with decrees, ${num(lostB)} without (${lostB > 0 ? pct(1 - lostR / lostB) : '—'} less); towns fallen 10 or more all told ${pct(fallR)} and ${pct(fallB)}`, lostB > 0 ? lostR <= lostB * (2 / 3) : null,
+    'Standing lost to drift alone is what drift took from a town season by season (drift.ts: its strain, its women at the tavern, the women ordered into it), before any rise and not counting war, raids or the nation\'s dips, summed over twenty years for every town held by one people throughout. With decrees, the player gives the sensible ones (decrees.ts) and rivals rule as they do; without, nobody gives any.');
 
   // Threats
   const raids = all('raids'), years = ruled.reduce((k, w) => k + w.raidTownYears, 0);

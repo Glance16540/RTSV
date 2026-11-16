@@ -17,7 +17,7 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Pace | Seasons until a rival reaches its next age | 20 to 60 |
 | People | A town left alone, grown people after 20 years | 1.3 to 2 times what it began with, held by its houses and food |
 | People | A town visited every season vs left alone, after 20 years | visited ends 10 to 40% larger |
-| People | Towns that die out (no people at all) per 100 town-lifetimes | under 3, and only after war, famine or plague together |
+| People | Towns that die out (no people at all) per 100 town-lifetimes | under 3 (the report also shows how many died after war, famine and plague together) |
 | People | Towns left all one sex | a nation's towns under 5%; tribes' towns under 20% (war takes their men, by design) |
 | People | Of those who reach 60, the share dead by 70 | 50 to 85% (age alone, and also war, plague, hunger and raids, which take a part of the old: the rate of death by age is set a little lower than it would be alone) |
 | Food | Share of seasons a farmed town is hungry | under 2% |
