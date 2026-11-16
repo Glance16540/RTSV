@@ -21,4 +21,10 @@ describe('the campaign\'s base', () => {
     expect(base.biomeOf(c, 0)).toBe(base.biomeAt(c.seed, c.territories[0].x, c.territories[0].y));
     expect(base.companyCost(c.territories[0], 'infantry')).toBe(base.COMPANIES.infantry.cost);
   });
+
+  it('what only the hub can do is lent to the systems: the hub\'s own functions, once it has loaded', () => {
+    expect(base.HUB.moveArmy).toBe(hub.moveArmy);
+    expect(base.HUB.defence).toBe(hub.defence);
+    expect(base.HUB.canRaise).toBe(hub.canRaise);
+  });
 });

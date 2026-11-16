@@ -3,8 +3,8 @@
 // land they are in (no unrest rises there), can travel between their people's lands, and can call the armies to them.
 // Rules only: campaign.ts asks here where the leader is, and dynasty.ts seats a new one.
 
-import { Army, Campaign, moveArmy } from './campaign';
-import { reach } from './campaignbase';
+import type { Army, Campaign } from './campaign';
+import { HUB, reach } from './campaignbase';
 
 export interface Court {
   /** The land the leader is in. */
@@ -131,7 +131,7 @@ function march(c: Campaign, f: number): number {
   for (const a of called(c, f)) {
     if (a.moved) continue;
     const step = stepToward(c, f, a.at, ct.at);
-    if (step >= 0 && moveArmy(c, a.id, step) === 'moved') n++;
+    if (step >= 0 && HUB.moveArmy(c, a.id, step) === 'moved') n++;
   }
   if (!called(c, f).length) {
     delete ct.rally;

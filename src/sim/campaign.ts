@@ -2,7 +2,7 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
-import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront } from './campaignbase';
+import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront, HUB } from './campaignbase';
 import type { Biome, CompanyDef, FaithDef, Front, SiteDef, Sky, World, WorldShape } from './campaignbase';
 export * from './campaignbase'; // what the systems share, below all of them: found here as before
 import type { Ground, PlayerSetup, Standing } from './game';
@@ -982,6 +982,9 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
   .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
   .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
+
+// What only the hub can do is lent to the systems below it (campaignbase.ts): they call it there, and import nothing from here.
+Object.assign(HUB, { moveArmy, defence, canRaise });
 
 /** What a battle asks, and of whom (battlehooks.ts): each question has one system that answers it. */
 export type BattleQuestions = {

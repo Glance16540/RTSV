@@ -14,8 +14,7 @@
  *   wandering band of marauders, wherever it lies.
  */
 import type { Army, Campaign, Territory } from './campaign';
-import { moveArmy } from './campaign';
-import { reach } from './campaignbase';
+import { HUB, reach } from './campaignbase';
 import { armyAt, atTruce } from './campaignbase';
 import { awayFrom } from './armytown';
 import { folkOf, headcount } from './township';
@@ -102,7 +101,7 @@ export function seizeOpen(c: Campaign, f: number): number {
     if (c.pending) break;
     const prize = reach(c, a.at).find((id) => c.territories[id].owner !== f && c.territories[id].owner >= 0 && !atTruce(c, f, c.territories[id].owner) && openDefence(c, id) !== null);
     if (prize === undefined) continue;
-    if (moveArmy(c, a.id, prize) !== 'invalid') n++;
+    if (HUB.moveArmy(c, a.id, prize) !== 'invalid') n++;
   }
   return n;
 }

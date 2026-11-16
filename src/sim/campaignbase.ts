@@ -303,3 +303,21 @@ export function reach(c: Campaign, tid: number): number[] {
   const lanes = lanesOf(c, tid);
   return [...t.adj, ...lanes, ...(t.trait === 'coast' ? c.territories.filter((x) => x.trait === 'coast' && x.id !== tid && !t.adj.includes(x.id) && !lanes.includes(x.id)).map((x) => x.id) : [])];
 }
+
+/**
+ * What only the hub can do, lent to the systems below it. Marching an army may begin a battle, a land's defence
+ * is the sum of half a dozen systems, and whether a company can be raised is a matter of the nation's purse:
+ * these are the hub's own work and cannot come down here. But a system that needs one of them (a rival's army
+ * marching, a court moving with its leader) must not import the hub to get it, or hub and system can only be had
+ * together. So the hub lends them: campaign.ts fills this in once, as it loads, and a system calls `HUB.moveArmy`.
+ * Until the hub has loaded there is nothing here to call, and no system runs before it has.
+ */
+export interface HubActs {
+  /** March an army to a land: it moves, or a battle begins, or it cannot go (campaign.ts, moveArmy). */
+  moveArmy: (c: Campaign, armyId: number, to: number) => 'moved' | 'battle' | 'invalid';
+  /** How hard a land is to take, against these companies and this people (campaign.ts, defence). */
+  defence: (c: Campaign, tid: number, vs?: Record<string, number>, attackerCiv?: string) => number;
+  /** Can this people raise this company in this land now? (campaign.ts, canRaise) */
+  canRaise: (c: Campaign, f: number, tid: number, type: string) => boolean;
+}
+export const HUB = {} as HubActs;
