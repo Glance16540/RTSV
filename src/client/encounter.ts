@@ -13,7 +13,7 @@ import { Figure, askerOf, awaiting, bandLineup, heldOf, wordKey } from '../sim/e
 import { Intrigue, choicesFor, choose, fullName, standing } from '../sim/intrigue';
 import '../sim/courtstory';
 import { lookOf } from './models';
-import { Outfit, loadPeople, makePerson, outfitFor, play, RealPerson } from './person';
+import { Outfit, loadPeople, makePerson, outfitFor, play, point, RealPerson } from './person';
 
 /** A choice beside the figures: its words, what it does, and why it cannot be taken now, if it cannot. */
 export type EncounterChoice = [label: string, act: () => void, bar?: string];
@@ -29,15 +29,19 @@ const KIT: Record<string, number> = { raiders: 0x8a3e26, slavers: 0x3e3c46, pira
 function outfitOf(f: Figure): Outfit {
   const look = lookOf(f.civ, f.seed), color = f.band ? KIT[f.band] ?? PLAIN : f.civ ? CIV_COLOR[f.civ] ?? PLAIN : PLAIN;
   const u = f.dress === 'villager' || f.dress === 'noble' || f.dress === 'envoy' ? undefined : UNITS[f.dress];
-  if (u) return outfitFor(f.dress, f.female, color, look, f.seed, 0, { cls: u.cls === 'hero' ? 'hero' : 'infantry', age: u.age ?? 1 });
+  if (u) {
+    const o = outfitFor(f.dress, f.female, color, look, f.seed, 0, { cls: u.cls === 'hero' ? 'hero' : 'infantry', age: u.age ?? 1 });
+    // A band's own kit: its colour in the hems and on the head, and its leader in a cloak of it.
+    return f.band ? { ...o, trim: color, hatColor: o.hat ? color : o.hatColor, skirtColor: color, ...(f.role === 'leader' ? { cloak: color } : {}) } : o;
+  }
   // The plain people as their town dresses them (wear 1: the most covered), in their nation's dress.
   const base = outfitFor('villager', f.female, color, look, f.seed, 1, { cls: 'villager', age: 0, civ: f.civ || undefined });
   // A captive: whole plain long garments of undyed cloth, a headcloth on a woman.
-  if (f.role === 'captive') return { ...base, top: LINEN, skirtColor: LINEN, legs: 0xa89a7e, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: null, mantle: false, hat: '', trim: 0x9a8a6c, ...(f.female ? { hairStyle: 'covered' } : {}) };
+  if (f.role === 'captive') return { ...base, top: LINEN, skirtColor: LINEN, legs: 0xa89a7e, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: null, mantle: false, hat: '', trim: 0x9a8a6c, ...(f.female ? { hairStyle: 'long' } : {}) };
   if (f.dress === 'noble') return { ...base, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: color, trim: GOLD, mantle: false, hat: f.female ? 'circlet' : 'cap', hatColor: f.female ? GOLD : 0x2a2228, girth: 1 };
   if (f.dress === 'envoy') return { ...base, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: color, trim: GOLD, hat: 'cap', hatColor: 0x2a2228 };
-  // A townsman or townswoman, as the town dresses them.
-  return { ...base, sleeves: 'long', neck: 0 };
+  // A townsman or townswoman, as the town dresses them, her hair worn plain.
+  return { ...base, sleeves: 'long', neck: 0, ...(f.female ? { hairStyle: 'long', hat: '' } : {}) };
 }
 
 /** Where each figure stands: the leader or the one asking in front, his men in a curve behind, captives seated to one side at the back. */
@@ -54,6 +58,16 @@ function place(figs: Figure[]): { x: number; z: number; yaw: number }[] {
     const i = k++;
     return { x: 1.15 + i * 0.32, z: -1.05 - i * 0.2, yaw: -0.6 };
   });
+}
+
+const dir = new THREE.Vector3(), turn = new THREE.Quaternion();
+/** One brought before the leader stands humbly: arms down, hands together in front, head a little bowed. Over the motion that plays. */
+function stoop(p: RealPerson, g: THREE.Object3D): void {
+  g.updateWorldMatrix(true, false); g.getWorldQuaternion(turn);
+  const to = (x: number, y: number, z: number) => dir.set(x, y, z).normalize().applyQuaternion(turn);
+  point(p.bones.get('DEF-upper_armL'), to(0.12, -1, 0.18), 1); point(p.bones.get('DEF-forearmL'), to(-0.75, -0.55, 0.5), 1);
+  point(p.bones.get('DEF-upper_armR'), to(-0.12, -1, 0.18), 1); point(p.bones.get('DEF-forearmR'), to(0.75, -0.55, 0.5), 1);
+  p.bones.get('DEF-head')?.rotateX(0.22);
 }
 
 let open: { close: () => void } | null = null;
@@ -93,7 +107,7 @@ export function openEncounter(m: Meeting): boolean {
   const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 50);
   const wide = m.figures.length > 1;
   // Close enough to see faces and gear: the whole band from near at hand, or the one asking from the knees up.
-  cam.position.set(wide ? 0.25 : 0.05, wide ? 0.82 : 0.78, wide ? 2.45 : 2.35); cam.lookAt(wide ? 0.25 : 0, wide ? 0.52 : 0.62, wide ? -0.2 : 0.6);
+  cam.position.set(wide ? 0.15 : 0.05, wide ? 0.9 : 0.78, wide ? 3.05 : 2.35); cam.lookAt(wide ? 0.15 : 0, wide ? 0.46 : 0.62, wide ? -0.25 : 0.6);
   // Lit like a portrait: a warm key from the front and side casting soft shadows, a cool fill from the other side, and a rim from behind.
   scene.add(new THREE.HemisphereLight(0xfff2dc, 0x3a302a, 0.45));
   const key = new THREE.DirectionalLight(0xffe2bc, 2.6); key.position.set(-1.6, 3.2, 2.6); key.castShadow = true;
@@ -107,7 +121,7 @@ export function openEncounter(m: Meeting): boolean {
   // As sharp as the screen allows, and never less than twice over.
   gl.setPixelRatio(Math.min(3, Math.max(2, window.devicePixelRatio || 1))); gl.setSize(W, H, false); gl.toneMapping = THREE.NeutralToneMapping;
   gl.shadowMap.enabled = true; gl.shadowMap.type = THREE.PCFSoftShadowMap;
-  const people: RealPerson[] = [], turning: THREE.Object3D[] = [];
+  const people: RealPerson[] = [], turning: THREE.Object3D[] = [], humble: { p: RealPerson; g: THREE.Object3D }[] = [];
   const stand = (): void => {
     if (!alive) return;
     const at = place(m.figures);
@@ -119,6 +133,7 @@ export function openEncounter(m: Meeting): boolean {
       scene.add(made.g);
       people.push(made.real);
       if (!wide) turning.push(made.g);
+      if (f.pose === 'idle') humble.push({ p: made.real, g: made.g });
       play(made.real, f.pose === 'talk' ? 'Idle_Talking_Loop' : f.pose === 'ready' ? 'Idle_Loop' : f.pose === 'sit' ? 'Sitting_Idle_Loop' : 'Idle_Loop', 0.8 + ((f.seed % 7) / 30));
       made.real.mixer.update((f.seed % 13) / 5); // not all in step
     });
@@ -128,6 +143,7 @@ export function openEncounter(m: Meeting): boolean {
     if (!alive) return;
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     for (const p of people) p.mixer.update(dt);
+    for (const h of humble) stoop(h.p, h.g);
     for (const g of turning) g.rotation.y = 0.15 + Math.sin(now / 4000) * 0.45; // one alone turns slowly, to be seen from either side
     gl!.render(scene, cam);
     requestAnimationFrame(frame);
