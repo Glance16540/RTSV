@@ -21,20 +21,23 @@ export interface Meeting { title: string; text: string; figures: Figure[]; choic
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
 const W = 520, H = 400;
-const BAND_CLOTH = 0x4a3a30, PLAIN = 0x7a6a54, GOLD = 0xd8b040;
+const PLAIN = 0x7a6a54, GOLD = 0xd8b040, LINEN = 0xcfc3a6;
+/** The colours a band's kit runs to, kind by kind: rust for raiders, iron for slavers, sea blue for pirates, the green of the woods for highwaymen, old blood for marauders. */
+const KIT: Record<string, number> = { raiders: 0x8a3e26, slavers: 0x3e3c46, pirates: 0x2a5478, highwaymen: 0x4e6230, marauders: 0x6a2a24 };
 
-/** How a figure goes dressed: as a soldier of its kind, or as one of the plain people. */
+/** How a figure goes dressed, by the same road the battle dresses its people (person.ts outfitFor, with their nation's look and dress). */
 function outfitOf(f: Figure): Outfit {
-  const look = lookOf(f.civ, f.seed), color = f.civ ? CIV_COLOR[f.civ] ?? PLAIN : BAND_CLOTH;
+  const look = lookOf(f.civ, f.seed), color = f.band ? KIT[f.band] ?? PLAIN : f.civ ? CIV_COLOR[f.civ] ?? PLAIN : PLAIN;
   const u = f.dress === 'villager' || f.dress === 'noble' || f.dress === 'envoy' ? undefined : UNITS[f.dress];
   if (u) return outfitFor(f.dress, f.female, color, look, f.seed, 0, { cls: u.cls === 'hero' ? 'hero' : 'infantry', age: u.age ?? 1 });
-  // The plain people: covered, as the town that keeps itself most covered dresses its people (wear 1).
-  const plain = f.dress === 'villager', base = outfitFor('villager', f.female, plain ? PLAIN : color, look, f.seed, 1);
-  const covered: Outfit = { ...base, sleeves: 'long', neck: 0, apron: null, ...(f.female ? { skirt: 'long', hairStyle: f.role === 'captive' ? 'covered' : 'bun', hat: '' } : {}) };
-  if (f.role === 'captive') return { ...covered, top: 0xb8ab94, skirtColor: 0xb8ab94, legs: 0x8a7a64, cloak: null, barefoot: false };
-  if (f.dress === 'noble') return { ...covered, skirt: 'long', cloak: color, trim: GOLD, mantle: !f.female, hat: f.female ? '' : 'cap', hatColor: 0x2a2228, girth: 1 };
-  if (f.dress === 'envoy') return { ...covered, skirt: 'long', cloak: color, trim: GOLD, hat: 'hood', hatColor: color };
-  return { ...covered, top: 0x8a6e4e, skirtColor: 0x8a6e4e };
+  // The plain people as their town dresses them (wear 1: the most covered), in their nation's dress.
+  const base = outfitFor('villager', f.female, color, look, f.seed, 1, { cls: 'villager', age: 0, civ: f.civ || undefined });
+  // A captive: whole plain long garments of undyed cloth, a headcloth on a woman.
+  if (f.role === 'captive') return { ...base, top: LINEN, skirtColor: LINEN, legs: 0xa89a7e, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: null, mantle: false, hat: '', trim: 0x9a8a6c, ...(f.female ? { hairStyle: 'covered' } : {}) };
+  if (f.dress === 'noble') return { ...base, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: color, trim: GOLD, mantle: false, hat: f.female ? 'circlet' : 'cap', hatColor: f.female ? GOLD : 0x2a2228, girth: 1 };
+  if (f.dress === 'envoy') return { ...base, sleeves: 'long', neck: 0, skirt: 'long', apron: null, cloak: color, trim: GOLD, hat: 'cap', hatColor: 0x2a2228 };
+  // A townsman or townswoman, as the town dresses them.
+  return { ...base, sleeves: 'long', neck: 0 };
 }
 
 /** Where each figure stands: the leader or the one asking in front, his men in a curve behind, captives seated to one side at the back. */
@@ -42,14 +45,14 @@ function place(figs: Figure[]): { x: number; z: number; yaw: number }[] {
   const men = figs.filter((f) => f.role === 'man').length;
   let m = 0, k = 0;
   return figs.map((f) => {
-    if (f.role === 'leader' || f.role === 'asker') return { x: 0, z: 0.55, yaw: 0 };
+    if (f.role === 'leader' || f.role === 'asker') return { x: 0, z: 0.6, yaw: 0.15 };
     if (f.role === 'man') {
       const i = m++, side = i % 2 ? 1 : -1, row = Math.floor(i / 2);
-      const x = (men === 1 ? 0.45 : side * (0.42 + row * 0.38)), z = -0.05 - row * 0.32 - (i % 2) * 0.05;
+      const x = (men === 1 ? 0.5 : side * (0.5 + row * 0.42)), z = -0.35 - row * 0.4 - (i % 2) * 0.06;
       return { x, z, yaw: -x * 0.25 };
     }
     const i = k++;
-    return { x: 0.95 + i * 0.3, z: -0.55 - i * 0.18, yaw: -0.6 };
+    return { x: 1.15 + i * 0.32, z: -1.05 - i * 0.2, yaw: -0.6 };
   });
 }
 
@@ -90,7 +93,7 @@ export function openEncounter(m: Meeting): boolean {
   const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 50);
   const wide = m.figures.length > 1;
   // Close enough to see faces and gear: the whole band from near at hand, or the one asking from the knees up.
-  cam.position.set(wide ? 0.22 : 0.05, wide ? 0.95 : 0.72, wide ? 3.3 : 1.7); cam.lookAt(wide ? 0.22 : 0, wide ? 0.5 : 0.6, wide ? -0.25 : 0.55);
+  cam.position.set(wide ? 0.25 : 0.05, wide ? 0.82 : 0.78, wide ? 2.45 : 2.35); cam.lookAt(wide ? 0.25 : 0, wide ? 0.52 : 0.62, wide ? -0.2 : 0.6);
   // Lit like a portrait: a warm key from the front and side casting soft shadows, a cool fill from the other side, and a rim from behind.
   scene.add(new THREE.HemisphereLight(0xfff2dc, 0x3a302a, 0.45));
   const key = new THREE.DirectionalLight(0xffe2bc, 2.6); key.position.set(-1.6, 3.2, 2.6); key.castShadow = true;
@@ -99,12 +102,12 @@ export function openEncounter(m: Meeting): boolean {
   scene.add(key);
   const fill = new THREE.DirectionalLight(0xc8d8ff, 0.7); fill.position.set(2.2, 1.4, 2); scene.add(fill);
   const rim = new THREE.DirectionalLight(0xfff0d8, 1.8); rim.position.set(0.6, 2.4, -3); scene.add(rim);
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(wide ? 2.6 : 1.1, 64), new THREE.MeshStandardMaterial({ color: 0x6a5a3e, roughness: 1 }));
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(wide ? 2.6 : 1.1, 64), new THREE.MeshStandardMaterial({ color: 0x4a3a28, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2; ground.position.set(wide ? 0.3 : 0, 0, wide ? -0.3 : 0.5); ground.receiveShadow = true; scene.add(ground);
   // As sharp as the screen allows, and never less than twice over.
   gl.setPixelRatio(Math.min(3, Math.max(2, window.devicePixelRatio || 1))); gl.setSize(W, H, false); gl.toneMapping = THREE.NeutralToneMapping;
   gl.shadowMap.enabled = true; gl.shadowMap.type = THREE.PCFSoftShadowMap;
-  const people: RealPerson[] = [];
+  const people: RealPerson[] = [], turning: THREE.Object3D[] = [];
   const stand = (): void => {
     if (!alive) return;
     const at = place(m.figures);
@@ -112,9 +115,10 @@ export function openEncounter(m: Meeting): boolean {
       const made = makePerson(outfitOf(f));
       if (!made) return;
       made.g.position.set(at[i].x, 0, at[i].z); made.g.rotation.y = at[i].yaw;
-      made.g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = o.receiveShadow = true; });
+      made.g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; }); // on the ground only: a figure shading itself goes muddy
       scene.add(made.g);
       people.push(made.real);
+      if (!wide) turning.push(made.g);
       play(made.real, f.pose === 'talk' ? 'Idle_Talking_Loop' : f.pose === 'ready' ? 'Idle_Loop' : f.pose === 'sit' ? 'Sitting_Idle_Loop' : 'Idle_Loop', 0.8 + ((f.seed % 7) / 30));
       made.real.mixer.update((f.seed % 13) / 5); // not all in step
     });
@@ -124,6 +128,7 @@ export function openEncounter(m: Meeting): boolean {
     if (!alive) return;
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     for (const p of people) p.mixer.update(dt);
+    for (const g of turning) g.rotation.y = 0.15 + Math.sin(now / 4000) * 0.45; // one alone turns slowly, to be seen from either side
     gl!.render(scene, cam);
     requestAnimationFrame(frame);
   };
