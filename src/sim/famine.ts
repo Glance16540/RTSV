@@ -24,6 +24,8 @@ import type { Building, Game, Player, Unit } from './game';
 import { TRADE } from './data';
 import { roll, wrath } from './wrath';
 import { famineGrace } from './granary';
+import { rotationFailIn } from './croprotation';
+import { saltGrace } from './salting';
 
 export const FAMINE = {
   /** A store under this much food is bare. */
@@ -137,7 +139,7 @@ export function leanYear(g: Game): Building[] {
   for (const p of g.players) {
     if (p.neutral || p.defeated) continue;
     const w = wrath(g, p.id);
-    if (roll(g, 83 + p.id * 311) >= (k * w) / FAMINE.lean) continue;
+    if (roll(g, 83 + p.id * 311) >= (k * w * rotationFailIn(g, p.id)) / FAMINE.lean) continue; // Crop Rotation (croprotation.ts)
     const farms = g.buildings.filter((b) => !b.dead && b.owner === p.id && b.type === 'farm' && b.complete && !b.blightT);
     if (!farms.length) continue;
     // Which fields: taken in an order of their own for this failure, not always the oldest.
@@ -162,7 +164,7 @@ export function famine(g: Game): void {
       p.hunger = 0;
       continue;
     }
-    const was = p.hunger ?? 0, now = (p.hunger = was + 1 / famineGrace(g, p.id)); // a Granary makes a bare store last longer (granary.ts)
+    const was = p.hunger ?? 0, now = (p.hunger = was + 1 / (famineGrace(g, p.id) * saltGrace(g, p.id))); // a Granary makes a bare store last longer (granary.ts)
     if (was < FAMINE.hungry && now >= FAMINE.hungry)
 {
       tell(g, p, `🍞 The stores are empty and nothing is coming in: your people are going hungry. ${advice(g, p.id)}`);

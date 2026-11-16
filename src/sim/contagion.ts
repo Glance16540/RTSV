@@ -15,6 +15,7 @@
 // Decided without the game's dice, like the rest of the calamities.
 import type { Building, Game, Player, Unit } from './game';
 import { roll } from './wrath';
+import { quarantineGuard } from './quarantine';
 
 export const CONTAGION = {
   /** How near a plagued stranger must stand, in tiles, and the chance each second of catching it from them. */
@@ -66,7 +67,7 @@ export function contagion(g: Game): number {
     for (const v of g.units) {
       if (v.owner === u.owner || v.plagueT > 0 || v.inside || !live(v)) continue;
       if (Math.abs(v.x - u.x) > CONTAGION.reach || Math.hypot(v.x - u.x, v.y - u.y) > CONTAGION.reach) continue;
-      if (roll(g, u.id * 4099 + v.id) >= CONTAGION.touch * prone(g, v.owner)) continue;
+      if (roll(g, u.id * 4099 + v.id) >= CONTAGION.touch * prone(g, v.owner) * quarantineGuard(g, v.owner)) continue; // Quarantine (quarantine.ts)
       v.plagueT = Math.max(CONTAGION.least, u.plagueT * CONTAGION.share);
       caught++;
       const from = g.players[u.owner];

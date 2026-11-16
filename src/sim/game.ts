@@ -35,6 +35,7 @@ import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRA
 import { millPace } from './mill'; // food and health: a Mill
 import { wellGuard } from './well';
 import { sickCare } from './infirmary';
+import { midwifeLossIn } from './midwifery';
 import { mayLearn, researchAt } from './ownstudies';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
@@ -1629,7 +1630,7 @@ export class Game {
    */
   private noChild(b: Building): boolean {
     const fate = ((this.nextId++ * 2654435761 + this.seed * 40503) >>> 0) / 4294967296;
-    if (fate >= this.creed(b.owner).childLoss) return false;
+    if (fate >= this.creed(b.owner).childLoss * midwifeLossIn(this, b.owner)) return false; // Midwifery (midwifery.ts)
     b.missed = (b.missed ?? 0) + 1;
     return true;
   }

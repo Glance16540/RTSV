@@ -16,7 +16,7 @@ import { folkOf, headcount } from './township';
 
 export const MILL = {
   /** How many times the food a farmed land yields, or a farm is worked for. */
-  yield: 1.2,
+  yield: 1.4,
   /** A farmed town of this many people wants one before its food runs short. */
   big: 16,
 };
