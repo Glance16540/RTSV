@@ -10,7 +10,7 @@ import { nationHtml, townHtml } from './townpanel';
 import { canSendHome, menOf } from '../sim/armytown';
 import { bandButtons, threatHtml } from './threatpanel';
 import { intrigueButtons, intrigueHtml } from './intriguepanel';
-import { orderButtons, orderHtml } from './orderpanel';
+import { orderHtml } from './orderpanel';
 import { AGES, CIVS, styleOf } from '../sim/data';
 import {
   EVENTS, WEATHER, eventsAt, weatherAt, Army, FAITH, faithOf, virtueOf, placeAt, worldNow, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS,
@@ -24,6 +24,7 @@ import { peopleName } from '../sim/naming';
 import { convoyHtml } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
 import { decreePanel } from './decrees';
+import { worksPanel } from './townworks';
 
 const css = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
@@ -140,6 +141,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
     if (t.capital === 0 && !me.heroAlive) leader += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
     if (t.capital === 0) leader += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
     town += visitButton(c, t.id) + convoyHtml(c, t.id) + decreePanel(c, t.id); // a visit, convoys, and drift and decrees (src/sim/drift.ts, decrees.ts)
+    build += worksPanel(c, t.id); // buildings raised on the town's record, and studies taught there (townworks.ts, studies.ts)
     for (const w of c.barriers ?? []) if ((w.a === t.id || w.b === t.id) && w.kind !== 'water') { const far = w.a === t.id ? w.b : w.a; build += btn('open:' + far, `${WORKS[w.kind].icon} Build ${WORKS[w.kind].name} to ${c.territories[far].name}`, WORKS[w.kind].cost, canOpen(c, 0, t.id, far), 'Opens this border for good, to you and to everyone else.'); }
     if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) build += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), `${d.desc} Paid in ${priceText(priceOf(k, siteCost(t, k, me.civ)))}.`);
   } else if (t.owner > 0 && c.factions[t.owner].alive) {
@@ -155,5 +157,5 @@ export function actionsHtml(c: Campaign, sel: number): string {
     talk += btn('gift:' + t.owner, `🎁 Send ${c.factions[t.owner].name} supplies`, giftCost(me.civ), canGift(c, t.owner), c.ally === t.owner ? 'Your ally can spend them on troops.' : 'Earns goodwill: they will be readier to agree to a truce or an alliance.');
     if (fav) talk += `<div class="hint">Goodwill ${'●'.repeat(fav)}${'○'.repeat(MAX_FAVOR - fav)}</div>`;
   }
-  return group('Raise', raise) + group('Build', build) + group('Leader', leader) + group('Town', town) + group('Diplomacy', talk) + group('The age', age) + group('Bands', bandButtons(c, t.id)) + group('A matter in the town', intrigueButtons(c, t.id)) + group('Order', orderButtons(c, t.id));
+  return group('Raise', raise) + group('Build', build) + group('Leader', leader) + group('Town', town) + group('Diplomacy', talk) + group('The age', age) + group('Bands', bandButtons(c, t.id)) + group('A matter in the town', intrigueButtons(c, t.id));
 }

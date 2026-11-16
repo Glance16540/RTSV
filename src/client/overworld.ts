@@ -6,7 +6,6 @@ import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
 import { bandPrompt, newsHtml } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
-import { orderDo } from './orderpanel';
 import { attackBand } from '../sim/bandfight';
 import { meetBand, meetStory, storyToMeet } from './encounter';
 import { CIVS, CIV_IDS } from '../sim/data';
@@ -30,6 +29,8 @@ import { sendFromPanel } from './convoypanel';
 import { seasonCard, showPastSeasons } from './seasoncard';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
+import { raiseWork } from '../sim/townworks';
+import { learn } from '../sim/studies';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
 export type LeaderChoice = 'a' | 'b' | 'own';
@@ -133,7 +134,6 @@ export class Overworld {
       if (kind === 'succession') { this.askSuccession(); return; }
       if (kind === 'lead') moveLeader(this.c, 0, this.sel);
       if (kind === 'story') intrigueDo(this.c, id);
-      if (kind === 'order') orderDo(this.c, this.sel, id);
       if (kind === 'band') attackBand(this.c, Number(id.split('/')[0]), Number(id.split('/')[1]));
       if (kind === 'call') callArmies(this.c, 0);
       if (kind === 'endcall') endCall(this.c, 0);
@@ -145,6 +145,8 @@ export class Overworld {
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
       if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
+      if (kind === 'work') raiseWork(this.c, 0, this.sel, id); // a building raised on the town's record (townworks.ts)
+      if (kind === 'study') learn(this.c, 0, id, this.sel); // a study learned there (studies.ts)
       if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
       this.changed();
     });

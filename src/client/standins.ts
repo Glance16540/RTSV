@@ -1,35 +1,40 @@
-// Stand-ins for buildings that have no model of their own yet (docs/DESIGN.md, "Buildings and research that answer
-// the systems"). A new building is drawn as an existing one, scaled and tinted, until its real model is made in
-// models.ts. A session that adds a building puts it here from a client file of its own:
-//
-//   STANDINS.watchhouse = { as: 'tower', scale: 0.8, tint: 0xc9b27a };
-//
-// and names it in the villagers' build menu with `inBuildMenu`. The renderer asks `shapeOf` for the model to make
-// and `dress` to finish it. Nothing here is rules: the sim does not import it.
+// Stand-in looks for buildings that have no model of their own yet (docs/DESIGN.md, "Buildings and research that
+// answer the systems"). A new building is drawn as an existing one, scaled and tinted, until the portrait session
+// makes its own model in models.ts and takes its line out of this table. Each session that adds buildings puts its
+// lines in a block of its own below, under a comment naming its job; nobody touches another's lines.
 import * as THREE from 'three';
-import { BUILD_PAGES } from '../sim/data';
+import { makeBuilding } from './models';
 
-export interface StandIn { /** The building whose model is borrowed. */ as: string; /** Its size against that model's (1: the same). */ scale?: number; /** A colour laid over it. */ tint?: number }
-export const STANDINS: Record<string, StandIn> = {};
+/** A stand-in: drawn as `as`, scaled by `scale` across and `tall` upward, its walls washed toward `tint`. */
+export interface StandIn { as: string; scale?: number; tall?: number; tint?: number }
 
-/** The building type whose model stands for this one: itself, if it has a model of its own. */
-export const shapeOf = (type: string): string => STANDINS[type]?.as ?? type;
-/** Finish a model made for `shapeOf(type)`: scaled and tinted as its stand-in says. A building with its own model is left as it is. */
-export function dress<T extends THREE.Object3D>(type: string, model: T): T {
-  const s = STANDINS[type];
-  if (!s) return model;
-  if (s.scale) model.scale.multiplyScalar(s.scale);
+export const STAND_INS: Record<string, StandIn> = {
+  // ---- Rule, law, nobles and faith (the people session) ----
+  // ---- Order and roads (the order-and-roads job) ----
+  watchhouse: { as: 'tower', scale: 0.8, tall: 0.75, tint: 0xd8c08a }, // a low tower in pale timber
+};
+
+/** A building's look: its own model, or its stand-in until it has one. Takes what `makeBuilding` takes. */
+export function standInBuilding(...args: Parameters<typeof makeBuilding>): THREE.Group {
+  const [type, ...rest] = args;
+  const s = STAND_INS[type];
+  if (!s) return makeBuilding(type, ...rest);
+  const g = makeBuilding(s.as, ...rest);
+  const k = s.scale ?? 1;
+  g.scale.set(k, (s.tall ?? 1) * k, k);
   if (s.tint !== undefined) {
-    const tint = new THREE.Color(s.tint);
-    model.traverse((o) => {
+    const wash = new THREE.Color(s.tint);
+    g.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return;
-      const tinted = (m: THREE.Material): THREE.Material => { const k = m.clone() as THREE.Material & { color?: THREE.Color }; k.color?.lerp(tint, 0.45); return k; };
-      o.material = Array.isArray(o.material) ? o.material.map(tinted) : tinted(o.material); // its own copy: the borrowed model's materials are shared
+      const one = (m: THREE.Material): THREE.Material => {
+        const c = (m as THREE.MeshToonMaterial).color;
+        if (!c) return m;
+        const copy = m.clone() as THREE.MeshToonMaterial;
+        copy.color = c.clone().lerp(wash, 0.35);
+        return copy;
+      };
+      o.material = Array.isArray(o.material) ? o.material.map(one) : one(o.material);
     });
   }
-  return model;
-}
-/** Put a building in the villagers' build menu: page 0 is the settlement, page 1 the military. Once only. */
-export function inBuildMenu(type: string, page: 0 | 1): void {
-  if (!BUILD_PAGES.some((p) => p.includes(type))) BUILD_PAGES[page].push(type);
+  return g;
 }
