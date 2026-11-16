@@ -23,6 +23,7 @@ import { Folk, MAX_KIND, folkOf, grown } from './township';
 import { ageTown } from './ageing';
 import { tally } from './ledger';
 import { birthPace } from './ownstudies';
+import { midwifeLoss } from './midwifery';
 
 declare module './township' {
   interface Folk {
@@ -85,7 +86,7 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
     if (grown(f) + f.children + 1 > roomOf(t) || f.stores.food < BIRTH_COST || f.children >= MAX_KIND) { f.due = Math.min(f.due, 1); break; }
     f.due -= 1;
     // The births that do not come are decided without spending the food, as in a town.
-    if (hash(c.seed, tid * 131 + c.turn, 1000 + born + missed) < creed.childLoss) { missed++; continue; }
+    if (hash(c.seed, tid * 131 + c.turn, 1000 + born + missed) < creed.childLoss * midwifeLoss(c, t.owner)) { missed++; continue; } // Midwifery (midwifery.ts)
     f.stores.food -= BIRTH_COST;
     f.children++;
     f.ages!.k.push(0);

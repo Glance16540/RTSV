@@ -122,7 +122,7 @@ export function pressing(c: Campaign, f: number, answers: string): number {
     case 'raids': case 'crime': return share((tid) => event(tid, ['raid', 'carried']));
     case 'faith': return Math.max(0, Math.min(1, -(c.factions[f].virtue ?? 0) / 50));
     case 'nobles': case 'plots': case 'rule': return share((tid) => (folkOf(c, tid).drift?.strain ?? 0) > 0.25);
-    case 'births': return share((tid) => { const k = folkOf(c, tid); return Math.min(k.men, k.women) > 0 && k.children < Math.min(k.men, k.women); }); // towns with fewer children than couples
+    case 'births': return share((tid) => { const k = folkOf(c, tid); return (Math.min(k.men, k.women) > 0 && k.children < Math.min(k.men, k.women)) || (k.missed ?? 0) > 0; }); // towns with fewer children than couples, or births that did not come (seasonfolk.ts: Midwifery)
     case 'trade': return share((tid) => folkOf(c, tid).stores.gold < TRADE_SHORT); // towns short of gold
     default: return 0;
   }
