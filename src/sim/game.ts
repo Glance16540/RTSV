@@ -1,8 +1,8 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
-import { coupleParted, creditKill, homeRecord, leaveForWar, settleHomes, warRenown } from './household';
-import { carriedIn, homeMade, madeRenown, restoreMade } from './notableweight';
-import { Census, MAX_KIND, PeopleIn, Stores } from './township';
+import { coupleParted, creditKill, leaveForWar, settleHomes, warRenown } from './household';
+import { carriedIn, madeRenown, restoreMade } from './notableweight';
+import { Census, PeopleIn, Stores } from './township';
 import {
   ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, CALAMITY, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
@@ -17,7 +17,7 @@ import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
 import { agesHere, birthPace, growPace, hireBar } from './birthonly';
 import { griefPace, griefSecond, mourn } from './grief';
 import { driftSecond } from './driftintown';
-import { Ages, GROWN_SEASON, LAST_SEASON, OLD_SEASON, SEASONS_A_YEAR, ageFor, childSeasons, cleanAges, leftFor, yearsOf } from './ageing';
+import { censusOf, cradledOf, peopled } from './battlefolk';
 import { tavernTrade } from './tavernfall';
 import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
@@ -31,9 +31,9 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, POWERS, leaderAsMade, leaderDef, leaderType, powerDue, powersHeld } from './powers';
-import { CHAMPION_KILLS, Champion, canLead, championFemale, championName, championSpec, rankForKills } from './champion';
-import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
+import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
+import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
+import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
@@ -412,7 +412,7 @@ export class Game {
   private heroes: Unit[][] = [];
   private strategists: Unit[] = [];
   /** Each player's leader, while they are alive and in the open. */
-  private leaders: (Unit | null)[] = [];
+  leaders: (Unit | null)[] = [];
   private tcs: Building[][] = [];
 
   /**
@@ -506,7 +506,7 @@ export class Game {
       } else if (!field) {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
-        if (s.bonus?.people) this.peopled(i, s.bonus.people, st, dir);
+        if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
         else {
           this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
           this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
@@ -557,14 +557,14 @@ export class Game {
         });
         // The town's children are on the record of one of its roofs, part grown.
         if (s.bonus.people?.named?.length && !field) { settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f')); restoreMade(this, i, s.bonus.people.named); }
-        if (s.bonus.people?.children && !field) this.cradled(i, s.bonus.people.children, cleanAges(s.bonus.people.ages)?.k);
+        if (s.bonus.people?.children && !field) cradledOf(this, i, s.bonus.people);
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
           // In a field battle the army forms up where the town would have been.
           for (let j = 0; j < n; j++, k++) this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir);
         }
         // In a battle in the open there is no town on the field: the men of it who marched out stand with the army (tribes.ts).
-        if (field && s.bonus.people) this.peopled(i, s.bonus.people, st, dir);
+        if (field && s.bonus.people) peopled(this, i, s.bonus.people, st, dir);
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
       }
     });
@@ -617,7 +617,7 @@ export class Game {
     if (def.cls === 'siege') u.hp = u.maxHp = Math.round(def.hp * this.players[owner].mods.siegeHp);
     // The first hero of their calling a people raises is their leader in person.
     // (One raised from the ranks fights on as what they were; nobody steps into their place if they fall.)
-    if (this.players[owner] && !this.players[owner].leaderAway && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderType(this.heroOf(owner))) && !this.units.some((o) => o.owner === owner && o.hero)) {
+    if (this.players[owner] && !this.players[owner].leaderAway && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderTypeOf(this, owner)) && !this.units.some((o) => o.owner === owner && o.hero)) {
       const rank = this.players[owner].heroRank ?? 0;
       u.name = this.heroOf(owner).name;
       u.hero = { xp: RANK_XP[rank], rank };
@@ -629,22 +629,11 @@ export class Game {
     return u;
   }
 
-  /** The leader a player's nation follows: their own making of them, or the leader as written. */
-  heroOf(owner: number): HeroSpec {
-    const p = this.players[owner];
-    return (p.hero ??= leaderAsMade(undefined, p.civ, p.isAI));
-  }
+  /** The leader a player's nation follows: their own making of them, or the leader as written (battleleader.ts, as all of these are). */
+  heroOf(owner: number): HeroSpec { return heroOf(this, owner); }
   /** What a leader's making and veterancy add to their arm, armour and health. */
-  leaderBonus(u: Unit): { atk: number; armor: number; hp: number } {
-    return heroBonus(this.heroOf(u.owner), u.hero?.rank ?? 0);
-  }
-  private fitLeader(u: Unit): void {
-    // The powers they have come into change the hero they are built on.
-    u.def = leaderDef(UNITS[u.type], this.heroOf(u.owner), u.hero?.rank ?? 0);
-    const max = Math.round(u.def.hp * this.leaderBonus(u).hp);
-    u.hp = (u.hp / u.maxHp) * max;
-    u.maxHp = max;
-  }
+  leaderBonus(u: Unit): { atk: number; armor: number; hp: number } { return leaderBonus(this, u); }
+  private fitLeader(u: Unit): void { fitLeader(this, u); }
   /** A decadent town's leader takes people as a Slaver does. Raiders' leaders carry them off into the tribe instead. */
   tyrant(u: Unit): boolean {
     return !!u.hero && !this.raider(u.owner) && isDecadent(this.players[u.owner].virtue);
@@ -658,37 +647,11 @@ export class Game {
     if (!l || l.dead || !isHoly(v) || Math.hypot(l.x - x, l.y - y) > (l.def.auraRange ?? 0)) return 0;
     return HOLY_GUARD[v >= 70 ? 1 : 0];
   }
-  /** An enemy has fallen: if the leader was there to see it, it is set down among their deeds. */
-  private deed(owner: number, t: Entity): void {
-    const l = this.leaders[owner];
-    if (!l || l.dead || !l.hero || t.kind === 'resource' || !this.hostile(owner, t.owner) || (t.kind === 'unit' && t.def.cls === 'prey')) return;
-    if (Math.hypot(l.x - t.x, l.y - t.y) > (l.def.auraRange ?? 0)) return;
-    l.hero.xp += t.kind === 'unit' ? Math.max(1, t.def.pop) : 2;
-    const rank = rankOf(l.hero.xp);
-    if (rank > l.hero.rank) {
-      l.hero.rank = this.players[owner].heroRank = rank;
-      this.fitLeader(l);
-      const learnt = powersHeld(this.heroOf(owner), rank).length > powersHeld(this.heroOf(owner), rank - 1).length ? powersHeld(this.heroOf(owner), rank).at(-1) : null;
-      // A rival does not wait to be asked what it will learn.
-      if (this.players[owner].isAI) while (this.powerDue(owner) >= 0) this.cmdLearn(owner, 0);
-      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : this.powerDue(owner) >= 0 ? ': choose what they learn' : ''}.`);
-    }
-  }
+  private deed(owner: number, t: Entity): void { deed(this, owner, t); }
   /** Which of their three powers a player's leader has earned and not yet chosen (-1: none). */
-  powerDue(owner: number): number {
-    const l = this.leaders[owner] ?? this.leaderOf(owner);
-    return l && !l.dead && l.hero ? powerDue(this.heroOf(owner), l.hero.rank) : -1;
-  }
+  powerDue(owner: number): number { return powerDue(this, owner); }
   /** Choose which of the two powers the leader takes at the rank they have just earned. It is theirs from then on. */
-  cmdLearn(owner: number, choice: number): boolean {
-    const tier = this.powerDue(owner), l = this.leaders[owner] ?? this.leaderOf(owner);
-    if (tier < 0 || !l || (choice !== 0 && choice !== 1)) return false;
-    const h = this.heroOf(owner);
-    h.powers = [0, 1, 2].map((t) => (t === tier ? choice : h.powers?.[t] ?? -1));
-    this.fitLeader(l);
-    if (!this.players[owner].isAI) this.msg(owner, `${l.name} has learnt ${POWERS[h.calling][tier][choice].name}.`);
-    return true;
-  }
+  cmdLearn(owner: number, choice: number): boolean { return cmdLearn(this, owner, choice); }
 
   /** Give a villager a trait (or none), keeping its health in step. */
   setTrait(u: Unit, trait: string, trait2 = ''): void {
@@ -815,7 +778,7 @@ export class Game {
   private refund(p: Player, c: Cost): void {
     for (const r of RES_TYPES) p.res[r] += c[r] ?? 0;
   }
-  private msg(player: number, text: string): void {
+  msg(player: number, text: string): void {
     this.events.push({ t: 'msg', player, text });
   }
 
@@ -913,84 +876,12 @@ export class Game {
     return hi - lo > (s > 1 ? 0.4 : 0.6);
   }
 
-  /** A town's own people take the field in place of four founders: its men, its women and its old, the notable among them by name. */
-  private peopled(owner: number, people: PeopleIn, st: { x: number; y: number }, dir: number): void {
-    const count = (v: unknown): number => Math.max(0, Math.min(MAX_KIND, Math.round(Number(v) || 0)));
-    const men = count(people.men), women = count(people.women), elders = count(people.elders);
-    const named = (people.named ?? []).slice(0, 40);
-    let k = 0;
-    const one = (gender: Gender, old: boolean, seasons?: number): Unit => {
-      const u = this.spawnUnit('villager', owner, st.x - 3.5 + (k % 8), st.y + (3.5 + Math.floor(k / 8)) * dir, gender);
-      k++;
-      // At the age the town's record has them (ageing.ts); with no record, the old in the last third of their lives
-      // and the rest spread through the years before it.
-      u.age = seasons !== undefined ? ageFor(seasons / SEASONS_A_YEAR, u.lifespan)
-        : Math.max(1, u.lifespan * (old ? ELDER_AT + this.rng() * (0.95 - ELDER_AT) : this.rng() * ELDER_AT * 0.9));
-      return u;
-    };
-    const folk: Unit[] = [];
-    const ages = cleanAges(people.ages);
-    if (ages && ages.m.length + ages.f.length === men + women + elders) {
-      for (let j = 0; j < Math.max(ages.m.length, ages.f.length); j++) {
-        if (j < ages.m.length) folk.push(one('m', false, ages.m[j]));
-        if (j < ages.f.length) folk.push(one('f', false, ages.f[j]));
-      }
-    } else {
-      for (let j = 0; j < Math.max(men, women); j++) { if (j < men) folk.push(one('m', false)); if (j < women) folk.push(one('f', false)); }
-      for (let j = 0; j < elders; j++) folk.push(one(j % 2 ? 'm' : 'f', true));
-    }
-    // Those the nation knows by name are among them, with what they are known for.
-    for (const n of named) {
-      const u = folk.find((x) => x.gender === n.gender && !x.story?.length && !(x.kids ?? 0) && !named.some((m) => m !== n && m.name === x.name)) ?? null;
-      if (!u || typeof n.name !== 'string' || !n.name) continue;
-      u.name = n.name.slice(0, 40);
-      if (typeof n.family === 'string' && n.family) u.family = n.family.slice(0, 40);
-      u.kids = Math.max(0, Math.round(Number(n.kids) || 0));
-    }
-  }
-
-  /** A town's children are set down on the record of one of its roofs, each some way toward being grown. */
-  private cradled(owner: number, children: number, ages?: number[]): void {
-    const roofs = this.buildings.filter((b) => b.owner === owner && !b.dead && b.complete && (b.type === 'house' || b.type === 'towncenter')).sort((a, b) => Number(b.type === 'house') - Number(a.type === 'house') || a.id - b.id);
-    if (!roofs.length) return;
-    const n = Math.max(0, Math.min(MAX_KIND, Math.round(Number(children) || 0)));
-    const at = ages && ages.length === n ? ages : null;
-    for (let j = 0; j < n; j++) { const c = this.bear(roofs[j % roofs.length]); c.left = at ? leftFor(at[j], GROW_TIME) : GROW_TIME * (0.1 + this.rng() * 0.9); }
-  }
-
   /**
-   * A count of a side's town as it stands (township.ts): its men and women of working age (those trained to arms
-   * out of the town among them), its old, the children on
-   * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name.
+   * A count of a side's town as it stands (township.ts): its men and women of working age, its old, the children on
+   * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name
+   * (battlefolk.ts).
    */
-  census(owner: number): Census {
-    const p = this.players[owner], out: Census = { men: 0, women: 0, elders: 0, children: p?.wards?.length ?? 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, taken: 0, named: [] };
-    if (!p) return out;
-    // Everyone's age as the town's record keeps it, in seasons (ageing.ts).
-    const ages: Ages = { m: [], f: [], k: (p.wards ?? []).map((c) => childSeasons(c.left, GROW_TIME)) };
-    out.ages = ages;
-    for (const r of RES_TYPES) out.stores[r] = Math.max(0, Math.floor(p.res[r]));
-    for (const u of this.units) {
-      if (u.captive && u.captive.from === owner) out.taken!++;
-      if (u.owner !== owner || u.dead) continue;
-      // A townsman in arms is still one of the town's people (muster.ts): he keeps the span of his life, which an
-      // army brought to the battle, a beast or the leader does not have. A woman serving keeps her gender; a man does not.
-      const armed = u.type !== 'villager' && u.lifespan > 0;
-      if (!armed && (u.type !== 'villager' || !u.gender)) continue;
-      const woman = u.gender === 'f';
-      if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (woman) out.women++; else out.men++;
-      const seasons = Math.round(yearsOf(u.age, u.lifespan) * SEASONS_A_YEAR), old = u.age >= u.lifespan * ELDER_AT;
-      (woman ? ages.f : ages.m).push(old ? Math.max(OLD_SEASON, Math.min(LAST_SEASON, seasons)) : Math.max(GROWN_SEASON, Math.min(OLD_SEASON - 1, seasons)));
-      if (u.gender === 'f' && u.type === 'villager') { const home = { ...homeRecord(this, u), ...homeMade(this, u) }; if ((u.kids ?? 0) > 0 || home.war || home.made) out.named!.push({ name: u.name, gender: 'f', kids: u.kids ?? 0, ...(u.family ? { family: u.family } : {}), ...home }); }
-    }
-    for (const b of this.buildings) {
-      if (b.dead) continue;
-      if (b.owner === owner) { out.children += b.young?.length ?? 0; for (const c of b.young ?? []) ages.k.push(childSeasons(c.left, GROW_TIME)); }
-      for (const c of b.captives ?? []) if (c.from === owner) out.taken!++;
-    }
-    out.named = out.named!.sort((a, b) => (b.kids ?? 0) - (a.kids ?? 0) || a.name.localeCompare(b.name)).slice(0, 12);
-    return out;
-  }
+  census(owner: number): Census { return censusOf(this, owner); }
 
   /** What a side's town is set to as things stand (governor.ts): how many of its people are at each kind of work, what stands half built, what is being trained. */
   orders(owner: number): { work: Stores; build: string[]; train: string[] } {
@@ -1512,7 +1403,7 @@ export class Game {
     for (const u of g.units) u.def = UNITS[u.type];
     for (const e of [...g.resources, ...g.buildings, ...g.units]) g.entities.set(e.id, e);
     g.players = d.players.map((p: Player & { techs: string[]; pending: string[] }) => ({ ...p, techs: new Set(p.techs), pending: new Set(p.pending) }));
-    for (const u of g.units) if (u.hero) u.def = leaderDef(UNITS[u.type], g.heroOf(u.owner), u.hero.rank);
+    for (const u of g.units) if (u.hero) u.def = leaderDefOf(g, u);
     g.projectiles = d.projectiles;
     g.quakes = d.quakes;
     g.time = d.time;
@@ -1897,7 +1788,7 @@ export class Game {
    * A child is born under a roof: written into its record, never set on the map. It counts among the town's
    * people from the day it is born, so a town has room for it when it is grown.
    */
-  private bear(b: Building, gender?: Gender): Child {
+  bear(b: Building, gender?: Gender): Child {
     const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = g === 'm' ? NAMES_M : NAMES_F;
     const c: Child = { id: this.nextId++, name: names[Math.floor(this.rng() * names.length)], family: '', gender: g, trait: '', trait2: '', lifespan: LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]), left: GROW_TIME, bornAt: b.id };
     (b.young ??= []).push(c);
@@ -3131,7 +3022,7 @@ export class Game {
 
   private strike(u: Unit, t: Entity): void {
     const p = this.players[u.owner];
-    u.cooldown = (u.def.cooldown / griefPace(this, u)) * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1) * (this.calledAt(u.owner, u.x, u.y) === 'warlord' ? CALLS.warlord.haste! : 1);
+    u.cooldown = (u.def.cooldown / griefPace(this, u)) * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1) * callHaste(this, u);
     u.attackAnim = 0.35;
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
@@ -3175,7 +3066,7 @@ export class Game {
     } else armor = 1;
     // A leader is still flesh: however armoured, a blow tells on them.
     const raw = atk * mult * aura;
-    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale * (t.kind === 'unit' && this.calledAt(t.owner, t.x, t.y) === 'strategist' ? CALLS.strategist.ward! : 1);
+    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale * callWard(this, t);
     t.hp -= dmg;
     tp.lastAttacked = { x: t.x, y: t.y, t: this.time };
     if (this.time - tp.alertT > 12) {
@@ -3226,53 +3117,18 @@ export class Game {
   /** A player's leader, wherever they are. */
   leaderOf(owner: number): Unit | undefined { return this.units.find((u) => u.owner === owner && !!u.hero); }
   /** Can the leader raise their call now? They must be Seasoned, in the open, and rested since the last. */
-  canCall(owner: number): boolean {
-    const l = this.leaderOf(owner);
-    return !!l && !l.inside && l.hero!.rank >= CALL_RANK && !(l.hero!.rest! > 0);
-  }
+  canCall(owner: number): boolean { return canCall(this, owner); }
   /** The leader raises their call: for a few seconds it tells on everyone of theirs within reach. */
-  cmdCall(owner: number): boolean {
-    if (!this.canCall(owner)) return false;
-    const l = this.leaderOf(owner)!;
-    l.hero!.call = CALL_LASTS;
-    l.hero!.rest = CALL_REST;
-    this.msg(owner, `${l.name}: ${CALLS[this.heroOf(owner).calling].name}!`);
-    return true;
-  }
+  cmdCall(owner: number): boolean { return cmdCall(this, owner); }
   /** Whose call, if any, is sounding over this spot for this player's people: a Warlord's or a Strategist's. */
-  calledAt(owner: number, x: number, y: number): 'warlord' | 'strategist' | null {
-    const l = this.leaders[owner];
-    if (!l || l.dead || !(l.hero!.call! > 0) || Math.hypot(l.x - x, l.y - y) > (l.def.auraRange ?? 0)) return null;
-    return this.heroOf(owner).calling;
-  }
+  calledAt(owner: number, x: number, y: number): 'warlord' | 'strategist' | null { return calledAt(this, owner, x, y); }
 
   /** Could this soldier be raised to lead? Only when the leader has fallen and nobody has taken their place. */
-  canAcclaim(owner: number, u: Unit): boolean {
-    const p = this.players[owner];
-    return !!p && !!p.heroFell && u.owner === owner && !u.dead && !u.hero && !u.merc && !u.inside && !u.captive && canLead(u.def.cls) &&
-      (u.kills ?? 0) >= CHAMPION_KILLS && !this.units.some((o) => o.owner === owner && o.hero);
-  }
+  canAcclaim(owner: number, u: Unit): boolean { return canAcclaim(this, owner, u); }
   /** Raise a soldier on the shields: they are the leader now, fighting as they always have, with a rank for every three they have felled. */
-  cmdAcclaim(owner: number, id: number): boolean {
-    const u = this.entities.get(id);
-    if (!u || u.kind !== 'unit' || !this.canAcclaim(owner, u)) return false;
-    const p = this.players[owner], old = this.heroOf(owner).name;
-    u.name ||= championName(u.id);
-    p.hero = championSpec(u.name, championFemale(u.id), u.type);
-    p.heroRank = rankForKills(u.kills ?? 0);
-    p.acclaimed = true;
-    u.hero = { xp: RANK_XP[p.heroRank], rank: p.heroRank };
-    this.fitLeader(u);
-    this.leaders[owner] = u;
-    this.msg(owner, `${u.name} is raised on the shields to lead in ${old.replace(/ (II|III|IV|V|VI|VII|VIII|IX|X)$/, '')}'s place.`);
-    return true;
-  }
+  cmdAcclaim(owner: number, id: number): boolean { return cmdAcclaim(this, owner, id); }
   /** The soldier of a player's with the most kills to their name, if any has made one. */
-  champion(owner: number): Champion | null {
-    let best: Unit | null = null;
-    for (const u of this.units) if (u.owner === owner && !u.hero && !u.merc && canLead(u.def.cls) && (u.kills ?? 0) >= CHAMPION_KILLS && (!best || (u.kills ?? 0) > (best.kills ?? 0))) best = u;
-    return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name, female: championFemale(best.id), type: best.type } : null;
-  }
+  champion(owner: number): Champion | null { return champion(this, owner); }
 
   /** Turn a unit into another type, keeping its place, orders and share of health. */
   private reequip(u: Unit, type: string): void {
