@@ -997,7 +997,7 @@ export function makeBuilding(type: string, color: number, age: number, civ = '',
   made.set(wall, age === 0 ? 'planks' : age === 2 ? 'stone' : 'plaster');
   made.set(rf, style.roof === 'steep' || (style.roof === 'pitched' && age <= 1) || style.roof === 'yurt' ? 'thatch' : 'tiles');
   made.delete(color);
-  const shaped = shapedBuilding(type, size, { wall, roofColor: rf, team: color, post, age, roofKind: style.roof, leaning, otherRoof: (p, half, h, x, y, z) => roof(p, half, h, rf, x, y, z) }, seed);
+  const shaped = shapedBuilding(type, size, { wall, roofColor: rf, team: color, post, age, roofKind: style.roof, leaning, civ, otherRoof: (p, half, h, x, y, z) => roof(p, half, h, rf, x, y, z) }, seed);
   if (shaped) return shaped;
   switch (type) {
     case 'towncenter': {
