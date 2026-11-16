@@ -10,7 +10,6 @@ export interface StandIn { as: string; scale?: number; tall?: number; tint?: num
 
 export const STAND_INS: Record<string, StandIn> = {
   // ---- Rule, law, nobles and faith (the people session) ----
-  hall: { as: 'temple', scale: 1, tall: 1.15, tint: 0xc9a85a }, // a Hall of Judgement: a church's frame, taller and gilded (hall.ts)
 };
 
 /** A building's look: its own model, or its stand-in until it has one. Takes what `makeBuilding` takes. */
