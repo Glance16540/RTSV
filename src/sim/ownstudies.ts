@@ -5,7 +5,7 @@
  * Each has a job in a system that already runs, and is a rule about the people more than a sharper sword.
  *
  * A nation's own study is a study like any other (studies.ts): an entry in TECHS with `answers`, taught at the
- * Town Center, learned on the map in a town where one stands, known in a visit and brought home from one, and
+ * Town Center, learned on the map in a town where one stands, known in a visit or a battle and brought home, and
  * chosen by a computer-led people by what presses on it. All of that is studies.ts's. What is here is the two
  * things that make it a nation's own: who may learn it (its entry's `civ`: `mayLearn`, which studies.ts's
  * `studyBar` and the game's research both ask), and what it does on the map. Each system it answers asks here in
@@ -57,8 +57,6 @@ export const mayLearn = (civ: string, id: string): boolean => { const own = nati
 /** Has this people learned this study of its own? (studies.ts keeps what a nation has learned.) */
 export const knows = (c: Campaign, f: number, id: string): boolean => f >= 0 && !!c.factions[f] && nationOf(id) === c.factions[f].civ && hasStudy(c, f, id);
 const at = (c: Campaign, tid: number, id: string): boolean => { const t = c.territories[tid]; return !!t && t.owner >= 0 && !t.horde && knows(c, t.owner, id); };
-/** The studies of its own a people has learned: what it begins a battle with (a visit is studies.ts's to set up). */
-export const knownIn = (c: Campaign, f: number): string[] => (f >= 0 && c.factions[f] ? studiesOf(c.factions[f].civ).map((t) => t.id).filter((id) => hasStudy(c, f, id)) : []);
 
 // ---- What each study is worth to the system it answers: 1 (or 0) for a people that has not learned it. ----
 

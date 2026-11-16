@@ -9,8 +9,8 @@
 //   Learning on the map. A study can be learned in a town of the nation where the building that teaches it stands
 //   finished on the town's record, once the nation has reached its age and anything it requires; it is paid in
 //   goods, from that town's stores first and then from the nation's other towns, the one with most of each kind first.
-//   Learning in a town. In a visit the nation's studies are known from the start (Game setup `bonus.studies`), and any
-//   study researched there comes home (`learnedIn`, `studiedHome`).
+//   Learning in a town. In a visit or a battle the nation's studies are known from the start (Game setup
+//   `bonus.studies`: `withStudies`), and any study researched there comes home (`learnedIn`, `studiedHome`).
 //   The computer. Each season a rival nation learns at most one study, the one answering what presses most on its
 //   towns, if it can pay for it and keep a working stock (KEEP) in its towns. The player's are the player's own
 //   choice: the governor learns none for them.
@@ -91,6 +91,11 @@ export function learn(c: Campaign, f: number, id: string, at: number): string {
   return '';
 }
 
+/**
+ * A battle's side begins with what its nation has learned, as a visit's does: the setup's `bonus` with the nation's
+ * studies on it (`Game` reads `bonus.studies`). A side that is no nation's (a tribe, a band) has none.
+ */
+export const withStudies = <B extends object>(c: Campaign, f: number, bonus: B): B & { studies: string[] } => ({ ...bonus, studies: f >= 0 ? studiesOf(c, f) : [] });
 /** The studies among the techs a side ended a battle or visit with. */
 export const learnedIn = (techs: Iterable<string>): string[] => [...techs].filter(isStudy);
 /** Studies learned in a town come home to the nation. Whatever a saved game or the page sends, only studies count. */

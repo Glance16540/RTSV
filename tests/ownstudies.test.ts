@@ -6,8 +6,8 @@ import { Game } from '../src/sim/game';
 import { ARMY_REST } from '../src/sim/armytown';
 import { resentOf, townTaken, goodRule } from '../src/sim/conquered';
 import { countryYield } from '../src/sim/country';
-import { OWN, STUDY_HALL, birthPace, buildPace, defenceAdd, faithPull, knownIn, knows, mayLearn, moodEase, nationOf, ownStudies, ownStudiesSeason, researchAt, restSpared, roadRisk, studiesOf, unrestEase, yokeEase, yokeSpared } from '../src/sim/ownstudies';
-import { isStudy, learn, learnedIn, studiedHome, studyBar, studySeason, teacherOf } from '../src/sim/studies';
+import { OWN, STUDY_HALL, birthPace, buildPace, defenceAdd, faithPull, knows, mayLearn, moodEase, nationOf, ownStudies, ownStudiesSeason, researchAt, restSpared, roadRisk, studiesOf, unrestEase, yokeEase, yokeSpared } from '../src/sim/ownstudies';
+import { isStudy, learn, learnedIn, studiedHome, studyBar, studySeason, teacherOf, withStudies } from '../src/sim/studies';
 import { defenceOf } from '../src/sim/threats';
 import { townDrift } from '../src/sim/townfaith';
 import { folkOf } from '../src/sim/township';
@@ -84,23 +84,24 @@ describe('each people has a study of its own', () => {
     expect(studyBar(c, 0, 'own_examinations', town.id)).toBe('');
   });
 
-  it('a nation that has learned it begins a battle with it, and what is learned in a battle goes home', () => {
+  it('a nation that has learned it begins a battle with it, and what is researched in a battle goes home', () => {
     const { c } = taught('kush', 'own_bow');
-    expect(knownIn(c, 0)).toEqual(['own_bow']);
-    expect(knownIn(c, -1)).toEqual([]);
-    const g = new Game(5, [{ ...setups[0], civ: 'kush', ownStudies: knownIn(c, 0) }, { ...setups[1], civ: 'hearth', ownStudies: ['own_bow'] }]);
+    // studies.ts carries it, as any study: the setup's bonus has what the nation knows.
+    expect(withStudies(c, 0, { age: 1 })).toEqual({ age: 1, studies: ['own_bow'] });
+    expect(withStudies(c, -1, {})).toEqual({ studies: [] });
+    const g = new Game(5, [{ ...setups[0], civ: 'kush', bonus: withStudies(c, 0, {}) }, { ...setups[1], civ: 'hearth', bonus: { studies: ['own_bow'] } }]);
     expect(g.players[0].techs.has('own_bow')).toBe(true);
     expect(g.players[0].mods.towerRange).toBe(baseModsFor('kush').towerRange + 1);
     expect(g.players[1].techs.has('own_bow')).toBe(false); // not theirs, whatever the setup says
-    // Home again, by the battle's hook: studies.ts keeps what the side had learned.
-    expect(BATTLE_HOOKS.order('written')).toContain('ownstudies');
+    // Home again, by the battle's hook: studies.ts keeps what the side had researched.
+    expect(BATTLE_HOOKS.order('written')).toContain('studies');
     const fresh = world('babylon');
     expect(studiedHome(fresh.c, 0, learnedIn(new Set(['stonetools', 'own_code'])))).toEqual(['own_code']);
     expect(knows(fresh.c, 0, 'own_code')).toBe(true);
-    // A record meddled with gives a people nothing that is another's.
+    // A record meddled with gives a people nothing of another's: its effects ask whose the study is.
     fresh.c.factions[0].studies = ['own_bow', 'own_code'];
-    expect(knownIn(fresh.c, 0)).toEqual(['own_code']);
     expect(knows(fresh.c, 0, 'own_bow')).toBe(false);
+    expect(defenceAdd(fresh.c, fresh.town.id)).toBe(0);
   });
 
   it('a computer-led people learns its own by what presses on it, and never another\'s', () => {
