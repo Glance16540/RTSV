@@ -23,6 +23,7 @@
 import type { Building, Game, Player, Unit } from './game';
 import { TRADE } from './data';
 import { roll, wrath } from './wrath';
+import { famineGrace } from './granary';
 
 export const FAMINE = {
   /** A store under this much food is bare. */
@@ -161,7 +162,7 @@ export function famine(g: Game): void {
       p.hunger = 0;
       continue;
     }
-    const was = p.hunger ?? 0, now = (p.hunger = was + 1);
+    const was = p.hunger ?? 0, now = (p.hunger = was + 1 / famineGrace(g, p.id)); // a Granary makes a bare store last longer (granary.ts)
     if (was < FAMINE.hungry && now >= FAMINE.hungry)
 {
       tell(g, p, `🍞 The stores are empty and nothing is coming in: your people are going hungry. ${advice(g, p.id)}`);

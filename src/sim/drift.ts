@@ -27,6 +27,7 @@ import { folkOf, grown } from './township';
 import { TEND_EASE, decreeEffect, decreesSeason, sensibleDecrees } from './decrees';
 import { leaderAt } from './court';
 import { nobleStrain, nobleWatch } from './nobles';
+import { infirmaryEase } from './infirmary';
 
 declare module './township' {
   interface Folk {
@@ -74,7 +75,7 @@ export function driftTown(c: Campaign, tid: number): number {
   // A band's raid (threats.ts marks it 'raid', or 'carried' when it took people) is a raid, and people carried off are mourned.
   const struck = (kinds: string[]): boolean => (c.events ?? []).some((x) => x.at === tid && kinds.includes(x.kind) && x.until >= c.turn - 1);
   const raided = !!mood.raided || struck(['raid', 'carried']);
-  griefSeason(f, !!mood.bereaved || struck(['carried']));
+  griefSeason(f, !!mood.bereaved || struck(['carried']), { ease: infirmaryEase(c, tid) });
   const people = Math.max(1, grown(f) + f.children), food = f.stores.food / people;
   // Hunger is the town's own larder (larder.ts: it could not feed everyone this season, or it is bare), or a famine on
   // its land (acts.ts); a lean larder that still feeds everyone is no hunger. A hard season on the map costs supplies, not food.

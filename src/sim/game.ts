@@ -32,6 +32,9 @@ export const DT = 1 / 20;
 import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
 import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND } from './hero';
+import { millPace } from './mill'; // food and health: a Mill
+import { wellGuard } from './well';
+import { sickCare } from './infirmary';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
@@ -2358,11 +2361,11 @@ export class Game {
     }
     if (u.plagueT > 0) {
       u.plagueT -= DT;
-      u.hp -= 2.5 * DT;
+      u.hp -= 2.5 * DT * sickCare(this, u.owner); // nursed in an Infirmary, slower (infirmary.ts)
       if (u.hp <= 0) { this.kill(u); return; }
       if ((this.tick + u.id) % 20 === 0) {
         for (const v of this.unitsNear(u.x, u.y, 1.3, this.scratch)) {
-          if (v.owner === u.owner && v.plagueT <= 0 && this.rng() < 0.3 && Math.hypot(v.x - u.x, v.y - u.y) <= 1.3) v.plagueT = u.plagueT * 0.8;
+          if (v.owner === u.owner && v.plagueT <= 0 && this.rng() < 0.3 * wellGuard(this, u.owner) && Math.hypot(v.x - u.x, v.y - u.y) <= 1.3) v.plagueT = u.plagueT * 0.8;
         }
       }
     }
@@ -2767,7 +2770,7 @@ export class Game {
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * millPace(this, u.owner) * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
