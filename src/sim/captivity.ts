@@ -14,9 +14,9 @@
 // home with her and they are written into a roof of her town to grow up there. Lost, they are lost with her.
 // (A people that takes captives into itself, as raiders do, gains the person outright at once: that is in
 // game.ts, and holds no one long enough for any of this.)
-import { ELDER_AT, GROW_TIME, LIFESPAN, NAMES_F, NAMES_M } from './data';
+import { ELDER_AT, GROW_TIME, LIFESPAN, NAMES_F, NAMES_M, POP_LIMIT } from './data';
 import { GROWN_YEARS, OLD_YEARS } from './ageing';
-import type { Building, Captive, Game, Unit } from './game';
+import type { Building, Captive, Entity, Game, Unit } from './game';
 import { Child, wardFor } from './nursery';
 
 /** Seconds from being seized during which a captive can still be got back. */
@@ -126,4 +126,68 @@ export function takenFrom(g: Game, owner: number): { c: Captive; where: string; 
   for (const b of g.buildings) for (const c of b.captives ?? []) if (c.from === owner) out.push({ c, where: b.type === 'lair' ? 'the marauders\' camp' : `${g.players[b.owner]?.name ?? 'a'}'s ${b.def.name}`, left: timeLeft(g, c) });
   for (const u of g.units) if (u.captive && !u.dead && u.captive.from === owner) out.push({ c: u.captive, where: 'the road, being led away', left: timeLeft(g, u.captive) });
   return out.sort((a, b) => (a.left ?? Infinity) - (b.left ?? Infinity));
+}
+
+// ---- Taking, keeping and freeing (moved out of game.ts as they stood) ----
+
+/** Can g unit carry a villager off? Slavers always; among raiders, any fighter on foot or horse. */
+export function canSeize(g: Game, u: Unit): boolean {
+  return g.slaves(u) || (g.raider(u.owner) && !u.def.naval && (u.def.cls === 'infantry' || u.def.cls === 'cavalry' || u.def.cls === 'ranged' || u.def.cls === 'hero'));
+}
+/** Raiders do not cut down a grown villager on sight: they are worth more alive. */
+export function spared(g: Game, u: Unit, e: Entity): boolean {
+  return e.kind === 'unit' && e.type === 'villager' && e.growT <= 0 && !g.slaves(u) && g.canSeize(u) && e.owner !== g.wild;
+}
+/** Is g villager free for g raider to take: he has his hands free, there is room, and no comrade is already at it. */
+export function takes(g: Game, u: Unit, e: Entity): boolean {
+  if (u.captive || g.players[u.owner].pop >= POP_LIMIT) return false;
+  for (const o of g.units) if (o !== u && o.owner === u.owner && o.order?.t === 'capture' && o.order.id === e.id) return false;
+  return true;
+}
+/** Where a raider takes a captive to join the tribe: the nearest hall, else any roof of theirs. */
+export function hearthOf(g: Game, u: Unit): Building | null {
+  let best: Building | null = null, bd = Infinity;
+  for (const b of g.buildings) {
+    if (b.owner !== u.owner || !b.complete || b.def.wall || b.type === 'farm') continue;
+    const d = Math.hypot(b.x - u.x, b.y - u.y) + (b.type === 'towncenter' ? 0 : b.type === 'house' ? 6 : 14);
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+/** A captive taken into a raiding tribe becomes one of its own villagers. */
+export function adopt(g: Game, owner: number, c: Captive, x: number, y: number): void {
+  const at = g.landPf.nearestFree(x, y);
+  const v = g.spawnUnit('villager', owner, at.x, at.y, c.gender);
+  v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
+  v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: g.time, s: `Taken into the ${g.players[owner].name}` }];
+  v.people = c.people ?? g.players[c.from]?.civ;
+  g.msg(owner, `${c.name} has been taken into the tribe.`);
+}
+
+/** The nearest of a Slaver's own work camps that can take another captive. */
+export function campWithRoom(g: Game, u: Unit): Building | null {
+  let best: Building | null = null, bd = Infinity;
+  for (const b of g.buildings) {
+    if (b.owner !== u.owner || !b.def.camp || !b.complete || (b.captives?.length ?? 0) >= b.def.camp) continue;
+    const d = Math.hypot(b.x - u.x, b.y - u.y);
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+
+/** A captive set free returns to their own people as they were, if those people still stand. */
+export function freeCaptive(g: Game, c: Captive, x: number, y: number): void {
+  const home = g.players[c.from];
+  if (!home || home.defeated) return;
+  const at = g.landPf.nearestFree(x, y);
+  const v = g.spawnUnit('villager', c.from, at.x, at.y, c.gender);
+  v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
+  v.kids = c.kids; v.captiveKids = c.born;
+  if (c.people) v.people = c.people;
+  v.story = [...(c.story ?? []), { t: g.time, s: 'Freed, and came home' }];
+  // What the marauders did to her is not undone by burning their camp: she will bear no more children. But she
+  // has come through it, and works like one who means to live.
+  if (c.held && c.gender === 'f') v.freed = true;
+  comeHome(g, c, v);
+  g.msg(c.from, c.held ? `${c.name} is free of the marauders and has come home${c.born ? `, having borne them ${c.born} ${c.born === 1 ? 'child' : 'children'}` : ''}.` : `${c.name} is free and has come home.`);
 }
