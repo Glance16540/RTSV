@@ -19,7 +19,6 @@
  */
 import type { Campaign } from './campaign';
 import { FAMILY_NAMES, NAMES_M } from './data';
-import { awayFrom } from './armytown';
 import { GRIEF_SEASONS } from './grief';
 import { Folk, MAX_NOTABLES, Notable, folkOf } from './township';
 
@@ -33,6 +32,13 @@ export interface WarHouse { family: string; away: Serving[]; fallen?: FallenMan[
 declare module './township' {
   interface Folk { /** The houses whose men are, or were, away with the armies (warhouse.ts). */ houses?: WarHouse[] }
 }
+
+/**
+ * Men of this town who are away with the armies: counted off the armies' rolls (`Campaign.musters`, which armytown.ts
+ * keeps). It is here, and armytown.ts re-exports it, so that this module reads the rolls as plain data and imports
+ * nothing of armytown's: the two called each other, and could only be had together.
+ */
+export const awayFrom = (c: Campaign, tid: number): number => Object.values(c.musters ?? {}).reduce((n, m) => n + (m.men[tid]?.length ?? 0), 0);
 
 export const WARHOUSE = {
   /** Sons of one house who may be away at once before another house is asked. */
