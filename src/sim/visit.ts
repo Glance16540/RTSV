@@ -7,6 +7,7 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { worksOf } from './townworks';
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
 import type { BattleConfig, Campaign } from './campaign';
@@ -166,7 +167,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
   const hero = heroFor(c, 0);
   if (!(army && army.owner === 0 && army.hero)) delete hero.fights;
   const fort = t.buildings.includes('fortress');
-  const works = t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]);
+  const works = [...t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]), ...worksOf(c, t.id)]; // and the works kept on the town's record (townworks.ts)
   const town = record.town ?? (t.town?.coarse ? undefined : t.town?.b) ?? [];
   return {
     ...(weatherAt(c, t.id) ? { weather: weatherAt(c, t.id) as Sky } : {}),

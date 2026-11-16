@@ -14,6 +14,7 @@ const world = (seed = 5): { c: Campaign; at: number } => {
   Object.assign(folkOf(c, t.id), { men: 12, women: 12, elders: 2, children: 6 });
   Object.assign(folkOf(c, t.id).stores, { food: 5000, gold: 600 });
   c.turn = 10;
+  c.factions[0].supplies = 0; // nothing to spare: no governor raises a Watch House here (watchhouse.ts), so these are the stories with no watch kept
   return { c, at: t.id };
 };
 const season = (c: Campaign): void => { c.turn++; intrigueSeason(c); };

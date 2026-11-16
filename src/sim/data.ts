@@ -711,6 +711,14 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 40, stone: 110 }, time: 26, age: 1, hp: 700, size: 2, pop: 0, sight: 10,
     trains: [], techs: [], atk: 9, range: 8, cooldown: 1.8, shelter: 4,
   }),
+  // ---- Order and roads (the order-and-roads job: watchhouse.ts and its fellows). One block; costs are first guesses. ----
+  watchhouse: B({
+    id: 'watchhouse', name: 'Watch House', icon: '🔔',
+    desc: 'The town keeps a watch. On the map a thief is caught sooner and a killer\'s clues are found faster. In the town the watch calls villagers off their work to any fire.',
+    cost: { wood: 120, stone: 40 }, time: 30, age: 1, hp: 520, size: 2, pop: 0, sight: 12,
+    trains: [], techs: [],
+  }),
+  // ---- end of order and roads ----
 };
 
 /** Order in which buildings appear in the villager build menu. */

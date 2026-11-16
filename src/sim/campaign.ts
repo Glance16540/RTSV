@@ -13,6 +13,7 @@ import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
+import { worksOf } from './townworks';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
@@ -1410,11 +1411,12 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     const out = defending ? BATTLE_ANSWERS.ask('turnOut', c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere
     if (out?.clubmen) add('clubman', out.clubmen);
     const fort = defending && t.buildings.includes('fortress');
-    // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
+    // The holder fights from the town that stands there: what the land has on the map, the works kept on the town's
+    // record (townworks.ts), and what the last battle left.
     const works = defending && !field ? t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]) : [];
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
-      age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
+      age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works, ...(defending && !field ? worksOf(c, t.id) : [])], atk: army ? army.vet : 0,
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       // The town itself turns out: its own people, living off its own stores (township.ts).

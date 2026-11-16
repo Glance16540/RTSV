@@ -6,6 +6,7 @@ import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
 import { bandPrompt, newsHtml } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
+import { orderDo } from './orderpanel';
 import { attackBand } from '../sim/bandfight';
 import { meetBand, meetStory, storyToMeet } from './encounter';
 import { CIVS, CIV_IDS } from '../sim/data';
@@ -132,6 +133,7 @@ export class Overworld {
       if (kind === 'succession') { this.askSuccession(); return; }
       if (kind === 'lead') moveLeader(this.c, 0, this.sel);
       if (kind === 'story') intrigueDo(this.c, id);
+      if (kind === 'order') orderDo(this.c, this.sel, id);
       if (kind === 'band') attackBand(this.c, Number(id.split('/')[0]), Number(id.split('/')[1]));
       if (kind === 'call') callArmies(this.c, 0);
       if (kind === 'endcall') endCall(this.c, 0);
