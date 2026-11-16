@@ -84,7 +84,7 @@ export const INTRIGUE = {
   known: 0.5,
   thief: {
     /** The chance each season, for the whole nation, in a town that has the gold; times `strained` where it is hungry or drinks. */
-    chance: 0.04, strained: 2, gold: 80,
+    chance: 0.06, strained: 2, gold: 80,
     houses: 3,
     /** The share of the town's gold a robbery takes, and the most. */
     share: 0.06, most: 30,
@@ -100,7 +100,7 @@ export const INTRIGUE = {
     again: 0.5,
   },
   killer: {
-    chance: 0.02, strained: 2, grown: 8,
+    chance: 0.03, strained: 2, grown: 8,
     suspects: 5,
     /** The chance of a killing each season after the first, and the fewest grown people it leaves a town. */
     strike: 0.3, leave: 7,
