@@ -25,6 +25,8 @@ export interface Figure {
   seed: number;
   /** What they do while they stand there. */
   pose: 'talk' | 'ready' | 'idle' | 'sit';
+  /** The kind of band they are of, for the colours of its kit. */
+  band?: BandKind;
 }
 
 export const ENCOUNTER = {
@@ -59,8 +61,8 @@ const civ = (c: Campaign, f: number | undefined): string => (f === undefined || 
 /** Who stands there when an army meets a band: its leader in front, some of his men, and a few of those it holds. */
 export function bandLineup(c: Campaign, b: Band): Figure[] {
   const d = BAND_DRESS[b.kind] ?? BAND_DRESS.raiders, seed = (k: number) => b.id * 97 + k * 13 + 5;
-  const out: Figure[] = [{ role: 'leader', dress: d.leader, female: false, civ: '', seed: seed(0), pose: 'talk' }];
-  for (let i = 0; i < menShown(b.strength); i++) out.push({ role: 'man', dress: d.men[i % d.men.length], female: false, civ: '', seed: seed(i + 1), pose: 'ready' });
+  const out: Figure[] = [{ role: 'leader', dress: d.leader, female: false, civ: '', seed: seed(0), pose: 'talk', band: b.kind }];
+  for (let i = 0; i < menShown(b.strength); i++) out.push({ role: 'man', dress: d.men[i % d.men.length], female: false, civ: '', seed: seed(i + 1), pose: 'ready', band: b.kind });
   // Their captives, women first as a band's captives mostly are, covered and seated at the back.
   const held = heldOf(b), shown = Math.min(ENCOUNTER.captives, held.men + held.women);
   for (let i = 0; i < shown; i++) {
