@@ -54,7 +54,7 @@ function importsOf(name) {
  * module that is not listed and is found in a cycle fails the check. Untying it is work for the hub's battle and
  * season hooks; when a module here is found free of every cycle, the check says so, and it should be struck off.
  */
-const KNOTTED = new Set(['acts', 'aftermath', 'armytown', 'bandfight', 'bandhorde', 'bandroam', 'bandseason', 'campaign', 'carriedoff', 'conquered', 'convoys', 'country', 'court', 'courtstory', 'deadtown', 'decrees', 'drift', 'driftintown', 'dynasty', 'governor', 'harvest', 'intrigue', 'kin', 'nobles', 'portrait', 'rivalaim', 'rivalrule', 'seasonfolk', 'seasonreport', 'storyturn', 'suitors', 'threats', 'townfaith', 'townmuster', 'unrest', 'warhouse']);
+const KNOTTED = new Set(['acts', 'aftermath', 'armytown', 'courtstory', 'decrees', 'drift', 'intrigue', 'kin', 'nobles', 'threats', 'warhouse']);
 /** The knots among the rules modules: each a set of two or more that reach one another by imports that are not of types alone. */
 function knots(graph) {
   let n = 0; const stack = [], on = new Set(), index = {}, low = {}, out = [];

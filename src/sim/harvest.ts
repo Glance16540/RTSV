@@ -14,7 +14,7 @@
 // chief town, and so does the yield of a land the marauders still sit in. A store is full at MAX_STORE, and what
 // will not fit is lost. The nation's figure is then set from its towns (stores.ts).
 import type { Campaign, Territory } from './campaign';
-import { biomeOf } from './campaign';
+import { biomeOf } from './campaignbase';
 import { MAX_STORE, STORE_KINDS, folkOf } from './township';
 import type { Stores } from './township';
 import { SUPPLY_UNITS, settleStores } from './stores';

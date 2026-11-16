@@ -13,7 +13,7 @@
 //
 // The marauders do not roam: they hold their land and spread from it.
 import type { Campaign, Territory } from './campaign';
-import { armyStrength } from './campaign';
+import { armyStrength } from './campaignbase';
 import { Band, mark, note, reachOf, softest } from './threats';
 import { campsBorne } from './bandhorde';
 

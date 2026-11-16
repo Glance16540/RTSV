@@ -15,7 +15,7 @@
  * not stir, nor a town with its people's army or leader in it, nor one already troubled by something else.
  */
 import type { Campaign } from './campaign';
-import { armyAt, faithOf } from './campaign';
+import { armyAt, faithOf } from './campaignbase';
 import { leaderAt } from './court';
 import { angryAt, noblesAt } from './nobles';
 import { folkOf, headcount } from './township';

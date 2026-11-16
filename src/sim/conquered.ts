@@ -6,7 +6,7 @@
  * to its own tribe. A rising with an army in the town is put down, at a cost, and is not forgotten.
  */
 import type { Campaign } from './campaign';
-import { armyAt, armySize, faithOf } from './campaign';
+import { armyAt, armySize, faithOf } from './campaignbase';
 import { leaderAt } from './court';
 import { folkOf, headcount } from './township';
 import { agesOf } from './ageing';

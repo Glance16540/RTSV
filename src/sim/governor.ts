@@ -11,7 +11,7 @@
  * eats once, in larder.ts. The governor neither earns nor feeds: he sets the work, finishes and begins.
  */
 import type { Campaign, Territory } from './campaign';
-import { siteCost, slots } from './campaign';
+import { siteCost, slots } from './campaignbase';
 import { BUILDINGS } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount } from './township';
 import { couplesOf, housesOf, roomOf } from './seasonfolk';
