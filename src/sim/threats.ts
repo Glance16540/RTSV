@@ -39,6 +39,7 @@
 import { faithAt, swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaign';
+import { whoseOf } from './naming';
 import { creedOf } from './creed';
 import { OLD_SEASON, SEASONS_A_YEAR, agesOf, countFrom } from './ageing';
 import { STORE_KINDS, folkOf, living } from './township';
@@ -162,7 +163,7 @@ export function chance(c: Campaign, a: number, salt: number): number {
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 const held = (c: Campaign, t: Territory): boolean => t.owner >= 0 && !!c.factions[t.owner]?.alive;
-const whose = (c: Campaign, f: number): string => (f === 0 ? 'your' : `${c.factions[f].name}'s`);
+const whose = (c: Campaign, f: number): string => whoseOf(c, f); // "your", "the Arameans'" (naming.ts)
 export const mark = (c: Campaign, kind: EventKind, at: number): void => { (c.events ??= []).push({ kind, at, turn: c.turn, until: c.turn }); };
 const sick = (c: Campaign, tid: number): boolean => (c.events ?? []).some((e) => e.kind === 'plague' && e.at === tid && e.until >= c.turn);
 const coastal = (t: Territory): boolean => t.trait === 'coast';
