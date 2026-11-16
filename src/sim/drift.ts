@@ -24,14 +24,14 @@ import { griefSeason } from './grief';
 import { GRIEF_MAX, nationLoss, townGrief } from './notableweight';
 import { townMood } from './portrait';
 import { folkOf, grown } from './township';
-import { decreeEffect, decreesSeason, sensibleDecrees } from './decrees';
+import { TEND_EASE, decreeEffect, decreesSeason, sensibleDecrees } from './decrees';
 import { leaderAt } from './court';
 import { nobleStrain, nobleWatch } from './nobles';
 
 declare module './township' {
   interface Folk {
     /** How the town stood at the last season's turn, and the part of a step of standing not yet taken. */
-    drift?: { strain: number; care: number; moved: number; hungry: boolean; raided: boolean; carry?: number; /** Standing lost to drift alone this season (its strain, the tavern, the women ordered into it), before any rise. */ lost?: number };
+    drift?: { strain: number; care: number; moved: number; hungry: boolean; raided: boolean; carry?: number; /** Sick, or grieving, at the last turn: for whoever decides on decrees. */ sick?: boolean; grieving?: boolean; /** Standing lost to drift alone this season (its strain, the tavern, the women ordered into it), before any rise. */ lost?: number };
     /** Who of the town has drifted from their work: women at the tavern, men at the mines. */
     drifted?: Drifted;
   }
@@ -81,7 +81,10 @@ export function driftTown(c: Campaign, tid: number): number {
   const famine = (c.events ?? []).some((x) => x.at === tid && x.kind === 'famine' && x.until >= c.turn - 1);
   const hunger = famine || food < LEAN_FOOD ? 1 : f.hungry ? 0.6 : 0;
   const e = decreeEffect(c, tid, isDecadent(townStanding(c, tid)));
-  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + STRAIN.sick * Number(mood.sick) + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid)) + STRAIN.grief * Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX)) * e.strainScale + e.strainAdd + nobleStrain(c, tid));
+  // The church tending the sick and the mourning (decrees.ts) lightens what sickness and grief weigh.
+  const tended = 1 - TEND_EASE * e.tend;
+  const griefNow = Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX);
+  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + (STRAIN.sick * Number(mood.sick) + STRAIN.grief * griefNow) * tended + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid))) * e.strainScale + e.strainAdd + nobleStrain(c, tid));
   const church = t.buildings.includes('church'), tavern = t.buildings.includes('tavern') && !e.tavernShut;
   const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care);
   // Only the call to church raises a town here; the rest of its care is shown, and its church is counted by townfaith.ts.
@@ -117,7 +120,7 @@ export function driftTown(c: Campaign, tid: number): number {
   const step = Math.trunc(carry);
   if (step) { swayTown(c, tid, step); carry -= step; }
   const lost = FALL * (strain - unsettled) + TAVERN_SWAY * Math.floor(d.tavern / 2) + Math.max(0, -e.sway);
-  f.drift = { strain, care, moved, hungry: hunger > 0, raided: raided || !!mood.rebel, carry, lost };
+  f.drift = { strain, care, moved, hungry: hunger > 0, raided: raided || !!mood.rebel, carry, lost, sick: !!mood.sick, grieving: griefNow > 0 };
   return moved;
 }
 const leaderHere = (c: Campaign, tid: number): boolean => leaderAt(c, c.territories[tid].owner, tid);
@@ -149,9 +152,9 @@ export function watchOf(c: Campaign, tid: number): number {
 }
 
 /** How a town stood at the last turn, for whoever decides on decrees. */
-export function driftOf(c: Campaign, tid: number): { hungry: boolean; raided: boolean; moved: number; standing: number } {
+export function driftOf(c: Campaign, tid: number): { hungry: boolean; raided: boolean; moved: number; standing: number; sick: boolean; grieving: boolean } {
   const f = folkOf(c, tid);
-  return { hungry: !!f.drift?.hungry, raided: !!f.drift?.raided, moved: f.drift?.moved ?? 0, standing: townStanding(c, tid) };
+  return { hungry: !!f.drift?.hungry, raided: !!f.drift?.raided, moved: f.drift?.moved ?? 0, standing: townStanding(c, tid), sick: !!f.drift?.sick, grieving: !!f.drift?.grieving };
 }
 
 /** The map's season for drift: the computer's peoples give their decrees, then every town drifts. */
