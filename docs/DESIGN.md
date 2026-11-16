@@ -173,6 +173,14 @@ as much as what happens to the nation.
 - *Several campaigns.* A player can keep more than one world, each with its own history, and go back to
   any of them.
 
+**Meeting them face to face** (the owner's word, 16 November 2026). When the player meets someone on the
+map, the people they meet are shown as people. When an army runs into a band of marauders, or a decision
+comes up (a suitor, a rival king's envoy, a plotter found, a thief brought for judgement), a window opens
+over the map. It shows the ones met as living 3D figures, the band's leader at the front with some of
+his men, or the person asking, dressed and armed as they are. The choices sit beside them. The map stays
+behind it, and nothing else is changed by it. The same rules hold as everywhere: no child is shown, and
+nothing suggestive is shown of a captive.
+
 ## The order of building
 
 Each step is to be playable by itself.
