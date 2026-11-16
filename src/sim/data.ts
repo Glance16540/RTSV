@@ -767,6 +767,12 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 120, stone: 40 }, time: 30, age: 1, hp: 520, size: 2, pop: 0, sight: 12,
     trains: [], techs: ['townwatch'], onMap: true,
   }),
+  fortress: B({
+    id: 'fortress', name: 'Fortress', icon: '🏰',
+    desc: 'A stronghold. It does not shoot, but takes in twelve people when the bell rings and stands a long time. On the map a town with one stands three companies stronger against a band, and loses half as many people to one.',
+    cost: { wood: 100, stone: 350 }, time: 70, age: 1, hp: 1600, size: 3, pop: 0, sight: 12,
+    trains: [], techs: [], shelter: 12,
+  }),
   // ---- end of order and roads ----
 };
 
