@@ -112,20 +112,20 @@ export function boxGeo(w: number, h: number, d: number): THREE.BoxGeometry {
 // ---------------------------------------------------------------------------------------------------
 // Parts
 // ---------------------------------------------------------------------------------------------------
-const TIMBER = 0x5a3e28;
-const mesh = (p: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh => {
+export const TIMBER = 0x5a3e28;
+export const mesh = (p: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh => {
   const o = new THREE.Mesh(geo, m);
   o.position.set(x, y, z);
   o.castShadow = o.receiveShadow = true;
   p.add(o);
   return o;
 };
-const bx = (p: THREE.Object3D, w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh => mesh(p, boxGeo(w, h, d), m, x, y, z);
+export const bx = (p: THREE.Object3D, w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh => mesh(p, boxGeo(w, h, d), m, x, y, z);
 /** Walls standing on y0. */
-const walls = (p: THREE.Object3D, w: number, h: number, d: number, m: THREE.Material, x = 0, y0 = 0, z = 0): THREE.Mesh => bx(p, w, h, d, m, x, y0 + h / 2, z);
+export const walls = (p: THREE.Object3D, w: number, h: number, d: number, m: THREE.Material, x = 0, y0 = 0, z = 0): THREE.Mesh => bx(p, w, h, d, m, x, y0 + h / 2, z);
 
 /** A pitched roof with overhanging eaves, its ridge along z. */
-function gable(p: THREE.Object3D, w: number, d: number, rise: number, y: number, roofMat: THREE.Material, endMat: THREE.Material | null, x = 0, z = 0, over = 0.18, thick = 0.09): THREE.Group {
+export function gable(p: THREE.Object3D, w: number, d: number, rise: number, y: number, roofMat: THREE.Material, endMat: THREE.Material | null, x = 0, z = 0, over = 0.18, thick = 0.09): THREE.Group {
   const g = new THREE.Group();
   g.position.set(x, y, z);
   p.add(g);
@@ -152,7 +152,7 @@ function gable(p: THREE.Object3D, w: number, d: number, rise: number, y: number,
   return g;
 }
 /** Timber framing around a storey: corner posts, sills and plates, and braces. */
-function framing(p: THREE.Object3D, w: number, h: number, d: number, y0: number, x = 0, z = 0): void {
+export function framing(p: THREE.Object3D, w: number, h: number, d: number, y0: number, x = 0, z = 0): void {
   const t = 0.07, m = toon(TIMBER);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) bx(p, t, h, t, m, x + sx * (w / 2), y0 + h / 2, z + sz * (d / 2));
   for (const yy of [y0 + t / 2, y0 + h - t / 2]) {
@@ -163,13 +163,13 @@ function framing(p: THREE.Object3D, w: number, h: number, d: number, y0: number,
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) bx(p, t * 0.6, h * 0.62, t * 0.8, m, x + sx * (w / 2 + 0.005), y0 + h * 0.3, z + sz * (d / 2 - h * 0.2)).rotation.x = -sz * 0.62;
 }
 /** A door or window set on a wall. `glow` lights it from within. */
-function pane(p: THREE.Object3D, kind: 'window' | 'arch' | 'door', w: number, h: number, x: number, y: number, z: number, ry = 0, glow = 0): THREE.Mesh {
+export function pane(p: THREE.Object3D, kind: 'window' | 'arch' | 'door', w: number, h: number, x: number, y: number, z: number, ry = 0, glow = 0): THREE.Mesh {
   const geo = new THREE.BoxGeometry(w, h, 0.04);
   const o = mesh(p, geo, toon(0xffffff, kind, glow), x, y, z);
   o.rotation.y = ry;
   return o;
 }
-function chimney(p: THREE.Object3D, x: number, y: number, z: number, h = 0.7): void {
+export function chimney(p: THREE.Object3D, x: number, y: number, z: number, h = 0.7): void {
   const st = toon(0xb8b4aa, 'stone');
   walls(p, 0.3, h, 0.3, st, x, y, z);
   bx(p, 0.38, 0.07, 0.38, st, x, y + h, z);
@@ -192,7 +192,7 @@ export function banner(p: THREE.Object3D, team: number, x: number, y: number, z:
   geo.computeVertexNormals();
   mesh(p, geo, toon(team, '', new THREE.Color(team).multiplyScalar(0.25).getHex()), x + 0.29, y + h + 0.28, z);
 }
-const cloth = (p: THREE.Object3D, team: number, w: number, h: number, x: number, y: number, z: number): THREE.Mesh => bx(p, w, h, 0.02, toon(team, '', new THREE.Color(team).multiplyScalar(0.25).getHex()), x, y, z);
+export const cloth = (p: THREE.Object3D, team: number, w: number, h: number, x: number, y: number, z: number): THREE.Mesh => bx(p, w, h, 0.02, toon(team, '', new THREE.Color(team).multiplyScalar(0.25).getHex()), x, y, z);
 
 // ---------------------------------------------------------------------------------------------------
 // Buildings
@@ -202,17 +202,17 @@ export interface Look {
   wall: number; roofColor: number; team: number; post: number; age: number;
   roofKind: 'pitched' | 'low' | 'steep' | 'flat' | 'dome' | 'pagoda' | 'yurt';
   leaning: '' | 'holy' | 'low';
-  /** Whose people built it, where a building shows their faith or their ways; '' or absent for none. */
+  /** Whose people built it, where a building shows their faith or their ways (the Church, and civic.ts); '' or absent for none. */
   civ?: string;
   /** Roofs that are not pitched (domes, pagodas, flat roofs with a parapet, felt tents) are drawn by the caller. */
   otherRoof: (p: THREE.Object3D, half: number, h: number, x: number, y: number, z: number) => THREE.Object3D;
 }
-const pitched = (o: Look): boolean => o.roofKind === 'pitched' || o.roofKind === 'low' || o.roofKind === 'steep';
-const roofMat = (o: Look): THREE.Material => toon(o.roofColor, o.roofKind === 'steep' || (o.roofKind === 'pitched' && o.age <= 1) ? 'thatch' : 'tiles');
-const wallMat = (o: Look, upper = true): THREE.Material => (o.age === 0 ? toon(o.wall, 'planks') : !upper && o.age >= 2 ? toon(0xc8c2b4, 'stone') : toon(o.wall, 'plaster'));
-const framed = (o: Look): boolean => (o.roofKind === 'pitched' || o.roofKind === 'steep') && o.age >= 1;
+export const pitched = (o: Look): boolean => o.roofKind === 'pitched' || o.roofKind === 'low' || o.roofKind === 'steep';
+export const roofMat = (o: Look): THREE.Material => toon(o.roofColor, o.roofKind === 'steep' || (o.roofKind === 'pitched' && o.age <= 1) ? 'thatch' : 'tiles');
+export const wallMat = (o: Look, upper = true): THREE.Material => (o.age === 0 ? toon(o.wall, 'planks') : !upper && o.age >= 2 ? toon(0xc8c2b4, 'stone') : toon(o.wall, 'plaster'));
+export const framed = (o: Look): boolean => (o.roofKind === 'pitched' || o.roofKind === 'steep') && o.age >= 1;
 /** Roofs a body w wide (x) and d deep (z) whose walls end at y. The ridge runs along the longer side. */
-function top(g: THREE.Object3D, o: Look, w: number, d: number, y: number, rise: number, x = 0, z = 0): void {
+export function top(g: THREE.Object3D, o: Look, w: number, d: number, y: number, rise: number, x = 0, z = 0): void {
   if (!pitched(o)) {
     const half = Math.min(w, d) / 2;
     const r = o.otherRoof(g, half, Math.min(rise, half * 1.4), x, y, z); // kept low enough that a small wing still gets the nation's roof, not a plain peak
@@ -227,7 +227,7 @@ function top(g: THREE.Object3D, o: Look, w: number, d: number, y: number, rise: 
     gable(turn, d, w, rise * k, y, roofMat(o), wallMat(o), 0, 0, thatch ? 0.24 : 0.18, thatch ? 0.16 : 0.09);
   } else gable(g, w, d, rise * k, y, roofMat(o), wallMat(o), x, z, thatch ? 0.24 : 0.18, thatch ? 0.16 : 0.09);
 }
-function posts(g: THREE.Object3D, o: Look, w: number, h: number, d: number, y0 = 0): void {
+export function posts(g: THREE.Object3D, o: Look, w: number, h: number, d: number, y0 = 0): void {
   if (framed(o)) framing(g, w, h, d, y0);
   else if (o.age >= 1) for (const sx of [-1, 1]) for (const sz of [-1, 1]) bx(g, 0.14, h, 0.14, toon(o.post, 'plaster'), sx * w / 2, y0 + h / 2, sz * d / 2);
 }
@@ -586,14 +586,14 @@ function tower(o: Look): THREE.Group {
   return g;
 }
 
-const PLANK = 0x9a6a3e;
-const crate = (g: THREE.Object3D, s: number, x: number, z: number, y = 0, ry = 0): void => { const c = bx(g, s, s, s, toon(0xb08850, 'planks'), x, y + s / 2, z); c.rotation.y = ry; };
-const sack = (g: THREE.Object3D, x: number, z: number, c = 0xcdbb94): void => { mesh(g, new THREE.SphereGeometry(0.16, 8, 6), toon(c), x, 0.13, z).scale.set(1, 0.8, 0.8); };
+export const PLANK = 0x9a6a3e;
+export const crate = (g: THREE.Object3D, s: number, x: number, z: number, y = 0, ry = 0): void => { const c = bx(g, s, s, s, toon(0xb08850, 'planks'), x, y + s / 2, z); c.rotation.y = ry; };
+export const sack = (g: THREE.Object3D, x: number, z: number, c = 0xcdbb94): void => { mesh(g, new THREE.SphereGeometry(0.16, 8, 6), toon(c), x, 0.13, z).scale.set(1, 0.8, 0.8); };
 function logs(g: THREE.Object3D, x: number, z: number, n: number, len = 0.9): void {
   for (let i = 0, row = 0, k = 0; i < n; i++, k++) { if (k >= 3 - row) { row++; k = 0; } mesh(g, new THREE.CylinderGeometry(0.08, 0.08, len, 7).rotateZ(Math.PI / 2), toon(0x8a6238, 'planks'), x, 0.08 + row * 0.14, z + (k + row * 0.5) * 0.17); }
 }
 /** A single slope on posts: the roof of a shed, a porch or a stall. */
-function leanTo(g: THREE.Object3D, m: THREE.Material, w: number, d: number, x: number, y: number, z: number, tilt = 0.25): void {
+export function leanTo(g: THREE.Object3D, m: THREE.Material, w: number, d: number, x: number, y: number, z: number, tilt = 0.25): void {
   bx(g, w, 0.07, d, m, x, y, z).rotation.x = tilt;
 }
 function storehouse(o: Look, seed = 0): THREE.Group {
@@ -667,7 +667,7 @@ function range(o: Look): THREE.Group {
   banner(g, o.team, -1.25, 1.1, -1.2, 0.5);
   return g;
 }
-function fence(g: THREE.Object3D, x0: number, z0: number, x1: number, z1: number): void {
+export function fence(g: THREE.Object3D, x0: number, z0: number, x1: number, z1: number): void {
   const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.5)), ang = Math.atan2(x1 - x0, z1 - z0);
   for (let i = 0; i <= n; i++) mesh(g, new THREE.CylinderGeometry(0.035, 0.04, 0.5, 5), toon(TIMBER), x0 + (x1 - x0) * i / n, 0.25, z0 + (z1 - z0) * i / n);
   for (const y of [0.22, 0.42]) bx(g, 0.035, 0.045, len, toon(PLANK, 'planks'), (x0 + x1) / 2, y, (z0 + z1) / 2).rotation.y = ang;
@@ -1064,6 +1064,8 @@ function camp(o: Look, type: string): THREE.Group {
 const CAMPED = new Set(['towncenter', 'temple', 'tavern', 'storehouse', 'barracks', 'blacksmith', 'stable', 'range', 'workshop']);
 const AS_BUILT = new Set(['gate', 'farm', 'palisade', 'stonewall']);
 const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, palisade, stonewall, workcamp, wonder, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
+/** Makers kept in modules of their own (civic.ts: the buildings that answer the systems) add themselves here. */
+export function registerMakers(more: Record<string, (o: Look, seed: number) => THREE.Group>): void { Object.assign(MAKERS, more); }
 /** A hand-shaped building, sized to fit `size` tiles, or null where there is none yet (or the old one is kept). */
 export function shapedBuilding(type: string, size: number, o: Look, seed: number): THREE.Group | null {
   const tented = o.roofKind === 'yurt' && CAMPED.has(type);

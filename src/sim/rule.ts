@@ -9,9 +9,10 @@ import { faithAt } from './townfaith';
 import { isHoly } from './creed';
 import { begunAt, raiseBar, raiseWork } from './townworks';
 import { STUDY_KEEP } from './studies';
+import { feastSeason } from './feastdays';
 
 /** A rival raises one of these in its chief town when its stores there hold this many working stocks over the cost. */
-export const RULE_KEEP = 3;
+export const RULE_KEEP = 1.5;
 
 /** A season for one rival nation: it raises a Hall of Judgement in its chief town when it has none begun and can spare the stores. */
 export function hallSeason(c: Campaign, f: number): boolean {
@@ -53,5 +54,6 @@ export function monasterySeason(c: Campaign, f: number): boolean {
 
 /** A season for every rival nation's works of rule and faith: at most one begun a season, the Hall first, then a Manor, then a Monastery. */
 export function rulesSeason(c: Campaign): void {
+  feastSeason(c); // the year's feast, for nations that keep Feast Days (feastdays.ts)
   for (const x of c.factions) { if (!hallSeason(c, x.id) && !manorSeason(c, x.id)) monasterySeason(c, x.id); }
 }

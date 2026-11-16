@@ -685,7 +685,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'hall', name: 'Hall of Judgement', icon: '⚖️',
     desc: 'The leader\'s seat in this town. A decree given to the town has its full strength, as if the leader were here; thieves, killers and plotters are judged here, so they are found the sooner; and the nation\'s nobles gather at it, so their tempers cool the faster and an angry lord here keeps his watch.',
     cost: { wood: 200, stone: 150, gold: 50 }, time: 45, age: 1, hp: 1400, size: 3, pop: 0, sight: 7,
-    trains: [], techs: [], onMap: true,
+    trains: [], techs: ['couriers', 'stewardship', 'writtenlaw', 'oaths', 'spymasters'], onMap: true,
   }),
   manor: B({
     id: 'manor', name: "Noble's Manor", icon: '🏛️',
@@ -697,7 +697,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'monastery', name: 'Monastery', icon: '🕍',
     desc: 'Only a town that keeps the faith can build it: the Righteous town\'s great house (a Convent where its women are the more). Up to six villagers live here as monks and nuns, counted as clergy. The town is drawn toward the holy way each season, the drifted come back to it the sooner, and it takes in the sick and the bereaved, so sickness and grief weigh on the town half as much.',
     cost: { wood: 220, stone: 160, gold: 60 }, time: 46, age: 1, hp: 1300, size: 4, pop: 0, sight: 6,
-    trains: [], techs: [], staff: 6, needs: 'holy', onMap: true,
+    trains: [], techs: ['feastdays', 'pilgrimage'], staff: 6, needs: 'holy', onMap: true,
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',
@@ -832,6 +832,35 @@ export const TECHS: Record<string, TechDef> = {
   extendedfamily: T({
     id: 'extendedfamily', name: 'Extended Family', icon: '🏘️', desc: 'Each house supports +2 population.',
     cost: { wood: 200, stone: 100 }, time: 40, age: 2, apply: (m) => { m.housePop += 2; },
+  }),
+  // ---- Rule, law, nobles and faith (the people session): studies of the nation's, kept on the map (studies.ts). Costs and ages are first guesses. ----
+  couriers: T({
+    id: 'couriers', name: 'Couriers', icon: '🐎', desc: 'Decrees sent by messenger are three-quarters as strong as given in person, not half.',
+    cost: { wood: 100, gold: 120 }, time: 30, age: 1, answers: 'rule', apply: () => {},
+  }),
+  stewardship: T({
+    id: 'stewardship', name: 'Stewardship', icon: '📒', desc: 'A better governor: what a town\'s governor has begun is finished half again as fast.',
+    cost: { wood: 150, gold: 100 }, time: 30, age: 1, answers: 'rule', apply: () => {},
+  }),
+  writtenlaw: T({
+    id: 'writtenlaw', name: 'Written Law', icon: '📜', desc: 'Unrest is less likely in every town, and a taken town\'s resentment eases the faster.',
+    cost: { wood: 120, gold: 200 }, time: 40, age: 2, answers: 'unrest', apply: () => {},
+  }),
+  oaths: T({
+    id: 'oaths', name: 'Oaths of Fealty', icon: '🤝', desc: 'Your nobles\' moods swing less: a decree pleases or angers them less, and a hard season sours them less.',
+    cost: { gold: 220 }, time: 35, age: 2, answers: 'nobles', apply: () => {},
+  }),
+  spymasters: T({
+    id: 'spymasters', name: 'Spymasters', icon: '🕵️', desc: 'A plot against the leader is found the sooner.',
+    cost: { gold: 250 }, time: 35, age: 2, answers: 'plots', apply: () => {},
+  }),
+  feastdays: T({
+    id: 'feastdays', name: 'Feast Days', icon: '🎉', desc: 'Once a year every town of yours keeps a feast, and is lifted toward the holy way.',
+    cost: { wood: 100, gold: 150 }, time: 30, age: 1, answers: 'faith', apply: () => {},
+  }),
+  pilgrimage: T({
+    id: 'pilgrimage', name: 'Pilgrimage', icon: '🚶', desc: 'Your towns are drawn toward your nation\'s faith the faster.',
+    cost: { stone: 120, gold: 150 }, time: 35, age: 2, answers: 'faith', apply: () => {},
   }),
   herbalism: T({
     id: 'herbalism', name: 'Herbalism', icon: '🌿', desc: 'Shamans heal 60% faster.',

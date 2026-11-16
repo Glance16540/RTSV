@@ -5,6 +5,7 @@
  * town throws the taker off: the town goes back to the people it was taken from if they still stand, and otherwise
  * to its own tribe. A rising with an army in the town is put down, at a cost, and is not forgotten.
  */
+import { lawEase } from './writtenlaw'; // written law eases resentment (writtenlaw.ts)
 import type { Campaign } from './campaign';
 import { armyAt, armySize, faithOf } from './campaignbase';
 import { leaderAt } from './court';
@@ -58,7 +59,7 @@ export function goodRule(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   if (!t || t.owner < 0) return 0;
   const struck = (c.events ?? []).some((e) => e.at === tid && e.turn === c.turn && STRUCK.includes(e.kind));
-  return YOKE.ease + yokeEase(c, tid) + (t.buildings.includes('church') ? YOKE.church : 0) + (t.buildings.includes('farm') ? YOKE.farm : 0) + (leaderAt(c, t.owner, tid) ? YOKE.leader : 0)
+  return YOKE.ease + yokeEase(c, tid) + lawEase(c, tid) + (t.buildings.includes('church') ? YOKE.church : 0) + (t.buildings.includes('farm') ? YOKE.farm : 0) + (leaderAt(c, t.owner, tid) ? YOKE.leader : 0)
     + (faithOf(c, t.owner).defence > 1 ? YOKE.pious : 0) - (t.buildings.includes('tavern') ? YOKE.tavern : 0) - (struck ? YOKE.struck : 0);
 }
 /** The chance a town rises this season, as things stand; or, with `bare`, as it would be with no army in it or lately gone from it. */

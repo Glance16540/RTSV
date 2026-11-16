@@ -13,6 +13,7 @@
  * battle or visit fought there in person; a raid it held off or was broken by. What moves every town of a nation
  * at once: a tale answered, a comet. A town taken keeps its own standing under its new holder.
  */
+import { pilgrimPull } from './pilgrimage';
 import type { Campaign } from './campaign';
 import { placeAt } from './places';
 import { CHURCH_VIRTUE, FAITH, TAVERN_VIRTUE, tell } from './campaignbase';
@@ -94,7 +95,7 @@ export function pullTogether(c: Campaign): void {
     const mine = owned(c, x.id);
     if (mine.length < 2) continue;
     const mean = mine.reduce((n, t) => n + (t.virtue ?? 0), 0) / mine.length;
-    for (const t of mine) t.virtue = clamp((t.virtue ?? 0) + Math.round((mean - (t.virtue ?? 0)) * PULL));
+    for (const t of mine) t.virtue = clamp((t.virtue ?? 0) + Math.round((mean - (t.virtue ?? 0)) * Math.min(1, PULL * pilgrimPull(c, x.id)))); // the faster with pilgrimage (pilgrimage.ts)
     synced(c, x.id);
   }
 }

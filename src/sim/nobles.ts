@@ -30,6 +30,7 @@ import { folkOf, grown, living } from './township';
 import { leaderAt } from './court';
 import { nobleEase, seatAt } from './hall';
 import { lordContent, lordSay } from './manor';
+import { oathSteady } from './oaths';
 import { moodEase } from './ownstudies';
 
 export type Rank = 'lord' | 'captain' | 'matron' | 'close';
@@ -166,7 +167,7 @@ export const angryAt = (c: Campaign, tid: number): boolean => noblesAt(c, tid).s
 /** How a decree to this town would move each noble of the nation: the change in mood, at this strength. */
 export function moodsFor(c: Campaign, f: number, tid: number, kind: DecreeKind, strength = 1): { noble: Noble; by: number }[] {
   // A lord with a manor has the more say (manor.ts).
-  return noblesOf(c, f).map((noble) => ({ noble, by: Math.round(NOBLES.sway * LIKES[noble.leaning][kind] * strength * (noble.town === tid ? 1 : NOBLES.far) * (noble.rank === 'lord' ? lordSay(c, noble.town) : 1)) })).filter((x) => x.by !== 0);
+  return noblesOf(c, f).map((noble) => ({ noble, by: Math.round(NOBLES.sway * LIKES[noble.leaning][kind] * strength * (noble.town === tid ? 1 : NOBLES.far) * (noble.rank === 'lord' ? lordSay(c, noble.town) : 1) * oathSteady(c, f)) })).filter((x) => x.by !== 0); // sworn nobles swing less (oaths.ts)
 }
 
 /** Who a decree to this town would please and who it would anger (most moved first), for the player to weigh. */
@@ -206,7 +207,7 @@ export function noblesSeason(c: Campaign, f: number): void {
   const nobles = reckon(c, f, fac.nobles ?? []);
   for (const n of nobles) {
     const folk = folkOf(c, n.town);
-    const sour = (struckAt(c, n.town, ['raid', 'carried']) ? NOBLES.raided : 0) + (folk.hungry ? NOBLES.hungry : 0) + (struckAt(c, n.town, ['plague']) ? NOBLES.sick : 0);
+    const sour = ((struckAt(c, n.town, ['raid', 'carried']) ? NOBLES.raided : 0) + (folk.hungry ? NOBLES.hungry : 0) + (struckAt(c, n.town, ['plague']) ? NOBLES.sick : 0)) * oathSteady(c, f); // and sworn ones sour less (oaths.ts)
     n.mood = clamp(Math.round(n.mood * (1 - Math.min(1, NOBLES.ease * nobleEase(c, f) * moodEase(c, f))) + sour + (n.rank === 'lord' ? lordContent(c, n.town) : 0)), -100, 100); // they cool the faster with a Hall to bring their grievances to (hall.ts), and sooner for a people whose own study says so (ownstudies.ts); a lord in his manor grows content (manor.ts)
   }
   fac.nobles = nobles;
