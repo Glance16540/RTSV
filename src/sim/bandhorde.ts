@@ -15,7 +15,7 @@
 // A land marked as the marauders' with no band on record (a campaign saved before this, or a land made so by hand)
 // is taken up as one the first season it is seen.
 import type { Campaign, Territory } from './campaign';
-import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN } from './campaign';
+import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN } from './campaignbase';
 import { Band, Raid, bringHome, chance, mark, note, reachOf, softest, strike } from './threats';
 
 export const HORDE = {

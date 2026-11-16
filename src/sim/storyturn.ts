@@ -5,7 +5,8 @@
 // campaign.ts calls `storyTurn(c)` once a season. Whoever puts a tale to the player uses `taleNow`, `taleText`,
 // `canAnswer` and `answerTale`.
 import type { Campaign } from './campaign';
-import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, shiftVirtue, tell } from './campaign';
+import { shiftVirtue } from './campaign';
+import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, tell } from './campaignbase';
 import { placeAt, placesOf } from './places';
 import { LEANING } from './creed';
 import { canPayFor, payFor } from './prices';

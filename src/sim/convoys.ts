@@ -25,7 +25,7 @@ import type { Campaign } from './campaign';
 import type { Stores } from './township';
 import { MAX_STORE, STORE_KINDS, folkOf } from './township';
 import { OLD_SEASON, agesOf, countFrom } from './ageing';
-import { armyStrength, lanesOf } from './campaign';
+import { armyStrength, lanesOf } from './campaignbase';
 import { needOf } from './larder';
 
 /** What a convoy carries: stores, and grown people by their ages in seasons. */

@@ -13,7 +13,8 @@
  * and its decrees are decrees.ts's `sensibleDecrees`.)
  */
 import type { Army, Campaign, Territory } from './campaign';
-import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atTruce, canRaise, companyCost, defence, hireOff, moveArmy, reach } from './campaign';
+import { canRaise, defence, hireOff, moveArmy, reach } from './campaign';
+import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atTruce, companyCost } from './campaignbase';
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';

@@ -14,7 +14,8 @@
  * at once: a tale answered, a comet. A town taken keeps its own standing under its new holder.
  */
 import type { Campaign } from './campaign';
-import { CHURCH_VIRTUE, TAVERN_VIRTUE, placeAt } from './campaign';
+import { placeAt } from './campaign';
+import { CHURCH_VIRTUE, TAVERN_VIRTUE } from './campaignbase';
 import { PLACES } from './story';
 
 const clamp = (v: number): number => Math.max(-100, Math.min(100, Math.round(v)));
