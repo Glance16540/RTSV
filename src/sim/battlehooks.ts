@@ -49,3 +49,29 @@ export class BattleHooks {
   /** Who is registered for a phase, in the order they run: for a test, or for whoever ports the table. */
   order(phase?: BattlePhase): string[] { return this.table.filter((h) => !phase || h.phase === phase).map((h) => (phase ? h.system : `${h.phase}: ${h.system}`)); }
 }
+
+/**
+ * Questions a battle asks. Some of what a battle needs of a system is an answer and not an act: how many warriors
+ * a tribe's land has, who of a town turns out, whether the leader is there. A hook returns nothing, so these have
+ * a table of their own: each question has one system that answers it, registered once, and the battle functions
+ * ask the question and name nobody. What the questions are, and their shapes, is the asker's to say (campaign.ts
+ * gives the type); this only carries them.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export class BattleAnswers<Q extends Record<string, (...args: any[]) => unknown>> {
+  private readonly table: { [K in keyof Q]?: { system: string; answer: Q[K] } } = {};
+  /** Register the system that answers a question. A question has one answerer: a second is a mistake, and says so. */
+  provide<K extends keyof Q>(question: K, system: string, answer: Q[K]): this {
+    if (this.table[question]) throw new Error(`battle question "${String(question)}" is already answered by ${this.table[question]!.system}`);
+    this.table[question] = { system, answer };
+    return this;
+  }
+  /** Ask a question. Nobody registered to answer it is a mistake in the table, and says so. */
+  ask<K extends keyof Q>(question: K, ...args: Parameters<Q[K]>): ReturnType<Q[K]> {
+    const a = this.table[question];
+    if (!a) throw new Error(`battle question "${String(question)}" has nobody to answer it`);
+    return a.answer(...args) as ReturnType<Q[K]>;
+  }
+  /** Who answers what: for a test, or for whoever ports the table. */
+  who(): string[] { return Object.keys(this.table).map((q) => `${q}: ${this.table[q as keyof Q]!.system}`); }
+}
