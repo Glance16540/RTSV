@@ -20,7 +20,7 @@ export type EncounterChoice = [label: string, act: () => void, bar?: string];
 export interface Meeting { title: string; text: string; figures: Figure[]; choices: EncounterChoice[] }
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
-const W = 460, H = 340;
+const W = 520, H = 400;
 const BAND_CLOTH = 0x4a3a30, PLAIN = 0x7a6a54, GOLD = 0xd8b040;
 
 /** How a figure goes dressed: as a soldier of its kind, or as one of the plain people. */
@@ -30,7 +30,7 @@ function outfitOf(f: Figure): Outfit {
   if (u) return outfitFor(f.dress, f.female, color, look, f.seed, 0, { cls: u.cls === 'hero' ? 'hero' : 'infantry', age: u.age ?? 1 });
   // The plain people: covered, as the town that keeps itself most covered dresses its people (wear 1).
   const plain = f.dress === 'villager', base = outfitFor('villager', f.female, plain ? PLAIN : color, look, f.seed, 1);
-  const covered: Outfit = { ...base, sleeves: 'long', neck: 0, apron: null, ...(f.female ? { skirt: 'long', hairStyle: 'covered', hat: 'hood', hatColor: 0x8a7a64 } : {}) };
+  const covered: Outfit = { ...base, sleeves: 'long', neck: 0, apron: null, ...(f.female ? { skirt: 'long', hairStyle: f.role === 'captive' ? 'covered' : 'bun', hat: '' } : {}) };
   if (f.role === 'captive') return { ...covered, top: 0xb8ab94, skirtColor: 0xb8ab94, legs: 0x8a7a64, cloak: null, barefoot: false };
   if (f.dress === 'noble') return { ...covered, skirt: 'long', cloak: color, trim: GOLD, mantle: !f.female, hat: f.female ? '' : 'cap', hatColor: 0x2a2228, girth: 1 };
   if (f.dress === 'envoy') return { ...covered, skirt: 'long', cloak: color, trim: GOLD, hat: 'hood', hatColor: color };
@@ -89,12 +89,21 @@ export function openEncounter(m: Meeting): boolean {
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 50);
   const wide = m.figures.length > 1;
-  cam.position.set(wide ? 0.45 : 0, wide ? 1.0 : 0.72, wide ? 3.9 : 2.9); cam.lookAt(wide ? 0.4 : 0, wide ? 0.42 : 0.46, wide ? -0.2 : 0.5);
-  scene.add(new THREE.HemisphereLight(0xfff2dc, 0x4a3e38, 1.1));
-  const sun = new THREE.DirectionalLight(0xffe0b8, 2.2); sun.position.set(-2, 4, 3); scene.add(sun);
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(wide ? 2.4 : 0.8, 40), new THREE.MeshStandardMaterial({ color: 0x6a5a3e, roughness: 1 }));
-  ground.rotation.x = -Math.PI / 2; ground.position.set(wide ? 0.3 : 0, 0, wide ? -0.3 : 0.5); scene.add(ground);
-  gl.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); gl.setSize(W, H, false); gl.toneMapping = THREE.NeutralToneMapping;
+  // Close enough to see faces and gear: the whole band from near at hand, or the one asking from the knees up.
+  cam.position.set(wide ? 0.22 : 0.05, wide ? 0.95 : 0.72, wide ? 3.3 : 1.7); cam.lookAt(wide ? 0.22 : 0, wide ? 0.5 : 0.6, wide ? -0.25 : 0.55);
+  // Lit like a portrait: a warm key from the front and side casting soft shadows, a cool fill from the other side, and a rim from behind.
+  scene.add(new THREE.HemisphereLight(0xfff2dc, 0x3a302a, 0.45));
+  const key = new THREE.DirectionalLight(0xffe2bc, 2.6); key.position.set(-1.6, 3.2, 2.6); key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 6; key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
+  Object.assign(key.shadow.camera, { left: -2.5, right: 2.5, top: 2.5, bottom: -2.5, near: 0.5, far: 10 });
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xc8d8ff, 0.7); fill.position.set(2.2, 1.4, 2); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xfff0d8, 1.8); rim.position.set(0.6, 2.4, -3); scene.add(rim);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(wide ? 2.6 : 1.1, 64), new THREE.MeshStandardMaterial({ color: 0x6a5a3e, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.set(wide ? 0.3 : 0, 0, wide ? -0.3 : 0.5); ground.receiveShadow = true; scene.add(ground);
+  // As sharp as the screen allows, and never less than twice over.
+  gl.setPixelRatio(Math.min(3, Math.max(2, window.devicePixelRatio || 1))); gl.setSize(W, H, false); gl.toneMapping = THREE.NeutralToneMapping;
+  gl.shadowMap.enabled = true; gl.shadowMap.type = THREE.PCFSoftShadowMap;
   const people: RealPerson[] = [];
   const stand = (): void => {
     if (!alive) return;
@@ -103,6 +112,7 @@ export function openEncounter(m: Meeting): boolean {
       const made = makePerson(outfitOf(f));
       if (!made) return;
       made.g.position.set(at[i].x, 0, at[i].z); made.g.rotation.y = at[i].yaw;
+      made.g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = o.receiveShadow = true; });
       scene.add(made.g);
       people.push(made.real);
       play(made.real, f.pose === 'talk' ? 'Idle_Talking_Loop' : f.pose === 'ready' ? 'Idle_Loop' : f.pose === 'sit' ? 'Sitting_Idle_Loop' : 'Idle_Loop', 0.8 + ((f.seed % 7) / 30));
