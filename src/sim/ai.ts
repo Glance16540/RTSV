@@ -10,6 +10,7 @@ import { MILITARY_WORKS, inPeace } from './keeper';
 import { roomForCouples, unhousedCouples } from './birthonly';
 import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
+import { researchAt } from './ownstudies';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -236,7 +237,7 @@ export class AIController {
     if (!saving) {
       for (const b of mine) {
         if (!b.complete || b.queue.length) continue;
-        for (const id of b.def.techs) {
+        for (const id of researchAt(b.type, p.civ, b.def.techs)) { // its own people's study among them (ownstudies.ts)
           const t = TECHS[id];
           if (g.techAvailable(p, id) && g.canAfford(p, { food: (t.cost.food ?? 0) + 150, wood: (t.cost.wood ?? 0) + 100, gold: t.cost.gold, stone: t.cost.stone })) {
             g.cmdResearch(pid, b.id, id);

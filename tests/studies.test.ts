@@ -28,13 +28,14 @@ beforeEach(() => {
 afterEach(() => { delete BUILDINGS.testhall; delete TECHS.testlaw; });
 
 describe('what is a study', () => {
-  it('a tech that says what it answers; no tech in the game does yet, so nothing changes until one is added', () => {
+  it('a tech that says what it answers is a study, and one that does not is not', () => {
     expect(isStudy('testlaw')).toBe(true);
     expect(isStudy('weapons1')).toBe(false);
-    expect(allStudies().map((t) => t.id)).toEqual(['testlaw']);
+    // The game has studies of its own now (the first were each people's own, ownstudies.ts), so this asks only after the one made here.
+    expect(allStudies().map((t) => t.id)).toContain('testlaw');
     expect(teacherOf('testlaw')).toBe('testhall');
     delete TECHS.testlaw;
-    expect(allStudies()).toEqual([]);
+    expect(allStudies().map((t) => t.id)).not.toContain('testlaw');
   });
 });
 

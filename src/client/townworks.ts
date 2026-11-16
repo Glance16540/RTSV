@@ -22,7 +22,7 @@ export function worksPanel(c: Campaign, tid: number, checks: Record<string, (c: 
   }
   for (const t of allStudies()) {
     const teacher = teacherOf(t.id);
-    if (hasStudy(c, 0, t.id) || !teacher || !standsAt(c, tid, teacher)) continue;
+    if (hasStudy(c, 0, t.id) || !teacher || !standsAt(c, tid, teacher) || (t.civ && t.civ !== c.factions[0].civ)) continue; // another people's own study is not offered (ownstudies.ts)
     const bar = studyBar(c, 0, t.id, tid);
     html += `<button data-act="study:${t.id}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(bar || `${t.desc} ${costText(t.cost)}, from this town first.`)}">${t.icon} Study ${esc(TECHS[t.id].name)}</button>`;
   }

@@ -48,6 +48,11 @@ export const SITES: Record<string, SiteDef> = {
   church: { name: 'Church', icon: '⛪', cost: 5, desc: 'Your people grow more pious every turn.' },
   tavern: { name: 'Tavern', icon: '🍺', cost: 4, desc: '+1 supply each turn, more among a worldly people. Your people grow more decadent every turn.' },
   fortress: { name: 'Fortress', icon: '🏰', cost: 9, desc: '+3 defence. In battle the defender starts in the Bronze Age with towers.' },
+  // Food and health (the food-health job: granary.ts and the rest). Costs are first guesses.
+  granary: { name: 'Granary', icon: '🌾', cost: 4, desc: 'Keeps grain dry: food in store spoils later, and a failed harvest takes less of it.' },
+  mill: { name: 'Mill', icon: '⚙️', cost: 5, desc: 'Grinds the harvest: a land with Farmland yields a fifth more food.' },
+  well: { name: 'Well', icon: '🪣', cost: 3, desc: 'Clean water: a crowded town is struck by plague less, and loses fewer to it.' },
+  infirmary: { name: 'Infirmary', icon: '⚕️', cost: 5, desc: 'Tends the sick and the grieving: plague takes fewer, and grief passes sooner.' },
 };
 
 /**
@@ -116,6 +121,8 @@ export function companyCost(t: Territory, type: string, civ = '', hire = 0): num
 
 /** The building that stands on the battlefield for each building of the campaign map. */
 export const SITE_BUILDING: Record<string, string> = { farm: 'farm', barracks: 'barracks', range: 'range', stable: 'stable', harbour: 'dock', fortress: 'tower' };
+// Food and health (the food-health job): its buildings stand in the town as themselves.
+Object.assign(SITE_BUILDING, { granary: 'granary', mill: 'mill', well: 'well', infirmary: 'infirmary' });
 
 /** The corner of its battlefield a land's holder defends from. The attacker makes camp in the one opposite. */
 export const homeCorner = (t: Territory): number => t.town?.at ?? 2;
