@@ -12,6 +12,7 @@
 // their jobs to a fire that is short of hands, and they go back to what they were doing when it is out.
 //
 // Decided without the game's dice, like the spreading of fire, so nothing else in a match is disturbed.
+import { CALAMITY } from './data';
 import type { Building, Game, Unit } from './game';
 import { famine } from './famine';
 import { contagion } from './contagion';
@@ -175,5 +176,25 @@ export function calamity(g: Game): void {
       g.cmdTarget(b.owner, [u.id], b.id);
       room--;
     }
+  }
+}
+
+/**
+ * Once a second a burning building may set a neighbour alight, whoever owns it. Never in rain, never a wall, and
+ * a building that has caught once does not catch again for a while, so a town burns through and the fire dies.
+ * (Decided without the game's dice, so that the rest of a match is not disturbed by it.)
+ */
+export function spreadFire(g: Game, b: Building): void {
+  if (g.foul === 'rain') return;
+  const h = b.size / 2;
+  for (const n of g.buildings) {
+    if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && g.time - n.litAt < CALAMITY.scorched)) continue;
+    const k = n.size / 2;
+    if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
+    const w = wrath(g, n.owner); // it catches less readily among the holy, and burns a shorter time (wrath.ts)
+    if (roll(g, b.id * 8191 + n.id) >= CALAMITY.spread * w) continue;
+    n.burnT = CALAMITY.caught * w;
+    n.litAt = g.time;
+    if (!g.players[n.owner].neutral) g.msg(n.owner, `Fire has spread to your ${n.def.name}!`);
   }
 }

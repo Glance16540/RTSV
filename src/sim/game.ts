@@ -23,9 +23,8 @@ import { bearCaptive, campChild, campLabour, comeHome, tendCaptives } from './ca
 import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, bandReturns, marauderEdge, nearAshes, tendBand } from './marauders';
 import { armMen } from './tribes';
-import { calamity, douse, roll } from './calamity';
+import { calamity, douse, spreadFire } from './calamity';
 import { boughtIn } from './contagion';
-import { wrath } from './wrath';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
@@ -3186,33 +3185,13 @@ export class Game {
     return u;
   }
 
-  /**
-   * Once a second a burning building may set a neighbour alight, whoever owns it. Never in rain, never a wall, and
-   * a building that has caught once does not catch again for a while, so a town burns through and the fire dies.
-   * (Decided without the game's dice, so that the rest of a match is not disturbed by it.)
-   */
-  private spreadFire(b: Building): void {
-    if (this.foul === 'rain') return;
-    const h = b.size / 2;
-    for (const n of this.buildings) {
-      if (n === b || n.dead || n.burnT > 0 || n.def.wall || (n.litAt !== undefined && this.time - n.litAt < CALAMITY.scorched)) continue;
-      const k = n.size / 2;
-      if (Math.max(Math.abs(n.x - b.x) - h - k, Math.abs(n.y - b.y) - h - k) > CALAMITY.reach) continue;
-      const w = wrath(this, n.owner); // it catches less readily among the holy, and burns a shorter time (wrath.ts)
-      if (roll(this, b.id * 8191 + n.id) >= CALAMITY.spread * w) continue;
-      n.burnT = CALAMITY.caught * w;
-      n.litAt = this.time;
-      if (!this.players[n.owner].neutral) this.msg(n.owner, `Fire has spread to your ${n.def.name}!`);
-    }
-  }
-
   private updateBuilding(b: Building): void {
     if (b.young?.length) this.tendYoung(b.owner, b.young, DT, b);
     if (b.burnT > 0) {
       b.burnT -= this.foul === 'rain' ? DT * 2.5 : DT; // rain puts fires out
       b.hp -= 5 * DT;
       if (b.hp <= 0) { this.kill(b); return; }
-      if ((this.tick + b.id) % 20 === 0) this.spreadFire(b);
+      if ((this.tick + b.id) % 20 === 0) spreadFire(this, b); // it may catch a neighbour (calamity.ts)
     }
     if (b.blightT) b.blightT = Math.max(0, b.blightT - DT);
     if (!b.complete) return;

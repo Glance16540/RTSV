@@ -8,7 +8,7 @@
 // files are the same, the battles were fought the same.
 //
 //   FINGERPRINT=1 OUT=before.txt npx vitest run scripts/fingerprint.test.ts
-//   (SKIRMISHES=6 SIEGES=6 MINUTES=8: how many of each, and how long each is fought)
+//   (SKIRMISHES=6 SIEGES=6 DRILLS=6 MINUTES=8: how many of each, and how long each is fought)
 //
 // Skipped unless FINGERPRINT is set. It measures nothing and judges nothing: it only tells two runs apart.
 import { it } from 'vitest';
@@ -81,7 +81,7 @@ it.skipIf(!process.env.FINGERPRINT)('the fingerprint of a fixed set of battles',
     const ais = g.players.map((_, i) => { const a = new AIController(g, i); a.setLevel(1); return a; });
     const home = (i: number) => g.units.find((u) => u.owner === i)!; // beside one of their own people, wherever a people begins
     const leaders = [0, 1].map((i) => g.spawnUnit(g.trainedAs(i, leaderType(g.heroOf(i))), i, home(i).x + 2, home(i).y + 2));
-    let calls = 0, learnt = 0;
+    let calls = 0, learnt = 0, fires = 0;
     const label = `drill ${seed} (${setups.map((s) => s.civ).join(' v ')})`;
     for (let s = 0; s < Math.min(MINUTES, 10) * 60 && g.winner < 0; s++) {
       for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; }
@@ -93,10 +93,12 @@ it.skipIf(!process.env.FINGERPRINT)('the fingerprint of a fixed set of battles',
         if (s % 4 === i) { const foe = g.spawnUnit('villager', 1 - i, l.x + 1, l.y, 'm'); foe.hp = 1; g.cmdTarget(i, [l.id], foe.id); }
         if (g.powerDue(i) >= 0 && g.cmdLearn(i, (seed + i) % 2)) learnt++;
         if (s % 30 === 15 && g.cmdCall(i)) calls++; // a computer's leader raises its own when it can, so this seldom finds one to raise
+        // A fire in each town a minute in and again at four, so that buildings burn, fire spreads and people turn out to it.
+        if (s === 60 || s === 240) { const b = g.buildings.find((x) => x.owner === i && !x.dead && x.complete && !x.def.wall); if (b) { b.burnT = 30; fires++; } }
       }
       if ((s + 1) % 120 === 0) out.push(`${label} at ${(s + 1) / 60}m: ${hash(g.serialize())}`);
     }
-    out.push(`${label} end: tick ${g.tick} leaders ${leaders.map((l) => (l.dead ? 'fell' : `rank ${l.hero?.rank}`)).join(', ')} calls ${calls} powers learnt ${learnt} ${hash(g.serialize())}`);
+    out.push(`${label} end: tick ${g.tick} leaders ${leaders.map((l) => (l.dead ? 'fell' : `rank ${l.hero?.rank}`)).join(', ')} calls ${calls} powers learnt ${learnt} fires set ${fires}, buildings standing ${g.buildings.filter((b) => !b.dead).length} ${hash(g.serialize())}`);
     // Then each leader falls, and the soldier of theirs with the most to their name is raised on the shields in
     // their place (a soldier is given the kills for it if none has them), and the battle goes on a minute.
     const raised: string[] = [];
