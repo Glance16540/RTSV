@@ -1,10 +1,11 @@
 // Three.js scene: terrain, fog of war, entity meshes and the RTS camera.
 
 import * as THREE from 'three';
+import { standInBuilding } from './standins'; // a new building's stand-in look until it has a model (standins.ts)
 import { BUILDINGS } from '../sim/data';
 import { Building, Entity, Game, GameEvent, ResourceNode, Unit } from '../sim/game';
 import { buildScenery, Scenery } from './scenery';
-import { Job, lookOf, makeBuilding, makeResource, makeShot, makeUnit, ofPeople, mat, RES_COLOR } from './models';
+import { Job, lookOf, makeResource, makeShot, makeUnit, ofPeople, mat, RES_COLOR } from './models';
 import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
@@ -518,7 +519,7 @@ export class Renderer {
       if (this.ghost) this.scene.remove(this.ghost);
       const s = BUILDINGS[type].size;
       this.ghost = new THREE.Group();
-      const model = makeBuilding(type, 0xffffff, this.game.players[this.game.humanId].age, this.game.players[this.game.humanId].civ);
+      const model = standInBuilding(type, 0xffffff, this.game.players[this.game.humanId].age, this.game.players[this.game.humanId].civ);
       const gm = new THREE.MeshBasicMaterial({ color: ok ? 0x7dff8a : 0xff5a4a, transparent: true, opacity: 0.55, depthWrite: false });
       model.traverse((o) => { if (o instanceof THREE.Mesh) { o.material = gm; o.castShadow = false; } });
       const pad = new THREE.Mesh(new THREE.PlaneGeometry(s, s), new THREE.MeshBasicMaterial({ color: ok ? 0x3dff5a : 0xff3020, transparent: true, opacity: 0.3, depthWrite: false }));
@@ -1302,7 +1303,7 @@ export class Renderer {
     if (g && (g.userData.lean !== lean || hurt < ((g.userData.hurt as number) ?? 0))) { if (g.userData.site) this.scene.remove(g.userData.site as THREE.Object3D); this.scene.remove(g); g = undefined; }
     if (!g) {
       this.scenery.clearAt(b.x, b.y, b.size / 2 + 0.2);
-      g = makeBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ, lean, (b.id * 7 + 3) % 97); // the same plot always gets the same house
+      g = standInBuilding(b.type, this.game.players[b.owner].color, this.game.players[b.owner].age, this.game.players[b.owner].civ, lean, (b.id * 7 + 3) % 97); // the same plot always gets the same house
       g.userData.lean = lean;
       // A building sits on the lowest corner of its plot, so no wall hangs in the air.
       const k = b.size / 2 - 0.1, hh = this.scenery.heightAt.bind(this.scenery);

@@ -43,6 +43,7 @@ import { sensibleDecrees } from '../src/sim/decrees';
 import { THREATS } from '../src/sim/threats';
 import { VISIT_SECONDS, beginVisit, finishVisit, visitArms, visitConfig } from '../src/sim/visit';
 import { driftedIn } from '../src/sim/driftintown';
+import { learnedIn } from '../src/sim/studies';
 
 const CAMPAIGNS = +(process.env.CAMPAIGNS ?? 24);
 const SEASONS = +(process.env.SEASONS ?? 200);
@@ -112,7 +113,7 @@ function visit(c: Campaign, tid: number): void {
   g.fixedAge = true; g.bornOnly = true;
   const ai = new AIController(g, 0); ai.setLevel(1);
   for (let s = 0; s < VISIT_SECONDS && !g.players[0].defeated; s++) { for (let i = 0; i < 20; i++) g.step(); g.events.length = 0; ai.update(); }
-  finishVisit(c, { town: g.standing(0), ground: g.ground(), virtue: g.players[0].virtue, seconds: g.time, orders: g.orders(0), folk: g.census(0), drifted: driftedIn(g, 0), arms: visitArms(g.units, 0) }); // as the client does: its last orders (governor.ts) and who has drifted (driftintown.ts)
+  finishVisit(c, { town: g.standing(0), ground: g.ground(), virtue: g.players[0].virtue, seconds: g.time, orders: g.orders(0), folk: g.census(0), drifted: driftedIn(g, 0), arms: visitArms(g.units, 0), studies: learnedIn(g.players[0].techs) }); // as the client does: its last orders (governor.ts) and who has drifted (driftintown.ts)
 }
 
 const civOf = (seed: number): string => CIVS[seed % CIVS.length];

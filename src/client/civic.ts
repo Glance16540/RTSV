@@ -6,7 +6,7 @@
 // themselves to shapedBuilding's makers when this module is loaded (models.ts imports it); shapedBuilding fits each
 // to its plot.
 import * as THREE from 'three';
-import { Look, PLANK, TIMBER, banner, barrel, bx, chimney, cloth, crate, fence, framed, framing, gable, leanTo, mesh, pane, pitched, posts, registerMakers, roofMat, sack, toon, top, wallMat, walls, wobble } from './shapes';
+import { Look, PLANK, TIMBER, banner, faithOf, sign, barrel, bx, chimney, cloth, crate, fence, framed, framing, gable, leanTo, mesh, pane, pitched, posts, registerMakers, roofMat, sack, toon, top, wallMat, walls, wobble } from './shapes';
 
 const STONE = 0xc8c2b4, GOLD = 0xe8c860, IRON = 0x2c2c30;
 const stone = (o: Look, pale = false): THREE.Material => toon(pale ? 0xe4dfd2 : o.age >= 2 ? STONE : 0xb0a68c, 'stone');
@@ -23,20 +23,6 @@ function drum(p: THREE.Object3D, r0: number, r1: number, h: number, m: THREE.Mat
 function merlons(p: THREE.Object3D, m: THREE.Material, x0: number, z0: number, x1: number, z1: number, y: number, step = 0.32): void {
   const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.floor(len / step)), ang = Math.atan2(x1 - x0, z1 - z0);
   for (let i = 0; i <= n; i += 2) bx(p, 0.16, 0.18, 0.16, m, x0 + ((x1 - x0) * i) / n, y + 0.09, z0 + ((z1 - z0) * i) / n).rotation.y = ang;
-}
-
-/** What a people sets on a house of its faith: a cross, a crescent, an ankh, a star, a flame, a spire of rings; nothing where its faith keeps no such sign. */
-type Faith = 'cross' | 'crescent' | 'ankh' | 'star' | 'flame' | 'rings' | '';
-const FAITH_SIGN: Record<string, Faith> = { hearth: 'cross', england: 'cross', stonekin: 'cross', greece: 'cross', arabs: 'crescent', mali: 'crescent', egypt: 'ankh', kush: 'ankh', babylon: 'star', dawn: 'star', persia: 'flame', japan: 'rings', forge: 'rings' };
-export const faithOf = (civ: string | undefined): Faith => FAITH_SIGN[civ ?? ''] ?? '';
-/** The sign of a people's faith standing on a roof or a spire at (x, y, z), `k` its size. */
-function sign(p: THREE.Object3D, faith: Faith, m: THREE.Material, x: number, y: number, z: number, k = 1): void {
-  if (faith === 'cross') { bx(p, 0.05 * k, 0.42 * k, 0.05 * k, m, x, y + 0.21 * k, z); bx(p, 0.24 * k, 0.05 * k, 0.05 * k, m, x, y + 0.28 * k, z); }
-  else if (faith === 'crescent') { bx(p, 0.03 * k, 0.16 * k, 0.03 * k, m, x, y + 0.08 * k, z); mesh(p, new THREE.TorusGeometry(0.11 * k, 0.025 * k, 6, 14, Math.PI * 1.3), m, x, y + 0.27 * k, z).rotation.z = -Math.PI * 0.15 + Math.PI / 2; }
-  else if (faith === 'ankh') { bx(p, 0.05 * k, 0.26 * k, 0.05 * k, m, x, y + 0.13 * k, z); bx(p, 0.22 * k, 0.05 * k, 0.05 * k, m, x, y + 0.27 * k, z); mesh(p, new THREE.TorusGeometry(0.07 * k, 0.022 * k, 6, 12), m, x, y + 0.38 * k, z).scale.y = 1.3; }
-  else if (faith === 'star') { bx(p, 0.03 * k, 0.16 * k, 0.03 * k, m, x, y + 0.08 * k, z); for (let i = 0; i < 4; i++) bx(p, 0.3 * k, 0.05 * k, 0.03 * k, m, x, y + 0.3 * k, z).rotation.z = (i * Math.PI) / 4; }
-  else if (faith === 'flame') { mesh(p, new THREE.CylinderGeometry(0.1 * k, 0.07 * k, 0.1 * k, 10), m, x, y + 0.05 * k, z); mesh(p, new THREE.ConeGeometry(0.07 * k, 0.24 * k, 8), toon(0xff9030, '', 0xcc5010), x, y + 0.22 * k, z).castShadow = false; }
-  else if (faith === 'rings') { mesh(p, new THREE.CylinderGeometry(0.02 * k, 0.02 * k, 0.5 * k, 6), m, x, y + 0.25 * k, z); for (let i = 0; i < 5; i++) mesh(p, new THREE.CylinderGeometry((0.09 - i * 0.012) * k, (0.09 - i * 0.012) * k, 0.025 * k, 10), m, x, y + (0.1 + i * 0.07) * k, z); mesh(p, new THREE.SphereGeometry(0.05 * k, 8, 6), m, x, y + 0.52 * k, z); }
 }
 
 // ---- Food ----
