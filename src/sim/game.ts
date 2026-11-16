@@ -12,27 +12,26 @@ import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNO
 import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
 import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
-import { rescue } from './rescue';
 import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
 import { agesHere, birthPace, growPace, hireBar } from './birthonly';
 import { griefPace, griefSecond, mourn } from './grief';
 import { driftSecond } from './driftintown';
 import { censusOf, cradledOf, peopled } from './battlefolk';
 import { tavernTrade } from './tavernfall';
-import { adopt, bearCaptive, campChild, campLabour, campWithRoom, canSeize, comeHome, freeCaptive, hearthOf, spared, takes, tendCaptives } from './captivity';
+import { adopt, breakOut, campWithRoom, canSeize, freeCaptive, hearthOf, spared, takes, unwatched, updateCamps } from './captivity';
 import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { boughtIn } from './contagion';
-import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, CAMP_BIRTH, TAVERN_BIRTH, GUARD_DRIVE, GUARD_WATCH, ESCAPE_TIME, REVOLT_MEN, REVOLT_TIME, CAPTIVE_CAP, CAPTIVE_VIRTUE, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
+import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
 import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
-import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
+import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
@@ -85,11 +84,7 @@ export interface Captive { from: number; name: string; family: string; gender: G
   /** Children borne in captivity: the count, and the records of them (captivity.ts). */ born?: number; young?: Child[];
   /** When they were seized: the clock on getting them back runs from here. Told once that it is running out. */ taken?: number; warned?: boolean; /** Held by marauders, not in a people's work camp. */ held?: boolean;
   /** The people they were born to, if not their home's (portrait.ts). */ people?: string }
-/** When the marauders make camp, how often each woman they hold bears them a child, how often they raid, and how many they can grow to. */
-export const LAIR_AT = 240;
-export const LAIR_BIRTH = 120;
-export const LAIR_RAID = 150;
-export const LAIR_MAX = 28;
+export { LAIR_AT, LAIR_BIRTH, LAIR_MAX, LAIR_RAID } from './data'; // the marauders' camp's numbers, where they were found before they were moved
 
 export interface Unit extends Base {
   kind: 'unit';
@@ -412,7 +407,7 @@ export class Game {
   private strategists: Unit[] = [];
   /** Each player's leader, while they are alive and in the open. */
   leaders: (Unit | null)[] = [];
-  private tcs: Building[][] = [];
+  tcs: Building[][] = [];
 
   /**
    * @param field A field battle: no towns or villagers, just each side's army. A side is beaten
@@ -1549,66 +1544,10 @@ export class Game {
     return null;
   }
 
-  /** How many of a camp's captives its guards cannot keep an eye on. */
-  unwatched(b: Building): number { return Math.max(0, (b.captives?.length ?? 0) - GUARD_WATCH * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)); }
+  /** How many of a camp's captives its guards cannot keep an eye on (captivity.ts, as the next is). */
+  unwatched(b: Building): number { return unwatched(b); }
   /** One captive gets out of a camp and makes for home on foot: they can be run down again on the way. */
-  breakOut(b: Building, i: number): void {
-    const c = b.captives!.splice(i, 1)[0], home = this.players[c.from];
-    if (!home || home.defeated) return;
-    const at = this.landPf.nearestFree(b.x, b.y + b.size / 2 + 0.8);
-    const v = this.spawnUnit('villager', c.from, at.x, at.y, c.gender);
-    v.name = c.name; v.family = c.family; v.trait = c.trait; v.trait2 = c.trait2; v.age = c.age; v.lifespan = c.lifespan;
-    v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: this.time, s: 'Got out of the camp' }];
-    if (c.people) v.people = c.people;
-    comeHome(this, c, v);
-    const tc = this.tcs[c.from]?.[0];
-    if (tc) this.cmdMove(c.from, [v.id], tc.x, tc.y + tc.size / 2 + 1);
-    this.msg(c.from, `${c.name} has got out of the camp and is running for home.`);
-  }
-  /**
-   * What holding people costs. By night, a captive no guard is watching may slip away; and a camp with enough men
-   * unwatched may rise: they fire the place and half of all it holds break out at once. Each guard posted watches
-   * three. (Decided without the game's dice, so the rest of the match is not disturbed by it.)
-   */
-  private campNight(p: Player, b: Building): void {
-    const loose = this.unwatched(b);
-    if (!loose) return;
-    const roll = (salt: number): number => (((this.seed * 31 + b.id * 2654435761 + Math.floor(this.time) * 40503 + salt * 7919) >>> 0) % 100000) / 100000;
-    const menLoose = Math.min(loose, b.captives!.filter((c) => c.gender === 'm').length);
-    if (menLoose >= REVOLT_MEN && roll(1) < 1 / REVOLT_TIME) {
-      const out = Math.ceil(b.captives!.length / 2);
-      for (let k = 0; k < out; k++) this.breakOut(b, b.captives!.length - 1);
-      b.burnT = Math.max(b.burnT, 10);
-      b.hp = Math.max(1, b.hp - b.maxHp * 0.25);
-      this.msg(p.id, `⛓️ The work camp has risen in the night! ${out} captives have broken out and the stockade is burning. Post more guards.`);
-      this.events.push({ t: 'alert', player: p.id, x: b.x, y: b.y });
-      return;
-    }
-    if (roll(2) < 1 / ESCAPE_TIME) { // one at a time, about one a night: a trickle, where a rising is a flood
-      this.breakOut(b, b.captives!.length - 1); // the last brought in is the least watched
-      this.msg(p.id, '⛓️ A captive has slipped away from the work camp in the night. A guard would have seen it.');
-    }
-  }
-
-  private updateCamps(p: Player): void {
-    p.captives = 0;
-    p.captiveMen = 0;
-    for (const b of this.buildings) {
-      if (b.owner !== p.id || !b.captives?.length) continue;
-      if (tendCaptives(this, b) && !b.captives.length) continue;
-      // The men are put to work; the women held there bear children, who are theirs and are kept on their records.
-      const men = b.captives.filter((c) => c.gender === 'm').length, women = b.captives.length - men;
-      p.captives += b.captives.length;
-      // Men under a guard's eye are driven harder.
-      p.captiveMen += men * (1 + GUARD_DRIVE * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)) + campLabour(b);
-      // Under a decadent leader's eye the camps are made to fill the town far faster.
-      b.campT = (b.campT ?? 0) + (women / CAMP_BIRTH) * (this.leaders[p.id] && !this.leaders[p.id]!.dead && isDecadent(p.virtue) ? TYRANT_BIRTH : 1);
-      if (b.campT >= 1) { b.campT = 0; campChild(this, b); }
-      if (rescue(this, b) && !b.captives.length) continue;
-      if (this.night) this.campNight(p, b);
-    }
-    if (p.captives) this.shiftVirtue(p.id, (-Math.min(CAPTIVE_CAP, p.captives) * CAPTIVE_VIRTUE) / 60);
-  }
+  breakOut(b: Building, i: number): void { breakOut(this, b, i); }
 
   /** What a tavern asks, in gold, for a hired sword of this kind (as this player would field it). */
   hireCost(owner: number, type: string): number {
@@ -1724,7 +1663,7 @@ export class Game {
     return creedOf(this.players[owner]?.virtue ?? 0);
   }
 
-  private shiftVirtue(owner: number, by: number): void {
+  shiftVirtue(owner: number, by: number): void {
     const p = this.players[owner];
     const was = this.creed(owner);
     p.virtue = Math.max(-100, Math.min(100, p.virtue + by));
@@ -1806,7 +1745,7 @@ export class Game {
         this.tavernBirth(p, b);
       }
       this.payMercenaries(p);
-      this.updateCamps(p);
+      updateCamps(this, p); // what holding people brings and costs (captivity.ts)
       this.styleUpkeep(p);
       const clergy = Math.min(STAFF_CAP, p.clergy), maids = Math.min(STAFF_CAP, p.maids);
       const pull = (clergy * CLERGY_VIRTUE - maids * MAID_VIRTUE) / 60;
