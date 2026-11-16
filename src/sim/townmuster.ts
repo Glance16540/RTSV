@@ -9,7 +9,8 @@
  * or when another people's army stands in the town. Rivals' towns raise by their own rule (rivalrule.ts).
  */
 import type { Army, Campaign, Territory } from './campaign';
-import { COMPANIES, MAX_ARMY, armyAt, armySize, companyCost, hireOff } from './campaign';
+import { hireOff } from './places';
+import { COMPANIES, MAX_ARMY, armyAt, armySize, companyCost } from './campaignbase';
 import { BUILDINGS } from './data';
 import { MEN, MEN_A_COMPANY, menMustered } from './armytown';
 import { GOVERN, wantsOf } from './governor';

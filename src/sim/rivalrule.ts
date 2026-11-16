@@ -13,7 +13,9 @@
  * and its decrees are decrees.ts's `sensibleDecrees`.)
  */
 import type { Army, Campaign, Territory } from './campaign';
-import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atTruce, canRaise, companyCost, defence, hireOff, moveArmy, reach } from './campaign';
+import { hireOff } from './places';
+import { HUB, reach } from './campaignbase';
+import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atTruce, companyCost } from './campaignbase';
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
@@ -235,7 +237,7 @@ export function massArmies(c: Campaign, f: number): number {
   if (warFooting(c, f) === 'peace') return 0;
   const mine = c.armies.filter((a) => a.owner === f && c.territories[a.at].owner === f);
   if (mine.length < 2) return 0;
-  const can = (a: Army): boolean => reach(c, a.at).some((id) => c.territories[id].owner !== f && !atTruce(c, f, c.territories[id].owner) && armyStrength(a, c) >= defence(c, id, a.units, c.factions[f].civ));
+  const can = (a: Army): boolean => reach(c, a.at).some((id) => c.territories[id].owner !== f && !atTruce(c, f, c.territories[id].owner) && armyStrength(a, c) >= HUB.defence(c, id, a.units, c.factions[f].civ));
   if (mine.some(can)) return 0;
   const strong = [...mine].sort((p, q) => armyStrength(q, c) - armyStrength(p, c) || p.id - q.id)[0];
   let marched = 0;
@@ -256,7 +258,7 @@ export function massArmies(c: Campaign, f: number): number {
     if (!found) continue;
     let step = strong.at;
     while (prev.get(step) !== a.at) step = prev.get(step)!;
-    if (moveArmy(c, a.id, step) === 'moved') { marched++; const still = c.armies.find((x) => x.id === a.id); if (still) still.moved = true; }
+    if (HUB.moveArmy(c, a.id, step) === 'moved') { marched++; const still = c.armies.find((x) => x.id === a.id); if (still) still.moved = true; }
   }
   return marched;
 }
@@ -295,7 +297,7 @@ export function rivalMoves(c: Campaign, f: number): number {
     if (armyAt(c, t.id) || !threatened(c, t.id)) continue;
     const near = c.armies.filter((a) => a.owner === f && !a.moved && !held.has(a.id) && !a.hero && c.territories[a.at].owner === f && c.territories[a.at].adj.includes(t.id) && !threatened(c, a.at))
       .sort((p, q) => Object.values(p.units).reduce((n, v) => n + v, 0) - Object.values(q.units).reduce((n, v) => n + v, 0) || p.id - q.id)[0];
-    if (near && moveArmy(c, near.id, t.id) === 'moved') { near.moved = true; moved++; }
+    if (near && HUB.moveArmy(c, near.id, t.id) === 'moved') { near.moved = true; moved++; }
   }
   return moved;
 }
@@ -314,7 +316,7 @@ export function poorMuster(c: Campaign, f: number): number {
   if (!rival(c, f) || warFooting(c, f) === 'peace') return -1;
   const own = towns(c, f);
   const kinds = Object.keys(COMPANIES);
-  if (own.some((t) => kinds.some((k) => canRaise(c, f, t.id, k)))) return -1; // it can pay in the ordinary way
+  if (own.some((t) => kinds.some((k) => HUB.canRaise(c, f, t.id, k)))) return -1; // it can pay in the ordinary way
   if (!own.some((t) => sparedMen(c, t.id) > 0)) return -1; // nobody to send
   const stock = (t: Territory): number => STORE_KINDS.reduce((n, k) => n + Math.max(0, folkOf(c, t.id).stores[k]), 0);
   const free = (t: Territory): boolean => { const a = armyAt(c, t.id); return !a || (a.owner === f && armySize(a) < MAX_ARMY); };

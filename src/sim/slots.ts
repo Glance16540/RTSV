@@ -6,7 +6,7 @@
 //
 // Plain data: this works on anything shaped like the browser's storage, so it is tested headless.
 import type { Campaign } from './campaign';
-import { CAMPAIGN_VERSION } from './campaign';
+import { CAMPAIGN_VERSION } from './campaignbase';
 import { peopleName, houseName } from './naming';
 
 /** What a slot is kept in: the browser's localStorage, or anything that behaves like it. */
