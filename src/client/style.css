@@ -770,6 +770,11 @@ body.looking-out #visit { display: none; }
 .roll .roll-held, .roll .roll-lost { margin: 3px 0; }
 .roll .roll-bad { display: inline; color: var(--rubric); }
 .roll .likeness { display: inline-block; flex: none; }
+.roll.more { -webkit-mask-image: linear-gradient(#000 calc(100% - 48px), transparent); mask-image: linear-gradient(#000 calc(100% - 48px), transparent); }
+.roll-more { display: block; text-align: center; font: 13px var(--caps); letter-spacing: 0.05em; color: var(--sepia); margin-top: 2px; }
+/* With "Your people" beside them the map's foot holds five buttons: they wrap rather than run off the side. */
+.ow-foot { flex-wrap: wrap; }
+.ow-foot button { flex: 1 1 30%; }
 .roll .roll-spouse { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
 
 /* The map's side panel (src/client/landpanel.ts): the nation's bar, the land in sections, the lie of the land folded, the actions in groups. */
