@@ -1,6 +1,7 @@
 // The phases of a battle on the map, and who is registered for them (src/sim/battlehooks.ts).
 import { describe, expect, it } from 'vitest';
 import { BATTLE_PHASES, BattleHooks } from '../src/sim/battlehooks';
+import { BATTLE_HOOKS } from '../src/sim/campaign';
 import type { Campaign, Pending } from '../src/sim/campaign';
 
 describe('battle hooks', () => {
@@ -30,5 +31,22 @@ describe('battle hooks', () => {
   it('the phases are named once', () => {
     expect(new Set(BATTLE_PHASES).size).toBe(BATTLE_PHASES.length);
     expect(BATTLE_PHASES).toContain('settling');
+  });
+
+  it('the campaign\'s table: who acts at each moment of a battle, in this order and no other', () => {
+    // The order is the game's behaviour: stores and faith are written down before a town changes hands, a town is
+    // resented before those held in it go free, the dead are reckoned between the stores and the faith. Change
+    // this list only with the health report to show that nothing moved, or that what moved was meant.
+    expect(BATTLE_HOOKS.order()).toEqual([
+      'settling: townfaith', 'settling: stores',
+      'counted: warhouse',
+      'taken: conquered', 'taken: carriedoff',
+      'repulsed: tribes',
+      'settled: stores', 'settled: armytown', 'settled: townfaith',
+      'setup: stores',
+      'written: tribes',
+      'housed: driftintown', 'housed: governor', 'housed: stores',
+    ]);
+    for (const phase of BATTLE_PHASES) expect(BATTLE_HOOKS.order(phase).length).toBeGreaterThan(0); // no phase is run for nobody
   });
 });

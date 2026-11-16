@@ -18,7 +18,7 @@
  *   written    a battle fought in person has been settled and its field is being read back (finishBattle)
  *   housed     the town's people and stores are as that battle left them
  */
-import type { Army, Campaign, Pending } from './campaign';
+import type { Army, BattleAfter, Campaign, Pending } from './campaign';
 
 export type BattlePhase = 'setup' | 'settling' | 'counted' | 'taken' | 'repulsed' | 'settled' | 'written' | 'housed';
 export const BATTLE_PHASES: BattlePhase[] = ['setup', 'settling', 'counted', 'taken', 'repulsed', 'settled', 'written', 'housed'];
@@ -32,7 +32,7 @@ export interface BattleNote {
   /** The attacking army, and the army that stood in the land, as they were when the battle was settled. */
   army?: Army; defArmy?: Army;
   /** A battle fought in person: what the game handed back, as campaign.ts's BattleAfter has it, and whether the player's side won. */
-  after?: Record<string, unknown>; playerWon?: boolean;
+  after?: BattleAfter; playerWon?: boolean;
   /** The town's people were read back from the field (not a field battle, not a camp). */
   census?: boolean;
 }
