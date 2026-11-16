@@ -11,7 +11,7 @@
 // The last part is for whoever plays a town: `partyNear` and `womenAtRisk` say when a party is coming and who
 // it could take, `hideWomen` sends those women indoors, and `scoutSpots` lists where the camp could be.
 import type { Building, Game, Unit } from './game';
-import { LAIR_AT, LAIR_BIRTH, LAIR_MAX, LAIR_RAID } from './game'; // the camp's own numbers, kept where others read them
+import { LAIR_AT, LAIR_BIRTH, LAIR_MAX, LAIR_RAID } from './data';
 import { bearCaptive, tendCaptives } from './captivity';
 
 /** More health for a marauder, and for the camp's stockade, per age of the most advanced people. */

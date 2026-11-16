@@ -19,9 +19,13 @@ apart from this repository. This page is how the two stay apart and still meet.
   in pieces as their systems arrive, rather than whole.
 - **The table below is kept true by a script.** `npm run check` runs `scripts/porting-check.mjs`, which fails if a
   module in `src/sim` has no row or two, if a row names a module or a test file that is not there, if a module
-  imports from `src/client` or three.js or reaches for the DOM, or if a row's dependencies are not what the module
-  imports. `npm run porting` writes the line counts and dependencies as they are (and `npm run sync` does so after
+  imports from `src/client` or three.js or reaches for the DOM, if a row's dependencies are not what the module
+  imports, or if a module joins an import cycle. `npm run porting` writes the line counts and dependencies as they are (and `npm run sync` does so after
   a merge); the words, the tests named and the Unity column are written by hand.
+- **Import cycles.** A module that calls another which calls it back cannot be ported alone. Imports of types alone
+  do not count. Two knots exist today and are listed in the script, where they may shrink but not grow: 34 of the
+  map's systems round `campaign.ts` (each calls it for what it keeps, and it calls each every season), and
+  `armytown` with `warhouse`. `game.ts` is in none. Port a knot together, or untie it first.
 - **When a system here changes after it was ported,** its row says `changed since port`, with the commit,
   so the Unity side can follow.
 
@@ -51,13 +55,13 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `carriedoff` | 125 | A worldly or decadent rival nation that takes a town leads a share of its grown people away to a land of its own (the bands' `Held` record). Got back if that land is taken within four seasons; after that they are on the holding town's record as the taker's people. Children born meanwhile are the taker's. `townFell` where a town changes hands, `carriedSeason` once a season. | ageing, bandborn, campaign, creed, threats, township | carriedoff.test.ts | not yet |
 | `champion` | 30 | Soldiers who make a name. Every soldier's kills are counted; one who has felled enough is known by name, and when | data, hero | champion.test.ts | not yet |
 | `conquered` | 119 | A town taken (docs/DESIGN.md): resentment as a state on the town, easing under good rule, with a chance each season that it rises. | ageing, campaign, court, township | conquered.test.ts | not yet |
-| `contagion` | 96 | Plague that comes from outside a town. | calamity, game | contagion.test.ts | not yet |
+| `contagion` | 96 | Plague that comes from outside a town. | game (types only), wrath | contagion.test.ts | not yet |
 | `convoys` | 226 | Convoys by road between a people's own towns, or over a sea lane from a Harbour: food, goods or people, a season on the way, robbed by highwaymen on the road and pirates at sea (docs/DESIGN.md, "Stores"). | ageing, campaign, larder, township | convoys.test.ts | not yet |
 | `country` | 82 | Country that matters on the campaign map, and the works that open a closed border. | campaign, prices | country.test.ts | not yet |
 | `court` | 166 | Where the leader is. A leader is one person in one place on the campaign map: a land of their people's, in its | campaign | court.test.ts | not yet |
 | `courtstory` | 391 | Stories of the leader's own house, run through intrigue's plumbing: a rival ruler who wants the leader dead and the spouse for their own (threat, demand, a knife), a suitor for a grown daughter (ask her, give, decline, insult), and a noble plotting for the throne (whispers, clues, accuse, gifts, judgement, or a rising). Reads the household (kin, with the confidant's warning), the heirs (dynasty) and the nobles. | campaign, court, data, dynasty, intrigue, kin, nobles, prices, township | courtstory.test.ts | not yet |
 | `creed` | 112 | Piety against decadence: one scale per people, moved by how they answer the dilemmas that come | data | towncreed.test.ts, pagan.test.ts, sim.test.ts | not yet |
-| `data` | 1027 | Static game data: ages, units, buildings and technologies. | none | sim.test.ts (tables: none of its own) | not yet |
+| `data` | 1033 | Static game data: ages, units, buildings and technologies. | none | sim.test.ts (tables: none of its own) | not yet |
 | `daylight` | 18 | How the hours run. A day is a set number of seconds, and the last three tenths of it are night; the player | none | daylight.test.ts | not yet |
 | `deadtown` | 106 | A dead town (docs/DESIGN.md): a town with nobody in it stands open to any rival or band of marauders that comes for it. | armytown, campaign, township | deadtown.test.ts | not yet |
 | `decrees` | 162 | Decrees (docs/DESIGN.md, "Decrees"). The leader rules a town by decree: a cost in supplies, some seasons, in person or half as strong by messenger; each bends how the town drifts. | campaign (types only), court, larder, nobles, township | decrees.test.ts | not yet |
@@ -66,7 +70,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `dynasty` | 220 | Who leads a people when their leader falls. Every leader keeps a house: children are born to it as the turns go | ageing, campaign, champion, court, data, hero, kin, leaders, naming, powers | dynasty.test.ts | not yet |
 | `famine` | 185 | Famine: what happens to a town that has run out of food. | data, game, wrath | famine.test.ts | not yet |
 | `folk` | 145 | What the common people say: villagers at every job and warriors of every arm, each in three tempers. A town that | none | sim.test.ts (none of its own) | not yet |
-| `game` | 3190 | Core simulation. No rendering or DOM access in here so it can run headless. | battlefolk, battleleader, beaten, birthonly, calamity, captivity, champion, contagion, creed, data, daylight, driftintown, grief, hero, household, map, marauders, muster, notableweight, nursery, path, rescue, tavernfall, temper, township, tribes | sim.test.ts (the hub: none of its own; each system it calls has its own) | not yet |
+| `game` | 3186 | Core simulation. No rendering or DOM access in here so it can run headless. | battlefolk, battleleader, beaten, birthonly, calamity, captivity, champion, contagion, creed, data, daylight, driftintown, grief, hero, household, map, marauders, muster, notableweight, nursery, path, rescue, tavernfall, temper, township, tribes | sim.test.ts (the hub: none of its own; each system it calls has its own) | not yet |
 | `governor` | 165 | A town left to itself (docs/DESIGN.md): it carries on with its last orders, its people work where they were set (the shares harvest.ts splits a town's yield by), and a governor answers its wants out of its own stores. | campaign, data, larder, seasonfolk, township | governor.test.ts | not yet |
 | `grief` | 72 | Grief (docs/DESIGN.md, "Grief"). A home that loses its mother or its sons works more slowly for a time, most in a town of middling morals; a bereaved town grieves for seasons on the map. | game, notableweight, township | grief.test.ts | not yet |
 | `harvest` | 94 | Income credited to the land that yields it, the only place a town earns: the land's yield as far as the town has hands, split by where its people work and what the land leans to (docs/DESIGN.md, "Stores"). | campaign, governor, nobles, stores, township | harvest.test.ts | not yet |
@@ -80,7 +84,7 @@ apart from this repository. This page is how the two stay apart and still meet.
 | `ledger` | 26 | The season's ledger: born, came of age, died of age or hunger, fell with the army, noted by town as the season's systems do it, for the season's report. | campaign (types only) | seasonreport.test.ts | not yet |
 | `lessons` | 59 | Lessons for the moment they are needed: things a first battle's list of steps cannot teach in order, because | calamity, creed, data, famine, game | lessons.test.ts | not yet |
 | `map` | 310 | Procedural, point-symmetric two-player map generation. | none | sim.test.ts, missions.test.ts (none of its own) | not yet |
-| `marauders` | 218 | The marauders over a long battle: they keep pace with the age, and a burnt camp is not the end of them. | captivity, game | marauders.test.ts | not yet |
+| `marauders` | 218 | The marauders over a long battle: they keep pace with the age, and a burnt camp is not the end of them. | captivity, data, game (types only) | marauders.test.ts | not yet |
 | `muster` | 50 | A soldier costs a person (docs/DESIGN.md, step 1). | data, game | muster.test.ts | not yet |
 | `naming` | 100 | Your own names: the name the player gives their people and their ruling house, made safe and kept, used where the game names them. | campaign (types only), data, leaders | naming.test.ts | not yet |
 | `nobles` | 231 | Nobles (docs/DESIGN.md, "Relationships"): the inner circle, each town's famous captain and matron, and a lord for a town of a size, each with a leaning and a mood; a decree pleases or angers them, and an angry noble's town works slacker, drifts readier and keeps a thinner watch while the leader is away. | campaign (types only), court, data, decrees (types only), kin, township | nobles.test.ts | not yet |

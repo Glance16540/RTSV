@@ -85,11 +85,7 @@ export interface Captive { from: number; name: string; family: string; gender: G
   /** Children borne in captivity: the count, and the records of them (captivity.ts). */ born?: number; young?: Child[];
   /** When they were seized: the clock on getting them back runs from here. Told once that it is running out. */ taken?: number; warned?: boolean; /** Held by marauders, not in a people's work camp. */ held?: boolean;
   /** The people they were born to, if not their home's (portrait.ts). */ people?: string }
-/** When the marauders make camp, how often each woman they hold bears them a child, how often they raid, and how many they can grow to. */
-export const LAIR_AT = 240;
-export const LAIR_BIRTH = 120;
-export const LAIR_RAID = 150;
-export const LAIR_MAX = 28;
+export { LAIR_AT, LAIR_BIRTH, LAIR_MAX, LAIR_RAID } from './data'; // the marauders' camp's numbers, where they were found before they were moved
 
 export interface Unit extends Base {
   kind: 'unit';
