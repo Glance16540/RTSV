@@ -2,6 +2,7 @@
 // The parts are modules of their own: who the bands are and how a town struck defends itself (threats.ts), an
 // army's fight with a band (bandfight.ts), bands moving (bandroam.ts), and the marauders who hold a land
 // (bandhorde.ts). What came of the season is read back as plain data from raidnews.ts.
+import { heraldSeason } from './raidnews';
 import { governInns } from './inn';
 import { carriedSeason } from './carriedoff';
 import { bornSeason } from './bandborn';
@@ -24,6 +25,7 @@ export function threatsOfMen(c: Campaign): Raid[] {
   const raids = [...strikeSeason(c, out), ...hordeSeason(c, out)];
   appearSeason(c, out);
   ambushSeason(c, out); // a band may fall on an army that is weak, or seeing a convoy along the road
+  heraldSeason(c, out); // a people who keep heralds hear of the bands that mean to strike them, a season before (heralds.ts)
   c.log.push(...out);
   return raids;
 }

@@ -765,7 +765,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'watchhouse', name: 'Watch House', icon: '🔔',
     desc: 'The town keeps a watch. On the map a thief is caught sooner and a killer\'s clues are found faster. In the town the watch calls villagers off their work to any fire.',
     cost: { wood: 120, stone: 40 }, time: 30, age: 1, hp: 520, size: 2, pop: 0, sight: 12,
-    trains: [], techs: ['townwatch'], onMap: true,
+    trains: [], techs: ['townwatch', 'heralds'], onMap: true,
   }),
   fortress: B({
     id: 'fortress', name: 'Fortress', icon: '🏰',
@@ -935,6 +935,11 @@ export const TECHS: Record<string, TechDef> = {
     id: 'townwatch', name: 'Town Watch', icon: '🔔', answers: 'crime',
     desc: 'A proper watch in every town with a Watch House: such a town stands a company stronger against a band, and fewer thieves and killers begin among your people. In a town, villagers turn out to any fire.',
     cost: { wood: 150, gold: 100 }, time: 40, age: 1, apply: () => {},
+  }),
+  heralds: T({
+    id: 'heralds', name: 'Heralds', icon: '📯', answers: 'raids',
+    desc: 'Raid news a season sooner: you are told of every band that has a town of yours for its mark before it strikes, and a town so warned stands half a company stronger against it.',
+    cost: { food: 80, gold: 120 }, time: 40, age: 1, apply: () => {},
   }),
   escorts: T({
     id: 'escorts', name: 'Escorts', icon: '🛡️', answers: 'raids',

@@ -5,7 +5,8 @@
 // was broken or beaten off, freed or lost its captives). Each item says where it happened, so that whoever shows
 // it can open that land. Nothing here draws anything.
 import type { Campaign } from './campaign';
-import { BANDS, Raid, reportLine, reportText } from './threats';
+import { BANDS, Raid, note, reportLine, reportText, softest } from './threats';
+import { keepsHeralds, warn } from './heralds';
 
 export interface NewsItem {
   turn: number;
@@ -47,3 +48,22 @@ export function tally(c: Campaign): { raids: number; held: number; raided: numbe
   };
 }
 export const bandIcon = (kind: keyof typeof BANDS): string => BANDS[kind].icon;
+
+/**
+ * The heralds' season (heralds.ts), as the bands' season ends: every band that has for its mark a town of a people
+ * who keep heralds is told of to that people, a season before it can strike, and the town is warned. Returns the
+ * towns warned. (The marauders hold land and overrun their neighbours by another rule: no herald tells of that.)
+ */
+export function heraldSeason(c: Campaign, out: string[] = []): number[] {
+  const told: number[] = [];
+  for (const b of c.bands ?? []) {
+    if (b.kind === 'marauders') continue;
+    const mark = softest(c, b);
+    const t = mark ? c.territories[mark.id] : undefined;
+    if (!t || !keepsHeralds(c, t.owner) || told.includes(t.id)) continue;
+    warn(c, t.id);
+    told.push(t.id);
+    note(c, out, 'warned', b, t.id, `Heralds bring word: ${b.name}, ${BANDS[b.kind].name.toLowerCase()} of strength ${b.strength}, have ${t.name} for their mark. It stands to.`, [t.owner]);
+  }
+  return told;
+}
