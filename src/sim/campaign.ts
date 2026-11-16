@@ -19,6 +19,7 @@ import { larderSeason } from './larder';
 import { orphansSeason } from './orphans';
 import { deputyAt, kinSeasons } from './kin';
 import { noblesSeasons } from './nobles';
+import { widowsSeason } from './widowhood';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
@@ -1363,6 +1364,7 @@ export function continueAI(c: Campaign): void {
       noblesSeasons(c); // who is noble, and how they feel (nobles.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
+      widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
       settleFaith(c);
       seasonDrift(c); // towns drift by what strains them, and rulers give decrees (drift.ts, decrees.ts)
