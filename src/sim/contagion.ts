@@ -14,7 +14,7 @@
 //
 // Decided without the game's dice, like the rest of the calamities.
 import type { Building, Game, Player, Unit } from './game';
-import { roll } from './calamity';
+import { roll } from './wrath';
 
 export const CONTAGION = {
   /** How near a plagued stranger must stand, in tiles, and the chance each second of catching it from them. */
@@ -70,7 +70,7 @@ export function contagion(g: Game): number {
       v.plagueT = Math.max(CONTAGION.least, u.plagueT * CONTAGION.share);
       caught++;
       const from = g.players[u.owner];
-      warn(g, v.owner, `☠️ Plague has come among your people${from && !from.neutral && u.owner !== g.wild ? ` from ${from.name}'s` : ''}: keep the sick away from the town.`);
+      warn(g, v.owner, `☠️ Plague has come among your people${from && !from.neutral && u.owner !== g.wild ? ` from the ${from.name}` : ''}: keep the sick away from the town.`);
     }
   }
   return caught;

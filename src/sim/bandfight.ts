@@ -18,7 +18,7 @@
 // player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
-import { sideName } from './naming';
+import { peoplesArmy, sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
 import { BIOMES, COMPANIES, ageOf, armySize, armyStrength, biomeOf, heroFor, reach, virtueOf, weatherAt } from './campaign';
 import { CIV_IDS, TECHS } from './data';
@@ -60,7 +60,8 @@ export const FIGHT = {
 };
 
 const cap = (name: string): string => name[0].toUpperCase() + name.slice(1);
-const whoseArmy = (c: Campaign, a: Army): string => (a.owner === 0 ? 'Your army' : `${c.factions[a.owner].name}'s army`);
+/** Whose army, at the head of a sentence: "Your army", "The Arameans' army", "The English army" (naming.ts). */
+const whoseArmy = (c: Campaign, a: Army): string => cap(peoplesArmy(c, a.owner));
 const bandOf = (c: Campaign, id: number | undefined): Band | undefined => (c.bands ?? []).find((b) => b.id === id);
 /** The lands from which a band's place can be reached to fight it. */
 const placeOf = (b: Band): number[] => (b.to === undefined ? [b.at] : [b.at, b.to]);
@@ -103,7 +104,7 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
   a.moved = true;
   if (mine >= theirs) {
     const lost = lose(a, Math.round(armySize(a) * FIGHT.cost * Math.min(1, theirs / mine)));
-    note(c, out, 'broken', b, b.at, `${ambush ? `${cap(b.name)} fell on ${whoseArmy(c, a).replace(/^Your/, 'your')} at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
+    note(c, out, 'broken', b, b.at, `${ambush ? `${cap(b.name)} fell on ${peoplesArmy(c, a.owner)} at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
     const felled = b.strength * MEN_A_COMPANY;
     breakBand(c, b, out, a);
     a.vet = Math.min(3, a.vet + 1);
@@ -114,7 +115,7 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
   }
   const lost = lose(a, Math.max(1, Math.round(armySize(a) * FIGHT.rout)));
   b.strength = Math.max(1, b.strength - Math.max(1, Math.round(mine * FIGHT.bled)));
-  note(c, out, 'beaten', b, b.at, `${ambush ? `${cap(b.name)} fell on ${whoseArmy(c, a).replace(/^Your/, 'your')} at ${at} and routed it` : `${whoseArmy(c, a)} went against ${b.name} at ${at} and was beaten off`}${lost ? `, ${ambush ? 'with the loss of' : 'losing'} ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
+  note(c, out, 'beaten', b, b.at, `${ambush ? `${cap(b.name)} fell on ${peoplesArmy(c, a.owner)} at ${at} and routed it` : `${whoseArmy(c, a)} went against ${b.name} at ${at} and was beaten off`}${lost ? `, ${ambush ? 'with the loss of' : 'losing'} ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
   leaderAfter(c, a, false, out, { band: b.name, fell: a.hero && chance(c, b.id * 131 + a.id, 71) < FIGHT.leaderFalls });
   reckonArmies(c);
   return false;

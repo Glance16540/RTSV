@@ -170,7 +170,7 @@ describe('the computer\'s peoples hunt the bands in their lands', () => {
     while (waited < 60 && !huntBands(c, out)) { c.turn++; waited++; }
     expect(waited).toBeLessThan(60);
     expect(c.bands).not.toContain(b);
-    expect(out.join(' ')).toContain(`${c.factions[1].name}'s army has broken the Test Men`);
+    expect(out.join(' ')).toContain(`The ${c.factions[1].name} army has broken the Test Men`) // the English army: their name is its own adjective (naming.ts);
     expect(weak.moved).toBe(false);
 
     const mine = world();
@@ -259,7 +259,7 @@ describe('a band comes against an army', () => {
     expect(c.pending).toBeNull();
     expect(a.units.infantry).toBeLessThan(3);
     expect(a.moved).toBe(false);
-    expect(out.join(' ')).toContain(`fell on ${c.factions[1].name}'s army`);
+    expect(out.join(' ')).toContain(`fell on the ${c.factions[1].name} army`);
     expect(c.bands).toContain(b);
   });
 });

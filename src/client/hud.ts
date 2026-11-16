@@ -1,6 +1,7 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
-import { renameOwn } from '../sim/naming';
+import { possessive, renameOwn } from '../sim/naming';
+const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
 import { isHoly } from '../sim/creed';
 import { fighting } from '../sim/calamity';
@@ -203,7 +204,7 @@ export class Hud {
       $('end-title').textContent = win ? 'Victory' : 'Defeat';
       const byWonder = game.wonderLeft(ev.winner) === 0;
       $('end-text').textContent = win ? (byWonder ? 'Your Wonder has stood the test. The world acknowledges your people.' : 'Your enemy lies in ruins. Your people will tell this story for ages.')
-        : byWonder ? `${game.players[ev.winner].name}'s Wonder stood too long.` : 'Your settlement has fallen.';
+        : byWonder ? `${cap1(possessive(game.players[ev.winner].name))} Wonder stood too long.` : 'Your settlement has fallen.';
       const civ = game.players[pid].civ;
       const last = { civ, event: (win ? 'p_win' : 'p_loss') as LeaderEvent, index: Math.floor(Math.random() * 2) };
       $('end-stats').innerHTML = (LEADERS[civ] ? speechHtml(last) : '') + this.summary();
@@ -728,7 +729,7 @@ export class Hud {
     let wonder = '';
     for (const q of game.players) {
       const left = q.neutral ? -1 : game.wonderLeft(q.id);
-      if (left >= 0) wonder += ` · 🗿 ${q.id === pid ? 'Your' : q.name + "'s"} Wonder ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+      if (left >= 0) wonder += ` · 🗿 ${q.id === pid ? 'Your' : cap1(possessive(q.name))} Wonder ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
     }
     const mins = Math.floor(game.time / 60), secs = Math.floor(game.time % 60);
     const top = [

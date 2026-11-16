@@ -25,6 +25,7 @@
 // not named.
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, weatherAt } from './campaign';
+import { whoseOf } from './naming';
 import { creedOf } from './creed';
 import { faithAt } from './townfaith';
 import { STORE_KINDS, folkOf, headcount } from './township';
@@ -76,7 +77,7 @@ export function chance(c: Campaign, land: number, salt: number): number {
   return (h >>> 0) / 4294967296;
 }
 
-const whose = (c: Campaign, f: number): string => (f === 0 ? 'your' : `${c.factions[f].name}'s`);
+const whose = (c: Campaign, f: number): string => whoseOf(c, f); // "your", "the Arameans'" (naming.ts)
 const who = (c: Campaign, f: number): string => (f === 0 ? 'you' : c.factions[f].name);
 const mark = (c: Campaign, kind: EventKind, at: number, turns = 0): void => { (c.events ??= []).push({ kind, at, turn: c.turn, until: c.turn + turns }); };
 const sickAt = (c: Campaign, tid: number): boolean => (c.events ?? []).some((e) => e.kind === 'plague' && e.at === tid && e.until >= c.turn);
