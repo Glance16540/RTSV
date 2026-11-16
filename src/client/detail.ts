@@ -7,6 +7,17 @@ export const DETAILS: Record<Detail, string> = { auto: 'Automatic', high: 'Full'
 const KEY = 'rtsv-map-detail', SLOW_KEY = 'rtsv-map-slow';
 /** A map that took longer than this to appear was too much for the machine. */
 export const SLOW_MS = 9000;
+/**
+ * The slow mark is stamped with when it was made. Before the battle behind the map was put to sleep (main.ts,
+ * App.asleep), that battle was drawn under the map on every frame, so the map was slow to appear on machines that
+ * draw it well, and they were marked slow and kept to the plainer map. Those marks were '1'; a mark made since is
+ * SLOW_STAMP. An old mark is forgotten once, when the page first asks about the machine; a new one stands.
+ */
+export const SLOW_STAMP = '2';
+/** Whether a stored mark says the full map was too slow here: only a mark made since the battle sleeps. */
+export const slowMark = (v: string | null): boolean => v === SLOW_STAMP;
+/** A mark made while the battle was still drawn under the map: to be forgotten. */
+export const staleMark = (v: string | null): boolean => v === '1';
 
 /** What is known of the machine. Every part is optional: a browser tells only some of it. */
 export interface Machine { renderer?: string; cores?: number; memory?: number; maxTexture?: number; slow?: boolean }
@@ -32,8 +43,9 @@ export const detailPref = (): Detail => { const v = read(KEY); return v === 'low
 let known: Machine | null = null;
 /** Ask the browser what it will say of the machine. Asked once: it costs a throwaway drawing surface. */
 function machine(): Machine {
-  if (known) return { ...known, slow: read(SLOW_KEY) === '1' };
+  if (known) return { ...known, slow: slowMark(read(SLOW_KEY)) };
   const m: Machine = {};
+  if (staleMark(read(SLOW_KEY))) write(SLOW_KEY, '0');
   try {
     m.cores = navigator.hardwareConcurrency || undefined;
     m.memory = (navigator as { deviceMemory?: number }).deviceMemory;
@@ -46,13 +58,13 @@ function machine(): Machine {
     }
   } catch { /* a browser that will not say is treated as able */ }
   known = m;
-  return { ...m, slow: read(SLOW_KEY) === '1' };
+  return { ...m, slow: slowMark(read(SLOW_KEY)) };
 }
 /** Whether the campaign map should be the plainer one, as things stand now. */
 export const lowDetail = (): boolean => typeof location !== 'undefined' && chooseDetail(new URLSearchParams(location.search).get('detail'), detailPref(), machine()) === 'low';
 /** The map reports how long it took to appear. A full map that was too slow is remembered, so Automatic draws the plainer one next time. */
 export function reportMapTime(ms: number, low: boolean): void {
-  if (!low && ms > SLOW_MS) write(SLOW_KEY, '1');
+  if (!low && ms > SLOW_MS) write(SLOW_KEY, SLOW_STAMP);
 }
 
 /** Put the choice in Settings. It is added by script, in a block of its own, so the settings page itself is not touched. */
