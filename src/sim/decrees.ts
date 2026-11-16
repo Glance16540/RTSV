@@ -15,6 +15,7 @@
 // and is half as strong.
 import type { Campaign } from './campaign';
 import { leaderAt } from './court';
+import { decreeStrength } from './hall';
 import { folkOf } from './township';
 import { heardDecree } from './nobles';
 import { needOf } from './larder';
@@ -106,7 +107,7 @@ export function decreeBar(c: Campaign, f: number, tid: number, kind: DecreeKind)
 export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKind): string {
   const bar = decreeBar(c, f, tid, kind);
   if (bar) return bar;
-  const t = c.territories[tid], d = DECREES[kind], present = leaderAt(c, f, tid), strength = present ? 1 : MESSENGER;
+  const t = c.territories[tid], d = DECREES[kind], present = leaderAt(c, f, tid), strength = decreeStrength(c, f, tid, MESSENGER); // whole at the leader's seat: the leader there, or a Hall of Judgement (hall.ts)
   c.factions[f].supplies -= d.cost;
   // A decree given in the player's part of a season holds through the season's turn that follows, which is when
   // towns drift (drift.ts): it acts in the season it is given, as one given while the season turns does.
