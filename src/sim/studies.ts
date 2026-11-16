@@ -113,6 +113,7 @@ export function pressing(c: Campaign, f: number, answers: string): number {
     case 'plague': return share((tid) => event(tid, ['plague']));
     case 'unrest': return share((tid) => event(tid, ['unrest', 'revolt']) || (c.territories[tid].yoke?.resent ?? 0) > 0);
     case 'raids': case 'crime': return share((tid) => event(tid, ['raid', 'carried']));
+    case 'births': return share((tid) => (folkOf(c, tid).missed ?? 0) > 0); // births that did not come (seasonfolk.ts): Midwifery
     case 'faith': return Math.max(0, Math.min(1, -(c.factions[f].virtue ?? 0) / 50));
     case 'nobles': case 'plots': case 'rule': return share((tid) => (folkOf(c, tid).drift?.strain ?? 0) > 0.25);
     default: return 0;
