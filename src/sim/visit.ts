@@ -22,6 +22,7 @@ import { Orders, keepOrders } from './governor';
 import type { Sky } from './campaign';
 import { driftBack, withDrift } from './driftintown';
 import { companyOf } from './townmuster';
+import { studiedHome, studiesOf } from './studies';
 import { menMustered, reckonArmies } from './armytown';
 import type { Army } from './campaign';
 import { keepLearned, knownIn } from './ownstudies';
@@ -54,7 +55,7 @@ export interface VisitRecord {
 /** What comes back from a visit. Everything is by name, so that more can be carried home without changing who calls this. */
 export interface VisitAfter {
   /** The studies of its own the player had learned in the town by the end (ownstudies.ts). */
-  studies?: string[];
+  ownStudies?: string[];
   town?: Standing[];
   ground?: Ground;
   /** Where the town's creed stood when the player left. */
@@ -69,6 +70,8 @@ export interface VisitAfter {
   orders?: Partial<Orders>;
   /** Who of the player's bore arms as they left, by company (`visitArms`): the army's soldiers, and townsmen trained there. */
   arms?: VisitArms;
+  /** The studies researched in the town (`learnedIn(player.techs)`): they come home to the nation (studies.ts). */
+  studies?: string[];
 }
 
 /** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
@@ -178,12 +181,13 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
     seed: t.seed, size: t.trait === 'coast' ? 96 : 72, level: 0, humanAttacks: false, field: false, sea: t.trait === 'coast',
     title: `A visit to ${t.name}`,
     setups: [{
-      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, studies: knownIn(c, 0), start: homeCorner(t), hero, virtue: faithAt(c, t.id),
+      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ownStudies: knownIn(c, 0), start: homeCorner(t), hero, virtue: faithAt(c, t.id),
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
         buildings: [...(fort ? ['tower', 'tower'] : []), ...works], ...(town.length ? { town } : {}),
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
+        studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
       },
     }],
   };
@@ -204,8 +208,9 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   if (census) bornOnVisit(c, land.id, folkOf(c, land.id).children - before);
   if (census) driftBack(c, land.id, after.drifted);
   keepOrders(c, land.id, after.orders);
-  keepLearned(c, 0, after.studies); // what was learned in the town of the nation's own studies is the nation's (ownstudies.ts)
+  keepLearned(c, 0, after.ownStudies); // what was learned in the town of the nation's own studies is the nation's (ownstudies.ts)
   if (after.arms) armsHome(c, land.id, after.arms, had); // its soldiers go home to the map: the army's losses, and companies trained there
+  if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
   // It is this town that was kept so, and this town that is moved (townfaith.ts).

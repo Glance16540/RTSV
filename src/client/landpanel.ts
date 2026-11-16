@@ -24,6 +24,7 @@ import { convoyHtml } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
 import { decreePanel } from './decrees';
 import { studyList } from '../sim/ownstudies';
+import { worksPanel } from './townworks';
 
 const css = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
@@ -126,7 +127,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
     if (a && a.owner === 0) { const men = menOf(c, a); raise += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
     if (ageOf(c, 0) < AGE_COST.length) age += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
     // Each people its own: the studies only this nation can learn, named as theirs (ownstudies.ts).
-    for (const x of studyList(c, 0)) age += x.learned ? `<div class="hint lp-study">${x.study.icon} <b>${x.study.name}</b> <small>(a study of the ${CIVS[x.study.civ].name}, learned)</small> ${x.study.map}</div>` : btn(`study:${x.study.id}`, `${x.study.icon} Learn ${x.study.name} <small>(${CIVS[x.study.civ].name} only)</small>`, x.study.cost, x.can, `${x.study.map}${x.why ? ' ' + x.why : ''}`);
+    for (const x of studyList(c, 0)) age += x.learned ? `<div class="hint lp-study">${x.study.icon} <b>${x.study.name}</b> <small>(a study of the ${CIVS[x.study.civ].name}, learned)</small> ${x.study.map}</div>` : btn(`ownstudy:${x.study.id}`, `${x.study.icon} Learn ${x.study.name} <small>(${CIVS[x.study.civ].name} only)</small>`, x.study.cost, x.can, `${x.study.map}${x.why ? ' ' + x.why : ''}`);
     const court = courtOf(c, 0);
     if (court && court.at === t.id) {
       const away = called(c, 0).length;
@@ -142,6 +143,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
     if (t.capital === 0 && !me.heroAlive) leader += btn('hero', '♛ Hire a stranger to lead', heroCost(me.civ), canSummonHero(c, 0, t.id), 'Needs an army in your capital. Ends the old house.');
     if (t.capital === 0) leader += `<div class="hint">♛ ${me.heroAlive ? heroFor(c, 0).name : 'No one leads'}. ${houseOf(c, 0).heirs.length ? 'Heirs: ' + houseOf(c, 0).heirs.map((h) => `${h.name} (${ofAge(c, h) ? 'of age' : `of age in ${comesOfAge(c, h)}`})`).join(', ') : 'No heirs yet'}.</div>`;
     town += visitButton(c, t.id) + convoyHtml(c, t.id) + decreePanel(c, t.id); // a visit, convoys, and drift and decrees (src/sim/drift.ts, decrees.ts)
+    build += worksPanel(c, t.id); // buildings raised on the town's record, and studies taught there (townworks.ts, studies.ts)
     for (const w of c.barriers ?? []) if ((w.a === t.id || w.b === t.id) && w.kind !== 'water') { const far = w.a === t.id ? w.b : w.a; build += btn('open:' + far, `${WORKS[w.kind].icon} Build ${WORKS[w.kind].name} to ${c.territories[far].name}`, WORKS[w.kind].cost, canOpen(c, 0, t.id, far), 'Opens this border for good, to you and to everyone else.'); }
     if (t.buildings.length < slots(t)) for (const [k, d] of Object.entries(SITES)) if (!t.buildings.includes(k) && (k !== 'harbour' || onSea(c, t.id))) build += btn('build:' + k, `${d.icon} Build ${d.name}`, siteCost(t, k, me.civ), canBuild(c, 0, t.id, k), `${d.desc} Paid in ${priceText(priceOf(k, siteCost(t, k, me.civ)))}.`);
   } else if (t.owner > 0 && c.factions[t.owner].alive) {

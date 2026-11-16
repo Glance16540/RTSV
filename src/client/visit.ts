@@ -3,6 +3,7 @@
 import type { BattleConfig, Campaign } from '../sim/campaign';
 import type { Ground, Standing } from '../sim/game';
 import { VISIT_SECONDS, beginVisit, canVisit, finishVisit, visitArms, visitBar } from '../sim/visit';
+import { learnedIn } from '../sim/studies';
 import type { VisitAfter } from '../sim/visit';
 import { driftedIn } from '../sim/driftintown';
 import type { App } from './main';
@@ -61,9 +62,10 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
     const after: VisitAfter = {
       town: app.game.standing(app.pid), orders: app.game.orders(app.pid), ground: app.game.ground(), virtue: app.game.players[app.pid].virtue, seconds: Math.min(VISIT_SECONDS, app.game.time),
       folk: app.game.census(app.pid), // its people and stores go home with it (township.ts)
-      studies: ownAmong(app.game.players[app.pid].techs, app.game.players[app.pid].civ), // and what it learned of its nation's own studies (ownstudies.ts)
+      ownStudies: ownAmong(app.game.players[app.pid].techs, app.game.players[app.pid].civ), // and what it learned of its nation's own studies (ownstudies.ts)
       drifted: driftedIn(app.game, app.pid), // and who has drifted to the tavern and the mine (driftintown.ts)
       arms: visitArms(app.game.units, app.pid), // and its soldiers: the army's losses, and companies trained here (visit.ts)
+      studies: learnedIn(app.game.players[app.pid].techs), // and what was learned here, the nation's now (studies.ts)
     };
     try { localStorage.setItem(RESULT_KEY, JSON.stringify(after)); localStorage.removeItem(VISIT_SAVE_KEY); } catch { /* storage unavailable */ }
     back();

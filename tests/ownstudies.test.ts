@@ -95,7 +95,7 @@ describe('each people has a study of its own', () => {
     const { c } = taught('kush', 'own_bow');
     expect(knownIn(c, 0)).toEqual(['own_bow']);
     expect(knownIn(c, -1)).toEqual([]);
-    const g = new Game(5, [{ ...setups[0], civ: 'kush', studies: knownIn(c, 0) }, { ...setups[1], civ: 'hearth', studies: ['own_bow'] }]);
+    const g = new Game(5, [{ ...setups[0], civ: 'kush', ownStudies: knownIn(c, 0) }, { ...setups[1], civ: 'hearth', ownStudies: ['own_bow'] }]);
     expect(g.players[0].techs.has('own_bow')).toBe(true);
     expect(g.players[0].mods.towerRange).toBe(baseModsFor('kush').towerRange + 1);
     expect(g.players[1].techs.has('own_bow')).toBe(false); // not theirs, whatever the setup says
@@ -105,6 +105,12 @@ describe('each people has a study of its own', () => {
     expect(keepLearned(fresh.c, 0, ['own_code', 'own_bow', 'stonetools', 7, 'own_code'])).toEqual(['own_code']);
     expect(knows(fresh.c, 0, 'own_code')).toBe(true);
     expect(fresh.c.factions[0].studies).toEqual(['own_code']);
+    // The list is shared with the studies anyone may learn: learning one of its own leaves those where they were.
+    const both = world('greece');
+    both.c.factions[0].studies = ['some_general_study'];
+    expect(learn(both.c, 0, 'own_assembly')).toBe(true);
+    expect(both.c.factions[0].studies).toEqual(['some_general_study', 'own_assembly']);
+    expect(knownIn(both.c, 0)).toEqual(['own_assembly']);
     expect(BATTLE_HOOKS.order('written')).toContain('ownstudies');
     // A record meddled with keeps nothing that is not the nation's.
     fresh.c.factions[0].studies = ['own_bow', 'own_code', 'own_code'];

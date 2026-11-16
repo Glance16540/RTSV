@@ -23,6 +23,7 @@ import { orphansSeason } from './orphans';
 import { deputyAt, kinSeasons } from './kin';
 import { noblesSeasons } from './nobles';
 import { widowsSeason } from './widowhood';
+import { studiesSeason } from './studies';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
@@ -998,7 +999,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   // setup: a battle is about to be laid out for play.
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
   // written: a battle fought in person has been settled and its field is being read back.
-  .on('written', 'ownstudies', (c, _p, b) => { keepLearned(c, 0, b.after?.studies); }) // what the player's side learned of its own in the fighting is the nation's
+  .on('written', 'ownstudies', (c, _p, b) => { keepLearned(c, 0, b.after?.ownStudies); }) // what the player's side learned of its own in the fighting is the nation's
   .on('written', 'tribes', (c, p, b) => fieldReckoned(c, p, b.after?.folk)) // those of the town who marched out to a battle in the open and fell
   // housed: the town's people and stores are as that battle left them.
   .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
@@ -1190,6 +1191,7 @@ export function continueAI(c: Campaign): void {
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
+      studiesSeason(c); // rival nations learn the study that answers what presses on them (studies.ts)
       drillTowns(c); // a town of the player's left training goes on raising, from its own men and stores (townmuster.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
@@ -1441,9 +1443,9 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, studies: knownIn(c, 0), ...corner(true), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
+      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ownStudies: knownIn(c, 0), ...corner(true), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0)) },
       {
-        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, studies: knownIn(c, foe), ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
+        name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ownStudies: knownIn(c, foe), ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe)),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
@@ -1473,7 +1475,7 @@ export interface BattleAfter {
   /** The powers the leader holds as the battle ends: what they chose on the field is theirs from then on. */
   powers?: number[];
   /** The studies of its own the player's side had learned by the end (ownstudies.ts): they are the nation's from then on. */
-  studies?: string[];
+  ownStudies?: string[];
   /** The victor's buildings as they stood (`Game.standing()`), damage and all: the land's town from now on. */
   town?: Standing[];
   /** What has been taken from the battlefield for good (`Game.ground()`), whoever won. */

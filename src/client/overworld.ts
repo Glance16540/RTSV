@@ -29,7 +29,9 @@ import { sendFromPanel } from './convoypanel';
 import { seasonCard, showPastSeasons } from './seasoncard';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
-import { learn } from '../sim/ownstudies';
+import { learn as learnOwn } from '../sim/ownstudies';
+import { raiseWork } from '../sim/townworks';
+import { learn } from '../sim/studies';
 
 /** Who leads a new campaign: the nation's leader as written, their other self, or the one the player has made. */
 export type LeaderChoice = 'a' | 'b' | 'own';
@@ -141,10 +143,12 @@ export class Overworld {
       if (kind === 'ally') offerAlliance(this.c, Number(id));
       if (kind === 'gift') sendGift(this.c, Number(id));
       if (kind === 'age') advanceAge(this.c, 0);
-      if (kind === 'study') learn(this.c, 0, id); // a study of the people's own (ownstudies.ts)
+      if (kind === 'ownstudy') learnOwn(this.c, 0, id); // a study of the people's own (ownstudies.ts)
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
       if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
+      if (kind === 'work') raiseWork(this.c, 0, this.sel, id); // a building raised on the town's record (townworks.ts)
+      if (kind === 'study') learn(this.c, 0, id, this.sel); // a study learned there (studies.ts)
       if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
       this.changed();
     });

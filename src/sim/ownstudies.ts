@@ -19,7 +19,7 @@ import { canPayFor, payFor } from './prices';
 import { folkOf } from './township';
 
 declare module './campaign' {
-  interface Faction { /** The studies of its own this people has learned (ownstudies.ts). */ studies?: string[] }
+  interface Faction { /** What this people has learned. Its own studies are here (ownstudies.ts) beside those anyone may learn (studies.ts). */ studies?: string[] }
 }
 
 /** A study of one people's own: who may learn it, what it costs in supplies on the map, the age it needs, and what it does there, in words. */
@@ -109,7 +109,7 @@ export function learn(c: Campaign, f: number, id: string): boolean {
   if (!canLearn(c, f, id)) return false;
   const s = BY_ID.get(id)!, fac = c.factions[f];
   payFor(c, f, PAID_AS, s.cost);
-  fac.studies = [...learnedBy(c, f), id];
+  (fac.studies ??= []).push(id); // the list is shared with the studies anyone may learn (studies.ts): nothing of theirs is touched
   c.log.push(`${f === 0 ? 'Your people have' : `${fac.name} have`} learned ${s.name}. ${s.map}`);
   return true;
 }
@@ -117,7 +117,7 @@ export function learn(c: Campaign, f: number, id: string): boolean {
 export function keepLearned(c: Campaign, f: number, ids: unknown): string[] {
   const fac = c.factions[f], out: string[] = [];
   if (!fac || !Array.isArray(ids)) return out;
-  for (const id of ids) if (typeof id === 'string' && nationOf(id) === fac.civ && !knows(c, f, id)) { fac.studies = [...learnedBy(c, f), id]; out.push(id); }
+  for (const id of ids) if (typeof id === 'string' && nationOf(id) === fac.civ && !knows(c, f, id)) { (fac.studies ??= []).push(id); out.push(id); }
   return out;
 }
 /** A computer-led people learns what is its own when it can well afford it. Returns what it learned. */

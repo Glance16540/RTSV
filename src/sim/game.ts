@@ -332,7 +332,7 @@ export interface PlayerSetup {
   /** The leader is elsewhere on the campaign map: nobody raised in this battle is the leader in person. */
   leaderAway?: boolean;
   /** The studies of its own this people has already learned on the campaign map (ownstudies.ts). */
-  studies?: string[];
+  ownStudies?: string[];
   /** Where this people's town stands between piety and decadence as the battle opens (Conquest carries it over). */
   virtue?: number;
   /** Head start, used by Conquest battles: extra soldiers, extra of every resource, a later age. */
@@ -340,7 +340,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; people?: PeopleIn; stores?: Partial<Stores> };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; people?: PeopleIn; stores?: Partial<Stores>; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[] };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -487,7 +487,7 @@ export class Game {
       });
       CIVS[this.players[i].civ].apply(this.players[i].mods);
       // What its nation has learned on the map of its own studies it has here from the first (ownstudies.ts).
-      for (const id of s.studies ?? []) if (TECHS[id] && mayLearn(this.players[i].civ, id) && !this.players[i].techs.has(id)) { this.players[i].techs.add(id); TECHS[id].apply(this.players[i].mods); }
+      for (const id of s.ownStudies ?? []) if (TECHS[id] && mayLearn(this.players[i].civ, id) && !this.players[i].techs.has(id)) { this.players[i].techs.add(id); TECHS[id].apply(this.players[i].mods); }
       this.heroes.push([]);
       this.leaders.push(null);
       if (s.hero) { this.players[i].hero = cleanHero(s.hero, this.players[i].civ); this.players[i].heroRank = this.players[i].hero!.rank ?? 0; }
@@ -523,6 +523,7 @@ export class Game {
           for (const t of Object.values(TECHS)) if (t.upgrade && t.age <= p.age) { p.techs.add(t.id); p.upgrades[t.upgrade[0]] = t.upgrade[1]; }
         }
         for (const r of RES_TYPES) p.res[r] += s.bonus.res ?? 0;
+        for (const id of s.bonus.studies ?? []) if (TECHS[id] && !p.techs.has(id)) { p.techs.add(id); TECHS[id].apply(p.mods); } // the nation's studies (studies.ts)
         // A town fights out of its own stores, not out of the usual stock.
         if (s.bonus.stores) for (const r of RES_TYPES) p.res[r] = Math.max(0, Math.round(Number(s.bonus.stores[r]) || 0));
         // What was left standing here after the last battle still stands, unless another camp is pitched on it.
