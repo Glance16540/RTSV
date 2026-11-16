@@ -328,37 +328,57 @@ export function terrainOf(c: Campaign): Terrain {
   if (had) return had;
   const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
   const gw = Math.floor(MAP_W / LAND_STEP) + 1, gh = Math.floor(MAP_H / LAND_STEP) + 1, ts = c.territories;
-  const H = new Float32Array(gw * gh), W = worldOf(c.seed), ca = Math.cos(W.turn), sa = Math.sin(W.turn);
+  const H = new Float32Array(gw * gh), W = worldOf(c.seed), ca = Math.cos(W.turn), sa = Math.sin(W.turn), sq = new Float64Array(ts.length);
   for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
     const px = Math.min(MAP_W - 1, i * LAND_STEP), py = Math.min(MAP_H - 1, j * LAND_STEP);
     // Whose land this is, and how far inside it (half the difference between the nearest town and the next).
     const wx = px + 16 * Math.sin(py / 37), wy = py + 16 * Math.sin(px / 43);
+    // The nearest town and the next. The distance proper (Math.hypot) is slow, and only the two smallest matter: so
+    // the squares are compared first, and the distance proper is taken only for towns no farther off than the second
+    // nearest by its square (with a hair to spare, far more than the two ways of reckoning can differ by). The two
+    // distances and the town chosen come out the very same as taking it for every town.
+    let s1 = Infinity, s2 = Infinity;
+    for (let k = 0; k < ts.length; k++) { const dx = ts[k].x - wx, dy = ts[k].y - wy, q = dx * dx + dy * dy; sq[k] = q; if (q < s1) { s2 = s1; s1 = q; } else if (q < s2) s2 = q; }
+    const within = s2 * 1.000001;
     let best = 0, d1 = Infinity, d2 = Infinity;
-    for (let k = 0; k < ts.length; k++) { const d = Math.hypot(ts[k].x - wx, ts[k].y - wy); if (d < d1) { d2 = d1; d1 = d; best = k; } else if (d < d2) d2 = d; }
+    for (let k = 0; k < ts.length; k++) { if (sq[k] > within) continue; const d = Math.hypot(ts[k].x - wx, ts[k].y - wy); if (d < d1) { d2 = d1; d1 = d; best = k; } else if (d < d2) d2 = d; }
     const t = ts[best], inside = (d2 - d1) / 2, dC = Math.hypot(px - t.x, py - t.y);
     // The coast: a ragged shore with deep bays, though every land keeps firm ground under its town.
     const rim = Math.min(px, py, MAP_W - 1 - px, MAP_H - 1 - py);
     // Land rises round the towns and nowhere else: a ragged shore with deep bays, though every land keeps firm ground under its town.
     const shore = 1 - ease(84, 132, dC + (N(px / 150, py / 150, 2) - 0.5) * 110 + (N(px / 40, py / 40, 3) - 0.5) * 30 + (t.trait === 'coast' ? 12 : 0));
-    // The world's edge is ragged too, so no shore runs straight, and small isles stand off it.
-    const rag = rim + (N(px / 115, py / 115, 17) - 0.5) * 110 + (N(px / 30, py / 30, 14) - 0.5) * 34 + (N(px / 10, py / 10, 15) - 0.5) * 9 - 12;
-    const isle = ease(0.7, 0.78, N(px / 20, py / 20, 16)) * ease(6, 16, rim) * 0.7 * ease(W.shape === 'archipelago' ? 0.3 : 0.52, 0.62, N(px / 130, py / 130, 18));
-    const keep = (1 - ease(30, 66, dC)), firm = 1 - ease(22, 40, dC), edge = ease(6, 36, rag);
-    // The sea breaks the world up after its own fashion: straits between continents, one sea down the middle, a sea at the heart, or islands.
-    const bend = (N(px / 120, py / 120, 22) - 0.5) * 150, cx = px - MAP_W / 2, cy = py - MAP_H / 2;
-    const vein = (sc: number, k: number, wide: number): number => 1 - ease(wide, wide + 0.06, Math.abs(N(px / sc, py / sc, k) * 2 - 1));
-    let cut = 0;
-    if (W.shape === 'continents') cut = vein(230, 20, 0.1 * W.cut);
-    else if (W.shape === 'archipelago') cut = Math.max(vein(170, 20, 0.13 * W.cut), vein(140, 21, 0.11 * W.cut));
-    else if (W.shape === 'twin') cut = 1 - ease(34 * W.cut, 34 * W.cut + 30, Math.abs(cx * ca * 0.6 + cy * sa + bend));
-    else if (W.shape === 'innersea') cut = 1 - ease(0.75, 1.05, Math.hypot(cx / (250 * W.cut), cy / (140 * W.cut)) + (N(px / 90, py / 90, 22) - 0.5) * 0.7);
+    // (Where the first factors come to nothing the last is not reckoned: nothing times anything is nothing.)
+    const isle0 = ease(0.7, 0.78, N(px / 20, py / 20, 16)) * ease(6, 16, rim) * 0.7;
+    const isle = isle0 === 0 ? 0 : isle0 * ease(W.shape === 'archipelago' ? 0.3 : 0.52, 0.62, N(px / 130, py / 130, 18));
+    const keep = (1 - ease(30, 66, dC)), firm = 1 - ease(22, 40, dC), reach = Math.max(shore, keep);
+    // Open sea: out of reach of every town's shore and with no isle, there is no land at all, whatever the ragged
+    // edge, the straits and the lakes would have made of it. Its height is the sea's floor, and none of the rest is
+    // reckoned for it (most of a world is sea).
+    if (reach === 0 && firm === 0 && isle === 0) { H[j * gw + i] = -1.6; continue; }
+    let coast = 0;
+    if (reach !== 0) { // the ragged edge and the straits only shape a shore that is there to be shaped
+      // The world's edge is ragged too, so no shore runs straight, and small isles stand off it.
+      const rag = rim + (N(px / 115, py / 115, 17) - 0.5) * 110 + (N(px / 30, py / 30, 14) - 0.5) * 34 + (N(px / 10, py / 10, 15) - 0.5) * 9 - 12;
+      const edge = ease(6, 36, rag);
+      // The sea breaks the world up after its own fashion: straits between continents, one sea down the middle, a sea at the heart, or islands.
+      const cx = px - MAP_W / 2, cy = py - MAP_H / 2;
+      const vein = (sc: number, k: number, wide: number): number => 1 - ease(wide, wide + 0.06, Math.abs(N(px / sc, py / sc, k) * 2 - 1));
+      let cut = 0;
+      if (W.shape === 'continents') cut = vein(230, 20, 0.1 * W.cut);
+      else if (W.shape === 'archipelago') cut = Math.max(vein(170, 20, 0.13 * W.cut), vein(140, 21, 0.11 * W.cut));
+      else if (W.shape === 'twin') cut = 1 - ease(34 * W.cut, 34 * W.cut + 30, Math.abs(cx * ca * 0.6 + cy * sa + (N(px / 120, py / 120, 22) - 0.5) * 150));
+      else if (W.shape === 'innersea') cut = 1 - ease(0.75, 1.05, Math.hypot(cx / (250 * W.cut), cy / (140 * W.cut)) + (N(px / 90, py / 90, 22) - 0.5) * 0.7);
+      coast = reach * (1 - cut) * edge;
+    }
     // Lakes and inland seas lie between the lands, never on a town.
-    const lake = ease(0.7 + W.lakes, 0.8 + W.lakes, N(px / 110, py / 110, 5)) * ease(50, 85, dC);
-    const land = Math.max(Math.max(shore, keep) * (1 - cut) * edge, firm, isle) * (1 - lake * (1 - firm)) * ease(0, 9, rim); // and the sea lies all round
+    const lakeAt = ease(50, 85, dC), lake = lakeAt === 0 ? 0 : ease(0.7 + W.lakes, 0.8 + W.lakes, N(px / 110, py / 110, 5)) * lakeAt; // no lake by a town, so nothing to reckon there
+    const land = Math.max(coast, firm, isle) * (1 - lake * (1 - firm)) * ease(0, 9, rim); // and the sea lies all round
+    // Where that comes to no land at all (a lake, a strait, the world's rim), it is sea too.
+    if (land === 0) { H[j * gw + i] = -1.6; continue; }
     const { warm, wet } = climateAt(c.seed, px, py);
     const hot = ease(0.62, 0.72, warm) * (1 - ease(0.5, 0.6, wet)), marsh = ease(0.76, 0.84, wet) * ease(0.4, 0.46, warm);
     let roll = 0.5 + N(px / 85, py / 85, 6) * 0.75 + N(px / 20, py / 20, 8) * 0.16;
-    roll += hot * Math.abs(Math.sin((px + py * 0.6) / 13 + N(px / 50, py / 50, 12) * 5)) * 0.3; // dunes
+    if (hot !== 0) roll += hot * Math.abs(Math.sin((px + py * 0.6) / 13 + N(px / 50, py / 50, 12) * 5)) * 0.3; // dunes, where it is hot and dry
     roll += (0.2 - roll) * marsh; // fen lies flat and low
     // Mountain ranges cross the world where the seed puts them, and stand on high ground and gold hills; clear of the towns.
     const range = Math.min(1.25, ease(0.56 + W.peaks, 0.72 + W.peaks, N(px / 170, py / 170, 7)) + (t.trait === 'hills' ? 0.85 : t.trait === 'gold' ? 0.55 : 0) * ease(4, 34, inside));
