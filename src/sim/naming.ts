@@ -45,6 +45,19 @@ export function nameNation(c: Campaign, f: number, names: Names = {}): void {
 
 /** What a people is called: the name its player gave it, or its own. */
 export const peopleName = (c: Campaign, f: number): string => (c.factions[f]?.people || CIVS[c.factions[f]?.civ]?.name || 'people');
+/**
+ * A people's name set before a thing of theirs: "the Arameans'" (a name in -s, as most are), "the English" (a name
+ * that is its own adjective: English, Chinese, Japanese, Norse), "the Ashfolk's" (any other, a chosen name mostly).
+ * Followed by the thing: `${possessive('Arameans')} army` is "the Arameans' army".
+ */
+export function possessive(name: string): string {
+  if (/(ese|ish|sh|ch|se)$/i.test(name)) return `the ${name}`;
+  return /s$/i.test(name) ? `the ${name}'` : `the ${name}'s`;
+}
+/** Whose, of a people: "your" for the player, and for another people its possessive ("the Arameans'"). */
+export const whoseOf = (c: Campaign, f: number): string => (f === 0 ? 'your' : possessive(peopleName(c, f)));
+/** A people's army, in the middle of a sentence: "your army", "the Arameans' army", "the English army". */
+export const peoplesArmy = (c: Campaign, f: number): string => `${whoseOf(c, f)} army`;
 /** The name of a people's ruling house, if it has one. */
 export const houseName = (c: Campaign, f: number): string | undefined => c.factions[f]?.dynasty || undefined;
 /** "the House of X" or, with no name, "<leader>'s house". */
