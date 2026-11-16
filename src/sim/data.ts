@@ -581,7 +581,7 @@ export interface BuildingDef {
   dropoff?: boolean;
   walkable?: boolean;
   /** Only a decadent town can build it. */
-  needs?: 'decadent';
+  needs?: 'decadent' | 'holy';
   /** A work camp: how many captives it holds. */
   camp?: number;
   /** How many villagers can be stationed inside to work there (clergy in a church, maids in a tavern). */
@@ -593,6 +593,8 @@ export interface BuildingDef {
   cooldown?: number;
   /** It can be raised on the map, on a town's record, out of the town's stores (townworks.ts), and the governor finishes it. */
   onMap?: boolean;
+  /** Only in a town of this many grown people or more (townworks.ts; in a town, the same count of its villagers). */
+  townAt?: number;
 }
 
 const B = (d: BuildingDef) => d;
@@ -628,30 +630,31 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 50 }, time: 10, age: 0, hp: 250, size: 3, pop: 0, sight: 3,
     trains: [], techs: [], walkable: true,
   }),
-  // Food and health (the food-health job: granary.ts and the rest). Costs, ages and strengths are first guesses.
+  // Food and health (the food-health job: granary.ts and the rest). Each stands on the town's record and can be raised
+  // from the map (townworks.ts). Costs, ages and strengths are first guesses.
   granary: B({
     id: 'granary', name: 'Granary', icon: '🌾',
     desc: 'Keeps grain dry and safe: a bare store takes twice as long to turn to hunger and to famine. On the map, food in store spoils later and a failed harvest takes less of it.',
-    cost: { wood: 120, stone: 40 }, time: 30, age: 0, hp: 700, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [],
+    cost: { wood: 150 }, time: 30, age: 0, hp: 700, size: 2, pop: 0, sight: 4,
+    trains: [], techs: [], onMap: true,
   }),
   mill: B({
     id: 'mill', name: 'Mill', icon: '⚙️',
     desc: 'Grinds the harvest: your farms yield a fifth more food. On the map, a land with Farmland yields a fifth more.',
     cost: { wood: 150 }, time: 30, age: 0, hp: 650, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [],
+    trains: [], techs: [], onMap: true,
   }),
   well: B({
     id: 'well', name: 'Well', icon: '🪣',
     desc: 'Clean water: plague passes among your people half as readily. On the map, a crowded town is struck less and loses fewer.',
-    cost: { stone: 80 }, time: 16, age: 0, hp: 400, size: 1, pop: 0, sight: 3,
-    trains: [], techs: [],
+    cost: { wood: 60, stone: 20 }, time: 16, age: 0, hp: 400, size: 1, pop: 0, sight: 3,
+    trains: [], techs: [], onMap: true,
   }),
   infirmary: B({
     id: 'infirmary', name: 'Infirmary', icon: '⚕️',
     desc: 'Tends the sick and the grieving: plague wears your people down more slowly, and a grieving house mourns half as long.',
-    cost: { wood: 120, gold: 60 }, time: 30, age: 1, hp: 700, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [],
+    cost: { wood: 120, gold: 30 }, time: 30, age: 1, hp: 700, size: 2, pop: 0, sight: 4,
+    trains: [], techs: [], onMap: true,
   }),
   barracks: B({
     id: 'barracks', name: 'Barracks', icon: '🗡️',
@@ -683,6 +686,18 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     desc: 'The leader\'s seat in this town. A decree given to the town has its full strength, as if the leader were here; thieves, killers and plotters are judged here, so they are found the sooner; and the nation\'s nobles gather at it, so their tempers cool the faster and an angry lord here keeps his watch.',
     cost: { wood: 200, stone: 150, gold: 50 }, time: 45, age: 1, hp: 1400, size: 3, pop: 0, sight: 7,
     trains: [], techs: [], onMap: true,
+  }),
+  manor: B({
+    id: 'manor', name: "Noble's Manor", icon: '🏛️',
+    desc: 'The lord\'s own house, in a town of twelve grown people or more. He grows the more content for it, season by season, but he has the more say: every decree pleases or angers him twice as much.',
+    cost: { wood: 180, stone: 60, gold: 60 }, time: 38, age: 1, hp: 1000, size: 3, pop: 0, sight: 6,
+    trains: [], techs: [], onMap: true, townAt: 12,
+  }),
+  monastery: B({
+    id: 'monastery', name: 'Monastery', icon: '🕍',
+    desc: 'Only a town that keeps the faith can build it: the Righteous town\'s great house (a Convent where its women are the more). Up to six villagers live here as monks and nuns, counted as clergy. The town is drawn toward the holy way each season, the drifted come back to it the sooner, and it takes in the sick and the bereaved, so sickness and grief weigh on the town half as much.',
+    cost: { wood: 220, stone: 160, gold: 60 }, time: 46, age: 1, hp: 1300, size: 4, pop: 0, sight: 6,
+    trains: [], techs: [], staff: 6, needs: 'holy', onMap: true,
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',
