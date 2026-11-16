@@ -40,11 +40,14 @@ export function manorSeason(c: Campaign, f: number): boolean {
   return raiseWork(c, f, big.id, 'manor') === '';
 }
 
-/** A season for one rival nation: it raises a Monastery in its most faithful town that keeps the faith and has none, when it can spare the stores there. */
+/** A town whose sick or bereaved a Monastery would take in: sick or grieving at the last turn (drift.ts), or with plague in it. */
+const struckBySickness = (c: Campaign, tid: number): boolean => { const d = folkOf(c, tid).drift; return !!d?.sick || !!d?.grieving || (c.events ?? []).some((e) => e.at === tid && e.kind === 'plague' && e.until >= c.turn - 1); };
+
+/** A season for one rival nation: it raises a Monastery in its most faithful town that keeps the faith, has none, and is struck by sickness or grief, when it can spare the stores there. */
 export function monasterySeason(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   if (!fac?.alive || !fac.isAI) return false;
-  const holiest = c.territories.filter((t) => t.owner === f && !t.horde && !begunAt(c, t.id, 'monastery') && isHoly(faithAt(c, t.id))).sort((a, b) => faithAt(c, b.id) - faithAt(c, a.id) || a.id - b.id)[0];
+  const holiest = c.territories.filter((t) => t.owner === f && !t.horde && !begunAt(c, t.id, 'monastery') && isHoly(faithAt(c, t.id)) && struckBySickness(c, t.id)).sort((a, b) => faithAt(c, b.id) - faithAt(c, a.id) || a.id - b.id)[0];
   if (!holiest) return false;
   const s = folkOf(c, holiest.id).stores, cost = BUILDINGS.monastery.cost;
   const left = STORE_KINDS.reduce((n, k) => n + s[k] - (cost[k] ?? 0), 0);
