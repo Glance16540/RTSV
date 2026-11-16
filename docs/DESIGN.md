@@ -173,6 +173,39 @@ as much as what happens to the nation.
 - *Several campaigns.* A player can keep more than one world, each with its own history, and go back to
   any of them.
 
+**Meeting them face to face** (the owner's word, 16 November 2026). When the player meets someone on the
+map, the people they meet are shown as people. When an army runs into a band of marauders, or a decision
+comes up (a suitor, a rival king's envoy, a plotter found, a thief brought for judgement), a window opens
+over the map. It shows the ones met as living 3D figures, the band's leader at the front with some of
+his men, or the person asking, dressed and armed as they are. The choices sit beside them. The map stays
+behind it, and nothing else is changed by it. The same rules hold as everywhere: no child is shown, and
+nothing suggestive is shown of a captive.
+
+**Buildings and research that answer the systems** (the owner's word, 16 November 2026). What a player
+builds and learns should answer what happens to their people: hunger, plague, crime, plots, nobles,
+roads and faith, and not only make soldiers hit harder. Each new building or study has a job in a system
+that already runs, works on the map as well as in a town, and is kept on the town's record.
+
+- *Food:* a Granary keeps food against a failed harvest, so a town goes hungry later and drifts less in
+  famine. A Mill makes farms yield more. Crop Rotation means fewer failed harvests; Salting and Smoking
+  keep food longer.
+- *Health:* a Well (or Bathhouse) slows plague in a crowded town. An Infirmary (or Almshouse) tends the
+  sick and the grieving. Quarantine keeps plague from crossing between towns; Midwifery makes births
+  safer; Physicians improves on Herbalism.
+- *Rule and law:* a Hall of Judgement (the leader's seat) is where thieves and plotters are judged and
+  nobles gather; a decree given there has its full strength. A Noble's Manor in a large town raises its
+  lord's loyalty but gives him more say. Couriers strengthens decrees sent by messenger; Stewardship makes
+  a better governor; Written Law eases unrest and a taken town's resentment; Oaths of Fealty steadies
+  nobles' loyalty; Spymasters finds plots sooner.
+- *Order and roads:* a Fortress, which the governor already raises on the map, stands in the town as a
+  stronghold against bands. A Watch House catches thieves sooner and finds a killer's clues faster. An
+  Inn on a road keeps convoys safer from highwaymen. Town Watch, Heralds (raid news a season sooner),
+  Paved Roads and Escorts.
+- *Faith:* a Monastery or Convent, the Righteous town's great house, as the Work Camp is the Decadent
+  one's. Feast Days and Pilgrimage.
+- *Each people its own:* every nation has one or two studies of its own that fit what it is (Franks
+  their families, Babylonians their law, Malians their trade, Kushites their bows, Romans their walls).
+
 ## The order of building
 
 Each step is to be playable by itself.

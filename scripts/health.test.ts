@@ -3,6 +3,7 @@
 //
 //   HEALTH=1 npx vitest run scripts/health.test.ts
 //   HEALTH=1 CAMPAIGNS=48 SEASONS=200 PLAYER=computer VISITS=2 OUT=docs/health-report.md npx vitest run scripts/health.test.ts
+//   npm run health                (the baseline: 96 campaigns, 24 visits; about 31 minutes)
 //
 //   CAMPAIGNS  how many campaigns (seeds 1..n, fixed so runs compare). Default 24.
 //   SEASONS    the longest a campaign is played. Default 200.
@@ -13,6 +14,8 @@
 //              (src/sim/storypolicy.ts); left out, it answers none of them.
 //   VISITS     how many of the campaigns are played again with every town of the player's visited each season for
 //              twenty years (slow: a visit is ten minutes of a real battle). Default 0, and that figure is not measured.
+//              The player begins with one town, so a campaign gives one pair at most: the figure swings 30 to 40 points
+//              at 8, and reads steadily from 24 (18 pairs or so). `npm run health` is the baseline: 96 campaigns and 24 visits.
 //   OUT        where the report is written. Default docs/health-report.md.
 //
 // Every campaign is played twice from the same seed: as the rules stand, the player giving the decrees a sensible
