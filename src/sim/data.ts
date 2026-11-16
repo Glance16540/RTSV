@@ -636,13 +636,13 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'granary', name: 'Granary', icon: '🌾',
     desc: 'Keeps grain dry and safe: a bare store takes twice as long to turn to hunger and to famine. On the map, food in store spoils later and a failed harvest takes less of it.',
     cost: { wood: 150 }, time: 30, age: 0, hp: 700, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [], onMap: true,
+    trains: [], techs: ['salting'], onMap: true,
   }),
   mill: B({
     id: 'mill', name: 'Mill', icon: '⚙️',
     desc: 'Grinds the harvest: your farms yield a fifth more food. On the map, a land with Farmland yields a fifth more.',
     cost: { wood: 150 }, time: 30, age: 0, hp: 650, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [], onMap: true,
+    trains: [], techs: ['croprotation'], onMap: true,
   }),
   well: B({
     id: 'well', name: 'Well', icon: '🪣',
@@ -654,7 +654,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'infirmary', name: 'Infirmary', icon: '⚕️',
     desc: 'Tends the sick and the grieving: plague wears your people down more slowly, and a grieving house mourns half as long.',
     cost: { wood: 120, gold: 30 }, time: 30, age: 1, hp: 700, size: 2, pop: 0, sight: 4,
-    trains: [], techs: [], onMap: true,
+    trains: [], techs: ['quarantine', 'midwifery', 'physicians'], onMap: true,
   }),
   barracks: B({
     id: 'barracks', name: 'Barracks', icon: '🗡️',
@@ -878,6 +878,30 @@ export const TECHS: Record<string, TechDef> = {
     id: 'herbalism', name: 'Herbalism', icon: '🌿', desc: 'Shamans heal 60% faster.',
     cost: { food: 120, gold: 100 }, time: 30, age: 1, apply: (m) => { m.heal += 0.6; },
   }),
+  // ---- Food and health (the food-health job: croprotation.ts, salting.ts, quarantine.ts, midwifery.ts, physicians.ts).
+  // Each is a study of the nation's, kept on the map (studies.ts); what it does is in its own module. They are paid in
+  // wood and gold, never bread: a people learns them when hunger presses. Costs, ages and strengths are first guesses. ----
+  croprotation: T({
+    id: 'croprotation', name: 'Crop Rotation', icon: '🌱', desc: 'Fields rested in turn: harvests fail less often, on the map and in the town.',
+    cost: { wood: 120, gold: 60 }, time: 35, age: 1, answers: 'hunger', apply: () => {},
+  }),
+  salting: T({
+    id: 'salting', name: 'Salting and Smoking', icon: '🥓', desc: 'Food put by keeps longer: stores spoil half as fast on the map, and a bare store lasts half again as long in the town.',
+    cost: { wood: 100, gold: 40 }, time: 30, age: 1, answers: 'hunger', apply: () => {},
+  }),
+  quarantine: T({
+    id: 'quarantine', name: 'Quarantine', icon: '🚧', desc: 'The sick are kept apart: plague crosses between towns, and from strangers, less often.',
+    cost: { wood: 40, gold: 120 }, time: 35, age: 1, answers: 'plague', apply: () => {},
+  }),
+  midwifery: T({
+    id: 'midwifery', name: 'Midwifery', icon: '🤱', desc: 'Safer births: half of the births that would not have come, come.',
+    cost: { wood: 40, gold: 100 }, time: 35, age: 1, answers: 'births', apply: () => {},
+  }),
+  physicians: T({
+    id: 'physicians', name: 'Physicians', icon: '⚕️', desc: 'Healers heal half again as fast (on top of Herbalism), and plague takes fewer on the map.',
+    cost: { wood: 50, gold: 150 }, time: 40, age: 2, requires: 'herbalism', answers: 'plague', apply: (m) => { m.heal += 0.5; }, // PHYSICIANS.heal (physicians.ts)
+  }),
+  // ---- end of food and health ----
   weapons1: T({
     id: 'weapons1', name: 'Bronze Weapons', icon: '🗡️', desc: 'Military units +2 attack.',
     cost: { food: 120, gold: 80 }, time: 35, age: 1, apply: (m) => { m.atk += 2; },
