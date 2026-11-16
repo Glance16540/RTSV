@@ -825,3 +825,6 @@ body.looking-out #visit { display: none; }
 
 /* ---- What stories left behind, on the roll (rollpanel.ts, aftermath.ts) ---- */
 .roll .roll-mark { display: block; font-style: italic; opacity: 0.85; }
+
+/* Unrest (unrest.ts): a town's own chance of it, on its panel. */
+.town-stir { margin-top: 4px; }
