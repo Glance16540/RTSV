@@ -27,6 +27,7 @@ import { shiftVirtue } from './townfaith';
 import { FAMILY_NAMES, NAMES_F, NAMES_M } from './data';
 import { agesOf } from './ageing';
 import { leaderAt } from './court';
+import { seatAt } from './hall';
 import { needOf } from './larder';
 import { folkOf, grown, living } from './township';
 import { aftermathSeason, rememberWronged } from './aftermath';
@@ -261,7 +262,7 @@ function hang(c: Campaign, it: Intrigue, i: number, by: 'you' | 'town'): void {
 }
 function killerSeason(c: Campaign, it: Intrigue): void {
   const K = INTRIGUE.killer, t = c.territories[it.at];
-  const odds = K.clue + (leaderAt(c, it.owner, it.at) ? K.court : 0) + (c.armies.some((a) => a.owner === it.owner && a.at === it.at) ? K.army : 0);
+  const odds = K.clue + (seatAt(c, it.owner, it.at) ? K.court : 0) /* the court, or a Hall of Judgement there (hall.ts) */ + (c.armies.some((a) => a.owner === it.owner && a.at === it.at) ? K.army : 0);
   if (chance(c, it.id * 59 + 4) < odds) clue(c, it);
   const left = suspected(it);
   // Once only one is left the town will not wait for ever.

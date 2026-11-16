@@ -11,6 +11,7 @@
 import type { Building, Game, Unit } from './game';
 import type { Folk } from './township';
 import { GRIEF_SEASONS as NOTABLE_GRIEF } from './notableweight';
+import { griefEase } from './infirmary';
 
 declare module './game' {
   interface Building { /** Seconds the house has left to grieve. */ griefT?: number }
@@ -56,7 +57,7 @@ export function griefPace(g: Game, u: Unit): number {
 
 /** A second passes for the grieving houses of a town. */
 export function griefSecond(g: Game): void {
-  for (const b of g.buildings) if (b.griefT) b.griefT = Math.max(0, b.griefT - 1);
+  for (const b of g.buildings) if (b.griefT) b.griefT = Math.max(0, b.griefT - griefEase(g, b.owner)); // an Infirmary sits with them (infirmary.ts)
 }
 
 /** The share of a people's houses that are grieving. */
@@ -67,6 +68,6 @@ export function griefShare(g: Game, owner: number): number {
 }
 
 /** A season passes for a town on the map: it grieves anew if it was bereaved, and otherwise grieves a season less. */
-export function griefSeason(f: Folk, bereaved: boolean): void {
-  f.grief = bereaved ? GRIEF_SEASONS : Math.max(0, (f.grief ?? 0) - 1);
+export function griefSeason(f: Folk, bereaved: boolean, opts: { ease?: number } = {}): void {
+  f.grief = bereaved ? GRIEF_SEASONS : Math.max(0, (f.grief ?? 0) - (opts.ease ?? 1)); // `ease`: seasons that pass in one (an Infirmary, infirmary.ts)
 }

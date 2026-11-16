@@ -628,6 +628,31 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { wood: 50 }, time: 10, age: 0, hp: 250, size: 3, pop: 0, sight: 3,
     trains: [], techs: [], walkable: true,
   }),
+  // Food and health (the food-health job: granary.ts and the rest). Costs, ages and strengths are first guesses.
+  granary: B({
+    id: 'granary', name: 'Granary', icon: '🌾',
+    desc: 'Keeps grain dry and safe: a bare store takes twice as long to turn to hunger and to famine. On the map, food in store spoils later and a failed harvest takes less of it.',
+    cost: { wood: 120, stone: 40 }, time: 30, age: 0, hp: 700, size: 2, pop: 0, sight: 4,
+    trains: [], techs: [],
+  }),
+  mill: B({
+    id: 'mill', name: 'Mill', icon: '⚙️',
+    desc: 'Grinds the harvest: your farms yield a fifth more food. On the map, a land with Farmland yields a fifth more.',
+    cost: { wood: 150 }, time: 30, age: 0, hp: 650, size: 2, pop: 0, sight: 4,
+    trains: [], techs: [],
+  }),
+  well: B({
+    id: 'well', name: 'Well', icon: '🪣',
+    desc: 'Clean water: plague passes among your people half as readily. On the map, a crowded town is struck less and loses fewer.',
+    cost: { stone: 80 }, time: 16, age: 0, hp: 400, size: 1, pop: 0, sight: 3,
+    trains: [], techs: [],
+  }),
+  infirmary: B({
+    id: 'infirmary', name: 'Infirmary', icon: '⚕️',
+    desc: 'Tends the sick and the grieving: plague wears your people down more slowly, and a grieving house mourns half as long.',
+    cost: { wood: 120, gold: 60 }, time: 30, age: 1, hp: 700, size: 2, pop: 0, sight: 4,
+    trains: [], techs: [],
+  }),
   barracks: B({
     id: 'barracks', name: 'Barracks', icon: '🗡️',
     desc: 'Trains infantry.',
@@ -651,6 +676,13 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     desc: 'Station up to four villagers here as monks (men) and nuns (women): each makes your people more pious and brings the town\'s children sooner. Those who enter leave their own house. Also trains shamans and prophets and researches blessings.',
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
     trains: ['shaman', 'priest', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
+  }),
+  // ---- Rule, law, nobles and faith (the people session; hall.ts, manor.ts, monastery.ts). Costs, ages and strengths are first guesses. ----
+  hall: B({
+    id: 'hall', name: 'Hall of Judgement', icon: '⚖️',
+    desc: 'The leader\'s seat in this town. A decree given to the town has its full strength, as if the leader were here; thieves, killers and plotters are judged here, so they are found the sooner; and the nation\'s nobles gather at it, so their tempers cool the faster and an angry lord here keeps his watch.',
+    cost: { wood: 200, stone: 150, gold: 50 }, time: 45, age: 1, hp: 1400, size: 3, pop: 0, sight: 7,
+    trains: [], techs: [], onMap: true,
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',
@@ -721,6 +753,8 @@ export const BUILD_PAGES = [
   ['house', 'storehouse', 'farm', 'dock', 'market', 'towncenter', 'temple', 'tavern', 'blacksmith', 'palisade', 'gate', 'stonewall', 'wonder'],
   ['barracks', 'range', 'stable', 'workshop', 'tower', 'workcamp'],
 ];
+// Food and health (the food-health job): its buildings follow the Farm on the first page.
+BUILD_PAGES[0].splice(BUILD_PAGES[0].indexOf('farm') + 1, 0, 'granary', 'mill', 'well', 'infirmary');
 
 /** Market prices for 100 of a resource, in gold. */
 export const TRADE: Partial<Record<ResType, { sell: number; buy: number }>> = {
