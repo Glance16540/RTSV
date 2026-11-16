@@ -5,8 +5,8 @@
 // On the map. A Watch House is one of the buildings raised on a town's record (townworks.ts; data.ts `watchhouse`,
 // marked `onMap`): begun from the land's panel out of the town's own stores, and finished by its governor. It counts
 // once it stands finished. A town's governor begins one of its own accord once the town has had cause: a thief or a
-// killer has been at work there two seasons, or was within the last two years. It stays with the town whoever
-// holds it.
+// killer has been at work there two seasons, or was within the last two years, and the town does not want for
+// food or a roof, which come first. It stays with the town whoever holds it.
 //
 // In a town. It is a real building, raised by villagers like any other, and what stands in the town is what the
 // map's record keeps. While one stands, the watch raises the town to any fire: villagers are called off their work
@@ -15,6 +15,7 @@
 // Strengths here are first guesses.
 import type { Campaign } from './campaign';
 import { standsAt } from './studies';
+import { wantsOf } from './governor';
 import { begunAt, raiseWork } from './townworks';
 
 export const WATCH = {
@@ -46,6 +47,8 @@ export function governWatch(c: Campaign): number[] {
     const cause = it.ended ? c.turn - it.ended.turn <= WATCH.since && it.ended.how !== 'lost' : c.turn - it.since >= WATCH.after;
     const t = c.territories[it.at];
     if (!cause || !t || t.owner < 0 || begun.includes(it.at) || begunAt(c, it.at, 'watchhouse')) continue;
+    const wants = wantsOf(c, it.at);
+    if (wants.food || wants.roof) continue; // bread and a roof come first: the town's wood is for those while it wants them
     const log = c.log.length;
     if (raiseWork(c, t.owner, it.at, 'watchhouse') !== '') continue;
     c.log.length = log; // said in the governor's own words
