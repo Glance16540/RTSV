@@ -5,12 +5,24 @@
 // campaign.ts calls `storyTurn(c)` once a season. Whoever puts a tale to the player uses `taleNow`, `taleText`,
 // `canAnswer` and `answerTale`.
 import type { Campaign } from './campaign';
-import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, placeAt, placesOf, shiftVirtue, tell } from './campaign';
+import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, shiftVirtue, tell } from './campaign';
+import { placeAt, placesOf } from './places';
 import { LEANING } from './creed';
 import { canPayFor, payFor } from './prices';
-import { COMET_VIRTUE, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
+import { Answer, COMET_VIRTUE, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
 import { leaningWith } from './temper';
 import { tribeArms } from './tribes';
+
+declare module './campaign' {
+  interface Campaign {
+    /** A tale waiting for the player's answer this turn, with the names that fill it in. */
+    tale?: { id: string; land: number; rival: number; tribe: number } | null;
+    lastTale?: string;
+    /** Every tale that has been put, and how each one answered was settled: later tales turn on these. */
+    asked?: string[];
+    answers?: Answer[];
+  }
+}
 
 /** The words of a tale with its names filled in. */
 export function taleText(c: Campaign, text: string): string {

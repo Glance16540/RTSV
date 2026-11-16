@@ -23,7 +23,8 @@ import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
 import { Champion, cleanChampion } from './champion';
-import { Answer, LEGENDS, PLACES, Place, PlaceKind, WorldKind } from './story';
+import { placeAt, placeGood, placeWorth, placesOf, worldNow } from './places';
+export { placeAt, placesOf, worldNow } from './places'; // where they were found before they were moved
 import { storyTurn } from './storyturn';
 export { answerTale, canAnswer, taleNow, taleText } from './storyturn'; // where they were found before they were moved
 
@@ -126,37 +127,9 @@ const hash = (a: number, b: number): number => {
   t = Math.imul(t ^ (t >>> 15), t | 1);
   return ((t ^ (t >>> 13)) >>> 0) / 4294967296;
 };
-/** The named places of this world: a few lands that are not capitals, chosen and named by the seed. */
-export function placesOf(c: Campaign): Place[] {
-  if (c.places) return suited(c, c.places);
-  const open = c.territories.filter((t) => t.capital < 0).sort((a, b) => hash(c.seed, a.id) - hash(c.seed, b.id));
-  const kinds = (Object.keys(PLACES) as PlaceKind[]).sort((a, b) => hash(c.seed + 1, a.length * 7 + a.charCodeAt(0)) - hash(c.seed + 1, b.length * 7 + b.charCodeAt(0)));
-  const n = Math.min(open.length, 3 + Math.floor(c.territories.length / 6));
-  c.places = [];
-  for (let i = 0; i < n; i++) {
-    const kind = kinds[i % kinds.length], def = PLACES[kind];
-    const k = Math.floor(hash(c.seed + 2, i % kinds.length) * def.names.length) + Math.floor(i / kinds.length); // a second of its kind takes the next name
-    c.places.push({ at: open[i].id, kind, name: def.names[k % def.names.length], legend: '' });
-  }
-  return suited(c, c.places);
-}
-/** Give each place a legend that is told of that place and no other (and put right those given another's before). */
-function suited(c: Campaign, places: Place[]): Place[] {
-  for (const p of places) {
-    const own = LEGENDS[p.name];
-    if (own && !own.includes(p.legend)) p.legend = own[Math.floor(hash(c.seed + 3, p.at) * own.length)];
-  }
-  return places;
-}
-export const placeAt = (c: Campaign, tid: number): Place | undefined => placesOf(c).find((p) => p.at === tid);
-/** Add up one kind of good from every named place a people holds. */
-const placeGood = (c: Campaign, f: number, what: 'virtue' | 'supplies' | 'age'): number =>
-  placesOf(c).reduce((n, p) => n + (c.territories[p.at].owner === f ? PLACES[p.kind][what] ?? 0 : 0), 0);
-/** What is befalling the world this turn, if anything. */
-export const worldNow = (c: Campaign): WorldKind | '' => (c.world && c.world.until >= c.turn ? c.world.kind : '');
 /** Supplies off a company raised by this people in this land: swords for hire, iron in the ground, a season of iron. */
 export const hireOff = (c: Campaign, f: number, tid: number): number =>
-  faithOf(c, f).raise + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.raise ?? 0) + (worldNow(c) === 'iron' ? 1 : 0);
+  faithOf(c, f).raise + placeWorth(c, tid, 'raise') + (worldNow(c) === 'iron' ? 1 : 0);
 export const slots = (t: Territory) => (t.capital >= 0 ? 4 : 3);
 
 /** What each troop type is good against: its companies fight up to 30% harder against that type. */
@@ -380,17 +353,6 @@ export interface Campaign {
   fronts?: Front[];
   /** Things that have happened, or are happening, in particular lands: shown on the map where they are. */
   events?: MapEvent[];
-  /** Places with names of their own (see story.ts): made once from the seed, and the same in every telling. */
-  places?: Place[];
-  /** What is befalling the whole world, until the turn given; and the turn before which nothing new will. */
-  world?: { kind: WorldKind; until: number } | null;
-  worldRest?: number;
-  /** A tale waiting for the player's answer this turn, with the names that fill it in. */
-  tale?: { id: string; land: number; rival: number; tribe: number } | null;
-  lastTale?: string;
-  /** Every tale that has been put, and how each one answered was settled: later tales turn on these. */
-  asked?: string[];
-  answers?: Answer[];
   /** The story so far: what will still matter when the campaign is over. */
   chronicle?: { turn: number; text: string }[];
 }
@@ -983,7 +945,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   const t = c.territories[tid];
   const open = openDefence(c, tid); // a dead town with no army in it has nobody on its walls (deadtown.ts)
   if (open !== null) return open;
-  const ground = (t.trait === 'hills' ? 2 : 0) + countryOf(c, tid).defence + (PLACES[placeAt(c, tid)?.kind as PlaceKind]?.defence ?? 0);
+  const ground = (t.trait === 'hills' ? 2 : 0) + countryOf(c, tid).defence + placeWorth(c, tid, 'defence');
   if (t.owner < 0) return Math.max(1, warriorsOf(c, tid) - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
