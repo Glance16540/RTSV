@@ -25,6 +25,20 @@ function merlons(p: THREE.Object3D, m: THREE.Material, x0: number, z0: number, x
   for (let i = 0; i <= n; i += 2) bx(p, 0.16, 0.18, 0.16, m, x0 + ((x1 - x0) * i) / n, y + 0.09, z0 + ((z1 - z0) * i) / n).rotation.y = ang;
 }
 
+/** What a people sets on a house of its faith: a cross, a crescent, an ankh, a star, a flame, a spire of rings; nothing where its faith keeps no such sign. */
+type Faith = 'cross' | 'crescent' | 'ankh' | 'star' | 'flame' | 'rings' | '';
+const FAITH_SIGN: Record<string, Faith> = { hearth: 'cross', england: 'cross', stonekin: 'cross', greece: 'cross', arabs: 'crescent', mali: 'crescent', egypt: 'ankh', kush: 'ankh', babylon: 'star', dawn: 'star', persia: 'flame', japan: 'rings', forge: 'rings' };
+export const faithOf = (civ: string | undefined): Faith => FAITH_SIGN[civ ?? ''] ?? '';
+/** The sign of a people's faith standing on a roof or a spire at (x, y, z), `k` its size. */
+function sign(p: THREE.Object3D, faith: Faith, m: THREE.Material, x: number, y: number, z: number, k = 1): void {
+  if (faith === 'cross') { bx(p, 0.05 * k, 0.42 * k, 0.05 * k, m, x, y + 0.21 * k, z); bx(p, 0.24 * k, 0.05 * k, 0.05 * k, m, x, y + 0.28 * k, z); }
+  else if (faith === 'crescent') { bx(p, 0.03 * k, 0.16 * k, 0.03 * k, m, x, y + 0.08 * k, z); mesh(p, new THREE.TorusGeometry(0.11 * k, 0.025 * k, 6, 14, Math.PI * 1.3), m, x, y + 0.27 * k, z).rotation.z = -Math.PI * 0.15 + Math.PI / 2; }
+  else if (faith === 'ankh') { bx(p, 0.05 * k, 0.26 * k, 0.05 * k, m, x, y + 0.13 * k, z); bx(p, 0.22 * k, 0.05 * k, 0.05 * k, m, x, y + 0.27 * k, z); mesh(p, new THREE.TorusGeometry(0.07 * k, 0.022 * k, 6, 12), m, x, y + 0.38 * k, z).scale.y = 1.3; }
+  else if (faith === 'star') { bx(p, 0.03 * k, 0.16 * k, 0.03 * k, m, x, y + 0.08 * k, z); for (let i = 0; i < 4; i++) bx(p, 0.3 * k, 0.05 * k, 0.03 * k, m, x, y + 0.3 * k, z).rotation.z = (i * Math.PI) / 4; }
+  else if (faith === 'flame') { mesh(p, new THREE.CylinderGeometry(0.1 * k, 0.07 * k, 0.1 * k, 10), m, x, y + 0.05 * k, z); mesh(p, new THREE.ConeGeometry(0.07 * k, 0.24 * k, 8), toon(0xff9030, '', 0xcc5010), x, y + 0.22 * k, z).castShadow = false; }
+  else if (faith === 'rings') { mesh(p, new THREE.CylinderGeometry(0.02 * k, 0.02 * k, 0.5 * k, 6), m, x, y + 0.25 * k, z); for (let i = 0; i < 5; i++) mesh(p, new THREE.CylinderGeometry((0.09 - i * 0.012) * k, (0.09 - i * 0.012) * k, 0.025 * k, 10), m, x, y + (0.1 + i * 0.07) * k, z); mesh(p, new THREE.SphereGeometry(0.05 * k, 8, 6), m, x, y + 0.52 * k, z); }
+}
+
 // ---- Food ----
 
 /** A granary: a storehouse raised off the ground on mushroom stones against damp and rats, with a ladder to its door. */
@@ -130,10 +144,14 @@ function infirmary(o: Look): THREE.Group {
   if (pitched(o)) chimney(g, -0.9, 1.3, -0.6, 0.8);
   for (const x of [-1.0, -0.5, 0.5, 1.0]) pane(g, 'window', 0.26, 0.36, x, 0.7, 0.16, 0, low ? 0 : 0x6a5428);
   pane(g, 'door', 0.42, 0.72, 0, 0.56, 0.16);
-  // The sign of healing: a white board with a red cross where the place is kept, faded where it is not.
+  // The sign of healing on a white board, faded where the place is let go: a red cross among the peoples whose sign the
+  // cross is, and among the others a healer's bowl with herbs in it.
   bx(g, 0.42, 0.42, 0.04, toon(low ? 0xa8a090 : 0xf4f0e6), 0, 1.15, 0.18);
-  const red = toon(low ? 0x7a4a40 : 0xc0302a);
-  bx(g, 0.1, 0.3, 0.05, red, 0, 1.15, 0.2); bx(g, 0.3, 0.1, 0.05, red, 0, 1.15, 0.2);
+  if (faithOf(o.civ) === 'cross') { const red = toon(low ? 0x7a4a40 : 0xc0302a); bx(g, 0.1, 0.3, 0.05, red, 0, 1.15, 0.2); bx(g, 0.3, 0.1, 0.05, red, 0, 1.15, 0.2); }
+  else {
+    mesh(g, new THREE.SphereGeometry(0.12, 12, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), toon(low ? 0x6a5a48 : 0x8a5a30), 0, 1.13, 0.22).scale.z = 0.3;
+    for (const dx of [-0.06, 0, 0.06]) bx(g, 0.03, 0.14, 0.02, toon(low ? 0x6a7a4a : 0x4a9a3a), dx, 1.2, 0.22).rotation.z = dx * 4;
+  }
   // The physic garden: beds of herbs in rows, a fence, and a bench in the sun.
   fence(g, -1.35, 0.35, -1.35, 1.35); fence(g, 1.35, 0.35, 1.35, 1.35); fence(g, -1.35, 1.35, -0.3, 1.35); fence(g, 0.3, 1.35, 1.35, 1.35);
   for (const [x, z] of [[-0.85, 0.7], [-0.85, 1.05], [0.85, 0.7], [0.85, 1.05]]) {
@@ -230,7 +248,7 @@ function manor(o: Look): THREE.Group {
 // ---- Faith ----
 
 /**
- * A monastery: a church at one side of a cloister, the cloister's arcades round a garth with a well, the brothers'
+ * A monastery: a house of its people's faith (its sign on the spire: faithOf) at one side of a cloister, the cloister's arcades round a garth with a well, the brothers'
  * range behind, a bell tower. Holy, it gleams: whitened walls, gold, the garth in flower. A convent is the same house
  * kept by sisters: a smaller chapel, a walled garden, and no tower.
  */
@@ -260,13 +278,13 @@ function monastery(o: Look, seed: number, sisters = false): THREE.Group {
     walls(g, 1.5, 0.45, 0.12, st, 0, 0, 1.5);
     pane(g, 'arch', 0.3, 0.42, 0, 0.21, 1.57);
     mesh(g, wobble(new THREE.IcosahedronGeometry(0.22, 1), 0.25, seed), toon(0x4e7a3a), -0.45, 0.25, 1.2);
-    bx(g, 0.05, 0.4, 0.05, gold, 0, 2.05, -1.1); bx(g, 0.22, 0.05, 0.05, gold, 0, 2.15, -1.1);
+    sign(g, faithOf(o.civ), gold, 0, 1.85, -1.1);
   } else {
     // The bell tower at the chapel's end, a cross on its spire.
     walls(g, 0.7, 2.4, 0.7, st, 1.3, 0, -1.25);
     for (const [dx, dz, ry] of [[0, 0.36, 0], [0.36, 0, Math.PI / 2]]) pane(g, 'arch', 0.22, 0.36, 1.3 + dx, 2.0, -1.25 + dz, ry);
     mesh(g, new THREE.ConeGeometry(0.52, 1.0, 8), slate, 1.3, 2.9, -1.25);
-    bx(g, 0.05, 0.42, 0.05, gold, 1.3, 3.6, -1.25); bx(g, 0.24, 0.05, 0.05, gold, 1.3, 3.66, -1.25);
+    sign(g, faithOf(o.civ), gold, 1.3, 3.38, -1.25);
   }
   bx(g, 2.82, 0.07, 1.02, toon(o.team), 0, 1.24, -1.1);
   return g;

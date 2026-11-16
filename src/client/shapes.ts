@@ -202,6 +202,8 @@ export interface Look {
   wall: number; roofColor: number; team: number; post: number; age: number;
   roofKind: 'pitched' | 'low' | 'steep' | 'flat' | 'dome' | 'pagoda' | 'yurt';
   leaning: '' | 'holy' | 'low';
+  /** Whose people built it, where a building shows their faith or their ways (civic.ts); '' or absent for none. */
+  civ?: string;
   /** Roofs that are not pitched (domes, pagodas, flat roofs with a parapet, felt tents) are drawn by the caller. */
   otherRoof: (p: THREE.Object3D, half: number, h: number, x: number, y: number, z: number) => THREE.Object3D;
 }
