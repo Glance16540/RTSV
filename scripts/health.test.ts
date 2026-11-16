@@ -165,6 +165,10 @@ interface Watch {
   strikes: { held: boolean; lost: number; watch: boolean; fort: boolean }[];
   /** Every thief and killer (intrigue.ts): the seasons it was at large, and how many of them a Watch House stood in the town. */
   crimes: { seasons: number; watched: number }[];
+  /** The player's convoys that finished their road (convoys.ts, read from the log): whether the player had an Inn standing or sent Escorts that season, whether a band stopped it, and the stores it took. */
+  convoys: { inn: boolean; escorts: boolean; stopped: boolean; took: number }[];
+  /** Every spell of hunger in a held town: how many seasons running, and whether its people had Paved Roads when it began. */
+  hungers: { seasons: number; paved: boolean }[];
   captives: { near: boolean; back: boolean }[];
   taken: { garrison: boolean; rose: boolean }[];
   retaken: number; unsettled: number; // taken towns not counted: taken again by force within five years, or still followed when the run ended
@@ -180,7 +184,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], crimes: [], captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], crimes: [], convoys: [], hungers: [], captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -196,6 +200,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const groups = new Map<string, { near: boolean; since: number }>();
   const takenAt = new Map<number, { since: number; owner: number; garrisoned: number; seen: number }>();
   let logAt = c.log.length;
+  const hungrySpell = c.territories.map((): { seasons: number; paved: boolean; owner: number } | null => null); // the spell of hunger each town is in
   const atLarge = new Map<number, { seasons: number; watched: number }>(); // each thief and killer, by the story's id
   const losses: Losses[][] = [];
   const names = new Map(c.factions.map((f) => [f.name, f.id]));
@@ -326,6 +331,24 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
       const before = t ? dead + grown(folkOf(c, t.id)) : 0;
       if (before >= 4) w.worstHunger = Math.max(w.worstHunger, dead / before);
     }
+    // The player's convoys, from the log: each that came in or had nowhere to go, and each a band stopped.
+    {
+      const inn = nationHas(c, 0, 'inn'), escorts = hasStudy(c, 0, 'escorts');
+      let done = 0;
+      const stops: number[] = [];
+      for (const line of c.log.slice(logAt)) {
+        if (/^A convoy from .+ has come in to /.test(line) || /^Your convoy to .+ had nowhere left to go/.test(line)) done++;
+        const m = /stopped your convoy to .+ and took (.+)\.$/.exec(line);
+        if (m) stops.push([...m[1].matchAll(/(\d+) (?:food|wood|gold|stone)/g)].reduce((k, x) => k + +x[1], 0));
+      }
+      for (let i = 0; i < Math.max(done, stops.length); i++) w.convoys.push({ inn, escorts, stopped: i < stops.length, took: stops[i] ?? 0 });
+    }
+    // Spells of hunger, town by town.
+    for (const t of c.territories) {
+      const sp = hungrySpell[t.id], hungry = t.owner >= 0 && !!folkOf(c, t.id).hungry;
+      if (sp && (!hungry || t.owner !== sp.owner)) { w.hungers.push({ seasons: sp.seasons, paved: sp.paved }); hungrySpell[t.id] = null; }
+      if (hungry) { const k = hungrySpell[t.id] ?? (hungrySpell[t.id] = { seasons: 0, paved: hasStudy(c, t.owner, 'pavedroads'), owner: t.owner }); k.seasons++; }
+    }
     logAt = c.log.length;
     // A rival reaching its next age.
     for (const f of c.factions) {
@@ -394,6 +417,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   w.sieges = watched;
   w.stories = c.intrigueSeq ?? 0; w.storyYears = c.turn / 4;
   w.crimes = [...atLarge.values()];
+  for (const sp of hungrySpell) if (sp) w.hungers.push({ seasons: sp.seasons, paved: sp.paved });
   for (const xs of fed) if (xs.length) { w.storeSeasons.push(median(xs)); w.peaceSeasons += xs.length; }
   w.unsettled = takenAt.size;
   w.townLives = w.townSeasons.filter((x) => !x.tribe).length / YEARS20;
@@ -642,6 +666,13 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     const landed = strikes.filter((x) => !x.held);
     add('Crime', 'Raids held off with a town watch against without', 'report only', `${heldOf(strikes.filter((x) => x.watch))} with against ${heldOf(strikes.filter((x) => !x.watch))} without`, 'report', 'Every strike by a band on a held town. "With" is a town whose people had learned Town Watch and where a Watch House stood when the band struck.');
     add('Crime', 'People lost per band strike with a Fortress against without', 'report only', `${lostOf(strikes.filter((x) => x.fort))} with against ${lostOf(strikes.filter((x) => !x.fort))} without; of strikes not held off, ${lostOf(landed.filter((x) => x.fort))} against ${lostOf(landed.filter((x) => !x.fort))}`, 'report', 'The killed and the carried off in each strike by a band on a held town, the strikes held off counted too (a Fortress holds more of them off). A town that fell to the band is counted by what the strike itself cost it.');
+    // Report only: the roads (roads.ts). The player's convoys alone: only theirs are written in the log.
+    const convoys = all('convoys'), stoppedOf = (xs: typeof convoys) => (xs.length ? `${pct(share(xs, (x) => x.stopped))} (${xs.length})` : 'none');
+    const tookOf = (xs: typeof convoys) => { const st = xs.filter((x) => x.stopped); return st.length ? `${num(mean(st.map((x) => x.took)), 0)} (${st.length})` : 'none'; };
+    add('Crime', 'The player\'s convoys stopped by a band, with an Inn against without', 'report only', `${stoppedOf(convoys.filter((x) => x.inn))} with against ${stoppedOf(convoys.filter((x) => !x.inn))} without`, 'report', 'Every convoy of the player\'s that finished its road, read from the log (rivals\' convoys are not written there). "With" is a season in which the player had an Inn standing in any town, whether or not it was on that convoy\'s road.');
+    add('Crime', 'Stores a band takes from a convoy of the player\'s it stops, with Escorts against without', 'report only', `${tookOf(convoys.filter((x) => x.escorts))} with against ${tookOf(convoys.filter((x) => !x.escorts))} without`, 'report', 'Food, wood, gold and stone together, for each convoy stopped. "With" is a player who had learned Escorts by then.');
+    const hungers = all('hungers'), spellOf = (xs: typeof hungers) => (xs.length ? `${num(mean(xs.map((x) => x.seasons)), 2)} (${xs.length})` : 'none');
+    add('Crime', 'Seasons running a hungry town stays hungry, with Paved Roads against without', 'report only', `${spellOf(hungers.filter((x) => x.paved))} with against ${spellOf(hungers.filter((x) => !x.paved))} without`, 'report', 'Every spell of hunger in a held town, every people\'s: the seasons from the first hungry one until it is fed, changes hands or the count stops. "With" is a town whose people had learned Paved Roads when the spell began. The spell ends when the town is fed, by a convoy or by anything else.');
   }
   const out = (o: string) => share(raids, (r) => r.outcome === o);
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
