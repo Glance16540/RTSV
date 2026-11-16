@@ -131,7 +131,8 @@ interface Watch {
   decided: number; // the season the campaign was decided, or -1
   how: string; // who won it: 'player beaten', 'player', 'rival', or 'ruin' (nobody: ruin.ts)
   ages: number[]; // seasons a rival took to reach each next age
-  growth: number[]; // grown after 20 years over grown at the start, for towns held by one people throughout
+  growth: number[]; // all its people (grown and children) after 20 years over all at the start, for towns held by one people throughout
+  grownGrowth: number[]; // the same, grown people alone
   townSeasons: TownSeason[];
   stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
   townLives: number; diedOut: number; diedAfterAll: number;
@@ -161,8 +162,8 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
-  const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
+  const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
@@ -339,7 +340,8 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     if (now === YEARS20) {
       for (const t of c.territories) {
         if (!steady[t.id] || t.owner !== start[t.id].owner || t.horde) continue;
-        if (start[t.id].grown > 0) w.growth.push(grown(folkOf(c, t.id)) / start[t.id].grown);
+        if (start[t.id].all > 0) w.growth.push((grown(folkOf(c, t.id)) + folkOf(c, t.id).children) / start[t.id].all);
+        if (start[t.id].grown > 0) w.grownGrowth.push(grown(folkOf(c, t.id)) / start[t.id].grown);
         w.fallingTowns++;
         if (townStanding(c, t.id) <= start[t.id].standing - 10) w.falling++;
         w.driftLost.push(lostTo[t.id]);
@@ -494,9 +496,9 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   add('Pace', 'Seasons until a rival reaches its next age', '20 to 60', `median ${num(median(ages), 0)} (${ages.length} advances)`, within(median(ages), 20, 60), 'Counted from the start, or from its last age.');
 
   // People
-  const growth = all('growth');
-  add('People', 'A town left alone, grown people after 20 years', '1.3 to 2 times', `median ${num(median(growth), 2)}× (${growth.length} towns held by one people throughout)`, within(median(growth), 1.3, 2),
-    'Nobody visits any town in these runs, so every town is left alone. Whether it is held by its houses and food is not judged.');
+  const growth = all('growth'), grownOnly = all('grownGrowth');
+  add('People', 'A town left alone, all its people (grown and children) after 20 years', '1.5 to 3 times', `median ${num(median(growth), 2)}× (${growth.length} towns held by one people throughout; grown people alone ${num(median(grownOnly), 2)}×)`, within(median(growth), 1.5, 3),
+    'Nobody visits any town in these runs, so every town is left alone. Grown people and children together, against the same at the start; the grown alone are given beside it, since a child takes fifteen years to be counted grown. Whether it is held by its houses and food is not judged.');
   if (VISITS > 0) {
     // The same campaign told twice: every town of the player's visited every season, and none. Each town the
     // player held from the start to twenty years on in both tellings is one pair.

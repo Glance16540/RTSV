@@ -49,6 +49,7 @@ import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './riv
 import { aimOrder, marchInto, redeploy } from './rivalaim';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
+import { unrestSeason } from './unrest';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
 import { harvest } from './harvest';
@@ -693,14 +694,10 @@ function mapTurn(c: Campaign): void {
   }
   c.events = ev.filter((x) => x.until >= c.turn - 1);
   const busy = new Set(c.events.filter((x) => x.until >= c.turn).map((x) => x.at));
-  if (c.turn >= 3 && luck(c, 50) < 0.3) {
-    const open = c.territories.filter((t) => t.owner >= 0 && t.capital < 0 && !t.yoke && !busy.has(t.id) && !c.armies.some((a) => a.at === t.id && a.owner === t.owner) && !leaderAt(c, t.owner, t.id));
-    const t = open[Math.floor(luck(c, 51) * open.length)];
-    if (t) {
-      mark(c, 'unrest', t.id, UNREST_TURNS - 1);
-      busy.add(t.id);
-      c.log.push(`There is unrest in ${t.name}. ${t.owner === 0 ? 'Send an army there within ' + UNREST_TURNS + ' turns or it will rise.' : ''}`.trim());
-    }
+  // Unrest begins in a town by its own state, not by one draw for the whole world (unrest.ts).
+  for (const tid of unrestSeason(c, busy)) {
+    const t = c.territories[tid];
+    c.log.push(`There is unrest in ${t.name}. ${t.owner === 0 ? 'Send an army there within ' + UNREST_TURNS + ' turns or it will rise.' : ''}`.trim());
   }
   if (c.turn >= 2 && luck(c, 60) < 0.22 && !c.events.some((x) => x.kind === 'hoard' && x.until >= c.turn)) {
     const open = c.territories.filter((t) => !busy.has(t.id) && t.capital < 0);
