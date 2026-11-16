@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign } from '../src/sim/campaign';
 import { seat } from '../src/sim/court';
-import { ALMS_FOOD, DECREES, MESSENGER, TAVERN_WOMEN_GOLD, decreeBar, decreeEffect, decreesAt, decreesSeason, issueDecree, sensibleDecrees } from '../src/sim/decrees';
+import { ALMS_A_SEASON, ALMS_FOOD, DECREES, MESSENGER, TAVERN_WOMEN_GOLD, decreeBar, decreeEffect, decreesAt, decreesSeason, issueDecree, sensibleDecrees } from '../src/sim/decrees';
 import { driftOf, driftTown, seasonDrift } from '../src/sim/drift';
 import { folkOf } from '../src/sim/township';
 
@@ -12,7 +12,11 @@ const world = (): { c: Campaign; tid: number; other: number } => {
   const tid = c.territories.find((t) => t.capital === 0)!.id;
   c.factions[0].supplies = 30;
   seat(c, 0, tid);
-  return { c, tid, other: c.territories.find((t) => t.owner !== 0)!.id };
+  const other = c.territories.find((t) => t.owner !== 0 && !c.territories[tid].adj.includes(t.id))!.id;
+  // A town of theirs beside it with food to spare: food by decree is sent from the towns beside a hungry one.
+  const near = c.territories[c.territories[tid].adj[0]];
+  near.owner = 0; delete near.horde; folkOf(c, near.id).stores.food = 100000;
+  return { c, tid, other };
 };
 
 describe('a decree', () => {
@@ -42,10 +46,8 @@ describe('a decree', () => {
     expect(decreeBar(c, 0, tid, 'tavernWomen')).toMatch(/no tavern/);
     c.factions[0].supplies = 0;
     expect(decreeBar(c, 0, tid, 'guards')).toMatch(/costs/);
-    // Food is paid in goods, not supplies: the town's own first, then what the towns beside it can spare.
+    // Food is not paid in supplies: it is sent from the towns beside it, what they can spare.
     expect(decreeBar(c, 0, tid, 'alms')).toBe('');
-    const s = folkOf(c, tid).stores;
-    s.gold = 0; s.wood = 0; s.stone = 0;
     for (const n of c.territories[tid].adj) if (c.territories[n].owner === 0) folkOf(c, n).stores.food = 0;
     expect(decreeBar(c, 0, tid, 'alms')).toMatch(/no food to be had/);
   });
@@ -112,9 +114,24 @@ describe('a sensible ruler', () => {
     expect(c.factions[0].supplies).toBe(4);
   });
 
+  it('sends food from the towns beside, never the war chest, and to at most a few towns a season', () => {
+    const { c, tid } = world();
+    const s = folkOf(c, tid).stores, gold = s.gold, wood = s.wood, stone = s.stone;
+    issueDecree(c, 0, tid, 'alms');
+    expect([s.gold, s.wood, s.stone]).toEqual([gold, wood, stone]);
+    // Many hungry towns: food goes to ALMS_A_SEASON of them this season.
+    for (const t of c.territories) if (t.owner !== 0 && t.owner !== -2) { t.owner = 0; delete t.horde; folkOf(c, t.id).stores.food = 100000; }
+    for (const t of c.territories) t.decrees = [];
+    c.factions[0].supplies = 30;
+    sensibleDecrees(c, 0, () => ({ hungry: true, raided: false, moved: 0, standing: 0 }));
+    expect(c.territories.filter((t) => decreesAt(c, t.id).some((d) => d.kind === 'alms')).length).toBe(ALMS_A_SEASON);
+  });
+
   it('the computer\'s peoples give their decrees when the season turns', () => {
     const { c } = world();
-    for (const t of c.territories) if (t.owner === 1) { folkOf(c, t.id).stores.food = 0; driftTown(c, t.id); }
+    const rival = c.territories.find((t) => t.owner === 1)!, near = c.territories[rival.adj.find((n) => c.territories[n].owner !== 0)!];
+    near.owner = 1; delete near.horde; folkOf(c, near.id).stores.food = 100000; // with food to spare beside its hungry town
+    folkOf(c, rival.id).stores.food = 0; driftTown(c, rival.id);
     c.factions[1].supplies = 30;
     seasonDrift(c);
     expect(c.territories.some((t) => t.owner === 1 && (t.decrees?.length ?? 0) > 0)).toBe(true);

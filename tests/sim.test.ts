@@ -3096,7 +3096,7 @@ describe('the worlds of the campaign', () => {
     moveArmy(c, a.id, target.id);
     c.pending!.mode = 'siege';
     expect(battleConfig(c)!.climate).toBe(BIOMES[biomeOf(c, target.id)].climate);
-  });
+  }, 60_000); // several worlds are made and a battle begun: close on five seconds alone, and over it when the whole suite runs
 });
 
 describe('mountains and rivers on the campaign map', () => {

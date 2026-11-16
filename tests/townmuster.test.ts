@@ -76,8 +76,10 @@ describe('a town left training goes on raising', () => {
 
   it('it never takes the stores below what the governor keeps', () => {
     const { c, t, f } = town();
-    f.stores = { food: 320, wood: 50, gold: 40, stone: 40 }; // enough to eat, not enough to spare
-    expect(GOVERN.floor + goodsFor(c, t.id, 'infantry')).toBeGreaterThan(450);
+    // Enough to eat (no shorter than the governor reckons short), not enough to spare: a smaller town, so that is little.
+    f.women = 5; f.children = 0;
+    f.stores = { food: GOVERN.short * (f.men + f.women + f.elders + f.children), wood: 0, gold: 0, stone: 0 };
+    expect(GOVERN.floor + goodsFor(c, t.id, 'infantry')).toBeGreaterThan(f.stores.food);
     expect(drillOf(c, t.id).why).toBe('stores');
     expect(drillTown(c, t.id)).toBeNull();
     expect(f.men).toBe(10);

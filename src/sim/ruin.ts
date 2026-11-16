@@ -6,8 +6,8 @@
  * How it is read here. Towns change hands with the tribes and the bands in most seasons even of a ruined world,
  * so "has been able to take land" is read as ground gained and kept: no living people holds more land now than
  * it held `RUIN.seasons` ago. "Bands hold much of the map": the lands the marauders hold, and those where a band
- * has its place, are `RUIN.bands` of all the lands or more, and the peoples together hold less than `RUIN.held` of
- * them. (Without the second, strong nations at a stand-off with bands camped on their own land read as ruined:
+ * has its place, were `RUIN.bands` of all the lands or more in `RUIN.often` of those seasons, and the peoples
+ * together hold less than `RUIN.held` of them. (Without the second, strong nations at a stand-off with bands camped on their own land read as ruined:
  * five of 96 computer-played campaigns, none of them a ruined world.) When all of it is so the campaign is over with no
  * winner (`winner` -1, `ended` 'ruin'), and the chronicle says so. Checked once a season, where campaigns are
  * decided; a campaign already over is left as it ended.
@@ -18,6 +18,8 @@ declare module './campaign' {
   interface Campaign {
     /** How many lands each people held at the end of each of the last seasons, oldest first (ruin.ts). */
     grounds?: number[][];
+    /** The share of the map the bands held at the end of each of the last seasons, oldest first (ruin.ts). */
+    bandGrounds?: number[];
     /** How the campaign ended, where it was not won: in ruin (ruin.ts). */
     ended?: 'ruin';
   }
@@ -28,6 +30,8 @@ export const RUIN = {
   seasons: 80,
   /** The share of the map in the bands' hands that counts as much of it. */
   bands: 0.2,
+  /** In how many of those seasons the bands must have held that much: a quarter of them. Their hold comes and goes with every band broken or newly camped, and read at one moment the same world was ruined one season and not the next. */
+  often: 0.25,
   /** The peoples together must hold less than this share of the map for it to be the bands' and not theirs. */
   held: 0.5,
 };
@@ -40,8 +44,14 @@ export function bandShare(c: Campaign): number {
 }
 /** The share of the map the living peoples hold between them. */
 export const heldShare = (c: Campaign): number => (c.territories.length ? c.territories.filter((t) => t.owner >= 0 && !t.horde && c.factions[t.owner]?.alive).length / c.territories.length : 0);
-/** Do the bands hold much of the map, and the peoples little? */
-export const bandsHoldMuch = (c: Campaign): boolean => bandShare(c) >= RUIN.bands && heldShare(c) < RUIN.held;
+/** In what share of the seasons on record (this one, where there is no record) the bands held `RUIN.bands` of the map or more. */
+export function bandsOften(c: Campaign): number {
+  const past = c.bandGrounds ?? [];
+  if (!past.length) return bandShare(c) >= RUIN.bands ? 1 : 0;
+  return past.filter((x) => x >= RUIN.bands).length / past.length;
+}
+/** Do the bands hold much of the map, and the peoples little? The bands' hold is read over the years on record, the peoples' as it stands. */
+export const bandsHoldMuch = (c: Campaign): boolean => bandsOften(c) >= RUIN.often && heldShare(c) < RUIN.held;
 /** Has any living people more land now than it had `RUIN.seasons` ago? True while the record is still too short to say. */
 export function groundGained(c: Campaign): boolean {
   const past = c.grounds ?? [];
@@ -83,6 +93,9 @@ export function ruinSeason(c: Campaign): boolean {
   const gained = groundGained(c); // against the record as it stood before this season is added
   past.push(c.factions.map((f) => (f.alive ? landsOf(c, f.id) : 0)));
   if (past.length > RUIN.seasons) past.splice(0, past.length - RUIN.seasons);
+  const bands = (c.bandGrounds ??= []);
+  bands.push(Math.round(bandShare(c) * 1000) / 1000);
+  if (bands.length > RUIN.seasons) bands.splice(0, bands.length - RUIN.seasons);
   if (gained || !bandsHoldMuch(c)) return false;
   c.phase = 'over';
   c.winner = -1;
