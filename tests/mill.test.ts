@@ -1,31 +1,19 @@
 // The Mill (src/sim/mill.ts): a farmed land yields more on the map, and farms are worked faster in a town.
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
-import { SITES } from '../src/sim/campaignbase';
 import { BUILDINGS, BUILD_PAGES } from '../src/sim/data';
 import { yieldShares } from '../src/sim/harvest';
 import { governTown } from '../src/sim/governor';
 import { MILL, millPace, millWanted, millYield } from '../src/sim/mill';
 import { Game } from '../src/sim/game';
-import { folkOf } from '../src/sim/township';
 import { run, setups, spot, villagers } from './helpers';
+import { begun, town as foodTown } from './foodtown';
 
-function town(buildings: string[], food = 2000) {
-  const c = newCampaign(7, 1, 1, 'hearth');
-  c.fronts = [];
-  const home = c.territories.find((t) => t.capital === 0)!;
-  const t = c.territories.find((x) => x.owner < 0 && home.adj.includes(x.id))!;
-  t.owner = 0; t.buildings = buildings;
-  const f = folkOf(c, t.id);
-  f.men = 6; f.women = 6; f.elders = 1; f.children = 4;
-  delete f.ages; delete f.drift;
-  f.stores = { food, wood: 900, gold: 900, stone: 900 };
-  return { c, t, f };
-}
+const town = (buildings: string[], food = 2000, people = 30) => foodTown(buildings, { food, people });
 
 describe('the Mill on the map', () => {
-  it('is a building of the map and of the town', () => {
-    expect(SITES.mill.name).toBe('Mill');
+  it('is a building of the town, raised from the map too', () => {
+    expect(BUILDINGS.mill.onMap).toBe(true);
     expect(BUILDINGS.mill.name).toBe('Mill');
     expect(BUILD_PAGES[0]).toContain('mill');
   });
@@ -44,14 +32,17 @@ describe('the Mill on the map', () => {
     const short = town(['farm'], 0);
     expect(millWanted(short.c, short.t.id, true)).toBe(true);
     governTown(short.c, short.t.id);
-    expect(short.t.buildings).toContain('mill');
-    const plenty = town(['farm']);
+    expect(begun(short.c, short.t.id, 'mill')).toBe(true);
+    const plenty = town(['farm'], 2000, 10); // a small town with food enough
     governTown(plenty.c, plenty.t.id);
-    expect(plenty.t.buildings).not.toContain('mill');
+    expect(begun(plenty.c, plenty.t.id, 'mill')).toBe(false);
+    const big = town(['farm'], 2000, MILL.big + 4); // a town grown big wants one before it runs short
+    governTown(big.c, big.t.id);
+    expect(begun(big.c, big.t.id, 'mill')).toBe(true);
     const noFields = town([], 0);
     governTown(noFields.c, noFields.t.id);
     expect(noFields.t.buildings).toContain('farm'); // the Farm comes first
-    expect(noFields.t.buildings).not.toContain('mill');
+    expect(begun(noFields.c, noFields.t.id, 'mill')).toBe(false);
   });
 });
 

@@ -1,7 +1,7 @@
 // The Infirmary (docs/DESIGN.md, "Buildings and research that answer the systems": "an Infirmary (or Almshouse)
 // tends the sick and the grieving").
 //
-// On the map it is a building on the land's record (SITES.infirmary). The sick are nursed: plague takes
+// On the map it is a building on the town's record (townworks.ts: raised from the map, finished by the governor). The sick are nursed: plague takes
 // INFIRMARY.sick of those it would have taken there (acts.ts asks `infirmaryCare`). The grieving are sat with: a
 // grieving town grieves INFIRMARY.grief seasons less each season (drift.ts passes `infirmaryEase` to grief.ts),
 // so its strain toward worse eases sooner. The governor raises one in a town of INFIRMARY.big people or more that
@@ -15,6 +15,8 @@
 import type { Campaign } from './campaign';
 import type { Game } from './game';
 import { folkOf, headcount } from './township';
+import { standsAt } from './studies';
+import { begunAt } from './townworks';
 
 export const INFIRMARY = {
   /** The share of plague's toll the sick still pay where they are nursed. */
@@ -25,8 +27,8 @@ export const INFIRMARY = {
   big: 14, recall: 8,
 };
 
-/** Whether a land has an Infirmary on its record. */
-export const hasInfirmary = (c: Campaign, tid: number): boolean => !!c.territories[tid]?.buildings.includes('infirmary');
+/** Whether an Infirmary stands finished on the town's record. */
+export const hasInfirmary = (c: Campaign, tid: number): boolean => standsAt(c, tid, 'infirmary');
 /** The share of plague's toll the town still pays (acts.ts): INFIRMARY.sick with an Infirmary. */
 export const infirmaryCare = (c: Campaign, tid: number): number => (hasInfirmary(c, tid) ? INFIRMARY.sick : 1);
 /** Seasons of grief that pass in a season (grief.ts, by way of drift.ts): INFIRMARY.grief with an Infirmary. */
@@ -34,7 +36,7 @@ export const infirmaryEase = (c: Campaign, tid: number): number => (hasInfirmary
 /** Whether the governor wants an Infirmary here: a town of some size that has lately had plague, or is grieving. */
 export function infirmaryWanted(c: Campaign, tid: number): boolean {
   const f = folkOf(c, tid);
-  if (hasInfirmary(c, tid) || headcount(f) < INFIRMARY.big) return false;
+  if (begunAt(c, tid, 'infirmary') || headcount(f) < INFIRMARY.big) return false;
   return !!f.grief || (c.events ?? []).some((e) => e.kind === 'plague' && e.at === tid && e.turn > c.turn - INFIRMARY.recall);
 }
 
