@@ -29,6 +29,7 @@ import { MAX_FAVOR, atTruce, heroFor } from './campaignbase';
 import { NAMES_M } from './data';
 import { courtOf, leaderAt } from './court';
 import { seatAt } from './hall';
+import { spyOdds } from './spymasters';
 import { houseOf, ofAge, rulerName } from './dynasty';
 import { kinOf, plotWarning, spouseOf } from './kin';
 import { Noble, isAngry, newLord, noblesOf, titleOf } from './nobles';
@@ -317,7 +318,7 @@ function plotStep(c: Campaign, it: Intrigue): void {
   if (!n) { end(c, it, 'nothing', `The whispers at court have stopped: ${p.title}, who was spoken of, is no longer among the great.`, 'plain'); return; }
   if (it.found) return; // waits on judgement
   if (n.mood > P.cooled) { end(c, it, 'nothing', `The whispers at court came to nothing. Whoever was sour has been sweetened.`, 'good'); return; }
-  const odds = P.out + P.warned * plotWarning(c, 0) + (it.watch ? P.informers : 0) + (seatAt(c, 0, n.town) ? P.court : 0); // the court, or a Hall of Judgement in the town (hall.ts)
+  const odds = P.out + P.warned * plotWarning(c, 0) + (it.watch ? P.informers : 0) + (seatAt(c, 0, n.town) ? P.court : 0) + spyOdds(c, 0); // the court, or a Hall of Judgement in the town (hall.ts)
   if (chance(c, it.id * 97 + 1) < odds) {
     const left = spoken(it).filter((i) => i !== it.culprit);
     if (left.length <= 1) { laidBare(c, it, it.watch ? 'Your informers have it.' : plotWarning(c, 0) > 0 ? 'Your confidant has it.' : 'A letter has been found.'); return; }

@@ -581,7 +581,7 @@ export interface BuildingDef {
   dropoff?: boolean;
   walkable?: boolean;
   /** Only a decadent town can build it. */
-  needs?: 'decadent';
+  needs?: 'decadent' | 'holy';
   /** A work camp: how many captives it holds. */
   camp?: number;
   /** How many villagers can be stationed inside to work there (clergy in a church, maids in a tavern). */
@@ -593,6 +593,8 @@ export interface BuildingDef {
   cooldown?: number;
   /** It can be raised on the map, on a town's record, out of the town's stores (townworks.ts), and the governor finishes it. */
   onMap?: boolean;
+  /** Only in a town of this many grown people or more (townworks.ts; in a town, the same count of its villagers). */
+  townAt?: number;
 }
 
 const B = (d: BuildingDef) => d;
@@ -683,7 +685,19 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'hall', name: 'Hall of Judgement', icon: '⚖️',
     desc: 'The leader\'s seat in this town. A decree given to the town has its full strength, as if the leader were here; thieves, killers and plotters are judged here, so they are found the sooner; and the nation\'s nobles gather at it, so their tempers cool the faster and an angry lord here keeps his watch.',
     cost: { wood: 200, stone: 150, gold: 50 }, time: 45, age: 1, hp: 1400, size: 3, pop: 0, sight: 7,
-    trains: [], techs: [], onMap: true,
+    trains: [], techs: ['couriers', 'stewardship', 'writtenlaw', 'oaths', 'spymasters'], onMap: true,
+  }),
+  manor: B({
+    id: 'manor', name: "Noble's Manor", icon: '🏛️',
+    desc: 'The lord\'s own house, in a town of twelve grown people or more. He grows the more content for it, season by season, but he has the more say: every decree pleases or angers him twice as much.',
+    cost: { wood: 180, stone: 60, gold: 60 }, time: 38, age: 1, hp: 1000, size: 3, pop: 0, sight: 6,
+    trains: [], techs: [], onMap: true, townAt: 12,
+  }),
+  monastery: B({
+    id: 'monastery', name: 'Monastery', icon: '🕍',
+    desc: 'Only a town that keeps the faith can build it: the Righteous town\'s great house (a Convent where its women are the more). Up to six villagers live here as monks and nuns, counted as clergy. The town is drawn toward the holy way each season, the drifted come back to it the sooner, and it takes in the sick and the bereaved, so sickness and grief weigh on the town half as much.',
+    cost: { wood: 220, stone: 160, gold: 60 }, time: 46, age: 1, hp: 1300, size: 4, pop: 0, sight: 6,
+    trains: [], techs: ['feastdays', 'pilgrimage'], staff: 6, needs: 'holy', onMap: true,
   }),
   tavern: B({
     id: 'tavern', name: 'Tavern', icon: '🍺',
@@ -751,7 +765,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'watchhouse', name: 'Watch House', icon: '🔔',
     desc: 'The town keeps a watch. On the map a thief is caught sooner and a killer\'s clues are found faster. In the town the watch calls villagers off their work to any fire.',
     cost: { wood: 120, stone: 40 }, time: 30, age: 1, hp: 520, size: 2, pop: 0, sight: 12,
-    trains: [], techs: [], onMap: true,
+    trains: [], techs: ['townwatch'], onMap: true,
   }),
   // ---- end of order and roads ----
 };
@@ -789,7 +803,7 @@ export interface TechDef {
   /**
    * A study of the nation's, kept on the map (studies.ts): what in the systems it answers. The computer's peoples
    * learn one where that is pressing: 'hunger', 'plague', 'unrest', 'raids', 'crime', 'plots', 'nobles', 'faith',
-   * 'rule', 'roads' or 'births'. A tech without it is a battle's only, as before.
+   * 'rule', 'roads', 'births' or 'trade'. A tech without it is a battle's only, as before.
    */
   answers?: string;
   /** The building that teaches it, where no building's `techs` list says (studies.ts). */
@@ -818,6 +832,35 @@ export const TECHS: Record<string, TechDef> = {
   extendedfamily: T({
     id: 'extendedfamily', name: 'Extended Family', icon: '🏘️', desc: 'Each house supports +2 population.',
     cost: { wood: 200, stone: 100 }, time: 40, age: 2, apply: (m) => { m.housePop += 2; },
+  }),
+  // ---- Rule, law, nobles and faith (the people session): studies of the nation's, kept on the map (studies.ts). Costs and ages are first guesses. ----
+  couriers: T({
+    id: 'couriers', name: 'Couriers', icon: '🐎', desc: 'Decrees sent by messenger are three-quarters as strong as given in person, not half.',
+    cost: { wood: 100, gold: 120 }, time: 30, age: 1, answers: 'rule', apply: () => {},
+  }),
+  stewardship: T({
+    id: 'stewardship', name: 'Stewardship', icon: '📒', desc: 'A better governor: what a town\'s governor has begun is finished half again as fast.',
+    cost: { wood: 150, gold: 100 }, time: 30, age: 1, answers: 'rule', apply: () => {},
+  }),
+  writtenlaw: T({
+    id: 'writtenlaw', name: 'Written Law', icon: '📜', desc: 'Unrest is less likely in every town, and a taken town\'s resentment eases the faster.',
+    cost: { wood: 120, gold: 200 }, time: 40, age: 2, answers: 'unrest', apply: () => {},
+  }),
+  oaths: T({
+    id: 'oaths', name: 'Oaths of Fealty', icon: '🤝', desc: 'Your nobles\' moods swing less: a decree pleases or angers them less, and a hard season sours them less.',
+    cost: { gold: 220 }, time: 35, age: 2, answers: 'nobles', apply: () => {},
+  }),
+  spymasters: T({
+    id: 'spymasters', name: 'Spymasters', icon: '🕵️', desc: 'A plot against the leader is found the sooner.',
+    cost: { gold: 250 }, time: 35, age: 2, answers: 'plots', apply: () => {},
+  }),
+  feastdays: T({
+    id: 'feastdays', name: 'Feast Days', icon: '🎉', desc: 'Once a year every town of yours keeps a feast, and is lifted toward the holy way.',
+    cost: { wood: 100, gold: 150 }, time: 30, age: 1, answers: 'faith', apply: () => {},
+  }),
+  pilgrimage: T({
+    id: 'pilgrimage', name: 'Pilgrimage', icon: '🚶', desc: 'Your towns are drawn toward your nation\'s faith the faster.',
+    cost: { stone: 120, gold: 150 }, time: 35, age: 2, answers: 'faith', apply: () => {},
   }),
   herbalism: T({
     id: 'herbalism', name: 'Herbalism', icon: '🌿', desc: 'Shamans heal 60% faster.',
@@ -875,6 +918,13 @@ export const TECHS: Record<string, TechDef> = {
     id: 'ballistics', name: 'Fortified Arrows', icon: '🏰', desc: 'Towers and Town Centers +4 attack.',
     cost: { wood: 150, stone: 100 }, time: 35, age: 2, apply: (m) => { m.towerAtk += 4; },
   }),
+  // ---- Order and roads (the order-and-roads job: townwatch.ts and its fellows). One block; costs are first guesses. ----
+  townwatch: T({
+    id: 'townwatch', name: 'Town Watch', icon: '🔔', answers: 'crime',
+    desc: 'A proper watch in every town with a Watch House: such a town stands a company stronger against a band, and fewer thieves and killers begin among your people. In a town, villagers turn out to any fire.',
+    cost: { wood: 150, gold: 100 }, time: 40, age: 1, apply: () => {},
+  }),
+  // ---- end of order and roads ----
   up_frigate: T({
     id: 'up_frigate', name: 'Ships of the Line', icon: '🚢', desc: 'All War Galleys become Frigates, and Galleys are built as Frigates from now on.',
     cost: { wood: 300, gold: 250 }, time: 50, age: 4, upgrade: ['galley', 'frigate'], apply: () => {},
@@ -910,9 +960,9 @@ export const TECHS: Record<string, TechDef> = {
   // ---- Each people its own (ownstudies.ts): one study that only its nation can learn (`civ`). Each is a study of the
   // nation's kept on the map (studies.ts: `answers`), taught at the Town Center. What each does on the map is in
   // ownstudies.ts; what is in `apply` is its worth inside a town. Costs, ages and strengths are first guesses.
-  own_kinship: T({ id: 'own_kinship', civ: 'hearth', answers: 'rule', taughtAt: 'towncenter', name: 'Kinship', icon: '👪', desc: 'A study of the Franks alone. On the map their couples raise children a fifth sooner; in a town families raise them a fifth faster.', cost: { food: 200, wood: 100 }, time: 40, age: 1, apply: (m) => { m.birth *= 1.2; } }),
+  own_kinship: T({ id: 'own_kinship', civ: 'hearth', answers: 'births', taughtAt: 'towncenter', name: 'Kinship', icon: '👪', desc: 'A study of the Franks alone. On the map their couples raise children a fifth sooner; in a town families raise them a fifth faster.', cost: { food: 200, wood: 100 }, time: 40, age: 1, apply: (m) => { m.birth *= 1.2; } }),
   own_code: T({ id: 'own_code', civ: 'babylon', answers: 'unrest', taughtAt: 'towncenter', name: 'The King\'s Code', icon: '📜', desc: 'A study of the Babylonians alone. On the map a town they have taken settles sooner under written law and unrest is a fifth less likely; in a town research costs a tenth less.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.techCost *= 0.9; } }),
-  own_caravans: T({ id: 'own_caravans', civ: 'mali', answers: 'rule', taughtAt: 'towncenter', name: 'Caravans', icon: '🐪', desc: 'A study of the Malians alone. On the map every town of theirs brings in 12 gold a season; in a town villagers carry 2 more.', cost: { wood: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }),
+  own_caravans: T({ id: 'own_caravans', civ: 'mali', answers: 'trade', taughtAt: 'towncenter', name: 'Caravans', icon: '🐪', desc: 'A study of the Malians alone. On the map every town of theirs brings in 12 gold a season; in a town villagers carry 2 more.', cost: { food: 150, wood: 150 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }), // no gold in its price: it answers a want of gold
   own_bow: T({ id: 'own_bow', civ: 'kush', answers: 'raids', taughtAt: 'towncenter', name: 'The Land of the Bow', icon: '🏹', desc: 'A study of the Kushites alone. On the map every town of theirs with men in it is harder to take; in a town towers and Town Centers shoot 1 tile further.', cost: { food: 150, wood: 200 }, time: 40, age: 1, apply: (m) => { m.towerRange += 1; } }),
   own_walls: T({ id: 'own_walls', civ: 'stonekin', answers: 'raids', taughtAt: 'towncenter', name: 'Great Walls', icon: '🧱', desc: 'A study of the Romans alone. On the map a Fortress of theirs is worth 2 more defence; in a town buildings have 15% more health.', cost: { wood: 150, stone: 200 }, time: 45, age: 1, apply: (m) => { m.buildingHp *= 1.15; } }),
   own_remounts: T({ id: 'own_remounts', civ: 'steppe', answers: 'rule', taughtAt: 'towncenter', name: 'Remounts', icon: '🐎', desc: 'A study of the Mongols alone. On the map an army of theirs rests two seasons fewer after storming a town; in a town cavalry moves a tenth faster.', cost: { food: 250, gold: 100 }, time: 40, age: 1, apply: (m) => { m.cavSpeed *= 1.1; } }),

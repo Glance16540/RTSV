@@ -27,6 +27,7 @@ import { folkOf, grown } from './township';
 import { TEND_EASE, decreeEffect, decreesSeason, sensibleDecrees } from './decrees';
 import { leaderAt } from './court';
 import { nobleStrain, nobleWatch } from './nobles';
+import { monasteryCare } from './monastery';
 import { infirmaryEase } from './infirmary';
 
 declare module './township' {
@@ -83,13 +84,14 @@ export function driftTown(c: Campaign, tid: number): number {
   const hunger = famine || food < LEAN_FOOD ? 1 : f.hungry ? 0.6 : 0;
   const e = decreeEffect(c, tid, isDecadent(townStanding(c, tid)));
   // The church tending the sick and the mourning (decrees.ts) lightens what sickness and grief weigh.
-  const tended = 1 - TEND_EASE * e.tend;
+  const mon = monasteryCare(c, tid); // a Monastery or Convent cares for the town and tends its sick and bereaved (monastery.ts)
+  const tended = 1 - TEND_EASE * Math.max(e.tend, mon.tend);
   const griefNow = Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX);
   const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + (STRAIN.sick * Number(mood.sick) + STRAIN.grief * griefNow) * tended + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid))) * e.strainScale + e.strainAdd + nobleStrain(c, tid));
   const church = t.buildings.includes('church'), tavern = t.buildings.includes('tavern') && !e.tavernShut;
-  const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care);
+  const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care + mon.care);
   // Only the call to church raises a town here; the rest of its care is shown, and its church is counted by townfaith.ts.
-  const rise = e.holyBarred ? 0 : RISE * Math.min(1, e.care);
+  const rise = e.holyBarred ? 0 : RISE * Math.min(1, e.care) + mon.rise;
   // Who drifts: under strain a few a season, women to the tavern and men to the mines by turns, up to half of each;
   // under a mild strain nobody new goes and one comes back; with care and no strain, a few come back. A shut tavern
   // sends its women home; the women ordered into it stay.
