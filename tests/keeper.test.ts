@@ -22,7 +22,7 @@ describe('a town kept in peace', () => {
     expect(inPeace(g, 0)).toBe(false);
   });
 
-  it('a visit kept by the computer raises no works of war, and leaves none on the map', () => {
+  it('a visit kept by the computer raises no works of war and no soldiers, and leaves no works on the map', () => {
     const c = newCampaign(1, 2, 1, 'hearth'), t = c.territories.find((x) => x.capital === 0)!;
     beginVisit(c, t.id);
     const cfg = visitConfig(c)!;
@@ -33,6 +33,8 @@ describe('a town kept in peace', () => {
     const had = works(g, 0).length;
     run(g, 600, () => ai.update());
     expect(works(g, 0).length).toBe(had);
+    // Nor any soldiers: they would be the town's men taken to the army on the way home (visit.ts).
+    expect(g.units.filter((u) => u.owner === 0 && !u.dead && u.type !== 'villager' && u.lifespan > 0)).toHaveLength(0);
     const before = [...t.buildings];
     finishVisit(c, { town: g.standing(0), ground: g.ground(), virtue: g.players[0].virtue, seconds: g.time, folk: g.census(0) });
     expect(t.buildings.filter((b) => !before.includes(b) && ['barracks', 'range', 'stable'].includes(b))).toEqual([]);
