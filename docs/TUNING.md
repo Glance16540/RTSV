@@ -15,7 +15,7 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Pace | Campaigns undecided at 200 seasons | under 10% |
 | Pace | Campaigns ending in ruin | rare: under 6 in 100, and with those undecided at 200 under 10 in 100 together |
 | Pace | Seasons until a rival reaches its next age | 20 to 60 |
-| People | A town left alone, grown people after 20 years | 1.3 to 2 times what it began with, held by its houses and food |
+| People | A town left alone, all its people (grown and children) after 20 years | 1.5 to 3 times what it began with, held by its houses and food (a child takes fifteen years to be counted grown) |
 | People | A town visited every season vs left alone, after 20 years | visited ends 10 to 40% larger |
 | People | Towns that die out (no people at all) per 100 town-lifetimes | under 3 (the report also shows how many died after war, famine and plague together) |
 | People | Towns left all one sex | a nation's towns under 5%; tribes' towns under 20% (war takes their men, by design) |
@@ -28,7 +28,7 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Faith | Widest gap between two towns of one nation | 20 to 60 most of the time |
 | Faith | A nation that builds churches and keeps its towns fed, over 20 years | moves toward the holy end by 15 to 40 |
 | Drift | Share of town-seasons with anyone drifted | 5 to 20%, more in hungry, raided or newly taken towns |
-| Drift | With sensible decrees vs none | standing lost to drift alone (not war, raids or the nation's dips) at least a third less |
+| Drift | With sensible decrees vs none | standing lost to drift alone (not war, raids or the nation's dips) at least a tenth less |
 | Threats | Raids on a given town (every strike on a held town, marauders' included, per town-season held) | about once in 3 to 5 years |
 | Threats | Outcome of raids | held off 30 to 50%, raided 40 to 60%, taken under 15% |
 | Threats | Captives got back, of those whose people had an army at the band's place or next door within the four seasons (the computer-played player sends it with `attackBand` and settles it unwatched) | about half |

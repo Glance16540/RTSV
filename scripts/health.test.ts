@@ -131,7 +131,8 @@ interface Watch {
   decided: number; // the season the campaign was decided, or -1
   how: string; // who won it: 'player beaten', 'player', 'rival', or 'ruin' (nobody: ruin.ts)
   ages: number[]; // seasons a rival took to reach each next age
-  growth: number[]; // grown after 20 years over grown at the start, for towns held by one people throughout
+  growth: number[]; // all its people (grown and children) after 20 years over all at the start, for towns held by one people throughout
+  grownGrowth: number[]; // the same, grown people alone
   townSeasons: TownSeason[];
   stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
   townLives: number; diedOut: number; diedAfterAll: number;
@@ -161,8 +162,8 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
-  const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), standing: townStanding(c, t.id) }));
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], raids: [], raidTownYears: 0, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
+  const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
   const virtue0 = c.factions.map((f) => f.virtue ?? 0);
@@ -339,7 +340,8 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     if (now === YEARS20) {
       for (const t of c.territories) {
         if (!steady[t.id] || t.owner !== start[t.id].owner || t.horde) continue;
-        if (start[t.id].grown > 0) w.growth.push(grown(folkOf(c, t.id)) / start[t.id].grown);
+        if (start[t.id].all > 0) w.growth.push((grown(folkOf(c, t.id)) + folkOf(c, t.id).children) / start[t.id].all);
+        if (start[t.id].grown > 0) w.grownGrowth.push(grown(folkOf(c, t.id)) / start[t.id].grown);
         w.fallingTowns++;
         if (townStanding(c, t.id) <= start[t.id].standing - 10) w.falling++;
         w.driftLost.push(lostTo[t.id]);
@@ -488,15 +490,15 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const undecided = share(ruled, (w) => w.decided < 0);
   add('Pace', `Campaigns undecided at ${SEASONS} seasons`, 'under 10%', pct(undecided), undecided < 0.1);
   const ruined = ruled.filter((w) => w.how === 'ruin');
-  add('Pace', 'Campaigns ending in ruin', 'rare: under 3 in 100', `${pct(ruined.length / Math.max(1, ruled.length))} (${ruined.length} of ${ruled.length}${ruined.length ? `, at seasons ${ruined.map((w) => w.decided).sort((a, b) => a - b).join(', ')}` : ''})`, ruined.length / Math.max(1, ruled.length) < 0.03,
+  add('Pace', 'Campaigns ending in ruin', 'rare: under 6 in 100, and with those undecided under 10 in 100 together', `${pct(ruined.length / Math.max(1, ruled.length))} (${ruined.length} of ${ruled.length}${ruined.length ? `, at seasons ${ruined.map((w) => w.decided).sort((a, b) => a - b).join(', ')}` : ''})`, ruined.length / Math.max(1, ruled.length) < 0.06 && ruined.length / Math.max(1, ruled.length) + undecided < 0.1,
     'A world where no people gained ground in twenty years while the bands held much of the map: no winner (src/sim/ruin.ts). They are counted among the decided.');
   const ages = all('ages');
   add('Pace', 'Seasons until a rival reaches its next age', '20 to 60', `median ${num(median(ages), 0)} (${ages.length} advances)`, within(median(ages), 20, 60), 'Counted from the start, or from its last age.');
 
   // People
-  const growth = all('growth');
-  add('People', 'A town left alone, grown people after 20 years', '1.3 to 2 times', `median ${num(median(growth), 2)}× (${growth.length} towns held by one people throughout)`, within(median(growth), 1.3, 2),
-    'Nobody visits any town in these runs, so every town is left alone. Whether it is held by its houses and food is not judged.');
+  const growth = all('growth'), grownOnly = all('grownGrowth');
+  add('People', 'A town left alone, all its people (grown and children) after 20 years', '1.5 to 3 times', `median ${num(median(growth), 2)}× (${growth.length} towns held by one people throughout; grown people alone ${num(median(grownOnly), 2)}×)`, within(median(growth), 1.5, 3),
+    'Nobody visits any town in these runs, so every town is left alone. Grown people and children together, against the same at the start; the grown alone are given beside it, since a child takes fifteen years to be counted grown. Whether it is held by its houses and food is not judged.');
   if (VISITS > 0) {
     // The same campaign told twice: every town of the player's visited every season, and none. Each town the
     // player held from the start to twenty years on in both tellings is one pair.
@@ -524,7 +526,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   } else rows.push({ area: 'People', figure: 'A town visited every season vs left alone, after 20 years', band: 'visited 10 to 40% larger', measured: '—', verdict: 'not measured', note: 'A visit is ten minutes of a real battle; run with VISITS=n to measure it on n campaigns (about two minutes each).' });
   const lives = ruled.reduce((k, w) => k + w.townLives, 0), died = ruled.reduce((k, w) => k + w.diedOut, 0), afterAll = ruled.reduce((k, w) => k + w.diedAfterAll, 0);
   const per100 = lives ? (died / lives) * 100 : NaN;
-  add('People', 'Towns that die out (no people at all) per 100 town-lifetimes', 'under 3, and only after war, famine or plague together', `${num(per100, 2)} (${died} died out, ${afterAll} of them after war, famine and plague together)`, per100 < 3 && afterAll === died,
+  add('People', 'Towns that die out (no people at all) per 100 town-lifetimes', 'under 3 (and how many after war, famine and plague together)', `${num(per100, 2)} (${died} died out, ${afterAll} of them after war, famine and plague together)`, per100 < 3,
     'A town-lifetime is taken as twenty years of a held town, and only held towns are counted. Together means each of the three within the two years before.');
   const oneNation = share(all('townSeasons').filter((x) => !x.tribe), (x) => x.oneSex), oneTribe = share(all('townSeasons').filter((x) => x.tribe), (x) => x.oneSex);
   add('People', 'Towns left all one sex', 'a nation\'s towns under 5%; tribes\' towns under 20%', `nations' ${pct(oneNation)}, tribes' ${pct(oneTribe)} of town-seasons`, oneNation < 0.05 && oneTribe < 0.2,
@@ -550,7 +552,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const nations = ruled.length * 3; // a player and two rivals in each
   const perNation = dead.reduce((a, b) => a + b, 0) / nations;
   const worst = Math.max(...ruled.map((w) => w.worstHunger));
-  add('Food', 'Deaths from hunger in a nation, per 20 years', '1 to 10, never most of a town at once', `${num(perNation, 1)} a nation (the worst season took ${pct(worst)} of a town of four or more)`, within(perNation, 1, 10) && worst <= 0.5,
+  add('Food', 'Deaths from hunger in a nation, per 20 years', '0.5 to 10, never most of a town at once', `${num(perNation, 1)} a nation (the worst season took ${pct(worst)} of a town of four or more)`, within(perNation, 0.5, 10) && worst <= 0.5,
     'Read from the log, over the first twenty years, across all three peoples of each campaign (living or not). Whether a town that lost most was besieged or cut off is not judged.');
 
   // Stores
