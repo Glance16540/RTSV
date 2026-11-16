@@ -11,8 +11,7 @@
 // The numbers are first guesses.
 import type { Campaign } from './campaign';
 import type { Game } from './game';
-import { standsAt } from './studies';
-import { begunAt } from './townworks';
+import { onRecord as begunAt, standing as standsAt } from './townrecord';
 import { folkOf, headcount } from './township';
 
 export const MILL = {

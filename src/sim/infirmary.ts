@@ -15,8 +15,7 @@
 import type { Campaign } from './campaign';
 import type { Game } from './game';
 import { folkOf, headcount } from './township';
-import { standsAt } from './studies';
-import { begunAt } from './townworks';
+import { onRecord as begunAt, standing as standsAt } from './townrecord';
 
 export const INFIRMARY = {
   /** The share of plague's toll the sick still pay where they are nursed. */

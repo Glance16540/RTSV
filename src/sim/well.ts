@@ -14,8 +14,7 @@
 import type { Campaign } from './campaign';
 import type { Game } from './game';
 import { folkOf, headcount } from './township';
-import { standsAt } from './studies';
-import { begunAt } from './townworks';
+import { onRecord as begunAt, standing as standsAt } from './townrecord';
 
 export const WELL = {
   /** How crowded a town with a Well counts for plague, as a share of how crowded it is. */

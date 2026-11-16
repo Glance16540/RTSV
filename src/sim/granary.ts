@@ -21,8 +21,7 @@
 import type { Campaign } from './campaign';
 import type { Game } from './game';
 import { folkOf } from './township';
-import { standsAt } from './studies';
-import { begunAt } from './townworks';
+import { onRecord as begunAt, standing as standsAt } from './townrecord';
 
 export const GRANARY = {
   /** Seasons of a town's own eating kept from spoiling, beyond what the larder keeps without one. */

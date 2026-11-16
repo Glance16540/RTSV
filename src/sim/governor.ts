@@ -11,7 +11,7 @@
  * eats once, in larder.ts. The governor neither earns nor feeds: he sets the work, finishes and begins.
  */
 import type { Campaign, Territory } from './campaign';
-import { siteCost, slots } from './campaignbase';
+import { ageOf, siteCost, slots } from './campaignbase';
 import { BUILDINGS } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount } from './township';
 import { couplesOf, housesOf, roomOf } from './seasonfolk';
@@ -20,7 +20,6 @@ import { granaryWanted } from './granary';
 import { millWanted } from './mill';
 import { crowdOf, wellWanted } from './well';
 import { infirmaryWanted } from './infirmary';
-import { raiseWork } from './townworks';
 import { ACTS } from './acts';
 import { buildPace } from './ownstudies';
 
@@ -149,7 +148,14 @@ export function governTown(c: Campaign, tid: number): Governed | null {
   // in goods other than its bread. Begun here, they are finished as anything half built is.
   const farmed = t.buildings.includes('farm');
   const ample = (type: string): boolean => units(f.stores) - f.stores.food - STORE_KINDS.reduce((n, k) => n + (BUILDINGS[type]?.cost[k] ?? 0), 0) >= GOVERN.floor;
-  const work = (type: string): boolean => ample(type) && raiseWork(c, t.owner, tid, type) === '';
+  // Begun as townworks.ts begins one (raiseWork), here, so that the governor and the works need not import each other.
+  const work = (type: string): boolean => {
+    const b = BUILDINGS[type], at = b && ample(type) && ageOf(c, t.owner) >= b.age && t.town?.b?.length && STORE_KINDS.every((k) => f.stores[k] >= (b.cost[k] ?? 0)) ? plotFor(t, type) : null;
+    if (!at) return false;
+    for (const k of STORE_KINDS) f.stores[k] -= b.cost[k] ?? 0;
+    t.town!.b.push([type, at.cx, at.cy, 0.01, 0]);
+    return true;
+  };
   const pay = (goods: number): void => { let left = goods; for (const k of [...STORE_KINDS].sort((a, b) => f.stores[b] - f.stores[a])) { const part = Math.min(f.stores[k], k === 'food' ? 0 : left); f.stores[k] -= part; left -= part; } if (left > 0) f.stores.food = Math.max(0, f.stores.food - left); };
   if (want.food && !t.buildings.includes('farm') && room && afford('farm')) { pay(siteCost(t, 'farm', civ) * 100); t.buildings.push('farm'); out.began = 'farm'; }
   else if (want.roof && !t.town!.b.some((x) => x[0] === 'house' && x[4] !== undefined)) {
