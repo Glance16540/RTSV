@@ -738,6 +738,8 @@ export interface TechDef {
   requires?: string;
   /** Re-equips every unit of the first type as the second, now and in future training. */
   upgrade?: [string, string];
+  /** A study of one people's own: only this nation may learn it (ownstudies.ts). */
+  civ?: string;
   apply: (m: Mods) => void;
 }
 
@@ -828,6 +830,23 @@ export const TECHS: Record<string, TechDef> = {
     id: 'up_bombard', name: 'Cannon Founding', icon: '💣', desc: 'All Catapults become Bombards.',
     cost: { wood: 300, gold: 300 }, time: 55, age: 4, upgrade: ['catapult', 'bombard'], apply: () => {},
   }),
+  // ---- Each people its own (ownstudies.ts): one study that only its nation can learn, researched at the Town Center.
+  // What each does on the map is in ownstudies.ts; what is here is its worth inside a town. All first guesses.
+  own_kinship: T({ id: 'own_kinship', civ: 'hearth', name: 'Kinship', icon: '👪', desc: 'A study of the Franks alone. Families raise children a fifth faster.', cost: { food: 200, wood: 100 }, time: 40, age: 1, apply: (m) => { m.birth *= 1.2; } }),
+  own_code: T({ id: 'own_code', civ: 'babylon', name: "The King's Code", icon: '📜', desc: 'A study of the Babylonians alone. The law is written down, and so is everything else: research costs a tenth less.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.techCost *= 0.9; } }),
+  own_caravans: T({ id: 'own_caravans', civ: 'mali', name: 'Caravans', icon: '🐪', desc: 'A study of the Malians alone. Villagers carry 2 more.', cost: { wood: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }),
+  own_bow: T({ id: 'own_bow', civ: 'kush', name: 'The Land of the Bow', icon: '🏹', desc: 'A study of the Kushites alone. Towers and Town Centers shoot 1 tile further.', cost: { food: 150, wood: 200 }, time: 40, age: 1, apply: (m) => { m.towerRange += 1; } }),
+  own_walls: T({ id: 'own_walls', civ: 'stonekin', name: 'Great Walls', icon: '🧱', desc: 'A study of the Romans alone. Buildings have 15% more health.', cost: { wood: 150, stone: 200 }, time: 45, age: 1, apply: (m) => { m.buildingHp *= 1.15; } }),
+  own_remounts: T({ id: 'own_remounts', civ: 'steppe', name: 'Remounts', icon: '🐎', desc: 'A study of the Mongols alone. Cavalry moves a tenth faster.', cost: { food: 250, gold: 100 }, time: 40, age: 1, apply: (m) => { m.cavSpeed *= 1.1; } }),
+  own_examinations: T({ id: 'own_examinations', civ: 'forge', name: 'Examinations', icon: '🖌️', desc: 'A study of the Chinese alone. Research is 15% faster.', cost: { food: 200, gold: 200 }, time: 45, age: 2, apply: (m) => { m.techTime *= 0.85; } }),
+  own_flood: T({ id: 'own_flood', civ: 'egypt', name: 'The Flood Calendar', icon: '🌾', desc: 'A study of the Egyptians alone. Farms yield 15% more.', cost: { food: 150, wood: 150 }, time: 40, age: 1, apply: (m) => { m.farm *= 1.15; } }),
+  own_satrapies: T({ id: 'own_satrapies', civ: 'persia', name: 'Satrapies', icon: '🦁', desc: 'A study of the Persians alone. Tribute comes in from every province: war beasts cost a tenth less.', cost: { food: 150, gold: 200 }, time: 40, age: 1, apply: (m) => { m.beastCost *= 0.9; } }),
+  own_assembly: T({ id: 'own_assembly', civ: 'greece', name: 'The Assembly', icon: '🏛️', desc: 'A study of the Greeks alone. The citizens vote the work and do it: villagers build a tenth faster.', cost: { food: 150, wood: 150 }, time: 40, age: 1, apply: (m) => { m.build *= 1.1; } }),
+  own_yeomen: T({ id: 'own_yeomen', civ: 'england', name: 'Yeomanry', icon: '🎯', desc: 'A study of the English alone. Towers and Town Centers hit harder.', cost: { food: 150, wood: 200 }, time: 40, age: 1, apply: (m) => { m.towerAtk += 2; } }),
+  own_caravanserai: T({ id: 'own_caravanserai', civ: 'arabs', name: 'Caravanserais', icon: '🕌', desc: 'A study of the Abbasids alone. Villagers carry 2 more.', cost: { wood: 200, gold: 100 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }),
+  own_bond: T({ id: 'own_bond', civ: 'japan', name: 'The Bond of Service', icon: '⛩️', desc: 'A study of the Japanese alone. Soldiers have 1 more attack.', cost: { food: 200, gold: 200 }, time: 45, age: 2, apply: (m) => { m.atk += 1; } }),
+  own_schools: T({ id: 'own_schools', civ: 'dawn', name: 'Schools of the Prophets', icon: '🕯️', desc: 'A study of the Arameans alone. Prophets regain faith a quarter faster.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.faith *= 1.25; } }),
+  own_winter: T({ id: 'own_winter', civ: 'wild', name: 'Winter Stores', icon: '❄️', desc: 'A study of the Norse alone. Game, berries and fish are gathered 15% faster.', cost: { food: 150, wood: 100 }, time: 35, age: 0, apply: (m) => { m.hunt *= 1.15; } }),
 };
 
 /** Civilisations: each has standing bonuses and one unit nobody else can train. */

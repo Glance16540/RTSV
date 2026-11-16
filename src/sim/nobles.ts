@@ -28,6 +28,7 @@ import { kinOf, POST_NAMES } from './kin';
 import type { Post } from './kin';
 import { folkOf, grown, living } from './township';
 import { leaderAt } from './court';
+import { moodEase } from './ownstudies';
 
 export type Rank = 'lord' | 'captain' | 'matron' | 'close';
 export type Leaning = 'pious' | 'martial' | 'worldly' | 'kindly';
@@ -203,7 +204,7 @@ export function noblesSeason(c: Campaign, f: number): void {
   for (const n of nobles) {
     const folk = folkOf(c, n.town);
     const sour = (struckAt(c, n.town, ['raid', 'carried']) ? NOBLES.raided : 0) + (folk.hungry ? NOBLES.hungry : 0) + (struckAt(c, n.town, ['plague']) ? NOBLES.sick : 0);
-    n.mood = clamp(Math.round(n.mood * (1 - NOBLES.ease) + sour), -100, 100);
+    n.mood = clamp(Math.round(n.mood * (1 - Math.min(1, NOBLES.ease * moodEase(c, f))) + sour), -100, 100); // sooner, for a people whose nobles are bound to their lord (ownstudies.ts)
   }
   fac.nobles = nobles;
   // The inner circle is drawn by the nobles of their town.

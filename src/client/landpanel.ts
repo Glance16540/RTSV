@@ -23,6 +23,7 @@ import { peopleName } from '../sim/naming';
 import { convoyHtml } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
 import { decreePanel } from './decrees';
+import { studyList } from '../sim/ownstudies';
 
 const css = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
@@ -124,6 +125,8 @@ export function actionsHtml(c: Campaign, sel: number): string {
     for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) raise += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `Strength ${d.str}. Strong against ${BEATS[k]}. Paid in ${priceText(priceOf(k === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
     if (a && a.owner === 0) { const men = menOf(c, a); raise += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
     if (ageOf(c, 0) < AGE_COST.length) age += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
+    // Each people its own: the studies only this nation can learn, named as theirs (ownstudies.ts).
+    for (const x of studyList(c, 0)) age += x.learned ? `<div class="hint lp-study">${x.study.icon} <b>${x.study.name}</b> <small>(a study of the ${CIVS[x.study.civ].name}, learned)</small> ${x.study.map}</div>` : btn(`study:${x.study.id}`, `${x.study.icon} Learn ${x.study.name} <small>(${CIVS[x.study.civ].name} only)</small>`, x.study.cost, x.can, `${x.study.map}${x.why ? ' ' + x.why : ''}`);
     const court = courtOf(c, 0);
     if (court && court.at === t.id) {
       const away = called(c, 0).length;

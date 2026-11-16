@@ -16,6 +16,7 @@ import { BUILDINGS } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount } from './township';
 import { couplesOf, housesOf, roomOf } from './seasonfolk';
 import { KEEP_SEASONS, needOf } from './larder';
+import { buildPace } from './ownstudies';
 
 /** The last orders a town was given. `work`: how many of its people were at each kind of work. `turn`: when they were given. */
 export interface Orders { work?: Stores; build?: string[]; train?: string[]; turn: number }
@@ -129,7 +130,7 @@ export function governTown(c: Campaign, tid: number): Governed | null {
   // What was left half built is taken further.
   if (t.town?.b) t.town.b = t.town.b.map((x) => {
     if (x[4] === undefined) return x;
-    const done = Math.round((x[4] + GOVERN.build) * 100) / 100;
+    const done = Math.round((x[4] + GOVERN.build * buildPace(c, tid)) * 100) / 100; // faster under governors chosen for merit (ownstudies.ts)
     if (done < 1) return [x[0], x[1], x[2], x[3] ?? 0.01, done] as typeof x;
     out.finished.push(x[0]);
     return (x[3] !== undefined && x[3] < 1 && x[3] > 0.01 ? [x[0], x[1], x[2], x[3]] : [x[0], x[1], x[2]]) as typeof x;
