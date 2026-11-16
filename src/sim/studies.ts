@@ -61,6 +61,7 @@ export function studyBar(c: Campaign, f: number, id: string, at: number): string
   const t = TECHS[id], land = c.territories[at];
   if (!t || !isStudy(id)) return 'There is no such study.';
   if (!land || land.owner !== f || land.horde) return 'Only in a town of your own.';
+  if (t.civ && t.civ !== c.factions[f]?.civ) return 'A study of another people alone.'; // each people its own (ownstudies.ts)
   if (hasStudy(c, f, id)) return 'Already learned.';
   if (ageOf(c, f) < t.age) return `It needs the nation in a later age.`;
   if (t.requires && !hasStudy(c, f, t.requires) && isStudy(t.requires)) return `It needs ${TECHS[t.requires].name} first.`;

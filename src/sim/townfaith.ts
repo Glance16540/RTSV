@@ -18,6 +18,7 @@ import { placeAt } from './places';
 import { CHURCH_VIRTUE, FAITH, TAVERN_VIRTUE, tell } from './campaignbase';
 import { creedOf } from './creed';
 import { PLACES } from './story';
+import { faithPull } from './ownstudies';
 
 const clamp = (v: number): number => Math.max(-100, Math.min(100, Math.round(v)));
 const owned = (c: Campaign, f: number) => c.territories.filter((t) => t.owner === f);
@@ -72,7 +73,7 @@ export function townDrift(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   if (!t || t.owner < 0) return 0;
   const place = placeAt(c, tid);
-  return (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0) + (place ? PLACES[place.kind].virtue ?? 0 : 0);
+  return (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0) + (place ? PLACES[place.kind].virtue ?? 0 : 0) + faithPull(c, tid); // and a people's own study (ownstudies.ts)
 }
 /** A season of faith: every held town moves by its own drift. `shift` does the moving, so the map can say when a nation's creed turns. */
 export function seasonOfFaith(c: Campaign, shift: (f: number, by: number, at: number) => void): void {
