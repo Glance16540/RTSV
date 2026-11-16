@@ -1,6 +1,6 @@
 // Sending convoys from a town on the map (src/sim/convoys.ts): where to, and three loads to choose from.
 import type { Campaign } from '../sim/campaign';
-import { CONVOYS, Send, cannotSend, onTheRoad, roadBetween, sendConvoy } from '../sim/convoys';
+import { CONVOYS, Convoy, Send, cannotSend, onTheRoad, roadBetween, seaLegs, sendConvoy } from '../sim/convoys';
 
 /** The loads a player can send. */
 export const LOADS: Record<string, { label: string; what: Send; tip: string }> = {
@@ -9,13 +9,20 @@ export const LOADS: Record<string, { label: string; what: Send; tip: string }> =
   folk: { label: '👫 A couple', what: { men: 1, women: 1 }, tip: 'A man and a woman, the youngest the town can spare, to make a home there.' },
 };
 
+/** One convoy on its way, as a line: where it is bound, by road or by sea, and what it carries. */
+function goingLine(c: Campaign, x: Convoy, tid: number): string {
+  const sea = seaLegs(c, x.road).length > 0, other = c.territories[x.from === tid ? x.to : x.from]?.name ?? '';
+  const k = x.cargo, load = [k.food && `${k.food} food`, k.wood && `${k.wood} wood`, k.gold && `${k.gold} gold`, k.stone && `${k.stone} stone`, k.men.length + k.women.length && `${k.men.length + k.women.length} ${k.men.length + k.women.length === 1 ? 'person' : 'people'}`].filter(Boolean).join(', ');
+  return `<div class="hint ow-convoy-going">${sea ? '⛵' : '🐂'} ${x.from === tid ? `To ${other}` : `From ${other}`}${sea ? ' by sea' : ' by road'}: ${load || 'nothing'}, in as the season turns.</div>`;
+}
+
 /** The convoy part of a town's panel: nothing if the town has no road to another town of yours. */
 export function convoyHtml(c: Campaign, tid: number): string {
   const to = c.territories.filter((t) => t.owner === 0 && t.id !== tid && roadBetween(c, 0, tid, t.id));
   if (!to.length) return '';
   const going = onTheRoad(c, 0).filter((x) => x.from === tid || x.to === tid);
   const first = to[0].id;
-  return `<div class="ow-convoy"><div class="hint">🐂 Send by road, or over a sea lane from a Harbour, a season on the way${going.length ? ` (${going.length} on the road to or from here)` : ''}. Highwaymen on the road and pirates at sea rob convoys they catch unescorted: ${Math.round(CONVOYS.rob * 100)}% of the goods, never the people.</div>
+  return `<div class="ow-convoy">${going.map((x) => goingLine(c, x, tid)).join('')}<div class="hint">🐂 Send by road, or over a sea lane from a Harbour, a season on the way. Highwaymen on the road and pirates at sea rob convoys they catch unescorted: ${Math.round(CONVOYS.rob * 100)}% of the goods, never the people.</div>
     <select id="ow-convoy-to">${to.map((t) => `<option value="${t.id}">${t.name}</option>`).join('')}</select>
     ${Object.entries(LOADS).map(([k, l]) => { const why = cannotSend(c, 0, tid, first, l.what); return `<button data-act="convoy:${k}" title="${l.tip}${why ? ' ' + why : ''}" ${c.phase === 'player' && !why ? '' : 'disabled'}>${l.label}</button>`; }).join('')}</div>`;
 }

@@ -32,7 +32,7 @@ function storyHtml(c: Campaign, it: Intrigue): string {
       const cleared = it.cleared.includes(i), words = it.found && !cleared ? 'the plotter, held for your judgement' : cleared ? 'cleared' : 'is spoken of';
       return `<div class="likeness-row story-person ${cleared ? 'cleared' : ''}">${portraitHtml(notablePortrait(nationOf(c.factions[0]?.civ), { name: n.name, gender: n.female ? 'f' : 'm', kind: 'person' }, {}), '', 'sm')}<span><b>${esc(n.title)}</b> <small>${words}</small></span></div>`;
     }).join('') + it.clues.map((k) => `<div class="hint">🔎 ${esc(k.text)}</div>`).join('');
-
+  } else if (it.kind === 'thief') {
     people = it.caught !== undefined && it.thief
       ? row(c, it, it.thief, 'held for the robberies, awaiting your judgement')
       : it.people.map((p, i) => row(c, it, p, it.robbed[i] ? `robbed ${it.robbed[i] === 1 ? 'once' : `${it.robbed[i]} times`}` : 'not yet robbed')).join('');

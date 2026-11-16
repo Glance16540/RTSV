@@ -48,6 +48,23 @@ export function mountRoll(open: () => void): void {
   const b = document.createElement('button');
   b.id = 'ow-roll';
   b.textContent = '👥 Your people';
-  b.addEventListener('click', open);
+  b.addEventListener('click', () => { open(); cueScroll(document.getElementById('ow-dialog') ?? document); });
   by.after(b);
+}
+
+/** The roll scrolls when the people are many: its foot fades and says there is more, until the reader reaches the end. */
+export function cueScroll(root: ParentNode): void {
+  const r = root.querySelector<HTMLElement>('.roll');
+  if (!r || r.nextElementSibling?.classList.contains('roll-more')) return;
+  const hint = document.createElement('span');
+  hint.className = 'roll-more';
+  hint.textContent = '▾ more below';
+  r.after(hint);
+  const set = (): void => {
+    const more = r.scrollTop + r.clientHeight < r.scrollHeight - 4;
+    r.classList.toggle('more', more);
+    hint.style.visibility = more ? 'visible' : 'hidden';
+  };
+  r.addEventListener('scroll', set, { passive: true });
+  set();
 }
