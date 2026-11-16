@@ -31,9 +31,9 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
-import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, POWERS, leaderAsMade, leaderDef, leaderType, powerDue, powersHeld } from './powers';
+import { calledAt, callHaste, callWard, canCall, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championFemale, championName, championSpec, rankForKills } from './champion';
-import { HeroSpec, heirName, cleanHero, heroBonus, rankOf, RANK_XP, RANK_NAMES, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
+import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND, TYRANT_BIRTH } from './hero';
 export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
@@ -412,7 +412,7 @@ export class Game {
   private heroes: Unit[][] = [];
   private strategists: Unit[] = [];
   /** Each player's leader, while they are alive and in the open. */
-  private leaders: (Unit | null)[] = [];
+  leaders: (Unit | null)[] = [];
   private tcs: Building[][] = [];
 
   /**
@@ -617,7 +617,7 @@ export class Game {
     if (def.cls === 'siege') u.hp = u.maxHp = Math.round(def.hp * this.players[owner].mods.siegeHp);
     // The first hero of their calling a people raises is their leader in person.
     // (One raised from the ranks fights on as what they were; nobody steps into their place if they fall.)
-    if (this.players[owner] && !this.players[owner].leaderAway && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderType(this.heroOf(owner))) && !this.units.some((o) => o.owner === owner && o.hero)) {
+    if (this.players[owner] && !this.players[owner].leaderAway && (def.cls === 'hero' || !this.players[owner].heroFell) && type === this.trainedAs(owner, leaderTypeOf(this, owner)) && !this.units.some((o) => o.owner === owner && o.hero)) {
       const rank = this.players[owner].heroRank ?? 0;
       u.name = this.heroOf(owner).name;
       u.hero = { xp: RANK_XP[rank], rank };
@@ -629,22 +629,11 @@ export class Game {
     return u;
   }
 
-  /** The leader a player's nation follows: their own making of them, or the leader as written. */
-  heroOf(owner: number): HeroSpec {
-    const p = this.players[owner];
-    return (p.hero ??= leaderAsMade(undefined, p.civ, p.isAI));
-  }
+  /** The leader a player's nation follows: their own making of them, or the leader as written (battleleader.ts, as all of these are). */
+  heroOf(owner: number): HeroSpec { return heroOf(this, owner); }
   /** What a leader's making and veterancy add to their arm, armour and health. */
-  leaderBonus(u: Unit): { atk: number; armor: number; hp: number } {
-    return heroBonus(this.heroOf(u.owner), u.hero?.rank ?? 0);
-  }
-  private fitLeader(u: Unit): void {
-    // The powers they have come into change the hero they are built on.
-    u.def = leaderDef(UNITS[u.type], this.heroOf(u.owner), u.hero?.rank ?? 0);
-    const max = Math.round(u.def.hp * this.leaderBonus(u).hp);
-    u.hp = (u.hp / u.maxHp) * max;
-    u.maxHp = max;
-  }
+  leaderBonus(u: Unit): { atk: number; armor: number; hp: number } { return leaderBonus(this, u); }
+  private fitLeader(u: Unit): void { fitLeader(this, u); }
   /** A decadent town's leader takes people as a Slaver does. Raiders' leaders carry them off into the tribe instead. */
   tyrant(u: Unit): boolean {
     return !!u.hero && !this.raider(u.owner) && isDecadent(this.players[u.owner].virtue);
@@ -658,37 +647,11 @@ export class Game {
     if (!l || l.dead || !isHoly(v) || Math.hypot(l.x - x, l.y - y) > (l.def.auraRange ?? 0)) return 0;
     return HOLY_GUARD[v >= 70 ? 1 : 0];
   }
-  /** An enemy has fallen: if the leader was there to see it, it is set down among their deeds. */
-  private deed(owner: number, t: Entity): void {
-    const l = this.leaders[owner];
-    if (!l || l.dead || !l.hero || t.kind === 'resource' || !this.hostile(owner, t.owner) || (t.kind === 'unit' && t.def.cls === 'prey')) return;
-    if (Math.hypot(l.x - t.x, l.y - t.y) > (l.def.auraRange ?? 0)) return;
-    l.hero.xp += t.kind === 'unit' ? Math.max(1, t.def.pop) : 2;
-    const rank = rankOf(l.hero.xp);
-    if (rank > l.hero.rank) {
-      l.hero.rank = this.players[owner].heroRank = rank;
-      this.fitLeader(l);
-      const learnt = powersHeld(this.heroOf(owner), rank).length > powersHeld(this.heroOf(owner), rank - 1).length ? powersHeld(this.heroOf(owner), rank).at(-1) : null;
-      // A rival does not wait to be asked what it will learn.
-      if (this.players[owner].isAI) while (this.powerDue(owner) >= 0) this.cmdLearn(owner, 0);
-      this.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : this.powerDue(owner) >= 0 ? ': choose what they learn' : ''}.`);
-    }
-  }
+  private deed(owner: number, t: Entity): void { deed(this, owner, t); }
   /** Which of their three powers a player's leader has earned and not yet chosen (-1: none). */
-  powerDue(owner: number): number {
-    const l = this.leaders[owner] ?? this.leaderOf(owner);
-    return l && !l.dead && l.hero ? powerDue(this.heroOf(owner), l.hero.rank) : -1;
-  }
+  powerDue(owner: number): number { return powerDue(this, owner); }
   /** Choose which of the two powers the leader takes at the rank they have just earned. It is theirs from then on. */
-  cmdLearn(owner: number, choice: number): boolean {
-    const tier = this.powerDue(owner), l = this.leaders[owner] ?? this.leaderOf(owner);
-    if (tier < 0 || !l || (choice !== 0 && choice !== 1)) return false;
-    const h = this.heroOf(owner);
-    h.powers = [0, 1, 2].map((t) => (t === tier ? choice : h.powers?.[t] ?? -1));
-    this.fitLeader(l);
-    if (!this.players[owner].isAI) this.msg(owner, `${l.name} has learnt ${POWERS[h.calling][tier][choice].name}.`);
-    return true;
-  }
+  cmdLearn(owner: number, choice: number): boolean { return cmdLearn(this, owner, choice); }
 
   /** Give a villager a trait (or none), keeping its health in step. */
   setTrait(u: Unit, trait: string, trait2 = ''): void {
@@ -815,7 +778,7 @@ export class Game {
   private refund(p: Player, c: Cost): void {
     for (const r of RES_TYPES) p.res[r] += c[r] ?? 0;
   }
-  private msg(player: number, text: string): void {
+  msg(player: number, text: string): void {
     this.events.push({ t: 'msg', player, text });
   }
 
@@ -1440,7 +1403,7 @@ export class Game {
     for (const u of g.units) u.def = UNITS[u.type];
     for (const e of [...g.resources, ...g.buildings, ...g.units]) g.entities.set(e.id, e);
     g.players = d.players.map((p: Player & { techs: string[]; pending: string[] }) => ({ ...p, techs: new Set(p.techs), pending: new Set(p.pending) }));
-    for (const u of g.units) if (u.hero) u.def = leaderDef(UNITS[u.type], g.heroOf(u.owner), u.hero.rank);
+    for (const u of g.units) if (u.hero) u.def = leaderDefOf(g, u);
     g.projectiles = d.projectiles;
     g.quakes = d.quakes;
     g.time = d.time;
@@ -3059,7 +3022,7 @@ export class Game {
 
   private strike(u: Unit, t: Entity): void {
     const p = this.players[u.owner];
-    u.cooldown = (u.def.cooldown / griefPace(this, u)) * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1) * (this.calledAt(u.owner, u.x, u.y) === 'warlord' ? CALLS.warlord.haste! : 1);
+    u.cooldown = (u.def.cooldown / griefPace(this, u)) * (u.def.frenzy ? 0.45 + 0.55 * (u.hp / u.maxHp) : 1) * callHaste(this, u);
     u.attackAnim = 0.35;
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
@@ -3103,7 +3066,7 @@ export class Game {
     } else armor = 1;
     // A leader is still flesh: however armoured, a blow tells on them.
     const raw = atk * mult * aura;
-    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale * (t.kind === 'unit' && this.calledAt(t.owner, t.x, t.y) === 'strategist' ? CALLS.strategist.ward! : 1);
+    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale * callWard(this, t);
     t.hp -= dmg;
     tp.lastAttacked = { x: t.x, y: t.y, t: this.time };
     if (this.time - tp.alertT > 12) {
@@ -3154,25 +3117,11 @@ export class Game {
   /** A player's leader, wherever they are. */
   leaderOf(owner: number): Unit | undefined { return this.units.find((u) => u.owner === owner && !!u.hero); }
   /** Can the leader raise their call now? They must be Seasoned, in the open, and rested since the last. */
-  canCall(owner: number): boolean {
-    const l = this.leaderOf(owner);
-    return !!l && !l.inside && l.hero!.rank >= CALL_RANK && !(l.hero!.rest! > 0);
-  }
+  canCall(owner: number): boolean { return canCall(this, owner); }
   /** The leader raises their call: for a few seconds it tells on everyone of theirs within reach. */
-  cmdCall(owner: number): boolean {
-    if (!this.canCall(owner)) return false;
-    const l = this.leaderOf(owner)!;
-    l.hero!.call = CALL_LASTS;
-    l.hero!.rest = CALL_REST;
-    this.msg(owner, `${l.name}: ${CALLS[this.heroOf(owner).calling].name}!`);
-    return true;
-  }
+  cmdCall(owner: number): boolean { return cmdCall(this, owner); }
   /** Whose call, if any, is sounding over this spot for this player's people: a Warlord's or a Strategist's. */
-  calledAt(owner: number, x: number, y: number): 'warlord' | 'strategist' | null {
-    const l = this.leaders[owner];
-    if (!l || l.dead || !(l.hero!.call! > 0) || Math.hypot(l.x - x, l.y - y) > (l.def.auraRange ?? 0)) return null;
-    return this.heroOf(owner).calling;
-  }
+  calledAt(owner: number, x: number, y: number): 'warlord' | 'strategist' | null { return calledAt(this, owner, x, y); }
 
   /** Could this soldier be raised to lead? Only when the leader has fallen and nobody has taken their place. */
   canAcclaim(owner: number, u: Unit): boolean {

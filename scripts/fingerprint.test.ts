@@ -1,6 +1,7 @@
 // The fingerprint of a fixed set of battles, to prove that a change to the battle's code changed nothing.
 //
 // A set of seeded skirmishes and campaign sieges is fought headless, every side played by the computer, and the
+// (and of leader drills, where each leader is on the field and is given foes, to rise, learn and call), and the
 // whole of each battle's state as it would be saved (Game.serialize: every unit, building, resource, projectile,
 // the players, the clock and the run of chances) is hashed every two minutes and at the end; a siege's count of
 // the town handed back to the campaign (Game.census) is hashed too. Run it before a change and after: if the two
@@ -17,8 +18,9 @@ import { AIController } from '../src/sim/ai';
 import { armyAt, battleConfig, moveArmy, newCampaign } from '../src/sim/campaign';
 import { CIV_IDS } from '../src/sim/data';
 import { Game } from '../src/sim/game';
+import { leaderType } from '../src/sim/powers';
 
-const SKIRMISHES = +(process.env.SKIRMISHES ?? 6), SIEGES = +(process.env.SIEGES ?? 6), MINUTES = +(process.env.MINUTES ?? 8);
+const SKIRMISHES = +(process.env.SKIRMISHES ?? 6), SIEGES = +(process.env.SIEGES ?? 6), DRILLS = +(process.env.DRILLS ?? 6), MINUTES = +(process.env.MINUTES ?? 8);
 const hash = (s: string): string => createHash('sha256').update(s).digest('hex').slice(0, 16);
 
 /** Fight a battle with every side played by the computer; its state hashed every two minutes and at the end. */
@@ -69,6 +71,32 @@ it.skipIf(!process.env.FINGERPRINT)('the fingerprint of a fixed set of battles',
     out.push(...fight(g, `siege ${seed}`));
     // What the battle hands back to the campaign for each side: the town's people at their ages, and its stores.
     g.players.forEach((_, i) => out.push(`siege ${seed} census ${i}: ${hash(JSON.stringify(g.census(i)))}`));
+  }
+  // Leader drills: skirmishes, the computer's on both sides, in which each people's leader is on the field from the start
+  // and is sent foes to fell, so that leaders rise through the ranks, learn their powers and raise their calls
+  // (which a computer's leader seldom lives to do in an ordinary skirmish). What was done is written with the hashes.
+  for (let seed = 1; seed <= DRILLS; seed++) {
+    const setups = [0, 1].map((i) => ({ name: 'AB'[i], color: [0x3366ff, 0xff3333][i], isAI: true, civ: civs[(seed * 7 + i * 3) % civs.length] }));
+    const g = new Game(100 + seed, setups);
+    const ais = g.players.map((_, i) => { const a = new AIController(g, i); a.setLevel(1); return a; });
+    const home = (i: number) => g.units.find((u) => u.owner === i)!; // beside one of their own people, wherever a people begins
+    const leaders = [0, 1].map((i) => g.spawnUnit(g.trainedAs(i, leaderType(g.heroOf(i))), i, home(i).x + 2, home(i).y + 2));
+    let calls = 0, learnt = 0;
+    const label = `drill ${seed} (${setups.map((s) => s.civ).join(' v ')})`;
+    for (let s = 0; s < Math.min(MINUTES, 10) * 60 && g.winner < 0; s++) {
+      for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; }
+      ais.forEach((a) => a.update());
+      for (const i of [0, 1]) {
+        const l = leaders[i];
+        if (l.dead) continue;
+        // A foe to fell beside the leader every few seconds, weak enough to fall; the leader set on it.
+        if (s % 4 === i) { const foe = g.spawnUnit('villager', 1 - i, l.x + 1, l.y, 'm'); foe.hp = 1; g.cmdTarget(i, [l.id], foe.id); }
+        if (g.powerDue(i) >= 0 && g.cmdLearn(i, (seed + i) % 2)) learnt++;
+        if (s % 30 === 15 && g.cmdCall(i)) calls++; // a computer's leader raises its own when it can, so this seldom finds one to raise
+      }
+      if ((s + 1) % 120 === 0) out.push(`${label} at ${(s + 1) / 60}m: ${hash(g.serialize())}`);
+    }
+    out.push(`${label} end: tick ${g.tick} leaders ${leaders.map((l) => (l.dead ? 'fell' : `rank ${l.hero?.rank}`)).join(', ')} calls ${calls} powers learnt ${learnt} ${hash(g.serialize())}`);
   }
   writeFileSync(process.env.OUT ?? 'fingerprint.txt', out.join('\n') + '\n');
 }, 3_600_000);
