@@ -44,15 +44,15 @@ describe('the Well on the map', () => {
   });
 
   it('the governor raises one in a crowded town where plague has lately been, there or next door', () => {
-    const quiet = town([]);
+    const quiet = town(['farm']);
     governTown(quiet.c, quiet.t.id);
     expect(quiet.t.buildings).not.toContain('well');
-    const near = town([]);
+    const near = town(['farm']);
     (near.c.events ??= []).push({ kind: 'plague', at: near.t.adj[0], turn: near.c.turn, until: near.c.turn + 1 });
     expect(wellWanted(near.c, near.t.id, 1)).toBe(true);
     governTown(near.c, near.t.id);
     expect(near.t.buildings).toContain('well');
-    const hamlet = town([], 6);
+    const hamlet = town(['farm'], 6);
     (hamlet.c.events ??= []).push({ kind: 'plague', at: hamlet.t.id, turn: hamlet.c.turn, until: hamlet.c.turn + 1 });
     governTown(hamlet.c, hamlet.t.id);
     expect(hamlet.t.buildings).not.toContain('well'); // plague seldom troubles a hamlet

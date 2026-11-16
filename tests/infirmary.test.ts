@@ -55,10 +55,10 @@ describe('the Infirmary on the map', () => {
   });
 
   it('the governor raises one in a town of some size that has had plague or is grieving', () => {
-    const quiet = town([]);
+    const quiet = town(['farm']);
     governTown(quiet.c, quiet.t.id);
     expect(quiet.t.buildings).not.toContain('infirmary');
-    const sad = town([]);
+    const sad = town(['farm']);
     sad.f.grief = 2;
     expect(infirmaryWanted(sad.c, sad.t.id)).toBe(true);
     governTown(sad.c, sad.t.id);

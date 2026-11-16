@@ -145,8 +145,8 @@ export function governTown(c: Campaign, tid: number): Governed | null {
   // would otherwise take, and leave a place for a wall until there is one.
   const spare = t.buildings.includes('farm') && t.buildings.length < slots(t) - (t.buildings.includes('fortress') ? 0 : 1);
   const afford = (site: string): boolean => units(f.stores) - siteCost(t, site, civ) * 100 >= GOVERN.floor;
-  // The food and health works are bought only out of plenty: twice what the town keeps, after paying.
-  const ample = (site: string): boolean => units(f.stores) - siteCost(t, site, civ) * 100 >= 2 * GOVERN.floor;
+  // The food and health works are bought only out of plenty: twice what the town keeps, after paying, in goods other than its bread.
+  const ample = (site: string): boolean => units(f.stores) - f.stores.food - siteCost(t, site, civ) * 100 >= 2 * GOVERN.floor;
   const pay = (goods: number): void => { let left = goods; for (const k of [...STORE_KINDS].sort((a, b) => f.stores[b] - f.stores[a])) { const part = Math.min(f.stores[k], k === 'food' ? 0 : left); f.stores[k] -= part; left -= part; } if (left > 0) f.stores.food = Math.max(0, f.stores.food - left); };
   if (want.food && !t.buildings.includes('farm') && room && afford('farm')) { pay(siteCost(t, 'farm', civ) * 100); t.buildings.push('farm'); out.began = 'farm'; }
   else if (want.roof && !t.town!.b.some((x) => x[0] === 'house' && x[4] !== undefined)) {
