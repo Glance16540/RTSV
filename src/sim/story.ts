@@ -72,13 +72,13 @@ export const WORLD_EVENTS: Record<WorldKind, WorldDef> = {
   winter: { name: 'The Long Winter', icon: '❄️', turns: 3, desc: 'Every land yields 1 supply less.', tell: 'The snow came early and did not go. They called it the Long Winter.' },
   plenty: { name: 'Years of Plenty', icon: '🌾', turns: 3, desc: 'Every Farmland yields 1 supply more.', tell: 'The rains were kind and the barns were full: the Years of Plenty.' },
   iron: { name: 'The Season of Iron', icon: '⚔️', turns: 3, desc: 'Every company costs 1 supply less to raise.', tell: 'Every smith was at his forge and every idle hand found a spear: the Season of Iron.' },
-  comet: { name: 'A Comet', icon: '☄️', turns: 0, desc: 'Every people grows more pious by 10.', tell: 'A comet hung over the world for a month, and in every land the churches filled.' },
+  comet: { name: 'A Comet', icon: '☄️', turns: 0, desc: 'Every people grows more pious by 5.', tell: 'A comet hung over the world for a month, and in every land the churches filled.' },
   pestilence: { name: 'The Great Pestilence', icon: '☠️', turns: 0, desc: 'Every army of three companies or more loses one. The Righteous are spared.', tell: 'The Great Pestilence went from camp to camp and spared only those who kept the faith.' },
 };
 export const WORLD_FROM = 4; // no world event before this turn
 export const WORLD_REST = 3; // quiet turns after one is over
 export const WORLD_CHANCE = 0.35; // each turn, once the world is quiet again
-export const COMET_VIRTUE = 10;
+export const COMET_VIRTUE = 5;
 
 /**
  * A tale: something brought before the player to decide. As with a town's dilemmas, `a` is the pious answer and

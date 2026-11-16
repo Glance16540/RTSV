@@ -13,6 +13,7 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | --- | --- | --- |
 | Pace | Seasons until a campaign is decided | 60 to 160 (15 to 40 years) |
 | Pace | Campaigns undecided at 200 seasons | under 10% |
+| Pace | Campaigns ending in ruin | rare: under 6 in 100, and with those undecided at 200 under 10 in 100 together |
 | Pace | Seasons until a rival reaches its next age | 20 to 60 |
 | People | A town left alone, grown people after 20 years | 1.3 to 2 times what it began with, held by its houses and food |
 | People | A town visited every season vs left alone, after 20 years | visited ends 10 to 40% larger |
@@ -22,12 +23,12 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Food | Share of seasons a farmed town is hungry | under 2% |
 | Food | Share of seasons an unfarmed town with no convoy is hungry, where its governor can still raise a farm | under 10% (a governed town answers want) |
 | Food | Share of seasons an unfarmed town with no convoy is hungry, where no farm can be raised (no free place, or not the stores) | 15 to 40% (it must live on convoys or the decree that sends food) |
-| Food | Deaths from hunger in a nation, per 20 years | some (1 to 10), never most of a town at once unless besieged or cut off |
+| Food | Deaths from hunger in a nation, per 20 years | some (0.5 to 10: hunger should be felt, not absent), never most of a town at once unless besieged or cut off |
 | Stores | A nation's supplies after 20 years of peace | enough for 2 to 4 seasons of its full upkeep, not hoards |
 | Faith | Widest gap between two towns of one nation | 20 to 60 most of the time |
 | Faith | A nation that builds churches and keeps its towns fed, over 20 years | moves toward the holy end by 15 to 40 |
 | Drift | Share of town-seasons with anyone drifted | 5 to 20%, more in hungry, raided or newly taken towns |
-| Drift | With sensible decrees vs none | clearly fewer falling towns (at least a third fewer) |
+| Drift | With sensible decrees vs none | standing lost to drift alone (not war, raids or the nation's dips) at least a third less |
 | Threats | Raids on a given town (every strike on a held town, marauders' included, per town-season held) | about once in 3 to 5 years |
 | Threats | Outcome of raids | held off 30 to 50%, raided 40 to 60%, taken under 15% |
 | Threats | Captives got back, of those whose people had an army at the band's place or next door within the four seasons (the computer-played player sends it with `attackBand` and settles it unwatched) | about half |
