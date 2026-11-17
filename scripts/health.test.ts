@@ -187,6 +187,8 @@ interface Watch {
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
 }
 
+const CRIME_ROW = 'Seasons a thief or a killer is at large, with a Watch House in every town against as it is (read with CRIME=1)', CRIME_BAND = '10 to 30% fewer';
+const WATCH_ROW = 'Raids on the player\'s towns held off, with Town Watch learnt against without (read with CRIME=1)', WATCH_BAND = '5 to 20 more in every 100';
 /** For the forced comparison (CRIME=1): these buildings finished in every town the player holds, free, and these studies learnt. */
 const FORCED = {
   house: { works: ['watchhouse'], studies: [] as string[] },
@@ -686,7 +688,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     const crimes = all('crimes'), mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
     const withHouse = crimes.filter((x) => x.watched * 2 >= x.seasons), without = crimes.filter((x) => x.watched * 2 < x.seasons);
     const a = mean(withHouse.map((x) => x.seasons)), b = mean(without.map((x) => x.seasons));
-    add('Crime', 'Seasons a thief or a killer is at large in a town, with a Watch House against without', 'to be set from the first readings', crimes.length ? `${withHouse.length ? num(a, 1) : 'none'} with (${withHouse.length}) against ${without.length ? num(b, 1) : 'none'} without (${without.length})` : 'no thieves or killers', 'report',
+    add('Crime', 'Seasons a thief or a killer is at large in a town, as it is: towns with a Watch House against those without', 'report only', crimes.length ? `${withHouse.length ? num(a, 1) : 'none'} with (${withHouse.length}) against ${without.length ? num(b, 1) : 'none'} without (${without.length})` : 'no thieves or killers', 'report',
       'Every thief and killer begun in the campaigns above, counted each season it is at large: begun, not ended, and (a thief) not yet standing for judgement. One still at large when the count stops is counted as far as it got. "With" is a town where a Watch House stood for at least half of those seasons. ' + (STORIES === 'answer' ? 'The computer-played player answers the stories by a plain policy.' : 'The computer-played player answers none of them, so nobody is hunted on the leader\'s word: only the watch\'s own catches and the elders end them.'));
     // Report only: what a town watch and a Fortress do when a band strikes.
     const strikes = all('strikes'), heldOf = (xs: typeof strikes) => (xs.length ? `${pct(share(xs, (x) => x.held))} (${xs.length})` : 'none'), lostOf = (xs: typeof strikes) => (xs.length ? `${num(mean(xs.map((x) => x.lost)), 2)} (${xs.length})` : 'none');
@@ -701,10 +703,15 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       const heldMine = (ws: Watch[]) => heldOf(ws.flatMap((w) => w.strikes).filter((x) => x.mine));
       const lostMine = (ws: Watch[]) => lostOf(ws.flatMap((w) => w.strikes).filter((x) => x.mine));
       const wins = (ws: Watch[]) => ws.filter((w) => w.how === 'player').length;
-      add('Crime', 'Forced: seasons a thief or a killer is at large, every town of the player\'s given a Watch House against as it is', 'to be set from this', `${large(house)} with against ${large(ruled)} as it is; with Town Watch learnt besides ${large(watch)}`, 'report',
+      const at = (ws: Watch[]) => mean(ws.flatMap((w) => w.crimes).map((x) => x.seasons)), fewer = 1 - at(house) / at(ruled);
+      add('Crime', CRIME_ROW, CRIME_BAND, `${pct(fewer)} fewer: ${large(house)} with against ${large(ruled)} as it is; with Town Watch learnt besides ${large(watch)}`, within(fewer, 0.1, 0.3),
         'The same campaigns told three times: as they are; with a finished Watch House, free, in every town the player holds, from the first season and in each town it takes; and with that and Town Watch learnt from the start. The tellings part ways as they go on, so these are the same seeds in different histories. In brackets, the thieves and killers begun in each telling. ' + `The player won ${wins(ruled)}, ${wins(house)} and ${wins(watch)} of the ${CAMPAIGNS} campaigns in the three tellings.`);
-      add('Crime', 'Forced: raids on the player\'s towns held off, with Town Watch learnt from the start against not', 'report only', `${heldMine(watch)} with against ${heldMine(house)} with the Watch Houses alone and ${heldMine(ruled)} as it is`, 'report',
-        `Strikes by a band on the player\'s own towns in the same three tellings. A Watch House alone adds nothing to a town\'s defence; the study does. People lost per strike: ${lostMine(watch)} with Town Watch, ${lostMine(house)} with the Watch Houses alone, ${lostMine(ruled)} as it is.`);
+      const heldShare = (ws: Watch[]) => share(ws.flatMap((w) => w.strikes).filter((x) => x.mine), (x) => x.held), more = heldShare(watch) - heldShare(house);
+      add('Crime', WATCH_ROW, WATCH_BAND, `${num(more * 100, 1)} more in every 100: ${heldMine(watch)} with against ${heldMine(house)} with the Watch Houses alone (and ${heldMine(ruled)} as it is)`, within(more, 0.05, 0.2),
+        `"Without" is the telling with the Watch Houses and no Town Watch, so that the study alone is what differs. Strikes by a band on the player\'s own towns in the same three tellings. A Watch House alone adds nothing to a town\'s defence; the study does. People lost per strike: ${lostMine(watch)} with Town Watch, ${lostMine(house)} with the Watch Houses alone, ${lostMine(ruled)} as it is.`);
+    } else {
+      rows.push({ area: 'Crime', figure: CRIME_ROW, band: CRIME_BAND, measured: 'run with CRIME=1', verdict: 'not measured', note: 'The same campaigns are told again with a Watch House in every town of the player\'s, which makes the report take about four times as long; run with CRIME=1.' });
+      rows.push({ area: 'Crime', figure: WATCH_ROW, band: WATCH_BAND, measured: 'run with CRIME=1', verdict: 'not measured' });
     }
     // Report only: the roads (roads.ts). The player's convoys alone: only theirs are written in the log.
     const convoys = all('convoys'), stoppedOf = (xs: typeof convoys) => (xs.length ? `${pct(share(xs, (x) => x.stopped))} (${xs.length})` : 'none');
