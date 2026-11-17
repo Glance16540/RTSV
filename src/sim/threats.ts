@@ -36,6 +36,7 @@
 // A band broken gives up everyone it holds and something of what it stole.
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
+import { inAll, strengthOf, whole } from './strengthwords';
 import { faithAt, swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaignbase';
@@ -332,11 +333,11 @@ export function reportLine(c: Campaign, r: Raid): string {
 /** The whole report, line by line, as the player is to read it. */
 export function reportText(c: Campaign, r: Raid): string[] {
   const t = c.territories[r.at], d = r.defence, road = r.kind === 'highwaymen';
-  const had = [d.men ? `its men (${d.men})` : '', d.works ? `its fortress and barracks (${d.works})` : '', d.walls ? `its towers and walls (${d.walls})` : '', d.army ? `the army there (${d.army})` : '', d.guard ? `the capital's guard (${d.guard})` : ''].filter(Boolean);
+  const had = [d.men ? `its men (${whole(d.men)})` : '', d.works ? `its fortress and barracks (${whole(d.works)})` : '', d.walls ? `its towers and walls (${whole(d.walls)})` : '', d.army ? `the army there (${whole(d.army)})` : '', d.guard ? `the capital's guard (${whole(d.guard)})` : ''].filter(Boolean);
   const lines = [
-    `${BANDS[r.kind].name}, ${r.name}, ${road ? 'lay in wait on the road at' : 'came against'} ${t.name} with a strength of ${r.force}.`,
-    road ? `The road was ${d.total > 1 ? `escorted (${d.total})` : 'unguarded'}.`
-      : `The town defended itself with ${had.length ? had.join(', ') : 'nothing'}${d.spirit !== 1 ? `, ${d.spirit > 1 ? 'stiffened' : 'slackened'} by the spirit of its people (×${d.spirit})` : ''}: ${d.total} in all.`,
+    `${BANDS[r.kind].name}, ${r.name}, ${road ? 'lay in wait on the road at' : 'came against'} ${t.name} with ${strengthOf(r.force)}.`,
+    road ? `The road was ${d.total > 1 ? `escorted (${whole(d.total)})` : 'unguarded'}.`
+      : `The town defended itself with ${had.length ? had.join(', ') : 'nothing'}${d.spirit !== 1 ? `, ${d.spirit > 1 ? 'stiffened' : 'slackened'} by the spirit of its people (×${Math.round(d.spirit * 100) / 100})` : ''}: ${inAll([d.men, d.works, d.walls, d.army, d.guard].map((x) => x ?? 0), d.total)}.`,
     r.outcome === 'held' ? `They were ${road ? 'driven off' : 'held off'}${r.broken ? ', and the band is broken' : ''}.` : r.outcome === 'taken' ? 'The town fell to them.' : road ? 'They took what was on the road.' : 'They broke in, took what they could carry and were gone.',
   ];
   if (r.killed) lines.push(`Killed: ${people(r.killed, 'man', 'men')} of the town.`);

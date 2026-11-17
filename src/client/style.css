@@ -619,6 +619,8 @@ kbd { color: var(--sepia); }
 .primer-foot button:first-child { border-bottom-color: rgba(36, 24, 15, 0.5); }
 #primer.folded { width: auto; display: flex; gap: 16px; padding: 5px 12px 7px; }
 #primer.folded:empty { display: none; }
+/* Out of the way while anything is put to the player: a dialog, a meeting face to face, the season's card. */
+#overworld:has(#ow-dialog:not(.hidden)) #primer, body:has(.encounter) #primer, body:has(#season-card) #primer { visibility: hidden; }
 
 /* The page behind it, on the campaign screen and under How to play on the main menu. */
 .primer-screen { z-index: 5; }
@@ -845,3 +847,6 @@ body.looking-out #visit { display: none; }
 .encounter .enc-choices { display: flex; flex-wrap: wrap; gap: 8px; }
 .encounter .enc-choices button { flex: 1 1 160px; white-space: normal; padding: 9px 14px; }
 @media (max-width: 760px) { .encounter .enc-sheet { flex-direction: column; } .encounter .enc-view { width: 100%; } }
+
+/* The playtest's fixes (docs/PLAYTEST.md): the line under each heading of the land's panel that says what its buttons cost. */
+#ow-actions .lp-why { margin: -2px 0 1px; font-size: 13px; line-height: 1.3; }

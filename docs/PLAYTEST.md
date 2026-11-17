@@ -167,3 +167,23 @@ button. Each is there, but only for a player who goes looking.
 - The band's window, with its men and those it holds. One fix made here, in my own file: the third of the band's captives
   sat outside the right edge of the picture; `src/client/encounter.ts` now seats them further back and closer together, and
   all three show (shot 13, second picture).
+
+## Fixed since
+
+The fixes handed back to this session, each with a 2× screenshot:
+
+- **1, the build menu** (`fixed-build-menu.jpg`): the villager's menu is in pages of at most 13 (Settlement 1 of 2,
+  Settlement 2 of 2, Military), **V** turns the page and **B** is Stop, as on every unit's card; no key is ever printed as
+  "undefined". The Granary, Mill, Well, Infirmary, Watch House, Fortress and Inn have drawn icons
+  (`scripts/civic-icons.mjs`, which writes `public/assets/icons/*.svg`); a painted `.webp` of the same name replaces any.
+- **4, First Orders** (`fixed-first-orders.jpg`, `fixed-band-strength.jpg`): hidden while a dialog, a meeting or the
+  season's card is open; raising a town building counts as building on the land; the last step is *Outlast them*.
+- **7, the panel's groups** (`fixed-panel-groups.jpg`): *Raise troops*, *Raise in this town* (with each price in the
+  town's stores), *Study*, *Build on the land* (in supplies, with how many sites stand), each under a line saying who pays.
+- **8, colours** (`fixed-colours.jpg`): the Japanese wear indigo; no two peoples of one world wear colours too alike
+  (`src/sim/nationcolours.ts`). Campaigns begun before this keep the colours they were dealt.
+- **9, the house of faith** (`fixed-decrees.jpg`): a Shrine, a Mosque, a Temple, a Fire Temple or a Church by the people's
+  sign, in the panel and the decrees (`src/sim/faithhouse.ts`).
+- **11, heirs** (`fixed-heirs.jpg`): "of age in 2 years".
+- **12, strengths** (`fixed-band-strength.jpg`): "a strength of 5 (strong)"; a raid's report gives whole numbers and says
+  "about" when the rounded parts would not add up.

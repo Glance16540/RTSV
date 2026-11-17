@@ -24,6 +24,7 @@ import {
   ABILITIES, AGES, CIVS, BIRTH_COST, BUILD_PAGES, BUILDINGS, Cost, MORALE_MAX_HOUSES, MORALE_PER_HOUSE, RES_ICON, RES_TYPES, ResType, TRADE, VILLAGER_TRAITS,
   TECHS, UNITS, costText,
 } from '../sim/data';
+import { PER_SCREEN, buildScreens, screenName } from './buildpages';
 import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, GUARD_DRIVE, GUARD_WATCH, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
 import { T_DIRT, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../sim/map';
@@ -252,7 +253,8 @@ export class Hud {
       const units = ents.filter((e): e is Unit => e.kind === 'unit');
       const ids = units.map((u) => u.id);
       if (units.every((u) => u.type === 'villager')) {
-        for (const type of BUILD_PAGES[this.buildPage]) {
+        const screens = buildScreens(BUILD_PAGES), at = this.buildPage % screens.length, next = screens[(at + 1) % screens.length];
+        for (const type of screens[at].types) {
           const d = BUILDINGS[type];
           out.push({
             id: 'b:' + type, icon: ico(type, d.icon), name: 'Build ' + d.name, desc: d.desc, cost: d.cost,
@@ -261,11 +263,11 @@ export class Hud {
             act: () => { this.app.select(this.app.sel); this.app.placing = type; },
           });
         }
-        while (out.length < 13) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
+        while (out.length < PER_SCREEN) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
         out.push({
-          id: 'page' + this.buildPage, icon: this.buildPage ? ico('page_settlement', '🏘️') : ico('page_military', '⚔️'),
-          name: this.buildPage ? 'Settlement buildings' : 'Military buildings', desc: 'Show the other page of the build menu.',
-          act: () => { this.buildPage = 1 - this.buildPage; this.app.select(this.app.sel); },
+          id: 'page' + at, icon: next.page ? ico('page_military', '⚔️') : ico('page_settlement', '🏘️'),
+          name: screenName(next), desc: `Turn the build menu to its next page (this is page ${at + 1} of ${screens.length}).`,
+          act: () => { this.buildPage = (at + 1) % screens.length; this.app.select(this.app.sel); },
         });
       } else {
         out.push({
@@ -442,7 +444,7 @@ export class Hud {
     const cost = b.cost
       ? RES_TYPES.filter((r) => b.cost![r]).map((r) => `<span class="${p.res[r] < b.cost![r]! ? 'poor' : ''}">${RI(r)}${b.cost![r]}</span>`).join(' ')
       : '';
-    tip.innerHTML = `<b>${b.name}</b> <kbd>${SLOT_KEYS[this.hoverBtn]}</kbd><div class="cost">${cost}</div><div>${b.desc}</div>${b.locked ? `<div class="locked">${b.locked}</div>` : ''}`;
+    tip.innerHTML = `<b>${b.name}</b> <kbd>${SLOT_KEYS[this.hoverBtn] ?? ""}</kbd><div class="cost">${cost}</div><div>${b.desc}</div>${b.locked ? `<div class="locked">${b.locked}</div>` : ''}`;
     tip.classList.remove('hidden');
   }
 
@@ -454,7 +456,7 @@ export class Hud {
     if (sig === this.cardSig) return;
     this.cardSig = sig;
     $('card').innerHTML = this.btns.map((b, i) => b.id
-      ? `<button data-i="${i}" class="${b.locked ? 'locked' : ''} ${b.active ? 'active' : ''} ${poor(b) ? 'poor' : ''}"><kbd>${SLOT_KEYS[i]}</kbd><span>${b.icon}</span></button>`
+      ? `<button data-i="${i}" class="${b.locked ? 'locked' : ''} ${b.active ? 'active' : ''} ${poor(b) ? 'poor' : ''}"><kbd>${SLOT_KEYS[i] ?? ""}</kbd><span>${b.icon}</span></button>`
       : '<i></i>').join('');
     this.showTip();
   }

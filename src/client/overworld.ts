@@ -1,5 +1,6 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
+import { inTime } from '../sim/inyears';
 import { inRuin, ruinWords } from '../sim/ruin';
 import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
@@ -311,7 +312,7 @@ export class Overworld {
     const c = this.c, house = houseOf(c, 0), fallen = heroFor(c, 0).name;
     const claims = claimants(c, 0);
     const open = claims.filter((x) => canSucceed(c, 0, x));
-    const young = house.heirs.filter((h) => !ofAge(c, h)).map((h) => `${h.name} is ${comesOfAge(c, h)} ${comesOfAge(c, h) === 1 ? 'turn' : 'turns'} from coming of age`);
+    const young = house.heirs.filter((h) => !ofAge(c, h)).map((h) => `${h.name} comes of age ${inTime(comesOfAge(c, h))}`);
     const line = (x: Claim) => `<br><b>${x.name}</b> <small>(${RANK_NAMES[x.rank]})</small>: ${x.what}`;
     const text = (claims.length ? 'Who will lead your people now?' + claims.map(line).join('') : 'There is no heir of age, and no captain has yet made a name in your armies.') +
       (claims.length > open.length ? '<br><small>An heir needs an army of yours to ride to.</small>' : '') +
