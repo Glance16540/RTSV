@@ -193,12 +193,13 @@ export function settle(c: Campaign, f: number, from: number, to: number): string
 export const freeLands = (c: Campaign, f: number): number[] => c.territories.filter((t) => emptyLand(c, t.id) && t.adj.some((n) => c.territories[n].owner === f)).map((t) => t.id);
 
 /**
- * A rival's crowded town sends settlers to found a town on an empty land beside its people's, now and then
- * (MIGRATE.found), as the player may. At most one a season a people. Returns the moves.
+ * A crowded town sends settlers to found a town on an empty land beside its people's, now and then (MIGRATE.found): a
+ * rival's, and the player's by its governor's choice (governor.ts keeps every town, the player's too; the owner's word,
+ * 17 November 2026), as the player may order. At most one a season a people. Returns the moves.
  */
 export function foundOf(c: Campaign, f: number): Move[] {
   const fac = c.factions[f];
-  if (!fac?.alive || !fac.isAI) return [];
+  if (!fac?.alive) return [];
   const free = freeLands(c, f);
   if (!free.length) return [];
   for (const t of c.territories.filter((x) => x.owner === f && !x.horde)) {
