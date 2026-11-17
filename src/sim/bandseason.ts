@@ -26,8 +26,9 @@ export function threatsOfMen(c: Campaign): Raid[] {
   roamSeason(c, out); // bands flee, roam, settle and break up
   const raids = [...strikeSeason(c, out), ...hordeSeason(c, out)];
   for (const r of raids) marched(c, r.band, 'struck');
-  const told = out.length, born = appearSeason(c, out, (kind) => farPlace(c, kind)); // some are born in the far wilds (bandwilds.ts)
-  if (born && setOutFromAfar(c, born)) out.splice(told); // and nobody is there to see them gather
+  let far = false;
+  const told = out.length, born = appearSeason(c, out, (kind) => { const at = farPlace(c, kind); far ||= !!at; return at; }); // some are born in the far wilds (bandwilds.ts)
+  if (born && far && setOutFromAfar(c, born)) out.splice(told); // and nobody is there to see them gather
   ambushSeason(c, out); // a band may fall on an army that is weak, or seeing a convoy along the road
   heraldSeason(c, out); // a people who keep heralds hear of the bands that mean to strike them, a season before (heralds.ts)
   c.log.push(...out);
