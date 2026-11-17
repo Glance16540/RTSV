@@ -23,7 +23,7 @@ import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, 
 import { faithAt } from './townfaith';
 import { settleStores } from './stores';
 import { sideName } from './naming';
-import { Orders, keepOrders } from './governor';
+import { Orders, keepOrders, shareOf } from './governor';
 import type { Sky } from './campaign';
 import { driftBack, withDrift } from './driftintown';
 import { companyOf } from './townmuster';
@@ -195,7 +195,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
       name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
-        buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}), ...(!record.town && t.town?.coarse ? { coarse: t.town.b } : {}), ...(roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // a first visit: the town as big as its record (firstlay.ts)
+        buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}), ...(!record.town && t.town?.coarse ? { coarse: t.town.b } : {}), ...(roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), work: shareOf(c, t.id).share, // a first visit: the town as big as its record (firstlay.ts)
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
