@@ -10,12 +10,19 @@ import { CHAMPION_KILLS } from './champion';
 import { RANK_NAMES } from './hero';
 import { POWER_RANKS } from './powers';
 import { TALE_EVERY, TALE_FROM } from './story';
+import { mapWorks } from './townworks';
+import { nextAgeText } from './nextage';
+import { ageCost } from './campaign';
 
 /** How things stood when the guide first saw this campaign: its steps are measured from here. */
 export interface PrimerBase { seed: number; turn: number; lands: number; buildings: number; companies: number; age: number }
 export interface PrimerStep { id: string; title: string; how: string; done: boolean }
 
-const buildingsOf = (c: Campaign): number => c.territories.reduce((n, t) => n + (t.owner === 0 ? t.buildings.length : 0), 0);
+/** What the player has built: the sites of their lands, and the buildings raised in their towns from the land's panel. */
+const buildingsOf = (c: Campaign): number => {
+  const works = new Set(mapWorks());
+  return c.territories.reduce((n, t) => n + (t.owner === 0 ? t.buildings.length + (t.town?.b ?? []).filter((x) => works.has(String(x[0]))).length : 0), 0);
+};
 const companiesOf = (c: Campaign): number => c.armies.reduce((n, a) => n + (a.owner === 0 ? Object.values(a.units).reduce((s, x) => s + x, 0) : 0), 0);
 
 export function primerBase(c: Campaign): PrimerBase {
@@ -34,7 +41,7 @@ export function primerSteps(c: Campaign, base: PrimerBase, seen: readonly string
       `Click your capital, the land marked ★, and raise a company there. Each kind needs its own building: a ${SITES[cheapest.needs].name} for ${cheapest.name.toLowerCase()}. It joins the army standing on that land.`,
       companiesOf(c) > base.companies],
     ['build', 'Build on your land',
-      `A land holds only a few buildings, so choose. ${SITES.farm.name} brings supplies every turn; a ${SITES.barracks.name}, ${SITES.range.name} or ${SITES.stable.name} lets that land raise troops.`,
+      `A town raises its own buildings out of its stores: a Granary, a Mill or a Well, from the land's panel, and its governor sees them finished. The land itself holds only a few sites, paid in supplies: ${SITES.farm.name} brings supplies every turn; a ${SITES.barracks.name}, ${SITES.range.name} or ${SITES.stable.name} lets that land raise troops.`,
       buildingsOf(c) > base.buildings],
     ['take', 'Take a neighbouring land',
       'Click the land your army stands on, then a land joined to it by a dotted road. Begin with one held by few local warriors. You may fight the battle yourself or let it be settled on the map.',
@@ -46,10 +53,10 @@ export function primerSteps(c: Campaign, base: PrimerBase, seen: readonly string
       `Click a land a rival holds. A truce keeps them off you for ${TRUCE_TURNS} turns; a gift earns goodwill, and goodwill makes them readier to agree.`,
       c.truces.length > 0 || c.ally >= 0 || c.factions.some((f) => f.id !== 0 && (f.favor ?? 0) > 0)],
     ['age', 'Advance an age',
-      'From any land of yours. Every army you have grows stronger, and your battles begin in the new age with its weapons.',
+      `From any land of yours. Every army you have grows stronger, and your battles begin in the new age with its weapons.${nextAgeText(c, 0, ageCost(c, 0)) ? ' ' + nextAgeText(c, 0, ageCost(c, 0)) : ''}`,
       ageOf(c, 0) > base.age],
-    ['win', 'Win the world',
-      `Take every land, or hold ${dominionNeed(c)} of the ${c.territories.length} for ${DOMINION_TURNS} turns running. Your rivals can win the same way.`,
+    ['win', 'Outlast them',
+      `Your nation lives in its people: keep its towns fed and its families growing, and it will outlast its rivals; the last people left alive has won. Holding ${dominionNeed(c)} of the ${c.territories.length} lands for ${DOMINION_TURNS} turns running ends it too. A world where no one can take land for years while bands hold the map ends in ruin, with no winner.`,
       c.phase === 'over'],
   ];
   return steps.map(([id, title, how, done]) => ({ id, title, how, done: done || seen.includes(id) }));
@@ -97,8 +104,9 @@ export function primerPage(c?: Campaign): PrimerSection[] {
     ] },
     { title: 'Winning', lines: [
       c
-        ? `Take every land, or hold ${dominionNeed(c)} of this world's ${c.territories.length} lands for ${DOMINION_TURNS} turns running.`
-        : `Take every land, or hold ${pct(DOMINION_SHARE)} of them for ${DOMINION_TURNS} turns running.`,
+        ? `Outlast your rivals: the last people left alive has won. Holding ${dominionNeed(c)} of this world's ${c.territories.length} lands for ${DOMINION_TURNS} turns running ends it too.`
+        : `Outlast your rivals: the last people left alive has won. Holding ${pct(DOMINION_SHARE)} of the lands for ${DOMINION_TURNS} turns running ends it too.`,
+      'A world where no people can take land for years while bands hold much of the map ends in ruin, with no winner.',
       'A rival who does the same has won. The chronicle keeps what happened along the way, and its last page tells how it ended.',
     ] },
   ];

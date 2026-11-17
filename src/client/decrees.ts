@@ -1,5 +1,6 @@
 // A town's drift and its decrees on the land's panel: one line saying how the town stands and is moving, and a
 // button for each decree. The rules are in src/sim/drift.ts and src/sim/decrees.ts.
+import { inFaith } from '../sim/faithhouse';
 import type { Campaign } from '../sim/campaign';
 import { DECREES, DECREE_KINDS, decreeBar, decreesAt, strengthAt } from '../sim/decrees';
 import { famineYear, grainDeal } from '../sim/grain';
@@ -17,7 +18,7 @@ export function decreePanel(c: Campaign, tid: number): string {
   const way = !d ? 'steady' : d.moved > 0.5 ? 'drifting toward the holy way' : d.moved < -0.5 ? `drifting to worse${d.hungry ? ' (hungry)' : ''}${d.raided ? ' (raided)' : ''}` : 'steady';
   const grief = (f.grief ?? 0) > 0 ? ', grieving' : '';
   const gone = f.drifted ? [f.drifted.tavern ? `${f.drifted.tavern} of its women at the tavern` : '', f.drifted.mines ? `${f.drifted.mines} of its men at the mines` : ''].filter(Boolean).join(' and ') : '';
-  let html = `<div class="hint">Standing ${Math.round(townStanding(c, tid))}, ${way}${grief}.${gone ? ` Drifted: ${gone}.` : ''}${now.length ? ' Decrees: ' + now.map((x) => `${DECREES[x.kind].name.toLowerCase()} (to turn ${x.until}${x.strength < 1 ? ', by messenger' : ''})`).join('; ') + '.' : ''}</div>`;
+  let html = `<div class="hint">Standing ${Math.round(townStanding(c, tid))}, ${way}${grief}.${gone ? ` Drifted: ${gone}.` : ''}${now.length ? ' Decrees: ' + now.map((x) => `${inFaith(DECREES[x.kind].name, c.factions[0].civ).toLowerCase()} (to turn ${x.until}${x.strength < 1 ? ', by messenger' : ''})`).join('; ') + '.' : ''}</div>`;
   // Its widowed and orphans (src/sim/widowhood.ts).
   const bereft = bereftText(c, tid);
   if (bereft) html += `<div class="hint">Bereaved: ${esc(bereft)}.</div>`;
@@ -32,7 +33,7 @@ export function decreePanel(c: Campaign, tid: number): string {
     // Grain bought abroad is paid in gold, not supplies: say what it would bring and cost now (src/sim/grain.ts).
     const deal = k === 'alms' ? grainDeal(c, 0, tid, strengthAt(c, 0, tid)) : null;
     const price = deal ? `${deal.food} food for ${deal.gold} gold${famineYear(c, 0) ? ' (a famine year: dearer)' : ''}` : `${def.cost} supplies, ${def.seasons} season${def.seasons === 1 ? '' : 's'}`;
-    html += `<button data-act="decree:${k}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(bar || `${def.desc} ${price}.${heard}`)}">📜 ${esc(def.name)}</button>`;
+    html += `<button data-act="decree:${k}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(inFaith(bar || `${def.desc} ${price}.${heard}`, c.factions[0].civ))}">📜 ${esc(inFaith(def.name, c.factions[0].civ))}</button>`;
   }
   return html;
 }

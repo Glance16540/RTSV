@@ -1,5 +1,6 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
+import { inTime } from '../sim/inyears';
 import { inRuin, ruinWords } from '../sim/ruin';
 import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
@@ -8,6 +9,7 @@ import { bandPrompt, newsHtml } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
 import { attackBand } from '../sim/bandfight';
 import { meetBand, meetStory, storyToMeet } from './encounter';
+import { meetComing } from './bandmeet';
 import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -197,6 +199,7 @@ export class Overworld {
     else if (c.phase === 'player' && c.factions[0].alive && !c.factions[0].heroAlive && !houseOf(c, 0).asked) this.askSuccession();
     else if (c.phase === 'player' && c.factions[0].heroAlive && houseToName(c, 0) !== undefined) this.askHouse();
     else if (storyToMeet(c) && meetStory(c, storyToMeet(c)!, () => this.changed())) $('ow-dialog').classList.add('hidden'); // a story waiting on your word, face to face (encounter.ts)
+    else if (c.phase === 'player' && meetComing(c, { fight: () => this.hooks.fight(), changed: () => this.changed(), dialog: (t, x, b) => this.dialog(t, x, b) })) { /* a band coming for a town of yours, put once (bandmeet.ts) */ }
     else $('ow-dialog').classList.add('hidden');
     seasonCard(c, !$('ow-dialog').classList.contains('hidden'), () => this.hooks.save()); // what the season brought (seasoncard.ts)
   }
@@ -314,7 +317,7 @@ export class Overworld {
     const c = this.c, house = houseOf(c, 0), fallen = heroFor(c, 0).name;
     const claims = claimants(c, 0);
     const open = claims.filter((x) => canSucceed(c, 0, x));
-    const young = house.heirs.filter((h) => !ofAge(c, h)).map((h) => `${h.name} is ${comesOfAge(c, h)} ${comesOfAge(c, h) === 1 ? 'turn' : 'turns'} from coming of age`);
+    const young = house.heirs.filter((h) => !ofAge(c, h)).map((h) => `${h.name} comes of age ${inTime(comesOfAge(c, h))}`);
     const line = (x: Claim) => `<br><b>${x.name}</b> <small>(${RANK_NAMES[x.rank]})</small>: ${x.what}`;
     const text = (claims.length ? 'Who will lead your people now?' + claims.map(line).join('') : 'There is no heir of age, and no captain has yet made a name in your armies.') +
       (claims.length > open.length ? '<br><small>An heir needs an army of yours to ride to.</small>' : '') +

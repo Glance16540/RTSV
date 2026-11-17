@@ -1,3 +1,4 @@
+import { distinctColours } from '../src/sim/nationcolours';
 import { describe, expect, it } from 'vitest';
 import { countryOf, countryYield } from '../src/sim/country';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
@@ -680,7 +681,8 @@ describe('conquest campaign', () => {
       const civs = c.factions.map((f) => f.civ);
       lineups.add(civs.join(','));
       expect(new Set(civs).size).toBe(4); // no two factions are the same people
-      for (const f of c.factions) expect(f.color).toBe(CIV_COLOR[f.civ]);
+      // Each its own colour, unless another people of this world wears one too like it (nationcolours.ts).
+      expect(c.factions.map((f) => f.color)).toEqual(distinctColours(c.factions.map((f) => CIV_COLOR[f.civ])));
       // Each rival leader introduces themselves.
       // Your own leader opens, then each rival leader introduces themselves.
       expect(c.speech[0]).toMatchObject({ civ: civs[0], event: 'p_start' });
