@@ -4,6 +4,7 @@
  * It eases every season, faster under good rule; while it is high the town may rise. A rising with no army in the
  * town throws the taker off: the town goes back to the people it was taken from if they still stand, and otherwise
  * to its own tribe. A rising with an army in the town is put down, at a cost, and is not forgotten.
+ * Who in the town is still of the old people, and what their grudge costs its holder meanwhile, is oldfolk.ts.
  */
 import { lawEase } from './writtenlaw'; // written law eases resentment (writtenlaw.ts)
 import type { Campaign } from './campaign';
