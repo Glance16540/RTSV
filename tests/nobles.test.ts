@@ -30,8 +30,12 @@ describe('who is noble', () => {
       { name: 'Osric', gender: 'm', kind: 'veteran', deed: 'felled two', turn: 0, kills: 2 },
       { name: 'Hild', gender: 'f', kind: 'mother', deed: 'raised five', turn: 0, kids: 5 },
     ];
+    // A town of the nation that is not its capital has a lord only once it is of a size; the capital has one whatever its size.
+    const town = c.territories[c.territories[tid].adj[0]];
+    town.owner = 0; delete town.horde; big(c, town.id, NOBLES.lordAt - 2);
     fresh(c);
-    expect(noblesAt(c, tid).some((n) => n.rank === 'lord')).toBe(false);
+    expect(noblesAt(c, town.id).some((n) => n.rank === 'lord')).toBe(false);
+    expect(noblesAt(c, tid).some((n) => n.rank === 'lord')).toBe(true);
     expect(noblesAt(c, tid).find((n) => n.rank === 'captain')?.name).toBe('Wulf'); // the most famous of them
     expect(noblesAt(c, tid).find((n) => n.rank === 'matron')?.name).toBe('Hild');
     big(c, tid, NOBLES.lordAt + 2);

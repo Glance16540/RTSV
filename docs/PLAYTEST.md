@@ -327,3 +327,7 @@ No family moved of its own accord, as expected: with one town there is nowhere o
   itself* and what it means, reads in two lines.
 - **2.8, a field battle's bar** (`fixed2-field-bar.jpg`): it counts the two sides still standing ("Yours 7 · Theirs 4")
   instead of the town's stores and people, and there is no idle-villager button. A siege or a visit keeps the town's bar.
+- **A raid told twice** (follow-up, `fixed3-strike-first.jpg`, `fixed3-card-folds.jpg`): a band that got into a town of
+  the player's this season is told face to face first; the season's card waits for that window to close, then gives
+  those raids one line ("The raid on your towns, as you were told when the season turned"), keeping a raid beaten off as
+  it was (`foldTold`, src/client/seasoncard.ts). The card also waits for any other meeting face to face that is open.

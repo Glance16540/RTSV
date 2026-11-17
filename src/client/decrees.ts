@@ -25,6 +25,11 @@ export function decreePanel(c: Campaign, tid: number): string {
   // The town's nobles and how they feel (src/sim/nobles.ts); each decree says whom it would please and anger.
   const here = noblesAt(c, tid);
   if (here.length) html += `<div class="hint">Nobles: ${here.map((n) => `${esc(titleOf(c, n))} (${n.leaning}, ${isAngry(n) ? 'angry' : n.mood >= 20 ? 'pleased' : n.mood <= -15 ? 'displeased' : 'content'})`).join('; ')}.</div>`;
+  // What makes a noble of the town where it has none yet (nobles.ts): so the Nobles line is not a list with nothing to do.
+  if (c.territories[tid]?.owner === 0) {
+    const none = [!here.some((n) => n.rank === 'captain') ? 'a captain when one of its soldiers fells three or more in battle' : '', !here.some((n) => n.rank === 'matron') ? 'a matron when a mother of the town raises three children or her house makes a name by its work' : ''].filter(Boolean);
+    if (none.length) html += `<div class="hint">The town will have ${none.join(', and ')}.</div>`;
+  }
   html += nobleDealPanel(c, tid); // the leader's dealings with them (nobledeal.ts)
   const names = (xs: { name: string }[]): string => xs.slice(0, 3).map((n) => n.name).join(', ') + (xs.length > 3 ? ` and ${xs.length - 3} more` : '');
   for (const k of DECREE_KINDS) {
