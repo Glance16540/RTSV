@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import * as hub from '../src/sim/campaign';
 import * as base from '../src/sim/campaignbase';
+import { headcount } from '../src/sim/township';
 
 describe('the campaign\'s base', () => {
   it('everything in it is still found in the hub, the same thing and not a copy', () => {
@@ -17,7 +18,8 @@ describe('the campaign\'s base', () => {
     expect(base.armySize(a)).toBe(Object.values(a.units).reduce((n, v) => n + v, 0));
     expect(base.armyAt(c, a.at)).toBe(a);
     expect(base.landOf(c, 0)).toBe(c.territories.filter((t) => t.owner === 0).length);
-    expect(base.dominionNeed(c)).toBe(Math.ceil(c.territories.length * base.DOMINION_SHARE));
+    // A share of the lands with somebody on them: a wild land nobody has settled is not counted (wilds.ts).
+    expect(base.dominionNeed(c)).toBe(Math.ceil(c.territories.filter((t) => !(t.owner < 0 && t.wild && headcount(t.folk!) === 0)).length * base.DOMINION_SHARE));
     expect(base.biomeOf(c, 0)).toBe(base.biomeAt(c.seed, c.territories[0].x, c.territories[0].y));
     expect(base.companyCost(c.territories[0], 'infantry')).toBe(base.COMPANIES.infantry.cost);
   });

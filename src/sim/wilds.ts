@@ -23,7 +23,7 @@ declare module './campaign' {
 
 export const WILD = {
   /** Of the lands that may start wild, the share that do. */
-  share: 0.5,
+  share: 0.3,
   /** How near a side of the map, as a share of its width or height, a land is on the map's edge. */
   edge: 0.12,
 };
