@@ -106,3 +106,33 @@ describe('a building with no room on the field', () => {
     expect(g.standing(1).filter(isUnlaid)).toEqual([]);
   });
 });
+
+describe('a building of a real record with no room where it stood', () => {
+  it('is laid where there is room, and the town keeps it', () => {
+    const { c, tid, houses } = world();
+    sit(c, tid);
+    const b = c.territories[tid].town!.b, hs = b.filter((x) => x[0] === 'house');
+    hs[1][1] = hs[0][1]; hs[1][2] = hs[0][2]; // two roofs on one place: the second cannot stand there
+    const g = sit(c, tid);
+    expect(onField(g, 'house')).toBe(houses);
+    const after = c.territories[tid].town!.b.filter((x) => x[0] === 'house');
+    expect(after).toHaveLength(houses);
+    expect(unlaidOn(after)).toBe(0);
+    expect(new Set(after.map((x) => `${x[1]},${x[2]}`)).size).toBe(houses); // each at a place of its own
+  });
+
+  it('is kept with no place when there is none anywhere, and a wall is not moved', () => {
+    const { c, tid, houses } = world();
+    sit(c, tid);
+    const b = c.territories[tid].town!.b, hs = b.filter((x) => x[0] === 'house');
+    hs[1][1] = hs[0][1]; hs[1][2] = hs[0][2];
+    b.push(['palisade', hs[0][1], hs[0][2]]); // a length of wall where a house stands
+    FIRSTLAY.reach = [5]; // no ground at all
+    const g = sit(c, tid);
+    expect(onField(g, 'house')).toBe(houses - 1);
+    const after = c.territories[tid].town!.b;
+    expect(after.filter((x) => x[0] === 'house')).toHaveLength(houses);
+    expect(unlaidOn(after)).toBe(1);
+    expect(after.some((x) => x[0] === 'palisade')).toBe(false);
+  });
+});
