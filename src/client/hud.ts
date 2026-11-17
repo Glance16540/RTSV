@@ -741,9 +741,14 @@ export class Hud {
       if (left >= 0) wonder += ` · 🗿 ${q.id === pid ? 'Your' : cap1(possessive(q.name))} Wonder ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
     }
     const mins = Math.floor(game.time / 60), secs = Math.floor(game.time % 60);
+    // A field battle has nothing to gather or house: its bar counts the two sides still standing instead (docs/PLAYTEST.md 2.8).
+    let mine = 0, theirs = 0;
+    if (game.field) for (const u of game.units) { if (u.hp <= 0 || game.players[u.owner]?.neutral) continue; if (u.owner === pid) mine++; else if (game.hostile(u.owner, pid)) theirs++; }
     const top = [
-      RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
-        `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
+      game.field
+        ? `<span title="Your soldiers still standing">${ico('attackmove', '⚔️')} Yours ${mine}</span><span title="The enemy's soldiers still standing" class="${theirs > mine ? 'warn' : ''}">${ico('attackmove', '⚔️')} Theirs ${theirs}</span>`
+        : RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
+          `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
       `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder + this.weatherTag() + (game.field ? '' : ` · <span class="creed" title="${this.creedTip(p.virtue)}">${creedOf(p.virtue).icon} ${creedOf(p.virtue).name}</span>`),
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,
@@ -758,6 +763,7 @@ export class Hud {
       $('age').innerHTML = top[1];
       $('idle').innerHTML = `🧑‍🌾 <b>${top[2]}</b> idle`;
       $('idle').classList.toggle('dim', idle === 0);
+      $('idle').style.display = game.field ? 'none' : ''; // no villagers in a field battle
       $('clock').textContent = top[3];
       $('pause').textContent = top[4];
       $('speed').textContent = top[5];
