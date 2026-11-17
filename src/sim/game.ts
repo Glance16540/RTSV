@@ -916,8 +916,9 @@ export class Game {
   }
 
   /** The nearest free ground to a start for a building, with room to walk round it and clear of where the people muster. */
-  siteNear(type: string, st: { x: number; y: number }, dir: number): { cx: number; cy: number } | null {
-    const s = BUILDINGS[type].size, far = type === 'dock' ? this.size / 2 : 16;
+  /** `reach`: how far from the start to look (16 cells unless said; a dock looks half the map). */
+  siteNear(type: string, st: { x: number; y: number }, dir: number, reach = 16): { cx: number; cy: number } | null {
+    const s = BUILDINGS[type].size, far = type === 'dock' ? this.size / 2 : reach;
     let best: { cx: number; cy: number } | null = null, bestD = Infinity;
     for (let cy = Math.max(2, Math.floor(st.y - far)); cy <= Math.min(this.size - s - 2, st.y + far); cy++)
       for (let cx = Math.max(2, Math.floor(st.x - far)); cx <= Math.min(this.size - s - 2, st.x + far); cx++) {

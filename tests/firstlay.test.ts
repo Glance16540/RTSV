@@ -64,3 +64,35 @@ describe('a town met in person for the first time', () => {
     expect(s.bonus?.coarse).toBeUndefined();
   });
 });
+
+describe('a grown town at four times the size', () => {
+  /** A capital of about a hundred and ninety, with 48 roofs on its coarse record. */
+  const big = (): { c: Campaign; tid: number; houses: number } => {
+    const c = newCampaign(6, 1, 1, 'hearth');
+    const t = c.territories.find((x) => x.owner === 0 && x.capital === 0)!;
+    const f = folkOf(c, t.id); f.men = 48; f.women = 48; f.elders = 8; f.children = 90; delete f.ages;
+    delete t.town; layTown(c, t.id);
+    return { c, tid: t.id, houses: counted(c, t.id, 'house') };
+  };
+
+  it('stands whole on a visit: every roof on its record', () => {
+    const { c, tid, houses } = big();
+    expect(houses).toBeGreaterThanOrEqual(40);
+    beginVisit(c, tid);
+    const g = gameOf(visitConfig(c)!);
+    expect(onField(g, 'house')).toBe(houses);
+  });
+
+  it('stands whole when besieged, and none of it in the besieger\'s camp', () => {
+    const { c, tid, houses } = big();
+    const at = c.territories[tid].adj.find((n) => c.territories[n].owner !== 0)!;
+    c.territories[at].owner = 1;
+    c.armies.push({ id: 99, owner: 1, at, units: { infantry: 4 }, hero: false, vet: 0, moved: false } as never);
+    expect(moveArmy(c, 99, tid)).toBe('battle');
+    c.pending!.mode = 'siege';
+    const g = gameOf(battleConfig(c)!);
+    expect(onField(g, 'house')).toBe(houses);
+    const them = g.spec.starts.filter((_, k) => k !== 0);
+    for (const b of g.buildings.filter((x) => x.owner === 0)) for (const o of them) expect(Math.hypot(o.x - b.cx - b.def.size / 2, o.y - b.cy - b.def.size / 2)).toBeGreaterThanOrEqual(14);
+  });
+});
