@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { tribeName } from './tribenames';
 import { coupleParted, creditKill, leaveForWar, settleHomes, warRenown } from './household';
 import { carriedIn, madeRenown, restoreMade } from './notableweight';
 import { Census, PeopleIn, Stores } from './township';
@@ -328,6 +329,8 @@ export interface PlayerSetup {
   color: number;
   isAI: boolean;
   /** Players with the same team number are allies. Defaults to everyone for themselves. */
+  /** A local tribe: its people are named from the tribes' own names (tribenames.ts). */
+  tribe?: boolean;
   team?: number;
   /** Civilisation id. Defaults to a different one for each player. */
   civ?: string;
@@ -609,8 +612,8 @@ export class Game {
       mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
     };
     if (type === 'villager') {
-      const names = u.gender === 'm' ? NAMES_M : NAMES_F;
-      u.name = names[Math.floor(this.rng() * names.length)];
+      const names = u.gender === 'm' ? NAMES_M : NAMES_F, roll = this.rng();
+      u.name = this.setups[owner]?.tribe ? tribeName(u.gender ?? 'm', roll, new Set(this.units.filter((o) => o.owner === owner).map((o) => o.name))) : names[Math.floor(roll * names.length)]; // a tribe's people have their own names, no two alike (tribenames.ts)
       if (this.rng() < 0.3) this.setTrait(u, Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)]);
       u.lifespan = LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]);
     }
