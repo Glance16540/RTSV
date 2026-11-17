@@ -57,6 +57,7 @@ import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
 import { unrestSeason } from './unrest';
+import { freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
@@ -522,7 +523,7 @@ function mapTurn(c: Campaign): void {
       else {
         c.log.push(`${t.name} has risen and thrown off ${whoseOf(c, f.id)} rule.`);
         if (placeAt(c, t.id)) tell(c, `${t.name} rose and threw off ${whoseOf(c, f.id)} rule, and ${placeAt(c, t.id)!.name} with it.`);
-        t.owner = -1; t.militia = 2;
+        riseFree(c, t.id); // nobody's now, a free town that may be won back (freetown.ts)
         mark(c, 'revolt', t.id);
       }
     } else if (e.kind === 'hoard') {
@@ -537,6 +538,7 @@ function mapTurn(c: Campaign): void {
   c.events = ev.filter((x) => x.until >= c.turn - 1);
   const busy = new Set(c.events.filter((x) => x.until >= c.turn).map((x) => x.at));
   // Unrest begins in a town by its own state, not by one draw for the whole world (unrest.ts).
+  freeTownsSeason(c); // a free town may come back to the people it left, by treaty (freetown.ts)
   for (const tid of unrestSeason(c, busy)) {
     const t = c.territories[tid];
     c.log.push(`There is unrest in ${t.name}. ${t.owner === 0 ? 'Send an army there within ' + UNREST_TURNS + ' turns or it will rise.' : ''}`.trim());
