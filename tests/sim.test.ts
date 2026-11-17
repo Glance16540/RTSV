@@ -1,5 +1,6 @@
 import { militiaOf } from '../src/sim/militia';
 import { distinctColours } from '../src/sim/nationcolours';
+import { leanOf as townLean } from '../src/sim/townlean';
 import { describe, expect, it } from 'vitest';
 import { countryOf, countryYield } from '../src/sim/country';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
@@ -3480,7 +3481,7 @@ describe('faith on the campaign map', () => {
     expect(income(c, 0)).toBe(before + FAITH.temperate.tavern);
     expect(virtueDrift(c, 0)).toBe(-TAVERN_VIRTUE);
     turn(c);
-    expect(virtueOf(c, 0)).toBe(-TAVERN_VIRTUE);
+    expect(virtueOf(c, 0)).toBe(-TAVERN_VIRTUE + townLean(c, home.id)); // and the town's own lean (townlean.ts)
     c.factions[0].virtue = -40;
     expect(income(c, 0)).toBe(before + FAITH.worldly.tavern);
     c.factions[0].virtue = -80;
@@ -3491,7 +3492,7 @@ describe('faith on the campaign map', () => {
     expect(build(c, 0, home.id, 'church')).toBe(true);
     expect(virtueDrift(c, 0)).toBe(CHURCH_VIRTUE - TAVERN_VIRTUE);
     home.buildings.splice(home.buildings.indexOf('tavern'), 1);
-    c.factions[0].virtue = 28;
+    c.factions[0].virtue = 28 - townLean(c, home.id); // the town's own lean (townlean.ts) moves it too
     c.log.length = 0;
     turn(c);
     expect(virtueOf(c, 0)).toBe(28 + CHURCH_VIRTUE);

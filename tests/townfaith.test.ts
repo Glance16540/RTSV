@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { folkOf } from '../src/sim/township';
 import { BATTLE_VIRTUE, CHURCH_VIRTUE, Campaign, TAVERN_VIRTUE, answerDemand, battleConfig, continueAI, endTurn, finishBattle, moveArmy, newCampaign, resolvePending, shiftVirtue, virtueOf } from '../src/sim/campaign';
 import { PULL, faithAt, faithSpread, nationVirtue, pullTogether, seasonOfFaith, settleFaith, swayNation, swayTown, townDrift } from '../src/sim/townfaith';
+import { leanOf, pullFor } from '../src/sim/townlean';
 
 const LONG = 60_000;
 const turn = (c: Campaign) => {
@@ -48,14 +49,17 @@ describe('faith is a town\'s', () => {
   it('a church or a tavern moves the town it stands in, season by season, and no other', () => {
     const { c, home, a, b } = realm();
     a.buildings = ['church']; b.buildings = ['tavern'];
-    expect(townDrift(c, a.id)).toBe(CHURCH_VIRTUE);
-    expect(townDrift(c, b.id)).toBe(-TAVERN_VIRTUE);
-    expect(townDrift(c, home.id)).toBe(0);
+    // Each town moves by its own house, and by its own lean (townlean.ts), which every town has.
+    const da = CHURCH_VIRTUE + leanOf(c, a.id), db = -TAVERN_VIRTUE + leanOf(c, b.id), dh = leanOf(c, home.id);
+    expect(townDrift(c, a.id)).toBe(da);
+    expect(townDrift(c, b.id)).toBe(db);
+    expect(townDrift(c, home.id)).toBe(dh);
     turn(c);
-    // Each moved by its own house, and was then drawn a little way back toward the nation (which stands at 0).
-    expect(faithAt(c, a.id)).toBe(CHURCH_VIRTUE - Math.round(CHURCH_VIRTUE * PULL));
-    expect(faithAt(c, b.id)).toBe(-TAVERN_VIRTUE + Math.round(TAVERN_VIRTUE * PULL));
-    expect(faithAt(c, home.id)).toBe(0);
+    // Each moved by its own drift, and was then drawn a little way back toward the nation's mean.
+    const mean = (da + db + dh) / 3, back = (v: number) => v + Math.round((mean - v) * pullFor(mean - v, PULL));
+    expect(faithAt(c, a.id)).toBe(back(da));
+    expect(faithAt(c, b.id)).toBe(back(db));
+    expect(faithAt(c, home.id)).toBe(back(dh));
     // The nation stands at the mean of its towns: a Church and a Tavern of different weight leave it a point off 0 at most.
     expect(Math.abs(virtueOf(c, 0))).toBeLessThanOrEqual(1);
   }, LONG);
@@ -83,8 +87,9 @@ describe('faith is a town\'s', () => {
     swayTown(c, a.id, 90); swayTown(c, b.id, -60);
     const mean = virtueOf(c, 0), gap = faithSpread(c, 0).spread;
     pullTogether(c);
-    expect(faithAt(c, a.id)).toBe(90 + Math.round((mean - 90) * PULL));
-    expect(faithAt(c, b.id)).toBe(-60 + Math.round((mean + 60) * PULL));
+    // Far from the nation's mean, a town is drawn back the harder (townlean.ts `pullFor`).
+    expect(faithAt(c, a.id)).toBe(90 + Math.round((mean - 90) * pullFor(mean - 90, PULL)));
+    expect(faithAt(c, b.id)).toBe(-60 + Math.round((mean + 60) * pullFor(mean + 60, PULL)));
     expect(faithSpread(c, 0).spread).toBeLessThan(gap);
     expect(Math.abs(virtueOf(c, 0) - mean)).toBeLessThanOrEqual(1);
     for (let i = 0; i < 60; i++) pullTogether(c);
