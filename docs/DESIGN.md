@@ -218,6 +218,12 @@ same. And some bands are born in the wild lands at the map's edge and march in f
 or weak towns, so that a people can see them coming.
 Some lands begin wild: a share of the far and poor lands (snow, desert, the map's edge) start with no
 tribe and no town. They are where settlers go and where the wild bands arise.
+Snow and desert wild lands are true wilderness: they can never be settled, so a rim of wild country
+lasts all campaign and bands keep arising there to march in from afar.
+
+**A town's own life moves its faith** (the owner's word, 17 November 2026). Hunger, raids and plague
+draw a town toward decadence; a long peace with full stores draws it toward piety; so one town of a
+nation can stand apart from the rest by what it has lived through.
 
 ## The order of building
 
