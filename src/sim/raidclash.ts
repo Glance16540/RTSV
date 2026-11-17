@@ -14,9 +14,10 @@
 // It comes out with how it went (rounds, who broke), what the band lost of its strength, how hard the town was
 // pressed, and what the garrison's companies lost.
 //
-// STAGE ONE: nothing calls this to decide a strike yet. The health report sets it beside the sum for every strike
-// (`raidForeseen`), to see how the two agree before anything is switched. Whether a garrison truly loses the
-// companies this says it lost is the owner's to decide: `garrisonLost` is given either way, and a caller may drop it.
+// threats.ts `strike` decides a strike on a town by this (a strike on a road is still an escort or nothing). An army
+// standing in the town loses the companies this says it lost, each a man of his town (the owner's word, 17 November
+// 2026: "a garrison in a raided town loses companies when pressed"). The health report still sets it beside the old
+// sum for every strike (`raidForeseen` gives the clash from a strike's own record).
 //
 // It reads a strike's own figures (plain data) and mapbattle.ts's clash; it changes nothing.
 import type { Force, Outcome } from './mapbattle';
@@ -29,6 +30,10 @@ export const RAID = {
   press: 0.82,
   /** A band that breaks a town having lost no more than this share of its own weight has taken it, not only raided it. */
   easily: 0.16,
+  /** Of what a clash says a band lost, the share its strength is the weaker by: most of those who run find the camp again. Never less than one point where it broke. */
+  rally: 0.3,
+  /** A town that held is blooded (a man of it dies, as a town was) where it lost this share of its weight or more in holding. */
+  blooded: 0.3,
 };
 
 /** What a town has, as the sum has it (threats.ts `Defence`), read here as plain data. */
@@ -65,7 +70,7 @@ export function raidForces(strength: number, force: number, stand: TownStand, ga
 /** Read a clash as a raid. */
 export function raidOf(out: Outcome, strength: number): RaidFight {
   const outcome: RaidOutcome = out.broke === 'defender' ? (out.a.share <= RAID.easily ? 'taken' : 'raided') : 'held';
-  const lost = Math.round(strength * out.a.share);
+  const lost = Math.round(strength * out.a.share * RAID.rally);
   return {
     outcome, rounds: out.rounds, broke: out.broke,
     bandLost: out.broke === 'attacker' ? Math.max(1, lost) : lost,

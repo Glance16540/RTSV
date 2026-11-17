@@ -74,3 +74,74 @@ describe('a raid fought out', () => {
     expect(f).toEqual(raidClash(6, 6, r.defence, { infantry: 2 }));
   });
 });
+
+// Stage two: a strike on a town is decided by the fight (threats.ts `strike`).
+import { bareCampaign } from './helpers';
+import { strike } from '../src/sim/threats';
+import type { Band } from '../src/sim/threats';
+import { reportText } from '../src/sim/threats';
+import { TOWN_SCALE as S, folkOf } from '../src/sim/township';
+
+describe('a strike on a town is fought out', () => {
+  /** One town of the player's set apart, plain, with so many men (as towns were); a band of raiders beside it. */
+  function world(men: number, strength: number, seed = 11) {
+    const c = bareCampaign(seed, 2);
+    c.fronts = [];
+    const t = c.territories.find((x) => x.owner === 0)!;
+    for (const id of t.adj) c.territories[id].owner = -1;
+    c.armies = c.armies.filter((a) => a.at !== t.id);
+    t.buildings = []; delete t.town;
+    Object.assign(folkOf(c, t.id), { men: men * S, women: 6 * S, elders: 0, children: 2 * S });
+    delete folkOf(c, t.id).ages;
+    const b: Band = { id: 950, kind: 'raiders', name: 'the Test Men', at: t.id, strength, since: c.turn, held: [] };
+    c.bands = [b];
+    return { c, t, b };
+  }
+
+  it('its report says how the fight went: the rounds, and who broke', () => {
+    const { c, t, b } = world(1, 12);
+    const r = strike(c, b, t.id, []);
+    expect(r.outcome).not.toBe('held');
+    expect(r.broke).toBe('defender');
+    expect(r.rounds).toBeGreaterThan(0);
+    expect(reportText(c, r).join(' ')).toContain('the town\'s defence broke');
+    const strong = world(20, 2);
+    strong.t.buildings = ['fortress'];
+    const h = strike(strong.c, strong.b, strong.t.id, []);
+    expect(h.outcome).toBe('held');
+    expect(h.broke).toBe('attacker');
+    expect(strong.b.strength).toBeLessThan(2); // the weaker for it
+    expect(reportText(strong.c, h).join(' ')).toContain('the band broke');
+  });
+
+  it('an army standing in a raided town loses companies when it is pressed, never its last, and none when the band is seen off easily', () => {
+    const { c, t, b } = world(1, 14);
+    c.armies.push({ id: 801, owner: 0, at: t.id, units: { infantry: 4 }, hero: false, vet: 0, moved: false });
+    const r = strike(c, b, t.id, []);
+    const left = c.armies.find((a) => a.id === 801)!;
+    expect(left).toBeDefined(); // it is never wiped out by a raid: it falls back inside
+    expect(left.units.infantry).toBeGreaterThanOrEqual(1);
+    expect(r.garrison).toBe(4 - left.units.infantry);
+    expect(r.garrison).toBeGreaterThan(0);
+    expect(reportText(c, r).join(' ')).toContain('The army there lost');
+    // A strong garrison against a small band: it holds, and loses nobody.
+    const easy = world(6, 1);
+    easy.c.armies.push({ id: 802, owner: 0, at: easy.t.id, units: { infantry: 8 }, hero: false, vet: 0, moved: false });
+    const h = strike(easy.c, easy.b, easy.t.id, []);
+    expect(h.outcome).toBe('held');
+    expect(h.garrison).toBeUndefined();
+    expect(easy.c.armies.find((a) => a.id === 802)!.units.infantry).toBe(8);
+  });
+
+  it('a strike on a road is still an escort or nothing: no fight, no rounds', () => {
+    const { c, t, b } = world(6, 6);
+    const far = c.territories[t.adj[0]];
+    far.owner = 0;
+    b.kind = 'highwaymen'; b.to = far.id;
+    for (const id of [t.id, far.id]) folkOf(c, id).stores.food = 2000;
+    const r = strike(c, b, t.id, []);
+    expect(r.rounds).toBeUndefined();
+    expect(r.broke).toBeUndefined();
+    expect(r.outcome).toBe('raided');
+  });
+});
