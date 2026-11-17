@@ -48,8 +48,10 @@ import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
 import { fortShelter, hasFortress } from './fortress';
 import { stoodTo } from './heralds';
+import { RAID, raidClash } from './raidclash';
+import { reckonArmies } from './armytown';
 import { oldWeight } from './oldfolk';
-import { wrathAt, wrathOf } from './acts';
+import { wrathAt } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
 import { needOf } from './larder';
@@ -90,6 +92,8 @@ export interface Raid {
   sway: number;
   /** The band was broken in the attempt. */
   broken?: boolean;
+  /** A strike on a town, fought out (raidclash.ts): rounds fought, who broke (neither: the band drew off), and the companies the army standing there lost. */
+  rounds?: number; broke?: 'attacker' | 'defender' | 'neither'; garrison?: number;
 }
 
 declare module './campaign' {
@@ -277,14 +281,24 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const r = guard / Math.max(0.1, force);
   // A town that already has people in some band's hands has no more to give: it is raided, not taken again.
   const bled = (c.bands ?? []).some((k) => k.held.some((h) => h.from === tid));
-  let outcome: Outcome = r >= THREATS.hold ? 'held' : r < THREATS.fall && !road && !bled ? 'taken' : 'raided';
+  // A strike on a town is fought out a round at a time (raidclash.ts); on a road it is an escort or nothing, by the old lines.
+  const garrison = road ? undefined : c.armies.find((a) => a.at === tid && a.owner === owner);
+  const fight = road ? null : raidClash(b.strength, force, defence, garrison?.units ?? {}, faithAt(c, tid));
+  let outcome: Outcome = fight ? (fight.outcome === 'taken' && bled ? 'raided' : fight.outcome) : r >= THREATS.hold ? 'held' : 'raided';
   const raid: Raid = {
     turn: c.turn, band: b.id, kind: b.kind, name: b.name, at: tid, owner, outcome, force, defence: road ? { ...defence, total: round1(guard) } : defence,
     killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0,
+    ...(fight ? { rounds: fight.rounds, broke: fight.broke } : {}),
   };
+  // An army standing in the town loses the companies the fight cost it, each a man of his town; never its last (it falls back inside).
+  if (fight && garrison) {
+    let spare = armySize(garrison) - 1, gone = 0;
+    for (const k of Object.keys(fight.garrisonLost)) { const n = Math.min(spare, fight.garrisonLost[k], garrison.units[k] ?? 0); if (n <= 0) continue; garrison.units[k] -= n; if (garrison.units[k] <= 0) delete garrison.units[k]; spare -= n; gone += n; }
+    if (gone) { raid.garrison = gone; reckonArmies(c); }
+  }
   if (outcome === 'held') {
-    b.strength -= r >= 2 ? 2 : 1;
-    if (r < 1.6 && !road && f.men > TOWN_SCALE) raid.killed = takeOut(c, tid, 'm', TOWN_SCALE).length; // a man of a town as towns were: as many as that is now
+    b.strength -= fight ? fight.bandLost : r >= 2 ? 2 : 1;
+    if ((fight ? fight.pressed >= RAID.blooded : r < 1.6) && !road && f.men > TOWN_SCALE) raid.killed = takeOut(c, tid, 'm', TOWN_SCALE).length; // a man of a town as towns were: as many as that is now
     if (b.strength <= 0) raid.broken = true;
   } else {
     if (!road) raid.killed = takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - TOWN_SCALE), Math.round(f.men * THREATS.dead[outcome] * fortShelter(c, tid)))).length; // in a Fortress they have somewhere to go (fortress.ts)
@@ -313,7 +327,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   }
   // Which way their morals sway: a people that held together is the better for it; one that was sacked loses heart.
   const down = THREATS.sway[outcome] < 0;
-  raid.sway = round1(THREATS.sway[outcome] * (down ? wrathOf(c, owner) : 1)); // by the nation's standing still: by the town's own (wrathAt) more campaigns ended in ruin at 192, taking that row out of its band
+  raid.sway = round1(THREATS.sway[outcome] * (down ? wrathAt(c, tid) : 1)); // by the town's own standing (acts.ts), as its faith is its own
   swayTown(c, tid, raid.sway); // it is the town struck whose morals sway, and its nation's with it (townfaith.ts)
   mark(c, outcome === 'held' ? 'heldoff' : outcome === 'taken' ? 'carried' : 'raid', tid);
   (c.raids ??= []).push(raid);
@@ -341,6 +355,8 @@ export function reportText(c: Campaign, r: Raid): string[] {
       : `The town defended itself with ${had.length ? had.join(', ') : 'nothing'}${d.spirit !== 1 ? `, ${d.spirit > 1 ? 'stiffened' : 'slackened'} by the spirit of its people (×${Math.round(d.spirit * 100) / 100})` : ''}: ${inAll([d.men, d.works, d.walls, d.army, d.guard].map((x) => x ?? 0), d.total)}.`,
     r.outcome === 'held' ? `They were ${road ? 'driven off' : 'held off'}${r.broken ? ', and the band is broken' : ''}.` : r.outcome === 'taken' ? 'The town fell to them.' : road ? 'They took what was on the road.' : 'They broke in, took what they could carry and were gone.',
   ];
+  if (r.rounds !== undefined) lines.push(`It was fought over ${r.rounds} ${r.rounds === 1 ? 'round' : 'rounds'}: ${r.broke === 'attacker' ? 'the band broke' : r.broke === 'defender' ? 'the town\'s defence broke' : 'neither broke, and the band drew off'}.`);
+  if (r.garrison) lines.push(`The army there lost ${r.garrison === 1 ? 'a company' : `${r.garrison} companies`}.`);
   if (r.killed) lines.push(`Killed: ${people(r.killed, 'man', 'men')} of the town.`);
   if (r.taken.men + r.taken.women) lines.push(`Taken: ${[r.taken.women ? people(r.taken.women, 'woman', 'women') : '', r.taken.men ? people(r.taken.men, 'man', 'men') : ''].filter(Boolean).join(' and ')}${r.names.length ? `, ${r.names.join(' and ')} among them` : ''}. No child was touched. They can be got back for ${THREATS.holdFor} seasons by breaking the band.`);
   const goods = STORE_KINDS.filter((k) => r.stores[k]).map((k) => `${r.stores[k]} ${k}`);

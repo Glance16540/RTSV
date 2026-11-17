@@ -2,7 +2,7 @@
 
 import { bake, unbake } from './bake';
 import { TownBatch } from './townbatch';
-import { foldFigure } from './foldfigure';
+import { cullBeast, foldFigure } from './foldfigure';
 import * as THREE from 'three';
 import { standInBuilding } from './standins'; // a new building's stand-in look until it has a model (standins.ts)
 import { BUILDINGS } from '../sim/data';
@@ -70,6 +70,7 @@ export class Renderer {
   private unitViews = new Map<number, UnitView>();
   private buildingViews = new Map<number, THREE.Group>();
   private batch = new TownBatch(this.scene);
+  private resBatch = new TownBatch(this.scene, { tile: 32 }); // stone, gold, bushes, carcasses: drawn together as the buildings are
   private resViews = new Map<number, THREE.Group>();
   private treeIndex = new Map<number, { ims: THREE.InstancedMesh[]; i: number }>();
   /** Every instanced part of the forest; a felled tree is hidden in each. */
@@ -567,7 +568,7 @@ export class Renderer {
       const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
       v = { g: made?.g ?? creature?.g ?? (afoot ? new THREE.Group() : makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear)), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, work: 0, job, wear, hp: u.hp, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
-      if (creature) { v.beasts = [creature]; v.wildlife = true; }
+      if (creature) { v.beasts = [creature]; v.wildlife = true; if (!Renderer.noBake) cullBeast(creature.g); }
       v.real = made?.real;
       v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
       if (ridden) this.mount(u, v);
@@ -1337,7 +1338,7 @@ export class Renderer {
     if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
     g.userData.hurt = hurt;
     // A finished building that stands still is drawn as one mesh for each of its materials (bake.ts).
-    if (b.complete && !g.userData.site && !b.def.wall && !g.userData.baked && !Renderer.noBake) bake(g);
+    if (b.complete && !g.userData.site && !b.def.wall && !g.userData.baked && !Renderer.noBake) bake(g, { all: true });
     // A building going up rises out of its footings inside a scaffold of poles, which comes down when it is done.
     let site = g.userData.site as THREE.Group | undefined;
     if (!b.complete) {
@@ -1390,6 +1391,7 @@ export class Renderer {
     g.position.set(r.x, this.scenery.heightAt(r.x, r.y), r.y);
     this.resViews.set(r.id, g);
     this.scene.add(g);
+    if (!Renderer.noBake) bake(g, { all: true }); // its shapes merged by material, to be drawn with all the others (resBatch)
   }
 
   private ring(i: number): THREE.Mesh {
@@ -1413,6 +1415,7 @@ export class Renderer {
     if (!Renderer.noBake) this.batch.sync(this.buildingViews.values()); // a town's still buildings drawn together (townbatch.ts)
     if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
+    if (!Renderer.noBake) this.resBatch.sync(this.resViews.values()); // made again when one is used up or a kill is left
     this.lightNight();
     this.campScenes.update(this.game, dt, {
       chips: (x, y, z, n) => this.spray(x, y, z, n, false),

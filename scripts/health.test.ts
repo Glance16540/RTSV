@@ -52,6 +52,7 @@ import { hasStudy } from '../src/sim/studies';
 import { plotFor } from '../src/sim/governor';
 import { layTown } from '../src/sim/rivalrule';
 import { hasFortress } from '../src/sim/fortress';
+import { RAID, raidForeseen } from '../src/sim/raidclash';
 import type { March } from '../src/sim/bandmarch';
 import { settleStores } from '../src/sim/stores';
 import { UNREST, ownFounded, unrestWeights } from '../src/sim/unrest';
@@ -210,7 +211,7 @@ interface Watch {
   houses: { holy: number; with: number }; // at 20 years: Righteous towns, and those with a Monastery or Convent standing
   raids: { outcome: string }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
-  strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean }[];
+  strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean; /** What the sum made of it, and what a clash would have (raidclash.ts); not for a strike on the road. */ sum: string; clash: string; road: boolean; /** The sum's own line for a taking was crossed, whether or not the town could be taken again. */ low: boolean; /** The town's defence over the band's force, as the old lines read it. */ ratio: number }[];
   /** Unrest begun in a town (unrest.ts), with what weighed on it then; towns that rose and became free (freetown.ts), and what became of them. */
   stirs: { hungry: boolean; angry: boolean; sour: boolean; fresh: boolean; tavern: boolean; founded: boolean; mine: boolean }[];
   free: { rose: number; back: number; retaken: number; taken: number; still: number };
@@ -373,10 +374,10 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
     const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
     for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome }); if (r.outcome !== 'held') strife[r.at].war = now; }
-    for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0 });
+    for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0, sum: r.outcome, clash: raidForeseen(r, faithAt(c, r.at)).outcome, road: r.kind === 'highwaymen', low: r.defence.total / Math.max(0.1, r.force) < THREATS.fall, ratio: r.defence.total / Math.max(0.1, r.force) });
     // Thieves and killers at large this season: begun, not ended, and (a thief) not yet standing for judgement.
     for (const x of c.intrigues ?? []) {
-      if (!ofTown(x) || x.ended || x.caught !== undefined) continue;
+      if (!ofTown(x) || x.ended || x.caught !== undefined || x.owner !== 0) continue; // the player's towns (rivals' have them too: rivalstories.ts)
       const k = atLarge.get(x.id) ?? { seasons: 0, watched: 0 };
       k.seasons++; if (standsAt(c, x.at, 'watchhouse')) k.watched++;
       atLarge.set(x.id, k);
@@ -532,8 +533,8 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
   }
   w.sieges = watched;
-  w.stories = c.intrigueSeq ?? 0; w.storyYears = c.turn / 4;
-  w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot').length;
+  w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
+  w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0).length;
   w.crimes = [...atLarge.values()];
   w.free.still = c.territories.filter((t) => t.free && t.owner < 0).length;
   w.marches = [...(c.marches ?? [])]; w.bandsCame = c.bandSeq ?? 0;
@@ -871,6 +872,14 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       'Every time unrest began in a held town (unrest.ts), with the things that made it likelier as they stood at the season\'s end; a town may have several. Unrest comes to a rising two seasons on unless an army, the leader or a steadfast people keeps order.');
     add('Conquest', 'Towns that rise from unrest become free towns, and what becomes of them', 'report only', free.rose ? `${num(free.rose / ruled.length, 1)} a campaign rose; of them ${pct(free.back / free.rose)} came back by treaty, ${pct(free.retaken / free.rose)} were taken back by force by the people they left, ${pct(free.taken / free.rose)} were taken by another people or the marauders, ${pct(free.still / free.rose)} were free at the end` : 'none rose', 'report',
       'A town that throws off its people\'s rule is nobody\'s, with its people in it, and remembers whose it was (freetown.ts). The towns a conqueror\'s yoke loses are another matter (conquered.ts) and are not counted here.');
+  }
+  // A raid as it was fought out (raidclash.ts decides it), against the old sum's lines: report only.
+  {
+    const st = all('strikes').filter((x) => !x.road), n = st.length, of = (k: 'sum' | 'clash', o: string) => pct(n ? st.filter((x) => x[k] === o).length / n : NaN);
+    const hold = (x: (typeof st)[number]) => x.ratio >= THREATS.hold;
+    const same = st.filter((x) => x.sum === x.clash).length, worse = st.filter((x) => ({ held: 0, raided: 1, taken: 2 }[x.clash] ?? 0) > ({ held: 0, raided: 1, taken: 2 }[x.sum] ?? 0)).length;
+    add('Threats', 'A raid fought out a round at a time, against the old sum\'s lines', 'report only', n ? `as it was fought: held off ${of('sum', 'held')}, raided ${of('sum', 'raided')}, taken ${of('sum', 'taken')}; by the old lines the same strikes would have been held off ${pct(st.filter(hold).length / n)} and crossed the line for a taking ${pct(st.filter((x) => x.low).length / n)}; a town the old lines would have held was broken into in ${pct(st.filter((x) => hold(x) && x.sum !== 'held').length / Math.max(1, st.filter(hold).length))}, and one they would not have held held in ${pct(st.filter((x) => !hold(x) && x.sum === 'held').length / Math.max(1, st.filter((x) => !hold(x)).length))} (${n} strikes)` : 'no strikes', 'report',
+      `Every strike on a town (not on a road). It is decided by mapbattle.ts's clash (raidclash.ts: a band's force worth ${RAID.press} of itself; taken where breaking the town cost the band ${pct(RAID.easily)} of its weight or less and the town is not already bled). The old lines: held at ${THREATS.hold} of the band's force, a taking under ${THREATS.fall}.`);
   }
   // Bands from the far wilds (bandwilds.ts): report only.
   {
