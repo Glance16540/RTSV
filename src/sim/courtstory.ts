@@ -317,6 +317,19 @@ function laidBare(c: Campaign, it: Intrigue, how: string): void {
   it.found = true; it.cleared = it.nobles!.map((_, i) => i).filter((i) => i !== it.culprit);
   note(c, it, 'good', `${how} It is ${p.title} who plots for the place of ${leader(c, it.owner)}. ${p.female ? 'She' : 'He'} is held, and waits on your judgement.`);
 }
+/**
+ * One of those spoken of is shown to be true, by something outside the season's own chances (courtvisit.ts: watched by
+ * the leader's soldiers in the town). Never the plotter, never one cleared already, never once the plot is known.
+ * Where only the plotter is left it is laid bare. Returns whether anything changed.
+ */
+export function shownTrue(c: Campaign, it: Intrigue, i: number, text: string): boolean {
+  if (it.kind !== 'plot' || it.ended || it.found || !it.nobles?.[i] || i === it.culprit || it.cleared.includes(i)) return false;
+  it.cleared.push(i);
+  it.clues.push({ turn: c.turn, clears: [i], text });
+  note(c, it, 'good', `${text} ${spoken(it).length} ${spoken(it).length === 1 ? 'is' : 'are'} still spoken of.`);
+  if (spoken(it).length === 1) laidBare(c, it, 'Only one is left.');
+  return true;
+}
 /** The plotter is gone from the nation's great: put to death, or dead in their own rising. */
 function remove(c: Campaign, n: Noble | undefined, how: string, f = 0): void {
   if (!n) return;
