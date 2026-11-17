@@ -52,7 +52,7 @@ export interface Census { men: number; women: number; elders: number; children: 
  * one of those reads it; then it is turned to 4 in one commit, so that no stage leaves towns larger than their
  * fields or their foes.
  */
-export const TOWN_SCALE = 1;
+export const TOWN_SCALE: number = 4;
 /** The most of any one kind (men, women, old, children) a town's record will hold. */
 export const MAX_KIND = 60 * TOWN_SCALE;
 export const MAX_STORE = 20000;
