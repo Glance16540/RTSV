@@ -21,6 +21,7 @@ import type { Army, Campaign } from './campaign';
 import { resting } from './armytown';
 import { STORE_KINDS, folkOf } from './township';
 import { warn } from './heralds';
+import { emptyLand } from './founding';
 
 export const MARCH = {
   /** The most lands a band on the march goes in a season, the legs after the first only along a road. */
@@ -35,8 +36,8 @@ export const MARCH = {
 
 /** Bands from the far wilds (bandwilds.ts): numbers kept here so the bands' moving can read them with no ring of imports. */
 export const WILDS = {
-  /** Of new camps of raiders and slavers, the share born in the far wilds when there are any, and how many lands from the nearest held land counts as far. */
-  share: 0.75, far: 2,
+  /** Of new camps of raiders and slavers, the share born in the far wilds when there are any with a way in. */
+  share: 0.75,
 };
 
 /** One band's march in from the far wilds, for the season's telling and the health report. */
@@ -66,10 +67,14 @@ export function landsFromHeld(c: Campaign): number[] {
   }
   return d;
 }
-/** The far wilds: lands nobody holds, not the marauders', with no band or army in them, at least WILDS.far lands from any held land and joined to one. */
+/**
+ * The far wilds: lands that began wild (wilds.ts: far or poor ground with no tribe and no town, beside nobody's
+ * chief town) and are still empty (founding.ts), with no band or army in them, and joined by land to a held land.
+ * A tribe's land is not the far wilds, however far off: somebody lives there.
+ */
 export function farWilds(c: Campaign): number[] {
-  const d = landsFromHeld(c), taken = new Set((c.bands ?? []).map((b) => b.at));
-  return c.territories.filter((t) => t.owner < 0 && !t.horde && !taken.has(t.id) && d[t.id] >= WILDS.far && d[t.id] < c.territories.length && !c.armies.some((a) => a.at === t.id)).map((t) => t.id);
+  const d = landsFromHeld(c);
+  return c.territories.filter((t) => !!t.wild && emptyLand(c, t.id) && d[t.id] < c.territories.length && !c.armies.some((a) => a.at === t.id)).map((t) => t.id);
 }
 
 /** Does a road run between these two lands: they are next to each other and each is held by some people (roads join towns)? */
