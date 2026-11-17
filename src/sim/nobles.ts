@@ -14,6 +14,7 @@
 //   weighs on them fully, one elsewhere in the nation less. Moods ease toward nothing each season, and sour a little
 //   in a town that is raided, hungry or sick.
 //
+//   What is done for a noble lasts (nobledeal.ts): their `bonds`, while they hold, set where their mood settles.
 //   An angry noble (mood ANGRY or below) tells on their town: its people work slacker (the harvest brings in less,
 //   harvest.ts), it is readier to drift (drift.ts adds to its strain), and, while the leader is not there to see it
 //   (court.ts), its watch against bands is thinner (drift.ts, `watchOf`, read by threats.ts).
@@ -38,8 +39,13 @@ export type Leaning = 'pious' | 'martial' | 'worldly' | 'kindly';
 export const LEANINGS: Leaning[] = ['pious', 'martial', 'worldly', 'kindly'];
 export const RANK_NAMES: Record<Rank, string> = { lord: 'Lord', captain: 'Captain', matron: 'Matron', close: 'Of the inner circle' };
 
-/** One noble. `key` stays the same while they are the same person in the same place, so their mood is kept. */
-export interface Noble { key: string; name: string; female: boolean; town: number; rank: Rank; leaning: Leaning; mood: number; post?: Post }
+/** Something done for or to a noble that lasts (nobledeal.ts): while it holds, their mood settles at `rest` more. */
+export interface Bond { kind: string; turn: number; rest: number; until?: number; what?: string }
+/**
+ * One noble. `key` stays the same while they are the same person in the same place, so their mood is kept, and with it
+ * what has been done for them (`bonds`, nobledeal.ts) and anything else other modules keep on them.
+ */
+export interface Noble { key: string; name: string; female: boolean; town: number; rank: Rank; leaning: Leaning; mood: number; post?: Post; bonds?: Bond[] }
 
 declare module './campaign' {
   interface Faction {
@@ -47,6 +53,8 @@ declare module './campaign' {
     nobles?: Noble[];
     /** How many lords each town of the nation has had and lost, by town (nobles.ts, `newLord`). */
     lordsGone?: Record<number, number>;
+    /** Nobles stripped of their lands, by key: never reckoned noble again (nobledeal.ts). */
+    stripped?: string[];
   }
 }
 
@@ -94,12 +102,13 @@ function leaningOf(c: Campaign, key: string, rank: Rank, post?: Post): Leaning {
 
 /** Who is noble in a nation now, with the moods they had (new ones at nothing). */
 function reckon(c: Campaign, f: number, was: Noble[]): Noble[] {
-  const old = new Map(was.map((n) => [n.key, n]));
+  const old = new Map(was.map((n) => [n.key, n])), stripped = new Set(c.factions[f]?.stripped ?? []);
   const out: Noble[] = [];
   const add = (key: string, name: string, female: boolean, town: number, rank: Rank, post?: Post): void => {
-    if (out.some((n) => n.key === key)) return;
+    if (out.some((n) => n.key === key) || stripped.has(key)) return;
     const o = old.get(key);
-    out.push({ key, name: o?.name ?? name, female: o?.female ?? female, town, rank, leaning: o?.leaning ?? leaningOf(c, key, rank, post), mood: o?.mood ?? 0, ...(post ? { post } : {}) });
+    // What other modules keep on a noble (their bonds, a title) goes with them from season to season.
+    out.push({ ...(o ?? {}), key, name: o?.name ?? name, female: o?.female ?? female, town, rank, leaning: o?.leaning ?? leaningOf(c, key, rank, post), mood: o?.mood ?? 0, ...(post ? { post } : {}) });
   };
   for (const x of kinOf(c, f).circle) add(`close:${x.post}:${x.name}`, x.name, x.female, x.town, 'close', x.post);
   for (const t of c.territories) {
@@ -161,6 +170,10 @@ export const noblesAt = (c: Campaign, tid: number): Noble[] => {
   return owner >= 0 ? noblesOf(c, owner).filter((n) => n.town === tid) : [];
 };
 export const isAngry = (n: Noble): boolean => n.mood <= NOBLES.angry;
+/** The bonds still holding on a noble (nobledeal.ts). */
+export const bondsOf = (c: Campaign, n: Noble): Bond[] => (n.bonds ?? []).filter((b) => b.until === undefined || b.until >= c.turn);
+/** Where a noble's mood settles: nothing, and what their bonds still holding add. */
+export const restOf = (c: Campaign, n: Noble): number => bondsOf(c, n).reduce((s, b) => s + b.rest, 0);
 /** A town with a noble in it who is angry. */
 export const angryAt = (c: Campaign, tid: number): boolean => noblesAt(c, tid).some(isAngry);
 
@@ -208,7 +221,9 @@ export function noblesSeason(c: Campaign, f: number): void {
   for (const n of nobles) {
     const folk = folkOf(c, n.town);
     const sour = ((struckAt(c, n.town, ['raid', 'carried']) ? NOBLES.raided : 0) + (folk.hungry ? NOBLES.hungry : 0) + (struckAt(c, n.town, ['plague']) ? NOBLES.sick : 0)) * oathSteady(c, f); // and sworn ones sour less (oaths.ts)
-    n.mood = clamp(Math.round(n.mood * (1 - Math.min(1, NOBLES.ease * nobleEase(c, f) * moodEase(c, f))) + sour + (n.rank === 'lord' ? lordContent(c, n.town) : 0)), -100, 100); // they cool the faster with a Hall to bring their grievances to (hall.ts), and sooner for a people whose own study says so (ownstudies.ts); a lord in his manor grows content (manor.ts)
+    if (n.bonds) n.bonds = bondsOf(c, n); // spent bonds are struck off
+    const rest = restOf(c, n); // and their mood settles where their bonds hold it (nobledeal.ts), not at nothing
+    n.mood = clamp(Math.round(rest + (n.mood - rest) * (1 - Math.min(1, NOBLES.ease * nobleEase(c, f) * moodEase(c, f))) + sour + (n.rank === 'lord' ? lordContent(c, n.town) : 0)), -100, 100); // they cool the faster with a Hall to bring their grievances to (hall.ts), and sooner for a people whose own study says so (ownstudies.ts); a lord in his manor grows content (manor.ts)
   }
   fac.nobles = nobles;
   // The inner circle is drawn by the nobles of their town.
