@@ -1,0 +1,101 @@
+// Drawing a town in fewer draws (src/client/bake.ts, townbatch.ts, foldfigure.ts): the same shapes, the same colours, in
+// the same places, and everything that must still move or hide left alone.
+import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
+import { bake, placed, unbake } from '../src/client/bake';
+import { TownBatch } from '../src/client/townbatch';
+import { foldFigure } from '../src/client/foldfigure';
+
+const red = new THREE.MeshStandardMaterial({ color: 0xaa2020 }), grey = new THREE.MeshStandardMaterial({ color: 0x808080 });
+const box = (mat: THREE.Material, x: number, y = 0): THREE.Mesh => { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat); m.position.set(x, y, 0); return m; };
+/** Every visible mesh's triangles, as world-space corner points, sorted, with its material's colour. */
+function seen(root: THREE.Object3D): string[] {
+  root.updateMatrixWorld(true);
+  const out: string[] = [], v = new THREE.Vector3(), c = new THREE.Color();
+  root.traverseVisible((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry, pos = g.getAttribute('position'), col = g.getAttribute('color');
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+      c.copy((m.material as THREE.MeshStandardMaterial).color);
+      if (col) c.multiply(new THREE.Color().fromBufferAttribute(col as THREE.BufferAttribute, i));
+      out.push(`${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}:${c.getHexString()}`);
+    }
+  });
+  return out.sort();
+}
+const draws = (root: THREE.Object3D): number => { let n = 0; root.traverseVisible((o) => { if ((o as THREE.Mesh).isMesh) n++; }); return n; };
+
+describe('bake', () => {
+  it('merges a building by material into the same shapes, and unbake gives the parts back', () => {
+    const g = new THREE.Group(); g.position.set(5, 0, 2); g.rotation.y = 0.7;
+    g.add(box(red, 0), box(red, 2), box(grey, 0, 1), box(grey, 2, 1), box(grey, 4, 1));
+    const before = seen(g);
+    expect(bake(g)).toBe(3);
+    expect(draws(g)).toBe(2);
+    expect(seen(g)).toEqual(before);
+    unbake(g);
+    expect(draws(g)).toBe(5);
+    expect(g.children.length).toBe(5);
+  });
+
+  it('leaves alone what the view keeps a hand on, and what is hidden', () => {
+    const g = new THREE.Group(), lamp = box(red, 0), off = box(red, 2);
+    off.visible = false;
+    g.add(lamp, off, box(red, 4), box(red, 6));
+    g.userData.lamp = lamp;
+    bake(g);
+    expect(lamp.visible).toBe(true);
+    expect(off.visible).toBe(false);
+    expect(draws(g)).toBe(2); // the lamp, and the two others merged
+  });
+
+  it('turns a mirrored part\'s faces round so it is drawn the same way out', () => {
+    const geo = new THREE.BoxGeometry(1, 1, 1), m = new THREE.Matrix4().makeScale(-1, 1, 1);
+    const a = geo.toNonIndexed().getAttribute('position'), b = placed(geo, m).getAttribute('position');
+    // The first triangle's second and third corners swap places after the mirror.
+    expect(b.getX(1)).toBeCloseTo(-a.getX(2)); expect(b.getX(2)).toBeCloseTo(-a.getX(1));
+  });
+});
+
+describe('TownBatch', () => {
+  it('draws the baked buildings together, and makes the batch again only when the set changes', () => {
+    const scene = new THREE.Scene(), views: THREE.Group[] = [];
+    for (let i = 0; i < 3; i++) { const g = new THREE.Group(); g.position.x = i * 10; g.add(box(red, 0), box(red, 2), box(grey, 0, 1), box(grey, 2, 1)); scene.add(g); bake(g); views.push(g); }
+    const before = seen(scene), batch = new TownBatch(scene);
+    expect(batch.sync(views)).toBe(true);
+    expect(draws(scene)).toBe(2);
+    expect(seen(scene)).toEqual(before);
+    expect(batch.sync(views)).toBe(false);
+    views[1].visible = false; // under the fog
+    expect(batch.sync(views)).toBe(true);
+    expect(draws(scene)).toBe(2);
+    unbake(views[0]); // hurt
+    batch.sync(views);
+    expect(draws(scene)).toBe(2 + 4);
+    batch.reset();
+    views[1].visible = true;
+    expect(draws(scene)).toBe(4 + 2 + 2);
+  });
+});
+
+describe('foldFigure', () => {
+  it('merges the still pieces on each bone into one coloured by vertex, and leaves what is shown and hidden', () => {
+    const body = new THREE.Group(), head = new THREE.Bone(), hand = new THREE.Bone();
+    head.position.y = 2; head.scale.setScalar(0.6); hand.position.x = 1;
+    body.add(head, hand);
+    const face = new THREE.Group(); face.position.z = 0.1; head.add(face);
+    face.add(box(red, 0), box(grey, 0.3), box(new THREE.MeshStandardMaterial({ color: 0x203050 }), -0.3));
+    const tool = box(grey, 0), helmet = box(red, 0, 0.5), spare = box(grey, 0, 0.4);
+    hand.add(tool); head.add(helmet, spare); spare.visible = false;
+    const before = seen(body);
+    expect(foldFigure(body, { props: new Map([['hoe', tool]]), gear: [[helmet]], spare })).toBe(2);
+    expect(seen(body)).toEqual(before);
+    expect(draws(body)).toBe(3); // the face, the tool, the helmet
+    expect(tool.parent).toBe(hand); expect(helmet.parent).toBe(head); expect(spare.parent).toBe(head);
+    // The merged face rides the head bone: it moves with it.
+    head.rotation.z = 1; const turned = seen(body);
+    expect(turned).not.toEqual(before);
+  });
+});
