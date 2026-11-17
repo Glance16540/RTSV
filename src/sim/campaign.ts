@@ -59,7 +59,7 @@ import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
 import { unrestSeason } from './unrest';
-import { freeTownsSeason, riseFree } from './freetown';
+import { freeStruck, freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
@@ -1013,6 +1013,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('taken', 'carriedoff', (c, p) => townFell(c, p.to, p.defender, p.attacker, p.from)) // those held in it go free, and a worldly taker leads some of its people away
   // repulsed: the attacker was thrown back.
   .on('repulsed', 'tribes', (c, p, b) => { if (!b.defArmy && c.territories[p.to].owner < 0) tribeBeaten(c, p.to, Math.floor(p.aStr * 0.3)); }) // the bands a tribe lost are men of its town
+  .on('repulsed', 'freetown', (c, p) => freeStruck(c, p.to, p.attacker)) // a free town marched on by the people it left will not treat with them for a while
   // settled: all of it is done, and whoever is beaten is gone from the map.
   .on('settled', 'stores', (c) => settleStores(c))
   .on('settled', 'armytown', (c, _p, b) => { if (b.how === 'auto') reckonArmies(c); }) // the dead are their towns' dead; a battle fought in person counts its own
