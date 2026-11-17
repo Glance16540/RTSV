@@ -20,7 +20,11 @@ export class TownBatch {
   /** How many times the batch has been made (for tests and measures). */
   builds = 0;
 
-  constructor(private scene: THREE.Scene) {}
+  /**
+   * `tile`: when given, the batch is split by squares of the ground this many across (by where each view stands), so
+   * that what is out of sight is still left undrawn as a whole square, as the views would have been one by one.
+   */
+  constructor(private scene: THREE.Scene, private opts: { tile?: number } = {}) {}
 
   /** Bring the batch up to date with these buildings' views. Returns whether it was made again. */
   sync(views: Iterable<THREE.Object3D>): boolean {
@@ -33,8 +37,9 @@ export class TownBatch {
     const lists = new Map<string, { mat: THREE.Material; cast: boolean; take: boolean; geos: THREE.BufferGeometry[] }>();
     for (const g of now) {
       g.updateMatrixWorld(true);
+      const t = this.opts.tile, square = t ? `@${Math.floor(g.position.x / t)},${Math.floor(g.position.z / t)}` : '';
       for (const m of (g.userData.baked as Baked).merged) {
-        const mat = m.material as THREE.Material, key = `${mat.uuid}:${m.castShadow ? 1 : 0}${m.receiveShadow ? 1 : 0}`;
+        const mat = m.material as THREE.Material, key = `${mat.uuid}:${m.castShadow ? 1 : 0}${m.receiveShadow ? 1 : 0}${square}`;
         let l = lists.get(key);
         if (!l) lists.set(key, (l = { mat, cast: m.castShadow, take: m.receiveShadow, geos: [] }));
         l.geos.push(placed(m.geometry, m.matrixWorld));
