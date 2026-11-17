@@ -19,7 +19,7 @@ import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atT
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
-import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menMustered, menOf, sendCompaniesHome, sendHome, sparedMen } from './armytown';
+import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menMustered, menOf, sendCompaniesHome, sendHome, sendMenHome, sparedMen } from './armytown';
 import { SUPPLY_UNITS } from './stores';
 import { revoltChance } from './conquered';
 import { bandsAt } from './threats';
@@ -192,7 +192,8 @@ export const mayMuster = (c: Campaign, f: number): boolean => {
 };
 /**
  * At peace a nation sends home what it holds over its standing force: armies standing in its own land, without
- * the leader, the smallest first. Returns how many went home.
+ * the leader, the smallest first, but not the garrison of a town that is threatened. What cannot go whole gives
+ * up its townsmen, a company with every two of them. Returns how many armies went home or gave men up.
  */
 export function standDown(c: Campaign, f: number): number {
   if (warFooting(c, f) !== 'peace') return 0;
@@ -200,14 +201,15 @@ export function standDown(c: Campaign, f: number): number {
   const size = (a: Army): number => Object.values(a.units).reduce((n, v) => n + v, 0);
   for (const a of c.armies.filter((x) => x.owner === f).sort((p, q) => size(p) - size(q) || p.id - q.id)) {
     if (underArms(c, f).share <= RIVAL.standing) break;
+    if (wantsGarrison(c, a.at)) continue; // the garrison of a town that wants one stays: it would rise without it, or a band has come upon it
     if (canSendHome(c, a.id) && sendHome(c, a.id) >= 0) sent++; // its last too: a small people at peace keeps no army but its leader's
   }
-  // What cannot go home whole (the leader's army, the last one) sends home companies instead, down to the standing force.
+  // What cannot go home whole (the leader's army, the last one) sends its men home instead, down to the standing force:
+  // the men of its towns, and a company with every two of them. (By companies alone, an army mostly of men of no town gave nobody back.)
   for (const a of c.armies.filter((x) => x.owner === f).sort((p, q) => size(q) - size(p) || p.id - q.id)) {
     const u = underArms(c, f);
     if (u.share <= RIVAL.standing) break;
-    const over = Math.ceil((u.away - RIVAL.standing * (u.away + u.home)) / MEN_A_COMPANY);
-    if (sendCompaniesHome(c, a.id, over) > 0) sent++;
+    if (sendMenHome(c, a.id, Math.ceil(u.away - RIVAL.standing * (u.away + u.home))) > 0) sent++;
   }
   return sent;
 }
@@ -269,6 +271,8 @@ export function maySpare(c: Campaign, tid: number): boolean {
   if (!mayMuster(c, c.territories[tid].owner)) return false;
   return !(f.men <= RIVAL.lastMen && (f.drift?.strain ?? 0) >= RIVAL.strain);
 }
+/** Would this town want an army in it if it had none? It is resentful enough to rise left bare, or a band has come upon it. */
+export const wantsGarrison = (c: Campaign, tid: number): boolean => revoltChance(c, tid, { bare: true }) > RIVAL.risk || bandsAt(c, tid).length > 0;
 /** Does this town want an army in it? It is resentful enough to rise as things stand, or a band has come upon it. */
 export const threatened = (c: Campaign, tid: number): boolean => revoltChance(c, tid) > RIVAL.risk || bandsAt(c, tid).length > 0;
 
