@@ -593,6 +593,20 @@ town has fallen", "The assault has failed" (battlecard.ts verdictOf, told by bri
 - **A man's own door.** No house on the field has a family (4.3), so only "a roof of his own" was seen.
 - **Whether the field is faster.** A headless browser cannot say; it wants a real machine.
 
+## Fixed since the fourth pass
+
+- **4.2 One man's work as the town's orders** (`src/sim/givenorders.ts`): the field now says how many hands the town
+  had there, and the work it reports is orders only when half of them were at it. One man digging gold among
+  twenty-seven idle leaves the town with the work it was last given, or its governor's shares; what stood half built
+  and who was in the queues are kept as before.
+- **4.3 Nobody lives in the houses** (`src/sim/roofs.ts`, `src/sim/roofsmap.ts`): a town comes to the field with its
+  households seated. The couples the map counts married have a house each, a man and a woman; the wife of a man away
+  with the armies is alone under his family's roof, so *Go home* sends him to his own door; and who lived where as
+  the sitting ends is on the town's record, and they are under the same roofs by the same names next time, a season
+  older for each season between. Still so: the town's people stand idle on arrival until they are set to work, and
+  those with no roof (the unmarried, or more couples than houses) are homeless as before.
+- **4.4 and 4.5** were fixed in the pass itself.
+
 ## Handed on
 
 | What | Whose |
