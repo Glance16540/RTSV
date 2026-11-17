@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign } from '../src/sim/campaign';
 import { INTRIGUE, onRecord, beginKiller, beginThief, choicesFor, choose, fullName, intrigueNews, intrigueSeason, openIntrigues, standing, suspected } from '../src/sim/intrigue';
 import { reportLines, reportSince, snapshot } from '../src/sim/seasonreport';
-import { folkOf, grown, living } from '../src/sim/township';
+import { folkOf, grown, living, TOWN_SCALE as S } from '../src/sim/township';
 import { ofTown } from '../src/sim/intriguebase';
 
 /** A campaign with one roomy, well-found town of the player's, and that town. */
@@ -12,7 +12,7 @@ const world = (seed = 5): { c: Campaign; at: number } => {
   const c: Campaign = JSON.parse(base);
   c.seed = seed * 7919; // the stories' chances go by the campaign's seed
   const t = c.territories.find((x) => x.owner === 0)!;
-  Object.assign(folkOf(c, t.id), { men: 12, women: 12, elders: 2, children: 6 });
+  Object.assign(folkOf(c, t.id), { men: 12 * S, women: 12 * S, elders: 2 * S, children: 6 * S }); // a town of that size as towns now are (township.ts TOWN_SCALE)
   Object.assign(folkOf(c, t.id).stores, { food: 5000, gold: 600 });
   c.turn = 10;
   return { c, at: t.id };
@@ -149,7 +149,7 @@ describe('a killer', () => {
     const hows = new Set<string>();
     for (let seed = 1; seed <= 20; seed++) {
       const { c, at } = world(seed), x = beginKiller(c, at), f = folkOf(c, at);
-      if (seed % 2) Object.assign(f, { men: 4, women: 3, elders: 0 });
+      if (seed % 2) Object.assign(f, { men: 4 * S, women: 3 * S, elders: 0 });
       for (let i = 0; i < 14 && !x.ended; i++) season(c);
       expect(x.ended).toBeTruthy();
       hows.add(x.ended!.how);
@@ -171,8 +171,8 @@ describe('every story', () => {
       const b = beginThief(c, at); choose(c, b.id, 'watch');
       while (b.caught === undefined && !b.ended) season(c);
       choose(c, b.id, 'hang');
-      expect(f.children).toBe(6);
-      if (f.ages) expect(f.ages.k).toHaveLength(6);
+      expect(f.children).toBe(6 * S);
+      if (f.ages) expect(f.ages.k).toHaveLength(6 * S);
     }
   });
   it('comes by chance to a town of the player\'s, one at a time, likelier where the town is strained', () => {
@@ -257,7 +257,7 @@ describe('the people in a town\'s story', () => {
         if (v.known === 'husband') { widowed++; expect(f.notables.find((n) => n.family === v.family)!.husband).toBeUndefined(); }
       }
       expect(living(f).length).toBeLessThanOrEqual(4);
-      expect(f.children).toBe(6); // and never a child
+      expect(f.children).toBe(6 * S); // and never a child
     }
     expect(killed).toBeGreaterThan(0);
     expect(hanged).toBeGreaterThan(0);

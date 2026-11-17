@@ -1458,7 +1458,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       // The town itself turns out: its own people, living off its own stores (township.ts).
-      ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id)) : {}),
+      ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id, { arms: out?.warriors ?? 0 })) : {}), // its men in arms go to the field whatever its cap (fieldcap.ts)
     };
   };
   // A siege is always fought over the same ground: the holder in the town's corner, the attacker opposite.
