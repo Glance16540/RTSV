@@ -138,9 +138,10 @@ describe('a killer on the field', () => {
     const { c, at } = world();
     const it = beginKiller(c, at), g = enter(c, at);
     run(g, 1);
-    const was = FIELD_STORY.question;
+    const was = { ...FIELD_STORY };
     try {
       FIELD_STORY.question = 1; // every innocent questioned is cleared
+      FIELD_STORY.questions = 9; // and as many questioned as the test likes: one a visit is the next test's
       const named = g.units.filter((u) => u.suspect !== undefined);
       const guilty = named.find((u) => u.suspect === it.culprit)!, innocent = named.find((u) => u.suspect !== it.culprit)!;
       expect(cmdQuestion(g, 0, guilty.id)).toBe(false);
@@ -154,7 +155,20 @@ describe('a killer on the field', () => {
       expect(it.cleared).toContain(innocent.suspect);
       expect(it.cleared).not.toContain(it.culprit);
       expect(it.clues.at(-1)!.clears).toEqual([innocent.suspect]);
-    } finally { FIELD_STORY.question = was; }
+    } finally { Object.assign(FIELD_STORY, was); }
+  }, 60_000);
+
+  it('one of those spoken of may be questioned a visit; the rest wait until the leader comes again', () => {
+    const { c, at } = world();
+    beginKiller(c, at);
+    const g = enter(c, at);
+    run(g, 1);
+    const [a, b] = g.units.filter((u) => u.suspect !== undefined);
+    expect(questionBar(g, 0, a)).toBe('');
+    cmdQuestion(g, 0, a.id);
+    expect(questionBar(g, 0, b)).toMatch(/come again/);
+    expect(cmdQuestion(g, 0, b.id)).toBe(false);
+    expect(g.players[0].story!.asked).toHaveLength(1);
   }, 60_000);
 
   it('what comes back from the field is not believed blindly', () => {

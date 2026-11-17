@@ -14,6 +14,9 @@
 // a villager shown as one of the great keeps their own name and house on the town's record.
 import type { Game, Unit } from './game';
 
+/** The answer's words in a sentence: its first letter lowered, the names in it as they are (PLAYTEST 5.5). */
+const lowerFirst = (t: string): string => t.charAt(0).toLowerCase() + t.slice(1);
+
 /** One of the great spoken of in a plot, as the map names them (courtstory.ts). */
 export interface CourtNoble { name: string; title: string; female: boolean }
 /** An answer the leader may give at the hall, as the map offers it (courtstory.ts `courtChoices`). */
@@ -133,7 +136,7 @@ export function cmdAnswer(g: Game, owner: number, id: string): boolean {
     return true;
   }
   s.answer = id;
-  g.msg(owner, `Your answer is given at the hall: ${s.answers.find((x) => x.id === id)!.label.toLowerCase()}. It is done when you leave the town.`);
+  g.msg(owner, `Your answer is given at the hall: ${lowerFirst(s.answers.find((x) => x.id === id)!.label)}. It is done when you leave the town.`);
   return true;
 }
 
