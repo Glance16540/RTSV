@@ -2,11 +2,13 @@
 // farm. They take the climate of where they lie, so the map would have painted them green, with fields round a town
 // that is not there. Here a rim land is painted as the waste its name says it is, snow or desert (a barren one by its
 // side of the map and its warmth), pale and bare; it has no fields, no town and no hearth-smoke (worldmap.ts leaves
-// them out); and a band camped there is shown as the towns below are told of it, a ring of dark tents and its fires.
+// them out); and a band camped there is shown as the towns below are told of it, a ring of dark tents and its fires, when the
+// player's own towns are near enough to see them (seenByPlayer).
 import * as THREE from 'three';
 import type { Campaign, Territory } from '../sim/campaign';
 import { climateAt } from '../sim/campaign';
 import type { Band } from '../sim/threats';
+import { townsThatSee } from '../sim/bandmarch';
 
 export type Waste = 'snow' | 'desert';
 
@@ -81,6 +83,12 @@ export function paintRim(ctx: CanvasRenderingContext2D, c: Campaign, landAt: (x:
   }
   return n;
 }
+
+/**
+ * Has the player sight of this band's camp? The sim's own rule (bandmarch.ts townsThatSee, as bandwilds.ts tells a
+ * gathering camp): the towns within two lands of it see its fires. A camp nobody of the player's can see is not drawn.
+ */
+export const seenByPlayer = (c: Campaign, b: Band, player = 0): boolean => townsThatSee(c, [b.at]).some((s) => s.owner === player);
 
 const tentM = new Map<string, THREE.MeshStandardMaterial>();
 const tentOf = (hex: number): THREE.MeshStandardMaterial => { const k = String(hex); let m = tentM.get(k); if (!m) tentM.set(k, (m = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.9, flatShading: true }))); return m; };
