@@ -377,7 +377,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0, sum: r.outcome, clash: raidForeseen(r, faithAt(c, r.at)).outcome, road: r.kind === 'highwaymen', low: r.defence.total / Math.max(0.1, r.force) < THREATS.fall, ratio: r.defence.total / Math.max(0.1, r.force) });
     // Thieves and killers at large this season: begun, not ended, and (a thief) not yet standing for judgement.
     for (const x of c.intrigues ?? []) {
-      if (!ofTown(x) || x.ended || x.caught !== undefined) continue;
+      if (!ofTown(x) || x.ended || x.caught !== undefined || x.owner !== 0) continue; // the player's towns (rivals' have them too: rivalstories.ts)
       const k = atLarge.get(x.id) ?? { seasons: 0, watched: 0 };
       k.seasons++; if (standsAt(c, x.at, 'watchhouse')) k.watched++;
       atLarge.set(x.id, k);
@@ -533,8 +533,8 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
   }
   w.sieges = watched;
-  w.stories = c.intrigueSeq ?? 0; w.storyYears = c.turn / 4;
-  w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot').length;
+  w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
+  w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0).length;
   w.crimes = [...atLarge.values()];
   w.free.still = c.territories.filter((t) => t.free && t.owner < 0).length;
   w.marches = [...(c.marches ?? [])]; w.bandsCame = c.bandSeq ?? 0;

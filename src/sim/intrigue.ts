@@ -260,7 +260,7 @@ function hang(c: Campaign, it: Intrigue, i: number, by: 'you' | 'town'): void {
   rememberWronged(c, it, p);
   shiftVirtue(c, it.owner, K.virtue.wrong, { at: it.at });
   note(c, it, 'bad', `${who} ${fullName(p)} the ${p.trade} for the deaths in ${land(c, it.at)}, and ${they(p)} was hanged swearing ${they(p)} had done nothing. ${they(p)[0].toUpperCase() + they(p).slice(1)} had not.`, p);
-  (c.chronicle ??= []).push({ turn: c.turn, text: `${fullName(p)} of ${land(c, it.at)} was hanged for killings ${they(p)} did not do.` });
+  if (it.owner === 0) (c.chronicle ??= []).push({ turn: c.turn, text: `${fullName(p)} of ${land(c, it.at)} was hanged for killings ${they(p)} did not do.` });
 }
 function killerSeason(c: Campaign, it: Intrigue): void {
   const K = INTRIGUE.killer, t = c.territories[it.at];

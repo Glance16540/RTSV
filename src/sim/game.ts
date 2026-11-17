@@ -3,6 +3,7 @@
 import { layCoarse, layKept } from './firstlay';
 import { unlaidOf, unplaced } from './unlaid';
 import { nobodyLeft } from './lastperson';
+import { liftSieges } from './siegelift';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
@@ -2228,6 +2229,8 @@ export class Game {
       }
       // A town with nobody left in it, where none can be bought, is beaten: it does not hold the battle open (lastperson.ts).
       for (const p of this.players) if (!p.neutral && !p.defeated && alive.has(p.id) && nobodyLeft(this, p.id)) { alive.delete(p.id); fallen.add(p.id); for (const q of this.players) if (!q.neutral && q.id !== p.id) this.msg(q.id, `Nobody is left alive among ${p.name}.`); }
+      // A besieger whose army is spent, with nothing to raise more, lifts the siege and has lost it (siegelift.ts).
+      for (const id of liftSieges(this)) { alive.delete(id); fallen.add(id); }
       // A raiding band has no town to lose: it is beaten when its last fighter or villager falls.
       for (const u of this.units) if (!alive.has(u.owner) && !fallen.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
     }

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { bake, placed, unbake } from '../src/client/bake';
 import { TownBatch } from '../src/client/townbatch';
-import { foldFigure } from '../src/client/foldfigure';
+import { cullBeast, foldFigure } from '../src/client/foldfigure';
 
 const red = new THREE.MeshStandardMaterial({ color: 0xaa2020 }), grey = new THREE.MeshStandardMaterial({ color: 0x808080 });
 const box = (mat: THREE.Material, x: number, y = 0): THREE.Mesh => { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat); m.position.set(x, y, 0); return m; };
@@ -127,5 +127,63 @@ describe('foldFigure', () => {
     // The merged face rides the head bone: it moves with it.
     head.rotation.z = 1; const turned = seen(body);
     expect(turned).not.toEqual(before);
+  });
+});
+
+describe('foldFigure, the skinned body', () => {
+  /** A two-bone rig with three skinned meshes on it: two of one material (one bound through a skeleton of its own over the same bones), one of another. */
+  function rig() {
+    const body = new THREE.Group(), root = new THREE.Bone(), arm = new THREE.Bone();
+    arm.position.y = 1; root.add(arm); body.add(root);
+    body.updateMatrixWorld(true);
+    const skel = new THREE.Skeleton([root, arm]), other = new THREE.Skeleton([arm, root]); // the same bones, in another order
+    const skin = (mat: THREE.Material, s: THREE.Skeleton, bone: number, x: number): THREE.SkinnedMesh => {
+      const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5).translate(x, 1, 0), n = geo.getAttribute('position').count;
+      geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Array(n * 4).fill(0).map((_, i) => (i % 4 === 0 ? bone : 0)), 4));
+      geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Array(n * 4).fill(0).map((_, i) => (i % 4 === 0 ? 1 : 0)), 4));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(new Array(n * 3).fill(0.5), 3));
+      const m = new THREE.SkinnedMesh(geo, mat); body.add(m); m.bind(s); return m;
+    };
+    const a = skin(red, skel, 1, 0), b = skin(red, other, 0, 1), c = skin(grey, skel, 1, 2); // b's bone 0 is the arm
+    return { body, arm, a, b, c };
+  }
+  /** Where every vertex of the skinned meshes is drawn, posed. */
+  const posed = (root: THREE.Object3D): string[] => {
+    root.updateMatrixWorld(true);
+    const out: string[] = [], v = new THREE.Vector3();
+    root.traverseVisible((o) => { const m = o as THREE.SkinnedMesh; if (!m.isSkinnedMesh || !m.parent) return; m.skeleton.update(); const n = m.geometry.getAttribute('position').count; for (let i = 0; i < n; i++) { m.getVertexPosition(i, v); v.applyMatrix4(m.matrixWorld); out.push(`${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`); } });
+    return out.sort();
+  };
+
+  it('merges those of one material on the same bones into one, posed the same, and hands the wounds the merged surface', () => {
+    const { body, arm, a, b, c } = rig();
+    const real = { props: new Map(), gear: [], spare: null, skins: [a, b, c], whole: [a.geometry, b.geometry, c.geometry] };
+    arm.rotation.z = 0.8;
+    const before = posed(body);
+    expect(foldFigure(body, real)).toBe(1);
+    const skins: THREE.SkinnedMesh[] = []; body.traverse((o) => { if ((o as THREE.SkinnedMesh).isSkinnedMesh) skins.push(o as THREE.SkinnedMesh); });
+    expect(skins.length).toBe(2);
+    expect(posed(body)).toEqual(before);
+    expect(real.skins.length).toBe(2);
+    expect(real.skins).toContain(c);
+    expect(real.whole).toEqual(real.skins.map((m) => m.geometry));
+    // It can be culled now, with room for any pose.
+    for (const m of skins) { expect(m.frustumCulled).toBe(true); expect(m.boundingSphere!.radius).toBeGreaterThan(0.5); }
+  });
+
+  it('shares the merged shape between figures made alike', () => {
+    const one = rig(), two = rig();
+    two.a.geometry = one.a.geometry; two.b.geometry = one.b.geometry;
+    const real = () => ({ props: new Map(), gear: [], spare: null });
+    foldFigure(one.body, real()); foldFigure(two.body, real());
+    const merged = (r: THREE.Object3D) => { let g: THREE.BufferGeometry | null = null; r.traverse((o) => { if ((o as THREE.SkinnedMesh).isSkinnedMesh && o.userData.folded) g = (o as THREE.SkinnedMesh).geometry; }); return g; };
+    expect(merged(one.body)).not.toBeNull();
+    expect(merged(two.body)).toBe(merged(one.body));
+  });
+
+  it('lets an animal be culled', () => {
+    const { body } = rig();
+    cullBeast(body);
+    body.traverse((o) => { if ((o as THREE.SkinnedMesh).isSkinnedMesh) expect(o.frustumCulled).toBe(true); });
   });
 });
