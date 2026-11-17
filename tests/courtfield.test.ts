@@ -175,6 +175,7 @@ describe('a plot at court', () => {
     let cleared = 0;
     for (let seed = 1; seed <= 6; seed++) {
       const { c } = court(seed), x = beginPlot(c)!;
+      c.turn += seed; // each in its own season: what a watch shows is drawn by the season of the visit
       Object.assign(folkOf(c, x.at), { men: 16, women: 16, elders: 2, children: 6 });
       const g = enter(c, x.at);
       run(g, 2);
@@ -239,5 +240,65 @@ describe('the rules that hold for every story', () => {
     leave(c, g);
     const a = folkOf(c, x.at);
     expect(a.men + a.women + a.elders + a.children).toBeGreaterThanOrEqual(before);
+  });
+});
+
+describe('several stories of the house at once (docs/PLAYTEST.md 5.3)', () => {
+  it('an envoy, a suitor and a plot all come to the field, each answered or watched for itself, and each is written back', async () => {
+    const { courtsOf } = await import('../src/sim/courtfield');
+    const { c } = court(), rival = c.factions.find((f) => f.id > 0 && f.alive)!.id;
+    const r = beginRival(c, rival)!; r.stage = 1; r.due = c.turn + 2;
+    const s = beginSuitor(c, rival)!, p = beginPlot(c)!;
+    expect(new Set([r.at, s.at, p.at]).size).toBe(1);
+    Object.assign(folkOf(c, r.at), { men: 16, women: 16, elders: 2, children: 6 });
+    const into = courtForVisit(c, r.at)!;
+    expect([into.id, ...(into.also ?? []).map((x) => x.id)].sort()).toEqual([r.id, s.id, p.id].sort());
+    const g = enter(c, r.at);
+    run(g, 2);
+    expect(courtsOf(g, 0).map((x) => x.kind).sort()).toEqual(['plot', 'rival', 'suitor']);
+    expect(g.units.filter((u) => u.owner === 0 && u.noble !== undefined && u.plot === p.id)).toHaveLength(p.nobles!.length);
+    // An answer finds its own story by what may be answered to each.
+    expect(cmdAnswer(g, 0, 'defy')).toBe(true);
+    expect(cmdAnswer(g, 0, 'ask')).toBe(true);
+    expect(cmdAnswer(g, 0, 'decline')).toBe(true);
+    expect(cmdAnswer(g, 0, 'spurn')).toBe(false); // the suitor has his answer
+    const out = courtOut(g, 0)!;
+    expect([out, ...(out.also ?? [])].map((x) => x.id).sort()).toEqual([r.id, s.id, p.id].sort());
+    leave(c, g);
+    expect(r.stage).toBe(2);
+    expect(s.asked).toBe(true);
+    expect(s.ended?.how).toBe('refused');
+    expect(p.ended).toBeUndefined();
+    // What rides along is checked like the rest: nonsense in `also` changes nothing.
+    expect(courtFromVisit(c, r.at, { id: -1, cleared: [], also: [{ id: p.id, cleared: [p.culprit, 99] }, 'x', null, { id: 12345, answer: 'defy' }] })).toBe(false);
+  });
+});
+
+describe('a watch is drawn afresh each visit (docs/PLAYTEST.md 5.4)', () => {
+  it('one not shown true on one visit may be on a later one: over the seasons every innocent can be, and the plotter never', async () => {
+    const { courtTick, courtsOf } = await import('../src/sim/courtfield');
+    const { c } = court(), x = beginPlot(c)!;
+    Object.assign(folkOf(c, x.at), { men: 16, women: 16, elders: 2, children: 6 });
+    const shown = new Set<number>(), bySeason: string[] = [];
+    for (let season = 0; season < 12; season++) {
+      const d: Campaign = JSON.parse(JSON.stringify(c)); d.turn = c.turn + season;
+      expect(courtForVisit(d, x.at)!.turn).toBe(d.turn);
+      const g = enter(d, x.at);
+      run(g, 2);
+      for (let t = 0; t < FIELD_COURT.watch + 5; t++) {
+        const great = g.units.filter((u) => u.owner === 0 && u.noble !== undefined);
+        if (t === 0) for (const u of great) g.spawnUnit('clubman', 0, u.x + 0.5, u.y + 0.5);
+        const guards = g.units.filter((u) => u.owner === 0 && u.type === 'clubman');
+        great.forEach((u, k) => { const s = guards[k]; if (s) { s.x = u.x + 0.5; s.y = u.y + 0.5; } });
+        run(g, 1);
+      }
+      void courtTick;
+      const out = courtsOf(g, 0)[0].out ?? [];
+      for (const i of out) shown.add(i);
+      bySeason.push([...out].sort().join(','));
+      expect(out).not.toContain(x.culprit);
+    }
+    expect(new Set(bySeason).size).toBeGreaterThan(1); // not the same every visit
+    expect(shown.size).toBe(x.nobles!.length - 1); // every innocent, in time
   });
 });
