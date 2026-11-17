@@ -4,8 +4,8 @@
 //   - a thief: the houses robbed are marked, each by the name of the household robbed (before the town has houses, the
 //     works where their goods were kept, never the hall); a soldier of the player's who
 //     stands guard by a robbed house long enough (FIELD_STORY.guard; half as long where the town keeps a watch) takes the thief there;
-//   - a killer: those spoken of walk the town as its villagers, by their names and trades; the player may question one,
-//     and an innocent may be cleared by it (FIELD_STORY.question). The guilty one is never cleared, and nothing on the
+//   - a killer: those spoken of walk the town as its villagers, by their names and trades; the player may question one
+//     a visit (FIELD_STORY.questions), and an innocent may be cleared by it (FIELD_STORY.question). The guilty one is never cleared, and nothing on the
 //     field says which it is.
 // What came of it is read back as the player leaves (`storyOut`) and written to the story on the map (storyvisit.ts).
 // Children are no units on the field (nursery.ts): they are never named here, suspected, questioned or harmed. Nobody is
@@ -39,8 +39,9 @@ export const FIELD_STORY = {
   guard: 40, near: 3,
   /** Where the town keeps a watch it knows where to stand: so much of the time. */
   watched: 0.5,
-  /** The chance that questioning an innocent clears them. */
-  question: 0.5,
+  /** The chance that questioning an innocent clears them, and how many of those spoken of may be questioned in a visit: the
+   *  town is asked a little each time the leader comes, and the story runs over seasons as on the map. */
+  question: 0.5, questions: 1,
 };
 
 const hash = (a: number, b: number, c: number): number => {
@@ -118,6 +119,7 @@ export function questionBar(g: Game, owner: number, u: Unit | undefined): string
   if (!s || s.kind !== 'killer' || !u || u.owner !== owner || u.dead || u.suspect === undefined) return 'Nobody here is spoken of.';
   if (s.cleared.includes(u.suspect) || (s.out ?? []).includes(u.suspect)) return `${u.name} is spoken of no longer.`;
   if ((s.asked ?? []).includes(u.suspect)) return `${u.name} has been questioned already.`;
+  if ((s.asked ?? []).length >= FIELD_STORY.questions) return 'You have questioned one of them this visit. The others must wait until you come again.';
   return '';
 }
 /** The player questions one of those spoken of. An innocent may be cleared; the guilty never is. Returns whether they were. */
