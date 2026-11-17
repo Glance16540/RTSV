@@ -43,7 +43,7 @@ import { armySize, armyStrength } from './campaignbase';
 import { whoseOf } from './naming';
 import { creedOf } from './creed';
 import { OLD_SEASON, SEASONS_A_YEAR, agesOf, countFrom } from './ageing';
-import { STORE_KINDS, folkOf, living } from './township';
+import { STORE_KINDS, TOWN_SCALE, folkOf, living } from './township';
 import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
 import { fortShelter, hasFortress } from './fortress';
@@ -158,7 +158,7 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   const t = c.territories[tid], f = folkOf(c, tid);
   // Men gone to the mines are not at the walls (drift.ts): the walls are left thin.
   const watch = watchOf(c, tid);
-  const men = f.men * THREATS.man * watch;
+  const men = (f.men / TOWN_SCALE) * THREATS.man * watch; // a town's men count as the same share of it however large towns are (township.ts TOWN_SCALE)
   const works = (hasFortress(c, tid) ? THREATS.fortress : 0) + t.buildings.filter((b) => b === 'barracks' || b === 'range' || b === 'stable').length * THREATS.raising + watchDefence(c, tid) + stoodTo(c, tid); // and its town watch (townwatch.ts), and its standing to on a herald's word (heralds.ts)
   let towers = 0, wall = 0;
   for (const b of t.town?.b ?? []) {
@@ -283,10 +283,10 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   };
   if (outcome === 'held') {
     b.strength -= r >= 2 ? 2 : 1;
-    if (r < 1.6 && !road && f.men > 1) raid.killed = takeOut(c, tid, 'm', 1).length;
+    if (r < 1.6 && !road && f.men > TOWN_SCALE) raid.killed = takeOut(c, tid, 'm', TOWN_SCALE).length; // a man of a town as towns were: as many as that is now
     if (b.strength <= 0) raid.broken = true;
   } else {
-    if (!road) raid.killed = takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - 1), Math.round(f.men * THREATS.dead[outcome] * fortShelter(c, tid)))).length; // in a Fortress they have somewhere to go (fortress.ts)
+    if (!road) raid.killed = takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - TOWN_SCALE), Math.round(f.men * THREATS.dead[outcome] * fortShelter(c, tid)))).length; // in a Fortress they have somewhere to go (fortress.ts)
     const share = road ? THREATS.road : THREATS.loot[outcome] + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
     // What they would take, and then no more of it than they can carry.
     // Of the food, only what the town holds beyond a couple of seasons of its own eating: a town robbed is poorer, not starved.
@@ -297,7 +297,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
     if ((b.kind === 'raiders' || b.kind === 'pirates') && t.buildings.includes('farm') && chance(c, b.id, 31) < THREATS.burn) { t.buildings.splice(t.buildings.indexOf('farm'), 1); raid.burnt = 'farm'; }
     if (outcome === 'taken') {
       // Never a town's last two women, nor its last two men.
-      const most = (n: number): number => Math.max(0, Math.min(n - THREATS.last, Math.floor(n * (1 - THREATS.left)), Math.ceil(n * THREATS.carried * fortShelter(c, tid))));
+      const most = (n: number): number => Math.max(0, Math.min(n - THREATS.last * TOWN_SCALE, Math.floor(n * (1 - THREATS.left)), Math.ceil(n * THREATS.carried * fortShelter(c, tid))));
       const women = takeOut(c, tid, 'f', most(f.women));
       const men = b.kind === 'slavers' ? takeOut(c, tid, 'm', most(f.men)) : [];
       if (women.length + men.length) {
