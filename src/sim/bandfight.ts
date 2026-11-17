@@ -14,7 +14,8 @@
 //
 // A band can come against an army, too (`ambushSeason`). An army that stands at a band's place or beside it and is
 // clearly the weaker (the band has AMBUSH.odds of its strength), or is seeing a convoy along the road and is no
-// stronger than the band, may be fallen on. A computer people's army fights it at once by its own means; the
+// stronger than the band, may be fallen on. An army resting after a storming, or alone in a strange land, counts
+// for less than it is when a band weighs it, and fights at that if it is fallen on (bandmarch.ts). A computer people's army fights it at once by its own means; the
 // player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
@@ -28,6 +29,7 @@ import { creditArmy } from './warhouse';
 import { raisedInBattle } from './dynasty';
 import { HeroSpec, MAX_RANK } from './hero';
 import { Band, breakBand, chance, note } from './threats';
+import { exposedHow, exposure } from './bandmarch';
 
 declare module './campaign' {
   interface Pending {
@@ -101,7 +103,7 @@ export function attackBand(c: Campaign, armyId: number, bandId: number): 'battle
 /** An army and a band fight with nobody watching: each by what it is, a little better or worse on the day. Returns whether the band was broken. */
 export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambush = false): boolean {
   const day = (salt: number): number => 1 - FIGHT.day + 2 * FIGHT.day * chance(c, b.id * 97 + a.id, salt);
-  const mine = armyStrength(a, c) * day(61), theirs = b.strength * day(67), at = c.territories[b.at].name;
+  const mine = armyStrength(a, c) * day(61) * (ambush ? exposure(c, a) : 1), theirs = b.strength * day(67), at = c.territories[b.at].name;
   a.moved = true;
   if (mine >= theirs) {
     const lost = lose(a, Math.round(armySize(a) * FIGHT.cost * Math.min(1, theirs / mine)));
@@ -260,7 +262,7 @@ export const escorting = (c: Campaign, a: Army): boolean => ((c as { convoys?: {
 /** The armies a band could fall on now, the weakest first: those at its place or beside it that it outweighs enough. */
 export function prey(c: Campaign, b: Band): Army[] {
   const near = new Set(placeOf(b).flatMap((id) => [id, ...c.territories[id].adj]));
-  return c.armies.filter((a) => near.has(a.at) && c.factions[a.owner]?.alive && b.strength >= armyStrength(a, c) * (escorting(c, a) ? AMBUSH.escort : AMBUSH.odds))
+  return c.armies.filter((a) => near.has(a.at) && c.factions[a.owner]?.alive && b.strength >= armyStrength(a, c) * exposure(c, a) * (escorting(c, a) ? AMBUSH.escort : AMBUSH.odds)) // tired after a storming, or alone, it counts for less (bandmarch.ts)
     .sort((x, y) => armyStrength(x, c) - armyStrength(y, c) || x.id - y.id);
 }
 
@@ -282,7 +284,7 @@ export function ambushSeason(c: Campaign, out: string[]): number {
     } else if (!c.pending && !c.demand) {
       const to = placeOf(b).find((id) => id === a.at || c.territories[a.at].adj.includes(id)) ?? b.at;
       c.pending = { armyId: a.id, from: a.at, to, attacker: a.owner, defender: -1, aStr: armyStrength(a, c), dStr: b.strength, mode: 'field', band: b.id, ambush: true };
-      note(c, out, 'ambush', b, a.at, `${cap(b.name)} have fallen on your army at ${c.territories[a.at].name}${escorting(c, a) ? ', which was seeing a convoy along the road' : ''}!`, [a.owner]);
+      note(c, out, 'ambush', b, a.at, `${cap(b.name)} have fallen on your army at ${c.territories[a.at].name}${escorting(c, a) ? ', which was seeing a convoy along the road' : exposedHow(c, a) ? `, ${exposedHow(c, a)}` : ''}!`, [a.owner]);
       n++;
     }
   }
