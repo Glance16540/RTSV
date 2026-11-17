@@ -28,7 +28,7 @@ import { OLD_SEASON, agesOf, countFrom } from './ageing';
 import { armyStrength, lanesOf } from './campaignbase';
 import { needOf } from './larder';
 import { roadRisk } from './ownstudies';
-import { escortEdge, innRisk, paved } from './roads';
+import { escortEdge, innRisk, paved, pavedLoad } from './roads';
 
 /** What a convoy carries: stores, and grown people by their ages in seasons. */
 export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[] }
@@ -138,9 +138,7 @@ export function sendConvoy(c: Campaign, f: number, from: number, to: number, wha
   const convoy: Convoy = { id: (c.convoySeq = (c.convoySeq ?? 0) + 1), owner: f, from, to, road: roadBetween(c, f, from, to)!, cargo, since: c.turn };
   (c.convoys ??= []).push(convoy);
   const goods = STORE_KINDS.filter((s) => cargo[s]).map((s) => `${cargo[s]} ${s}`), folk = [cargo.men.length ? `${cargo.men.length} ${cargo.men.length === 1 ? 'man' : 'men'}` : '', cargo.women.length ? `${cargo.women.length} ${cargo.women.length === 1 ? 'woman' : 'women'}` : ''].filter(Boolean);
-  if (f === 0) c.log.push(`A convoy has left ${c.territories[from].name} for ${c.territories[to].name} with ${[...goods, ...folk].join(', ')}. ${paved(c, f) ? 'The road is paved: it is there within the season.' : 'It will come in next season.'}`);
-  // On Paved Roads it is not a season on the way (roads.ts): it comes in now, by the same rules, and no other convoy with it.
-  if (paved(c, f)) { c.convoys = c.convoys.filter((y) => y !== convoy); convoy.since = c.turn - 1; convoyArrives(c, convoy); }
+  if (f === 0) c.log.push(`A convoy has left ${c.territories[from].name} for ${c.territories[to].name} with ${[...goods, ...folk].join(', ')}. It will come in next season.${paved(c, f) && cargo.food ? ' The road is paved: none of the food will spoil on the way.' : ''}`);
   return convoy;
 }
 
@@ -191,7 +189,7 @@ export function convoyArrives(c: Campaign, x: Convoy): Arrival {
   if (at < 0 || !c.factions[x.owner]?.alive) { a.lost = true; if (mine) c.log.push(`Your convoy to ${c.territories[x.to].name} had nowhere left to go, and what it carried is lost.`); return a; }
   a.at = at;
   const k = folkOf(c, at);
-  for (const s of STORE_KINDS) k.stores[s] = Math.min(MAX_STORE, k.stores[s] + x.cargo[s]);
+  for (const s of STORE_KINDS) k.stores[s] = Math.min(MAX_STORE, k.stores[s] + (s === 'food' ? pavedLoad(c, x.owner, x.cargo[s]) : x.cargo[s])); // on Paved Roads the food goes further (roads.ts)
   if (x.cargo.men.length || x.cargo.women.length) {
     const ages = agesOf(c, at, k);
     ages.m.push(...x.cargo.men.map((s) => s + 1));

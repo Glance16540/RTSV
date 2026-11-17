@@ -34,8 +34,13 @@ export const PLENTY = {
   rule: 1,
   /** How many floors a nation keeps for each of its towns, after paying for a study. */
   studies: 2,
-  /** How many floors a nation keeps for each of its towns, after buying grain abroad for a hungry town (grain.ts): a need, lighter than a study. */
-  grain: 1,
+  /**
+   * How many floors a nation keeps for each of its towns, after buying grain abroad for a hungry town (grain.ts): none. It
+   * answers a want, as a town's Farmland does: the nation buys whenever it has the gold. At 1 floor a town, 57% of hungry
+   * towns whose nation had the gold were refused (192 campaigns), and deaths from hunger were 1.1 a nation in twenty years;
+   * at none, 0.6.
+   */
+  grain: 0,
 };
 
 /** A town's goods other than its bread. */

@@ -21,6 +21,7 @@ import { messengerStrength } from './couriers';
 import { folkOf } from './township';
 import { heardDecree } from './nobles';
 import { buyGrain, canSpareGrain, grainBar } from './grain';
+import { angersLord } from './nobleweigh';
 
 export type DecreeKind = 'church' | 'guards' | 'alms' | 'closeTavern' | 'tavernWomen' | 'tend';
 export interface Decree { kind: DecreeKind; until: number; strength: number }
@@ -137,7 +138,8 @@ export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) 
     const s = strainOf(t.id), fac = c.factions[f];
     // Every decree keeps a few supplies in hand, food (paid in goods, which are what supplies are) as well; and a
     // ruler sends food to at most ALMS_A_SEASON towns a season, the hungriest being those it is told of first.
-    const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= (DECREES[k].cost ? keep : 0) && issueDecree(c, f, t.id, k) === '';
+    // A computer-led ruler leaves out a decree that would anger a lord not angry yet (nobleweigh.ts).
+    const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= (DECREES[k].cost ? keep : 0) && !angersLord(c, f, t.id, k, strengthAt(c, f, t.id)) && issueDecree(c, f, t.id, k) === '';
     if (s.hungry && fed < ALMS_A_SEASON && canSpareGrain(c, f, t.id, strengthAt(c, f, t.id)) && tryGive('alms')) { given++; fed++; } // only when the nation can spare the gold (grain.ts); and beside the town's one decree, not instead of it
     if (s.raided && tryGive('guards')) { given++; continue; }
     if ((s.sick || s.grieving) && !tendedAlready(c, t.id) && tryGive('tend')) { given++; continue; } // not where a Monastery or Infirmary tends already
