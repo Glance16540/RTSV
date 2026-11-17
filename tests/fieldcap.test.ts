@@ -26,9 +26,9 @@ const unchanged = (p: ReturnType<typeof musterFolk>): Census => ({ men: p.people
 
 describe('the field takes at most FIELD_CAP of a town\'s grown', () => {
   it('a town no larger than the cap goes whole, and nothing is held back', () => {
-    const { c, tid, f } = bigTown(20, 20, 8, 28);
+    const { c, tid, f } = bigTown(16, 16, 6, 28);
     const p = musterFolk(c, tid);
-    expect([p.people.men, p.people.women, p.people.elders, p.people.children]).toEqual([20, 20, 8, 28]);
+    expect([p.people.men, p.people.women, p.people.elders, p.people.children]).toEqual([16, 16, 6, 28]);
     expect(f.fieldHome).toBeUndefined();
   });
 
