@@ -70,7 +70,8 @@ function place(figs: Figure[]): { x: number; z: number; yaw: number }[] {
       return { x, z, yaw: -x * 0.25 };
     }
     const i = k++;
-    return { x: 1.15 + i * 0.32, z: -1.05 - i * 0.2, yaw: -0.6 };
+    // Further back and closer together, so the third of them is still inside the frame.
+    return { x: 1.0 + i * 0.24, z: -1.3 - i * 0.25, yaw: -0.6 };
   });
 }
 
