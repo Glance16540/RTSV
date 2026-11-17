@@ -1,7 +1,8 @@
 // A town's drift and its decrees on the land's panel: one line saying how the town stands and is moving, and a
 // button for each decree. The rules are in src/sim/drift.ts and src/sim/decrees.ts.
 import type { Campaign } from '../sim/campaign';
-import { DECREES, DECREE_KINDS, decreeBar, decreesAt } from '../sim/decrees';
+import { DECREES, DECREE_KINDS, decreeBar, decreesAt, strengthAt } from '../sim/decrees';
+import { famineYear, grainDeal } from '../sim/grain';
 import { townStanding } from '../sim/drift';
 import { folkOf } from '../sim/township';
 import { isAngry, noblesAt, sayOn, titleOf } from '../sim/nobles';
@@ -26,7 +27,10 @@ export function decreePanel(c: Campaign, tid: number): string {
   for (const k of DECREE_KINDS) {
     const bar = decreeBar(c, 0, tid, k), def = DECREES[k], say = sayOn(c, 0, tid, k);
     const heard = `${say.pleased.length ? ` Pleases ${names(say.pleased)}.` : ''}${say.angered.length ? ` Angers ${names(say.angered)}.` : ''}`;
-    html += `<button data-act="decree:${k}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(bar || `${def.desc} ${def.cost} supplies, ${def.seasons} season${def.seasons === 1 ? '' : 's'}.${heard}`)}">📜 ${esc(def.name)}</button>`;
+    // Grain bought abroad is paid in gold, not supplies: say what it would bring and cost now (src/sim/grain.ts).
+    const deal = k === 'alms' ? grainDeal(c, 0, tid, strengthAt(c, 0, tid)) : null;
+    const price = deal ? `${deal.food} food for ${deal.gold} gold${famineYear(c, 0) ? ' (a famine year: dearer)' : ''}` : `${def.cost} supplies, ${def.seasons} season${def.seasons === 1 ? '' : 's'}`;
+    html += `<button data-act="decree:${k}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(bar || `${def.desc} ${price}.${heard}`)}">📜 ${esc(def.name)}</button>`;
   }
   return html;
 }

@@ -1421,7 +1421,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     const works = defending && !field ? t.buildings.filter((b) => b !== 'fortress' && SITE_BUILDING[b]).map((b) => SITE_BUILDING[b]) : [];
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
-      age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower'] : []), ...works], atk: army ? army.vet : 0,
+      age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       // The town itself turns out: its own people, living off its own stores (township.ts).

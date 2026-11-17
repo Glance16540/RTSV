@@ -23,6 +23,7 @@ import type { Campaign } from './campaign';
 import { folkOf, grown } from './township';
 import { tally } from './ledger';
 import { granaryKeeps } from './granary';
+import { saltRot } from './salting';
 
 declare module './township' {
   interface Folk {
@@ -88,7 +89,7 @@ export function eatTown(c: Campaign, tid: number): Meal {
   tally(c, tid, 'starved', dead); // for the season's report (ledger.ts)
   if (!f.hungry) delete f.hungry;
   // Grain does not keep for ever: what is beyond a couple of seasons' eating spoils, a share a season.
-  const rotted = Math.floor(Math.max(0, f.stores.food - Math.max((KEEP_SEASONS + granaryKeeps(c, tid)) * need, FOOD_KEEP)) * ROT); // a Granary keeps more (granary.ts)
+  const rotted = Math.floor(Math.max(0, f.stores.food - Math.max((KEEP_SEASONS + granaryKeeps(c, tid)) * need, FOOD_KEEP)) * ROT * saltRot(c, t.owner)); // a Granary keeps more (granary.ts), salted food spoils slower (salting.ts)
   f.stores.food -= rotted;
   if (rotted) f.rotted = rotted; else delete f.rotted;
   return { at: tid, owner: t.owner, need, ate, hungry: f.hungry ?? 0, dead, rotted };

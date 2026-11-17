@@ -38,6 +38,9 @@ import { tendedPlague } from './decrees';
 import { famineShare } from './granary';
 import { wellEase } from './well';
 import { infirmaryCare } from './infirmary';
+import { rotationFail } from './croprotation'; // food and health studies
+import { quarantinePass } from './quarantine';
+import { physicianCare } from './physicians';
 
 export const ACTS = {
   /** The season from which they may come. */
@@ -105,7 +108,7 @@ export function sicken(c: Campaign, t: Territory): number {
   const k = folkOf(c, t.id), grownNow = k.men + k.women + k.elders;
   // The share it kills, less in a small town; what is less than one whole person is a chance of one.
   // The church tending the sick spares some (decrees.ts), and so does an Infirmary (infirmary.ts).
-  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)) * infirmaryCare(c, t.id), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
+  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)) * infirmaryCare(c, t.id) * physicianCare(c, t.owner), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
   let n = Math.min(grownNow, crowding(c, t.id) >= 1 ? Math.max(1, Math.round(due)) : whole), dead = 0, man = chance(c, t.id, 53) < 0.5;
   while (n-- > 0) {
     if (k.elders > 0) k.elders--;
@@ -179,7 +182,7 @@ export function actsOfGod(c: Campaign): Struck[] {
     if (!next.length) continue;
     const n = next[Math.floor(chance(c, t.id, 31) * next.length)];
     const w = wrathAt(c, n.id);
-    if (chance(c, t.id, 37) < ACTS.spread * w * crowding(c, n.id)) out.push(plague(c, n, w, false, t.id)); // it passes to a crowded town sooner than a hamlet
+    if (chance(c, t.id, 37) < ACTS.spread * w * crowding(c, n.id) * quarantinePass(c, t.owner, n.owner)) out.push(plague(c, n, w, false, t.id)); // it passes to a crowded town sooner than a hamlet
   }
   if (c.turn < ACTS.from) return out;
   const fresh = new Set(out.filter((s) => s.from !== undefined).map((s) => s.at));
@@ -189,7 +192,7 @@ export function actsOfGod(c: Campaign): Struck[] {
     const dry = sky === 'rain' ? 0 : sky === 'dust' ? ACTS.dry : 1;
     // One roll decides which, if any: a land is struck by one thing in a season at most.
     const r = chance(c, t.id, 3), hard = chance(c, t.id, 5) < ACTS.hard * w * w;
-    const pFamine = ACTS.famine * w * dry, pPlague = sickAt(c, t.id) ? 0 : ACTS.plague * w * crowding(c, t.id), pFire = ACTS.fire * w * dry;
+    const pFamine = ACTS.famine * w * dry * rotationFail(c, t.owner), pPlague = sickAt(c, t.id) ? 0 : ACTS.plague * w * crowding(c, t.id), pFire = ACTS.fire * w * dry;
     if (r < pFamine) out.push(famine(c, t, w, hard));
     else if (r < pFamine + pPlague) out.push(plague(c, t, w, hard));
     else if (r < pFamine + pPlague + pFire) out.push(blaze(c, t, w, hard));

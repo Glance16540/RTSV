@@ -165,8 +165,8 @@ export function calamity(g: Game): void {
   famine(g);
   contagion(g);
   accident(g);
-  // Where a Watch House stands, the watch raises the town: villagers are called off their work to a fire (watchhouse.ts).
-  for (const p of g.players) if (!p.neutral && !p.defeated && g.buildings.some((b) => b.owner === p.id && b.type === 'watchhouse' && b.complete && !b.dead)) turnOut(g, p.id);
+  // Where a Watch House stands, or the people keep a Town Watch, the watch raises the town: villagers are called off their work to a fire (watchhouse.ts, townwatch.ts).
+  for (const p of g.players) if (!p.neutral && !p.defeated && (p.techs.has('townwatch') || g.buildings.some((b) => b.owner === p.id && b.type === 'watchhouse' && b.complete && !b.dead))) turnOut(g, p.id);
   if ((g.foul === 'rain' || g.foul === 'dust') && roll(g, 3) < 1 / FIRE.storm) lightning(g);
   for (const b of g.buildings) {
     if (b.dead || b.burnT <= 0 || b.hp >= b.maxHp || g.players[b.owner]?.neutral) continue;

@@ -25,7 +25,7 @@ import { onRecord as begunAt, standing as standsAt } from './townrecord';
 
 export const GRANARY = {
   /** Seasons of a town's own eating kept from spoiling, beyond what the larder keeps without one. */
-  keep: 2,
+  keep: 1,
   /** The share of a failed harvest's draw on the store that a town with a granary still makes. */
   famine: 0.6,
   /** How many seasons back a failed harvest, or hunger, makes a governor want one. */

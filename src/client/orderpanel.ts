@@ -8,7 +8,7 @@ import { hasWatchHouse } from '../sim/watchhouse';
 
 // In a town they are built from the military page, with the towers. (Added here as the game loads, so that the
 // shared list in data.ts is not one line every new building must be written into.)
-for (const type of ['watchhouse']) if (!BUILD_PAGES.some((p) => p.includes(type))) BUILD_PAGES[1].push(type);
+for (const type of ['watchhouse', 'fortress', 'inn']) if (!BUILD_PAGES.some((p) => p.includes(type))) BUILD_PAGES[1].push(type);
 
 const esc = (s: string): string => s.replace(/[<>&"]/g, '');
 

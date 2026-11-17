@@ -19,6 +19,7 @@ import { BUILDINGS, TECHS } from './data';
 import type { TechDef } from './data';
 import { STORE_KINDS, folkOf } from './township';
 import { ageOf } from './campaignbase';
+import { nationCanSpare } from './plenty';
 
 declare module './campaign' {
   interface Faction {
@@ -122,7 +123,7 @@ export function pressing(c: Campaign, f: number, answers: string): number {
     case 'raids': case 'crime': return share((tid) => event(tid, ['raid', 'carried']));
     case 'faith': return Math.max(0, Math.min(1, -(c.factions[f].virtue ?? 0) / 50));
     case 'nobles': case 'plots': case 'rule': return share((tid) => (folkOf(c, tid).drift?.strain ?? 0) > 0.25);
-    case 'births': return share((tid) => { const k = folkOf(c, tid); return Math.min(k.men, k.women) > 0 && k.children < Math.min(k.men, k.women); }); // towns with fewer children than couples
+    case 'births': return share((tid) => { const k = folkOf(c, tid); return (Math.min(k.men, k.women) > 0 && k.children < Math.min(k.men, k.women)) || (k.missed ?? 0) > 0; }); // towns with fewer children than couples, or births that did not come (seasonfolk.ts: Midwifery)
     case 'trade': return share((tid) => folkOf(c, tid).stores.gold < TRADE_SHORT); // towns short of gold
     default: return 0;
   }
@@ -132,7 +133,6 @@ export function pressing(c: Campaign, f: number, answers: string): number {
 export function studySeason(c: Campaign, f: number): string | null {
   const fac = c.factions[f];
   if (!fac?.alive || !fac.isAI || !allStudies().length) return null;
-  const have = held(c, f), floor = STUDY_KEEP * towns(c, f).length;
   let best: { id: string; at: number; need: number } | null = null;
   for (const t of allStudies()) {
     if (hasStudy(c, f, t.id)) continue;
@@ -140,8 +140,7 @@ export function studySeason(c: Campaign, f: number): string | null {
     if (need <= 0 || (best && need <= best.need)) continue;
     const at = towns(c, f).find((tid) => studyBar(c, f, t.id, tid) === '');
     if (at === undefined) continue;
-    const total = STORE_KINDS.reduce((n, k) => n + have[k], 0), cost = STORE_KINDS.reduce((n, k) => n + (t.cost[k] ?? 0), 0);
-    if (total - cost < floor) continue;
+    if (!nationCanSpare(c, f, at, t.cost)) continue; // plenty.ts, one rule for every purchase
     best = { id: t.id, at, need };
   }
   if (!best) return null;
