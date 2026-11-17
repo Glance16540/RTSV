@@ -643,6 +643,9 @@ Off:
   still takes the next man on the list.
 - **Shares in two voices** (low): the panel says "50% food, 25% wood, 13% gold, 13% stone" while the town in fact works
   25% food with a full granary (the governor's rule, `shareOf`); the field shows the second, the panel the first.
+  Fixed (`src/sim/workwords.ts`): the panel now gives the shares the town works by this season, and says why where
+  they are not the orders': "The granary is full, so he has taken hands from the fields for work that keeps", or
+  "Food is short, so the governor has sent hands to the fields; your orders were …".
 - **Namesakes** (low): in a town of thirty there were two Neds, two Josses, two Tesses and two Orlas among the
   villagers, beside the soldiers Ned Oakes and Joss Ironwood.
 
