@@ -12,9 +12,11 @@
 // only when that ground is full: a grown town at four times the size has forty or fifty roofs, which do not fit in 16.
 // Nothing is laid near another side's start, where it would stand in that side's camp.
 // After the battle the field is written back as the town's real record, as any battle's is, and the coarse one is gone.
-// Whatever finds no room at the widest is not laid; nothing else changes.
+// Whatever finds no room at the widest is not laid, and is kept for the record without a place (unlaid.ts, the armies
+// session): written back with what stands, and tried again at the next sitting (layKept).
 import { BUILDINGS } from './data';
 import type { Game, Standing } from './game';
+import { isUnlaid, keepUnlaid } from './unlaid';
 
 export const FIRSTLAY = {
   /** How far from the start to look, ring after ring, each only when the nearer is full. */
@@ -23,6 +25,33 @@ export const FIRSTLAY = {
   clear: 14,
 };
 
+/** Room for a building of this side's town around its start, the nearest ring first; null when even the widest is full. */
+export function roomFor(g: Game, owner: number, st: { x: number; y: number }, dir: number, type: string): { cx: number; cy: number } | null {
+  const size = BUILDINGS[type].size;
+  const clear = (p: { cx: number; cy: number } | null): boolean => !!p && g.spec.starts.every((o, k) => k === owner || Math.hypot(o.x - p.cx - size / 2, o.y - p.cy - size / 2) >= FIRSTLAY.clear);
+  for (const reach of FIRSTLAY.reach) { const p = g.siteNear(type, st, dir, reach); if (clear(p)) return p; }
+  return null;
+}
+
+/**
+ * A real record's buildings that had no place at the last sitting (unlaid.ts): each is laid if there is room now, as
+ * whole and as far built as it was, and kept again if there is not. Returns how many were laid.
+ */
+export function layKept(g: Game, owner: number, st: { x: number; y: number }, dir: number, town: readonly Standing[]): number {
+  let laid = 0;
+  for (const x of town) {
+    if (!BUILDINGS[x[0]] || !isUnlaid(x)) continue;
+    const at = roomFor(g, owner, st, dir, x[0]);
+    if (!at) { keepUnlaid(g, owner, x); continue; }
+    const half = typeof x[4] === 'number' && x[4] >= 0 && x[4] < 1;
+    const b = g.spawnBuilding(x[0], owner, at.cx, at.cy, !half);
+    if (half) b.progress = x[4]!;
+    if (typeof x[3] === 'number' && x[3] > 0 && x[3] < 1) b.hp = Math.max(1, Math.round(b.maxHp * x[3]));
+    laid++;
+  }
+  return laid;
+}
+
 /** Lay a coarse record's buildings on the field for this side, around its start; returns how many were laid. */
 export function layCoarse(g: Game, owner: number, st: { x: number; y: number }, dir: number, coarse: readonly Standing[]): number {
   const have: Record<string, number> = {};
@@ -30,13 +59,11 @@ export function layCoarse(g: Game, owner: number, st: { x: number; y: number }, 
   // Works before houses, so the room near the hall goes to what the town is known for.
   const order = [...coarse].filter((x) => BUILDINGS[x[0]]).sort((a, b) => Number(a[0] === 'house') - Number(b[0] === 'house'));
   let laid = 0;
-  for (const [type] of order) {
+  for (const x of order) {
+    const type = x[0];
     if (have[type]) { have[type]--; continue; } // already raised by the battle (the hall, the land's works)
-    const size = BUILDINGS[type].size;
-    const clear = (p: { cx: number; cy: number } | null): boolean => !!p && g.spec.starts.every((o, k) => k === owner || Math.hypot(o.x - p.cx - size / 2, o.y - p.cy - size / 2) >= FIRSTLAY.clear);
-    let at: { cx: number; cy: number } | null = null;
-    for (const reach of FIRSTLAY.reach) { const p = g.siteNear(type, st, dir, reach); if (clear(p)) { at = p; break; } }
-    if (!at) continue;
+    const at = roomFor(g, owner, st, dir, type);
+    if (!at) { keepUnlaid(g, owner, x); continue; } // no room at the widest: kept for the record (unlaid.ts)
     g.spawnBuilding(type, owner, at.cx, at.cy, true);
     laid++;
   }
