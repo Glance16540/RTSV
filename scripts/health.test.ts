@@ -289,12 +289,13 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       }
     }
     // Land that changed hands: both peoples were at war; a town taken by force carries a yoke (conquered.ts).
+    // A free town come back by treaty (freetown.ts) changed hands with no war: nobody fought for it.
+    const treaties = new Set(c.log.slice(logAt).filter((l) => l.includes('rule by treaty')).map((l) => c.territories.find((t) => l.startsWith(`${t.name} has come back`))?.id ?? -1));
     for (const t of c.territories) {
       const was = owners[t.id];
       if (t.owner === was) continue;
       steady[t.id] = false;
-      for (const f of [was, t.owner]) if (f >= 0) { war[f] = now; warSeasons[f].add(now); }
-      strife[t.id].war = now;
+      if (!treaties.has(t.id)) { for (const f of [was, t.owner]) if (f >= 0) { war[f] = now; warSeasons[f].add(now); } strife[t.id].war = now; }
       const ev = (c.events ?? []).some((e) => e.at === t.id && e.turn === now && e.kind === 'revolt');
       const watched = takenAt.get(t.id);
       // A town followed since it was taken: it rose, or it was taken again by force (and is not counted, having had no five years to settle).
@@ -314,7 +315,6 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       const u = unrestWeights(c, e.at), t = c.territories[e.at];
       w.stirs.push({ hungry: u.hungry > 1, angry: u.nobles >= UNREST.angry, sour: u.nobles > 1.1 && u.nobles < UNREST.angry, fresh: u.held > 1.1, tavern: u.tavern > 1, founded: ownFounded(c, e.at), mine: t.owner === 0 });
     }
-    const treaties = new Set(c.log.slice(logAt).filter((l) => l.includes('rule by treaty')).map((l) => c.territories.find((t) => l.startsWith(`${t.name} has come back`))?.id ?? -1));
     for (const t of c.territories) {
       const was = freeWas[t.id];
       if (t.free && !was) w.free.rose++;
@@ -841,8 +841,8 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   // Armies
   const arms = all('arms');
   const atWar = median(arms.filter((x) => x.war).map((x) => x.share)), atPeace = median(arms.filter((x) => !x.war).map((x) => x.share));
-  add('Armies', 'A nation\'s men under arms', '10 to 25% in war, under 10% in peace', `median ${pct(atWar)} in war, ${pct(atPeace)} in peace`, within(atWar, 0.1, 0.25) && atPeace < 0.1,
-    'Men with its armies (armytown.ts) over those and the men in its towns. In war is a season within a year of the nation winning or losing land.');
+  add('Armies', 'A nation\'s men under arms', '10 to 25% in war, under 10% in peace', `median ${pct(atWar)} in war, ${pct(atPeace)} in peace (of the seasons in war, ${pct(share(arms.filter((x) => x.war), (x) => x.share > 0.25))} over a quarter, ${pct(share(arms.filter((x) => x.war), (x) => Math.abs(x.share - 0.25) < 1e-9))} at a quarter exactly)`, within(atWar, 0.1, 0.25) && atPeace < 0.1,
+    'Men with its armies (armytown.ts) over those and the men in its towns. In war is a season within a year of the nation winning or losing land; a free town that comes back by treaty (freetown.ts) is land gained with no war, and does not count.');
 
   // Sieges
   const sieges = all('sieges').filter((x) => x.walls && x.men), drawn = realSieges(), live = drawn.sieges;
