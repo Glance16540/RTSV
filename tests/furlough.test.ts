@@ -23,7 +23,8 @@ const visit = (c: ReturnType<typeof world>['c'], tid: number) => {
   g.fixedAge = true; g.bornOnly = true;
   return { cfg, g };
 };
-const soldiers = (g: Game) => g.units.filter((u) => u.owner === 0 && !u.dead && u.type === 'clubman');
+// The soldier of the first man on the furlough's list first: a soldier who goes home is the man whose name he bears (soldiernames.ts).
+const soldiers = (g: Game) => { const first = g.players[0].furlough?.men[0]; return g.units.filter((u) => u.owner === 0 && !u.dead && u.type === 'clubman').sort((a, b) => Number(!!first && b.name === first.name && b.family === (first.family ?? b.family)) - Number(!!first && a.name === first.name && a.family === (first.family ?? a.family))); };
 
 describe('on the map: who of the town is with the army in it', () => {
   it('the town\'s men on the army\'s roll are handed to the field by name and age, with how many soldiers make a company', () => {

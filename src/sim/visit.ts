@@ -7,6 +7,7 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { companySoldiers, rollOf } from './soldiernames';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { storyForVisit, storyFromVisit } from './storyvisit';
@@ -202,6 +203,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)
         ...(courtForVisit(c, t.id) ? { court: courtForVisit(c, t.id) } : {}), // a rival's envoy, a suitor or a plot, where the court is kept (courtvisit.ts)
         ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
+        ...(army && army.owner === 0 ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}), // its companies led by the men of its roll, as in a battle (soldiernames.ts)
       },
     }],
   };
