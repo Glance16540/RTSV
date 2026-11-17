@@ -26,7 +26,7 @@ import type { Sky } from './campaign';
 import { driftBack, withDrift } from './driftintown';
 import { companyOf } from './townmuster';
 import { studiedHome, studiesOf } from './studies';
-import { menMustered, reckonArmies } from './armytown';
+import { MEN, menMustered, reckonArmies } from './armytown';
 import type { Army } from './campaign';
 
 declare module './campaign' {
@@ -128,7 +128,10 @@ function armsHome(c: Campaign, tid: number, arms: VisitArms, before: Record<stri
     }
   }
   for (const [kind, n] of Object.entries(trained)) {
-    const per = Object.values(COMPANIES[kind].units)[0] ?? 2;
+    // A townsman trained here is one man of the town, and a company is as many of its men as the map musters for one
+    // (armytown.ts MEN.company: one at the present size of towns), as for a man left training when the player goes
+    // (queueddrill.ts). Counting the field's two soldiers to a company left a lone trained man no company at all.
+    const per = Math.max(1, MEN.company);
     for (let k = 0; k < Math.floor(n / per); k++) {
       const fresh = !a;
       if (!a) { a = { id: c.nextArmy++, owner: 0, at: tid, units: {}, hero: false, vet: c.factions[0].civ === 'japan' ? 1 : 0, moved: true }; c.armies.push(a); }
