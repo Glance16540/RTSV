@@ -1,5 +1,5 @@
 // The governor's standing orders on the land's panel: a line saying them in words, and "Give the governor orders",
-// which opens the four orders, each with its choices told in words. The rules are in src/sim/townorders.ts.
+// which opens the five orders, each with its choices told in words. The rules are in src/sim/townorders.ts.
 import type { Campaign } from '../sim/campaign';
 import { BUILDINGS } from '../sim/data';
 import { SITES } from '../sim/campaignbase';
@@ -19,7 +19,7 @@ export function standingPanel(c: Campaign, tid: number): string {
 
 /** One choice in a dialog: its label, a line saying what it does, and the order it gives. */
 export interface Choice { label: string; says: string; order: Parameters<typeof import('../sim/townorders').setStanding>[2] }
-/** The four orders, as the dialog's rows: each a label saying where it stands now, and its choices. */
+/** The five orders, as the dialog's rows: each a label saying where it stands now, and its choices. */
 export function standingRows(c: Campaign, tid: number): { label: string; choices: Choice[] }[] {
   const s = standingOf(c.territories[tid]);
   const never = s.never ?? [];
@@ -34,5 +34,9 @@ export function standingRows(c: Campaign, tid: number): { label: string; choices
     ] },
     { label: `Keep in store: ${(s.keep ?? 'usual') === 'usual' ? 'the usual stock' : s.keep}`, choices: (['little', 'usual', 'much'] as KeepLevel[]).map((k): Choice => ({ label: k === 'usual' ? 'The usual' : k[0].toUpperCase() + k.slice(1), says: `${KEEP_WORDS[k][0].toUpperCase()}${KEEP_WORDS[k].slice(1)}.`, order: { keep: k } })) },
     { label: `Its people leaving: ${LEAVE_WORDS[s.leave ?? 'both']}`, choices: (['both', 'families', 'settlers', 'none'] as Leave[]).map((l): Choice => ({ label: l === 'both' ? 'Families and settlers' : l === 'families' ? 'Families only' : l === 'settlers' ? 'Settlers only' : 'Nobody', says: `${LEAVE_WORDS[l][0].toUpperCase()}${LEAVE_WORDS[l].slice(1)}.`, order: { leave: l } })) },
+    { label: `Learn studies: ${s.learn ? 'yes, those taught here when it has the means' : 'no'}`, choices: [
+      { label: 'Learn them', says: 'He learns the study taught in the town that answers what presses most on your nation, when the town has the means and your towns keep their stores after paying.', order: { learn: true } },
+      { label: 'Leave them to me', says: 'He learns nothing of himself: studies are yours to choose.', order: { learn: false } },
+    ] },
   ];
 }

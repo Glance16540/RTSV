@@ -37,6 +37,7 @@ import { marchMargin, treatLean, weighSeasons } from './nobleweigh';
 import { widowsSeason } from './widowhood';
 import { studiedHome, studiesSeason, withStudies } from './studies';
 import { rulesSeason } from './rule';
+import { governWorksSeason } from './governworks';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
 import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
@@ -1224,6 +1225,7 @@ export function continueAI(c: Campaign): void {
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       studiesSeason(c); // rival nations learn the study that answers what presses on them (studies.ts)
       rulesSeason(c); // rival nations raise their works of rule and faith (rule.ts)
+      governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
