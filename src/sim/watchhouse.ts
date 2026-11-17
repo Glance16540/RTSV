@@ -17,9 +17,9 @@
 import type { Campaign } from './campaign';
 import { standsAt } from './studies';
 import { BUILDINGS } from './data';
-import { GOVERN, wantsOf } from './governor';
-import { STORE_KINDS, folkOf } from './township';
+import { wantsOf } from './governor';
 import { begunAt, raiseWork } from './townworks';
+import { canSpare } from './plenty';
 
 export const WATCH = {
   /** What it adds to the chance, each season, that a thief is taken, whether or not a watch is set on the houses. */
@@ -47,9 +47,7 @@ export function watchEdge(c: Campaign, tid: number): { thief: number; clue: numb
  * lacked for a farm the next hungry season.
  */
 function spare(c: Campaign, tid: number): boolean {
-  const t = c.territories[tid], wants = wantsOf(c, tid), s = folkOf(c, tid).stores, cost = BUILDINGS.watchhouse.cost;
-  const goods = STORE_KINDS.reduce((n, k) => n + (k === 'food' ? 0 : s[k] - (cost[k] ?? 0)), 0);
-  return t.buildings.includes('farm') && !wants.food && !wants.roof && goods >= WATCH.plenty * GOVERN.floor;
+  return canSpare(c, tid, BUILDINGS.watchhouse.cost, { wants: wantsOf(c, tid), times: WATCH.plenty }); // plenty.ts, one rule for every purchase
 }
 /**
  * The governors' season: a town that has had cause, and has none begun, begins a Watch House out of its own stores

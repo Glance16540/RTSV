@@ -28,11 +28,11 @@ describe('the Mill on the map', () => {
     expect(b.wood).toBeCloseTo(a.wood, 6); // only food
   });
 
-  it('the governor raises one where food is short and the town already has its Farmland', () => {
+  it('the governor raises one in a town that has its Farmland and has grown big, out of plenty, and not while it is short of bread', () => {
     const short = town(['farm'], 0);
     expect(millWanted(short.c, short.t.id, true)).toBe(true);
     governTown(short.c, short.t.id);
-    expect(begun(short.c, short.t.id, 'mill')).toBe(true);
+    expect(begun(short.c, short.t.id, 'mill')).toBe(false); // short of bread, its goods buy bread first (plenty.ts)
     const plenty = town(['farm'], 2000, 10); // a small town with food enough
     governTown(plenty.c, plenty.t.id);
     expect(begun(plenty.c, plenty.t.id, 'mill')).toBe(false);
