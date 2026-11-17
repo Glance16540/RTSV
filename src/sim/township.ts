@@ -172,12 +172,12 @@ export function settleFolk(c: Campaign, tid: number, census: Census, opts: { tak
 }
 
 /** A soldier who made a name in a battle is remembered in the town named: once, with the most they ever did. */
-export function rememberVeteran(c: Campaign, tid: number, who: { name: string; kills: number; unit?: string; female?: boolean }): Notable | undefined {
+export function rememberVeteran(c: Campaign, tid: number, who: { name: string; kills: number; unit?: string; female?: boolean; /** His house, where the army's roll knows it (veteranhome.ts). */ family?: string }): Notable | undefined {
   if (!text(who.name)) return undefined;
   const f = folkOf(c, tid), had = f.notables.find((n) => n.kind === 'veteran' && n.name === who.name && !n.lost);
   const deed = `felled ${who.kills} in battle as ${/^[aeiou]/i.test(who.unit ?? '') ? 'an' : 'a'} ${(who.unit ?? 'soldier').toLowerCase()}`;
   if (had) { if (who.kills > (had.kills ?? 0)) { had.kills = who.kills; had.deed = deed; } return had; }
-  const n: Notable = { name: text(who.name), gender: who.female ? 'f' : 'm', kind: 'veteran', kills: who.kills, deed, turn: c.turn, ...(who.unit ? { unit: text(who.unit, 30) } : {}) };
+  const n: Notable = { name: text(who.name), gender: who.female ? 'f' : 'm', kind: 'veteran', kills: who.kills, deed, turn: c.turn, ...(who.unit ? { unit: text(who.unit, 30) } : {}), ...(who.family ? { family: text(who.family) } : {}) };
   remember(f, n);
   chronicle(c, `${n.name} of ${c.territories[tid].name} ${deed}, and was known for it through the land.`);
   return n;

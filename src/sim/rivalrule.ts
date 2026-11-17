@@ -23,6 +23,7 @@ import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menMustered, menOf, sendC
 import { SUPPLY_UNITS } from './stores';
 import { revoltChance } from './conquered';
 import { bandsAt } from './threats';
+import { manOfRoll, rememberOf } from './veteranhome';
 import { nobodyThere } from './founding'; // a land with nobody on it is settled, not marched on
 
 export const RIVAL = {
@@ -115,13 +116,14 @@ export function nameVeterans(c: Campaign): { named: number; lost: number } {
     if (!a.champion && a.vet >= RIVAL.wins) {
       const female = hash(c.seed + a.id, 41) < 0.1, names = female ? NAMES_F : NAMES_M;
       const unit = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p])[0] ?? 'infantry';
-      a.champion = { name: `${names[Math.floor(hash(c.seed + a.id, 43) * names.length)]} ${FAMILY_NAMES[Math.floor(hash(c.seed + a.id, 47) * FAMILY_NAMES.length)]}`, kills: a.vet * RIVAL.killsAWin, unit: unit === 'cavalry' ? 'Rider' : unit === 'archers' ? 'Archer' : 'Soldier', ...(female ? { female: true } : {}) };
+      const man = manOfRoll(c, a.owner, a.id, 43); // a man of its roll, of his own house (veteranhome.ts), where it has one
+      a.champion = { name: man?.name ?? `${names[Math.floor(hash(c.seed + a.id, 43) * names.length)]} ${FAMILY_NAMES[Math.floor(hash(c.seed + a.id, 47) * FAMILY_NAMES.length)]}`, kills: a.vet * RIVAL.killsAWin, unit: unit === 'cavalry' ? 'Rider' : unit === 'archers' ? 'Archer' : 'Soldier', ...(female && !man ? { female: true } : {}), ...(man ? { town: man.town } : {}) };
       named++;
     }
     if (a.champion && !known[a.id]) {
       const from = homeOf(c, a), chief = c.territories.find((t) => t.capital === a.owner && t.owner === a.owner) ?? c.territories.find((t) => t.owner === a.owner);
       const at = from !== undefined && c.territories[from]?.owner === a.owner ? from : chief?.id;
-      if (at !== undefined) { rememberVeteran(c, at, a.champion); known[a.id] = { name: a.champion.name, f: a.owner }; }
+      if (rememberOf(c, a.owner, a.id, a.champion, at)) known[a.id] = { name: a.champion.name, f: a.owner }; // of his own town and house, off the roll
     }
   }
   for (const [id, who] of Object.entries(known)) {

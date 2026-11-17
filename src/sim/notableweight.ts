@@ -9,9 +9,10 @@
 //                     the nation's chief town otherwise. This takes the town as a plain number: whoever keeps armies
 //                     by town hands it in.
 //   A loss            The town grieves: `townGrief` is the share of its morale lost, and `nationLoss` how far the
-//                     nation's standing dips. Both fade over GRIEF_SEASONS and weigh a famous person more (the
-//                     nation's dip by the square of their fame). Nothing here applies them: grief and drift
-//                     (drift.ts) read these numbers.
+//                     nation's standing dips. Both fade over GRIEF_SEASONS, GRIEF_LONGER more for each degree of
+//                     fame past the first, and weigh a famous person more (the nation's dip by the square of their
+//                     fame): the famous are mourned both harder and longer. drift.ts applies them: a
+//                     grieving town's strain, and the nation's standing.
 //
 // Plain data in and out: a house is `{ made?: number }`, a notable is the township record, a turn is a number.
 import type { Game, Unit } from './game';
@@ -53,24 +54,28 @@ export function fame(n: Pick<Notable, 'kind' | 'kids' | 'war' | 'made' | 'kills'
   const raw = n.kind === 'veteran' ? Math.floor((n.kills ?? 0) / 3) : 1 + Math.floor((standingWith(n.kids, n.war, n.made) - 3) / 3);
   return Math.max(1, Math.min(3, raw));
 }
-/** How strongly a loss is still felt, 1 when fresh and 0 after GRIEF_SEASONS. */
-const fading = (lostAt: number, turn: number): number => Math.max(0, 1 - Math.max(0, turn - lostAt) / GRIEF_SEASONS);
+/** How many seasons more a loss is felt for each degree of fame past the first: the famous are mourned longer. */
+export const GRIEF_LONGER = 2;
+/** How many seasons a known person's loss is felt: GRIEF_SEASONS, and GRIEF_LONGER more for each degree of fame past the first. */
+export const griefSeasonsOf = (n: Pick<Notable, 'kind' | 'kids' | 'war' | 'made' | 'kills'>): number => GRIEF_SEASONS + GRIEF_LONGER * (fame(n) - 1);
+/** How strongly a loss is still felt, 1 when fresh and 0 after its seasons. */
+const fading = (lostAt: number, turn: number, seasons = GRIEF_SEASONS): number => Math.max(0, 1 - Math.max(0, turn - lostAt) / seasons);
 
 /** The share of a town's morale lost to grief for its notable people lately lost, 0 to GRIEF_MAX. */
 export function townGrief(notables: readonly Notable[], turn: number): number {
   let sum = 0;
-  for (const n of notables) if (n.lost) sum += fame(n) * GRIEF_PER_FAME * fading(n.lost.turn, turn);
+  for (const n of notables) if (n.lost) sum += fame(n) * GRIEF_PER_FAME * fading(n.lost.turn, turn, griefSeasonsOf(n));
   return Math.min(GRIEF_MAX, Math.round(sum * 1000) / 1000);
 }
 /** How far a nation's standing dips for the known people it has lately lost, across all its towns, 0 to NATION_MAX. */
 export function nationLoss(towns: readonly (readonly Notable[])[], turn: number): number {
   let sum = 0;
-  for (const list of towns) for (const n of list) if (n.lost) sum += fame(n) ** 2 * NATION_PER_FAME * fading(n.lost.turn, turn);
+  for (const list of towns) for (const n of list) if (n.lost) sum += fame(n) ** 2 * NATION_PER_FAME * fading(n.lost.turn, turn, griefSeasonsOf(n));
   return Math.min(NATION_MAX, Math.round(sum * 1000) / 1000);
 }
 /** Those a town mourns now, the freshest first. */
 export const mourned = (notables: readonly Notable[], turn: number): Notable[] =>
-  notables.filter((n) => n.lost && fading(n.lost.turn, turn) > 0).sort((a, b) => b.lost!.turn - a.lost!.turn);
+  notables.filter((n) => n.lost && fading(n.lost.turn, turn, griefSeasonsOf(n)) > 0).sort((a, b) => b.lost!.turn - a.lost!.turn);
 
 /** A soldier who made a name, as handed in: `town` is the land they came from, if their army knows it. */
 export interface VeteranIn { name: string; kills: number; unit?: string; female?: boolean; town?: number }

@@ -44,7 +44,7 @@ describe('battle hooks', () => {
       'counted: warhouse',
       'taken: conquered', 'taken: carriedoff',
       'repulsed: tribes', 'repulsed: freetown',
-      'settled: stores', 'settled: armytown', 'settled: townfaith', 'settled: mapbattle',
+      'settled: stores', 'settled: armytown', 'settled: townfaith', 'settled: mapbattle', 'settled: veteranhome',
       'setup: stores',
       'written: studies', 'written: tribes',
       'housed: driftintown', 'housed: governor', 'housed: stores',
