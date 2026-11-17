@@ -5,6 +5,7 @@ import { unlaidOf, unplaced } from './unlaid';
 import { RoofsIn, roofsOf, seatRoofs } from './roofs';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
+import { Roll, nameSoldiers } from './soldiernames';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
@@ -21,6 +22,7 @@ import {
 } from './data';
 import { Climate, generateMap, MapSpec, NodeType, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from './map';
 import { HallState, RAZED_GRACE, hallClock, hallLeft } from './beaten';
+import { HomeState, atHome, warBand } from './raidertown';
 import { dayPhase } from './daylight';
 import { leaningWith } from './temper';
 import { WOMAN_ATK, needsPerson, recruitFor } from './muster';
@@ -254,7 +256,7 @@ export interface Projectile {
 export interface Stats { gathered: number; trained: number; born: number; kills: number; lost: number; razed: number; buildingsLost: number }
 const newStats = (): Stats => ({ gathered: 0, trained: 0, born: 0, kills: 0, lost: 0, razed: 0, buildingsLost: 0 });
 
-export interface Player extends HallState {
+export interface Player extends HallState, HomeState {
   /** Children of a people with no roof left, who travel with it until they are grown (nursery.ts). */
   wards?: Child[];
   /** The nation's leader as made in the creator, and the veterancy they will take the field with next. */
@@ -357,7 +359,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -510,7 +512,8 @@ export class Game {
       this.tcs.push([]);
       const st = this.spec.starts[i];
       const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
-      if (!field && this.raider(i)) {
+      if (this.raider(i) && atHome(s.bonus, field)) this.players[i].atHome = true; // a raiding people in a town of the map's begins as a town (raidertown.ts)
+      if (!field && this.warband(i)) {
         // A war band: a man and a woman to found the hall when they choose to settle, and fighters to feed it.
         this.spawnUnit('villager', i, st.x - 0.5, st.y + 1.5 * dir, 'm');
         this.spawnUnit('villager', i, st.x + 0.5, st.y + 1.5 * dir, 'f');
@@ -561,9 +564,9 @@ export class Game {
         }
         if (s.bonus.town?.length && !field) layKept(this, i, st, dir, [...s.bonus.town, ...lost]); // what has no place, or no room where it stood, is laid where there is room and kept if there is none (unlaid.ts)
         // A people left with nothing but walls raise a hall again rather than fall without a blow.
-        if (!field && !this.raider(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && !b.def.wall)) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        if (!field && !this.warband(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && !b.def.wall)) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
         // A town whose hall was razed in an earlier siege has a while to begin another before it counts as beaten.
-        if (!field && !this.raider(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && b.type === 'towncenter')) { p.hadHall = true; p.hallDue = RAZED_GRACE; p.razedStart = true; }
+        if (!field && !this.warband(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && b.type === 'towncenter')) { p.hadHall = true; p.hallDue = RAZED_GRACE; p.razedStart = true; }
         // Works the land is known for are raised if they are not there already.
         const have: Record<string, number> = {};
         for (const b of this.buildings) if (b.owner === i && b.complete) have[b.type] = (have[b.type] ?? 0) + 1;
@@ -583,10 +586,12 @@ export class Game {
         if (s.bonus.people?.children && !field) cradledOf(this, i, s.bonus.people);
         if (s.bonus.people?.orphans?.length && !field) seatOrphans(this, i, s.bonus.people.orphans); // the map's orphans, the same children in the town (orphantown.ts)
         let k = 0;
+        const laid = new Map<string, Unit[]>();
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
           // In a field battle the army forms up where the town would have been.
-          for (let j = 0; j < n; j++, k++) this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir);
+          for (let j = 0; j < n; j++, k++) (laid.get(type) ?? laid.set(type, []).get(type)!).push(this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir));
         }
+        if (s.bonus.roll) nameSoldiers(this, i, laid, s.bonus.roll); // each company led by the men of the army's roll (soldiernames.ts)
         // In a battle in the open there is no town on the field: the men of it who marched out stand with the army (tribes.ts).
         if (field && s.bonus.people) peopled(this, i, s.bonus.people, st, dir);
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
@@ -835,6 +840,8 @@ export class Game {
     return this.style(owner) === 'scholar' ? 1 + Math.min(STYLE_RULES.loreMax, STYLE_RULES.lore * this.players[owner].techs.size) : 1;
   }
   raider(owner: number): boolean { return !!this.players[owner] && !!styleOf(this.players[owner].civ).raid; }
+  /** A raiding people with no town of the map's under it: it begins, and falls, as a war band (raidertown.ts). */
+  warband(owner: number): boolean { return warBand(this.raider(owner), this.players[owner]); }
   /** The age a building needs. A raiding band may raise its hall whenever it chooses to settle. */
   /** The age a building needs. A people with no hall at all may raise one in any age, so a razed town can be founded again. */
   ageFor(owner: number, def: BuildingDef): number {
@@ -2236,7 +2243,7 @@ export class Game {
       // A besieger whose army is spent, with nothing to raise more, lifts the siege and has lost it (siegelift.ts).
       for (const id of liftSieges(this)) { alive.delete(id); fallen.add(id); }
       // A raiding band has no town to lose: it is beaten when its last fighter or villager falls.
-      for (const u of this.units) if (!alive.has(u.owner) && !fallen.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
+      for (const u of this.units) if (!alive.has(u.owner) && !fallen.has(u.owner) && this.warband(u.owner) && u.owner !== this.wild) alive.add(u.owner);
     }
     for (const p of this.players) {
       if (!p.defeated && !p.neutral && !alive.has(p.id)) {

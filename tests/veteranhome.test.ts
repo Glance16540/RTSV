@@ -27,12 +27,12 @@ describe('a veteran of his own house', () => {
     expect(veteranHome(c, 0, 9, name)).toEqual({ town: b.id, family: man.family });
   });
 
-  it('else one of the army\'s men drawn by lot, who is known by his name from then on', () => {
+  it('else of the house of one of the army\'s men drawn by lot, who keeps his own name (soldiernames.ts, PLAYTEST 4.9)', () => {
     const { c } = twoTowns();
     const home = veteranHome(c, 0, 9, 'Ulfgar the Bold')!;
     expect(home).toBeDefined();
     const h = housesOf(folkOf(c, home.town)).find((x) => x.family === home.family)!;
-    expect(h.away.some((s) => s.name === 'Ulfgar the Bold')).toBe(true);
+    expect(h.away.some((s) => s.name === 'Ulfgar the Bold')).toBe(false); // the man of the house is not renamed after him
     expect(veteranHome(c, 0, 9, 'Ulfgar the Bold')).toEqual(home); // the same man, asked again
     expect(veteranHome(c, 0, 4, 'Ulfgar the Bold')).toBeUndefined(); // an army with nobody on its roll
   });
