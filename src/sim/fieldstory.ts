@@ -2,7 +2,7 @@
 // inside a battle or a visit). The map side (storyvisit.ts) hands the visit the player's story in the town; here, in the
 // town itself:
 //   - a thief: the houses robbed are marked, each by the name of the household robbed (before the town has houses, the
-//     works where their goods were kept); a soldier of the player's who
+//     works where their goods were kept, never the hall); a soldier of the player's who
 //     stands guard by a robbed house long enough (FIELD_STORY.guard; half as long where the town keeps a watch) takes the thief there;
 //   - a killer: those spoken of walk the town as its villagers, by their names and trades; the player may question one,
 //     and an innocent may be cleared by it (FIELD_STORY.question). The guilty one is never cleared, and nothing on the
@@ -53,11 +53,13 @@ const houses = (g: Game, owner: number): Building[] => g.buildings.filter((b) =>
 
 /**
  * Mark the robbed households on the town: each its own house where it has one, else a house not yet marked, else, in a
- * town not yet housed, another of its works (the hall, a farm) where their goods were kept. Done again as houses rise.
+ * town not yet housed, another of its works where their goods were kept (a farm, a barracks; never the hall, where the
+ * army camps). A town with nothing but its hall has nothing marked until a house rises. Done again as houses rise.
  */
 function markRobbed(g: Game, owner: number): void {
   const s = g.players[owner]!.story!, all = houses(g, owner);
-  const works = g.buildings.filter((b) => b.owner === owner && !b.dead && b.complete && !b.def.wall && b.type !== 'house');
+  // Never the hall: the army camps about it, and a soldier camped is no guard set (FIELD_STORY.near would take him for one).
+  const works = g.buildings.filter((b) => b.owner === owner && !b.dead && b.complete && !b.def.wall && b.type !== 'house' && b.type !== 'towncenter');
   const due = s.people.map((p, i) => ({ p, name: p.family || p.name, i })).filter(({ name, i }) => (s.robbed[i] ?? 0) > 0 && !g.buildings.some((b) => b.owner === owner && !b.dead && b.robbed === name));
   const mark = (b: Building | undefined, name: string): boolean => { if (b) b.robbed = name; return !!b; };
   // Their own houses first, so that no household takes another's; then the free houses, then the works.

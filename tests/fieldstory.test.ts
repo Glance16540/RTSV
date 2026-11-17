@@ -81,11 +81,7 @@ describe('a thief on the field', () => {
   it('a villager standing there is no guard, and nobody is struck or killed', () => {
     const { c, at } = world();
     thiefIn(c, at);
-    // The town's people are left standing here (no shares to work by, atwork.ts): villagers walking out to their work
-    // jostle the army's soldiers camped by the hall to within a guard's reach of it, and this is about villagers.
-    expect(beginVisit(c, at)).toBe(true);
-    const cfg = visitConfig(c)!;
-    const g = new Game(cfg.seed, cfg.setups.map((s) => ({ ...s, bonus: { ...s.bonus, work: undefined } })), cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
+    const g = enter(c, at); // the town at work: villagers walking out jostle the soldiers camped by the hall (atwork.ts)
     run(g, 1);
     const b = g.buildings.find((x) => x.robbed)!;
     g.spawnUnit('villager', 0, b.x, b.y + b.size / 2 + 1, 'm');
@@ -93,6 +89,18 @@ describe('a thief on the field', () => {
     run(g, FIELD_STORY.guard + 5);
     expect(storyOut(g, 0)!.caught).toBeUndefined();
     expect(g.units.filter((u) => u.owner === 0 && !u.dead).length).toBeGreaterThanOrEqual(alive - 1);
+  }, 60_000);
+});
+
+describe('the hall', () => {
+  it('never stands in for a robbed house, so the army camped about it takes nobody by camping', () => {
+    const { c, at } = world();
+    thiefIn(c, at);
+    const g = enter(c, at);
+    run(g, FIELD_STORY.guard + 20);
+    expect(g.buildings.filter((b) => b.robbed).length).toBeGreaterThan(0);
+    expect(g.buildings.some((b) => b.robbed && b.type === 'towncenter')).toBe(false);
+    expect(storyOut(g, 0)!.caught).toBeUndefined();
   }, 60_000);
 });
 
