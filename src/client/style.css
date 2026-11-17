@@ -845,3 +845,6 @@ body.looking-out #visit { display: none; }
 .encounter .enc-choices { display: flex; flex-wrap: wrap; gap: 8px; }
 .encounter .enc-choices button { flex: 1 1 160px; white-space: normal; padding: 9px 14px; }
 @media (max-width: 760px) { .encounter .enc-sheet { flex-direction: column; } .encounter .enc-view { width: 100%; } }
+
+/* ---- Land panel: why no company can be raised (no men for it) ---- */
+.lp-note { margin: 4px 0 0; font-size: 12px; line-height: 1.35; opacity: 0.85; }

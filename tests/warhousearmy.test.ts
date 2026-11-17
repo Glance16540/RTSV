@@ -1,6 +1,7 @@
 // Which army a man marches with, and what an army fells counted to its men's houses (src/sim/warhouse.ts).
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { armyAt, moveArmy, newCampaign, raise } from '../src/sim/campaign';
+import { armyAt, moveArmy, raise } from '../src/sim/campaign';
 import { MEN_A_COMPANY, armiesJoined, musterOf, reckonArmies, seasonOfArmies } from '../src/sim/armytown';
 import { agesOf } from '../src/sim/ageing';
 import { Notable, folkOf } from '../src/sim/township';
@@ -8,7 +9,7 @@ import { awayMen, awayText, creditArmy, housesOf, levelArmies } from '../src/sim
 
 /** Two towns of the player's side by side, each with a Barracks and men to spare, and no army in either. */
 const two = () => {
-  const c = newCampaign(7, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
+  const c = bareCampaign(7, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
   const near = c.territories.find((t) => home.adj.includes(t.id) && !t.horde && t.capital < 0)!;
   near.owner = 0;
   c.armies = c.armies.filter((a) => a.owner !== 0);

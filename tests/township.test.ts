@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Campaign, armyAt, battleConfig, finishBattle, moveArmy, newCampaign, resolvePending } from '../src/sim/campaign';
+import { Campaign, armyAt, battleConfig, finishBattle, moveArmy, resolvePending } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
 import { ELDER_AT } from '../src/sim/data';
 import { Census, MOTHER_KIDS, TOLL, cleanCensus, folkOf, foundFolk, headcount, living, musterFolk, nationNotables, nationPeople, nationStores, rememberVeteran, settleFolk, tollFolk } from '../src/sim/township';
-import { run } from './helpers';
+import { run, bareCampaign } from './helpers';
 
 const LONG = 60_000;
-const world = (seed = 5): Campaign => newCampaign(seed, 1, 1, 'hearth');
+const world = (seed = 5): Campaign => bareCampaign(seed, 1, 1, 'hearth');
 const home = (c: Campaign) => c.territories.find((t) => t.capital === 0)!;
 /** A rival army comes against the player's chief town. */
 const besieged = (seed = 5): Campaign => {

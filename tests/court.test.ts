@@ -1,14 +1,15 @@
 // The leader is one person in one place (docs/DESIGN.md): where they are on the map, how they travel, what their
 // presence does for a land, the armies they call, and what becomes of them when a land or a battle is lost.
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { Campaign, UNREST_TURNS, armyAt, battleConfig, endTurn, eventsAt, finishBattle, heroFor, moveArmy, newCampaign, reach, resolvePending } from '../src/sim/campaign';
+import { Campaign, UNREST_TURNS, armyAt, battleConfig, endTurn, eventsAt, finishBattle, heroFor, moveArmy, reach, resolvePending } from '../src/sim/campaign';
 import { callArmies, called, courtOf, courtTurn, endCall, holdCourt, leaderAt, leaderReach, moveLeader, stepToward } from '../src/sim/court';
 import { HEIR_AGE, claimants, houseOf, succeed } from '../src/sim/dynasty';
 import { Game } from '../src/sim/game';
 
 /** A campaign in which the player holds their capital and the lands about it, two deep. */
 const realm = () => {
-  const c = newCampaign(3);
+  const c = bareCampaign(3);
   c.factions[0].hero = { name: 'Brunhild', female: true };
   const home = c.territories.find((t) => t.capital === 0)!;
   // The map is redrawn so the test does not hang on what a seed happens to make: home borders `via` and a rival's

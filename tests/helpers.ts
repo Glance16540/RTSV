@@ -25,3 +25,17 @@ export const spot = (g: Game, type: string, owner: number) => {
  */
 export const menAt = (g: Game, owner: number, n: number, by: Building) =>
   Array.from({ length: n }, (_, i) => g.spawnUnit('villager', owner, by.x - (n - 1) * 0.3 + i * 0.6, by.y + by.size / 2 + 0.8, 'm'));
+
+import { newCampaign } from '../src/sim/campaign';
+/**
+ * A campaign whose first armies have no roll, as every campaign began before the army a people begins with was
+ * made its chief town's own men (src/sim/armytown.ts, foundingMuster; tests/foundingarmy.test.ts is about that).
+ * For tests written about something else, which raise into the first army or sweep it away and count the town's
+ * men: with it they would be counting six founding men as well.
+ */
+export const bareCampaign = (...args: Parameters<typeof newCampaign>): ReturnType<typeof newCampaign> => {
+  const c = newCampaign(...args);
+  c.musters = {};
+  for (const t of c.territories) if (t.folk) delete t.folk.houses;
+  return c;
+};

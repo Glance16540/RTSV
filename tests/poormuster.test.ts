@@ -1,6 +1,7 @@
 // A poor people still musters (src/sim/rivalrule.ts, poorMuster).
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { COMPANIES, armyAt, companyCost, hireOff, newCampaign } from '../src/sim/campaign';
+import { COMPANIES, armyAt, companyCost, hireOff } from '../src/sim/campaign';
 import { MEN_A_COMPANY, awayFrom } from '../src/sim/armytown';
 import { RIVAL, poorMuster, warFooting } from '../src/sim/rivalrule';
 import { settleStores, SUPPLY_UNITS } from '../src/sim/stores';
@@ -9,7 +10,7 @@ import { STORE_KINDS, Stores, folkOf } from '../src/sim/township';
 const units = (s: Stores) => STORE_KINDS.reduce((n, k) => n + s[k], 0);
 /** A rival down to its chief town: ten men, six women, a Barracks, at war, and nothing in store over its keep. */
 const ruined = () => {
-  const c = newCampaign(7, 2, 1);
+  const c = bareCampaign(7, 2, 1);
   const home = c.territories.find((t) => t.capital === 1)!;
   for (const t of c.territories) if (t.owner === 1 && t !== home) t.owner = -1;
   c.armies = c.armies.filter((a) => a.owner !== 1);
