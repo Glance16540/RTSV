@@ -143,7 +143,7 @@ export interface Reckoning { before: number; after: number; taken: number; lost:
  * held the town as the battle ended. Those who are neither there nor held captive are dead. A notable woman who is
  * not among those counted is lost; a woman who has raised enough children is remembered from now on.
  */
-export function settleFolk(c: Campaign, tid: number, census: Census, opts: { taken?: boolean } = {}): Reckoning {
+export function settleFolk(c: Campaign, tid: number, census: Census, opts: { taken?: boolean; /** Who held the town when the battle began: its dead were theirs, if it has changed hands. */ was?: number } = {}): Reckoning {
   const t = c.territories[tid], f = folkOf(c, tid), before = headcount(f);
   if (keptAsWas(c, tid, f, census, before)) return { before, after: before, taken: 0, lost: [], made: [] }; // its people were never on the field (writeguard.ts)
   f.men = census.men; f.women = census.women; f.elders = census.elders; f.children = census.children;
@@ -179,11 +179,15 @@ export function settleFolk(c: Campaign, tid: number, census: Census, opts: { tak
     remember(f, who); made.push(who);
   }
   const after = headcount(f), taken = census.taken ?? 0, mine = t.owner === 0;
-  const whose = mine ? 'your people' : 'the people';
+  // A town that changed hands: its dead were its old holder's people, and those left are its new holder's now.
+  const turned = opts.was !== undefined && opts.was !== t.owner;
+  const peopleOf = (o: number): string => (o === 0 ? 'your people' : o < 0 || !c.factions[o] ? 'the locals' : `the ${c.factions[o].name}`);
+  const whose = turned ? peopleOf(opts.was!) : mine ? 'your people' : 'the people';
+  const now = (n: number): string => (!turned ? `${n} remain${n === 1 ? 's' : ''}` : `${n} ${n === 1 ? 'is' : 'are'} now ${t.owner === 0 ? 'yours' : t.owner < 0 || !c.factions[t.owner] ? 'the locals\'' : `the ${c.factions[t.owner].name}'`}`);
   if (before !== after || taken) {
     const dead = Math.max(0, before - after - taken);
     const parts = [dead ? `${dead} died` : '', taken ? `${taken} ${taken === 1 ? 'was' : 'were'} carried off` : '', after > before ? `${after - before} more ${after - before === 1 ? 'was' : 'were'} born, came of age or came home` : ''].filter(Boolean);
-    if (parts.length) c.log.push(`Of ${whose} at ${t.name}, ${parts.join(' and ')}: ${after} remain${after === 1 ? 's' : ''}.`);
+    if (parts.length) c.log.push(`Of ${whose} at ${t.name}, ${parts.join(' and ')}: ${now(after)}.`);
   }
   for (const n of lost) { c.log.push(`${n.name} of ${t.name}, who ${n.deed}, is lost.`); chronicle(c, `${n.name} of ${t.name}, who ${n.deed}, was ${n.lost!.how} when the town was fought over.`); }
   for (const n of made) { c.log.push(`${n.name} of ${t.name} has ${n.deed}, and her name is known.`); chronicle(c, `${n.name} of ${t.name} ${n.deed}, and was known for it through the land.`); }
