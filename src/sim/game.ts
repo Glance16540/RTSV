@@ -2,6 +2,7 @@
 
 import { tribeName } from './tribenames';
 import { bereaved } from './bereft';
+import { seatWidows } from './widowtown';
 import { coupleParted, creditKill, leaveForWar, settleHomes, warRenown } from './household';
 import { carriedIn, madeRenown, restoreMade } from './notableweight';
 import { Census, PeopleIn, Stores } from './township';
@@ -561,6 +562,7 @@ export class Game {
         });
         // The town's children are on the record of one of its roofs, part grown.
         if (s.bonus.people?.named?.length && !field) { settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f')); restoreMade(this, i, s.bonus.people.named); }
+        if (s.bonus.people?.widowed?.length && !field) seatWidows(this, i, s.bonus.people.widowed); // the map's widowed, the same in the town (widowtown.ts)
         if (s.bonus.people?.children && !field) cradledOf(this, i, s.bonus.people);
         let k = 0;
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
