@@ -48,6 +48,7 @@ import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
 import { fortShelter, hasFortress } from './fortress';
 import { stoodTo } from './heralds';
+import { oldWeight } from './oldfolk';
 import { wrathAt, wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
@@ -158,7 +159,7 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   const t = c.territories[tid], f = folkOf(c, tid);
   // Men gone to the mines are not at the walls (drift.ts): the walls are left thin.
   const watch = watchOf(c, tid);
-  const men = (f.men / TOWN_SCALE) * THREATS.man * watch; // a town's men count as the same share of it however large towns are (township.ts TOWN_SCALE)
+  const men = (f.men / TOWN_SCALE) * THREATS.man * watch * (1 - THREATS.grudge * oldWeight(c, tid)); // a town's men count as the same share of it however large towns are (township.ts TOWN_SCALE); the old people of a taken town watch grudgingly while they resent it (oldfolk.ts)
   const works = (hasFortress(c, tid) ? THREATS.fortress : 0) + t.buildings.filter((b) => b === 'barracks' || b === 'range' || b === 'stable').length * THREATS.raising + watchDefence(c, tid) + stoodTo(c, tid); // and its town watch (townwatch.ts), and its standing to on a herald's word (heralds.ts)
   let towers = 0, wall = 0;
   for (const b of t.town?.b ?? []) {
