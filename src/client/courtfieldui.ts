@@ -2,7 +2,7 @@
 // (src/sim/courtfield.ts): who waits at the hall and the answers the leader may give there, and the great spoken of in
 // a plot, shown as grown people of the town by name and title. Kept small: the rules are all in the sim.
 import type { Building, Game, Unit } from '../sim/game';
-import { FIELD_ANSWERS, FIELD_COURT, answerBar, cmdAnswer, guiseOf } from '../sim/courtfield';
+import { FIELD_ANSWERS, FIELD_COURT, answerBar, cmdAnswer, courtsOf, guiseOf, plotOf, type CourtOnField } from '../sim/courtfield';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s);
@@ -16,7 +16,7 @@ export function nobleName(g: Game, u: Unit): string {
 
 /** A line under a villager who is shown as one of the great. Nothing on the field says which one plots. */
 export function nobleLine(g: Game, u: Unit): string {
-  const s = g.players[u.owner]?.court, n = guiseOf(g, u);
+  const s = plotOf(g, u), n = guiseOf(g, u); // the plot that speaks of them, where more than one story is afoot
   if (!s || !n || u.noble === undefined) return '';
   if ((s.cleared ?? []).includes(u.noble) || (s.out ?? []).includes(u.noble)) return '<div class="good">👁️ Watched, and true: spoken of no longer</div>';
   if ((s.tried ?? []).includes(u.noble)) return '<div class="warn">👁️ Spoken of in the plot. Watched, and nothing settled by it.</div>';
@@ -26,25 +26,41 @@ export function nobleLine(g: Game, u: Unit): string {
 
 /** A line under the hall where a rival's envoy or a suitor waits, or ''. */
 export function guestLine(g: Game, b: Building, pid: number): string {
-  const s = b.type === 'towncenter' && b.owner === pid ? g.players[pid]?.court : undefined;
-  if (!s) return '';
+  if (b.type !== 'towncenter' || b.owner !== pid) return '';
+  const all = courtsOf(g, pid);
+  return all.map((s) => oneLine(s, all.length > 1)).join(''); // every story of the house afoot at once: an envoy, a suitor, a plot
+}
+/** One story's line. `short`: with others afoot, a clause each so that all fit the panel; the whole errand is its tip. */
+function oneLine(s: CourtOnField, short = false): string {
   if (s.kind === 'plot') {
     const left = (s.nobles ?? []).filter((_, i) => !(s.cleared ?? []).includes(i) && !(s.out ?? []).includes(i)).length;
-    return `<div class="warn">👁️ One of the great plots for your place. ${left} ${left === 1 ? 'is' : 'are'} spoken of, and they are in the town: set a soldier to keep watch on one.</div>`;
+    return short ? `<div class="warn" title="They are in the town: set a soldier to keep watch on one.">👁️ A plot for your place: ${left} of the great ${left === 1 ? 'is' : 'are'} spoken of.</div>`
+      : `<div class="warn">👁️ One of the great plots for your place. ${left} ${left === 1 ? 'is' : 'are'} spoken of, and they are in the town: set a soldier to keep watch on one.</div>`;
   }
   const given = s.answer ? ` <b>Your answer is given</b>, and is done when you leave the town.` : '';
   const said = s.kind === 'suitor' && s.asked ? ` ${esc(s.daughter ?? 'She')} ${s.willing ? 'would have him' : 'would not have him'}.` : '';
-  return `<div class="${s.answer ? 'good' : 'warn'}">${s.kind === 'rival' ? '🗡️' : '💍'} ${esc(cap(s.guest ?? 'A guest'))} waits in your hall. ${esc(s.errand ?? '')}${said}${given}</div>`;
+  const icon = s.kind === 'rival' ? '🗡️' : '💍', full = `${cap(s.guest ?? 'A guest')} waits in your hall. ${s.errand ?? ''}`;
+  if (short) {
+    const what = (s.errand ?? '').split(/, and |\. /)[0].replace(/\.$/, ''); // its first clause: "He demands that Mira be sent over the border"
+    return `<div class="${s.answer ? 'good' : 'warn'}" title="${esc(full)}">${icon} ${esc(cap(s.guest ?? 'A guest'))}: ${esc(what.replace(/^(He|She) /, (m) => m.toLowerCase()))}.${s.answer ? ' <b>Answered.</b>' : said}</div>`;
+  }
+  return `<div class="${s.answer ? 'good' : 'warn'}">${icon} ${esc(full)}${said}${given}</div>`;
 }
 
 /** The answers the leader may give at the hall, as commands on it; none where nobody waits on one. */
 export function answerCommands(g: Game, pid: number, b: Building): Command[] {
-  const s = b.type === 'towncenter' && b.owner === pid ? g.players[pid]?.court : undefined;
-  if (!s || s.kind === 'plot') return [];
+  if (b.type !== 'towncenter' || b.owner !== pid) return [];
+  return courtsOf(g, pid).flatMap((s) => answersOf(g, pid, s));
+}
+function answersOf(g: Game, pid: number, s: CourtOnField): Command[] {
+  if (s.kind === 'plot') return [];
   const icon: Record<string, string> = { defy: '✊', buy: '💰', yield: '🕊️', give: '💍', decline: '🎁', spurn: '🚪', ask: '💬' };
   const one = (id: string, name: string, desc: string): Command => { const bar = answerBar(g, pid, id); return { id: `court:${id}`, icon: icon[id] ?? '⚖️', name, desc, ...(bar ? { locked: bar } : {}), act: () => { cmdAnswer(g, pid, id); } }; };
+  // Whose answer each is, said in its name and its tip: with an envoy and a suitor both in the hall, the suitor's
+  // "Decline" is not to be taken for the envoy's (docs/PLAYTEST.md 5.7).
+  const who = s.kind === 'rival' ? 'the envoy' : (s.guest ?? 'the suitor').split(' of ')[0], whole = s.guest ?? who;
   const out: Command[] = [];
-  if (s.kind === 'suitor') out.push(one('ask', `Ask ${s.daughter ?? 'her'}`, `Ask ${esc(s.daughter ?? 'your daughter')} what she wants before you answer for her.`));
-  for (const a of s.answers) if (FIELD_ANSWERS[s.kind].includes(a.id)) out.push(one(a.id, a.label, 'Your answer, given in your own hall. It is done when you leave the town, as it would be from the map.'));
+  if (s.kind === 'suitor') out.push(one('ask', `Ask ${s.daughter ?? 'her'}`, `Ask ${esc(s.daughter ?? 'your daughter')} what she wants before you answer ${esc(who)} for her.`));
+  for (const a of s.answers) if (FIELD_ANSWERS[s.kind].includes(a.id)) out.push(one(a.id, `To ${who}: ${a.label}`, `Your answer to ${esc(whole)}, given in your own hall. It is done when you leave the town, as it would be from the map.`));
   return out;
 }

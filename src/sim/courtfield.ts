@@ -34,19 +34,38 @@ export interface FieldCourt {
   daughter?: string; willing?: boolean; asked?: boolean;
   /** A plot: those spoken of, which of them it is, those shown true already, and whether informers are kept. */
   nobles?: CourtNoble[]; culprit?: number; cleared?: number[]; informers?: boolean;
+  /** The season of the visit, so that what a watch shows is drawn afresh each visit. */
+  turn?: number;
+  /** The other stories of the house afoot at once (a suitor while a rival threatens, a plot beside either): each as this one is. */
+  also?: FieldCourt[];
 }
 /** What came of it on the field, for the map. */
-export interface FieldCourtOut { id: number; asked?: boolean; answer?: string; cleared: number[] }
+export interface FieldCourtOut { id: number; asked?: boolean; answer?: string; cleared: number[]; /** What came of the other stories afoot at once. */ also?: FieldCourtOut[] }
 
 declare module './game' {
   interface Player {
     /** A story of the leader's house, as it stands on the field (courtfield.ts). */
-    court?: FieldCourt & { laid?: boolean; answer?: string; watched?: Record<number, number>; tried?: number[]; out?: number[] };
+    court?: CourtOnField;
   }
   interface Unit {
     /** Which of the great a plot speaks of this villager is shown as (courtfield.ts). Their own name is kept. */
     noble?: number;
+    /** The plot that speaks of them, by the story's number (courtfield.ts). */
+    plot?: number;
   }
+}
+
+/** A story of the house as the field keeps it: what the map handed in, and what has been done about it here. */
+export type CourtOnField = FieldCourt & { laid?: boolean; answer?: string; watched?: Record<number, number>; tried?: number[]; out?: number[]; also?: CourtOnField[] };
+
+/** Every story of the house afoot on this side's field: the first, and those that came with it. */
+export function courtsOf(g: Game, owner: number): CourtOnField[] {
+  const s = g.players[owner]?.court;
+  return s ? [s, ...(s.also ?? [])] : [];
+}
+/** The story an answer belongs to: a rival's or a suitor's, by what may be answered to each (their answers have different names). */
+function storyFor(g: Game, owner: number, id: string): CourtOnField | undefined {
+  return courtsOf(g, owner).find((s) => (id === 'ask' ? s.kind === 'suitor' : FIELD_ANSWERS[s.kind].includes(id)));
 }
 
 export const FIELD_COURT = {
@@ -66,12 +85,14 @@ const hash = (a: number, b: number, c: number): number => {
   h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 13;
   return (h >>> 0) / 4294967296;
 };
-const done = (s: NonNullable<Game['players'][number]['court']>, i: number): boolean => (s.cleared ?? []).includes(i) || (s.out ?? []).includes(i);
+const done = (s: CourtOnField, i: number): boolean => (s.cleared ?? []).includes(i) || (s.out ?? []).includes(i);
 
 /** Lay a plot on the town the first time the field is looked at: each of the great still spoken of is one of its grown people. */
 export function layCourt(g: Game, owner: number): void {
-  const s = g.players[owner]?.court;
-  if (!s || s.laid) return;
+  for (const s of courtsOf(g, owner)) layOne(g, owner, s);
+}
+function layOne(g: Game, owner: number, s: CourtOnField): void {
+  if (s.laid) return;
   s.laid = true;
   if (s.kind !== 'plot') return;
   const used = new Set<number>();
@@ -80,45 +101,50 @@ export function layCourt(g: Game, owner: number): void {
     const u = g.units.find((x) => x.owner === owner && !x.dead && x.type === 'villager' && x.gender === (n.female ? 'f' : 'm') && !used.has(x.id) && x.noble === undefined && x.suspect === undefined);
     if (!u) return;
     used.add(u.id);
-    u.noble = i;
+    u.noble = i; u.plot = s.id;
   });
 }
 
 /** The name and title a villager is shown under, if they are one of the great spoken of; else undefined. */
 export function guiseOf(g: Game, u: Unit): CourtNoble | undefined {
-  return u.noble === undefined ? undefined : g.players[u.owner]?.court?.nobles?.[u.noble];
+  return u.noble === undefined ? undefined : plotOf(g, u)?.nobles?.[u.noble];
+}
+/** The plot that speaks of this villager, if one does. */
+export function plotOf(g: Game, u: Unit): CourtOnField | undefined {
+  return u.noble === undefined ? undefined : courtsOf(g, u.owner).find((s) => s.kind === 'plot' && (u.plot === undefined || s.id === u.plot));
 }
 
 /** A second of the story on the field: a soldier keeping by one of the great watches them. Called once a second (game.ts step). */
 export function courtTick(g: Game): void {
   for (let owner = 0; owner < g.players.length; owner++) {
-    const s = g.players[owner]?.court;
-    if (!s) continue;
     layCourt(g, owner);
-    if (s.kind !== 'plot') continue;
-    const need = FIELD_COURT.watch * (s.informers ? FIELD_COURT.informed : 1);
-    for (const u of g.units) {
-      if (u.owner !== owner || u.dead || u.noble === undefined) continue;
-      const i = u.noble;
-      if (done(s, i) || (s.tried ?? []).includes(i)) continue;
-      const by = g.units.some((x) => x.owner === owner && !x.dead && x.type !== 'villager' && !x.def.naval && Math.hypot(x.x - u.x, x.y - u.y) <= FIELD_COURT.near);
-      const w = (s.watched ??= {});
-      w[i] = by ? (w[i] ?? 0) + 1 : 0;
-      if (w[i] < need) continue;
-      (s.tried ??= []).push(i);
-      const n = s.nobles![i], shown = i !== s.culprit && hash(g.seed, s.id * 151 + i, 7) < FIELD_COURT.shown;
-      if (shown) (s.out ??= []).push(i);
-      g.msg(owner, shown
-        ? `${n.title} has been watched day and night, and is true. ${n.female ? 'She' : 'He'} is spoken of no longer.`
-        : `${n.title} has been watched day and night. Nothing is settled by it.`);
-    }
+    for (const s of courtsOf(g, owner)) if (s.kind === 'plot') watchOne(g, owner, s);
+  }
+}
+/** One plot's watch for a second: a soldier keeping by one of its great. */
+function watchOne(g: Game, owner: number, s: CourtOnField): void {
+  const need = FIELD_COURT.watch * (s.informers ? FIELD_COURT.informed : 1);
+  for (const u of g.units) {
+    if (u.owner !== owner || u.dead || u.noble === undefined || plotOf(g, u) !== s) continue;
+    const i = u.noble;
+    if (done(s, i) || (s.tried ?? []).includes(i)) continue;
+    const by = g.units.some((x) => x.owner === owner && !x.dead && x.type !== 'villager' && !x.def.naval && Math.hypot(x.x - u.x, x.y - u.y) <= FIELD_COURT.near);
+    const w = (s.watched ??= {});
+    w[i] = by ? (w[i] ?? 0) + 1 : 0;
+    if (w[i] < need) continue;
+    (s.tried ??= []).push(i);
+    const n = s.nobles![i], shown = i !== s.culprit && hash(g.seed, s.id * 151 + i, 7 + 31 * (s.turn ?? 0)) < FIELD_COURT.shown; // drawn afresh each season's visit: one not shown true this time may be the next
+    if (shown) (s.out ??= []).push(i);
+    g.msg(owner, shown
+      ? `${n.title} has been watched day and night, and is true. ${n.female ? 'She' : 'He'} is spoken of no longer.`
+      : `${n.title} has been watched day and night. Nothing is settled by it.`);
   }
 }
 
 /** Why the leader cannot give this answer at the hall now, or '' if they can. */
 export function answerBar(g: Game, owner: number, id: string): string {
-  const s = g.players[owner]?.court;
-  if (!s || s.kind === 'plot') return 'Nobody waits on an answer here.';
+  const s = storyFor(g, owner, id);
+  if (!s || s.kind === 'plot') return courtsOf(g, owner).some((x) => x.kind !== 'plot') ? 'That is not for answering here.' : 'Nobody waits on an answer here.';
   if (s.answer) return 'Your answer is given, and goes with you when you leave.';
   if (id === 'ask') return s.kind !== 'suitor' ? 'There is nobody to ask.' : s.asked ? `${s.daughter} has said what she wants.` : '';
   const a = s.answers.find((x) => x.id === id);
@@ -128,7 +154,7 @@ export function answerBar(g: Game, owner: number, id: string): string {
 
 /** The leader asks the daughter what she wants, or gives the guest an answer. Returns whether it was done. */
 export function cmdAnswer(g: Game, owner: number, id: string): boolean {
-  const s = g.players[owner]?.court;
+  const s = storyFor(g, owner, id);
   if (!s || answerBar(g, owner, id)) return false;
   if (id === 'ask') {
     s.asked = true;
@@ -142,7 +168,8 @@ export function cmdAnswer(g: Game, owner: number, id: string): boolean {
 
 /** What came of the story on the field, for the map: what was asked and answered, and who was shown true. */
 export function courtOut(g: Game, owner: number): FieldCourtOut | undefined {
-  const s = g.players[owner]?.court;
-  if (!s) return undefined;
-  return { id: s.id, ...(s.asked ? { asked: true } : {}), ...(s.answer ? { answer: s.answer } : {}), cleared: [...(s.out ?? [])] };
+  const one = (s: CourtOnField): FieldCourtOut => ({ id: s.id, ...(s.asked ? { asked: true } : {}), ...(s.answer ? { answer: s.answer } : {}), cleared: [...(s.out ?? [])] });
+  const [first, ...rest] = courtsOf(g, owner);
+  if (!first) return undefined;
+  return { ...one(first), ...(rest.length ? { also: rest.map(one) } : {}) };
 }
