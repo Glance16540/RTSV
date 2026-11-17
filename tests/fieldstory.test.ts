@@ -120,6 +120,20 @@ describe('a killer on the field', () => {
     }
   }, 60_000);
 
+  it('renames nobody the town keeps on its record: one already of the name is taken, else one with no record', () => {
+    const { c, at } = world();
+    const it = beginKiller(c, at), g = enter(c, at);
+    const vs = g.units.filter((u) => u.owner === 0 && u.type === 'villager' && !u.dead);
+    const p0 = it.people[0], same = vs.find((u) => u.gender === p0.gender)!;
+    same.name = p0.name; same.family = p0.family; // already of the town, by that name
+    const kept = vs.filter((u) => u !== same).slice(0, Math.floor(vs.length / 2));
+    for (const u of kept) u.kids = 1; // a mother or father on the record by name
+    const was = new Map(kept.map((u) => [u.id, `${u.name} ${u.family}`]));
+    run(g, 1);
+    expect(same.suspect).toBe(0);
+    for (const u of kept) { expect(`${u.name} ${u.family}`).toBe(was.get(u.id)); expect(u.suspect).toBeUndefined(); }
+  }, 60_000);
+
   it('questioning may clear an innocent, never the guilty; once each; and the map takes the clearing with a clue', () => {
     const { c, at } = world();
     const it = beginKiller(c, at), g = enter(c, at);

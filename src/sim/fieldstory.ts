@@ -73,11 +73,16 @@ export function layStory(g: Game, owner: number): void {
   if (!s || s.laid) return;
   s.laid = true;
   if (s.kind === 'thief') { markRobbed(g, owner); return; }
-  // The spoken of: villagers of their sex take their names, each one villager, while there are villagers to be them.
-  const used = new Set<number>();
+  // The spoken of: one of the town already of that name, if there is; else a villager of their sex takes the name, but
+  // only one whose name is on no record that goes home with the census (roofs.ts by house, battlefolk.ts a mother by
+  // name, furlough.ts a man on leave, queuedmen.ts a man in a queue), so that the story renames nobody the town knows.
+  const used = new Set<number>(), held = new Set<number>();
+  for (const b of g.buildings) { if (b.residents.m) held.add(b.residents.m); if (b.residents.f) held.add(b.residents.f); for (const q of b.queue) if (q.who) held.add(q.who); }
+  const loose = (x: Unit): boolean => !held.has(x.id) && !(x.kids ?? 0) && !x.story?.length && !x.onLeave;
   s.people.forEach((p, i) => {
     if (s.cleared.includes(i)) return;
-    const u = villagers(g, owner, p.gender).find((x) => !used.has(x.id) && x.suspect === undefined);
+    const free = villagers(g, owner, p.gender).filter((x) => !used.has(x.id) && x.suspect === undefined);
+    const u = free.find((x) => x.name === p.name && x.family === p.family) ?? free.find(loose);
     if (!u) return;
     used.add(u.id);
     u.name = p.name; u.family = p.family; u.suspect = i;
