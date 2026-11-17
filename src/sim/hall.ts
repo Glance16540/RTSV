@@ -7,8 +7,8 @@
 //     clues turn up, as surely as if the leader's court were in the town (courtstory.ts, intrigue.ts);
 //   - the nation's nobles gather at it: their tempers cool half again as fast while the nation has one (nobles.ts),
 //     and an angry noble of the town keeps his watch against bands, as when the leader is there.
-// A rival nation raises one in its chief town when it has none and its stores hold one and a half working stocks
-// over the cost (rule.ts, RULE_KEEP). The player raises theirs from the land's panel: the governor does not.
+// A rival nation raises one in its chief town when it has none and can spare the cost out of plenty (rule.ts,
+// plenty.ts: PLENTY.rule). The player raises theirs from the land's panel: the governor does not.
 import type { Campaign } from './campaign';
 import { leaderAt } from './court';
 import { standsAt } from './studies';
