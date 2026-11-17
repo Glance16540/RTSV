@@ -17,6 +17,7 @@
 import type { Campaign, Territory } from './campaign';
 import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN } from './campaignbase';
 import { Band, Raid, bringHome, chance, mark, note, reachOf, softest, strike } from './threats';
+import { gainAt } from './stores';
 
 export const HORDE = {
   /** The chance marauders appear in a season when there are none, the chance a camp raids, and the chance a strong one overruns a neighbour. */
@@ -59,7 +60,7 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
     c.bands = (c.bands ?? []).filter((x) => x !== b);
     if (!fell) continue;
     const f = c.factions[t.owner];
-    f.supplies += HORDE_PRIZE;
+    gainAt(c, t.owner, t.id, HORDE_PRIZE); // the camp's goods, in the town freed (stores.ts)
     mark(c, 'freed', t.id);
     note(c, out, 'broken', b, t.id, `${f.id === 0 ? 'You have' : `${f.name} have`} broken the marauders at ${t.name}${home ? ' and the women they took have come home' : ''}: ${HORDE_PRIZE} supplies.`, [t.owner, ...b.held.map((h) => h.owner)]);
   }
