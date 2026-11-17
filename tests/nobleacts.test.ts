@@ -5,13 +5,13 @@ import { NOBLES, noblesAt, noblesOf, noblesSeason } from '../src/sim/nobles';
 import type { Noble } from '../src/sim/nobles';
 import { ACTS, nobleActsSeason, sendMen } from '../src/sim/nobleacts';
 import { beginPlot } from '../src/sim/courtstory';
-import { folkOf } from '../src/sim/township';
+import { TOWN_SCALE, folkOf } from '../src/sim/township';
 import { agesOf } from '../src/sim/ageing';
 
 const world = (): { c: Campaign; tid: number; other: number; lord: Noble } => {
   const c = newCampaign(5, 1, 1, 'hearth');
   const tid = c.territories.find((t) => t.capital === 0)!.id;
-  const f = folkOf(c, tid); f.men = 10; f.women = 8; f.elders = 0; delete f.ages;
+  const f = folkOf(c, tid); f.men = 10 * TOWN_SCALE; f.women = 8 * TOWN_SCALE; f.elders = 0; delete f.ages; // the lord's town, with men to spare at either town size
   const near = c.territories[c.territories[tid].adj[0]];
   near.owner = 0; delete near.horde;
   const g = folkOf(c, near.id); g.men = 2; g.women = 4; g.elders = 0; delete g.ages;
@@ -27,7 +27,7 @@ describe('nobles who act', () => {
     raid(c, other);
     nobleActsSeason(c, 0);
     expect(folkOf(c, other).men).toBe(2 + ACTS.men);
-    expect(folkOf(c, tid).men).toBe(10 - ACTS.men);
+    expect(folkOf(c, tid).men).toBe(10 * TOWN_SCALE - ACTS.men);
     expect(agesOf(c, other, folkOf(c, other)).m).toHaveLength(2 + ACTS.men);
     expect(c.log.some((l) => l.includes(lord.name) && l.includes('young men'))).toBe(true);
     nobleActsSeason(c, 0);

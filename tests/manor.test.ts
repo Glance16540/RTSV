@@ -6,12 +6,12 @@ import { MANOR, lordSay, manorAt } from '../src/sim/manor';
 import { manorSeason } from '../src/sim/rule';
 import { raiseBar, raiseWork } from '../src/sim/townworks';
 import { layTown } from '../src/sim/rivalrule';
-import { folkOf } from '../src/sim/township';
+import { TOWN_SCALE, folkOf } from '../src/sim/township';
 import { NOBLES, heardDecree, noblesAt, noblesSeason } from '../src/sim/nobles';
 import { Game } from '../src/sim/game';
 import { setups, spot } from './helpers';
 
-const world = (grown = 14): { c: Campaign; tid: number } => {
+const world = (grown = 14 * TOWN_SCALE): { c: Campaign; tid: number } => { // a town big enough for a lord and a manor, at either town size
   const c = newCampaign(5, 1, 1, 'hearth');
   const tid = c.territories.find((t) => t.capital === 0)!.id;
   for (const x of c.factions) x.age = 1;
@@ -27,8 +27,8 @@ const lordOf = (c: Campaign, tid: number) => noblesAt(c, tid).find((n) => n.rank
 
 describe('the Noble\'s Manor', () => {
   it('is raised only in a town of twelve grown people or more', () => {
-    const small = world(8);
-    expect(raiseBar(small.c, 0, small.tid, 'manor')).toMatch(/12 grown/);
+    const small = world(8 * TOWN_SCALE);
+    expect(raiseBar(small.c, 0, small.tid, 'manor')).toContain(`${12 * TOWN_SCALE} grown`); // TOWN_SCALE times the field's figure, on the map
     const { c, tid } = world();
     expect(raiseWork(c, 0, tid, 'manor')).toBe('');
     expect(manorAt(c, tid)).toBe(false); // begun
@@ -54,7 +54,7 @@ describe('the Noble\'s Manor', () => {
   it('a rival raises one in its largest town that has none, when it can spare the stores', () => {
     const { c } = world();
     const r = c.territories.find((t) => t.capital === 1)!, f = folkOf(c, r.id);
-    f.men = 8; f.women = 8; f.elders = 0; delete f.ages;
+    f.men = 8 * TOWN_SCALE; f.women = 8 * TOWN_SCALE; f.elders = 0; delete f.ages;
     layTown(c, r.id);
     f.stores = { food: 100, wood: 100, gold: 100, stone: 100 };
     expect(manorSeason(c, 1)).toBe(false);
