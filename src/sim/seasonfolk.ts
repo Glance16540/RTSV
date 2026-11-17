@@ -7,7 +7,10 @@
 //  - Who can bear: a man and a woman of working age under one roof. A town whose buildings are on record has as
 //    many roofs as it has finished houses; a town nobody has fought over or visited is kept by its governor, who
 //    houses its couples. Each birth costs the same food as in a town, and needs room: five to a house and ten to
-//    the hall, as in a town, for every grown person and child.
+//    the hall, as in a town, for every grown person and child. And a couple waits for a child while the town's larder is
+//    thin (under LEAN_BIRTH food a head in store): towns had grown past their fields and gone hungry, the more so with
+//    more men kept at home (192 campaigns: a farmed town hungry 2.2 to 2.3% of its seasons, towns dying out 2.3 to 2.7 in
+//    100; with the wait, 1.3% and 0.9 to 1.0, hunger deaths 1.0 to 1.1 a nation, in band).
 //  - How often: a couple raises a child about every MAP_BIRTH seasons (a year) at first, more slowly the more children
 //    under five the town has on its records (as a house slows in a town), and sooner or later by the town's creed, which
 //    also decides how many of the births due do not come (the same shares as in a town). No child dies.
@@ -36,6 +39,8 @@ declare module './township' {
 
 /** Seasons between a housed couple's children on the map, before creed and the slowing with more young children. */
 export const MAP_BIRTH = 4;
+/** Food a head in store under which a town's couples wait for a child: a thin larder (at 16, a farmed town was hungry 0.9 to 1.2% of its seasons; at 32, 0.3%, and hunger deaths fell under their band). */
+export const LEAN_BIRTH = 12;
 /** Children under this many seasons (five years) are the ones who slow a couple's next. */
 export const YOUNG_SEASONS = 20;
 /** Seasons a child on the map takes to come of age. */
@@ -84,7 +89,7 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
   const slow = Math.min(3, 1 + 0.2 * (young / couples));
   f.due = Math.min(couples, (f.due ?? 0) + (couples * creed.birth * birthPace(c, tid)) / (MAP_BIRTH * slow)); // a people's own study may bring them sooner (ownstudies.ts)
   while (f.due >= 1) {
-    if (grown(f) + f.children + 1 > roomOf(t) || f.stores.food < BIRTH_COST || f.children >= MAX_KIND) { f.due = Math.min(f.due, 1); break; }
+    if (grown(f) + f.children + 1 > roomOf(t) || f.stores.food < BIRTH_COST || f.stores.food < LEAN_BIRTH * (grown(f) + f.children) || f.children >= MAX_KIND) { f.due = Math.min(f.due, 1); break; } // no room, no food for it, or a thin larder
     f.due -= 1;
     // The births that do not come are decided without spending the food, as in a town.
     if (hash(c.seed, tid * 131 + c.turn, 1000 + born + missed) < creed.childLoss * midwifeLoss(c, t.owner)) { missed++; continue; } // Midwifery (midwifery.ts)
