@@ -76,7 +76,7 @@ export function end(c: Campaign, it: Intrigue, how: NonNullable<Intrigue['ended'
   it.ended = { turn: c.turn, how, text };
   delete it.caught; it.watch = false;
   note(c, it, tone, text, who);
-  (c.chronicle ??= []).push({ turn: c.turn, text }); // a mark on the record, whatever came of it
+  if (it.owner === 0) (c.chronicle ??= []).push({ turn: c.turn, text }); // a mark on the record, whatever came of it: the player's own (a rival's that he hears of, rivalstories.ts)
   for (const ended of ENDINGS) ended(c, it); // and what it leaves behind in the town or the court (aftermath.ts)
   const all = (c.intrigues ??= []), done = all.filter((x) => x.ended);
   if (done.length > KEEP.kept) all.splice(all.indexOf(done[0]), 1);

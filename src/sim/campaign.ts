@@ -92,6 +92,7 @@ const hash = (a: number, b: number): number => {
 
 import { HeroSpec, cleanHero, MAX_RANK } from './hero';
 import { seasonTurned } from './seasonreport';
+import { rivalStoriesSeason } from './rivalstories';
 
 /** Some land is special. */
 export interface TraitDef { name: string; icon: string; desc: string }
@@ -1249,6 +1250,7 @@ export function continueAI(c: Campaign): void {
       turnEvent(c);
       storyTurn(c);
       intrigueSeason(c); // stories inside the story: a thief, a killer to be found (intrigue.ts)
+      rivalStoriesSeason(c); // and the rivals' own, answered by their rulers (rivalstories.ts)
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
       checkDominion(c);
       ruinSeason(c); // twenty years with no people gaining ground and the bands on much of the map: the age ends in ruin (ruin.ts)

@@ -3,6 +3,7 @@
 import { layCoarse, layKept } from './firstlay';
 import { unlaidOf, unplaced } from './unlaid';
 import { nobodyLeft } from './lastperson';
+import { liftSieges } from './siegelift';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
@@ -32,6 +33,7 @@ import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
+import { storyTick, type FieldStory } from './fieldstory';
 import { boughtIn } from './contagion';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
@@ -354,7 +356,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[] };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -517,6 +519,7 @@ export class Game {
       } else if (!field) {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        if (s.bonus?.story) this.players[i].story = { ...s.bonus.story, people: s.bonus.story.people.map((p) => ({ ...p })), robbed: [...s.bonus.story.robbed], cleared: [...s.bonus.story.cleared] }; // a story afoot here (fieldstory.ts)
         if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
         if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
         else {
@@ -2102,7 +2105,7 @@ export class Game {
     this.tick++;
     this.time += DT;
     this.stepWeather();
-    if (this.tick % 20 === 0) calamity(this);
+    if (this.tick % 20 === 0) { calamity(this); storyTick(this); } // a story afoot in the town (fieldstory.ts)
     this.pathBudget = 16;
 
     for (const bucket of this.hash) bucket.length = 0;
@@ -2228,6 +2231,8 @@ export class Game {
       }
       // A town with nobody left in it, where none can be bought, is beaten: it does not hold the battle open (lastperson.ts).
       for (const p of this.players) if (!p.neutral && !p.defeated && alive.has(p.id) && nobodyLeft(this, p.id)) { alive.delete(p.id); fallen.add(p.id); for (const q of this.players) if (!q.neutral && q.id !== p.id) this.msg(q.id, `Nobody is left alive among ${p.name}.`); }
+      // A besieger whose army is spent, with nothing to raise more, lifts the siege and has lost it (siegelift.ts).
+      for (const id of liftSieges(this)) { alive.delete(id); fallen.add(id); }
       // A raiding band has no town to lose: it is beaten when its last fighter or villager falls.
       for (const u of this.units) if (!alive.has(u.owner) && !fallen.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
     }

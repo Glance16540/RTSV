@@ -2,7 +2,7 @@
 
 import { bake, unbake } from './bake';
 import { TownBatch } from './townbatch';
-import { foldFigure } from './foldfigure';
+import { cullBeast, foldFigure } from './foldfigure';
 import * as THREE from 'three';
 import { standInBuilding } from './standins'; // a new building's stand-in look until it has a model (standins.ts)
 import { BUILDINGS } from '../sim/data';
@@ -568,7 +568,7 @@ export class Renderer {
       const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
       v = { g: made?.g ?? creature?.g ?? (afoot ? new THREE.Group() : makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear)), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, work: 0, job, wear, hp: u.hp, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
-      if (creature) { v.beasts = [creature]; v.wildlife = true; }
+      if (creature) { v.beasts = [creature]; v.wildlife = true; if (!Renderer.noBake) cullBeast(creature.g); }
       v.real = made?.real;
       v.g.traverse((o) => { if (o.userData.leg !== undefined) v!.legs.push(o); });
       if (ridden) this.mount(u, v);
@@ -1338,7 +1338,7 @@ export class Renderer {
     if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
     g.userData.hurt = hurt;
     // A finished building that stands still is drawn as one mesh for each of its materials (bake.ts).
-    if (b.complete && !g.userData.site && !b.def.wall && !g.userData.baked && !Renderer.noBake) bake(g);
+    if (b.complete && !g.userData.site && !b.def.wall && !g.userData.baked && !Renderer.noBake) bake(g, { all: true });
     // A building going up rises out of its footings inside a scaffold of poles, which comes down when it is done.
     let site = g.userData.site as THREE.Group | undefined;
     if (!b.complete) {

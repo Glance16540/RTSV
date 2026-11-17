@@ -13,8 +13,11 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { placed } from './bake';
 
-/** What of a figure's parts may not be folded: those shown and hidden while it lives. */
-export interface Unfoldable { props: Map<string, THREE.Object3D>; gear: THREE.Object3D[][]; spare: THREE.Object3D | null }
+/**
+ * What of a figure's parts may not be folded: those shown and hidden while it lives. `skins` and `whole` (RealPerson's,
+ * for its wounds) are brought up to date when the skinned body is folded.
+ */
+export interface Unfoldable { props: Map<string, THREE.Object3D>; gear: THREE.Object3D[][]; spare: THREE.Object3D | null; skins?: THREE.SkinnedMesh[]; whole?: THREE.BufferGeometry[] }
 
 /** The coloured-by-vertex twin of a plain material, one for each way of surface. */
 const twins = new Map<string, THREE.MeshStandardMaterial>();
@@ -82,5 +85,77 @@ export function foldFigure(body: THREE.Object3D, real: Unfoldable): number {
     for (const m of gr.parts) m.removeFromParent();
     saved += gr.parts.length - 1;
   }
+  return saved + foldSkins(body, real);
+}
+
+/**
+ * The skinned body: the mannequin's two meshes and the cloth sewn on it (a bodice, a skirt), each a draw and a shadow.
+ * All ride the one skeleton; those of one material are merged into one skinned mesh, so a figure is two of them, not four.
+ * The merged shape is made once for each set of shapes and shared by every figure that has the same. And where three.js
+ * would draw a skinned figure everywhere, never knowing where its motion has taken it, it is given a sphere wide enough
+ * for any pose (a body's height about its middle), so a figure out of sight, or out of the sun's view for its shadow,
+ * is left undrawn.
+ */
+const skinMerges = new Map<string, THREE.BufferGeometry>();
+function foldSkins(body: THREE.Object3D, real: Unfoldable): number {
+  const all: THREE.SkinnedMesh[] = [];
+  body.traverse((o) => { const m = o as THREE.SkinnedMesh; if (m.isSkinnedMesh && m.visible && !Array.isArray(m.material)) all.push(m); });
+  if (!all.length) return 0;
+  const lead = all[0].skeleton, at = new Map(lead.bones.map((b, i) => [b, i]));
+  // Every mesh must hang on the same bones in the same bind pose, or it is left alone.
+  const fits = (m: THREE.SkinnedMesh): boolean => m.bindMatrix.equals(all[0].bindMatrix) && m.skeleton.bones.every((b, i) => at.has(b) && m.skeleton.boneInverses[i].equals(lead.boneInverses[at.get(b)!]));
+  const groups = new Map<string, THREE.SkinnedMesh[]>();
+  for (const m of all) {
+    if (!fits(m)) continue;
+    const k = `${(m.material as THREE.Material).uuid}|${m.castShadow ? 1 : 0}${m.receiveShadow ? 1 : 0}|${Object.keys(m.geometry.attributes).sort().join(',')}|${!!m.geometry.index}`;
+    (groups.get(k) ?? groups.set(k, []).get(k)!).push(m);
+  }
+  let saved = 0;
+  for (const list of groups.values()) {
+    let mesh = list[0];
+    if (list.length > 1) {
+      const key = list.map((m) => `${m.geometry.uuid}:${m.skeleton.bones.map((b) => at.get(b)).join('.')}`).join('|');
+      let geo = skinMerges.get(key);
+      if (!geo) {
+        const parts = list.map((m) => {
+          const g = m.geometry.clone();
+          const idx = g.getAttribute('skinIndex') as THREE.BufferAttribute;
+          if (m.skeleton !== lead) for (let i = 0; i < idx.array.length; i++) (idx.array as Uint16Array)[i] = at.get(m.skeleton.bones[idx.array[i]])!;
+          return g;
+        });
+        const merged = mergeGeometries(parts, false);
+        parts.forEach((g) => g.dispose());
+        if (!merged) continue;
+        skinMerges.set(key, (geo = merged));
+      }
+      mesh = new THREE.SkinnedMesh(geo, list[0].material);
+      mesh.castShadow = list[0].castShadow; mesh.receiveShadow = list[0].receiveShadow;
+      mesh.userData.folded = true;
+      list[0].parent!.add(mesh);
+      mesh.position.copy(list[0].position); mesh.quaternion.copy(list[0].quaternion); mesh.scale.copy(list[0].scale);
+      mesh.bind(lead, list[0].bindMatrix);
+      for (const m of list) m.removeFromParent();
+      saved += list.length - 1;
+      // The wounds paint on the merged surface now (person.ts wounds: blood and torn cloth on a copy of the whole).
+      if (real.skins && real.whole) {
+        const had = list.some((m) => real.skins!.includes(m));
+        for (const m of list) { const i = real.skins.indexOf(m); if (i >= 0) { real.skins.splice(i, 1); real.whole.splice(i, 1); } }
+        if (had && geo.getAttribute('color')) { real.skins.push(mesh); real.whole.push(geo); }
+      }
+    }
+    roomy(mesh);
+  }
   return saved;
+}
+
+/** A sphere for any pose, in the skinned mesh's own space (the body's whole size about its middle), so it can be culled. */
+function roomy(mesh: THREE.SkinnedMesh): void {
+  const box = new THREE.Box3().setFromBufferAttribute(mesh.geometry.getAttribute('position') as THREE.BufferAttribute);
+  mesh.boundingSphere = new THREE.Sphere(box.getCenter(new THREE.Vector3()), box.getSize(new THREE.Vector3()).length());
+  mesh.frustumCulled = true;
+}
+
+/** Let an animal's skinned meshes be left undrawn when out of sight, as a person's are (beast.ts draws them everywhere). */
+export function cullBeast(root: THREE.Object3D): void {
+  root.traverse((o) => { const m = o as THREE.SkinnedMesh; if (m.isSkinnedMesh) roomy(m); });
 }
