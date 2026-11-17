@@ -1565,7 +1565,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   noteDowned(c, after.downed); // the men of the rolls whose soldiers went down there: the map counts them first (soldiernames.ts)
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
-  if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
+  if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks, was: p.defender }); // its dead were its holder's when the battle began
   note.census = !!census && !census.unfielded; // a count of a town never on the field is not the town (writeguard.ts): nothing after reads it as such
   BATTLE_HOOKS.run('housed', c, p, note); // the town's people and stores are as the battle left them
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
