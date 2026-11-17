@@ -2,6 +2,7 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
+import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
 import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront, HUB } from './campaignbase';
 import type { Biome, CompanyDef, FaithDef, Front, SiteDef, Sky, World, WorldShape } from './campaignbase';
@@ -1233,6 +1234,7 @@ export function continueAI(c: Campaign): void {
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
+      oldSeasons(c); // the old people of a town taken become the holder's (oldfolk.ts)
       settleFaith(c);
       seasonDrift(c); // towns drift by what strains them, and rulers give decrees (drift.ts, decrees.ts)
       mendTowns(c);

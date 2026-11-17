@@ -18,6 +18,7 @@
 // comes in, and a town with a tavern falls the faster. The nation's standing is its towns' (townfaith.ts), so it
 // follows them.
 import type { Campaign } from './campaign';
+import { oldStrain } from './oldfolk';
 import { faithAt, swayNation, swayTown } from './townfaith';
 import { isDecadent } from './creed';
 import { griefSeason } from './grief';
@@ -87,7 +88,7 @@ export function driftTown(c: Campaign, tid: number): number {
   const mon = monasteryCare(c, tid); // a Monastery or Convent cares for the town and tends its sick and bereaved (monastery.ts)
   const tended = 1 - TEND_EASE * Math.max(e.tend, mon.tend);
   const griefNow = Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX);
-  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + (STRAIN.sick * Number(mood.sick) + STRAIN.grief * griefNow) * tended + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid))) * e.strainScale + e.strainAdd + nobleStrain(c, tid));
+  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + (STRAIN.sick * Number(mood.sick) + STRAIN.grief * griefNow) * tended + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid))) * e.strainScale + e.strainAdd + nobleStrain(c, tid) + oldStrain(c, tid)); // and a taken town's resentful old people (oldfolk.ts)
   const church = t.buildings.includes('church'), tavern = t.buildings.includes('tavern') && !e.tavernShut;
   const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care + mon.care);
   // Only the call to church raises a town here; the rest of its care is shown, and its church is counted by townfaith.ts.
