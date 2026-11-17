@@ -113,7 +113,7 @@ export function seasonOfYoke(c: Campaign): YokeNews[] {
     if (y.resent <= 0) {
       y.settled = true;
       if (c.turn - y.since >= YOKE.memory) delete t.yoke;
-      c.log.push(`The people of ${t.name} now count themselves ${mine ? 'yours' : `${nameOf(c, owner)}'s`}.`);
+      c.log.push(`The people of ${t.name} now count themselves ${mine ? 'yours' : `among ${nameOf(c, owner)}`}.`);
       news.push({ at: t.id, kind: 'settled', owner });
     }
   }

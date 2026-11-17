@@ -29,7 +29,7 @@ import { creditArmy } from './warhouse';
 import { raisedInBattle } from './dynasty';
 import { HeroSpec, MAX_RANK } from './hero';
 import { Band, breakBand, chance, note } from './threats';
-import { exposedHow, exposure, marched } from './bandmarch';
+import { exposedHow, exposure, marchOf, marched } from './bandmarch';
 
 declare module './campaign' {
   interface Pending {
@@ -235,7 +235,11 @@ export function huntBands(c: Campaign, out: string[]): number {
   for (const b of [...(c.bands ?? [])]) {
     if (b.kind === 'marauders') continue;
     const wronged = new Set(b.held.map((h) => h.owner));
-    const idle = b.bound === undefined && (c.turn - b.since < FIGHT.grace || chance(c, b.id, 89) >= FIGHT.keen); // not this season, unless it holds their own, or is on the march and has come beside their land: then they go out to meet it
+    // Not this season, unless it holds their own, or it is on the march and has come beside their land: then they go out
+    // to meet it. A band from the far wilds must have been seen first (bandmarch.ts): nobody rides out against a camp
+    // nobody knows of.
+    const coming = b.bound !== undefined && (!b.afar || marchOf(c, b.id)?.seen !== undefined);
+    const idle = !coming && (c.turn - b.since < FIGHT.grace || chance(c, b.id, 89) >= FIGHT.keen);
     const near = new Set(placeOf(b).flatMap((id) => [id, ...c.territories[id].adj]));
     // Whose business it is: a people that holds the band's place or a land next to it.
     const owners = new Set([...near].map((id) => c.territories[id].owner).filter((f) => f > 0 && c.factions[f]?.alive && c.factions[f].isAI));

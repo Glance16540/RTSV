@@ -8,10 +8,12 @@
  * - the town's faith: a town that stands far from where the nation stands (townfaith.ts) pulls the nation's own
  *   standing apart and is slow to settle, so it is the less wanted the further off it is. A tribe's town, which
  *   stands in the middle, is weighed the same way.
- * The lower the figure the more the land is wanted. Whether the army dares the march is still decided on its
- * strength against the defence (campaign.ts), with the country's march now counted there too.
+ * The lower the figure the more the land is wanted. Whether the army dares the march is decided by the fight
+ * itself on an even day (mapbattle.ts, wouldTake), with the country's march and the weather over the land counted
+ * in its strength as the battle will count them, and the town's creed in how hard and how long it is defended.
  */
 import type { Campaign } from './campaign';
+import { Sky, WEATHER, weatherAt } from './campaignbase';
 import { countryOf, countryYield } from './country';
 import { faithAt, nationVirtue } from './townfaith';
 
@@ -23,6 +25,8 @@ export const AIM = {
 };
 /** How an army fares attacking into this country: under 1 weaker, over 1 stronger. */
 export const marchInto = (c: Campaign, tid: number): number => countryOf(c, tid).march;
+/** How an army fares attacking into the weather over this land now: rain, snow and dust all tell against it (campaignbase.ts, WEATHER). */
+export const skyInto = (c: Campaign, tid: number): number => { const sky = weatherAt(c, tid); return sky ? WEATHER[sky as Sky].march : 1; };
 /** How far a town stands from where this nation stands, 0 to 200. */
 export const faithGap = (c: Campaign, f: number, tid: number): number => Math.abs(faithAt(c, tid) - nationVirtue(c, f));
 /** What a land is to a nation thinking of marching on it, given its defence: the lower, the more it is wanted. */

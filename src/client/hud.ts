@@ -1,5 +1,6 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { endCard } from './briefing';
 import { possessive, renameOwn } from '../sim/naming';
 const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
@@ -177,8 +178,10 @@ export class Hud {
     playLine(s);
   }
 
+  private tallied = -100;
   handle(ev: GameEvent): void {
     const { game, pid } = this.app;
+    if (this.app.tally) { if (game.tick - this.tallied >= 20) { this.app.tally.watch(game); this.tallied = game.tick; } if (ev.t === 'remove' && ev.unit) this.app.tally.removed(ev.id); } // a campaign battle is counted as it is fought (battlecard.ts)
     if (ev.t === 'msg' && ev.player === pid) this.toast(ev.text);
     else if (ev.t === 'age') {
       if (ev.player === pid) { this.toast(`You have advanced to the ${AGES[game.players[pid].age].name}!`, 'big'); this.advisorSay('p_ageup'); }
@@ -208,7 +211,10 @@ export class Hud {
         : byWonder ? `${cap1(possessive(game.players[ev.winner].name))} Wonder stood too long.` : 'Your settlement has fallen.';
       const civ = game.players[pid].civ;
       const last = { civ, event: (win ? 'p_win' : 'p_loss') as LeaderEvent, index: Math.floor(Math.random() * 2) };
-      $('end-stats').innerHTML = (LEADERS[civ] ? speechHtml(last) : '') + this.summary();
+      // A battle out of the campaign has its own card: the count of both sides and words its size (briefing.ts). A field has no score to chart.
+      const card = this.app.tally ? endCard(game, pid, this.app.tally, win, hex) : null;
+      if (card && !byWonder) $('end-text').textContent = card.text;
+      $('end-stats').innerHTML = (LEADERS[civ] ? speechHtml(last) : '') + (card ? card.html : '') + (card && game.field ? '' : this.summary());
       playLine(last);
       $('end').classList.remove('hidden');
     }
