@@ -947,7 +947,7 @@ export const TECHS: Record<string, TechDef> = {
     cost: { food: 100, gold: 150 }, time: 40, age: 1, apply: () => {},
   }),
   pavedroads: T({
-    id: 'pavedroads', name: 'Paved Roads', icon: '🛤️', answers: 'hunger',
+    id: 'pavedroads', name: 'Paved Roads', icon: '🛤️', answers: 'roads',
     desc: 'Your convoys go quicker and drier: the food one brings in goes a quarter further than what was loaded.',
     cost: { stone: 300, gold: 100 }, time: 60, age: 2, apply: () => {},
   }),
