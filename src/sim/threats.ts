@@ -36,6 +36,7 @@
 // A band broken gives up everyone it holds and something of what it stole.
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
+import { inAll, strengthOf, whole } from './strengthwords';
 import { faithAt, swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaignbase';
@@ -47,7 +48,7 @@ import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
 import { fortShelter, hasFortress } from './fortress';
 import { stoodTo } from './heralds';
-import { wrathOf } from './acts';
+import { wrathAt, wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
 import { needOf } from './larder';
@@ -311,7 +312,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   }
   // Which way their morals sway: a people that held together is the better for it; one that was sacked loses heart.
   const down = THREATS.sway[outcome] < 0;
-  raid.sway = round1(THREATS.sway[outcome] * (down ? wrathOf(c, owner) : 1));
+  raid.sway = round1(THREATS.sway[outcome] * (down ? wrathOf(c, owner) : 1)); // by the nation's standing still: by the town's own (wrathAt) more campaigns ended in ruin at 192, taking that row out of its band
   swayTown(c, tid, raid.sway); // it is the town struck whose morals sway, and its nation's with it (townfaith.ts)
   mark(c, outcome === 'held' ? 'heldoff' : outcome === 'taken' ? 'carried' : 'raid', tid);
   (c.raids ??= []).push(raid);
@@ -332,11 +333,11 @@ export function reportLine(c: Campaign, r: Raid): string {
 /** The whole report, line by line, as the player is to read it. */
 export function reportText(c: Campaign, r: Raid): string[] {
   const t = c.territories[r.at], d = r.defence, road = r.kind === 'highwaymen';
-  const had = [d.men ? `its men (${d.men})` : '', d.works ? `its fortress and barracks (${d.works})` : '', d.walls ? `its towers and walls (${d.walls})` : '', d.army ? `the army there (${d.army})` : '', d.guard ? `the capital's guard (${d.guard})` : ''].filter(Boolean);
+  const had = [d.men ? `its men (${whole(d.men)})` : '', d.works ? `its fortress and barracks (${whole(d.works)})` : '', d.walls ? `its towers and walls (${whole(d.walls)})` : '', d.army ? `the army there (${whole(d.army)})` : '', d.guard ? `the capital's guard (${whole(d.guard)})` : ''].filter(Boolean);
   const lines = [
-    `${BANDS[r.kind].name}, ${r.name}, ${road ? 'lay in wait on the road at' : 'came against'} ${t.name} with a strength of ${r.force}.`,
-    road ? `The road was ${d.total > 1 ? `escorted (${d.total})` : 'unguarded'}.`
-      : `The town defended itself with ${had.length ? had.join(', ') : 'nothing'}${d.spirit !== 1 ? `, ${d.spirit > 1 ? 'stiffened' : 'slackened'} by the spirit of its people (×${d.spirit})` : ''}: ${d.total} in all.`,
+    `${BANDS[r.kind].name}, ${r.name}, ${road ? 'lay in wait on the road at' : 'came against'} ${t.name} with ${strengthOf(r.force)}.`,
+    road ? `The road was ${d.total > 1 ? `escorted (${whole(d.total)})` : 'unguarded'}.`
+      : `The town defended itself with ${had.length ? had.join(', ') : 'nothing'}${d.spirit !== 1 ? `, ${d.spirit > 1 ? 'stiffened' : 'slackened'} by the spirit of its people (×${Math.round(d.spirit * 100) / 100})` : ''}: ${inAll([d.men, d.works, d.walls, d.army, d.guard].map((x) => x ?? 0), d.total)}.`,
     r.outcome === 'held' ? `They were ${road ? 'driven off' : 'held off'}${r.broken ? ', and the band is broken' : ''}.` : r.outcome === 'taken' ? 'The town fell to them.' : road ? 'They took what was on the road.' : 'They broke in, took what they could carry and were gone.',
   ];
   if (r.killed) lines.push(`Killed: ${people(r.killed, 'man', 'men')} of the town.`);
@@ -374,7 +375,7 @@ export function captivesSeason(c: Campaign, out: string[]): void {
 
 /** The softest mark in a band's reach: least defence for what draws it, and the decadent draw it more. */
 export function softest(c: Campaign, b: Band, reach = reachOf(c, b)): { id: number; lure: number } | null {
-  const marks = reach.map((id) => ({ id, lure: wrathOf(c, c.territories[id].owner) / Math.max(0.5, defenceOf(c, id).total), tie: chance(c, b.id * 53 + id, 43) })).sort((x, y) => y.lure - x.lure || x.tie - y.tie);
+  const marks = reach.map((id) => ({ id, lure: wrathAt(c, id) / Math.max(0.5, defenceOf(c, id).total), tie: chance(c, b.id * 53 + id, 43) })).sort((x, y) => y.lure - x.lure || x.tie - y.tie);
   return marks[0] ?? null;
 }
 

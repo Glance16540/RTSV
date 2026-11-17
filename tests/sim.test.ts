@@ -1,10 +1,11 @@
+import { distinctColours } from '../src/sim/nationcolours';
 import { describe, expect, it } from 'vitest';
 import { countryOf, countryYield } from '../src/sim/country';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
 import { SUPPLY_UNITS, nationWorth } from '../src/sim/stores';
 import { folkOf } from '../src/sim/township';
 import { HeroSpec, HERO_POINTS, HERO_MIN_HURT, HOLY_GUARD, MIGHT_ATK, GUARD_ARMOR, VIGOUR_HP, RANK_ATK, RANK_ARMOR, RANK_HP, RANK_XP, TYRANT_BIND, cleanHero, heroBonus, rankOf } from '../src/sim/hero';
-import { PLACES, TALES, TALE_FROM, TALE_EVERY, WORLD_EVENTS, WORLD_FROM, COMET_VIRTUE } from '../src/sim/story';
+import { PLACES, TALES, TALE_FROM, TALE_EVERY, TALE_SPREAD, WORLD_EVENTS, WORLD_FROM, COMET_VIRTUE } from '../src/sim/story';
 import { FOLK, FOLK_VOICES, FolkMoment, LEANS, folkAs, folkKey, leanOf } from '../src/sim/folk';
 import { AIController } from '../src/sim/ai';
 import { CAPTURE_TIME, MERC_WAGE, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, CREEDS, DILEMMAS, MAID_GOLD, MAID_VIRTUE, creedOf } from '../src/sim/creed';
@@ -680,7 +681,8 @@ describe('conquest campaign', () => {
       const civs = c.factions.map((f) => f.civ);
       lineups.add(civs.join(','));
       expect(new Set(civs).size).toBe(4); // no two factions are the same people
-      for (const f of c.factions) expect(f.color).toBe(CIV_COLOR[f.civ]);
+      // Each its own colour, unless another people of this world wears one too like it (nationcolours.ts).
+      expect(c.factions.map((f) => f.color)).toEqual(distinctColours(c.factions.map((f) => CIV_COLOR[f.civ])));
       // Each rival leader introduces themselves.
       // Your own leader opens, then each rival leader introduces themselves.
       expect(c.speech[0]).toMatchObject({ civ: civs[0], event: 'p_start' });
@@ -3765,8 +3767,9 @@ describe('the story of a campaign', () => {
 
   it('tales come before the player in their turn, are answered at a price, and lapse if left', () => {
     const c = newCampaign(7, 2, 1, 'steppe');
-    while (c.turn < TALE_FROM) { expect(c.tale ?? null).toBe(null); turn(c); }
-    expect(c.turn).toBe(TALE_FROM);
+    while (!c.tale && c.turn <= TALE_FROM + TALE_SPREAD) { if (c.turn < TALE_FROM) expect(c.tale ?? null).toBe(null); turn(c); }
+    expect(c.turn).toBeGreaterThanOrEqual(TALE_FROM); // the first comes at TALE_FROM or a little after
+    expect(c.turn).toBeLessThanOrEqual(TALE_FROM + TALE_SPREAD);
     const tale = taleNow(c)!;
     expect(tale).toBeTruthy();
     expect(taleText(c, tale.text)).not.toMatch(/[{}]/);
@@ -3810,17 +3813,20 @@ describe('the story of a campaign', () => {
     expect(canAnswer(poor.d, 'b')).toBe(true);
     // Left unanswered, it settles itself when the turn ends, and another comes round in its time.
     let total = 0;
+    const gaps = new Set<number>();
     for (const seed of [3, 5, 11, 12]) {
       const e = newCampaign(seed, 2);
       const asked: string[] = [];
+      let last = -1;
       for (let i = 0; i < 14 && e.phase !== 'over'; i++) {
         turn(e);
-        if (e.tale) { expect((e.turn - TALE_FROM) % TALE_EVERY).toBe(0); asked.push(e.tale.id); }
+        if (e.tale) { if (last >= 0) { expect(e.turn - last).toBeGreaterThanOrEqual(TALE_EVERY - TALE_SPREAD); gaps.add(e.turn - last); } last = e.turn; asked.push(e.tale.id); }
       }
       for (let i = 1; i < asked.length; i++) expect(asked[i]).not.toBe(asked[i - 1]);
       total += asked.length;
     }
     expect(total).toBeGreaterThanOrEqual(8);
+    expect(gaps.size).toBeGreaterThan(1); // not like a clock
     for (const t of TALES) { expect(t.a.virtue).toBeGreaterThan(0); expect(t.b.virtue).toBeLessThan(0); }
   });
 });

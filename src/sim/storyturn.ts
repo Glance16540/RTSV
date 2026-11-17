@@ -10,7 +10,7 @@ import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, tell 
 import { placeAt, placesOf } from './places';
 import { LEANING } from './creed';
 import { canPayFor, payFor } from './prices';
-import { Answer, COMET_VIRTUE, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
+import { Answer, COMET_VIRTUE, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, TALE_SPREAD, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
 import { leaningWith } from './temper';
 import { tribeArms } from './tribes';
 
@@ -19,6 +19,8 @@ declare module './campaign' {
     /** A tale waiting for the player's answer this turn, with the names that fill it in. */
     tale?: { id: string; land: number; rival: number; tribe: number } | null;
     lastTale?: string;
+    /** The turn the next tale is due (storyturn.ts): drawn afresh after each, so they do not come like a clock. */
+    taleDue?: number;
     /** Every tale that has been put, and how each one answered was settled: later tales turn on these. */
     asked?: string[];
     answers?: Answer[];
@@ -67,6 +69,18 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
 }
 
 /** The world's own events, and the tales that come before each people in turn. */
+/**
+ * Is a tale due this turn? The first comes TALE_FROM turns in or up to TALE_SPREAD after, and each after it TALE_EVERY
+ * turns later on the whole, sooner or later by up to TALE_SPREAD, drawn by the campaign's luck. Marks the next one due.
+ */
+export function taleDueNow(c: Campaign): boolean {
+  if (c.turn < TALE_FROM) return false;
+  c.taleDue ??= TALE_FROM + Math.floor(luck(c, 78) * (TALE_SPREAD + 1));
+  if (c.turn < c.taleDue) return false;
+  c.taleDue = c.turn + TALE_EVERY - TALE_SPREAD + Math.floor(luck(c, 79) * (2 * TALE_SPREAD + 1));
+  return true;
+}
+
 export function storyTurn(c: Campaign): void {
   // Something that befalls everyone.
   if (c.world && c.world.until < c.turn) { c.log.push(`${WORLD_EVENTS[c.world.kind].name} is over.`); c.world = null; c.worldRest = c.turn + WORLD_REST; }
@@ -83,7 +97,7 @@ export function storyTurn(c: Campaign): void {
     }
   }
   // A tale for the player, and each rival answers one of its own as its people lean.
-  if (c.turn < TALE_FROM || (c.turn - TALE_FROM) % TALE_EVERY) return;
+  if (!taleDueNow(c)) return;
   c.factions.forEach((f) => {
     if (!f.alive || !f.isAI) return;
     shiftVirtue(c, f.id, luck(c, 80 + f.id) < leaningWith(f.civ, LEANING[f.civ] ?? 0.5) ? TALE_RIVAL : -TALE_RIVAL);

@@ -167,3 +167,153 @@ button. Each is there, but only for a player who goes looking.
 - The band's window, with its men and those it holds. One fix made here, in my own file: the third of the band's captives
   sat outside the right edge of the picture; `src/client/encounter.ts` now seats them further back and closer together, and
   all three show (shot 13, second picture).
+
+## Fixed since
+
+The fixes handed back to this session, each with a 2× screenshot:
+
+- **1, the build menu** (`fixed-build-menu.jpg`): the villager's menu is in pages of at most 13 (Settlement 1 of 2,
+  Settlement 2 of 2, Military), **V** turns the page and **B** is Stop, as on every unit's card; no key is ever printed as
+  "undefined". The Granary, Mill, Well, Infirmary, Watch House, Fortress and Inn have drawn icons
+  (`scripts/civic-icons.mjs`, which writes `public/assets/icons/*.svg`); a painted `.webp` of the same name replaces any.
+- **4, First Orders** (`fixed-first-orders.jpg`, `fixed-band-strength.jpg`): hidden while a dialog, a meeting or the
+  season's card is open; raising a town building counts as building on the land; the last step is *Outlast them*.
+- **7, the panel's groups** (`fixed-panel-groups.jpg`): *Raise troops*, *Raise in this town* (with each price in the
+  town's stores), *Study*, *Build on the land* (in supplies, with how many sites stand), each under a line saying who pays.
+- **8, colours** (`fixed-colours.jpg`): the Japanese wear indigo; no two peoples of one world wear colours too alike
+  (`src/sim/nationcolours.ts`). Campaigns begun before this keep the colours they were dealt.
+- **9, the house of faith** (`fixed-decrees.jpg`): a Shrine, a Mosque, a Temple, a Fire Temple or a Church by the people's
+  sign, in the panel and the decrees (`src/sim/faithhouse.ts`).
+- **11, heirs** (`fixed-heirs.jpg`): "of age in 2 years".
+- **12, strengths** (`fixed-band-strength.jpg`): "a strength of 5 (strong)"; a raid's report gives whole numbers and says
+  "about" when the rounded parts would not add up.
+
+# Second pass, 17 November 2026 (main at 0283c7a)
+
+The same play as the first pass, on today's main: the Japanese and then the Franks for 20 seasons each, kept as dealt,
+the driver answering what is put to it, raising the next town building, learning a study, giving decrees (Buy grain
+abroad first), raising a company every fourth season and advancing the age when it can. In this pass it also sent
+settlers whenever an empty land was offered, and made a deal with a noble every third season. A field battle in person and
+a town visit for the Franks; an empty wild land beside the capital looked at and marched on; and, because neither campaign
+ever offered settlers, a save with an empty land beside the capital, to send settlers there and see the town founded.
+
+No errors reached the console in any of it. The page did not die in 40 seasons (the heap stayed at 47–89 MB).
+
+## What the first pass found that is now right
+
+- **The build menu** (finding 1): three pages, no "undefined", V and B in their places, also inside a town visit
+  (`playtest2-build-menu.jpg`).
+- **The battle's briefing and end card** (2, 3): a field battle says who you lead and against whom, what winning means and
+  what follows; the card counts both sides, kind by kind, and names the fallen (`playtest2-briefing.jpg`,
+  `playtest2-end-card.jpg`). The visit's own briefing says who lives there and that nothing is won or lost
+  (`playtest2-visit.jpg`).
+- **First Orders** (4): out of the way of every window met in 40 seasons.
+- **"among the Kushites"** (5): "The people of Thistledown now count themselves among the English."
+- **The tales** (10): seasons 5, 9, 13, 16, 19 and 21 for the Japanese; 4, 8, 12, 16, 18, 20 for the Franks. No longer
+  a clock. Each answer in plain case with its price beneath, and *Let it settle itself* says what it does.
+- **Met face to face** (13): a rival's envoy came for the Japanese in season 8, a suitor for the Franks' daughter in
+  season 14, both by themselves.
+- **What the next age opens** (14): the panel names the buildings and studies and what to save
+  (`playtest2-next-age.jpg`). The Franks saved and advanced twice; the Japanese once.
+- **Buy grain abroad**: given seven times by the Japanese and five by the Franks, each time "50 food for 50 gold".
+- **The colours and the house of faith** (8, 9): the Japanese in indigo, a Shrine, "Call them to the shrine".
+
+## What's broken
+
+### 2.1 A story's window opens on top of the season's card (medium)
+
+![The envoy over the season's card](shots/playtest2-envoy-over-card.jpg)
+
+When a story comes to the leader's word in a season that also has news, the encounter window and the season's card are open
+together, the card's first lines showing above the window. One should wait for the other.
+
+### 2.2 True wilderness reads as a tribe's land you can march on (medium)
+
+![An empty land of the frozen north](shots/playtest2-wild-land.jpg)
+
+Gullhaven, near the Franks' capital in a new world, is the frozen north: nobody can settle it or take it. Its panel says "Local Tribe,
+Income 1 · Defence 2, 0 bands of local warriors, Select one of your armies to march on this land". Marching the army
+there does nothing, and nothing says why. It should say it is wilderness, and what that means.
+
+### 2.3 The settlers' button names source files (low)
+
+Its tooltip: "… to found a town on an empty land beside your own (migration.ts, founding.ts). They are not one of your
+convoys." (`src/client/convoypanel.ts:12`).
+
+### 2.4 The end card names a tribe's fallen as the player's own people (low)
+
+![The end card](shots/playtest2-end-card.jpg)
+
+"Of theirs: Dunn, Wend, Marn, Marn, Marn, Corin, Joss, Dunn." Three Marns and two Dunns among eight men of a local tribe,
+with the names of the player's own towns.
+
+## What's confusing
+
+### 2.5 A town is founded without a word (medium)
+
+![Thornhold, founded](shots/playtest2-founded.jpg)
+
+Settlers sent from Larkfield ("7 settlers have set out … they will be there next season") arrived and made Thornhold the
+player's, but the season's card and the log said nothing of it; it is in the chronicle only. The first the player hears is
+"Food is short at Thornhold: the governor has sent more of its people to the fields."
+
+### 2.6 Dealing with nobles is a wall of buttons (medium)
+
+![Deals with two nobles](shots/playtest2-noble-deals.jpg)
+
+Each noble outside the leader's circle gets five buttons under *Town*: two nobles make ten, between the convoys and the
+decrees. *Strip of their lands* (fear, anger, 150 gold seized) is one click beside *Send a gift*, with no asking. A captain
+is offered "Make Captain of the host". The deals say what they cost but not what they do: after a gift the only word is
+"Gifts are sent to Captain Osric of Larkfield", and the change shows only as *content* turning *pleased* in the Nobles line.
+
+### 2.7 The tales' answers stand in tall narrow columns (low)
+
+![A spy is taken](shots/playtest2-tale.jpg)
+
+The plain case reads far better than before, but the three answers stand side by side in narrow boxes: *Let it settle
+itself* and its explanation run to seven lines. One answer to a row would read at a glance.
+
+### 2.8 A field battle still shows the town's bar (low)
+
+The top bar of a field battle shows food, wood, gold and stone and a red "8/0" for people, where the briefing says nothing is
+gathered or built (`playtest2-end-card.jpg`, top left).
+
+## What's never seen
+
+### 2.9 Settlers and founding (high)
+
+![Settlers to an empty land](shots/playtest2-settlers.jpg)
+
+In 40 seasons neither the Japanese nor the Franks were ever offered settlers: no land beside a one-land people was empty
+and settleable (the convoy part of the panel, where settlers are sent, never appeared in either capital; the one empty land
+looked at near a capital was true wilderness). From a save with an empty land
+beside the capital it all works: the land is offered as "Thornhold (empty land: Settlers only)", the settlers set out with
+food and timber, the land is the player's the next season with the seven of them, and its town is laid the season after.
+A player who never takes land will not meet it; one who does may, when a tribe dies out. Nothing tells them it exists.
+
+### 2.10 Nobles to deal with, for a small nation (medium)
+
+The Japanese had nobles listed all 20 seasons (the right hand, the steward, the marshal, the confidant), and no deal with
+any of them was ever offered: deals are only with captains, matrons and lords, and the Japanese capital never had a veteran,
+a mother of note or twelve grown people at once. The Franks had a lord from season 3 and a captain from season 9, and the
+deals worked (summoned three times, two gifts). For the Japanese the Nobles line is a list with nothing to do.
+
+### 2.11 Bands that march on the player, face to face (medium)
+
+Slavers came against both capitals (the Iron Market at Gullhaven; the Iron Market and the Tally-keepers at Dunmarrow) and
+were beaten back, each settled on the map with a line in the log and no window. None was seen coming: the "seen on the
+march" lines were all other peoples' ("The people at Windscar have seen the Tally-keepers on the march"), and no band fell
+on the player's army. The encounter window opens only when the player sends an army at a band, or a band falls on one of
+their armies; the threats session's change for a band coming for a town (4400e4b) reached main after this pass began.
+
+![A band coming, on today's main](shots/playtest2-band-coming.jpg)
+
+Tried afterwards on today's main, from the save with a raiding band beside the army: once the four stories were put aside,
+"The Red Hands have Amberfield for their mark" opened by itself, with the band's men and its captives, and three answers
+(go out and fight them, send the army, let them come). It reads well. Two small things: it gives the strength as a bare
+number ("raiders of strength 5") where the other band windows now say "a strength of 5 (strong)", and it gives the band's
+strength twice in four lines.
+
+### 2.12 Migration (low)
+
+No family moved of its own accord, as expected: with one town there is nowhere of their own people to go.
