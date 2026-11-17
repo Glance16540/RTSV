@@ -6,7 +6,7 @@ import { newCampaign } from '../src/sim/campaign';
 import { cleanChampion } from '../src/sim/champion';
 import { MOTHER_KIDS, Census, Notable, folkOf, living, musterFolk, cleanCensus, settleFolk } from '../src/sim/township';
 import {
-  FIELD_WEIGHT, GRIEF_MAX, GRIEF_SEASONS, MADE_RENOWN, NATION_MAX, addMade, carriedIn, fame, homeDeed, homeMade, madeRenown, mourned, nationLoss,
+  FIELD_WEIGHT, GRIEF_MAX, GRIEF_SEASONS, GRIEF_LONGER, MADE_RENOWN, NATION_MAX, addMade, carriedIn, fame, homeDeed, homeMade, madeRenown, mourned, nationLoss,
   restoreMade, standingWith, townGrief, townVeterans, veteranTown,
 } from '../src/sim/notableweight';
 import { townMood, unitPortrait } from '../src/sim/portrait';
@@ -136,9 +136,11 @@ describe('the weight of a loss', () => {
     const plain = townGrief([lost('mother', 5, { kids: MOTHER_KIDS })], 5), famous = townGrief([lost('veteran', 5, { kills: 12 })], 5);
     expect(plain).toBeGreaterThan(0);
     expect(famous).toBeGreaterThan(plain);
-    // It fades, and is gone after GRIEF_SEASONS.
+    // It fades, and is gone after GRIEF_SEASONS for one of little fame; the famous are mourned GRIEF_LONGER more a degree.
     expect(townGrief([lost('veteran', 5, { kills: 12 })], 6)).toBeLessThan(famous);
-    expect(townGrief([lost('veteran', 5, { kills: 12 })], 5 + GRIEF_SEASONS)).toBe(0);
+    expect(townGrief([lost('veteran', 5, { kills: 3 })], 5 + GRIEF_SEASONS)).toBe(0);
+    expect(townGrief([lost('veteran', 5, { kills: 12 })], 5 + GRIEF_SEASONS)).toBeGreaterThan(0);
+    expect(townGrief([lost('veteran', 5, { kills: 12 })], 5 + GRIEF_SEASONS + 2 * GRIEF_LONGER)).toBe(0);
     // The living are not grieved.
     expect(townGrief([{ ...lost('veteran', 5, { kills: 12 }), lost: undefined }], 5)).toBe(0);
     expect(townGrief(Array.from({ length: 20 }, () => lost('veteran', 5, { kills: 12 })), 5)).toBe(GRIEF_MAX);

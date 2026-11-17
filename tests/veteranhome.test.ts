@@ -62,3 +62,36 @@ describe('a veteran of his own house', () => {
     expect(vet[0].kills).toBe(6);
   });
 });
+
+describe('the famous mourned longer, and a rival\'s veterans of their own towns', () => {
+  it('a famous loss is felt GRIEF_LONGER seasons more for each degree of fame', async () => {
+    const { GRIEF_SEASONS, GRIEF_LONGER, griefSeasonsOf, townGrief, mourned } = await import('../src/sim/notableweight');
+    const plain = { name: 'A', gender: 'm' as const, kind: 'veteran' as const, deed: '', turn: 0, kills: 3, lost: { turn: 10, how: 'fell' } };
+    const famed = { ...plain, name: 'B', kills: 9 };
+    expect(griefSeasonsOf(plain)).toBe(GRIEF_SEASONS);
+    expect(griefSeasonsOf(famed)).toBe(GRIEF_SEASONS + 2 * GRIEF_LONGER);
+    const at = 10 + GRIEF_SEASONS + 1;
+    expect(townGrief([plain], at)).toBe(0);
+    expect(townGrief([famed], at)).toBeGreaterThan(0);
+    expect(mourned([plain, famed], at).map((n) => n.name)).toEqual(['B']);
+  });
+
+  it('a map battle won with enough felled names a man of the winning army\'s roll who stood, of his own town and house', async () => {
+    const { NAMED, battleNamed } = await import('../src/sim/veteranhome');
+    const { c, a, b } = twoTowns();
+    c.armies.push({ id: 9, owner: 0, at: a.id, units: { infantry: 3 }, vet: 0 } as never);
+    expect(battleNamed(c, 9, NAMED.least - 1)).toBeUndefined();
+    const named = battleNamed(c, 9, 20)!;
+    expect([a.id, b.id]).toContain(named.town);
+    const army = c.armies.find((x) => x.id === 9)!;
+    expect(army.champion?.kills).toBe(Math.round(20 * NAMED.share));
+    const n = folkOf(c, named.town).notables.find((x) => x.kind === 'veteran')!;
+    expect(n.name).toBe(army.champion!.name);
+    expect(housesOf(folkOf(c, named.town)).some((h) => h.family === n.family && h.away.some((s) => `${s.name} ${h.family}` === n.name))).toBe(true);
+    expect(battleNamed(c, 9, 20)).toBeUndefined(); // one known by name already
+    // Found again by his full name, and lost as the veteran he was if he falls.
+    const house = housesOf(folkOf(c, named.town)).find((h) => h.family === n.family)!;
+    const man = house.away.find((s) => `${s.name} ${house.family}` === n.name)!;
+    expect(veteransFell(c, named.town, [{ name: man.name, family: house.family }]).length).toBe(1);
+  });
+});
