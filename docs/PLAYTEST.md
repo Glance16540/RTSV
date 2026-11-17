@@ -621,3 +621,85 @@ town has fallen", "The assault has failed" (battlecard.ts verdictOf, told by bri
 | 4.7 three figures for a town's defence | threats session |
 | 4.8, 4.10 the card's and the reports' small words | fixed (the strength of 4.8's third line is for the threats session) |
 | 4.9 which soldier is which man | fixed (soldiernames.ts) |
+
+# Fifth pass, 17 November 2026 (main at c05852e): the stories on the field
+
+The stories inside the story come into a visit now: the thief and the killer of a town (`fieldstory.ts`, this session's)
+and the three stories of the leader's house, the envoy of a rival king, a suitor for a daughter and a plot of the great
+(`courtfield.ts`, the threats session's). Nobody had seen them running. Played in Chromium (Playwright, 1440 × 900, 2×)
+from five saves made by `scripts/storysaves.test.ts` (`STORYSAVES=1 OUT=dir npx vitest run scripts/storysaves.test.ts`):
+the capital at season 20 as a visit, with a thief (two households robbed), a killer and a plot at once, an envoy waiting on
+the answer to his demand, a suitor, and all three of the house at once. Each was entered, its marks selected, its commands
+used, and the town left; the map was then read. The clock was stepped from the script, as in the fourth pass. No page error
+and no console error in any of the five.
+
+## What is right
+
+- **The thief.** Two households were robbed and the town had no houses yet (a first visit): the barracks and the farm stood
+  for them, never the hall. Selected, the barracks said "The Stoneham household was robbed here. Set a soldier on guard by
+  it to take the thief." Two clubmen sent to stand by it took the thief 40 seconds after they arrived ("The guard where the
+  Stoneham household was robbed has taken the thief in the night. Judge them on the map."), and the line turned to "Robbed
+  by the thief, who is taken now". On the map the thief stood for judgement by name, as one the watch had taken
+  (`playtest5-thief-key.jpg`, `playtest5-thief-taken.jpg`).
+- **The killer.** The five spoken of walked the town by their names (Fenn Stoneham, Sela Stoneham, Marn Elmsley, Kira
+  Underhill, Cyra Stoneham), each a grown villager of the town of their own sex, all of them on no record by name (homeless,
+  childless). Selected, each said "Spoken of in the killing, as the tanner" with a Question command; the guilty one was never
+  cleared. On the map those cleared were struck from the list with a clue each ("Questioned by you in Amberfield, Fenn
+  Stoneham answered for that night, and others swore to it.") (`playtest5-suspect.jpg`).
+- **The killer and the plot at once.** The four of the great were laid on four other villagers ("Lord Aldric of
+  Amberfield", "Spoken of in the plot against you. Keep a soldier close by to have them watched."); none of them was also a
+  suspect (`playtest5-noble.jpg`).
+- **The envoy and the suitor.** The hall said who waited and why ("The envoy of Strategos Kallias of the Greeks waits in your
+  hall. He demands that Elin be sent over the border"), with *Defy*, *Buy off* and *Yield* on its card; the suitor's with
+  *Ask her*, *Give*, *Decline*, *Spurn*. Maren was asked ("Maren says she has seen him, and would have him") and given. On the
+  map the king had been defied and was said to have sent a man with a knife, and Maren was married into his house, to be
+  called on once (`playtest5-suitor-hall.jpg`, `playtest5-envoy-map.jpg`).
+- **Content.** No child was named, suspected, watched or asked for in any of it; nobody was struck. The daughter asked for is
+  named on the hall's card and is not on the field.
+
+## This session's, fixed in this pass
+
+### 5.1 Nothing on the field said where the story was (medium)
+
+The robbed buildings and the suspects were marked only in the panel of whatever was selected: a player had to click every
+building and every villager to find them. Now a key on a dark disc stands over each building robbed, until the thief is
+taken, and scales over each of those still spoken of (`fieldstoryui.ts` `drawStoryMarks`, drawn with the notables' stars).
+
+### 5.2 The killing was settled in a minute (medium)
+
+Questioning cost nothing and took no time: all five were questioned in a row, three were cleared, and the map was left with
+two, one of them the killer, from a single visit. Now one of those spoken of may be questioned each visit
+(`FIELD_STORY.questions`); the rest say "You have questioned one of them this visit. The others must wait until you come
+again." The story runs over seasons on the field as it does on the map.
+
+## The threats session's (`courtfield.ts`, `courtvisit.ts`, `courtfieldui.ts`)
+
+### 5.3 With more than one story of the house afoot, only the first comes to the field (medium)
+
+The save with the envoy, the suitor and a plot in the capital brought only the envoy; the suitor's hall and the plot's great
+were not there (`courtvisit.ts` `courtAt` takes the first story of the house it finds).
+
+### 5.4 A watch on one of the great settles the same way every visit (medium)
+
+In two runs all four of the great were watched to the end and every one, three of them innocent, came out "Nothing is
+settled by it". Whether a watch shows one true is drawn from the town's seed, the story and the noble alone
+(`hash(g.seed, s.id * 151 + i, 7)`), and the town's seed does not change: an innocent who is not shown true on one visit
+never will be on any.
+
+### 5.5 Names are lowered in the answer's line (low)
+
+"Your answer is given at the hall: defy him: elin stays." and "give maren to alder": the choice's label is lowered whole,
+names with it.
+
+### 5.6 The guest's line runs under the hall's list of children (low)
+
+With the hall selected, "Alder of the house of Strategos Kallias of the Greeks waits in your hall. He asks for your daughter
+Maren, and waits for your answer." is cut off mid-word where the column of the hall's children begins
+(`playtest5-suitor-hall.jpg`).
+
+![The robbed barracks, marked](shots/playtest5-thief-key.jpg)
+![The thief taken by the guard](shots/playtest5-thief-taken.jpg)
+![One of those spoken of in the killing](shots/playtest5-suspect.jpg)
+![One of the great spoken of in the plot](shots/playtest5-noble.jpg)
+![The suitor waits in the hall](shots/playtest5-suitor-hall.jpg)
+![The map after the envoy was defied](shots/playtest5-envoy-map.jpg)

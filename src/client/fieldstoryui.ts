@@ -26,5 +26,39 @@ export function questionCommand(g: Game, pid: number, units: Unit[]): { id: stri
   const u = units.length === 1 ? units[0] : undefined;
   if (!u || u.suspect === undefined || !g.players[pid]?.story) return null;
   const bar = questionBar(g, pid, u);
-  return { id: 'question', icon: '⚖️', name: 'Question', desc: `Ask ${esc(u.name)} where they were that night. One who did no wrong may be cleared by it.`, ...(bar ? { locked: bar } : {}), act: () => { cmdQuestion(g, pid, u.id); } };
+  return { id: 'question', icon: '⚖️', name: 'Question', desc: `Ask ${esc(u.name)} where they were that night. One who did no wrong may be cleared by it. You may question one of those spoken of each time you come to the town.`, ...(bar ? { locked: bar } : {}), act: () => { cmdQuestion(g, pid, u.id); } };
+}
+
+/**
+ * Marks on the field (the 2D overlay, as notables.ts draws its stars): a key over each building where a household was
+ * robbed until the thief is taken, and scales over each villager still spoken of in a killing.
+ */
+export function drawStoryMarks(ctx: CanvasRenderingContext2D, g: Game, pid: number, ppt: number, project: (x: number, y: number, h: number) => { x: number; y: number }, seen: (e: Unit | Building) => boolean): void {
+  const s = g.players[pid]?.story;
+  if (!s) return;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.globalAlpha = 0.95;
+  // A mark on a dark disc, so that it reads on snow and on grass alike.
+  const mark = (icon: string, x: number, y: number, size: number): void => {
+    ctx.fillStyle = 'rgba(30,20,10,0.72)'; ctx.strokeStyle = 'rgba(242,201,76,0.9)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, size * 0.72, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.font = `${size}px sans-serif`; ctx.fillStyle = '#fff'; ctx.fillText(icon, x, y + size * 0.05);
+  };
+  if (s.kind === 'thief' && !s.caught) {
+    for (const b of g.buildings) {
+      if (b.owner !== pid || b.dead || !b.robbed || !seen(b)) continue;
+      const p = project(b.x, b.y, b.type === 'farm' ? 1.2 : b.size * 0.5 + 1.9);
+      mark('🗝️', p.x, p.y, Math.max(14, ppt * 0.55));
+    }
+  }
+  if (s.kind === 'killer') {
+    for (const u of g.units) {
+      if (u.owner !== pid || u.dead || u.inside || u.suspect === undefined || !seen(u)) continue;
+      if (s.cleared.includes(u.suspect) || (s.out ?? []).includes(u.suspect)) continue;
+      const p = project(u.x, u.y, 1.9);
+      mark('⚖️', p.x, p.y, Math.max(11, ppt * 0.38));
+    }
+  }
+  ctx.restore();
 }
