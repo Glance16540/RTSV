@@ -216,6 +216,8 @@ A people may send settlers, two couples and their children, from one of its town
 beside its own, where they found a small new town of that people without a war; rivals may do the
 same. And some bands are born in the wild lands at the map's edge and march in from afar toward rich
 or weak towns, so that a people can see them coming.
+Some lands begin wild: a share of the far and poor lands (snow, desert, the map's edge) start with no
+tribe and no town. They are where settlers go and where the wild bands arise.
 
 ## The order of building
 
