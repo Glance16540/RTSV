@@ -21,6 +21,13 @@ import type { Campaign } from './campaign';
 import type { Folk, Notable } from './township';
 import { rememberVeteran } from './township';
 
+declare module './champion' {
+  interface Champion {
+    /** Named by a battle fought out on the map (veteranhome.ts): what his army felled in it. */
+    named?: { felled: number };
+  }
+}
+
 /** A map battle names a soldier of the winning army when it felled at least `least` men; he is credited with `share` of them. */
 export const NAMED = { least: 6, share: 0.3 };
 
@@ -98,7 +105,7 @@ export function battleNamed(c: Campaign, armyId: number | undefined, felled: num
   const man = manOfRoll(c, a.owner, a.id, c.turn * 7 + felled);
   if (!man) return undefined;
   const kind = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p])[0] ?? 'infantry';
-  a.champion = { name: man.name, kills: Math.max(3, Math.round(felled * NAMED.share)), unit: kind === 'cavalry' ? 'Rider' : kind === 'archers' ? 'Archer' : 'Soldier', town: man.town };
-  rememberVeteran(c, man.town, { ...a.champion, family: man.family });
+  a.champion = { name: man.name, kills: Math.max(3, Math.round(felled * NAMED.share)), unit: kind === 'cavalry' ? 'Rider' : kind === 'archers' ? 'Archer' : 'Soldier', town: man.town, named: { felled } };
+  rememberVeteran(c, man.town, { name: man.name, kills: a.champion.kills, unit: a.champion.unit, family: man.family });
   return { name: man.name, town: man.town };
 }

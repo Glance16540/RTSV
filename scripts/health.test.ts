@@ -237,6 +237,7 @@ interface Watch {
   met: number; // the first season a story waited on the player's word face to face (encounter.ts), or -1
   driftSeasons: { lost: number; ts: number }; // drift's toll summed season by season over every town held by the one people it began with, and the town-seasons (the decrees row's second reading)
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
+  named: { battle: number; wins: number; share: number[]; kills: number[]; mine: number }; // soldiers named on the map, by a battle fought out there or by two wins (veteranhome.ts, rivalrule.ts)
 }
 
 const CRIME_ROW = 'Seasons a thief or a killer is at large, with a Watch House in every town against as it is (read with CRIME=1)', CRIME_BAND = '10 to 30% fewer';
@@ -264,7 +265,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [] };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [], named: { battle: 0, wins: 0, share: [], kills: [], mine: 0 } };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -285,8 +286,17 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const atLarge = new Map<number, { seasons: number; watched: number }>(); // each thief and killer, by the story's id
   const losses: Losses[][] = [];
   const names = new Map(c.factions.map((f) => [f.name, f.id]));
+  const seenNamed = new Set<string>(c.armies.filter((a) => a.champion).map((a) => `${a.id}|${a.champion!.name}`));
   for (let s = 1; s <= seasons; s++) {
     if (forced) give(c, FORCED[forced]);
+    // Soldiers named on the map since last season, while the campaign is undecided (veteranhome.ts, rivalrule.ts).
+    if (c.phase !== 'over') for (const a of c.armies) {
+      const ch = a.champion, key = ch ? `${a.id}|${ch.name}` : '';
+      if (!ch || seenNamed.has(key)) continue;
+      seenNamed.add(key);
+      if (ch.named) { w.named.battle++; w.named.share.push(ch.kills / Math.max(1, ch.named.felled)); w.named.kills.push(ch.kills); } else w.named.wins++;
+      if (a.owner === 0) w.named.mine++;
+    }
     // Once a campaign is decided, the world is let go on turning until twenty years have passed, so that the
     // twenty-year figures are read from every campaign; the campaign's figures are read from the decision.
     if (c.phase === 'over') {
@@ -839,6 +849,13 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       add('Crime', 'Forced: seasons running a town of the player\'s stays hungry, with Paved Roads against as it is', 'report only', `${spellOf(mineOf(roads))} with against ${spellOf(mineOf(ruled))} as it is`, 'report',
         `Spells of hunger in the player\'s own towns in the same two tellings (the Inns and Escorts are there too). In all, ${hungrySeasons(roads)} hungry town-seasons with against ${hungrySeasons(ruled)} as it is. ${mineLine(roads)} with; ${mineLine(ruled)} as it is.`);
     }
+  }
+  // Soldiers named on the map (veteranhome.ts, rivalrule.ts): report only, so the first guesses have numbers.
+  {
+    const n = ruled.map((w) => w.named), battle = n.reduce((k, x) => k + x.battle, 0), wins = n.reduce((k, x) => k + x.wins, 0), mine = n.reduce((k, x) => k + x.mine, 0);
+    const share = n.flatMap((x) => x.share), kills = n.flatMap((x) => x.kills);
+    add('People', 'Soldiers named on the map a campaign, and the share of the felled a battle credits one with', 'report only', `${num((battle + wins) / Math.max(1, ruled.length), 1)} a campaign until it is decided (${num(battle / Math.max(1, ruled.length), 1)} by a battle fought out on the map, ${num(wins / Math.max(1, ruled.length), 1)} by an army's second win; ${num(mine / Math.max(1, ruled.length), 1)} the player's); named by a battle: ${share.length ? `${pct(mean(share))} of the felled credited, median ${num(median(kills), 0)} credited (middle half ${num(quart(kills, 0.25), 0)} to ${num(quart(kills, 0.75), 0)})` : 'none'}`, 'report',
+      'Every army that comes to have a soldier known by name while the campaign is undecided, every people\'s. "By a battle" is one fought out on the map that the army won felling at least NAMED.least, with nobody known by name (veteranhome.ts: credited NAMED.share of the felled, three at least); "by a second win" is rivalrule.ts\'s rule. A battle fought in person names its own and is not counted.');
   }
   // When the computer-played player takes its first age: report only.
   {
