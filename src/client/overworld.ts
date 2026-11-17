@@ -9,6 +9,7 @@ import { bandPrompt, newsHtml } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
 import { attackBand } from '../sim/bandfight';
 import { meetBand, meetStory, storyToMeet } from './encounter';
+import { meetComing } from './bandmeet';
 import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -198,6 +199,7 @@ export class Overworld {
     else if (c.phase === 'player' && c.factions[0].alive && !c.factions[0].heroAlive && !houseOf(c, 0).asked) this.askSuccession();
     else if (c.phase === 'player' && c.factions[0].heroAlive && houseToName(c, 0) !== undefined) this.askHouse();
     else if (storyToMeet(c) && meetStory(c, storyToMeet(c)!, () => this.changed())) $('ow-dialog').classList.add('hidden'); // a story waiting on your word, face to face (encounter.ts)
+    else if (c.phase === 'player' && meetComing(c, { fight: () => this.hooks.fight(), changed: () => this.changed(), dialog: (t, x, b) => this.dialog(t, x, b) })) { /* a band coming for a town of yours, put once (bandmeet.ts) */ }
     else $('ow-dialog').classList.add('hidden');
     seasonCard(c, !$('ow-dialog').classList.contains('hidden'), () => this.hooks.save()); // what the season brought (seasoncard.ts)
   }

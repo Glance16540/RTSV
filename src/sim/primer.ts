@@ -11,6 +11,8 @@ import { RANK_NAMES } from './hero';
 import { POWER_RANKS } from './powers';
 import { TALE_EVERY, TALE_FROM } from './story';
 import { mapWorks } from './townworks';
+import { nextAgeText } from './nextage';
+import { ageCost } from './campaign';
 
 /** How things stood when the guide first saw this campaign: its steps are measured from here. */
 export interface PrimerBase { seed: number; turn: number; lands: number; buildings: number; companies: number; age: number }
@@ -51,7 +53,7 @@ export function primerSteps(c: Campaign, base: PrimerBase, seen: readonly string
       `Click a land a rival holds. A truce keeps them off you for ${TRUCE_TURNS} turns; a gift earns goodwill, and goodwill makes them readier to agree.`,
       c.truces.length > 0 || c.ally >= 0 || c.factions.some((f) => f.id !== 0 && (f.favor ?? 0) > 0)],
     ['age', 'Advance an age',
-      'From any land of yours. Every army you have grows stronger, and your battles begin in the new age with its weapons.',
+      `From any land of yours. Every army you have grows stronger, and your battles begin in the new age with its weapons.${nextAgeText(c, 0, ageCost(c, 0)) ? ' ' + nextAgeText(c, 0, ageCost(c, 0)) : ''}`,
       ageOf(c, 0) > base.age],
     ['win', 'Outlast them',
       `Your nation lives in its people: keep its towns fed and its families growing, and it will outlast its rivals; the last people left alive has won. Holding ${dominionNeed(c)} of the ${c.territories.length} lands for ${DOMINION_TURNS} turns running ends it too. A world where no one can take land for years while bands hold the map ends in ruin, with no winner.`,

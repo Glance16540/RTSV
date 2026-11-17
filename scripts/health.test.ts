@@ -684,7 +684,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   // Faith
   const gaps = all('faithGaps');
   const inGap = share(gaps, (x) => x >= 20 && x <= 60);
-  add('Faith', 'Widest gap between two towns of one nation', '20 to 60 most of the time', `${pct(inGap)} of nation-seasons in band (median ${num(median(gaps), 0)})`, inGap > 0.5, 'Most of the time is taken as over half of the seasons of a nation with two towns or more.');
+  add('Faith', 'Widest gap between two towns of one nation', '20 to 60 most of the time', `${pct(inGap)} of nation-seasons in band (median ${num(median(gaps), 0)}; under 20 ${pct(share(gaps, (x) => x < 20))}, over 60 ${pct(share(gaps, (x) => x > 60))})`, inGap > 0.5, 'Most of the time is taken as over half of the seasons of a nation with two towns or more.');
   const holy = all('holyMoves');
   add('Faith', 'A nation that builds churches and keeps its towns fed, over 20 years', 'toward the holy end by 15 to 40', holy.length ? `mean ${num(mean(holy), 1)} (${holy.length} nations)` : 'no such nation', holy.length ? within(mean(holy), 15, 40) : null,
     'A nation with a church standing for at least ten of the twenty years and hungry in under 5% of its town-seasons.');
@@ -794,7 +794,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     const there = ms.filter((m) => m.arrived !== undefined), seen = ms.filter((m) => m.seen !== undefined), ahead = seen.filter((m) => (m.struck ?? m.arrived) !== undefined);
     const met = ms.filter((m) => m.met !== undefined), struck = ms.filter((m) => m.struck !== undefined);
     add('Threats', 'Bands that come from the far wilds', 'report only', ms.length ? `${ms.length} of ${came} bands (${pct(ms.length / came)}), ${num(ms.length / ruled.length, 1)} a campaign; a march of ${num(avg(ms.map((m) => m.lands)), 1)} lands, ${there.length ? num(avg(there.map((m) => m.arrived! - m.born)), 1) : '?'} seasons for the ${there.length} that got there` : 'none', 'report',
-      'Camps of raiders and slavers born in lands nobody holds, two lands or more from any held land, that set out at once for a mark (bandwilds.ts), against every band of any kind that came in the campaigns above. Fewer as the map fills: there must be far wilds left, with a way in.');
+      'Camps of raiders and slavers born in a land that began wild and is still empty (wilds.ts), that set out at once for a mark (bandwilds.ts), against every band of any kind that came in the campaigns above. There must be such a land free, with a way in of more than one land.');
     add('Threats', 'A band from the far wilds is seen coming, and met before it strikes', 'report only', ms.length ? `seen ${pct(seen.length / ms.length)}, ${ahead.length ? num(avg(ahead.map((m) => (m.struck ?? m.arrived)! - m.seen!)), 1) : '?'} seasons before it struck or was there; met by an army first ${pct(met.length / ms.length)} (${met.length}, ${ms.filter((m) => m.broken).length} broken), struck someone ${pct(struck.length / ms.length)}` : 'none', 'report',
       'Seen: an army in or beside a land it passed, or a town within two lands, told its people. Met: an army went against it (not the band against the army) before it had struck anyone.');
   }
