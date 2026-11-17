@@ -8,6 +8,7 @@
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
 import { furloughOf, homeOnLeave } from './furloughmap';
+import { storyForVisit, storyFromVisit } from './storyvisit';
 import { keepQueued } from './queueddrill';
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
@@ -73,6 +74,8 @@ export interface VisitAfter {
   leave?: unknown;
   /** The studies researched in the town (`learnedIn(player.techs)`): they come home to the nation (studies.ts). */
   studies?: string[];
+  /** What came of a story afoot in the town (`storyOut`, fieldstory.ts): the thief taken, suspects cleared. */
+  story?: unknown;
 }
 
 /** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
@@ -189,6 +192,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
+        ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)
         ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
       },
     }],
@@ -213,6 +217,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   keepOrders(c, land.id, after.orders);
   keepQueued(c, land.id, after.orders?.men); // and the men who stood in its queues, to come out as themselves (queuedmen.ts)
   if (after.arms) armsHome(c, land.id, after.arms, had); // its soldiers go home to the map: the army's losses, and companies trained there
+  storyFromVisit(c, land.id, after.story); // a story's outcome on the field, written back to it (storyvisit.ts)
   if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
