@@ -12,15 +12,17 @@ import { softest } from '../src/sim/threats';
 import type { Band } from '../src/sim/threats';
 import { folkOf } from '../src/sim/township';
 
-/** A world where the player holds one open town and nobody holds anything else: the rest is wild, with no armies, bands or marauders. */
+/** A world where the player holds one open town and every other land began wild and is empty (wilds.ts), with no armies, bands or marauders. */
 function world(seed = 11) {
   const c = newCampaign(seed, 2);
   c.fronts = []; c.armies = []; c.bands = []; c.turn = 20;
   const home = c.territories.find((x) => x.capital === 0)!;
   for (const t of c.territories) {
     t.capital = -1; t.owner = t.id === home.id ? 0 : -1; t.buildings = []; t.trait = ''; delete t.town; delete t.horde;
-    Object.assign(folkOf(c, t.id), { men: 6, women: 6, elders: 0, children: 2 });
+    const lived = t.id === home.id;
+    Object.assign(folkOf(c, t.id), lived ? { men: 6, women: 6, elders: 0, children: 2 } : { men: 0, women: 0, elders: 0, children: 0 });
     delete folkOf(c, t.id).ages;
+    t.militia = 0; t.wild = !lived; // every land but the town began wild, and is empty
   }
   for (const f of c.factions) f.alive = f.id === 0;
   return { c, home };
@@ -43,15 +45,24 @@ function far() {
 }
 
 describe('the far wilds', () => {
-  it('are lands nobody holds, at least WILDS.far lands from any held land, with no band or army in them', () => {
+  it('are the lands that began wild and are still empty, with no band or army in them; a tribe\'s land is not', () => {
     const { c, home } = world();
     const d = landsFromHeld(c);
     expect(d[home.id]).toBe(0);
     for (const n of home.adj) expect(d[n]).toBe(1);
     const wilds = farWilds(c);
     expect(wilds.length).toBeGreaterThan(0);
-    for (const id of wilds) { expect(d[id]).toBeGreaterThanOrEqual(WILDS.far); expect(c.territories[id].owner).toBe(-1); }
-    expect(wilds).not.toContain(home.adj[0]);
+    for (const id of wilds) { expect(c.territories[id].wild).toBe(true); expect(c.territories[id].owner).toBe(-1); }
+    expect(wilds).not.toContain(home.id);
+    // A land where a tribe lives, or one settlers have taken, is not the far wilds.
+    const tribe = wilds.at(-2)!;
+    Object.assign(folkOf(c, tribe), { men: 3, women: 3 });
+    expect(farWilds(c)).not.toContain(tribe);
+    Object.assign(folkOf(c, tribe), { men: 0, women: 0 });
+    delete c.territories[tribe].wild;
+    expect(farWilds(c)).not.toContain(tribe);
+    c.territories[tribe].wild = true;
+    expect(farWilds(c)).toContain(tribe);
     band(c, wilds[0]);
     expect(farWilds(c)).not.toContain(wilds[0]);
     if (wilds[1] !== undefined) { army(c, wilds[1], 1); expect(farWilds(c)).not.toContain(wilds[1]); }
