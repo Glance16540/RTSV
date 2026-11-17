@@ -11,6 +11,7 @@ import { canSendHome, menOf, noMenText } from '../sim/armytown';
 import { bandButtons, threatHtml } from './threatpanel';
 import { intrigueButtons, intrigueHtml } from './intriguepanel';
 import { orderHtml } from './orderpanel';
+import { freeTownButtons } from './freetown';
 import { AGES, CIVS, styleOf } from '../sim/data';
 import {
   EVENTS, WEATHER, eventsAt, weatherAt, Army, FAITH, faithOf, virtueOf, placeAt, worldNow, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS,
@@ -28,6 +29,7 @@ import { raisePanel, studyPanel } from './townworks';
 import { siteLook } from '../sim/faithhouse';
 import { inTime } from '../sim/inyears';
 import { nextAgeText } from '../sim/nextage';
+import { emptyWords } from '../sim/founding';
 
 const css = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
@@ -90,21 +92,22 @@ export function nationBar(c: Campaign): string {
 export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
   wire();
   const t = c.territories[sel], a = armyAt(c, sel);
-  const owner = t.owner < 0 ? LOCALS : c.factions[t.owner];
+  const empty = emptyWords(c, t.id); // wilderness or an empty land: nobody to rule, nothing to march on (founding.ts)
+  const owner = empty ? { name: `${empty.icon} ${empty.name}`, color: LOCALS.color } : t.owner < 0 ? LOCALS : c.factions[t.owner];
   const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ` · ♛ ${heroFor(c, army.owner).name}` : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
   const events = eventsAt(c, t.id), weather = weatherAt(c, t.id), place = placeAt(c, t.id);
   // What is going on in the land, as signs beside its name: the whole of each is under "The land".
   const signs = [...(weather ? [`<span title="${WEATHER[weather as 'rain'].name}">${WEATHER[weather as 'rain'].icon}</span>`] : []), ...events.map((e) => `<span title="${EVENTS[e.kind].name}">${EVENTS[e.kind].icon}</span>`)].join('');
   const head = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}${signs ? ` <small class="lp-signs">${signs}</small>` : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
-      <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · Defence ${defence(c, t.id)}</div>`;
+      <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} ${empty ? '' : `· Defence ${defence(c, t.id)}`}</div>${empty ? `<div class="hint">${empty.desc}</div>` : ''}`;
   const people = `${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div>${t.buildings.map((b) => { const l = siteLook(b, SITES[b], c.factions[t.owner]?.civ); return `${l.icon} ${l.name}`; }).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>`;
   const danger = `${intrigueHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}`;
-  const army = `${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a, c)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 ? `<div>${t.militia} bands of local warriors</div>` : ''}
-      <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 ? '' : 'Select one of your armies to march on this land.'}</div>`;
+  const army = `${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a, c)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 && !empty ? `<div>${t.militia} bands of local warriors</div>` : ''}
+      <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 || empty ? '' : 'Select one of your armies to march on this land.'}</div>`;
   const land = `<div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc} <i>${countryOf(c, t.id).rule}</i></div>
       ${lanesOf(c, t.id).map((n) => `<div class="hint">⛵ Sea crossing to ${c.territories[n].name}${t.buildings.includes('harbour') ? '' : t.owner === 0 ? ': build a Harbour here to make it' : ': made from a Harbour'}.</div>`).join('')}
       ${(c.barriers ?? []).filter((w) => w.a === t.id || w.b === t.id).map((w) => `<div class="hint">${BARRIERS[w.kind].icon} No march to ${c.territories[w.a === t.id ? w.b : w.a].name}: ${BARRIERS[w.kind].by} lie${w.kind === 'mountains' ? '' : 's'} between${w.kind !== 'water' ? `. ${cap(WORKS[w.kind].name)} would open it (${WORKS[w.kind].cost} supplies, built from either side)` : ''}.</div>`).join('')}
@@ -157,6 +160,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
       if (c.ally < 0 && c.factions.filter((f) => f.alive).length >= 3) talk += btn('ally:' + t.owner, `🤝 Offer ${rulerName(c, t.owner)} an alliance`, ALLIANCE_COST, canAlly(c, t.owner), c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts until one of you breaks it or only you two remain.');
     } else talk += btn('truce:' + t.owner, `🕊️ Offer ${rulerName(c, t.owner)} a truce`, truceCost(me.civ), me.supplies >= truceCost(me.civ) && c.factions[t.owner].refused !== c.turn, c.factions[t.owner].refused === c.turn ? 'They have given their answer for this turn.' : c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts six turns.');
   }
+  talk += freeTownButtons(c, t.id); // a free town: what it is, and treating with it (freetown.ts)
   if (t.owner > 0 && c.factions[t.owner].alive) {
     const fav = c.factions[t.owner].favor ?? 0;
     talk += btn('gift:' + t.owner, `🎁 Send ${c.factions[t.owner].name} supplies`, giftCost(me.civ), canGift(c, t.owner), c.ally === t.owner ? 'Your ally can spend them on troops.' : 'Earns goodwill: they will be readier to agree to a truce or an alliance.');

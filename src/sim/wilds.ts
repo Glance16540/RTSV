@@ -23,8 +23,13 @@ declare module './campaign' {
 }
 
 export const WILD = {
-  /** Of the lands that may start wild, the share that do. */
-  share: 0.3,
+  /**
+   * Of the lands that may start wild, the share that do. At 0.3, with snow and desert true wilderness, a farmed town went
+   * hungry 2.2% of its seasons and 6.3% of campaigns ended in ruin (192 campaigns, stories answered): fewer lands were left
+   * to settle and more crowded towns could not send their people out. At 0.2, 1.6% and 1.8% hungry and 3.1% ruined in the
+   * two courses; bands from the far wilds 0.9 a campaign, from 1.4.
+   */
+  share: 0.2,
   /** How near a side of the map, as a share of its width or height, a land is on the map's edge. */
   edge: 0.12,
 };

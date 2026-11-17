@@ -19,13 +19,28 @@ function personRow(c: Campaign, n: Named, gone?: string): string {
 const spanOf = (r: SeasonReport): string => (r.turn - r.from > 1 ? `Turns ${r.from + 1} to ${r.turn}` : `Turn ${r.turn}`);
 /** What a season brought: the known people lost and made, then the lines. */
 function bodyHtml(c: Campaign, r: SeasonReport): string {
-  const lines = reportLines(r).map((l) => `<div class="season-line ${l.tone}"><span>${ICON[l.kind]}</span> ${esc(l.text)}</div>`).join('');
+  const lines = foldTold(reportLines(r), c.strikesTold === r.turn).map((l) => `<div class="season-line ${l.tone}"><span>${ICON[l.kind]}</span> ${esc(l.text)}</div>`).join('');
   const made = r.made.map((n) => personRow(c, n)).join(''), gone = r.gone.map((n) => personRow(c, n, n.how)).join('');
   return (gone ? `<h3>Lost</h3>${gone}` : '') + (made ? `<h3>Known by name</h3>${made}` : '') + (lines ? `<div class="season-lines">${lines}</div>` : '');
 }
 const closer = '<button class="season-x" title="Close (Esc)" aria-label="Close">×</button>';
 
 /** The card's inner HTML for a report. */
+type Line = ReturnType<typeof reportLines>[number];
+/**
+ * The raids that got into the player's towns this season, when they were already told face to face as the season turned
+ * (bandmeet.ts tellStrikes): one line in their place rather than the same news twice. Raids beaten off stay as they are.
+ */
+export function foldTold(lines: Line[], told: boolean): Line[] {
+  if (!told) return lines;
+  const struck = (l: Line): boolean => l.kind === 'raid' && l.tone === 'bad';
+  const n = lines.filter(struck).length, at = lines.findIndex(struck);
+  if (!n) return lines;
+  const rest = lines.filter((l) => !struck(l));
+  rest.splice(at, 0, { kind: 'raid', tone: 'plain', text: `${n === 1 ? 'The raid' : `The ${n} raids`} on your towns, as you were told when the season turned.` });
+  return rest;
+}
+
 export function seasonCardHtml(c: Campaign, r: SeasonReport): string {
   const past = pastSeasons(c).length > 1;
   return `${closer}<h2>The season past <small>${spanOf(r)}</small></h2>${bodyHtml(c, r)}` +
@@ -67,5 +82,5 @@ export function seasonCard(c: Campaign, busy: boolean, onClose: () => void): voi
   if (!r || busy || c.phase !== 'player') { el?.remove(); return; }
   if (el) return; // already showing
   const seen = (): void => { r.seen = true; onClose(); };
-  overlay(seasonCardHtml(c, r), 'season', seen, () => { seen(); showPastSeasons(c); });
+  overlay(seasonCardHtml(c, r), 'season', seen, () => { r.seen = true; showPastSeasons(c, onClose); }); // looking back first: what waits comes when that is closed
 }

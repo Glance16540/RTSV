@@ -317,3 +317,17 @@ strength twice in four lines.
 ### 2.12 Migration (low)
 
 No family moved of its own accord, as expected: with one town there is nowhere of their own people to go.
+
+## Fixed since the second pass
+
+- **2.1, a story's window over the season's card** (`fixed2-card-first.jpg`, `fixed2-then-envoy.jpg`): the card comes
+  first; a meeting face to face, or a band coming, waits behind it and opens when the card is closed (or, if the player
+  looks back over past seasons from it, when that is closed).
+- **2.7, the tale's answers** (`fixed2-tale.jpg`): one answer to a row, its price at the right; the longest, *Let it settle
+  itself* and what it means, reads in two lines.
+- **2.8, a field battle's bar** (`fixed2-field-bar.jpg`): it counts the two sides still standing ("Yours 7 · Theirs 4")
+  instead of the town's stores and people, and there is no idle-villager button. A siege or a visit keeps the town's bar.
+- **A raid told twice** (follow-up, `fixed3-strike-first.jpg`, `fixed3-card-folds.jpg`): a band that got into a town of
+  the player's this season is told face to face first; the season's card waits for that window to close, then gives
+  those raids one line ("The raid on your towns, as you were told when the season turned"), keeping a raid beaten off as
+  it was (`foldTold`, src/client/seasoncard.ts). The card also waits for any other meeting face to face that is open.

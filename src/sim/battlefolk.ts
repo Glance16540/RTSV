@@ -5,6 +5,8 @@
 //
 // game.ts calls `peopled` and `cradled` as a battle is laid out, and `Game.census` is `censusOf`.
 import { Ages, GROWN_SEASON, LAST_SEASON, OLD_SEASON, SEASONS_A_YEAR, ageFor, childSeasons, cleanAges, leftFor, yearsOf } from './ageing';
+import { widowsOut } from './widowtown';
+import { orphansOut } from './orphantown';
 import { ELDER_AT, GROW_TIME, RES_TYPES } from './data';
 import type { Game, Gender, Unit } from './game';
 import { homeRecord } from './household';
@@ -81,6 +83,8 @@ export function censusOf(g: Game, owner: number): Census {
     (woman ? ages.f : ages.m).push(old ? Math.max(OLD_SEASON, Math.min(LAST_SEASON, seasons)) : Math.max(GROWN_SEASON, Math.min(OLD_SEASON - 1, seasons)));
     if (u.gender === 'f' && u.type === 'villager') { const home = { ...homeRecord(g, u), ...homeMade(g, u) }; if ((u.kids ?? 0) > 0 || home.war || home.made) out.named!.push({ name: u.name, gender: 'f', kids: u.kids ?? 0, ...(u.family ? { family: u.family } : {}), ...home }); }
   }
+  { const w = widowsOut(g, owner); if (w) out.widowed = w; } // the widow or widower of each house (widowtown.ts)
+  { const o = orphansOut(g, owner); if (o) out.orphans = o; } // the children taken in (orphantown.ts)
   for (const b of g.buildings) {
     if (b.dead) continue;
     if (b.owner === owner) { out.children += b.young?.length ?? 0; for (const c of b.young ?? []) ages.k.push(childSeasons(c.left, GROW_TIME)); }

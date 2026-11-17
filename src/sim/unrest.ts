@@ -15,7 +15,9 @@
  * not stir, nor a town with its people's army or leader in it, nor one already troubled by something else.
  */
 import type { Campaign } from './campaign';
-import { armyAt, faithOf } from './campaignbase';
+import { armyAt, FAITH, faithOf } from './campaignbase';
+import { creedOf } from './creed';
+import { faithAt } from './townfaith';
 import { leaderAt } from './court';
 import { angryAt, noblesAt } from './nobles';
 import { folkOf, headcount } from './township';
@@ -35,6 +37,8 @@ export const UNREST = {
   church: 0.6, farm: 0.85, tavern: 1.3, pious: 0.8,
   /** Newly held it is `fresh` times as likely, easing over `settle` seasons to `settled` times. */
   fresh: 1.6, settled: 0.6, settle: 40,
+  /** A town its people founded themselves (founding.ts) and have held ever since is not fresh as a taken one is: it begins at `own` times, easing to `settled` the same way. */
+  own: 0.8,
   /** With an angry noble; and what the mood of its nobles is worth at its best and worst (a content lord, a sour one). */
   angry: 2, mood: 0.3,
   /** Never more than this in a season, whatever is wrong. */
@@ -58,6 +62,11 @@ export function noteHolders(c: Campaign): void {
 }
 /** Seasons a land has been held by whoever holds it. */
 export const heldFor = (c: Campaign, tid: number): number => { const h = c.heldSince?.[tid]; return h && h.owner === c.territories[tid]?.owner ? Math.max(0, c.turn - h.since) : UNREST.settle; };
+/** Did the people who hold this town found it themselves, and hold it ever since (founding.ts)? */
+export function ownFounded(c: Campaign, tid: number): boolean {
+  const t = c.territories[tid], h = c.heldSince?.[tid];
+  return !!t?.foundedBy && !!h && h.owner === t.owner && h.since <= t.foundedBy.turn + 1;
+}
 /** Could unrest begin in this town at all? `busy`: lands already troubled this season. */
 export function mayStir(c: Campaign, tid: number, busy?: ReadonlySet<number>): boolean {
   const t = c.territories[tid];
@@ -78,8 +87,8 @@ export function unrestWeights(c: Campaign, tid: number): { hungry: number; churc
     church: t.buildings.includes('church') ? UNREST.church : 1,
     farm: t.buildings.includes('farm') ? UNREST.farm : 1,
     tavern: t.buildings.includes('tavern') ? UNREST.tavern : 1,
-    pious: faithOf(c, t.owner).defence > 1 ? UNREST.pious : 1,
-    held: UNREST.settled + (UNREST.fresh - UNREST.settled) * fresh,
+    pious: FAITH[creedOf(faithAt(c, tid)).id].defence > 1 ? UNREST.pious : 1, // the town's own standing, not its nation's (townfaith.ts)
+    held: UNREST.settled + ((ownFounded(c, tid) ? UNREST.own : UNREST.fresh) - UNREST.settled) * fresh,
     nobles: angryAt(c, tid) ? UNREST.angry : 1 - UNREST.mood * Math.max(-1, Math.min(1, mood / 100)),
   };
 }

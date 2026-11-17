@@ -862,6 +862,14 @@ body.looking-out #visit { display: none; }
 /* ---- Tales (the people session): each answer in plain case, its price on a smaller line beneath ---- */
 #ow-dialog .tale .levels button { font-family: var(--book); text-transform: none; letter-spacing: normal; display: flex; flex-direction: column; gap: 4px; text-align: left; line-height: 1.3; }
 #ow-dialog .tale .levels button small { font-size: 13px; opacity: 0.8; }
+#ow-dialog .tale .levels { flex-direction: column; align-items: stretch; } /* one answer to a row (playtest 2.7) */
+#ow-dialog .tale .levels button { flex: 0 0 auto; width: 100%; }
 
 /* The playtest's fixes (docs/PLAYTEST.md): the line under each heading of the land's panel that says what its buttons cost. */
 #ow-actions .lp-why { margin: -2px 0 1px; font-size: 13px; line-height: 1.3; }
+
+/* The playtest's second fixes (docs/PLAYTEST.md 2.7): a tale's answers one to a row, the answer on the left and its price
+   on the right, so that the longest reads in a line or two. */
+#ow-dialog .tale .levels { flex-direction: column; align-items: stretch; gap: 8px; margin-top: 12px; }
+#ow-dialog .tale .levels button { flex: 0 0 auto; margin-top: 0; padding: 9px 16px; flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 16px; row-gap: 2px; }
+#ow-dialog .tale .levels button small { text-align: left; margin-left: auto; }

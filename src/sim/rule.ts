@@ -38,7 +38,9 @@ function sendToward(c: Campaign, f: number, to: number, cost: Partial<Record<str
 /**
  * A season for one rival nation: it raises a Hall of Judgement in its chief town when it has none begun and can spare the
  * stores, the nation's other towns sending it what it lacks (at 192 campaigns, paid by the chief town alone, 46.5% and
- * 43.6% of rivals had one by twenty years; helped, 58.4% and 55.0%).
+ * 43.6% of rivals had one by twenty years; helped, 58.4% and 55.0%); and where even so it cannot, in the richest town
+ * of the nation that can spare it alone (with fewer wild lands the helped chief town read 49.8% and 56.8%; with this,
+ * 54.9% and 54.4%).
  */
 export function hallSeason(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
@@ -51,7 +53,11 @@ export function hallSeason(c: Campaign, f: number): boolean {
   // The chief town pays, or, where it cannot alone, the nation's other towns send it what it lacks (a Hall is the nation's
   // seat of judgement): the nation keeps PLENTY.rule floors a town after paying (plenty.ts, one rule for every purchase).
   if (!canSpare(c, chief.id, cost, { times: PLENTY.rule })) {
-    if (!nationCanSpare(c, f, chief.id, cost, PLENTY.rule) || !sendToward(c, f, chief.id, cost)) return false;
+    if (!nationCanSpare(c, f, chief.id, cost, PLENTY.rule) || !sendToward(c, f, chief.id, cost)) {
+      // Else in the town of the nation that can spare it, the richest first.
+      const other = mine.filter((t) => t.id !== chief.id && canSpare(c, t.id, cost, { times: PLENTY.rule }) && !raiseBar(c, f, t.id, 'hall')).sort((a, b) => breadless(folkOf(c, b.id).stores) - breadless(folkOf(c, a.id).stores) || a.id - b.id)[0];
+      return other ? raiseWork(c, f, other.id, 'hall') === '' : false;
+    }
   }
   if (raiseBar(c, f, chief.id, 'hall')) return false;
   return raiseWork(c, f, chief.id, 'hall') === '';

@@ -1,6 +1,7 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import { endCard } from './briefing';
+import { bereftLines } from '../sim/bereft';
 import { possessive, renameOwn } from '../sim/naming';
 const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
@@ -583,6 +584,7 @@ export class Hud {
         const nameOf = (id: number) => { const u = game.entities.get(id); return u && u.kind === 'unit' ? u.name + (u.trait ? ' ' + VILLAGER_TRAITS[u.trait].icon : '') + (u.trait2 ? VILLAGER_TRAITS[u.trait2].icon : '') : ''; };
         body += `<div class="family"><span class="${r.m ? 'in m' : ''}">♂ ${nameOf(r.m) || 'empty'}</span><span class="${r.f ? 'in f' : ''}">♀ ${nameOf(r.f) || 'empty'}</span></div>`;
         body += awayHtml(game, b);
+        for (const line of bereftLines(game, b)) body += `<div class="hint">${line}</div>`; // widow, widower, orphans taken in (bereft.ts)
         if (b.family) body += `<div>The ${b.family} family${game.renown(b) ? ` · renown ${'★'.repeat(game.renown(b))}: +${game.renown(b)} room, children ${game.renown(b) * 10}% sooner` : ''}</div>`;
         if (r.m && r.f) {
           body += b.birthsPaused ? '<div>Not raising children (paused)</div>'
@@ -741,9 +743,14 @@ export class Hud {
       if (left >= 0) wonder += ` · 🗿 ${q.id === pid ? 'Your' : cap1(possessive(q.name))} Wonder ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
     }
     const mins = Math.floor(game.time / 60), secs = Math.floor(game.time % 60);
+    // A field battle has nothing to gather or house: its bar counts the two sides still standing instead (docs/PLAYTEST.md 2.8).
+    let mine = 0, theirs = 0;
+    if (game.field) for (const u of game.units) { if (u.hp <= 0 || game.players[u.owner]?.neutral) continue; if (u.owner === pid) mine++; else if (game.hostile(u.owner, pid)) theirs++; }
     const top = [
-      RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
-        `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
+      game.field
+        ? `<span title="Your soldiers still standing">${ico('attackmove', '⚔️')} Yours ${mine}</span><span title="The enemy's soldiers still standing" class="${theirs > mine ? 'warn' : ''}">${ico('attackmove', '⚔️')} Theirs ${theirs}</span>`
+        : RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
+          `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
       `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder + this.weatherTag() + (game.field ? '' : ` · <span class="creed" title="${this.creedTip(p.virtue)}">${creedOf(p.virtue).icon} ${creedOf(p.virtue).name}</span>`),
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,
@@ -758,6 +765,7 @@ export class Hud {
       $('age').innerHTML = top[1];
       $('idle').innerHTML = `🧑‍🌾 <b>${top[2]}</b> idle`;
       $('idle').classList.toggle('dim', idle === 0);
+      $('idle').style.display = game.field ? 'none' : ''; // no villagers in a field battle
       $('clock').textContent = top[3];
       $('pause').textContent = top[4];
       $('speed').textContent = top[5];

@@ -9,6 +9,7 @@ import { folkOf } from '../sim/township';
 import { isAngry, noblesAt, sayOn, titleOf } from '../sim/nobles';
 import { bereftText } from '../sim/widowhood';
 import { nobleDealPanel } from './nobledeals';
+import { standingPanel } from './townorders';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 
@@ -19,12 +20,18 @@ export function decreePanel(c: Campaign, tid: number): string {
   const grief = (f.grief ?? 0) > 0 ? ', grieving' : '';
   const gone = f.drifted ? [f.drifted.tavern ? `${f.drifted.tavern} of its women at the tavern` : '', f.drifted.mines ? `${f.drifted.mines} of its men at the mines` : ''].filter(Boolean).join(' and ') : '';
   let html = `<div class="hint">Standing ${Math.round(townStanding(c, tid))}, ${way}${grief}.${gone ? ` Drifted: ${gone}.` : ''}${now.length ? ' Decrees: ' + now.map((x) => `${inFaith(DECREES[x.kind].name, c.factions[0].civ).toLowerCase()} (to turn ${x.until}${x.strength < 1 ? ', by messenger' : ''})`).join('; ') + '.' : ''}</div>`;
+  html += standingPanel(c, tid); // the governor's standing orders (townorders.ts)
   // Its widowed and orphans (src/sim/widowhood.ts).
   const bereft = bereftText(c, tid);
   if (bereft) html += `<div class="hint">Bereaved: ${esc(bereft)}.</div>`;
   // The town's nobles and how they feel (src/sim/nobles.ts); each decree says whom it would please and anger.
   const here = noblesAt(c, tid);
   if (here.length) html += `<div class="hint">Nobles: ${here.map((n) => `${esc(titleOf(c, n))} (${n.leaning}, ${isAngry(n) ? 'angry' : n.mood >= 20 ? 'pleased' : n.mood <= -15 ? 'displeased' : 'content'})`).join('; ')}.</div>`;
+  // What makes a noble of the town where it has none yet (nobles.ts): so the Nobles line is not a list with nothing to do.
+  if (c.territories[tid]?.owner === 0) {
+    const none = [!here.some((n) => n.rank === 'captain') ? 'a captain when one of its soldiers fells three or more in battle' : '', !here.some((n) => n.rank === 'matron') ? 'a matron when a mother of the town raises three children or her house makes a name by its work' : ''].filter(Boolean);
+    if (none.length) html += `<div class="hint">The town will have ${none.join(', and ')}.</div>`;
+  }
   html += nobleDealPanel(c, tid); // the leader's dealings with them (nobledeal.ts)
   const names = (xs: { name: string }[]): string => xs.slice(0, 3).map((n) => n.name).join(', ') + (xs.length > 3 ? ` and ${xs.length - 3} more` : '');
   for (const k of DECREE_KINDS) {
