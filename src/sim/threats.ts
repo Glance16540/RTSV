@@ -86,6 +86,8 @@ export interface Defence { men: number; works: number; walls: number; army: numb
 export interface Raid {
   turn: number; band: number; kind: BandKind; name: string; at: number; owner: number;
   outcome: Outcome; force: number; defence: Defence;
+  /** The band's strength as it came, which is what the player was told beforehand; `force` is what that was worth on the day. */
+  strength?: number;
   killed: number; taken: { men: number; women: number }; names: string[];
   stores: { food: number; wood: number; gold: number; stone: number }; burnt?: string;
   /** Which way the people's standing moved, and by how much (piety up, decadence down). */
@@ -286,7 +288,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const fight = road ? null : raidClash(b.strength, force, defence, garrison?.units ?? {}, faithAt(c, tid));
   let outcome: Outcome = fight ? (fight.outcome === 'taken' && bled ? 'raided' : fight.outcome) : r >= THREATS.hold ? 'held' : 'raided';
   const raid: Raid = {
-    turn: c.turn, band: b.id, kind: b.kind, name: b.name, at: tid, owner, outcome, force, defence: road ? { ...defence, total: round1(guard) } : defence,
+    turn: c.turn, band: b.id, kind: b.kind, name: b.name, at: tid, owner, outcome, force, strength: b.strength, defence: road ? { ...defence, total: round1(guard) } : defence,
     killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0,
     ...(fight ? { rounds: fight.rounds, broke: fight.broke } : {}),
   };
@@ -350,7 +352,7 @@ export function reportText(c: Campaign, r: Raid): string[] {
   const t = c.territories[r.at], d = r.defence, road = r.kind === 'highwaymen';
   const had = [d.men ? `its men (${whole(d.men)})` : '', d.works ? `its fortress and barracks (${whole(d.works)})` : '', d.walls ? `its towers and walls (${whole(d.walls)})` : '', d.army ? `the army there (${whole(d.army)})` : '', d.guard ? `the capital's guard (${whole(d.guard)})` : ''].filter(Boolean);
   const lines = [
-    `${BANDS[r.kind].name}, ${r.name}, ${road ? 'lay in wait on the road at' : 'came against'} ${t.name} with ${strengthOf(r.force)}.`,
+    `${BANDS[r.kind].name}, ${r.name}, ${road ? 'lay in wait on the road at' : 'came against'} ${t.name} with ${strengthOf(r.strength ?? r.force)}${r.strength !== undefined && whole(r.strength) !== whole(r.force) ? `, worth ${whole(r.force)} on the day` : ''}.`,
     road ? `The road was ${d.total > 1 ? `escorted (${whole(d.total)})` : 'unguarded'}.`
       : `The town defended itself with ${had.length ? had.join(', ') : 'nothing'}${d.spirit !== 1 ? `, ${d.spirit > 1 ? 'stiffened' : 'slackened'} by the spirit of its people (×${Math.round(d.spirit * 100) / 100})` : ''}: ${inAll([d.men, d.works, d.walls, d.army, d.guard].map((x) => x ?? 0), d.total)}.`,
     r.outcome === 'held' ? `They were ${road ? 'driven off' : 'held off'}${r.broken ? ', and the band is broken' : ''}.` : r.outcome === 'taken' ? 'The town fell to them.' : road ? 'They took what was on the road.' : 'They broke in, took what they could carry and were gone.',
