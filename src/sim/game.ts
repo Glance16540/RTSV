@@ -1,6 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
-import { layCoarse } from './firstlay';
+import { layCoarse, layKept } from './firstlay';
+import { unlaidOf } from './unlaid';
 import { nobodyLeft } from './lastperson';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
@@ -541,7 +542,7 @@ export class Game {
         // What was left standing here after the last battle still stands, unless another camp is pitched on it.
         for (const [type, cx, cy, health, built] of [...(s.bonus.town ?? [])].sort((a, b) => Number(b[0] === 'towncenter') - Number(a[0] === 'towncenter'))) {
           const def = BUILDINGS[type];
-          if (!def || !Number.isInteger(cx) || !Number.isInteger(cy)) continue;
+          if (!def || !Number.isInteger(cx) || !Number.isInteger(cy) || cx < 0 || cy < 0) continue; // with no place: layKept, below (unlaid.ts)
           if (this.spec.starts.some((o, k) => k !== i && Math.hypot(o.x - cx - def.size / 2, o.y - cy - def.size / 2) < 10)) continue;
           // It was built on ground cleared of wood or stone, and that ground is still clear.
           for (const r of this.resources.filter((r) => r.cx < cx + def.size && r.cx + r.size > cx && r.cy < cy + def.size && r.cy + r.size > cy)) this.kill(r);
@@ -568,6 +569,7 @@ export class Game {
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
         if (s.bonus.coarse?.length && !field) layCoarse(this, i, st, dir, s.bonus.coarse); // a town met for the first time, as big as its record (firstlay.ts)
+        if (s.bonus.town?.length && !field) layKept(this, i, st, dir, s.bonus.town); // what had no room last time is tried again, and kept if there is still none (unlaid.ts)
         // The town's children are on the record of one of its roofs, part grown.
         if (s.bonus.people?.named?.length && !field) { settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f')); restoreMade(this, i, s.bonus.people.named); }
         if (s.bonus.people?.widowed?.length && !field) seatWidows(this, i, s.bonus.people.widowed); // the map's widowed, the same in the town (widowtown.ts)
@@ -885,7 +887,7 @@ export class Game {
     const share = (v: number) => Math.min(0.99, Math.max(0.01, Math.round(v * 100) / 100));
     return this.buildings.filter((b) => b.owner === owner && !b.dead).map((b): Standing =>
       !b.complete ? [b.type, b.cx, b.cy, share(b.hp / b.maxHp), Math.min(0.99, Math.max(0, Math.round(b.progress * 100) / 100))]
-        : b.hp < b.maxHp ? [b.type, b.cx, b.cy, share(b.hp / b.maxHp)] : [b.type, b.cx, b.cy]);
+        : b.hp < b.maxHp ? [b.type, b.cx, b.cy, share(b.hp / b.maxHp)] : [b.type, b.cx, b.cy]).concat(unlaidOf(this, owner)); // and what the field had no room for (unlaid.ts)
   }
 
   /**
