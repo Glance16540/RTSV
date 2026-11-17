@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { furloughOf, homeOnLeave } from './furloughmap';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
@@ -1456,7 +1457,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
-      ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}),
+      ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
@@ -1502,6 +1503,8 @@ const unitsOf = (type: string): [string, number] => Object.entries(COMPANIES[typ
  * `after`, by name, so that two features adding to it never fight over an argument's place.
  */
 export interface BattleAfter {
+  /** The town's men who went home from the army defending it and were home when it ended (`homeNow`, furlough.ts). */
+  leave?: unknown;
   /** Where the town's standing ended, to carry half the change home. */
   virtue?: number;
   /** The rank the leader ended the battle at. */
@@ -1528,6 +1531,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const p = c.pending;
   if (!p) return;
   if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors, { fell: after.fell, heroRank, acclaimed: after.acclaimed }); return; } // the leader fought beside the army, at the usual risk (bandfight.ts)
+  if (p.defender === 0 && p.mode !== 'field') homeOnLeave(c, p.to, after.leave); // men of the town who went home from its army while it was fought for (furloughmap.ts): before the army is counted
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.
   if (virtue !== undefined && Number.isFinite(virtue)) { if (p.attacker !== 0 && p.mode !== 'field') shiftVirtue(c, 0, (virtue - faithAt(c, p.to)) * BATTLE_VIRTUE, { at: p.to }); else shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE); }

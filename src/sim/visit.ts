@@ -7,6 +7,7 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepQueued } from './queueddrill';
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
@@ -68,6 +69,8 @@ export interface VisitAfter {
   orders?: Partial<Orders>;
   /** Who of the player's bore arms as they left, by company (`visitArms`): the army's soldiers, and townsmen trained there. */
   arms?: VisitArms;
+  /** The town's men who went home from the army there and were home as the player left (`homeNow`, furlough.ts). */
+  leave?: unknown;
   /** The studies researched in the town (`learnedIn(player.techs)`): they come home to the nation (studies.ts). */
   studies?: string[];
 }
@@ -186,6 +189,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
+        ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
       },
     }],
   };
@@ -201,6 +205,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   // The town is as the visit left it: everyone born there, less the dead and the taken.
   const census = cleanCensus(after.folk);
   const before = folkOf(c, land.id).children;
+  homeOnLeave(c, land.id, after.leave); // men of the town who went home from the army while the player was there: before its soldiers are counted back
   const had = armyAt(c, land.id)?.owner === 0 ? { ...armyAt(c, land.id)!.units } : undefined;
   if (census) settleFolk(c, land.id, census);
   if (census) bornOnVisit(c, land.id, folkOf(c, land.id).children - before);

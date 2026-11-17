@@ -1,5 +1,6 @@
 // A visit to one of your own towns from the campaign map: the button on the land's panel, the clock and the way
 // out while you are there, and the carrying of what you built back to the map. The rules are in src/sim/visit.ts.
+import { homeNow } from '../sim/furlough';
 import { showBriefing } from './briefing';
 import type { BattleConfig, Campaign } from '../sim/campaign';
 import type { Ground, Standing } from '../sim/game';
@@ -60,7 +61,7 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
     if (gone) return;
     gone = true;
     const after: VisitAfter = {
-      town: app.game.standing(app.pid), orders: app.game.orders(app.pid), ground: app.game.ground(), virtue: app.game.players[app.pid].virtue, seconds: Math.min(VISIT_SECONDS, app.game.time),
+      town: app.game.standing(app.pid), orders: app.game.orders(app.pid), leave: homeNow(app.game, app.pid), ground: app.game.ground(), virtue: app.game.players[app.pid].virtue, seconds: Math.min(VISIT_SECONDS, app.game.time),
       folk: app.game.census(app.pid), // its people and stores go home with it (township.ts)
       drifted: driftedIn(app.game, app.pid), // and who has drifted to the tavern and the mine (driftintown.ts)
       arms: visitArms(app.game.units, app.pid), // and its soldiers: the army's losses, and companies trained here (visit.ts)
