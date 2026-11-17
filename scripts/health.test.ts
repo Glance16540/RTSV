@@ -196,6 +196,7 @@ interface Watch {
   sieges: Siege[]; // settled on the map
   falling: number; // towns whose standing fell 10 or more over 20 years, held by one people throughout
   fallingTowns: number;
+  driftSeasons: { lost: number; ts: number }; // drift's toll summed season by season over every town held by the one people it began with, and the town-seasons (the decrees row's second reading)
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
 }
 
@@ -224,7 +225,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, driftLost: [] };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -319,6 +320,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
     // Every held town.
     if (s <= YEARS20) for (const t of c.territories) if (steady[t.id] && t.folk?.drift?.lost) lostTo[t.id] += t.folk.drift.lost; // drift's own toll, season by season
+    if (s <= YEARS20) for (const t of c.territories) if (steady[t.id] && t.owner >= 0 && t.folk?.drift) { w.driftSeasons.lost += t.folk.drift.lost ?? 0; w.driftSeasons.ts++; } // and over every town held that season
     for (const t of held(c)) {
       const f = folkOf(c, t.id), g = grown(f), away = awayFrom(c, t.id);
       if (f.hungry) strife[t.id].famine = now;
@@ -694,8 +696,16 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   {
     const storyYearsAll = ruled.reduce((k, w) => k + w.storyYears, 0);
     const l = ruled.reduce((a, w) => ({ player: a.player + w.lords20.player, playerAngry: a.playerAngry + w.lords20.playerAngry, playerContent: a.playerContent + w.lords20.playerContent, rivals: a.rivals + w.lords20.rivals, rivalsAngry: a.rivalsAngry + w.lords20.rivalsAngry, rivalsContent: a.rivalsContent + w.lords20.rivalsContent, plots: a.plots + w.lords20.plots }), { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 });
-    add('Rule', 'Lords angry and content at 20 years, the player\'s and the rivals\'', 'report only', `angry ${pct(l.playerAngry / Math.max(1, l.player))}, content ${pct(l.playerContent / Math.max(1, l.player))} of the player's (${l.player} lords); angry ${pct(l.rivalsAngry / Math.max(1, l.rivals))}, content ${pct(l.rivalsContent / Math.max(1, l.rivals))} of the rivals' (${l.rivals}); ${l.plots} plots against the player, once in ${num(storyYearsAll / Math.max(1, l.plots), 1)} years; in twenty years the player's lords helped ${ruled.reduce((n, w) => n + w.lordActs.help, 0)} times, withheld ${ruled.reduce((n, w) => n + w.lordActs.withhold, 0)} times, and joined a plot ${ruled.reduce((n, w) => n + w.lordActs.joined, 0)} times`, 'report',
-      'Lords of every living nation at the end of the twentieth year (nobles.ts), those angry (mood -40 or under) and those content (30 or over, enough to help in need, nobleacts.ts). Plots: every plot begun against the player in the whole campaign (courtstory.ts). The player played by the computer gives decrees but deals with no noble; a rival weighs its own (nobleweigh.ts).');
+    const share = (n: number, of: number): number => n / Math.max(1, of);
+    const pa = share(l.playerAngry, l.player), ra = share(l.rivalsAngry, l.rivals), pc = share(l.playerContent, l.player), rc = share(l.rivalsContent, l.rivals);
+    const acts = `in twenty years the player's lords helped ${ruled.reduce((n, w) => n + w.lordActs.help, 0)} times, withheld ${ruled.reduce((n, w) => n + w.lordActs.withhold, 0)} times, and joined a plot ${ruled.reduce((n, w) => n + w.lordActs.joined, 0)} times`;
+    add('Rule', 'Lords angry at 20 years, the player\'s and the rivals\' each', '1 to 8% (some at the edge of anger, never a revolt of the great)', `${pct(pa)} of the player's (${l.player} lords), ${pct(ra)} of the rivals' (${l.rivals}); ${acts}`, l.player && l.rivals ? within(pa, 0.01, 0.08) && within(ra, 0.01, 0.08) : null,
+      'Lords of every living nation at the end of the twentieth year (nobles.ts) whose mood is -40 or under. The player played by the computer gives decrees but deals with no noble; a rival weighs its own (nobleweigh.ts).');
+    add('Rule', 'Lords content at 20 years, the player\'s and the rivals\' each', '5 to 20%', `${pct(pc)} of the player's, ${pct(rc)} of the rivals'`, l.player && l.rivals ? within(pc, 0.05, 0.2) && within(rc, 0.05, 0.2) : null,
+      'Lords whose mood is 30 or over at the end of the twentieth year: enough to help the nation in need (nobleacts.ts).');
+    const plotEvery = l.plots ? storyYearsAll / l.plots : NaN;
+    add('Rule', 'A noble\'s plot against the player', 'about once in 30 to 150 years', l.plots ? `once in ${num(plotEvery, 1)} years (${l.plots} plots in ${ruled.length} campaigns)` : 'no plots', l.plots ? within(plotEvery, 30, 150) : false,
+      'Every plot begun against the player (courtstory.ts), over the years the campaign ran.');
   }
   const rivalsAt20 = ruled.reduce((n, w) => n + w.halls.rivals, 0), halled = ruled.reduce((n, w) => n + w.halls.with, 0);
   add('Rule', 'Rival nations with a Hall of Judgement by 20 years', 'most (over half)', rivalsAt20 ? `${pct(halled / rivalsAt20)} (${halled} of ${rivalsAt20} rival nations alive at 20 years)` : 'no rival alive at 20 years', rivalsAt20 ? halled / rivalsAt20 > 0.5 : null,
@@ -708,8 +718,10 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const fallR = ruled.reduce((k, w) => k + w.falling, 0) / Math.max(1, ruled.reduce((k, w) => k + w.fallingTowns, 0));
   const fallB = bare.reduce((k, w) => k + w.falling, 0) / Math.max(1, bare.reduce((k, w) => k + w.fallingTowns, 0));
   const lostR = mean(ruled.flatMap((w) => w.driftLost)), lostB = mean(bare.flatMap((w) => w.driftLost));
-  add('Drift', 'With sensible decrees vs none', 'standing lost to drift alone at least a tenth less', `${num(lostR)} a town over twenty years with decrees, ${num(lostB)} without (${lostB > 0 ? pct(1 - lostR / lostB) : '—'} less); towns fallen 10 or more all told ${pct(fallR)} and ${pct(fallB)}`, lostB > 0 ? lostR <= lostB * 0.9 : null,
-    'Standing lost to drift alone is what drift took from a town season by season (drift.ts: its strain, its women at the tavern, the women ordered into it), before any rise and not counting war, raids or the nation\'s dips, summed over twenty years for every town held by one people throughout. With decrees, the player gives the sensible ones (decrees.ts) and rivals rule as they do; without, nobody gives any.');
+  const perSeason = (ws: Watch[]): number => { const a = ws.reduce((k, w) => k + w.driftSeasons.lost, 0), n = ws.reduce((k, w) => k + w.driftSeasons.ts, 0); return n ? (a / n) * YEARS20 : NaN; };
+  const seasR = perSeason(ruled), seasB = perSeason(bare);
+  add('Drift', 'With sensible decrees vs none', 'standing lost to drift alone at least a tenth less', `${num(lostR)} a town over twenty years with decrees, ${num(lostB)} without (${lostB > 0 ? pct(1 - lostR / lostB) : '—'} less); read season by season over every town held, ${num(seasR)} and ${num(seasB)} (${seasB > 0 ? pct(1 - seasR / seasB) : '—'} less); towns fallen 10 or more all told ${pct(fallR)} and ${pct(fallB)}`, lostB > 0 ? lostR <= lostB * 0.9 : null,
+    'Standing lost to drift alone is what drift took from a town season by season (drift.ts: its strain, its women at the tavern, the women ordered into it), before any rise and not counting war, raids or the nation\'s dips, summed over twenty years for every town held by one people throughout. With decrees, the player gives the sensible ones (decrees.ts) and rivals rule as they do; without, nobody gives any. The second reading sums drift\'s toll season by season over every town held that season by the people it began with, whether or not it is still theirs at twenty years, as a town over twenty years (proposed: the row\'s first reading averages only the towns still held at twenty years, and moves with which towns those are).');
 
   // Threats
   const raids = all('raids'), years = ruled.reduce((k, w) => k + w.raidTownYears, 0);
