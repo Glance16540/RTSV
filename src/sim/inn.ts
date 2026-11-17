@@ -11,9 +11,9 @@
 // In a town. It is a real building, raised by villagers like any other; what stands in the town is what the map keeps.
 import type { Campaign } from './campaign';
 import { BUILDINGS } from './data';
-import { GOVERN, wantsOf } from './governor';
-import { STORE_KINDS, folkOf } from './township';
+import { wantsOf } from './governor';
 import { begunAt, raiseWork } from './townworks';
+import { canSpare } from './plenty';
 
 export const INN = {
   /** A governor begins one only if, after paying, the town still holds this many times what it keeps by it, in goods other than its bread. */
@@ -22,9 +22,7 @@ export const INN = {
 
 /** Has a town the means to spare for an Inn? Only out of plenty (see watchhouse.ts: goods spent are bread it cannot buy). */
 function spare(c: Campaign, tid: number): boolean {
-  const t = c.territories[tid], wants = wantsOf(c, tid), s = folkOf(c, tid).stores, cost = BUILDINGS.inn.cost;
-  const goods = STORE_KINDS.reduce((n, k) => n + (k === 'food' ? 0 : s[k] - (cost[k] ?? 0)), 0);
-  return t.buildings.includes('farm') && !wants.food && !wants.roof && !wants.wall && goods >= INN.plenty * GOVERN.floor;
+  return canSpare(c, tid, BUILDINGS.inn.cost, { wants: wantsOf(c, tid), times: INN.plenty }); // plenty.ts, one rule for every purchase
 }
 /**
  * The governors' season: a town at either end of a road where highwaymen sit, and that has no Inn begun, begins one

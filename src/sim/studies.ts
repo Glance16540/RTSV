@@ -19,6 +19,7 @@ import { BUILDINGS, TECHS } from './data';
 import type { TechDef } from './data';
 import { STORE_KINDS, folkOf } from './township';
 import { ageOf } from './campaignbase';
+import { nationCanSpare } from './plenty';
 
 declare module './campaign' {
   interface Faction {
@@ -132,7 +133,6 @@ export function pressing(c: Campaign, f: number, answers: string): number {
 export function studySeason(c: Campaign, f: number): string | null {
   const fac = c.factions[f];
   if (!fac?.alive || !fac.isAI || !allStudies().length) return null;
-  const have = held(c, f), floor = STUDY_KEEP * towns(c, f).length;
   let best: { id: string; at: number; need: number } | null = null;
   for (const t of allStudies()) {
     if (hasStudy(c, f, t.id)) continue;
@@ -140,8 +140,7 @@ export function studySeason(c: Campaign, f: number): string | null {
     if (need <= 0 || (best && need <= best.need)) continue;
     const at = towns(c, f).find((tid) => studyBar(c, f, t.id, tid) === '');
     if (at === undefined) continue;
-    const total = STORE_KINDS.reduce((n, k) => n + have[k], 0), cost = STORE_KINDS.reduce((n, k) => n + (t.cost[k] ?? 0), 0);
-    if (total - cost < floor) continue;
+    if (!nationCanSpare(c, f, at, t.cost)) continue; // plenty.ts, one rule for every purchase
     best = { id: t.id, at, need };
   }
   if (!best) return null;
