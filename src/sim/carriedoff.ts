@@ -19,7 +19,7 @@ import { agesOf, countFrom } from './ageing';
 import { BORN } from './bandborn';
 import { creedOf } from './creed';
 import { Held, bringHome, mark } from './threats';
-import { folkOf } from './township';
+import { TOWN_SCALE, folkOf } from './township';
 
 /** People of one town carried off by a nation: who holds them, in which land, and the record of them. */
 export interface Carried { id: number; by: number; at: number; held: Held }
@@ -85,7 +85,8 @@ export function townFell(c: Campaign, tid: number, from: number, to: number, via
     for (const x of gone.sort((a, b) => b.i - a.i)) list.splice(x.i, 1);
     return gone.map((x) => x.s);
   };
-  const women = take(ages.f, CARRY.women, CARRY.leave, 1), men = take(ages.m, CARRY.men, CARRY.leave, 2);
+  const kept = CARRY.leave * TOWN_SCALE; // as many as that was of a town, however large towns are (township.ts)
+  const women = take(ages.f, CARRY.women, kept, 1), men = take(ages.m, CARRY.men, kept, 2);
   if (!women.length && !men.length) return null;
   countFrom(f, ages); // the children stay: none is ever taken
   const x: Carried = { id: (c.carriedSeq = (c.carriedSeq ?? 0) + 1), by: to, at: hold, held: { from: tid, owner: from, men, women, since: c.turn } };
