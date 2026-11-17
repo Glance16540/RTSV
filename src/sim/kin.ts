@@ -210,7 +210,7 @@ export function kinSeason(c: Campaign, f: number): void {
   posts(c, f, k, seat);
   const had = new Set(k.circle.map((x) => x.name));
   fill(c, f, k);
-  for (const x of k.circle) if (!had.has(x.name) && c.turn > 1) tell(c, k, `${x.name} of ${c.territories[x.town]?.name ?? ''} is now ${k.leader}'s ${POST_NAMES[x.post].toLowerCase()}.`, 'plain');
+  for (const x of k.circle) if (!had.has(x.name) && c.turn > 1) tell(c, k, `${x.name} of ${c.territories[x.town]?.name ?? ''} is now ${POST_NAMES[x.post].toLowerCase()} to ${k.leader}.`, 'plain');
 }
 
 /** What each post does this season, by its holder's sway. */
