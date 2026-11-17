@@ -178,7 +178,14 @@ describe('a band from the far wilds', () => {
     expect(huntBands(c, [])).toBe(0); // still far off
     while (b.afar && !c.territories[b.at].adj.includes(home.id)) { c.turn++; roamSeason(c, []); }
     expect(c.territories[b.at].adj).toContain(home.id);
-    b.bound = b.bound ?? home.id; // (if it arrived on that step it has stopped marching; keep it on the march for the test)
+    b.bound = b.bound ?? home.id; b.afar = true; // (if it arrived on that step it has stopped marching; keep it on the march for the test)
+    const m = marchOf(c, b.id)!;
+    expect(m.seen).toBeDefined(); // the town saw it come
+    const seen = m.seen;
+    delete m.seen;
+    b.since = c.turn; // young again, so that only the march could bring them out
+    expect(huntBands(c, [])).toBe(0); // nobody rides out against a camp nobody has seen
+    m.seen = seen;
     expect(huntBands(c, [])).toBe(1);
     expect(c.bands).not.toContain(b);
     expect(a.units.infantry).toBeGreaterThan(0);
