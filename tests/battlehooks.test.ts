@@ -40,11 +40,11 @@ describe('battle hooks', () => {
     // resented before those held in it go free, the dead are reckoned between the stores and the faith. Change
     // this list only with the health report to show that nothing moved, or that what moved was meant.
     expect(BATTLE_HOOKS.order()).toEqual([
-      'settling: townfaith', 'settling: stores',
+      'settling: townfaith', 'settling: stores', 'settling: mapbattle',
       'counted: warhouse',
       'taken: conquered', 'taken: carriedoff',
       'repulsed: tribes',
-      'settled: stores', 'settled: armytown', 'settled: townfaith',
+      'settled: stores', 'settled: armytown', 'settled: townfaith', 'settled: mapbattle',
       'setup: stores',
       'written: studies', 'written: tribes',
       'housed: driftintown', 'housed: governor', 'housed: stores',
