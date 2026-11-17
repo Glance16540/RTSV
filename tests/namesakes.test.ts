@@ -2,7 +2,7 @@
 // names where the town can (src/sim/namesakes.ts).
 import { describe, expect, it } from 'vitest';
 import { armyAt, newCampaign } from '../src/sim/campaign';
-import { NAMES_M } from '../src/sim/data';
+import { NAMES_F, NAMES_M } from '../src/sim/data';
 import { Game } from '../src/sim/game';
 import { pickName } from '../src/sim/namesakes';
 import { rollOf } from '../src/sim/soldiernames';
@@ -38,8 +38,8 @@ describe('namesakes', () => {
     const soldiers = new Set(g.units.filter((u) => u.owner === 0 && u.roll).map((u) => u.name));
     for (const sex of ['m', 'f'] as const) {
       const folk = g.units.filter((u) => u.owner === 0 && u.type === 'villager' && u.gender === sex);
-      // As many different names as there are people, or as the twenty a sex allow (the soldiers' among them, for the men).
-      const room = 20 - (sex === 'm' ? soldiers.size : 0);
+      // As many different names as there are people, or as the names a sex allow (the soldiers' among them, for the men).
+      const room = (sex === 'm' ? NAMES_M.length : NAMES_F.length) - (sex === 'm' ? soldiers.size : 0);
       expect(new Set(folk.map((u) => u.name)).size).toBeGreaterThanOrEqual(Math.min(folk.length, room));
       if (sex === 'm' && folk.length <= room) for (const u of folk) expect(soldiers.has(u.name)).toBe(false);
     }
