@@ -33,34 +33,34 @@ siege 1 at 4m: d0c6d905bc5a9783
 siege 1 at 6m: 8cd9f7564bfd78de
 siege 1 at 8m: 116a75d7c1c0308e
 siege 1 end: tick 9600 winner -1 units 65 buildings 29 116a75d7c1c0308e
-siege 1 census 0: 7b09c9ac18e102ee
+siege 1 census 0: 0c8093ad6616e6a6
 siege 1 census 1: 7db16ec7f7e8c8b4
-siege 1 census 2: 5d98b393e0ffbe85
+siege 1 census 2: 4756d45081ea5674
 siege 2 at 2m: 62b1a0760b660253
 siege 2 end: tick 3040 winner 0 units 84 buildings 27 0b34e3bdb81f8a80
 siege 2 census 0: c9deecef447ed08a
-siege 2 census 1: 3211828b2e9078c4
-siege 2 census 2: 5d98b393e0ffbe85
+siege 2 census 1: bdce8b8ab1177ce1
+siege 2 census 2: 4756d45081ea5674
 siege 3 at 2m: 933ed2185437bb08
 siege 3 end: tick 4280 winner 1 units 58 buildings 20 e9b2201ebc091bcc
-siege 3 census 0: da60a4d88c4ab50e
+siege 3 census 0: 8a91d81e42e233b4
 siege 3 census 1: 847baa64e8870df8
-siege 3 census 2: 5d98b393e0ffbe85
+siege 3 census 2: 4756d45081ea5674
 siege 4 at 2m: 5f4e4f5bfdc78eb3
 siege 4 end: tick 4200 winner 0 units 76 buildings 28 e5476ff8315d5eb5
 siege 4 census 0: c0eb47e8f1da16ee
-siege 4 census 1: a9dcccb93cfc0697
-siege 4 census 2: 5d98b393e0ffbe85
+siege 4 census 1: 963df9887723ffca
+siege 4 census 2: 4756d45081ea5674
 siege 5 at 2m: cbf0c26e5181a6ab
 siege 5 end: tick 3240 winner 1 units 72 buildings 24 f9211290c0ce5c82
-siege 5 census 0: 6ac57095e1ca9185
+siege 5 census 0: da7b60181f61cff4
 siege 5 census 1: e8afaa5e147a8675
-siege 5 census 2: 5d98b393e0ffbe85
+siege 5 census 2: 4756d45081ea5674
 siege 6 at 2m: f43bdd5eaf3f72a1
 siege 6 end: tick 3020 winner 0 units 79 buildings 22 6a51c08f10fd2bdf
 siege 6 census 0: a110e23aab77a573
-siege 6 census 1: 72ce3a56781ccbc8
-siege 6 census 2: 5d98b393e0ffbe85
+siege 6 census 1: 244fba94d1042c21
+siege 6 census 2: 4756d45081ea5674
 drill 1 (greece v japan) at 2m: ae43ca57dc2a9cf7
 drill 1 (greece v japan) at 4m: 09fcee5448194006
 drill 1 (greece v japan) at 6m: a3580f47fe81a6d1
