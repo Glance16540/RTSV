@@ -25,6 +25,7 @@ import { convoyHtml } from './convoypanel';
 import { priceOf, priceText } from '../sim/prices';
 import { decreePanel } from './decrees';
 import { worksPanel } from './townworks';
+import { nextAgeText } from '../sim/nextage';
 
 const css = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
@@ -127,6 +128,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
     if (raise && noMenText(c, 0, t.id)) raise += `<p class="lp-note">${noMenText(c, 0, t.id)}</p>`;
     if (a && a.owner === 0) { const men = menOf(c, a); raise += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
     if (ageOf(c, 0) < AGE_COST.length) age += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
+    if (ageOf(c, 0) < AGE_COST.length && nextAgeText(c, 0, ageCost(c, 0))) age += `<div class="hint">${nextAgeText(c, 0, ageCost(c, 0))}</div>`; // what saving for it opens (nextage.ts)
     const court = courtOf(c, 0);
     if (court && court.at === t.id) {
       const away = called(c, 0).length;
