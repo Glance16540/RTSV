@@ -655,7 +655,7 @@ Off:
   villagers, beside the soldiers Ned Oakes and Joss Ironwood.
   *Fixed after the pass (namesakes.ts):* the lot draws a given name nobody of that people has, where one is left, and
   once the field is laid out a villager still under the lot's name who shares it, or a soldier's, is given a free one;
-  a name from a record is never changed. With twenty names a sex, a town of more than twenty of one sex still has some.
+  a name from a record is never changed. The name lists are now sixty a sex (data.ts), so a town of a hundred seldom has any.
 
 ## Handed on
 

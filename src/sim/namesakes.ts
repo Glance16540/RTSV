@@ -3,7 +3,7 @@
 //
 // A villager's name is drawn by lot as they come onto the field (game.ts spawnUnit), and the records the map keeps
 // then name some of them (the known by name, the households and their men, the army's roll). Here the lot draws a
-// name nobody of that people's own already has, where one is left (twenty a sex); and once a battle is laid out, any
+// name nobody of that people's own already has, where one is left (sixty a sex, data.ts); and once a battle is laid out, any
 // villager still under the name the lot gave them who shares it with another of their people is given one nobody has.
 // A name from a record is never changed. Only given names: a family name is a house's.
 import type { Game, Gender, Unit } from './game';
