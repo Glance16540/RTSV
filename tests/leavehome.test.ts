@@ -35,7 +35,7 @@ describe('a man home on leave comes home to his own door', () => {
     empty(g, mine); fill(g, [mine]);
     mine.family = first.family ?? 'Ashdown'; first.family = mine.family; first.tie = 'husband'; // the man of his house
     const wife = g.spawnUnit('villager', 0, mine.x, mine.y + 2, 'f'); mine.residents.f = wife.id; wife.homeId = mine.id;
-    const soldier = g.units.find((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type])!;
+    const soldier = (() => { const first = g.players[0].furlough!.men[0], all = g.units.filter((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type]); return all.find((u) => u.name === first.name && u.family === (first.family ?? u.family)) ?? all[0]; })() // the soldier who is the first man on the list (soldiernames.ts);
     expect(g.cmdGoHome(0, [soldier.id])).toBe(1);
     const him = villagers(g, 0).find((v) => v.onLeave)!;
     expect(him.order).toMatchObject({ t: 'movein', id: mine.id });
@@ -111,7 +111,7 @@ describe('a man home on leave comes home to his own door', () => {
     const mine = houses(g)[0], first = g.players[0].furlough!.men[0];
     empty(g, mine); fill(g, [mine]);
     mine.family = first.family ?? 'Ashdown'; first.family = mine.family; first.tie = 'husband'; // the man of his house
-    const soldier = g.units.find((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type])!;
+    const soldier = (() => { const first = g.players[0].furlough!.men[0], all = g.units.filter((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type]); return all.find((u) => u.name === first.name && u.family === (first.family ?? u.family)) ?? all[0]; })() // the soldier who is the first man on the list (soldiernames.ts);
     g.cmdGoHome(0, [soldier.id]);
     const him = villagers(g, 0).find((v) => v.onLeave)!;
     run(g, 60);
