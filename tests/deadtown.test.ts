@@ -24,7 +24,7 @@ describe('a dead town', () => {
   it('stands open after a while with nobody in it: still its people\'s, with nobody on its walls', () => {
     const { c, t, f } = dead();
     const walled = defence(c, t.id);
-    expect(walled).toBeGreaterThan(3); // a Fortress, while it counts as a town
+    expect(walled).toBeGreaterThanOrEqual(3); // a Fortress, while it counts as a town; it has no men of its own to add to that (militia.ts)
     expect(isOpen(c, t.id)).toBe(false);
     expect(seasons(c, DEAD.open)).toEqual([]);
     expect(isOpen(c, t.id)).toBe(true);

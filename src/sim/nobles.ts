@@ -27,7 +27,7 @@ import type { DecreeKind } from './decrees';
 import { NAMES_F, NAMES_M } from './data';
 import { kinOf, POST_NAMES } from './kin';
 import type { Post } from './kin';
-import { folkOf, grown, living } from './township';
+import { TOWN_SCALE, folkOf, grown, living } from './township';
 import { leaderAt } from './court';
 import { nobleEase, seatAt } from './hall';
 import { lordContent, lordSay } from './manor';
@@ -59,8 +59,10 @@ declare module './campaign' {
 }
 
 export const NOBLES = {
-  /** Grown people a town needs to have a lord of its own. */
-  lordAt: 12,
+  /** Grown people a town needs to have a lord of its own: twelve at the towns of today, TOWN_SCALE times it in bigger towns
+   *  (unscaled at TOWN_SCALE 4 nearly every town had a lord, the ruler could heed few of them, and at 384 campaigns 18% of the
+   *  player's lords and 14% of the rivals' were angry at twenty years, against a band of 1 to 8). */
+  lordAt: 12 * TOWN_SCALE,
   /** How far a decree moves a noble's mood at full strength, in their own town; elsewhere in the nation, `far` of it. */
   sway: 25, far: 0.3,
   /** Each season a mood eases this share of the way back to where it settles (what a noble remembers for years sets that: nobletemper.ts), and sours in a town struck. */

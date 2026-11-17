@@ -10,8 +10,9 @@
 //
 // Highwaymen. A band of highwaymen sits on the road between two lands (threats.ts). A convoy whose road passes
 // through either end of theirs may be met: it is escorted by any army of its people standing on that road, and an
-// escort as strong as the band sees it through. Otherwise the band takes ROB of every store it carries. People are
-// never taken on the road (highwaymen rob stores, never people), and the band grows on what it takes.
+// escort as strong as the band sees it through. Otherwise the band takes ROB of every store it carries, and of a
+// family on the road (migration.ts) it carries off a share of the grown, never a child, to be held as any captives
+// are; the band grows on what it takes.
 //
 // Pirates. They reach every coast (threats.ts), so a convoy that crosses a sea lane may be met by them as by
 // highwaymen on a road, on the same terms: an escort on its road as strong as they are, or half of every store.
