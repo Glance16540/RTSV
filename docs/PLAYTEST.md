@@ -559,6 +559,10 @@ band; saying so on the first line would do.)
   defence of 8, a company lost to plague: 9 dead of 61 in a season the town "held off" a raid. For the threats session's
   tuning at the new size rather than a fault.
 
+*Fixed after the pass (the first two):* the report now says "1 man died with the army", true of a battle and of a
+plague in the army's camp alike (armytown.ts counts both); and a town's count after a sitting says "1 more was born,
+came of age or came home". The third is left to the threats session's tuning.
+
 ### 4.9 The names of the fallen (low)
 
 The end card names them from the field ("Fell by name, of yours: Kell, Fenn"; "Holt"); the map then says "1 man of
@@ -571,6 +575,11 @@ field. Which soldier is which man is still not kept (the board's gap under *Home
 "Malians marches with a strength of 5.4"; "Malians attacked Harrowdale and was thrown back"; the end card of a siege
 held: "A battle won at the cost of 4 men: the town is taken or held"; of the tribe's eight: "A skirmish won at the cost
 of 1 man".
+
+*Fixed after the pass:* a people's name is plural, so "Malians march" and "attacked Harrowdale and were thrown back"
+(the local tribe, the one singular name, still "marches"); and the end card of a fight for a town says what became of
+the town, whatever its size: "The town has held at the cost of 4 men", "The town is taken at the cost of 1 man", "The
+town has fallen", "The assault has failed" (battlecard.ts verdictOf, told by briefing.ts which side came to take it).
 
 ## What's never seen
 
@@ -589,5 +598,5 @@ of 1 man".
 | 4.3 houses empty and everyone idle at every sitting; who lives where not kept | people session, portrait session (first lay) |
 | 4.6 "+8 each turn" | food and stores session |
 | 4.7 three figures for a town's defence | threats session |
-| 4.8, 4.10 the card's and the reports' small words | whoever next touches each line |
+| 4.8, 4.10 the card's and the reports' small words | fixed (the strength of 4.8's third line is for the threats session) |
 | 4.9 which soldier is which man | armies session, when it is given |

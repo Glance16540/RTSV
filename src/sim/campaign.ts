@@ -1130,7 +1130,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     else if (army) destroyArmy(c, army);
     if (defArmy) { if (fought) leftWith(defArmy, fought.d); else casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
     BATTLE_HOOKS.run('repulsed', c, p, note); // the attacker was thrown back
-    c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and ${p.attacker === 0 ? 'were' : 'was'} thrown back.`);
+    c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and were thrown back.`); // every side's name is plural: you, the Malians, the locals
     if (p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You were thrown back from ${t.name} by the ${c.factions[p.defender].name}.` : `The ${c.factions[p.attacker].name} came against ${t.name} and you threw them back.`);
   }
   checkElimination(c);

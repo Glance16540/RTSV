@@ -103,9 +103,23 @@ export class Tally {
   }
 }
 
-/** Words the size of what happened: `felled` of the enemy down, `lost` of the player's own, on a field or before a town. */
-export function verdictOf(win: boolean, field: boolean, felled: number, lost: number, foe = 'the enemy'): string {
+/**
+ * Words the size of what happened: `felled` of the enemy down, `lost` of the player's own, on a field or before a town.
+ * `took`: before a town, whether the player came to take it (true) or held it (false); unknown, the words cover both.
+ */
+export function verdictOf(win: boolean, field: boolean, felled: number, lost: number, foe = 'the enemy', opts: { took?: boolean } = {}): string {
   const size = felled + lost;
+  // A fight for a town is told by what became of the town, whatever its size (the playtest: "A skirmish won" for a tribe's town taken).
+  if (!field && opts.took !== undefined) {
+    const cost = lost === 0 ? 'without the loss of a man' : `at the cost of ${many(lost, 'man', 'men')}`;
+    const down = `${many(felled, 'man', 'men')} of ${foe} ${felled === 1 ? 'is' : 'are'} down`;
+    const ours = `${many(lost, 'man', 'men')} of yours ${lost === 1 ? 'is' : 'are'} down, and ${foe} ${felled ? `lost ${felled}` : 'lost nobody'}`;
+    if (win) {
+      const tail = size <= 12 ? 'It will be remembered by those who were there.' : size <= 40 ? 'It will be told at home.' : 'Your people will tell this story for ages.';
+      return `${opts.took ? 'The town is taken' : 'The town has held'} ${cost}, and ${down}. ${tail}`;
+    }
+    return opts.took ? `The assault has failed: ${ours}. The town is still theirs.` : `The town has fallen: ${ours}. The town is theirs.`;
+  }
   const what = size <= 12 ? 'A skirmish' : size <= 40 ? 'A battle' : 'A great battle';
   const cost = lost === 0 ? 'without the loss of a man' : `at the cost of ${many(lost, 'man', 'men')}`;
   if (win) {

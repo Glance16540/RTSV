@@ -3,6 +3,7 @@
 import { UNITS } from '../sim/data';
 import type { Game } from '../sim/game';
 import { BattleKind, SideTally, Tally, briefingOf, verdictOf } from '../sim/battlecard';
+import { besieging } from '../sim/besieger';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 const foesOf = (game: Game, pid: number): number[] => game.players.filter((p) => !p.neutral && p.id !== pid && game.hostile(p.id, pid)).map((p) => p.id);
@@ -39,5 +40,5 @@ export function endCard(game: Game, pid: number, tally: Tally, win: boolean, col
     ${row('Your side', colorOf(game.players[pid].color), a)}${theirs.length ? row(foe, colorOf(game.players[theirs[0]].color), d) : ''}</table>
     ${list('Fell by name, of yours', named)}${list('Of theirs', foeNamed)}
     <p class="bt-note">${a.fell ? 'The fallen are their towns\' dead: their houses are told on the map.' : 'Nobody of yours fell.'}</p>`;
-  return { text: verdictOf(win, game.field, d.fell, a.fell, foe === 'the enemy' ? foe : `the ${foe.replace(/^the /i, '')}`), html };
+  return { text: verdictOf(win, game.field, d.fell, a.fell, foe === 'the enemy' ? foe : `the ${foe.replace(/^the /i, '')}`, game.field ? {} : { took: besieging(game, pid) }), html };
 }

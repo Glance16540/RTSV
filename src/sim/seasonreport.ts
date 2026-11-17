@@ -161,7 +161,7 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   if (r.aged) add('loss', 'plain', `${n(r.aged, 'died', 'died')} of old age.`);
   if (r.starved) add('loss', 'bad', `${n(r.starved, 'died', 'died')} of hunger.`);
   if (r.sick) add('loss', 'bad', `${n(r.sick, 'died', 'died')} of plague.`);
-  if (r.fell) add('loss', 'bad', `${n(r.fell, 'man was', 'men were')} killed in battle.`);
+  if (r.fell) add('loss', 'bad', `${n(r.fell, 'man', 'men')} died with the army.`); // in battle, or of a plague in its camp (armytown.ts counts both)
   if (r.raidDead) add('loss', 'bad', `${n(r.raidDead, 'man was', 'men were')} killed in raids.`);
   const dead = r.aged + r.starved + r.fell + (r.sick ?? 0) + (r.raidDead ?? 0);
   if ([r.aged, r.starved, r.fell, r.sick ?? 0, r.raidDead ?? 0].filter(Boolean).length > 1) add('loss', 'plain', `${dead} died in all.`);
