@@ -36,8 +36,8 @@ siege 1 end: tick 9600 winner -1 units 65 buildings 29 116a75d7c1c0308e
 siege 1 census 0: 0c8093ad6616e6a6
 siege 1 census 1: 7db16ec7f7e8c8b4
 siege 1 census 2: 4756d45081ea5674
-siege 2 at 2m: 62b1a0760b660253
-siege 2 end: tick 3040 winner 0 units 84 buildings 27 0b34e3bdb81f8a80
+siege 2 at 2m: 20b4a9c4925590c6
+siege 2 end: tick 3040 winner 0 units 84 buildings 27 7ed93ea6b7cfba38
 siege 2 census 0: c9deecef447ed08a
 siege 2 census 1: bdce8b8ab1177ce1
 siege 2 census 2: 4756d45081ea5674
@@ -46,8 +46,8 @@ siege 3 end: tick 4280 winner 1 units 58 buildings 20 e9b2201ebc091bcc
 siege 3 census 0: 8a91d81e42e233b4
 siege 3 census 1: 847baa64e8870df8
 siege 3 census 2: 4756d45081ea5674
-siege 4 at 2m: 5f4e4f5bfdc78eb3
-siege 4 end: tick 4200 winner 0 units 76 buildings 28 e5476ff8315d5eb5
+siege 4 at 2m: 6b6406206a9fb96b
+siege 4 end: tick 4200 winner 0 units 76 buildings 28 1834edbd6646a103
 siege 4 census 0: c0eb47e8f1da16ee
 siege 4 census 1: 963df9887723ffca
 siege 4 census 2: 4756d45081ea5674
@@ -56,8 +56,8 @@ siege 5 end: tick 3240 winner 1 units 72 buildings 24 f9211290c0ce5c82
 siege 5 census 0: da7b60181f61cff4
 siege 5 census 1: e8afaa5e147a8675
 siege 5 census 2: 4756d45081ea5674
-siege 6 at 2m: f43bdd5eaf3f72a1
-siege 6 end: tick 3020 winner 0 units 79 buildings 22 6a51c08f10fd2bdf
+siege 6 at 2m: 7571888e9f4fde3a
+siege 6 end: tick 3020 winner 0 units 79 buildings 22 68f2fdba29035a38
 siege 6 census 0: a110e23aab77a573
 siege 6 census 1: 244fba94d1042c21
 siege 6 census 2: 4756d45081ea5674

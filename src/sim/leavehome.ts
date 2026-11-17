@@ -9,8 +9,9 @@
  *     take his place (the field's own `movein` order, so he is seen to go). Where the field seated another man in
  *     his place under his name while he was away (household.ts settleHomes does, for a notable home), that man
  *     gives the place up and has a name of his own again.
- *   - where his family's house has its man (he is a son of it), he is of that house as its son (`bornAt`), and
- *     lives under no roof of his own, as an unmarried son does (household.ts).
+ *   - where his family's house has its man, or the map's record has him as a son of it (`onLeave.tie`), he is of
+ *     that house as its son (`bornAt`), and lives under no roof of his own, as an unmarried son does (household.ts).
+ *     A son never takes the place of the man of the house, though that man be away with the army too.
  *   - where his house is gone, or he is of no house the field knows: an empty house, the nearest, if there is one.
  *     Never a house with a woman alone in it: that would marry him to her.
  *
@@ -28,7 +29,10 @@ export function doorOf(g: Game, v: Unit): { house: Building; as: 'husband' | 'so
   const houses = housesOf(g, v.owner).sort(near(v));
   const own = v.family ? houses.filter((h) => h.family === v.family) : [];
   const standIn = (h: Building): boolean => { const m = g.entities.get(h.residents.m); return !!m && m.kind === 'unit' && m.id !== v.id && m.name === v.name; };
-  const mine = own.find((h) => !h.residents.m) ?? own.find(standIn);
+  // A son of the house (the map's record says which he is) never takes its man's place, though the man be away himself:
+  // the woman under that roof is his mother, or his brother's wife.
+  const son = v.onLeave?.tie === 'son';
+  const mine = son ? undefined : own.find((h) => !h.residents.m) ?? own.find(standIn);
   if (mine) return { house: mine, as: 'husband' };
   if (own.length) return { house: own[0], as: 'son' };
   const empty = houses.find((h) => !h.residents.m && !h.residents.f);

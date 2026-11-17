@@ -33,7 +33,7 @@ describe('a man home on leave comes home to his own door', () => {
     const g = town();
     const mine = houses(g)[1], first = g.players[0].furlough!.men[0];
     empty(g, mine); fill(g, [mine]);
-    mine.family = first.family ?? 'Ashdown'; first.family = mine.family;
+    mine.family = first.family ?? 'Ashdown'; first.family = mine.family; first.tie = 'husband'; // the man of his house
     const wife = g.spawnUnit('villager', 0, mine.x, mine.y + 2, 'f'); mine.residents.f = wife.id; wife.homeId = mine.id;
     const soldier = g.units.find((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type])!;
     expect(g.cmdGoHome(0, [soldier.id])).toBe(1);
@@ -110,7 +110,7 @@ describe('a man home on leave comes home to his own door', () => {
     const g = town();
     const mine = houses(g)[0], first = g.players[0].furlough!.men[0];
     empty(g, mine); fill(g, [mine]);
-    mine.family = first.family ?? 'Ashdown'; first.family = mine.family;
+    mine.family = first.family ?? 'Ashdown'; first.family = mine.family; first.tie = 'husband'; // the man of his house
     const soldier = g.units.find((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type])!;
     g.cmdGoHome(0, [soldier.id]);
     const him = villagers(g, 0).find((v) => v.onLeave)!;
@@ -120,4 +120,21 @@ describe('a man home on leave comes home to his own door', () => {
     run(g, 10);
     expect(mine.residents.m).toBe(0);
   }, 60_000);
+
+  it('a son of the house does not take the place of its man, who is away too', () => {
+    const g = town();
+    const mine = houses(g)[0];
+    empty(g, mine); fill(g, [mine]);
+    mine.family = 'Barrow';
+    const mother = g.spawnUnit('villager', 0, mine.x, mine.y + 2, 'f'); mine.residents.f = mother.id; mother.homeId = mine.id; // her husband is with the army
+    const son = man(g, 'Edric', 'Barrow', mine); son.onLeave = { as: 'clubman', n: 2, tie: 'son' };
+    expect(doorOf(g, son)).toMatchObject({ house: mine, as: 'son' });
+    son.onLeave = undefined; // comeHome seats whoever is not yet housed; the tie is read from onLeave
+    son.onLeave = { as: 'clubman', n: 2, tie: 'son' };
+    expect(comeHome(g, son)).toBe(mine);
+    expect(mine.residents.m).toBe(0);
+    expect(son.bornAt).toBe(mine.id);
+    const husband = man(g, 'Holt', 'Barrow', mine); husband.onLeave = { as: 'clubman', n: 2, tie: 'husband' };
+    expect(doorOf(g, husband)).toMatchObject({ house: mine, as: 'husband' });
+  });
 });

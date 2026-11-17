@@ -30,7 +30,7 @@ describe('the door he came home to, on the map', () => {
     const { c, home, g, house } = world();
     const first = g.players[0].furlough!.men[0];
     expect(first.family).toBeTruthy();
-    house.family = first.family!;
+    house.family = first.family!; first.tie = 'husband'; // the man of his house
     g.cmdGoHome(0, [soldier(g).id]);
     const him = villagers(g, 0).find((v) => v.onLeave)!;
     expect(doorNow(g, him)).toBe('none'); // not there yet
