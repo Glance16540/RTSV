@@ -12,6 +12,8 @@
 //   MINUTES    how long each may run before the town is counted as having held. Default 20.
 //   STORIES    'answer': the computer-played player answers the stories inside the story by a plain policy
 //              (src/sim/storypolicy.ts); left out, it answers none of them.
+//   CRIME      '1': every campaign is told twice more for the Crime rows, once with a finished Watch House in every
+//              town of the player's from the start, and once with Town Watch learnt from the start besides
 //   VISITS     how many of the campaigns are played again with every town of the player's visited each season for
 //              twenty years (slow: a visit is ten minutes of a real battle). Default 0, and that figure is not measured.
 //              The player begins with one town, so a campaign gives one pair at most: the figure swings 30 to 40 points
@@ -46,6 +48,8 @@ import { driftedIn } from '../src/sim/driftintown';
 import { learnedIn } from '../src/sim/studies';
 import { nationHas, standsAt } from '../src/sim/townworks';
 import { hasStudy } from '../src/sim/studies';
+import { plotFor } from '../src/sim/governor';
+import { layTown } from '../src/sim/rivalrule';
 import { hasFortress } from '../src/sim/fortress';
 import { ofTown } from '../src/sim/intriguebase';
 import { creedOf } from '../src/sim/creed';
@@ -56,6 +60,8 @@ const SEASONS = +(process.env.SEASONS ?? 200);
 const PLAYER = process.env.PLAYER === 'passive' ? 'passive' : 'computer';
 const VISITS = +(process.env.VISITS ?? 0);
 /** 'answer': the computer-played player answers the stories inside the story by a plain policy (src/sim/storypolicy.ts); otherwise it answers none. */
+/** '1': the campaigns are told twice more, the player's towns given a Watch House from the start, and Town Watch besides, for the Crime rows. */
+const CRIME = !!process.env.CRIME;
 const STORIES = process.env.STORIES === 'answer' ? 'answer' : 'ignore';
 const OUT = process.env.OUT ?? 'docs/health-report.md';
 const SIEGES = +(process.env.SIEGES ?? 8);
@@ -162,7 +168,7 @@ interface Watch {
   houses: { holy: number; with: number }; // at 20 years: Righteous towns, and those with a Monastery or Convent standing
   raids: { outcome: string }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
-  strikes: { held: boolean; lost: number; watch: boolean; fort: boolean }[];
+  strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean }[];
   /** Every thief and killer (intrigue.ts): the seasons it was at large, and how many of them a Watch House stood in the town. */
   crimes: { seasons: number; watched: number }[];
   /** The player's convoys that finished their road (convoys.ts, read from the log): whether the player had an Inn standing or sent Escorts that season, whether a band stopped it, and the stores it took. */
@@ -180,7 +186,20 @@ interface Watch {
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
 }
 
-function play(seed: number, ruled: boolean, seasons: number): Watch {
+/** For the forced comparison (CRIME=1): a finished Watch House in every town the player holds, free, and Town Watch learnt if asked. */
+function giveWatch(c: Campaign, study: boolean): void {
+  if (study) { const f = c.factions[0]; if (!f.studies?.includes('townwatch')) f.studies = [...(f.studies ?? []), 'townwatch']; }
+  for (const t of c.territories) {
+    if (t.owner !== 0 || t.horde || standsAt(c, t.id, 'watchhouse')) continue;
+    if (!t.town?.b?.length) layTown(c, t.id);
+    if (!t.town?.b?.length) continue;
+    const i = t.town.b.findIndex((x) => x[0] === 'watchhouse');
+    if (i >= 0) { t.town.b[i] = [t.town.b[i][0], t.town.b[i][1], t.town.b[i][2]] as typeof t.town.b[number]; continue; }
+    const at = plotFor(t, 'watchhouse');
+    if (at) t.town.b.push(['watchhouse', at.cx, at.cy] as typeof t.town.b[number]);
+  }
+}
+function play(seed: number, ruled: boolean, seasons: number, forced: '' | 'house' | 'watch' = ''): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
@@ -205,6 +224,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
   const losses: Losses[][] = [];
   const names = new Map(c.factions.map((f) => [f.name, f.id]));
   for (let s = 1; s <= seasons; s++) {
+    if (forced) giveWatch(c, forced === 'watch');
     // Once a campaign is decided, the world is let go on turning until twenty years have passed, so that the
     // twenty-year figures are read from every campaign; the campaign's figures are read from the decision.
     if (c.phase === 'over') {
@@ -268,7 +288,7 @@ function play(seed: number, ruled: boolean, seasons: number): Watch {
     }
     const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
     for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome }); if (r.outcome !== 'held') strife[r.at].war = now; }
-    for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at) });
+    for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0 });
     // Thieves and killers at large this season: begun, not ended, and (a thief) not yet standing for judgement.
     for (const x of c.intrigues ?? []) {
       if (!ofTown(x) || x.ended || x.caught !== undefined) continue;
@@ -666,6 +686,19 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     const landed = strikes.filter((x) => !x.held);
     add('Crime', 'Raids held off with a town watch against without', 'report only', `${heldOf(strikes.filter((x) => x.watch))} with against ${heldOf(strikes.filter((x) => !x.watch))} without`, 'report', 'Every strike by a band on a held town. "With" is a town whose people had learned Town Watch and where a Watch House stood when the band struck.');
     add('Crime', 'People lost per band strike with a Fortress against without', 'report only', `${lostOf(strikes.filter((x) => x.fort))} with against ${lostOf(strikes.filter((x) => !x.fort))} without; of strikes not held off, ${lostOf(landed.filter((x) => x.fort))} against ${lostOf(landed.filter((x) => !x.fort))}`, 'report', 'The killed and the carried off in each strike by a band on a held town, the strikes held off counted too (a Fortress holds more of them off). A town that fell to the band is counted by what the strike itself cost it.');
+    // The forced comparison (CRIME=1): the same campaigns told again with a Watch House in every town of the player's, and with Town Watch besides.
+    if (CRIME) {
+      const house: Watch[] = [], watch: Watch[] = [];
+      for (let seed = 1; seed <= CAMPAIGNS; seed++) { house.push(play(seed, true, SEASONS, 'house')); watch.push(play(seed, true, SEASONS, 'watch')); }
+      const large = (ws: Watch[]) => { const xs = ws.flatMap((w) => w.crimes); return xs.length ? `${num(mean(xs.map((x) => x.seasons)), 2)} (${xs.length})` : 'none'; };
+      const heldMine = (ws: Watch[]) => heldOf(ws.flatMap((w) => w.strikes).filter((x) => x.mine));
+      const lostMine = (ws: Watch[]) => lostOf(ws.flatMap((w) => w.strikes).filter((x) => x.mine));
+      const wins = (ws: Watch[]) => ws.filter((w) => w.how === 'player').length;
+      add('Crime', 'Forced: seasons a thief or a killer is at large, every town of the player\'s given a Watch House against as it is', 'to be set from this', `${large(house)} with against ${large(ruled)} as it is; with Town Watch learnt besides ${large(watch)}`, 'report',
+        'The same campaigns told three times: as they are; with a finished Watch House, free, in every town the player holds, from the first season and in each town it takes; and with that and Town Watch learnt from the start. The tellings part ways as they go on, so these are the same seeds in different histories. In brackets, the thieves and killers begun in each telling. ' + `The player won ${wins(ruled)}, ${wins(house)} and ${wins(watch)} of the ${CAMPAIGNS} campaigns in the three tellings.`);
+      add('Crime', 'Forced: raids on the player\'s towns held off, with Town Watch learnt from the start against not', 'report only', `${heldMine(watch)} with against ${heldMine(house)} with the Watch Houses alone and ${heldMine(ruled)} as it is`, 'report',
+        `Strikes by a band on the player\'s own towns in the same three tellings. A Watch House alone adds nothing to a town\'s defence; the study does. People lost per strike: ${lostMine(watch)} with Town Watch, ${lostMine(house)} with the Watch Houses alone, ${lostMine(ruled)} as it is.`);
+    }
     // Report only: the roads (roads.ts). The player's convoys alone: only theirs are written in the log.
     const convoys = all('convoys'), stoppedOf = (xs: typeof convoys) => (xs.length ? `${pct(share(xs, (x) => x.stopped))} (${xs.length})` : 'none');
     const tookOf = (xs: typeof convoys) => { const st = xs.filter((x) => x.stopped); return st.length ? `${num(mean(st.map((x) => x.took)), 0)} (${st.length})` : 'none'; };
