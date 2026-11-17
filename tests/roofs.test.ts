@@ -60,7 +60,7 @@ describe('a town comes to the field with its households under their roofs', () =
     if (son) expect(houses(g).some((x) => x.family === son.family)).toBe(true);
     // Whoever is first on the army's list goes home: to a house of his own family's name.
     const first = { ...g.players[0].furlough!.men[0] };
-    const soldier = g.units.find((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type])!;
+    const soldier = (() => { const first = g.players[0].furlough!.men[0], all = g.units.filter((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type]); return all.find((u) => u.name === first.name && u.family === (first.family ?? u.family)) ?? all[0]; })() // the soldier who is the first man on the list (soldiernames.ts);
     expect(goHome(g, 0, [soldier.id])).toBe(1);
     const him = folk(g).find((u) => u.onLeave)!;
     const own = houses(g).filter((x) => x.family === first.family);
