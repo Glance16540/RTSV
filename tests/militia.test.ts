@@ -24,9 +24,9 @@ describe('a town\'s own men in its defence', () => {
     set(0);
     expect(militiaBands(c, town.id)).toBe(0);
     expect(militiaOf(c, town.id)).toBe(0);
-    set(2 * bandMen());
-    expect(militiaBands(c, town.id)).toBe(2);
-    expect(militiaOf(c, town.id)).toBe(2 * MILITIA.worth);
+    set(3 * bandMen());
+    expect(militiaBands(c, town.id)).toBe(3);
+    expect(militiaOf(c, town.id)).toBe(3 * MILITIA.worth);
     set(100 * bandMen());
     expect(militiaOf(c, town.id)).toBe(MILITIA.most);
   });
@@ -41,7 +41,16 @@ describe('a town\'s own men in its defence', () => {
     const full = defence(c, town.id);
     expect(manned).toBeGreaterThan(bare);
     expect(full).toBeGreaterThan(manned);
-    expect(full - bare).toBeCloseTo(MILITIA.most * (manned - bare) / (2 * MILITIA.worth), 1); // by the same creed, in proportion
+    expect(full - bare).toBeCloseTo(MILITIA.most * (manned - bare) / MILITIA.least, 1); // by the same creed, in proportion: a full town's two points against a manned one's one
+  });
+
+  it('a town with any man in it is worth the one point a town always was, at the least', () => {
+    const { c, town, set } = world();
+    set(1);
+    expect(militiaOf(c, town.id)).toBe(MILITIA.least);
+    expect(MILITIA.least).toBe(1);
+    set(bandMen());
+    expect(militiaOf(c, town.id)).toBe(MILITIA.least); // one band is half a company, and the least stands
   });
 
   it('an ordinary town comes to about the one point it was always given', () => {
