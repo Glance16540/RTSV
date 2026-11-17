@@ -11,6 +11,7 @@ import { intrigueDo } from './intriguepanel';
 import { attackBand } from '../sim/bandfight';
 import { meetBand, meetStory, storyToMeet } from './encounter';
 import { meetComing, tellStrikes } from './bandmeet';
+import { treat } from '../sim/freetown';
 import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -34,6 +35,8 @@ import { reportDue } from '../sim/seasonreport';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
 import { dealChoices, dealFromPanel } from './nobledeals';
+import { standingRows } from './townorders';
+import { setStanding } from '../sim/townorders';
 import { nobleByKey } from '../sim/nobledeal';
 import { titleOf } from '../sim/nobles';
 import { raiseWork } from '../sim/townworks';
@@ -153,6 +156,8 @@ export class Overworld {
       if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
       if (kind === 'nobledeal') { this.askDeal(decodeURIComponent(id)); return; } // the dealings with a noble (nobledeal.ts)
+      if (kind === 'standing') { this.askStanding(Number(id)); return; } // the governor's standing orders (townorders.ts)
+      if (kind === 'treat') treat(this.c, 0, this.sel); // a free town brought back by treaty (freetown.ts)
       if (kind === 'work') raiseWork(this.c, 0, this.sel, id); // a building raised on the town's record (townworks.ts)
       if (kind === 'study') learn(this.c, 0, id, this.sel); // a study learned there (studies.ts)
       if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
@@ -279,6 +284,24 @@ export class Overworld {
       [['Field battle', () => { p.mode = 'field'; this.hooks.fight(); }], ['Siege battle', () => { p.mode = 'siege'; this.hooks.fight(); }], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);
+  }
+
+  /** The governor's standing orders: the four, each opening its choices, each choice saying what it does. */
+  private askStanding(tid: number, row?: number): void {
+    const c = this.c, t = c.territories[tid];
+    if (!t || t.owner !== 0) return;
+    const close = (): void => { $('ow-dialog').classList.add('hidden'); this.changed(); };
+    const rows = standingRows(c, tid);
+    if (row === undefined) {
+      this.dialog(`The governor of ${t.name}`, 'Orders that stand until you change them. Where you say nothing, he keeps the town by his own sense.', [...rows.map((r, i): [string, () => void] => [r.label, () => this.askStanding(tid, i)]), ['Done', close]]);
+      $('ow-dialog').querySelector('.sheet')?.classList.add('tale');
+      return;
+    }
+    const r = rows[row];
+    this.dialog(r.label, 'Choose:', [...r.choices.map((ch): [string, () => void] => [ch.label, () => { setStanding(c, tid, ch.order); this.askStanding(tid); }]), ['Back', () => this.askStanding(tid)]]);
+    const el = $('ow-dialog');
+    el.querySelector('.sheet')?.classList.add('tale');
+    el.querySelectorAll<HTMLButtonElement>('.levels button').forEach((b, i) => { if (i < r.choices.length) { const s = document.createElement('small'); s.textContent = r.choices[i].says; b.appendChild(s); } });
   }
 
   /** The dealings with a noble, each with its price and what it does; stripping of lands is asked again. */
