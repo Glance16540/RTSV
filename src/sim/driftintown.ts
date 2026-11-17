@@ -10,8 +10,9 @@
 //  - A drifted villager is marked (`Unit.drifted`): the computer does not set them back to its own work. Drifted
 //    is drifted until care brings them back (or the player orders them elsewhere).
 //  - The town's decrees are felt here too: guards slow the drift, a shut tavern keeps its women at work, women
-//    ordered into the tavern stay there, a call to church draws people to it the sooner. Food sent by decree is
-//    already in the town's stores, which the battle fights out of.
+//    ordered into the tavern stay there, a call to church draws people to it the sooner, the church's tending makes
+//    the sick and the grieving weigh the less (and plague wear the sick down the slower: tendintown.ts). Grain bought
+//    abroad is already in the town's stores, which the battle fights out of.
 //  - When the battle or visit ends, those marked at the tavern and the mine are the town's drifted from then on.
 //
 // A skirmish or a mission has none of this.
@@ -23,7 +24,7 @@ import { MORALE_MAX_HOUSES, MORALE_PER_HOUSE } from './data';
 import { want } from './famine';
 import { griefShare } from './grief';
 import { Drifted, driftedOf } from './drift';
-import { CHURCH_CARE, GUARDS_EASE, decreesAt } from './decrees';
+import { CHURCH_CARE, GUARDS_EASE, TEND_EASE, decreesAt } from './decrees';
 import { folkOf } from './township';
 
 declare module './township' {
@@ -72,7 +73,9 @@ export function townStrain(g: Game, p: Player): { strain: number; care: number }
   const sickShare = people ? clamp((3 * sick) / people) : 0, grief = griefShare(g, p.id);
   // A raid weighs more on a town whose homes do not steady it.
   const shaken = 1 + STRAIN.morale * (1 - moraleOf(g, p));
-  const strain = clamp(STRAIN.hunger * hunger + STRAIN.raided * raided * shaken + STRAIN.grief * grief + STRAIN.sick * sickShare);
+  // The church's tending (a decree) makes the sick and the grieving weigh the less, as on the map (tendintown.ts).
+  const tended = 1 - TEND_EASE * (decreesHere(g, p.id).tend ?? 0);
+  const strain = clamp(STRAIN.hunger * hunger + STRAIN.raided * raided * shaken + (STRAIN.grief * grief + STRAIN.sick * sickShare) * tended);
   const safe = !p.lastAttacked || g.time - p.lastAttacked.t > 180;
   const church = g.buildings.some((b) => b.owner === p.id && b.type === 'temple' && b.complete && !b.dead);
   const care = strain > 0 ? 0 : clamp((p.res.food > 300 ? 0.3 : 0) + (safe ? 0.3 : 0) + (grief === 0 ? 0.2 : 0) + (church ? 0.2 : 0));
