@@ -5,6 +5,7 @@
 //
 // No child is ever shown. A captive is shown seated and covered, in plain long clothes.
 
+import { strengthOf } from '../sim/strengthwords';
 import * as THREE from 'three';
 import type { Campaign } from '../sim/campaign';
 import { CIV_COLOR, UNITS } from '../sim/data';
@@ -179,7 +180,7 @@ export function meetBand(c: Campaign, prompt: { title: string; text: string }, c
   if (!b) return false;
   const held = heldOf(b), kind = BANDS[b.kind];
   const holds = held.men + held.women ? `They hold ${held.women ? `${held.women} ${held.women === 1 ? 'woman' : 'women'}` : ''}${held.men && held.women ? ' and ' : ''}${held.men ? `${held.men} ${held.men === 1 ? 'man' : 'men'}` : ''}.` : 'They hold nobody.';
-  const text = `<span class="enc-who">${kind.icon} <b>${esc(b.name[0].toUpperCase() + b.name.slice(1))}</b>, ${esc(kind.name.toLowerCase())} of strength ${b.strength}. ${holds}</span>${prompt.text}`;
+  const text = `<span class="enc-who">${kind.icon} <b>${esc(b.name[0].toUpperCase() + b.name.slice(1))}</b>, ${esc(kind.name.toLowerCase())} of ${strengthOf(b.strength)}. ${holds}</span>${prompt.text}`;
   return openEncounter({ title: prompt.title, text, figures: bandLineup(c, b), choices });
 }
 

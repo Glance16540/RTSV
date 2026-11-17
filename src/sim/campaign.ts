@@ -2,6 +2,7 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
+import { distinctColours } from './nationcolours';
 import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront, HUB } from './campaignbase';
 import type { Biome, CompanyDef, FaithDef, Front, SiteDef, Sky, World, WorldShape } from './campaignbase';
 export * from './campaignbase'; // what the systems share, below all of them: found here as before
@@ -680,8 +681,9 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
     }
     homes.push(best);
   }
+  const colours = distinctColours(civs.map((civ) => CIV_COLOR[civ])); // no two peoples of one world in one colour (nationcolours.ts)
   civs.forEach((civ, f) => {
-    c.factions.push({ id: f, name: f === 0 ? 'You' : CIVS[civ].name, civ, color: CIV_COLOR[civ], isAI: f > 0, supplies: 8, alive: true, heroAlive: true, lastDemand: 0, angry: false });
+    c.factions.push({ id: f, name: f === 0 ? 'You' : CIVS[civ].name, civ, color: colours[f], isAI: f > 0, supplies: 8, alive: true, heroAlive: true, lastDemand: 0, angry: false });
     const t = c.territories[homes[f]];
     t.owner = f;
     t.capital = f;
