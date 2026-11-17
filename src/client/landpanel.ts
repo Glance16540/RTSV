@@ -102,7 +102,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
   const signs = [...(weather ? [`<span title="${WEATHER[weather as 'rain'].name}">${WEATHER[weather as 'rain'].icon}</span>`] : []), ...events.map((e) => `<span title="${EVENTS[e.kind].name}">${EVENTS[e.kind].icon}</span>`)].join('');
   const head = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}${signs ? ` <small class="lp-signs">${signs}</small>` : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
-      ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · Defence ${defence(c, t.id)}</div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
+      ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · <span title="What an army marching on this town would meet. Against a band the town musters differently: see below.">Defence against an army ${defence(c, t.id)}</span></div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
   const people = `${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div>${t.buildings.map((b) => { const l = siteLook(b, SITES[b], c.factions[t.owner]?.civ); return `${l.icon} ${l.name}`; }).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>`;
   const danger = `${intrigueHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
