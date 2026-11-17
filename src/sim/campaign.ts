@@ -282,7 +282,7 @@ export interface Campaign {
   chronicle?: { turn: number; text: string }[];
 }
 
-export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued';
+export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued' | 'founded';
 export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
   harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
@@ -306,6 +306,7 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
   heldoff: { name: 'Held off', icon: '🛡️', desc: 'A band came against the town here and was beaten back.' },
   carried: { name: 'People carried off', icon: '⛓️', desc: 'The town here fell to a band and people were taken. They can be got back for a time by breaking the band where it has its place.' },
   rescued: { name: 'Captives freed', icon: '🕊️', desc: 'A band was broken here and those it held have gone home.' },
+  founded: { name: 'A new town', icon: '🏡', desc: 'Settlers came to this empty land and founded a town (founding.ts).' },
   freed: { name: 'The women freed', icon: '🕊️', desc: 'The marauders\' camp is broken and those they held have come home.' },
 };
 export const UNREST_TURNS = 2;
