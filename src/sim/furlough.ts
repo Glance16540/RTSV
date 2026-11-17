@@ -27,7 +27,9 @@ export interface AwayMan { name: string; family?: string; /** His age in seasons
 /** What the map hands a side: its town's men with the army there, and how many soldiers of each kind make a company. */
 export interface Furlough { men: AwayMan[]; per: Record<string, number> }
 /** A man home on leave at the end of a sitting: who he is, and what his company was. */
-export interface HomeMan extends AwayMan { as: string }
+/** The door a man home on leave came to (leavehome.ts): his own house as its man, his family's as its son, a roof of his own where his was gone, or none. */
+export type Door = 'husband' | 'son' | 'own' | 'none';
+export interface HomeMan extends AwayMan { as: string; /** Where he is living as the sitting ends, for the map to write down. */ door?: Door }
 
 declare module './game' {
   interface Player { /** The town's own men with the army here who have not gone home (furlough.ts). */ furlough?: Furlough }
@@ -88,8 +90,16 @@ export function rejoin(g: Game, owner: number, ids: number[]): number {
   }
   return n;
 }
+/** Where a man home on leave is living now: under his family's roof as its man, as its son, under a roof of his own, or under none. */
+export function doorNow(g: Game, u: Unit): Door {
+  const live = (id: number) => { const b = g.entities.get(id); return b && b.kind === 'building' && !b.dead && b.owner === u.owner ? b : undefined; };
+  const home = live(u.homeId);
+  if (home && home.residents.m === u.id) return home.family && home.family === u.family ? 'husband' : 'own';
+  const born = live(u.bornAt);
+  return born && !!u.family && born.family === u.family ? 'son' : 'none';
+}
 /** Who is home on leave as things stand: for the map, when the sitting ends. */
 export function homeNow(g: Game, owner: number): HomeMan[] {
   return g.units.filter((u) => u.owner === owner && !u.dead && u.type === 'villager' && !!u.onLeave)
-    .map((u) => ({ name: u.name, ...(u.family ? { family: u.family } : {}), seasons: seasonsOf(u), as: u.onLeave!.as }));
+    .map((u) => ({ name: u.name, ...(u.family ? { family: u.family } : {}), seasons: seasonsOf(u), as: u.onLeave!.as, door: doorNow(g, u) }));
 }

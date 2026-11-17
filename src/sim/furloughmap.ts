@@ -5,7 +5,8 @@
  *     men on the roll of the army standing there, each by the name his house's record has for him and at the age
  *     the roll keeps, and how many soldiers of each kind make a company.
  *   - `homeOnLeave`: when the sitting ends, each man who is home is taken off the army's roll and off his house's
- *     record of the away, and the army is a company of his kind the fewer. He is not added to the town's count
+ *     record of the away, and the army is a company of his kind the fewer. The door he came to on the field
+ *     (leavehome.ts) is written on his house's record (`WarHouse.home`) and told in the chronicle. He is not added to the town's count
  *     here: the town is counted off the field as the player leaves it, and he was standing in it as a villager.
  *     It must run before the army's soldiers are counted back, so that his company is not taken for a loss.
  */
@@ -13,10 +14,13 @@ import type { Army, Campaign } from './campaign';
 import { COMPANIES, armyAt, armySize } from './campaignbase';
 import { GROWN_SEASON, LAST_SEASON } from './ageing';
 import { musterOf } from './armytown';
-import type { AwayMan, Furlough, HomeMan } from './furlough';
+import type { AwayMan, Door, Furlough, HomeMan } from './furlough';
 import { companyOf } from './townmuster';
-import { awayMen, wentHome } from './warhouse';
+import { awayMen, cameToDoor, wentHome } from './warhouse';
 
+const DOORS: Door[] = ['husband', 'son', 'own', 'none'];
+/** How the chronicle tells the door he came to. */
+const DOOR_WORDS: Record<Door, string> = { husband: 'under his own roof again', son: 'a son of his house again', own: 'under a roof of his own, his old one gone', none: 'with no roof of his own' };
 const text = (v: unknown): string => (typeof v === 'string' ? v.replace(/[<>&"]/g, '').slice(0, 40) : '');
 /** How many soldiers of each kind make a company on the field. */
 const perUnit = (): Record<string, number> => { const out: Record<string, number> = {}; for (const d of Object.values(COMPANIES)) for (const [u, n] of Object.entries(d.units)) out[u] = n; return out; };
@@ -40,7 +44,8 @@ export function cleanHome(x: unknown): HomeMan[] {
     if (!m || typeof m !== 'object') continue;
     const as = text((m as HomeMan).as), name = text((m as HomeMan).name), family = text((m as HomeMan).family), seasons = Math.round(Number((m as HomeMan).seasons));
     if (!as || !companyOf(as) || !name || !Number.isFinite(seasons)) continue;
-    out.push({ as, name, ...(family ? { family } : {}), seasons: Math.max(GROWN_SEASON, Math.min(LAST_SEASON, seasons)) });
+    const door = DOORS.find((d) => d === (m as HomeMan).door);
+    out.push({ as, name, ...(family ? { family } : {}), seasons: Math.max(GROWN_SEASON, Math.min(LAST_SEASON, seasons)), ...(door ? { door } : {}) });
     if (out.length >= 40) break;
   }
   return out;
@@ -65,8 +70,11 @@ export function homeOnLeave(c: Campaign, tid: number, home: unknown): number {
     for (let i = 1; i < roll.length; i++) if (Math.abs(roll[i] - man.seasons) < Math.abs(roll[at] - man.seasons)) at = i;
     roll.splice(at, 1);
     if (--a.units[kind] <= 0) delete a.units[kind];
-    wentHome(c, tid, a.id, man.name, man.family);
-    c.log.push(`${man.name}${man.family ? ` ${man.family}` : ''} of ${t.name} left the army there and is home: it is a company of ${COMPANIES[kind].name.toLowerCase()} the fewer.`);
+    const who = wentHome(c, tid, a.id, man.name, man.family);
+    // The door he came to on the field is written on his house's record, so the map says what the field showed.
+    const family = man.family || (who.startsWith(`${man.name} `) ? who.slice(man.name.length + 1) : '');
+    if (man.door && family) cameToDoor(c, tid, man.name, family, man.door);
+    c.log.push(`${man.name}${man.family ? ` ${man.family}` : ''} of ${t.name} left the army there and is home${man.door ? `, ${DOOR_WORDS[man.door]}` : ''}: it is a company of ${COMPANIES[kind].name.toLowerCase()} the fewer.`);
     n++;
   }
   if (m) { if (roll && !roll.length) delete m.men[tid]; m.size = armySize(a); }
