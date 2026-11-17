@@ -109,10 +109,10 @@ describe('opening a closed border', () => {
     const { c, from, to } = barred(), work = workFor(c, from, to)!, me = c.factions[0], kind = madeOf(c, from, to);
     expect(work).toBe(WORKS[barrierBetween(c, from, to)!.kind as 'river']);
     expect(reach(c, from)).not.toContain(to);
-    fundFor(c, 0, kind, work.cost - 1);
+    fundFor(c, 0, kind, work.cost - 1, { at: from }); // where the work is done (prices.ts)
     expect(canOpen(c, 0, from, to)).toBe(false);
     expect(openBorder(c, 0, from, to)).toBe(false);
-    fundFor(c, 0, kind, work.cost + 3); // in what it is made of: timber and stone for a bridge, stone for a pass
+    fundFor(c, 0, kind, work.cost + 3, { at: from }); // in what it is made of, where it is done: timber and stone for a bridge, stone for a pass
     const told = c.chronicle?.length ?? 0;
     expect(openBorder(c, 0, from, to)).toBe(true);
     expect(me.supplies).toBe(3);

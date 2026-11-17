@@ -1,7 +1,7 @@
 // Prices by kind (src/sim/prices.ts, docs/DESIGN.md "Stores").
 import { describe, expect, it } from 'vitest';
 import { COMPANIES, SITES, advanceAge, ageCost, build, companyCost, hireOff, newCampaign, raise } from '../src/sim/campaign';
-import { MADE_OF, SHORT_RATE, canPayFor, fundFor, payFor, priceOf, priceText } from '../src/sim/prices';
+import { CARRY, MADE_OF, SHORT_RATE, canPayFor, fundFor, payBar, payFor, priceOf, priceText } from '../src/sim/prices';
 import { SUPPLY_UNITS, settleStores } from '../src/sim/stores';
 import { STORE_KINDS, folkOf, nationStores } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
@@ -29,7 +29,7 @@ describe('prices by kind', () => {
     expect(priceText(priceOf('church', 5))).toBe('200 gold, 300 stone');
   });
 
-  it('a Barracks is paid in timber from the town where it is raised, and the rest from the town with most', () => {
+  it('a Barracks is paid in timber from the town where it is raised, and what it lacks is sent by road from another, at a cost', () => {
     const { c, home, land } = world();
     fundFor(c, 0, 'dealing', 10); // ten supplies, all in gold
     land.buildings = [];
@@ -38,25 +38,43 @@ describe('prices by kind', () => {
     folkOf(c, home.id).stores.wood += 400;
     settleStores(c);
     const homeWood = folkOf(c, home.id).stores.wood, gold = nationStores(c, 0).gold;
+    const lack = SITES.barracks.cost * SUPPLY_UNITS - (150 + 300);
     expect(build(c, 0, land.id, 'barracks')).toBe(true);
     expect(folkOf(c, land.id).stores.wood).toBe(0); // all the land's own timber first
-    expect(folkOf(c, home.id).stores.wood).toBe(homeWood - (SITES.barracks.cost * SUPPLY_UNITS - (150 + 300)));
+    expect(folkOf(c, home.id).stores.wood).toBe(homeWood - Math.ceil(lack * (1 + CARRY.cost))); // the rest by road, and the road's cost
     expect(nationStores(c, 0).gold).toBe(gold); // and nothing else
   });
 
-  it('what no town has of the kind is made up in other goods, at SHORT_RATE, and never more than the nation can pay', () => {
+  it('what a town lacks of a kind is made up in its other goods, traded at a loss', () => {
     const { c, land } = world();
-    fundFor(c, 0, 'dealing', 10); // ten supplies above the working stocks, all in gold
+    fundFor(c, 0, 'dealing', 10, { at: land.id }); // ten supplies above the working stocks, all in gold, in the land
     for (const t of c.territories) if (t.owner === 0) folkOf(c, t.id).stores.wood = 0; // and no timber anywhere
     settleStores(c);
     land.buildings = [];
-    const n = c.factions[0].supplies, all = units(nationStores(c, 0));
-    expect(SHORT_RATE).toBe(1);
-    expect(canPayFor(c, 0, 'barracks', SITES.barracks.cost)).toBe(n >= SITES.barracks.cost);
+    const all = units(nationStores(c, 0));
     expect(build(c, 0, land.id, 'barracks')).toBe(true);
-    expect(units(nationStores(c, 0))).toBe(all - SITES.barracks.cost * SUPPLY_UNITS);
-    expect(nationStores(c, 0).wood).toBe(0);
-    expect(payFor(c, 0, 'barracks', c.factions[0].supplies + 1)).toBe(false);
+    expect(units(nationStores(c, 0))).toBe(all - Math.ceil(SITES.barracks.cost * SUPPLY_UNITS * SHORT_RATE)); // dearer than at par
+    expect(SHORT_RATE).toBeGreaterThan(1);
+  });
+
+  it('what the paying town and the towns with a road to it cannot find or make up must wait, and nothing is taken', () => {
+    const { c, home, land } = world();
+    land.buildings = [];
+    for (const t of c.territories) if (t.owner === 0) folkOf(c, t.id).stores = { food: 100, wood: 0, gold: 0, stone: 0 };
+    // The nation's wealth is in a town with no road to the land.
+    const far = c.territories.find((t) => t.owner < 0 && !t.adj.some((n) => c.territories[n].owner === 0))!;
+    far.owner = 0;
+    folkOf(c, far.id).stores = { food: 2000, wood: 3000, gold: 2000, stone: 2000 };
+    settleStores(c);
+    const all = units(nationStores(c, 0));
+    expect(c.factions[0].supplies).toBeGreaterThanOrEqual(SITES.barracks.cost);
+    expect(payBar(c, 0, 'barracks', SITES.barracks.cost, { at: land.id })).toMatch(/lacks \d+ wood.*must wait/);
+    expect(build(c, 0, land.id, 'barracks')).toBe(false);
+    expect(units(nationStores(c, 0))).toBe(all);
+    // A town with a road to it sends timber, keeping a floor of its own.
+    folkOf(c, home.id).stores = { food: 2000, wood: 2000, gold: 500, stone: 500 };
+    settleStores(c);
+    expect(canPayFor(c, 0, 'barracks', SITES.barracks.cost, { at: land.id })).toBe(true);
   });
 
   it('a company is paid in food and gold; a new age in all four; a fortress in stone', () => {
