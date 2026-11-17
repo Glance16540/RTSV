@@ -25,6 +25,7 @@ import { canPayFor, payFor } from './prices';
 import { houseOf, ofAge } from './dynasty';
 import type { Heir } from './dynasty';
 import { folkOf } from './township';
+import { heed } from './nobletemper';
 
 export type DealKind = 'summon' | 'gift' | 'post' | 'wed' | 'strip';
 export const DEAL_KINDS: DealKind[] = ['summon', 'gift', 'post', 'wed', 'strip'];
@@ -98,6 +99,7 @@ export function dealWith(c: Campaign, f: number, key: string, kind: DealKind): s
   const n = nobleByKey(c, f, key)!, d = DEALS[kind], who = titleOf(c, n), all = noblesOf(c, f);
   if (d.supplies && !payFor(c, f, 'dealing', d.supplies, { at: n.town })) return `It costs ${d.supplies} supplies.`;
   const angry = isAngry(n);
+  heed(c, n); // dealt with: not neglected (nobletemper.ts)
   if (kind === 'summon') {
     n.mood = clamp(n.mood + DEALS.summon.mood);
     bond(c, n, { kind, rest: DEALS.summon.rest, until: c.turn + DEALS.summon.seasons });
