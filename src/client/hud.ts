@@ -1,5 +1,6 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { mayGoHome, mayRejoin } from '../sim/furlough';
 import { endCard } from './briefing';
 import { bereftLines } from '../sim/bereft';
 import { possessive, renameOwn } from '../sim/naming';
@@ -183,7 +184,7 @@ export class Hud {
   private tallied = -100;
   handle(ev: GameEvent): void {
     const { game, pid } = this.app;
-    if (this.app.tally) { if (game.tick - this.tallied >= 20) { this.app.tally.watch(game); this.tallied = game.tick; } if (ev.t === 'remove' && ev.unit) this.app.tally.removed(ev.id); } // a campaign battle is counted as it is fought (battlecard.ts)
+    if (this.app.tally) { if (game.tick - this.tallied >= 20) { this.app.tally.watch(game); this.tallied = game.tick; } if (ev.t === 'remove' && ev.unit && !game.leftField?.includes(ev.id)) this.app.tally.removed(ev.id); } // one gone home on leave is not fallen (furlough.ts) // a campaign battle is counted as it is fought (battlecard.ts)
     if (ev.t === 'msg' && ev.player === pid) this.toast(ev.text);
     else if (ev.t === 'age') {
       if (ev.player === pid) { this.toast(`You have advanced to the ${AGES[game.players[pid].age].name}!`, 'big'); this.advisorSay('p_ageup'); }
@@ -330,6 +331,11 @@ export class Hud {
           out.push({ id: 'st:' + st, icon: ico('stance_' + st, icon), name: 'Stance: ' + name, desc, active: units.every((u) => u.stance === st), act: () => game.cmdStance(pid, ids, st) });
         }
       }
+      // A soldier who is a man of this town may go home to it, and a man home on leave may take up arms again (furlough.ts).
+      const away = game.players[pid].furlough?.men.length ?? 0;
+      const put = (b: (typeof out)[number]): void => { const free = out.length >= 14 ? out.findIndex((x) => !x.id) : -1; if (free >= 0) out[free] = b; else out.push(b); }; // in an empty place when the card is full, so that Stop keeps its own
+      if (units.some((u) => mayGoHome(game, u))) put({ id: 'gohome', icon: '🏠', name: 'Go home', desc: `A man of this town with the army lays down his arms and is a villager again, in his own house; the rest of his company leave the field with him. ${away} of the town's men ${away === 1 ? 'is' : 'are'} still with the army.`, act: () => game.cmdGoHome(pid, ids) });
+      if (units.some((u) => mayRejoin(game, u))) put({ id: 'rejoin', icon: '🗡️', name: 'Take up arms', desc: 'This man is a soldier home on leave: he goes back to the army, and his company stands again.', act: () => game.cmdRejoin(pid, ids) });
       while (out.length < 14) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
       out.push({ id: 'stop', icon: ico('stop', '✋'), name: 'Stop', desc: 'Halt and forget current orders.', act: () => game.cmdStop(pid, ids) });
       return out;
