@@ -1,6 +1,7 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
 import { inTime } from '../sim/inyears';
+import { nobodyThere } from '../sim/founding'; // a land with nobody on it is not marched on
 import { inRuin, ruinWords } from '../sim/ruin';
 import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
@@ -29,6 +30,7 @@ import { MAX_NAME, Names, foundHouse, houseToName, ownLine, peopleName } from '.
 import { mountRoll, rollHtml } from './rollpanel';
 import { sendFromPanel } from './convoypanel';
 import { seasonCard, showPastSeasons } from './seasoncard';
+import { reportDue } from '../sim/seasonreport';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
 import { dealFromPanel } from './nobledeals';
@@ -198,17 +200,19 @@ export class Overworld {
     else if (c.tale && c.phase === 'player' && taleNow(c)) this.askTale();
     else if (c.phase === 'player' && c.factions[0].alive && !c.factions[0].heroAlive && !houseOf(c, 0).asked) this.askSuccession();
     else if (c.phase === 'player' && c.factions[0].heroAlive && houseToName(c, 0) !== undefined) this.askHouse();
+    // The season's card first: a meeting face to face waits until it has been read (seasoncard.ts closes it into changed()).
+    else if (c.phase === 'player' && (reportDue(c) || document.getElementById('season-card')?.dataset.kind === 'past')) $('ow-dialog').classList.add('hidden');
     else if (storyToMeet(c) && meetStory(c, storyToMeet(c)!, () => this.changed())) $('ow-dialog').classList.add('hidden'); // a story waiting on your word, face to face (encounter.ts)
     else if (c.phase === 'player' && [tellStrikes, meetComing].some((ask) => ask(c, { fight: () => this.hooks.fight(), changed: () => this.changed(), dialog: (t, x, b) => this.dialog(t, x, b) }))) { /* a band that struck a town of yours, told once; one coming for a town of yours, put once (bandmeet.ts) */ }
     else $('ow-dialog').classList.add('hidden');
-    seasonCard(c, !$('ow-dialog').classList.contains('hidden'), () => this.hooks.save()); // what the season brought (seasoncard.ts)
+    seasonCard(c, !$('ow-dialog').classList.contains('hidden'), () => this.changed()); // what the season brought (seasoncard.ts); closing it brings up what waited behind it
   }
 
   private click(tid: number): void {
     const c = this.c;
     if (c.phase !== 'player' || c.pending) return;
     const army = armyAt(c, this.sel);
-    if (army && army.owner === 0 && !army.moved && tid !== this.sel && reach(c, this.sel).includes(tid)) {
+    if (army && army.owner === 0 && !army.moved && tid !== this.sel && reach(c, this.sel).includes(tid) && !nobodyThere(c, tid)) {
       const march = () => {
         moveArmy(c, army.id, tid);
         if (!c.pending) this.sel = tid; // marched into friendly land
@@ -374,7 +378,7 @@ export class Overworld {
     const c = this.c;
     const army = armyAt(c, this.sel);
     const canMarch = c.phase === 'player' && !!army && army.owner === 0 && !army.moved;
-    const reach = new Set(canMarch ? reachOf(c, this.sel) : []);
+    const reach = new Set(canMarch ? reachOf(c, this.sel).filter((id) => !nobodyThere(c, id)) : []);
     if (this.map3d) this.map3d.sync(c, this.sel, reach);
     else { this.paint(reach, false); this.frame(); }
     this.renderSide(canMarch);

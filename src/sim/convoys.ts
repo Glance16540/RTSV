@@ -30,7 +30,7 @@ import { needOf } from './larder';
 import { roadRisk } from './ownstudies';
 import { escortEdge, innRisk, paved, pavedLoad } from './roads';
 import type { Band } from './threats';
-import { claimLand, settleable } from './founding';
+import { claimLand, settleable, wayOut } from './founding';
 
 /** What a convoy carries: stores, and grown people by their ages in seasons. */
 export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[]; /** Children, by their ages in seasons: a family moving (migration.ts). */ children?: number[]; /** Known people going with a family, their records whole (migration.ts). */ notables?: Notable[] }
@@ -170,12 +170,15 @@ export function sendFamily(c: Campaign, f: number, from: number, to: number, who
  */
 export function sendSettlers(c: Campaign, f: number, from: number, to: number, who: { men: number; women: number; children: number }, stores: Partial<Stores>): Convoy | null {
   if (c.territories[from]?.owner !== f || !settleable(c, to)) return null;
-  const gates = c.territories[to].adj.filter((n) => c.territories[n].owner === f).sort((a, b) => a - b);
-  const road = gates.map((g) => (g === from ? [from] : roadBetween(c, f, from, g))).filter((r): r is number[] => !!r).sort((a, b) => a.length - b.length)[0];
+  // Through the people's own lands to the land of theirs nearest it, and on over lands with nobody on them, a season a land
+  // beyond their own (founding.ts wayOut).
+  const way = wayOut(c, f, to);
+  if (!way) return null;
+  const road = way.gate === from ? [from] : roadBetween(c, f, from, way.gate);
   if (!road) return null;
   const k = folkOf(c, from), cargo: Cargo = { ...empty(), men: setOut(c, from, 'm', whole(who.men)), women: setOut(c, from, 'f', whole(who.women)), children: setOut(c, from, 'k', whole(who.children)) };
   for (const s of STORE_KINDS) { cargo[s] = Math.min(Math.max(0, k.stores[s]), whole(stores[s])); k.stores[s] -= cargo[s]; }
-  const convoy: Convoy = { id: (c.convoySeq = (c.convoySeq ?? 0) + 1), owner: f, from, to, road: [...road, to], cargo, since: c.turn, movers: true, found: true };
+  const convoy: Convoy = { id: (c.convoySeq = (c.convoySeq ?? 0) + 1), owner: f, from, to, road: [...road, ...way.through], cargo, since: c.turn + way.through.length - 1, movers: true, found: true };
   (c.convoys ??= []).push(convoy);
   return convoy;
 }
@@ -235,7 +238,7 @@ export function convoyArrives(c: Campaign, x: Convoy): Arrival {
     }
   }
   // Settlers bound for an empty land found a town there if it is empty still (founding.ts).
-  if (x.found && settleable(c, x.to) && claimLand(c, x.to, x.owner)) a.founded = true;
+  if (x.found && settleable(c, x.to) && claimLand(c, x.to, x.owner, { from: x.from })) a.founded = true;
   // Where it comes in: its own town if still held, else the people's chief town.
   const at = c.territories[x.to]?.owner === x.owner ? x.to : homeTown(c, x.owner);
   if (at < 0 || !c.factions[x.owner]?.alive) { a.lost = true; if (mine) c.log.push(`Your convoy to ${c.territories[x.to].name} had nowhere left to go, and what it carried is lost.`); return a; }
