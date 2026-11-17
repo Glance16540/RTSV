@@ -790,17 +790,17 @@ export function winChance(aStr: number, dStr: number, home = 1.1): number {
 
 export function canBuild(c: Campaign, f: number, tid: number, site: string): boolean {
   const t = c.territories[tid];
-  return t.owner === f && !!SITES[site] && (site !== 'harbour' || onSea(c, tid)) && !t.buildings.includes(site) && t.buildings.length < slots(t) && canPayFor(c, f, site, siteCost(t, site, c.factions[f].civ));
+  return t.owner === f && !!SITES[site] && (site !== 'harbour' || onSea(c, tid)) && !t.buildings.includes(site) && t.buildings.length < slots(t) && canPayFor(c, f, site, siteCost(t, site, c.factions[f].civ), { at: tid });
 }
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid))) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
+  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid }) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
     && menToRaise(c, f, tid) >= MEN.least; // a soldier costs a person: with fewer men to send than this, no company (armytown.ts; none asked for yet)
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
   const a = armyAt(c, tid);
-  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && canPayFor(c, f, 'hero', heroCost(c.factions[f].civ));
+  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && canPayFor(c, f, 'hero', heroCost(c.factions[f].civ), { at: tid });
 }
 
 // ---- Actions ----
@@ -1460,6 +1460,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
+      ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id, { arms: out?.warriors ?? 0 })) : {}), // its men in arms go to the field whatever its cap (fieldcap.ts)
     };
