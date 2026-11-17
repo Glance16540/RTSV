@@ -34,6 +34,8 @@ export const PLENTY = {
   rule: 1,
   /** How many floors a nation keeps for each of its towns, after paying for a study. */
   studies: 2,
+  /** How many floors a nation keeps for each of its towns, after buying grain abroad for a hungry town (grain.ts): a need, lighter than a study. */
+  grain: 1,
 };
 
 /** A town's goods other than its bread. */
@@ -57,10 +59,15 @@ export function canSpare(c: Campaign, tid: number, cost: Partial<Record<string, 
   return breadless(folkOf(c, tid).stores) - costOf(cost) >= (o.times ?? PLENTY.works) * PLENTY.floor;
 }
 
-/** May a nation learn a study taught at this town? The town lives by its fields and has bread; the nation keeps `times` floors a town after paying. */
-export function nationCanSpare(c: Campaign, f: number, at: number, cost: Partial<Record<string, number>>, times = PLENTY.studies): boolean {
+/**
+ * May a nation learn a study taught at this town? The town lives by its fields and has bread; the nation keeps `times`
+ * floors a town after paying. `town: false` for what answers a want of the town's own (grain bought for a hungry town,
+ * grain.ts), which waits for neither its fields nor its bread.
+ */
+export function nationCanSpare(c: Campaign, f: number, at: number, cost: Partial<Record<string, number>>, times = PLENTY.studies, o: { town?: boolean } = {}): boolean {
   const t = c.territories[at];
-  if (!t || t.owner !== f || !t.buildings.includes('farm') || shortOfBread(c, at)) return false;
+  if (!t || t.owner !== f) return false;
+  if ((o.town ?? true) && (!t.buildings.includes('farm') || shortOfBread(c, at))) return false;
   const mine = c.territories.filter((x) => x.owner === f && !x.horde);
   const goods = mine.reduce((n, x) => n + breadless(folkOf(c, x.id).stores), 0);
   return goods - costOf(cost) >= times * PLENTY.floor * mine.length;

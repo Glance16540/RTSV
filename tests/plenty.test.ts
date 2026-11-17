@@ -33,5 +33,8 @@ describe('plenty', () => {
     expect(nationCanSpare(c, 0, t.id, { gold: 100 })).toBe(breadless(f.stores) + c.territories.filter((x) => x.owner === 0 && x.id !== t.id).reduce((n, x) => n + breadless(c.territories[x.id].folk!.stores), 0) - 100 >= PLENTY.studies * PLENTY.floor * mine);
     f.stores.food = 0;
     expect(nationCanSpare(c, 0, t.id, { gold: 100 })).toBe(false);
+    // Grain for a hungry town answers its own want: with `town: false` it waits for neither its fields nor its bread, only the nation's floors.
+    expect(nationCanSpare(c, 0, t.id, { gold: 100 }, PLENTY.grain, { town: false })).toBe(breadless(f.stores) + c.territories.filter((x) => x.owner === 0 && x.id !== t.id).reduce((n, x) => n + breadless(c.territories[x.id].folk!.stores), 0) - 100 >= PLENTY.grain * PLENTY.floor * mine);
+    expect(nationCanSpare(c, 0, t.id, { gold: 1e9 }, PLENTY.grain, { town: false })).toBe(false);
   });
 });
