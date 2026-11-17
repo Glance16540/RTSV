@@ -53,6 +53,7 @@ import { plotFor } from '../src/sim/governor';
 import { layTown } from '../src/sim/rivalrule';
 import { hasFortress } from '../src/sim/fortress';
 import type { March } from '../src/sim/bandmarch';
+import { UNREST, ownFounded, unrestWeights } from '../src/sim/unrest';
 import { ofTown } from '../src/sim/intriguebase';
 import { creedOf } from '../src/sim/creed';
 import { faithAt } from '../src/sim/townfaith';
@@ -179,6 +180,9 @@ interface Watch {
   raids: { outcome: string }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
   strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean }[];
+  /** Unrest begun in a town (unrest.ts), with what weighed on it then; towns that rose and became free (freetown.ts), and what became of them. */
+  stirs: { hungry: boolean; angry: boolean; sour: boolean; fresh: boolean; tavern: boolean; founded: boolean; mine: boolean }[];
+  free: { rose: number; back: number; retaken: number; taken: number; still: number };
   /** Marches in from the far wilds (bandwilds.ts), and how many bands of any kind came in the campaign. */
   marches: March[]; bandsCame: number;
   /** Every thief and killer (intrigue.ts): the seasons it was at large, and how many of them a Watch House stood in the town. */
@@ -227,7 +231,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [] };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [] };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -244,6 +248,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const takenAt = new Map<number, { since: number; owner: number; garrisoned: number; seen: number }>();
   let logAt = c.log.length;
   const hungrySpell = c.territories.map((): { seasons: number; paved: boolean; owner: number } | null => null); // the spell of hunger each town is in
+  const freeWas = c.territories.map((): { from: number } | null => null);
   const atLarge = new Map<number, { seasons: number; watched: number }>(); // each thief and killer, by the story's id
   const losses: Losses[][] = [];
   const names = new Map(c.factions.map((f) => [f.name, f.id]));
@@ -303,6 +308,18 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       if (t.owner !== x.owner) { takenAt.delete(tid); continue; }
       x.seen++; if (armyAt(c, tid)?.owner === x.owner) x.garrisoned++;
       if (now - x.since >= 20) { w.taken.push({ garrison: x.garrisoned * 2 > x.seen, rose: false }); takenAt.delete(tid); }
+    }
+    // Unrest begun this season, with what weighed on the town; and the free towns: risen, come back, taken.
+    for (const e of c.events ?? []) if (e.kind === 'unrest' && e.turn === now && c.territories[e.at].owner >= 0) {
+      const u = unrestWeights(c, e.at), t = c.territories[e.at];
+      w.stirs.push({ hungry: u.hungry > 1, angry: u.nobles >= UNREST.angry, sour: u.nobles > 1.1 && u.nobles < UNREST.angry, fresh: u.held > 1.1, tavern: u.tavern > 1, founded: ownFounded(c, e.at), mine: t.owner === 0 });
+    }
+    const treaties = new Set(c.log.slice(logAt).filter((l) => l.includes('rule by treaty')).map((l) => c.territories.find((t) => l.startsWith(`${t.name} has come back`))?.id ?? -1));
+    for (const t of c.territories) {
+      const was = freeWas[t.id];
+      if (t.free && !was) w.free.rose++;
+      if (was && !t.free) { if (t.owner === was.from && treaties.has(t.id)) w.free.back++; else if (t.owner === was.from) w.free.retaken++; else w.free.taken++; }
+      freeWas[t.id] = t.free ? { from: t.free.from } : null;
     }
     // Acts of God and raids this season, at each town.
     for (const e of c.events ?? []) {
@@ -474,6 +491,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   w.stories = c.intrigueSeq ?? 0; w.storyYears = c.turn / 4;
   w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot').length;
   w.crimes = [...atLarge.values()];
+  w.free.still = c.territories.filter((t) => t.free && t.owner < 0).length;
   w.marches = [...(c.marches ?? [])]; w.bandsCame = c.bandSeq ?? 0;
   for (const sp of hungrySpell) if (sp) w.hungers.push({ seasons: sp.seasons, paved: sp.paved, mine: sp.owner === 0 });
   for (const xs of fed) if (xs.length) { w.storeSeasons.push(median(xs)); w.peaceSeasons += xs.length; }
@@ -787,6 +805,15 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       add('Crime', 'Forced: seasons running a town of the player\'s stays hungry, with Paved Roads against as it is', 'report only', `${spellOf(mineOf(roads))} with against ${spellOf(mineOf(ruled))} as it is`, 'report',
         `Spells of hunger in the player\'s own towns in the same two tellings (the Inns and Escorts are there too). In all, ${hungrySeasons(roads)} hungry town-seasons with against ${hungrySeasons(ruled)} as it is. ${mineLine(roads)} with; ${mineLine(ruled)} as it is.`);
     }
+  }
+  // Unrest and the free towns (unrest.ts, freetown.ts): report only.
+  {
+    const stirs = all('stirs'), n = stirs.length, of = (p: (x: (typeof stirs)[number]) => boolean) => pct(n ? stirs.filter(p).length / n : NaN);
+    const free = ruled.reduce((k, w) => ({ rose: k.rose + w.free.rose, back: k.back + w.free.back, retaken: k.retaken + w.free.retaken, taken: k.taken + w.free.taken, still: k.still + w.free.still }), { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 });
+    add('Conquest', 'Unrest begun in a town, and what weighed on it', 'report only', n ? `${num(n / ruled.length, 1)} a campaign (${num(stirs.filter((x) => x.mine).length / ruled.length, 1)} in the player's towns): hungry ${of((x) => x.hungry)}, an angry noble ${of((x) => x.angry)}, sour nobles ${of((x) => x.sour)}, newly held ${of((x) => x.fresh)}, a tavern ${of((x) => x.tavern)}, none of these ${of((x) => !x.hungry && !x.angry && !x.sour && !x.fresh && !x.tavern)}; in a town its people founded ${of((x) => x.founded)}` : 'none', 'report',
+      'Every time unrest began in a held town (unrest.ts), with the things that made it likelier as they stood at the season\'s end; a town may have several. Unrest comes to a rising two seasons on unless an army, the leader or a steadfast people keeps order.');
+    add('Conquest', 'Towns that rise from unrest become free towns, and what becomes of them', 'report only', free.rose ? `${num(free.rose / ruled.length, 1)} a campaign rose; of them ${pct(free.back / free.rose)} came back by treaty, ${pct(free.retaken / free.rose)} were taken back by force by the people they left, ${pct(free.taken / free.rose)} were taken by another people or the marauders, ${pct(free.still / free.rose)} were free at the end` : 'none rose', 'report',
+      'A town that throws off its people\'s rule is nobody\'s, with its people in it, and remembers whose it was (freetown.ts). The towns a conqueror\'s yoke loses are another matter (conquered.ts) and are not counted here.');
   }
   // Bands from the far wilds (bandwilds.ts): report only.
   {
