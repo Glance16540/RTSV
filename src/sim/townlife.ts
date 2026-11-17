@@ -7,9 +7,15 @@
 //   - hungry (its granary empty, larder.ts): LIFE.hunger toward decadence;
 //   - plague in it: LIFE.plague toward decadence;
 //   - a long peace with full stores: after LIFE.calm seasons running with no hunger, plague, fire, raid, siege or rising
-//     in it, and with LIFE.full seasons of its own eating in store, LIFE.peace toward piety.
+//     in it, and with LIFE.full seasons of its own eating in store, LIFE.peace toward piety;
+//   - never, by its life alone, into the Decadent or the Righteous creed (LIFE.floor, LIFE.ceiling).
 // A raid moves a town already, by how it went (threats.ts: held off, it is the better for it; sacked, it loses heart),
 // so here a raid only breaks the peace.
+//
+// At 192 campaigns in each course (true wilderness in both builds), these figures kept the rows in band but one:
+// campaigns ruined or undecided, 11% in the answered course (band under 10%; 7.8% without). Stronger (2 a season for
+// hunger and plague, or peace after 8 seasons) pushed ruin, a farmed town's hunger or the churched nations out of band.
+// None of them widened the gap between a nation's towns (47.5 to 49.2% of nation-seasons in band, against 48.2 to 48.8%).
 //
 // `lifeSeason` counts each town's seasons of peace (`Territory.calm`), once a season, before the towns move;
 // `lifeDrift` is what its life adds to the town's move this season, read without changing anything.
@@ -26,15 +32,21 @@ declare module './campaign' {
 
 export const LIFE = {
   /** Toward decadence, a season hungry. */
-  hunger: 2,
+  hunger: 1,
   /** Toward decadence, a season with plague in it. */
-  plague: 2,
+  plague: 1,
   /** Toward piety, a season of long peace with full stores. */
   peace: 1,
   /** Seasons of peace running before it counts as long. */
-  calm: 8,
+  calm: 24,
   /** Seasons of its own eating in store for its stores to count as full. */
-  full: 2,
+  full: 3,
+  /**
+   * How far its life alone carries a town: never into the Decadent (-70) nor the Righteous (70) creed (creed.ts). A
+   * hungry town slid toward decadence, and a decadent town's harvest fails the oftener (wrath.ts): unbounded, the two fed
+   * each other.
+   */
+  floor: -69, ceiling: 69,
 };
 
 /** What breaks a town's peace, of what befell it last season (campaign.ts EventKind). */
@@ -56,9 +68,11 @@ export function lifeSeason(c: Campaign): void {
 export function lifeDrift(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   if (!t || t.owner < 0 || t.horde || !t.folk) return 0;
+  const at = t.virtue ?? 0;
   let by = 0;
   if (t.folk.hungry) by -= LIFE.hunger;
   if (plagued(c, tid)) by -= LIFE.plague;
-  if (!by && (t.calm ?? 0) >= LIFE.calm && t.folk.stores.food >= LIFE.full * needOf(c, tid)) by += LIFE.peace;
-  return by;
+  if (by) return Math.max(by, Math.min(0, LIFE.floor - at)); // not past the edge of decadence
+  if ((t.calm ?? 0) >= LIFE.calm && t.folk.stores.food >= LIFE.full * needOf(c, tid)) return Math.max(0, Math.min(LIFE.peace, LIFE.ceiling - at));
+  return 0;
 }

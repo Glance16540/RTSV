@@ -51,7 +51,19 @@ describe('a town\'s own life moves its faith', () => {
   it('one town of a nation stands apart from the rest by what it has lived through', () => {
     const { c, a, b } = realm();
     folkOf(c, b).hungry = 1;
-    for (let s = 0; s < 16; s++) { folkOf(c, b).hungry = 1; season(c); }
-    expect(faithAt(c, a) - faithAt(c, b)).toBeGreaterThanOrEqual(10);
+    for (let s = 0; s < 24; s++) { folkOf(c, b).hungry = 1; season(c); }
+    expect(faithAt(c, a) - faithAt(c, b)).toBeGreaterThanOrEqual(5);
+  });
+
+  it('its life alone never carries a town into the Decadent or the Righteous creed', () => {
+    const { c, a } = realm();
+    const t = c.territories[a];
+    folkOf(c, a).hungry = 1;
+    t.virtue = LIFE.floor; expect(lifeDrift(c, a)).toBe(0);
+    t.virtue = LIFE.floor + 1; expect(lifeDrift(c, a)).toBe(-1);
+    delete folkOf(c, a).hungry;
+    t.calm = LIFE.calm;
+    t.virtue = LIFE.ceiling; expect(lifeDrift(c, a)).toBe(0);
+    t.virtue = 0; expect(lifeDrift(c, a)).toBe(LIFE.peace);
   });
 });
