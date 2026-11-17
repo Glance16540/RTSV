@@ -11,7 +11,7 @@ import { keepsHeralds, warn } from './heralds';
 export interface NewsItem {
   turn: number;
   /** A strike on a town ('raid'), or what else a band did. */
-  kind: 'raid' | 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush';
+  kind: 'raid' | 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush' | 'seen';
   /** The land it happened in: open this one. */
   at: number; land: string;
   band: number;
