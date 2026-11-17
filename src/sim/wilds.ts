@@ -5,7 +5,9 @@
 // When the world is made (campaign.ts newCampaign), after the peoples have their homes:
 //   - a land may start wild if nobody holds it, it is nobody's chief town, it lies beside no people's chief town, and it
 //     is far or poor: snow or desert, or on the map's edge (within WILD.edge of a side);
-//   - of those, WILD.share are made wild, chosen by the world's seed, so the same seed makes the same wilds.
+//   - of those, WILD.share are made wild, chosen by the world's seed, so the same seed makes the same wilds;
+//   - and one land beside each people's chief town is left empty too (`homeLands`), so that settlers are a choice from
+//     the first season (docs/PLAYTEST.md 3.7).
 // A wild land is an empty land (founding.ts): nobody lives there, no warriors, no works. A wild land of snow or desert is
 // true wilderness (`wilderness`): it can never be settled, and stays wild all campaign for the far-wilds bands. It keeps its name and its
 // ground. It is marked `wild`, for the far-wilds bands (threats) and the map to read; the mark stays when settlers or an
@@ -19,6 +21,8 @@ declare module './campaign' {
   interface Territory {
     /** This land started with no tribe and no town: far or poor ground left for settlers (wilds.ts). */
     wild?: boolean;
+    /** The people beside whose chief town this empty land was left, so that settling is a choice from the first; it is not wild (wilds.ts). */
+    nearHome?: number;
   }
 }
 
@@ -67,12 +71,33 @@ function draw(seed: number, tid: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
+/**
+ * One empty land beside each people's chief town, so that settlers are a choice from the first season (docs/PLAYTEST.md
+ * 3.7: settlers cross only lands with nobody on them, and the far wilds lie beside no chief town, so no young people ever
+ * had one in reach). It is not marked wild: it is no part of the far wilds and never true wilderness, snow or desert
+ * though its ground may be, for it is left to be settled. Not beside another people's chief town where that can be
+ * helped; chosen by the world's seed.
+ */
+function homeLands(c: Campaign): Territory[] {
+  const homes = c.territories.filter((t) => t.capital >= 0);
+  const out: Territory[] = [];
+  for (const h of homes) {
+    const free = h.adj.map((n) => c.territories[n]).filter((t) => t.owner < 0 && t.capital < 0 && !t.horde && !t.wild);
+    // Not beside another people's chief town where it can be helped; where it cannot, a land the two may race to settle.
+    const apart = free.filter((t) => !out.includes(t) && !t.adj.some((n) => c.territories[n].capital >= 0 && c.territories[n].capital !== h.capital));
+    const pick = (apart.length ? apart : free).sort((a, b) => draw(c.seed + 7, a.id) - draw(c.seed + 7, b.id))[0];
+    if (pick && !out.includes(pick)) { pick.nearHome = h.capital; out.push(pick); }
+  }
+  return out;
+}
+
 /** Make a share of the far and poor lands wild: no tribe, no town, nobody there. Returns the lands made wild. */
 export function makeWilds(c: Campaign): number[] {
   const may = wildable(c).sort((a, b) => draw(c.seed, a.id) - draw(c.seed, b.id));
-  const made = may.slice(0, Math.round(may.length * WILD.share));
+  const far = may.slice(0, Math.round(may.length * WILD.share));
+  for (const t of far) t.wild = true;
+  const made = [...far, ...homeLands(c)]; // the land beside a chief town is empty, but not of the wilds: not true wilderness, whatever its ground
   for (const t of made) {
-    t.wild = true;
     t.tribal = true; // never made up to a tribe's strength (tribes.ts)
     t.militia = 0;
     t.buildings = [];

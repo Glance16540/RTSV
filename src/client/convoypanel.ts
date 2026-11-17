@@ -27,7 +27,7 @@ export function convoyHtml(c: Campaign, tid: number): string {
   const going = onTheRoad(c, 0).filter((x) => x.from === tid || x.to === tid);
   const first = to[0]?.id ?? free[0];
   return `<div class="ow-convoy">${going.map((x) => goingLine(c, x, tid)).join('')}<div class="hint">🐂 Send by road, or over a sea lane from a Harbour, a season on the way. Highwaymen on the road and pirates at sea rob convoys they catch unescorted: ${Math.round(CONVOYS.rob * 100)}% of the goods, never the people.</div>
-    <select id="ow-convoy-to">${to.map((t) => `<option value="${t.id}">${t.name}</option>`).join('')}${free.map((id) => `<option value="${id}">${c.territories[id].name} (empty land: Settlers only, ${seasonsTo(c, 0, id) > 1 ? `${seasonsTo(c, 0, id)} seasons away` : 'a season away'})</option>`).join('')}</select>
+    <select id="ow-convoy-to">${to.map((t) => `<option value="${t.id}">${t.name}</option>`).join('')}${free.map((id) => `<option value="${id}">${c.territories[id].name} (🏡 empty, ${seasonsTo(c, 0, id)} ${seasonsTo(c, 0, id) > 1 ? 'seasons' : 'season'})</option>`).join('')}</select>
     ${Object.entries(LOADS).map(([k, l]) => { const why = k === 'settle' ? settleBar(c, 0, tid, first) : cannotSend(c, 0, tid, first, l.what); return `<button data-act="convoy:${k}" title="${l.tip}${why ? ' ' + why : ''}" ${c.phase === 'player' && !why ? '' : 'disabled'}>${l.label}</button>`; }).join('')}</div>`;
 }
 

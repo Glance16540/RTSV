@@ -12,7 +12,7 @@ describe('the wild lands', () => {
     let wild = 0, may = 0;
     for (let seed = 1; seed <= 12; seed++) {
       const c = newCampaign(seed, 2, 1, 'hearth');
-      const lands = c.territories.filter((t) => t.wild);
+      const lands = c.territories.filter((t) => t.wild); // the far wilds; the lands left beside a chief town are below
       wild += lands.length;
       for (const t of lands) {
         expect(farOrPoor(c, t)).toBe(true);
@@ -21,7 +21,7 @@ describe('the wild lands', () => {
         expect(t.buildings).toEqual([]);
         expect(emptyLand(c, t.id)).toBe(true);
         expect(warriorsOf(c, t.id)).toBe(0); // never made up to a tribe's strength
-        // Beside no people's chief town: nobody starts with a free land at the door.
+        // The far wilds lie beside no people's chief town.
         expect(t.adj.some((n) => c.territories[n].capital >= 0)).toBe(false);
       }
       // Of all the far and poor lands, the share made wild:
@@ -98,5 +98,26 @@ describe('true wilderness', () => {
       }
     }
     expect(seen).toBeGreaterThan(0);
+  });
+});
+
+describe('an empty land beside each chief town', () => {
+  it('each people begins with one settleable empty land beside its chief town', () => {
+    let homes = 0, given = 0;
+    for (let seed = 1; seed <= 24; seed++) {
+      const c = newCampaign(seed, 2, 1, 'hearth');
+      for (const h of c.territories.filter((t) => t.capital >= 0)) {
+        homes++;
+        const near = h.adj.map((n) => c.territories[n]).filter((t) => t.nearHome === h.capital);
+        expect(near.length).toBeLessThanOrEqual(1);
+        if (!near.length) continue;
+        given++;
+        const t = near[0];
+        expect(settleable(c, t.id)).toBe(true);
+        expect(t.wild).toBeFalsy(); // not of the far wilds, nor true wilderness whatever its ground
+        expect(freeLands(c, h.capital)).toContain(t.id); // offered from the first season
+      }
+    }
+    expect(given / homes).toBeGreaterThan(0.9);
   });
 });
