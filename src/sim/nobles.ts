@@ -5,7 +5,7 @@
 //     - the leader's inner circle (kin.ts), each at their own town;
 //     - in every town, its most famous veteran (a captain) and its most famous mother of a great house (a matron),
 //       from the town's notable people (township.ts, notableweight.ts);
-//     - in every town of LORD_AT grown people or more, its lord, named from the campaign's seed. A lord holds the
+//     - in its capital, and in every town of LORD_AT grown people or more, its lord, named from the campaign's seed. A lord holds the
 //       town for its people: a town that changes hands has a new lord.
 //   Each has a leaning (pious, martial, worldly or kindly), fixed by who they are, and a mood, -100 to 100.
 //
@@ -118,7 +118,7 @@ function reckon(c: Campaign, f: number, was: Noble[]): Noble[] {
     const vet = best('veteran', (n) => n.kills ?? 0), mother = best('mother', (n) => (n.kids ?? 0) + (n.made ?? 0) / 100);
     if (vet) add(`captain:${t.id}:${vet.name}`, vet.name, vet.gender === 'f', t.id, 'captain');
     if (mother) add(`matron:${t.id}:${mother.name}`, mother.name, true, t.id, 'matron');
-    if (grown(folk) >= NOBLES.lordAt) {
+    if (grown(folk) >= NOBLES.lordAt || t.capital === f) { // a capital has its lord whatever its size (the playtest: a small nation had none to deal with)
       // The lord of this town, or the one after them if lords have been lost here (newLord): each has a name of their own.
       const gen = c.factions[f]?.lordsGone?.[t.id] ?? 0, before = gen ? lordName(c, f, t.id, gen - 1).name : '';
       const lord = lordName(c, f, t.id, gen, before);

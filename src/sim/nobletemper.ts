@@ -10,8 +10,11 @@
 //     (TEMPER.quiet).
 //   - The leader: at their town (court.ts), TEMPER.present; a lord the leader has neither come to nor dealt with for
 //     TEMPER.neglectAfter seasons grows sour from neglect, TEMPER.neglect a season and more each year, up to TEMPER.most.
+//     Half as much for the capital's lord, who lives at court (with every capital given a lord and the leader away with
+//     the armies, capitals' lords were 70% of the angry and plots came once in 22 years; not at all, 21% were content).
 //   - Taxes: a lord whose town's gold was taken for the nation's spending this season beyond TEMPER.taxedOver, not by
-//     a band, TEMPER.taxed for each hundred.
+//     a band, TEMPER.taxed for each hundred. Not the capital's lord: the nation pays out of its capital first, and that
+//     is the court's own purse.
 // The temper is held within TEMPER.cap either way. It runs after the nobles' own season (campaign.ts).
 // Plain data on the noble and the nation; nothing drawn.
 import type { Campaign } from './campaign';
@@ -75,10 +78,11 @@ export function temperOf(c: Campaign, f: number, n: Noble, war: number): number 
   if (leaderAt(c, f, n.town)) { n.heeded = c.turn; by += TEMPER.present; }
   n.heeded ??= c.turn;
   const unheeded = c.turn - n.heeded;
-  if (n.rank === 'lord' && unheeded > TEMPER.neglectAfter) by -= Math.min(TEMPER.most, TEMPER.neglect + TEMPER.grows * Math.floor((unheeded - TEMPER.neglectAfter) / 4));
+  const atCourt = c.territories[n.town]?.capital === f; // the capital's lord lives at court: neglect tells on him half as much
+  if (n.rank === 'lord' && unheeded > TEMPER.neglectAfter) by -= (atCourt ? 0.5 : 1) * Math.min(TEMPER.most, TEMPER.neglect + TEMPER.grows * Math.floor((unheeded - TEMPER.neglectAfter) / 4));
   // Taxes: what the nation took of their town's gold since last season, beyond a band's share.
   const gold = Math.max(0, folk.stores.gold);
-  if (n.rank === 'lord' && n.gold !== undefined && !struckSince(c, n.town, c.turn - 1)) {
+  if (n.rank === 'lord' && n.gold !== undefined && !struckSince(c, n.town, c.turn - 1) && c.territories[n.town]?.capital !== f) { // not the capital's: the court spends its own purse there
     const took = n.gold - gold;
     if (took > TEMPER.taxedOver) by -= TEMPER.taxed * (took / 100);
   }

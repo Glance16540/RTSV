@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign } from '../src/sim/campaign';
 import { NOBLES, noblesAt, noblesOf, noblesSeason, restOf } from '../src/sim/nobles';
 import type { Noble } from '../src/sim/nobles';
-import { DEALS, TITLES, dealBar, dealWith, dealsFor } from '../src/sim/nobledeal';
+import { DEALS, DEAL_KINDS, TITLES, dealBar, dealEffect, dealWith, dealsFor } from '../src/sim/nobledeal';
 import { HEIR_AGE, houseOf } from '../src/sim/dynasty';
 import { daughterOfAge } from '../src/sim/courtstory';
 import { folkOf } from '../src/sim/township';
@@ -94,5 +94,16 @@ describe('dealing with a noble', () => {
     if (close) expect(dealsFor(c, 0, close.key)).toEqual([]);
     dealWith(c, 0, lord.key, 'gift');
     expect((c.intrigueNews ?? []).some((n) => n.turn === c.turn && n.owner === 0 && n.text.includes(lord.name))).toBe(true);
+  });
+
+  it('each dealing says what it does, a post is new to the rank, and a gift says what it did', () => {
+    const { c, tid, lord } = world();
+    const captain = noblesAt(c, tid).find((n) => n.rank === 'captain')!;
+    for (const k of DEAL_KINDS) expect(dealEffect(c, 0, lord, k).length).toBeGreaterThan(20);
+    expect(dealEffect(c, 0, lord, 'gift')).toContain(`${DEALS.gift.mood}`);
+    expect(TITLES.captain).not.toMatch(/^Captain/);
+    expect(dealsFor(c, 0, captain.key).find((d) => d.kind === 'post')!.name).toBe(`Make ${TITLES.captain}`);
+    dealWith(c, 0, lord.key, 'gift');
+    expect(c.log[c.log.length - 1]).toMatch(new RegExp(`mood rises by ${DEALS.gift.mood}`));
   });
 });
