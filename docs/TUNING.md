@@ -36,6 +36,9 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Crime | Seasons a thief or a killer is at large, with a Watch House in every town against as it is (read with CRIME=1) | 10 to 30% fewer |
 | Crime | Raids on the player's towns held off, with Town Watch learnt against without (read with CRIME=1) | 5 to 20 more in every 100 |
 | Rule | Rival nations with a Hall of Judgement by 20 years | most (over half) |
+| Rule | Lords angry at 20 years, the player's and the rivals' each | 1 to 8% (some at the edge of anger, never a revolt of the great) |
+| Rule | Lords content at 20 years, the player's and the rivals' each | 5 to 20% |
+| Rule | A noble's plot against the player | about once in 30 to 150 years |
 | Faith | Holy towns with a Monastery or Convent by 20 years | some (5 to 30%) |
 | Conquest | Taken towns that rise if left ungarrisoned | 15 to 35% within 5 years; under 5% with an army in them |
 | Armies | A nation's men under arms | 10 to 25% of its grown men in war, under 10% in peace |
