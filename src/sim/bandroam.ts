@@ -17,6 +17,7 @@ import type { Campaign, Territory } from './campaign';
 import { armyStrength } from './campaignbase';
 import { Band, mark, note, reachOf, softest } from './threats';
 import { campsBorne } from './bandhorde';
+import { outOf } from './rim';
 import { MARCH, marched, onRoad, richLure, townsThatSee, warnBound, watchers } from './bandmarch';
 
 export const ROAM = {
@@ -55,13 +56,13 @@ export function placesFrom(c: Campaign, b: Band): [number, number?][] {
     return roads;
   }
   // A camp: a tribe's land that marauders do not hold, or the hills of a held land that is not a capital.
-  return c.territories[b.at].adj.map((n) => c.territories[n]).filter((t) => campable(c, b, t)).map((t): [number] => [t.id]);
+  return outOf(c, b.at).map((n) => c.territories[n]).filter((t) => campable(c, b, t)).map((t): [number] => [t.id]);
 }
 
 /** Could this band's camp stand in this land: it is free of other bands and of armies, not the marauders', and a tribe's or a held land that is no capital? */
 function campable(c: Campaign, b: Band, t: Territory): boolean {
   if ((c.bands ?? []).some((x) => x !== b && x.at === t.id) || c.armies.some((a) => a.at === t.id)) return false;
-  return !t.horde && (t.owner < 0 || (held(c, t) && t.capital < 0));
+  return !t.horde && !t.rim && (t.owner < 0 || (held(c, t) && t.capital < 0)); // none camps in the rim of wilderness: bands are born there and leave it (rim.ts)
 }
 
 /**
@@ -76,7 +77,7 @@ export function waysFrom(c: Campaign, b: Band, range = ROAM.range): { to: number
   let edge: { at: number; next: number; seasons: number; legs: number }[] = [{ at: b.at, next: -1, seasons: 0, legs: MARCH.pace }];
   for (let steps = 1; steps <= range && edge.length; steps++) {
     const far: typeof edge = [];
-    for (const e of edge) for (const n of [...c.territories[e.at].adj].sort((x, y) => x - y)) {
+    for (const e of edge) for (const n of [...outOf(c, e.at)].sort((x, y) => x - y)) {
       if (seen.has(n) || !campable(c, b, c.territories[n])) continue;
       seen.add(n);
       const next = e.next < 0 ? n : e.next, on = e.legs < MARCH.pace && onRoad(c, e.at, n);
@@ -170,6 +171,7 @@ export function roamSeason(c: Campaign, out: string[]): number {
     }
     // On their way somewhere: one land nearer each season, while there is still a way.
     if (b.bound !== undefined) {
+      if ((b.gathers ?? 0) > c.turn) continue; // still gathering in the rim of wilderness (bandwilds.ts)
       const way = waysFrom(c, b, MARCH.long).find((w) => w.to === b.bound);
       if (way) { const from = b.at; move(c, b, [way.next]); marchOn(c, b, from, out); moved++; continue; }
       delete b.bound;

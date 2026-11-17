@@ -19,6 +19,7 @@
 // player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
+import { outOf } from './rim';
 import { peoplesArmy, sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
 import { reach, weatherAt } from './campaignbase';
@@ -82,8 +83,10 @@ function lose(a: Army, n: number): number {
 export function canAttackBand(c: Campaign, armyId: number, bandId: number): boolean {
   const a = c.armies.find((x) => x.id === armyId), b = bandOf(c, bandId);
   if (!a || !b || b.kind === 'marauders' || a.moved || c.pending || c.demand) return false;
-  return placeOf(b).some((id) => id === a.at || reach(c, a.at).includes(id));
+  return placeOf(b).some((id) => id === a.at || reach(c, a.at).includes(id) || rimOver(c, id, a.at));
 }
+/** Is this a land of the rim of wilderness that looks down on that land? An army there can go up against a camp gathering in it (rim.ts: the rim is nobody's neighbour). */
+const rimOver = (c: Campaign, rim: number, at: number): boolean => !!c.territories[rim]?.rim && outOf(c, rim).includes(at);
 /** The player's armies that could be sent against a band this turn. */
 export const armiesFor = (c: Campaign, bandId: number, owner = 0): Army[] => c.armies.filter((a) => a.owner === owner && canAttackBand(c, a.id, bandId));
 
@@ -95,7 +98,7 @@ export function attackBand(c: Campaign, armyId: number, bandId: number): 'battle
   if (!canAttackBand(c, armyId, bandId)) return 'invalid';
   const a = c.armies.find((x) => x.id === armyId)!, b = bandOf(c, bandId)!;
   if (c.factions[a.owner]?.isAI) { const out: string[] = []; fightByMeans(c, a, b, out); c.log.push(...out); return 'fought'; }
-  const to = placeOf(b).find((id) => id === a.at || reach(c, a.at).includes(id))!;
+  const to = placeOf(b).find((id) => id === a.at || reach(c, a.at).includes(id) || rimOver(c, id, a.at))!;
   c.pending = { armyId, from: a.at, to, attacker: a.owner, defender: -1, aStr: armyStrength(a, c), dStr: b.strength, mode: 'field', band: b.id };
   return 'battle';
 }
@@ -240,7 +243,7 @@ export function huntBands(c: Campaign, out: string[]): number {
     // nobody knows of.
     const coming = b.bound !== undefined && (!b.afar || marchOf(c, b.id)?.seen !== undefined);
     const idle = !coming && (c.turn - b.since < FIGHT.grace || chance(c, b.id, 89) >= FIGHT.keen);
-    const near = new Set(placeOf(b).flatMap((id) => [id, ...c.territories[id].adj]));
+    const near = new Set(placeOf(b).flatMap((id) => [id, ...outOf(c, id)]));
     // Whose business it is: a people that holds the band's place or a land next to it.
     const owners = new Set([...near].map((id) => c.territories[id].owner).filter((f) => f > 0 && c.factions[f]?.alive && c.factions[f].isAI));
     const hunters = c.armies.filter((a) => owners.has(a.owner) && near.has(a.at) && c.territories[a.at].owner === a.owner && (wronged.has(a.owner) ? armyStrength(a, c) >= b.strength * FIGHT.theirs : !idle && armyStrength(a, c) >= b.strength * FIGHT.hunt))
@@ -267,7 +270,7 @@ export const escorting = (c: Campaign, a: Army): boolean => ((c as { convoys?: {
 
 /** The armies a band could fall on now, the weakest first: those at its place or beside it that it outweighs enough. */
 export function prey(c: Campaign, b: Band): Army[] {
-  const near = new Set(placeOf(b).flatMap((id) => [id, ...c.territories[id].adj]));
+  const near = new Set(placeOf(b).flatMap((id) => [id, ...outOf(c, id)]));
   return c.armies.filter((a) => near.has(a.at) && c.factions[a.owner]?.alive && b.strength >= armyStrength(a, c) * exposure(c, a) * (escorting(c, a) ? AMBUSH.escort : AMBUSH.odds)) // tired after a storming, or alone, it counts for less (bandmarch.ts)
     .sort((x, y) => armyStrength(x, c) - armyStrength(y, c) || x.id - y.id);
 }
@@ -288,7 +291,7 @@ export function ambushSeason(c: Campaign, out: string[]): number {
       a.moved = false; // it happened in the turning of the season
       n++;
     } else if (!c.pending && !c.demand) {
-      const to = placeOf(b).find((id) => id === a.at || c.territories[a.at].adj.includes(id)) ?? b.at;
+      const to = placeOf(b).find((id) => id === a.at || c.territories[a.at].adj.includes(id) || rimOver(c, id, a.at)) ?? b.at;
       c.pending = { armyId: a.id, from: a.at, to, attacker: a.owner, defender: -1, aStr: armyStrength(a, c), dStr: b.strength, mode: 'field', band: b.id, ambush: true };
       note(c, out, 'ambush', b, a.at, `${cap(b.name)} have fallen on your army at ${c.territories[a.at].name}${escorting(c, a) ? ', which was seeing a convoy along the road' : exposedHow(c, a) ? `, ${exposedHow(c, a)}` : ''}!`, [a.owner]);
       n++;
