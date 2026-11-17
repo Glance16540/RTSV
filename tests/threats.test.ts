@@ -411,7 +411,7 @@ describe('bands on the map', () => {
           // A town left with nobody grown that season has had its children taken in by the nearest town of their people
           // (orphans.ts): they are gone from this town's record, unharmed, and the chronicle says where they went.
           const f = folkOf(c, r.at), takenIn = f.men + f.women + f.elders === 0 && (c.chronicle ?? []).some((x) => x.turn === c.turn && x.text.includes(`of ${c.territories[r.at].name}, left with nobody grown`));
-          if (kids[r.at] >= 0 && !takenIn) expect(f.children).toBeGreaterThanOrEqual(kids[r.at] - 3);
+          if (kids[r.at] >= 0 && !takenIn) expect(f.children).toBeGreaterThanOrEqual(kids[r.at] - 3 * S); // as many as may come of age in a season in a town the size towns now are
           if (takenIn) expect(f.children).toBe(0);
           expect(reportText(c, r).length).toBeGreaterThan(2);
         }
