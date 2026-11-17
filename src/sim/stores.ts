@@ -45,6 +45,19 @@ export function draw(c: Campaign, tid: number, goods: number): number {
   for (const k of [...STORE_KINDS].sort((a, b) => s[b] - s[a])) { const part = Math.min(s[k], left); s[k] -= part; left -= part; }
   return n - left;
 }
+/**
+ * A people gains `n` supplies at a town of its own (else at its chief town): the goods go into that town's stores. For a
+ * gain that belongs to a place: a hoard found, a fine harvest, a band's camp broken, plunder, a tale's reward. A gain that
+ * belongs to no place (a gift or tribute received, an ally's share) is put on the nation's figure and shared out (`earn`).
+ */
+export function gainAt(c: Campaign, f: number, tid: number, n: number): void {
+  if (n <= 0 || !c.factions[f]) return;
+  settleStores(c); // anything spent or earned since is in the towns first
+  const t = c.territories[tid], at = t && t.owner === f && !t.horde ? t : chiefOf(c, f);
+  if (!at) { c.factions[f].supplies += n; return; }
+  stock(c, at.id, Math.round(n * SUPPLY_UNITS));
+  settleStores(c); // the figure, from the towns as they now are
+}
 /** A nation earns: the goods are shared out among its towns, the odd ones to its chief town. */
 export function earn(c: Campaign, f: number, goods: number): void {
   const mine = towns(c, f), n = Math.max(0, Math.round(goods));

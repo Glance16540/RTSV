@@ -6,16 +6,20 @@
 //     or Barracks (trade asks only for hands at the gold);
 //   - what he is not to build, of what he would raise himself;
 //   - how much to keep in store before he spends: a little (half the usual), the usual, or much (twice);
-//   - whether its people may leave: families moving on (migration.ts), settlers founding a town, both or neither.
+//   - whether its people may leave: families moving on (migration.ts), settlers founding a town, both or neither;
+//   - whether he may learn the studies taught in the town, when it has the means (governworks.ts).
+// Rule first raises a Hall of Judgement where the nation has none, else a Noble's Manor in a town big enough; faith first
+// raises a Monastery once the town's Church stands and the town keeps the faith (governworks.ts, the owner's design: "Rule,
+// law, nobles and faith").
 // A town with no standing orders is governed as before: the computer's towns have none, and so keep their present sense.
 // Plain data on the town, kept in the save; the governor (governor.ts) and migration (migration.ts) read it.
 import type { Campaign, Territory } from './campaign';
 import type { Stores } from './township';
 
-export type Focus = 'food' | 'walls' | 'faith' | 'trade' | 'arms';
+export type Focus = 'food' | 'walls' | 'faith' | 'trade' | 'arms' | 'rule';
 export type KeepLevel = 'little' | 'usual' | 'much';
 export type Leave = 'both' | 'families' | 'settlers' | 'none';
-export interface Standing { first?: Focus; never?: string[]; keep?: KeepLevel; leave?: Leave }
+export interface Standing { first?: Focus; never?: string[]; keep?: KeepLevel; leave?: Leave; /** He may learn the studies taught in the town (governworks.ts). */ learn?: boolean }
 
 declare module './campaign' {
   interface Territory {
@@ -28,9 +32,10 @@ declare module './campaign' {
 export const FOCUS: Record<Focus, { name: string; work: Stores; raise?: string; says: string }> = {
   food: { name: 'Food', work: { food: 0.65, wood: 0.15, gold: 0.1, stone: 0.1 }, raise: 'farm', says: 'more hands at the fields, and Farmland raised when the town can spare it' },
   walls: { name: 'Walls', work: { food: 0.45, wood: 0.15, gold: 0.1, stone: 0.3 }, raise: 'fortress', says: 'hands at the quarry, and a Fortress raised when the town can spare it, raided or not' },
-  faith: { name: 'Faith', work: { food: 0.5, wood: 0.2, gold: 0.15, stone: 0.15 }, raise: 'church', says: 'a Church raised when the town can spare it, to keep its people to the holy way' },
+  faith: { name: 'Faith', work: { food: 0.5, wood: 0.2, gold: 0.15, stone: 0.15 }, raise: 'church', says: 'a Church raised when the town can spare it, to keep its people to the holy way, and a Monastery once the Church stands and the town keeps the faith' },
   trade: { name: 'Trade', work: { food: 0.45, wood: 0.15, gold: 0.3, stone: 0.1 }, says: 'more hands at the gold, and nothing raised for it' },
   arms: { name: 'Arms', work: { food: 0.45, wood: 0.25, gold: 0.2, stone: 0.1 }, raise: 'barracks', says: 'hands at the wood and the gold, and Barracks raised when the town can spare it' },
+  rule: { name: 'Rule', work: { food: 0.45, wood: 0.2, gold: 0.2, stone: 0.15 }, says: 'a Hall of Judgement raised where your nation has none, else a Noble\'s Manor in a town big enough, when the town can spare it' },
 };
 export const FOCI = Object.keys(FOCUS) as Focus[];
 /** How much the governor keeps in store before he spends, against the usual. */
@@ -38,7 +43,7 @@ export const KEEP_TIMES: Record<KeepLevel, number> = { little: 0.5, usual: 1, mu
 export const KEEP_WORDS: Record<KeepLevel, string> = { little: 'little: he spends down to half the usual stock', usual: 'the usual working stock', much: 'much: he keeps twice the usual stock before he spends' };
 export const LEAVE_WORDS: Record<Leave, string> = { both: 'families may move on and settlers found towns', families: 'families may move on, but no settlers go', settlers: 'settlers may found towns, but no family moves on', none: 'nobody leaves: no family moves on and no settlers go' };
 /** What a governor may be told not to build: what he raises himself. */
-export const NEVER_CHOICES = ['farm', 'house', 'fortress', 'mill', 'well', 'infirmary', 'granary', 'church', 'barracks'];
+export const NEVER_CHOICES = ['farm', 'house', 'fortress', 'mill', 'well', 'infirmary', 'granary', 'church', 'barracks', 'hall', 'manor', 'monastery'];
 
 /** A town's standing orders, or none. */
 export const standingOf = (t: Territory | undefined): Standing => t?.standing ?? {};
@@ -57,7 +62,7 @@ export function mayLeave(c: Campaign, tid: number, who: 'family' | 'settlers'): 
 }
 
 /** Give a town's governor a standing order: only the player's own towns. Returns '' when given, or why not. */
-export function setStanding(c: Campaign, tid: number, order: Partial<{ first: Focus | null; never: string[]; keep: KeepLevel; leave: Leave }>): string {
+export function setStanding(c: Campaign, tid: number, order: Partial<{ first: Focus | null; never: string[]; keep: KeepLevel; leave: Leave; learn: boolean }>): string {
   const t = c.territories[tid];
   if (!t || t.owner !== 0 || t.horde) return 'Only a town of your own.';
   const s: Standing = { ...standingOf(t) };
@@ -65,6 +70,7 @@ export function setStanding(c: Campaign, tid: number, order: Partial<{ first: Fo
   if (order.never !== undefined) s.never = order.never.filter((x) => NEVER_CHOICES.includes(x));
   if (order.keep !== undefined) { if (!(order.keep in KEEP_TIMES)) return 'No such order.'; s.keep = order.keep; }
   if (order.leave !== undefined) { if (!(order.leave in LEAVE_WORDS)) return 'No such order.'; s.leave = order.leave; }
+  if (order.learn !== undefined) { if (order.learn) s.learn = true; else delete s.learn; }
   if (!s.never?.length) delete s.never;
   if (s.keep === 'usual') delete s.keep;
   if (s.leave === 'both') delete s.leave;
@@ -81,6 +87,7 @@ export function standingText(t: Territory, names: (type: string) => string): str
     s.never?.length ? `never to build ${s.never.map(names).join(', ')}` : '',
     s.keep ? `to keep ${KEEP_WORDS[s.keep]}` : '',
     s.leave ? LEAVE_WORDS[s.leave] : '',
+    s.learn ? 'to learn the studies taught in the town when it has the means' : '',
   ].filter(Boolean);
   return `The governor's standing orders: ${parts.join('; ')}.`;
 }

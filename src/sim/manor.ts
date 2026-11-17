@@ -8,6 +8,7 @@
 import type { Campaign } from './campaign';
 import { standsAt } from './studies';
 import { BUILDINGS } from './data';
+import { TOWN_SCALE } from './township';
 
 export const MANOR = {
   /** How much the town's lord's mood rises a season, and how much further every decree moves it. */
@@ -16,8 +17,12 @@ export const MANOR = {
 
 /** Is a Noble's Manor standing in this town? */
 export const manorAt = (c: Campaign, tid: number): boolean => standsAt(c, tid, 'manor');
-/** Grown people a town needs for a manor (its BUILDINGS entry's \`townAt\`): a town with a lord, as nobles.ts has it. */
-export const manorNeeds = (): number => BUILDINGS.manor?.townAt ?? 12;
+/**
+ * Grown people a town on the map needs for a manor: its BUILDINGS entry's \`townAt\` at the towns of today, TOWN_SCALE
+ * times it in bigger towns (a town with a lord, as nobles.ts has it). In a battle or a visit the field counts its own
+ * villagers against \`townAt\` itself (game.ts), the field holding at most FIELD_CAP of the town's grown (fieldcap.ts).
+ */
+export const manorNeeds = (): number => (BUILDINGS.manor?.townAt ?? 12) * TOWN_SCALE;
 /** How far a decree moves this town's lord's mood, beside anyone else's: MANOR.say with a manor standing. */
 export const lordSay = (c: Campaign, tid: number): number => (manorAt(c, tid) ? MANOR.say : 1);
 /** How much the town's lord's mood rises a season of its own accord: MANOR.content with a manor standing. */
