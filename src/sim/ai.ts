@@ -11,6 +11,7 @@ import { roomForCouples, unhousedCouples } from './birthonly';
 import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
+import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -178,7 +179,11 @@ export class AIController {
       const idleWealth = Math.min((p.res.food + p.res.wood + p.res.gold) / 3, Math.max(p.res.food, p.res.wood) / 2);
       const more = this.level >= 1 && p.age >= 2 ? Math.min(3, Math.floor(idleWealth / 900)) : 0;
       const peace = inPeace(g, pid); // a town kept in peace raises no works of war (keeper.ts)
-      for (const step of BUILD_ORDER) {
+      // What the town itself has need of comes before the order of war; what it would have out of plenty, after (aiworks.ts).
+      const town = { villagers: villagers.length, peace, home };
+      const need = marketFirst ? null : workNeeded(g, pid, town), needed = saving && need === 'fortress' ? null : need; // a town in need does not wait for the next age, but its stone does
+      let ordered = !!needed && !!(this.build(needed, home, villagers, 7, 13) ?? this.build(needed, home, villagers, 13, 26));
+      for (const step of ordered ? [] : BUILD_ORDER) {
         if (peace && MILITARY_WORKS.includes(step.type)) continue;
         if (marketFirst && step.type !== 'market') continue;
         const extra = step.type === 'barracks' || step.type === 'range' || step.type === 'stable' ? more : 0;
@@ -195,8 +200,11 @@ export class AIController {
           const made = this.build(step.type, home, villagers, 7, 13) ?? (this.crowded.tries >= CROWDED_TRIES ? this.build(step.type, home, villagers, 13, 26) : null);
           this.crowded.tries = made ? 0 : this.crowded.tries + 1;
         }
+        ordered = true;
         break;
       }
+      const plenty = ordered || saving || marketFirst ? null : workOfPlenty(g, pid, town);
+      if (plenty) this.build(plenty, home, villagers, 7, 13) ?? this.build(plenty, home, villagers, 13, 26);
     }
 
     // Give up on wall segments nobody can get to (deep in trees, behind water) so the wall keeps going.
@@ -241,7 +249,7 @@ export class AIController {
         for (const id of researchAt(b.type, p.civ, b.def.techs)) { // its own people's study among them (ownstudies.ts)
           // A busy building is left to its work, but the nation's own study is queued behind it: the Town Center that
           // teaches it is training villagers nearly all the time, and would otherwise never get to it.
-          if (busy && !nationOf(id)) continue;
+          if (busy && !nationOf(id) && !queuesBehind(id, b.queue.length)) continue; // and so are the nation's studies taught at its other buildings (aiworks.ts)
           const t = TECHS[id];
           if (g.techAvailable(p, id) && g.canAfford(p, { food: (t.cost.food ?? 0) + 150, wood: (t.cost.wood ?? 0) + 100, gold: t.cost.gold, stone: t.cost.stone })) {
             g.cmdResearch(pid, b.id, id);
