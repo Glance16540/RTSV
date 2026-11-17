@@ -24,7 +24,7 @@ import type { Army, BattleConfig, Campaign } from './campaign';
 import { reach, weatherAt } from './campaignbase';
 import { BIOMES, COMPANIES, ageOf, armySize, armyStrength, biomeOf, heroFor, virtueOf } from './campaignbase';
 import { CIV_IDS, TECHS } from './data';
-import { MEN_A_COMPANY, reckonArmies } from './armytown';
+import { reckonArmies, MEN } from './armytown';
 import { creditArmy } from './warhouse';
 import { raisedInBattle } from './dynasty';
 import { HeroSpec, MAX_RANK } from './hero';
@@ -109,7 +109,7 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
   if (mine >= theirs) {
     const lost = lose(a, Math.round(armySize(a) * FIGHT.cost * Math.min(1, theirs / mine)));
     note(c, out, 'broken', b, b.at, `${ambush ? `${cap(b.name)} fell on ${peoplesArmy(c, a.owner)} at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
-    const felled = b.strength * MEN_A_COMPANY;
+    const felled = b.strength * MEN.company;
     breakBand(c, b, out, a);
     a.vet = Math.min(3, a.vet + 1);
     creditArmy(c, a.id, felled); // counted to the houses of its men (warhouse.ts)
@@ -213,7 +213,7 @@ export function settleBandFight(c: Campaign, how: 'auto' | 'attacker' | 'defende
       }
       const lost = before - armySize(a);
       note(c, out, 'broken', b, b.at, `${p.ambush ? `${cap(b.name)} fell on your army at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost > 0 ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
-      const felled = b.strength * MEN_A_COMPANY;
+      const felled = b.strength * MEN.company;
       breakBand(c, b, out, a);
       a.vet = Math.min(3, a.vet + 1);
       creditArmy(c, a.id, felled); // counted to the houses of its men (warhouse.ts)

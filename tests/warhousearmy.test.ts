@@ -1,11 +1,14 @@
 // Which army a man marches with, and what an army fells counted to its men's houses (src/sim/warhouse.ts).
-import { bareCampaign } from './helpers';
+import { bareCampaign, smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { armyAt, moveArmy, raise } from '../src/sim/campaign';
-import { MEN_A_COMPANY, armiesJoined, musterOf, reckonArmies, seasonOfArmies } from '../src/sim/armytown';
+import { armiesJoined, musterOf, reckonArmies, seasonOfArmies } from '../src/sim/armytown';
 import { agesOf } from '../src/sim/ageing';
 import { Notable, folkOf } from '../src/sim/township';
 import { awayMen, awayText, creditArmy, housesOf, levelArmies } from '../src/sim/warhouse';
+
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
+const MEN_A_COMPANY = 2;
 
 /** Two towns of the player's side by side, each with a Barracks and men to spare, and no army in either. */
 const two = () => {

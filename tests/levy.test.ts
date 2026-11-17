@@ -1,12 +1,13 @@
 // A company its town cannot man is filled from its people's other towns (src/sim/armytown.ts).
-import { bareCampaign, everyManSent } from './helpers';
+import { bareCampaign, smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { armyAt, raise } from '../src/sim/campaign';
-import { MEN, MEN_A_COMPANY, awayFrom, menOf, musterOf, sendHome, sparedMen } from '../src/sim/armytown';
+import { MEN, awayFrom, menOf, musterOf, sendHome, sparedMen } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
 import { recordedAway } from '../src/sim/warhouse';
 
-everyManSent(); // these tests are about other rules: a company takes its two men while the town can spare them
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
+const MEN_A_COMPANY = 2;
 
 /** The player's chief town with a Barracks and nobody to spare, and two other towns of theirs with men. */
 const nation = () => {
