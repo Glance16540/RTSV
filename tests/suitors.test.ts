@@ -1,6 +1,7 @@
 // Going to marry: a town of one sex draws the unmarried of its people's other towns (src/sim/suitors.ts).
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { newCampaign } from '../src/sim/campaign';
+
 import { convoysTurn } from '../src/sim/convoys';
 import { sparedMen } from '../src/sim/armytown';
 import { SUIT, couldSend, suitorsOf, suitorsSeason, unmarried, wantOf, wantText } from '../src/sim/suitors';
@@ -8,7 +9,7 @@ import { TOLL, folkOf, tollFolk } from '../src/sim/township';
 
 /** The player's chief town and a town next to it, both theirs, with the people asked for. */
 const pair = () => {
-  const c = newCampaign(7, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
+  const c = bareCampaign(7, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
   const near = c.territories.find((t) => home.adj.includes(t.id) && !t.horde && t.capital < 0)!;
   near.owner = 0;
   c.armies = c.armies.filter((a) => a.owner !== 0);
@@ -91,7 +92,7 @@ describe('going to marry', () => {
   });
 
   it('a rival\'s towns do the same, and say nothing to the player', () => {
-    const c = newCampaign(7, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 1)!;
+    const c = bareCampaign(7, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 1)!;
     const near = c.territories.find((t) => home.adj.includes(t.id) && !t.horde && t.capital < 0)!;
     near.owner = 1; c.convoys = [];
     for (const t of c.territories) if (t.owner === 1 && t !== home && t !== near) t.owner = -1;

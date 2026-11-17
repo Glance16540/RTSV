@@ -14,7 +14,7 @@ const turn = (c: Campaign) => {
   }
 };
 /** On to the next turn on which a tale is told. */
-const toTale = (c: Campaign) => { do turn(c); while (c.phase !== 'over' && (c.turn < TALE_FROM || (c.turn - TALE_FROM) % TALE_EVERY)); };
+const toTale = (c: Campaign) => { do turn(c); while (c.phase !== 'over' && !c.tale); };
 /** A quiet campaign: the rival raises no armies and keeps a truce, and no marauders take root, so the story can be followed for many turns. */
 const quiet = (seed = 7) => {
   const c = newCampaign(seed, 1, 0, 'steppe');

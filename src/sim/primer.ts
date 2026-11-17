@@ -98,7 +98,7 @@ export function primerPage(c?: Campaign): PrimerSection[] {
     { title: 'Creed', lines: [
       `Your people stand somewhere between pious and decadent. A ${SITES.church.name} moves them one way every turn and a ${SITES.tavern.name} the other, and your towns begin each battle as your people are.`,
       creed('zealous'), creed('devout'), creed('worldly'), creed('decadent'),
-      `From turn ${TALE_FROM}, every ${TALE_EVERY} turns a matter is brought before you with a pious answer and a worldly one, each at a price. Some are told only to whoever holds a place of note, and some follow from what you answered before.`,
+      `From turn ${TALE_FROM} or so, about every ${TALE_EVERY} turns (sooner or later), a matter is brought before you with a pious answer and a worldly one, each at a price. Some are told only to whoever holds a place of note, and some follow from what you answered before.`,
     ] },
     { title: 'Winning', lines: [
       c

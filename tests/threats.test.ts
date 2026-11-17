@@ -1,6 +1,7 @@
 // Threats of men on the map: bands that choose a town and strike it (src/sim/threats.ts).
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { endTurn, continueAI, eventsAt, newCampaign } from '../src/sim/campaign';
+import { endTurn, continueAI, eventsAt } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
 import { OLD_SEASON, SEASONS_A_YEAR } from '../src/sim/ageing';
 import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, wanted } from '../src/sim/threats';
@@ -16,7 +17,7 @@ const goods = (s: Stores): number => s.food + s.wood + s.gold + s.stone;
 
 /** A world with one town of the player's set apart: its neighbours are the local tribes', so a band placed there has only it to strike. */
 function world(opts: { men?: number; women?: number; children?: number; virtue?: number; seed?: number } = {}) {
-  const c = newCampaign(opts.seed ?? 11, 2);
+  const c = bareCampaign(opts.seed ?? 11, 2);
   c.fronts = [];
   c.factions[0].virtue = opts.virtue ?? 0;
   c.factions[0].supplies = 20;
@@ -355,7 +356,7 @@ describe('those who are taken', () => {
 
 describe('bands on the map', () => {
   it('there is meant to be one for every six held lands, never fewer than one, and one more while any people is worldly or decadent', () => {
-    const c = newCampaign(11, 2);
+    const c = bareCampaign(11, 2);
     const lands = c.territories.filter((t) => t.owner >= 0).length;
     for (const f of c.factions) f.virtue = 0;
     expect(wanted(c)).toBe(Math.max(1, Math.floor(lands / THREATS.lands)));
@@ -366,7 +367,7 @@ describe('bands on the map', () => {
   });
 
   it('none before the third season; after it they appear, never more than are wanted, each with a place, and are marked on the map', () => {
-    const c = newCampaign(11, 2);
+    const c = bareCampaign(11, 2);
     c.fronts = [];
     for (c.turn = 1; c.turn < THREATS.from; c.turn++) threatsOfMen(c);
     expect(c.bands).toEqual([]);
@@ -395,7 +396,7 @@ describe('bands on the map', () => {
   it('a campaign played through its turns meets them, and no town\'s children are ever fewer for a raid', () => {
     let raids = 0;
     for (const seed of [3, 4, 5]) {
-      const c = newCampaign(seed, 2);
+      const c = bareCampaign(seed, 2);
       for (let i = 0; i < 40 && c.phase !== 'over' && !c.pending; i++) {
         const kids = c.territories.map((t) => t.folk?.children ?? -1);
         const seen = (c.raids ?? []).length;

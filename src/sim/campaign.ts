@@ -53,7 +53,7 @@ import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillTowns } from './townmuster';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
-import { aimOrder, marchInto, redeploy } from './rivalaim';
+import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
 import { unrestSeason } from './unrest';
@@ -64,7 +64,7 @@ import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
 export { shiftVirtue } from './townfaith'; // where it was found before it was moved
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
-import { ARMY_REST, MEN_A_COMPANY, Muster, armiesJoined, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
+import { ARMY_REST, MEN, MEN_A_COMPANY, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
@@ -705,6 +705,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');
   settleStores(c); // each people's supplies are goods in its chief town from the first (stores.ts)
+  foundArmies(c); // and the army each begins with is its chief town's own men, each of a house there (armytown.ts)
   return c;
 }
 
@@ -787,7 +788,8 @@ export function canBuild(c: Campaign, f: number, tid: number, site: string): boo
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid))) && (!a || (a.owner === f && armySize(a) < MAX_ARMY));
+  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid))) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
+    && menToRaise(c, f, tid) >= MEN.least; // a soldier costs a person: with fewer men to send than this, no company (armytown.ts; none asked for yet)
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
   const a = armyAt(c, tid);
@@ -1366,7 +1368,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id); // its angry lords make it wary (nobleweigh.ts)
     const bySea = !c.territories[from].adj.includes(to);
-    return wouldTake(c, army, to, strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
+    return wouldTake(c, army, to, strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * skyInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
   };
   // It marches on the most wanted land it dares, not only the most wanted of all.
   const dared = targets.find((id) => dares(here.id, id));

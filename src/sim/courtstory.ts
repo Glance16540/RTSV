@@ -38,8 +38,8 @@ import { canPayFor, payFor } from './prices';
 import { Choice, Intrigue, begin, chance, end, note } from './intriguebase';
 
 export const COURT = {
-  /** No story of the house before this season; one at a time; this long between them. */
-  from: 12, rest: 16,
+  /** No story of the house before this season; one at a time; this long between them. (From 12 the playtest met none face to face in 40 seasons: at 6, with the first envoy three times as likely, 91% of 192 campaigns meet one in ten years, the first at a median of season 16, against 66% and 30.) */
+  from: 6, rest: 16,
   rival: {
     /** The chance a season, for a people with no goodwill; each point of goodwill halves it. */
     chance: 0.02,
@@ -135,7 +135,9 @@ export function courtBegin(c: Campaign): Intrigue[] {
   const cold = rs.filter((f) => !atTruce(c, 0, f));
   if (spouseOf(c, 0) && cold.length) {
     const f = cold[Math.floor(chance(c, 301) * cold.length)];
-    if (chance(c, 302) < R.chance / 2 ** (c.factions[f].favor ?? 0)) { const it = beginRival(c, f); if (it) return [it]; }
+    // Until the first story of the house has come, a rival's envoy is three times as likely: a new player meets one early.
+    const first = !(c.intrigues ?? []).some((x) => x.owner === 0 && ['rival', 'suitor', 'plot'].includes(x.kind));
+    if (chance(c, 302) < (first ? 3 : 1) * R.chance / 2 ** (c.factions[f].favor ?? 0)) { const it = beginRival(c, f); if (it) return [it]; }
   }
   if (daughterOfAge(c) && chance(c, 303) < S.chance) { const it = beginSuitor(c, rs[Math.floor(chance(c, 304) * rs.length)]); if (it) out.push(it); }
   return out;

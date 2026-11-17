@@ -273,15 +273,18 @@ export class Overworld {
   /** A tale is put to the player: two answers, the pious and the worldly, each with its price. */
   private askTale(): void {
     const c = this.c, tale = taleNow(c)!;
-    const price = (k: 'a' | 'b') => {
+    const price = (k: 'a' | 'b'): string => {
       const ch = tale[k];
-      const parts = [ch.supplies ? `${ch.supplies > 0 ? '+' : ''}${ch.supplies} supplies` : '', ch.virtue > 0 ? `piety +${ch.virtue}` : `decadence +${-ch.virtue}`, ch.company ? 'a company of infantry' : ''].filter(Boolean);
-      return `${taleText(c, ch.label)} (${parts.join(', ')})`;
+      return [ch.supplies ? `${ch.supplies > 0 ? '+' : ''}${ch.supplies} supplies` : '', ch.virtue > 0 ? `piety +${ch.virtue}` : `decadence +${-ch.virtue}`, ch.company ? 'a company of infantry' : ''].filter(Boolean).join(', ');
     };
     const answer = (k: 'a' | 'b') => { answerTale(c, k); this.changed(); };
     this.dialog(tale.title, taleText(c, tale.text) + (canAnswer(c, 'a') && canAnswer(c, 'b') ? '' : ' You have not the supplies for every answer.'),
-      [...(['a', 'b'] as const).filter((k) => canAnswer(c, k)).map((k) => [price(k), () => answer(k)] as [string, () => void]),
+      [...(['a', 'b'] as const).filter((k) => canAnswer(c, k)).map((k) => [taleText(c, tale[k].label), () => answer(k)] as [string, () => void]),
         ['Let it settle itself', () => { c.tale = null; this.changed(); }]]);
+    // Each answer with its price on a line of its own beneath, and what letting it settle does (style.css: Tales).
+    const el = $('ow-dialog'), buttons = el.querySelectorAll<HTMLButtonElement>('.levels button'), prices = (['a', 'b'] as const).filter((k) => canAnswer(c, k)).map(price);
+    el.querySelector('.sheet')?.classList.add('tale');
+    buttons.forEach((b, i) => { const s = document.createElement('small'); s.textContent = i < prices.length ? prices[i] : 'Nothing is paid and nothing changes; the matter is not brought before you again.'; b.appendChild(s); });
   }
 
   /** The story so far, oldest first. */

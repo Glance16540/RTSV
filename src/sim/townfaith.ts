@@ -20,6 +20,7 @@ import { CHURCH_VIRTUE, FAITH, TAVERN_VIRTUE, tell } from './campaignbase';
 import { creedOf } from './creed';
 import { PLACES } from './story';
 import { faithPull } from './ownstudies';
+import { lifeDrift, lifeSeason } from './townlife'; // what a town lives through moves it too
 
 const clamp = (v: number): number => Math.max(-100, Math.min(100, Math.round(v)));
 const owned = (c: Campaign, f: number) => c.territories.filter((t) => t.owner === f);
@@ -69,16 +70,17 @@ export function swayNation(c: Campaign, f: number, by: number): void {
   if (mine.length) synced(c, f);
   else if (c.factions[f]) c.factions[f].virtue = clamp((c.factions[f].virtue ?? 0) + by);
 }
-/** What moves a town in a season of its own accord: its Church, its Tavern, and a holy place on its land. */
+/** What moves a town in a season of its own accord: its Church, its Tavern, a holy place on its land, and its own life (townlife.ts). */
 export function townDrift(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   if (!t || t.owner < 0) return 0;
   const place = placeAt(c, tid);
-  return (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0) + (place ? PLACES[place.kind].virtue ?? 0 : 0) + faithPull(c, tid); // and a people's own study (ownstudies.ts)
+  return (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0) + (place ? PLACES[place.kind].virtue ?? 0 : 0) + faithPull(c, tid) + lifeDrift(c, tid); // its own life (townlife.ts), and a people's own study (ownstudies.ts)
 }
 /** A season of faith: every held town moves by its own drift. `shift` does the moving, so the map can say when a nation's creed turns. */
 export function seasonOfFaith(c: Campaign, shift: (f: number, by: number, at: number) => void): void {
   settleFaith(c);
+  lifeSeason(c); // each town's seasons of peace counted (townlife.ts)
   for (const t of c.territories) { const by = t.owner >= 0 && c.factions[t.owner].alive ? townDrift(c, t.id) : 0; if (by) shift(t.owner, by, t.id); }
   pullTogether(c);
 }
