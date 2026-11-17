@@ -1,6 +1,7 @@
 // A man at war is still of his house, on the map (docs/DESIGN.md; src/sim/warhouse.ts).
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { armyAt, newCampaign, raise } from '../src/sim/campaign';
+import { armyAt, raise } from '../src/sim/campaign';
 import { MEN_A_COMPANY, awayFrom, musterOf, reckonArmies, seasonOfArmies, sendHome } from '../src/sim/armytown';
 import { agesOf } from '../src/sim/ageing';
 import { GRIEF_SEASONS } from '../src/sim/grief';
@@ -11,7 +12,7 @@ import { WARHOUSE, awayMen, awayText, cameHome, enlist, fallenSince, fell, house
 
 /** A town of the player's with a Barracks and supplies, no army in it, and the men and women asked for. */
 const town = (men = 10, women = 6, seed = 7) => {
-  const c = newCampaign(seed, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
+  const c = bareCampaign(seed, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
   c.armies = c.armies.filter((a) => a.owner !== 0);
   c.factions[0].supplies = 500;
   if (!home.buildings.includes('barracks')) home.buildings.push('barracks');

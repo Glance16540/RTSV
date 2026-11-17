@@ -1,8 +1,9 @@
 // Rivals live by the same rules (docs/DESIGN.md): an audit, by playing campaigns with the computer and looking at a
 // rival's towns for every system a player's town goes through. What a rival is still spared is listed on the board.
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { EAT, eatTown } from '../src/sim/larder';
-import { Campaign, answerDemand, continueAI, endTurn, newCampaign, raise, resolvePending } from '../src/sim/campaign';
+import { Campaign, answerDemand, continueAI, endTurn, raise, resolvePending } from '../src/sim/campaign';
 import { MEN, awayFrom, musterOf } from '../src/sim/armytown';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
 import { governTown } from '../src/sim/governor';
@@ -17,7 +18,7 @@ const turn = (c: Campaign) => {
 describe('rivals live by the same rules', () => {
   it('over a campaign a rival\'s towns have people with ages, stores, their own faith, and its figures are its towns\'', () => {
     for (const seed of [11, 40]) {
-      const c = newCampaign(seed, 2, 1, 'hearth');
+      const c = bareCampaign(seed, 2, 1, 'hearth');
       const first = c.territories.filter((t) => t.owner > 0).map((t) => ({ id: t.id, ages: [...(folkOf(c, t.id).ages?.m ?? [])] }));
       for (let i = 0; i < 12 && c.phase !== 'over'; i++) turn(c);
       const theirs = c.territories.filter((t) => t.owner > 0);
@@ -46,7 +47,7 @@ describe('rivals live by the same rules', () => {
   }, 180_000);
 
   it('a rival\'s company is men of its town, and its governor keeps the town as a player\'s is kept', () => {
-    const c = newCampaign(7, 1, 1, 'hearth');
+    const c = bareCampaign(7, 1, 1, 'hearth');
     const cap = c.territories.find((t) => t.capital === 1)!;
     if (!cap.buildings.includes('barracks')) cap.buildings.push('barracks');
     c.factions[1].supplies = 50;

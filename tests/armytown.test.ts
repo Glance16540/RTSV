@@ -1,6 +1,7 @@
 // Armies belong to towns (docs/DESIGN.md; src/sim/armytown.ts).
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { Campaign, armyAt, finishBattle, moveArmy, newCampaign, raise } from '../src/sim/campaign';
+import { Campaign, armyAt, finishBattle, moveArmy, raise } from '../src/sim/campaign';
 import { ARMY_REST, MEN, MEN_A_COMPANY, resting, awayFrom, canSendHome, homeOf, menOf, musterOf, reckonArmies, seasonOfArmies, sendHome } from '../src/sim/armytown';
 import { agesOf, GROWN_SEASON, OLD_SEASON } from '../src/sim/ageing';
 import { folkOf, living } from '../src/sim/township';
@@ -8,7 +9,7 @@ import { folkOf, living } from '../src/sim/township';
 const LONG = 60_000;
 /** A town of the player's with ten men (and, to keep the sums plain, no women: it keeps two men back whatever is raised), a Barracks, supplies, and no army standing in it. */
 const town = (seed = 7) => {
-  const c = newCampaign(seed, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
+  const c = bareCampaign(seed, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
   c.armies = c.armies.filter((a) => a.owner !== 0);
   c.factions[0].supplies = 500;
   if (!home.buildings.includes('barracks')) home.buildings.push('barracks');
@@ -54,7 +55,7 @@ describe('armies belong to towns', () => {
     raise(c, 0, home.id, 'infantry');
     expect(f.men).toBe(Math.ceil(8 * MEN.couples));
     // An army that was there before any roll was kept is of no town at all.
-    const old = newCampaign(7, 1, 1, 'hearth'), first = old.armies.find((x) => x.owner === 0)!;
+    const old = bareCampaign(7, 1, 1, 'hearth'), first = old.armies.find((x) => x.owner === 0)!;
     expect(musterOf(old, first.id)).toBeUndefined();
     expect(homeOf(old, first)).toBeUndefined();
     expect(reckonArmies(old)).toEqual([]);
