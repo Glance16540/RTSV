@@ -25,9 +25,9 @@ const hash = (a: number, b: number): number => {
 /** The named places of this world: a few lands that are not capitals, chosen and named by the seed. */
 export function placesOf(c: Campaign): Place[] {
   if (c.places) return suited(c, c.places);
-  const open = c.territories.filter((t) => t.capital < 0).sort((a, b) => hash(c.seed, a.id) - hash(c.seed, b.id));
+  const open = c.territories.filter((t) => t.capital < 0 && !t.rim).sort((a, b) => hash(c.seed, a.id) - hash(c.seed, b.id));
   const kinds = (Object.keys(PLACES) as PlaceKind[]).sort((a, b) => hash(c.seed + 1, a.length * 7 + a.charCodeAt(0)) - hash(c.seed + 1, b.length * 7 + b.charCodeAt(0)));
-  const n = Math.min(open.length, 3 + Math.floor(c.territories.length / 6));
+  const n = Math.min(open.length, 3 + Math.floor(c.territories.filter((t) => !t.rim).length / 6)); // the rim of wilderness is no place and is not counted: the world's places are those it had (rim.ts)
   c.places = [];
   for (let i = 0; i < n; i++) {
     const kind = kinds[i % kinds.length], def = PLACES[kind];

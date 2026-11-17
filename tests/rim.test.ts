@@ -93,3 +93,18 @@ describe('the rim of true wilderness', () => {
     for (const t of c.territories.slice(n)) for (const r of c.territories.slice(0, n)) expect(Math.hypot(t.x - r.x, t.y - r.y)).toBeGreaterThanOrEqual(RIM.apart);
   });
 });
+
+describe('the rim and the world\'s named places', () => {
+  it('no place of the world is in the rim, and the places are those the world would have had without it', async () => {
+    const { placesOf } = await import('../src/sim/places');
+    for (let seed = 1; seed <= 12; seed++) {
+      const c = newCampaign(seed, 2, 1, 'hearth');
+      const with_ = placesOf(c).map((p) => [p.at, p.kind, p.name]);
+      for (const [at] of with_) expect(c.territories[at as number].rim).toBeFalsy();
+      const bare = newCampaign(seed, 2, 1, 'hearth');
+      bare.territories = bare.territories.filter((t) => !t.rim);
+      delete bare.places;
+      expect(placesOf(bare).map((p) => [p.at, p.kind, p.name])).toEqual(with_);
+    }
+  });
+});

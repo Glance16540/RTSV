@@ -38,7 +38,7 @@ export const MARCH = {
 /** Bands from the far wilds (bandwilds.ts): numbers kept here so the bands' moving can read them with no ring of imports. */
 export const WILDS = {
   /** Of new camps of raiders and slavers, the share born in the far wilds when there are any with a way in. */
-  share: 0.75,
+  share: 0.35,
   /** A camp born in the rim of wilderness gathers there this many seasons before it sets out, and the towns within two lands see its fires. */
   gather: 1,
 };
