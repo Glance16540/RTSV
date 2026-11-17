@@ -39,6 +39,7 @@ import { playLine, speechHtml } from './voice';
 import { sfx } from './sfx';
 import { researchAt } from '../sim/ownstudies';
 import { questionCommand, robbedLine, suspectLine } from './fieldstoryui';
+import { answerCommands, guestLine, nobleLine, nobleName } from './courtfieldui';
 
 export const SLOT_KEYS = 'QWERTASDFGZXCVB';
 
@@ -402,6 +403,7 @@ export class Hud {
           : 'Villagers run to shelter in Town Centers and Watch Towers, where they cannot be hurt and help shoot arrows.',
         act: () => { game.cmdBell(pid, !p.bell); sfx.play('alert'); },
       });
+      for (const x of answerCommands(game, pid, b)) out.push(x); // the answers the leader may give a guest in the hall (courtfield.ts)
     }
     if (b.type === 'market') {
       for (const dir of ['sell', 'buy'] as const) {
@@ -552,8 +554,8 @@ export class Hud {
           (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the women of the camp bear sooner while they are in the field</div>' : '') + extra;
       }
       const role = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
-      const name = e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role;
-      return `<div class="head"><span class="icon">${unitPortraitHtml(game, e, e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon))}</span><div><b>${name}</b>${tag}${hp}</div></div>${notableLine(game, e)}${suspectLine(game, e)}
+      const name = nobleName(game, e) || (e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role); // one of the great, at court (courtfield.ts)
+      return `<div class="head"><span class="icon">${unitPortraitHtml(game, e, e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon))}</span><div><b>${name}</b>${tag}${hp}</div></div>${notableLine(game, e)}${suspectLine(game, e)}${nobleLine(game, e)}
         <div class="stat">⚔ ${Math.round((d.atk + (mil ? mods.atk : 0) + (lead?.atk ?? 0)) * 10) / 10} · 🛡 ${Math.round((d.armor + (mil ? mods.armor : 0) + (lead?.armor ?? 0) + game.guardAt(e.owner, e.x, e.y)) * 10) / 10}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
     const b = e;
@@ -577,6 +579,7 @@ export class Hud {
     if (b.def.camp) body += heldPanel(game, b, pid);
     if (b.type === 'towncenter' && b.owner === pid) body += takenPanel(game, pid);
     body += robbedLine(game, b); // robbed by a thief afoot in the town (fieldstory.ts)
+    body += guestLine(game, b, pid); // a rival's envoy or a suitor in the hall, or a plot at court (courtfield.ts)
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
     else if (mine) {
