@@ -1,6 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import { tribeName } from './tribenames';
+import { bereaved } from './bereft';
 import { coupleParted, creditKill, leaveForWar, settleHomes, warRenown } from './household';
 import { carriedIn, madeRenown, restoreMade } from './notableweight';
 import { Census, PeopleIn, Stores } from './township';
@@ -738,8 +739,10 @@ export class Game {
       }
       const home = this.entities.get(e.homeId);
       if (home && home.kind === 'building') {
+        const was = home.residents.m === e.id || home.residents.f === e.id;
         if (home.residents.m === e.id) home.residents.m = 0;
         if (home.residents.f === e.id) home.residents.f = 0;
+        if (was) bereaved(this, home, e); // its widow or widower, or its orphans taken in (bereft.ts)
       }
     } else if (e.kind === 'building') {
       if (e.type === 'towncenter') this.relayRoads(); else this.liftRoad(e.id);

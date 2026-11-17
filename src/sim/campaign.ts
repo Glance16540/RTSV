@@ -28,6 +28,7 @@ import { orphansSeason } from './orphans';
 import { deputyAt, kinSeasons } from './kin';
 import { noblesSeasons } from './nobles';
 import { nobleActsSeasons } from './nobleacts';
+import { marriageSeason } from './marriage';
 import { temperSeasons } from './nobletemper';
 import { marchMargin, treatLean, weighSeasons } from './nobleweigh';
 import { widowsSeason } from './widowhood';
@@ -1221,6 +1222,7 @@ export function continueAI(c: Campaign): void {
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
+      marriageSeason(c); // the unmarried of a town marry, or go to a town beside to marry (marriage.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       kinSeasons(c); // the leaders' households and inner circles (kin.ts)
       noblesSeasons(c); // who is noble, and how they feel (nobles.ts)
