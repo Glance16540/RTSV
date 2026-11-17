@@ -848,3 +848,11 @@ body.looking-out #visit { display: none; }
 
 /* ---- Land panel: why no company can be raised (no men for it) ---- */
 .lp-note { margin: 4px 0 0; font-size: 12px; line-height: 1.35; opacity: 0.85; }
+
+/* ---- The end card of a campaign battle: the count of both sides (briefing.ts) ---- */
+.bt-tally { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.bt-tally th, .bt-tally td { padding: 3px 8px; text-align: right; }
+.bt-tally th:first-child, .bt-tally td:first-child, .bt-tally .bt-kinds, .bt-tally th:last-child { text-align: left; }
+.bt-kinds { font-size: 12px; opacity: 0.85; }
+.bt-fell, .bt-note { margin: 4px 0; font-size: 13px; line-height: 1.4; }
+.bt-note { opacity: 0.8; }
