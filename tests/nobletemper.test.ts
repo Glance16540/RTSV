@@ -7,7 +7,7 @@ import type { Noble } from '../src/sim/nobles';
 import { TEMPER, temperAt, temperOf, temperSeason, warTurn } from '../src/sim/nobletemper';
 import { dealWith } from '../src/sim/nobledeal';
 import { seat } from '../src/sim/court';
-import { folkOf } from '../src/sim/township';
+import { TOWN_SCALE, folkOf } from '../src/sim/township';
 
 // A town of the player's that is not their seat, with a lord.
 const world = (): { c: Campaign; tid: number; lord: () => Noble } => {
@@ -15,7 +15,7 @@ const world = (): { c: Campaign; tid: number; lord: () => Noble } => {
   const cap = c.territories.find((t) => t.capital === 0)!.id;
   const t = c.territories[c.territories[cap].adj[0]];
   t.owner = 0; delete t.horde;
-  const f = folkOf(c, t.id); f.men = 8; f.women = 8; f.elders = 0; delete f.ages; delete f.hungry;
+  const f = folkOf(c, t.id); f.men = 8 * TOWN_SCALE; f.women = 8 * TOWN_SCALE; f.elders = 0; delete f.ages; delete f.hungry; // big enough to have a lord (nobles.ts lordAt)
   seat(c, 0, cap);
   c.factions[0].supplies = 50;
   delete c.factions[0].nobles; noblesSeason(c, 0);
