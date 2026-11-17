@@ -14,6 +14,7 @@ import { Answer, COMET_VIRTUE, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, TALE_SP
 import { leaningWith } from './temper';
 import { tribeArms } from './tribes';
 import { gainAt } from './stores';
+import { MEN, levyFrom, sparedMen } from './armytown'; // men of a real town (armytown.ts)
 
 declare module './campaign' {
   interface Campaign {
@@ -59,9 +60,12 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
   }
   if (ch.company) {
     const home = c.territories.find((x) => x.capital === 0 && x.owner === 0) ?? c.territories[t.land];
+    // The company's men are of the town the story is set in, each of a house there, if it can spare them (armytown.ts levyFrom);
+    // else of the chief town, if it can; else none come.
+    const from = [c.territories[t.land], home].find((x) => x && x.owner === 0 && !x.horde && sparedMen(c, x.id) >= MEN.company);
     const a = armyAt(c, home.id);
-    if (a && a.owner === 0) { if (armySize(a) < MAX_ARMY) a.units.infantry = (a.units.infantry ?? 0) + 1; }
-    else if (!a) c.armies.push({ id: c.nextArmy++, owner: 0, at: home.id, units: { infantry: 1 }, hero: false, vet: 0, moved: true });
+    if (from && a && a.owner === 0) levyFrom(c, a, from.id, 1, MAX_ARMY - armySize(a));
+    else if (from && !a) { const fresh = { id: c.nextArmy++, owner: 0, at: home.id, units: {}, hero: false, vet: 0, moved: true }; if (levyFrom(c, fresh, from.id, 1)) c.armies.push(fresh); }
   }
   c.log.push(result);
   tell(c, `${tale.title}: ${result}`);
