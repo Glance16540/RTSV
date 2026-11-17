@@ -73,6 +73,7 @@ import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
 export { shiftVirtue } from './townfaith'; // where it was found before it was moved
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { companySoldiers, noteDowned, rollOf } from './soldiernames';
+import { takeDowned } from './downedmap';
 import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
@@ -1602,7 +1603,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
     if (after.fell) { c.factions[0].heroAlive = false; c.factions[0].heroRank = Math.max(0, rankBefore - 1); c.log.push(`${heroFor(c, 0).name} fell defending ${land.name}.`); }
     else if (heroRank != null) c.factions[0].heroRank = Math.max(0, Math.min(MAX_RANK, Math.round(heroRank)));
   }
-  if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) { reckonArmies(c); return; }
+  if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) { reckonArmies(c); takeDowned(c); return; } // and the men the field saw fall are the dead (downedmap.ts)
   const units: Record<string, number> = {};
   for (const [type, had] of Object.entries(before.units)) {
     const [unit, per] = unitsOf(type);
@@ -1616,6 +1617,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   if (!Object.keys(units).length) units[Object.keys(before.units)[0] ?? 'infantry'] = 1;
   mine.units = units;
   reckonArmies(c);
+  takeDowned(c); // the men the field saw fall are the dead, every one (downedmap.ts)
   const hero = heroFor(c, 0);
   const kept = cleanChampion(after.champion);
   if (kept) mine.champion = kept; else delete mine.champion;

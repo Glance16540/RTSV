@@ -7,6 +7,7 @@ import { setToWork, workChanged } from './atwork';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
 import { Roll, nameSoldiers } from './soldiernames';
+import { namesIn, pickName, unlikeNames } from './namesakes';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
@@ -601,6 +602,7 @@ export class Game {
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
       }
     });
+    for (let i = 0; i < this.players.length; i++) unlikeNames(this, i); // no two of a people under one given name where it can be helped (namesakes.ts)
     this.wild = this.players.length;
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, civ: '', res: { food: 0, wood: 0, gold: 0, stone: 0 },
@@ -643,7 +645,8 @@ export class Game {
     };
     if (type === 'villager') {
       const names = u.gender === 'm' ? NAMES_M : NAMES_F, roll = this.rng();
-      u.name = this.setups[owner]?.tribe ? tribeName(u.gender ?? 'm', roll, new Set(this.units.filter((o) => o.owner === owner).map((o) => o.name))) : names[Math.floor(roll * names.length)]; // a tribe's people have their own names, no two alike (tribenames.ts)
+      u.name = this.setups[owner]?.tribe ? tribeName(u.gender ?? 'm', roll, new Set(this.units.filter((o) => o.owner === owner).map((o) => o.name))) : pickName(names, roll, namesIn(this, owner, u.gender)); // a tribe's people have their own names, no two alike (tribenames.ts); a town's too, where it can (namesakes.ts)
+      if (this.tick === 0) u.drawn = u.name; // while the battle is being laid out (namesakes.ts)
       if (this.rng() < 0.3) this.setTrait(u, Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)]);
       u.lifespan = LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]);
     }

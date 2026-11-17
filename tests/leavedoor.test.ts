@@ -21,7 +21,7 @@ const world = () => {
   for (const h of g.buildings.filter((b) => b.owner === 0 && b.type === 'house' && b !== house)) for (const s of ['m', 'f'] as const) if (!h.residents[s]) { const u = g.spawnUnit('villager', 0, h.x, h.y + 2, s); h.residents[s] = u.id; u.homeId = h.id; }
   return { c, home, g, house };
 };
-const soldier = (g: Game) => g.units.find((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type])!;
+const soldier = (g: Game) => (() => { const first = g.players[0].furlough!.men[0], all = g.units.filter((u) => u.owner === 0 && !u.dead && !!g.players[0].furlough!.per[u.type]); return all.find((u) => u.name === first.name && u.family === (first.family ?? u.family)) ?? all[0]; })() // the soldier who is the first man on the list (soldiernames.ts);
 const leave = (g: Game) => finishArgs(g);
 const finishArgs = (g: Game) => ({ folk: g.census(0), leave: homeNow(g, 0), arms: { army: { infantry: g.units.filter((u) => u.owner === 0 && !u.dead && u.type === 'clubman').length }, trained: {} } });
 
