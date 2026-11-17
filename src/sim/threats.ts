@@ -74,6 +74,8 @@ export interface Band {
   moved?: number;
   /** The land it has set out for, a few lands off, and is making its way to a land at a time (bandroam.ts). */
   bound?: number;
+  /** Born in the rim of wilderness, it gathers there until this season before it sets out (bandwilds.ts). */
+  gathers?: number;
   /** It was born in the far wilds and is still on its march in (bandwilds.ts). */
   afar?: boolean;
 }
@@ -207,7 +209,7 @@ function placeFor(c: Campaign, kind: BandKind, salt: number): [number, number?] 
     const r = pick(roads, 13);
     return r ?? null;
   }
-  const wild = c.territories.filter((t) => t.owner < 0 && !t.horde && !taken.has(t.id) && t.adj.some((n) => held(c, c.territories[n])));
+  const wild = c.territories.filter((t) => t.owner < 0 && !t.horde && !t.rim && !taken.has(t.id) && t.adj.some((n) => held(c, c.territories[n]))); // not the rim of wilderness: a camp born there comes from afar (bandwilds.ts, rim.ts)
   const bare = c.territories.filter((t) => held(c, t) && t.capital < 0 && !taken.has(t.id) && !c.armies.some((a) => a.at === t.id));
   const t = pick(wild.length ? wild : bare, 17);
   return t ? [t.id] : null;

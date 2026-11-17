@@ -61,7 +61,7 @@ export function placesFrom(c: Campaign, b: Band): [number, number?][] {
 /** Could this band's camp stand in this land: it is free of other bands and of armies, not the marauders', and a tribe's or a held land that is no capital? */
 function campable(c: Campaign, b: Band, t: Territory): boolean {
   if ((c.bands ?? []).some((x) => x !== b && x.at === t.id) || c.armies.some((a) => a.at === t.id)) return false;
-  return !t.horde && (t.owner < 0 || (held(c, t) && t.capital < 0));
+  return !t.horde && !t.rim && (t.owner < 0 || (held(c, t) && t.capital < 0)); // none camps in the rim of wilderness: bands are born there and leave it (rim.ts)
 }
 
 /**
@@ -170,6 +170,7 @@ export function roamSeason(c: Campaign, out: string[]): number {
     }
     // On their way somewhere: one land nearer each season, while there is still a way.
     if (b.bound !== undefined) {
+      if ((b.gathers ?? 0) > c.turn) continue; // still gathering in the rim of wilderness (bandwilds.ts)
       const way = waysFrom(c, b, MARCH.long).find((w) => w.to === b.bound);
       if (way) { const from = b.at; move(c, b, [way.next]); marchOn(c, b, from, out); moved++; continue; }
       delete b.bound;

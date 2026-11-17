@@ -38,6 +38,8 @@ export const MARCH = {
 export const WILDS = {
   /** Of new camps of raiders and slavers, the share born in the far wilds when there are any with a way in. */
   share: 0.75,
+  /** A camp born in the rim of wilderness gathers there this many seasons before it sets out, and the towns within two lands see its fires. */
+  gather: 1,
 };
 
 /** One band's march in from the far wilds, for the season's telling and the health report. */
