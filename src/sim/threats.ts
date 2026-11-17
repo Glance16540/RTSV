@@ -49,7 +49,7 @@ import { watchDefence } from './townwatch';
 import { fortShelter, hasFortress } from './fortress';
 import { stoodTo } from './heralds';
 import { oldWeight } from './oldfolk';
-import { wrathAt, wrathOf } from './acts';
+import { wrathAt } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
 import { needOf } from './larder';
@@ -313,7 +313,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   }
   // Which way their morals sway: a people that held together is the better for it; one that was sacked loses heart.
   const down = THREATS.sway[outcome] < 0;
-  raid.sway = round1(THREATS.sway[outcome] * (down ? wrathOf(c, owner) : 1)); // by the nation's standing still: by the town's own (wrathAt) more campaigns ended in ruin at 192, taking that row out of its band
+  raid.sway = round1(THREATS.sway[outcome] * (down ? wrathAt(c, tid) : 1)); // by the town's own standing (acts.ts), as its faith is its own
   swayTown(c, tid, raid.sway); // it is the town struck whose morals sway, and its nation's with it (townfaith.ts)
   mark(c, outcome === 'held' ? 'heldoff' : outcome === 'taken' ? 'carried' : 'raid', tid);
   (c.raids ??= []).push(raid);
