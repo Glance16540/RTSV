@@ -13,6 +13,7 @@
 // It reads and writes only the land and its town, so that convoys.ts can ask it without a ring of imports.
 import type { Campaign } from './campaign';
 import { headcount } from './township';
+import { wilderness } from './wilds';
 
 /**
  * Is there nobody on this land to rule: unheld, not the marauders', nobody living there, no warriors? Such a land is
@@ -29,9 +30,14 @@ export function emptyLand(c: Campaign, tid: number): boolean {
   return nobodyThere(c, tid) && !(c.bands ?? []).some((b) => b.at === tid || b.to === tid);
 }
 
+/** May settlers found a town here: an empty land that is not true wilderness (wilds.ts: a wild land of snow or desert)? */
+export function settleable(c: Campaign, tid: number): boolean {
+  return emptyLand(c, tid) && !wilderness(c, tid);
+}
+
 /** Settlers of a people come in to an empty land: it is theirs, with nobody in it yet but them. Returns whether it was. */
 export function claimLand(c: Campaign, tid: number, f: number): boolean {
-  if (!emptyLand(c, tid) || !c.factions[f]?.alive) return false;
+  if (!settleable(c, tid) || !c.factions[f]?.alive) return false;
   const t = c.territories[tid];
   t.owner = f; t.militia = 0; t.buildings = [];
   delete t.yoke; delete t.town; delete t.orders;

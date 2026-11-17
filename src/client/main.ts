@@ -1,3 +1,5 @@
+import { showBriefing } from './briefing';
+import { Tally } from '../sim/battlecard';
 import { bark } from './voice';
 import { Climate } from '../sim/map';
 import { AIController } from '../sim/ai';
@@ -40,6 +42,8 @@ export class App {
   input: Input;
   outlook: Outlook;
   ai: AIController[] = [];
+  /** A campaign battle counted as it is fought, for its end card (battlecard.ts). */
+  tally?: Tally;
   pid = 0;
   sel: number[] = [];
   placing: string | null = null;
@@ -382,11 +386,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     if (!saved) game.aging = false; // a battle is over long before anyone grows old
     begun = briefing = true;
     startScreen.querySelector('h1')!.textContent = cfg.title;
-    startScreen.querySelector('.lead')!.textContent = cfg.field
-      ? 'The armies have met in open country. There is nothing to build: destroy every enemy soldier. Whoever is left standing marches on.'
-      : cfg.humanAttacks
-        ? 'Your army has made camp. Bring down their Town Center and keep them from raising another to take this land.'
-        : 'The enemy is at the gates. Bring down their Town Center and keep them from raising another to hold this land.';
+    showBriefing(startScreen, game, app.pid, cfg.field ? 'field' : cfg.humanAttacks ? 'attack' : 'defend'); // this battle's own briefing, not the skirmish's (briefing.ts)
+    app.tally = new Tally(game); // and its own count for the card at the end
     resume.textContent = saved ? 'Resume the battle' : 'To battle';
     const finish = (won: boolean) => {
       // Who is still standing decides what is left of the army on the campaign map.

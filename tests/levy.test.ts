@@ -1,13 +1,14 @@
 // A company its town cannot man is filled from its people's other towns (src/sim/armytown.ts).
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { armyAt, newCampaign, raise } from '../src/sim/campaign';
+import { armyAt, raise } from '../src/sim/campaign';
 import { MEN, MEN_A_COMPANY, awayFrom, menOf, musterOf, sendHome, sparedMen } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
 import { recordedAway } from '../src/sim/warhouse';
 
 /** The player's chief town with a Barracks and nobody to spare, and two other towns of theirs with men. */
 const nation = () => {
-  const c = newCampaign(7, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
+  const c = bareCampaign(7, 1, 1, 'hearth'), home = c.territories.find((t) => t.capital === 0)!;
   c.armies = c.armies.filter((a) => a.owner !== 0);
   c.factions[0].supplies = 500;
   if (!home.buildings.includes('barracks')) home.buildings.push('barracks');

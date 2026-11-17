@@ -1,15 +1,15 @@
 // The people a town has are one record (docs/DESIGN.md, "People come only by birth"): a visit brings them in and
 // sends them home, a siege keeps those born in it, and on the map housed couples raise children season by season.
 import { describe, expect, it } from 'vitest';
-import { Campaign, battleConfig, finishBattle, moveArmy, newCampaign } from '../src/sim/campaign';
+import { Campaign, battleConfig, finishBattle, moveArmy } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
 import { beginVisit, finishVisit, visitConfig } from '../src/sim/visit';
 import { folkOf, grown } from '../src/sim/township';
 import { GROWN_SEASONS, couplesOf, roomOf, seasonFolk, seasonTown } from '../src/sim/seasonfolk';
-import { run, spot, villagers } from './helpers';
+import { run, spot, villagers, bareCampaign } from './helpers';
 
 const LONG = 60_000;
-const world = (seed = 5): Campaign => newCampaign(seed, 1, 1, 'hearth');
+const world = (seed = 5): Campaign => bareCampaign(seed, 1, 1, 'hearth');
 const home = (c: Campaign) => c.territories.find((t) => t.capital === 0)!;
 const play = (cfg: NonNullable<ReturnType<typeof visitConfig>>): Game => new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
 /** Put a couple of the town into a new house and let the visit or battle run. */

@@ -18,7 +18,8 @@
 // The numbers are first guesses.
 import type { Campaign } from './campaign';
 import { roadBetween, sendFamily, sendSettlers } from './convoys';
-import { emptyLand } from './founding';
+import { settleable } from './founding';
+import { wilderness } from './wilds';
 import { roomOf } from './seasonfolk';
 import { PLENTY } from './plenty';
 import { folkOf, headcount, living } from './township';
@@ -159,7 +160,8 @@ export function movesReport(c: Campaign, f: number, since: number): string[] {
 export function settleBar(c: Campaign, f: number, from: number, to: number): string {
   const a = c.territories[from], b = c.territories[to];
   if (!a || !b || a.owner !== f || a.horde) return 'Settlers go from a town of your people\'s.';
-  const founding = emptyLand(c, to);
+  if (wilderness(c, to)) return `${b.name} is true wilderness: nobody can settle it.`;
+  const founding = settleable(c, to);
   if (!founding && (b.owner !== f || b.horde)) return b.horde || (c.bands ?? []).some((x) => x.at === to) ? `${b.name} is held by a band: it cannot be settled until it is cleared.` : 'Settlers go to a town of your people\'s, or to an empty land beside your own.';
   if (from === to) return 'Settlers go from one town to another.';
   if (founding ? !b.adj.some((n) => c.territories[n].owner === f) : !roadBetween(c, f, from, to)) return founding ? `${b.name} is not beside your own lands.` : 'There is no road through your own lands between them, nor a sea lane from a Harbour.';
@@ -174,7 +176,7 @@ export function settleBar(c: Campaign, f: number, from: number, to: number): str
 export function settle(c: Campaign, f: number, from: number, to: number): string {
   const bar = settleBar(c, f, from, to);
   if (bar) return bar;
-  const k = folkOf(c, from), n = MIGRATE.settlers, founding = emptyLand(c, to);
+  const k = folkOf(c, from), n = MIGRATE.settlers, founding = settleable(c, to);
   const who = { men: n, women: n, children: Math.min(MIGRATE.settlerKids, k.children) };
   const convoy = founding ? sendSettlers(c, f, from, to, who, MIGRATE.provisions) : sendFamily(c, f, from, to, who);
   if (!convoy) return 'They could not set out.';
@@ -191,7 +193,7 @@ export function settle(c: Campaign, f: number, from: number, to: number): string
 }
 
 /** Empty lands beside a people's own (founding.ts), where its settlers could found a town. */
-export const freeLands = (c: Campaign, f: number): number[] => c.territories.filter((t) => emptyLand(c, t.id) && t.adj.some((n) => c.territories[n].owner === f)).map((t) => t.id);
+export const freeLands = (c: Campaign, f: number): number[] => c.territories.filter((t) => settleable(c, t.id) && t.adj.some((n) => c.territories[n].owner === f)).map((t) => t.id);
 
 /**
  * A crowded town sends settlers to found a town on an empty land beside its people's, now and then (MIGRATE.found): a

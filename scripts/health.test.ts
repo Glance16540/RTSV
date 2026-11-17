@@ -59,6 +59,7 @@ import { faithAt } from '../src/sim/townfaith';
 import { goldOf } from '../src/sim/grain';
 import { isAngry, noblesOf } from '../src/sim/nobles';
 import { ACTS } from '../src/sim/nobleacts';
+import { awaiting } from '../src/sim/encounter';
 
 const CAMPAIGNS = +(process.env.CAMPAIGNS ?? 24);
 const SEASONS = +(process.env.SEASONS ?? 200);
@@ -196,6 +197,7 @@ interface Watch {
   sieges: Siege[]; // settled on the map
   falling: number; // towns whose standing fell 10 or more over 20 years, held by one people throughout
   fallingTowns: number;
+  met: number; // the first season a story waited on the player's word face to face (encounter.ts), or -1
   driftSeasons: { lost: number; ts: number }; // drift's toll summed season by season over every town held by the one people it began with, and the town-seasons (the decrees row's second reading)
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
 }
@@ -225,7 +227,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, driftLost: [] };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [] };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -320,6 +322,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
     // Every held town.
     if (s <= YEARS20) for (const t of c.territories) if (steady[t.id] && t.folk?.drift?.lost) lostTo[t.id] += t.folk.drift.lost; // drift's own toll, season by season
+    if (w.met < 0 && awaiting(c).length) w.met = s; // a story met face to face
     if (s <= YEARS20) for (const t of c.territories) if (steady[t.id] && t.owner >= 0 && t.folk?.drift) { w.driftSeasons.lost += t.folk.drift.lost ?? 0; w.driftSeasons.ts++; } // and over every town held that season
     for (const t of held(c)) {
       const f = folkOf(c, t.id), g = grown(f), away = awayFrom(c, t.id);
@@ -729,6 +732,11 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   add('Threats', 'Raids on a given town', 'about once in 3 to 5 years', raids.length ? `once in ${num(every, 1)} years (${raids.length} raids)` : 'no raids', within(every, 3, 5), 'Every strike by a band on a held town, the marauders\' included, per season it was held, over the whole run.');
   // Stories inside the story (intrigue.ts, courtstory.ts): how often one begins for the player's nation.
   const stories = ruled.reduce((k, w) => k + w.stories, 0), storyYears = ruled.reduce((k, w) => k + w.storyYears, 0), storyEvery = stories ? storyYears / stories : NaN;
+  {
+    const firstMet = ruled.map((w) => w.met), early = firstMet.filter((x) => x >= 0 && x <= 40).length;
+    add('Stories', 'A story met face to face within the first ten years', 'report only', `${pct(early / Math.max(1, ruled.length))} of campaigns (${early} of ${ruled.length}); the first at a median of season ${num(median(firstMet.filter((x) => x >= 0)), 0)}`, 'report',
+      'A story waiting on the player\'s word face to face (encounter.ts): a thief caught, a suitor, a rival\'s envoy, a plotter found out. Read from the first season one waits.');
+  }
   add('Stories', 'A story begins for the player\'s nation', 'about once in 3 to 6 years', stories ? `once in ${num(storyEvery, 1)} years (${stories} stories in ${ruled.length} campaigns)` : 'no stories', within(storyEvery, 3, 6), 'Every story inside the story begun for the player (a thief, a killer, a rival king, a suitor, a plot), over the years the campaign ran. ' + (STORIES === 'answer' ? 'The computer-played player answers them by a plain policy (STORIES=answer, src/sim/storypolicy.ts).' : 'The computer-played player answers none of them (STORIES=answer makes it answer).'));
   // Crime (watchhouse.ts): how long a thief or a killer is at large, in a town with a Watch House against one without.
   {
