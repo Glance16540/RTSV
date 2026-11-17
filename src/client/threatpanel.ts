@@ -1,4 +1,5 @@
 // What the campaign screen says of the bands on the map and of what they have done (src/sim/threats.ts).
+import { strengthOf, strengthWord, whole } from '../sim/strengthwords';
 import { carriedLeft } from '../sim/carriedoff';
 import type { Campaign } from '../sim/campaign';
 import { bodyOf, captiveKeys, nationOf } from '../sim/portrait';
@@ -27,7 +28,7 @@ function bandHtml(c: Campaign, b: Band): string {
     const faces = (h.women.length ? heldFace(c, h.owner, 'f', b.kind, `${b.id}|${h.from}|f`) : '') + (h.men.length ? heldFace(c, h.owner, 'm', b.kind, `${b.id}|${h.from}|m`) : '');
     return `<div class="likeness-row">${faces}Holding ${who} of ${h.owner === 0 ? 'yours' : esc(c.factions[h.owner]?.name ?? 'another people') + '\'s'} from ${esc(c.territories[h.from].name)}${h.names?.length ? ` (${h.names.map(esc).join(', ')} among them)` : ''}: ${plural(left, 'season', 'seasons')} left to get them back.</div>`;
   }).join('');
-  return `<div class="bad">${k.icon} <b>${esc(b.name[0].toUpperCase() + b.name.slice(1))}</b>, ${k.name.toLowerCase()}, ${where}. Strength ${b.strength}. ${k.desc}${held}<div class="hint">${b.kind === 'marauders' ? 'They hold this land: march an army into it to break them.' : 'Send an army that stands here or next door against them. Breaking them frees whoever they hold.'}</div></div>`;
+  return `<div class="bad">${k.icon} <b>${esc(b.name[0].toUpperCase() + b.name.slice(1))}</b>, ${k.name.toLowerCase()}, ${where}. Strength ${whole(b.strength)} (${strengthWord(b.strength)}). ${k.desc}${held}<div class="hint">${b.kind === 'marauders' ? 'They hold this land: march an army into it to break them.' : 'Send an army that stands here or next door against them. Breaking them frees whoever they hold.'}</div></div>`;
 }
 
 function raidHtml(c: Campaign, r: Raid): string {
@@ -72,7 +73,7 @@ export function bandPrompt(c: Campaign): { title: string; text: string; decline:
   const p = c.pending, b = (c.bands ?? []).find((x) => x.id === p?.band);
   if (!p || !b) return null;
   const held = b.held.reduce((n, h) => n + h.men.length + h.women.length, 0);
-  const odds = `Your army's strength of ${p.aStr} against ${BANDS[b.kind].name.toLowerCase()} of strength ${b.strength}, at ${esc(c.territories[p.from].name)}. ` +
+  const odds = `Your army's strength of ${p.aStr} against ${BANDS[b.kind].name.toLowerCase()} of ${strengthOf(b.strength)}, at ${esc(c.territories[p.from].name)}. ` +
     (held ? `They hold ${plural(held, 'person', 'people')}, who go free if the band is broken. ` : '');
   if (p.ambush) return {
     title: `${b.name[0].toUpperCase() + b.name.slice(1)} fall on your army!`,

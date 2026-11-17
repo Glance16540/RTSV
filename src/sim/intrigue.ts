@@ -52,8 +52,8 @@ export const INTRIGUE = {
     share: 0.06, most: 30,
     /** A watch: its cost in gold a season, the chance it catches the thief the first season, and what each season more adds. */
     cost: 15, catch: 0.3, surer: 0.2,
-    /** The chance the thief is caught without one, and seasons until they stop of their own accord. */
-    luck: 0.05, lasts: 10,
+    /** The chance the thief is caught without one (0.05 until the playtest found nobody caught in 40 seasons), and seasons until they stop of their own accord. */
+    luck: 0.12, lasts: 10,
     /** Seasons a thief who is taken waits for the leader's judgement before the town's elders give their own. */
     wait: 3,
     /** What each judgement does to the people's piety, and the share of what was taken that is worked off or got back. */

@@ -59,6 +59,7 @@ import { faithAt } from '../src/sim/townfaith';
 import { goldOf } from '../src/sim/grain';
 import { isAngry, noblesOf } from '../src/sim/nobles';
 import { ACTS } from '../src/sim/nobleacts';
+import { awaiting } from '../src/sim/encounter';
 
 const CAMPAIGNS = +(process.env.CAMPAIGNS ?? 24);
 const SEASONS = +(process.env.SEASONS ?? 200);
@@ -196,6 +197,7 @@ interface Watch {
   sieges: Siege[]; // settled on the map
   falling: number; // towns whose standing fell 10 or more over 20 years, held by one people throughout
   fallingTowns: number;
+  met: number; // the first season a story waited on the player's word face to face (encounter.ts), or -1
   driftSeasons: { lost: number; ts: number }; // drift's toll summed season by season over every town held by the one people it began with, and the town-seasons (the decrees row's second reading)
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
 }
@@ -225,7 +227,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, driftLost: [] };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [] };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -320,6 +322,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
     // Every held town.
     if (s <= YEARS20) for (const t of c.territories) if (steady[t.id] && t.folk?.drift?.lost) lostTo[t.id] += t.folk.drift.lost; // drift's own toll, season by season
+    if (w.met < 0 && awaiting(c).length) w.met = s; // a story met face to face
     if (s <= YEARS20) for (const t of c.territories) if (steady[t.id] && t.owner >= 0 && t.folk?.drift) { w.driftSeasons.lost += t.folk.drift.lost ?? 0; w.driftSeasons.ts++; } // and over every town held that season
     for (const t of held(c)) {
       const f = folkOf(c, t.id), g = grown(f), away = awayFrom(c, t.id);
@@ -681,7 +684,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   // Faith
   const gaps = all('faithGaps');
   const inGap = share(gaps, (x) => x >= 20 && x <= 60);
-  add('Faith', 'Widest gap between two towns of one nation', '20 to 60 most of the time', `${pct(inGap)} of nation-seasons in band (median ${num(median(gaps), 0)})`, inGap > 0.5, 'Most of the time is taken as over half of the seasons of a nation with two towns or more.');
+  add('Faith', 'Widest gap between two towns of one nation', '20 to 60 most of the time', `${pct(inGap)} of nation-seasons in band (median ${num(median(gaps), 0)}; under 20 ${pct(share(gaps, (x) => x < 20))}, over 60 ${pct(share(gaps, (x) => x > 60))})`, inGap > 0.5, 'Most of the time is taken as over half of the seasons of a nation with two towns or more.');
   const holy = all('holyMoves');
   add('Faith', 'A nation that builds churches and keeps its towns fed, over 20 years', 'toward the holy end by 15 to 40', holy.length ? `mean ${num(mean(holy), 1)} (${holy.length} nations)` : 'no such nation', holy.length ? within(mean(holy), 15, 40) : null,
     'A nation with a church standing for at least ten of the twenty years and hungry in under 5% of its town-seasons.');
@@ -729,6 +732,11 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   add('Threats', 'Raids on a given town', 'about once in 3 to 5 years', raids.length ? `once in ${num(every, 1)} years (${raids.length} raids)` : 'no raids', within(every, 3, 5), 'Every strike by a band on a held town, the marauders\' included, per season it was held, over the whole run.');
   // Stories inside the story (intrigue.ts, courtstory.ts): how often one begins for the player's nation.
   const stories = ruled.reduce((k, w) => k + w.stories, 0), storyYears = ruled.reduce((k, w) => k + w.storyYears, 0), storyEvery = stories ? storyYears / stories : NaN;
+  {
+    const firstMet = ruled.map((w) => w.met), early = firstMet.filter((x) => x >= 0 && x <= 40).length;
+    add('Stories', 'A story met face to face within the first ten years', 'report only', `${pct(early / Math.max(1, ruled.length))} of campaigns (${early} of ${ruled.length}); the first at a median of season ${num(median(firstMet.filter((x) => x >= 0)), 0)}`, 'report',
+      'A story waiting on the player\'s word face to face (encounter.ts): a thief caught, a suitor, a rival\'s envoy, a plotter found out. Read from the first season one waits.');
+  }
   add('Stories', 'A story begins for the player\'s nation', 'about once in 3 to 6 years', stories ? `once in ${num(storyEvery, 1)} years (${stories} stories in ${ruled.length} campaigns)` : 'no stories', within(storyEvery, 3, 6), 'Every story inside the story begun for the player (a thief, a killer, a rival king, a suitor, a plot), over the years the campaign ran. ' + (STORIES === 'answer' ? 'The computer-played player answers them by a plain policy (STORIES=answer, src/sim/storypolicy.ts).' : 'The computer-played player answers none of them (STORIES=answer makes it answer).'));
   // Crime (watchhouse.ts): how long a thief or a killer is at large, in a town with a Watch House against one without.
   {
@@ -786,7 +794,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     const there = ms.filter((m) => m.arrived !== undefined), seen = ms.filter((m) => m.seen !== undefined), ahead = seen.filter((m) => (m.struck ?? m.arrived) !== undefined);
     const met = ms.filter((m) => m.met !== undefined), struck = ms.filter((m) => m.struck !== undefined);
     add('Threats', 'Bands that come from the far wilds', 'report only', ms.length ? `${ms.length} of ${came} bands (${pct(ms.length / came)}), ${num(ms.length / ruled.length, 1)} a campaign; a march of ${num(avg(ms.map((m) => m.lands)), 1)} lands, ${there.length ? num(avg(there.map((m) => m.arrived! - m.born)), 1) : '?'} seasons for the ${there.length} that got there` : 'none', 'report',
-      'Camps of raiders and slavers born in lands nobody holds, two lands or more from any held land, that set out at once for a mark (bandwilds.ts), against every band of any kind that came in the campaigns above. Fewer as the map fills: there must be far wilds left, with a way in.');
+      'Camps of raiders and slavers born in a land that began wild and is still empty (wilds.ts), that set out at once for a mark (bandwilds.ts), against every band of any kind that came in the campaigns above. There must be such a land free, with a way in of more than one land.');
     add('Threats', 'A band from the far wilds is seen coming, and met before it strikes', 'report only', ms.length ? `seen ${pct(seen.length / ms.length)}, ${ahead.length ? num(avg(ahead.map((m) => (m.struck ?? m.arrived)! - m.seen!)), 1) : '?'} seasons before it struck or was there; met by an army first ${pct(met.length / ms.length)} (${met.length}, ${ms.filter((m) => m.broken).length} broken), struck someone ${pct(struck.length / ms.length)}` : 'none', 'report',
       'Seen: an army in or beside a land it passed, or a town within two lands, told its people. Met: an army went against it (not the band against the army) before it had struck anyone.');
   }
