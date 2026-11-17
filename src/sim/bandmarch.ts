@@ -11,7 +11,10 @@
 //     people's, with none of their armies in it or beside it, counts for MARCH.alone.
 //   Armies see them coming. An army standing in or beside a land a band on the march passes through sees it, and
 //     its people are told where the band is and where it is bound. If that is a town of theirs, the town is
-//     warned as heralds would warn it (heralds.ts), a season before the band can strike.
+//     warned as heralds would warn it (heralds.ts), a season before the band can strike. A town within two
+//     lands of one it passes sees it too.
+//   Some come from far off (bandwilds.ts). What counts as the far wilds, and the record kept of each march in
+//     from them, are here so that the bands' moving and fighting can write to it.
 //
 // Plain data in, plain data out; the telling is the callers'. Strengths are first guesses.
 import type { Army, Campaign } from './campaign';
@@ -26,7 +29,48 @@ export const MARCH = {
   rich: 1, richAt: 2000,
   /** What an army counts for to a band: resting after a storming, and alone in a land not its people's. */
   tired: 0.6, alone: 0.8,
+  /** How far a band keeps to a way it has set out on, in lands (a camp choosing afresh looks ROAM.range). */
+  long: 8,
 };
+
+/** Bands from the far wilds (bandwilds.ts): numbers kept here so the bands' moving can read them with no ring of imports. */
+export const WILDS = {
+  /** Of new camps of raiders and slavers, the share born in the far wilds when there are any, and how many lands from the nearest held land counts as far. */
+  share: 0.75, far: 2,
+};
+
+/** One band's march in from the far wilds, for the season's telling and the health report. */
+export interface March { band: number; born: number; from: number; bound: number; lands: number; seen?: number; arrived?: number; struck?: number; met?: number; broken?: boolean; gone?: number }
+declare module './campaign' {
+  interface Campaign { /** Every march in from the far wilds, begun and ended (bandmarch.ts). */ marches?: March[] }
+}
+/** The record of a band's march in, if it came from the far wilds. */
+export const marchOf = (c: Campaign, band: number): March | undefined => (c.marches ?? []).find((m) => m.band === band);
+/** Something happened on a band's march in: it is written on its record the first time. */
+export function marched(c: Campaign, band: number, what: 'seen' | 'arrived' | 'struck' | 'met' | 'gone', broken = false): void {
+  const m = marchOf(c, band);
+  if (!m) return;
+  // Met means an army went against it before it had struck anyone.
+  if (what === 'met') { if (m.struck === undefined && m.met === undefined) m.met = c.turn; if (broken && m.struck === undefined) m.broken = true; return; }
+  if (m[what] === undefined) m[what] = c.turn;
+}
+
+/** How many lands each land is from the nearest held one (0 for a held land; a land no way joins to one is as far as the map is wide). */
+export function landsFromHeld(c: Campaign): number[] {
+  const far = c.territories.length, d = c.territories.map((t) => (t.owner >= 0 && c.factions[t.owner]?.alive ? 0 : far));
+  let edge = c.territories.filter((t) => d[t.id] === 0).map((t) => t.id);
+  while (edge.length) {
+    const next: number[] = [];
+    for (const id of edge) for (const n of c.territories[id].adj) if (d[n] > d[id] + 1) { d[n] = d[id] + 1; next.push(n); }
+    edge = next;
+  }
+  return d;
+}
+/** The far wilds: lands nobody holds, not the marauders', with no band or army in them, at least WILDS.far lands from any held land and joined to one. */
+export function farWilds(c: Campaign): number[] {
+  const d = landsFromHeld(c), taken = new Set((c.bands ?? []).map((b) => b.at));
+  return c.territories.filter((t) => t.owner < 0 && !t.horde && !taken.has(t.id) && d[t.id] >= WILDS.far && d[t.id] < c.territories.length && !c.armies.some((a) => a.at === t.id)).map((t) => t.id);
+}
 
 /** Does a road run between these two lands: they are next to each other and each is held by some people (roads join towns)? */
 export function onRoad(c: Campaign, from: number, to: number): boolean {
@@ -63,6 +107,16 @@ export function watchers(c: Campaign, path: number[]): Army[] {
   for (const id of path) {
     const near = new Set([id, ...(c.territories[id]?.adj ?? [])]);
     for (const a of [...c.armies].sort((x, y) => x.id - y.id)) if (near.has(a.at) && c.factions[a.owner]?.alive && !seen.some((s) => s.owner === a.owner)) seen.push(a);
+  }
+  return seen;
+}
+/** The peoples whose towns see a band pass: each that holds a land within two of one of these lands (from the hills, and by travellers' word), but for those in `but`. */
+export function townsThatSee(c: Campaign, path: number[], but: number[] = []): { owner: number; at: number }[] {
+  const seen: { owner: number; at: number }[] = [];
+  const within = (id: number): number[] => { const one = [id, ...(c.territories[id]?.adj ?? [])]; return [...new Set([...one, ...one.flatMap((n) => c.territories[n].adj)])]; };
+  for (const id of path) for (const n of within(id)) {
+    const o = c.territories[n].owner;
+    if (o >= 0 && c.factions[o]?.alive && !but.includes(o) && !seen.some((s) => s.owner === o)) seen.push({ owner: o, at: n });
   }
   return seen;
 }
