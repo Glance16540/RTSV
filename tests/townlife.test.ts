@@ -4,6 +4,7 @@ import { newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { LIFE, lifeDrift, lifeSeason } from '../src/sim/townlife';
 import { faithAt, seasonOfFaith, shiftVirtue, townDrift } from '../src/sim/townfaith';
+import { leanOf } from '../src/sim/townlean';
 import { needOf } from '../src/sim/larder';
 import { folkOf } from '../src/sim/township';
 
@@ -26,7 +27,7 @@ describe('a town\'s own life moves its faith', () => {
     (c.events ??= []).push({ kind: 'plague', at: b, turn: c.turn, until: c.turn + 2 });
     expect(lifeDrift(c, a)).toBe(-LIFE.hunger);
     expect(lifeDrift(c, b)).toBe(-LIFE.plague);
-    expect(townDrift(c, a)).toBe(-LIFE.hunger); // nothing else moves it
+    expect(townDrift(c, a)).toBe(-LIFE.hunger + leanOf(c, a)); // nothing else moves it but its own lean (townlean.ts)
     const was = { a: faithAt(c, a), b: faithAt(c, b) };
     season(c);
     expect(faithAt(c, a)).toBeLessThan(was.a);
@@ -49,10 +50,13 @@ describe('a town\'s own life moves its faith', () => {
   });
 
   it('one town of a nation stands apart from the rest by what it has lived through', () => {
-    const { c, a, b } = realm();
-    folkOf(c, b).hungry = 1;
-    for (let s = 0; s < 24; s++) { folkOf(c, b).hungry = 1; season(c); }
-    expect(faithAt(c, a) - faithAt(c, b)).toBeGreaterThanOrEqual(5);
+    // Against the same town living as the rest do: its own lean moves it either way (townlean.ts); hunger takes it lower.
+    const where = (hungry: boolean): number => {
+      const { c, b } = realm();
+      for (let s = 0; s < 24; s++) { if (hungry) folkOf(c, b).hungry = 1; season(c); }
+      return faithAt(c, b);
+    };
+    expect(where(false) - where(true)).toBeGreaterThanOrEqual(5);
   });
 
   it('its life alone never carries a town into the Decadent or the Righteous creed', () => {
