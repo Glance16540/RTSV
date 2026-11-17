@@ -67,5 +67,5 @@ export function seasonCard(c: Campaign, busy: boolean, onClose: () => void): voi
   if (!r || busy || c.phase !== 'player') { el?.remove(); return; }
   if (el) return; // already showing
   const seen = (): void => { r.seen = true; onClose(); };
-  overlay(seasonCardHtml(c, r), 'season', seen, () => { seen(); showPastSeasons(c); });
+  overlay(seasonCardHtml(c, r), 'season', seen, () => { r.seen = true; showPastSeasons(c, onClose); }); // looking back first: what waits comes when that is closed
 }
