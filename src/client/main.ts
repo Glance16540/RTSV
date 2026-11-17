@@ -1,5 +1,6 @@
 import { homeNow } from '../sim/furlough';
 import { showBriefing } from './briefing';
+import { downedOf, survivorsOf } from '../sim/soldiernames';
 import { Tally } from '../sim/battlecard';
 import { bark } from './voice';
 import { Climate } from '../sim/map';
@@ -392,8 +393,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     resume.textContent = saved ? 'Resume the battle' : 'To battle';
     const finish = (won: boolean) => {
       // Who is still standing decides what is left of the army on the campaign map.
-      const survivors: Record<string, number> = {};
-      for (const u of app.game.units) if (u.owner === app.pid) survivors[u.type] = (survivors[u.type] ?? 0) + 1;
+      const survivors = survivorsOf(app.game, app.pid); // a company whose man went down is broken (soldiernames.ts)
       const heroRank = app.game.units.find((u) => u.owner === app.pid && u.hero)?.hero!.rank;
       // What the victor has standing stays standing: it is that land's town the next time it is fought over.
       const holder = won ? app.pid : 1;
@@ -401,7 +401,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // The town fought over is counted as the battle leaves it: the people and stores of the side that held it.
       const folk = app.game.census(cfg.humanAttacks ? 1 : app.pid); // in the open too: the town's men who marched out are counted back (tribes.ts)
       const drifted = cfg.field ? undefined : driftedIn(app.game, cfg.humanAttacks ? 1 : app.pid); // driftintown.ts
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, leave: homeNow(app.game, app.pid), heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, studies: learnedIn(app.game.players[app.pid].techs), champion: app.game.champion(app.pid) ?? undefined, town, folk, drifted, orders: cfg.field ? undefined : app.game.orders(app.pid), ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, leave: homeNow(app.game, app.pid), heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, studies: learnedIn(app.game.players[app.pid].techs), champion: app.game.champion(app.pid) ?? undefined, town, folk, drifted, orders: cfg.field ? undefined : app.game.orders(app.pid), downed: downedOf(app.game), ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -472,8 +472,8 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     let result: string | null = null;
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
-      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; leave?: unknown; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; powers?: number[]; studies?: string[]; champion?: { name: string; kills: number; unit: string; female?: boolean; type?: string }; town?: [string, number, number, number?, number?][]; ground?: { gone: number[]; left: [number, number][] }; folk?: Partial<Census>; drifted?: { tavern?: number; mines?: number }; orders?: { work: Record<string, number>; build: string[]; train: string[] } };
-      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, powers: r.powers, studies: r.studies, champion: r.champion, town: r.town, ground: r.ground, folk: r.folk, drifted: r.drifted, orders: r.orders as never, leave: r.leave });
+      const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; leave?: unknown; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; powers?: number[]; studies?: string[]; champion?: { name: string; kills: number; unit: string; female?: boolean; type?: string }; town?: [string, number, number, number?, number?][]; downed?: unknown; ground?: { gone: number[]; left: [number, number][] }; folk?: Partial<Census>; drifted?: { tavern?: number; mines?: number }; orders?: { work: Record<string, number>; build: string[]; train: string[] } };
+      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, powers: r.powers, studies: r.studies, champion: r.champion, town: r.town, ground: r.ground, folk: r.folk, drifted: r.drifted, orders: r.orders as never, leave: r.leave, downed: r.downed });
       if (c.phase === 'ai') continueAI(c);
     }
     if (c && returnFromVisit(c)) writeCampaign(c);

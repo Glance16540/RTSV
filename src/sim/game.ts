@@ -5,6 +5,7 @@ import { unlaidOf, unplaced } from './unlaid';
 import { RoofsIn, roofsOf, seatRoofs } from './roofs';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
+import { Roll, nameSoldiers } from './soldiernames';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
@@ -359,7 +360,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -587,10 +588,12 @@ export class Game {
         if (s.bonus.people?.children && !field) cradledOf(this, i, s.bonus.people);
         if (s.bonus.people?.orphans?.length && !field) seatOrphans(this, i, s.bonus.people.orphans); // the map's orphans, the same children in the town (orphantown.ts)
         let k = 0;
+        const laid = new Map<string, Unit[]>();
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
           // In a field battle the army forms up where the town would have been.
-          for (let j = 0; j < n; j++, k++) this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir);
+          for (let j = 0; j < n; j++, k++) (laid.get(type) ?? laid.set(type, []).get(type)!).push(this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir));
         }
+        if (s.bonus.roll) nameSoldiers(this, i, laid, s.bonus.roll); // each company led by the men of the army's roll (soldiernames.ts)
         // In a battle in the open there is no town on the field: the men of it who marched out stand with the army (tribes.ts).
         if (field && s.bonus.people) peopled(this, i, s.bonus.people, st, dir);
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
