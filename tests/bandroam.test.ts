@@ -74,6 +74,7 @@ describe('bands move', () => {
     expect(out.join(' ')).toContain('after softer marks');
     // Where nothing is softer it looks, stays, and does not look again for a while.
     const flat = world();
+    for (const x of flat.c.territories) Object.assign(folkOf(flat.c, x.id).stores, { food: 100, wood: 100, gold: 100, stone: 100 }); // and nowhere richer (bandmarch.ts)
     const k = band(flat.c, flat.t, 4);
     flat.c.turn += ROAM.restless;
     expect(roamSeason(flat.c, [])).toBe(0);
@@ -147,7 +148,7 @@ describe('bands move', () => {
     expect(m.at).toBe(t.adj[1]);
   });
 
-  it('a camp plans a way of a few lands toward a softer mark and goes a land a season until it is there', () => {
+  it('a camp plans a way of a few lands toward a softer mark and goes season by season until it is there', () => {
     const { c, t } = world();
     const b = band(c, t, 4);
     // Every town is walled but one that lies more than a land off.
@@ -166,12 +167,11 @@ describe('bands move', () => {
     c.turn += ROAM.restless;
     const out: string[] = [];
     expect(roamSeason(c, out)).toBe(1);
-    expect(b.at).toBe(plan.next);
+    expect(b.at).not.toBe(t.id);
     if (plan.steps > 1) {
-      expect(b.bound).toBe(plan.bound);
       expect(out.join(' ')).toContain(`set out for ${c.territories[plan.bound].name}, ${plan.steps} lands off`);
-      // It keeps going, a land a season, without waiting to grow restless again.
-      for (let i = 1; i < plan.steps; i++) { c.turn++; expect(roamSeason(c, [])).toBe(1); }
+      // It keeps going each season without waiting to grow restless again, until it is there (how far in a season is bandmarch.ts's).
+      for (let i = 1; i < plan.steps && b.at !== plan.bound; i++) { c.turn++; expect(roamSeason(c, [])).toBe(1); }
       expect(b.at).toBe(plan.bound);
       expect(b.bound).toBeUndefined();
     }

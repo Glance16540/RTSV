@@ -75,7 +75,7 @@ export function nationBar(c: Campaign): string {
     `<div class="hint">${creed.icon} Your people are <b>${creed.name}</b> <small>(${virtueOf(c, 0) > 0 ? 'piety ' + virtueOf(c, 0) : virtueOf(c, 0) < 0 ? 'decadence ' + -virtueOf(c, 0) : 'in the middle'}${virtueDrift(c, 0) ? `, ${virtueDrift(c, 0) > 0 ? 'growing more pious' : 'growing more decadent'} by ${Math.abs(virtueDrift(c, 0))} a turn` : ''})</small>. ${FAITH[creed.id].desc} Your towns begin each battle as they stand here.</div>` +
     (world ? `<div class="hint">${world.icon} <b>${world.name}.</b> ${world.desc} <small>(${c.world!.until - c.turn + 1} turns left)</small></div>` : '') +
     `<div class="hint">🌍 ${WORLD_SHAPES[worldOf(c.seed).shape]}; ${worldOf(c.seed).temper}.</div>` +
-    `<div class="hint">👑 Win by taking every land, or by holding ${dominionNeed(c)} of ${c.territories.length} for ${DOMINION_TURNS} turns <small>(you hold ${landOf(c, 0)})</small>.` +
+    `<div class="hint">👑 Win by taking every land, or by holding ${dominionNeed(c)} of the lands with people on them for ${DOMINION_TURNS} turns <small>(you hold ${landOf(c, 0)})</small>.` +
     (c.dominion.f >= 0 ? ` <b class="${c.dominion.f === 0 ? 'good' : 'bad'}">${c.dominion.f === 0 ? 'You have' : c.factions[c.dominion.f].name + ' have'} held it for ${c.dominion.turns}.</b>` : '') + '</div>';
   // The title of the fold says what is in it at a glance: the creed, and a world event if there is one.
   return top + fold('nation', `Your nation <small>${creed.icon} ${creed.name}${world ? ` · ${world.icon} ${world.name}` : ''}</small>`, rest);

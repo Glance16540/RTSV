@@ -7,6 +7,7 @@ import { townStanding } from '../sim/drift';
 import { folkOf } from '../sim/township';
 import { isAngry, noblesAt, sayOn, titleOf } from '../sim/nobles';
 import { bereftText } from '../sim/widowhood';
+import { nobleDealPanel } from './nobledeals';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 
@@ -23,6 +24,7 @@ export function decreePanel(c: Campaign, tid: number): string {
   // The town's nobles and how they feel (src/sim/nobles.ts); each decree says whom it would please and anger.
   const here = noblesAt(c, tid);
   if (here.length) html += `<div class="hint">Nobles: ${here.map((n) => `${esc(titleOf(c, n))} (${n.leaning}, ${isAngry(n) ? 'angry' : n.mood >= 20 ? 'pleased' : n.mood <= -15 ? 'displeased' : 'content'})`).join('; ')}.</div>`;
+  html += nobleDealPanel(c, tid); // the leader's dealings with them (nobledeal.ts)
   const names = (xs: { name: string }[]): string => xs.slice(0, 3).map((n) => n.name).join(', ') + (xs.length > 3 ? ` and ${xs.length - 3} more` : '');
   for (const k of DECREE_KINDS) {
     const bar = decreeBar(c, 0, tid, k), def = DECREES[k], say = sayOn(c, 0, tid, k);

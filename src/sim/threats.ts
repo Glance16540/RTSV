@@ -70,10 +70,12 @@ export interface Band {
   moved?: number;
   /** The land it has set out for, a few lands off, and is making its way to a land at a time (bandroam.ts). */
   bound?: number;
+  /** It was born in the far wilds and is still on its march in (bandwilds.ts). */
+  afar?: boolean;
 }
 export type Outcome = 'held' | 'raided' | 'taken';
 /** Something a band did or had done to it that is not a strike: it came, moved, fled, settled, broke up, was fought, lost its captives. */
-export interface BandNote { turn: number; kind: 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush'; at: number; band: number; text: string; /** The peoples it concerns: whose captives, whose army, whose land. */ owners: number[] }
+export interface BandNote { turn: number; kind: 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush' | 'seen'; at: number; band: number; text: string; /** The peoples it concerns: whose captives, whose army, whose land. */ owners: number[] }
 /** What a town had to defend with, part by part, in the measure of companies. */
 export interface Defence { men: number; works: number; walls: number; army: number; guard: number; spirit: number; total: number }
 /** The report of one strike. */
@@ -203,11 +205,12 @@ function placeFor(c: Campaign, kind: BandKind, salt: number): [number, number?] 
   return t ? [t.id] : null;
 }
 
-export function appear(c: Campaign, out: string[]): Band | null {
+/** A new band comes. `born`, if given, may say where a band of a kind is born instead of the common places (bandwilds.ts: the far wilds). */
+export function appear(c: Campaign, out: string[], born?: (kind: BandKind) => [number, number?] | null): Band | null {
   const kinds = (['raiders', 'slavers', 'pirates', 'highwaymen'] as BandKind[]).map((k, i) => [chance(c, 301 + i, 7), k] as const).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   for (const kind of kinds) {
     if ((c.bands ?? []).filter((b) => b.kind === kind).length >= 2) continue;
-    const place = placeFor(c, kind, 401 + (c.bandSeq ?? 0));
+    const place = born?.(kind) ?? placeFor(c, kind, 401 + (c.bandSeq ?? 0));
     if (!place) continue;
     const id = (c.bandSeq = (c.bandSeq ?? 0) + 1);
     const names = NAMES[kind].filter((n) => !(c.bands ?? []).some((b) => b.name === n));
@@ -392,10 +395,10 @@ export function strikeSeason(c: Campaign, out: string[]): Raid[] {
 }
 
 /** A band that is missing appears, as often as not. Marauders are not counted: they come by their own rule. */
-export function appearSeason(c: Campaign, out: string[]): Band | null {
+export function appearSeason(c: Campaign, out: string[], where?: (kind: BandKind) => [number, number?] | null): Band | null {
   const about = (c.bands ?? []).filter((b) => b.kind !== 'marauders').length;
   if (c.turn < THREATS.from || about >= wanted(c) || chance(c, 0, 47) >= THREATS.appear) return null;
-  const before = out.length, b = appear(c, out);
+  const before = out.length, b = appear(c, out, where);
   if (b) { const text = out.splice(before).join(' '); note(c, out, 'came', b, b.at, text, reachOf(c, b).map((id) => c.territories[id].owner)); }
   return b;
 }

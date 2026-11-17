@@ -5,13 +5,13 @@
 // was broken or beaten off, freed or lost its captives). Each item says where it happened, so that whoever shows
 // it can open that land. Nothing here draws anything.
 import type { Campaign } from './campaign';
-import { BANDS, Raid, note, reportLine, reportText, softest } from './threats';
+import { BANDS, Raid, note, reachOf, reportLine, reportText, softest } from './threats';
 import { keepsHeralds, warn } from './heralds';
 
 export interface NewsItem {
   turn: number;
   /** A strike on a town ('raid'), or what else a band did. */
-  kind: 'raid' | 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush';
+  kind: 'raid' | 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush' | 'seen';
   /** The land it happened in: open this one. */
   at: number; land: string;
   band: number;
@@ -58,7 +58,8 @@ export function heraldSeason(c: Campaign, out: string[] = []): number[] {
   const told: number[] = [];
   for (const b of c.bands ?? []) {
     if (b.kind === 'marauders') continue;
-    const mark = softest(c, b);
+    // A band on the march has for its mark the softest town about where it is bound: heralds hear of that seasons ahead.
+    const mark = softest(c, b) ?? (b.bound !== undefined ? softest(c, b, reachOf(c, { ...b, at: b.bound })) : null);
     const t = mark ? c.territories[mark.id] : undefined;
     if (!t || !keepsHeralds(c, t.owner) || told.includes(t.id)) continue;
     warn(c, t.id);
