@@ -29,7 +29,7 @@ import { creditArmy } from './warhouse';
 import { raisedInBattle } from './dynasty';
 import { HeroSpec, MAX_RANK } from './hero';
 import { Band, breakBand, chance, note } from './threats';
-import { exposedHow, exposure } from './bandmarch';
+import { exposedHow, exposure, marched } from './bandmarch';
 
 declare module './campaign' {
   interface Pending {
@@ -105,6 +105,7 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
   const day = (salt: number): number => 1 - FIGHT.day + 2 * FIGHT.day * chance(c, b.id * 97 + a.id, salt);
   const mine = armyStrength(a, c) * day(61) * (ambush ? exposure(c, a) : 1), theirs = b.strength * day(67), at = c.territories[b.at].name;
   a.moved = true;
+  if (!ambush) marched(c, b.id, 'met', mine >= theirs); // an army went out against a band on its way in from the far wilds (bandmarch.ts)
   if (mine >= theirs) {
     const lost = lose(a, Math.round(armySize(a) * FIGHT.cost * Math.min(1, theirs / mine)));
     note(c, out, 'broken', b, b.at, `${ambush ? `${cap(b.name)} fell on ${peoplesArmy(c, a.owner)} at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
@@ -193,6 +194,7 @@ export function settleBandFight(c: Campaign, how: 'auto' | 'attacker' | 'defende
   else {
     a.moved = true;
     won = how === 'attacker';
+    if (!p.ambush) marched(c, b.id, 'met', won);
     const at = c.territories[b.at].name, before = armySize(a);
     if (won) {
       if (survivors) {
@@ -233,7 +235,7 @@ export function huntBands(c: Campaign, out: string[]): number {
   for (const b of [...(c.bands ?? [])]) {
     if (b.kind === 'marauders') continue;
     const wronged = new Set(b.held.map((h) => h.owner));
-    const idle = c.turn - b.since < FIGHT.grace || chance(c, b.id, 89) >= FIGHT.keen; // not this season, unless it holds their own
+    const idle = b.bound === undefined && (c.turn - b.since < FIGHT.grace || chance(c, b.id, 89) >= FIGHT.keen); // not this season, unless it holds their own, or is on the march and has come beside their land: then they go out to meet it
     const near = new Set(placeOf(b).flatMap((id) => [id, ...c.territories[id].adj]));
     // Whose business it is: a people that holds the band's place or a land next to it.
     const owners = new Set([...near].map((id) => c.territories[id].owner).filter((f) => f > 0 && c.factions[f]?.alive && c.factions[f].isAI));

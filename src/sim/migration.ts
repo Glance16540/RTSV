@@ -17,7 +17,8 @@
 //
 // The numbers are first guesses.
 import type { Campaign } from './campaign';
-import { roadBetween, sendFamily } from './convoys';
+import { roadBetween, sendFamily, sendSettlers } from './convoys';
+import { emptyLand } from './founding';
 import { roomOf } from './seasonfolk';
 import { PLENTY } from './plenty';
 import { folkOf, headcount, living } from './township';
@@ -43,10 +44,14 @@ export const MIGRATE = {
   kept: 40,
   /** Settlers the player orders out of a town (`settle`): so many couples, and up to so many children. */
   settlers: 2, settlerKids: 3,
+  /** What settlers carry to found a town on an empty land: its first food and timber. */
+  provisions: { food: 200, wood: 150 },
+  /** The chance a season that a rival's crowded town sends settlers to an empty land beside its people's. */
+  found: 0.25,
 };
 
 export type Push = 'crowded' | 'hungry' | 'sick' | 'raided' | 'grieving';
-export interface Move { owner: number; from: number; to: number; why: Push; people: number; /** The known person who went with them, by name and sex, and the turn. */ name?: string; female?: boolean; turn?: number }
+export interface Move { owner: number; from: number; to: number; why: Push; people: number; /** Settlers bound for an empty land, to found a town there. */ found?: boolean; /** The known person who went with them, by name and sex, and the turn. */ name?: string; female?: boolean; turn?: number }
 
 declare module './campaign' {
   interface Campaign { /** The latest families to move (migration.ts), for the season's report. */ moves?: Move[] }
@@ -123,8 +128,8 @@ export function migrateOf(c: Campaign, f: number): Move[] {
 const WHY: Record<Push, string> = { crowded: 'there was no room', hungry: 'it was hungry', sick: 'plague was there', raided: 'it had been raided', grieving: 'it was grieving' };
 /** One season of families moving in every nation. The player is told in a line. Returns the moves. */
 export function migrationSeason(c: Campaign): Move[] {
-  const all = c.factions.flatMap((x) => migrateOf(c, x.id));
-  const mine = all.filter((m) => m.owner === 0);
+  const all = c.factions.flatMap((x) => [...migrateOf(c, x.id), ...foundOf(c, x.id)]);
+  const mine = all.filter((m) => m.owner === 0 && !m.found);
   if (mine.length) c.log.push(`${mine.length === 1 ? 'A family has' : `${mine.length} families have`} set out by road: ${mine.map((m) => `${m.name ? `${m.name} and ${m.female ? 'her' : 'his'} household ` : ''}from ${c.territories[m.from].name} to ${c.territories[m.to].name}, since ${WHY[m.why]}`).join('; ')}.`);
   return all;
 }
@@ -136,9 +141,11 @@ export function migrationSeason(c: Campaign): Move[] {
 export function movesReport(c: Campaign, f: number, since: number): string[] {
   const ms = (c.moves ?? []).filter((m) => m.owner === f && (m.turn ?? 0) > since);
   if (!ms.length) return [];
-  const named = ms.filter((m) => m.name).slice(0, 2), rest = ms.filter((m) => !named.includes(m));
   const at = (id: number): string => c.territories[id]?.name ?? 'a town';
-  const lines = named.map((m) => `${m.name} and ${m.female ? 'her' : 'his'} household left ${at(m.from)} for ${at(m.to)}, since ${WHY[m.why]}.`);
+  const founded = ms.filter((m) => m.found).slice(0, 2), others = ms.filter((m) => !m.found);
+  const named = others.filter((m) => m.name).slice(0, 2), rest = others.filter((m) => !named.includes(m));
+  const lines = founded.map((m) => `Settlers set out from ${at(m.from)} to found a town at ${at(m.to)}.`);
+  lines.push(...named.map((m) => `${m.name} and ${m.female ? 'her' : 'his'} household left ${at(m.from)} for ${at(m.to)}, since ${WHY[m.why]}.`));
   if (rest.length) lines.push(rest.length === 1 ? `A family left ${at(rest[0].from)} for ${at(rest[0].to)}, since ${WHY[rest[0].why]}.` : `${rest.length} families moved between your towns: ${[...new Set(rest.map((m) => at(m.from)))].join(', ')} to ${[...new Set(rest.map((m) => at(m.to)))].join(', ')}.`);
   return lines;
 }
@@ -150,11 +157,14 @@ export function movesReport(c: Campaign, f: number, since: number): string[] {
  */
 export function settleBar(c: Campaign, f: number, from: number, to: number): string {
   const a = c.territories[from], b = c.territories[to];
-  if (!a || !b || a.owner !== f || b.owner !== f || a.horde || b.horde) return 'Both towns must be your people\'s.';
+  if (!a || !b || a.owner !== f || a.horde) return 'Settlers go from a town of your people\'s.';
+  const founding = emptyLand(c, to);
+  if (!founding && (b.owner !== f || b.horde)) return b.horde || (c.bands ?? []).some((x) => x.at === to) ? `${b.name} is held by a band: it cannot be settled until it is cleared.` : 'Settlers go to a town of your people\'s, or to an empty land beside your own.';
   if (from === to) return 'Settlers go from one town to another.';
-  if (!roadBetween(c, f, from, to)) return 'There is no road through your own lands between them, nor a sea lane from a Harbour.';
+  if (founding ? !b.adj.some((n) => c.territories[n].owner === f) : !roadBetween(c, f, from, to)) return founding ? `${b.name} is not beside your own lands.` : 'There is no road through your own lands between them, nor a sea lane from a Harbour.';
   const k = folkOf(c, from), n = MIGRATE.settlers;
   if (k.men < n + 1 || k.women < n + 1 || k.men + k.women + k.elders - 2 * n < MIGRATE.keep) return `${a.name} cannot spare ${n} families: a town keeps ${MIGRATE.keep} grown people and a couple.`;
+  if (founding) return '';
   const room = roomOf(b) - headcount(folkOf(c, to)) - coming(c, to);
   if (room < 2 * n) return `${b.name} has no room for them: build houses there first.`;
   return '';
@@ -163,10 +173,39 @@ export function settleBar(c: Campaign, f: number, from: number, to: number): str
 export function settle(c: Campaign, f: number, from: number, to: number): string {
   const bar = settleBar(c, f, from, to);
   if (bar) return bar;
-  const k = folkOf(c, from), n = MIGRATE.settlers;
-  const convoy = sendFamily(c, f, from, to, { men: n, women: n, children: Math.min(MIGRATE.settlerKids, k.children) });
+  const k = folkOf(c, from), n = MIGRATE.settlers, founding = emptyLand(c, to);
+  const who = { men: n, women: n, children: Math.min(MIGRATE.settlerKids, k.children) };
+  const convoy = founding ? sendSettlers(c, f, from, to, who, MIGRATE.provisions) : sendFamily(c, f, from, to, who);
   if (!convoy) return 'They could not set out.';
   const people = convoy.cargo.men.length + convoy.cargo.women.length + (convoy.cargo.children?.length ?? 0);
-  if (f === 0) c.log.push(`${people} settlers have set out from ${c.territories[from].name} to make their homes in ${c.territories[to].name}; they will be there next season.`);
+  if (founding) {
+    const move: Move = { owner: f, from, to, why: 'crowded', people, turn: c.turn, found: true };
+    (c.moves ??= []).push(move);
+    if (c.moves.length > MIGRATE.kept) c.moves.splice(0, c.moves.length - MIGRATE.kept);
+  }
+  if (f === 0) c.log.push(founding
+    ? `${people} settlers have set out from ${c.territories[from].name} with food and timber to found a town on the empty land at ${c.territories[to].name}; they will be there next season.`
+    : `${people} settlers have set out from ${c.territories[from].name} to make their homes in ${c.territories[to].name}; they will be there next season.`);
   return '';
+}
+
+/** Empty lands beside a people's own (founding.ts), where its settlers could found a town. */
+export const freeLands = (c: Campaign, f: number): number[] => c.territories.filter((t) => emptyLand(c, t.id) && t.adj.some((n) => c.territories[n].owner === f)).map((t) => t.id);
+
+/**
+ * A rival's crowded town sends settlers to found a town on an empty land beside its people's, now and then
+ * (MIGRATE.found), as the player may. At most one a season a people. Returns the moves.
+ */
+export function foundOf(c: Campaign, f: number): Move[] {
+  const fac = c.factions[f];
+  if (!fac?.alive || !fac.isAI) return [];
+  const free = freeLands(c, f);
+  if (!free.length) return [];
+  for (const t of c.territories.filter((x) => x.owner === f && !x.horde)) {
+    if (pushOf(c, t.id) !== 'crowded' || roll(c, t.id, 61) >= MIGRATE.found) continue;
+    const to = free.find((id) => settleBar(c, f, t.id, id) === '');
+    if (to === undefined) continue;
+    if (settle(c, f, t.id, to) === '') return [c.moves!.at(-1)!];
+  }
+  return [];
 }
