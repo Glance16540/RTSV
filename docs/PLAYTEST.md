@@ -424,3 +424,170 @@ The Franks' supplies stayed between 4 and 16 from season 5 to season 20, so the 
 with it none of the later town buildings or studies. The driver spent 2 on a gift every third season, 2 on a company every
 fourth, and gave decrees. The Japanese reached it in season 14; in the second pass the Franks did in season 6 and the
 Japanese in season 10. A player who answers the nobles and keeps an army may now wait a long time for the next age.
+
+# Fourth pass, 17 November 2026 (main at d318614)
+
+A pass on what landed today: towns four times the size, the field's cap of forty, the first lay of a town and the
+buildings it cannot place, the militia, a man home on leave, men left queued, and the batched figures. Played by the armies
+session in Chromium (Playwright, 1440 × 900) from a clean browser: the Franks, "Keep the world as dealt", twelve seasons.
+
+- **Twelve seasons on the map**, answering what was put (a band coming: *Let them come*; three matters brought before the
+  leader; the season's card each turn), raising a company in the first season.
+- **A visit to the capital** in season 9, the first time anybody had been in it: a soldier sent home and called back,
+  another sent home and left there, three men put to training at the barracks, *Leave the town* with two still in the queue.
+  Then three more seasons, and a second visit.
+- **A siege attacked**: the army marched on the tribe's town next door (Kingsbarrow), *Siege battle*, fought to the end.
+- **A battle defended twice**, from a save made by hand (a rival's army set on the land next door and marched on the
+  capital): once as a *Field battle*, once as a *Siege battle* with a man sent home in the middle of it.
+
+The battle's and the visit's clocks were stepped from the script, the app's own way (the rivals' minds turned every
+second), because the headless browser draws a few frames a second; so nothing here says whether the batched figures made
+the field faster on a real machine. No error reached the console in any of it: no page error, no failed load.
+
+Ranked as before. The pictures are 2× in `docs/shots/playtest4-*.jpg`.
+
+## What is now right
+
+- **The first lay.** The capital had never been entered: 67 people, 23 buildings on a coarse record. The visit's briefing
+  said "28 Villagers and 6 Clubmen", which is the map's 11 men and 17 women and its three companies, and the town stood
+  whole: the hall, the barracks, the farm, the well, mill and granary the governor had raised, and all 17 houses, around
+  the hall on free ground (`playtest4-visit-idle.jpg`). The children were on the houses' records. After the visit the
+  record was a real one of the same 23 buildings; three seasons later the governor's new house stood with them.
+  Nothing was left without a place in any sitting.
+- **A man home on leave.** *Go home* on a soldier of the army: "Perrin Oakes" walked to an empty house and its card said
+  "Lives in a house"; *Take up arms* put his company back and freed the house. The next man asked was Tam Oakes, left at
+  home: on the map the army was a company the fewer, the roll a man shorter, the town a man the more, and the chronicle
+  said so. The same in the middle of the siege defended.
+- **Men left queued.** Two men still in the barracks' queue on leaving were kept by name; the next season "Ned of
+  Harrowdale, who was training as a clubman when you left, has taken the field: a company of infantry joins the army
+  there", and the same for Joss; the town's men fell by two and the roll grew by two.
+- **The siege defended.** The town came to the field as it stood after the visit (18 houses, the works), with 27 of its 29
+  grown and two of its men in arms beside the army's four companies. The end card's tally (11 began, 4 fell) and the map
+  (the army two companies the fewer, one of them the man who went home) agree.
+- **A band against the town.** "The town defended itself with its men (1), its fortress and barracks (1), the army there
+  (5), the capital's guard (1): 8 in all", and the panel keeps "Against a band this town can muster 7.7".
+
+## What's broken
+
+### 4.1 Taking a tribe's town in person kills everyone in it (high)
+
+![Kingsbarrow after it was taken](shots/playtest4-tribe-after.jpg)
+
+Kingsbarrow had 67 people on the map (15 men, 14 women, 4 old, 34 children). In the siege the "Local Tribe" stood on the
+field as eight clubmen and one villager with **no building at all**, though the briefing says "Bring down their Town
+Center". The eight fell in 78 seconds and the battle was won. On the map: "You took Kingsbarrow from the locals. Of your
+people at Kingsbarrow, 67 died: 0 remain. Nobody was left alive in Kingsbarrow. Four who followed the army have settled
+there."
+
+Why (rebuilt headless from the same save): the battle is handed the town's people (`people: {men: 15, women: 14, …}`), but
+this tribe's people are of a raiding kind (`steppe`), and `game.ts` begins a raiding side as a war band: a man, a woman and
+seven fighters, no hall, and `peopled` is never called. The count written back after the battle is of that field, so the
+67 who were never on it are written off as dead. Any tribe (or rival) of a raiding people is the same. A field battle
+there is not: it only takes the men who march out.
+
+Not the armies session's: the war band's start is the marauders' (threats session), the count written back is
+township's (people session).
+
+### 4.2 After a battle for a town, one man's work is the whole town's orders (high)
+
+![The capital after its defence](shots/playtest4-orders-gold.jpg)
+
+Before the siege the capital read "A governor keeps it; its people work: 50% food, 25% wood, 13% gold, 13% stone". In the
+battle its 27 townsfolk stood idle and one man (the soldier sent home) dug gold. Afterwards: "By your last orders its
+people work: 100% gold. Building: House." A town of 67 now digs nothing but gold until the player visits it again, on
+orders the player never gave. After a visit in which nobody was set to work the governor's shares were kept, which is
+right; here one worker out of 28 was taken for the whole town.
+
+Not the armies session's: the orders written back from a field (`Game.orders`, `townorders`/`governor`, people session).
+
+### 4.3 Nobody lives in the town's houses (high)
+
+![The capital, first visit](shots/playtest4-visit-idle.jpg)
+
+Every sitting in the capital began the same way, the first visit, the second, and the siege: all 17 (then 18) houses
+"♂ empty ♀ empty · Needs a man and a woman to raise children", every one of the 28 grown standing in a crowd by the hall,
+homeless and idle ("28 idle"), with the children on the houses' records. Nothing moves them in: after 90 seconds they
+were as they began. Who lives where is not kept from one sitting to the next either: Tam Oakes, who went home on leave
+and was "living under a roof of his own", was homeless again at the next visit.
+
+It was always so for a town's own people, but until today a town nobody had built in had no houses to be empty; with
+the first lay a player's first sight of their capital is forty roofs and nobody under them. It also means no house on
+the field has a family's name, so a man home on leave is never found his own door (see 4.5).
+
+Not the armies session's alone: the first lay is the portrait session's, who lives where is township's and
+`household.ts` (people session). The houses could be filled as the town is peopled (couples as the map counts them),
+and the people set to the governor's shares.
+
+### 4.4 A man trained in a visit made no company (medium, fixed in this pass)
+
+Three men were sent to the barracks. Two were still in its queue on leaving, and each became a company next season. The
+third finished his training in the town, and came to nothing: the army did not grow, and he was counted a townsman again.
+A visit counted the field's two soldiers to a company, so a lone trained man was half of one; since towns grew, the map
+musters one man to a company. `visit.ts` now counts a company for every `MEN.company` men trained (one, at the present
+size), as for a queued man. `tests/trainedman.test.ts`.
+
+### 4.5 "under a roof of his own, his old one gone" (low, fixed in this pass)
+
+The chronicle said this of every man who went home, because no house on the field has his family's name (4.3), and "his
+old one gone" was never true. It now says "under a roof of his own". The house of his record will be found once houses
+on the field carry their families.
+
+## What's confusing
+
+### 4.6 "+8 each turn" is not what is gained (medium)
+
+The bar reads "To spend 8 supplies (+8 each turn)" from the first season to the twelfth. What there was to spend went 8,
+11, 15, 17, 21, 19, 29, 33, 36, … 44: three or four a season, once down by two. Supplies are counted from what the towns
+hold above their working stock, so the town's eating, the governor's building out of the stores and a failed harvest all
+come out of it; the "+8" is none of those. Either the figure should be what the last season in fact added, or it should
+say what it is. (Food and stores session.)
+
+### 4.7 Three figures for one town's defence, two for one band (medium)
+
+In one season the capital's panel said "Defence 6", "Against a band this town can muster 7.7", and of the raid just
+past "8 in all"; the band was "a strength of 3 (middling)" in the window that asked what to do and "a strength of 2
+(middling)" in the report. Each is right by its own rule, and a player cannot tell which to plan by. (Threats session,
+with the militia's share from the armies session: the panel's "Defence" is against an army, the other two against a
+band; saying so on the first line would do.)
+
+### 4.8 The season's card, in small (low)
+
+- "✝ 1 man was killed in battle" in a season with no battle: it was the company the plague took from the army.
+- "Of your people at Harrowdale, 1 more were born or came of age: 64 remain" after the visit: the one more was the
+  soldier who came home, and "1 more were".
+- The same season: 4 dead of plague (all four of the town's old), 4 men killed beating off a band of strength 2 with a
+  defence of 8, a company lost to plague: 9 dead of 61 in a season the town "held off" a raid. For the threats session's
+  tuning at the new size rather than a fault.
+
+### 4.9 The names of the fallen (low)
+
+The end card names them from the field ("Fell by name, of yours: Kell, Fenn"; "Holt"); the map then says "1 man of
+Harrowdale fell with the army. He was Marn Ironwood." And a man on the roll changed his name between seasons: "Ned Oakes
+(the man of his house)" before the defence, "Edric Oakes" after it, when a clubman called Edric was acclaimed on the
+field. Which soldier is which man is still not kept (the board's gap under *Home on leave*).
+
+### 4.10 Small words (low)
+
+"Malians marches with a strength of 5.4"; "Malians attacked Harrowdale and was thrown back"; the end card of a siege
+held: "A battle won at the cost of 4 men: the town is taken or held"; of the tribe's eight: "A skirmish won at the cost
+of 1 man".
+
+## What's never seen
+
+- **The field's cap.** No town of the player's passed forty grown in twelve seasons (the capital had 29), so nobody was
+  held back from a field.
+- **A building with no place.** Every building found room in every sitting.
+- **A man's own door.** No house on the field has a family (4.3), so only "a roof of his own" was seen.
+- **Whether the field is faster.** A headless browser cannot say; it wants a real machine.
+
+## Handed on
+
+| What | Whose |
+|---|---|
+| 4.1 a raiding tribe's town defended as a war band, and its people written off | threats session (the war band's start), people session (the count written back) |
+| 4.2 one worker's task written back as the town's orders | people session |
+| 4.3 houses empty and everyone idle at every sitting; who lives where not kept | people session, portrait session (first lay) |
+| 4.6 "+8 each turn" | food and stores session |
+| 4.7 three figures for a town's defence | threats session |
+| 4.8, 4.10 the card's and the reports' small words | whoever next touches each line |
+| 4.9 which soldier is which man | armies session, when it is given |

@@ -29,7 +29,9 @@ export interface Serving { name: string; as: Tie; since: number; army?: number }
 /** A man of the house who did not come back. */
 export interface FallenMan { name: string; as: Tie; turn: number; how: string }
 /** A house of a town, as far as its men at war go. */
-export interface WarHouse { family: string; away: Serving[]; fallen?: FallenMan[]; /** Foes its men have felled in battles on the map: three make a rank of renown, as in a town (household.ts). */ war?: number }
+/** A man of the house who came home from the army while it stood in his town, and the door he came to (furloughmap.ts). */
+export interface HomeAgain { name: string; door: 'husband' | 'son' | 'own' | 'none'; turn: number }
+export interface WarHouse { family: string; away: Serving[]; fallen?: FallenMan[]; /** Its men who came home on leave, lately (furloughmap.ts). */ home?: HomeAgain[]; /** Foes its men have felled in battles on the map: three make a rank of renown, as in a town (household.ts). */ war?: number }
 declare module './township' {
   interface Folk { /** The houses whose men are, or were, away with the armies (warhouse.ts). */ houses?: WarHouse[] }
 }
@@ -54,6 +56,7 @@ export const WARHOUSE = {
 const hash = (a: number, b: number): number => { let h = (Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35)) >>> 0; h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 13; return (h >>> 0) / 4294967296; };
 const text = (v: unknown, n = 40): string => (typeof v === 'string' ? v.replace(/[<>&"`\u0000-\u001f]/g, '').slice(0, n) : '');
 const TIES: Tie[] = ['husband', 'son'];
+const DOORS: HomeAgain['door'][] = ['husband', 'son', 'own', 'none'];
 
 /** The houses on a town's record, made safe: whatever a saved game held, this is a list of houses. */
 export function housesOf(f: Folk): WarHouse[] {
@@ -62,6 +65,7 @@ export function housesOf(f: Folk): WarHouse[] {
     h.family = text(h?.family) || 'Nameless';
     h.away = (Array.isArray(h.away) ? h.away : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), as: TIES.includes(s.as) ? s.as : 'son', since: Math.round(Number(s.since) || 0), ...(Number.isFinite(Number(s.army)) && s.army !== undefined && s.army !== null ? { army: Math.round(Number(s.army)) } : {}) }));
     if (h.war !== undefined) { h.war = Math.max(0, Math.round(Number(h.war) || 0)); if (!h.war) delete h.war; }
+    if (h.home) { h.home = (Array.isArray(h.home) ? h.home : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), door: DOORS.includes(s.door) ? s.door : 'none', turn: Math.round(Number(s.turn) || 0) })); if (!h.home.length) delete h.home; }
     if (h.fallen) h.fallen = (Array.isArray(h.fallen) ? h.fallen : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), as: TIES.includes(s.as) ? s.as : 'son', turn: Math.round(Number(s.turn) || 0), how: text(s.how, 60) }));
   }
   return f.houses;
@@ -163,6 +167,18 @@ export function wentHome(c: Campaign, tid: number, army: number, name: string, f
   return `${his.s.name} ${his.h.family}`;
 }
 
+/**
+ * Write down the door a man came home to (furloughmap.ts, after `wentHome`): on the house of his family's name,
+ * which is kept on the record for his sake as long as one with a man lately fallen is. Returns the house.
+ */
+export function cameToDoor(c: Campaign, tid: number, name: string, family: string, door: HomeAgain['door']): WarHouse | undefined {
+  const f = c.territories[tid]?.folk;
+  if (!f || !text(name) || !text(family)) return undefined;
+  const h = houseNamed(f, text(family));
+  h.home = [...(h.home ?? []).filter((x) => x.name !== text(name)), { name: text(name), door: DOORS.includes(door) ? door : 'none', turn: c.turn }].slice(-WARHOUSE.fallen);
+  return h;
+}
+
 /** How near a man away is to the army asked about: of it, of none on record, of another. */
 const rank = (s: Serving, army: number | undefined): number => (army === undefined || s.army === army ? 0 : s.army === undefined ? 1 : 2);
 export interface HouseLoss { name: string; family: string; as: Tie; /** His house is one the nation knows: he is listed with its lost. */ known: boolean }
@@ -249,7 +265,8 @@ export function creditArmy(c: Campaign, armyId: number, felled: number): number 
 /** Drop the houses with nobody away and nobody lately fallen. `hard`: the town's record is over-full, so the oldest go whatever they hold. */
 function prune(c: Campaign, f: Folk, hard = false): void {
   const all = housesOf(f);
-  f.houses = all.filter((h) => h.away.length || (h.fallen ?? []).some((x) => c.turn - x.turn <= WARHOUSE.remembered) || (h.war ?? 0) > 0); // a house with deeds to its name is kept
+  for (const h of all) if (h.home) { h.home = h.home.filter((x) => c.turn - x.turn <= WARHOUSE.remembered); if (!h.home.length) delete h.home; }
+  f.houses = all.filter((h) => h.away.length || (h.fallen ?? []).some((x) => c.turn - x.turn <= WARHOUSE.remembered) || !!h.home?.length || (h.war ?? 0) > 0); // a house with deeds to its name is kept
   if (hard && f.houses.length > WARHOUSE.most) f.houses = [...f.houses.filter((h) => h.away.length), ...f.houses.filter((h) => !h.away.length)].slice(0, WARHOUSE.most);
   if (!f.houses.length) delete f.houses;
 }
