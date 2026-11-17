@@ -72,6 +72,7 @@ import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
+import { battleNamed, veteranHome } from './veteranhome';
 
 
 /** How far a people's churches and taverns will move it next turn. */
@@ -1019,6 +1020,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settled', 'armytown', (c, _p, b) => { if (b.how === 'auto') reckonArmies(c); }) // the dead are their towns' dead; a battle fought in person counts its own
   .on('settled', 'townfaith', (c) => settleFaith(c))
   .on('settled', 'mapbattle', (c, p, b) => { if (b.fought) tellBattle(c, p, b.fought, b.led ?? {}, b.fallenBefore); }) // told once the dead are counted: who led, what broke, who fell by name
+  .on('settled', 'veteranhome', (c, _p, b) => { if (b.fought) { const k = felledOf(b.fought, MEN_A_COMPANY); battleNamed(c, b.attackerWon ? b.army?.id : b.defArmy?.id, b.attackerWon ? k.byAttacker : k.byDefender); } }) // the winners name a man who stood (veteranhome.ts)
   // setup: a battle is about to be laid out for play.
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
   // written: a battle fought in person has been settled and its field is being read back.
@@ -1594,9 +1596,9 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const hero = heroFor(c, 0);
   const kept = cleanChampion(after.champion);
   if (kept) mine.champion = kept; else delete mine.champion;
-  // And is one of the notable people of the town their army's men came from (armytown.ts); failing that of their own
-  // town, if their army knows it; else of the nation's chief town (notableweight.ts).
-  if (kept) { const from = homeOf(c, mine); rememberVeteran(c, from !== undefined && c.territories[from]?.owner === 0 ? from : veteranTown(c.territories, 0, kept.town, land.id), kept); }
+  // And is one of the notable people of his own town, of his own house on the army's roll (veteranhome.ts); failing a
+  // roll, of the town their army's men came from (armytown.ts), or their own if the army knows it, else the chief town.
+  if (kept) { const own = veteranHome(c, 0, mine.id, kept.name), from = homeOf(c, mine); rememberVeteran(c, own ? own.town : from !== undefined && c.territories[from]?.owner === 0 ? from : veteranTown(c.territories, 0, kept.town, land.id), { ...kept, ...(own ? { family: own.family } : {}) }); }
   if (before.hero && !after.fell && !after.acclaimed && Array.isArray(after.powers) && c.factions[0].heroAlive) {
     const { rank: _rank, ...made } = hero;
     c.factions[0].hero = { ...made, powers: [0, 1, 2].map((t) => (after.powers![t] === 0 || after.powers![t] === 1 ? after.powers![t] : made.powers?.[t] ?? -1)) };
