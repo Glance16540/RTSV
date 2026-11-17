@@ -138,7 +138,7 @@ export const PERSONA: Record<string, { margin: number; fort: number; farm: numbe
 };
 export const GIFT_COST = 4;
 /** Supplies to bring a whole people into the next age, from the Stone Age up. */
-export const AGE_COST = [20, 30, 44, 60];
+export const AGE_COST = [16, 30, 44, 60];
 /** Each age past the first makes a people's armies this much stronger. */
 export const AGE_EDGE = 0.1;
 
