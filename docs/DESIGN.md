@@ -211,6 +211,12 @@ people's own towns only moves a lean season from one larder to the next. The dec
 hungry town brings in new food from outside the nation, paid for in its gold, so that it ends hunger
 rather than shifting it.
 
+**Settlers found new towns, and bands come from the far wilds** (the owner's word, 17 November 2026).
+A people may send settlers, two couples and their children, from one of its towns to an empty land
+beside its own, where they found a small new town of that people without a war; rivals may do the
+same. And some bands are born in the wild lands at the map's edge and march in from afar toward rich
+or weak towns, so that a people can see them coming.
+
 ## The order of building
 
 Each step is to be playable by itself.
