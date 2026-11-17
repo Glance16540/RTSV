@@ -1,6 +1,7 @@
 // The drawn look: banded shade with an ink outline, hand-painted surfaces, and buildings with real shapes
 // (pitched roofs with eaves, timber framing, round towers) in place of plain blocks.
 
+import { faithOf, type Faith } from '../sim/faithhouse';
 import * as THREE from 'three';
 
 /** Three bands of light, so shade falls in flat steps like a print. */
@@ -393,10 +394,9 @@ function hall(o: Look): THREE.Group {
   barrel(g, 1.25, 1.6); barrel(g, 1.6, 1.75, 0.85);
   return g;
 }
-/** What a people sets on a house of its faith: a cross, a crescent, an ankh, a star, a flame, a spire of rings; nothing where its faith keeps no such sign. */
-export type Faith = 'cross' | 'crescent' | 'ankh' | 'star' | 'flame' | 'rings' | '';
-const FAITH_SIGN: Record<string, Faith> = { hearth: 'cross', england: 'cross', stonekin: 'cross', greece: 'cross', arabs: 'crescent', mali: 'crescent', egypt: 'ankh', kush: 'ankh', babylon: 'star', dawn: 'star', persia: 'flame', japan: 'rings', forge: 'rings' };
-export const faithOf = (civ: string | undefined): Faith => FAITH_SIGN[civ ?? ''] ?? '';
+// A people's faith and its sign are the rules' (src/sim/faithhouse.ts); here they are drawn.
+export { faithOf } from '../sim/faithhouse';
+export type { Faith } from '../sim/faithhouse';
 /** The sign of a people's faith standing on a roof or a spire at (x, y, z), `k` its size. */
 export function sign(p: THREE.Object3D, faith: Faith, m: THREE.Material, x: number, y: number, z: number, k = 1): void {
   if (faith === 'cross') { bx(p, 0.05 * k, 0.42 * k, 0.05 * k, m, x, y + 0.21 * k, z); bx(p, 0.24 * k, 0.05 * k, 0.05 * k, m, x, y + 0.28 * k, z); }
