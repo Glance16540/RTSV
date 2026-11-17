@@ -11,6 +11,7 @@ import { intrigueDo } from './intriguepanel';
 import { attackBand } from '../sim/bandfight';
 import { meetBand, meetStory, storyToMeet } from './encounter';
 import { meetComing, tellStrikes } from './bandmeet';
+import { treat } from '../sim/freetown';
 import { CIVS, CIV_IDS } from '../sim/data';
 import { LEADERS, Speech } from '../sim/leaders';
 import { playLine, speechHtml } from './voice';
@@ -156,6 +157,7 @@ export class Overworld {
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
       if (kind === 'nobledeal') { this.askDeal(decodeURIComponent(id)); return; } // the dealings with a noble (nobledeal.ts)
       if (kind === 'standing') { this.askStanding(Number(id)); return; } // the governor's standing orders (townorders.ts)
+      if (kind === 'treat') treat(this.c, 0, this.sel); // a free town brought back by treaty (freetown.ts)
       if (kind === 'work') raiseWork(this.c, 0, this.sel, id); // a building raised on the town's record (townworks.ts)
       if (kind === 'study') learn(this.c, 0, id, this.sel); // a study learned there (studies.ts)
       if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
