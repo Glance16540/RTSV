@@ -8,6 +8,7 @@
 import type { Campaign } from './campaign';
 import { CAMPAIGN_VERSION } from './campaignbase';
 import { peopleName, houseName } from './naming';
+import { rollOld } from './armytown';
 
 /** What a slot is kept in: the browser's localStorage, or anything that behaves like it. */
 export interface Store { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem(key: string): void }
@@ -48,7 +49,9 @@ const set = (s: Store, key: string, value: string): boolean => { try { s.setItem
 export function readSlot(s: Store, n: number): Campaign | null {
   try {
     const c = JSON.parse(get(s, slotKey(n)) ?? 'null') as Campaign | null;
-    return c && typeof c === 'object' && c.v === CAMPAIGN_VERSION ? c : null;
+    if (!c || typeof c !== 'object' || c.v !== CAMPAIGN_VERSION) return null;
+    rollOld(c); // an army in a world kept before armies had rolls is given one (armytown.ts)
+    return c;
   } catch {
     return null;
   }
