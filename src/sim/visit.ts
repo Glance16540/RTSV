@@ -8,6 +8,7 @@
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
 import { furloughOf, homeOnLeave } from './furloughmap';
+import { keepRoofs, roofsFor } from './roofsmap';
 import { storyForVisit, storyFromVisit } from './storyvisit';
 import { keepQueued } from './queueddrill';
 import { BUILDINGS } from './data';
@@ -26,7 +27,7 @@ import type { Sky } from './campaign';
 import { driftBack, withDrift } from './driftintown';
 import { companyOf } from './townmuster';
 import { studiedHome, studiesOf } from './studies';
-import { menMustered, reckonArmies } from './armytown';
+import { MEN, menMustered, reckonArmies } from './armytown';
 import type { Army } from './campaign';
 
 declare module './campaign' {
@@ -128,7 +129,10 @@ function armsHome(c: Campaign, tid: number, arms: VisitArms, before: Record<stri
     }
   }
   for (const [kind, n] of Object.entries(trained)) {
-    const per = Object.values(COMPANIES[kind].units)[0] ?? 2;
+    // A townsman trained here is one man of the town, and a company is as many of its men as the map musters for one
+    // (armytown.ts MEN.company: one at the present size of towns), as for a man left training when the player goes
+    // (queueddrill.ts). Counting the field's two soldiers to a company left a lone trained man no company at all.
+    const per = Math.max(1, MEN.company);
     for (let k = 0; k < Math.floor(n / per); k++) {
       const fresh = !a;
       if (!a) { a = { id: c.nextArmy++, owner: 0, at: tid, units: {}, hero: false, vet: c.factions[0].civ === 'japan' ? 1 : 0, moved: true }; c.armies.push(a); }
@@ -188,7 +192,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
       name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
-        buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}), ...(!record.town && t.town?.coarse ? { coarse: t.town.b } : {}), // a first visit: the town as big as its record (firstlay.ts)
+        buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}), ...(!record.town && t.town?.coarse ? { coarse: t.town.b } : {}), ...(roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // a first visit: the town as big as its record (firstlay.ts)
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
@@ -215,6 +219,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   if (census) bornOnVisit(c, land.id, folkOf(c, land.id).children - before);
   if (census) driftBack(c, land.id, after.drifted);
   keepOrders(c, land.id, after.orders);
+  keepRoofs(c, land.id, after.folk?.roofs); // who lived under each roof as the player left (roofsmap.ts)
   keepQueued(c, land.id, after.orders?.men); // and the men who stood in its queues, to come out as themselves (queuedmen.ts)
   if (after.arms) armsHome(c, land.id, after.arms, had); // its soldiers go home to the map: the army's losses, and companies trained there
   storyFromVisit(c, land.id, after.story); // a story's outcome on the field, written back to it (storyvisit.ts)

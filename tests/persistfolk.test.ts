@@ -46,7 +46,7 @@ describe('a visit brings the town\'s own people and sends them home', () => {
     expect(finishVisit(c, { folk: census, seconds: 151 })).toBe(true);
     expect(folkOf(c, h.id)).toMatchObject({ men: census.men, women: census.women, children: census.children });
     expect(grown(folkOf(c, h.id)) + folkOf(c, h.id).children).toBeGreaterThan(6);
-    expect(c.log.some((l) => /born or came of age/.test(l))).toBe(true);
+    expect(c.log.some((l) => /born, came of age or came home/.test(l))).toBe(true);
   }, LONG);
 
   it('a visit that sends no count home leaves the town as it was', () => {
