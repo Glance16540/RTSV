@@ -43,6 +43,23 @@ describe('the field takes at most FIELD_CAP of a town\'s grown', () => {
     expect([f.men, f.women, f.elders]).toEqual([70, 70, 40]); // the record is not touched while the battle is fought
   });
 
+  it('a town a little over the cap, as a capital is founded at four times the size: the cap, couples whole, and written back whole', () => {
+    const { c, tid, f } = bigTown(20, 20, 8, 28); // 48 grown
+    f.notables.push(mother('Aldis', 'Bram'));
+    const p = musterFolk(c, tid), g = p.people;
+    expect(g.men + g.women + g.elders).toBe(FIELD_CAP);
+    expect(g.elders).toBe(Math.round((8 * FIELD_CAP) / 48));
+    expect(Math.abs(g.men - g.women)).toBeLessThanOrEqual(1); // couples (the town being all married), and one single where the room is odd
+    expect(Math.min(g.men, g.women)).toBe(Math.floor((FIELD_CAP - g.elders) / 2));
+    expect(g.children).toBe(28);
+    expect(g.named?.map((n) => n.name)).toEqual(['Aldis']);
+    expect(f.fieldHome!.m.length + f.fieldHome!.f.length).toBe(48 - FIELD_CAP);
+    settleFolk(c, tid, unchanged(p));
+    expect([f.men, f.women, f.elders, f.children]).toEqual([20, 20, 8, 28]);
+    expect(wedOf(f)).toBe(20);
+    expect(f.notables.find((n) => n.name === 'Aldis')?.lost).toBeUndefined();
+  });
+
   it('the young go first among men and women, and the men who take up arms go whatever the cap', () => {
     const a = ages(70, 10, 0, 0);
     const { field } = splitField(a, 10, { men: 60, women: 0 }, 40);
