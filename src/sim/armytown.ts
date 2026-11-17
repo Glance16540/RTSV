@@ -27,7 +27,7 @@ export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.tur
  * own towns. And what raising may take: a town keeps `floor` men at the least, and a man for every woman of
  * working age up to `couples` of them, so that it still has husbands.
  */
-export const MEN = { won: 0.3, lost: 0.4, floor: 2, couples: 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true, /** Men a company must find, in its town or its people's others, to be raised at all. None, for now: at one or two the towns as they are founded (four to six men) cannot carry the armies the map is fought with, and over half of 192 campaigns end in ruin. The rule is here for when they can. */ least: 0 };
+export const MEN = { won: 0.3, lost: 0.4, floor: 2, couples: 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true, /** The share of all its men a people will have with its armies at the most: past it, a company raised is hired men. */ share: 0.25, /** Men a company must find, in its town or its people's others, to be raised at all. None, for now: at one or two the towns as they are founded (four to six men) cannot carry the armies the map is fought with, and over half of 192 campaigns end in ruin. The rule is here for when they can. */ least: 0 };
 /** Men in a company. */
 export const MEN_A_COMPANY = 2;
 /** An army's roll: how many companies it had when last reckoned, and the men with it by the town they came from (their ages, in seasons). */
@@ -69,6 +69,18 @@ function take(c: Campaign, m: Muster, tid: number, want: number, army: number): 
   enlist(c, tid, young.length, army); // each is of a house of the town, and stays on its record as away with this army (warhouse.ts)
   return young.length;
 }
+/** A people's men at home and with its armies (on the rolls). */
+export function menOfNation(c: Campaign, f: number): { away: number; home: number } {
+  let away = 0, home = 0;
+  for (const m of Object.values(c.musters ?? {})) if (m.owner === f) away += total(m);
+  for (const t of c.territories) if (t.owner === f && !t.horde && t.folk) home += t.folk.men;
+  return { away, home };
+}
+/** How many more of its men a people will send to its armies: up to `MEN.share` of them all, counting those already away. */
+export function menLeftToSend(c: Campaign, f: number): number {
+  const { away, home } = menOfNation(c, f);
+  return Math.max(0, Math.floor(MEN.share * (away + home)) - away);
+}
 /**
  * A company has just been raised in this town and joined this army: its men are the town's. The youngest grown
  * men go, as many as a company takes or as the town can spare (`MEN.floor`, `MEN.couples`). Where the town cannot
@@ -76,15 +88,17 @@ function take(c: Campaign, m: Muster, tid: number, want: number, army: number): 
  * spare first, each within what it keeps (`MEN.levy`: no, and the rest are men of no town). Returns how many
  * men went, from all towns.
  */
-export function menMustered(c: Campaign, a: Army, tid: number): number {
+export function menMustered(c: Campaign, a: Army, tid: number, o: { /** These men have gone already (trained in person in their town): the share a people sends is not asked. */ gone?: boolean } = {}): number {
   const m = (rolls(c)[a.id] ??= { size: 0, men: {} });
   m.size = sizeOf(a); m.owner = a.owner;
   const t = c.territories[tid];
   if (!t || t.owner !== a.owner) return 0;
-  let went = take(c, m, tid, MEN_A_COMPANY, a.id);
-  if (went < MEN_A_COMPANY && MEN.levy) {
+  // A people sends so many of its men to its armies and no more (`MEN.share`): past that a company is filled with hired men of no town.
+  const want = o.gone ? MEN_A_COMPANY : Math.min(MEN_A_COMPANY, menLeftToSend(c, a.owner));
+  let went = want > 0 ? take(c, m, tid, want, a.id) : 0;
+  if (went < want && MEN.levy) {
     const others = c.territories.filter((x) => x.owner === a.owner && !x.horde && x.id !== tid && x.folk).map((x) => ({ id: x.id, spare: sparedMen(c, x.id) })).filter((x) => x.spare > 0).sort((p, q) => q.spare - p.spare || p.id - q.id);
-    for (const o of others) { if (went >= MEN_A_COMPANY) break; went += take(c, m, o.id, MEN_A_COMPANY - went, a.id); }
+    for (const o of others) { if (went >= want) break; went += take(c, m, o.id, want - went, a.id); }
   }
   return went;
 }
