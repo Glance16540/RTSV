@@ -6,13 +6,14 @@
  * How it is read here. Towns change hands with the tribes and the bands in most seasons even of a ruined world,
  * so "has been able to take land" is read as ground gained and kept: no living people holds more land now than
  * it held `RUIN.seasons` ago. "Bands hold much of the map": the lands the marauders hold, and those where a band
- * has its place, were `RUIN.bands` of all the lands or more in `RUIN.often` of those seasons, and the peoples
- * together hold less than `RUIN.held` of them. (Without the second, strong nations at a stand-off with bands camped on their own land read as ruined:
+ * has its place, were `RUIN.bands` of the lands that can be held or more in `RUIN.often` of those seasons, and the
+ * peoples together hold less than `RUIN.held` of them. The true wilderness is no part of that map (`holdable`). (Without the second, strong nations at a stand-off with bands camped on their own land read as ruined:
  * five of 96 computer-played campaigns, none of them a ruined world.) When all of it is so the campaign is over with no
  * winner (`winner` -1, `ended` 'ruin'), and the chronicle says so. Checked once a season, where campaigns are
  * decided; a campaign already over is left as it ended.
  */
-import type { Campaign } from './campaign';
+import type { Campaign, Territory } from './campaign';
+import { wilderness } from './wilds';
 
 declare module './campaign' {
   interface Campaign {
@@ -36,14 +37,24 @@ export const RUIN = {
   held: 0.5,
 };
 const landsOf = (c: Campaign, f: number): number => c.territories.filter((t) => t.owner === f && !t.horde).length;
-/** The share of the map the bands hold: lands the marauders hold, and lands where a band has its place. */
+/**
+ * The map that is anybody's to hold: every land but the true wilderness (wilds.ts: snow and desert that began wild
+ * and can never be settled). Both shares below are of these. Counted over the whole map, the wilderness made the
+ * peoples' share smaller for good and a band camped out there read as holding land: at 192 campaigns the peoples
+ * held 39 to 48% of all lands in every world that ended in ruin, and half or more of what could be held in most.
+ */
+export const holdable = (c: Campaign): Territory[] => c.territories.filter((t) => !wilderness(c, t.id));
+/** The share of the map that can be held that the bands hold: lands the marauders hold, and lands where a band has its place. */
 export function bandShare(c: Campaign): number {
-  const theirs = new Set<number>(c.territories.filter((t) => t.horde).map((t) => t.id));
-  for (const b of c.bands ?? []) if (c.territories[b.at]) theirs.add(b.at);
-  return c.territories.length ? theirs.size / c.territories.length : 0;
+  const lands = holdable(c), theirs = new Set<number>(lands.filter((t) => t.horde).map((t) => t.id));
+  for (const b of c.bands ?? []) if (c.territories[b.at] && !wilderness(c, b.at)) theirs.add(b.at);
+  return lands.length ? theirs.size / lands.length : 0;
 }
-/** The share of the map the living peoples hold between them. */
-export const heldShare = (c: Campaign): number => (c.territories.length ? c.territories.filter((t) => t.owner >= 0 && !t.horde && c.factions[t.owner]?.alive).length / c.territories.length : 0);
+/** The share of the map that can be held that the living peoples hold between them. */
+export function heldShare(c: Campaign): number {
+  const lands = holdable(c);
+  return lands.length ? lands.filter((t) => t.owner >= 0 && !t.horde && c.factions[t.owner]?.alive).length / lands.length : 0;
+}
 /** In what share of the seasons on record (this one, where there is no record) the bands held `RUIN.bands` of the map or more. */
 export function bandsOften(c: Campaign): number {
   const past = c.bandGrounds ?? [];
