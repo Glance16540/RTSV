@@ -103,9 +103,9 @@ function newName(c: Campaign, tid: number, h: WarHouse, k: number): string {
  * put on the record of a house of the town as away. As in a town (household.ts, muster.ts) an unmarried man goes
  * before a husband: the men the town had beyond its women are sons of its houses; only when those are gone does a
  * husband leave his wife. A husband of a house the nation knows goes by his own name. `army`: the army they
- * have joined. Returns who went.
+ * have joined. `who`: the names of men already known (and their houses), in order. Returns who went.
  */
-export function enlist(c: Campaign, tid: number, n: number, army?: number): { name: string; family: string; as: Tie }[] {
+export function enlist(c: Campaign, tid: number, n: number, army?: number, who?: ({ name: string; family?: string } | undefined)[]): { name: string; family: string; as: Tie }[] {
   const t = c.territories[tid], out: { name: string; family: string; as: Tie }[] = [];
   if (!t || n <= 0) return out;
   const f = folkOf(c, tid), all = housesOf(f);
@@ -126,6 +126,10 @@ export function enlist(c: Campaign, tid: number, n: number, army?: number): { na
       const families = [...new Set([...known.map((w) => w.family!), ...all.map((x) => x.family)])].filter((fam) => sonsAway(all.find((x) => x.family === fam)) < WARHOUSE.sons);
       h = houseNamed(f, families.length ? families[Math.floor(hash(c.seed * 19 + tid, c.turn * 11 + i + all.length) * families.length)] : newFamily(c, tid, f));
     }
+    // A man the town knows by name already (he was in its training queue: queuedmen.ts) goes by it, and of his own house if it is given.
+    const known1 = who?.[i];
+    if (known1?.family) h = houseNamed(f, known1.family);
+    if (known1?.name) name = known1.name;
     if (!name) name = newName(c, tid, h, i);
     h.away.push({ name, as, since: c.turn, ...(army !== undefined ? { army } : {}) });
     out.push({ name, family: h.family, as });

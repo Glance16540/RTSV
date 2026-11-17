@@ -10,7 +10,7 @@ export const THREATS = {
   /** A new band's strength (least and most), the most one grows to, and the seasons between its growing by itself. */
   start: [2, 4], max: 10, grow: 3,
   /** The chance a band strikes in a season. */
-  strike: 0.75,
+  strike: 0.7,
   /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
   hold: 0.82, fall: 0.4,
   /** What those on a road can do for themselves with no army to escort them, in companies: enough to see off a small band. */

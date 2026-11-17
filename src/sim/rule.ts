@@ -82,7 +82,9 @@ export function monasterySeason(c: Campaign, f: number): boolean {
   if (!fac?.alive || !fac.isAI) return false;
   const holiest = c.territories.filter((t) => t.owner === f && !t.horde && !begunAt(c, t.id, 'monastery') && isHoly(faithAt(c, t.id)) && struckBySickness(c, t.id)).sort((a, b) => faithAt(c, b.id) - faithAt(c, a.id) || a.id - b.id)[0];
   if (!holiest) return false;
-  if (!canSpare(c, holiest.id, BUILDINGS.monastery.cost, { times: PLENTY.rule }) || raiseBar(c, f, holiest.id, 'monastery')) return false; // plenty.ts, one rule for every purchase
+  // Keeping two floors a town, not one: with towns four times as large (township.ts TOWN_SCALE), 31.0% of holy towns had one
+  // by twenty years (384 campaigns, stories answered; band 5 to 30%); keeping two, 26.2%.
+  if (!canSpare(c, holiest.id, BUILDINGS.monastery.cost, { times: 2 * PLENTY.rule }) || raiseBar(c, f, holiest.id, 'monastery')) return false; // plenty.ts, one rule for every purchase
   return raiseWork(c, f, holiest.id, 'monastery') === '';
 }
 

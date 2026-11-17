@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
 import { bereaved } from './bereft';
 import { seatWidows } from './widowtown';
@@ -863,11 +864,11 @@ export class Game {
   census(owner: number): Census { return censusOf(this, owner); }
 
   /** What a side's town is set to as things stand (governor.ts): how many of its people are at each kind of work, what stands half built, what is being trained. */
-  orders(owner: number): { work: Stores; build: string[]; train: string[] } {
+  orders(owner: number): { work: Stores; build: string[]; train: string[]; men?: QueuedMan[] } {
     const work: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
     for (const u of this.units) if (u.owner === owner && u.type === 'villager' && !u.dead && u.order?.t === 'gather') work[u.order.res]++;
     const mine = this.buildings.filter((b) => b.owner === owner && !b.dead);
-    return { work, build: [...new Set(mine.filter((b) => !b.complete).map((b) => b.type))], train: [...new Set(mine.flatMap((b) => b.queue.filter((q) => q.kind === 'unit').map((q) => q.id)))] };
+    return { work, build: [...new Set(mine.filter((b) => !b.complete).map((b) => b.type))], train: [...new Set(mine.flatMap((b) => b.queue.filter((q) => q.kind === 'unit').map((q) => q.id)))], men: queuedOf(this, owner) }; // and the very men in the queues (queuedmen.ts)
   }
 
   /** A side's buildings as they stand, each with the share of its health left, the unfinished with how far built: what `bonus.town` takes. */
