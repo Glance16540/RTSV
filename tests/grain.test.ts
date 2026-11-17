@@ -6,6 +6,7 @@ import { GRAIN, buyGrain, canSpareGrain, famineYear, goldOf, grainBar, grainDeal
 import { needOf } from '../src/sim/larder';
 import { PLENTY } from '../src/sim/plenty';
 import { folkOf } from '../src/sim/township';
+import { decreesAt, sensibleDecrees } from '../src/sim/decrees';
 
 const world = (): { c: Campaign; tid: number; mine: number[] } => {
   const c = newCampaign(5, 1, 1, 'hearth');
@@ -68,5 +69,14 @@ describe('grain bought abroad', () => {
     expect(canSpareGrain(c, 0, tid)).toBe(false);
     folkOf(c, tid).stores.gold = cost + floor;
     expect(canSpareGrain(c, 0, tid)).toBe(true);
+  });
+
+  it('a sensible ruler buys it for a hungry town beside the town\'s one decree, not instead of it', () => {
+    const { c, tid } = world();
+    folkOf(c, tid).stores.gold = 100000;
+    c.factions[0].supplies = 30;
+    sensibleDecrees(c, 0, (id) => ({ hungry: id === tid, raided: id === tid, moved: 0, standing: 0 }));
+    expect(decreesAt(c, tid).map((d) => d.kind).sort()).toEqual(['alms', 'guards']);
+    expect(folkOf(c, tid).stores.food).toBeGreaterThan(0);
   });
 });

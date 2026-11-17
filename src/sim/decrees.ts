@@ -124,8 +124,9 @@ export function decreesSeason(c: Campaign): void {
 }
 
 /**
- * The decrees a sensible ruler gives, one to a town a season, keeping a few supplies in hand: food where the town is
- * hungry, guards where it is raided or rising, the church where it slid last season, the tavern shut where it slid
+ * The decrees a sensible ruler gives, one to a town a season besides grain, keeping a few supplies in hand: grain bought
+ * abroad where the town is hungry (paid in gold, not supplies, it does not take the town's one decree: taking it, the
+ * decrees eased drift 11.0% and 6.3% at 192 campaigns in the two courses, beside it 11.3% and 9.0%), guards where it is raided or rising, the church where it slid last season, the tavern shut where it slid
  * and not already lost to it. Reads how the town stood last season (`strainOf`, from drift.ts). Returns how many were given.
  */
 export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) => { hungry: boolean; raided: boolean; moved: number; standing: number; sick?: boolean; grieving?: boolean }, keep = 4): number {
@@ -137,7 +138,7 @@ export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) 
     // Every decree keeps a few supplies in hand, food (paid in goods, which are what supplies are) as well; and a
     // ruler sends food to at most ALMS_A_SEASON towns a season, the hungriest being those it is told of first.
     const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= (DECREES[k].cost ? keep : 0) && issueDecree(c, f, t.id, k) === '';
-    if (s.hungry && fed < ALMS_A_SEASON && canSpareGrain(c, f, t.id, strengthAt(c, f, t.id)) && tryGive('alms')) { given++; fed++; continue; } // only when the nation can spare the gold (grain.ts)
+    if (s.hungry && fed < ALMS_A_SEASON && canSpareGrain(c, f, t.id, strengthAt(c, f, t.id)) && tryGive('alms')) { given++; fed++; } // only when the nation can spare the gold (grain.ts); and beside the town's one decree, not instead of it
     if (s.raided && tryGive('guards')) { given++; continue; }
     if ((s.sick || s.grieving) && !tendedAlready(c, t.id) && tryGive('tend')) { given++; continue; } // not where a Monastery or Infirmary tends already
     if (s.moved < 0 && tryGive('church')) { given++; continue; }
