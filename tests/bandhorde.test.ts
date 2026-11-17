@@ -5,7 +5,7 @@ import type { Campaign } from '../src/sim/campaign';
 import { hordeSeason } from '../src/sim/bandhorde';
 import { OLD_SEASON } from '../src/sim/ageing';
 import { THREATS, heldFrom } from '../src/sim/threats';
-import { folkOf } from '../src/sim/township';
+import { TOWN_SCALE as S, folkOf } from '../src/sim/township';
 
 function world(seed = 5) {
   const c = newCampaign(seed, 1, 1, 'hearth');
@@ -47,7 +47,7 @@ describe('the marauders are a band', () => {
     const { c, home, camp } = world();
     camp.horde = true; camp.militia = 6;
     const f = folkOf(c, home.id);
-    Object.assign(f, { men: 1, women: 8, elders: 0, children: 3 }); delete f.ages;
+    Object.assign(f, { men: 1 * S, women: 8 * S, elders: 0, children: 3 * S }); delete f.ages; // as many as that was of a town (township.ts TOWN_SCALE)
     home.buildings = []; delete home.town;
     for (const n of camp.adj) if (n !== home.id) c.territories[n].owner = -1;
     let raid;
@@ -57,9 +57,9 @@ describe('the marauders are a band', () => {
     expect(raid!.kind).toBe('marauders');
     expect(raid!.at).toBe(home.id);
     expect(raid!.outcome).toBe('taken');
-    expect(raid!.taken.women).toBe(Math.ceil(8 * THREATS.carried));
+    expect(raid!.taken.women).toBe(Math.ceil(8 * S * THREATS.carried));
     expect(raid!.taken.men).toBe(0);
-    expect(f.children).toBe(3);
+    expect(f.children).toBe(3 * S);
     const [b] = marauders(c);
     expect(b.held[0].women.every((s) => s < OLD_SEASON)).toBe(true);
     expect(heldFrom(c, home.id)).toEqual([{ band: b, held: b.held[0] }]); // the one record of who was taken
@@ -74,7 +74,7 @@ describe('the marauders are a band', () => {
     const { c, home, camp } = world();
     camp.horde = true; camp.militia = 4;
     home.buildings = ['fortress', 'barracks'];
-    Object.assign(folkOf(c, home.id), { men: 12, women: 8, elders: 0, children: 3 });
+    Object.assign(folkOf(c, home.id), { men: 12 * S, women: 8 * S, elders: 0, children: 3 * S });
     c.armies.push({ id: 801, owner: 0, at: home.id, units: { infantry: 6 }, hero: false, vet: 0, moved: false });
     for (const n of camp.adj) if (n !== home.id) c.territories[n].owner = -1;
     let raid;

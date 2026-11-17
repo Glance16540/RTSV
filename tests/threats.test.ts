@@ -9,7 +9,7 @@ import { threatsOfMen } from '../src/sim/bandseason';
 import { attackBand } from '../src/sim/bandfight';
 import { resolvePending } from '../src/sim/campaign';
 import { needOf } from '../src/sim/larder';
-import { folkOf, nationStores } from '../src/sim/township';
+import { TOWN_SCALE as S, folkOf, nationStores } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
 import { SUPPLY_UNITS } from '../src/sim/stores';
 /** All the goods in a store. */
@@ -27,7 +27,8 @@ function world(opts: { men?: number; women?: number; children?: number; virtue?:
   t.buildings = ['farm'];
   delete t.town;
   const f = folkOf(c, t.id);
-  f.men = opts.men ?? 6; f.women = opts.women ?? 6; f.elders = 1; f.children = opts.children ?? 4;
+  // People are given as of a town as towns were, and are as many as that is now (township.ts TOWN_SCALE).
+  f.men = (opts.men ?? 6) * S; f.women = (opts.women ?? 6) * S; f.elders = 1 * S; f.children = (opts.children ?? 4) * S;
   f.stores = { food: 400, wood: 200, gold: 200, stone: 100 };
   delete f.ages;
   return { c, t, f };
@@ -122,13 +123,13 @@ describe('a band strikes a town', () => {
     const had = goods(nationStores(c, 0));
     const r = untilStrike(c, b);
     expect(r.outcome).toBe('taken');
-    expect(r.killed).toBe(Math.round(6 * THREATS.dead.taken));
-    expect(f.men).toBe(6 - r.killed);
-    expect(r.taken.women).toBe(Math.ceil(8 * THREATS.carried));
+    expect(r.killed).toBe(Math.round(6 * S * THREATS.dead.taken));
+    expect(f.men).toBe(6 * S - r.killed);
+    expect(r.taken.women).toBe(Math.ceil(8 * S * THREATS.carried));
     expect(r.taken.men).toBe(0); // raiders take women
-    expect(f.women).toBe(8 - r.taken.women);
-    expect(f.children).toBe(5);
-    expect(f.ages!.k.length).toBe(5);
+    expect(f.women).toBe(8 * S - r.taken.women);
+    expect(f.children).toBe(5 * S);
+    expect(f.ages!.k.length).toBe(5 * S);
     expect(f.ages!.f.filter((s) => s < OLD_SEASON).length).toBe(f.women);
     checkLoot(c, t.id, r, THREATS.loot.taken);
     expect(f.stores.food).toBe(400 - r.stores.food);
@@ -154,7 +155,7 @@ describe('a band strikes a town', () => {
     expect(s.outcome).toBe('taken');
     expect(s.taken.men).toBeGreaterThan(0);
     expect(s.taken.women).toBeGreaterThan(0);
-    expect(slave.f.men).toBe(4 - s.killed - s.taken.men);
+    expect(slave.f.men).toBe(4 * S - s.killed - s.taken.men);
 
     const sea = world({ men: 2 });
     sea.t.trait = 'coast';
@@ -205,7 +206,7 @@ describe('a band strikes a town', () => {
     expect(folkOf(c, r.at).stores.food).toBeGreaterThanOrEqual(THREATS.larder * needOf(c, r.at)); // and the larder is left
     expect(r.stores.wood).toBe(0);
     expect(b.held).toHaveLength(0);
-    expect(f.women).toBe(6);
+    expect(f.women).toBe(6 * S);
     expect(reportLine(c, r)).toContain('robbed the road');
   });
 
@@ -251,24 +252,26 @@ describe('a town is bled, not emptied', () => {
     const a = untilStrike(few.c, band(few.c, few.t, 'slavers', 12));
     expect(a.taken).toEqual({ men: 0, women: 0 });
     expect(a.outcome).toBe('raided'); // nobody to take: it is a raid
-    expect(few.f.women).toBe(2);
+    expect(few.f.women).toBe(2 * S);
 
     const some = world({ men: 1, women: 3 });
     const b = band(some.c, some.t, 'raiders', 12);
     const first = untilStrike(some.c, b);
     expect(first.outcome).toBe('taken');
-    expect(first.taken.women).toBe(1);
-    expect(some.f.women).toBe(2);
+    // Of three (as towns were): never below the last two, never more than half, a quarter at most.
+    const most = Math.min(3 * S - THREATS.last * S, Math.floor(3 * S * (1 - THREATS.left)), Math.ceil(3 * S * THREATS.carried));
+    expect(first.taken.women).toBe(most);
+    expect(some.f.women).toBe(3 * S - most);
     // Struck again while those are still held: raided, and nobody more is taken.
     const again = untilStrike(some.c, b);
     expect(again.outcome).toBe('raided');
     expect(again.taken).toEqual({ men: 0, women: 0 });
-    expect(some.f.women).toBe(2);
+    expect(some.f.women).toBe(3 * S - most);
 
     const many = world({ men: 1, women: 20 });
     const m = untilStrike(many.c, band(many.c, many.t, 'raiders', 12));
-    expect(m.taken.women).toBe(Math.ceil(20 * THREATS.carried));
-    expect(m.taken.women).toBeLessThanOrEqual(10);
+    expect(m.taken.women).toBe(Math.ceil(20 * S * THREATS.carried));
+    expect(m.taken.women).toBeLessThanOrEqual(10 * S);
   });
 });
 
@@ -293,9 +296,9 @@ describe('those who are taken', () => {
     expect(c.pending).toMatchObject({ band: b.id, armyId: 801, defender: -1 });
     expect(resolvePending(c, 'auto')).toBe(true); // left to the army, which is far the stronger
     expect(c.bands!.includes(b)).toBe(false);
-    expect(f.women + f.elders - 1).toBeGreaterThanOrEqual(women); // some may have come home old
-    expect(f.men + f.women + f.elders).toBe(men + women + 1 + taken);
-    expect(f.children).toBe(5);
+    expect(f.women + f.elders - 1 * S).toBeGreaterThanOrEqual(women); // some may have come home old
+    expect(f.men + f.women + f.elders).toBe(men + women + 1 * S + taken);
+    expect(f.children).toBe(5 * S);
     // Half the time held: a woman is about fifteen years older, a man ten.
     expect(Math.max(...f.ages!.f)).toBeGreaterThanOrEqual(oldest + Math.round(THREATS.yearsWoman * SEASONS_A_YEAR * 0.5));
     expect(goods(f.stores)).toBe(stored + THREATS.prize * SUPPLY_UNITS); // taken back into the town where the army stands

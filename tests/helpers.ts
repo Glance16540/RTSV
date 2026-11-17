@@ -48,3 +48,12 @@ import { MEN } from '../src/sim/armytown';
  * each test file has its own copy of the rules.
  */
 export const everyManSent = (): void => { MEN.share = 1; };
+
+/**
+ * The rules a town's men went to war by before towns were made larger (docs/DESIGN.md, "Towns big enough to raise
+ * armies"): two men a company, a town keeps two men and a husband for half its women, a company its towns cannot
+ * man is filled with hired men, and no share is asked. For a test file about how men go to an army and come home,
+ * written with towns of ten men: the workings are the same at any size, and such a file sets the figures it was
+ * written with. Call it once at the top of the file (each test file has its own copy of the rules).
+ */
+export const smallTownRules = (): void => { MEN.company = 2; MEN.floor = 2; MEN.couples = 0.5; MEN.least = 0; MEN.share = 1; };
