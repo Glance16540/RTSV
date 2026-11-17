@@ -17,7 +17,7 @@ import type { Campaign, Territory } from './campaign';
 import { armyStrength } from './campaignbase';
 import { Band, mark, note, reachOf, softest } from './threats';
 import { campsBorne } from './bandhorde';
-import { MARCH, onRoad, richLure, warnBound, watchers } from './bandmarch';
+import { MARCH, marched, onRoad, richLure, townsThatSee, warnBound, watchers } from './bandmarch';
 
 export const ROAM = {
   /** A band flees an army at its place that is at least this many times its strength. */
@@ -69,12 +69,12 @@ function campable(c: Campaign, b: Band, t: Territory): boolean {
  * every land it could reach, how many lands off, and the first step toward it. Short and cheap: a breadth-first
  * walk of a few dozen lands at most.
  */
-export function waysFrom(c: Campaign, b: Band): { to: number; steps: number; next: number; seasons: number }[] {
+export function waysFrom(c: Campaign, b: Band, range = ROAM.range): { to: number; steps: number; next: number; seasons: number }[] {
   if (b.kind !== 'raiders' && b.kind !== 'slavers') return [];
   const out: { to: number; steps: number; next: number; seasons: number }[] = [], seen = new Set([b.at]);
   // `seasons`: how long the march there takes, a land a season and farther along a road (bandmarch.ts); `legs`: lands gone in the last of them.
   let edge: { at: number; next: number; seasons: number; legs: number }[] = [{ at: b.at, next: -1, seasons: 0, legs: MARCH.pace }];
-  for (let steps = 1; steps <= ROAM.range && edge.length; steps++) {
+  for (let steps = 1; steps <= range && edge.length; steps++) {
     const far: typeof edge = [];
     for (const e of edge) for (const n of [...c.territories[e.at].adj].sort((x, y) => x - y)) {
       if (seen.has(n) || !campable(c, b, c.territories[n])) continue;
@@ -90,8 +90,8 @@ export function waysFrom(c: Campaign, b: Band): { to: number; steps: number; nex
 }
 
 /** The softest mark a camp could get within reach of by a few lands' march: where it would go, how far, its first step, and how soft. */
-export function wayTo(c: Campaign, b: Band): { bound: number; next: number; steps: number; seasons: number; lure: number } | null {
-  const all = waysFrom(c, b).map((w) => ({ bound: w.to, next: w.next, steps: w.steps, seasons: w.seasons, lure: lureFrom(c, b, [w.to], true) })).filter((w) => w.lure > 0)
+export function wayTo(c: Campaign, b: Band, range = ROAM.range): { bound: number; next: number; steps: number; seasons: number; lure: number } | null {
+  const all = waysFrom(c, b, range).map((w) => ({ bound: w.to, next: w.next, steps: w.steps, seasons: w.seasons, lure: lureFrom(c, b, [w.to], true) })).filter((w) => w.lure > 0)
     .sort((x, y) => y.lure / (1 + ROAM.far * (y.seasons - 1)) - x.lure / (1 + ROAM.far * (x.seasons - 1)) || x.steps - y.steps || x.bound - y.bound);
   return all[0] ?? null;
 }
@@ -125,16 +125,22 @@ function move(c: Campaign, b: Band, place: [number, number?]): void {
 function marchOn(c: Campaign, b: Band, from: number, out: string[]): void {
   const path = [from, b.at];
   for (let legs = 1; legs < MARCH.pace && b.bound !== undefined; legs++) {
-    const way = waysFrom(c, b).find((w) => w.to === b.bound);
+    const way = waysFrom(c, b, MARCH.long).find((w) => w.to === b.bound);
     if (!way || !onRoad(c, b.at, way.next)) break;
     move(c, b, [way.next]);
     path.push(b.at);
   }
   const mark = softest(c, b, reachOf(c, { ...b, at: b.bound ?? b.at }))?.id;
-  for (const a of watchers(c, path)) {
-    const theirs = warnBound(c, a.owner, mark);
-    note(c, out, 'seen', b, b.at, `${a.owner === 0 ? 'Your army' : 'An army'} at ${c.territories[a.at].name} has seen ${b.name} on the march: they are at ${c.territories[b.at].name}${b.bound !== undefined ? `, making for ${c.territories[b.bound].name}` : ''}${theirs && mark !== undefined ? `. Word is sent to ${c.territories[mark].name}` : ''}.`, [a.owner]);
-  }
+  const armies = watchers(c, path);
+  const told = (owner: number, text: string): void => {
+    const theirs = warnBound(c, owner, mark);
+    note(c, out, 'seen', b, b.at, `${text} ${b.name} on the march: they are at ${c.territories[b.at].name}${b.bound !== undefined ? `, making for ${c.territories[b.bound].name}` : ''}${theirs && mark !== undefined ? `. Word is sent to ${c.territories[mark].name}` : ''}.`, [owner]);
+    marched(c, b.id, 'seen');
+  };
+  for (const a of armies) told(a.owner, `${a.owner === 0 ? 'Your army' : 'An army'} at ${c.territories[a.at].name} has seen`);
+  // A town in or beside a land it passes sees it too.
+  for (const t of townsThatSee(c, path, armies.map((a) => a.owner))) told(t.owner, `${t.owner === 0 ? 'Your people' : 'The people'} at ${c.territories[t.at].name} have seen`);
+  if (b.bound === undefined && b.afar) { delete b.afar; marched(c, b.id, 'arrived'); }
 }
 
 /** One season of bands moving, settling and breaking up. Returns how many moved. */
@@ -143,7 +149,7 @@ export function roamSeason(c: Campaign, out: string[]): number {
   for (const b of [...(c.bands ?? [])]) {
     if (b.kind === 'marauders') continue;
     const age = c.turn - b.since, here = c.territories[b.at], owners = reachOf(c, b).map((id) => c.territories[id].owner);
-    const gone = (text: string): void => { note(c, out, 'gone', b, b.at, text, owners); c.bands = (c.bands ?? []).filter((x) => x !== b); };
+    const gone = (text: string): void => { marched(c, b.id, 'gone'); note(c, out, 'gone', b, b.at, text, owners); c.bands = (c.bands ?? []).filter((x) => x !== b); };
     // Old and still weak, holding nobody: they drift apart.
     if (age >= ROAM.old && b.strength <= ROAM.weak && !b.held.length) { gone(`${cap(b.name)} have come to nothing and drifted apart.`); continue; }
     // Grown strong in a tribe's land: they take it for their own.
@@ -159,13 +165,15 @@ export function roamSeason(c: Campaign, out: string[]): number {
       const to = best(c, b);
       if (to) { const from = here.name; move(c, b, to.place); moved++; note(c, out, 'fled', b, b.at, `${cap(b.name)} have fled ${from} before the army there, and made their place ${b.kind === 'highwaymen' ? 'on the road' : 'at'} ${c.territories[b.at].name}.`, [...owners, ...reachOf(c, b).map((id) => c.territories[id].owner)]); }
       delete b.bound; // whatever they were making for
+      if (b.afar) { delete b.afar; marched(c, b.id, 'arrived'); } // their march in ends where the army turned them
       continue; // cornered, they stay and are fought
     }
     // On their way somewhere: one land nearer each season, while there is still a way.
     if (b.bound !== undefined) {
-      const way = waysFrom(c, b).find((w) => w.to === b.bound);
+      const way = waysFrom(c, b, MARCH.long).find((w) => w.to === b.bound);
       if (way) { const from = b.at; move(c, b, [way.next]); marchOn(c, b, from, out); moved++; continue; }
       delete b.bound;
+      if (b.afar) { delete b.afar; marched(c, b.id, 'arrived'); } // the way is shut: they stop where they are
     }
     const now = softest(c, b);
     if (!now) {
