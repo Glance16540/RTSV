@@ -224,11 +224,14 @@ lasts all campaign and bands keep arising there to march in from afar.
 **A town's own life moves its faith** (the owner's word, 17 November 2026). Hunger, raids and plague
 draw a town toward decadence; a long peace with full stores draws it toward piety; so one town of a
 nation can stand apart from the rest by what it has lived through.
+A town founded by settlers begins partly apart from its nation's faith: those who leave are not quite
+like those who stay.
 
 **Towns big enough to raise armies** (the owner's word, 17 November 2026). So that a soldier truly
 costs a person, towns begin and grow large enough to fill the companies a people fields: a company is
 raised only from the men of its people's towns, never hired from nowhere, and armies stay the size they
-are.
+are. Towns are about four times as large as they were (a new capital some two dozen men, a grown
+town a hundred), and a company costs one man of the town and his following.
 
 ## The order of building
 

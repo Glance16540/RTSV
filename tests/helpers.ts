@@ -39,3 +39,12 @@ export const bareCampaign = (...args: Parameters<typeof newCampaign>): ReturnTyp
   for (const t of c.territories) if (t.folk) delete t.folk.houses;
   return c;
 };
+
+import { MEN } from '../src/sim/armytown';
+/**
+ * Let a people send every man it can spare, as it did before it sent a quarter at the most (src/sim/armytown.ts,
+ * MEN.share; tests/levyshare.test.ts is about that). For a test file written about something else, which raises
+ * several companies out of one small town and counts two men gone for each. Call it once at the top of the file:
+ * each test file has its own copy of the rules.
+ */
+export const everyManSent = (): void => { MEN.share = 1; };

@@ -7,7 +7,9 @@ import { Game } from '../src/sim/game';
 import { beginVisit, finishVisit, visitArms, visitConfig } from '../src/sim/visit';
 import { awayFrom, musterOf } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
-import { run, bareCampaign } from './helpers';
+import { run, bareCampaign, everyManSent } from './helpers';
+
+everyManSent(); // these tests are about other rules: a company takes its two men while the town can spare them
 
 const world = (): { c: Campaign; home: number } => {
   const c = bareCampaign(3);
