@@ -331,3 +331,96 @@ No family moved of its own accord, as expected: with one town there is nowhere o
   the player's this season is told face to face first; the season's card waits for that window to close, then gives
   those raids one line ("The raid on your towns, as you were told when the season turned"), keeping a raid beaten off as
   it was (`foldTold`, src/client/seasoncard.ts). The card also waits for any other meeting face to face that is open.
+
+# Third pass, 17 November 2026 (main at d575557)
+
+The same play again on today's main: the Japanese and then the Franks for 20 seasons each, the driver now also dealing with
+a noble every third season through the new dialog (a gift each time) and answering a band coming with *Send the army*; a
+field battle and a town visit; the panels of empty and wild lands looked at in freshly dealt worlds; and two saves made by
+hand for what did not come by itself: a raid that gets into the capital (for the strike report and the card's folding), and
+an empty land two lands out (for settlers going further and the founding news). No errors reached the console in any of
+it; the heap stayed at 55–91 MB.
+
+## What is now right
+
+- **The strike report and the card** (`playtest3-strike.jpg`, `playtest3-card-fold.jpg`, from the hand-made save): the raid
+  is told first, face to face, with the band, what was taken and who was carried off by name; after *So be it* the
+  season's card gives it one line and keeps the raid beaten off as it was.
+- **A band coming, by itself** (`playtest3-band-coming.jpg`): in season 20 of the Japanese campaign, after "Your people at
+  Stonereach have seen the Ash Riders on the march", the window opened on its own: "The Ash Riders have Stonereach for
+  their mark", the army's and the band's strength in the same words ("9 (very strong)", "1 (weak)").
+- **Nobles to deal with, by themselves**: both capitals had their lord from the first seasons (the Japanese lord began at
+  mood −18 and four gifts brought him to 91), and a captain came later in each (seasons 18 and 15).
+- **The noble's dialog** (`playtest3-deal.jpg`, `playtest3-strip.jpg`): one *Deal with …* button; the dialog gives each
+  dealing its price and what it does in words, says why one cannot be done, and asks again before stripping a noble.
+  A gift now says what it did ("his mood rises by 20, and he will think the better of you for two years").
+- **Wilderness and empty land** (`playtest3-wilderness.jpg`): a wild land names itself and says it cannot be settled or
+  taken, and an army can no longer be sent at it; an empty land says settlers may found a town there.
+- **Settlers going further, and told** (`playtest3-settlers-far.jpg`, `playtest3-founded-card.jpg`): the capital offers
+  empty lands with how far ("a season away", "2 seasons away"); settlers sent two lands out arrived in two seasons, and the
+  log and the season's card both said "Settlers from Sunfields have founded Amberfield".
+- **The field battle's bar and end card** (`playtest3-field-bar.jpg`, `playtest3-end-card.jpg`): "Yours 7 · Theirs 4";
+  the tribe's fallen have names of their own ("Zeb, Erl, Nar, Wulk").
+- **Face to face, again by itself**: a rival's envoy in season 12 (Japanese) and season 8 (Franks).
+
+## What's broken
+
+### 3.1 An empty land promises settlers it is too far for (medium)
+
+![An empty land out of reach](shots/playtest3-out-of-reach.jpg)
+
+Hollowmere, four lands from the capital through tribes' lands, says "Settlers sent from a town of yours may found a town
+here (the convoy part of a town's panel)". The capital does not offer it (settleBar: "too far: settlers cross at most 2
+lands with nobody on them"). In one freshly dealt world the same happened beside the start: Eastmarch, near the Franks'
+capital, said the same while the capital had no convoy part at all. The panel should say whether a town of yours can reach
+it, and if not, why.
+
+### 3.2 The season's card tells a founding twice, with the wrong signs (low)
+
+![The card after a founding](shots/playtest3-founded-card.jpg)
+
+"🏴 Amberfield is yours." (the flag of a land won) and then "👶 Settlers from Sunfields have founded Amberfield." (the sign
+for a birth). One line, with the settlers' 🏡, would do.
+
+### 3.3 Small words in the noble's dialog (low)
+
+The dialog opens "Mood 0. Not now: wed into your house (Your house has no grown son or daughter to wed them.)", and its last
+button is also *Not now*; the opening line reads as if it were one of the answers. Stripping asks "Strip Lord Osric of
+Sunfields of **their** lands?" where everything else says *he*, and its first line ("The nobles' fear and anger; 150 gold
+seized.") is said again in the next.
+
+### 3.4 "Lady Aldegund of the Marches's head" (low)
+
+A rival king's threat: "he will have Lady Aldegund of the Marches's head" (`src/sim/courtstory.ts:113`); and "a man with a
+knife was taken at Lady Aldegund of the Marches's door". A title with "of" takes its 's badly; "the head of Lady Aldegund
+of the Marches" reads right.
+
+### 3.5 The settlers' destination box is cut off (low)
+
+The list's box is narrower than its words: "Whitepeak (empty land: Settlers only, a seas…" (`playtest3-settlers-far.jpg`).
+
+### 3.6 Wilderness has an income (low)
+
+A wild land's panel says "Income 1" under "Wilderness … It cannot be settled or taken" (`playtest3-wilderness.jpg`).
+
+## What's never seen
+
+### 3.7 Settlers, in play (high)
+
+Still never offered in 40 seasons: neither capital ever had an empty, settleable land in reach. In about ten worlds dealt
+fresh for the Franks and looked over at the start, none offered settlers from the capital: six had no empty land beside
+it, and the two that had empty lands further off (Eastmarch in one; Amberfield and Silverrun in another) had no convoy part
+in the capital's panel. It all works from a save (above). A player meets it only if a tribe dies out near them.
+
+### 3.8 The strike report, in play (medium)
+
+Bands came against the capitals and were beaten back every time in 40 seasons; none got in, so the strike report never
+opened by itself. (Before the fixes, 39 computer-run campaigns of 60 seasons had none either.) It is seen from the
+hand-made save only.
+
+### 3.9 The Franks never reached the Bronze Age (medium, for tuning)
+
+The Franks' supplies stayed between 4 and 16 from season 5 to season 20, so the 20 for the Bronze Age never came, and
+with it none of the later town buildings or studies. The driver spent 2 on a gift every third season, 2 on a company every
+fourth, and gave decrees. The Japanese reached it in season 14; in the second pass the Franks did in season 6 and the
+Japanese in season 10. A player who answers the nobles and keeps an army may now wait a long time for the next age.
