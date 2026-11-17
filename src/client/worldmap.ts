@@ -6,7 +6,7 @@
 // figures under a standard that march from land to land, and the map moves: the sea runs, cloud drifts and throws
 // shadow, weather fronts pass with rain, snow or dust, birds wheel, ships go by, and smoke rises from the towns.
 
-import { RIM_PAINT, bandCamp, paintRim, rimTint, wasteOf } from './rimdraw';
+import { RIM_PAINT, bandCamp, paintRim, rimTint, seenByPlayer, wasteOf } from './rimdraw';
 import { bandsAt } from '../sim/threats';
 import { lowDetail, reportMapTime } from './detail';
 import * as THREE from 'three';
@@ -1153,8 +1153,8 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       const pips = this.sprite((x, w, h) => { for (let d = 0; d < n0; d++) { x.fillStyle = d < t.buildings.length ? '#fff0c8' : 'rgba(255,240,200,0.28)'; x.fillRect(w / 2 - n0 * 13 + d * 26 + 2, h / 2 - 5, 20, 9); } }, 160, 24, 0.62);
       pips.position.set(X, y + (big ? 5.3 : 3.5), Z - 3.2);
       if (!t.rim) this.pieces.add(pips);
-      // A band camped in the rim, as the towns below are told of it: its tents and its fires (rimdraw.ts).
-      if (t.rim) bandsAt(c, t.id).forEach((b, k) => {
+      // A band camped in the rim, as the towns below are told of it: its tents and its fires, if the player's towns see them (rimdraw.ts).
+      if (t.rim) bandsAt(c, t.id).filter((b) => seenByPlayer(c, b)).forEach((b, k) => { // only where the player's towns can see its fires
         const camp = bandCamp(b, wasteOf(c, t)), dx = (k - 0.5) * 6;
         camp.group.position.set(X + dx, Math.max(0.2, this.heightAt(t.x + dx / K, t.y)), Z + 1.5);
         camp.group.scale.setScalar(1.25);
