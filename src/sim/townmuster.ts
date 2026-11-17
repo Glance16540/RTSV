@@ -12,7 +12,7 @@ import type { Army, Campaign, Territory } from './campaign';
 import { hireOff } from './places';
 import { COMPANIES, MAX_ARMY, armyAt, armySize, companyCost } from './campaignbase';
 import { BUILDINGS } from './data';
-import { MEN, MEN_A_COMPANY, menMustered } from './armytown';
+import { MEN, menMustered } from './armytown';
 import { GOVERN, wantsOf } from './governor';
 import { SUPPLY_UNITS } from './stores';
 import { STORE_KINDS, Stores, folkOf } from './township';
@@ -55,7 +55,7 @@ export function drillOf(c: Campaign, tid: number): { kind?: string; why?: 'none'
   if ((a && a.owner !== t.owner) || c.pending?.to === tid) return { why: 'army' };
   if (a && armySize(a) >= Math.min(DRILL.most, MAX_ARMY)) return { why: 'full' };
   if (wantsOf(c, tid).food) return { why: 'food' };
-  if (menToSpare(c, tid) < MEN_A_COMPANY) return { why: 'men' };
+  if (menToSpare(c, tid) < MEN.company) return { why: 'men' };
   const have = units(folkOf(c, tid).stores);
   const kind = yards.find((k) => have - goodsFor(c, tid, k) >= GOVERN.floor);
   return kind ? { kind } : { why: 'stores' };

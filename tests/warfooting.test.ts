@@ -1,14 +1,15 @@
 // War and peace as a nation's armies know it (src/sim/rivalrule.ts, src/sim/armytown.ts): tuned toward
 // docs/TUNING.md's "men under arms: 10 to 25% in war, under 10% in peace".
-import { bareCampaign, everyManSent } from './helpers';
+import { bareCampaign, smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { setTribe } from '../src/sim/tribes';
 import { Campaign, raise } from '../src/sim/campaign';
 import { RIVAL, lastMenHome, massArmies, mayMuster, maySpare, standDown, underArms, warFooting } from '../src/sim/rivalrule';
-import { MEN_A_COMPANY, awayFrom, musterOf, sendCompaniesHome } from '../src/sim/armytown';
+import { awayFrom, musterOf, sendCompaniesHome } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
 
-everyManSent(); // these tests are about other rules: a company takes its two men while the town can spare them
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
+const MEN_A_COMPANY = 2;
 
 const LONG = 60_000;
 /** A rival with one town of forty men and a Barracks, and no army anywhere. */

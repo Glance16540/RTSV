@@ -1,6 +1,6 @@
 // Rivals live by the same rules (docs/DESIGN.md): an audit, by playing campaigns with the computer and looking at a
 // rival's towns for every system a player's town goes through. What a rival is still spared is listed on the board.
-import { bareCampaign } from './helpers';
+import { bareCampaign, smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { EAT, eatTown } from '../src/sim/larder';
 import { Campaign, answerDemand, continueAI, endTurn, raise, resolvePending } from '../src/sim/campaign';
@@ -8,7 +8,9 @@ import { MEN, awayFrom, musterOf } from '../src/sim/armytown';
 import { faithAt, nationVirtue } from '../src/sim/townfaith';
 import { governTown } from '../src/sim/governor';
 import { nationWorth } from '../src/sim/stores';
-import { folkOf, headcount } from '../src/sim/township';
+import { folkOf, headcount, TOWN_SCALE } from '../src/sim/township';
+
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
 
 const turn = (c: Campaign) => {
   endTurn(c);
@@ -64,7 +66,7 @@ describe('rivals live by the same rules', () => {
     const f = folkOf(c, cap.id);
     delete f.drift;
     f.stores.food = 5000;
-    expect(eatTown(c, cap.id).need).toBe((f.men + f.women) * EAT.grown + f.elders * EAT.old + f.children * EAT.child);
+    expect(eatTown(c, cap.id).need).toBe(Math.round(((f.men + f.women) * EAT.grown + f.elders * EAT.old + f.children * EAT.child) / TOWN_SCALE)); // a person of a larger town eats that much less (larder.ts)
     expect(headcount(f)).toBe(f.men + f.women + f.elders + f.children);
   }, 60_000);
 });

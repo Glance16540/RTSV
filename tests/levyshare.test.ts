@@ -1,10 +1,14 @@
 // A people sends a quarter of its men to its armies and no more; past that a company is hired men (src/sim/armytown.ts, MEN.share).
 import { describe, expect, it } from 'vitest';
 import { armyAt, raise } from '../src/sim/campaign';
-import { MEN, MEN_A_COMPANY, menLeftToSend, menMustered, menOf, menOfNation } from '../src/sim/armytown';
+import { MEN, menLeftToSend, menMustered, menOf, menOfNation } from '../src/sim/armytown';
 import { agesOf } from '../src/sim/ageing';
 import { folkOf } from '../src/sim/township';
-import { bareCampaign } from './helpers';
+import { bareCampaign, smallTownRules } from './helpers';
+
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
+MEN.share = 0.25; // the quarter itself, which towns of the old size are held to
+const MEN_A_COMPANY = 2;
 
 /** The player with one town of `men` men and a Barracks, no army, and goods to raise with. */
 const nation = (men: number) => {

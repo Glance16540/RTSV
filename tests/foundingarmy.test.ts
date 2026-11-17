@@ -1,13 +1,17 @@
 // The army a people begins with is its chief town's own men, each of a house there; and what a company needs in
 // men to be raised (src/sim/armytown.ts foundingMuster, menToRaise; src/sim/rivalaim.ts skyInto).
+import { smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { armyAt, canRaise, newCampaign } from '../src/sim/campaign';
-import { FOUNDING, MEN, MEN_A_COMPANY, foundArmies, foundingMuster, menOf, menToRaise, musterOf, noMenText, reckonArmies, sendMenHome } from '../src/sim/armytown';
+import { FOUNDING, MEN, foundArmies, foundingMuster, menOf, menToRaise, musterOf, noMenText, reckonArmies, sendMenHome } from '../src/sim/armytown';
 import { GROWN_SEASON, GROWN_YEARS } from '../src/sim/ageing';
 import { foundFolk, folkOf } from '../src/sim/township';
 import { awayMen, fallenSince } from '../src/sim/warhouse';
 import { skyInto } from '../src/sim/rivalaim';
 import { WEATHER } from '../src/sim/campaignbase';
+
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
+const MEN_A_COMPANY = 2;
 
 const year = GROWN_SEASON / GROWN_YEARS;
 

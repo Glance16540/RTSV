@@ -67,7 +67,7 @@ import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
 export { shiftVirtue } from './townfaith'; // where it was found before it was moved
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
-import { ARMY_REST, MEN, MEN_A_COMPANY, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
+import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
@@ -1005,9 +1005,9 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settling', 'mapbattle', (c, p, b) => { if (b.fought) { b.fallenBefore = fallenBefore(c, p); b.led = whoLed(c, p, p.defender >= 0 && leaderAt(c, p.defender, p.to)); } }) // who leads, and who had fallen before it
   // counted: the armies are known and the town's toll is taken.
   .on('counted', 'warhouse', (c, _p, b) => { // what the victor felled is counted to the houses of its men: the companies it broke, and the town's dead
-    const felled = b.fought ? felledOf(b.fought, MEN_A_COMPANY) : undefined; // fought out, the beaten are not lost to the last man (mapbattle.ts)
-    if (b.attackerWon && b.army) creditArmy(c, b.army.id, (felled ? felled.byAttacker : b.defArmy ? armySize(b.defArmy) * MEN_A_COMPANY : 0) + (b.toll ?? 0));
-    else if (!b.attackerWon && b.defArmy && b.army) creditArmy(c, b.defArmy.id, felled ? felled.byDefender : armySize(b.army) * MEN_A_COMPANY);
+    const felled = b.fought ? felledOf(b.fought, MEN.company) : undefined; // fought out, the beaten are not lost to the last man (mapbattle.ts)
+    if (b.attackerWon && b.army) creditArmy(c, b.army.id, (felled ? felled.byAttacker : b.defArmy ? armySize(b.defArmy) * MEN.company : 0) + (b.toll ?? 0));
+    else if (!b.attackerWon && b.defArmy && b.army) creditArmy(c, b.defArmy.id, felled ? felled.byDefender : armySize(b.army) * MEN.company);
   })
   // taken: the attacker has won and the town is about to change hands.
   .on('taken', 'conquered', (c, p) => townTaken(c, p.to, p.defender, p.attacker)) // its people stay, and resent it
@@ -1020,7 +1020,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settled', 'armytown', (c, _p, b) => { if (b.how === 'auto') reckonArmies(c); }) // the dead are their towns' dead; a battle fought in person counts its own
   .on('settled', 'townfaith', (c) => settleFaith(c))
   .on('settled', 'mapbattle', (c, p, b) => { if (b.fought) tellBattle(c, p, b.fought, b.led ?? {}, b.fallenBefore); }) // told once the dead are counted: who led, what broke, who fell by name
-  .on('settled', 'veteranhome', (c, _p, b) => { if (b.fought) { const k = felledOf(b.fought, MEN_A_COMPANY); battleNamed(c, b.attackerWon ? b.army?.id : b.defArmy?.id, b.attackerWon ? k.byAttacker : k.byDefender); } }) // the winners name a man who stood (veteranhome.ts)
+  .on('settled', 'veteranhome', (c, _p, b) => { if (b.fought) { const k = felledOf(b.fought, MEN.company); battleNamed(c, b.attackerWon ? b.army?.id : b.defArmy?.id, b.attackerWon ? k.byAttacker : k.byDefender); } }) // the winners name a man who stood (veteranhome.ts)
   // setup: a battle is about to be laid out for play.
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
   // written: a battle fought in person has been settled and its field is being read back.
