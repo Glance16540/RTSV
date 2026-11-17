@@ -10,7 +10,8 @@
 import type { Army, Campaign } from './campaign';
 import { agesOf, countFrom, GROWN_SEASON, GROWN_YEARS, OLD_SEASON, LAST_SEASON } from './ageing';
 import { awayFrom, cameHome, enlist, fell, levelArmies, settleHouses } from './warhouse';
-import { folkOf, rememberVeteran } from './township';
+import { folkOf } from './township';
+import { rememberOf } from './veteranhome';
 import { tally } from './ledger';
 
 /**
@@ -281,6 +282,8 @@ export function sendHome(c: Campaign, armyId: number): number {
   reckonArmies(c);
   const a = c.armies.find((x) => x.id === armyId)!, m = musterOf(c, armyId), home = homeOf(c, a);
   let n = 0;
+  // Its named soldier lives on in his own town, of his own house (veteranhome.ts): found on the roll before its men go home.
+  if (a.champion) rememberOf(c, a.owner, armyId, a.champion, home !== undefined && c.territories[home]?.owner === a.owner ? home : a.at);
   for (const [key, l] of Object.entries(m?.men ?? {})) {
     const tid = c.territories[Number(key)]?.owner === a.owner ? Number(key) : a.at;
     const f = folkOf(c, tid), ages = agesOf(c, tid, f);
@@ -288,7 +291,6 @@ export function sendHome(c: Campaign, armyId: number): number {
     cameHome(c, Number(key), l.length, armyId); // under their own roofs again (warhouse.ts)
     n += l.length;
   }
-  if (a.champion) rememberVeteran(c, home !== undefined && c.territories[home]?.owner === a.owner ? home : a.at, a.champion);
   delete rolls(c)[armyId];
   (c.homecoming ??= []).push(armyId); // sent home, not lost (rivalrule.ts keeps its named soldier living)
   c.armies.splice(c.armies.indexOf(a), 1);

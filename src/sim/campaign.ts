@@ -72,7 +72,7 @@ import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
-import { veteranHome } from './veteranhome';
+import { battleNamed, veteranHome } from './veteranhome';
 
 
 /** How far a people's churches and taverns will move it next turn. */
@@ -1020,6 +1020,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settled', 'armytown', (c, _p, b) => { if (b.how === 'auto') reckonArmies(c); }) // the dead are their towns' dead; a battle fought in person counts its own
   .on('settled', 'townfaith', (c) => settleFaith(c))
   .on('settled', 'mapbattle', (c, p, b) => { if (b.fought) tellBattle(c, p, b.fought, b.led ?? {}, b.fallenBefore); }) // told once the dead are counted: who led, what broke, who fell by name
+  .on('settled', 'veteranhome', (c, _p, b) => { if (b.fought) { const k = felledOf(b.fought, MEN_A_COMPANY); battleNamed(c, b.attackerWon ? b.army?.id : b.defArmy?.id, b.attackerWon ? k.byAttacker : k.byDefender); } }) // the winners name a man who stood (veteranhome.ts)
   // setup: a battle is about to be laid out for play.
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
   // written: a battle fought in person has been settled and its field is being read back.
