@@ -23,6 +23,7 @@ import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menMustered, menOf, sendC
 import { SUPPLY_UNITS } from './stores';
 import { revoltChance } from './conquered';
 import { bandsAt } from './threats';
+import { nobodyThere } from './founding'; // a land with nobody on it is settled, not marched on
 
 export const RIVAL = {
   /** Seasons an army must have stood in the same land of its own, with no foreign land beside it, before it is sent home. */
@@ -239,7 +240,7 @@ export function massArmies(c: Campaign, f: number): number {
   if (warFooting(c, f) === 'peace') return 0;
   const mine = c.armies.filter((a) => a.owner === f && c.territories[a.at].owner === f);
   if (mine.length < 2) return 0;
-  const can = (a: Army): boolean => reach(c, a.at).some((id) => c.territories[id].owner !== f && !atTruce(c, f, c.territories[id].owner) && armyStrength(a, c) >= HUB.defence(c, id, a.units, c.factions[f].civ));
+  const can = (a: Army): boolean => reach(c, a.at).some((id) => c.territories[id].owner !== f && !atTruce(c, f, c.territories[id].owner) && !nobodyThere(c, id) && armyStrength(a, c) >= HUB.defence(c, id, a.units, c.factions[f].civ));
   if (mine.some(can)) return 0;
   const strong = [...mine].sort((p, q) => armyStrength(q, c) - armyStrength(p, c) || p.id - q.id)[0];
   let marched = 0;

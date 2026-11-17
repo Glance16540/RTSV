@@ -14,12 +14,19 @@
 import type { Campaign } from './campaign';
 import { headcount } from './township';
 
-/** Is this land empty: unheld, not the marauders', no band's place, nobody living there, no warriors? */
-export function emptyLand(c: Campaign, tid: number): boolean {
+/**
+ * Is there nobody on this land to rule: unheld, not the marauders', nobody living there, no warriors? Such a land is
+ * settled, not conquered: no army takes it (campaign.ts moveArmy), though a band on it is fought as a band.
+ */
+export function nobodyThere(c: Campaign, tid: number): boolean {
   const t = c.territories[tid];
   if (!t || t.owner >= 0 || t.horde || (t.militia ?? 0) > 0) return false;
-  if ((c.bands ?? []).some((b) => b.at === tid || b.to === tid)) return false;
   return !!t.folk && headcount(t.folk) === 0;
+}
+
+/** Is this land empty, for settlers: nobody there to rule, and no band has its place on it or its road through it? */
+export function emptyLand(c: Campaign, tid: number): boolean {
+  return nobodyThere(c, tid) && !(c.bands ?? []).some((b) => b.at === tid || b.to === tid);
 }
 
 /** Settlers of a people come in to an empty land: it is theirs, with nobody in it yet but them. Returns whether it was. */

@@ -250,8 +250,13 @@ export function atTruce(c: Campaign, a: number, b: number): boolean {
   return other > 0 && (other === c.ally || c.truces.some((t) => t.with === other && t.until >= c.turn));
 }
 
-/** How many territories a faction must hold to rule by dominion. */
-export const dominionNeed = (c: Campaign): number => Math.ceil(c.territories.length * DOMINION_SHARE);
+/**
+ * How many territories a faction must hold to rule by dominion: a share of those with somebody on them to rule. A land
+ * nobody holds and nobody lives on (a wild land not yet settled, wilds.ts) is settled, not conquered, and is not counted.
+ */
+export const dominionNeed = (c: Campaign): number => Math.ceil(c.territories.filter((t) => !unpeopled(t)).length * DOMINION_SHARE);
+/** Nobody holds this land and nobody lives on it (founding.ts nobodyThere, read here without its imports). */
+const unpeopled = (t: Territory): boolean => t.owner < 0 && !t.horde && (t.militia ?? 0) <= 0 && !!t.folk && t.folk.men + t.folk.women + t.folk.elders + t.folk.children === 0;
 
 export const landOf = (c: Campaign, f: number): number => c.territories.filter((t) => t.owner === f).length;
 

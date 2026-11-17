@@ -128,7 +128,8 @@ export function migrateOf(c: Campaign, f: number): Move[] {
 const WHY: Record<Push, string> = { crowded: 'there was no room', hungry: 'it was hungry', sick: 'plague was there', raided: 'it had been raided', grieving: 'it was grieving' };
 /** One season of families moving in every nation. The player is told in a line. Returns the moves. */
 export function migrationSeason(c: Campaign): Move[] {
-  const all = c.factions.flatMap((x) => [...migrateOf(c, x.id), ...foundOf(c, x.id)]);
+  // Settlers first: a crowded town that can found a town of its own on empty land does so before a family drifts off.
+  const all = c.factions.flatMap((x) => [...foundOf(c, x.id), ...migrateOf(c, x.id)]);
   const mine = all.filter((m) => m.owner === 0 && !m.found);
   if (mine.length) c.log.push(`${mine.length === 1 ? 'A family has' : `${mine.length} families have`} set out by road: ${mine.map((m) => `${m.name ? `${m.name} and ${m.female ? 'her' : 'his'} household ` : ''}from ${c.territories[m.from].name} to ${c.territories[m.to].name}, since ${WHY[m.why]}`).join('; ')}.`);
   return all;

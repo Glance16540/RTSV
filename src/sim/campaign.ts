@@ -20,6 +20,7 @@ import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from '.
 import { convoysTurn, relieve } from './convoys';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import { nobodyThere } from './founding';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
 import { orphansSeason } from './orphans';
@@ -840,6 +841,7 @@ const fname = (c: Campaign, f: number, start = false) =>
 export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'battle' | 'invalid' {
   const a = c.armies.find((x) => x.id === armyId);
   if (!a || a.moved || c.pending || c.demand || !reach(c, a.at).includes(to)) return 'invalid';
+  if (nobodyThere(c, to)) return 'invalid'; // nobody there to conquer: such a land is settled, not taken (founding.ts)
   const sea = !c.territories[a.at].adj.includes(to);
   const t = c.territories[to];
   const civ = c.factions[a.owner].civ;
@@ -1346,7 +1348,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
   const here = c.territories[army.at];
   // Never march on someone we have a truce with.
   // The most wanted first: what it can take, weighed by the country it marches into and the town's faith (rivalaim.ts).
-  const targets = aimOrder(c, f.id, reach(c, here.id).filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner)), (id) => defence(c, id, army.units, civ));
+  const targets = aimOrder(c, f.id, reach(c, here.id).filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner) && !nobodyThere(c, id)), (id) => defence(c, id, army.units, civ));
   // A leader who has just been refused goes for the player before anyone else.
   // An ally goes first for whoever is at the player's borders.
   if (c.ally === f.id) {
