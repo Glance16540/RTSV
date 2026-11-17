@@ -56,6 +56,7 @@ import { ofTown } from '../src/sim/intriguebase';
 import { creedOf } from '../src/sim/creed';
 import { faithAt } from '../src/sim/townfaith';
 import { goldOf } from '../src/sim/grain';
+import { isAngry, noblesOf } from '../src/sim/nobles';
 
 const CAMPAIGNS = +(process.env.CAMPAIGNS ?? 24);
 const SEASONS = +(process.env.SEASONS ?? 200);
@@ -166,6 +167,8 @@ interface Watch {
   peaceSeasons: number; // the nation-seasons they were read from
   faithGaps: number[]; // widest gap between two towns of one nation, each nation-season
   holyMoves: number[]; // a nation with churches, fed: its standing over 20 years
+  lords20: { player: number; playerAngry: number; rivals: number; rivalsAngry: number }; // at 20 years: lords, and the angry among them (nobles.ts)
+  lordActs: { help: number; withhold: number; joined: number }; // the player's nobles acting in twenty years, from the log (nobleacts.ts)
   gold20: number[]; // at 20 years, the player's gold in all its towns, if the player is alive
   grain: { buys: number; food: number; gold: number }; // the player's grain bought abroad by decree in twenty years (grain.ts), from the log
   halls: { rivals: number; with: number }; // at 20 years: rival nations alive, and those with a Hall of Judgement standing (townworks.ts)
@@ -217,7 +220,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, rivals: 0, rivalsAngry: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftLost: [] };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -358,6 +361,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     // Hunger's dead, from the log.
     for (const line of c.log.slice(logAt)) {
       const g = /^Grain bought abroad for .+?: (\d+) food for (\d+) gold\./.exec(line);
+      if (s <= YEARS20) { if (/young men to|gold of (his|her) own for the war/.test(line)) w.lordActs.help++; if (/withholds (his|her) due/.test(line)) w.lordActs.withhold++; if (/have joined the plot/.test(line)) w.lordActs.joined++; }
       if (g && s <= YEARS20) { w.grain.buys++; w.grain.food += +g[1]; w.grain.gold += +g[2]; }
       const m = /^Hunger has killed (\d+) of (your people|the (.+?)) at (.+?), after/.exec(line);
       if (!m) continue;
@@ -435,6 +439,11 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       }
       // What stands by twenty years (report only: read off the towns' records, townworks.ts).
       if (c.factions[0]?.alive) w.gold20.push(goldOf(c, 0));
+      for (const fac of c.factions) {
+        if (!fac.alive) continue;
+        const lords = noblesOf(c, fac.id).filter((n) => n.rank === 'lord'), angry = lords.filter(isAngry).length;
+        if (fac.id === 0) { w.lords20.player += lords.length; w.lords20.playerAngry += angry; } else { w.lords20.rivals += lords.length; w.lords20.rivalsAngry += angry; }
+      }
       for (const f of c.factions) {
         if (f.id === 0 || !f.alive) continue;
         w.halls.rivals++;
@@ -675,6 +684,11 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     const gold = all('gold20'), buys = ruled.reduce((n, w) => n + w.grain.buys, 0), food = ruled.reduce((n, w) => n + w.grain.food, 0), paid = ruled.reduce((n, w) => n + w.grain.gold, 0);
     add('Food', 'The player\'s gold at 20 years, and grain bought abroad by decree', 'report only', `median ${Math.round(median(gold))} gold (${gold.length} players alive; middle half ${Math.round(quart(gold, 0.25))} to ${Math.round(quart(gold, 0.75))}); ${num(buys / Math.max(1, ruled.length), 1)} buys a campaign in twenty years, ${Math.round(food / Math.max(1, buys))} food for ${Math.round(paid / Math.max(1, buys))} gold each`, 'report',
       'Gold in all the player\'s towns at the end of the twentieth year. Grain bought abroad is the food decree (grain.ts), read from the player\'s log.');
+  }
+  {
+    const l = ruled.reduce((a, w) => ({ player: a.player + w.lords20.player, playerAngry: a.playerAngry + w.lords20.playerAngry, rivals: a.rivals + w.lords20.rivals, rivalsAngry: a.rivalsAngry + w.lords20.rivalsAngry }), { player: 0, playerAngry: 0, rivals: 0, rivalsAngry: 0 });
+    add('Rule', 'Lords angry at 20 years, the player\'s and the rivals\'', 'report only', `${pct(l.playerAngry / Math.max(1, l.player))} of the player's (${l.player} lords), ${pct(l.rivalsAngry / Math.max(1, l.rivals))} of the rivals' (${l.rivals}); in twenty years the player's lords helped ${ruled.reduce((n, w) => n + w.lordActs.help, 0)} times, withheld ${ruled.reduce((n, w) => n + w.lordActs.withhold, 0)} times, and joined a plot ${ruled.reduce((n, w) => n + w.lordActs.joined, 0)} times`, 'report',
+      'Lords of every living nation at the end of the twentieth year (nobles.ts), and those angry. The player played by the computer gives decrees but deals with no noble; a rival weighs its own (nobleweigh.ts).');
   }
   const rivalsAt20 = ruled.reduce((n, w) => n + w.halls.rivals, 0), halled = ruled.reduce((n, w) => n + w.halls.with, 0);
   add('Rule', 'Rival nations with a Hall of Judgement by 20 years', 'most (over half)', rivalsAt20 ? `${pct(halled / rivalsAt20)} (${halled} of ${rivalsAt20} rival nations alive at 20 years)` : 'no rival alive at 20 years', rivalsAt20 ? halled / rivalsAt20 > 0.5 : null,

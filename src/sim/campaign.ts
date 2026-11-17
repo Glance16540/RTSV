@@ -22,6 +22,8 @@ import { larderSeason } from './larder';
 import { orphansSeason } from './orphans';
 import { deputyAt, kinSeasons } from './kin';
 import { noblesSeasons } from './nobles';
+import { nobleActsSeasons } from './nobleacts';
+import { marchMargin, treatLean, weighSeasons } from './nobleweigh';
 import { widowsSeason } from './widowhood';
 import { studiedHome, studiesSeason, withStudies } from './studies';
 import { rulesSeason } from './rule';
@@ -899,7 +901,7 @@ export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || !canPayFor(c, 0, 'dealing', truceCost(c.factions[0].civ)) || c.phase !== 'player' || fac.refused === c.turn) return false;
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
-  const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0);
+  const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0) + treatLean(c, f); // and readier to treat (nobleweigh.ts)
   if (c.honor < 0 || rand(c) > willing) {
     fac.refused = c.turn;
     say(c, f, 'refuse');
@@ -1201,6 +1203,8 @@ export function continueAI(c: Campaign): void {
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       kinSeasons(c); // the leaders' households and inner circles (kin.ts)
       noblesSeasons(c); // who is noble, and how they feel (nobles.ts)
+      nobleActsSeasons(c); // a content lord helps in need, an angry one withholds or joins a plot (nobleacts.ts)
+      weighSeasons(c); // a computer-led ruler deals with its angriest lord (nobleweigh.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
@@ -1342,7 +1346,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
   const dares = (from: number, to: number): boolean => {
     const t = c.territories[to];
     if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
-    const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0);
+    const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id); // its angry lords make it wary (nobleweigh.ts)
     const bySea = !c.territories[from].adj.includes(to);
     return strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * ageEdge(c, f.id) >= defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin;
   };
