@@ -738,11 +738,18 @@ never will be on any.
 "Your answer is given at the hall: defy him: elin stays." and "give maren to alder": the choice's label is lowered whole,
 names with it.
 
+*Fixed after the pass:* only the answer's first letter is lowered (courtfield.ts): "give Maren to Alder", "defy him:
+Elin stays".
+
 ### 5.6 The guest's line runs under the hall's list of children (low)
 
 With the hall selected, "Alder of the house of Strategos Kallias of the Greeks waits in your hall. He asks for your daughter
 Maren, and waits for your answer." is cut off mid-word where the column of the hall's children begins
 (`playtest5-suitor-hall.jpg`).
+
+*Fixed after the pass:* where a record stands at the right of the panel (a roof's children, a person's story), every
+other line keeps to the left of it and wraps there (style.css); the panel scrolls for what is below
+(`fixed5-guest-line.jpg`).
 
 ![The robbed barracks, marked](shots/playtest5-thief-key.jpg)
 ![The thief taken by the guard](shots/playtest5-thief-taken.jpg)

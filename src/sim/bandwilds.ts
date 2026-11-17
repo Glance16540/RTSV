@@ -20,8 +20,8 @@
 // arrived, whether an army met it before it struck anyone. The health report reads it.
 import type { Campaign } from './campaign';
 import type { Band, BandKind } from './threats';
-import { chance } from './threats';
-import { MARCH, WILDS, farWilds } from './bandmarch';
+import { chance, note, softest, reachOf } from './threats';
+import { MARCH, WILDS, farWilds, marched, townsThatSee, warnBound } from './bandmarch';
 import { wayTo } from './bandroam';
 
 /** The way in a camp born at this land would take: its mark's place, how far, and how soft; null if there is none. */
@@ -47,6 +47,22 @@ export function setOutFromAfar(c: Campaign, b: Band): boolean {
   const way = wayIn(c, b.at, b.kind);
   if (!way) return false;
   b.bound = way.bound; b.afar = true; b.moved = c.turn;
+  if (c.territories[b.at].rim) b.gathers = c.turn + WILDS.gather; // in the rim it gathers a season first, and is seen (`seenGathering`)
   (c.marches ??= []).push({ band: b.id, born: c.turn, from: b.at, bound: way.bound, lands: way.steps });
   return true;
+}
+
+/**
+ * A camp gathering in the rim of wilderness is seen by the towns within two lands of it: their peoples are told where
+ * it is and where it is bound, and a people whose town is its mark warns that town. Returns how many peoples saw it.
+ */
+export function seenGathering(c: Campaign, b: Band, out: string[]): number {
+  if (b.gathers === undefined || !c.territories[b.at]?.rim) return 0;
+  const mark = softest(c, b, reachOf(c, { ...b, at: b.bound ?? b.at }))?.id, see = townsThatSee(c, [b.at]);
+  for (const t of see) {
+    const theirs = warnBound(c, t.owner, mark);
+    note(c, out, 'seen', b, b.at, `${t.owner === 0 ? 'Your people' : 'The people'} at ${c.territories[t.at].name} have seen fires in ${c.territories[b.at].name}: ${b.name} are gathering there${b.bound !== undefined ? `, and will make for ${c.territories[b.bound].name}` : ''}${theirs && mark !== undefined ? `. Word is sent to ${c.territories[mark].name}` : ''}.`, [t.owner]);
+    marched(c, b.id, 'seen');
+  }
+  return see.length;
 }
