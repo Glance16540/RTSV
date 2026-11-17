@@ -57,6 +57,8 @@ describe('the Monastery or Convent', () => {
     swayTown(c, r.id, -faithAt(c, r.id));
     expect(monasterySeason(c, 1)).toBe(false); // it does not keep the faith
     holy(c, r.id);
+    expect(monasterySeason(c, 1)).toBe(false); // holy, but nobody there sick or grieving
+    folkOf(c, r.id).drift = { strain: 0.2, care: 0, moved: 0, hungry: false, raided: false, sick: true };
     expect(monasterySeason(c, 1)).toBe(true);
     expect(monasterySeason(c, 1)).toBe(false);
   });

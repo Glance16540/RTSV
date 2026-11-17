@@ -59,7 +59,8 @@ export const ALMS_KEEP = 2;
 
 // Food for a hungry town is food, not supplies (stores.ts): the towns of the nation beside it send what they have
 // beyond ALMS_KEEP seasons of their own eating. Nothing is bought with the nation's gold, wood or stone, which are
-// its war chest.
+// its war chest. (Tried at 192 campaigns: any town of the nation, keeping four seasons, left farmed towns hungrier,
+// 2.0% and 2.2% against 1.8% and 1.6%, and decrees weaker, 8.8% and 6.4% against 10.4% and 9.3%.)
 const givers = (c: Campaign, f: number, tid: number): number[] => (c.territories[tid]?.adj ?? []).filter((n) => c.territories[n].owner === f && !c.territories[n].horde);
 const spareFood = (c: Campaign, tid: number): number => Math.max(0, Math.floor(folkOf(c, tid).stores.food - ALMS_KEEP * needOf(c, tid)));
 /** How much food a decree of alms could find for a town now. */
@@ -86,6 +87,9 @@ export const TEND_EASE = 0.5;
 export const TEND_PLAGUE = 0.25;
 /** The share of plague's toll the church's tending spares in a town this season (acts.ts). */
 export const tendedPlague = (c: Campaign, tid: number): number => TEND_PLAGUE * decreesAt(c, tid).filter((d) => d.kind === 'tend').reduce((m, d) => Math.max(m, d.strength), 0);
+
+/** A town whose sick and bereaved are tended already, by a Monastery or an Infirmary standing there: a decree to tend them adds nothing. */
+export const tendedAlready = (c: Campaign, tid: number): boolean => !!c.territories[tid]?.town?.b?.some((x) => (x[0] === 'monastery' || x[0] === 'infirmary') && x[4] === undefined);
 
 /** The decrees in force in a town. */
 export const decreesAt = (c: Campaign, tid: number): Decree[] => (c.territories[tid]?.decrees ?? []).filter((d) => d.until >= c.turn);
@@ -156,7 +160,7 @@ export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) 
     const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= (DECREES[k].cost ? keep : 0) && issueDecree(c, f, t.id, k) === '';
     if (s.hungry && fed < ALMS_A_SEASON && tryGive('alms')) { given++; fed++; continue; }
     if (s.raided && tryGive('guards')) { given++; continue; }
-    if ((s.sick || s.grieving) && tryGive('tend')) { given++; continue; }
+    if ((s.sick || s.grieving) && !tendedAlready(c, t.id) && tryGive('tend')) { given++; continue; } // not where a Monastery or Infirmary tends already
     if (s.moved < 0 && tryGive('church')) { given++; continue; }
     if (s.moved < 0 && s.standing > -70 && tryGive('closeTavern')) given++;
   }

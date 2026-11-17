@@ -109,7 +109,7 @@ describe('a sensible ruler', () => {
     c.territories[tid].decrees = [];
     // With only the supplies it keeps in hand, it gives nothing that costs supplies; food, paid in goods, still goes.
     expect(sensibleDecrees(c, 0, () => ({ hungry: false, raided: true, moved: -5, standing: 0 }))).toBe(0);
-    expect(sensibleDecrees(c, 0, () => ({ hungry: true, raided: true, moved: -5, standing: 0 }))).toBe(1);
+    expect(sensibleDecrees(c, 0, (id) => ({ hungry: id === tid, raided: true, moved: -5, standing: 0 }))).toBe(1);
     expect(decreesAt(c, tid).map((d) => d.kind)).toEqual(['alms']);
     expect(c.factions[0].supplies).toBe(4);
   });
@@ -146,6 +146,19 @@ describe('a sensible ruler', () => {
     // The sensible ruler gives it where sickness or grief strain a town.
     t.decrees = [];
     expect(sensibleDecrees(c, 0, () => ({ hungry: false, raided: false, moved: 0, standing: 0, grieving: true }))).toBe(1);
+    expect(decreesAt(c, tid).map((d) => d.kind)).toEqual(['tend']);
+  });
+
+  it('gives no tending where a Monastery or an Infirmary tends already', () => {
+    const { c, tid } = world(), t = c.territories[tid];
+    t.buildings = [...t.buildings.filter((b) => b !== 'church'), 'church'];
+    folkOf(c, tid).stores.gold = 500;
+    t.town = t.town ?? { at: 0, b: [] };
+    t.town.b.push(['infirmary', 4, 4]);
+    const grieving = (id: number) => ({ hungry: false, raided: false, moved: 0, standing: 0, grieving: id === tid });
+    expect(sensibleDecrees(c, 0, grieving)).toBe(0);
+    t.town.b = t.town.b.filter((x) => x[0] !== 'infirmary');
+    expect(sensibleDecrees(c, 0, grieving)).toBe(1);
     expect(decreesAt(c, tid).map((d) => d.kind)).toEqual(['tend']);
   });
 
