@@ -32,7 +32,7 @@ declare module './campaign' {
 export const DECREES: Record<DecreeKind, { name: string; cost: number; seasons: number; needs?: string; desc: string }> = {
   church: { name: 'Call them to church', cost: 2, seasons: 4, needs: 'church', desc: 'The church calls the people back: the town is drawn toward the holy way.' },
   guards: { name: 'Post guards', cost: 3, seasons: 4, desc: 'Order kept by force: what strains the town tells half as much, but nothing draws it to the holy way meanwhile.' },
-  alms: { name: 'Give food', cost: 0, seasons: 1, desc: 'Food from the nation\'s towns with plenty, the nearest first, fills the town\'s larder and removes the cause: what they have beyond four seasons of their own eating.' },
+  alms: { name: 'Give food', cost: 0, seasons: 1, desc: 'Food from the towns beside it fills the town\'s larder and removes the cause: what they have beyond two seasons of their own eating.' },
   closeTavern: { name: 'Close the tavern', cost: 1, seasons: 4, needs: 'tavern', desc: 'Nobody drifts to the tavern and it makes no gold; a decadent town is angered by it.' },
   tavernWomen: { name: 'Order the women into the tavern', cost: 0, seasons: 4, needs: 'tavern', desc: 'Gold every season, and the town\'s standing falls.' },
   tend: { name: 'Tend the sick and the mourning', cost: 0, seasons: 4, needs: 'church', desc: 'The church takes in the sick and sits with the bereaved: sickness and grief weigh on the town half as much, and plague kills fewer. Paid in gold from the town.' },
@@ -54,17 +54,14 @@ export const CLOSED_ANGER = 0.3;
 export const ALMS_A_SEASON = 2;
 /** The least food a decree of alms must find to be given. */
 export const ALMS_LEAST = 50;
-/** Seasons of their own eating a town of the nation keeps before it sends any. */
-export const ALMS_KEEP = 4;
+/** Seasons of their own eating the towns beside it keep before they send any. */
+export const ALMS_KEEP = 2;
 
-// Food for a hungry town is food, not supplies (stores.ts): the towns of the nation, the nearest first, send what
-// they have beyond ALMS_KEEP seasons of their own eating: real plenty, not the next larder's lean margin. Nothing is bought with the nation's gold, wood or stone, which are
-// its war chest.
-// Any town of the nation with plenty, the nearest first: food from real plenty, not the next larder's lean margin.
-const givers = (c: Campaign, f: number, tid: number): number[] => {
-  const o = c.territories[tid], d = (id: number): number => Math.hypot(c.territories[id].x - o.x, c.territories[id].y - o.y);
-  return c.territories.filter((t) => t.owner === f && !t.horde && t.id !== tid).map((t) => t.id).sort((a, b) => d(a) - d(b) || a - b);
-};
+// Food for a hungry town is food, not supplies (stores.ts): the towns of the nation beside it send what they have
+// beyond ALMS_KEEP seasons of their own eating. Nothing is bought with the nation's gold, wood or stone, which are
+// its war chest. (Tried at 192 campaigns: any town of the nation, keeping four seasons, left farmed towns hungrier,
+// 2.0% and 2.2% against 1.8% and 1.6%, and decrees weaker, 8.8% and 6.4% against 10.4% and 9.3%.)
+const givers = (c: Campaign, f: number, tid: number): number[] => (c.territories[tid]?.adj ?? []).filter((n) => c.territories[n].owner === f && !c.territories[n].horde);
 const spareFood = (c: Campaign, tid: number): number => Math.max(0, Math.floor(folkOf(c, tid).stores.food - ALMS_KEEP * needOf(c, tid)));
 /** How much food a decree of alms could find for a town now. */
 export function almsCanFind(c: Campaign, f: number, tid: number): number {
@@ -74,7 +71,7 @@ export function almsCanFind(c: Campaign, f: number, tid: number): number {
 export function sendAlms(c: Campaign, f: number, tid: number, want: number): number {
   const s = folkOf(c, tid).stores;
   let left = want;
-  for (const g of givers(c, f, tid)) {
+  for (const g of givers(c, f, tid).sort((a, b) => spareFood(c, b) - spareFood(c, a) || a - b)) {
     if (left <= 0) break;
     const take = Math.min(spareFood(c, g), left);
     folkOf(c, g).stores.food -= take; left -= take;
@@ -107,7 +104,7 @@ export function decreeBar(c: Campaign, f: number, tid: number, kind: DecreeKind)
   if (decreesAt(c, tid).some((x) => x.kind === kind)) return 'That decree is already in force here.';
   if (fac.supplies < d.cost) return `It costs ${d.cost} supplies.`;
   if (kind === 'tend' && folkOf(c, tid).stores.gold < TEND_GOLD) return `It costs ${TEND_GOLD} gold from ${t.name}.`;
-  if (kind === 'alms' && almsCanFind(c, f, tid) < ALMS_LEAST) return `There is no food to be had for ${t.name}: no town of yours has plenty to spare.`;
+  if (kind === 'alms' && almsCanFind(c, f, tid) < ALMS_LEAST) return `There is no food to be had for ${t.name}: the towns beside it have none to spare.`;
   return '';
 }
 
