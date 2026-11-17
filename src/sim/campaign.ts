@@ -52,7 +52,7 @@ export const HERO_COST = 8;
 import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
-import { settleStores } from './stores';
+import { gainAt, settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
 import { drillWithQueued, keepQueued } from './queueddrill';
@@ -534,7 +534,7 @@ function mapTurn(c: Campaign): void {
     } else if (e.kind === 'hoard') {
       if (t.owner >= 0) {
         const f = c.factions[t.owner];
-        f.supplies += HOARD_PRIZE;
+        gainAt(c, t.owner, t.id, HOARD_PRIZE); // found in this land, kept in its town (stores.ts)
         mark(c, 'found', t.id);
         c.log.push(`The hoard at ${t.name} is dug up: ${HOARD_PRIZE} supplies for ${f.id === 0 ? 'you' : f.name}.`);
       } else c.log.push(`The hoard at ${t.name} is carried off by the local tribes.`);
@@ -1100,7 +1100,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     if (place) tell(c, `${fname(c, p.attacker, true)} took ${place.name} in ${t.name} from ${fname(c, p.defender)}.`);
     else if (t.capital < 0 && p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You beat the ${c.factions[p.defender].name} at ${t.name} and took it.` : `The ${c.factions[p.attacker].name} beat you at ${t.name} and took it.`);
     if (t.capital >= 0 && t.capital !== p.attacker) tell(c, `${t.name}, chief town of ${fname(c, t.capital)}, fell to ${fname(c, p.attacker)}.`);
-    if (p.defender < 0 && c.factions[p.attacker].civ === 'wild') c.factions[p.attacker].supplies += 2; // plunder
+    if (p.defender < 0 && c.factions[p.attacker].civ === 'wild') gainAt(c, p.attacker, p.to, 2); // plunder, in the town taken (stores.ts)
     if (t.capital >= 0 && t.capital !== p.attacker) {
       // Sacking a capital carries off its stores: they are in the town, which is the taker's now (stores.ts).
       t.capital = -1;
@@ -1270,7 +1270,7 @@ function turnEvent(c: Campaign): void {
   const a = armyAt(c, t.id);
   const roll = rand(c);
   if (roll < 0.3) {
-    f.supplies += 4;
+    gainAt(c, f.id, t.id, 4); // a fine harvest, in its own town (stores.ts)
     mark(c, 'harvest', t.id);
     c.log.push(`A fine harvest in ${t.name} adds 4 to ${who} supplies.`);
   } else if (roll < 0.5 && a && a.owner === f.id && armySize(a) < MAX_ARMY) {

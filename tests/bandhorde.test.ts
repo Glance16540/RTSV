@@ -5,7 +5,8 @@ import type { Campaign } from '../src/sim/campaign';
 import { hordeSeason } from '../src/sim/bandhorde';
 import { OLD_SEASON } from '../src/sim/ageing';
 import { THREATS, heldFrom } from '../src/sim/threats';
-import { TOWN_SCALE as S, folkOf } from '../src/sim/township';
+import { STORE_KINDS, TOWN_SCALE as S, folkOf } from '../src/sim/township';
+import { SUPPLY_UNITS } from '../src/sim/stores';
 
 function world(seed = 5) {
   const c = newCampaign(seed, 1, 1, 'hearth');
@@ -95,7 +96,8 @@ describe('the marauders are a band', () => {
     const f = folkOf(c, home.id), women = f.women;
     b.held.push({ from: home.id, owner: 0, men: [], women: [80, 88], since: c.turn });
     (home as { taken?: number }).taken = 1; // as a campaign saved before the count was retired would have it
-    const before = income(c, 0), supplies = c.factions[0].supplies;
+    const before = income(c, 0);
+    const goods = () => STORE_KINDS.reduce((n, k) => n + folkOf(c, camp.id).stores[k], 0), had = goods();
     camp.owner = 0;
     c.turn++;
     const out: string[] = [];
@@ -106,7 +108,7 @@ describe('the marauders are a band', () => {
     expect('taken' in home).toBe(false); // the old count is dropped on the way
     expect(heldFrom(c, home.id)).toEqual([]);
     expect(income(c, 0)).toBeGreaterThanOrEqual(before);
-    expect(c.factions[0].supplies).toBe(supplies + HORDE_PRIZE);
+    expect(goods()).toBe(had + HORDE_PRIZE * SUPPLY_UNITS); // the camp's goods, in the town freed (stores.ts gainAt)
     expect(eventsAt(c, camp.id).some((e) => e.kind === 'freed')).toBe(true);
     expect(out.join(' ')).toContain('You have broken the marauders at');
   });
