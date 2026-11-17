@@ -225,6 +225,11 @@ lasts all campaign and bands keep arising there to march in from afar.
 draw a town toward decadence; a long peace with full stores draws it toward piety; so one town of a
 nation can stand apart from the rest by what it has lived through.
 
+**Towns big enough to raise armies** (the owner's word, 17 November 2026). So that a soldier truly
+costs a person, towns begin and grow large enough to fill the companies a people fields: a company is
+raised only from the men of its people's towns, never hired from nowhere, and armies stay the size they
+are.
+
 ## The order of building
 
 Each step is to be playable by itself.
