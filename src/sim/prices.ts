@@ -6,7 +6,7 @@
 // Where it comes from. A building, a company or a work is paid for out of the town where it is done; a dealing (a
 // truce, an alliance, a gift, a tribute), a leader hired or a new age out of the chief town. What that town lacks of a
 // kind, the nation's other towns send it by road (convoys.ts roadBetween: through the people's own lands, or over a sea
-// lane from a Harbour), at a cost: CARRY.cost of what is sent is spent on the way (the carters' keep, the wagons' wear).
+// lane from a Harbour), at a cost: CARRY.cost of what is sent (a tenth) is spent on the way (the carters' keep, the wagons' wear).
 // A town with no road to it sends nothing. A town that sends keeps a floor of its own (plenty.ts PLENTY.floor in goods
 // other than bread, and two seasons of its own eating in food), so that its governor is not left unable to raise its own
 // Farmland and its people are not left without bread.
@@ -26,10 +26,14 @@ import { PLENTY } from './plenty';
 import { needOf } from './larder';
 
 export type StoreKind = keyof Stores;
-/** Goods sent by road to pay for a thing: the share of what is sent that is spent on the way. */
-export const CARRY = { cost: 0.2 };
+/**
+ * Goods sent by road to pay for a thing: the share of what is sent that is spent on the way. At a fifth, and other goods
+ * traded at 1.25 for one, the computer's peoples raised fewer companies and walls where the work was done, and campaigns
+ * ruined or undecided went out of band (384 campaigns: 2.6% and 10.4%, from 0.8% and 4.4%; rivals' wins 111 to 82).
+ */
+export const CARRY = { cost: 0.1 };
 /** Goods of other kinds taken for every one short of the kind a thing is made of: traded, at a loss. */
-export const SHORT_RATE = 1.25;
+export const SHORT_RATE = 1.1;
 /** What each kind of thing is made of, share by share. */
 export const MADE_OF: Record<string, Partial<Stores>> = {
   farm: { wood: 1 },
