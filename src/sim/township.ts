@@ -8,6 +8,7 @@
  */
 import type { Campaign } from './campaign';
 import { cleanWidows, widowsBack } from './widowtown';
+import { cleanOrphans, orphansBack } from './orphantown';
 import { WAR_RENOWN } from './household';
 import { homeDeed, standingWith } from './notableweight';
 import { Ages, agesOf, cleanAges, countFrom } from './ageing';
@@ -97,7 +98,7 @@ export function musterFolk(c: Campaign, tid: number): { people: PeopleIn; stores
   const f = folkOf(c, tid);
   const named = living(f).filter((n) => n.kind === 'mother').map((n): Named => ({ name: n.name, gender: n.gender, ...(n.family ? { family: n.family } : {}), ...(n.kids ? { kids: n.kids } : {}), ...(n.husband ? { husband: n.husband } : {}), ...(n.war ? { war: n.war } : {}), ...(n.made ? { made: n.made } : {}) }));
   const ages = agesOf(c, tid, f);
-  return { people: { men: f.men, women: f.women, elders: f.elders, children: f.children, ...(named.length ? { named } : {}), ...(f.widowed?.length ? { widowed: f.widowed.map((w) => ({ ...w })) } : {}), ages: { m: [...ages.m], f: [...ages.f], k: [...ages.k] } }, stores: { ...f.stores } }; // its widowed go with it (widowtown.ts)
+  return { people: { men: f.men, women: f.women, elders: f.elders, children: f.children, ...(named.length ? { named } : {}), ...(f.widowed?.length ? { widowed: f.widowed.map((w) => ({ ...w })) } : {}), ...(f.orphans?.length ? { orphans: f.orphans.map((o) => ({ ...o })) } : {}), ages: { m: [...ages.m], f: [...ages.f], k: [...ages.k] } }, stores: { ...f.stores } }; // its widowed go with it (widowtown.ts)
 }
 
 /** Make safe a count of a town handed back from a battle. Nothing if it is not one. */
@@ -110,6 +111,7 @@ export function cleanCensus(x: Partial<Census> | null | undefined): Census | und
     stores: { food: whole(x.stores.food, MAX_STORE), wood: whole(x.stores.wood, MAX_STORE), gold: whole(x.stores.gold, MAX_STORE), stone: whole(x.stores.stone, MAX_STORE) },
     named,
     ...(Array.isArray(x.widowed) ? { widowed: cleanWidows(x.widowed) } : {}),
+    ...(Array.isArray(x.orphans) ? { orphans: cleanOrphans(x.orphans) } : {}),
     ...(cleanAges(x.ages) ? { ages: cleanAges(x.ages) } : {}),
   };
 }
@@ -134,6 +136,7 @@ export function settleFolk(c: Campaign, tid: number, census: Census, opts: { tak
   else delete f.ages;
   f.stores = { ...census.stores };
   if (census.widowed) f.widowed = widowsBack(f.widowed, census.widowed, c.turn); // the map's widowed are those the town had (widowtown.ts)
+  if (census.orphans) f.orphans = orphansBack(f.orphans, census.orphans, c.turn); // and its orphans the children it had taken in (orphantown.ts)
   const here = new Map((census.named ?? []).map((n) => [n.name, n]));
   const lost: Notable[] = [], made: Notable[] = [];
   for (const n of living(f)) {
