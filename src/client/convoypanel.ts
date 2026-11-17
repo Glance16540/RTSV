@@ -3,6 +3,7 @@
 import type { Campaign } from '../sim/campaign';
 import { CONVOYS, Convoy, Send, cannotSend, onTheRoad, roadBetween, seaLegs, sendConvoy } from '../sim/convoys';
 import { freeLands, seasonsTo, settle, settleBar } from '../sim/migration';
+import { FOUNDING } from '../sim/founding';
 
 /** The loads a player can send. */
 export const LOADS: Record<string, { label: string; what: Send; tip: string }> = {
@@ -23,7 +24,8 @@ function goingLine(c: Campaign, x: Convoy, tid: number): string {
 export function convoyHtml(c: Campaign, tid: number): string {
   const to = c.territories.filter((t) => t.owner === 0 && t.id !== tid && roadBetween(c, 0, tid, t.id));
   const free = freeLands(c, 0);
-  if (!to.length && !free.length) return '';
+  // Nowhere to send anything yet: say only that settlers exist, and what they need (docs/PLAYTEST.md 3.7).
+  if (!to.length && !free.length) return `<div class="ow-convoy"><div class="hint">🏡 Settlers can found a new town on an empty land up to ${FOUNDING.reach} lands out from your own, over lands with nobody on them. None is in reach yet: a tribe that dies out leaves one, and so does the wild country your borders come to.</div></div>`;
   const going = onTheRoad(c, 0).filter((x) => x.from === tid || x.to === tid);
   const first = to[0]?.id ?? free[0];
   return `<div class="ow-convoy">${going.map((x) => goingLine(c, x, tid)).join('')}<div class="hint">🐂 Send by road, or over a sea lane from a Harbour, a season on the way. Highwaymen on the road and pirates at sea rob convoys they catch unescorted: ${Math.round(CONVOYS.rob * 100)}% of the goods, never the people.</div>

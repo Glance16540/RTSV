@@ -11,8 +11,11 @@ function world() {
     const c = newCampaign(seed, 1, 1, 'hearth');
     c.fronts = [];
     const home = c.territories.find((t) => t.capital === 0)!;
-    const near = c.territories.find((t) => t.nearHome === 0);
+    const near = home.adj.map((n) => c.territories[n]).find((t) => t.owner < 0 && t.capital < 0 && !t.wild);
     if (!near) continue;
+    near.militia = 0; near.buildings = []; delete near.town; near.horde = false; // left empty, as a tribe that died out leaves it
+    near.folk = { men: 0, women: 0, elders: 0, children: 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, notables: [] };
+    c.bands = (c.bands ?? []).filter((b) => b.at !== near.id && b.to !== near.id);
     const f = folkOf(c, home.id); f.men = 12; f.women = 12; f.elders = 2; f.children = 6; delete f.ages; delete f.hungry;
     f.stores = { food: 3000, wood: 900, gold: 900, stone: 900 };
     return { c, home: home.id, near: near.id };
