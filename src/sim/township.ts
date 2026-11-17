@@ -179,7 +179,7 @@ export function settleFolk(c: Campaign, tid: number, census: Census, opts: { tak
   const whose = mine ? 'your people' : 'the people';
   if (before !== after || taken) {
     const dead = Math.max(0, before - after - taken);
-    const parts = [dead ? `${dead} died` : '', taken ? `${taken} ${taken === 1 ? 'was' : 'were'} carried off` : '', after > before ? `${after - before} more were born or came of age` : ''].filter(Boolean);
+    const parts = [dead ? `${dead} died` : '', taken ? `${taken} ${taken === 1 ? 'was' : 'were'} carried off` : '', after > before ? `${after - before} more ${after - before === 1 ? 'was' : 'were'} born, came of age or came home` : ''].filter(Boolean);
     if (parts.length) c.log.push(`Of ${whose} at ${t.name}, ${parts.join(' and ')}: ${after} remain${after === 1 ? 's' : ''}.`);
   }
   for (const n of lost) { c.log.push(`${n.name} of ${t.name}, who ${n.deed}, is lost.`); chronicle(c, `${n.name} of ${t.name}, who ${n.deed}, was ${n.lost!.how} when the town was fought over.`); }
