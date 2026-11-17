@@ -1,5 +1,6 @@
 // A visit to one of your own towns from the campaign map: the button on the land's panel, the clock and the way
 // out while you are there, and the carrying of what you built back to the map. The rules are in src/sim/visit.ts.
+import { showBriefing } from './briefing';
 import type { BattleConfig, Campaign } from '../sim/campaign';
 import type { Ground, Standing } from '../sim/game';
 import { VISIT_SECONDS, beginVisit, canVisit, finishVisit, visitArms, visitBar } from '../sim/visit';
@@ -43,7 +44,7 @@ export function returnFromVisit(c: Campaign): boolean {
 export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: () => void): void {
   const start = document.getElementById('start')!;
   start.querySelector('h1')!.textContent = cfg.title;
-  start.querySelector('.lead')!.textContent = `No enemy is here. For up to ${Math.round(VISIT_SECONDS / 60)} minutes the town is yours to order: build, train, set your people to work. What stands when you leave stays on the map. Your nation's age is advanced on the map, not here.`;
+  showBriefing(start, app.game, app.pid, 'visit', Math.round(VISIT_SECONDS / 60)); // the visit's own briefing, not the skirmish's (briefing.ts)
   start.querySelector<HTMLElement>('.levels .resume')!.textContent = resumed ? 'Back to the town' : 'Enter the town';
   document.body.classList.add('visiting');
 
