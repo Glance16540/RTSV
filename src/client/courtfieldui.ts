@@ -56,8 +56,11 @@ function answersOf(g: Game, pid: number, s: CourtOnField): Command[] {
   if (s.kind === 'plot') return [];
   const icon: Record<string, string> = { defy: '✊', buy: '💰', yield: '🕊️', give: '💍', decline: '🎁', spurn: '🚪', ask: '💬' };
   const one = (id: string, name: string, desc: string): Command => { const bar = answerBar(g, pid, id); return { id: `court:${id}`, icon: icon[id] ?? '⚖️', name, desc, ...(bar ? { locked: bar } : {}), act: () => { cmdAnswer(g, pid, id); } }; };
+  // Whose answer each is, said in its name and its tip: with an envoy and a suitor both in the hall, the suitor's
+  // "Decline" is not to be taken for the envoy's (docs/PLAYTEST.md 5.7).
+  const who = s.kind === 'rival' ? 'the envoy' : (s.guest ?? 'the suitor').split(' of ')[0], whole = s.guest ?? who;
   const out: Command[] = [];
-  if (s.kind === 'suitor') out.push(one('ask', `Ask ${s.daughter ?? 'her'}`, `Ask ${esc(s.daughter ?? 'your daughter')} what she wants before you answer for her.`));
-  for (const a of s.answers) if (FIELD_ANSWERS[s.kind].includes(a.id)) out.push(one(a.id, a.label, 'Your answer, given in your own hall. It is done when you leave the town, as it would be from the map.'));
+  if (s.kind === 'suitor') out.push(one('ask', `Ask ${s.daughter ?? 'her'}`, `Ask ${esc(s.daughter ?? 'your daughter')} what she wants before you answer ${esc(who)} for her.`));
+  for (const a of s.answers) if (FIELD_ANSWERS[s.kind].includes(a.id)) out.push(one(a.id, `To ${who}: ${a.label}`, `Your answer to ${esc(whole)}, given in your own hall. It is done when you leave the town, as it would be from the map.`));
   return out;
 }
