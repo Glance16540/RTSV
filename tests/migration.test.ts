@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
-import { MIGRATE, migrateOf, migrationSeason, pullOf, pushOf } from '../src/sim/migration';
+import { MIGRATE, migrateOf, migrationSeason, movesReport, pullOf, pushOf, settle, settleBar } from '../src/sim/migration';
+import { reportLines, reportSince, snapshot } from '../src/sim/seasonreport';
 import { CONVOYS, convoysTurn, onTheRoad } from '../src/sim/convoys';
 import { layTown } from '../src/sim/rivalrule';
 import { roomOf } from '../src/sim/seasonfolk';
@@ -79,5 +80,78 @@ describe('families moving of their own accord', () => {
     let mine: ReturnType<typeof migrationSeason> = [];
     for (let s = 0; s < 40 && !mine.length; s++) { w.c.turn++; mine = migrationSeason(w.c); }
     expect(w.c.log.filter((l) => l.includes('set out by road'))).toHaveLength(1);
+  });
+});
+
+describe('a family met on the road', () => {
+  it('a band on its road carries off grown people, never a child, and holds them as captives', () => {
+    let taken = 0, kids = 0, sent = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const { c, from, to } = world();
+      c.seed = seed;
+      untilOneGoes(c);
+      const x = onTheRoad(c, 0).find((y) => y.movers)!;
+      sent += x.cargo.children!.length;
+      (c.bands ??= []).push({ id: 50, kind: 'highwaymen', name: 'the Men of the Pass', at: from, to, strength: 9, since: c.turn, held: [] });
+      c.turn++;
+      const [a] = convoysTurn(c);
+      kids += a.convoy.cargo.children!.length;
+      const held = c.bands!.find((b) => b.id === 50)!.held;
+      if (a.taken) { taken += a.taken; expect(held[0]).toMatchObject({ from, owner: 0 }); expect(held[0].men.length + held[0].women.length).toBe(a.taken); }
+    }
+    expect(taken).toBeGreaterThan(0);
+    expect(kids).toBe(sent); // every child went on
+  });
+});
+
+describe('known people move by name', () => {
+  it('a known woman goes with her household by name, is set down on the new town\'s roll, and the season\'s report says so in a line', () => {
+    let named = 0;
+    for (let seed = 1; seed <= 30 && !named; seed++) {
+      const { c, from, to } = world();
+      c.seed = seed;
+      folkOf(c, from).notables = [{ name: 'Elin', family: 'Barrow', gender: 'f', kind: 'mother', deed: 'raised four children', turn: 1, kids: 4 }];
+      const s = snapshot(c);
+      const moves = untilOneGoes(c);
+      if (!moves[0]?.name) continue;
+      named++;
+      expect(moves[0].name).toBe('Elin Barrow');
+      expect(folkOf(c, from).notables).toHaveLength(0); // struck from the town she left
+      c.turn++;
+      convoysTurn(c);
+      expect(folkOf(c, to).notables.map((n) => n.name)).toContain('Elin');
+      const lines = movesReport(c, 0, s.turn);
+      expect(lines[0]).toContain('Elin Barrow and her household left');
+      expect(reportLines(reportSince(c, s)).map((l) => l.text)).toContain(lines[0]);
+    }
+    expect(named).toBe(1);
+  });
+
+  it('many families are counted in one line, not listed', () => {
+    const { c, from, to } = world();
+    for (let i = 0; i < 6; i++) (c.moves ??= []).push({ owner: 0, from, to, why: 'crowded', people: 4, turn: c.turn });
+    const lines = movesReport(c, 0, c.turn - 1);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^6 families moved between your towns/);
+  });
+});
+
+describe('the player settles a town from another', () => {
+  it('two families go to a town with room, and a town that cannot spare them, or one with no room, is refused', () => {
+    const { c, from, to } = world();
+    expect(settleBar(c, 0, from, to)).toBe('');
+    const before = headcount(folkOf(c, from));
+    expect(settle(c, 0, from, to)).toBe('');
+    const x = onTheRoad(c, 0).find((y) => y.movers)!;
+    expect(x.cargo.men).toHaveLength(MIGRATE.settlers);
+    expect(x.cargo.women).toHaveLength(MIGRATE.settlers);
+    expect(headcount(folkOf(c, from))).toBe(before - 2 * MIGRATE.settlers - x.cargo.children!.length);
+    expect(c.log.at(-1)).toContain('settlers have set out');
+    // The town they go to must have room: the capital, crowded to its roofs, has none.
+    const full = world();
+    expect(settleBar(full.c, 0, full.to, full.from)).toContain('no room');
+    const small = world();
+    const k = folkOf(small.c, small.from); k.men = 4; k.women = 4; k.elders = 0; delete k.ages;
+    expect(settleBar(small.c, 0, small.from, small.to)).toContain('cannot spare');
   });
 });
