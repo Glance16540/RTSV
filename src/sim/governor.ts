@@ -26,6 +26,7 @@ import { ACTS } from './acts';
 import { buildPace } from './ownstudies';
 import { PLENTY, canSpare } from './plenty'; // what a town may spend, one rule for every purchase
 import { focusWork, forbids, keepTimes, raiseFor } from './townorders'; // the player's standing orders
+import { ordersGiven } from './givenorders';
 
 /** The last orders a town was given. `work`: how many of its people were at each kind of work. `turn`: when they were given. */
 export interface Orders { work?: Stores; build?: string[]; train?: string[]; turn: number }
@@ -67,7 +68,7 @@ export function cleanOrders(x: Partial<Orders> | null | undefined, turn: number)
 }
 /** The player has left a town: what it was doing as they left is what it goes on doing. */
 export function keepOrders(c: Campaign, tid: number, x: Partial<Orders> | null | undefined): Orders | undefined {
-  const t = c.territories[tid], kept = cleanOrders(x, c.turn);
+  const t = c.territories[tid], kept = cleanOrders(ordersGiven(t?.orders, x), c.turn); // one man's task among the idle is not the town's orders (givenorders.ts)
   if (t && kept) t.orders = kept;
   return kept;
 }
