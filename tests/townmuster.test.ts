@@ -1,13 +1,14 @@
 // A town left to itself keeps training what it was last ordered to (docs/DESIGN.md; src/sim/townmuster.ts).
-import { everyManSent } from './helpers';
+import { smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { Campaign, answerDemand, armyAt, armySize, continueAI, endTurn, newCampaign, resolvePending } from '../src/sim/campaign';
-import { MEN, MEN_A_COMPANY, awayFrom, musterOf, sendHome } from '../src/sim/armytown';
+import { MEN, awayFrom, musterOf, sendHome } from '../src/sim/armytown';
 import { GOVERN, keepOrders } from '../src/sim/governor';
 import { DRILL, companyOf, drillOf, drillText, drillTown, drillTowns, goodsFor, menToSpare } from '../src/sim/townmuster';
 import { STORE_KINDS, Stores, folkOf } from '../src/sim/township';
 
-everyManSent(); // these tests are about other rules: a company takes its two men while the town can spare them
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
+const MEN_A_COMPANY = 2;
 
 const units = (s: Stores) => STORE_KINDS.reduce((n, k) => n + s[k], 0);
 /** A town of the player's with a barracks: ten men, six women, well stocked, left training clubmen. */

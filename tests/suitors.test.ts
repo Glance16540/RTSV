@@ -1,11 +1,14 @@
 // Going to marry: a town of one sex draws the unmarried of its people's other towns (src/sim/suitors.ts).
-import { bareCampaign } from './helpers';
+import { bareCampaign, smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 
 import { convoysTurn } from '../src/sim/convoys';
 import { sparedMen } from '../src/sim/armytown';
 import { SUIT, couldSend, suitorsOf, suitorsSeason, unmarried, wantOf, wantText } from '../src/sim/suitors';
 import { TOLL, folkOf, tollFolk } from '../src/sim/township';
+
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
+SUIT.go = 2; SUIT.spared = 1; // and those who set out to marry, as they were for towns of that size
 
 /** The player's chief town and a town next to it, both theirs, with the people asked for. */
 const pair = () => {
