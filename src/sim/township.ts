@@ -43,7 +43,17 @@ export interface PeopleIn { men: number; women: number; elders: number; children
 export interface Census { men: number; women: number; elders: number; children: number; stores: Stores; taken?: number; named?: Named[]; /** Their ages, in seasons (ageing.ts). */ ages?: Ages }
 
 /** The most people of one kind a town is kept at, and the most of any one store. */
-export const MAX_KIND = 60;
+/**
+ * How many times larger a town is than the towns the map was first tuned with (docs/DESIGN.md, "Towns big enough to
+ * raise armies": about four, by the owner's word). One figure for every system that counts a town's people: the
+ * people a town is founded with and its cap (here), what its land feeds (larder.ts), a tribe's men to a band and
+ * what a raid meets and takes (tribes.ts, threats.ts), the men a company costs (armytown.ts). It is 1 until every
+ * one of those reads it; then it is turned to 4 in one commit, so that no stage leaves towns larger than their
+ * fields or their foes.
+ */
+export const TOWN_SCALE = 1;
+/** The most of any one kind (men, women, old, children) a town's record will hold. */
+export const MAX_KIND = 60 * TOWN_SCALE;
 export const MAX_STORE = 20000;
 /** Children a woman must have raised for the nation to remember her, and kills for a soldier (as champion.ts). */
 export const MOTHER_KIDS = 3;
@@ -61,7 +71,7 @@ export function foundFolk(c: Campaign, tid: number): Folk {
   const t = c.territories[tid], r = (k: number): number => hash(c.seed * 31 + tid, k);
   const chief = t.capital >= 0 ? 2 : 0;
   return {
-    men: 2 + Math.floor(r(1) * 3) + chief, women: 2 + Math.floor(r(2) * 3) + chief, elders: Math.floor(r(3) * 3), children: 1 + Math.floor(r(4) * 4) + chief,
+    men: (2 + Math.floor(r(1) * 3) + chief) * TOWN_SCALE, women: (2 + Math.floor(r(2) * 3) + chief) * TOWN_SCALE, elders: Math.floor(r(3) * 3) * TOWN_SCALE, children: (1 + Math.floor(r(4) * 4) + chief) * TOWN_SCALE,
     stores: { food: 200 + (t.buildings.includes('farm') ? 150 : 0), wood: 200, gold: 100, stone: 100 },
     notables: [],
   };
