@@ -6,7 +6,7 @@ import { newCampaign } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
 import type { Band } from '../src/sim/threats';
 import { OLD_SEASON, agesOf } from '../src/sim/ageing';
-import { folkOf, nationStores } from '../src/sim/township';
+import { TOWN_SCALE, folkOf, nationStores } from '../src/sim/township';
 
 /** A road of three lands of the player's, a - b - c, with nothing else of theirs and nobody about. */
 function road(seed = 5) {
@@ -144,7 +144,7 @@ describe('convoys by road', () => {
     const { c, a, b, z } = road();
     for (const t of [a, b, z]) t.owner = 1;
     const k = folkOf(c, z.id);
-    k.men = 20; k.women = 20; delete k.ages;
+    k.men = 20 * TOWN_SCALE; k.women = 20 * TOWN_SCALE; delete k.ages; // forty, at today's size (larder.ts needOf)
     k.stores.food = 300; // more than CONVOYS.hungry, less than forty eat in a season
     expect(needOf(c, z.id)).toBeGreaterThan(300);
     folkOf(c, b.id).stores.food = 5000;
