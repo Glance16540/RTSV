@@ -3,7 +3,7 @@
 // On the map it is a building on the town's record (townworks.ts: raised from the map, finished by the governor). A land
 // with Farmland and a finished Mill yields MILL.yield times the food it would (harvest.ts asks `millYield`); without
 // Farmland it grinds nothing. The governor raises one where a town that already has its Farmland (the Farm comes
-// first) runs short of food or has grown to MILL.big people, and can pay for it. Rivals' towns have governors too.
+// first) has grown to MILL.big people, out of plenty (plenty.ts: never while it is short of bread, when its goods buy bread). Rivals' towns have governors too.
 //
 // In a town (a battle or a visit) a finished Mill makes its people's farms yield MILL.yield times as fast
 // (game.ts asks `millPace` as a farm is worked).

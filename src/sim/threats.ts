@@ -46,6 +46,7 @@ import { STORE_KINDS, folkOf, living } from './township';
 import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
 import { fortShelter, hasFortress } from './fortress';
+import { stoodTo } from './heralds';
 import { wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
@@ -155,7 +156,7 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   // Men gone to the mines are not at the walls (drift.ts): the walls are left thin.
   const watch = watchOf(c, tid);
   const men = f.men * THREATS.man * watch;
-  const works = (hasFortress(c, tid) ? THREATS.fortress : 0) + t.buildings.filter((b) => b === 'barracks' || b === 'range' || b === 'stable').length * THREATS.raising + watchDefence(c, tid); // and its town watch (townwatch.ts)
+  const works = (hasFortress(c, tid) ? THREATS.fortress : 0) + t.buildings.filter((b) => b === 'barracks' || b === 'range' || b === 'stable').length * THREATS.raising + watchDefence(c, tid) + stoodTo(c, tid); // and its town watch (townwatch.ts), and its standing to on a herald's word (heralds.ts)
   let towers = 0, wall = 0;
   for (const b of t.town?.b ?? []) {
     if (b[4] !== undefined) continue; // never finished

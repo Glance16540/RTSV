@@ -23,6 +23,7 @@ import { crowdOf, wellWanted } from './well';
 import { infirmaryWanted } from './infirmary';
 import { ACTS } from './acts';
 import { buildPace } from './ownstudies';
+import { PLENTY, canSpare } from './plenty'; // what a town may spend, one rule for every purchase
 
 /** The last orders a town was given. `work`: how many of its people were at each kind of work. `turn`: when they were given. */
 export interface Orders { work?: Stores; build?: string[]; train?: string[]; turn: number }
@@ -37,13 +38,13 @@ export const GOVERN = {
    * Food in store per head under which a town is short (two seasons of a grown person's eating, larder.ts EAT), and the
    * share of its people the governor then sends to the fields: soon enough that the next harvest comes in before the granary is bare.
    */
-  short: 32, fields: 0.8,
+  short: PLENTY.short, fields: 0.8,
   /** With a full granary and no orders, the share of the usual hands kept at the fields. */
   full: 0.5,
   /** How much of a building a season's work finishes. */
   build: 0.34,
   /** What a town keeps in store whatever the governor builds, and what he holds back of each kind when he pays for a house. */
-  floor: 300, spare: 50,
+  floor: PLENTY.floor, spare: 50,
   /** Seasons after a raid in which the town still wants a wall. */
   raided: 4,
 };
@@ -145,10 +146,9 @@ export function governTown(c: Campaign, tid: number): Governed | null {
   const civ = c.factions[t.owner].civ, room = t.buildings.length < slots(t);
   const afford = (site: string): boolean => units(f.stores) - siteCost(t, site, civ) * 100 >= GOVERN.floor;
   // The food and health works (granary.ts, mill.ts, well.ts, infirmary.ts) stand on the town's record (townworks.ts), not
-  // in the land's places. They come after Farmland, and are bought only where the town keeps what it must, after paying,
-  // in goods other than its bread. Begun here, they are finished as anything half built is.
+  // in the land's places, and are bought only out of plenty (plenty.ts, the one rule for every work and study bought).
   const farmed = t.buildings.includes('farm');
-  const ample = (type: string): boolean => units(f.stores) - f.stores.food - STORE_KINDS.reduce((n, k) => n + (BUILDINGS[type]?.cost[k] ?? 0), 0) >= GOVERN.floor;
+  const ample = (type: string): boolean => canSpare(c, tid, BUILDINGS[type]?.cost ?? {}, { wants: want });
   // Begun as townworks.ts begins one (raiseWork), here, so that the governor and the works need not import each other.
   const work = (type: string): boolean => {
     const b = BUILDINGS[type], at = b && ample(type) && ageOf(c, t.owner) >= b.age && t.town?.b?.length && STORE_KINDS.every((k) => f.stores[k] >= (b.cost[k] ?? 0)) ? plotFor(t, type) : null;
