@@ -48,7 +48,7 @@ import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
 import { fortShelter, hasFortress } from './fortress';
 import { stoodTo } from './heralds';
-import { wrathOf } from './acts';
+import { wrathAt, wrathOf } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
 import { needOf } from './larder';
@@ -312,7 +312,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   }
   // Which way their morals sway: a people that held together is the better for it; one that was sacked loses heart.
   const down = THREATS.sway[outcome] < 0;
-  raid.sway = round1(THREATS.sway[outcome] * (down ? wrathOf(c, owner) : 1));
+  raid.sway = round1(THREATS.sway[outcome] * (down ? wrathOf(c, owner) : 1)); // by the nation's standing still: by the town's own (wrathAt) more campaigns ended in ruin at 192, taking that row out of its band
   swayTown(c, tid, raid.sway); // it is the town struck whose morals sway, and its nation's with it (townfaith.ts)
   mark(c, outcome === 'held' ? 'heldoff' : outcome === 'taken' ? 'carried' : 'raid', tid);
   (c.raids ??= []).push(raid);
@@ -375,7 +375,7 @@ export function captivesSeason(c: Campaign, out: string[]): void {
 
 /** The softest mark in a band's reach: least defence for what draws it, and the decadent draw it more. */
 export function softest(c: Campaign, b: Band, reach = reachOf(c, b)): { id: number; lure: number } | null {
-  const marks = reach.map((id) => ({ id, lure: wrathOf(c, c.territories[id].owner) / Math.max(0.5, defenceOf(c, id).total), tie: chance(c, b.id * 53 + id, 43) })).sort((x, y) => y.lure - x.lure || x.tie - y.tie);
+  const marks = reach.map((id) => ({ id, lure: wrathAt(c, id) / Math.max(0.5, defenceOf(c, id).total), tie: chance(c, b.id * 53 + id, 43) })).sort((x, y) => y.lure - x.lure || x.tie - y.tie);
   return marks[0] ?? null;
 }
 
