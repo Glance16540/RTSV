@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { layCoarse } from './firstlay';
 import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
 import { bereaved } from './bereft';
@@ -349,7 +350,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; people?: PeopleIn; stores?: Partial<Stores>; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[] };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; people?: PeopleIn; stores?: Partial<Stores>; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[] };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -562,6 +563,7 @@ export class Game {
           const at = type === 'tower' && this.canPlace(type, cx, cy) ? { cx, cy } : this.siteNear(type, st, dir);
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
+        if (s.bonus.coarse?.length && !field) layCoarse(this, i, st, dir, s.bonus.coarse); // a town met for the first time, as big as its record (firstlay.ts)
         // The town's children are on the record of one of its roofs, part grown.
         if (s.bonus.people?.named?.length && !field) { settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f')); restoreMade(this, i, s.bonus.people.named); }
         if (s.bonus.people?.widowed?.length && !field) seatWidows(this, i, s.bonus.people.widowed); // the map's widowed, the same in the town (widowtown.ts)
@@ -909,7 +911,7 @@ export class Game {
   }
 
   /** The nearest free ground to a start for a building, with room to walk round it and clear of where the people muster. */
-  private siteNear(type: string, st: { x: number; y: number }, dir: number): { cx: number; cy: number } | null {
+  siteNear(type: string, st: { x: number; y: number }, dir: number): { cx: number; cy: number } | null {
     const s = BUILDINGS[type].size, far = type === 'dock' ? this.size / 2 : 16;
     let best: { cx: number; cy: number } | null = null, bestD = Infinity;
     for (let cy = Math.max(2, Math.floor(st.y - far)); cy <= Math.min(this.size - s - 2, st.y + far); cy++)
