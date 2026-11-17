@@ -570,6 +570,7 @@ export class Hud {
       const hands = fighting(game, b);
       body += `<div class="warn">🔥 On fire: it may spread to buildings close by. ${hands ? `${hands} ${hands === 1 ? 'villager is' : 'villagers are'} fighting it.` : b.owner === game.humanId ? 'Right-click it with villagers to fight the fire.' : ''}</div>`;
     }
+    body += guestLine(game, b, pid); // a rival's envoy or a suitor in the hall, or a plot at court (courtfield.ts): first, so all of them are seen
     if (b.type === 'towncenter' && !game.hostile(b.owner, pid)) body += notableList(game, b.owner);
     if (b.type === 'towncenter' && b.owner === game.humanId) {
       const w = want(game.players[b.owner]);
@@ -579,7 +580,6 @@ export class Hud {
     if (b.def.camp) body += heldPanel(game, b, pid);
     if (b.type === 'towncenter' && b.owner === pid) body += takenPanel(game, pid);
     body += robbedLine(game, b); // robbed by a thief afoot in the town (fieldstory.ts)
-    body += guestLine(game, b, pid); // a rival's envoy or a suitor in the hall, or a plot at court (courtfield.ts)
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
     else if (mine) {
