@@ -140,7 +140,7 @@ export function sendConvoy(c: Campaign, f: number, from: number, to: number, wha
   const goods = STORE_KINDS.filter((s) => cargo[s]).map((s) => `${cargo[s]} ${s}`), folk = [cargo.men.length ? `${cargo.men.length} ${cargo.men.length === 1 ? 'man' : 'men'}` : '', cargo.women.length ? `${cargo.women.length} ${cargo.women.length === 1 ? 'woman' : 'women'}` : ''].filter(Boolean);
   if (f === 0) c.log.push(`A convoy has left ${c.territories[from].name} for ${c.territories[to].name} with ${[...goods, ...folk].join(', ')}. ${paved(c, f) ? 'The road is paved: it is there within the season.' : 'It will come in next season.'}`);
   // On Paved Roads it is not a season on the way (roads.ts): it comes in now, by the same rules, and no other convoy with it.
-  if (paved(c, f)) { const rest = c.convoys.filter((y) => y !== convoy); c.convoys = [convoy]; convoy.since = c.turn - 1; convoysTurn(c); c.convoys = [...rest, ...c.convoys]; }
+  if (paved(c, f)) { c.convoys = c.convoys.filter((y) => y !== convoy); convoy.since = c.turn - 1; convoyArrives(c, convoy); }
   return convoy;
 }
 
@@ -167,43 +167,45 @@ function waylaid(c: Campaign, x: Convoy): { name: string; strength: number; sea:
  * The season turns for every convoy on the road: highwaymen may stop it, and it comes in. Called once a turn, after
  * the bands have struck. Returns what happened to each; the same is written in the log for the player's.
  */
-export function convoysTurn(c: Campaign): Arrival[] {
-  const out: Arrival[] = [];
-  const going = (c.convoys ?? []).filter((x) => x.since < c.turn);
-  c.convoys = (c.convoys ?? []).filter((x) => x.since >= c.turn);
-  for (const x of going) {
-    const a: Arrival = { convoy: x, at: x.to };
-    const mine = x.owner === 0;
-    // Highwaymen on the road, or pirates at sea, unless an escort of the people's own as strong as they are stands on it.
-    const band = waylaid(c, x);
-    if (band && hash(c, x.id, 3) < CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road)) { // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
-      const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
-      if (escort < band.strength && worth(x.cargo) > 0) {
-        const took = empty();
-        for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
-        if (worth(took) > 0) {
-          a.robbed = { by: band.name, took };
-          band.band.strength = Math.min(10, band.band.strength + 1);
-          if (mine) c.log.push(`🗡️ ${band.name[0].toUpperCase() + band.name.slice(1)} stopped your convoy to ${c.territories[x.to].name} ${band.sea ? 'at sea' : 'on the road'} and took ${STORE_KINDS.filter((s) => took[s]).map((s) => `${took[s]} ${s}`).join(', ')}.`);
-        }
+/** One convoy comes in: met on the way or not, and set down where it can be. Returns what became of it. (Called for each
+ * convoy due as the season turns, and at once for a convoy on Paved Roads, roads.ts.) */
+export function convoyArrives(c: Campaign, x: Convoy): Arrival {
+  const a: Arrival = { convoy: x, at: x.to };
+  const mine = x.owner === 0;
+  // Highwaymen on the road, or pirates at sea, unless an escort of the people's own as strong as they are stands on it.
+  const band = waylaid(c, x);
+  if (band && hash(c, x.id, 3) < CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road)) { // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
+    const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
+    if (escort < band.strength && worth(x.cargo) > 0) {
+      const took = empty();
+      for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
+      if (worth(took) > 0) {
+        a.robbed = { by: band.name, took };
+        band.band.strength = Math.min(10, band.band.strength + 1);
+        if (mine) c.log.push(`🗡️ ${band.name[0].toUpperCase() + band.name.slice(1)} stopped your convoy to ${c.territories[x.to].name} ${band.sea ? 'at sea' : 'on the road'} and took ${STORE_KINDS.filter((s) => took[s]).map((s) => `${took[s]} ${s}`).join(', ')}.`);
       }
     }
-    // Where it comes in: its own town if still held, else the people's chief town.
-    const at = c.territories[x.to]?.owner === x.owner ? x.to : homeTown(c, x.owner);
-    if (at < 0 || !c.factions[x.owner]?.alive) { a.lost = true; if (mine) c.log.push(`Your convoy to ${c.territories[x.to].name} had nowhere left to go, and what it carried is lost.`); out.push(a); continue; }
-    a.at = at;
-    const k = folkOf(c, at);
-    for (const s of STORE_KINDS) k.stores[s] = Math.min(MAX_STORE, k.stores[s] + x.cargo[s]);
-    if (x.cargo.men.length || x.cargo.women.length) {
-      const ages = agesOf(c, at, k);
-      ages.m.push(...x.cargo.men.map((s) => s + 1));
-      ages.f.push(...x.cargo.women.map((s) => s + 1));
-      countFrom(k, ages);
-    }
-    if (mine) c.log.push(`A convoy from ${c.territories[x.from].name} has come in to ${c.territories[at].name}${at !== x.to ? ` (${c.territories[x.to].name} is lost to you)` : ''}.`);
-    out.push(a);
   }
-  return out;
+  // Where it comes in: its own town if still held, else the people's chief town.
+  const at = c.territories[x.to]?.owner === x.owner ? x.to : homeTown(c, x.owner);
+  if (at < 0 || !c.factions[x.owner]?.alive) { a.lost = true; if (mine) c.log.push(`Your convoy to ${c.territories[x.to].name} had nowhere left to go, and what it carried is lost.`); return a; }
+  a.at = at;
+  const k = folkOf(c, at);
+  for (const s of STORE_KINDS) k.stores[s] = Math.min(MAX_STORE, k.stores[s] + x.cargo[s]);
+  if (x.cargo.men.length || x.cargo.women.length) {
+    const ages = agesOf(c, at, k);
+    ages.m.push(...x.cargo.men.map((s) => s + 1));
+    ages.f.push(...x.cargo.women.map((s) => s + 1));
+    countFrom(k, ages);
+  }
+  if (mine) c.log.push(`A convoy from ${c.territories[x.from].name} has come in to ${c.territories[at].name}${at !== x.to ? ` (${c.territories[x.to].name} is lost to you)` : ''}.`);
+  return a;
+}
+
+export function convoysTurn(c: Campaign): Arrival[] {
+  const going = (c.convoys ?? []).filter((x) => x.since < c.turn);
+  c.convoys = (c.convoys ?? []).filter((x) => x.since >= c.turn);
+  return going.map((x) => convoyArrives(c, x));
 }
 
 /**
