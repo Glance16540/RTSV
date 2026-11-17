@@ -126,7 +126,7 @@ function armsHome(c: Campaign, tid: number, arms: VisitArms, before: Record<stri
       const fresh = !a;
       if (!a) { a = { id: c.nextArmy++, owner: 0, at: tid, units: {}, hero: false, vet: c.factions[0].civ === 'japan' ? 1 : 0, moved: true }; c.armies.push(a); }
       a.units[kind] = (a.units[kind] ?? 0) + 1;
-      if (!menMustered(c, a, tid)) { // nobody to go after all: no company
+      if (!menMustered(c, a, tid, { gone: true })) { // nobody to go after all: no company. (They were trained in person: the quarter a people sends is not asked of them.)
         a.units[kind]--; if (!a.units[kind]) delete a.units[kind];
         if (fresh) { c.armies.splice(c.armies.indexOf(a), 1); delete c.musters?.[a.id]; a = undefined; }
         break;
