@@ -184,6 +184,38 @@ export function sendCompaniesHome(c: Campaign, armyId: number, companies: number
   return n;
 }
 
+/**
+ * Send men of an army home and keep the army: so many of the men of towns on its roll, and a company with every
+ * `MEN_A_COMPANY` of them (the most numerous kind first), never its last company. Where `sendCompaniesHome`
+ * sends companies and the men in their share, this sends the men: an army whose companies are mostly men of no
+ * town (it was on the map before any roll was kept, or was filled where no town could man it) gives its
+ * townsmen back first. They are taken from the town with most men with the army first. Returns how many men
+ * went home, or -1 if it cannot be done.
+ */
+export function sendMenHome(c: Campaign, armyId: number, men: number): number {
+  const a = c.armies.find((x) => x.id === armyId);
+  if (!a || c.pending || c.territories[a.at]?.owner !== a.owner) return -1;
+  reckonArmies(c);
+  const m = musterOf(c, armyId);
+  if (!m) return 0;
+  const go = Math.max(0, Math.min(sizeOf(a) - 1, Math.ceil(Math.min(Math.floor(men), total(m)) / MEN_A_COMPANY)));
+  if (!go) return 0;
+  for (let i = 0; i < go; i++) { const type = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p] || p.localeCompare(q))[0]; if (--a.units[type] <= 0) delete a.units[type]; }
+  let left = Math.min(Math.floor(men), total(m), go * MEN_A_COMPANY), n = 0;
+  for (const key of Object.keys(m.men).sort((p, q) => m.men[q].length - m.men[p].length || Number(p) - Number(q))) {
+    if (left <= 0) break;
+    const l = m.men[key], back = Math.min(l.length, left);
+    const tid = c.territories[Number(key)]?.owner === a.owner ? Number(key) : a.at;
+    const f = folkOf(c, tid), ages = agesOf(c, tid, f);
+    countFrom(f, { m: [...ages.m, ...l.splice(0, back)], f: ages.f, k: ages.k });
+    cameHome(c, Number(key), back, armyId);
+    if (!l.length) delete m.men[key];
+    n += back; left -= back;
+  }
+  m.size = sizeOf(a);
+  return n;
+}
+
 /** Can this army be sent home? It must stand in a town of its own people, with nothing waiting to be fought. */
 export const canSendHome = (c: Campaign, armyId: number): boolean => {
   const a = c.armies.find((x) => x.id === armyId);
