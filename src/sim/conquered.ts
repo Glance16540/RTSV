@@ -7,7 +7,9 @@
  */
 import { lawEase } from './writtenlaw'; // written law eases resentment (writtenlaw.ts)
 import type { Campaign } from './campaign';
-import { armyAt, armySize, faithOf } from './campaignbase';
+import { armyAt, armySize, FAITH, faithOf } from './campaignbase';
+import { creedOf } from './creed';
+import { faithAt } from './townfaith';
 import { leaderAt } from './court';
 import { folkOf, headcount } from './township';
 import { agesOf } from './ageing';
@@ -60,7 +62,7 @@ export function goodRule(c: Campaign, tid: number): number {
   if (!t || t.owner < 0) return 0;
   const struck = (c.events ?? []).some((e) => e.at === tid && e.turn === c.turn && STRUCK.includes(e.kind));
   return YOKE.ease + yokeEase(c, tid) + lawEase(c, tid) + (t.buildings.includes('church') ? YOKE.church : 0) + (t.buildings.includes('farm') ? YOKE.farm : 0) + (leaderAt(c, t.owner, tid) ? YOKE.leader : 0)
-    + (faithOf(c, t.owner).defence > 1 ? YOKE.pious : 0) - (t.buildings.includes('tavern') ? YOKE.tavern : 0) - (struck ? YOKE.struck : 0);
+    + (FAITH[creedOf(faithAt(c, tid)).id].defence > 1 ? YOKE.pious : 0) /* the town's own standing (townfaith.ts) */ - (t.buildings.includes('tavern') ? YOKE.tavern : 0) - (struck ? YOKE.struck : 0);
 }
 /** The chance a town rises this season, as things stand; or, with `bare`, as it would be with no army in it or lately gone from it. */
 export function revoltChance(c: Campaign, tid: number, opts: { bare?: boolean } = {}): number {
