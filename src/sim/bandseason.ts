@@ -11,7 +11,7 @@ import { Raid, appearSeason, captivesSeason, strikeSeason } from './threats';
 import { ambushSeason, huntBands } from './bandfight';
 import { roamSeason } from './bandroam';
 import { hordeSeason } from './bandhorde';
-import { farPlace, setOutFromAfar } from './bandwilds';
+import { farPlace, seenGathering, setOutFromAfar } from './bandwilds';
 import { marched } from './bandmarch';
 
 /** Called once a turn. Returns the season's reports of strikes; the same are kept on the campaign and written in the log. */
@@ -28,7 +28,7 @@ export function threatsOfMen(c: Campaign): Raid[] {
   for (const r of raids) marched(c, r.band, 'struck');
   let far = false;
   const told = out.length, born = appearSeason(c, out, (kind) => { const at = farPlace(c, kind); far ||= !!at; return at; }); // some are born in the far wilds (bandwilds.ts)
-  if (born && far && setOutFromAfar(c, born)) out.splice(told); // and nobody is there to see them gather
+  if (born && far && setOutFromAfar(c, born)) { out.splice(told); seenGathering(c, born, out); } // nobody is there to see them gather, but for the towns that look out on the rim of wilderness
   ambushSeason(c, out); // a band may fall on an army that is weak, or seeing a convoy along the road
   heraldSeason(c, out); // a people who keep heralds hear of the bands that mean to strike them, a season before (heralds.ts)
   c.log.push(...out);

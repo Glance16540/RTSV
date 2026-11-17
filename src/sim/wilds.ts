@@ -47,7 +47,7 @@ export function farOrPoor(c: Campaign, t: Territory): boolean {
 /** The lands that may start wild: unheld, nobody's chief town, beside no chief town, far or poor. */
 export function wildable(c: Campaign): Territory[] {
   const homes = new Set(c.territories.filter((t) => t.capital >= 0).map((t) => t.id));
-  return c.territories.filter((t) => t.owner < 0 && t.capital < 0 && !t.horde && !t.adj.some((n) => homes.has(n)) && farOrPoor(c, t));
+  return c.territories.filter((t) => t.owner < 0 && t.capital < 0 && !t.horde && !t.rim && !t.adj.some((n) => homes.has(n)) && farOrPoor(c, t)); // the rim's own lands are not of the world's to share out (rim.ts)
 }
 
 /**
@@ -58,6 +58,7 @@ export function wildable(c: Campaign): Territory[] {
 export function wilderness(c: Campaign, tid: number): boolean {
   const t = c.territories[tid];
   if (!t?.wild) return false;
+  if (t.rim) return true; // a land of the rim at the map's edge, whatever its climate (rim.ts)
   const b = biomeOf(c, tid);
   return b === 'snow' || b === 'desert';
 }

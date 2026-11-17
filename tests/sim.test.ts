@@ -654,7 +654,7 @@ describe('conquest campaign', () => {
   it('builds a connected map with a capital and an army for each faction', () => {
     for (const rivals of [1, 2, 3]) {
       const c = newCampaign(42 + rivals, rivals);
-      const n = c.territories.length;
+      const n = c.territories.filter((t) => !t.rim).length; // the lands the world is made with; the rim of wilderness is added to them (rim.ts)
       expect(n).toBeGreaterThanOrEqual(12);
       expect(n).toBeLessThanOrEqual(30);
       expect(c.factions.length).toBe(rivals + 1);
@@ -3129,8 +3129,8 @@ describe('mountains and rivers on the campaign map', () => {
       // (by land or by a sea lane, which wants a harbour)
       const seen = new Set([0]), q = [0];
       while (q.length) { const at = q.pop()!; for (const n of [...c.territories[at].adj, ...lanesOf(c, at)]) if (!seen.has(n)) { seen.add(n); q.push(n); } }
-      expect(seen.size).toBe(c.territories.length);
-      for (const t of c.territories) expect(t.adj.length + lanesOf(c, t.id).length).toBeGreaterThanOrEqual(2);
+      expect(seen.size).toBe(c.territories.filter((t) => !t.rim).length); // every land of the world; nobody goes into the rim (rim.ts)
+      for (const t of c.territories) expect(t.adj.length + lanesOf(c, t.id).length).toBeGreaterThanOrEqual(t.rim ? 0 : 2); // a land of the rim is nobody's neighbour: nobody may enter it (rim.ts)
       for (const l of c.lanes!) {
         lanes++;
         expect(c.territories[l.a].adj).not.toContain(l.b);
