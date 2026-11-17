@@ -5,7 +5,6 @@ import { turnLeft, turnOpened } from './seasongain';
 import { militiaOf } from './militia';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
-import { holdStep, holding } from './holdfast';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
@@ -1376,8 +1375,6 @@ function aiStep(c: Campaign, f: Faction): boolean {
   const army = c.armies.find((a) => a.owner === f.id && !a.moved);
   if (!army) return true;
   const here = c.territories[army.at];
-  // Its rule nearly beyond challenge, it takes no new land: its armies stand where its own towns might rise (holdfast.ts).
-  if (holding(c, f.id)) { const to = holdStep(c, f.id, army); if (to >= 0) moveArmy(c, army.id, to); army.moved = true; return false; }
   // Never march on someone we have a truce with.
   // The most wanted first: what it can take, weighed by the country it marches into and the town's faith (rivalaim.ts).
   const targets = aimOrder(c, f.id, reach(c, here.id).filter((id) => c.territories[id].owner !== f.id && !atTruce(c, f.id, c.territories[id].owner) && !nobodyThere(c, id)), (id) => defence(c, id, army.units, civ));
