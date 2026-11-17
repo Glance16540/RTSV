@@ -81,7 +81,11 @@ describe('a thief on the field', () => {
   it('a villager standing there is no guard, and nobody is struck or killed', () => {
     const { c, at } = world();
     thiefIn(c, at);
-    const g = enter(c, at);
+    // The town's people are left standing here (no shares to work by, atwork.ts): villagers walking out to their work
+    // jostle the army's soldiers camped by the hall to within a guard's reach of it, and this is about villagers.
+    expect(beginVisit(c, at)).toBe(true);
+    const cfg = visitConfig(c)!;
+    const g = new Game(cfg.seed, cfg.setups.map((s) => ({ ...s, bonus: { ...s.bonus, work: undefined } })), cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
     run(g, 1);
     const b = g.buildings.find((x) => x.robbed)!;
     g.spawnUnit('villager', 0, b.x, b.y + b.size / 2 + 1, 'm');
