@@ -1,6 +1,7 @@
 // A town's drift and its decrees on the land's panel: one line saying how the town stands and is moving, and a
 // button for each decree. The rules are in src/sim/drift.ts and src/sim/decrees.ts.
 import { inFaith } from '../sim/faithhouse';
+import { oldText } from '../sim/oldfolk';
 import type { Campaign } from '../sim/campaign';
 import { DECREES, DECREE_KINDS, decreeBar, decreesAt, strengthAt } from '../sim/decrees';
 import { famineYear, grainDeal } from '../sim/grain';
@@ -21,6 +22,9 @@ export function decreePanel(c: Campaign, tid: number): string {
   const gone = f.drifted ? [f.drifted.tavern ? `${f.drifted.tavern} of its women at the tavern` : '', f.drifted.mines ? `${f.drifted.mines} of its men at the mines` : ''].filter(Boolean).join(' and ') : '';
   let html = `<div class="hint">Standing ${Math.round(townStanding(c, tid))}, ${way}${grief}.${gone ? ` Drifted: ${gone}.` : ''}${now.length ? ' Decrees: ' + now.map((x) => `${inFaith(DECREES[x.kind].name, c.factions[0].civ).toLowerCase()} (to turn ${x.until}${x.strength < 1 ? ', by messenger' : ''})`).join('; ') + '.' : ''}</div>`;
   html += standingPanel(c, tid); // the governor's standing orders (townorders.ts)
+  // A taken town's old people and what their resentment costs (src/sim/oldfolk.ts).
+  const old = oldText(c, tid, (f) => (f < 0 ? 'the local tribes' : f === 0 ? 'your people' : `the ${c.factions[f]?.name ?? 'people'}`));
+  if (old) html += `<div class="hint">${esc(old)}</div>`;
   // Its widowed and orphans (src/sim/widowhood.ts).
   const bereft = bereftText(c, tid);
   if (bereft) html += `<div class="hint">Bereaved: ${esc(bereft)}.</div>`;
