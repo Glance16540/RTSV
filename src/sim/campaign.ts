@@ -70,6 +70,7 @@ import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
 export { shiftVirtue } from './townfaith'; // where it was found before it was moved
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
+import { companySoldiers, noteDowned, rollOf } from './soldiernames';
 import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
@@ -1462,6 +1463,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
+      ...(army ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}), // its companies led by the men of its roll (soldiernames.ts)
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
@@ -1528,6 +1530,8 @@ export interface BattleAfter {
   orders?: Partial<Orders>;
   /** The town that was fought over, counted as the battle ended (`Game.census()` of the side that held it when it began). */
   folk?: Partial<Census>;
+  /** The men of the armies' rolls whose soldiers went down on the field (soldiernames.ts `downedOf`). */
+  downed?: unknown;
   /** Who of the town was drifted to the tavern and the mine as the battle ended (driftintown.ts). */
   drifted?: { tavern?: number; mines?: number };
 }
@@ -1551,6 +1555,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
   const note: BattleNote = { playerWon, after };
   BATTLE_HOOKS.run('written', c, p, note); // the field is being read back
+  noteDowned(c, after.downed); // the men of the rolls whose soldiers went down there: the map counts them first (soldiernames.ts)
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
