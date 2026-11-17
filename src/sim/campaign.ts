@@ -28,6 +28,7 @@ import { orphansSeason } from './orphans';
 import { deputyAt, kinSeasons } from './kin';
 import { noblesSeasons } from './nobles';
 import { nobleActsSeasons } from './nobleacts';
+import { marriageSeason } from './marriage';
 import { temperSeasons } from './nobletemper';
 import { marchMargin, treatLean, weighSeasons } from './nobleweigh';
 import { widowsSeason } from './widowhood';
@@ -57,6 +58,7 @@ import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
 import { unrestSeason } from './unrest';
+import { freeStruck, freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor } from './prices';
@@ -522,7 +524,7 @@ function mapTurn(c: Campaign): void {
       else {
         c.log.push(`${t.name} has risen and thrown off ${whoseOf(c, f.id)} rule.`);
         if (placeAt(c, t.id)) tell(c, `${t.name} rose and threw off ${whoseOf(c, f.id)} rule, and ${placeAt(c, t.id)!.name} with it.`);
-        t.owner = -1; t.militia = 2;
+        riseFree(c, t.id); // nobody's now, a free town that may be won back (freetown.ts)
         mark(c, 'revolt', t.id);
       }
     } else if (e.kind === 'hoard') {
@@ -537,6 +539,7 @@ function mapTurn(c: Campaign): void {
   c.events = ev.filter((x) => x.until >= c.turn - 1);
   const busy = new Set(c.events.filter((x) => x.until >= c.turn).map((x) => x.at));
   // Unrest begins in a town by its own state, not by one draw for the whole world (unrest.ts).
+  freeTownsSeason(c); // a free town may come back to the people it left, by treaty (freetown.ts)
   for (const tid of unrestSeason(c, busy)) {
     const t = c.territories[tid];
     c.log.push(`There is unrest in ${t.name}. ${t.owner === 0 ? 'Send an army there within ' + UNREST_TURNS + ' turns or it will rise.' : ''}`.trim());
@@ -1009,6 +1012,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('taken', 'carriedoff', (c, p) => townFell(c, p.to, p.defender, p.attacker, p.from)) // those held in it go free, and a worldly taker leads some of its people away
   // repulsed: the attacker was thrown back.
   .on('repulsed', 'tribes', (c, p, b) => { if (!b.defArmy && c.territories[p.to].owner < 0) tribeBeaten(c, p.to, Math.floor(p.aStr * 0.3)); }) // the bands a tribe lost are men of its town
+  .on('repulsed', 'freetown', (c, p) => freeStruck(c, p.to, p.attacker)) // a free town marched on by the people it left will not treat with them for a while
   // settled: all of it is done, and whoever is beaten is gone from the map.
   .on('settled', 'stores', (c) => settleStores(c))
   .on('settled', 'armytown', (c, _p, b) => { if (b.how === 'auto') reckonArmies(c); }) // the dead are their towns' dead; a battle fought in person counts its own
@@ -1219,6 +1223,7 @@ export function continueAI(c: Campaign): void {
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
+      marriageSeason(c); // the unmarried of a town marry, or go to a town beside to marry (marriage.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       kinSeasons(c); // the leaders' households and inner circles (kin.ts)
       noblesSeasons(c); // who is noble, and how they feel (nobles.ts)

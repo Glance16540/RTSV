@@ -1,6 +1,7 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
 import { endCard } from './briefing';
+import { bereftLines } from '../sim/bereft';
 import { possessive, renameOwn } from '../sim/naming';
 const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
@@ -583,6 +584,7 @@ export class Hud {
         const nameOf = (id: number) => { const u = game.entities.get(id); return u && u.kind === 'unit' ? u.name + (u.trait ? ' ' + VILLAGER_TRAITS[u.trait].icon : '') + (u.trait2 ? VILLAGER_TRAITS[u.trait2].icon : '') : ''; };
         body += `<div class="family"><span class="${r.m ? 'in m' : ''}">♂ ${nameOf(r.m) || 'empty'}</span><span class="${r.f ? 'in f' : ''}">♀ ${nameOf(r.f) || 'empty'}</span></div>`;
         body += awayHtml(game, b);
+        for (const line of bereftLines(game, b)) body += `<div class="hint">${line}</div>`; // widow, widower, orphans taken in (bereft.ts)
         if (b.family) body += `<div>The ${b.family} family${game.renown(b) ? ` · renown ${'★'.repeat(game.renown(b))}: +${game.renown(b)} room, children ${game.renown(b) * 10}% sooner` : ''}</div>`;
         if (r.m && r.f) {
           body += b.birthsPaused ? '<div>Not raising children (paused)</div>'
