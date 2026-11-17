@@ -610,6 +610,42 @@ town has fallen", "The assault has failed" (battlecard.ts verdictOf, told by bri
   changing anybody's work leaves the town's orders as they were.
 - **4.4 and 4.5** were fixed in the pass itself.
 
+## The new pieces together (after the fixes, main at d5996fc)
+
+One short visit to the capital and one siege defended there, from the same save, to see the town at work, the
+households, the soldiers' names and a man home on leave in one sitting. No error reached the console.
+
+Right, together:
+
+- **The visit.** "0 idle" from the first second: 29 villagers at food 7, wood 11, gold 6, stone 5 (the governor's
+  shares with a full granary), and the stores rising. Fourteen households under their roofs: twelve couples, and
+  "Oakes" and "Ironwood" with a wife alone, their men with the army. A soldier sent home was "Perrin Oakes" and walked
+  to the Oakes house. On leaving, the orders were untouched ("A governor keeps it"), 14 households were on the record,
+  and the chronicle said "is home, under his own roof again".
+- **The siege.** The town came with ten houses full, the two wives alone, 27 at work, and the army's companies led by
+  the men of its roll by name ("Marn Ironwood", "Perrin Oakes", "Joss Ironwood", "Ned Oakes"), each with a nameless
+  follower. "Marn Ironwood" sent home in the fight was written on the map as "a son of his house again". The panel now
+  reads "Defence against an army", and the reports "Malians march", "were thrown back".
+- **4.1 on the Kingsbarrow save**, replayed headless on the fixed code: the tribe stands as a town (a hall, 31
+  villagers, two men in arms), and storming it reads "2 died: 65 remain" where it read 67 dead.
+
+Off:
+
+- **A son took his father's place** (medium, fixed here): in the visit Perrin Oakes, "a son of the house" on the map,
+  came home to the Oakes house and was seated as its man beside the wife of Ned Oakes, who is the man of that house and
+  away himself. The field did not know which he was. The map now hands each man's tie to the field
+  (`AwayMan.tie`), and a son never takes the man's place: he is of the house as its son (`leavehome.ts`).
+- **The fallen by name, and the map** (medium, for the soldier-names work): the end card said "Fell by name, of
+  yours: Fenn, Perrin Oakes, Holt, Ned Oakes, Joss Ironwood". The map then said "1 man of Harrowdale fell with the
+  army; 1 came home hurt or routed. He was Ned Oakes", and Joss Ironwood is still on the army's roll and in its last
+  company. The names now agree for the one the map lets fall; the others the field saw die are alive on the map.
+- **A visit's soldiers have no names** (low): the roll is handed to a battle and not to a visit, so *Go home* there
+  still takes the next man on the list.
+- **Shares in two voices** (low): the panel says "50% food, 25% wood, 13% gold, 13% stone" while the town in fact works
+  25% food with a full granary (the governor's rule, `shareOf`); the field shows the second, the panel the first.
+- **Namesakes** (low): in a town of thirty there were two Neds, two Josses, two Tesses and two Orlas among the
+  villagers, beside the soldiers Ned Oakes and Joss Ironwood.
+
 ## Handed on
 
 | What | Whose |

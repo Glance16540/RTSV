@@ -24,7 +24,7 @@ import { comeHome } from './leavehome';
 import { companyOf, isCompanyOf, leadAgain } from './soldiernames';
 
 /** A man of the town away with the army that stands in it. */
-export interface AwayMan { name: string; family?: string; /** His age in seasons, as the army's roll keeps it. */ seasons: number }
+export interface AwayMan { name: string; family?: string; /** His age in seasons, as the army's roll keeps it. */ seasons: number; /** What he is to his house on the map's record: its man, or a son of it (warhouse.ts). */ tie?: 'husband' | 'son' }
 /** What the map hands a side: its town's men with the army there, and how many soldiers of each kind make a company. */
 export interface Furlough { men: AwayMan[]; per: Record<string, number> }
 /** A man home on leave at the end of a sitting: who he is, and what his company was. */
@@ -34,7 +34,7 @@ export interface HomeMan extends AwayMan { as: string; /** Where he is living as
 
 declare module './game' {
   interface Player { /** The town's own men with the army here who have not gone home (furlough.ts). */ furlough?: Furlough }
-  interface Unit { /** A villager who is a soldier home on leave: what his company was, and how many soldiers it had on the field. */ onLeave?: { as: string; n: number } }
+  interface Unit { /** A villager who is a soldier home on leave: what his company was, and how many soldiers it had on the field. */ onLeave?: { as: string; n: number; tie?: 'husband' | 'son' } }
   interface Game { /** Units that left the field alive (a soldier gone home, a man gone back to his company): not fallen. */ leftField?: number[] }
 }
 
@@ -67,7 +67,7 @@ export function goHome(g: Game, owner: number, ids: number[]): number {
     const v = g.spawnUnit('villager', owner, x, y, 'm');
     v.name = man.name; v.family = man.family ?? v.family;
     v.age = ageFor(man.seasons / SEASONS_A_YEAR, v.lifespan);
-    v.onLeave = { as: type, n: per };
+    v.onLeave = { as: type, n: per, ...(man.tie ? { tie: man.tie } : {}) };
     comeHome(g, v); // to his own door, or an empty one (leavehome.ts)
     g.msg(owner, `${man.name}${man.family ? ` ${man.family}` : ''} has laid down his arms and gone home.`);
     n++;
@@ -85,7 +85,7 @@ export function rejoin(g: Game, owner: number, ids: number[]): number {
     const v = g.entities.get(id);
     if (!v || v.kind !== 'unit' || v.owner !== owner || !mayRejoin(g, v)) continue;
     const { as, n: per } = v.onLeave!, { x, y } = v;
-    f.men.push({ name: v.name, ...(v.family ? { family: v.family } : {}), seasons: seasonsOf(v) });
+    f.men.push({ name: v.name, ...(v.family ? { family: v.family } : {}), seasons: seasonsOf(v), ...(v.onLeave!.tie ? { tie: v.onLeave!.tie } : {}) });
     g.msg(owner, `${v.name}${v.family ? ` ${v.family}` : ''} has taken up his arms again.`);
     quit(g, v);
     const company: Unit[] = [];

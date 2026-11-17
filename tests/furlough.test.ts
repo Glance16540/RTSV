@@ -55,7 +55,7 @@ describe('on the field: he goes home, and back', () => {
     expect(him.name).toBe(first.name);
     expect(him.family).toBe(first.family ?? him.family);
     expect(him.gender).toBe('m');
-    expect(him.onLeave).toEqual({ as: 'clubman', n: 2 });
+    expect(him.onLeave).toMatchObject({ as: 'clubman', n: 2 });
     expect(g.players[0].furlough!.men.length).toBe(men - 1);
     expect(g.leftField).toHaveLength(2); // gone from the field, not fallen
     expect(homeNow(g, 0)).toMatchObject([{ name: first.name, as: 'clubman' }]);
