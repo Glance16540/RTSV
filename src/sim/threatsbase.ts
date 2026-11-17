@@ -10,7 +10,7 @@ export const THREATS = {
   /** A new band's strength (least and most), the most one grows to, and the seasons between its growing by itself. */
   start: [2, 4], max: 10, grow: 3,
   /** The chance a band strikes in a season. */
-  strike: 0.7,
+  strike: 0.62,
   /** How much less a taken town's men are worth on the walls at the full weight of its old people's resentment (oldfolk.ts `oldWeight`): half. */
   grudge: 0.5,
   /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
