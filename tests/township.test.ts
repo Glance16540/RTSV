@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Campaign, armyAt, battleConfig, finishBattle, moveArmy, resolvePending } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
 import { ELDER_AT } from '../src/sim/data';
-import { Census, MOTHER_KIDS, TOLL, cleanCensus, folkOf, foundFolk, headcount, living, musterFolk, nationNotables, nationPeople, nationStores, rememberVeteran, settleFolk, tollFolk } from '../src/sim/township';
+import { Census, MAX_KIND, MOTHER_KIDS, TOLL, TOWN_SCALE, cleanCensus, folkOf, foundFolk, headcount, living, musterFolk, nationNotables, nationPeople, nationStores, rememberVeteran, settleFolk, tollFolk } from '../src/sim/township';
 import { run, bareCampaign } from './helpers';
+import { FIELD_CAP } from '../src/sim/fieldcap';
 
 const LONG = 60_000;
 const world = (seed = 5): Campaign => bareCampaign(seed, 1, 1, 'hearth');
@@ -40,8 +41,8 @@ describe('a town and its people', () => {
     }
     const chief = home(c), plain = { ...chief, capital: -1 };
     const as = (t: typeof chief) => { const k = JSON.parse(JSON.stringify(c)) as Campaign; k.territories[chief.id] = { ...t, folk: undefined }; return foundFolk(k, chief.id); };
-    expect(as(chief).men).toBe(as(plain).men + 2);
-    expect(as(chief).women).toBe(as(plain).women + 2);
+    expect(as(chief).men).toBe(as(plain).men + 2 * TOWN_SCALE);
+    expect(as(chief).women).toBe(as(plain).women + 2 * TOWN_SCALE);
   }, LONG);
 
   it('a campaign saved before towns kept their people still loads, and one saved after keeps them', () => {
@@ -72,7 +73,11 @@ describe('a battle is fought by the town and goes home to it', () => {
   it('the town fought over turns out with its own people and stores; an army in the field or in camp brings neither', () => {
     const c = besieged(), h = home(c), f = folkOf(c, h.id);
     const cfg = battleConfig(c)!;
-    expect(cfg.setups[0].bonus!.people).toMatchObject({ men: f.men, women: f.women, elders: f.elders, children: f.children });
+    // All of it, up to FIELD_CAP of its grown (fieldcap.ts): the rest are held on the record, and every child goes.
+    const p = cfg.setups[0].bonus!.people!, grownAll = f.men + f.women + f.elders, held = (f.fieldHome?.m.length ?? 0) + (f.fieldHome?.f.length ?? 0);
+    if (grownAll <= FIELD_CAP) expect(p).toMatchObject({ men: f.men, women: f.women, elders: f.elders, children: f.children });
+    else { expect(p.men + p.women + p.elders).toBe(FIELD_CAP); expect(p.children).toBe(f.children); }
+    expect(p.men + p.women + p.elders + held).toBe(grownAll);
     expect(cfg.setups[0].bonus!.stores).toEqual(f.stores);
     expect(cfg.setups[1].bonus!.people).toBeUndefined(); // the attackers are an army, not a town
     c.pending!.mode = 'field';
@@ -80,7 +85,9 @@ describe('a battle is fought by the town and goes home to it', () => {
     expect(battleConfig(c)!.setups[0].bonus!.people).toMatchObject({ men: Math.min(2, f.men), women: 0, elders: 0, children: 0 });
     expect(battleConfig(c)!.setups[0].bonus!.stores).toBeUndefined();
     const far = assault();
-    expect(battleConfig(far.c)!.setups[1].bonus!.people).toMatchObject({ men: folkOf(far.c, far.to).men }); // the tribe's town is a town too
+    const tribe = folkOf(far.c, far.to), tp = battleConfig(far.c)!.setups[1].bonus!.people!; // the tribe's town is a town too
+    expect(tp.men + tp.women + tp.elders).toBe(Math.min(FIELD_CAP, tribe.men + tribe.women + tribe.elders));
+    if (tribe.men + tribe.women + tribe.elders <= FIELD_CAP) expect(tp.men).toBe(tribe.men);
     expect(battleConfig(far.c)!.setups[0].bonus!.people).toBeUndefined();
   }, LONG);
 
@@ -166,7 +173,7 @@ describe('a battle is fought by the town and goes home to it', () => {
     expect(cleanCensus(null)).toBeUndefined();
     expect(cleanCensus({ men: 3 })).toBeUndefined();
     const odd = cleanCensus({ men: -4, women: 1e9, elders: NaN, children: 2.6, stores: { food: -1, wood: 1e12, gold: 5, stone: 'x' as unknown as number }, named: [{ name: '<b>Ada</b>', gender: 'f', kids: 4 }, { name: '', gender: 'f' }] })!;
-    expect(odd).toMatchObject({ men: 0, women: 60, elders: 0, children: 3, stores: { food: 0, wood: 20000, gold: 5, stone: 0 } });
+    expect(odd).toMatchObject({ men: 0, women: MAX_KIND, elders: 0, children: 3, stores: { food: 0, wood: 20000, gold: 5, stone: 0 } });
     expect(odd.named).toEqual([{ name: 'bAda/b', gender: 'f', kids: 4 }]);
   }, LONG);
 
