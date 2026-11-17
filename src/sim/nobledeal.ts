@@ -130,7 +130,7 @@ export function dealWith(c: Campaign, f: number, key: string, kind: DealKind): s
     if (n.rank === 'lord') newLord(c, f, tid, n);
     else { (fac.stripped ??= []).push(n.key); fac.nobles = all.filter((x) => x !== n); }
     folkOf(c, tid).stores.gold += DEALS.strip.seized;
-    tell(c, f, tid, 'bad', `${who} is stripped of their lands, and what they held is yours. The nobles are afraid.`);
+    tell(c, f, tid, 'bad', `${who} is stripped of ${their(n)} lands, and what ${they(n)} held is yours. The nobles are afraid.`);
   }
   return '';
 }
@@ -153,7 +153,7 @@ const them = (n: Noble): string => (n.female ? 'her' : 'him');
 export function dealsFor(c: Campaign, f: number, key: string): { kind: DealKind; name: string; bar: string }[] {
   const n = nobleByKey(c, f, key);
   if (!n || n.rank === 'close') return [];
-  return DEAL_KINDS.map((kind) => ({ kind, name: kind === 'post' && TITLES[n.rank] ? `Make ${TITLES[n.rank]}` : DEALS[kind].name, bar: dealBar(c, f, key, kind) }));
+  return DEAL_KINDS.map((kind) => ({ kind, name: kind === 'post' && TITLES[n.rank] ? `Make ${TITLES[n.rank]}` : kind === 'strip' ? `Strip of ${their(n)} lands` : DEALS[kind].name, bar: dealBar(c, f, key, kind) }));
 }
 
 /** What a dealing costs, in words. */

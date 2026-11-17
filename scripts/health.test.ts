@@ -30,7 +30,7 @@ import { writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
 import { Game } from '../src/sim/game';
 import type { Campaign } from '../src/sim/campaign';
-import { ageOf, answerDemand, siteCost, slots, armyAt, armyStrength, battleConfig, battleWatchers, continueAI, endTurn, moveArmy, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
+import { AGE_COST, advanceAge, ageCost, ageOf, answerDemand, siteCost, slots, armyAt, armyStrength, battleConfig, battleWatchers, continueAI, endTurn, moveArmy, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
 import { armiesFor, attackBand } from '../src/sim/bandfight';
 import { SEASONS_A_YEAR } from '../src/sim/ageing';
 import { BUILDINGS, CIV_IDS } from '../src/sim/data';
@@ -53,6 +53,7 @@ import { plotFor } from '../src/sim/governor';
 import { layTown } from '../src/sim/rivalrule';
 import { hasFortress } from '../src/sim/fortress';
 import type { March } from '../src/sim/bandmarch';
+import { settleStores } from '../src/sim/stores';
 import { UNREST, ownFounded, unrestWeights } from '../src/sim/unrest';
 import { ofTown } from '../src/sim/intriguebase';
 import { creedOf } from '../src/sim/creed';
@@ -109,10 +110,40 @@ function huntBands(c: Campaign): void {
   }
 }
 
+/**
+ * The computer-played player puts by for its next age, as a sensible player does. Left to the rivals' own rule it
+ * spends all it has every season and lived its first thirty seasons in the Stone Age (0 of 48 campaigns reached
+ * the Bronze Age in that time), which skewed every row read from the player's side. Each season it sets aside
+ * SAVE of the supplies it has in hand, until the price of the next age is put by; then it takes the age. What is
+ * set aside is out of its towns' stores meanwhile (stores.ts settles the figure into the towns), so the rest of
+ * its turn cannot spend it. SAVE=0 in the environment turns it off, to read the report as it was (the player's
+ * first age then came at a median of season 17, and for one campaign in three not by season 20).
+ */
+const SAVE = process.env.SAVE === undefined ? 0.5 : +process.env.SAVE;
+/**
+ * How many ages it saves for so: the first only, unless SAVE_AGES says more; after that it takes an age by the
+ * rivals' rule. Saving so for every age (SAVE_AGES=9) was measured at 192 and not kept: with half its supplies
+ * always put by it kept too few men, lost about twenty more campaigns in each course, and its towns were raided
+ * once in 2.8 years where the band is 3 to 5.
+ */
+const SAVE_AGES = process.env.SAVE_AGES === undefined ? 1 : +process.env.SAVE_AGES;
+const PURSE = new WeakMap<Campaign, number>();
+function putBy(c: Campaign): void {
+  const f = c.factions[0];
+  if (!SAVE || !f.alive || c.phase !== 'player') return;
+  settleStores(c);
+  let purse = PURSE.get(c) ?? 0;
+  const cost = ageOf(c, 0) < Math.min(AGE_COST.length, SAVE_AGES) ? ageCost(c, 0) : 0;
+  if (cost > 0) { const put = Math.min(Math.floor((f.supplies ?? 0) * SAVE), Math.max(0, cost - purse)); if (put > 0) { f.supplies -= put; settleStores(c); purse += put; } }
+  if (purse > 0 && (cost === 0 || purse >= cost)) { f.supplies += purse; settleStores(c); purse = 0; if (cost > 0 && !advanceAge(c, 0)) { /* something else took it since: it is back in hand, and is put by again next season */ } }
+  PURSE.set(c, purse);
+}
+
 /** One season: the player's turn (played or let be), then everyone else's. */
 function season(c: Campaign, ruled: boolean): void {
   if (PLAYER === 'computer') {
     if (STORIES === 'answer') sensibleAnswers(c, 0);
+    putBy(c);
     huntBands(c);
     for (let i = 0; i < 40 && c.phase === 'player'; i++) {
       playForPlayer(c);
@@ -183,6 +214,8 @@ interface Watch {
   /** Unrest begun in a town (unrest.ts), with what weighed on it then; towns that rose and became free (freetown.ts), and what became of them. */
   stirs: { hungry: boolean; angry: boolean; sour: boolean; fresh: boolean; tavern: boolean; founded: boolean; mine: boolean }[];
   free: { rose: number; back: number; retaken: number; taken: number; still: number };
+  /** The season the player took its first age, or -1. */
+  firstAge: number;
   /** Marches in from the far wilds (bandwilds.ts), and how many bands of any kind came in the campaign. */
   marches: March[]; bandsCame: number;
   /** Every thief and killer (intrigue.ts): the seasons it was at large, and how many of them a Watch House stood in the town. */
@@ -204,6 +237,7 @@ interface Watch {
   met: number; // the first season a story waited on the player's word face to face (encounter.ts), or -1
   driftSeasons: { lost: number; ts: number }; // drift's toll summed season by season over every town held by the one people it began with, and the town-seasons (the decrees row's second reading)
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
+  named: { battle: number; wins: number; share: number[]; kills: number[]; mine: number }; // soldiers named on the map, by a battle fought out there or by two wins (veteranhome.ts, rivalrule.ts)
 }
 
 const CRIME_ROW = 'Seasons a thief or a killer is at large, with a Watch House in every town against as it is (read with CRIME=1)', CRIME_BAND = '10 to 30% fewer';
@@ -231,7 +265,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [] };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [], named: { battle: 0, wins: 0, share: [], kills: [], mine: 0 } };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -252,8 +286,17 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const atLarge = new Map<number, { seasons: number; watched: number }>(); // each thief and killer, by the story's id
   const losses: Losses[][] = [];
   const names = new Map(c.factions.map((f) => [f.name, f.id]));
+  const seenNamed = new Set<string>(c.armies.filter((a) => a.champion).map((a) => `${a.id}|${a.champion!.name}`));
   for (let s = 1; s <= seasons; s++) {
     if (forced) give(c, FORCED[forced]);
+    // Soldiers named on the map since last season, while the campaign is undecided (veteranhome.ts, rivalrule.ts).
+    if (c.phase !== 'over') for (const a of c.armies) {
+      const ch = a.champion, key = ch ? `${a.id}|${ch.name}` : '';
+      if (!ch || seenNamed.has(key)) continue;
+      seenNamed.add(key);
+      if (ch.named) { w.named.battle++; w.named.share.push(ch.kills / Math.max(1, ch.named.felled)); w.named.kills.push(ch.kills); } else w.named.wins++;
+      if (a.owner === 0) w.named.mine++;
+    }
     // Once a campaign is decided, the world is let go on turning until twenty years have passed, so that the
     // twenty-year figures are read from every campaign; the campaign's figures are read from the decision.
     if (c.phase === 'over') {
@@ -310,6 +353,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       x.seen++; if (armyAt(c, tid)?.owner === x.owner) x.garrisoned++;
       if (now - x.since >= 20) { w.taken.push({ garrison: x.garrisoned * 2 > x.seen, rose: false }); takenAt.delete(tid); }
     }
+    if (w.firstAge < 0 && c.factions[0].alive && ageOf(c, 0) >= 1) w.firstAge = s;
     // Unrest begun this season, with what weighed on the town; and the free towns: risen, come back, taken.
     for (const e of c.events ?? []) if (e.kind === 'unrest' && e.turn === now && c.territories[e.at].owner >= 0) {
       const u = unrestWeights(c, e.at), t = c.territories[e.at];
@@ -805,6 +849,19 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       add('Crime', 'Forced: seasons running a town of the player\'s stays hungry, with Paved Roads against as it is', 'report only', `${spellOf(mineOf(roads))} with against ${spellOf(mineOf(ruled))} as it is`, 'report',
         `Spells of hunger in the player\'s own towns in the same two tellings (the Inns and Escorts are there too). In all, ${hungrySeasons(roads)} hungry town-seasons with against ${hungrySeasons(ruled)} as it is. ${mineLine(roads)} with; ${mineLine(ruled)} as it is.`);
     }
+  }
+  // Soldiers named on the map (veteranhome.ts, rivalrule.ts): report only, so the first guesses have numbers.
+  {
+    const n = ruled.map((w) => w.named), battle = n.reduce((k, x) => k + x.battle, 0), wins = n.reduce((k, x) => k + x.wins, 0), mine = n.reduce((k, x) => k + x.mine, 0);
+    const share = n.flatMap((x) => x.share), kills = n.flatMap((x) => x.kills);
+    add('People', 'Soldiers named on the map a campaign, and the share of the felled a battle credits one with', 'report only', `${num((battle + wins) / Math.max(1, ruled.length), 1)} a campaign until it is decided (${num(battle / Math.max(1, ruled.length), 1)} by a battle fought out on the map, ${num(wins / Math.max(1, ruled.length), 1)} by an army's second win; ${num(mine / Math.max(1, ruled.length), 1)} the player's); named by a battle: ${share.length ? `${pct(mean(share))} of the felled credited, median ${num(median(kills), 0)} credited (middle half ${num(quart(kills, 0.25), 0)} to ${num(quart(kills, 0.75), 0)})` : 'none'}`, 'report',
+      'Every army that comes to have a soldier known by name while the campaign is undecided, every people\'s. "By a battle" is one fought out on the map that the army won felling at least NAMED.least, with nobody known by name (veteranhome.ts: credited NAMED.share of the felled, three at least); "by a second win" is rivalrule.ts\'s rule. A battle fought in person names its own and is not counted.');
+  }
+  // When the computer-played player takes its first age: report only.
+  {
+    const got = ruled.filter((w) => w.firstAge > 0).map((w) => w.firstAge);
+    add('Pace', 'The player reaches its first age', 'report only', got.length ? `median season ${num(median(got), 0)} (${got.length} of ${ruled.length} campaigns; by season 12 ${pct(got.filter((x) => x <= 12).length / ruled.length)}, by season 20 ${pct(got.filter((x) => x <= 20).length / ruled.length)})` : 'never', 'report',
+      SAVE ? `The computer-played player puts by ${pct(SAVE)} of the supplies it has in hand each season until the price of its ${SAVE_AGES <= 1 ? 'first' : 'next'} age is put by, then takes it${SAVE_AGES <= 1 ? '; later ages it takes by the rivals\' rule' : ''} (SAVE=0 turns that off).` : 'The computer-played player is saving nothing for its next age (SAVE=0): it takes one only by the rivals\' own rule, when it happens to have the price and 8 over in hand.');
   }
   // Unrest and the free towns (unrest.ts, freetown.ts): report only.
   {

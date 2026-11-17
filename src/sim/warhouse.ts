@@ -21,6 +21,7 @@ import type { Campaign } from './campaign';
 import { FAMILY_NAMES, NAMES_M } from './data';
 import { GRIEF_SEASONS } from './grief';
 import { Folk, MAX_NOTABLES, Notable, folkOf } from './township';
+import { veteransFell } from './veteranhome';
 
 export type Tie = 'husband' | 'son';
 /** A man of the house away with the armies: his name, what he is to the house, the turn he left, and the army he marches with. */
@@ -173,6 +174,7 @@ export function fell(c: Campaign, tid: number, n: number, how = 'fell with the a
     }
     out.push({ name: s.name, family: h.family, as: s.as, known: !!wife });
   }
+  veteransFell(c, tid, out, how); // a known veteran among them is lost as such, and weighs (veteranhome.ts)
   // A house has lost its man or its son, and the town grieves (grief.ts): a season for each man lost and one more, as long at the most as any loss is felt.
   if (out.length) f.grief = Math.max(f.grief ?? 0, Math.min(GRIEF_SEASONS, out.length + WARHOUSE.mourn));
   return out;
