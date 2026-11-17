@@ -37,7 +37,7 @@ import { DecreeKind, issueDecree } from '../sim/decrees';
 import { dealChoices, dealFromPanel } from './nobledeals';
 import { standingRows } from './townorders';
 import { setStanding } from '../sim/townorders';
-import { nobleByKey } from '../sim/nobledeal';
+import { dealEffect, nobleByKey } from '../sim/nobledeal';
 import { titleOf } from '../sim/nobles';
 import { raiseWork } from '../sim/townworks';
 import { learn } from '../sim/studies';
@@ -313,9 +313,10 @@ export class Overworld {
     const run = (kind: string): void => { dealFromPanel(c, kind, key); close(); };
     const strip = (): void => {
       const d = all.find((x) => x.kind === 'strip')!;
-      this.dialog(`Strip ${titleOf(c, n)} of their lands?`, d.detail, [['Strip them of their lands', () => run('strip')], ['No', () => this.askDeal(key)]]);
+      const his = n.female ? 'her' : 'his', him = n.female ? 'her' : 'him';
+      this.dialog(`Strip ${titleOf(c, n)} of ${his} lands?`, dealEffect(c, 0, n, 'strip'), [[`Strip ${him} of ${his} lands`, () => run('strip')], ['No', () => this.askDeal(key)]]);
     };
-    this.dialog(`Deal with ${titleOf(c, n)}`, `Mood ${n.mood}.${barred.length ? ' Not now: ' + barred.map((d) => `${d.name.replace(/^\S+ /, '').toLowerCase()} (${d.bar})`).join('; ') + '.' : ''}`,
+    this.dialog(`Deal with ${titleOf(c, n)}`, `Mood ${n.mood}.${barred.length ? ' Out of reach as yet: ' + barred.map((d) => `${d.name.replace(/^\S+ /, '').toLowerCase()} (${d.bar})`).join('; ') + '.' : ''}`,
       [...open.map((d): [string, () => void] => [d.name, () => (d.kind === 'strip' ? strip() : run(d.kind))]), ['Not now', close]]);
     // Each dealing's price and what it does, on a line of its own beneath (style.css: Tales).
     const el = $('ow-dialog');

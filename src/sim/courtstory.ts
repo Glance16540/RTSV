@@ -110,7 +110,7 @@ export function beginRival(c: Campaign, rival: number): Intrigue | null {
   const it = begin(c, 'rival', seat), king = rulerName(c, rival), kf = !!heroFor(c, rival).female;
   it.rival = rival; it.stage = 0; it.due = c.turn + COURT.rival.demand; it.cast = { spouse: s.name, king };
   c.factions[rival].favor = 0;
-  note(c, it, 'bad', `${king} of the ${people(c, rival)} has sent word: ${they(kf)} will have ${leader(c)}'s head, and ${s.name}, your ${mate(s.female)}, for ${their(kf)} own.`);
+  note(c, it, 'bad', `${king} of the ${people(c, rival)} has sent word: ${they(kf)} will have the head of ${leader(c)}, and ${s.name}, your ${mate(s.female)}, for ${their(kf)} own.`);
   return it;
 }
 /** A suitor comes for a grown daughter of the leader. For the season's chance, and for tests. */
@@ -149,7 +149,7 @@ function knife(c: Campaign, it: Intrigue): void {
   const odds = R.foil + (it.watch ? R.guard : 0) + (loyal ? R.loyal : 0) + R.warned * plotWarning(c, 0);
   const where = c.territories[seatOf(c)]?.name ?? 'the court', who = leader(c);
   if (chance(c, it.id * 89 + 1) < odds) {
-    end(c, it, 'foiled', `A man with a knife was taken at ${who}'s door in ${where}${it.watch ? ' by the guard' : loyal ? ` by ${loyal.name}` : ''}. He was sent by ${king}. ${who} lives, ${it.cast?.spouse ?? 'the household'} is safe, and every court will hear whose man he was.`, 'good');
+    end(c, it, 'foiled', `A man with a knife was taken at the door of ${who} in ${where}${it.watch ? ' by the guard' : loyal ? ` by ${loyal.name}` : ''}. He was sent by ${king}. ${who} lives, ${it.cast?.spouse ?? 'the household'} is safe, and every court will hear whose man he was.`, 'good');
     return;
   }
   if (chance(c, it.id * 89 + 2) < R.slain) {
@@ -166,7 +166,7 @@ function defy(c: Campaign, it: Intrigue, silent = false): void {
   if (!silent) { shiftVirtue(c, 0, R.defyVirtue); loyalty(c, R.defyLoyalty); }
   note(c, it, 'bad', silent
     ? `${it.cast?.king} has had no answer, and takes that for one. It is said ${they(queen(c, it))} has sent a man.`
-    : `${it.cast?.king} has ${leader(c)}'s answer: ${it.cast?.spouse} stays. It is said ${they(queen(c, it))} has sent a man.`);
+    : `${it.cast?.king} has the answer of ${leader(c)}: ${it.cast?.spouse} stays. It is said ${they(queen(c, it))} has sent a man.`);
 }
 
 /** A season for one story of the house. */
@@ -244,7 +244,7 @@ export function courtChoose(c: Campaign, it: Intrigue, choice: string): boolean 
   const d = it.cast?.daughter ?? 'her', suitor = it.cast?.suitor ?? 'the suitor';
   if (choice === 'ask') {
     it.asked = true;
-    note(c, it, 'plain', it.willing ? `${d} says she has seen ${suitor}, and would have him.` : `${d} says she would sooner stay unwed than go to ${suitor}'s people.`);
+    note(c, it, 'plain', it.willing ? `${d} says she has seen ${suitor}, and would have him.` : `${d} says she would sooner stay unwed than go to the people of ${suitor}.`);
     return true;
   }
   if (choice === 'give') {
@@ -297,13 +297,13 @@ export function beginPlot(c: Campaign, key?: string): Intrigue | null {
   const list = [who, ...others].sort((a, b) => a.key.localeCompare(b.key));
   it.nobles = list.map((n) => ({ key: n.key, name: n.name, title: titleOf(c, n), female: n.female }));
   it.culprit = list.indexOf(who); it.due = c.turn + P.ripe;
-  note(c, it, 'bad', `It is whispered at court that one of the great means to take ${leader(c)}'s place. ${it.nobles.length} are spoken of: ${it.nobles.map((n) => n.title).join('; ')}.`);
+  note(c, it, 'bad', `It is whispered at court that one of the great means to take the place of ${leader(c)}. ${it.nobles.length} are spoken of: ${it.nobles.map((n) => n.title).join('; ')}.`);
   return it;
 }
 function laidBare(c: Campaign, it: Intrigue, how: string): void {
   const p = it.nobles![it.culprit];
   it.found = true; it.cleared = it.nobles!.map((_, i) => i).filter((i) => i !== it.culprit);
-  note(c, it, 'good', `${how} It is ${p.title} who plots for ${leader(c)}'s place. ${p.female ? 'She' : 'He'} is held, and waits on your judgement.`);
+  note(c, it, 'good', `${how} It is ${p.title} who plots for the place of ${leader(c)}. ${p.female ? 'She' : 'He'} is held, and waits on your judgement.`);
 }
 /** The plotter is gone from the nation's great: put to death, or dead in their own rising. */
 function remove(c: Campaign, n: Noble | undefined, how: string): void {
@@ -377,14 +377,14 @@ function plotChoose(c: Campaign, it: Intrigue, choice: string): boolean {
     if (n) n.mood = 10;
     for (const x of noblesOf(c, 0)) if (x !== n) x.mood = Math.min(100, x.mood + P.pardonMood);
     shiftVirtue(c, 0, P.pardonVirtue);
-    end(c, it, 'pardoned', `${p.title} plotted for ${leader(c)}'s place, was found out, and was pardoned before the court.`, 'good');
+    end(c, it, 'pardoned', `${p.title} plotted for the place of ${leader(c)}, was found out, and was pardoned before the court.`, 'good');
     return true;
   }
   if (choice === 'death') {
     remove(c, n, 'was put to death for plotting against the leader');
     for (const x of noblesOf(c, 0)) if (x !== n) x.mood = Math.max(-100, x.mood + P.deathMood);
     shiftVirtue(c, 0, P.deathVirtue);
-    end(c, it, 'executed', `${p.title} plotted for ${leader(c)}'s place, was found out, and was put to death. The other great houses took note.`, 'plain');
+    end(c, it, 'executed', `${p.title} plotted for the place of ${leader(c)}, was found out, and was put to death. The other great houses took note.`, 'plain');
     return true;
   }
   return false;
