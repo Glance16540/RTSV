@@ -240,6 +240,8 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **A rim of true wilderness** (the owner's word, 17 November 2026). The map's edge is ringed with true wilderness, snow and desert that nobody can settle or farm, so a rim of wild country lasts all campaign and bands can be born there and march in from afar where a people can see them coming. It takes no farmland from anyone.
 
+**A dip does not undo dominion** (the owner's word, 17 November 2026). A people that holds the share for dominion counts its turns toward the ten; a season under the share takes two turns off the count, not all of it, so one town rising after nine turns does not throw away a won war.
+
 ## The order of building
 
 Each step is to be playable by itself.
