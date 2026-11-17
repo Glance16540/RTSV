@@ -3,7 +3,8 @@ import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { endTurn, continueAI, eventsAt } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
-import { OLD_SEASON, SEASONS_A_YEAR } from '../src/sim/ageing';
+import { GROWN_SEASON, OLD_SEASON, SEASONS_A_YEAR, agesOf } from '../src/sim/ageing';
+import '../src/sim/convoys';
 import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, wanted } from '../src/sim/threats';
 import { threatsOfMen } from '../src/sim/bandseason';
 import { attackBand } from '../src/sim/bandfight';
@@ -401,17 +402,22 @@ describe('bands on the map', () => {
     for (const seed of [3, 4, 5]) {
       const c = bareCampaign(seed, 2);
       for (let i = 0; i < 40 && c.phase !== 'over' && !c.pending; i++) {
+        // Each town's children, and how many of them are due to come of age this season.
         const kids = c.territories.map((t) => t.folk?.children ?? -1);
+        const due = c.territories.map((t) => (t.folk ? agesOf(c, t.id, t.folk).k.filter((s) => s + 1 >= GROWN_SEASON).length : 0));
         const seen = (c.raids ?? []).length;
         endTurn(c);
         while (c.demand) { c.demand = null; continueAI(c); }
         for (const r of (c.raids ?? []).slice(seen)) {
           raids++;
-          // Children on the record only ever leave it by coming of age, a season at a time.
+          // Children on the record leave it only by coming of age, or by going down the road with their own family to
+          // another town of their people (migration.ts: a raided town is a reason to leave), where they arrive.
           // A town left with nobody grown that season has had its children taken in by the nearest town of their people
           // (orphans.ts): they are gone from this town's record, unharmed, and the chronicle says where they went.
+          // Nothing else takes a child: not a raid, not plague, not hunger. So the count is exact, at any size of town.
+          const byRoad = (c.convoys ?? []).filter((x) => x.from === r.at && x.since === c.turn).reduce((n, x) => n + (x.cargo.children?.length ?? 0), 0);
           const f = folkOf(c, r.at), takenIn = f.men + f.women + f.elders === 0 && (c.chronicle ?? []).some((x) => x.turn === c.turn && x.text.includes(`of ${c.territories[r.at].name}, left with nobody grown`));
-          if (kids[r.at] >= 0 && !takenIn) expect(f.children).toBeGreaterThanOrEqual(kids[r.at] - 3);
+          if (kids[r.at] >= 0 && !takenIn) expect(f.children).toBeGreaterThanOrEqual(kids[r.at] - due[r.at] - byRoad);
           if (takenIn) expect(f.children).toBe(0);
           expect(reportText(c, r).length).toBeGreaterThan(2);
         }

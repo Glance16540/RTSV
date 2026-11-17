@@ -6,6 +6,7 @@ import { Game } from '../src/sim/game';
 import { TRIBE, armMen, bandMen, fieldReckoned, setTribe, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from '../src/sim/tribes';
 import { finishBattle } from '../src/sim/campaign';
 import { TOWN_SCALE, folkOf } from '../src/sim/township';
+import { FIELD_CAP, homeCounts } from '../src/sim/fieldcap';
 
 function world(seed = 11) {
   const c = newCampaign(seed, 2);
@@ -214,16 +215,21 @@ describe('a tribe\'s town fought over in person', () => {
     expect(side.bonus!.units).toEqual({});
     expect(side.bonus!.warriors).toBe(3 * TRIBE.men);
     const f = folkOf(c, tribe.id);
-    expect(side.bonus!.people).toMatchObject({ men: f.men, women: f.women });
+    // A town larger than the field will bear keeps some of its grown at home on its record (fieldcap.ts): the field
+    // and those held back are the whole town between them, and nobody is lost.
+    const held = f.fieldHome ? homeCounts(f.fieldHome) : { men: 0, women: 0, elders: 0 };
+    expect(side.bonus!.people).toMatchObject({ men: f.men - held.men, women: f.women - held.women });
+    expect(f.men + f.women + f.elders - held.men - held.women - held.elders).toBeLessThanOrEqual(Math.max(FIELD_CAP, 3 * TRIBE.men));
+    if (f.men + f.women + f.elders <= FIELD_CAP) expect(held).toEqual({ men: 0, women: 0, elders: 0 });
     const g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
     const theirs = g.units.filter((u) => u.owner === 1 && !u.dead);
     const armed = theirs.filter((u) => g.isMilitary(u));
     expect(armed).toHaveLength(3 * TRIBE.men);
     expect(armed.every((u) => u.lifespan > 0 && !!u.name)).toBe(true); // people of the town, not soldiers from nowhere
-    expect(theirs.filter((u) => u.type === 'villager' && u.gender === 'm' && !g.isElder(u))).toHaveLength(f.men - 3 * TRIBE.men);
+    expect(theirs.filter((u) => u.type === 'villager' && u.gender === 'm' && !g.isElder(u))).toHaveLength(f.men - held.men - 3 * TRIBE.men);
     // Counted home: every one of them is still one of the town's men.
     const census = g.census(1);
-    expect(census.men + census.women + census.elders).toBe(f.men + f.women + f.elders);
+    expect(census.men + census.women + census.elders).toBe(f.men + f.women + f.elders - held.men - held.women - held.elders); // those on the field; the held back are joined when it is written back
     expect(census.men).toBeGreaterThanOrEqual(3 * TRIBE.men);
   });
 
