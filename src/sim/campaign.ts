@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { turnLeft, turnOpened } from './seasongain';
 import { militiaOf } from './militia';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
@@ -1188,6 +1189,7 @@ function checkDominion(c: Campaign): void {
 export function endTurn(c: Campaign): void {
   if (c.phase !== 'player' || c.pending) return;
   if (c.tale) { c.tale = null; c.log.push('The matter before you was left to settle itself.'); }
+  turnLeft(c); // what there is to spend as the turn ends, to measure the season by (seasongain.ts)
   c.phase = 'ai';
   c.cursor = 1;
   c.spent = false;
@@ -1254,6 +1256,7 @@ export function continueAI(c: Campaign): void {
       intrigueSeason(c); // stories inside the story: a thief, a killer to be found (intrigue.ts)
       rivalStoriesSeason(c); // and the rivals' own, answered by their rulers (rivalstories.ts)
       settleStores(c); // the season's income and losses are in the towns' stores (stores.ts)
+      turnOpened(c); // and what the season truly added to what the player has to spend (seasongain.ts)
       checkDominion(c);
       ruinSeason(c); // twenty years with no people gaining ground and the bands on much of the map: the age ends in ruin (ruin.ts)
       seasonTurned(c); // what changed for the player's nation this season, for the card on the map (seasonreport.ts)

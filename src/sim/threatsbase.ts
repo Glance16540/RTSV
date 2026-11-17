@@ -9,8 +9,8 @@ export const THREATS = {
   lands: 5, most: 5, appear: 0.7,
   /** A new band's strength (least and most), the most one grows to, and the seasons between its growing by itself. */
   start: [2, 4], max: 10, grow: 3,
-  /** The chance a band strikes in a season. */
-  strike: 0.7,
+  /** The chance a band strikes in a season. At 0.7 raids on a town read once in 3.0 years, on the floor of their band (384 campaigns); 0.66 reads 3.2. Lower costs ruin: bands that strike less are spent less. */
+  strike: 0.66,
   /** How much less a taken town's men are worth on the walls at the full weight of its old people's resentment (oldfolk.ts `oldWeight`): half. */
   grudge: 0.5,
   /** Defence against force: at or over `hold` the town holds; under `fall` people are taken; between, it is raided. */
