@@ -6,7 +6,8 @@
 //   - a land may start wild if nobody holds it, it is nobody's chief town, it lies beside no people's chief town, and it
 //     is far or poor: snow or desert, or on the map's edge (within WILD.edge of a side);
 //   - of those, WILD.share are made wild, chosen by the world's seed, so the same seed makes the same wilds.
-// A wild land is an empty land (founding.ts): nobody lives there, no warriors, no works. It keeps its name and its
+// A wild land is an empty land (founding.ts): nobody lives there, no warriors, no works. A wild land of snow or desert is
+// true wilderness (`wilderness`): it can never be settled, and stays wild all campaign for the far-wilds bands. It keeps its name and its
 // ground. It is marked `wild`, for the far-wilds bands (threats) and the map to read; the mark stays when settlers or an
 // army make it someone's, as where the land came from.
 //
@@ -39,6 +40,18 @@ export function farOrPoor(c: Campaign, t: Territory): boolean {
 export function wildable(c: Campaign): Territory[] {
   const homes = new Set(c.territories.filter((t) => t.capital >= 0).map((t) => t.id));
   return c.territories.filter((t) => t.owner < 0 && t.capital < 0 && !t.horde && !t.adj.some((n) => homes.has(n)) && farOrPoor(c, t));
+}
+
+/**
+ * Is this land true wilderness: a wild land of snow or desert? It can never be settled (the owner's word, 17 November
+ * 2026: "so a rim of wild country lasts all campaign and bands keep arising there to march in from afar"). It is still an
+ * empty land (founding.ts emptyLand) for the bands that arise in the far wilds; founding refuses it (founding.ts settleable).
+ */
+export function wilderness(c: Campaign, tid: number): boolean {
+  const t = c.territories[tid];
+  if (!t?.wild) return false;
+  const b = biomeOf(c, tid);
+  return b === 'snow' || b === 'desert';
 }
 
 /** A number drawn from the world's seed and a land's, the same every time. */
