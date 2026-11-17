@@ -1,3 +1,4 @@
+import { militiaOf } from '../src/sim/militia';
 import { distinctColours } from '../src/sim/nationcolours';
 import { describe, expect, it } from 'vitest';
 import { countryOf, countryYield } from '../src/sim/country';
@@ -3711,7 +3712,7 @@ describe('the story of a campaign', () => {
     expect(income(c, 0)).toBe(before.income + 5 * 2 + PLACES.fair.supplies!);
     expect(virtueDrift(c, 0)).toBe(before.drift + PLACES.shrine.virtue!);
     expect(ageCost(c, 0)).toBe(before.age - PLACES.library.age!);
-    expect(defence(c, keep.id)).toBe(defence(c, fair.id) + PLACES.keep.defence! + countryOf(c, keep.id).defence - countryOf(c, fair.id).defence);
+    expect(defence(c, keep.id)).toBeCloseTo(defence(c, fair.id) + PLACES.keep.defence! + countryOf(c, keep.id).defence - countryOf(c, fair.id).defence + militiaOf(c, keep.id) - militiaOf(c, fair.id), 5); // each town's own men count for it now (militia.ts)
     expect(hireOff(c, 0, forge.id)).toBe(1);
     expect(hireOff(c, 0, shrine.id)).toBe(0);
     forge.buildings = ['barracks'];

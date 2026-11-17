@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { militiaOf } from './militia';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
@@ -771,7 +772,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   if (t.owner < 0) return Math.max(1, BATTLE_ANSWERS.ask('warriors', c, tid) - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + defenceAdd(c, tid) + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * FAITH[creedOf(faithAt(c, tid)).id].defence * 10) / 10; // the town's own standing (townfaith.ts)
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + militiaOf(c, tid) + fort + ground + defenceAdd(c, tid) + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * FAITH[creedOf(faithAt(c, tid)).id].defence * 10) / 10; // the town's own standing (townfaith.ts)
 }
 
 /** The faction fighting at this one's side, or -1: the player and their ally stand together. */
