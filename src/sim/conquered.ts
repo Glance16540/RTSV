@@ -4,6 +4,7 @@
  * It eases every season, faster under good rule; while it is high the town may rise. A rising with no army in the
  * town throws the taker off: the town goes back to the people it was taken from if they still stand, and otherwise
  * to its own tribe. A rising with an army in the town is put down, at a cost, and is not forgotten.
+ * Who in the town is still of the old people, and what their grudge costs its holder meanwhile, is oldpeople.ts.
  */
 import { lawEase } from './writtenlaw'; // written law eases resentment (writtenlaw.ts)
 import type { Campaign } from './campaign';
@@ -14,6 +15,7 @@ import { leaderAt } from './court';
 import { folkOf, headcount } from './township';
 import { agesOf } from './ageing';
 import { yokeEase, yokeSpared } from './ownstudies';
+import { oldSeason } from './oldpeople';
 
 /** `from`: whose it was (-1 for a tribe). `since`: the turn it was taken. `resent`: how its people take it, 0 to 100. */
 export interface Yoke { from: number; since: number; resent: number; /** The last turn an army of its holder stood in it. */ held?: number; /** It has settled: it resents nothing more, and is remembered as taken until `YOKE.memory` seasons are up. */ settled?: boolean }
@@ -81,6 +83,7 @@ export interface YokeNews { at: number; kind: 'rose' | 'put down' | 'settled'; o
  */
 export function seasonOfYoke(c: Campaign): YokeNews[] {
   const news: YokeNews[] = [];
+  oldSeason(c); // the old people of taken towns are counted, and some join the taker (oldpeople.ts)
   for (const t of c.territories) {
     const y = t.yoke;
     if (!y) continue;
