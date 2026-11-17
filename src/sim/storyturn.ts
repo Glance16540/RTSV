@@ -13,6 +13,8 @@ import { canPayFor, payFor } from './prices';
 import { Answer, COMET_VIRTUE, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, TALE_SPREAD, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
 import { leaningWith } from './temper';
 import { tribeArms } from './tribes';
+import { gainAt } from './stores';
+import { MEN, levyFrom, sparedMen } from './armytown'; // men of a real town (armytown.ts)
 
 declare module './campaign' {
   interface Campaign {
@@ -48,7 +50,7 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
   const result = taleText(c, ch.result);
   c.tale = null;
   (c.answers ??= []).push({ id: tale.id, choice, turn: c.turn, land: t.land, rival: t.rival, tribe: t.tribe });
-  if (ch.supplies < 0) payFor(c, 0, 'dealing', -ch.supplies, { at: t.land }); else me.supplies += ch.supplies;
+  if (ch.supplies < 0) payFor(c, 0, 'dealing', -ch.supplies, { at: t.land }); else gainAt(c, 0, t.land, ch.supplies); // a tale's reward, where it was told (stores.ts)
   if (ch.favor && t.rival > 0) c.factions[t.rival].favor = Math.max(-MAX_FAVOR, Math.min(MAX_FAVOR, (c.factions[t.rival].favor ?? 0) + ch.favor));
   if (ch.militia && c.territories[t.tribe]?.owner < 0) tribeArms(c, t.tribe, ch.militia);
   if (ch.join && c.territories[t.tribe]?.owner < 0 && !c.territories[t.tribe].horde) {
@@ -58,9 +60,12 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
   }
   if (ch.company) {
     const home = c.territories.find((x) => x.capital === 0 && x.owner === 0) ?? c.territories[t.land];
+    // The company's men are of the town the story is set in, each of a house there, if it can spare them (armytown.ts levyFrom);
+    // else of the chief town, if it can; else none come.
+    const from = [c.territories[t.land], home].find((x) => x && x.owner === 0 && !x.horde && sparedMen(c, x.id) >= MEN.company);
     const a = armyAt(c, home.id);
-    if (a && a.owner === 0) { if (armySize(a) < MAX_ARMY) a.units.infantry = (a.units.infantry ?? 0) + 1; }
-    else if (!a) c.armies.push({ id: c.nextArmy++, owner: 0, at: home.id, units: { infantry: 1 }, hero: false, vet: 0, moved: true });
+    if (from && a && a.owner === 0) levyFrom(c, a, from.id, 1, MAX_ARMY - armySize(a));
+    else if (from && !a) { const fresh = { id: c.nextArmy++, owner: 0, at: home.id, units: {}, hero: false, vet: 0, moved: true }; if (levyFrom(c, fresh, from.id, 1)) c.armies.push(fresh); }
   }
   c.log.push(result);
   tell(c, `${tale.title}: ${result}`);

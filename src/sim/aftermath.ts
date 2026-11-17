@@ -24,6 +24,7 @@ import { beginPlot, beginRival } from './courtstory';
 import { ENDINGS, Intrigue, IntrigueKind, Person, chance, fullName } from './intriguebase';
 import { spouseOf } from './kin';
 import { noblesOf } from './nobles';
+import { MEN, levyFrom, sparedMen } from './armytown'; // men of a real town (armytown.ts)
 
 export type MarkKind = 'warmed' | 'soured' | 'eased' | 'resentful' | 'feud' | 'bought' | 'alliance' | 'pardoned';
 export interface Mark {
@@ -129,11 +130,22 @@ export function callOn(c: Campaign, markId: number): 'sent' | 'refused' | null {
   const seat = courtOf(c, 0)?.at ?? c.territories.find((t) => t.owner === 0)?.id ?? -1;
   const home = c.territories[seat]?.owner === 0 ? seat : c.territories.find((t) => t.owner === 0)?.id ?? -1;
   if (home < 0) return null;
-  const a = armyAt(c, home);
-  if (a && a.owner === 0) a.units.infantry = (a.units.infantry ?? 0) + Math.max(0, Math.min(A.companies, MAX_ARMY - armySize(a)));
-  else if (!a) c.armies.push({ id: c.nextArmy++, owner: 0, at: home, units: { infantry: A.companies }, hero: false, vet: 0, moved: true });
+  // The men are of a town of theirs, each of a house there (armytown.ts levyFrom): their chief town's, else the town of theirs
+  // with most men to spare, and only as many as it can spare.
+  const theirs = c.territories.filter((t) => t.owner === m.rival && !t.horde).sort((p, q) => (q.capital === m.rival ? 1 : 0) - (p.capital === m.rival ? 1 : 0) || sparedMen(c, q.id) - sparedMen(c, p.id) || p.id - q.id);
+  const from = theirs.find((t) => sparedMen(c, t.id) >= MEN.company);
+  let a = armyAt(c, home);
+  if (a && a.owner !== 0) a = undefined;
+  const fresh = !a && from ? { id: c.nextArmy++, owner: 0, at: home, units: {}, hero: false, vet: 0, moved: true } : undefined;
+  const sent = from ? levyFrom(c, (a ?? fresh)!, from.id, A.companies, a ? MAX_ARMY - armySize(a) : MAX_ARMY) : 0;
+  if (fresh && sent) c.armies.push(fresh);
+  if (!sent) {
+    m.text = `${m.name}'s husband's people, the ${r.name}, were called on and had no men to spare.`;
+    tell(c, m, 'bad', `You called on the ${r.name}, your daughter ${m.name}'s people by marriage. They would have come, but no town of theirs could spare the men.`);
+    return 'refused';
+  }
   m.text = `${m.name}'s husband's people, the ${r.name}, were called on and sent men.`;
-  tell(c, m, 'good', `You called on the ${r.name}, your daughter ${m.name}'s people by marriage, and ${A.companies} companies of their men have come to ${land(c, home)}.`);
+  tell(c, m, 'good', `You called on the ${r.name}, your daughter ${m.name}'s people by marriage, and ${sent} ${sent === 1 ? 'company' : 'companies'} of their men from ${from!.name} have come to ${land(c, home)}.`);
   return 'sent';
 }
 
