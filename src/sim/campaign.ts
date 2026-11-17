@@ -15,6 +15,7 @@ import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
+import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
 import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
 import { convoysTurn, relieve } from './convoys';
 import { seasonFolk } from './seasonfolk';
@@ -985,10 +986,12 @@ export const BATTLE_HOOKS = new BattleHooks()
   // settling: decided and no longer pending; nothing has changed hands yet.
   .on('settling', 'townfaith', (c) => settleFaith(c)) // every town's own standing is written down before any changes hands
   .on('settling', 'stores', (c) => settleStores(c)) // and what each people has spent or earned is in its towns before any is lost
+  .on('settling', 'mapbattle', (c, p, b) => { if (b.fought) { b.fallenBefore = fallenBefore(c, p); b.led = whoLed(c, p, p.defender >= 0 && leaderAt(c, p.defender, p.to)); } }) // who leads, and who had fallen before it
   // counted: the armies are known and the town's toll is taken.
   .on('counted', 'warhouse', (c, _p, b) => { // what the victor felled is counted to the houses of its men: the companies it broke, and the town's dead
-    if (b.attackerWon && b.army) creditArmy(c, b.army.id, (b.defArmy ? armySize(b.defArmy) * MEN_A_COMPANY : 0) + (b.toll ?? 0));
-    else if (!b.attackerWon && b.defArmy && b.army) creditArmy(c, b.defArmy.id, armySize(b.army) * MEN_A_COMPANY);
+    const felled = b.fought ? felledOf(b.fought, MEN_A_COMPANY) : undefined; // fought out, the beaten are not lost to the last man (mapbattle.ts)
+    if (b.attackerWon && b.army) creditArmy(c, b.army.id, (felled ? felled.byAttacker : b.defArmy ? armySize(b.defArmy) * MEN_A_COMPANY : 0) + (b.toll ?? 0));
+    else if (!b.attackerWon && b.defArmy && b.army) creditArmy(c, b.defArmy.id, felled ? felled.byDefender : armySize(b.army) * MEN_A_COMPANY);
   })
   // taken: the attacker has won and the town is about to change hands.
   .on('taken', 'conquered', (c, p) => townTaken(c, p.to, p.defender, p.attacker)) // its people stay, and resent it
@@ -999,6 +1002,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settled', 'stores', (c) => settleStores(c))
   .on('settled', 'armytown', (c, _p, b) => { if (b.how === 'auto') reckonArmies(c); }) // the dead are their towns' dead; a battle fought in person counts its own
   .on('settled', 'townfaith', (c) => settleFaith(c))
+  .on('settled', 'mapbattle', (c, p, b) => { if (b.fought) tellBattle(c, p, b.fought, b.led ?? {}, b.fallenBefore); }) // told once the dead are counted: who led, what broke, who fell by name
   // setup: a battle is about to be laid out for play.
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
   // written: a battle fought in person has been settled and its field is being read back.
@@ -1036,14 +1040,16 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   if (!p) return false;
   if (p.band !== undefined) return settleBandFight(c, how); // against a band: no nation, and no land changes hands (bandfight.ts)
   let attackerWon = how === 'attacker';
+  let fought: Outcome | null = null;
   if (how === 'auto') {
     // Defenders fight on their own ground, which is worth a little.
-    const a = p.aStr * (0.75 + rand(c) * 0.5), d = p.dStr * homeEdge(c, p.attacker) * wallsEdge(c, p) * (0.75 + rand(c) * 0.5); // walls are worth more than their sum (sieges.ts)
-    attackerWon = a > d;
+    const ra = rand(c), rd = rand(c);
+    fought = fightPending(c, p, homeEdge(c, p.attacker), ra, rd); // fought out by what the two sides are, not summed (mapbattle.ts)
+    attackerWon = fought ? fought.attackerWon : p.aStr * (0.75 + ra * 0.5) > p.dStr * homeEdge(c, p.attacker) * wallsEdge(c, p) * (0.75 + rd * 0.5); // walls are worth more than their sum (sieges.ts)
   }
   for (const watch of battleWatchers) watch(c, p, attackerWon, how);
   c.pending = null;
-  const note: BattleNote = { how, attackerWon };
+  const note: BattleNote = { how, attackerWon, ...(fought ? { fought } : {}) };
   BATTLE_HOOKS.run('settling', c, p, note); // every town's standing and stores are written down before any changes hands
   // A battle nobody watched is paid for by the town in men, and in stores if it falls.
   note.toll = how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde ? tollFolk(c, p.to, attackerWon) : 0;
@@ -1059,9 +1065,9 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   note.army = army; note.defArmy = defArmy;
   BATTLE_HOOKS.run('counted', c, p, note); // what the victor felled is counted
   if (attackerWon) {
-    if (defArmy) destroyArmy(c, defArmy);
+    if (defArmy && !(fought && fallBack(c, defArmy, fought.d, p.to))) destroyArmy(c, defArmy); // what is left of a garrison falls back on its own land next door
     if (army) {
-      casualties(army, Math.ceil(p.dStr * 0.4));
+      if (fought) leftWith(army, fought.a); else casualties(army, Math.ceil(p.dStr * 0.4));
       army.vet = Math.min(MAX_VETERAN, army.vet + 1);
       if (army.hero) seasonHero(c, army.owner);
       army.at = p.to;
@@ -1097,8 +1103,9 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     t.buildings = t.buildings.filter((b) => b !== 'fortress'); // the walls do not survive the assault
     if (t.town) t.town.b = t.town.b.filter(([type]) => type !== 'tower' && !BUILDINGS[type]?.wall); // nor do the town's own
   } else {
-    if (army) destroyArmy(c, army);
-    if (defArmy) { casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
+    if (army && fought && leftWith(army, fought.a)) army.moved = true; // beaten, it keeps what is left where it marched from
+    else if (army) destroyArmy(c, army);
+    if (defArmy) { if (fought) leftWith(defArmy, fought.d); else casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
     BATTLE_HOOKS.run('repulsed', c, p, note); // the attacker was thrown back
     c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and ${p.attacker === 0 ? 'were' : 'was'} thrown back.`);
     if (p.defender >= 0 && (p.attacker === 0 || p.defender === 0)) tell(c, p.attacker === 0 ? `You were thrown back from ${t.name} by the ${c.factions[p.defender].name}.` : `The ${c.factions[p.attacker].name} came against ${t.name} and you threw them back.`);
@@ -1348,7 +1355,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id); // its angry lords make it wary (nobleweigh.ts)
     const bySea = !c.territories[from].adj.includes(to);
-    return strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * ageEdge(c, f.id) >= defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin;
+    return wouldTake(c, army, to, strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
   };
   // It marches on the most wanted land it dares, not only the most wanted of all.
   const dared = targets.find((id) => dares(here.id, id));

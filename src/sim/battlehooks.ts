@@ -19,6 +19,7 @@
  *   housed     the town's people and stores are as that battle left them
  */
 import type { Army, BattleAfter, Campaign, Pending } from './campaign';
+import type { Outcome } from './mapbattle';
 
 export type BattlePhase = 'setup' | 'settling' | 'counted' | 'taken' | 'repulsed' | 'settled' | 'written' | 'housed';
 export const BATTLE_PHASES: BattlePhase[] = ['setup', 'settling', 'counted', 'taken', 'repulsed', 'settled', 'written', 'housed'];
@@ -29,6 +30,8 @@ export interface BattleNote {
   attackerWon?: boolean;
   /** Men of the town killed by rule in a battle nobody watched (township.ts). */
   toll?: number;
+  /** A battle fought out on the map with nobody watching (mapbattle.ts): how it went, who led, and who of the two peoples had fallen already that season. */
+  fought?: Outcome; led?: { a?: string; d?: string }; fallenBefore?: string[][];
   /** The attacking army, and the army that stood in the land, as they were when the battle was settled. */
   army?: Army; defArmy?: Army;
   /** A battle fought in person: what the game handed back, as campaign.ts's BattleAfter has it, and whether the player's side won. */
