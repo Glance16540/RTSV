@@ -15,15 +15,15 @@
 import type { Campaign } from './campaign';
 import { awayFrom, sparedMen } from './armytown';
 import { roadBetween, sendConvoy } from './convoys';
-import { folkOf } from './township';
+import { folkOf, TOWN_SCALE } from './township';
 
 export const SUIT = {
   /** A town is badly short of one sex when the other outnumbers it this many to one. */
   short: 3,
   /** The most who set out for one town at a time, and the most parties a people sends in a season. */
-  go: 2, season: 2,
+  go: 2 * TOWN_SCALE, season: 2,
   /** To a town with no men at all a town with no unmarried man sends this many of the men it could spare to an army (armytown.ts keeps it two men, and one for every other woman). */
-  spared: 1,
+  spared: 1 * TOWN_SCALE,
 };
 export type Sex = 'men' | 'women';
 /** A town's grown men, those away with its armies among them, and its grown women. */

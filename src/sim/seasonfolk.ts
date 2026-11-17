@@ -22,7 +22,7 @@ import { creedOf } from './creed';
 import { faithAt } from './townfaith';
 import { BIRTH_COST } from './data';
 import { GROWN_AT } from './nursery';
-import { Folk, MAX_KIND, folkOf, grown } from './township';
+import { Folk, MAX_KIND, TOWN_SCALE, folkOf, grown } from './township';
 import { ageTown } from './ageing';
 import { tally } from './ledger';
 import { birthPace } from './ownstudies';
@@ -40,7 +40,9 @@ declare module './township' {
 /** Seasons between a housed couple's children on the map, before creed and the slowing with more young children. */
 export const MAP_BIRTH = 4;
 /** Food a head in store under which a town's couples wait for a child: a thin larder (at 16, a farmed town was hungry 0.9 to 1.2% of its seasons; at 32, 0.3%, and hunger deaths fell under their band). */
-export const LEAN_BIRTH = 12;
+export const LEAN_BIRTH = 12 / TOWN_SCALE;
+/** The food a child costs on the map: a battle's BIRTH_COST, a TOWN_SCALE-th of it in bigger towns, as a person eats (larder.ts). */
+const MAP_BIRTH_COST = BIRTH_COST / TOWN_SCALE;
 /** Children under this many seasons (five years) are the ones who slow a couple's next. */
 export const YOUNG_SEASONS = 20;
 /** Seasons a child on the map takes to come of age. */
@@ -89,11 +91,11 @@ export function seasonTown(c: Campaign, tid: number): { born: number; grew: numb
   const slow = Math.min(3, 1 + 0.2 * (young / couples));
   f.due = Math.min(couples, (f.due ?? 0) + (couples * creed.birth * birthPace(c, tid)) / (MAP_BIRTH * slow)); // a people's own study may bring them sooner (ownstudies.ts)
   while (f.due >= 1) {
-    if (grown(f) + f.children + 1 > roomOf(t) || f.stores.food < BIRTH_COST || f.stores.food < LEAN_BIRTH * (grown(f) + f.children) || f.children >= MAX_KIND) { f.due = Math.min(f.due, 1); break; } // no room, no food for it, or a thin larder
+    if (grown(f) + f.children + 1 > roomOf(t) || f.stores.food < MAP_BIRTH_COST || f.stores.food < LEAN_BIRTH * (grown(f) + f.children) || f.children >= MAX_KIND) { f.due = Math.min(f.due, 1); break; } // no room, no food for it, or a thin larder
     f.due -= 1;
     // The births that do not come are decided without spending the food, as in a town.
     if (hash(c.seed, tid * 131 + c.turn, 1000 + born + missed) < creed.childLoss * midwifeLoss(c, t.owner)) { missed++; continue; } // Midwifery (midwifery.ts)
-    f.stores.food -= BIRTH_COST;
+    f.stores.food -= Math.round(MAP_BIRTH_COST);
     f.children++;
     f.ages!.k.push(0);
     born++;

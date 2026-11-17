@@ -20,14 +20,14 @@
 //
 // It imports nothing that imports it back: the governor reads its floor and its measure of short bread from here.
 import type { Campaign } from './campaign';
-import { STORE_KINDS, folkOf, headcount } from './township';
+import { STORE_KINDS, TOWN_SCALE, folkOf, headcount } from './township';
 import type { Stores } from './township';
 
 export const PLENTY = {
   /** What a town keeps in store whatever is bought (the governor's floor). */
   floor: 300,
-  /** Food a head under which a town is short of bread (the governor's measure). */
-  short: 32,
+  /** Food a head under which a town is short of bread (the governor's measure): two seasons of a grown person's eating (larder.ts), so a TOWN_SCALE-th of 32 in bigger towns. */
+  short: 32 / TOWN_SCALE,
   /** How many floors a town keeps, after paying for a work, in goods other than bread. */
   works: 4,
   /** How many floors a town keeps after paying for a work of rule or faith, a rival's (rule.ts: a Hall, a Manor, a Monastery). */
