@@ -18,6 +18,7 @@
 // The numbers are first guesses.
 import type { Campaign } from './campaign';
 import { roadBetween, sendFamily, sendSettlers } from './convoys';
+import { mayLeave } from './townorders';
 import { FOUNDING, settleable, wayOut } from './founding';
 import { wilderness } from './wilds';
 import { roomOf } from './seasonfolk';
@@ -108,7 +109,7 @@ export function migrateOf(c: Campaign, f: number): Move[] {
   for (const t of mine) {
     if (out.length >= MIGRATE.season) break;
     const why = pushOf(c, t.id);
-    if (!why || roll(c, t.id, 31) >= MIGRATE.chance) continue;
+    if (!why || !mayLeave(c, t.id, 'family') || roll(c, t.id, 31) >= MIGRATE.chance) continue; // unless the player's standing orders keep them (townorders.ts)
     const who = familyOf(c, t.id);
     if (!who) continue;
     const to = mine.filter((x) => x.id !== t.id).map((x) => ({ id: x.id, pull: pullOf(c, x.id) })).filter((x) => x.pull > 0)
@@ -214,7 +215,7 @@ export function foundOf(c: Campaign, f: number): Move[] {
   const free = freeLands(c, f);
   if (!free.length) return [];
   for (const t of c.territories.filter((x) => x.owner === f && !x.horde)) {
-    if (pushOf(c, t.id) !== 'crowded' || roll(c, t.id, 61) >= MIGRATE.found) continue;
+    if (pushOf(c, t.id) !== 'crowded' || !mayLeave(c, t.id, 'settlers') || roll(c, t.id, 61) >= MIGRATE.found) continue; // unless the player's standing orders keep them (townorders.ts)
     const to = free.find((id) => settleBar(c, f, t.id, id) === '');
     if (to === undefined) continue;
     if (settle(c, f, t.id, to) === '') return [c.moves!.at(-1)!];
