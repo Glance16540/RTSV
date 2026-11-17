@@ -4,7 +4,7 @@ import { newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { FREE, backChance, canTreat, freeStruck, freeTownsSeason, isFree, riseFree, treat, treatBar, treatCost } from '../src/sim/freetown';
 import { UNREST, noteHolders, ownFounded, unrestWeights } from '../src/sim/unrest';
-import { folkOf, headcount } from '../src/sim/township';
+import { TOWN_SCALE as S, folkOf, headcount } from '../src/sim/township';
 import { settleStores } from '../src/sim/stores';
 
 /** The player holds every land but its rivals' capitals; no armies, bands or wild lands. `t` is a town of theirs beside another. */
@@ -14,7 +14,7 @@ function world(seed = 11) {
   for (const t of c.territories) {
     delete t.wild; delete t.horde; delete t.free; delete t.foundedBy;
     if (t.capital < 0 || t.capital === 0) t.owner = 0;
-    Object.assign(folkOf(c, t.id), { men: 6, women: 6, elders: 0, children: 2, hungry: 0 });
+    Object.assign(folkOf(c, t.id), { men: 6 * S, women: 6 * S, elders: 0, children: 2 * S, hungry: 0 }); // a town of that size as towns now are (township.ts TOWN_SCALE)
     delete folkOf(c, t.id).ages;
   }
   const t = c.territories.find((x) => x.capital < 0 && x.owner === 0 && x.adj.some((n) => c.territories[n].owner === 0))!;
@@ -121,7 +121,7 @@ describe('treating with a free town', () => {
   it('asks a price by its size and how lately it rose, less with the army beside it, and never less than the least', () => {
     const { c, t } = world();
     riseFree(c, t.id);
-    const size = Math.ceil(headcount(folkOf(c, t.id)) / FREE.folk);
+    const size = Math.ceil(headcount(folkOf(c, t.id)) / (FREE.folk * S));
     expect(treatCost(c, t.id)).toBe(Math.round(size + FREE.fresh));
     c.turn += FREE.ease / 2;
     expect(treatCost(c, t.id)).toBe(Math.round(size + FREE.fresh / 2));

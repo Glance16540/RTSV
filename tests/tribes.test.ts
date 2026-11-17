@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { battleConfig, defence, defenders, moveArmy, newCampaign, resolvePending } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
-import { TRIBE, armMen, fieldReckoned, setTribe, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from '../src/sim/tribes';
+import { TRIBE, armMen, bandMen, fieldReckoned, setTribe, tribeArms, tribeBeaten, tribesSeason, turnOut, warriorsOf } from '../src/sim/tribes';
 import { finishBattle } from '../src/sim/campaign';
-import { folkOf } from '../src/sim/township';
+import { TOWN_SCALE, folkOf } from '../src/sim/township';
+import { FIELD_CAP, homeCounts } from '../src/sim/fieldcap';
 
 function world(seed = 11) {
   const c = newCampaign(seed, 2);
@@ -34,18 +35,18 @@ describe('a tribe\'s bands are its town\'s men', () => {
     folkOf(c, tribe.id);
     expect(warriorsOf(c, tribe.id)).toBe(was);
     const f = folkOf(c, tribe.id);
-    expect(f.men).toBeGreaterThanOrEqual(was * TRIBE.men);
-    expect(f.women).toBeGreaterThanOrEqual(Math.round(was * TRIBE.men * TRIBE.women));
+    expect(f.men).toBeGreaterThanOrEqual(was * bandMen());
+    expect(f.women).toBeGreaterThanOrEqual(Math.round(was * bandMen() * TRIBE.women));
     expect(tribe.tribal).toBe(true);
     expect(defence(c, tribe.id)).toBe(before);
     // From now on the count is the men: lose two and a band is gone; the old number is not read.
-    f.men -= TRIBE.men;
+    f.men -= bandMen();
     tribe.militia = 99;
     expect(warriorsOf(c, tribe.id)).toBe(was - 1);
     tribesSeason(c);
     expect(tribe.militia).toBe(was - 1); // and it is kept true, as a mirror
     // Made up once only: men lost are not made good.
-    expect(folkOf(c, tribe.id).men).toBe((was - 1) * TRIBE.men + (f.men % TRIBE.men));
+    expect(folkOf(c, tribe.id).men).toBe((was - 1) * bandMen() + (f.men % bandMen()));
   });
 
   it('a land a nation has held keeps the people it has when it goes back to the tribes', () => {
@@ -53,10 +54,10 @@ describe('a tribe\'s bands are its town\'s men', () => {
     const land = c.territories.find((t) => t.owner === 0 && t.capital < 0) ?? home;
     tribesSeason(c);
     expect(land.tribal).toBe(true);
-    Object.assign(folkOf(c, land.id), { men: 3, women: 2 });
+    Object.assign(folkOf(c, land.id), { men: 3 * TOWN_SCALE, women: 2 * TOWN_SCALE });
     land.owner = -1; land.capital = -1; land.militia = 9; // a revolt, with whatever number it was given
     expect(warriorsOf(c, land.id)).toBe(1);
-    expect(folkOf(c, land.id).men).toBe(3);
+    expect(folkOf(c, land.id).men).toBe(3 * TOWN_SCALE);
     tribesSeason(c);
     expect(land.militia).toBe(1);
   });
@@ -67,15 +68,15 @@ describe('a tribe\'s bands are its town\'s men', () => {
     const f = folkOf(c, tribe.id);
     expect(warriorsOf(c, tribe.id)).toBe(5);
     const men = f.men, women = f.women, kids = f.children;
-    expect(tribeBeaten(c, tribe.id, 2)).toBe(2 * TRIBE.men);
-    expect(f.men).toBe(men - 2 * TRIBE.men);
+    expect(tribeBeaten(c, tribe.id, 2)).toBe(2 * bandMen());
+    expect(f.men).toBe(men - 2 * bandMen());
     expect([f.women, f.children]).toEqual([women, kids]);
     expect(f.ages!.m.length + f.ages!.f.length).toBe(f.men + f.women + f.elders);
     expect(warriorsOf(c, tribe.id)).toBe(3);
     expect(tribe.militia).toBe(3);
     tribeBeaten(c, tribe.id, 50);
     expect(warriorsOf(c, tribe.id)).toBe(TRIBE.least);
-    expect(f.men).toBe(TRIBE.least * TRIBE.men + (men % TRIBE.men));
+    expect(f.men).toBe(TRIBE.least * bandMen() + (men % bandMen()));
   });
 
   it('an attack thrown back in an unwatched battle costs the tribe men of its town', () => {
@@ -89,13 +90,13 @@ describe('a tribe\'s bands are its town\'s men', () => {
       folkOf(c, tribe.id); // the town is looked into, and so made up to its six bands
       expect(warriorsOf(c, tribe.id)).toBe(6);
       const all = people(c, tribe.id), men = folkOf(c, tribe.id).men;
-      expect(men).toBe(6 * TRIBE.men);
+      expect(men).toBe(6 * bandMen());
       if (resolvePending(c, 'auto')) continue; // the army won this one
       fought++;
       expect(tribe.owner).toBe(-1);
       expect(folkOf(c, tribe.id).men).toBeLessThan(men);
       expect(people(c, tribe.id)).toBeLessThan(all);
-      expect(warriorsOf(c, tribe.id)).toBe(Math.floor(folkOf(c, tribe.id).men / TRIBE.men));
+      expect(warriorsOf(c, tribe.id)).toBe(Math.floor(folkOf(c, tribe.id).men / bandMen()));
       expect(tribe.militia).toBe(warriorsOf(c, tribe.id));
     }
     expect(fought).toBeGreaterThan(0);
@@ -109,7 +110,7 @@ describe('a tribe\'s bands are its town\'s men', () => {
     const all = people(c, tribe.id);
     expect(warriorsOf(c, tribe.id)).toBe(3);
     expect(tribe.militia).toBe(3);
-    expect(f.men).toBe(4 * TRIBE.men);
+    expect(f.men).toBe(4 * bandMen());
     tribeArms(c, tribe.id, -9);
     expect(warriorsOf(c, tribe.id)).toBe(TRIBE.least); // some always keep their spears
     tribeArms(c, tribe.id, 9);
@@ -123,11 +124,11 @@ describe('a tribe\'s town fought over in person', () => {
   it('fields its own men in arms and no clubmen from nowhere, in its town or in the open; the marauders, who have no town, two clubmen to a point of strength', () => {
     const { c, tribe } = world();
     tribe.militia = 4;
-    expect(turnOut(c, tribe.id, false)).toEqual({ clubmen: 0, warriors: 4 * TRIBE.men });
+    expect(turnOut(c, tribe.id, false)).toEqual({ clubmen: 0, warriors: 4 * TRIBE.men }); // fighters on the field are as many as they were, however large the town
     const open = turnOut(c, tribe.id, true);
     expect(open).toMatchObject({ clubmen: 0, warriors: 4 * TRIBE.men, people: { men: 4 * TRIBE.men, women: 0, elders: 0, children: 0 } });
     expect(open.people!.ages!.m).toHaveLength(4 * TRIBE.men); // the men who march are men of the town, at their own ages
-    expect(folkOf(c, tribe.id).men).toBe(4 * TRIBE.men); // and are still on its record until the fight is counted
+    expect(folkOf(c, tribe.id).men).toBe(4 * bandMen()); // and are still on its record until the fight is counted
     const w = world();
     w.tribe.horde = true; w.tribe.militia = 5;
     expect(turnOut(w.c, w.tribe.id, false)).toEqual({ clubmen: 10, warriors: 0 });
@@ -195,7 +196,7 @@ describe('a tribe\'s town fought over in person', () => {
   it('setTribe gives a town a real record of men for so many bands, which is what its strength then is', () => {
     const { c, tribe } = world();
     setTribe(c, tribe.id, 7);
-    expect(folkOf(c, tribe.id).men).toBe(7 * TRIBE.men);
+    expect(folkOf(c, tribe.id).men).toBe(7 * bandMen());
     expect(warriorsOf(c, tribe.id)).toBe(7);
     expect(tribe.militia).toBe(7);
     setTribe(c, tribe.id, 500); // no town is larger than a town can be
@@ -214,16 +215,21 @@ describe('a tribe\'s town fought over in person', () => {
     expect(side.bonus!.units).toEqual({});
     expect(side.bonus!.warriors).toBe(3 * TRIBE.men);
     const f = folkOf(c, tribe.id);
-    expect(side.bonus!.people).toMatchObject({ men: f.men, women: f.women });
+    // A town larger than the field will bear keeps some of its grown at home on its record (fieldcap.ts): the field
+    // and those held back are the whole town between them, and nobody is lost.
+    const held = f.fieldHome ? homeCounts(f.fieldHome) : { men: 0, women: 0, elders: 0 };
+    expect(side.bonus!.people).toMatchObject({ men: f.men - held.men, women: f.women - held.women });
+    expect(f.men + f.women + f.elders - held.men - held.women - held.elders).toBeLessThanOrEqual(Math.max(FIELD_CAP, 3 * TRIBE.men));
+    if (f.men + f.women + f.elders <= FIELD_CAP) expect(held).toEqual({ men: 0, women: 0, elders: 0 });
     const g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
     const theirs = g.units.filter((u) => u.owner === 1 && !u.dead);
     const armed = theirs.filter((u) => g.isMilitary(u));
     expect(armed).toHaveLength(3 * TRIBE.men);
     expect(armed.every((u) => u.lifespan > 0 && !!u.name)).toBe(true); // people of the town, not soldiers from nowhere
-    expect(theirs.filter((u) => u.type === 'villager' && u.gender === 'm' && !g.isElder(u))).toHaveLength(f.men - 3 * TRIBE.men);
+    expect(theirs.filter((u) => u.type === 'villager' && u.gender === 'm' && !g.isElder(u))).toHaveLength(f.men - held.men - 3 * TRIBE.men);
     // Counted home: every one of them is still one of the town's men.
     const census = g.census(1);
-    expect(census.men + census.women + census.elders).toBe(f.men + f.women + f.elders);
+    expect(census.men + census.women + census.elders).toBe(f.men + f.women + f.elders - held.men - held.women - held.elders); // those on the field; the held back are joined when it is written back
     expect(census.men).toBeGreaterThanOrEqual(3 * TRIBE.men);
   });
 

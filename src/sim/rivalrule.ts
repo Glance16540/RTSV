@@ -19,7 +19,7 @@ import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atT
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS, TOWN_SCALE } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
-import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menMustered, menOf, sendCompaniesHome, sendHome, sendMenHome, sparedMen } from './armytown';
+import { awayFrom, canSendHome, homeOf, menMustered, menOf, sendCompaniesHome, sendHome, sendMenHome, sparedMen, MEN } from './armytown';
 import { SUPPLY_UNITS } from './stores';
 import { revoltChance } from './conquered';
 import { bandsAt } from './threats';
@@ -191,7 +191,7 @@ export function warFooting(c: Campaign, f: number): 'war' | 'muster' | 'peace' {
 export const mayMuster = (c: Campaign, f: number): boolean => {
   if (warFooting(c, f) !== 'peace') return true;
   const u = underArms(c, f); // one more company must still leave it within its standing force
-  return u.away + u.home > 0 && (u.away + MEN_A_COMPANY) / (u.away + u.home) <= RIVAL.standing;
+  return u.away + u.home > 0 && (u.away + MEN.company) / (u.away + u.home) <= RIVAL.standing;
 };
 /**
  * At peace a nation sends home what it holds over its standing force: armies standing in its own land, without

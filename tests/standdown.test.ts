@@ -1,11 +1,13 @@
 // At peace the men of an army's towns go home, whatever else the army is made of, and a threatened town keeps
 // its garrison (src/sim/rivalrule.ts standDown, src/sim/armytown.ts sendMenHome).
-import { bareCampaign } from './helpers';
+import { bareCampaign, smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { Campaign, raise } from '../src/sim/campaign';
 import { RIVAL, standDown, underArms, wantsGarrison, warFooting } from '../src/sim/rivalrule';
 import { awayFrom, musterOf, sendMenHome } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
+
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
 
 const LONG = 60_000;
 /** A rival with one town of `men` men and a Barracks, and no army anywhere. */
@@ -15,7 +17,7 @@ const nation = (men = 40, seed = 7) => {
   c.armies = c.armies.filter((a) => a.owner !== 1);
   cap.buildings = ['barracks'];
   const f = folkOf(c, cap.id);
-  f.men = men; delete f.ages;
+  f.men = men; f.women = Math.min(f.women, 4); delete f.ages; // few women, so that the husbands it keeps do not come into these sums
   c.factions[1].supplies = 500;
   c.wars = {};
   return { c, cap, f };

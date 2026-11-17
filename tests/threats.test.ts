@@ -3,13 +3,14 @@ import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { endTurn, continueAI, eventsAt } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
-import { OLD_SEASON, SEASONS_A_YEAR } from '../src/sim/ageing';
+import { GROWN_SEASON, OLD_SEASON, SEASONS_A_YEAR, agesOf } from '../src/sim/ageing';
+import '../src/sim/convoys';
 import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, wanted } from '../src/sim/threats';
 import { threatsOfMen } from '../src/sim/bandseason';
 import { attackBand } from '../src/sim/bandfight';
 import { resolvePending } from '../src/sim/campaign';
 import { needOf } from '../src/sim/larder';
-import { folkOf, nationStores } from '../src/sim/township';
+import { TOWN_SCALE as S, folkOf, nationStores } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
 import { SUPPLY_UNITS } from '../src/sim/stores';
 /** All the goods in a store. */
@@ -27,7 +28,8 @@ function world(opts: { men?: number; women?: number; children?: number; virtue?:
   t.buildings = ['farm'];
   delete t.town;
   const f = folkOf(c, t.id);
-  f.men = opts.men ?? 6; f.women = opts.women ?? 6; f.elders = 1; f.children = opts.children ?? 4;
+  // People are given as of a town as towns were, and are as many as that is now (township.ts TOWN_SCALE).
+  f.men = (opts.men ?? 6) * S; f.women = (opts.women ?? 6) * S; f.elders = 1 * S; f.children = (opts.children ?? 4) * S;
   f.stores = { food: 400, wood: 200, gold: 200, stone: 100 };
   delete f.ages;
   return { c, t, f };
@@ -122,13 +124,13 @@ describe('a band strikes a town', () => {
     const had = goods(nationStores(c, 0));
     const r = untilStrike(c, b);
     expect(r.outcome).toBe('taken');
-    expect(r.killed).toBe(Math.round(6 * THREATS.dead.taken));
-    expect(f.men).toBe(6 - r.killed);
-    expect(r.taken.women).toBe(Math.ceil(8 * THREATS.carried));
+    expect(r.killed).toBe(Math.round(6 * S * THREATS.dead.taken));
+    expect(f.men).toBe(6 * S - r.killed);
+    expect(r.taken.women).toBe(Math.ceil(8 * S * THREATS.carried));
     expect(r.taken.men).toBe(0); // raiders take women
-    expect(f.women).toBe(8 - r.taken.women);
-    expect(f.children).toBe(5);
-    expect(f.ages!.k.length).toBe(5);
+    expect(f.women).toBe(8 * S - r.taken.women);
+    expect(f.children).toBe(5 * S);
+    expect(f.ages!.k.length).toBe(5 * S);
     expect(f.ages!.f.filter((s) => s < OLD_SEASON).length).toBe(f.women);
     checkLoot(c, t.id, r, THREATS.loot.taken);
     expect(f.stores.food).toBe(400 - r.stores.food);
@@ -154,7 +156,7 @@ describe('a band strikes a town', () => {
     expect(s.outcome).toBe('taken');
     expect(s.taken.men).toBeGreaterThan(0);
     expect(s.taken.women).toBeGreaterThan(0);
-    expect(slave.f.men).toBe(4 - s.killed - s.taken.men);
+    expect(slave.f.men).toBe(4 * S - s.killed - s.taken.men);
 
     const sea = world({ men: 2 });
     sea.t.trait = 'coast';
@@ -205,7 +207,7 @@ describe('a band strikes a town', () => {
     expect(folkOf(c, r.at).stores.food).toBeGreaterThanOrEqual(THREATS.larder * needOf(c, r.at)); // and the larder is left
     expect(r.stores.wood).toBe(0);
     expect(b.held).toHaveLength(0);
-    expect(f.women).toBe(6);
+    expect(f.women).toBe(6 * S);
     expect(reportLine(c, r)).toContain('robbed the road');
   });
 
@@ -251,24 +253,26 @@ describe('a town is bled, not emptied', () => {
     const a = untilStrike(few.c, band(few.c, few.t, 'slavers', 12));
     expect(a.taken).toEqual({ men: 0, women: 0 });
     expect(a.outcome).toBe('raided'); // nobody to take: it is a raid
-    expect(few.f.women).toBe(2);
+    expect(few.f.women).toBe(2 * S);
 
     const some = world({ men: 1, women: 3 });
     const b = band(some.c, some.t, 'raiders', 12);
     const first = untilStrike(some.c, b);
     expect(first.outcome).toBe('taken');
-    expect(first.taken.women).toBe(1);
-    expect(some.f.women).toBe(2);
+    // Of three (as towns were): never below the last two, never more than half, a quarter at most.
+    const most = Math.min(3 * S - THREATS.last * S, Math.floor(3 * S * (1 - THREATS.left)), Math.ceil(3 * S * THREATS.carried));
+    expect(first.taken.women).toBe(most);
+    expect(some.f.women).toBe(3 * S - most);
     // Struck again while those are still held: raided, and nobody more is taken.
     const again = untilStrike(some.c, b);
     expect(again.outcome).toBe('raided');
     expect(again.taken).toEqual({ men: 0, women: 0 });
-    expect(some.f.women).toBe(2);
+    expect(some.f.women).toBe(3 * S - most);
 
     const many = world({ men: 1, women: 20 });
     const m = untilStrike(many.c, band(many.c, many.t, 'raiders', 12));
-    expect(m.taken.women).toBe(Math.ceil(20 * THREATS.carried));
-    expect(m.taken.women).toBeLessThanOrEqual(10);
+    expect(m.taken.women).toBe(Math.ceil(20 * S * THREATS.carried));
+    expect(m.taken.women).toBeLessThanOrEqual(10 * S);
   });
 });
 
@@ -293,9 +297,9 @@ describe('those who are taken', () => {
     expect(c.pending).toMatchObject({ band: b.id, armyId: 801, defender: -1 });
     expect(resolvePending(c, 'auto')).toBe(true); // left to the army, which is far the stronger
     expect(c.bands!.includes(b)).toBe(false);
-    expect(f.women + f.elders - 1).toBeGreaterThanOrEqual(women); // some may have come home old
-    expect(f.men + f.women + f.elders).toBe(men + women + 1 + taken);
-    expect(f.children).toBe(5);
+    expect(f.women + f.elders - 1 * S).toBeGreaterThanOrEqual(women); // some may have come home old
+    expect(f.men + f.women + f.elders).toBe(men + women + 1 * S + taken);
+    expect(f.children).toBe(5 * S);
     // Half the time held: a woman is about fifteen years older, a man ten.
     expect(Math.max(...f.ages!.f)).toBeGreaterThanOrEqual(oldest + Math.round(THREATS.yearsWoman * SEASONS_A_YEAR * 0.5));
     expect(goods(f.stores)).toBe(stored + THREATS.prize * SUPPLY_UNITS); // taken back into the town where the army stands
@@ -398,17 +402,22 @@ describe('bands on the map', () => {
     for (const seed of [3, 4, 5]) {
       const c = bareCampaign(seed, 2);
       for (let i = 0; i < 40 && c.phase !== 'over' && !c.pending; i++) {
+        // Each town's children, and how many of them are due to come of age this season.
         const kids = c.territories.map((t) => t.folk?.children ?? -1);
+        const due = c.territories.map((t) => (t.folk ? agesOf(c, t.id, t.folk).k.filter((s) => s + 1 >= GROWN_SEASON).length : 0));
         const seen = (c.raids ?? []).length;
         endTurn(c);
         while (c.demand) { c.demand = null; continueAI(c); }
         for (const r of (c.raids ?? []).slice(seen)) {
           raids++;
-          // Children on the record only ever leave it by coming of age, a season at a time.
+          // Children on the record leave it only by coming of age, or by going down the road with their own family to
+          // another town of their people (migration.ts: a raided town is a reason to leave), where they arrive.
           // A town left with nobody grown that season has had its children taken in by the nearest town of their people
           // (orphans.ts): they are gone from this town's record, unharmed, and the chronicle says where they went.
+          // Nothing else takes a child: not a raid, not plague, not hunger. So the count is exact, at any size of town.
+          const byRoad = (c.convoys ?? []).filter((x) => x.from === r.at && x.since === c.turn).reduce((n, x) => n + (x.cargo.children?.length ?? 0), 0);
           const f = folkOf(c, r.at), takenIn = f.men + f.women + f.elders === 0 && (c.chronicle ?? []).some((x) => x.turn === c.turn && x.text.includes(`of ${c.territories[r.at].name}, left with nobody grown`));
-          if (kids[r.at] >= 0 && !takenIn) expect(f.children).toBeGreaterThanOrEqual(kids[r.at] - 3);
+          if (kids[r.at] >= 0 && !takenIn) expect(f.children).toBeGreaterThanOrEqual(kids[r.at] - due[r.at] - byRoad);
           if (takenIn) expect(f.children).toBe(0);
           expect(reportText(c, r).length).toBeGreaterThan(2);
         }

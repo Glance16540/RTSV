@@ -22,7 +22,7 @@ export const ARMY_REST = 6;
 /** Is this army still resting from its last assault as this turn begins? */
 export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.turn;
 
-/** Men a company takes, by the size of towns (see MEN_A_COMPANY below, which is this). */
+/** Men a company takes, by the size of towns (MEN.company below is this). */
 const MEN_PER = TOWN_SCALE > 1 ? 1 : 2;
 /**
  * What a battle costs in men. Of the men of the companies an army loses, this share are dead when the army still
@@ -30,9 +30,10 @@ const MEN_PER = TOWN_SCALE > 1 ? 1 : 2;
  * own towns. And what raising may take: a town keeps `floor` men at the least, and a man for every woman of
  * working age up to `couples` of them, so that it still has husbands.
  */
-export const MEN = { won: 0.3, lost: 0.4, floor: 2 * TOWN_SCALE, couples: 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true, /** The share of all its men a people will have with its armies at the most: past it, a company raised is hired men. A stop for towns of the old size; at the larger size it is not asked (1), since no company is hired. */ share: TOWN_SCALE > 1 ? 1 : 0.25, /** Men a company must find, in its town or its people's others, to be raised at all. None while towns are the old size (TOWN_SCALE 1): founded at four to six men they cannot carry the armies the map is fought with, and over half of 192 campaigns end in ruin. At the larger size it asks for every man of the company: none is hired. */ least: TOWN_SCALE > 1 ? MEN_PER : 0 };
+export const MEN = { /** Men a company takes: one in towns of the larger size (docs/DESIGN.md, a man of the town and his following), two in the old. */ company: MEN_PER, won: 0.3, lost: 0.4, floor: 2 * TOWN_SCALE, couples: TOWN_SCALE > 1 ? 0.34 : 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true, /** The share of all its men a people will have with its armies at the most: past it, a company raised is hired men. A stop for towns of the old size; at the larger size it is not asked (1), since no company is hired. */ share: TOWN_SCALE > 1 ? 1 : 0.25, /** Men a company must find, in its town or its people's others, to be raised at all. None while towns are the old size (TOWN_SCALE 1): founded at four to six men they cannot carry the armies the map is fought with, and over half of 192 campaigns end in ruin. At the larger size it asks for every man of the company: none is hired. */ least: TOWN_SCALE > 1 ? MEN_PER : 0 };
+/** Men in a company as towns are sized. The rules read `MEN.company`, which a test of the workings may set; this is for whoever only wants the figure. */
+export const MEN_A_COMPANY = MEN_PER;
 /** Men in a company. */
-export const MEN_A_COMPANY = MEN_PER; // docs/DESIGN.md: in towns of the larger size a company costs one man of the town and his following
 /** An army's roll: how many companies it had when last reckoned, and the men with it by the town they came from (their ages, in seasons). */
 export interface Muster { size: number; men: Record<string, number[]>; /** Whose army it is, kept so its men can find their way home if it is broken. */ owner?: number }
 /** Men of a town who fell with an army. */
@@ -48,7 +49,7 @@ export const musterOf = (c: Campaign, armyId: number): Muster | undefined => c.m
 /** How many of an army's men are of some town, and how many are of none. */
 export function menOf(c: Campaign, a: Army): { town: number; none: number } {
   const town = musterOf(c, a.id) ? total(musterOf(c, a.id)!) : 0;
-  return { town, none: Math.max(0, sizeOf(a) * MEN_A_COMPANY - town) };
+  return { town, none: Math.max(0, sizeOf(a) * MEN.company - town) };
 }
 export { awayFrom } from './warhouse'; // men of a town away with the armies: read off the rolls there, so that warhouse.ts need not import this module
 /** The town most of an army's men came from: where its veterans are remembered. */
@@ -97,7 +98,7 @@ export function menMustered(c: Campaign, a: Army, tid: number, o: { /** These me
   const t = c.territories[tid];
   if (!t || t.owner !== a.owner) return 0;
   // A people sends so many of its men to its armies and no more (`MEN.share`): past that a company is filled with hired men of no town.
-  const want = o.gone ? MEN_A_COMPANY : Math.min(MEN_A_COMPANY, menLeftToSend(c, a.owner));
+  const want = o.gone ? MEN.company : Math.min(MEN.company, menLeftToSend(c, a.owner));
   let went = want > 0 ? take(c, m, tid, want, a.id) : 0;
   if (went < want && MEN.levy) {
     const others = c.territories.filter((x) => x.owner === a.owner && !x.horde && x.id !== tid && x.folk).map((x) => ({ id: x.id, spare: sparedMen(c, x.id) })).filter((x) => x.spare > 0).sort((p, q) => q.spare - p.spare || p.id - q.id);
@@ -124,10 +125,10 @@ export function menToRaise(c: Campaign, f: number, tid: number): number {
  */
 export function noMenText(c: Campaign, f: number, tid: number): string {
   const n = menToRaise(c, f, tid);
-  if (n >= MEN_A_COMPANY) return '';
+  if (n >= MEN.company) return '';
   const keeps = `A town keeps ${MEN.floor} men at the least, and a husband for half its women.`;
   if (n < MEN.least) return `No men for it: ${n ? `your towns can spare only ${n}` : 'none of your towns can spare a man'}. ${keeps}`;
-  return `${n ? `Your towns can spare only ${n} of the ${MEN_A_COMPANY} men a company takes` : 'None of your towns can spare a man'}: ${n ? 'the rest' : 'a company raised now'} will be hired men of no town, with no house to mourn them. ${keeps}`;
+  return `${n ? `Your towns can spare only ${n} of the ${MEN.company} men a company takes` : 'None of your towns can spare a man'}: ${n ? 'the rest' : 'a company raised now'} will be hired men of no town, with no house to mourn them. ${keeps}`;
 }
 /** A founding army's men: grown, and young enough to march (eighteen to thirty-five), by lot. */
 export const FOUNDING = { youngest: 18, oldest: 35 };
@@ -143,7 +144,7 @@ export function foundingMuster(c: Campaign, a: Army): number {
   const all = rolls(c), t = c.territories[a.at];
   if (all[a.id] || !t || t.owner !== a.owner || t.horde || a.owner < 0) return 0;
   folkOf(c, t.id); // the town is on record before its men are away from it
-  const n = sizeOf(a) * MEN_A_COMPANY, span = (FOUNDING.oldest - FOUNDING.youngest) * (GROWN_SEASON / GROWN_YEARS);
+  const n = sizeOf(a) * MEN.company, span = (FOUNDING.oldest - FOUNDING.youngest) * (GROWN_SEASON / GROWN_YEARS);
   const ages = Array.from({ length: n }, (_, i) => Math.round(FOUNDING.youngest * (GROWN_SEASON / GROWN_YEARS) + hash(c.seed * 23 + a.id * 7 + t.id, i + 900) * span)).sort((p, q) => p - q);
   all[a.id] = { size: sizeOf(a), men: { [t.id]: ages }, owner: a.owner };
   enlist(c, t.id, n, a.id);
@@ -253,7 +254,7 @@ export function sendCompaniesHome(c: Campaign, armyId: number, companies: number
 
 /**
  * Send men of an army home and keep the army: so many of the men of towns on its roll, and a company with every
- * `MEN_A_COMPANY` of them (the most numerous kind first), never its last company. Where `sendCompaniesHome`
+ * `MEN.company` of them (the most numerous kind first), never its last company. Where `sendCompaniesHome`
  * sends companies and the men in their share, this sends the men: an army whose companies are mostly men of no
  * town (it was on the map before any roll was kept, or was filled where no town could man it) gives its
  * townsmen back first. They are taken from the town with most men with the army first. Returns how many men
@@ -265,10 +266,10 @@ export function sendMenHome(c: Campaign, armyId: number, men: number): number {
   reckonArmies(c);
   const m = musterOf(c, armyId);
   if (!m) return 0;
-  const go = Math.max(0, Math.min(sizeOf(a) - 1, Math.ceil(Math.min(Math.floor(men), total(m)) / MEN_A_COMPANY)));
+  const go = Math.max(0, Math.min(sizeOf(a) - 1, Math.ceil(Math.min(Math.floor(men), total(m)) / MEN.company)));
   if (!go) return 0;
   for (let i = 0; i < go; i++) { const type = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p] || p.localeCompare(q))[0]; if (--a.units[type] <= 0) delete a.units[type]; }
-  let left = Math.min(Math.floor(men), total(m), go * MEN_A_COMPANY), n = 0;
+  let left = Math.min(Math.floor(men), total(m), go * MEN.company), n = 0;
   for (const key of Object.keys(m.men).sort((p, q) => m.men[q].length - m.men[p].length || Number(p) - Number(q))) {
     if (left <= 0) break;
     const l = m.men[key], back = Math.min(l.length, left);

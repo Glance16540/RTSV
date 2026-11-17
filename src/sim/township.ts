@@ -11,7 +11,8 @@ import { cleanWidows, widowsBack } from './widowtown';
 import { cleanOrphans, orphansBack } from './orphantown';
 import { WAR_RENOWN } from './household';
 import { homeDeed, standingWith } from './notableweight';
-import { Ages, agesOf, cleanAges, countFrom } from './ageing';
+import { Ages, OLD_SEASON, agesOf, cleanAges, countFrom } from './ageing';
+import { cleanHome, homeCounts, joinAges, needsOf, splitField } from './fieldcap';
 import { tally } from './ledger';
 
 export interface Stores { food: number; wood: number; gold: number; stone: number }
@@ -51,7 +52,7 @@ export interface Census { men: number; women: number; elders: number; children: 
  * one of those reads it; then it is turned to 4 in one commit, so that no stage leaves towns larger than their
  * fields or their foes.
  */
-export const TOWN_SCALE = 1;
+export const TOWN_SCALE: number = 4;
 /** The most of any one kind (men, women, old, children) a town's record will hold. */
 export const MAX_KIND = 60 * TOWN_SCALE;
 export const MAX_STORE = 20000;
@@ -104,11 +105,14 @@ export const nationNotables = (c: Campaign, f: number): { at: number; who: Notab
   c.territories.filter((t) => t.owner === f).flatMap((t) => living(folkOf(c, t.id)).map((who) => ({ at: t.id, who })));
 
 /** What a town sends into a battle fought over it: all its people and all its stores. */
-export function musterFolk(c: Campaign, tid: number): { people: PeopleIn; stores: Stores } {
+export function musterFolk(c: Campaign, tid: number, opts: { /** Men of the town who take up arms (tribes.ts turnOut): they go to the field whatever its cap. */ arms?: number } = {}): { people: PeopleIn; stores: Stores } {
   const f = folkOf(c, tid);
   const named = living(f).filter((n) => n.kind === 'mother').map((n): Named => ({ name: n.name, gender: n.gender, ...(n.family ? { family: n.family } : {}), ...(n.kids ? { kids: n.kids } : {}), ...(n.husband ? { husband: n.husband } : {}), ...(n.war ? { war: n.war } : {}), ...(n.made ? { made: n.made } : {}) }));
-  const ages = agesOf(c, tid, f);
-  return { people: { men: f.men, women: f.women, elders: f.elders, children: f.children, ...(named.length ? { named } : {}), ...(f.widowed?.length ? { widowed: f.widowed.map((w) => ({ ...w })) } : {}), ...(f.orphans?.length ? { orphans: f.orphans.map((o) => ({ ...o })) } : {}), ages: { m: [...ages.m], f: [...ages.f], k: [...ages.k] } }, stores: { ...f.stores } }; // its widowed go with it (widowtown.ts)
+  // At most FIELD_CAP of its grown go to the field; the rest are held on the record and joined back (fieldcap.ts).
+  const split = splitField(agesOf(c, tid, f), f.wed ?? Math.min(f.men, f.women), needsOf({ named, widowed: f.widowed, drifted: f.drifted, wed: f.wed }, opts.arms));
+  if (split.home) f.fieldHome = split.home; else delete f.fieldHome;
+  const ages = split.field, men = ages.m.filter((s) => s < OLD_SEASON).length, women = ages.f.filter((s) => s < OLD_SEASON).length;
+  return { people: { men, women, elders: ages.m.length + ages.f.length - men - women, children: f.children, ...(named.length ? { named } : {}), ...(f.widowed?.length ? { widowed: f.widowed.map((w) => ({ ...w })) } : {}), ...(f.orphans?.length ? { orphans: f.orphans.map((o) => ({ ...o })) } : {}), ages: { m: [...ages.m], f: [...ages.f], k: [...ages.k] } }, stores: { ...f.stores } }; // its widowed go with it (widowtown.ts)
 }
 
 /** Make safe a count of a town handed back from a battle. Nothing if it is not one. */
@@ -144,6 +148,10 @@ export function settleFolk(c: Campaign, tid: number, census: Census, opts: { tak
   const ages = cleanAges(census.ages);
   if (ages && ages.m.length + ages.f.length === census.men + census.women + census.elders && ages.k.length === census.children) countFrom(f, ages);
   else delete f.ages;
+  // Those held back from the field are the town's still (fieldcap.ts): joined back before anything reads the town.
+  const home = cleanHome(f.fieldHome);
+  delete f.fieldHome;
+  if (home) { if (f.ages) countFrom(f, joinAges(f.ages, home)); else { const h = homeCounts(home); f.men += h.men; f.women += h.women; f.elders += h.elders; } }
   f.stores = { ...census.stores };
   if (census.widowed) f.widowed = widowsBack(f.widowed, census.widowed, c.turn); // the map's widowed are those the town had (widowtown.ts)
   if (census.orphans) f.orphans = orphansBack(f.orphans, census.orphans, c.turn); // and its orphans the children it had taken in (orphantown.ts)

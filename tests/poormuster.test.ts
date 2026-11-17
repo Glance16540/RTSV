@@ -1,11 +1,14 @@
 // A poor people still musters (src/sim/rivalrule.ts, poorMuster).
-import { bareCampaign } from './helpers';
+import { bareCampaign, smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { COMPANIES, armyAt, companyCost, hireOff } from '../src/sim/campaign';
-import { MEN_A_COMPANY, awayFrom } from '../src/sim/armytown';
+import { awayFrom } from '../src/sim/armytown';
 import { RIVAL, poorMuster, warFooting } from '../src/sim/rivalrule';
 import { settleStores, SUPPLY_UNITS } from '../src/sim/stores';
 import { STORE_KINDS, Stores, folkOf } from '../src/sim/township';
+
+smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
+const MEN_A_COMPANY = 2;
 
 const units = (s: Stores) => STORE_KINDS.reduce((n, k) => n + s[k], 0);
 /** A rival down to its chief town: ten men, six women, a Barracks, at war, and nothing in store over its keep. */

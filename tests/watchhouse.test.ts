@@ -5,7 +5,7 @@ import { Campaign, newCampaign } from '../src/sim/campaign';
 import { BUILDINGS } from '../src/sim/data';
 import { Game } from '../src/sim/game';
 import { beginKiller, beginThief, intrigueSeason } from '../src/sim/intrigue';
-import { folkOf } from '../src/sim/township';
+import { TOWN_SCALE as S, folkOf } from '../src/sim/township';
 import { begunAt, mapWorks, raiseBar, raiseWork } from '../src/sim/townworks';
 import { WATCH, governWatch, hasWatchHouse, watchEdge } from '../src/sim/watchhouse';
 import { run, spot, villagers } from './helpers';
@@ -16,7 +16,7 @@ const world = (seed = 5): { c: Campaign; at: number } => {
   const c: Campaign = JSON.parse(base);
   c.seed = seed * 7919; c.turn = 10; c.phase = 'player';
   const t = c.territories.find((x) => x.owner === 0)!;
-  Object.assign(folkOf(c, t.id), { men: 12, women: 12, elders: 2, children: 6 });
+  Object.assign(folkOf(c, t.id), { men: 12 * S, women: 12 * S, elders: 2 * S, children: 6 * S }); // a town of that size as towns now are (township.ts TOWN_SCALE)
   Object.assign(folkOf(c, t.id).stores, { food: 9000, wood: 9000, gold: 9000, stone: 9000 });
   c.factions[0].age = 1; // the Bronze Age, which a Watch House needs
   return { c, at: t.id };
