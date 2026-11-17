@@ -4,6 +4,7 @@
 import { VISIT_SECONDS } from './visit';
 import { creedOf } from './creed';
 import type { Campaign } from './campaign';
+import { DOMINION_DIP } from './dominion';
 import { ALLIANCE_COST, BEATS, COMPANIES, DOMINION_SHARE, DOMINION_TURNS, FAITH, HERO_RANK_STRENGTH, MAX_ARMY, SEA_LANDING, SITES, TRUCE_COST, TRUCE_TURNS, ageOf, dominionNeed, landOf } from './campaignbase';
 import { HALL_GRACE } from './beaten';
 import { CHAMPION_KILLS } from './champion';
@@ -56,7 +57,7 @@ export function primerSteps(c: Campaign, base: PrimerBase, seen: readonly string
       `From any land of yours. Every army you have grows stronger, and your battles begin in the new age with its weapons.${nextAgeText(c, 0, ageCost(c, 0)) ? ' ' + nextAgeText(c, 0, ageCost(c, 0)) : ''}`,
       ageOf(c, 0) > base.age],
     ['win', 'Outlast them',
-      `Your nation lives in its people: keep its towns fed and its families growing, and it will outlast its rivals; the last people left alive has won. Holding ${dominionNeed(c)} of the ${c.territories.length} lands for ${DOMINION_TURNS} turns running ends it too. A world where no one can take land for years while bands hold the map ends in ruin, with no winner.`,
+      `Your nation lives in its people: keep its towns fed and its families growing, and it will outlast its rivals; the last people left alive has won. Holding ${dominionNeed(c)} of the ${c.territories.length} lands for ${DOMINION_TURNS} turns ends it too; a season under that takes ${DOMINION_DIP} turns off the count, not all of it. A world where no one can take land for years while bands hold the map ends in ruin, with no winner.`,
       c.phase === 'over'],
   ];
   return steps.map(([id, title, how, done]) => ({ id, title, how, done: done || seen.includes(id) }));
@@ -104,8 +105,8 @@ export function primerPage(c?: Campaign): PrimerSection[] {
     ] },
     { title: 'Winning', lines: [
       c
-        ? `Outlast your rivals: the last people left alive has won. Holding ${dominionNeed(c)} of this world's ${c.territories.length} lands for ${DOMINION_TURNS} turns running ends it too.`
-        : `Outlast your rivals: the last people left alive has won. Holding ${pct(DOMINION_SHARE)} of the lands for ${DOMINION_TURNS} turns running ends it too.`,
+        ? `Outlast your rivals: the last people left alive has won. Holding ${dominionNeed(c)} of this world's ${c.territories.length} lands for ${DOMINION_TURNS} turns ends it too; a season under that takes ${DOMINION_DIP} turns off the count, not all of it.`
+        : `Outlast your rivals: the last people left alive has won. Holding ${pct(DOMINION_SHARE)} of the lands for ${DOMINION_TURNS} turns ends it too; a season under that takes ${DOMINION_DIP} turns off the count, not all of it.`,
       'A world where no people can take land for years while bands hold much of the map ends in ruin, with no winner.',
       'A rival who does the same has won. The chronicle keeps what happened along the way, and its last page tells how it ended.',
     ] },

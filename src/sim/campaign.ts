@@ -6,6 +6,7 @@ import { militiaOf } from './militia';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { onFrontier, reckoned } from './reckon';
+import { dominionNext } from './dominion';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
@@ -1175,8 +1176,14 @@ function checkElimination(c: Campaign): void {
 function checkDominion(c: Campaign): void {
   const need = dominionNeed(c);
   const lead = c.factions.find((f) => f.alive && landOf(c, f.id) >= need);
-  if (!lead) { c.dominion = { f: -1, turns: 0 }; return; }
-  c.dominion = { f: lead.id, turns: c.dominion.f === lead.id ? c.dominion.turns + 1 : 1 };
+  if (!lead) {
+    // A season under the share takes turns off the count, not all of it (dominion.ts; the owner's word).
+    const was = c.dominion, whose = was.f >= 0 ? c.factions[was.f] : undefined;
+    c.dominion = dominionNext(was, -1, !!whose?.alive);
+    if (whose && c.dominion.f >= 0) c.log.push(`${whose.id === 0 ? 'You no longer hold' : `${whose.name} no longer hold`} most of the land: ${c.dominion.turns} of the ${DOMINION_TURNS} turns still stand${c.dominion.turns === 1 ? 's' : ''} to ${whose.id === 0 ? 'your' : 'their'} count.`);
+    return;
+  }
+  c.dominion = dominionNext(c.dominion, lead.id);
   const left = DOMINION_TURNS - c.dominion.turns;
   if (left <= 0) {
     c.phase = 'over';
