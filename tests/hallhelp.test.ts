@@ -32,9 +32,21 @@ describe('a rival\'s Hall, helped by its other towns', () => {
   it('nothing is sent when the others have not enough beyond their floors', () => {
     const { c, chief, other } = world();
     folkOf(c, chief).stores = { food: 3000, wood: 50, gold: 50, stone: 50 };
-    for (const t of c.territories.filter((x) => x.owner === 1 && x.id !== chief)) folkOf(c, t.id).stores = { food: 3000, wood: 250, gold: 250, stone: 250 };
+    for (const t of c.territories.filter((x) => x.owner === 1 && x.id !== chief)) folkOf(c, t.id).stores = { food: 3000, wood: 200, gold: 200, stone: 200 }; // nor any rich enough to raise one alone
     const before = JSON.stringify(folkOf(c, other).stores);
     expect(hallSeason(c, 1)).toBe(false);
     expect(JSON.stringify(folkOf(c, other).stores)).toBe(before);
+  });
+
+  it('where the chief town cannot even with help, a town of the nation that can spare it raises it', () => {
+    const { c, chief, other } = world();
+    folkOf(c, chief).stores = { food: 0, wood: 0, gold: 0, stone: 0 };
+    for (const t of c.territories.filter((x) => x.owner === 1 && x.id !== chief)) folkOf(c, t.id).stores = { food: 3000, wood: 250, gold: 250, stone: 250 };
+    layTown(c, other);
+    folkOf(c, other).stores = { food: 3000, wood: 3000, gold: 3000, stone: 3000 };
+    // The others cannot send enough beyond their floors when the chief town holds nothing at all: the rich one raises it itself.
+    const raised = hallSeason(c, 1);
+    expect(raised).toBe(true);
+    expect(c.territories.some((t) => t.owner === 1 && t.town?.b?.some((x) => x[0] === 'hall'))).toBe(true);
   });
 });
