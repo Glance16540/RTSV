@@ -128,7 +128,7 @@ export function musterMan(c: Campaign, a: Army, tid: number, place: number, who?
 /**
  * Men a company raised in this town could be given: what the town can spare, and (`MEN.levy`) what its people's
  * other towns can. With fewer than `MEN.least` it is not raised at all (campaign.ts, canRaise): a soldier costs a
- * person, and where there is nobody to send there is no company. (`MEN.least` is 0 for now: see there.)
+ * person, and where there is nobody to send there is no company. (`MEN.least` is a company's whole count in towns of the larger size, and nothing in the old: see there.)
  */
 export function menToRaise(c: Campaign, f: number, tid: number): number {
   const t = c.territories[tid];
@@ -145,14 +145,15 @@ export function menToRaise(c: Campaign, f: number, tid: number): number {
 export function noMenText(c: Campaign, f: number, tid: number): string {
   const n = menToRaise(c, f, tid);
   if (n >= MEN.company) return '';
-  const keeps = `A town keeps ${MEN.floor} men at the least, and a husband for half its women.`;
+  const share = MEN.couples >= 0.45 ? 'half' : MEN.couples >= 0.3 ? 'a third' : 'a quarter';
+  const keeps = `A town keeps ${MEN.floor} men at the least, and a husband for ${share} of its women.`;
   if (n < MEN.least) return `No men for it: ${n ? `your towns can spare only ${n}` : 'none of your towns can spare a man'}. ${keeps}`;
   return `${n ? `Your towns can spare only ${n} of the ${MEN.company} men a company takes` : 'None of your towns can spare a man'}: ${n ? 'the rest' : 'a company raised now'} will be hired men of no town, with no house to mourn them. ${keeps}`;
 }
 /** A founding army's men: grown, and young enough to march (eighteen to thirty-five), by lot. */
 export const FOUNDING = { youngest: 18, oldest: 35 };
 /**
- * The army a people begins the campaign with is its chief town's own men: two for every company, each of a house
+ * The army a people begins the campaign with is its chief town's own men: as many for every company as a company takes (`MEN.company`), each of a house
  * of that town and on its record as away with the army (warhouse.ts), from the first turn. They are not taken off
  * the town's count: the count a town is founded with is of those at home, and these were already away. When the
  * army loses companies they are that town's dead, and when it stands down they come home to it. An army that

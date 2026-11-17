@@ -10,8 +10,8 @@
 //     grow up there (threats.ts, bringHome). If she is held too long and lost, the child is lost with her.
 //   - Raiders take people into themselves. A child born among them is the band's own: it is counted to the band
 //     and does not come home.
-// (No nation holds captives on the map yet: when one does, and takes them into itself, the children are its own
-// by the same rule as the raiders'.)
+// (A nation that leads people away holds them the same way, carriedoff.ts: a child born while its mother is so
+// held is the taker's from birth, by the same rule as the raiders'.)
 //
 // One call a season (bandseason.ts). Chances are the bands' own run, so the rest of a campaign's luck is as it was.
 import type { Campaign } from './campaign';

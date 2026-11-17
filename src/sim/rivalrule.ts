@@ -196,7 +196,7 @@ export const mayMuster = (c: Campaign, f: number): boolean => {
 /**
  * At peace a nation sends home what it holds over its standing force: armies standing in its own land, without
  * the leader, the smallest first, but not the garrison of a town that is threatened. What cannot go whole gives
- * up its townsmen, a company with every two of them. Returns how many armies went home or gave men up.
+ * up its townsmen, a company with as many of them as a company takes. Returns how many armies went home or gave men up.
  */
 export function standDown(c: Campaign, f: number): number {
   if (warFooting(c, f) !== 'peace') return 0;
@@ -208,7 +208,7 @@ export function standDown(c: Campaign, f: number): number {
     if (canSendHome(c, a.id) && sendHome(c, a.id) >= 0) sent++; // its last too: a small people at peace keeps no army but its leader's
   }
   // What cannot go home whole (the leader's army, the last one) sends its men home instead, down to the standing force:
-  // the men of its towns, and a company with every two of them. (By companies alone, an army mostly of men of no town gave nobody back.)
+  // the men of its towns, and a company with as many of them as a company takes. (By companies alone, an army mostly of men of no town gave nobody back.)
   for (const a of c.armies.filter((x) => x.owner === f).sort((p, q) => size(q) - size(p) || p.id - q.id)) {
     const u = underArms(c, f);
     if (u.share <= RIVAL.standing) break;

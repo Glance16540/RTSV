@@ -25,10 +25,12 @@ export const DRILL = {
 };
 const units = (s: Stores): number => STORE_KINDS.reduce((n, k) => n + Math.max(0, s[k]), 0);
 
-/** The company a kind of soldier belongs to: by the building that trains him (a clubman is infantry, a rider cavalry). */
+/** The company a kind of soldier belongs to: the one that fields his kind (a clubman is infantry, a slinger archers, a rider cavalry), else by the building that trains him. */
 export function companyOf(unit: string): string | undefined {
   if (COMPANIES[unit]) return unit;
-  return Object.keys(COMPANIES).find((k) => BUILDINGS[COMPANIES[k].needs]?.trains.includes(unit));
+  // The kind a company fields is that company whatever yard trained him: a slinger is of the archers, though a Barracks trains slingers.
+  const fielded = Object.keys(COMPANIES).find((k) => unit in COMPANIES[k].units);
+  return fielded ?? Object.keys(COMPANIES).find((k) => BUILDINGS[COMPANIES[k].needs]?.trains.includes(unit));
 }
 /** Whether the town has the building a company needs: on the map's record, or standing finished in the town itself. */
 const hasYard = (t: Territory, kind: string): boolean => {
