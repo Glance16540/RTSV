@@ -873,3 +873,7 @@ body.looking-out #visit { display: none; }
 #ow-dialog .tale .levels { flex-direction: column; align-items: stretch; gap: 8px; margin-top: 12px; }
 #ow-dialog .tale .levels button { flex: 0 0 auto; margin-top: 0; padding: 9px 16px; flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 16px; row-gap: 2px; }
 #ow-dialog .tale .levels button small { text-align: left; margin-left: auto; }
+
+/* The playtest's fifth pass (docs/PLAYTEST.md 5.6): where a record (a roof's children, a person's story) stands at the
+   right of the panel, everything else keeps to the left of it, so no line runs on under it and is cut off. */
+@media (min-width: 1100px) { #info:has(> .record) > :not(.record) { margin-right: calc(44% + 12px); } }
