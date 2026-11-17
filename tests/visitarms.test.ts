@@ -1,16 +1,16 @@
 // The soldiers of a visit go home to the map (src/sim/visit.ts): the army stationed there loses on the map what it
 // lost in the town, and townsmen trained there become companies of the land's army, as that town's men.
 import { describe, expect, it } from 'vitest';
-import { newCampaign } from '../src/sim/campaign';
+
 import type { Army, Campaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
 import { beginVisit, finishVisit, visitArms, visitConfig } from '../src/sim/visit';
 import { awayFrom, musterOf } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
-import { run } from './helpers';
+import { run, bareCampaign } from './helpers';
 
 const world = (): { c: Campaign; home: number } => {
-  const c = newCampaign(3);
+  const c = bareCampaign(3);
   const home = c.territories.find((t) => t.owner === 0)!.id;
   c.armies = c.armies.filter((a) => a.at !== home);
   const f = folkOf(c, home);

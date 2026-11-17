@@ -8,7 +8,7 @@
  * A company still marches if its town cannot man it in full: the shortfall are men of no town (see the board).
  */
 import type { Army, Campaign } from './campaign';
-import { agesOf, countFrom, OLD_SEASON, LAST_SEASON } from './ageing';
+import { agesOf, countFrom, GROWN_SEASON, GROWN_YEARS, OLD_SEASON, LAST_SEASON } from './ageing';
 import { awayFrom, cameHome, enlist, fell, levelArmies, settleHouses } from './warhouse';
 import { folkOf, rememberVeteran } from './township';
 import { tally } from './ledger';
@@ -27,7 +27,7 @@ export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.tur
  * own towns. And what raising may take: a town keeps `floor` men at the least, and a man for every woman of
  * working age up to `couples` of them, so that it still has husbands.
  */
-export const MEN = { won: 0.3, lost: 0.4, floor: 2, couples: 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true };
+export const MEN = { won: 0.3, lost: 0.4, floor: 2, couples: 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true, /** Men a company must find, in its town or its people's others, to be raised at all. None, for now: at one or two the towns as they are founded (four to six men) cannot carry the armies the map is fought with, and over half of 192 campaigns end in ruin. The rule is here for when they can. */ least: 0 };
 /** Men in a company. */
 export const MEN_A_COMPANY = 2;
 /** An army's roll: how many companies it had when last reckoned, and the men with it by the town they came from (their ages, in seasons). */
@@ -87,6 +87,56 @@ export function menMustered(c: Campaign, a: Army, tid: number): number {
     for (const o of others) { if (went >= MEN_A_COMPANY) break; went += take(c, m, o.id, MEN_A_COMPANY - went, a.id); }
   }
   return went;
+}
+/**
+ * Men a company raised in this town could be given: what the town can spare, and (`MEN.levy`) what its people's
+ * other towns can. With fewer than `MEN.least` it is not raised at all (campaign.ts, canRaise): a soldier costs a
+ * person, and where there is nobody to send there is no company. (`MEN.least` is 0 for now: see there.)
+ */
+export function menToRaise(c: Campaign, f: number, tid: number): number {
+  const t = c.territories[tid];
+  if (!t || t.owner !== f) return 0;
+  const young = (id: number): number => Math.min(sparedMen(c, id), agesOf(c, id, folkOf(c, id)).m.filter((s) => s < OLD_SEASON).length);
+  let n = young(tid);
+  if (MEN.levy) for (const x of c.territories) if (x.owner === f && !x.horde && x.id !== tid && x.folk) n += young(x.id);
+  return n;
+}
+/**
+ * What the panel says of the men a company raised here would have; nothing if the towns can man it in full.
+ * Where `MEN.least` forbids it, why it cannot be raised; otherwise how many of its men are of no town.
+ */
+export function noMenText(c: Campaign, f: number, tid: number): string {
+  const n = menToRaise(c, f, tid);
+  if (n >= MEN_A_COMPANY) return '';
+  const keeps = `A town keeps ${MEN.floor} men at the least, and a husband for half its women.`;
+  if (n < MEN.least) return `No men for it: ${n ? `your towns can spare only ${n}` : 'none of your towns can spare a man'}. ${keeps}`;
+  return `${n ? `Your towns can spare only ${n} of the ${MEN_A_COMPANY} men a company takes` : 'None of your towns can spare a man'}: ${n ? 'the rest' : 'a company raised now'} will be hired men of no town, with no house to mourn them. ${keeps}`;
+}
+/** A founding army's men: grown, and young enough to march (eighteen to thirty-five), by lot. */
+export const FOUNDING = { youngest: 18, oldest: 35 };
+/**
+ * The army a people begins the campaign with is its chief town's own men: two for every company, each of a house
+ * of that town and on its record as away with the army (warhouse.ts), from the first turn. They are not taken off
+ * the town's count: the count a town is founded with is of those at home, and these were already away. When the
+ * army loses companies they are that town's dead, and when it stands down they come home to it. An army that
+ * already has a roll, or stands on land that is not its people's town, is left as it is. Returns how many men
+ * were put on its roll.
+ */
+export function foundingMuster(c: Campaign, a: Army): number {
+  const all = rolls(c), t = c.territories[a.at];
+  if (all[a.id] || !t || t.owner !== a.owner || t.horde || a.owner < 0) return 0;
+  folkOf(c, t.id); // the town is on record before its men are away from it
+  const n = sizeOf(a) * MEN_A_COMPANY, span = (FOUNDING.oldest - FOUNDING.youngest) * (GROWN_SEASON / GROWN_YEARS);
+  const ages = Array.from({ length: n }, (_, i) => Math.round(FOUNDING.youngest * (GROWN_SEASON / GROWN_YEARS) + hash(c.seed * 23 + a.id * 7 + t.id, i + 900) * span)).sort((p, q) => p - q);
+  all[a.id] = { size: sizeOf(a), men: { [t.id]: ages }, owner: a.owner };
+  enlist(c, t.id, n, a.id);
+  return n;
+}
+/** Every army on the map that stands in a town of its own people and has no roll is given one out of that town: for a campaign as it begins. */
+export function foundArmies(c: Campaign): number {
+  let n = 0;
+  for (const a of c.armies) n += foundingMuster(c, a);
+  return n;
 }
 /** Two armies of one people have met and shared out their companies: their men are shared out the same way. */
 export function armiesJoined(c: Campaign, a: Army, other: Army): void {

@@ -1,8 +1,9 @@
 // War and peace as a nation's armies know it (src/sim/rivalrule.ts, src/sim/armytown.ts): tuned toward
 // docs/TUNING.md's "men under arms: 10 to 25% in war, under 10% in peace".
+import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { setTribe } from '../src/sim/tribes';
-import { Campaign, newCampaign, raise } from '../src/sim/campaign';
+import { Campaign, raise } from '../src/sim/campaign';
 import { RIVAL, lastMenHome, massArmies, mayMuster, maySpare, standDown, underArms, warFooting } from '../src/sim/rivalrule';
 import { MEN_A_COMPANY, awayFrom, musterOf, sendCompaniesHome } from '../src/sim/armytown';
 import { folkOf } from '../src/sim/township';
@@ -10,7 +11,7 @@ import { folkOf } from '../src/sim/township';
 const LONG = 60_000;
 /** A rival with one town of forty men and a Barracks, and no army anywhere. */
 const nation = (seed = 7) => {
-  const c = newCampaign(seed, 1, 1, 'hearth'), cap = c.territories.find((t) => t.capital === 1)!;
+  const c = bareCampaign(seed, 1, 1, 'hearth'), cap = c.territories.find((t) => t.capital === 1)!;
   for (const t of c.territories) if (t.owner === 1 && t !== cap) t.owner = -1;
   c.armies = c.armies.filter((a) => a.owner !== 1);
   cap.buildings = ['barracks'];
