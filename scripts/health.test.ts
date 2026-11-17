@@ -12,8 +12,9 @@
 //   MINUTES    how long each may run before the town is counted as having held. Default 20.
 //   STORIES    'answer': the computer-played player answers the stories inside the story by a plain policy
 //              (src/sim/storypolicy.ts); left out, it answers none of them.
-//   CRIME      '1': every campaign is told twice more for the Crime rows, once with a finished Watch House in every
-//              town of the player's from the start, and once with Town Watch learnt from the start besides
+//   CRIME      '1': every campaign is told three times more for the Crime rows, once with a finished Watch House in every
+//              town of the player's from the start, and once with Town Watch learnt from the start besides, and once
+//              with an Inn in every such town and Escorts and Paved Roads learnt
 //   VISITS     how many of the campaigns are played again with every town of the player's visited each season for
 //              twenty years (slow: a visit is ten minutes of a real battle). Default 0, and that figure is not measured.
 //              The player begins with one town, so a campaign gives one pair at most: the figure swings 30 to 40 points
@@ -60,7 +61,7 @@ const SEASONS = +(process.env.SEASONS ?? 200);
 const PLAYER = process.env.PLAYER === 'passive' ? 'passive' : 'computer';
 const VISITS = +(process.env.VISITS ?? 0);
 /** 'answer': the computer-played player answers the stories inside the story by a plain policy (src/sim/storypolicy.ts); otherwise it answers none. */
-/** '1': the campaigns are told twice more, the player's towns given a Watch House from the start, and Town Watch besides, for the Crime rows. */
+/** '1': the campaigns are told three times more for the Crime rows: the player's towns given a Watch House from the start; Town Watch besides; and an Inn in each with Escorts and Paved Roads learnt. */
 const CRIME = !!process.env.CRIME;
 const STORIES = process.env.STORIES === 'answer' ? 'answer' : 'ignore';
 const OUT = process.env.OUT ?? 'docs/health-report.md';
@@ -174,7 +175,7 @@ interface Watch {
   /** The player's convoys that finished their road (convoys.ts, read from the log): whether the player had an Inn standing or sent Escorts that season, whether a band stopped it, and the stores it took. */
   convoys: { inn: boolean; escorts: boolean; stopped: boolean; took: number }[];
   /** Every spell of hunger in a held town: how many seasons running, and whether its people had Paved Roads when it began. */
-  hungers: { seasons: number; paved: boolean }[];
+  hungers: { seasons: number; paved: boolean; mine: boolean }[];
   captives: { near: boolean; back: boolean }[];
   taken: { garrison: boolean; rose: boolean }[];
   retaken: number; unsettled: number; // taken towns not counted: taken again by force within five years, or still followed when the run ended
@@ -186,20 +187,26 @@ interface Watch {
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
 }
 
-/** For the forced comparison (CRIME=1): a finished Watch House in every town the player holds, free, and Town Watch learnt if asked. */
-function giveWatch(c: Campaign, study: boolean): void {
-  if (study) { const f = c.factions[0]; if (!f.studies?.includes('townwatch')) f.studies = [...(f.studies ?? []), 'townwatch']; }
-  for (const t of c.territories) {
-    if (t.owner !== 0 || t.horde || standsAt(c, t.id, 'watchhouse')) continue;
+/** For the forced comparison (CRIME=1): these buildings finished in every town the player holds, free, and these studies learnt. */
+const FORCED = {
+  house: { works: ['watchhouse'], studies: [] as string[] },
+  watch: { works: ['watchhouse'], studies: ['townwatch'] },
+  roads: { works: ['inn'], studies: ['escorts', 'pavedroads'] },
+};
+function give(c: Campaign, what: { works: string[]; studies: string[] }): void {
+  const f = c.factions[0];
+  for (const id of what.studies) if (!f.studies?.includes(id)) f.studies = [...(f.studies ?? []), id];
+  for (const t of c.territories) for (const type of what.works) {
+    if (t.owner !== 0 || t.horde || standsAt(c, t.id, type)) continue;
     if (!t.town?.b?.length) layTown(c, t.id);
     if (!t.town?.b?.length) continue;
-    const i = t.town.b.findIndex((x) => x[0] === 'watchhouse');
+    const i = t.town.b.findIndex((x) => x[0] === type);
     if (i >= 0) { t.town.b[i] = [t.town.b[i][0], t.town.b[i][1], t.town.b[i][2]] as typeof t.town.b[number]; continue; }
-    const at = plotFor(t, 'watchhouse');
-    if (at) t.town.b.push(['watchhouse', at.cx, at.cy] as typeof t.town.b[number]);
+    const at = plotFor(t, type);
+    if (at) t.town.b.push([type, at.cx, at.cy] as typeof t.town.b[number]);
   }
 }
-function play(seed: number, ruled: boolean, seasons: number, forced: '' | 'house' | 'watch' = ''): Watch {
+function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof typeof FORCED = ''): Watch {
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
@@ -224,7 +231,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | 'house
   const losses: Losses[][] = [];
   const names = new Map(c.factions.map((f) => [f.name, f.id]));
   for (let s = 1; s <= seasons; s++) {
-    if (forced) giveWatch(c, forced === 'watch');
+    if (forced) give(c, FORCED[forced]);
     // Once a campaign is decided, the world is let go on turning until twenty years have passed, so that the
     // twenty-year figures are read from every campaign; the campaign's figures are read from the decision.
     if (c.phase === 'over') {
@@ -366,7 +373,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | 'house
     // Spells of hunger, town by town.
     for (const t of c.territories) {
       const sp = hungrySpell[t.id], hungry = t.owner >= 0 && !!folkOf(c, t.id).hungry;
-      if (sp && (!hungry || t.owner !== sp.owner)) { w.hungers.push({ seasons: sp.seasons, paved: sp.paved }); hungrySpell[t.id] = null; }
+      if (sp && (!hungry || t.owner !== sp.owner)) { w.hungers.push({ seasons: sp.seasons, paved: sp.paved, mine: sp.owner === 0 }); hungrySpell[t.id] = null; }
       if (hungry) { const k = hungrySpell[t.id] ?? (hungrySpell[t.id] = { seasons: 0, paved: hasStudy(c, t.owner, 'pavedroads'), owner: t.owner }); k.seasons++; }
     }
     logAt = c.log.length;
@@ -437,7 +444,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | 'house
   w.sieges = watched;
   w.stories = c.intrigueSeq ?? 0; w.storyYears = c.turn / 4;
   w.crimes = [...atLarge.values()];
-  for (const sp of hungrySpell) if (sp) w.hungers.push({ seasons: sp.seasons, paved: sp.paved });
+  for (const sp of hungrySpell) if (sp) w.hungers.push({ seasons: sp.seasons, paved: sp.paved, mine: sp.owner === 0 });
   for (const xs of fed) if (xs.length) { w.storeSeasons.push(median(xs)); w.peaceSeasons += xs.length; }
   w.unsettled = takenAt.size;
   w.townLives = w.townSeasons.filter((x) => !x.tribe).length / YEARS20;
@@ -706,6 +713,17 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     add('Crime', 'Stores a band takes from a convoy of the player\'s it stops, with Escorts against without', 'report only', `${tookOf(convoys.filter((x) => x.escorts))} with against ${tookOf(convoys.filter((x) => !x.escorts))} without`, 'report', 'Food, wood, gold and stone together, for each convoy stopped. "With" is a player who had learned Escorts by then.');
     const hungers = all('hungers'), spellOf = (xs: typeof hungers) => (xs.length ? `${num(mean(xs.map((x) => x.seasons)), 2)} (${xs.length})` : 'none');
     add('Crime', 'Seasons running a hungry town stays hungry, with Paved Roads against without', 'report only', `${spellOf(hungers.filter((x) => x.paved))} with against ${spellOf(hungers.filter((x) => !x.paved))} without`, 'report', 'Every spell of hunger in a held town, every people\'s: the seasons from the first hungry one until it is fed, changes hands or the count stops. "With" is a town whose people had learned Paved Roads when the spell began. The spell ends when the town is fed, by a convoy or by anything else.');
+    if (CRIME) {
+      const roads: Watch[] = [];
+      for (let seed = 1; seed <= CAMPAIGNS; seed++) roads.push(play(seed, true, SEASONS, 'roads'));
+      const cv = (ws: Watch[]) => ws.flatMap((w) => w.convoys), mineOf = (ws: Watch[]) => ws.flatMap((w) => w.hungers).filter((x) => x.mine);
+      const hungrySeasons = (ws: Watch[]) => mineOf(ws).reduce((k, x) => k + x.seasons, 0);
+      const wins = (ws: Watch[]) => ws.filter((w) => w.how === 'player').length;
+      add('Crime', 'Forced: the player\'s convoys stopped by a band, and the stores taken from each, with an Inn in every town and Escorts against as it is', 'report only', `stopped ${stoppedOf(cv(roads))} with against ${stoppedOf(cv(ruled))} as it is; stores taken ${tookOf(cv(roads))} against ${tookOf(cv(ruled))}`, 'report',
+        'The same campaigns told again with a finished Inn, free, in every town the player holds, and Escorts and Paved Roads learnt from the start. Convoys that finished their road, read from the log; the stores are those taken from each convoy stopped. ' + `The player won ${wins(roads)} of the ${CAMPAIGNS} campaigns in this telling against ${wins(ruled)} as it is.`);
+      add('Crime', 'Forced: seasons running a town of the player\'s stays hungry, with Paved Roads against as it is', 'report only', `${spellOf(mineOf(roads))} with against ${spellOf(mineOf(ruled))} as it is`, 'report',
+        `Spells of hunger in the player\'s own towns in the same two tellings (the Inns and Escorts are there too). In all, ${hungrySeasons(roads)} hungry town-seasons with against ${hungrySeasons(ruled)} as it is.`);
+    }
   }
   const out = (o: string) => share(raids, (r) => r.outcome === o);
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
