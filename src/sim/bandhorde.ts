@@ -14,6 +14,7 @@
 //
 // A land marked as the marauders' with no band on record (a campaign saved before this, or a land made so by hand)
 // is taken up as one the first season it is seen.
+import { landsWithin } from './rim';
 import type { Campaign, Territory } from './campaign';
 import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN } from './campaignbase';
 import { Band, Raid, bringHome, chance, mark, note, reachOf, softest, strike } from './threats';
@@ -31,7 +32,7 @@ export const HORDE = {
 };
 
 /** How many camps of the marauders the map will bear. */
-export const campsBorne = (c: Campaign): number => Math.max(1, Math.floor(c.territories.length / HORDE.lands));
+export const campsBorne = (c: Campaign): number => Math.max(1, Math.floor(landsWithin(c) / HORDE.lands)); // the rim of wilderness is not counted (rim.ts)
 
 const bandAt = (c: Campaign, tid: number): Band | undefined => (c.bands ?? []).find((b) => b.kind === 'marauders' && b.at === tid);
 function raise(c: Campaign, t: Territory, name?: string): Band {

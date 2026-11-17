@@ -26,6 +26,7 @@ import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from '.
 import { convoysTurn, relieve } from './convoys';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import { makeRim } from './rim';
 import { nobodyThere } from './founding';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
@@ -710,6 +711,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
   }
   raiseBarriers(c);
   makeWilds(c); // a share of the far and poor lands start with no tribe and no town (wilds.ts)
+  makeRim(c); // and the map's edge is ringed with true wilderness: new lands, nobody's for good (rim.ts)
   nameNation(c, 0, opts.names); // the player's own names for their people and house (naming.ts)
   c.log.push(`Turn 1. You lead the ${peopleName(c, 0)}${houseName(c, 0) ? `, under the House of ${houseName(c, 0)}` : ''}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
   tell(c, `The ${[peopleName(c, 0), ...c.factions.slice(1).map((f) => `the ${f.name}`)].join(', ').replace(/, ([^,]*)$/, ' and $1')} came into a country of ${c.territories.length} lands, and each meant to have all of it.`);

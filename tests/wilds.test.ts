@@ -12,7 +12,7 @@ describe('the wild lands', () => {
     let wild = 0, may = 0;
     for (let seed = 1; seed <= 12; seed++) {
       const c = newCampaign(seed, 2, 1, 'hearth');
-      const lands = c.territories.filter((t) => t.wild);
+      const lands = c.territories.filter((t) => t.wild && !t.rim); // the world's own lands made wild: the rim's are added lands (rim.ts, tests/rim.test.ts)
       wild += lands.length;
       for (const t of lands) {
         expect(farOrPoor(c, t)).toBe(true);
