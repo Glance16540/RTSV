@@ -1,6 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import { layCoarse } from './firstlay';
+import { nobodyLeft } from './lastperson';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
@@ -916,8 +917,9 @@ export class Game {
   }
 
   /** The nearest free ground to a start for a building, with room to walk round it and clear of where the people muster. */
-  siteNear(type: string, st: { x: number; y: number }, dir: number): { cx: number; cy: number } | null {
-    const s = BUILDINGS[type].size, far = type === 'dock' ? this.size / 2 : 16;
+  /** `reach`: how far from the start to look (16 cells unless said; a dock looks half the map). */
+  siteNear(type: string, st: { x: number; y: number }, dir: number, reach = 16): { cx: number; cy: number } | null {
+    const s = BUILDINGS[type].size, far = type === 'dock' ? this.size / 2 : reach;
     let best: { cx: number; cy: number } | null = null, bestD = Infinity;
     for (let cy = Math.max(2, Math.floor(st.y - far)); cy <= Math.min(this.size - s - 2, st.y + far); cy++)
       for (let cx = Math.max(2, Math.floor(st.x - far)); cx <= Math.min(this.size - s - 2, st.x + far); cx++) {
@@ -2219,6 +2221,8 @@ export class Game {
           if (news === 'lost') for (const q of this.players) if (!q.neutral && q.id !== p.id && this.hostile(q.id, p.id)) this.msg(q.id, `${p.name} have lost their last Town Center. Keep them from raising another for ${hallLeft(p, this.time)} seconds and they are beaten.`);
         } else if (news === 'raised') this.msg(p.id, 'A Town Center is begun. Your people hold on.');
       }
+      // A town with nobody left in it, where none can be bought, is beaten: it does not hold the battle open (lastperson.ts).
+      for (const p of this.players) if (!p.neutral && !p.defeated && alive.has(p.id) && nobodyLeft(this, p.id)) { alive.delete(p.id); fallen.add(p.id); for (const q of this.players) if (!q.neutral && q.id !== p.id) this.msg(q.id, `Nobody is left alive among ${p.name}.`); }
       // A raiding band has no town to lose: it is beaten when its last fighter or villager falls.
       for (const u of this.units) if (!alive.has(u.owner) && !fallen.has(u.owner) && this.raider(u.owner) && u.owner !== this.wild) alive.add(u.owner);
     }
