@@ -201,6 +201,19 @@ export function settle(c: Campaign, f: number, from: number, to: number): string
 export const freeLands = (c: Campaign, f: number): number[] => c.territories
   .map((t) => ({ id: t.id, way: settleable(c, t.id) ? wayOut(c, f, t.id) : null }))
   .filter((x) => x.way).sort((a, b) => a.way!.through.length - b.way!.through.length || a.id - b.id).map((x) => x.id);
+/**
+ * Can settlers of this people reach an empty land, in words for its panel (docs/PLAYTEST.md 3.1): which town of theirs
+ * can send them and how long they are on the road, or why none can. '' for a land that is not settleable.
+ */
+export function settleReach(c: Campaign, f: number, to: number): string {
+  if (!settleable(c, to)) return '';
+  const way = wayOut(c, f, to);
+  if (!way) return `No town of yours can reach it: settlers cross at most ${FOUNDING.reach - 1} ${FOUNDING.reach - 1 === 1 ? 'land' : 'lands'} with nobody on them beyond your own, never a land somebody lives on.`;
+  const towns = c.territories.filter((t) => t.owner === f && !t.horde && (t.id === way.gate || roadBetween(c, f, t.id, way.gate)));
+  if (!towns.length) return 'No town of yours has a road through your own lands toward it.';
+  const n = way.through.length, from = towns.find((t) => t.id === way.gate) ?? towns[0];
+  return `In reach: settlers from ${from.name}${towns.length > 1 ? ' or another town of yours' : ''} would be ${n === 1 ? 'a season' : `${n} seasons`} on the road. Send them from the town's convoy part.`;
+}
 /** Seasons settlers take to reach an empty land, a season a land beyond the people's own; 0 if they cannot. */
 export const seasonsTo = (c: Campaign, f: number, to: number): number => wayOut(c, f, to)?.through.length ?? 0;
 

@@ -111,7 +111,7 @@ export function reportSince(c: Campaign, s: Snapshot, f = 0): SeasonReport {
     const rose = (c.events ?? []).some((e) => e.at === id && e.kind === 'revolt' && e.turn > s.turn);
     (rose ? r.rose : r.lost).push(c.territories[id].name);
   }
-  for (const id of has) if (!had.has(id)) r.won.push(c.territories[id].name);
+  for (const id of has) if (!had.has(id) && !((c.territories[id].foundedBy?.turn ?? -1) > s.turn)) r.won.push(c.territories[id].name); // a town founded is told by the settlers' line (migration.ts)
   // Notable people made, and lost (wherever their town now is).
   const before = new Set(s.notables.map(key));
   r.made = now.notables.filter((n) => !before.has(key(n)));
@@ -152,7 +152,7 @@ export const pastSeasons = (c: Campaign): SeasonReport[] => [...(c.seasonPast ??
 export const reportDue = (c: Campaign): SeasonReport | null => (c.seasonReport && !c.seasonReport.seen ? c.seasonReport : null);
 
 /** The report as lines of words, only those with something in them. Counts for everyone; known people are in `made` and `gone`. */
-export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'captives' | 'raid' | 'drift' | 'land' | 'story'; tone: 'good' | 'bad' | 'plain'; text: string }[] {
+export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'captives' | 'raid' | 'drift' | 'land' | 'story' | 'settle'; tone: 'good' | 'bad' | 'plain'; text: string }[] {
   const n = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`;
   const out: ReturnType<typeof reportLines> = [];
   const add = (kind: (typeof out)[number]['kind'], tone: (typeof out)[number]['tone'], text: string): void => { out.push({ kind, tone, text }); };
@@ -176,7 +176,7 @@ export function reportLines(r: SeasonReport): { kind: 'people' | 'loss' | 'capti
   for (const t of r.lost) add('land', 'bad', `${t} was lost.`);
   for (const t of r.won) add('land', 'good', `${t} is yours.`);
   for (const x of r.household ?? []) add('people', x.tone, x.text);
-  for (const x of r.moved ?? []) add('people', 'plain', x);
+  for (const x of r.moved ?? []) add(x.startsWith('Settlers') ? 'settle' : 'people', 'plain', x); // settlers setting out, or a town founded
   for (const t of r.open ?? []) add('land', 'bad', `${t} stands open: nobody is left in it, and anyone who marches on it has it. Send people by convoy, or an army to hold it.`);
   for (const t of r.openNear ?? []) add('land', 'good', `${t} stands open, within reach of your armies: march on it and it is yours.`);
   for (const x of r.stories ?? []) add('story', x.tone, x.text);
