@@ -28,8 +28,12 @@ declare module './champion' {
   }
 }
 
-/** A map battle names a soldier of the winning army when it felled at least `least` men; he is credited with `share` of them. */
-export const NAMED = { least: 6, share: 0.3 };
+/**
+ * A map battle names a soldier of the winning army when it felled at least `least` men; he is credited with `share` of them.
+ * Tuned to docs/TUNING.md (People: soldiers named, the share credited): at ten felled and 0.35 every one is credited four
+ * at least, more than the three that make a name, and about a third of the felled.
+ */
+export const NAMED = { least: 10, share: 0.35 };
 
 /** A man of a house away with an army, as warhouse.ts keeps him: only what is read here. */
 interface Away { name: string; army?: number }
