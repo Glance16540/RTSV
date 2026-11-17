@@ -22,7 +22,6 @@ import { folkOf } from './township';
 import { heardDecree } from './nobles';
 import { buyGrain, canSpareGrain, grainBar } from './grain';
 import { angersLord } from './nobleweigh';
-import { needOf } from './larder';
 
 export type DecreeKind = 'church' | 'guards' | 'alms' | 'closeTavern' | 'tavernWomen' | 'tend';
 export interface Decree { kind: DecreeKind; until: number; strength: number }
@@ -126,22 +125,17 @@ export function decreesSeason(c: Campaign): void {
 }
 
 /**
- * What a sensible ruler foresees, as well as what struck last season (a decree given after the season it answers acts
- * on the tail of it: at 192 campaigns grain cut drift's hunger 3%, guards its raids 12%, tending its sickness 5%):
- *   - guards where a band has its place at the town or a land beside it, before it strikes;
- *   - grain where the town's food will not see it through a season of its own eating, before it goes hungry;
- *   - the church's tending where plague is in force in a land beside it, before it comes.
+ * What a sensible ruler foresees, as well as what struck last season. A decree given after the season it answers acts
+ * on the tail of it (at 192 campaigns grain cut drift's hunger 3%, guards its raids 12%, tending its sickness 5%), so
+ * it posts guards where a band has its place at the town or a land beside it, before it strikes: with it, decrees eased
+ * drift 15.2% and 15.0% (plain, stories answered), without it 2.9% and 3.1%. Grain before a town's food ran short
+ * (4.9%, 5.4%) and tending where plague was next door (2.2%, 3.5%) were tried and helped nothing.
  */
-export const FORESIGHT = { guards: true, grain: true, tend: true };
+export const FORESIGHT = { guards: true };
 /** A band with its place at this town or a land beside it (threats.ts: a road's band at either end). */
 export const bandNear = (c: Campaign, tid: number): boolean => {
   const near = new Set([tid, ...(c.territories[tid]?.adj ?? [])]);
   return (c.bands ?? []).some((b) => near.has(b.at) || (b.to !== undefined && near.has(b.to)));
-};
-/** Plague in force in a land beside this town. */
-export const plagueNear = (c: Campaign, tid: number): boolean => {
-  const near = new Set(c.territories[tid]?.adj ?? []);
-  return (c.events ?? []).some((e) => e.kind === 'plague' && near.has(e.at) && e.until >= c.turn);
 };
 
 /**
@@ -160,11 +154,9 @@ export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) 
     // ruler sends food to at most ALMS_A_SEASON towns a season, the hungriest being those it is told of first.
     // A computer-led ruler leaves out a decree that would anger a lord not angry yet (nobleweigh.ts).
     const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= (DECREES[k].cost ? keep : 0) && !angersLord(c, f, t.id, k, strengthAt(c, f, t.id)) && issueDecree(c, f, t.id, k) === '';
-    // Foresight (FORESIGHT): a sensible ruler answers what is coming, not only what came last season.
-    const lean = FORESIGHT.grain && !s.hungry && folkOf(c, t.id).stores.food < needOf(c, t.id);
-    if ((s.hungry || lean) && fed < ALMS_A_SEASON && canSpareGrain(c, f, t.id, strengthAt(c, f, t.id)) && tryGive('alms')) { given++; fed++; } // only when the nation can spare the gold (grain.ts); and beside the town's one decree, not instead of it
+    if (s.hungry && fed < ALMS_A_SEASON && canSpareGrain(c, f, t.id, strengthAt(c, f, t.id)) && tryGive('alms')) { given++; fed++; } // only when the nation can spare the gold (grain.ts); and beside the town's one decree, not instead of it
     if ((s.raided || (FORESIGHT.guards && bandNear(c, t.id))) && tryGive('guards')) { given++; continue; }
-    if ((s.sick || s.grieving || (FORESIGHT.tend && plagueNear(c, t.id))) && !tendedAlready(c, t.id) && tryGive('tend')) { given++; continue; } // not where a Monastery or Infirmary tends already
+    if ((s.sick || s.grieving) && !tendedAlready(c, t.id) && tryGive('tend')) { given++; continue; } // not where a Monastery or Infirmary tends already
     if (s.moved < 0 && tryGive('church')) { given++; continue; }
     if (s.moved < 0 && s.standing > -70 && tryGive('closeTavern')) given++;
   }
