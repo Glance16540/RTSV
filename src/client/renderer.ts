@@ -1,5 +1,8 @@
 // Three.js scene: terrain, fog of war, entity meshes and the RTS camera.
 
+import { bake, unbake } from './bake';
+import { TownBatch } from './townbatch';
+import { foldFigure } from './foldfigure';
 import * as THREE from 'three';
 import { standInBuilding } from './standins'; // a new building's stand-in look until it has a model (standins.ts)
 import { BUILDINGS } from '../sim/data';
@@ -42,6 +45,8 @@ interface Rubble { m: THREE.Object3D; vx: number; vy: number; vz: number; spin: 
 interface Dust { m: THREE.Mesh; t: number }
 
 export class Renderer {
+  /** ?bake=0 draws every building as its parts, to compare (bake.ts). */
+  static noBake = typeof location !== 'undefined' && new URLSearchParams(location.search).get('bake') === '0';
   scene = new THREE.Scene();
   camera: THREE.PerspectiveCamera;
   gl: THREE.WebGLRenderer;
@@ -64,6 +69,7 @@ export class Renderer {
   private sun: THREE.DirectionalLight;
   private unitViews = new Map<number, UnitView>();
   private buildingViews = new Map<number, THREE.Group>();
+  private batch = new TownBatch(this.scene);
   private resViews = new Map<number, THREE.Group>();
   private treeIndex = new Map<number, { ims: THREE.InstancedMesh[]; i: number }>();
   /** Every instanced part of the forest; a felled tree is hidden in each. */
@@ -557,6 +563,7 @@ export class Renderer {
       const lead = u.hero ? this.game.heroOf(u.owner) : null;
       const fit = real ? outfitFor(u.type, lead ? lead.female : u.gender === 'f', this.game.players[u.owner].color, lookOf(this.game.players[u.owner].civ, u.id), u.id, wear, { cls: u.def.cls, age: u.def.age, civ: this.game.players[u.owner].civ }) : null;
       const made = fit ? makePerson(lead ? leaderOutfit(fit, lead.female, lead.look) : fit) : null;
+      if (made && !Renderer.noBake) foldFigure(made.g, made.real); // its still pieces drawn together (foldfigure.ts)
       const creature = wild ? makeBeast(animal!, u.type === 'deer' ? 0.62 : u.type === 'wolf' ? 0.42 : 0.33, u.id, u.type === 'hound' ? 0x7a5a3a : null) : null;
       v = { g: made?.g ?? creature?.g ?? (afoot ? new THREE.Group() : makeUnit(u.type, this.game.players[u.owner].color, u.gender, u.id, job, wear)), phase: (u.id * 1.7) % 6.28, legs: [], type: u.type, work: 0, job, wear, hp: u.hp, flesh: u.def.cls !== 'siege' && !u.def.naval, cls: u.def.cls, naval: !!u.def.naval };
       if (turned !== null) v.g.rotation.y = turned;
@@ -1179,6 +1186,7 @@ export class Renderer {
     seats.forEach((seat, i) => {
       const made = makePerson(outfitFor(u.type, false, pl.color, lookOf(pl.civ, u.id + i * 5), u.id + i * 5, 0, { cls: u.def.cls, age: u.def.age, naval: !!u.def.naval, civ: pl.civ }));
       if (!made) return;
+      if (!Renderer.noBake) foldFigure(made.g, made.real);
       for (const c of seat.children) c.visible = false; // the block figure and its gear give way
       seat.add(made.g);
       made.g.position.y = seat.userData.stands ? 0 : -0.07;
@@ -1189,6 +1197,7 @@ export class Renderer {
 
   /** A building that falls comes apart: every piece is thrown clear, tumbles, settles and sinks away. */
   private collapse(g: THREE.Group): void {
+    unbake(g); // it falls as its parts (bake.ts)
     g.updateMatrixWorld(true);
     const parts: THREE.Mesh[] = [];
     for (const o of (g.userData.lit as THREE.Object3D[] | undefined) ?? []) o.removeFromParent(); // its lights go out with it
@@ -1227,6 +1236,7 @@ export class Renderer {
    * more of its pieces are knocked off and fall, well before the whole of it comes down.
    */
   private shed(g: THREE.Group, stage: number): void {
+    unbake(g); // pieces come off the parts, not the merged whole (bake.ts); it is merged again once it stands still
     g.updateMatrixWorld(true);
     const keep = new Set<unknown>([g.userData.fire, g.userData.resM, g.userData.resF]);
     const parts: THREE.Mesh[] = [];
@@ -1326,6 +1336,8 @@ export class Renderer {
     if (b.def.camp) this.syncCamp(b, g, g.visible && b.complete);
     if (hurt > ((g.userData.hurt as number) ?? 0)) this.shed(g, hurt);
     g.userData.hurt = hurt;
+    // A finished building that stands still is drawn as one mesh for each of its materials (bake.ts).
+    if (b.complete && !g.userData.site && !b.def.wall && !g.userData.baked && !Renderer.noBake) bake(g);
     // A building going up rises out of its footings inside a scaffold of poles, which comes down when it is done.
     let site = g.userData.site as THREE.Group | undefined;
     if (!b.complete) {
@@ -1398,6 +1410,7 @@ export class Renderer {
     this.placeCamera();
     for (const u of game.units) this.syncUnit(u, alpha, dt);
     for (const b of game.buildings) this.syncBuilding(b);
+    if (!Renderer.noBake) this.batch.sync(this.buildingViews.values()); // a town's still buildings drawn together (townbatch.ts)
     if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
     this.lightNight();
