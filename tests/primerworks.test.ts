@@ -22,3 +22,14 @@ describe('first orders', () => {
     expect(last.how).not.toContain('Take every land');
   });
 });
+
+describe('the order to advance an age', () => {
+  it('says what the next age opens, in the same words as the land\'s panel', async () => {
+    const { nextAgeText } = await import('../src/sim/nextage');
+    const { ageCost } = await import('../src/sim/campaign');
+    const c = newCampaign(3, 2), step = primerSteps(c, primerBase(c)).find((s) => s.id === 'age')!;
+    const said = nextAgeText(c, 0, ageCost(c, 0));
+    expect(said).not.toBe('');
+    expect(step.how).toContain(said);
+  });
+});
