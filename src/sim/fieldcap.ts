@@ -1,10 +1,13 @@
 // How many of a town's people stand on the field at once (docs/DESIGN.md: "a battle is the close view of one town";
 // towns four times larger, the owner's bigger-towns work, led by the armies session).
 //
-// Drawing, not the rules, grows with the heads on a field: the portrait session measured the median frame a little over
-// half again as long, and the slowest tenth over twice, going from 20 villagers to 100. So a battle or a visit takes at
-// most FIELD_CAP of the town's grown people (men, women and the old: those who walk). The rest stand on the town's
-// record, untouched, and are joined back as it is written back. While no town reaches the cap nothing changes.
+// Drawing, not the rules, grows with the heads on a field: the playtest session counted about 38 draw calls and 30 to
+// 35 thousand triangles a person, so that a siege with 70 townsfolk on the field is past a comfortable budget until
+// figures are batched. So a battle or a visit takes at most FIELD_CAP of the town's grown people (men, women and the
+// old: those who walk), about the heaviest fields of today's towns (the 99th of them has some 35 townsfolk on it).
+// The rest stand on the town's record, untouched, and are joined back as it is written back. At four times the size
+// it bites on nearly every town, so the held-back are the common case. One figure, for the owner to raise on a real
+// machine or once figures are batched.
 //
 // Who goes, when the town is larger than the cap:
 //   - always: the town's named (its notable mothers, and their husbands), its widowed, those at the tavern and the
@@ -29,8 +32,8 @@ declare module './township' {
   }
 }
 
-/** The most of a town's grown people (men, women, the old) on the field at once. */
-export const FIELD_CAP = 80;
+/** The most of a town's grown people (men, women, the old) on the field at once (the armies session's figure, from the playtest session's draw counts). */
+export const FIELD_CAP = 40;
 
 /** The grown of a town held back from the field, by age, as the battle or visit began. */
 export interface FieldHome { m: number[]; f: number[] }

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { Campaign, battleConfig, finishBattle, moveArmy } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
 import { beginVisit, finishVisit, visitConfig } from '../src/sim/visit';
-import { folkOf, grown } from '../src/sim/township';
+import { TOWN_SCALE, folkOf, grown } from '../src/sim/township';
 import { GROWN_SEASONS, couplesOf, roomOf, seasonFolk, seasonTown } from '../src/sim/seasonfolk';
 import { run, spot, villagers, bareCampaign } from './helpers';
 
@@ -85,7 +85,8 @@ describe('on the map, housed couples raise children season by season', () => {
     expect(born).toBeGreaterThanOrEqual(2);
     expect(born).toBeLessThanOrEqual(6);
     expect(f.children).toBe(born);
-    expect(f.stores.food).toBe(1000 - 25 * born);
+    // A child costs 25 food at the towns of today, a TOWN_SCALE-th of it in bigger towns (seasonfolk.ts), rounded as it is paid.
+    expect(Math.abs(f.stores.food - (1000 - (25 * born) / TOWN_SCALE))).toBeLessThanOrEqual(TOWN_SCALE === 1 ? 0 : born);
   });
 
   it('a town on record has as many couples as finished houses, and room for five to a house and ten to the hall', () => {
