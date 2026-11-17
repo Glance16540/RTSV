@@ -3,23 +3,37 @@
 // gold. Its price in supplies stays what it was (a supply is a hundred of goods, stores.ts), so nothing grows dearer
 // or cheaper; what changes is which stores it takes, and from where.
 //
-// Where it comes from. A building, a company or a work is paid for out of the town where it is done first, then
-// out of the nation's other towns, those with most of that kind first; a dealing (a truce, an alliance, a gift, a
-// tribute), a leader hired or a new age out of the chief town first. A nation can buy a thing when it has the
-// supplies to spend (stores.ts: its towns' stores above their working stock).
+// Where it comes from. A building, a company or a work is paid for out of the town where it is done; a dealing (a
+// truce, an alliance, a gift, a tribute), a leader hired or a new age out of the chief town. What that town lacks of a
+// kind, the nation's other towns send it by road (convoys.ts roadBetween: through the people's own lands, or over a sea
+// lane from a Harbour), at a cost: CARRY.cost of what is sent (a tenth) is spent on the way (the carters' keep, the wagons' wear).
+// A town with no road to it sends nothing. A town that sends keeps a floor of its own (plenty.ts PLENTY.floor in goods
+// other than bread, and two seasons of its own eating in food), so that its governor is not left unable to raise its own
+// Farmland and its people are not left without bread.
 //
-// Short of a kind. What a nation's towns do not hold of the kind a thing is made of is made up in their other
-// goods, SHORT_RATE of them for every one short (1: at par, so a price in supplies is never more than it was).
-// Decided here: held strictly to its kinds, a new nation could not raise its first Range (500 wood against the
-// 440 its chief town holds), so the kinds say what is taken first, not what must be had.
+// Short of a kind. What the paying town and the towns with a road to it lack of the kind a thing is made of is made up in
+// their other goods, traded at a loss: SHORT_RATE of them for every one short. (Held strictly to its kinds, a new nation
+// could not raise its first Range, 500 wood against the 440 its chief town holds, nor pay a truce in gold it has not dug.)
+// What cannot be found or carried even so is not bought now (the owner's design: "or the work waits a season"): the
+// governor and the computer's peoples ask again each season, and the player is told why (`payBar`). Decrees are paid from
+// the nation's supplies (stores.ts) and are not held up by this.
 import type { Campaign } from './campaign';
 import { STORE_KINDS, folkOf } from './township';
 import type { Stores } from './township';
 import { KEEP, SUPPLY_UNITS, settleStores } from './stores';
+import { roadBetween } from './convoys';
+import { PLENTY } from './plenty';
+import { needOf } from './larder';
 
 export type StoreKind = keyof Stores;
-/** Goods of other kinds taken for every one a nation is short of the kind a thing is made of. */
-export const SHORT_RATE = 1;
+/**
+ * Goods sent by road to pay for a thing: the share of what is sent that is spent on the way. At a fifth, and other goods
+ * traded at 1.25 for one, the computer's peoples raised fewer companies and walls where the work was done, and campaigns
+ * ruined or undecided went out of band (384 campaigns: 2.6% and 10.4%, from 0.8% and 4.4%; rivals' wins 111 to 82).
+ */
+export const CARRY = { cost: 0.1 };
+/** Goods of other kinds taken for every one short of the kind a thing is made of: traded, at a loss. */
+export const SHORT_RATE = 1.1;
 /** What each kind of thing is made of, share by share. */
 export const MADE_OF: Record<string, Partial<Stores>> = {
   farm: { wood: 1 },
@@ -56,59 +70,109 @@ const mine = (c: Campaign, f: number) => c.territories.filter((t) => t.owner ===
 /** The chief town of a people: its capital, else its first town. */
 const chiefOf = (c: Campaign, f: number): number => { const m = mine(c, f); return (m.find((t) => t.capital === f) ?? m[0])?.id ?? -1; };
 
-/** What a price comes to in goods for this people, with what it is short of each kind made up at SHORT_RATE. */
-export function outlay(c: Campaign, f: number, p: Stores): number {
-  const have: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
-  for (const t of mine(c, f)) for (const k of STORE_KINDS) have[k] += folkOf(c, t.id).stores[k];
-  return STORE_KINDS.reduce((n, k) => n + Math.min(have[k], p[k]) + Math.max(0, p[k] - have[k]) * SHORT_RATE, 0);
-}
-/** Can this people pay `n` supplies for this, in its kinds? */
-export function canPayFor(c: Campaign, f: number, what: string, n: number): boolean {
-  if (n <= 0) return true;
-  const x = c.factions[f];
-  if (!x || (x.supplies ?? 0) < n) return false;
-  return SHORT_RATE <= 1 || (x.supplies ?? 0) * SUPPLY_UNITS >= outlay(c, f, priceOf(what, n));
+/** One draw on a town's stores to pay for a thing: so much of a kind, and whether it came by road. */
+interface Draw { tid: number; kind: StoreKind; take: number; carried: boolean }
+
+/** What a town can send of a kind to pay for a thing elsewhere: what it holds beyond its own floor. */
+function spareOf(c: Campaign, tid: number, k: StoreKind, given: Stores): number {
+  const s = folkOf(c, tid).stores;
+  if (k === 'food') return Math.max(0, s.food - given.food - 2 * needOf(c, tid));
+  const others = STORE_KINDS.filter((x) => x !== 'food').reduce((n, x) => n + Math.max(0, s[x] - given[x]), 0);
+  return Math.max(0, Math.min(s[k] - given[k], others - PLENTY.floor));
 }
 
 /**
- * Pay `n` supplies for this, in its kinds: from the town `at` first (else the chief town), then from the towns with
- * most of each kind. Nothing is taken unless all of it can be. The nation's figure is set from its towns after.
+ * How a price would be paid, town by town, or why it cannot be. The town `at` (else the chief town) first; then the
+ * nation's other towns with a road to it, those with most of the kind first, each sending what it can spare and
+ * CARRY.cost more besides for the road.
+ */
+function planFor(c: Campaign, f: number, p: Stores, at?: number): { draws: Draw[] } | { bar: string } {
+  const first = at !== undefined && c.territories[at]?.owner === f ? at : chiefOf(c, f);
+  if (first < 0) return { bar: 'You have no town to pay from.' };
+  const draws: Draw[] = [], given: Record<number, Stores> = {}, short: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
+  const gave = (tid: number): Stores => (given[tid] ??= { food: 0, wood: 0, gold: 0, stone: 0 });
+  const roads = new Map<number, boolean>();
+  const reach = (tid: number): boolean => { if (!roads.has(tid)) roads.set(tid, !!roadBetween(c, f, tid, first)); return roads.get(tid)!; };
+  for (const k of STORE_KINDS) {
+    let want = p[k];
+    if (want <= 0) continue;
+    const own = Math.min(Math.max(0, folkOf(c, first).stores[k]), want);
+    if (own > 0) { draws.push({ tid: first, kind: k, take: own, carried: false }); gave(first)[k] += own; want -= own; }
+    const senders = mine(c, f).map((t) => t.id).filter((id) => id !== first).sort((a, b) => folkOf(c, b).stores[k] - folkOf(c, a).stores[k] || a - b);
+    for (const tid of senders) {
+      if (want <= 0) break;
+      const spare = spareOf(c, tid, k, gave(tid));
+      if (spare <= 0 || !reach(tid)) continue;
+      const arrive = Math.min(want, Math.floor(spare / (1 + CARRY.cost))), take = Math.ceil(arrive * (1 + CARRY.cost));
+      if (arrive <= 0) continue;
+      draws.push({ tid, kind: k, take, carried: true }); gave(tid)[k] += take; want -= arrive;
+    }
+    short[k] = want;
+  }
+  // What none of them had of its kinds, in their other goods, traded at SHORT_RATE: the paying town's first, then what the
+  // towns with a road to it can spare, the most plentiful kind first.
+  let left = Math.ceil(STORE_KINDS.reduce((n, k) => n + short[k], 0) * SHORT_RATE);
+  const ownLeft = (k: StoreKind): number => Math.max(0, folkOf(c, first).stores[k] - gave(first)[k]);
+  for (const k of [...STORE_KINDS].sort((a, b) => ownLeft(b) - ownLeft(a))) {
+    if (left <= 0) break;
+    const take = Math.min(ownLeft(k), left);
+    if (take > 0) { draws.push({ tid: first, kind: k, take, carried: false }); gave(first)[k] += take; left -= take; }
+  }
+  for (const tid of mine(c, f).map((t) => t.id).filter((id) => id !== first && reach(id))) {
+    for (const k of [...STORE_KINDS].sort((a, b) => spareOf(c, tid, b, gave(tid)) - spareOf(c, tid, a, gave(tid)))) {
+      if (left <= 0) break;
+      const arrive = Math.min(left, Math.floor(spareOf(c, tid, k, gave(tid)) / (1 + CARRY.cost)));
+      if (arrive <= 0) continue;
+      const take = Math.ceil(arrive * (1 + CARRY.cost));
+      draws.push({ tid, kind: k, take, carried: true }); gave(tid)[k] += take; left -= arrive;
+    }
+  }
+  if (left > 0) {
+    const k = STORE_KINDS.reduce((a, b) => (short[b] > short[a] ? b : a)), name = c.territories[first]?.name ?? 'the town';
+    return { bar: `${name} lacks ${short[k]} ${k}, and neither it nor your towns with a road to it have the goods to make it up: it must wait.` };
+  }
+  return { draws };
+}
+
+/** Why this people cannot pay `n` supplies for this now, or '' if it can. `at`: the town where it is done. */
+export function payBar(c: Campaign, f: number, what: string, n: number, opts: { at?: number } = {}): string {
+  if (n <= 0) return '';
+  const x = c.factions[f];
+  if (!x || (x.supplies ?? 0) < n) return `It costs ${n} supplies.`;
+  const plan = planFor(c, f, priceOf(what, n), opts.at);
+  return 'bar' in plan ? plan.bar : '';
+}
+/** Can this people pay `n` supplies for this, in its kinds, from the town `at` and what its other towns can send by road? */
+export function canPayFor(c: Campaign, f: number, what: string, n: number, opts: { at?: number } = {}): boolean {
+  return payBar(c, f, what, n, opts) === '';
+}
+
+/**
+ * Pay `n` supplies for this, in its kinds: from the town `at` first (else the chief town), the rest sent by road from
+ * the nation's other towns at CARRY.cost. Nothing is taken unless all of it can be. The nation's figure is set from its
+ * towns after.
  */
 export function payFor(c: Campaign, f: number, what: string, n: number, opts: { at?: number } = {}): boolean {
   if (n <= 0) return true;
   settleStores(c); // anything spent or earned since is in the towns first
-  if (!canPayFor(c, f, what, n)) return false;
-  const p = priceOf(what, n), first = opts.at !== undefined && c.territories[opts.at]?.owner === f ? opts.at : chiefOf(c, f);
-  const order = (k: StoreKind) => [first, ...mine(c, f).map((t) => t.id).filter((id) => id !== first).sort((a, b) => folkOf(c, b).stores[k] - folkOf(c, a).stores[k] || a - b)].filter((id) => id >= 0);
-  let short = 0;
-  for (const k of STORE_KINDS) {
-    let want = p[k];
-    for (const tid of order(k)) { if (want <= 0) break; const s = folkOf(c, tid).stores, take = Math.min(s[k], want); s[k] -= take; want -= take; }
-    short += want;
-  }
-  // What none of its towns had of those kinds, in their other goods: the most plentiful first.
-  let left = Math.ceil(short * SHORT_RATE);
-  while (left > 0) {
-    let best = -1, kind: StoreKind = 'food';
-    for (const tid of order('food')) for (const k of STORE_KINDS) if (best < 0 || folkOf(c, tid).stores[k] > folkOf(c, best).stores[kind]) { best = tid; kind = k; }
-    const s = best >= 0 ? folkOf(c, best).stores : undefined;
-    if (!s || s[kind] <= 0) break;
-    const take = Math.min(s[kind], left);
-    s[kind] -= take; left -= take;
-  }
+  if ((c.factions[f]?.supplies ?? 0) < n) return false;
+  const plan = planFor(c, f, priceOf(what, n), opts.at);
+  if ('bar' in plan) return false;
+  for (const d of plan.draws) folkOf(c, d.tid).stores[d.kind] -= d.take;
   settleStores(c); // the figure, from the towns as they now are
   return true;
 }
 
 /**
  * For trials and scenarios: make a people's figure exactly `n` supplies, every one of its towns at its working stock
- * of a quarter of each kind, and the `n` supplies laid down in its chief town in the kinds `what` is made of.
+ * of a quarter of each kind, and the `n` supplies laid down in its chief town (or the town `at`, where the thing is to be
+ * done) in the kinds `what` is made of.
  */
-export function fundFor(c: Campaign, f: number, what: string, n: number): void {
+export function fundFor(c: Campaign, f: number, what: string, n: number, opts: { at?: number } = {}): void {
   settleStores(c);
   const each = Math.floor(KEEP / 4);
   for (const t of mine(c, f)) folkOf(c, t.id).stores = { food: KEEP - 3 * each, wood: each, gold: each, stone: each };
-  const chief = chiefOf(c, f), p = priceOf(what, Math.max(0, n));
+  const chief = opts.at !== undefined && c.territories[opts.at]?.owner === f ? opts.at : chiefOf(c, f), p = priceOf(what, Math.max(0, n));
   if (chief >= 0) for (const k of STORE_KINDS) folkOf(c, chief).stores[k] += p[k];
   settleStores(c);
 }

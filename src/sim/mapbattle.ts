@@ -35,6 +35,7 @@ import { BEATS, COMPANIES, FAITH, MAX_ARMY, armyAt, armySize, rankWith, strength
 import { creedOf } from './creed';
 import { faithAt } from './townfaith';
 import { wallsEdge } from './sieges';
+import { militiaBands, militiaOf } from './militia';
 import { armiesJoined, reckonArmies } from './armytown';
 import { fallenSince } from './warhouse';
 import { peopleName } from './naming';
@@ -228,11 +229,12 @@ export function forcesOf(c: Campaign, army: Army, to: number, aStr: number, dStr
   const t = c.territories[to], held = armyAt(c, to), def = held && held.owner === t.owner && t.owner >= 0 ? held : undefined;
   const a: Force = { units: army.units, weight: aStr, vet: army.vet, led: army.hero, rank: rankWith(c, army), heart: heartOf(virtueOf(c, army.owner)) };
   const weight = dStr * walls;
-  const tribe = t.owner < 0;
+  const tribe = t.owner < 0, bands = def || tribe ? 0 : militiaBands(c, to);
   const d: Force = {
-    units: def ? def.units : tribe ? { infantry: Math.max(1, Math.round(dStr)) } : {},
+    // With no army in it a town's own men are its companies: bands on foot, worth what militia.ts weighs them at.
+    units: def ? def.units : tribe ? { infantry: Math.max(1, Math.round(dStr)) } : bands >= 1 ? { infantry: Math.round(bands) } : {},
     weight,
-    own: def ? Math.min(weight, strengthVs(def, army.units, rankWith(c, def))) : tribe ? weight : 0,
+    own: def ? Math.min(weight, strengthVs(def, army.units, rankWith(c, def))) : tribe ? weight : bands >= 1 ? Math.min(weight, militiaOf(c, to)) : 0,
     vet: def?.vet, led: !!def?.hero, rank: def ? rankWith(c, def) : 0,
     heart: tribe ? 1 : heartOf(faithAt(c, to)),
     walled: walls > 1 || t.buildings.includes('fortress'),

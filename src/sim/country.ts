@@ -46,7 +46,7 @@ export const workFor = (c: Campaign, a: number, b: number): WorkDef | undefined 
 /** Whether this people can open the border from a land of theirs to the land across it. */
 export function canOpen(c: Campaign, f: number, from: number, to: number): boolean {
   const work = workFor(c, from, to);
-  return !!work && c.territories[from]?.owner === f && canPayFor(c, f, work === WORKS.river ? 'bridge' : 'pass', work.cost);
+  return !!work && c.territories[from]?.owner === f && canPayFor(c, f, work === WORKS.river ? 'bridge' : 'pass', work.cost, { at: from });
 }
 /**
  * Open a closed border for good. The work is paid for by the people who hold `from`; once it stands, anyone may

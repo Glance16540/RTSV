@@ -22,7 +22,7 @@ export const SUIT = {
   short: 3,
   /** The most who set out for one town at a time, and the most parties a people sends in a season. */
   go: 2 * TOWN_SCALE, season: 2,
-  /** To a town with no men at all a town with no unmarried man sends this many of the men it could spare to an army (armytown.ts keeps it two men, and one for every other woman). */
+  /** To a town with no men at all a town with no unmarried man sends this many of the men it could spare to an army (armytown.ts keeps it `MEN.floor` men, and a husband for `MEN.couples` of its women). */
   spared: 1 * TOWN_SCALE,
 };
 export type Sex = 'men' | 'women';

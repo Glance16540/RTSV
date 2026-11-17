@@ -20,9 +20,9 @@
 //     whoever next fights there. Struck hard, one of the land's works (a farm, a barracks...) burns down. Never
 //     where rain is over the land; twice as often under dust.
 //
-// Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was. Faith is still a
-// people's and not yet a town's, so every land of a people stands the same; and the dead of plague are counted,
-// not named.
+// Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was. How often they
+// fall is by the town's own standing (townfaith.ts; `wrathAt`), not its people's; and the dead of plague are
+// counted, not named.
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { weatherAt } from './campaignbase';
 import { armySize } from './campaignbase';

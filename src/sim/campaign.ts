@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { militiaOf } from './militia';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
@@ -771,7 +772,7 @@ export function defence(c: Campaign, tid: number, vs: Record<string, number> = {
   if (t.owner < 0) return Math.max(1, BATTLE_ANSWERS.ask('warriors', c, tid) - (attackerCiv === 'wild' ? 1 : 0)) + ground;
   const a = armyAt(c, tid);
   const fort = t.buildings.includes('fortress') ? (c.factions[t.owner].civ === 'stonekin' ? 4 : 3) : 0;
-  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + 1 + fort + ground + defenceAdd(c, tid) + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * FAITH[creedOf(faithAt(c, tid)).id].defence * 10) / 10; // the town's own standing (townfaith.ts)
+  return Math.round(((a && a.owner === t.owner ? strengthVs(a, vs, rankWith(c, a)) : 0) + militiaOf(c, tid) + fort + ground + defenceAdd(c, tid) + (c.factions[t.owner].civ === 'kush' ? 1 : 0)) * FAITH[creedOf(faithAt(c, tid)).id].defence * 10) / 10; // the town's own standing (townfaith.ts)
 }
 
 /** The faction fighting at this one's side, or -1: the player and their ally stand together. */
@@ -789,17 +790,17 @@ export function winChance(aStr: number, dStr: number, home = 1.1): number {
 
 export function canBuild(c: Campaign, f: number, tid: number, site: string): boolean {
   const t = c.territories[tid];
-  return t.owner === f && !!SITES[site] && (site !== 'harbour' || onSea(c, tid)) && !t.buildings.includes(site) && t.buildings.length < slots(t) && canPayFor(c, f, site, siteCost(t, site, c.factions[f].civ));
+  return t.owner === f && !!SITES[site] && (site !== 'harbour' || onSea(c, tid)) && !t.buildings.includes(site) && t.buildings.length < slots(t) && canPayFor(c, f, site, siteCost(t, site, c.factions[f].civ), { at: tid });
 }
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid))) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
+  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid }) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
     && menToRaise(c, f, tid) >= MEN.least; // a soldier costs a person: with fewer men to send than this, no company (armytown.ts; none asked for yet)
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
   const a = armyAt(c, tid);
-  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && canPayFor(c, f, 'hero', heroCost(c.factions[f].civ));
+  return c.territories[tid].capital === f && !!a && a.owner === f && !c.factions[f].heroAlive && canPayFor(c, f, 'hero', heroCost(c.factions[f].civ), { at: tid });
 }
 
 // ---- Actions ----
