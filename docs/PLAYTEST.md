@@ -599,8 +599,11 @@ town has fallen", "The assault has failed" (battlecard.ts verdictOf, told by bri
   households seated. The couples the map counts married have a house each, a man and a woman; the wife of a man away
   with the armies is alone under his family's roof, so *Go home* sends him to his own door; and who lived where as
   the sitting ends is on the town's record, and they are under the same roofs by the same names next time, a season
-  older for each season between. Still so: the town's people stand idle on arrival until they are set to work, and
-  those with no roof (the unmarried, or more couples than houses) are homeless as before.
+  older for each season between. Still so: those with no roof (the unmarried, or more couples than houses) are homeless as before.
+- **4.3, the idle crowd** (`src/sim/atwork.ts`): the town is at work as the sitting begins. Its people are set to
+  food, wood, gold and stone by the shares it works by on the map (its last orders, or its governor's), each to the
+  nearest of its kind, in a visit and in a siege defended; a side the computer plays sets its own. Leaving without
+  changing anybody's work leaves the town's orders as they were.
 - **4.4 and 4.5** were fixed in the pass itself.
 
 ## Handed on

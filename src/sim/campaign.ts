@@ -57,7 +57,7 @@ import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { gainAt, settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf } from './naming';
-import { Orders, governTowns, keepOrders } from './governor';
+import { Orders, governTowns, keepOrders, shareOf } from './governor';
 import { drillWithQueued, keepQueued } from './queueddrill';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
@@ -1471,6 +1471,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
       ...(defending && !field && !t.horde && roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // every household under its roof (roofs.ts)
+      ...(defending && !field && t.owner === 0 ? { work: shareOf(c, t.id).share } : {}), // and the player's town at its work (atwork.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id, { arms: out?.warriors ?? 0 })) : {}), // its men in arms go to the field whatever its cap (fieldcap.ts)
     };
