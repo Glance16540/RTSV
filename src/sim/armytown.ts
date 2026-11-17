@@ -170,6 +170,52 @@ export function foundingMuster(c: Campaign, a: Army): number {
   enlist(c, t.id, n, a.id);
   return n;
 }
+/**
+ * Companies of men from one town join an army, a town of the army's people or another's (kin abroad sending men,
+ * aftermath.ts; a story's men, storyturn.ts): as many companies as are asked, and room in the army, and as the town can
+ * spare men for (`sparedMen`: never below what it keeps), `MEN.company` to a company. They are the town's youngest grown
+ * men, taken off its count, on the army's roll, and on its houses' records as away with the army (warhouse.ts). Returns
+ * how many companies came: none where the town can spare nobody.
+ */
+export function levyFrom(c: Campaign, a: Army, tid: number, companies: number, room = Infinity): number {
+  const t = c.territories[tid];
+  if (!t || t.horde || companies <= 0 || room <= 0) return 0;
+  const f = folkOf(c, tid), young = agesOf(c, tid, f).m.filter((s) => s < OLD_SEASON).length;
+  const n = Math.max(0, Math.min(companies, room, Math.floor(Math.min(sparedMen(c, tid), young) / MEN.company)));
+  if (!n) return 0;
+  a.units.infantry = (a.units.infantry ?? 0) + n;
+  const m = (rolls(c)[a.id] ??= { size: 0, men: {} });
+  m.owner = a.owner;
+  take(c, m, tid, n * MEN.company, a.id);
+  m.size = sizeOf(a);
+  return n;
+}
+
+/**
+ * A campaign saved before armies had rolls (it has no `musters` at all): every army is given one, its men drawn from
+ * its people's towns (the town it stands in if it is theirs, else their chief town), each of a house there and on its
+ * record as away with the army. The towns' counts are not changed: those men were off them already. Returns how many
+ * men were put on rolls; nothing for a campaign that keeps rolls.
+ */
+export function rollOld(c: Campaign): number {
+  if (c.musters !== undefined) return 0;
+  c.musters = {};
+  let n = 0;
+  for (const a of c.armies) {
+    if (a.owner < 0 || !c.factions[a.owner]) continue;
+    const here = c.territories[a.at], mine = c.territories.filter((t) => t.owner === a.owner && !t.horde);
+    const home = here && here.owner === a.owner && !here.horde ? here : mine.find((t) => t.capital === a.owner) ?? mine[0];
+    if (!home) continue;
+    folkOf(c, home.id);
+    const k = sizeOf(a) * MEN.company, span = (FOUNDING.oldest - FOUNDING.youngest) * (GROWN_SEASON / GROWN_YEARS);
+    const ages = Array.from({ length: k }, (_, i) => Math.round(FOUNDING.youngest * (GROWN_SEASON / GROWN_YEARS) + hash(c.seed * 29 + a.id * 11 + home.id, i + 1700) * span)).sort((p, q) => p - q);
+    c.musters[a.id] = { size: sizeOf(a), men: { [home.id]: ages }, owner: a.owner };
+    enlist(c, home.id, k, a.id);
+    n += k;
+  }
+  return n;
+}
+
 /** Every army on the map that stands in a town of its own people and has no roll is given one out of that town: for a campaign as it begins. */
 export function foundArmies(c: Campaign): number {
   let n = 0;

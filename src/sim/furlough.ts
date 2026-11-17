@@ -9,7 +9,7 @@
  *   - `goHome`: a soldier of the army is one of the town's men away with it (the next on the list the map handed
  *     in, `Player.furlough`). He lays down his arms and is a villager of the town again, by his own name, of his
  *     own house and at his own age; the rest of his company (a company is a man of the town and his following)
- *     leave the field with him.
+ *     leave the field with him. He goes to his own door (leavehome.ts).
  *   - `rejoin`: a man home on leave takes up arms again: he is gone from the town's people and his company
  *     stands on the field as it did.
  *   - `homeNow`: who is home on leave as the sitting ends, for the map to write down (furloughmap.ts takes each
@@ -20,6 +20,7 @@
  */
 import type { Game, Unit } from './game';
 import { SEASONS_A_YEAR, ageFor, yearsOf } from './ageing';
+import { comeHome } from './leavehome';
 
 /** A man of the town away with the army that stands in it. */
 export interface AwayMan { name: string; family?: string; /** His age in seasons, as the army's roll keeps it. */ seasons: number }
@@ -62,6 +63,7 @@ export function goHome(g: Game, owner: number, ids: number[]): number {
     v.name = man.name; v.family = man.family ?? v.family;
     v.age = ageFor(man.seasons / SEASONS_A_YEAR, v.lifespan);
     v.onLeave = { as: type, n: per };
+    comeHome(g, v); // to his own door, or an empty one (leavehome.ts)
     g.msg(owner, `${man.name}${man.family ? ` ${man.family}` : ''} has laid down his arms and gone home.`);
     n++;
   }
