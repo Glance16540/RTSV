@@ -20,7 +20,7 @@
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
 import type { Campaign } from './campaign';
-import { folkOf, grown } from './township';
+import { TOWN_SCALE, folkOf, grown } from './township';
 import { tally } from './ledger';
 import { granaryKeeps } from './granary';
 import { saltRot } from './salting';
@@ -60,10 +60,15 @@ export function mouths(c: Campaign, tid: number): { men: number; women: number; 
   const f = folkOf(c, tid), mines = Math.min(f.men, f.drifted?.mines ?? 0), tavern = Math.min(f.women, f.drifted?.tavern ?? 0);
   return { men: f.men - mines, women: f.women - tavern, elders: f.elders, children: f.children };
 }
-/** The food a town needs this season. */
+/**
+ * The food a town needs this season. A person eats EAT at the towns of today; in towns TOWN_SCALE times as large
+ * (township.ts, the owner's bigger towns) a person eats a TOWN_SCALE-th of it, so that a land's harvest, which does not
+ * grow with its people, feeds them, and a people's supplies (its towns' goods above their working stock) are as they were.
+ * Every figure of food a head scales with it (seasonfolk.ts's birth, plenty.ts's short of bread, drift.ts's lean larder).
+ */
 export function needOf(c: Campaign, tid: number): number {
   const m = mouths(c, tid);
-  return (m.men + m.women) * EAT.grown + m.elders * EAT.old + m.children * EAT.child;
+  return Math.round(((m.men + m.women) * EAT.grown + m.elders * EAT.old + m.children * EAT.child) / TOWN_SCALE);
 }
 
 /** A season of hunger's dead in a town: the old first, then men and women in turn. Never a child. Returns how many. */

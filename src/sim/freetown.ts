@@ -18,7 +18,7 @@
 // What makes a town rise is unrest.ts; this is only what it becomes. Plain data; the season's one call is
 // `freeTownsSeason`. Strengths are first guesses.
 import type { Campaign } from './campaign';
-import { folkOf, headcount } from './township';
+import { TOWN_SCALE, folkOf, headcount } from './township';
 import { canPayFor, payFor } from './prices';
 
 declare module './campaign' {
@@ -73,7 +73,7 @@ export function treatCost(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   if (!isFree(c, tid)) return 0;
   const fresh = FREE.fresh * Math.max(0, 1 - (c.turn - t.free!.since) / FREE.ease);
-  const price = (Math.ceil(headcount(folkOf(c, tid)) / FREE.folk) + fresh) * (armyBeside(c, tid, t.free!.from) ? FREE.beside : 1);
+  const price = (Math.ceil(headcount(folkOf(c, tid)) / (FREE.folk * TOWN_SCALE)) + fresh) * (armyBeside(c, tid, t.free!.from) ? FREE.beside : 1);
   return Math.max(FREE.least, Math.round(price));
 }
 /** Why a free town will not treat with this people now, or '' if it will (whether they can pay is `canTreat`). */

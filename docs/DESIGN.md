@@ -231,7 +231,8 @@ like those who stay.
 costs a person, towns begin and grow large enough to fill the companies a people fields: a company is
 raised only from the men of its people's towns, never hired from nowhere, and armies stay the size they
 are. Towns are about four times as large as they were (a new capital some two dozen men, a grown
-town a hundred), and a company costs one man of the town and his following.
+town a hundred), and a company costs one man of the town and his following. A bigger town has more
+houses, not fuller ones: a house holds five people on the map as in a battle.
 
 ## The order of building
 
