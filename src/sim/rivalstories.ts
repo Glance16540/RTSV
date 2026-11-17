@@ -33,6 +33,13 @@ import { faithAt } from './townfaith';
 import { creedOf } from './creed';
 import { crimeEdge } from './townwatch';
 
+declare module './campaign' {
+  interface Campaign {
+    /** Stories begun for rival rulers, all told (rivalstories.ts): `intrigueSeq` counts every story, so the player's are the rest. */
+    rivalStoriesBegun?: number;
+  }
+}
+
 export const RIVAL_STORIES = {
   /** Seasons of gold a town keeps for its watch before its ruler sets one. */
   watchSeasons: 4,
@@ -117,5 +124,6 @@ export function rivalStoriesSeason(c: Campaign): Intrigue[] {
   }
   const began = rivalBegin(c);
   for (const x of c.factions) if (x.alive && x.isAI) began.push(...courtBeginFor(c, x.id)); // a rival ruler's own house
+  c.rivalStoriesBegun = (c.rivalStoriesBegun ?? 0) + began.length;
   return began;
 }
