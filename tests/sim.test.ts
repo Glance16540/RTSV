@@ -21,6 +21,7 @@ import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, ans
 
 import { menAt, run, setups, spot, villagers } from './helpers';
 import { fundFor } from '../src/sim/prices';
+import { SUPPLY } from '../src/sim/stores';
 
 describe('map', () => {
   it('always connects both bases by land', () => {
@@ -2969,7 +2970,12 @@ describe('weather and events on the campaign map', () => {
     expect(c.events!.some((e) => e.kind === 'revolt' && e.at === land.id)).toBe(true);
     expect(c.log.some((l) => l.includes('has risen'))).toBe(true);
     expect(c.events!.some((e) => e.kind === 'found' && e.at === home.id)).toBe(true);
-    expect(c.factions[0].supplies - twin.factions[0].supplies).toBe(HOARD_PRIZE);
+    // The hoard is laid down in the town whose land it was found in (stores.ts gainAt), in the goods of a supply: its timber,
+    // gold and stone in full; its food less what spoils past the town's keep in the season (larder.ts).
+    const mine = folkOf(c, home.id).stores, theirs = folkOf(twin, home.id).stores;
+    for (const k of ['wood', 'gold', 'stone'] as const) expect(mine[k] - theirs[k], k).toBe(HOARD_PRIZE * SUPPLY[k]);
+    expect(mine.food - theirs.food).toBeGreaterThan(0);
+    expect(mine.food - theirs.food).toBeLessThanOrEqual(HOARD_PRIZE * SUPPLY.food);
     expect(eventsAt(c, home.id)[0].kind).toBe('found');
   });
 });
