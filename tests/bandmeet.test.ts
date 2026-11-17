@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { newCampaign, resolvePending } from '../src/sim/campaign';
 import type { Army, Campaign } from '../src/sim/campaign';
-import { askedOf, bandComing, goOut, markOf } from '../src/sim/bandmeet';
+import { askedOf, bandComing, goOut, markOf, struckToTell, toldStrikes } from '../src/sim/bandmeet';
+import { THREATS } from '../src/sim/threatsbase';
+import type { Raid } from '../src/sim/threats';
 import type { Band } from '../src/sim/threats';
 import { folkOf } from '../src/sim/township';
 
@@ -96,5 +98,55 @@ describe('a band coming for a town of the player\'s', () => {
     resolvePending(c, 'auto');
     expect(c.pending).toBeNull();
     expect(c.bands).not.toContain(b); // eight companies against two
+  });
+});
+
+describe('a band that struck a town of the player\'s', () => {
+  const raid = (c: Campaign, at: number, b: Band, over: Partial<Raid> = {}): Raid => {
+    const r: Raid = { turn: c.turn, band: b.id, kind: b.kind, name: b.name, at, owner: 0, outcome: 'taken', force: 5, defence: { men: 1, works: 0, walls: 0, army: 0, guard: 0, spirit: 1, total: 1 },
+      killed: 2, taken: { men: 0, women: 3 }, names: ['Ysolde of the Mill'], stores: { food: 40, wood: 0, gold: 25, stone: 0 }, sway: -4, ...over };
+    (c.raids ??= []).push(r);
+    return r;
+  };
+  it('is told once for the season: who came, what was lost, who was carried off by name, and how long there is to get them back', () => {
+    const { c, t } = world();
+    const b = band(c, t.adj[0], 5);
+    raid(c, t.id, b);
+    const told = struckToTell(c)!;
+    expect(told.raids).toHaveLength(1);
+    expect(told.band).toBe(b);
+    expect(told.title).toBe(`The Red Hands sacked ${t.name}`);
+    const text = told.lines.join(' ');
+    expect(text).toContain('2 men killed');
+    expect(text).toContain('3 women carried off');
+    expect(text).toContain('They took 40 food, 25 gold.');
+    expect(text).toContain('Among those carried off: Ysolde of the Mill.');
+    expect(text).toContain(`got back for ${THREATS.holdFor} seasons`);
+    toldStrikes(c);
+    expect(struckToTell(c)).toBeNull();
+    // Next season, a new strike is told again.
+    c.turn++;
+    expect(struckToTell(c)).toBeNull(); // last season's are not told late
+    raid(c, t.id, b, { outcome: 'raided', taken: { men: 0, women: 0 }, names: [], killed: 1 });
+    const next = struckToTell(c)!;
+    expect(next.title).toBe(`The Red Hands raided ${t.name}`);
+    expect(next.lines.join(' ')).not.toContain('got back');
+  });
+
+  it('a strike beaten off, one on another people, or in another\'s turn is not told so; several are told together, the worst first', () => {
+    const { c, t } = world();
+    const b = band(c, t.adj[0], 5);
+    raid(c, t.id, b, { outcome: 'held', killed: 0, taken: { men: 0, women: 0 }, names: [] });
+    raid(c, t.adj[1], b, { owner: 1 });
+    expect(struckToTell(c)).toBeNull();
+    raid(c, t.adj[1], b, { outcome: 'raided', killed: 1, taken: { men: 0, women: 0 }, names: [] });
+    raid(c, t.id, b);
+    c.phase = 'ai'; expect(struckToTell(c)).toBeNull(); c.phase = 'player';
+    const told = struckToTell(c)!;
+    expect(told.raids.map((r) => r.at)).toEqual([t.id, t.adj[1]]);
+    expect(told.title).toBe('2 of your towns were struck');
+    // The band gone since: it is still told, with nobody to draw.
+    c.bands = [];
+    expect(struckToTell(c)!.band).toBeUndefined();
   });
 });
