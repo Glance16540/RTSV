@@ -166,8 +166,10 @@ export const TALES: Tale[] = [
 ];
 /** How many matters the player has settled each way, for the telling at the end. */
 export interface Answer { id: string; choice: 'a' | 'b'; turn: number; land: number; rival: number; tribe: number }
-export const TALE_FROM = 3; // the first tale comes on this turn
-export const TALE_EVERY = 4; // and another every so many turns after
+export const TALE_FROM = 3; // the first tale comes on this turn at the soonest
+export const TALE_EVERY = 4; // and another every so many turns after, on the whole
+/** How far a tale may come sooner or later than TALE_EVERY: the gap is drawn each time from TALE_EVERY - TALE_SPREAD to TALE_EVERY + TALE_SPREAD (the playtest found them coming like a clock). */
+export const TALE_SPREAD = 2;
 /** How far a rival people moves along the scale each time it answers a tale of its own. */
 export const TALE_RIVAL = 6;
 

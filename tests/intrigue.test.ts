@@ -4,6 +4,7 @@ import { Campaign, newCampaign } from '../src/sim/campaign';
 import { INTRIGUE, onRecord, beginKiller, beginThief, choicesFor, choose, fullName, intrigueNews, intrigueSeason, openIntrigues, standing, suspected } from '../src/sim/intrigue';
 import { reportLines, reportSince, snapshot } from '../src/sim/seasonreport';
 import { folkOf, grown, living } from '../src/sim/township';
+import { ofTown } from '../src/sim/intriguebase';
 
 /** A campaign with one roomy, well-found town of the player's, and that town. */
 const base = JSON.stringify(newCampaign(5, 2));
@@ -183,7 +184,7 @@ describe('every story', () => {
         for (let i = 0; i < 40; i++) {
           season(c);
           if (hungry) folkOf(c, at).stores.food = 0;
-          const open = openIntrigues(c);
+          const open = openIntrigues(c).filter(ofTown); // the town's stories, one at a time (a story of the house is apart: courtstory.ts)
           expect(open.length).toBeLessThanOrEqual(INTRIGUE.open);
           expect(new Set(open.map((x) => x.at)).size).toBe(open.length);
           for (const x of open) x.ended = { turn: c.turn, how: 'unfound', text: '' }; // count beginnings only
