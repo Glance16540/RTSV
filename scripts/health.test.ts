@@ -24,6 +24,7 @@
 // Every campaign is played twice from the same seed: as the rules stand, the player giving the decrees a sensible
 // ruler would ('ruled'), and with nobody giving decrees ('no decrees'). Every figure is read from the first, but
 // the decrees' own. Skipped unless HEALTH is set.
+import { NAMED } from '../src/sim/veteranhome';
 import { sensibleAnswers } from '../src/sim/storypolicy';
 import { it } from 'vitest';
 import { writeFileSync } from 'node:fs';
@@ -851,12 +852,16 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
         `Spells of hunger in the player\'s own towns in the same two tellings (the Inns and Escorts are there too). In all, ${hungrySeasons(roads)} hungry town-seasons with against ${hungrySeasons(ruled)} as it is. ${mineLine(roads)} with; ${mineLine(ruled)} as it is.`);
     }
   }
-  // Soldiers named on the map (veteranhome.ts, rivalrule.ts): report only, so the first guesses have numbers.
+  // Soldiers named on the map (veteranhome.ts, rivalrule.ts): how often for the player, and what a battle credits one with.
   {
     const n = ruled.map((w) => w.named), battle = n.reduce((k, x) => k + x.battle, 0), wins = n.reduce((k, x) => k + x.wins, 0), mine = n.reduce((k, x) => k + x.mine, 0);
-    const share = n.flatMap((x) => x.share), kills = n.flatMap((x) => x.kills);
-    add('People', 'Soldiers named on the map a campaign, and the share of the felled a battle credits one with', 'report only', `${num((battle + wins) / Math.max(1, ruled.length), 1)} a campaign until it is decided (${num(battle / Math.max(1, ruled.length), 1)} by a battle fought out on the map, ${num(wins / Math.max(1, ruled.length), 1)} by an army's second win; ${num(mine / Math.max(1, ruled.length), 1)} the player's); named by a battle: ${share.length ? `${pct(mean(share))} of the felled credited, median ${num(median(kills), 0)} credited (middle half ${num(quart(kills, 0.25), 0)} to ${num(quart(kills, 0.75), 0)})` : 'none'}`, 'report',
-      'Every army that comes to have a soldier known by name while the campaign is undecided, every people\'s. "By a battle" is one fought out on the map that the army won felling at least NAMED.least, with nobody known by name (veteranhome.ts: credited NAMED.share of the felled, three at least); "by a second win" is rivalrule.ts\'s rule. A battle fought in person names its own and is not counted.');
+    const years = ruled.reduce((k, w) => k + (w.decided >= 0 ? w.decided / 4 : w.storyYears), 0); // years the campaigns ran undecided, as the names are counted
+    const every = mine ? years / mine : NaN;
+    add('People', 'Soldiers named on the map for the player\'s nation, by a battle fought out there or an army\'s second win', 'about one every 1 to 4 years of campaign', `${mine ? `once in ${num(every, 1)} years` : 'none'} (${mine} in ${num(years, 0)} years undecided; every people's together ${num((battle + wins) / Math.max(1, ruled.length), 1)} a campaign, ${num(battle / Math.max(1, ruled.length), 1)} by a battle fought out on the map and ${num(wins / Math.max(1, ruled.length), 1)} by an army's second win)`, mine ? every >= 1 && every <= 4 : false,
+      'Every army of the player\'s that comes to have a soldier known by name while the campaign is undecided. "By a battle" is one fought out on the map that the army won felling at least NAMED.least, with nobody known by name (veteranhome.ts); "by a second win" is rivalrule.ts\'s rule. A battle fought in person names its own and is not counted.');
+    const share = n.flatMap((x) => x.share), kills = n.flatMap((x) => x.kills), over = kills.filter((k) => k > 3).length / Math.max(1, kills.length);
+    add('People', 'Of the felled in a map battle that names a soldier, the share he is credited with', '25 to 40%, with over half of them credited more than the three that make a name', share.length ? `${pct(mean(share))} of the felled credited (${share.length} named by a battle, every people's); ${pct(over)} credited more than three, median ${num(median(kills), 0)} (middle half ${num(quart(kills, 0.25), 0)} to ${num(quart(kills, 0.75), 0)})` : 'none named by a battle', share.length ? mean(share) >= 0.25 && mean(share) <= 0.4 && over > 0.5 : null,
+      `veteranhome.ts: credited NAMED.share (${NAMED.share}) of the felled, three at least (the least that makes a name, champion.ts), in a battle that felled NAMED.least (${NAMED.least}) or more.`);
   }
   // When the computer-played player takes its first age: report only.
   {

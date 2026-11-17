@@ -238,6 +238,8 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **Every town its own faith** (the owner's word, 17 November 2026). All towns differ in faith, even those built alike, and together they make the nation's faith. A town leans its own way by its own life as well as by its church or tavern; the nation's standing is what its towns come to together.
 
+**A rim of true wilderness** (the owner's word, 17 November 2026). The map's edge is ringed with true wilderness, snow and desert that nobody can settle or farm, so a rim of wild country lasts all campaign and bands can be born there and march in from afar where a people can see them coming. It takes no farmland from anyone.
+
 ## The order of building
 
 Each step is to be playable by itself.

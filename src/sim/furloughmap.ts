@@ -32,7 +32,7 @@ export function furloughOf(c: Campaign, tid: number): Furlough | undefined {
   const ages = [...(musterOf(c, a.id)?.men[tid] ?? [])].sort((x, y) => y - x); // the eldest first: he has been longest from his hearth
   if (!ages.length) return undefined;
   const named = awayMen(c, tid).filter((m) => m.army === a.id);
-  const men: AwayMan[] = ages.map((seasons, i) => ({ name: named[i]?.name ?? `A man of ${t.name}`, ...(named[i]?.family ? { family: named[i].family } : {}), seasons }));
+  const men: AwayMan[] = ages.map((seasons, i) => ({ name: named[i]?.name ?? `A man of ${t.name}`, ...(named[i]?.family ? { family: named[i].family } : {}), seasons, ...(named[i]?.as ? { tie: named[i].as } : {}) }));
   return { men, per: perUnit() };
 }
 
