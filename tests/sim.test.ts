@@ -19,6 +19,7 @@ import { ABILITIES, CALAMITY, BAND, CIV_COLOR, CIV_IDS, CIV_STYLE, CIVS, STYLES,
 import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, answerTale, Campaign, heroFor, FAITH, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, virtueOf, faithOf, virtueDrift, SITES, BIOMES, biomeOf, terrainOf, lanesOf, WEATHER, HOARD_PRIZE, HORDE_PRIZE, weatherAt, eventsAt, ageCost, truceCost, giftCost, advanceAge, canAdvance, ageOf, AGE_COST, AGE_EDGE, reach, canBuild, SEA_LANDING, sendGift, canGift, GIFT_COST, MAX_FAVOR, answerDemand, atTruce, offerTruce, offerAlliance, canAlly, dominionNeed, DOMINION_TURNS, ALLIANCE_COST, totalStrength, siteCost, companyCost, territoryIncome, heroCost, homeEdge, TRUCE_COST, PERSONA, CAMPAIGN_EDGE, armyAt, armySize, armyStrength, battleConfig, winChance, build, canRaise, canSummonHero, continueAI, defence, endTurn, finishBattle, homeCorner, income, moveArmy, newCampaign, raise, resolvePending, summonHero } from '../src/sim/campaign';
 
 import { menAt, run, setups, spot, villagers } from './helpers';
+import { fundFor } from '../src/sim/prices';
 
 describe('map', () => {
   it('always connects both bases by land', () => {
@@ -1561,7 +1562,7 @@ describe('alliances and dominion', () => {
 describe('an active ally', () => {
   it('gifts earn goodwill, an ally shares stores and rewards an answered call', () => {
     const c = newCampaign(14, 2);
-    c.factions[0].supplies = 40;
+    fundFor(c, 0, 'dealing', 40); // in gold, which gifts are paid in (prices.ts)
     for (let i = 0; i < 5; i++) sendGift(c, 2);
     expect(c.factions[2].favor).toBe(MAX_FAVOR);
     expect(c.factions[0].supplies).toBe(40 - GIFT_COST * MAX_FAVOR); // no more once goodwill is full
@@ -1840,7 +1841,7 @@ describe('harbours', () => {
       done = true;
       const inland = c.territories.find((t) => t.trait !== 'coast' && t.capital < 0 && !lanesOf(c, t.id).length)!;
       inland.owner = 0; from.owner = 0; from.buildings = [];
-      c.factions[0].supplies = 30;
+      fundFor(c, 0, 'harbour', 30, { at: from.id }); // in timber, where it is to be raised (prices.ts)
       expect(canBuild(c, 0, inland.id, 'harbour')).toBe(false);
       expect(reach(c, from.id)).toEqual(from.adj);
       expect(build(c, 0, from.id, 'harbour')).toBe(true);
@@ -1866,7 +1867,7 @@ describe('ages on the campaign map', () => {
   it('advancing costs supplies, strengthens armies and starts battles in that age with its weapons', () => {
     const c = newCampaign(7, 1, 1, 'hearth');
     expect(canAdvance(c, 0)).toBe(false);
-    c.factions[0].supplies = AGE_COST[0] + AGE_COST[1];
+    fundFor(c, 0, 'age', AGE_COST[0] + AGE_COST[1]); // in the four kinds an age is paid in (prices.ts)
     expect(advanceAge(c, 0)).toBe(true);
     expect(advanceAge(c, 0)).toBe(true);
     expect(ageOf(c, 0)).toBe(2);
@@ -3127,7 +3128,7 @@ describe('mountains and rivers on the campaign map', () => {
         expect(c.territories[l.a].adj).not.toContain(l.b);
         expect(reach(c, l.a)).not.toContain(l.b);
         const twin = JSON.parse(JSON.stringify(c)) as typeof c;
-        twin.territories[l.a].owner = 0; twin.territories[l.a].buildings = []; twin.factions[0].supplies = 30;
+        twin.territories[l.a].owner = 0; twin.territories[l.a].buildings = []; fundFor(twin, 0, 'harbour', 30, { at: l.a }); // in timber, there (prices.ts)
         expect(build(twin, 0, l.a, 'harbour')).toBe(true);
         expect(reach(twin, l.a)).toContain(l.b);
       }
