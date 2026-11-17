@@ -74,6 +74,7 @@ describe('bands move', () => {
     expect(out.join(' ')).toContain('after softer marks');
     // Where nothing is softer it looks, stays, and does not look again for a while.
     const flat = world();
+    for (const x of flat.c.territories) Object.assign(folkOf(flat.c, x.id).stores, { food: 100, wood: 100, gold: 100, stone: 100 }); // and nowhere richer (bandmarch.ts)
     const k = band(flat.c, flat.t, 4);
     flat.c.turn += ROAM.restless;
     expect(roamSeason(flat.c, [])).toBe(0);
