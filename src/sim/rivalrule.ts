@@ -24,6 +24,7 @@ import { SUPPLY_UNITS } from './stores';
 import { revoltChance } from './conquered';
 import { bandsAt } from './threats';
 import { manOfRoll, rememberOf } from './veteranhome';
+import { onFrontier } from './reckon';
 import { nobodyThere } from './founding'; // a land with nobody on it is settled, not marched on
 
 export const RIVAL = {
@@ -86,7 +87,7 @@ export function layTowns(c: Campaign): number {
 /** How long each army has stood where it is: kept on the campaign, by army. */
 function stood(c: Campaign, a: Army): number {
   const all = (c.idle ??= {}), was = all[a.id];
-  const deep = c.territories[a.at].owner === a.owner && !c.territories[a.at].adj.some((n) => c.territories[n].owner !== a.owner);
+  const deep = c.territories[a.at].owner === a.owner && !onFrontier(c, a.owner, a.at); // no land beside it that anybody could come from (reckon.ts)
   all[a.id] = deep && was && was.at === a.at ? { at: a.at, n: was.n + 1 } : { at: a.at, n: deep ? 1 : 0 };
   return all[a.id].n;
 }
@@ -293,7 +294,7 @@ export function rivalMoves(c: Campaign, f: number): number {
   // The garrison of a town that wants one holds. (Without an army in it the count is of a town left open.)
   const held = new Set<number>();
   // An army with foreign land beside it is at the front and goes on with the war; one behind the lines stays to hold.
-  const front = (a: Army): boolean => c.territories[a.at].adj.some((n) => c.territories[n].owner !== f);
+  const front = (a: Army): boolean => onFrontier(c, f, a.at); // an empty or a wild land is no front (reckon.ts)
   const mine = c.armies.filter((a) => a.owner === f);
   for (const a of mine) {
     // Never its last free army: a nation with every army pinned at home has stopped fighting its war.

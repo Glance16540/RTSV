@@ -5,6 +5,7 @@ import { turnLeft, turnOpened } from './seasongain';
 import { militiaOf } from './militia';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
+import { onFrontier, reckoned } from './reckon';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
@@ -1351,7 +1352,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
       if (at) build(c, f.id, at.id, house);
     }
     for (const t of own) {
-      const border = t.adj.some((n) => c.territories[n].owner !== f.id);
+      const border = onFrontier(c, f.id, t.id); // beside somebody, not beside empty or wild land (reckon.ts)
       if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');
       else if (onSea(c, t.id) && !t.buildings.includes('harbour') && f.supplies > 12 && rand(c) < 0.4) build(c, f.id, t.id, 'harbour');
       else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
@@ -1401,7 +1402,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     moveArmy(c, army.id, dared);
     return false;
   }
-  if (!reach(c, here.id).some((id) => c.territories[id].owner !== f.id)) {
+  if (!reach(c, here.id).some((id) => reckoned(c, f.id, id))) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
     if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
@@ -1422,12 +1423,13 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
     for (const n of reach(c, cur)) {
       if (prev.has(n)) continue;
       prev.set(n, cur);
-      if (c.territories[n].owner !== f) {
+      if (reckoned(c, f, n)) {
         // Found foreign land: walk back to the first step, which must be our own.
         let s = cur;
         while (prev.get(s) !== from && prev.get(s) !== -1) s = prev.get(s)!;
         return s === from ? -1 : s;
       }
+      if (c.territories[n].owner !== f) continue; // an empty or a wild land is not ours to march through
       queue.push(n);
     }
   }
