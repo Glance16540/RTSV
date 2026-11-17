@@ -9,6 +9,7 @@ import { folkOf } from '../sim/township';
 import { isAngry, noblesAt, sayOn, titleOf } from '../sim/nobles';
 import { bereftText } from '../sim/widowhood';
 import { nobleDealPanel } from './nobledeals';
+import { standingPanel } from './townorders';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 
@@ -19,6 +20,7 @@ export function decreePanel(c: Campaign, tid: number): string {
   const grief = (f.grief ?? 0) > 0 ? ', grieving' : '';
   const gone = f.drifted ? [f.drifted.tavern ? `${f.drifted.tavern} of its women at the tavern` : '', f.drifted.mines ? `${f.drifted.mines} of its men at the mines` : ''].filter(Boolean).join(' and ') : '';
   let html = `<div class="hint">Standing ${Math.round(townStanding(c, tid))}, ${way}${grief}.${gone ? ` Drifted: ${gone}.` : ''}${now.length ? ' Decrees: ' + now.map((x) => `${inFaith(DECREES[x.kind].name, c.factions[0].civ).toLowerCase()} (to turn ${x.until}${x.strength < 1 ? ', by messenger' : ''})`).join('; ') + '.' : ''}</div>`;
+  html += standingPanel(c, tid); // the governor's standing orders (townorders.ts)
   // Its widowed and orphans (src/sim/widowhood.ts).
   const bereft = bereftText(c, tid);
   if (bereft) html += `<div class="hint">Bereaved: ${esc(bereft)}.</div>`;
