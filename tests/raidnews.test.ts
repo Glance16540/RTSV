@@ -4,7 +4,7 @@ import { newCampaign } from '../src/sim/campaign';
 import { seasonNews, tally } from '../src/sim/raidnews';
 import { threatsOfMen } from '../src/sim/bandseason';
 import type { Band } from '../src/sim/threats';
-import { folkOf } from '../src/sim/township';
+import { TOWN_SCALE as S, folkOf } from '../src/sim/township';
 
 describe('the season\'s news', () => {
   it('gives every strike on a people\'s towns with its whole report and where to look, and nothing of another people\'s', () => {
@@ -14,7 +14,7 @@ describe('the season\'s news', () => {
     for (const id of t.adj) c.territories[id].owner = -1;
     c.armies = c.armies.filter((a) => a.at !== t.id);
     t.buildings = []; delete t.town;
-    Object.assign(folkOf(c, t.id), { men: 1, women: 8, elders: 0, children: 2 });
+    Object.assign(folkOf(c, t.id), { men: 1 * S, women: 8 * S, elders: 0, children: 2 * S }); // as many as that was of a town (township.ts TOWN_SCALE)
     const b: Band = { id: 900, kind: 'raiders', name: 'the Test Men', at: t.id, strength: 9, since: c.turn, held: [] };
     c.bands = [b];
     let news = seasonNews(c);
