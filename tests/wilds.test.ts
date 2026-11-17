@@ -2,8 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { moveArmy, newCampaign } from '../src/sim/campaign';
 import { DOMINION_SHARE, biomeOf, dominionNeed } from '../src/sim/campaignbase';
-import { emptyLand, nobodyThere } from '../src/sim/founding';
-import { WILD, farOrPoor, wildable } from '../src/sim/wilds';
+import { claimLand, emptyLand, nobodyThere, settleable } from '../src/sim/founding';
+import { freeLands, settleBar } from '../src/sim/migration';
+import { WILD, farOrPoor, wildable, wilderness } from '../src/sim/wilds';
 import { warriorsOf } from '../src/sim/tribes';
 
 describe('the wild lands', () => {
@@ -72,5 +73,30 @@ describe('a land with nobody on it is settled, not conquered', () => {
       return;
     }
     throw new Error('no seed with a wild land');
+  });
+});
+
+describe('true wilderness', () => {
+  it('a wild land of snow or desert can never be settled, though it is empty for the bands of the far wilds', () => {
+    let seen = 0;
+    for (let seed = 1; seed <= 40 && seen < 3; seed++) {
+      const c = newCampaign(seed, 1, 1, 'hearth');
+      for (const t of c.territories.filter((x) => x.wild)) {
+        const b = biomeOf(c, t.id), hard = b === 'snow' || b === 'desert';
+        expect(wilderness(c, t.id)).toBe(hard);
+        expect(emptyLand(c, t.id)).toBe(true); // the far-wilds bands still arise there (bandmarch.ts)
+        expect(settleable(c, t.id)).toBe(!hard);
+        if (!hard) continue;
+        seen++;
+        // Settlers of the player's beside it are refused, by name, and it is not offered.
+        const by = c.territories[t.adj[0]];
+        by.owner = 0;
+        expect(freeLands(c, 0)).not.toContain(t.id);
+        expect(settleBar(c, 0, by.id, t.id)).toContain('true wilderness');
+        expect(claimLand(c, t.id, 0)).toBe(false);
+        expect(t.owner).toBe(-1);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
   });
 });
