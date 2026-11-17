@@ -17,7 +17,7 @@ import { hireOff } from './places';
 import { HUB, reach } from './campaignbase';
 import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atTruce, companyCost } from './campaignbase';
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
-import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS } from './township';
+import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS, TOWN_SCALE } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
 import { MEN_A_COMPANY, awayFrom, canSendHome, homeOf, menMustered, menOf, sendCompaniesHome, sendHome, sendMenHome, sparedMen } from './armytown';
 import { SUPPLY_UNITS } from './stores';
@@ -37,7 +37,7 @@ export const RIVAL = {
    *  seasons of peace after which it musters for a campaign; and how many seasons it musters for before standing down again. */
   lull: 4, standing: 0.05, restless: 10, campaign: 8,
   /** A strained town down to this many men of working age is not asked for another company; and the strain that counts. */
-  lastMen: 2, strain: 0.5,
+  lastMen: 2 * TOWN_SCALE, strain: 0.5,
   /** Seasons a people lives in an age before it takes the next, however rich it is: five years. */
   settle: 20,
   /** A people with men and no supplies to spare raises a company out of a town's own stores, down to this share of them. */
