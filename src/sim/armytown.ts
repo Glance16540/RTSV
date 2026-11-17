@@ -10,7 +10,7 @@
 import type { Army, Campaign } from './campaign';
 import { agesOf, countFrom, GROWN_SEASON, GROWN_YEARS, OLD_SEASON, LAST_SEASON } from './ageing';
 import { awayFrom, cameHome, enlist, fell, levelArmies, settleHouses } from './warhouse';
-import { folkOf } from './township';
+import { folkOf, TOWN_SCALE } from './township';
 import { rememberOf } from './veteranhome';
 import { tally } from './ledger';
 
@@ -22,15 +22,17 @@ export const ARMY_REST = 6;
 /** Is this army still resting from its last assault as this turn begins? */
 export const resting = (c: Campaign, a: Army): boolean => (a.rest ?? 0) >= c.turn;
 
+/** Men a company takes, by the size of towns (see MEN_A_COMPANY below, which is this). */
+const MEN_PER = TOWN_SCALE > 1 ? 1 : 2;
 /**
  * What a battle costs in men. Of the men of the companies an army loses, this share are dead when the army still
  * stands (`won`) and when it is broken (`lost`); the rest are wounded or routed, and make their way home to their
  * own towns. And what raising may take: a town keeps `floor` men at the least, and a man for every woman of
  * working age up to `couples` of them, so that it still has husbands.
  */
-export const MEN = { won: 0.3, lost: 0.4, floor: 2, couples: 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true, /** The share of all its men a people will have with its armies at the most: past it, a company raised is hired men. */ share: 0.25, /** Men a company must find, in its town or its people's others, to be raised at all. None, for now: at one or two the towns as they are founded (four to six men) cannot carry the armies the map is fought with, and over half of 192 campaigns end in ruin. The rule is here for when they can. */ least: 0 };
+export const MEN = { won: 0.3, lost: 0.4, floor: 2 * TOWN_SCALE, couples: 0.5, /** A company its town cannot man in full is filled from its people's other towns. */ levy: true, /** The share of all its men a people will have with its armies at the most: past it, a company raised is hired men. A stop for towns of the old size; at the larger size it is not asked (1), since no company is hired. */ share: TOWN_SCALE > 1 ? 1 : 0.25, /** Men a company must find, in its town or its people's others, to be raised at all. None while towns are the old size (TOWN_SCALE 1): founded at four to six men they cannot carry the armies the map is fought with, and over half of 192 campaigns end in ruin. At the larger size it asks for every man of the company: none is hired. */ least: TOWN_SCALE > 1 ? MEN_PER : 0 };
 /** Men in a company. */
-export const MEN_A_COMPANY = 2;
+export const MEN_A_COMPANY = MEN_PER; // docs/DESIGN.md: in towns of the larger size a company costs one man of the town and his following
 /** An army's roll: how many companies it had when last reckoned, and the men with it by the town they came from (their ages, in seasons). */
 export interface Muster { size: number; men: Record<string, number[]>; /** Whose army it is, kept so its men can find their way home if it is broken. */ owner?: number }
 /** Men of a town who fell with an army. */
