@@ -6,10 +6,13 @@ import { EAT, FOOD_KEEP, KEEP_SEASONS, ROT, STARVE_AFTER, STARVE_SHARE, eatTown,
 import { driftTown } from '../src/sim/drift';
 import { spread, yieldShares } from '../src/sim/harvest';
 import { SUPPLY_UNITS } from '../src/sim/stores';
-import { folkOf } from '../src/sim/township';
+import { TOWN_SCALE, folkOf } from '../src/sim/township';
+
+/** People in a test town are TOWN_SCALE times as many, so that it eats what it would at today's size (larder.ts needOf). */
+const S = TOWN_SCALE;
 
 const LONG = 60_000;
-/** A town of the player's beside the capital, with the people and food asked for and nothing else in it. */
+/** A town of the player's beside the capital, with the people (TOWN_SCALE times as many) and food asked for and nothing else in it. */
 function town(people: { men?: number; women?: number; elders?: number; children?: number } = {}, food = 1000) {
   const c = newCampaign(7, 1, 1, 'hearth');
   c.fronts = [];
@@ -17,7 +20,7 @@ function town(people: { men?: number; women?: number; elders?: number; children?
   const t = c.territories.find((x) => x.owner < 0 && home.adj.includes(x.id))!;
   t.owner = 0; t.buildings = [];
   const f = folkOf(c, t.id);
-  f.men = people.men ?? 5; f.women = people.women ?? 5; f.elders = people.elders ?? 2; f.children = people.children ?? 4;
+  f.men = (people.men ?? 5) * S; f.women = (people.women ?? 5) * S; f.elders = (people.elders ?? 2) * S; f.children = (people.children ?? 4) * S;
   delete f.ages; delete f.drift;
   f.stores = { food, wood: 100, gold: 100, stone: 100 };
   return { c, t, f };
@@ -51,11 +54,11 @@ describe('towns eat their food on the map', () => {
 
   it('those who have drifted to the mines or the tavern eat there, not at home', () => {
     const { c, t, f } = town({ men: 6, women: 6, elders: 0, children: 0 });
-    f.drifted = { tavern: 0, mines: 3 }; // who has drifted is on the town's record (drift.ts)
-    expect(mouths(c, t.id)).toMatchObject({ men: 3, women: 6 }); // no tavern: the women stay
+    f.drifted = { tavern: 0, mines: 3 * S }; // who has drifted is on the town's record (drift.ts)
+    expect(mouths(c, t.id)).toMatchObject({ men: 3 * S, women: 6 * S }); // no tavern: the women stay
     t.buildings = ['tavern'];
-    f.drifted = { tavern: 3, mines: 3 };
-    expect(mouths(c, t.id)).toMatchObject({ men: 3, women: 3 });
+    f.drifted = { tavern: 3 * S, mines: 3 * S };
+    expect(mouths(c, t.id)).toMatchObject({ men: 3 * S, women: 3 * S });
     expect(needOf(c, t.id)).toBe(6 * EAT.grown);
   });
 
@@ -79,13 +82,13 @@ describe('towns eat their food on the map', () => {
     for (let s = 1; s <= STARVE_AFTER; s++) { c.turn++; expect(eatTown(c, t.id)).toMatchObject({ hungry: s, dead: 0 }); }
     c.turn++;
     const m = eatTown(c, t.id);
-    expect(m.dead).toBe(Math.round(22 * STARVE_SHARE));
+    expect(m.dead).toBe(Math.round(22 * S * STARVE_SHARE));
     expect(f.elders).toBe(0); // the old first
-    expect(f.men + f.women).toBe(20 - (m.dead - 2));
-    expect(f.children).toBe(6);
+    expect(f.men + f.women).toBe(20 * S - (m.dead - 2 * S));
+    expect(f.children).toBe(6 * S);
     for (let s = 0; s < 40; s++) { c.turn++; eatTown(c, t.id); }
     expect(f.men + f.women + f.elders).toBe(0); // with nothing coming in, the grown all die in the end
-    expect(f.children).toBe(6); // and no child
+    expect(f.children).toBe(6 * S); // and no child
   });
 
   it('a farmed town of twenty is about fed by its own fields; a town with none is not', () => {
@@ -97,7 +100,7 @@ describe('towns eat their food on the map', () => {
     expect(fed(t)).toBeGreaterThanOrEqual(need * 0.8);
     t.buildings = [];
     expect(fed(t)).toBeLessThan(need * 0.6);
-    expect(f.children).toBe(6);
+    expect(f.children).toBe(6 * S);
   });
 
   it('the local tribes\' towns are not counted, and a season of it is told in the log', () => {
