@@ -81,7 +81,7 @@ describe('true wilderness', () => {
     let seen = 0;
     for (let seed = 1; seed <= 40 && seen < 3; seed++) {
       const c = newCampaign(seed, 1, 1, 'hearth');
-      for (const t of c.territories.filter((x) => x.wild)) {
+      for (const t of c.territories.filter((x) => x.wild && !x.rim)) { // the world's own wild lands; the rim's are in tests/rim.test.ts
         const b = biomeOf(c, t.id), hard = b === 'snow' || b === 'desert';
         expect(wilderness(c, t.id)).toBe(hard);
         expect(emptyLand(c, t.id)).toBe(true); // the far-wilds bands still arise there (bandmarch.ts)

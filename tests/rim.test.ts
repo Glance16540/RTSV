@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import { MAP_H, MAP_W, dominionNeed } from '../src/sim/campaignbase';
-import { RIM, landsWithin, makeRim, rimPlaces } from '../src/sim/rim';
+import { RIM, landsWithin, makeRim, outOf, rimPlaces } from '../src/sim/rim';
 import { wilderness } from '../src/sim/wilds';
 import { emptyLand, settleable } from '../src/sim/founding';
 import { holdable } from '../src/sim/ruin';
@@ -50,12 +50,15 @@ describe('the rim of true wilderness', () => {
       // No land lies under a rim land, and no chief town has the wilderness at its door.
       for (const r of c.territories.filter((t) => t.rim)) {
         for (const t of own) expect(Math.hypot(t.x - r.x, t.y - r.y)).toBeGreaterThanOrEqual(RIM.apart);
-        expect(r.adj.length).toBeGreaterThanOrEqual(1);
-        expect(r.adj.length).toBeLessThanOrEqual(RIM.joins);
-        for (const n of r.adj) {
+        expect(r.adj).toEqual([]); // it is nobody's neighbour
+        expect(r.down!.length).toBeGreaterThanOrEqual(1);
+        expect(r.down!.length).toBeLessThanOrEqual(RIM.joins);
+        expect(outOf(c, r.id)).toEqual(r.down);
+        for (const n of r.down!) {
           expect(c.territories[n].capital).toBe(-1);
           expect(c.territories[n].rim).toBeFalsy();
-          expect(c.territories[n].adj).toContain(r.id);
+          expect(c.territories[n].adj).not.toContain(r.id);
+          expect(outOf(c, n)).toEqual(c.territories[n].adj);
           expect(Math.hypot(c.territories[n].x - r.x, c.territories[n].y - r.y)).toBeLessThanOrEqual(RIM.near);
         }
       }

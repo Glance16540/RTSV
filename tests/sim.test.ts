@@ -667,7 +667,7 @@ describe('conquest campaign', () => {
       const seen = new Set([0]);
       const q = [0];
       while (q.length) { const at = q.pop()!; for (const t of [...c.territories[at].adj, ...lanesOf(c, at)]) if (!seen.has(t)) { seen.add(t); q.push(t); } }
-      expect(seen.size).toBe(c.territories.length); // every land can be reached, the rim's too
+      expect(seen.size).toBe(n);
       for (const t of c.territories) if (t.capital >= 0) expect(t.adj.length).toBeGreaterThan(0); // a capital is never alone on its island
       expect(c.territories.every((t) => t.adj.every((a) => c.territories[a].adj.includes(t.id)))).toBe(true);
       // Capitals are never next door to each other.
@@ -3129,8 +3129,8 @@ describe('mountains and rivers on the campaign map', () => {
       // (by land or by a sea lane, which wants a harbour)
       const seen = new Set([0]), q = [0];
       while (q.length) { const at = q.pop()!; for (const n of [...c.territories[at].adj, ...lanesOf(c, at)]) if (!seen.has(n)) { seen.add(n); q.push(n); } }
-      expect(seen.size).toBe(c.territories.length);
-      for (const t of c.territories) expect(t.adj.length + lanesOf(c, t.id).length).toBeGreaterThanOrEqual(t.rim ? 1 : 2); // a land of the rim, which nobody may enter, may hang by one way (rim.ts)
+      expect(seen.size).toBe(c.territories.filter((t) => !t.rim).length); // every land of the world; nobody goes into the rim (rim.ts)
+      for (const t of c.territories) expect(t.adj.length + lanesOf(c, t.id).length).toBeGreaterThanOrEqual(t.rim ? 0 : 2); // a land of the rim is nobody's neighbour: nobody may enter it (rim.ts)
       for (const l of c.lanes!) {
         lanes++;
         expect(c.territories[l.a].adj).not.toContain(l.b);

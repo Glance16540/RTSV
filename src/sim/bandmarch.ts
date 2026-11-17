@@ -17,6 +17,7 @@
 //     from them, are here so that the bands' moving and fighting can write to it.
 //
 // Plain data in, plain data out; the telling is the callers'. Strengths are first guesses.
+import { outOf } from './rim';
 import type { Army, Campaign } from './campaign';
 import { resting } from './armytown';
 import { STORE_KINDS, folkOf } from './township';
@@ -67,6 +68,8 @@ export function landsFromHeld(c: Campaign): number[] {
     for (const id of edge) for (const n of c.territories[id].adj) if (d[n] > d[id] + 1) { d[n] = d[id] + 1; next.push(n); }
     edge = next;
   }
+  // A land of the rim of wilderness is nobody's neighbour (rim.ts): it is one land beyond the nearest it looks down on.
+  for (const t of c.territories) if (t.rim) d[t.id] = Math.min(far, ...outOf(c, t.id).map((n) => d[n] + 1));
   return d;
 }
 /**
@@ -112,7 +115,7 @@ export const exposedHow = (c: Campaign, a: Army): string => (resting(c, a) ? 'st
 export function watchers(c: Campaign, path: number[]): Army[] {
   const seen: Army[] = [];
   for (const id of path) {
-    const near = new Set([id, ...(c.territories[id]?.adj ?? [])]);
+    const near = new Set([id, ...outOf(c, id)]);
     for (const a of [...c.armies].sort((x, y) => x.id - y.id)) if (near.has(a.at) && c.factions[a.owner]?.alive && !seen.some((s) => s.owner === a.owner)) seen.push(a);
   }
   return seen;
@@ -120,7 +123,7 @@ export function watchers(c: Campaign, path: number[]): Army[] {
 /** The peoples whose towns see a band pass: each that holds a land within two of one of these lands (from the hills, and by travellers' word), but for those in `but`. */
 export function townsThatSee(c: Campaign, path: number[], but: number[] = []): { owner: number; at: number }[] {
   const seen: { owner: number; at: number }[] = [];
-  const within = (id: number): number[] => { const one = [id, ...(c.territories[id]?.adj ?? [])]; return [...new Set([...one, ...one.flatMap((n) => c.territories[n].adj)])]; };
+  const within = (id: number): number[] => { const one = [id, ...outOf(c, id)]; return [...new Set([...one, ...one.flatMap((n) => c.territories[n].adj)])]; };
   for (const id of path) for (const n of within(id)) {
     const o = c.territories[n].owner;
     if (o >= 0 && c.factions[o]?.alive && !but.includes(o) && !seen.some((s) => s.owner === o)) seen.push({ owner: o, at: n });

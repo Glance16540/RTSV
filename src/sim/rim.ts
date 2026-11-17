@@ -5,8 +5,13 @@
 // The wild lands of wilds.ts are a share of the lands the world was made with, about one and a half a map and mostly
 // beside a town: there was seldom anywhere far to come from. The rim is made of NEW lands. When the world is made
 // (campaign.ts newCampaign), after everything else, a few lands are added where the map's edge was open water or
-// nobody's: each is true wilderness (wilds.ts `wilderness`), empty for good, joined on foot to the nearest land or two
-// that are nobody's chief town. No land the world already had is changed, moved or renamed, none of its random draws
+// nobody's: each is true wilderness (wilds.ts `wilderness`), empty for good, with a way out on foot to the nearest land
+// or two that are nobody's chief town. It is nobody's neighbour: its `adj` is empty and no land's `adj` names it, so
+// every rule that reads a town's neighbours never sees the rim, no town is a border town for it, no army stands at a
+// front that is not there, and nobody can march in. What it has is `down`, the lands it looks down on: what is born in
+// the rim finds its way out by them (`outOf`, read by the bands' rules alone), and the towns below see it gather. (Joined both ways,
+// 192 campaigns left one in five undecided where one in twelve was: every people's armies beside the rim held as at a
+// frontier, for good.) No land the world already had is changed, moved or renamed, none of its random draws
 // is spent (the rim is drawn from the seed by its own hash), and no farmland is taken: the lands a people can hold,
 // settle and win by are exactly those there were (ruin.ts `holdable`, campaignbase.ts dominionNeed, founding.ts).
 //
@@ -26,6 +31,8 @@ declare module './campaign' {
   interface Territory {
     /** This land is of the rim of true wilderness at the map's edge: added to the world, never anyone's (rim.ts). */
     rim?: boolean;
+    /** A rim land: the lands it looks down on, which is its only way out. It is nobody's neighbour (`adj` is empty). */
+    down?: number[];
   }
 }
 
@@ -82,12 +89,11 @@ export function makeRim(c: Campaign): number[] {
     let name = `the ${side} ${names[Math.floor(draw(c.seed, 100 + id) * names.length)]}`;
     for (let k = 0; c.territories.some((t) => t.name === name) && k < names.length; k++) name = `the ${side} ${names[k]}`;
     const t: Territory = {
-      id, name, owner: -1, capital: -1, adj: to.map((x) => x.id), x: p.x, y: p.y, buildings: [], trait: '', militia: 0, seed: 1 + Math.floor(draw(c.seed, 200 + id) * 1e6),
+      id, name, owner: -1, capital: -1, adj: [], down: to.map((x) => x.id), x: p.x, y: p.y, buildings: [], trait: '', militia: 0, seed: 1 + Math.floor(draw(c.seed, 200 + id) * 1e6),
       wild: true, rim: true, tribal: true, // never made up to a tribe's strength (tribes.ts)
       folk: { men: 0, women: 0, elders: 0, children: 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, notables: [] },
     };
     c.territories.push(t);
-    for (const x of to) x.adj.push(id);
     made.push(id);
   }
   return made;
@@ -95,3 +101,6 @@ export function makeRim(c: Campaign): number[] {
 
 /** The lands of the world that are not of the rim: those a people may hold, and by which the map's size is reckoned. */
 export const landsWithin = (c: Campaign): number => c.territories.filter((t) => !t.rim).length;
+
+/** The lands a band standing here may go on to or be seen from: a land's neighbours, or, for a land of the rim, those it looks down on. */
+export const outOf = (c: Campaign, tid: number): number[] => { const t = c.territories[tid]; return !t ? [] : t.rim ? t.down ?? [] : t.adj; };

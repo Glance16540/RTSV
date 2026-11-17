@@ -37,6 +37,7 @@
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
 import { inAll, strengthOf, whole } from './strengthwords';
+import { outOf } from './rim';
 import { faithAt, swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaignbase';
@@ -189,7 +190,7 @@ export function reachOf(c: Campaign, b: Band): number[] {
   const ok = (id: number): boolean => held(c, c.territories[id]);
   if (b.kind === 'pirates') return c.territories.filter((t) => coastal(t) && held(c, t)).map((t) => t.id);
   if (b.kind === 'highwaymen') return [b.at, b.to!].filter(ok);
-  return [b.at, ...c.territories[b.at].adj].filter(ok);
+  return [b.at, ...outOf(c, b.at)].filter(ok);
 }
 
 /** Where a new band of this kind could make its place: [at, to?], or null if nowhere will do. */
