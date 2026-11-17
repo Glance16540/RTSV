@@ -66,7 +66,7 @@ describe('grain bought abroad', () => {
     const cost = grainWanted(c, tid) * GRAIN.price, floor = PLENTY.grain * PLENTY.floor * mine.length;
     for (const id of mine) folkOf(c, id).stores.gold = 0;
     expect(canSpareGrain(c, 0, tid)).toBe(false); // no gold, no grain
-    if (floor > 0) { // a nation that keeps a stock of goods after buying (PLENTY.grain floors a town; none now, plenty.ts)
+    if (floor > 0) { // a nation that keeps a stock of goods after buying (PLENTY.grain floors a town: half of one now, plenty.ts)
       folkOf(c, tid).stores.gold = cost + floor - 1;
       for (const id of mine) { const s = folkOf(c, id).stores; s.wood = 0; s.stone = 0; }
       expect(canSpareGrain(c, 0, tid)).toBe(false);
