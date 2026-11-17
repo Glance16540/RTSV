@@ -31,7 +31,9 @@ import { sendFromPanel } from './convoypanel';
 import { seasonCard, showPastSeasons } from './seasoncard';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
-import { dealFromPanel } from './nobledeals';
+import { dealChoices, dealFromPanel } from './nobledeals';
+import { nobleByKey } from '../sim/nobledeal';
+import { titleOf } from '../sim/nobles';
 import { raiseWork } from '../sim/townworks';
 import { learn } from '../sim/studies';
 
@@ -148,7 +150,7 @@ export class Overworld {
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
       if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
-      if (kind === 'noble') dealFromPanel(this.c, id); // a dealing with a noble (nobledeal.ts)
+      if (kind === 'nobledeal') { this.askDeal(decodeURIComponent(id)); return; } // the dealings with a noble (nobledeal.ts)
       if (kind === 'work') raiseWork(this.c, 0, this.sel, id); // a building raised on the town's record (townworks.ts)
       if (kind === 'study') learn(this.c, 0, id, this.sel); // a study learned there (studies.ts)
       if (kind === 'home') { const army = armyAt(this.c, this.sel); if (army) sendHome(this.c, army.id); }
@@ -270,6 +272,25 @@ export class Overworld {
       [['Field battle', () => { p.mode = 'field'; this.hooks.fight(); }], ['Siege battle', () => { p.mode = 'siege'; this.hooks.fight(); }], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);
+  }
+
+  /** The dealings with a noble, each with its price and what it does; stripping of lands is asked again. */
+  private askDeal(key: string): void {
+    const c = this.c, n = nobleByKey(c, 0, key);
+    if (!n) return;
+    const close = (): void => { $('ow-dialog').classList.add('hidden'); this.changed(); };
+    const all = dealChoices(c, key), open = all.filter((d) => !d.bar), barred = all.filter((d) => d.bar);
+    const run = (kind: string): void => { dealFromPanel(c, kind, key); close(); };
+    const strip = (): void => {
+      const d = all.find((x) => x.kind === 'strip')!;
+      this.dialog(`Strip ${titleOf(c, n)} of their lands?`, d.detail, [['Strip them of their lands', () => run('strip')], ['No', () => this.askDeal(key)]]);
+    };
+    this.dialog(`Deal with ${titleOf(c, n)}`, `Mood ${n.mood}.${barred.length ? ' Not now: ' + barred.map((d) => `${d.name.replace(/^\S+ /, '').toLowerCase()} (${d.bar})`).join('; ') + '.' : ''}`,
+      [...open.map((d): [string, () => void] => [d.name, () => (d.kind === 'strip' ? strip() : run(d.kind))]), ['Not now', close]]);
+    // Each dealing's price and what it does, on a line of its own beneath (style.css: Tales).
+    const el = $('ow-dialog');
+    el.querySelector('.sheet')?.classList.add('tale');
+    el.querySelectorAll<HTMLButtonElement>('.levels button').forEach((b, i) => { if (i < open.length) { const s = document.createElement('small'); s.textContent = open[i].detail; b.appendChild(s); } });
   }
 
   /** A tale is put to the player: two answers, the pious and the worldly, each with its price. */

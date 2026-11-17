@@ -15,7 +15,9 @@
  * not stir, nor a town with its people's army or leader in it, nor one already troubled by something else.
  */
 import type { Campaign } from './campaign';
-import { armyAt, faithOf } from './campaignbase';
+import { armyAt, FAITH, faithOf } from './campaignbase';
+import { creedOf } from './creed';
+import { faithAt } from './townfaith';
 import { leaderAt } from './court';
 import { angryAt, noblesAt } from './nobles';
 import { folkOf, headcount } from './township';
@@ -78,7 +80,7 @@ export function unrestWeights(c: Campaign, tid: number): { hungry: number; churc
     church: t.buildings.includes('church') ? UNREST.church : 1,
     farm: t.buildings.includes('farm') ? UNREST.farm : 1,
     tavern: t.buildings.includes('tavern') ? UNREST.tavern : 1,
-    pious: faithOf(c, t.owner).defence > 1 ? UNREST.pious : 1,
+    pious: FAITH[creedOf(faithAt(c, tid)).id].defence > 1 ? UNREST.pious : 1, // the town's own standing, not its nation's (townfaith.ts)
     held: UNREST.settled + (UNREST.fresh - UNREST.settled) * fresh,
     nobles: angryAt(c, tid) ? UNREST.angry : 1 - UNREST.mood * Math.max(-1, Math.min(1, mood / 100)),
   };

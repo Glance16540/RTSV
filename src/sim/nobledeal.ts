@@ -60,7 +60,7 @@ export const DEALS = {
 };
 
 /** The title a noble of this rank is given. */
-export const TITLES: Record<string, string> = { lord: 'Governor', captain: 'Captain of the host', matron: 'Lady of the court' };
+export const TITLES: Record<string, string> = { lord: 'Governor', captain: 'Warden of the marches', matron: 'Lady of the court' }; // each new to the rank (a captain was once offered "Captain of the host")
 
 const tell = (c: Campaign, f: number, tid: number, tone: 'good' | 'bad' | 'plain', text: string): void => {
   if (f !== 0) return;
@@ -107,7 +107,7 @@ export function dealWith(c: Campaign, f: number, key: string, kind: DealKind): s
   } else if (kind === 'gift') {
     n.mood = clamp(n.mood + DEALS.gift.mood);
     bond(c, n, { kind, rest: DEALS.gift.rest, until: c.turn + DEALS.gift.seasons });
-    tell(c, f, n.town, 'good', `Gifts are sent to ${who}.`);
+    tell(c, f, n.town, 'good', `Gifts are sent to ${who}: ${their(n)} mood rises by ${DEALS.gift.mood}${angry && !isAngry(n) ? ', and the anger is gone' : ''}, and ${they(n)} will think the better of you for two years.`);
   } else if (kind === 'post') {
     n.title = TITLES[n.rank];
     n.mood = clamp(n.mood + DEALS.post.mood);
@@ -134,6 +134,20 @@ export function dealWith(c: Campaign, f: number, key: string, kind: DealKind): s
   }
   return '';
 }
+
+const their = (n: Noble): string => (n.female ? 'her' : 'his');
+const they = (n: Noble): string => (n.female ? 'she' : 'he');
+
+/** What a dealing does, in words, for the noble it would be done with. */
+export function dealEffect(c: Campaign, f: number, n: Noble, kind: DealKind): string {
+  const D = DEALS;
+  if (kind === 'summon') return `${they(n)[0].toUpperCase() + they(n).slice(1)} is heard at court: ${their(n)} mood rises by ${D.summon.mood}, and settles ${D.summon.rest} higher for a year. Not again within the year.`;
+  if (kind === 'gift') return `${their(n)[0].toUpperCase() + their(n).slice(1)} mood rises by ${D.gift.mood}, and settles ${D.gift.rest} higher for two years.`;
+  if (kind === 'post') return `Made ${TITLES[n.rank] ?? 'an officer'}: ${their(n)} mood rises by ${D.post.mood}, and settles ${D.post.rest} higher while ${they(n)} holds it. The others of ${their(n)} rank are a little jealous (${D.post.jealous}).`;
+  if (kind === 'wed') { const h = heirFor(c, f, n); return `${h ? `${h.name} of your house` : 'A grown son or daughter of your house'} weds ${them(n)}: ${their(n)} mood rises by ${D.wed.mood}, and settles ${D.wed.rest} higher for good. The other nobles are a little jealous (${D.wed.jealous}).`; }
+  return `${they(n)[0].toUpperCase() + they(n).slice(1)} is noble no more, and what ${they(n)} held is yours (${D.strip.seized} gold). Every noble of the nation is afraid and angered (${D.strip.others}, ${D.strip.near} in ${their(n)} own town).`;
+}
+const them = (n: Noble): string => (n.female ? 'her' : 'him');
 
 /** The leader's dealings open with a noble now, each with why not if it cannot be done, for the land's panel. */
 export function dealsFor(c: Campaign, f: number, key: string): { kind: DealKind; name: string; bar: string }[] {
