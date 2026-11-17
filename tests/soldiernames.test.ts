@@ -8,6 +8,7 @@ import { Game } from '../src/sim/game';
 import { veteranHome } from '../src/sim/veteranhome';
 import { fell } from '../src/sim/warhouse';
 import { downedOf, noteDowned, rollOf, survivorsOf } from '../src/sim/soldiernames';
+import { goHome, rejoin } from '../src/sim/furlough';
 
 /** The player's army at the capital marches on a tribe's town next door: a battle in person. */
 function battle() {
@@ -100,6 +101,31 @@ describe('soldiernames', () => {
   it('a skirmish, and a side with no roll, are untouched', () => {
     const g = new Game(1, [{ name: 'A', color: 1, isAI: false }, { name: 'B', color: 2, isAI: true, civ: 'hearth' }]);
     expect(g.units.some((u) => u.roll || u.follows)).toBe(false);
+    expect(downedOf(g)).toEqual([]);
+  });
+
+  it('a soldier sent home on leave is the man whose name he bears, and taking up arms again he leads his company under it', () => {
+    // A rival marches on the capital, where the player's army stands: its men of the town may go home (furlough.ts).
+    const c = newCampaign(4, 1, 1, 'hearth');
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const next = c.territories[home.adj[0]];
+    next.owner = 1;
+    c.armies.push({ id: 99, owner: 1, at: next.id, units: { infantry: 2 }, hero: false, vet: 0, moved: false });
+    c.phase = 'ai';
+    expect(moveArmy(c, 99, home.id)).toBe('battle');
+    c.pending!.mode = 'siege';
+    const cfg = battleConfig(c)!;
+    const g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
+    g.fixedAge = true; g.bornOnly = true;
+    expect(g.players[0].furlough?.men.length).toBeGreaterThan(1);
+    const last = soldiers(g, 0).filter((u) => u.roll).at(-1)!; // not the first on the furlough's list
+    const name = last.name, family = last.family;
+    expect(goHome(g, 0, [last.id])).toBe(1);
+    const v = g.units.find((u) => u.onLeave && !u.dead)!;
+    expect(`${v.name} ${v.family}`).toBe(`${name} ${family}`);
+    expect(downedOf(g)).toEqual([]); // home, not down
+    expect(rejoin(g, 0, [v.id])).toBe(1);
+    expect(soldiers(g, 0).some((u) => u.roll && u.name === name && u.family === family)).toBe(true);
     expect(downedOf(g)).toEqual([]);
   });
 });

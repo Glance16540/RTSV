@@ -101,6 +101,20 @@ export function downedOf(g: Game): RollMan[] {
   return out;
 }
 
+/** The man whose company a soldier is of (his own name and house, or his leader's), or '' for a soldier of none. */
+export const companyOf = (u: Unit): string => (u.roll ? keyOf(u.roll) : u.follows ?? '');
+/** Is this man of the furlough's list (furlough.ts) the one whose company that is? */
+export const isCompanyOf = (key: string, m: { name: string; family?: string }): boolean => !!key && key === keyOf({ name: m.name, family: m.family ?? '' });
+
+/** A man home on leave has taken up his arms again (furlough.ts rejoin): his company stands under his name once more. */
+export function leadAgain(g: Game, owner: number, company: Unit[], name: string, family: string): void {
+  if (!company.length) return;
+  const key = keyOf({ name, family }), m = g.players[owner]?.roll?.find((x) => keyOf(x) === key);
+  company[0].name = name; company[0].family = family;
+  if (m) company[0].roll = m;
+  for (const u of company.slice(1)) u.follows = key;
+}
+
 /** The names and houses of a side's people on the field now. */
 const standing = (g: Game, owner: number): Set<string> => new Set(g.units.filter((u) => u.owner === owner && !u.dead).map((u) => keyOf(u)));
 
