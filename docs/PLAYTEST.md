@@ -304,7 +304,15 @@ Slavers came against both capitals (the Iron Market at Gullhaven; the Iron Marke
 were beaten back, each settled on the map with a line in the log and no window. None was seen coming: the "seen on the
 march" lines were all other peoples' ("The people at Windscar have seen the Tally-keepers on the march"), and no band fell
 on the player's army. The encounter window opens only when the player sends an army at a band, or a band falls on one of
-their armies; the threats session's change for a band marching on a town had not reached main.
+their armies; the threats session's change for a band coming for a town (4400e4b) reached main after this pass began.
+
+![A band coming, on today's main](shots/playtest2-band-coming.jpg)
+
+Tried afterwards on today's main, from the save with a raiding band beside the army: once the four stories were put aside,
+"The Red Hands have Amberfield for their mark" opened by itself, with the band's men and its captives, and three answers
+(go out and fight them, send the army, let them come). It reads well. Two small things: it gives the strength as a bare
+number ("raiders of strength 5") where the other band windows now say "a strength of 5 (strong)", and it gives the band's
+strength twice in four lines.
 
 ### 2.12 Migration (low)
 
