@@ -948,7 +948,7 @@ export const TECHS: Record<string, TechDef> = {
   }),
   pavedroads: T({
     id: 'pavedroads', name: 'Paved Roads', icon: '🛤️', answers: 'hunger',
-    desc: 'Your convoys are not a season on the way: they come in as soon as they are sent.',
+    desc: 'Your convoys go quicker and drier: the food one brings in goes a quarter further than what was loaded.',
     cost: { stone: 300, gold: 100 }, time: 60, age: 2, apply: () => {},
   }),
   // ---- end of order and roads ----

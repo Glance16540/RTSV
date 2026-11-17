@@ -5,7 +5,7 @@ import type { Campaign, Territory } from '../src/sim/campaign';
 import { CONVOYS, convoysTurn, onTheRoad, sendConvoy, worth } from '../src/sim/convoys';
 import { TECHS } from '../src/sim/data';
 import { governInns } from '../src/sim/inn';
-import { ROADS, escortEdge, hasInn, innRisk, paved } from '../src/sim/roads';
+import { ROADS, escortEdge, hasInn, innRisk, paved, pavedLoad } from '../src/sim/roads';
 import { teacherOf } from '../src/sim/studies';
 import type { Band } from '../src/sim/threats';
 import { folkOf } from '../src/sim/township';
@@ -91,30 +91,24 @@ describe('the studies of the road', () => {
     expect(kept.took).toBeLessThanOrEqual(open.took * ROADS.escorts + kept.stopped);
     expect(kept.took).toBeGreaterThan(open.took * ROADS.escorts * 0.9);
   });
-  it('Paved Roads: a convoy comes in as soon as it is sent, and may still be met on the way', () => {
+  it('Paved Roads: a convoy comes in when the season turns as any does, and its food goes a quarter further', () => {
     const { c, a, z } = road();
     c.bands = [];
-    const had = folkOf(c, z.id).stores.food;
+    const had = folkOf(c, z.id).stores.food, wood = folkOf(c, z.id).stores.wood;
     sendConvoy(c, 0, a.id, z.id, { food: 400 });
-    expect(onTheRoad(c, 0)).toHaveLength(1); // a season on the way
-    expect(folkOf(c, z.id).stores.food).toBe(had);
+    c.turn++; convoysTurn(c);
+    expect(folkOf(c, z.id).stores.food).toBe(had + 400); // unpaved: what was loaded
     c.factions[0].studies = ['pavedroads'];
     expect(paved(c, 0)).toBe(true);
-    sendConvoy(c, 0, a.id, z.id, { food: 300 });
-    expect(folkOf(c, z.id).stores.food).toBe(had + 300); // there already
-    expect(onTheRoad(c, 0)).toHaveLength(1); // and the one sent before it is still on the road, untouched
-    expect(c.log.at(-1)).toContain('come in');
+    expect(pavedLoad(c, 0, 400)).toBe(400 * ROADS.load);
+    expect(pavedLoad(c, 1, 400)).toBe(400);
+    const left = folkOf(c, a.id).stores.food;
+    sendConvoy(c, 0, a.id, z.id, { food: 400, wood: 100 });
+    expect(folkOf(c, a.id).stores.food).toBe(left - 400); // the giver gives what it loaded, no more
+    expect(onTheRoad(c, 0)).toHaveLength(1); // on the way until the season turns
+    expect(folkOf(c, z.id).stores.food).toBe(had + 400);
     c.turn++; convoysTurn(c);
-    expect(folkOf(c, z.id).stores.food).toBe(had + 700);
-    // Met on the way as any convoy may be.
-    let stopped = 0;
-    for (let seed = 1; seed <= 40; seed++) {
-      const r = road(seed); r.c.factions[0].studies = ['pavedroads'];
-      const before = folkOf(r.c, r.z.id).stores.food;
-      sendConvoy(r.c, 0, r.a.id, r.z.id, { food: 1000 });
-      if (folkOf(r.c, r.z.id).stores.food < before + 1000) stopped++;
-      expect(onTheRoad(r.c, 0)).toHaveLength(0);
-    }
-    expect(stopped).toBeGreaterThan(15);
+    expect(folkOf(c, z.id).stores.food).toBe(had + 400 + 400 * ROADS.load);
+    expect(folkOf(c, z.id).stores.wood).toBe(wood + 100); // only the food goes further
   });
 });
