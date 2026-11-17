@@ -18,7 +18,7 @@
 // The numbers are first guesses.
 import type { Campaign } from './campaign';
 import { roadBetween, sendFamily, sendSettlers } from './convoys';
-import { settleable } from './founding';
+import { FOUNDING, settleable, wayOut } from './founding';
 import { wilderness } from './wilds';
 import { roomOf } from './seasonfolk';
 import { PLENTY } from './plenty';
@@ -142,11 +142,13 @@ export function migrationSeason(c: Campaign): Move[] {
  */
 export function movesReport(c: Campaign, f: number, since: number): string[] {
   const ms = (c.moves ?? []).filter((m) => m.owner === f && (m.turn ?? 0) > since);
-  if (!ms.length) return [];
   const at = (id: number): string => c.territories[id]?.name ?? 'a town';
+  // Towns founded since: settlers came in (founding.ts claimLand).
+  const made = c.territories.filter((t) => t.owner === f && t.foundedBy && t.foundedBy.turn > since).map((t) => `Settlers from ${at(t.foundedBy!.from)} have founded ${t.name}.`);
+  if (!ms.length) return made;
   const founded = ms.filter((m) => m.found).slice(0, 2), others = ms.filter((m) => !m.found);
   const named = others.filter((m) => m.name).slice(0, 2), rest = others.filter((m) => !named.includes(m));
-  const lines = founded.map((m) => `Settlers set out from ${at(m.from)} to found a town at ${at(m.to)}.`);
+  const lines = [...made, ...founded.map((m) => `Settlers set out from ${at(m.from)} to found a town at ${at(m.to)}.`)];
   lines.push(...named.map((m) => `${m.name} and ${m.female ? 'her' : 'his'} household left ${at(m.from)} for ${at(m.to)}, since ${WHY[m.why]}.`));
   if (rest.length) lines.push(rest.length === 1 ? `A family left ${at(rest[0].from)} for ${at(rest[0].to)}, since ${WHY[rest[0].why]}.` : `${rest.length} families moved between your towns: ${[...new Set(rest.map((m) => at(m.from)))].join(', ')} to ${[...new Set(rest.map((m) => at(m.to)))].join(', ')}.`);
   return lines;
@@ -164,7 +166,9 @@ export function settleBar(c: Campaign, f: number, from: number, to: number): str
   const founding = settleable(c, to);
   if (!founding && (b.owner !== f || b.horde)) return b.horde || (c.bands ?? []).some((x) => x.at === to) ? `${b.name} is held by a band: it cannot be settled until it is cleared.` : 'Settlers go to a town of your people\'s, or to an empty land beside your own.';
   if (from === to) return 'Settlers go from one town to another.';
-  if (founding ? !b.adj.some((n) => c.territories[n].owner === f) : !roadBetween(c, f, from, to)) return founding ? `${b.name} is not beside your own lands.` : 'There is no road through your own lands between them, nor a sea lane from a Harbour.';
+  if (founding ? !wayOut(c, f, to) : !roadBetween(c, f, from, to)) return founding ? `${b.name} is too far: settlers cross at most ${FOUNDING.reach - 1} lands with nobody on them beyond your own to reach it.` : 'There is no road through your own lands between them, nor a sea lane from a Harbour.';
+  const way = founding ? wayOut(c, f, to) : null;
+  if (way && way.gate !== from && !roadBetween(c, f, from, way.gate)) return `There is no road through your own lands from ${a.name} toward ${b.name}.`;
   const k = folkOf(c, from), n = MIGRATE.settlers;
   if (k.men < n + 1 || k.women < n + 1 || k.men + k.women + k.elders - 2 * n < MIGRATE.keep) return `${a.name} cannot spare ${n} families: a town keeps ${MIGRATE.keep} grown people and a couple.`;
   if (founding) return '';
@@ -187,13 +191,17 @@ export function settle(c: Campaign, f: number, from: number, to: number): string
     if (c.moves.length > MIGRATE.kept) c.moves.splice(0, c.moves.length - MIGRATE.kept);
   }
   if (f === 0) c.log.push(founding
-    ? `${people} settlers have set out from ${c.territories[from].name} with food and timber to found a town on the empty land at ${c.territories[to].name}; they will be there next season.`
+    ? `${people} settlers have set out from ${c.territories[from].name} with food and timber to found a town on the empty land at ${c.territories[to].name}; they will be there ${seasonsTo(c, f, to) > 1 ? `in ${seasonsTo(c, f, to)} seasons` : 'next season'}.`
     : `${people} settlers have set out from ${c.territories[from].name} to make their homes in ${c.territories[to].name}; they will be there next season.`);
   return '';
 }
 
 /** Empty lands beside a people's own (founding.ts), where its settlers could found a town. */
-export const freeLands = (c: Campaign, f: number): number[] => c.territories.filter((t) => settleable(c, t.id) && t.adj.some((n) => c.territories[n].owner === f)).map((t) => t.id);
+export const freeLands = (c: Campaign, f: number): number[] => c.territories
+  .map((t) => ({ id: t.id, way: settleable(c, t.id) ? wayOut(c, f, t.id) : null }))
+  .filter((x) => x.way).sort((a, b) => a.way!.through.length - b.way!.through.length || a.id - b.id).map((x) => x.id);
+/** Seasons settlers take to reach an empty land, a season a land beyond the people's own; 0 if they cannot. */
+export const seasonsTo = (c: Campaign, f: number, to: number): number => wayOut(c, f, to)?.through.length ?? 0;
 
 /**
  * A crowded town sends settlers to found a town on an empty land beside its people's, now and then (MIGRATE.found): a

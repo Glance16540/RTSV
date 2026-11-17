@@ -1,6 +1,7 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
 import { inTime } from '../sim/inyears';
+import { nobodyThere } from '../sim/founding'; // a land with nobody on it is not marched on
 import { inRuin, ruinWords } from '../sim/ruin';
 import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
@@ -208,7 +209,7 @@ export class Overworld {
     const c = this.c;
     if (c.phase !== 'player' || c.pending) return;
     const army = armyAt(c, this.sel);
-    if (army && army.owner === 0 && !army.moved && tid !== this.sel && reach(c, this.sel).includes(tid)) {
+    if (army && army.owner === 0 && !army.moved && tid !== this.sel && reach(c, this.sel).includes(tid) && !nobodyThere(c, tid)) {
       const march = () => {
         moveArmy(c, army.id, tid);
         if (!c.pending) this.sel = tid; // marched into friendly land
@@ -374,7 +375,7 @@ export class Overworld {
     const c = this.c;
     const army = armyAt(c, this.sel);
     const canMarch = c.phase === 'player' && !!army && army.owner === 0 && !army.moved;
-    const reach = new Set(canMarch ? reachOf(c, this.sel) : []);
+    const reach = new Set(canMarch ? reachOf(c, this.sel).filter((id) => !nobodyThere(c, id)) : []);
     if (this.map3d) this.map3d.sync(c, this.sel, reach);
     else { this.paint(reach, false); this.frame(); }
     this.renderSide(canMarch);
