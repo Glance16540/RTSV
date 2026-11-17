@@ -12,14 +12,22 @@
 // The player learns only what he could learn of: a story's end in a town that lies beside his own lands, or one of his
 // ally's, is told in a line and kept in the chronicle (`heard`); the rest is the rival's own business.
 //
-// The threat, the suitor and the plot (courtstory.ts) are the leader's own house's, written for the player's house;
-// they come to the rivals' houses when courtstory.ts takes the house it is about (not yet).
+// The threat, the suitor and the plot (courtstory.ts) come to a rival ruler's own house too, by the same chances drawn apart
+// from the player's (courtBeginFor), and only other rival peoples are in them, never the player. He answers them by his
+// lights too:
+//   - a threat from another king: a holy ruler defies it, one in the middle buys him off if he can, a worldly or decadent
+//     one sends the spouse over the border; defied, he keeps a guard about him if he can pay for it;
+//   - a suitor for a grown daughter: he asks her first, gives her if she is willing, and otherwise declines with gifts
+//     if he can, or sends the suitor off;
+//   - a plot: informers if he can pay, gifts to the nobles while several are spoken of; the plotter found, a ruler of any
+//     creed short of worldly pardons, a worldly or decadent one puts to death.
 //
 // One call a season (campaign.ts), after the player's own stories. Children are never in these stories, and never harmed.
 import type { Campaign } from './campaign';
 import { INTRIGUE, beginKiller, beginThief, choicesFor, choose, openIntrigues, strained, suspected } from './intrigue';
 import type { Intrigue } from './intriguebase';
 import { chance, ofTown } from './intriguebase';
+import { courtBeginFor } from './courtstory';
 import { folkOf, grown, TOWN_SCALE } from './township';
 import { faithAt } from './townfaith';
 import { creedOf } from './creed';
@@ -56,9 +64,20 @@ export function rivalBegin(c: Campaign): Intrigue[] {
 
 /** What a rival ruler does about one of his stories now, by his own lights: a choice, or null to let it run. */
 export function judge(c: Campaign, it: Intrigue): string | null {
-  if (it.ended || it.owner <= 0 || !ofTown(it)) return null;
+  if (it.ended || it.owner <= 0) return null;
   const can = choicesFor(c, it), has = (id: string): boolean => can.some((x) => x.id === id && !x.bar);
-  const creed = creedOf(faithAt(c, it.at)).id;
+  const creed = creedOf(faithAt(c, it.at)).id, holy = creed === 'zealous' || creed === 'devout', worldly = creed === 'worldly' || creed === 'decadent';
+  if (it.kind === 'rival') {
+    if (it.stage === 1) return holy ? 'defy' : worldly ? 'yield' : has('buy') ? 'buy' : 'defy';
+    return it.stage === 2 && has('watch') ? 'watch' : null;
+  }
+  if (it.kind === 'suitor') return !it.asked ? 'ask' : it.willing ? 'give' : has('decline') ? 'decline' : 'spurn';
+  if (it.kind === 'plot') {
+    if (it.found) return worldly ? 'death' : 'pardon';
+    if (has('watch')) return 'watch';
+    const spoken = (it.nobles ?? []).length - it.cleared.length;
+    return spoken > 2 && !it.sweetened && has('gifts') ? 'gifts' : null;
+  }
   if (it.kind === 'thief' && it.caught !== undefined && it.thief) {
     const why = it.why ?? 'greed', need = why === 'hunger' || why === 'widow';
     if (creed === 'zealous' || creed === 'devout') return need ? 'pardon' : 'work';
@@ -96,5 +115,7 @@ export function rivalStoriesSeason(c: Campaign): Intrigue[] {
     c.log.push(line);
     (c.chronicle ??= []).push({ turn: c.turn, text: line });
   }
-  return rivalBegin(c);
+  const began = rivalBegin(c);
+  for (const x of c.factions) if (x.alive && x.isAI) began.push(...courtBeginFor(c, x.id)); // a rival ruler's own house
+  return began;
 }

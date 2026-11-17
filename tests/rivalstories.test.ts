@@ -66,3 +66,36 @@ describe('the rivals\' stories', () => {
     expect(heard(c, it)).toBe(true);
   });
 });
+
+describe('a rival ruler\'s own house', () => {
+  it('has the threat, the suitor and the plot, with only other rival peoples in them, answered by his lights', async () => {
+    const { COURT, beginRival, beginSuitor, courtBeginFor } = await import('../src/sim/courtstory');
+    const { kinOf } = await import('../src/sim/kin');
+    const { houseOf } = await import('../src/sim/dynasty');
+    const c = newCampaign(7, 2, 1, 'hearth');
+    c.fronts = []; c.turn = COURT.from + 4;
+    kinOf(c, 1);
+    // A threat: from the other rival, at the rival's own seat.
+    const threat = beginRival(c, 2, { owner: 1 })!;
+    expect(threat).toBeTruthy();
+    expect(threat.owner).toBe(1);
+    expect(threat.rival).toBe(2);
+    expect(c.territories[threat.at].owner).toBe(1);
+    expect(c.log.some((l) => l.includes(threat.cast!.king!))).toBe(false); // the player is not told of another's house
+    threat.stage = 1;
+    c.territories[threat.at].virtue = 60;
+    expect(judge(c, threat)).toBe('defy');
+    c.territories[threat.at].virtue = -80;
+    expect(judge(c, threat)).toBe('yield');
+    // A suitor, for a grown daughter of the rival's house: asked first, given if she is willing.
+    const h = houseOf(c, 1);
+    h.heirs.push({ name: 'Wenna', female: true, born: c.turn - 100 });
+    const suitor = beginSuitor(c, 2, { owner: 1 })!;
+    expect(suitor.owner).toBe(1);
+    expect(judge(c, suitor)).toBe('ask');
+    suitor.asked = true; suitor.willing = true;
+    expect(judge(c, suitor)).toBe('give');
+    // Rival peoples never cast the player in their stories.
+    for (let i = 0; i < 40; i++) { c.turn++; for (const it of courtBeginFor(c, 1)) { expect(it.owner).toBe(1); expect(it.rival).not.toBe(0); } }
+  });
+});
