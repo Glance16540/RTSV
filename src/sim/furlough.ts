@@ -21,6 +21,7 @@
 import type { Game, Unit } from './game';
 import { SEASONS_A_YEAR, ageFor, yearsOf } from './ageing';
 import { comeHome } from './leavehome';
+import { companyOf, isCompanyOf, leadAgain } from './soldiernames';
 
 /** A man of the town away with the army that stands in it. */
 export interface AwayMan { name: string; family?: string; /** His age in seasons, as the army's roll keeps it. */ seasons: number }
@@ -56,9 +57,11 @@ export function goHome(g: Game, owner: number, ids: number[]): number {
   for (const id of ids) {
     const u = g.entities.get(id);
     if (!u || u.kind !== 'unit' || u.dead || !mayGoHome(g, u)) continue;
-    const per = f.per[u.type], man = f.men.shift()!;
-    // The rest of his company: the nearest soldiers of his kind.
-    const rest = g.units.filter((x) => x.id !== u.id && x.type === u.type && ofArmy(g, x, owner)).sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y) || a.id - b.id).slice(0, per - 1);
+    // The man whose company this soldier is (soldiernames.ts), else the next on the list.
+    const key = companyOf(u), at = f.men.findIndex((m) => isCompanyOf(key, m));
+    const per = f.per[u.type], man = f.men.splice(at >= 0 ? at : 0, 1)[0];
+    // The rest of his company: his own following first, then the nearest soldiers of his kind.
+    const rest = g.units.filter((x) => x.id !== u.id && x.type === u.type && ofArmy(g, x, owner)).sort((a, b) => Number(!!key && companyOf(b) === key) - Number(!!key && companyOf(a) === key) || Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y) || a.id - b.id).slice(0, per - 1);
     const { x, y, type } = u;
     for (const s of [u, ...rest]) quit(g, s);
     const v = g.spawnUnit('villager', owner, x, y, 'm');
@@ -85,7 +88,9 @@ export function rejoin(g: Game, owner: number, ids: number[]): number {
     f.men.push({ name: v.name, ...(v.family ? { family: v.family } : {}), seasons: seasonsOf(v) });
     g.msg(owner, `${v.name}${v.family ? ` ${v.family}` : ''} has taken up his arms again.`);
     quit(g, v);
-    for (let i = 0; i < per; i++) g.spawnUnit(as, owner, x + (i % 2) * 0.6, y + Math.floor(i / 2) * 0.6);
+    const company: Unit[] = [];
+    for (let i = 0; i < per; i++) company.push(g.spawnUnit(as, owner, x + (i % 2) * 0.6, y + Math.floor(i / 2) * 0.6));
+    leadAgain(g, owner, company, v.name, v.family ?? ''); // under his own name again (soldiernames.ts)
     n++;
   }
   return n;

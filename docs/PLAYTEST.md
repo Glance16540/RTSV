@@ -570,6 +570,10 @@ Harrowdale fell with the army. He was Marn Ironwood." And a man on the roll chan
 (the man of his house)" before the defence, "Edric Oakes" after it, when a clubman called Edric was acclaimed on the
 field. Which soldier is which man is still not kept (the board's gap under *Home on leave*).
 
+*Fixed after the pass (soldiernames.ts):* each company of an army is led on the field by the man of its roll, by his
+name and house; the men whose soldiers went down are the ones the map counts lost, first, dead or home hurt; and the
+man of a house keeps his name when a soldier is acclaimed or makes his name on the field.
+
 ### 4.10 Small words (low)
 
 "Malians marches with a strength of 5.4"; "Malians attacked Harrowdale and was thrown back"; the end card of a siege
@@ -613,4 +617,4 @@ town has fallen", "The assault has failed" (battlecard.ts verdictOf, told by bri
 | 4.6 "+8 each turn" | food and stores session |
 | 4.7 three figures for a town's defence | threats session |
 | 4.8, 4.10 the card's and the reports' small words | fixed (the strength of 4.8's third line is for the threats session) |
-| 4.9 which soldier is which man | armies session, when it is given |
+| 4.9 which soldier is which man | fixed (soldiernames.ts) |

@@ -7,6 +7,7 @@
  *
  * A company still marches if its town cannot man it in full: the shortfall are men of no town (see the board).
  */
+import { downIn } from './soldiernames';
 import type { Army, Campaign } from './campaign';
 import { agesOf, countFrom, GROWN_SEASON, GROWN_YEARS, OLD_SEASON, LAST_SEASON } from './ageing';
 import { awayFrom, cameHome, enlist, fell, levelArmies, settleHouses } from './warhouse';
@@ -250,7 +251,7 @@ export function reckonArmies(c: Campaign): Fallen[] {
     if (now >= m.size) { m.size = now; continue; }
     const men = total(m), dead = a ? Math.min(men, Math.round((men * (m.size - now)) / m.size)) : men;
     // Who falls is drawn by lot from every man with the army, so each town bears its share.
-    const pool = Object.entries(m.men).flatMap(([tid, l]) => l.map((_, i) => ({ tid, i, lot: hash(c.seed * 7 + id * 131 + Number(tid), c.turn * 31 + i) }))).sort((p, q) => p.lot - q.lot).slice(0, dead);
+    const pool = Object.entries(m.men).flatMap(([tid, l]) => { const down = downIn(c, id, Number(tid)); return l.map((_, i) => ({ tid, i, first: i < down ? 0 : 1, lot: hash(c.seed * 7 + id * 131 + Number(tid), c.turn * 31 + i) })); }).sort((p, q) => p.first - q.first || p.lot - q.lot).slice(0, dead); // the towns of those who went down on the field just fought first (soldiernames.ts)
     const byTown: Record<string, Set<number>> = {};
     for (const p of pool) (byTown[p.tid] ??= new Set()).add(p.i);
     const owner = a?.owner ?? m.owner;
