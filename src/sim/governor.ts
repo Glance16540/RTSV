@@ -24,6 +24,7 @@ import { infirmaryWanted } from './infirmary';
 import { ACTS } from './acts';
 import { buildPace } from './ownstudies';
 import { PLENTY, canSpare } from './plenty'; // what a town may spend, one rule for every purchase
+import { focusWork, forbids, keepTimes, raiseFor } from './townorders'; // the player's standing orders
 
 /** The last orders a town was given. `work`: how many of its people were at each kind of work. `turn`: when they were given. */
 export interface Orders { work?: Stores; build?: string[]; train?: string[]; turn: number }
@@ -72,7 +73,7 @@ export function keepOrders(c: Campaign, tid: number, x: Partial<Orders> | null |
 /** Where a town's people work, as shares that add to one: by its last orders, or as a governor would set them. */
 export function workOf(t: Territory): Stores {
   const w = t.orders?.work, all = w ? units(w) : 0;
-  if (!w || !all) return { ...GOVERN.work };
+  if (!w || !all) return focusWork(t) ?? { ...GOVERN.work }; // what the player has the governor put first (townorders.ts)
   return { food: w.food / all, wood: w.wood / all, gold: w.gold / all, stone: w.stone / all };
 }
 
@@ -122,7 +123,7 @@ export function shareOf(c: Campaign, tid: number): { share: Stores; fields: bool
   return { share, fields: true };
 }
 
-export interface Governed { at: number; fields: boolean; finished: string[]; began?: string }
+export interface Governed { at: number; fields: boolean; finished: string[]; began?: string; /** Begun by the player's standing orders (townorders.ts). */ ordered?: boolean }
 /**
  * A season in one town left to itself: its people are set to their work (what it brings in is harvest.ts's, what
  * they eat larder.ts's); what stood half built is taken further; and where the town is in want the governor
@@ -144,11 +145,12 @@ export function governTown(c: Campaign, tid: number): Governed | null {
   });
   // One thing a season, by need: bread first, then a roof, then a wall.
   const civ = c.factions[t.owner].civ, room = t.buildings.length < slots(t);
-  const afford = (site: string): boolean => units(f.stores) - siteCost(t, site, civ) * 100 >= GOVERN.floor;
+  const keep = keepTimes(t); // how much the player has him keep in store before he spends (townorders.ts)
+  const afford = (site: string): boolean => units(f.stores) - siteCost(t, site, civ) * 100 >= GOVERN.floor * keep;
   // The food and health works (granary.ts, mill.ts, well.ts, infirmary.ts) stand on the town's record (townworks.ts), not
   // in the land's places, and are bought only out of plenty (plenty.ts, the one rule for every work and study bought).
   const farmed = t.buildings.includes('farm');
-  const ample = (type: string): boolean => canSpare(c, tid, BUILDINGS[type]?.cost ?? {}, { wants: want });
+  const ample = (type: string): boolean => !forbids(t, type) && canSpare(c, tid, BUILDINGS[type]?.cost ?? {}, { wants: want, times: PLENTY.works * keep });
   // Begun as townworks.ts begins one (raiseWork), here, so that the governor and the works need not import each other.
   const work = (type: string): boolean => {
     const b = BUILDINGS[type], at = b && ample(type) && ageOf(c, t.owner) >= b.age && t.town?.b?.length && STORE_KINDS.every((k) => f.stores[k] >= (b.cost[k] ?? 0)) ? plotFor(t, type) : null;
@@ -158,19 +160,21 @@ export function governTown(c: Campaign, tid: number): Governed | null {
     return true;
   };
   const pay = (goods: number): void => { let left = goods; for (const k of [...STORE_KINDS].sort((a, b) => f.stores[b] - f.stores[a])) { const part = Math.min(f.stores[k], k === 'food' ? 0 : left); f.stores[k] -= part; left -= part; } if (left > 0) f.stores.food = Math.max(0, f.stores.food - left); };
-  if (want.food && !t.buildings.includes('farm') && room && afford('farm')) { pay(siteCost(t, 'farm', civ) * 100); t.buildings.push('farm'); out.began = 'farm'; }
-  else if (want.roof && !t.town!.b.some((x) => x[0] === 'house' && x[4] !== undefined)) {
+  if (want.food && !t.buildings.includes('farm') && !forbids(t, 'farm') && room && afford('farm')) { pay(siteCost(t, 'farm', civ) * 100); t.buildings.push('farm'); out.began = 'farm'; }
+  else if (want.roof && !forbids(t, 'house') && !t.town!.b.some((x) => x[0] === 'house' && x[4] !== undefined)) {
     const cost = BUILDINGS.house.cost, at = plotFor(t, 'house');
-    if (at && STORE_KINDS.every((k) => f.stores[k] >= (cost[k] ?? 0) + GOVERN.spare)) {
+    if (at && STORE_KINDS.every((k) => f.stores[k] >= (cost[k] ?? 0) + GOVERN.spare * keep)) {
       for (const k of STORE_KINDS) f.stores[k] -= cost[k] ?? 0;
       t.town!.b.push(['house', at.cx, at.cy, 0.01, 0]); out.began = 'house';
     }
-  } else if (want.wall && room && afford('fortress')) { pay(siteCost(t, 'fortress', civ) * 100); t.buildings.push('fortress'); out.began = 'fortress'; }
+  } else if (want.wall && !forbids(t, 'fortress') && room && afford('fortress')) { pay(siteCost(t, 'fortress', civ) * 100); t.buildings.push('fortress'); out.began = 'fortress'; }
   else if (farmed && millWanted(c, tid, want.food) && work('mill')) out.began = 'mill'; // mill.ts
   else if (farmed && wellWanted(c, tid, crowdOf(c, tid, ACTS.crowd)) && work('well')) out.began = 'well'; // well.ts
   else if (farmed && infirmaryWanted(c, tid) && work('infirmary')) out.began = 'infirmary'; // infirmary.ts
   else if (farmed && granaryWanted(c, tid) && work('granary')) out.began = 'granary'; // granary.ts
-  if (mine && out.began) c.log.push(out.began === 'house' ? `The governor of ${t.name} has begun a house: there are couples there with no roof.` : `The governor of ${t.name} has ${['granary', 'mill', 'well', 'infirmary'].includes(out.began) ? 'begun' : 'raised'} ${out.began === 'farm' ? 'Farmland: food was running short' : out.began === 'granary' ? 'a Granary: the town has known hunger' : out.began === 'mill' ? 'a Mill: food was running short' : out.began === 'well' ? 'a Well: plague has been near a crowded town' : out.began === 'infirmary' ? 'an Infirmary: the town has had plague or grief' : 'a Fortress: the town was raided'}, out of the town's own stores.`);
+  else if (raiseFor(t) && !t.buildings.includes(raiseFor(t)!) && room && canSpare(c, tid, {}, { wants: want, times: PLENTY.works * keep, fields: false }) && afford(raiseFor(t)!)) { const r = raiseFor(t)!; pay(siteCost(t, r, civ) * 100); t.buildings.push(r); out.began = r; out.ordered = true; } // what the player has him put first (townorders.ts)
+  if (mine && out.began && out.ordered) c.log.push(`By your orders the governor of ${t.name} has raised ${out.began === 'farm' ? 'Farmland' : out.began === 'fortress' ? 'a Fortress' : out.began === 'church' ? 'a Church' : out.began === 'barracks' ? 'Barracks' : out.began}, out of the town's own stores.`);
+  else if (mine && out.began) c.log.push(out.began === 'house' ? `The governor of ${t.name} has begun a house: there are couples there with no roof.` : `The governor of ${t.name} has ${['granary', 'mill', 'well', 'infirmary'].includes(out.began) ? 'begun' : 'raised'} ${out.began === 'farm' ? 'Farmland: food was running short' : out.began === 'granary' ? 'a Granary: the town has known hunger' : out.began === 'mill' ? 'a Mill: food was running short' : out.began === 'well' ? 'a Well: plague has been near a crowded town' : out.began === 'infirmary' ? 'an Infirmary: the town has had plague or grief' : 'a Fortress: the town was raided'}, out of the town's own stores.`);
   if (mine && out.finished.length) c.log.push(`${out.finished.map((b) => `The ${BUILDINGS[b]?.name.toLowerCase() ?? b}`).join(' and ')} begun at ${t.name} ${out.finished.length === 1 ? 'is' : 'are'} finished.`);
   if (mine && out.fields) c.log.push(`Food is short at ${t.name}: the governor has sent more of its people to the fields.`);
   return out;

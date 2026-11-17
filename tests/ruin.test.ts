@@ -10,7 +10,7 @@ import { epilogue } from '../src/sim/story';
 const world = (held: number, hordes: number) => {
   const c = newCampaign(7, 2, 1);
   c.bands = [];
-  c.territories.forEach((t, i) => { t.horde = false; t.owner = i < held ? i % 3 : -1; if (i >= held && i < held + hordes) t.horde = true; });
+  c.territories.forEach((t, i) => { delete t.wild; /* no wilderness here: these are read over the whole map (the wilderness is tests/ruinwilds.test.ts) */ t.horde = false; t.owner = i < held ? i % 3 : -1; if (i >= held && i < held + hordes) t.horde = true; });
   return c;
 };
 /** Turn so many seasons with nothing changing hands. */
