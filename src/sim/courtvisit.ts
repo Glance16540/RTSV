@@ -10,17 +10,26 @@ import type { Campaign } from './campaign';
 import { heroFor } from './campaignbase';
 import { intriguesAt } from './intrigue';
 import { courtChoices, courtChoose, shownTrue } from './courtstory';
+import type { Intrigue } from './intriguebase';
 import { FIELD_ANSWERS, type FieldCourt, type FieldCourtOut } from './courtfield';
 
-/** The player's open story of the house in this town, if the court is kept here: undefined otherwise. */
-function courtAt(c: Campaign, tid: number) {
-  return intriguesAt(c, tid).find((x) => x.owner === 0 && (x.kind === 'rival' || x.kind === 'suitor' || x.kind === 'plot'));
+/** The player's open stories of the house in this town, if the court is kept here: all that are afoot at once. */
+function courtsAt(c: Campaign, tid: number) {
+  return intriguesAt(c, tid).filter((x) => x.owner === 0 && (x.kind === 'rival' || x.kind === 'suitor' || x.kind === 'plot'));
 }
 
-/** The player's story of the house as the field takes it, or undefined. */
+/**
+ * The player's stories of the house as the field takes them, or undefined: the first, with the others afoot at once
+ * riding in it (`also`), so that an envoy, a suitor and a plot are all in the town together.
+ */
 export function courtForVisit(c: Campaign, tid: number): FieldCourt | undefined {
-  const it = courtAt(c, tid);
-  if (!it) return undefined;
+  const all = courtsAt(c, tid).map((it) => one(c, it)).filter((x): x is FieldCourt => !!x).map((x) => ({ ...x, turn: c.turn }));
+  if (!all.length) return undefined;
+  const [first, ...rest] = all;
+  return rest.length ? { ...first, also: rest } : first;
+}
+/** One story as the field takes it; a plot already laid bare waits on the map's judgement and brings nothing. */
+function one(c: Campaign, it: Intrigue): FieldCourt | undefined {
   if (it.kind === 'plot') {
     if (it.found || !it.nobles?.length) return undefined;
     return { id: it.id, kind: 'plot', answers: [], nobles: it.nobles.map((n) => ({ name: n.name, title: n.title, female: n.female })), culprit: it.culprit, cleared: [...it.cleared], ...(it.watch ? { informers: true } : {}) };
@@ -43,11 +52,18 @@ export function courtForVisit(c: Campaign, tid: number): FieldCourt | undefined 
   };
 }
 
-/** Write what came of the story on the field back to it on the map. Returns whether anything changed. */
+/** Write what came of the stories on the field back to them on the map, each checked. Returns whether anything changed. */
 export function courtFromVisit(c: Campaign, tid: number, out: unknown): boolean {
   if (!out || typeof out !== 'object') return false;
-  const o = out as Partial<FieldCourtOut>, it = courtAt(c, tid);
-  if (!it || it.id !== o.id) return false;
+  const o = out as Partial<FieldCourtOut>, also = Array.isArray(o.also) ? o.also.slice(0, 8) : [];
+  let any = false;
+  for (const x of [o, ...also]) any = backOne(c, tid, x) || any;
+  return any;
+}
+function backOne(c: Campaign, tid: number, out: unknown): boolean {
+  if (!out || typeof out !== 'object') return false;
+  const o = out as Partial<FieldCourtOut>, it = courtsAt(c, tid).find((x) => x.id === o.id);
+  if (!it) return false;
   let any = false;
   if (it.kind === 'plot') {
     if (!Array.isArray(o.cleared)) return false;
