@@ -12,6 +12,7 @@ import type { Game, Gender, Unit } from './game';
 import { homeRecord } from './household';
 import { homeMade } from './notableweight';
 import { Census, MAX_KIND, PeopleIn } from './township';
+import { unfieldedSide } from './writeguard';
 
 /** A town's own people take the field in place of four founders: its men, its women and its old, the notable among them by name. */
 export function peopled(g: Game, owner: number, people: PeopleIn, st: { x: number; y: number }, dir: number): void {
@@ -91,6 +92,7 @@ export function censusOf(g: Game, owner: number): Census {
     for (const c of b.captives ?? []) if (c.from === owner) out.taken!++;
   }
   out.named = out.named!.sort((a, b) => (b.kids ?? 0) - (a.kids ?? 0) || a.name.localeCompare(b.name)).slice(0, 12);
+  if (unfieldedSide(g, owner)) out.unfielded = true; // its town's people were never set on the field (writeguard.ts)
   return out;
 }
 /** A town's children as the campaign sent them, set down at the ages its record has them. */

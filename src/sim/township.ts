@@ -14,6 +14,7 @@ import { homeDeed, standingWith } from './notableweight';
 import { Ages, OLD_SEASON, agesOf, cleanAges, countFrom } from './ageing';
 import { cleanHome, homeCounts, joinAges, needsOf, splitField } from './fieldcap';
 import { tally } from './ledger';
+import { keptAsWas, unfieldedOf } from './writeguard';
 
 export interface Stores { food: number; wood: number; gold: number; stone: number }
 export const STORE_KINDS = ['food', 'wood', 'gold', 'stone'] as const;
@@ -127,6 +128,7 @@ export function cleanCensus(x: Partial<Census> | null | undefined): Census | und
     ...(Array.isArray(x.widowed) ? { widowed: cleanWidows(x.widowed) } : {}),
     ...(Array.isArray(x.orphans) ? { orphans: cleanOrphans(x.orphans) } : {}),
     ...(cleanAges(x.ages) ? { ages: cleanAges(x.ages) } : {}),
+    ...unfieldedOf(x), // its people were never on the field (writeguard.ts)
   };
 }
 
@@ -143,6 +145,7 @@ export interface Reckoning { before: number; after: number; taken: number; lost:
  */
 export function settleFolk(c: Campaign, tid: number, census: Census, opts: { taken?: boolean } = {}): Reckoning {
   const t = c.territories[tid], f = folkOf(c, tid), before = headcount(f);
+  if (keptAsWas(c, tid, f, census, before)) return { before, after: before, taken: 0, lost: [], made: [] }; // its people were never on the field (writeguard.ts)
   f.men = census.men; f.women = census.women; f.elders = census.elders; f.children = census.children;
   // Everyone at the age the battle found them (ageing.ts), where it counted them so.
   const ages = cleanAges(census.ages);

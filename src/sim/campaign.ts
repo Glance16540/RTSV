@@ -1037,7 +1037,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
   .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
   .on('housed', 'queuedmen', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepQueued(c, p.to, b.after?.orders?.men); }) // and the men in its queues are remembered with them
-  .on('housed', 'roofs', (c, p, b) => { if (p.mode !== 'field') keepRoofs(c, p.to, b.after?.folk?.roofs); }) // who lived where as it ended (roofsmap.ts)
+  .on('housed', 'roofs', (c, p, b) => { if (p.mode !== 'field' && !b.after?.folk?.unfielded) keepRoofs(c, p.to, b.after?.folk?.roofs); }) // who lived where as it ended (roofsmap.ts)
   .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
 
 // What only the hub can do is lent to the systems below it (campaignbase.ts): they call it there, and import nothing from here.
@@ -1565,7 +1565,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
-  note.census = !!census;
+  note.census = !!census && !census.unfielded; // a count of a town never on the field is not the town (writeguard.ts): nothing after reads it as such
   BATTLE_HOOKS.run('housed', c, p, note); // the town's people and stores are as the battle left them
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
   if (known && mine && !c.armies.includes(mine)) loseVeteran(c, 0, known);
