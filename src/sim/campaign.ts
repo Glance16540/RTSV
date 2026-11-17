@@ -27,6 +27,7 @@ import { orphansSeason } from './orphans';
 import { deputyAt, kinSeasons } from './kin';
 import { noblesSeasons } from './nobles';
 import { nobleActsSeasons } from './nobleacts';
+import { temperSeasons } from './nobletemper';
 import { marchMargin, treatLean, weighSeasons } from './nobleweigh';
 import { widowsSeason } from './widowhood';
 import { studiedHome, studiesSeason, withStudies } from './studies';
@@ -1217,6 +1218,7 @@ export function continueAI(c: Campaign): void {
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       kinSeasons(c); // the leaders' households and inner circles (kin.ts)
       noblesSeasons(c); // who is noble, and how they feel (nobles.ts)
+      temperSeasons(c); // war, a quiet year, the leader's presence or neglect, taxes move them (nobletemper.ts)
       nobleActsSeasons(c); // a content lord helps in need, an angry one withholds or joins a plot (nobleacts.ts)
       weighSeasons(c); // a computer-led ruler deals with its angriest lord (nobleweigh.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
