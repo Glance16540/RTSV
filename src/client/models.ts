@@ -1299,6 +1299,7 @@ export function makeBuilding(type: string, color: number, age: number, civ = '',
   return g;
 }
 
+let berryLeaf: THREE.MeshToonMaterial | null = null;
 export function makeResource(type: string, seed: number): THREE.Group {
   made.clear();
   figure = false;
@@ -1325,7 +1326,7 @@ export function makeResource(type: string, seed: number): THREE.Group {
     }
   } else if (type === 'berries') {
     // A thicket of leaf clusters, with the fruit showing among them.
-    const bm = new THREE.MeshToonMaterial({ color: 0x3e8a38, vertexColors: true });
+    const bm = (berryLeaf ??= new THREE.MeshToonMaterial({ color: 0x3e8a38, vertexColors: true })); // one for every bush, so they can be drawn together
     const b = new THREE.Mesh(geo('berrybush' + (seed % 3), () => bush(20 + (seed % 3)).scale(2.1, 2.0, 2.1)), bm);
     b.castShadow = b.receiveShadow = true;
     b.rotation.y = r(3) * 6.28;
