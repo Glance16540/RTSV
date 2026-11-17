@@ -101,7 +101,7 @@ const truce = (c: Campaign, f: number, turns: number): void => { c.truces = c.tr
 const rivals = (c: Campaign): number[] => c.factions.filter((f) => f.id > 0 && f.alive && f.isAI && c.ally !== f.id).map((f) => f.id);
 const running = (c: Campaign): boolean => (c.intrigues ?? []).some((x) => (x.kind === 'rival' || x.kind === 'suitor' || x.kind === 'plot') && x.owner === 0 && (!x.ended || c.turn - x.ended.turn < COURT.rest));
 /** A grown daughter of the leader's house, if there is one. Never a child. */
-export const daughterOfAge = (c: Campaign): { name: string } | undefined => houseOf(c, 0).heirs.find((h) => h.female && ofAge(c, h));
+export const daughterOfAge = (c: Campaign): { name: string } | undefined => houseOf(c, 0).heirs.find((h) => h.female && ofAge(c, h) && !h.wedTo); // not one wed to a noble already (nobledeal.ts)
 
 /** A rival king begins on the leader: the threat is made. For the season's chance, and for tests. */
 export function beginRival(c: Campaign, rival: number): Intrigue | null {
