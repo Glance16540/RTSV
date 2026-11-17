@@ -1,10 +1,12 @@
 // Armies belong to towns (docs/DESIGN.md; src/sim/armytown.ts).
-import { bareCampaign } from './helpers';
+import { bareCampaign, everyManSent } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { Campaign, armyAt, finishBattle, moveArmy, raise } from '../src/sim/campaign';
 import { ARMY_REST, MEN, MEN_A_COMPANY, resting, awayFrom, canSendHome, homeOf, menOf, musterOf, reckonArmies, seasonOfArmies, sendHome } from '../src/sim/armytown';
 import { agesOf, GROWN_SEASON, OLD_SEASON } from '../src/sim/ageing';
 import { folkOf, living } from '../src/sim/township';
+
+everyManSent(); // these tests are about other rules: a company takes its two men while the town can spare them
 
 const LONG = 60_000;
 /** A town of the player's with ten men (and, to keep the sums plain, no women: it keeps two men back whatever is raised), a Barracks, supplies, and no army standing in it. */

@@ -1,5 +1,5 @@
 // A man at war is still of his house, on the map (docs/DESIGN.md; src/sim/warhouse.ts).
-import { bareCampaign } from './helpers';
+import { bareCampaign, everyManSent } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { armyAt, raise } from '../src/sim/campaign';
 import { MEN_A_COMPANY, awayFrom, musterOf, reckonArmies, seasonOfArmies, sendHome } from '../src/sim/armytown';
@@ -9,6 +9,8 @@ import { townGrief } from '../src/sim/notableweight';
 import { rollOf } from '../src/sim/roll';
 import { Notable, folkOf } from '../src/sim/township';
 import { WARHOUSE, awayMen, awayText, cameHome, enlist, fallenSince, fell, housesOf, recordedAway, settleHouses } from '../src/sim/warhouse';
+
+everyManSent(); // these tests are about other rules: a company takes its two men while the town can spare them
 
 /** A town of the player's with a Barracks and supplies, no army in it, and the men and women asked for. */
 const town = (men = 10, women = 6, seed = 7) => {

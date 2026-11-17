@@ -1,4 +1,5 @@
 // What a computer-led nation needs to live by the same rules (docs/DESIGN.md; src/sim/rivalrule.ts).
+import { everyManSent } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { Campaign, battleConfig, finishBattle, moveArmy, newCampaign, raise } from '../src/sim/campaign';
 import { RIVAL, homeIdle, layTown, layTowns, maySpare, nameVeterans, notableHome, rivalMoves, rivalOrders, rivalSeason, threatened } from '../src/sim/rivalrule';
@@ -7,6 +8,8 @@ import { townTaken } from '../src/sim/conquered';
 import { governTown } from '../src/sim/governor';
 import { couplesOf, housesOf, roomOf } from '../src/sim/seasonfolk';
 import { folkOf, headcount, living } from '../src/sim/township';
+
+everyManSent(); // these tests are about other rules: a company takes its two men while the town can spare them
 
 const LONG = 60_000;
 /** A rival with three towns in a row: its capital, a middle land, and a far one; no army of anyone's in them. */
