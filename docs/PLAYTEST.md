@@ -639,12 +639,20 @@ Off:
   yours: Fenn, Perrin Oakes, Holt, Ned Oakes, Joss Ironwood". The map then said "1 man of Harrowdale fell with the
   army; 1 came home hurt or routed. He was Ned Oakes", and Joss Ironwood is still on the army's roll and in its last
   company. The names now agree for the one the map lets fall; the others the field saw die are alive on the map.
+  *Fixed after the pass (downedmap.ts):* once a battle fought in person is reckoned, every man the field saw fall who is
+  still on his army's roll is taken off it as fallen, his house's loss, and his broken company struck from the army
+  (never its last); those the reckoning sent home hurt stay home hurt.
 - **A visit's soldiers have no names** (low): the roll is handed to a battle and not to a visit, so *Go home* there
   still takes the next man on the list.
+  *Fixed after the pass:* a visit is handed the roll as a battle is (visit.ts), so its companies are led by their men
+  by name and *Go home* takes the man whose name the soldier bears.
 - **Shares in two voices** (low): the panel says "50% food, 25% wood, 13% gold, 13% stone" while the town in fact works
   25% food with a full granary (the governor's rule, `shareOf`); the field shows the second, the panel the first.
 - **Namesakes** (low): in a town of thirty there were two Neds, two Josses, two Tesses and two Orlas among the
   villagers, beside the soldiers Ned Oakes and Joss Ironwood.
+  *Fixed after the pass (namesakes.ts):* the lot draws a given name nobody of that people has, where one is left, and
+  once the field is laid out a villager still under the lot's name who shares it, or a soldier's, is given a free one;
+  a name from a record is never changed. With twenty names a sex, a town of more than twenty of one sex still has some.
 
 ## Handed on
 
