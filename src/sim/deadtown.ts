@@ -17,13 +17,13 @@ import type { Army, Campaign, Territory } from './campaign';
 import { HUB, reach } from './campaignbase';
 import { armyAt, atTruce } from './campaignbase';
 import { awayFrom } from './armytown';
-import { folkOf, headcount } from './township';
+import { folkOf, headcount, TOWN_SCALE } from './township';
 
 export const DEAD = {
   /** Seasons with nobody in it before a town stands open, and what it defends itself with then. */
   open: 2, defence: 0.5,
   /** Men and women who settle a dead town a nation has taken. */
-  settlers: 2,
+  settlers: 2 * TOWN_SCALE,
   /** Seasons an open town may wait before a wandering band finds it, and the strength of the camp they make of it. */
   found: 24, camp: 3,
 };
