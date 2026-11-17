@@ -44,6 +44,7 @@ import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRA
 import { millPace } from './mill'; // food and health: a Mill
 import { wellGuard } from './well';
 import { sickCare } from './infirmary';
+import { tendSick } from './tendintown';
 import { midwifeLossIn } from './midwifery';
 import { mayLearn, researchAt } from './ownstudies';
 export const SAVE_VERSION = 12;
@@ -2389,7 +2390,7 @@ export class Game {
     }
     if (u.plagueT > 0) {
       u.plagueT -= DT;
-      u.hp -= 2.5 * DT * sickCare(this, u.owner); // nursed in an Infirmary, slower (infirmary.ts)
+      u.hp -= 2.5 * DT * sickCare(this, u.owner) * tendSick(this, u.owner); // nursed in an Infirmary, slower (infirmary.ts), and tended by the church by decree (tendintown.ts)
       if (u.hp <= 0) { this.kill(u); return; }
       if ((this.tick + u.id) % 20 === 0) {
         for (const v of this.unitsNear(u.x, u.y, 1.3, this.scratch)) {
