@@ -80,6 +80,36 @@ describe('TownBatch', () => {
   });
 });
 
+describe('resources (bake all, TownBatch by squares)', () => {
+  it('takes over a lone mesh with `all`, so a heap of one material each is batched whole', () => {
+    const g = new THREE.Group(); g.add(box(red, 0), box(grey, 1));
+    expect(bake(g)).toBe(0);
+    expect(g.userData.baked).toBeUndefined();
+    bake(g, { all: true });
+    expect((g.userData.baked as { merged: THREE.Mesh[] }).merged.length).toBe(2);
+    expect(draws(g)).toBe(2);
+  });
+
+  it('splits the batch by squares of ground, so what is out of sight can still be left undrawn', () => {
+    const scene = new THREE.Scene(), views: THREE.Group[] = [];
+    for (const x of [1, 5, 40, 90]) { const g = new THREE.Group(); g.position.x = x; g.add(box(red, 0)); scene.add(g); bake(g, { all: true }); views.push(g); }
+    const before = seen(scene);
+    new TownBatch(scene, { tile: 32 }).sync(views);
+    expect(draws(scene)).toBe(3); // 1 and 5 share a square; 40 and 90 have one each
+    expect(seen(scene)).toEqual(before);
+  });
+
+  it('makes the batch again when a heap is used up', () => {
+    const scene = new THREE.Scene(), views = new Map<number, THREE.Group>();
+    for (const x of [1, 5]) { const g = new THREE.Group(); g.position.x = x; g.add(box(red, 0), box(grey, 0, 1)); scene.add(g); bake(g, { all: true }); views.set(x, g); }
+    const one = seen(views.get(1)!), batch = new TownBatch(scene, { tile: 32 });
+    batch.sync(views.values());
+    scene.remove(views.get(5)!); views.delete(5);
+    expect(batch.sync(views.values())).toBe(true);
+    expect(seen(scene)).toEqual(one);
+  });
+});
+
 describe('foldFigure', () => {
   it('merges the still pieces on each bone into one coloured by vertex, and leaves what is shown and hidden', () => {
     const body = new THREE.Group(), head = new THREE.Bone(), hand = new THREE.Bone();

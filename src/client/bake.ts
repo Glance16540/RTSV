@@ -54,9 +54,10 @@ const keyOf = (m: THREE.Mesh): string => `${(m.material as THREE.Material).uuid}
 
 /**
  * Merge a still building's meshes, one for each material. Returns how many draws it saves (0 if there was nothing to
- * merge, or it is baked already).
+ * merge, or it is baked already). With `all`, a material with a single mesh is taken over as well, so that every still
+ * mesh of the group is in its baked list for a TownBatch to gather (a stone heap or a bush, where most materials have one).
  */
-export function bake(g: THREE.Object3D): number {
+export function bake(g: THREE.Object3D, opts: { all?: boolean } = {}): number {
   if (g.userData.baked) return 0;
   g.updateMatrixWorld(true);
   const keep = held(g), toLocal = new THREE.Matrix4().copy(g.matrixWorld).invert();
@@ -64,7 +65,7 @@ export function bake(g: THREE.Object3D): number {
   g.traverse((o) => { const m = o as THREE.Mesh; if (still(m, keep, g)) { const k = keyOf(m); (groups.get(k) ?? groups.set(k, []).get(k)!).push(m); } });
   const merged: THREE.Mesh[] = [], parts: THREE.Mesh[] = [];
   for (const list of groups.values()) {
-    if (list.length < 2) continue;
+    if (list.length < 2 && !opts.all) continue;
     // Each part's shape, put where it stands in the building, with only the attributes all of them have.
     const geos = list.map((m) => placed(m.geometry, new THREE.Matrix4().multiplyMatrices(toLocal, m.matrixWorld)));
     const names = Object.keys(geos[0].attributes).filter((n) => geos.every((x) => x.attributes[n] && x.attributes[n].itemSize === geos[0].attributes[n].itemSize));

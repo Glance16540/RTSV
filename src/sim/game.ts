@@ -1,7 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
 import { layCoarse, layKept } from './firstlay';
-import { unlaidOf } from './unlaid';
+import { unlaidOf, unplaced } from './unlaid';
 import { nobodyLeft } from './lastperson';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
@@ -540,19 +540,22 @@ export class Game {
         // A town fights out of its own stores, not out of the usual stock.
         if (s.bonus.stores) for (const r of RES_TYPES) p.res[r] = Math.max(0, Math.round(Number(s.bonus.stores[r]) || 0));
         // What was left standing here after the last battle still stands, unless another camp is pitched on it.
+        const lost: Standing[] = []; // of the record, with no room where it stood: laid elsewhere or kept (unlaid.ts)
         for (const [type, cx, cy, health, built] of [...(s.bonus.town ?? [])].sort((a, b) => Number(b[0] === 'towncenter') - Number(a[0] === 'towncenter'))) {
           const def = BUILDINGS[type];
           if (!def || !Number.isInteger(cx) || !Number.isInteger(cy) || cx < 0 || cy < 0) continue; // with no place: layKept, below (unlaid.ts)
-          if (this.spec.starts.some((o, k) => k !== i && Math.hypot(o.x - cx - def.size / 2, o.y - cy - def.size / 2) < 10)) continue;
+          const noRoom = (): void => { if (!def.wall) lost.push(unplaced([type, cx, cy, health, built])); }; // a wall is its place: it is not moved
+          if (this.spec.starts.some((o, k) => k !== i && Math.hypot(o.x - cx - def.size / 2, o.y - cy - def.size / 2) < 10)) { noRoom(); continue; }
           // It was built on ground cleared of wood or stone, and that ground is still clear.
           for (const r of this.resources.filter((r) => r.cx < cx + def.size && r.cx + r.size > cx && r.cy < cy + def.size && r.cy + r.size > cy)) this.kill(r);
-          if (!this.canPlace(type, cx, cy)) continue;
+          if (!this.canPlace(type, cx, cy)) { noRoom(); continue; }
           // It is as battered as the last battle left it, and no further built than the builders got.
           const half = typeof built === 'number' && built >= 0 && built < 1;
           const b = this.spawnBuilding(type, i, cx, cy, !half);
           if (half) b.progress = built;
           if (typeof health === 'number' && health > 0 && health < 1) b.hp = Math.max(1, Math.round(b.maxHp * health));
         }
+        if (s.bonus.town?.length && !field) layKept(this, i, st, dir, [...s.bonus.town, ...lost]); // what has no place, or no room where it stood, is laid where there is room and kept if there is none (unlaid.ts)
         // A people left with nothing but walls raise a hall again rather than fall without a blow.
         if (!field && !this.raider(i) && s.bonus.town?.length && !this.buildings.some((b) => b.owner === i && !b.def.wall)) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
         // A town whose hall was razed in an earlier siege has a while to begin another before it counts as beaten.
@@ -569,7 +572,6 @@ export class Game {
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
         if (s.bonus.coarse?.length && !field) layCoarse(this, i, st, dir, s.bonus.coarse); // a town met for the first time, as big as its record (firstlay.ts)
-        if (s.bonus.town?.length && !field) layKept(this, i, st, dir, s.bonus.town); // what had no room last time is tried again, and kept if there is still none (unlaid.ts)
         // The town's children are on the record of one of its roofs, part grown.
         if (s.bonus.people?.named?.length && !field) { settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f')); restoreMade(this, i, s.bonus.people.named); }
         if (s.bonus.people?.widowed?.length && !field) seatWidows(this, i, s.bonus.people.widowed); // the map's widowed, the same in the town (widowtown.ts)
