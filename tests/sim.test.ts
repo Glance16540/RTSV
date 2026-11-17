@@ -1539,7 +1539,7 @@ describe('alliances and dominion', () => {
   it('holding most of the land for long enough wins the campaign', () => {
     const c = newCampaign(7, 2);
     const need = dominionNeed(c);
-    const spare = c.territories.filter((t) => t.capital < 0);
+    const spare = c.territories.filter((t) => t.capital < 0 && !t.wild); // peopled lands: a wild one is settled, not handed over (wilds.ts)
     for (let i = 0; i < spare.length && c.territories.filter((t) => t.owner === 0).length < need; i++) spare[i].owner = 0;
     c.armies = c.armies.filter((a) => a.owner === 0 || c.territories[a.at].owner === a.owner);
     // Nobody can touch the player while we count.
@@ -1765,7 +1765,7 @@ describe('coastal land', () => {
         expect(t.capital).toBe(-1);
         expect(territoryIncome(t)).toBe(territoryIncome({ ...t, trait: '' }) + 1);
       }
-      const coast = c.territories.find((t) => t.trait === 'coast' && t.owner < 0 && t.adj.length > 0);
+      const coast = c.territories.find((t) => t.trait === 'coast' && t.owner < 0 && !t.wild && t.adj.length > 0); // a wild land is not marched on (wilds.ts)
       if (!coast) continue;
       const a = c.armies.find((x) => x.owner === 0)!;
       const from = c.territories[coast.adj[0]];

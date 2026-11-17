@@ -87,7 +87,7 @@ describe('settlers found a town', () => {
     expect(a.at).not.toBe(to);
   });
 
-  it('a rival\'s crowded town sends settlers to an empty land beside its people\'s', () => {
+  it('a rival\'s crowded town, or the player\'s by its governor, sends settlers to an empty land beside its people\'s', () => {
     const { c, from, to } = world();
     for (const t of c.territories) if (t.owner === 0) t.owner = 1;
     c.factions[1].alive = true;
@@ -95,6 +95,12 @@ describe('settlers found a town', () => {
     let moved: ReturnType<typeof foundOf> = [];
     for (let s = 0; s < 60 && !moved.length; s++) { c.turn++; moved = foundOf(c, 1); }
     expect(moved[0]).toMatchObject({ owner: 1, from, to, found: true });
-    expect(foundOf(c, 0)).toEqual([]); // the player's settlers go only by the player's order
+    // The player's crowded town, kept by its governor, does the same, and the player is told.
+    const w = world();
+    const mine = folkOf(w.c, w.from); mine.children += Math.max(0, roomOf(w.c.territories[w.from]) - headcount(mine));
+    let sent: ReturnType<typeof foundOf> = [];
+    for (let s = 0; s < 60 && !sent.length; s++) { w.c.turn++; sent = foundOf(w.c, 0); }
+    expect(sent[0]).toMatchObject({ owner: 0, from: w.from, to: w.to, found: true });
+    expect(w.c.log.at(-1)).toContain('settlers have set out');
   });
 });
