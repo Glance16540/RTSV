@@ -43,7 +43,7 @@ export function threatHtml(c: Campaign, tid: number): string {
   const reports = raidsAt(c, tid).map((r) => raidHtml(c, r)).join('');
   const bands = bandsAt(c, tid).map((b) => bandHtml(c, b)).join('');
   const d = t.owner === 0 ? defenceOf(c, tid) : null;
-  const own = d && (c.bands ?? []).length ? `<div class="hint" title="What this town has to defend itself with against a band: its men, its fortress and barracks, the towers and walls on its battlefield, an army kept here, and the spirit of its people.">🛡️ Against a band this town can muster ${d.total}.</div>` : '';
+  const own = d && (c.bands ?? []).length ? `<div class="hint" title="What this town has to defend itself with against a band: its men, its fortress and barracks, the towers and walls on its battlefield, an army kept here, and the spirit of its people.">🛡️ Against a band this town can muster ${whole(d.total)}.</div>` : '';
   // Those of this town who are in a band's hands: who, how many, where they are held and how long is left.
   const gone = heldFrom(c, tid).map(({ band: b, held: h }) => {
     const who = [h.women.length ? plural(h.women.length, 'woman', 'women') : '', h.men.length ? plural(h.men.length, 'man', 'men') : ''].filter(Boolean).join(' and ');

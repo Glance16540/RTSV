@@ -16,6 +16,6 @@ import type { Game } from './game';
 
 /** Has this side nobody left: no person of its own alive, where none can be bought? */
 export function nobodyLeft(g: Game, owner: number): boolean {
-  if (!g.bornOnly || g.field || g.raider(owner)) return false;
+  if (!g.bornOnly || g.field || g.warband(owner)) return false;
   return !g.units.some((u) => u.owner === owner && !u.dead);
 }
