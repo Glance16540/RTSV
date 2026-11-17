@@ -684,7 +684,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   // Faith
   const gaps = all('faithGaps');
   const inGap = share(gaps, (x) => x >= 20 && x <= 60);
-  add('Faith', 'Widest gap between two towns of one nation', '20 to 60 most of the time', `${pct(inGap)} of nation-seasons in band (median ${num(median(gaps), 0)})`, inGap > 0.5, 'Most of the time is taken as over half of the seasons of a nation with two towns or more.');
+  add('Faith', 'Widest gap between two towns of one nation', '20 to 60 most of the time', `${pct(inGap)} of nation-seasons in band (median ${num(median(gaps), 0)}; under 20 ${pct(share(gaps, (x) => x < 20))}, over 60 ${pct(share(gaps, (x) => x > 60))})`, inGap > 0.5, 'Most of the time is taken as over half of the seasons of a nation with two towns or more.');
   const holy = all('holyMoves');
   add('Faith', 'A nation that builds churches and keeps its towns fed, over 20 years', 'toward the holy end by 15 to 40', holy.length ? `mean ${num(mean(holy), 1)} (${holy.length} nations)` : 'no such nation', holy.length ? within(mean(holy), 15, 40) : null,
     'A nation with a church standing for at least ten of the twenty years and hungry in under 5% of its town-seasons.');
