@@ -72,6 +72,7 @@ import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
+import { veteranHome } from './veteranhome';
 
 
 /** How far a people's churches and taverns will move it next turn. */
@@ -1594,9 +1595,9 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const hero = heroFor(c, 0);
   const kept = cleanChampion(after.champion);
   if (kept) mine.champion = kept; else delete mine.champion;
-  // And is one of the notable people of the town their army's men came from (armytown.ts); failing that of their own
-  // town, if their army knows it; else of the nation's chief town (notableweight.ts).
-  if (kept) { const from = homeOf(c, mine); rememberVeteran(c, from !== undefined && c.territories[from]?.owner === 0 ? from : veteranTown(c.territories, 0, kept.town, land.id), kept); }
+  // And is one of the notable people of his own town, of his own house on the army's roll (veteranhome.ts); failing a
+  // roll, of the town their army's men came from (armytown.ts), or their own if the army knows it, else the chief town.
+  if (kept) { const own = veteranHome(c, 0, mine.id, kept.name), from = homeOf(c, mine); rememberVeteran(c, own ? own.town : from !== undefined && c.territories[from]?.owner === 0 ? from : veteranTown(c.territories, 0, kept.town, land.id), { ...kept, ...(own ? { family: own.family } : {}) }); }
   if (before.hero && !after.fell && !after.acclaimed && Array.isArray(after.powers) && c.factions[0].heroAlive) {
     const { rank: _rank, ...made } = hero;
     c.factions[0].hero = { ...made, powers: [0, 1, 2].map((t) => (after.powers![t] === 0 || after.powers![t] === 1 ? after.powers![t] : made.powers?.[t] ?? -1)) };
