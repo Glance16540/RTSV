@@ -5,7 +5,8 @@
 //  - church:      the church calls the people back. The town is drawn toward the holy way. Needs a church there.
 //  - guards:      guards keep order by force. Whatever strains the town tells half as much, but nothing draws it
 //                 toward the holy way while they stand over it.
-//  - alms:        food from the nation's stores removes the cause: the town's larder is filled at once.
+//  - alms:        grain bought abroad with the nation's gold removes the cause: the town's larder is filled at once
+//                 with new food (grain.ts).
 //  - closeTavern: the tavern is shut. Nobody drifts to it, and the gold it made stops; a town already given over
 //                 to decadence is angered by it and strains the harder.
 //  - tavernWomen: half the women are ordered into the tavern (drift.ts keeps them there). It brings in gold every season and lowers the town's
@@ -19,7 +20,7 @@ import { decreeStrength } from './hall';
 import { messengerStrength } from './couriers';
 import { folkOf } from './township';
 import { heardDecree } from './nobles';
-import { needOf } from './larder';
+import { buyGrain, canSpareGrain, grainBar } from './grain';
 
 export type DecreeKind = 'church' | 'guards' | 'alms' | 'closeTavern' | 'tavernWomen' | 'tend';
 export interface Decree { kind: DecreeKind; until: number; strength: number }
@@ -32,7 +33,7 @@ declare module './campaign' {
 export const DECREES: Record<DecreeKind, { name: string; cost: number; seasons: number; needs?: string; desc: string }> = {
   church: { name: 'Call them to church', cost: 2, seasons: 4, needs: 'church', desc: 'The church calls the people back: the town is drawn toward the holy way.' },
   guards: { name: 'Post guards', cost: 3, seasons: 4, desc: 'Order kept by force: what strains the town tells half as much, but nothing draws it to the holy way meanwhile.' },
-  alms: { name: 'Give food', cost: 0, seasons: 1, desc: 'Food from the towns beside it fills the town\'s larder and removes the cause: what they have beyond two seasons of their own eating.' },
+  alms: { name: 'Buy grain abroad', cost: 0, seasons: 1, desc: 'Grain bought from outside the nation with its gold fills the town\'s larder for this season and the next, and removes the cause: new food, not a neighbour\'s. Dearer in a famine year; by messenger, half of it comes.' },
   closeTavern: { name: 'Close the tavern', cost: 1, seasons: 4, needs: 'tavern', desc: 'Nobody drifts to the tavern and it makes no gold; a decadent town is angered by it.' },
   tavernWomen: { name: 'Order the women into the tavern', cost: 0, seasons: 4, needs: 'tavern', desc: 'Gold every season, and the town\'s standing falls.' },
   tend: { name: 'Tend the sick and the mourning', cost: 0, seasons: 4, needs: 'church', desc: 'The church takes in the sick and sits with the bereaved: sickness and grief weigh on the town half as much, and plague kills fewer. Paid in gold from the town.' },
@@ -41,8 +42,7 @@ export const DECREE_KINDS = Object.keys(DECREES) as DecreeKind[];
 
 /** A decree given by messenger, the leader being elsewhere, is this strong. */
 export const MESSENGER = 0.5;
-/** Food a decree of alms puts in the larder (at full strength), and gold the tavern's women bring in a season. */
-export const ALMS_FOOD = 300;
+/** Gold the tavern's women bring in a season. */
 export const TAVERN_WOMEN_GOLD = 80;
 /** What each decree does to drift at full strength (drift.ts reads these). */
 export const CHURCH_CARE = 0.5;
@@ -52,34 +52,10 @@ export const CLOSED_ANGER = 0.3;
 
 /** The most towns a sensible ruler sends food to in a season. */
 export const ALMS_A_SEASON = 2;
-/** The least food a decree of alms must find to be given. */
-export const ALMS_LEAST = 50;
-/** Seasons of their own eating the towns beside it keep before they send any. */
-export const ALMS_KEEP = 2;
 
-// Food for a hungry town is food, not supplies (stores.ts): the towns of the nation beside it send what they have
-// beyond ALMS_KEEP seasons of their own eating. Nothing is bought with the nation's gold, wood or stone, which are
-// its war chest. (Tried at 192 campaigns: any town of the nation, keeping four seasons, left farmed towns hungrier,
-// 2.0% and 2.2% against 1.8% and 1.6%, and decrees weaker, 8.8% and 6.4% against 10.4% and 9.3%.)
-const givers = (c: Campaign, f: number, tid: number): number[] => (c.territories[tid]?.adj ?? []).filter((n) => c.territories[n].owner === f && !c.territories[n].horde);
-const spareFood = (c: Campaign, tid: number): number => Math.max(0, Math.floor(folkOf(c, tid).stores.food - ALMS_KEEP * needOf(c, tid)));
-/** How much food a decree of alms could find for a town now. */
-export function almsCanFind(c: Campaign, f: number, tid: number): number {
-  return givers(c, f, tid).reduce((n, g) => n + spareFood(c, g), 0);
-}
-/** Find `want` food for a town, as far as it can be had, and put it in its larder. Returns how much came. */
-export function sendAlms(c: Campaign, f: number, tid: number, want: number): number {
-  const s = folkOf(c, tid).stores;
-  let left = want;
-  for (const g of givers(c, f, tid).sort((a, b) => spareFood(c, b) - spareFood(c, a) || a - b)) {
-    if (left <= 0) break;
-    const take = Math.min(spareFood(c, g), left);
-    folkOf(c, g).stores.food -= take; left -= take;
-  }
-  const came = want - left;
-  s.food += came;
-  return came;
-}
+// Food for a hungry town is grain bought abroad with the nation's gold (grain.ts): new food, not a lean season moved
+// from the next larder. (Tried at 192 campaigns before it: food sent from the towns beside it, and from any town of
+// the nation keeping four seasons, which left farmed towns hungrier, 2.0% and 2.2% against 1.8% and 1.6%.)
 
 /** The church's tending: gold it costs the town, how much less sickness and grief weigh at full strength, and how much less plague kills. */
 export const TEND_GOLD = 40;
@@ -90,6 +66,9 @@ export const tendedPlague = (c: Campaign, tid: number): number => TEND_PLAGUE * 
 
 /** A town whose sick and bereaved are tended already, by a Monastery or an Infirmary standing there: a decree to tend them adds nothing. */
 export const tendedAlready = (c: Campaign, tid: number): boolean => !!c.territories[tid]?.town?.b?.some((x) => (x[0] === 'monastery' || x[0] === 'infirmary') && x[4] === undefined);
+
+/** How strong a decree given to this town now would be: whole at the leader's seat, else the messenger's. */
+export const strengthAt = (c: Campaign, f: number, tid: number): number => decreeStrength(c, f, tid, messengerStrength(c, f, MESSENGER));
 
 /** The decrees in force in a town. */
 export const decreesAt = (c: Campaign, tid: number): Decree[] => (c.territories[tid]?.decrees ?? []).filter((d) => d.until >= c.turn);
@@ -104,7 +83,7 @@ export function decreeBar(c: Campaign, f: number, tid: number, kind: DecreeKind)
   if (decreesAt(c, tid).some((x) => x.kind === kind)) return 'That decree is already in force here.';
   if (fac.supplies < d.cost) return `It costs ${d.cost} supplies.`;
   if (kind === 'tend' && folkOf(c, tid).stores.gold < TEND_GOLD) return `It costs ${TEND_GOLD} gold from ${t.name}.`;
-  if (kind === 'alms' && almsCanFind(c, f, tid) < ALMS_LEAST) return `There is no food to be had for ${t.name}: the towns beside it have none to spare.`;
+  if (kind === 'alms') { const bar = grainBar(c, f, tid, strengthAt(c, f, tid)); if (bar) return bar; }
   return '';
 }
 
@@ -112,12 +91,12 @@ export function decreeBar(c: Campaign, f: number, tid: number, kind: DecreeKind)
 export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKind): string {
   const bar = decreeBar(c, f, tid, kind);
   if (bar) return bar;
-  const t = c.territories[tid], d = DECREES[kind], present = leaderAt(c, f, tid), strength = decreeStrength(c, f, tid, messengerStrength(c, f, MESSENGER)); // whole at the leader's seat: the leader there, or a Hall of Judgement (hall.ts)
+  const t = c.territories[tid], d = DECREES[kind], present = leaderAt(c, f, tid), strength = strengthAt(c, f, tid); // whole at the leader's seat: the leader there, or a Hall of Judgement (hall.ts)
   c.factions[f].supplies -= d.cost;
   // A decree given in the player's part of a season holds through the season's turn that follows, which is when
   // towns drift (drift.ts): it acts in the season it is given, as one given while the season turns does.
   t.decrees = [...decreesAt(c, tid), { kind, until: c.turn + d.seasons - 1 + (c.phase === 'player' ? 1 : 0), strength }];
-  if (kind === 'alms') sendAlms(c, f, tid, Math.round(ALMS_FOOD * strength));
+  if (kind === 'alms') { const g = buyGrain(c, f, tid, strength); if (f === 0) c.log.push(`Grain bought abroad for ${t.name}: ${g.food} food for ${g.gold} gold.`); }
   if (kind === 'tend') folkOf(c, tid).stores.gold -= TEND_GOLD;
   heardDecree(c, f, tid, kind, strength); // it pleases some of the nobles and angers others (nobles.ts)
   if (f === 0) c.log.push(`${d.name}: decreed in ${t.name}${present ? '' : ', by messenger'}.`);
@@ -158,7 +137,7 @@ export function sensibleDecrees(c: Campaign, f: number, strainOf: (tid: number) 
     // Every decree keeps a few supplies in hand, food (paid in goods, which are what supplies are) as well; and a
     // ruler sends food to at most ALMS_A_SEASON towns a season, the hungriest being those it is told of first.
     const tryGive = (k: DecreeKind): boolean => fac.supplies - DECREES[k].cost >= (DECREES[k].cost ? keep : 0) && issueDecree(c, f, t.id, k) === '';
-    if (s.hungry && fed < ALMS_A_SEASON && tryGive('alms')) { given++; fed++; continue; }
+    if (s.hungry && fed < ALMS_A_SEASON && canSpareGrain(c, f, t.id, strengthAt(c, f, t.id)) && tryGive('alms')) { given++; fed++; continue; } // only when the nation can spare the gold (grain.ts)
     if (s.raided && tryGive('guards')) { given++; continue; }
     if ((s.sick || s.grieving) && !tendedAlready(c, t.id) && tryGive('tend')) { given++; continue; } // not where a Monastery or Infirmary tends already
     if (s.moved < 0 && tryGive('church')) { given++; continue; }
