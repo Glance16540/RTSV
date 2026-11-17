@@ -107,6 +107,25 @@ export function menMustered(c: Campaign, a: Army, tid: number, o: { /** These me
   return went;
 }
 /**
+ * One particular man of a town goes to an army: the man at this place in the town's record of its men's ages
+ * (`agesOf(...).m`). He is taken off the town's count at that age, put on the army's roll, and is on a house's
+ * record as away with it, by the name given (warhouse.ts). For a man already chosen and trained in his town
+ * (queuedmen.ts): what a town keeps back and the share a people sends are not asked of him. The company he is
+ * the man of must already be counted in the army's units. Returns whether he went.
+ */
+export function musterMan(c: Campaign, a: Army, tid: number, place: number, who?: { name: string; family?: string }): boolean {
+  const m = (rolls(c)[a.id] ??= { size: 0, men: {} });
+  m.size = sizeOf(a); m.owner = a.owner;
+  const t = c.territories[tid];
+  if (!t || t.owner !== a.owner) return false;
+  const f = folkOf(c, tid), ages = agesOf(c, tid, f);
+  if (place < 0 || place >= ages.m.length) return false;
+  (m.men[tid] ??= []).push(ages.m[place]);
+  countFrom(f, { m: ages.m.filter((_, i) => i !== place), f: ages.f, k: ages.k });
+  enlist(c, tid, 1, a.id, who ? [who] : undefined);
+  return true;
+}
+/**
  * Men a company raised in this town could be given: what the town can spare, and (`MEN.levy`) what its people's
  * other towns can. With fewer than `MEN.least` it is not raised at all (campaign.ts, canRaise): a soldier costs a
  * person, and where there is nobody to send there is no company. (`MEN.least` is 0 for now: see there.)
