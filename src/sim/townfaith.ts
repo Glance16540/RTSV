@@ -85,10 +85,14 @@ export function seasonOfFaith(c: Campaign, shift: (f: number, by: number, at: nu
 /**
  * The pull: every season each town is drawn `PULL` of the way toward where its nation stands, so a Church or a
  * Tavern can hold a town apart only so far (where what it adds each season equals what the pull takes back:
- * a Tavern's 3 a season against a pull of 0.10 leaves it about 25 to 30 from the nation's standing, a Church's 2 about 20). All towns move from where they stood as
+ * a Tavern's 3 a season against a pull of 0.11 leaves it about 25 from the nation's standing, a Church's 2 about 18).
+ * At 0.10, with the wild lands (fewer towns to a nation), the widest gap between two towns of a nation was in its band of
+ * 20 to 60 in 49 to 50% of nation-seasons (under half, out of band); at 0.11, 50.5% and 50.8% (192 campaigns, both courses).
+ * Weaker pulls do worse (0.08: 44%): more nations go past 60. A third of nation-seasons are under 20 at any pull, nations
+ * whose towns have nothing to set them apart, which holds the row near half whatever the pull. All towns move from where they stood as
  * the season began, so the nation's own standing is not moved by it, beyond a point of rounding.
  */
-export const PULL = 0.10;
+export const PULL = 0.11;
 export function pullTogether(c: Campaign): void {
   settleFaith(c);
   for (const x of c.factions) {

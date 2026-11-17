@@ -3,7 +3,8 @@
 // Some bands are born in the wild lands at the map's edge and march in from afar toward rich or weak towns, so
 // that a people can see them coming.
 //
-//   Where. The far wilds are lands nobody holds, at least WILDS.far lands from any held land (bandmarch.ts). When
+//   Where. The far wilds are the lands that began wild and are still empty (wilds.ts, founding.ts; bandmarch.ts
+//     `farWilds`): far or poor ground, snow, desert, the map's edge, with no tribe and no town. When
 //     a new camp of raiders or slavers is to appear and there are such lands with a way in from them, WILDS.share
 //     of the time it is born there instead of beside a town.
 //   The march. It picks its mark as any camp weighs where to go (bandroam.ts: soft walls, full stores, the seasons'
@@ -20,7 +21,7 @@
 import type { Campaign } from './campaign';
 import type { Band, BandKind } from './threats';
 import { chance } from './threats';
-import { MARCH, WILDS, farWilds, landsFromHeld } from './bandmarch';
+import { MARCH, WILDS, farWilds } from './bandmarch';
 import { wayTo } from './bandroam';
 
 /** The way in a camp born at this land would take: its mark's place, how far, and how soft; null if there is none. */
@@ -42,7 +43,7 @@ export function farPlace(c: Campaign, kind: BandKind): [number] | null {
 
 /** A band just born: if it stands in the far wilds with a way in, it sets out. Returns whether it did. */
 export function setOutFromAfar(c: Campaign, b: Band): boolean {
-  if ((b.kind !== 'raiders' && b.kind !== 'slavers') || c.territories[b.at].owner >= 0 || landsFromHeld(c)[b.at] < WILDS.far) return false;
+  if ((b.kind !== 'raiders' && b.kind !== 'slavers') || c.territories[b.at].owner >= 0 || !c.territories[b.at].wild) return false;
   const way = wayIn(c, b.at, b.kind);
   if (!way) return false;
   b.bound = way.bound; b.afar = true; b.moved = c.turn;
