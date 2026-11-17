@@ -12,7 +12,7 @@ const turn = (c: Campaign) => {
 /** A nation of three towns: its capital and two lands beside it, with no army of anyone's about. */
 const realm = (seed = 7) => {
   const c = newCampaign(seed, 1, 0, 'steppe'), home = c.territories.find((t) => t.capital === 0)!;
-  const [a, b] = c.territories.filter((t) => t.id !== home.id && t.capital < 0).slice(0, 2);
+  const [a, b] = c.territories.filter((t) => t.id !== home.id && t.capital < 0 && !t.wild).slice(0, 2);
   a.owner = b.owner = 0; a.buildings = []; b.buildings = []; home.buildings = [];
   c.places = [];
   c.truces = [{ with: 1, until: 999 }];

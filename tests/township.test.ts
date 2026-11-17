@@ -31,6 +31,7 @@ describe('a town and its people', () => {
     const c = world();
     for (const t of c.territories) {
       const f = folkOf(c, t.id);
+      if (t.wild) { expect(headcount(f), t.name).toBe(0); continue; } // a wild land starts with nobody (wilds.ts)
       expect(f.men, t.name).toBeGreaterThanOrEqual(2);
       expect(f.women, t.name).toBeGreaterThanOrEqual(2);
       expect(f.children, t.name).toBeGreaterThanOrEqual(1);
