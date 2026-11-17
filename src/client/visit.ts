@@ -8,6 +8,7 @@ import { VISIT_SECONDS, beginVisit, canVisit, finishVisit, visitArms, visitBar }
 import { learnedIn } from '../sim/studies';
 import type { VisitAfter } from '../sim/visit';
 import { driftedIn } from '../sim/driftintown';
+import { storyOut } from '../sim/fieldstory';
 import type { App } from './main';
 
 const RESULT_KEY = 'rtsv-visit-result';
@@ -66,6 +67,7 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
       drifted: driftedIn(app.game, app.pid), // and who has drifted to the tavern and the mine (driftintown.ts)
       arms: visitArms(app.game.units, app.pid), // and its soldiers: the army's losses, and companies trained here (visit.ts)
       studies: learnedIn(app.game.players[app.pid].techs), // and what was learned here, the nation's now (studies.ts)
+      story: storyOut(app.game, app.pid), // and what came of a story afoot here (fieldstory.ts)
     };
     try { localStorage.setItem(RESULT_KEY, JSON.stringify(after)); localStorage.removeItem(VISIT_SAVE_KEY); } catch { /* storage unavailable */ }
     back();

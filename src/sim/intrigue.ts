@@ -181,7 +181,8 @@ const WHY: Record<NonNullable<Intrigue['why']>, (p: Person) => string> = {
   drink: (p) => `${they(p)[0].toUpperCase() + they(p).slice(1)} owed more at the tavern than ${they(p)} could ever pay`,
   greed: (p) => `${they(p)[0].toUpperCase() + they(p).slice(1)} wanted for nothing, and stole all the same`,
 };
-function catchThief(c: Campaign, it: Intrigue): void {
+/** A thief is taken, by the watch or by a guard on the field (storyvisit.ts). */
+export function catchThief(c: Campaign, it: Intrigue): void {
   const thief = person(c, it.at, it.id * 71, it.people);
   it.thief = thief; it.why = reason(c, it, thief); it.caught = c.turn;
   note(c, it, 'good', `The thief of ${land(c, it.at)} is taken at the house of ${fullName(it.people[it.robbed.indexOf(Math.max(...it.robbed))])}: it is ${fullName(thief)} the ${thief.trade}. ${WHY[it.why](thief)}. ${they(thief)[0].toUpperCase() + they(thief).slice(1)} waits on your judgement.`, thief);
