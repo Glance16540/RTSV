@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
-import { OLD, oldBuild, oldSeason, oldStrain, oldText, oldWeight } from '../src/sim/oldfolk';
+import { OLD, oldBuild, oldSeason, oldText, oldWeight } from '../src/sim/oldfolk';
 import { townTaken } from '../src/sim/conquered';
 import { folkOf } from '../src/sim/township';
 
@@ -25,13 +25,12 @@ describe('a taken town\'s old people', () => {
     expect(oldText(c, tid, name)).toMatch(/still of the Rivals/);
   });
 
-  it('cost the holder while they resent it: building and drift', () => {
+  it('cost the holder while they resent it: their building', () => {
     const { c, tid } = taken(), t = c.territories[tid];
     oldSeason(c, t);
     const w = oldWeight(c, tid);
     expect(w).toBeGreaterThan(0.5);
     expect(oldBuild(c, tid)).toBeCloseTo(1 - OLD.build * w, 5);
-    expect(oldStrain(c, tid)).toBeGreaterThan(0);
     expect(oldText(c, tid, name)).toMatch(/building .* slower/);
   });
 
@@ -58,7 +57,6 @@ describe('a taken town\'s old people', () => {
     oldSeason(c, c.territories[tid]);
     expect(c.territories[tid].oldFolk).toBeUndefined();
     expect(oldBuild(c, tid)).toBe(1);
-    expect(oldStrain(c, tid)).toBe(0);
     expect(oldText(c, tid, name)).toBe('');
   });
 });

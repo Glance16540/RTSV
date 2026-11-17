@@ -10,11 +10,11 @@
 // A town taken back by its own people has none of another's in it. Once the last is the holder's, the count is gone.
 //
 // While they resent it, they cost the holder (the weight is their share of the town times their resentment, 0 to 1):
-//   - its building, OLD.build slower (governor.ts);
-//   - its drift, OLD.strain more (drift.ts): its people slip away to the tavern and the mines, and its standing falls.
+//   - its building, OLD.build slower (governor.ts): what the governor raises there, and what stood half built.
 // (Tried at 192 campaigns and dropped: a share of its harvest and gold withheld, even 0.15 of it at the full weight, lifted
 // the share of farmed towns hungry over 2% and the ruined campaigns with it; fewer men answering a levy, 0.3 of them, lifted
-// the rivals' wins and a nation's men under arms. Building and drift keep every band as main has it.)
+// the rivals' wins and a nation's men under arms; more drift, 0.05 strain at the full weight, cut the towns Righteous at
+// twenty years by a third. With building alone every band reads as main has it.)
 // The land's panel says how many of the old people there are and what they cost this season. Plain data on the town.
 import type { Campaign, Territory } from './campaign';
 import { folkOf, grown } from './township';
@@ -29,8 +29,8 @@ declare module './campaign' {
 export const OLD = {
   /** The share of the old who become the holder's a season, and what more as their resentment eases (at none, all of this). */
   ease: 0.02, settled: 0.06,
-  /** What they cost at the full weight: the share of the building pace lost, and drift strain added. */
-  build: 0.2, strain: 0.05,
+  /** What they cost at the full weight: the share of the building pace lost. */
+  build: 0.2,
 };
 
 const people = (c: Campaign, tid: number): number => { const f = folkOf(c, tid); return grown(f) + f.children; };
@@ -43,8 +43,6 @@ export function oldWeight(c: Campaign, tid: number): number {
 }
 /** How fast it builds, against the usual (governor.ts). */
 export const oldBuild = (c: Campaign, tid: number): number => 1 - OLD.build * oldWeight(c, tid);
-/** Strain on its drift (drift.ts). */
-export const oldStrain = (c: Campaign, tid: number): number => OLD.strain * oldWeight(c, tid);
 
 /** A season of one town's old people. */
 export function oldSeason(c: Campaign, t: Territory): void {
@@ -73,5 +71,5 @@ export function oldText(c: Campaign, tid: number, peopleName: (f: number) => str
   const all = people(c, tid), w = oldWeight(c, tid);
   const of = `Of its ${all} people, ${o.n} are still of ${peopleName(o.from)}.`;
   if (w < 0.05) return `${of} They bear your rule without much grudge.`;
-  return `${of} Their resentment makes its building ${tenth(OLD.build * w)} slower, and its people quicker to drift away.`;
+  return `${of} Their resentment makes its building ${tenth(OLD.build * w)} slower.`;
 }
