@@ -59,7 +59,8 @@ export function housesOf(t: Territory): number | null {
 /** Couples who could raise a child this season: man and woman of working age, under a roof. */
 export function couplesOf(t: Territory, f: Folk): number {
   // A woman drifted to the tavern (drift.ts) is no wife at home.
-  const pairs = Math.min(f.men, Math.max(0, f.women - (f.drifted?.tavern ?? 0))), roofs = housesOf(t);
+  // Only the married are couples (marriage.ts keeps `wed`; a town not yet reckoned counts every pair it can make).
+  const pairs = Math.min(f.men, Math.max(0, f.women - (f.drifted?.tavern ?? 0)), f.wed ?? Infinity), roofs = housesOf(t);
   return roofs === null ? pairs : Math.min(pairs, roofs);
 }
 
