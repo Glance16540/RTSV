@@ -29,7 +29,7 @@ import { agesOf } from './ageing';
 import { leaderAt } from './court';
 import { seatAt } from './hall';
 import { needOf } from './larder';
-import { folkOf, grown, living } from './township';
+import { TOWN_SCALE, folkOf, grown, living } from './township';
 import { aftermathSeason, rememberWronged } from './aftermath';
 import { Choice, Clue, Intrigue, IntrigueKind, IntrigueNote, KEEP, Person, begin, chance, end, fullName, note, ofTown } from './intriguebase';
 export * from './intriguebase'; // the record of a story and its plumbing, where they were found before they were moved
@@ -218,7 +218,7 @@ export function beginKiller(c: Campaign, at: number): Intrigue {
 }
 function kill(c: Campaign, it: Intrigue, first = false): boolean {
   const K = INTRIGUE.killer, f = folkOf(c, it.at);
-  if (grown(f) <= K.leave) return false;
+  if (grown(f) <= K.leave * TOWN_SCALE) return false; // a town of that size as towns now are (township.ts)
   const left = suspected(it).filter((i) => i !== it.culprit);
   let dead: Person;
   if (!first && left.length > 1 && chance(c, it.id * 59 + 2) < K.among) {
@@ -358,8 +358,8 @@ export function intrigueSeason(c: Campaign): Intrigue[] {
   if (!towns.length) return began;
   const hard = towns.filter((t) => strained(c, t.id)), from = hard.length && chance(c, 5) < 0.7 ? hard : towns;
   const t = from[Math.floor(chance(c, 6) * from.length)], f = folkOf(c, t.id), k = strained(c, t.id);
-  if (grown(f) >= K.grown && chance(c, 7) < K.chance * (k ? K.strained : 1) * crimeEdge(c, 0)) began.push(beginKiller(c, t.id));
-  else if (f.stores.gold >= T.gold && grown(f) >= 4 && chance(c, 8) < T.chance * (k ? T.strained : 1) * crimeEdge(c, 0)) began.push(beginThief(c, t.id));
+  if (grown(f) >= K.grown * TOWN_SCALE && chance(c, 7) < K.chance * (k ? K.strained : 1) * crimeEdge(c, 0)) began.push(beginKiller(c, t.id));
+  else if (f.stores.gold >= T.gold && grown(f) >= 4 * TOWN_SCALE && chance(c, 8) < T.chance * (k ? T.strained : 1) * crimeEdge(c, 0)) began.push(beginThief(c, t.id));
   return began;
 }
 

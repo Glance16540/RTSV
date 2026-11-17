@@ -24,7 +24,7 @@
 import type { Campaign, Pending, Territory } from './campaign';
 import type { Game, Unit } from './game';
 import { OLD_SEASON, agesOf, countFrom } from './ageing';
-import { MAX_KIND, folkOf } from './township';
+import { MAX_KIND, TOWN_SCALE, folkOf } from './township';
 import type { Census, PeopleIn } from './township';
 import { needOf } from './larder';
 
@@ -54,6 +54,8 @@ export const TRIBE = {
   town: 2,
 };
 
+/** Men of a tribe's town to a band of its warriors, as large as towns now are (township.ts TOWN_SCALE): a town four times the size fields the same bands. */
+export const bandMen = (): number => TRIBE.men * TOWN_SCALE;
 const tribe = (t: Territory): boolean => t.owner < 0 && !t.horde;
 const marauders = (c: Campaign, tid: number) => (c.bands ?? []).find((b) => b.kind === 'marauders' && b.at === tid);
 
@@ -66,7 +68,7 @@ function makeUp(c: Campaign, t: Territory): void {
   if (t.tribal) return;
   t.tribal = true;
   if (!tribe(t)) return;
-  const f = folkOf(c, t.id), men = Math.max(f.men, Math.max(0, t.militia) * TRIBE.men);
+  const f = folkOf(c, t.id), men = Math.max(f.men, Math.max(0, t.militia) * bandMen());
   if (men === f.men) return;
   f.men = men;
   f.women = Math.max(f.women, Math.round(men * TRIBE.women));
@@ -81,7 +83,7 @@ export function warriorsOf(c: Campaign, tid: number): number {
   if (t.horde) return marauders(c, tid)?.strength ?? t.militia;
   if (!t.tribal && !t.folk) return Math.max(0, t.militia - (t.stoodDown ?? 0)); // nobody has looked into this town yet
   makeUp(c, t);
-  return Math.max(0, Math.floor(folkOf(c, tid).men / TRIBE.men) - (t.stoodDown ?? 0));
+  return Math.max(0, Math.floor(folkOf(c, tid).men / bandMen()) - (t.stoodDown ?? 0));
 }
 
 /** Keep the old number true to what it stood for. */
@@ -110,7 +112,7 @@ export function tribeBeaten(c: Campaign, tid: number, bands: number): number {
     return 0;
   }
   folkOf(c, tid); makeUp(c, t);
-  const f = folkOf(c, tid), lose = Math.max(0, Math.min(bands * TRIBE.men, f.men - TRIBE.least * TRIBE.men));
+  const f = folkOf(c, tid), lose = Math.max(0, Math.min(bands * bandMen(), f.men - TRIBE.least * bandMen()));
   if (lose > 0) strike(c, tid, lose); // the young men stood in front
   mirror(c, tid);
   return lose;
@@ -121,7 +123,7 @@ export function tribeArms(c: Campaign, tid: number, bands: number): void {
   const t = c.territories[tid];
   if (t.horde || t.owner >= 0 || !bands) return;
   folkOf(c, tid); makeUp(c, t);
-  const all = Math.floor(folkOf(c, tid).men / TRIBE.men);
+  const all = Math.floor(folkOf(c, tid).men / bandMen());
   t.stoodDown = Math.max(0, Math.min(Math.max(0, all - TRIBE.least), (t.stoodDown ?? 0) - bands));
   if (!t.stoodDown) delete t.stoodDown;
   mirror(c, tid);
@@ -135,7 +137,7 @@ export function setTribe(c: Campaign, tid: number, bands: number): void {
   const t = c.territories[tid], f = folkOf(c, tid);
   t.tribal = true;
   delete t.stoodDown;
-  f.men = Math.max(0, Math.min(MAX_KIND, Math.round(bands) * TRIBE.men));
+  f.men = Math.max(0, Math.min(MAX_KIND, Math.round(bands) * bandMen()));
   f.women = Math.min(MAX_KIND, Math.max(f.women, Math.round(f.men * TRIBE.women)));
   delete f.ages;
   f.stores.food = Math.max(f.stores.food, Math.round(TRIBE.larder * needOf(c, tid)));

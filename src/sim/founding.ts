@@ -22,8 +22,26 @@ declare module './campaign' {
   }
 }
 
-/** How far settlers go: lands with nobody on them they may cross beyond their people's own, the land they found on counted. */
-export const FOUNDING = { reach: 3 };
+/**
+ * How far settlers go: lands with nobody on them they may cross beyond their people's own, the land they found on counted.
+ * And how far apart from its founders' town a new town begins in its faith, toward piety or decadence by the world's seed
+ * (the owner's word, 17 November 2026: "those who leave are not quite like those who stay").
+ */
+export const FOUNDING = { reach: 3, apart: [10, 15] as [number, number] };
+
+/** A number in [0, 1) from the world's seed, the land and the season: the same every time. */
+const seeded = (c: Campaign, tid: number, salt: number): number => {
+  let h = Math.imul((c.seed | 0) ^ Math.imul(c.turn + 17, 0x9e3779b1), 0x85ebca6b) ^ Math.imul(tid * 613 + salt, 0xc2b2ae35);
+  h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); h ^= h >>> 12;
+  return (h >>> 0) / 4294967296;
+};
+/** Where a town founded from this one begins in its faith: its founders' town's standing, FOUNDING.apart either way. */
+export function foundedFaith(c: Campaign, tid: number, from: number, f: number): number {
+  const at = c.territories[from]?.virtue ?? c.factions[f]?.virtue ?? 0;
+  const [lo, hi] = FOUNDING.apart, by = lo + Math.floor(seeded(c, tid, 1) * (hi - lo + 1));
+  const v = at + (seeded(c, tid, 2) < 0.5 ? -by : by);
+  return Math.max(-100, Math.min(100, Math.round(v)));
+}
 
 /**
  * Is there nobody on this land to rule: unheld, not the marauders', nobody living there, no warriors? Such a land is
@@ -90,6 +108,8 @@ export function claimLand(c: Campaign, tid: number, f: number, o: { from?: numbe
   delete t.yoke; delete t.town; delete t.orders;
   t.folk = { men: 0, women: 0, elders: 0, children: 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, notables: [] };
   if (o.from !== undefined) t.foundedBy = { from: o.from, turn: c.turn };
+  // Its faith: partly apart from its founders' (DESIGN.md, the owner's word); the nation's standing follows from its towns'.
+  t.virtue = foundedFaith(c, tid, o.from ?? tid, f);
   (c.events ??= []).push({ kind: 'founded', at: tid, turn: c.turn, until: c.turn });
   if (f === 0) c.log.push(`🏡 Settlers from ${o.from !== undefined ? c.territories[o.from].name : 'your people'} have founded ${t.name}: it is a town of yours now.`);
   (c.chronicle ??= []).push({ turn: c.turn, text: `${f === 0 ? 'Your people' : `The ${c.factions[f].name}`} founded a new town at ${t.name}: settlers came and made it theirs, without a war.` });
