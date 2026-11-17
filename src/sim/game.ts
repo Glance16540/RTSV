@@ -1,5 +1,8 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { layCoarse } from './firstlay';
+import { Furlough, goHome, rejoin } from './furlough';
+import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
 import { bereaved } from './bereft';
 import { seatWidows } from './widowtown';
@@ -348,7 +351,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; people?: PeopleIn; stores?: Partial<Stores>; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[] };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[] };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -511,6 +514,7 @@ export class Game {
       } else if (!field) {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
         if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
         else {
           this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
@@ -561,6 +565,7 @@ export class Game {
           const at = type === 'tower' && this.canPlace(type, cx, cy) ? { cx, cy } : this.siteNear(type, st, dir);
           if (at) this.spawnBuilding(type, i, at.cx, at.cy, true);
         });
+        if (s.bonus.coarse?.length && !field) layCoarse(this, i, st, dir, s.bonus.coarse); // a town met for the first time, as big as its record (firstlay.ts)
         // The town's children are on the record of one of its roofs, part grown.
         if (s.bonus.people?.named?.length && !field) { settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f')); restoreMade(this, i, s.bonus.people.named); }
         if (s.bonus.people?.widowed?.length && !field) seatWidows(this, i, s.bonus.people.widowed); // the map's widowed, the same in the town (widowtown.ts)
@@ -660,6 +665,9 @@ export class Game {
   powerDue(owner: number): number { return powerDue(this, owner); }
   /** Choose which of the two powers the leader takes at the rank they have just earned. It is theirs from then on. */
   cmdLearn(owner: number, choice: number): boolean { return cmdLearn(this, owner, choice); }
+  /** Soldiers of the army who are men of this town go home; and men home on leave take up arms again (furlough.ts). */
+  cmdGoHome(owner: number, ids: number[]): number { return goHome(this, owner, ids); }
+  cmdRejoin(owner: number, ids: number[]): number { return rejoin(this, owner, ids); }
 
   /** Give a villager a trait (or none), keeping its health in step. */
   setTrait(u: Unit, trait: string, trait2 = ''): void {
@@ -863,11 +871,11 @@ export class Game {
   census(owner: number): Census { return censusOf(this, owner); }
 
   /** What a side's town is set to as things stand (governor.ts): how many of its people are at each kind of work, what stands half built, what is being trained. */
-  orders(owner: number): { work: Stores; build: string[]; train: string[] } {
+  orders(owner: number): { work: Stores; build: string[]; train: string[]; men?: QueuedMan[] } {
     const work: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
     for (const u of this.units) if (u.owner === owner && u.type === 'villager' && !u.dead && u.order?.t === 'gather') work[u.order.res]++;
     const mine = this.buildings.filter((b) => b.owner === owner && !b.dead);
-    return { work, build: [...new Set(mine.filter((b) => !b.complete).map((b) => b.type))], train: [...new Set(mine.flatMap((b) => b.queue.filter((q) => q.kind === 'unit').map((q) => q.id)))] };
+    return { work, build: [...new Set(mine.filter((b) => !b.complete).map((b) => b.type))], train: [...new Set(mine.flatMap((b) => b.queue.filter((q) => q.kind === 'unit').map((q) => q.id)))], men: queuedOf(this, owner) }; // and the very men in the queues (queuedmen.ts)
   }
 
   /** A side's buildings as they stand, each with the share of its health left, the unfinished with how far built: what `bonus.town` takes. */
@@ -908,7 +916,7 @@ export class Game {
   }
 
   /** The nearest free ground to a start for a building, with room to walk round it and clear of where the people muster. */
-  private siteNear(type: string, st: { x: number; y: number }, dir: number): { cx: number; cy: number } | null {
+  siteNear(type: string, st: { x: number; y: number }, dir: number): { cx: number; cy: number } | null {
     const s = BUILDINGS[type].size, far = type === 'dock' ? this.size / 2 : 16;
     let best: { cx: number; cy: number } | null = null, bestD = Infinity;
     for (let cy = Math.max(2, Math.floor(st.y - far)); cy <= Math.min(this.size - s - 2, st.y + far); cy++)

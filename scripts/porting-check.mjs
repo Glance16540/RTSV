@@ -74,6 +74,8 @@ const depsKey = (text) => text.split(',').map((s) => s.trim().replace(/\s*\(.*$/
 
 const text = readFileSync(TABLE, 'utf8'), lines = text.split('\n');
 const rows = new Map(), errors = [], drift = [];
+// A clash left unsettled: the marks of a merge still in the table (it has happened: a commit took them with it).
+lines.forEach((line, i) => { if (/^(<{7}|>{7}|={7})( |$)/.test(line)) errors.push(`${TABLE} line ${i + 1} is the mark of an unsettled merge (${line.slice(0, 7)}): settle the clash, keeping both sides' rows`); });
 lines.forEach((line, i) => {
   const m = /^\| `([\w-]+)` \|/.exec(line);
   if (!m) return;

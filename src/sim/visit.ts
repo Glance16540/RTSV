@@ -7,6 +7,8 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { furloughOf, homeOnLeave } from './furloughmap';
+import { keepQueued } from './queueddrill';
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
 import type { BattleConfig, Campaign } from './campaign';
@@ -67,6 +69,8 @@ export interface VisitAfter {
   orders?: Partial<Orders>;
   /** Who of the player's bore arms as they left, by company (`visitArms`): the army's soldiers, and townsmen trained there. */
   arms?: VisitArms;
+  /** The town's men who went home from the army there and were home as the player left (`homeNow`, furlough.ts). */
+  leave?: unknown;
   /** The studies researched in the town (`learnedIn(player.techs)`): they come home to the nation (studies.ts). */
   studies?: string[];
 }
@@ -181,10 +185,11 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
       name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
-        buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}),
+        buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}), ...(!record.town && t.town?.coarse ? { coarse: t.town.b } : {}), // a first visit: the town as big as its record (firstlay.ts)
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
+        ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
       },
     }],
   };
@@ -200,11 +205,13 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   // The town is as the visit left it: everyone born there, less the dead and the taken.
   const census = cleanCensus(after.folk);
   const before = folkOf(c, land.id).children;
+  homeOnLeave(c, land.id, after.leave); // men of the town who went home from the army while the player was there: before its soldiers are counted back
   const had = armyAt(c, land.id)?.owner === 0 ? { ...armyAt(c, land.id)!.units } : undefined;
   if (census) settleFolk(c, land.id, census);
   if (census) bornOnVisit(c, land.id, folkOf(c, land.id).children - before);
   if (census) driftBack(c, land.id, after.drifted);
   keepOrders(c, land.id, after.orders);
+  keepQueued(c, land.id, after.orders?.men); // and the men who stood in its queues, to come out as themselves (queuedmen.ts)
   if (after.arms) armsHome(c, land.id, after.arms, had); // its soldiers go home to the map: the army's losses, and companies trained there
   if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)

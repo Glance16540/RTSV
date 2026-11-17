@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { furloughOf, homeOnLeave } from './furloughmap';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
@@ -53,7 +54,7 @@ import { countryOf, countryYield, rivalOpens } from './country';
 import { settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf } from './naming';
 import { Orders, governTowns, keepOrders } from './governor';
-import { drillTowns } from './townmuster';
+import { drillWithQueued, keepQueued } from './queueddrill';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
 import { suitorsSeason } from './suitors';
@@ -1029,6 +1030,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   // housed: the town's people and stores are as that battle left them.
   .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
   .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
+  .on('housed', 'queuedmen', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepQueued(c, p.to, b.after?.orders?.men); }) // and the men in its queues are remembered with them
   .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
 
 // What only the hub can do is lent to the systems below it (campaignbase.ts): they call it there, and import nothing from here.
@@ -1221,7 +1223,7 @@ export function continueAI(c: Campaign): void {
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       studiesSeason(c); // rival nations learn the study that answers what presses on them (studies.ts)
       rulesSeason(c); // rival nations raise their works of rule and faith (rule.ts)
-      drillTowns(c); // a town of the player's left training goes on raising, from its own men and stores (townmuster.ts)
+      drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
@@ -1455,8 +1457,9 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
-      ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}),
+      ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
+      ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id, { arms: out?.warriors ?? 0 })) : {}), // its men in arms go to the field whatever its cap (fieldcap.ts)
     };
@@ -1500,6 +1503,8 @@ const unitsOf = (type: string): [string, number] => Object.entries(COMPANIES[typ
  * `after`, by name, so that two features adding to it never fight over an argument's place.
  */
 export interface BattleAfter {
+  /** The town's men who went home from the army defending it and were home when it ended (`homeNow`, furlough.ts). */
+  leave?: unknown;
   /** Where the town's standing ended, to carry half the change home. */
   virtue?: number;
   /** The rank the leader ended the battle at. */
@@ -1526,6 +1531,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const p = c.pending;
   if (!p) return;
   if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors, { fell: after.fell, heroRank, acclaimed: after.acclaimed }); return; } // the leader fought beside the army, at the usual risk (bandfight.ts)
+  if (p.defender === 0 && p.mode !== 'field') homeOnLeave(c, p.to, after.leave); // men of the town who went home from its army while it was fought for (furloughmap.ts): before the army is counted
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.
   if (virtue !== undefined && Number.isFinite(virtue)) { if (p.attacker !== 0 && p.mode !== 'field') shiftVirtue(c, 0, (virtue - faithAt(c, p.to)) * BATTLE_VIRTUE, { at: p.to }); else shiftVirtue(c, 0, (virtue - virtueOf(c, 0)) * BATTLE_VIRTUE); }
