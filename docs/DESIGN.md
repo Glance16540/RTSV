@@ -206,6 +206,11 @@ that already runs, works on the map as well as in a town, and is kept on the tow
 - *Each people its own:* every nation has one or two studies of its own that fit what it is (Franks
   their families, Babylonians their law, Malians their trade, Kushites their bows, Romans their walls).
 
+**The food decree buys grain abroad** (the owner's word, 17 November 2026). Sending food between a
+people's own towns only moves a lean season from one larder to the next. The decree that answers a
+hungry town brings in new food from outside the nation, paid for in its gold, so that it ends hunger
+rather than shifting it.
+
 ## The order of building
 
 Each step is to be playable by itself.
