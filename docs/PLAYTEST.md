@@ -757,3 +757,17 @@ other line keeps to the left of it and wraps there (style.css); the panel scroll
 ![One of the great spoken of in the plot](shots/playtest5-noble.jpg)
 ![The suitor waits in the hall](shots/playtest5-suitor-hall.jpg)
 ![The map after the envoy was defied](shots/playtest5-envoy-map.jpg)
+
+### 5.7 Three stories of the house in one hall (after 1c6e694; this session's layout fix)
+
+With the threats session's fix for 5.3, an envoy, a suitor and a plot all come to the field together. Played from the
+all-court save: the hall's card held all seven answers (*Defy*, *Buy off*, *Yield*, *Ask her*, *Give*, *Decline*, *Spurn*)
+with room to spare, but its panel did not fit. Each story's line ran to two or three lines under the town's notables, the
+suitor's was cut off mid-sentence, and the plot's lay below the panel's edge, where nothing said there was more to scroll to.
+Now the stories of the house come first under the hall's name, and when more than one is afoot each is one clause
+("The envoy of Strategos Kallias of the Greeks: he demands that Mira be sent over the border."; "A plot for your place: 4 of
+the great are spoken of."), with the whole errand as its tip. All three are seen at 1440 × 900 and at 1280 × 720
+(`playtest5-court-all.jpg`). One story alone keeps its full line. The seven answers side by side are told apart only by
+their pictures and tips: which belongs to the envoy and which to the suitor could be clearer (the threats session's).
+
+![Three stories of the house in one hall](shots/playtest5-court-all.jpg)

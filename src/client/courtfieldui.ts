@@ -27,16 +27,24 @@ export function nobleLine(g: Game, u: Unit): string {
 /** A line under the hall where a rival's envoy or a suitor waits, or ''. */
 export function guestLine(g: Game, b: Building, pid: number): string {
   if (b.type !== 'towncenter' || b.owner !== pid) return '';
-  return courtsOf(g, pid).map(oneLine).join(''); // every story of the house afoot at once: an envoy, a suitor, a plot
+  const all = courtsOf(g, pid);
+  return all.map((s) => oneLine(s, all.length > 1)).join(''); // every story of the house afoot at once: an envoy, a suitor, a plot
 }
-function oneLine(s: CourtOnField): string {
+/** One story's line. `short`: with others afoot, a clause each so that all fit the panel; the whole errand is its tip. */
+function oneLine(s: CourtOnField, short = false): string {
   if (s.kind === 'plot') {
     const left = (s.nobles ?? []).filter((_, i) => !(s.cleared ?? []).includes(i) && !(s.out ?? []).includes(i)).length;
-    return `<div class="warn">👁️ One of the great plots for your place. ${left} ${left === 1 ? 'is' : 'are'} spoken of, and they are in the town: set a soldier to keep watch on one.</div>`;
+    return short ? `<div class="warn" title="They are in the town: set a soldier to keep watch on one.">👁️ A plot for your place: ${left} of the great ${left === 1 ? 'is' : 'are'} spoken of.</div>`
+      : `<div class="warn">👁️ One of the great plots for your place. ${left} ${left === 1 ? 'is' : 'are'} spoken of, and they are in the town: set a soldier to keep watch on one.</div>`;
   }
   const given = s.answer ? ` <b>Your answer is given</b>, and is done when you leave the town.` : '';
   const said = s.kind === 'suitor' && s.asked ? ` ${esc(s.daughter ?? 'She')} ${s.willing ? 'would have him' : 'would not have him'}.` : '';
-  return `<div class="${s.answer ? 'good' : 'warn'}">${s.kind === 'rival' ? '🗡️' : '💍'} ${esc(cap(s.guest ?? 'A guest'))} waits in your hall. ${esc(s.errand ?? '')}${said}${given}</div>`;
+  const icon = s.kind === 'rival' ? '🗡️' : '💍', full = `${cap(s.guest ?? 'A guest')} waits in your hall. ${s.errand ?? ''}`;
+  if (short) {
+    const what = (s.errand ?? '').split(/, and |\. /)[0].replace(/\.$/, ''); // its first clause: "He demands that Mira be sent over the border"
+    return `<div class="${s.answer ? 'good' : 'warn'}" title="${esc(full)}">${icon} ${esc(cap(s.guest ?? 'A guest'))}: ${esc(what.replace(/^(He|She) /, (m) => m.toLowerCase()))}.${s.answer ? ' <b>Answered.</b>' : said}</div>`;
+  }
+  return `<div class="${s.answer ? 'good' : 'warn'}">${icon} ${esc(full)}${said}${given}</div>`;
 }
 
 /** The answers the leader may give at the hall, as commands on it; none where nobody waits on one. */
