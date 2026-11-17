@@ -15,15 +15,15 @@
 // will not fit is lost. The nation's figure is then set from its towns (stores.ts).
 import type { Campaign, Territory } from './campaign';
 import { biomeOf } from './campaignbase';
-import { MAX_STORE, STORE_KINDS, folkOf } from './township';
+import { MAX_STORE, STORE_KINDS, TOWN_SCALE, folkOf } from './township';
 import type { Stores } from './township';
 import { SUPPLY_UNITS, settleStores } from './stores';
 import { nobleWork } from './nobles';
 import { GOVERN, shareOf } from './governor';
 import { millYield } from './mill';
 
-/** Grown men and women a town needs to work its land in full. */
-export const HANDS_FULL = 6;
+/** Grown men and women a town needs to work its land in full: six in the towns of today, TOWN_SCALE times as many in bigger towns. */
+export const HANDS_FULL = 6 * TOWN_SCALE;
 
 /** What a land leans to, kind by kind: 1 where it is like any other. */
 export function landLean(c: Campaign, tid: number): Stores {

@@ -23,7 +23,7 @@ import { isDecadent } from './creed';
 import { griefSeason } from './grief';
 import { GRIEF_MAX, nationLoss, townGrief } from './notableweight';
 import { townMood } from './portrait';
-import { folkOf, grown } from './township';
+import { TOWN_SCALE, folkOf, grown } from './township';
 import { TEND_EASE, decreeEffect, decreesSeason, sensibleDecrees } from './decrees';
 import { leaderAt } from './court';
 import { nobleStrain, nobleWatch } from './nobles';
@@ -59,8 +59,8 @@ export const NATION_DIP = 10;
 export const FALL = 8;
 export const RISE = 4;
 /** Food a head a town needs on hand not to be hungry on the map (beside the larder's own word, larder.ts), and to count as well fed. */
-export const LEAN_FOOD = 1;
-export const FED_FOOD = 30;
+export const LEAN_FOOD = 1 / TOWN_SCALE; // food a head: a TOWN_SCALE-th in bigger towns, as a person eats (larder.ts)
+export const FED_FOOD = 30 / TOWN_SCALE;
 /** Gold a season from each man at the mines, and each woman at the tavern. */
 export const MINE_GOLD = 4;
 export const TAVERN_GOLD = 6;
