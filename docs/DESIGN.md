@@ -236,6 +236,8 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **A garrison pays for its guard** (the owner's word, 17 November 2026). A raid on a town is fought out, the band against the town's men, works and walls and any army standing there; and an army standing guard in a raided town loses companies when it is pressed, as in any battle, each a man of his town.
 
+**Every town its own faith** (the owner's word, 17 November 2026). All towns differ in faith, even those built alike, and together they make the nation's faith. A town leans its own way by its own life as well as by its church or tavern; the nation's standing is what its towns come to together.
+
 ## The order of building
 
 Each step is to be playable by itself.
