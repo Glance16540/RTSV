@@ -148,6 +148,21 @@ export function cameHome(c: Campaign, tid: number, n: number, army?: number): st
   return out;
 }
 
+/**
+ * One man of this town is away no longer, by name: he has gone home from the army named while it still stands
+ * (furloughmap.ts). The man of that name, and of that house if it is given, on record with that army; failing him,
+ * whoever of the town has been longest with it. Returns his name and house, or nothing if nobody of the town is away.
+ */
+export function wentHome(c: Campaign, tid: number, army: number, name: string, family?: string): string {
+  const f = c.territories[tid]?.folk;
+  if (!f) return '';
+  const all = housesOf(f).flatMap((h) => h.away.map((s) => ({ h, s })));
+  const his = all.find((x) => x.s.name === name && (!family || x.h.family === family) && x.s.army === army) ?? all.find((x) => x.s.name === name && (!family || x.h.family === family));
+  if (!his) return cameHome(c, tid, 1, army)[0] ?? '';
+  his.h.away.splice(his.h.away.indexOf(his.s), 1);
+  return `${his.s.name} ${his.h.family}`;
+}
+
 /** How near a man away is to the army asked about: of it, of none on record, of another. */
 const rank = (s: Serving, army: number | undefined): number => (army === undefined || s.army === army ? 0 : s.army === undefined ? 1 : 2);
 export interface HouseLoss { name: string; family: string; as: Tie; /** His house is one the nation knows: he is listed with its lost. */ known: boolean }
