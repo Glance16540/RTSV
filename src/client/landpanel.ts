@@ -30,6 +30,7 @@ import { siteLook } from '../sim/faithhouse';
 import { inTime } from '../sim/inyears';
 import { nextAgeText } from '../sim/nextage';
 import { emptyWords } from '../sim/founding';
+import { settleReach } from '../sim/migration';
 
 const css = (c: number) => '#' + c.toString(16).padStart(6, '0');
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
@@ -100,7 +101,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
   const signs = [...(weather ? [`<span title="${WEATHER[weather as 'rain'].name}">${WEATHER[weather as 'rain'].icon}</span>`] : []), ...events.map((e) => `<span title="${EVENTS[e.kind].name}">${EVENTS[e.kind].icon}</span>`)].join('');
   const head = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}${signs ? ` <small class="lp-signs">${signs}</small>` : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
-      <div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} ${empty ? '' : `· Defence ${defence(c, t.id)}`}</div>${empty ? `<div class="hint">${empty.desc}</div>` : ''}`;
+      ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · Defence ${defence(c, t.id)}</div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
   const people = `${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div>${t.buildings.map((b) => { const l = siteLook(b, SITES[b], c.factions[t.owner]?.civ); return `${l.icon} ${l.name}`; }).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>`;
   const danger = `${intrigueHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}

@@ -54,7 +54,7 @@ export function emptyWords(c: Campaign, tid: number): { name: string; icon: stri
   const band = (c.bands ?? []).find((b) => b.at === tid);
   const bandLine = band ? ` ${band.name[0].toUpperCase()}${band.name.slice(1)} have their place here: send an army against the band, not the land.` : '';
   if (wilderness(c, tid)) return { name: 'Wilderness', icon: '🏔️', desc: `Nobody lives here. It cannot be settled or taken, and bands may rise here and march on the towns.${bandLine}` };
-  return { name: 'Empty land', icon: '🏡', desc: `Nobody lives here, so there is nothing for an army to take. Settlers sent from a town of yours may found a town here (the convoy part of a town\'s panel).${bandLine || (emptyLand(c, tid) ? '' : ' A band\'s road runs through it.')}` };
+  return { name: 'Empty land', icon: '🏡', desc: `Nobody lives here, so there is nothing for an army to take: settlers may found a town here.${bandLine || (emptyLand(c, tid) ? '' : ' A band\'s road runs through it.')}` };
 }
 
 /**
