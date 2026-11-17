@@ -570,6 +570,10 @@ Harrowdale fell with the army. He was Marn Ironwood." And a man on the roll chan
 (the man of his house)" before the defence, "Edric Oakes" after it, when a clubman called Edric was acclaimed on the
 field. Which soldier is which man is still not kept (the board's gap under *Home on leave*).
 
+*Fixed after the pass (soldiernames.ts):* each company of an army is led on the field by the man of its roll, by his
+name and house; the men whose soldiers went down are the ones the map counts lost, first, dead or home hurt; and the
+man of a house keeps his name when a soldier is acclaimed or makes his name on the field.
+
 ### 4.10 Small words (low)
 
 "Malians marches with a strength of 5.4"; "Malians attacked Harrowdale and was thrown back"; the end card of a siege
@@ -589,6 +593,23 @@ town has fallen", "The assault has failed" (battlecard.ts verdictOf, told by bri
 - **A man's own door.** No house on the field has a family (4.3), so only "a roof of his own" was seen.
 - **Whether the field is faster.** A headless browser cannot say; it wants a real machine.
 
+## Fixed since the fourth pass
+
+- **4.2 One man's work as the town's orders** (`src/sim/givenorders.ts`): the field now says how many hands the town
+  had there, and the work it reports is orders only when half of them were at it. One man digging gold among
+  twenty-seven idle leaves the town with the work it was last given, or its governor's shares; what stood half built
+  and who was in the queues are kept as before.
+- **4.3 Nobody lives in the houses** (`src/sim/roofs.ts`, `src/sim/roofsmap.ts`): a town comes to the field with its
+  households seated. The couples the map counts married have a house each, a man and a woman; the wife of a man away
+  with the armies is alone under his family's roof, so *Go home* sends him to his own door; and who lived where as
+  the sitting ends is on the town's record, and they are under the same roofs by the same names next time, a season
+  older for each season between. Still so: those with no roof (the unmarried, or more couples than houses) are homeless as before.
+- **4.3, the idle crowd** (`src/sim/atwork.ts`): the town is at work as the sitting begins. Its people are set to
+  food, wood, gold and stone by the shares it works by on the map (its last orders, or its governor's), each to the
+  nearest of its kind, in a visit and in a siege defended; a side the computer plays sets its own. Leaving without
+  changing anybody's work leaves the town's orders as they were.
+- **4.4 and 4.5** were fixed in the pass itself.
+
 ## Handed on
 
 | What | Whose |
@@ -599,4 +620,4 @@ town has fallen", "The assault has failed" (battlecard.ts verdictOf, told by bri
 | 4.6 "+8 each turn" | food and stores session |
 | 4.7 three figures for a town's defence | threats session |
 | 4.8, 4.10 the card's and the reports' small words | fixed (the strength of 4.8's third line is for the threats session) |
-| 4.9 which soldier is which man | armies session, when it is given |
+| 4.9 which soldier is which man | fixed (soldiernames.ts) |

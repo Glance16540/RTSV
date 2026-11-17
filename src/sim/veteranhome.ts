@@ -45,7 +45,8 @@ const lot = (seed: number, a: number, b: number): number => {
 
 /**
  * The town and house a veteran of this army is of: the man of its roll who bears his name, else one drawn by lot
- * (who takes his name). Undefined where the army has nobody of this nation's towns on its roll.
+ * (who keeps his own: soldiernames.ts names the field's soldiers after the roll, so a match is the rule). Undefined
+ * where the army has nobody of this nation's towns on its roll.
  */
 export function veteranHome(c: Campaign, owner: number, army: number, name: string): { town: number; family: string } | undefined {
   const men: { town: number; house: House; man: Away }[] = [];
@@ -56,7 +57,7 @@ export function veteranHome(c: Campaign, owner: number, army: number, name: stri
   if (!men.length) return undefined;
   const his = men.find((m) => m.man.name === name || `${m.man.name} ${m.house.family}` === name)
     ?? men.map((m, i) => ({ m, k: lot(c.seed, army * 131 + i, c.turn) })).sort((a, b) => a.k - b.k)[0].m;
-  if (his.man.name !== name && `${his.man.name} ${his.house.family}` !== name) his.man.name = name;
+  // The man of the house keeps his own name: a soldier who made a name on the field under another is of this house by lot, not him (soldiernames.ts, PLAYTEST 4.9).
   return { town: his.town, family: his.house.family };
 }
 

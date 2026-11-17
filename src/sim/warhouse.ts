@@ -22,6 +22,7 @@ import { FAMILY_NAMES, NAMES_M } from './data';
 import { GRIEF_SEASONS } from './grief';
 import { Folk, MAX_NOTABLES, Notable, folkOf } from './township';
 import { veteransFell } from './veteranhome';
+import { downRank } from './soldiernames';
 
 export type Tie = 'husband' | 'son';
 /** A man of the house away with the armies: his name, what he is to the house, the turn he left, and the army he marches with. */
@@ -147,7 +148,7 @@ export function cameHome(c: Campaign, tid: number, n: number, army?: number): st
   const f = c.territories[tid]?.folk, out: string[] = [];
   if (!f || n <= 0) return out;
   const all = housesOf(f);
-  const order = all.flatMap((h) => h.away.map((s) => ({ h, s }))).sort((p, q) => rank(p.s, army) - rank(q.s, army) || p.s.since - q.s.since || p.h.family.localeCompare(q.h.family) || p.s.name.localeCompare(q.s.name)).slice(0, n);
+  const order = all.flatMap((h) => h.away.map((s) => ({ h, s }))).sort((p, q) => rank(p.s, army) - rank(q.s, army) || downRank(c, army, p.h.family, p.s.name) - downRank(c, army, q.h.family, q.s.name) || p.s.since - q.s.since || p.h.family.localeCompare(q.h.family) || p.s.name.localeCompare(q.s.name)).slice(0, n); // who went down on the field just fought comes home hurt first (soldiernames.ts)
   for (const { h, s } of order) { h.away.splice(h.away.indexOf(s), 1); out.push(`${s.name} ${h.family}`); }
   return out;
 }
@@ -195,7 +196,7 @@ export function fell(c: Campaign, tid: number, n: number, how = 'fell with the a
   const f = folkOf(c, tid), all = housesOf(f);
   const short = n - recordedAway(f);
   if (short > 0) enlist(c, tid, short, army); // men who went before houses were kept: they are given theirs now
-  const lots = all.flatMap((h) => h.away.map((s, i) => ({ h, s, lot: hash(c.seed * 23 + tid * 97 + i, c.turn * 29 + h.family.length * 7 + s.since) }))).sort((p, q) => rank(p.s, army) - rank(q.s, army) || p.lot - q.lot).slice(0, n);
+  const lots = all.flatMap((h) => h.away.map((s, i) => ({ h, s, lot: hash(c.seed * 23 + tid * 97 + i, c.turn * 29 + h.family.length * 7 + s.since) }))).sort((p, q) => rank(p.s, army) - rank(q.s, army) || downRank(c, army, p.h.family, p.s.name) - downRank(c, army, q.h.family, q.s.name) || p.lot - q.lot).slice(0, n); // who went down on the field just fought, before the lot (soldiernames.ts)
   for (const { h, s } of lots) {
     h.away.splice(h.away.indexOf(s), 1);
     (h.fallen ??= []).push({ name: s.name, as: s.as, turn: c.turn, how });
