@@ -20,7 +20,7 @@ import { awayMen, cameToDoor, wentHome } from './warhouse';
 
 const DOORS: Door[] = ['husband', 'son', 'own', 'none'];
 /** How the chronicle tells the door he came to. */
-const DOOR_WORDS: Record<Door, string> = { husband: 'under his own roof again', son: 'a son of his house again', own: 'under a roof of his own, his old one gone', none: 'with no roof of his own' };
+const DOOR_WORDS: Record<Door, string> = { husband: 'under his own roof again', son: 'a son of his house again', own: 'under a roof of his own', none: 'with no roof of his own' };
 const text = (v: unknown): string => (typeof v === 'string' ? v.replace(/[<>&"]/g, '').slice(0, 40) : '');
 /** How many soldiers of each kind make a company on the field. */
 const perUnit = (): Record<string, number> => { const out: Record<string, number> = {}; for (const d of Object.values(COMPANIES)) for (const [u, n] of Object.entries(d.units)) out[u] = n; return out; };
