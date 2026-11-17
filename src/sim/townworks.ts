@@ -9,7 +9,7 @@
 // `onMap` in its own data.ts entries; nothing here lists them.
 import type { Campaign } from './campaign';
 import { BUILDINGS } from './data';
-import { STORE_KINDS, folkOf, grown } from './township';
+import { STORE_KINDS, TOWN_SCALE, folkOf, grown } from './township';
 import { plotFor } from './governor';
 import { ageOf } from './campaignbase';
 import { standsAt } from './studies';
@@ -32,7 +32,7 @@ export function raiseBar(c: Campaign, f: number, tid: number, type: string, chec
   if (!t.town?.b?.length) return 'The town has no buildings on record to raise it beside.';
   if (begunAt(c, tid, type)) return `There is a ${b.name} there already.`;
   if (ageOf(c, f) < b.age) return 'It needs the nation in a later age.';
-  if (b.townAt && grown(folkOf(c, tid)) < b.townAt) return `Only in a town of ${b.townAt} grown people or more.`;
+  if (b.townAt && grown(folkOf(c, tid)) < b.townAt * TOWN_SCALE) return `Only in a town of ${b.townAt * TOWN_SCALE} grown people or more.`; // TOWN_SCALE times the field's own figure, as the map counts (township.ts)
   if (b.needs === 'holy' && !isHoly(faithAt(c, tid))) return 'Only a town that keeps the faith (Devout or better) has one.';
   if (b.needs === 'decadent' && !isDecadent(faithAt(c, tid))) return 'Only a Decadent town would have one.';
   const own = check?.(c, tid);

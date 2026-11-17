@@ -15,7 +15,7 @@
 import type { Campaign } from './campaign';
 import type { Noble } from './nobles';
 import { isAngry, noblesOf, titleOf } from './nobles';
-import { folkOf } from './township';
+import { TOWN_SCALE, folkOf } from './township';
 import { agesOf, countFrom } from './ageing';
 import { warFooting } from './rivalrule';
 
@@ -36,7 +36,9 @@ export const ACTS = {
   /** At most once in so many seasons. */
   every: 4,
   /** Men sent to a struck town, the fewest grown men a town has before it is helped, the most the lord's town keeps after. */
-  men: 2, fewMen: 4, keepMen: 6,
+  // TOWN_SCALE times today's in bigger towns (township.ts), but half as many sent: unscaled, at TOWN_SCALE 4 no town was ever
+  // short and nobody was sent; at 2 * TOWN_SCALE sent, struck towns held out longer and 10.4% of 384 campaigns were undecided.
+  men: TOWN_SCALE, fewMen: 4 * TOWN_SCALE, keepMen: 6 * TOWN_SCALE,
   /** Gold out of the lord's purse, and the chief town's gold under which it is short. */
   purse: 80, poor: 150,
   /** Gold an angry lord withholds a season. */
