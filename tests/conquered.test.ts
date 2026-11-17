@@ -10,7 +10,7 @@ const LONG = 60_000;
 /** The player holds a town taken from the rival, with nothing built in it and no army there. */
 const held = (seed = 7) => {
   const c = newCampaign(seed, 1, 1, 'hearth');
-  const t = c.territories.find((x) => x.owner < 0 && !x.horde)!;
+  const t = c.territories.find((x) => x.owner < 0 && !x.horde && !x.wild)!; // a tribe's, not a wild land with nobody in it (wilds.ts)
   t.buildings = []; c.places = [];
   c.armies = c.armies.filter((a) => a.at !== t.id);
   townTaken(c, t.id, 1, 0);

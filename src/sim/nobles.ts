@@ -63,7 +63,7 @@ export const NOBLES = {
   lordAt: 12,
   /** How far a decree moves a noble's mood at full strength, in their own town; elsewhere in the nation, `far` of it. */
   sway: 25, far: 0.3,
-  /** Each season a mood eases this share of the way back to nothing, and sours in a town struck. */
+  /** Each season a mood eases this share of the way back to where it settles (what a noble remembers for years sets that: nobletemper.ts), and sours in a town struck. */
   ease: 0.2, raided: -8, hungry: -6, sick: -4,
   /** At or below this a noble is angry. */
   angry: -40,

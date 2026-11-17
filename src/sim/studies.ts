@@ -125,6 +125,7 @@ export function pressing(c: Campaign, f: number, answers: string): number {
     case 'nobles': case 'plots': case 'rule': return share((tid) => (folkOf(c, tid).drift?.strain ?? 0) > 0.25);
     case 'births': return share((tid) => { const k = folkOf(c, tid); return (Math.min(k.men, k.women) > 0 && k.children < Math.min(k.men, k.women)) || (k.missed ?? 0) > 0; }); // towns with fewer children than couples, or births that did not come (seasonfolk.ts: Midwifery)
     case 'trade': return share((tid) => folkOf(c, tid).stores.gold < TRADE_SHORT); // towns short of gold
+    case 'roads': return share((tid) => (c.bands ?? []).some((b) => b.kind === 'highwaymen' && (b.at === tid || b.to === tid))); // towns at an end of a road highwaymen hold (threats.ts: Paved Roads)
     default: return 0;
   }
 }
