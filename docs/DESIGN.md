@@ -246,6 +246,8 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **Caravans on the roads** (the owner's word, 18 November 2026). A market's trade is carried by caravans that can be seen on the roads between towns, and a band can fall on one, as it can on an army. What a market earns comes by the caravans that arrive, not by rule alone.
 
+**Claimants to the throne** (the owner's word, 18 November 2026). A noble whose faith is not the leader's may plot to overthrow the leader. Such a noble may take the leader's wife into his house, and a child of theirs may grow up to claim the throne as the noble's bastard heir. So too a leader's wife carried off and held: a child she bears there may, grown, come seeking the throne. A claimant raises a rebellion among those who will follow him. As ever, nothing of it is shown or told beyond the plain fact (a wife taken, a child born, a claimant come of age); children are records only until they are grown, and only a grown claimant is ever a figure.
+
 ## The order of building
 
 Each step is to be playable by itself.
