@@ -52,7 +52,8 @@ export interface RaidFight {
 }
 
 /** The two sides of a raid. `force`: the band's of the day; `garrison`: the companies of the holder's army standing in the town, if any; `virtue`: the town's own standing. */
-export function raidForces(strength: number, force: number, stand: TownStand, garrison: Record<string, number> = {}, virtue = 0): { a: Force; d: Force } {
+export function raidForces(strength: number, force: number, stand: TownStand, garrison: Record<string, number> = {}, virtue = 0, militia?: Militia): { a: Force; d: Force } {
+  if (militia) return turnedOut(strength, force, stand, garrison, virtue, militia);
   const n = Math.max(1, Math.round(strength)), bows = Math.min(n - 1, Math.round(n * RAID.bows));
   const a: Force = { units: { infantry: n - bows, ...(bows ? { archers: bows } : {}) }, weight: Math.max(0, force) * RAID.press };
   const has = Object.values(garrison).some((v) => v > 0);
@@ -61,6 +62,32 @@ export function raidForces(strength: number, force: number, stand: TownStand, ga
     units: has ? garrison : {},
     weight: Math.max(0, stand.total),
     own: has && parts > 0 ? stand.total * (stand.army / parts) : 0, // the army's share of the sum; the rest is the place and its people
+    heart: heartOf(virtue),
+    walled: stand.works > 0 || stand.walls > 0,
+  };
+  return { a, d };
+}
+
+/** A town's own men as they turn out (militia.ts): so many bands on foot, worth so much in all before the town's spirit. */
+export interface Militia { bands: number; worth: number }
+
+/**
+ * Stage three, the town as it turns out against a nation (mapbattle.ts forcesOf): its own men are bands on foot beside
+ * the companies of any army there, and only its works, walls, towers and guard are the place itself, which strikes and
+ * shelters. `stand` is still the sum's reading of the town; its `men` part is put aside for what the bands are worth, and
+ * the town's spirit (the sum's total over its parts) is kept on everything.
+ */
+function turnedOut(strength: number, force: number, stand: TownStand, garrison: Record<string, number>, virtue: number, m: Militia): { a: Force; d: Force } {
+  const n = Math.max(1, Math.round(strength)), bows = Math.min(n - 1, Math.round(n * RAID.bows));
+  const a: Force = { units: { infantry: n - bows, ...(bows ? { archers: bows } : {}) }, weight: Math.max(0, force) * RAID.press };
+  const parts = stand.men + stand.works + stand.walls + stand.army + stand.guard, spirit = parts > 0 ? stand.total / parts : 1;
+  const worth = Math.max(0, m.worth), bands = worth > 0 ? Math.max(1, Math.round(m.bands)) : 0;
+  const units: Record<string, number> = { ...garrison };
+  if (bands) units.infantry = (units.infantry ?? 0) + bands;
+  const d: Force = {
+    units,
+    weight: Math.max(0, (stand.works + stand.walls + stand.guard + stand.army + worth) * spirit),
+    own: Math.max(0, (stand.army + worth) * spirit),
     heart: heartOf(virtue),
     walled: stand.works > 0 || stand.walls > 0,
   };
@@ -80,8 +107,8 @@ export function raidOf(out: Outcome, strength: number): RaidFight {
 }
 
 /** A raid fought: `luckA`, `luckD` are the day's for each side, each 0 to 1 (0.5 an even day). */
-export function raidClash(strength: number, force: number, stand: TownStand, garrison: Record<string, number> = {}, virtue = 0, luckA = 0.5, luckD = 0.5): RaidFight {
-  const { a, d } = raidForces(strength, force, stand, garrison, virtue);
+export function raidClash(strength: number, force: number, stand: TownStand, garrison: Record<string, number> = {}, virtue = 0, luckA = 0.5, luckD = 0.5, militia?: Militia): RaidFight {
+  const { a, d } = raidForces(strength, force, stand, garrison, virtue, militia);
   const day = (roll: number): number => 1 - CLASH.day + 2 * CLASH.day * Math.max(0, Math.min(1, roll));
   return raidOf(clash(a, d, day(luckA), day(luckD)), strength);
 }
