@@ -19,13 +19,15 @@
 //     One is kept if it lies RIM.apart or more from every land and every rim land already kept, and has a land that is
 //     no chief town within RIM.near to be joined to. Cold and parched places are kept first, so that where the world
 //     has snow or desert at its edge the rim is of it; up to RIM.lands are kept.
+//   Which waste. Snow or desert always (`rimWaste`), whatever the country round it: its name and the map's drawing of it
+//     (src/client/rimdraw.ts) say which, and its climate is that waste (campaignbase.ts biomeOf reads `waste`).
 //   What. A rim land has no tribe, no town, no works, no people, and never will: it cannot be settled or taken
 //     (founding.ts, migration.ts read `wilderness`). Camps of raiders and slavers are born there (bandwilds.ts) and
 //     march in. It is marked `wild` and `rim`.
 //
 // It reads and writes only the lands.
 import type { Campaign, Territory } from './campaign';
-import { MAP_H, MAP_W, biomeAt } from './campaignbase';
+import { MAP_H, MAP_W, biomeAt, wasteAt } from './campaignbase';
 
 declare module './campaign' {
   interface Territory {
@@ -33,6 +35,8 @@ declare module './campaign' {
     rim?: boolean;
     /** A rim land: the lands it looks down on, which is its only way out. It is nobody's neighbour (`adj` is empty). */
     down?: number[];
+    /** A rim land: the waste it is, snow or desert, whatever the climate round it (rim.ts `rimWaste`; campaignbase.ts biomeOf reads it). */
+    waste?: 'snow' | 'desert';
   }
 }
 
@@ -43,6 +47,8 @@ export const RIM = {
   round: 20, inset: 0.05,
   /** A rim land lies at least this far from every other land, and is joined to lands no farther than `near`: the two nearest at most. */
   apart: 150, near: 300, joins: 2,
+  /** The warmth (campaignbase.ts climateAt) below which a rim land lying in green country is snow, and above which desert. */
+  middle: 0.5,
 };
 
 /** A number drawn from the world's seed and a place's, the same every time, and none of the world's own draws. */
@@ -69,11 +75,13 @@ export function rimPlaces(seed: number): { x: number; y: number; side: 'north' |
   return out.sort((a, b) => Number(b.waste) - Number(a.waste) || a.k - b.k).map(({ x, y, side, waste }) => ({ x, y, side, waste }));
 }
 
-const WASTES: Record<string, string[]> = {
+const WASTES: Record<'snow' | 'desert', string[]> = {
   snow: ['Frozen Reach', 'White Waste', 'Ice Marches', 'Winter Fells'],
   desert: ['Burning Waste', 'Red Sands', 'Dry Marches', 'Salt Flats'],
-  other: ['Far Barrens', 'Stone Wastes', 'Grey Fells', 'Lost Marches'],
 };
+
+/** The waste a rim land at this place is: always snow or desert (campaignbase.ts `wasteAt`, with the rim's middle warmth). */
+export const rimWaste = (seed: number, x: number, y: number): 'snow' | 'desert' => wasteAt(seed, x, y, RIM.middle);
 
 /** Ring the map's edge with true wilderness: new lands, nobody's for good. Returns the lands added. */
 export function makeRim(c: Campaign): number[] {
@@ -84,13 +92,13 @@ export function makeRim(c: Campaign): number[] {
     // Joined to the nearest lands the world was made with that are nobody's chief town: never to another rim land alone.
     const to = c.territories.slice(0, world).filter((t) => t.capital < 0 && dist(t, p) <= RIM.near).sort((a, b) => dist(a, p) - dist(b, p) || a.id - b.id).slice(0, RIM.joins);
     if (!to.length) continue;
-    const b = biomeAt(c.seed, p.x, p.y), kind = b === 'snow' || b === 'desert' ? b : 'other', id = c.territories.length;
+    const kind = rimWaste(c.seed, p.x, p.y), id = c.territories.length;
     const names = WASTES[kind], side = p.side[0].toUpperCase() + p.side.slice(1) + 'ern';
     let name = `the ${side} ${names[Math.floor(draw(c.seed, 100 + id) * names.length)]}`;
     for (let k = 0; c.territories.some((t) => t.name === name) && k < names.length; k++) name = `the ${side} ${names[k]}`;
     const t: Territory = {
       id, name, owner: -1, capital: -1, adj: [], down: to.map((x) => x.id), x: p.x, y: p.y, buildings: [], trait: '', militia: 0, seed: 1 + Math.floor(draw(c.seed, 200 + id) * 1e6),
-      wild: true, rim: true, tribal: true, // never made up to a tribe's strength (tribes.ts)
+      wild: true, rim: true, waste: kind, tribal: true, // never made up to a tribe's strength (tribes.ts)
       folk: { men: 0, women: 0, elders: 0, children: 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, notables: [] },
     };
     c.territories.push(t);

@@ -1,18 +1,21 @@
-// The rim of true wilderness on the campaign map (src/client/rimdraw.ts): its waste by name and place, its paint, a band's camp.
+// The rim of true wilderness on the campaign map (src/client/rimdraw.ts): its waste, its paint, a band's camp.
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import { RIM_PAINT, bandCamp, rimTint, seenByPlayer, wasteOf } from '../src/client/rimdraw';
 import { townsThatSee } from '../src/sim/bandmarch';
+import { wasteAt } from '../src/sim/campaignbase';
 
 const land = (name: string, x = 600, y = 400) => ({ id: 99, name, x, y } as never);
 
 describe('rimdraw', () => {
   const c = newCampaign(11, 1, 1, 'hearth');
-  it('a rim land is snow or desert by its name, and a barren one by its side of the map', () => {
-    expect(wasteOf(c, land('the Southern Frozen Reach'))).toBe('snow');
-    expect(wasteOf(c, land('the Northern Dry Marches'))).toBe('desert');
-    expect(wasteOf(c, land('the Northern Grey Fells'))).toBe('snow');
-    expect(wasteOf(c, land('the Southern Stone Wastes'))).toBe('desert');
+  it('a rim land is painted as its own waste, snow or desert; one saved before it kept a waste, by the rim\'s rule (rim.ts rimWaste)', () => {
+    // The rim keeps its waste now (rim.ts): it is painted as that, whatever its name or the country round it.
+    expect(wasteOf(c, { ...(land('the Southern Frozen Reach') as object), waste: 'snow' } as never)).toBe('snow');
+    expect(wasteOf(c, { ...(land('the Northern Dry Marches') as object), waste: 'desert' } as never)).toBe('desert');
+    for (const t of c.territories.filter((x) => x.rim)) expect(wasteOf(c, t)).toBe(t.waste);
+    // A campaign saved before: the same rule the rim is made by, at the land's place.
+    for (const [x, y] of [[600, 30], [600, 770], [30, 400], [1170, 400]]) expect(wasteOf(c, land('the Western Grey Fells', x, y))).toBe(wasteAt(c.seed, x, y));
   });
   it('turns the ground pale near a rim land, and leaves it be far off', () => {
     const tint = rimTint(c)!;
