@@ -1,25 +1,19 @@
 // The rim of true wilderness on the campaign map (src/sim/rim.ts): lands at the map's edge that nobody can settle or
-// farm. They take the climate of where they lie, so the map would have painted them green, with fields round a town
-// that is not there. Here a rim land is painted as the waste its name says it is, snow or desert (a barren one by its
-// side of the map and its warmth), pale and bare; it has no fields, no town and no hearth-smoke (worldmap.ts leaves
+// farm. Each is a waste, snow or desert (rim.ts `rimWaste`), whatever the country round it would have been, and is
+// painted as that waste, pale and bare, as its name says; it has no fields, no town and no hearth-smoke (worldmap.ts leaves
 // them out); and a band camped there is shown as the towns below are told of it, a ring of dark tents and its fires, when the
 // player's own towns are near enough to see them (seenByPlayer).
 import * as THREE from 'three';
 import type { Campaign, Territory } from '../sim/campaign';
-import { climateAt } from '../sim/campaign';
+import { wasteAt } from '../sim/campaignbase';
 import type { Band } from '../sim/threats';
 import { townsThatSee } from '../sim/bandmarch';
 
 export type Waste = 'snow' | 'desert';
 
-/** Which waste a rim land is: by its name (rim.ts WASTES), else by its side of the map and the warmth there. */
+/** Which waste a rim land is: its own (rim.ts), or for a campaign saved before it kept one, the same rule worked out (campaignbase.ts `wasteAt`). */
 export function wasteOf(c: Campaign, t: Territory): Waste {
-  const n = t.name.toLowerCase();
-  if (/frozen|white|ice|winter/.test(n)) return 'snow';
-  if (/burning|sands|dry|salt/.test(n)) return 'desert';
-  if (/northern/.test(n)) return 'snow';
-  if (/southern/.test(n)) return 'desert';
-  return climateAt(c.seed, t.x, t.y).warm > 0.5 ? 'desert' : 'snow';
+  return t.waste ?? wasteAt(c.seed, t.x, t.y);
 }
 
 /** How far round a rim land its waste is painted, in the map's own units (rim lands lie at least rim.ts RIM.apart from any other). */
