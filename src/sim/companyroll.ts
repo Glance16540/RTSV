@@ -4,7 +4,8 @@
 // An army is so many companies of each kind (`Army.units`: infantry, archers, cavalry), and its roll is so many men of
 // named houses of their towns (armytown.ts `Campaign.musters`, warhouse.ts `Serving`). Here each man of the roll is of
 // a kind of company (`Serving.kind`), the army's companies shared out among its men by their kinds, those longest with
-// it first (`levelKinds`, asked again whenever it is needed, so armies that join or part need nothing more).
+// it keeping theirs and every kind of each of its towns in the share that town has with it (`levelKinds`, asked again
+// whenever it is needed, so armies that join or part need nothing more).
 //
 // A battle fought out on the map (mapbattle.ts) loses so many companies of each kind on each side. As it is counted,
 // that is noted on the army's roll (`noteLost`). Then:
@@ -50,7 +51,8 @@ function rollOf(c: Campaign, armyId: number): RollMan[] {
 
 /**
  * Share the army's companies out among the men of its roll by kind: as many men of each kind as its companies of that
- * kind take, those longest with it keeping the kind they had. Returns the roll, each man with his kind.
+ * kind take, each kind of every town in the share that town has with the army, those who have a kind keeping it.
+ * Returns the roll, each man with his kind.
  */
 export function levelKinds(c: Campaign, armyId: number): RollMan[] {
   const a = c.armies.find((x) => x.id === armyId), roll = rollOf(c, armyId);
@@ -64,12 +66,24 @@ export function levelKinds(c: Campaign, armyId: number): RollMan[] {
   for (const k of kinds) { want[k] = Math.floor((roll.length * a.units[k]) / companies); given += want[k]; }
   for (const k of [...kinds].sort((p, q) => a.units[q] - a.units[p] || p.localeCompare(q))) { if (given >= roll.length) break; want[k]++; given++; }
   const loose: RollMan[] = [];
-  for (const r of roll) {
+  // Each kind's men are taken across the army's towns in the share each town has with it: the roll is laid out with
+  // the towns interleaved, each town's men spread evenly through it, those longest with the army first. Shared out
+  // longest-first alone, a kind was mostly of the town that raised it, and a company lost took nearly all its dead
+  // from that one town (at 384 campaigns the rivals then won 108 and 113 against 99 and 90).
+  const count: Record<number, number> = {}, seen: Record<number, number> = {};
+  for (const r of roll) count[r.tid] = (count[r.tid] ?? 0) + 1;
+  const spread = roll.map((r) => { const k = (seen[r.tid] = (seen[r.tid] ?? 0) + 1); return { r, at: (k - 0.5) / count[r.tid] }; })
+    .sort((p, q) => p.at - q.at || p.r.tid - q.r.tid).map((x) => x.r);
+  for (const r of spread) {
     if (r.man.kind && (want[r.man.kind] ?? 0) > 0) want[r.man.kind]--;
     else loose.push(r);
   }
+  // Those without a kind take one in turn, so each kind is of every town in its share.
+  let turn = 0;
   for (const r of loose) {
-    const k = kinds.find((x) => want[x] > 0);
+    let k: string | undefined;
+    for (let j = 0; j < kinds.length && !k; j++) { const x = kinds[(turn + j) % kinds.length]; if (want[x] > 0) k = x; }
+    turn++;
     if (k) { r.man.kind = k; want[k]--; } else delete r.man.kind;
   }
   return roll;
