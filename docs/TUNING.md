@@ -34,6 +34,8 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Threats | Raids on a given town (every strike on a held town, marauders' included, per town-season held) | about once in 3 to 5 years |
 | Threats | Outcome of raids | held off 30 to 50%, raided 40 to 60%, taken under 15% |
 | Threats | Captives got back, of those whose people had an army at the band's place or next door within the four seasons (the computer-played player sends it with `attackBand` and settles it unwatched) | about half |
+| Threats | Bands that come from the far wilds (camps born in wild country that march in, a campaign) | 1.5 to 4 a campaign |
+| Threats | A band from the far wilds is seen before it strikes or arrives | at least 8 in 10, a season or more ahead |
 | Stories | A story inside the story begins for the player's nation (a thief, a killer, a rival king, a suitor, a plot: `src/sim/intrigue.ts`, `src/sim/courtstory.ts`), over the years the campaign ran | about once in 3 to 6 years |
 | Crime | Seasons a thief or a killer is at large, with a Watch House in every town against as it is (read with CRIME=1) | 10 to 30% fewer |
 | Crime | Raids on the player's towns held off, with Town Watch learnt against without (read with CRIME=1) | 5 to 20 more in every 100 |

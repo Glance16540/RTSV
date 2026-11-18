@@ -6,6 +6,8 @@
 // figures under a standard that march from land to land, and the map moves: the sea runs, cloud drifts and throws
 // shadow, weather fronts pass with rain, snow or dust, birds wheel, ships go by, and smoke rises from the towns.
 
+import { RIM_PAINT, bandCamp, paintRim, rimTint, seenByPlayer, wasteOf } from './rimdraw';
+import { bandsAt } from '../sim/threats';
 import { lowDetail, reportMapTime } from './detail';
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -194,6 +196,7 @@ export class WorldMap {
       return high > 0 ? h + high * (((1 - Math.abs(N(px / 6, py / 6, 51) * 2 - 1)) - 0.5) * 0.7 + (N(px / 2.4, py / 2.4, 52) - 0.5) * 0.3) : h;
     };
     this.water = new Uint8Array(MAP_W * MAP_H);
+    const rimAt = rimTint(c);
     for (let Y = 0; Y < PH; Y++) for (let X = 0; X < PW; X++) {
       const px = X / R, py = Y / R, h = this.heightAt(px, py), o = (Y * PW + X) * 4;
       if (h <= 0) {
@@ -229,6 +232,7 @@ export class WorldMap {
         const line = 5.3 - cold * 4.0 - (1 - warm) * 0.8 + (mid - 0.5) * 0.9; // the snow lies lower in cold country, and raggedly
         mix3(col, SNOW, smooth(line, line + 0.6, h) * (1 - smooth(1.1, 1.6, slope) * 0.6));
         mix3(col, SAND, (1 - smooth(0.08, 0.42, h)) * (1 - cold));
+        rimAt?.(px, py, col); // the rim of true wilderness: bare snow or sand (rimdraw.ts)
         // Light from the north-west picks out every slope; hollows lie a little in shade.
         const lit = Math.min(1.36, Math.max(0.4, 1 - (hx + hy) * 0.5 - (rx + ry) * 0.75));
         const k = (0.9 + fine * 0.1 + mid * 0.12) * lit, sh = Math.max(0, 1 - lit);
@@ -241,8 +245,10 @@ export class WorldMap {
     ctx.drawImage(lowSheet, 0, 0, MAP_W * RV, MAP_H * RV);
     ctx.scale(RV, RV);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    paintRim(ctx, c, (x, y) => this.heightAt(x, y) > 0.1); // drifts or dunes over the rim's waste, on land (rimdraw.ts)
     // Ploughland and pasture round every town in green country: a quilt of small fields.
     for (const t of c.territories) {
+      if (t.rim) continue; // nobody farms the rim (rimdraw.ts)
       const warm = read(warmG, t.x, t.y), wet = read(wetG, t.x, t.y);
       if (warm < 0.36 || wet < 0.46 || (warm > 0.66 && wet < 0.56)) continue;
       for (let k = 0; k < 16; k++) {
@@ -437,6 +443,7 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       if (h < 0.3 || h > 2.7) continue;
       const t = c.territories[cell[Math.floor(py) * MAP_W + Math.floor(px)]];
       if (Math.hypot(px - (t.x - 6), py - (t.y + 4)) < 44) continue; // room for the town, the army and their names
+      if (t.rim && Math.hypot(px - t.x, py - t.y) < RIM_PAINT.reach) continue; // nothing grows in the waste (rimdraw.ts)
       if (wetGrid[Math.round(py / STEP) * gw + Math.round(px / STEP)]) continue;
       const { warm, wet } = climateAt(c.seed, px, py);
       const cold = 1 - smooth(0.27, 0.35, warm), hot = smooth(0.62, 0.72, warm) * (1 - smooth(0.5, 0.6, wet)), dry = (1 - smooth(0.4, 0.5, wet)) * (1 - cold), woods = smooth(0.56, 0.68, wet);
@@ -1112,6 +1119,7 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       // The place itself: a walled city for a capital, a castle where the land is fortified, a hamlet anywhere people live.
       const { warm, wet } = climateAt(c.seed, t.x, t.y);
       const style = warm < 0.31 ? 'snow' : warm > 0.66 && wet < 0.56 ? 'desert' : 'green';
+      if (!t.rim) { // the rim has no town and no hearth (rimdraw.ts)
       // A capital keeps the look of the people who built it; other land is built on by whoever holds it.
       const builder = t.capital >= 0 ? c.factions[t.capital] : t.owner >= 0 ? c.factions[t.owner] : null;
       const sig = [t.capital, builder ? builder.civ : '', builder ? builder.color : -1, t.buildings.join(), style].join('|');
@@ -1128,6 +1136,7 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       if (t.capital >= 0) { const pole = new THREE.Group(); pole.position.set(X - 3.4, y, Z - 0.8); pole.scale.setScalar(1.6); flagOn(pole, 0, 2.55, 0, c.factions[t.capital].color, 1); this.pieces.add(pole); }
       // Hearth-smoke over every place that is lived in.
       if (t.owner >= 0 && (t.capital >= 0 || t.buildings.length)) for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(smokeG, smokeM.clone()); this.pieces.add(m); this.smokes.push({ m, x: X - 3.4, y: y + (t.capital >= 0 ? 4.2 : 1.6), z: Z - 0.8, ph: k / 3 + t.id * 0.37 }); }
+      }
 
       // Its name, standing over it.
       const big = t.capital >= 0;
@@ -1143,7 +1152,14 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       const n0 = slots(t);
       const pips = this.sprite((x, w, h) => { for (let d = 0; d < n0; d++) { x.fillStyle = d < t.buildings.length ? '#fff0c8' : 'rgba(255,240,200,0.28)'; x.fillRect(w / 2 - n0 * 13 + d * 26 + 2, h / 2 - 5, 20, 9); } }, 160, 24, 0.62);
       pips.position.set(X, y + (big ? 5.3 : 3.5), Z - 3.2);
-      this.pieces.add(pips);
+      if (!t.rim) this.pieces.add(pips);
+      // A band camped in the rim, as the towns below are told of it: its tents and its fires, if the player's towns see them (rimdraw.ts).
+      if (t.rim) bandsAt(c, t.id).filter((b) => seenByPlayer(c, b)).forEach((b, k) => { // only where the player's towns can see its fires
+        const camp = bandCamp(b, wasteOf(c, t)), dx = (k - 0.5) * 6;
+        camp.group.position.set(X + dx, Math.max(0.2, this.heightAt(t.x + dx / K, t.y)), Z + 1.5);
+        camp.group.scale.setScalar(1.25);
+        this.pieces.add(camp.group); this.fires.push(...camp.fires);
+      });
 
       // What has happened here, on seals that hang in the air above it; what is still to be settled beats on the ground.
       const place = placeAt(c, t.id);
