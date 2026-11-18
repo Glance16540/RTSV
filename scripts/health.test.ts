@@ -870,7 +870,7 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     const all = ruled.map((w) => w.caravans), sum = (k: 'sent' | 'came' | 'robbed' | 'gold', mine = false): number => all.reduce((n, x) => n + (x ? (mine ? x.mine[k] : x[k]) : 0), 0);
     const n = Math.max(1, ruled.length), years = ruled.reduce((k, w) => k + w.storyYears, 0);
     add('Stores', 'The markets\' caravans: how many, how many come home, how many are robbed, and the gold they bring', 'report only', sum('sent') ? `${num(sum('sent') / n, 0)} sent a campaign, every people's (${num(sum('sent', true) / n, 0)} the player's); ${pct(sum('came') / sum('sent'))} came home, ${pct(sum('robbed') / sum('sent'))} robbed on the way; ${num(sum('gold') / Math.max(1, years), 0)} gold a year every people's together, ${num(sum('gold', true) / Math.max(1, years), 0)} the player's (${num(sum('gold') / Math.max(1, sum('came')), 0)} a caravan)` : 'none sent', 'report',
-      'A town with a Market standing trades by road with the nearest other market town within CARAVANS.reach lands, its own people's or one at peace with it, and its caravan comes home the season after with gold; highwaymen and pirates on its road meet it as a convoy, and a band standing on its road may fall on it (caravans.ts).');
+      'A town with a Market standing trades by road with the nearest other market town within CARAVANS.reach lands, its own people\'s or one at peace with it, and its caravan comes home the season after with gold; highwaymen and pirates on its road meet it as a convoy, and a band standing on its road may fall on it (caravans.ts).');
   }
   // When the computer-played player takes its first age: report only.
   {
