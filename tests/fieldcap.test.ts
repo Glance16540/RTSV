@@ -1,7 +1,7 @@
 // How many of a town's people stand on the field (src/sim/fieldcap.ts), and that the rest are kept and joined back.
 import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
-import { OLD_SEASON, countFrom } from '../src/sim/ageing';
+import { GROWN_SEASON, OLD_SEASON, countFrom } from '../src/sim/ageing';
 import type { Ages } from '../src/sim/ageing';
 import { FIELD_CAP, needsOf, splitField } from '../src/sim/fieldcap';
 import { wedOf } from '../src/sim/marriage';
@@ -9,8 +9,8 @@ import { Census, Notable, folkOf, musterFolk, settleFolk } from '../src/sim/town
 
 /** A town of so many men, women, old and children, with ages spread out. */
 const ages = (men: number, women: number, old: number, kids: number): Ages => ({
-  m: [...Array.from({ length: men }, (_, i) => 60 + ((i * 7) % 170)), ...Array.from({ length: Math.ceil(old / 2) }, (_, i) => OLD_SEASON + 4 + i)],
-  f: [...Array.from({ length: women }, (_, i) => 61 + ((i * 11) % 170)), ...Array.from({ length: Math.floor(old / 2) }, (_, i) => OLD_SEASON + 6 + i)],
+  m: [...Array.from({ length: men }, (_, i) => GROWN_SEASON + ((i * 7) % 160)), ...Array.from({ length: Math.ceil(old / 2) }, (_, i) => OLD_SEASON + 4 + i)],
+  f: [...Array.from({ length: women }, (_, i) => GROWN_SEASON + 1 + ((i * 11) % 160)), ...Array.from({ length: Math.floor(old / 2) }, (_, i) => OLD_SEASON + 6 + i)],
   k: Array.from({ length: kids }, (_, i) => i % 50),
 });
 const mother = (name: string, husband?: string): Notable => ({ name, family: 'Harrow', gender: 'f', kind: 'mother', deed: 'raised three children', turn: 0, kids: 3, ...(husband ? { husband } : {}) });

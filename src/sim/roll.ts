@@ -8,7 +8,7 @@ import type { Campaign } from './campaign';
 import { heroFor } from './campaignbase';
 import { HEIR_AGE, houseOf } from './dynasty';
 import { RANK_NAMES } from './hero';
-import { SEASONS_A_YEAR } from './ageing';
+import { SEASONS_A_YEAR, yearsFromBirth } from './ageing';
 import { awayFrom } from './armytown';
 import { foundFolk, living } from './township';
 import type { Notable } from './township';
@@ -29,7 +29,7 @@ export interface RollLost extends RollPerson { how: string; turn: number }
 export interface Roll {
   people: string; house?: string;
   leader: { name: string; female: boolean; rank: string; alive: boolean; at?: string };
-  heirs: { name: string; female: boolean; years: number; ofAge: boolean; parent?: string }[];
+  heirs: { name: string; female: boolean; years: number; ofAge: boolean; /** Years of the calendar until of age. */ toAge?: number; parent?: string }[];
   /** The leader's husband or wife (kin.ts), with their age; `lost`: widowed, dead or taken, and when. */
   spouse?: { name: string; female: boolean; years: number; lost?: { turn: number; how: string; final?: boolean; /** Taken into a lord's house (wifetaken.ts). */ house?: string } };
   /** The inner circle (kin.ts). */
@@ -53,7 +53,7 @@ export function rollOf(c: Campaign, f = 0): Roll {
   const ridingWith = fac.heroAlive ? c.armies.find((x) => x.owner === f && x.hero) : undefined;
   const seatAt = ridingWith?.at ?? fac.court?.at ?? c.territories.find((t) => t.capital === f && t.owner === f)?.id;
   const at = fac.heroAlive && seatAt !== undefined && c.territories[seatAt] ? c.territories[seatAt].name : undefined;
-  const heirs = (fac.house?.heirs ?? houseOf(c, f).heirs).map((h) => ({ name: h.name, female: h.female, years: Math.floor((c.turn - h.born) / SEASONS_A_YEAR), ofAge: c.turn - h.born >= HEIR_AGE, ...(h.parent ? { parent: h.parent } : {}) }));
+  const heirs = (fac.house?.heirs ?? houseOf(c, f).heirs).map((h) => ({ name: h.name, female: h.female, years: Math.floor(yearsFromBirth(c.turn - h.born)), ofAge: c.turn - h.born >= HEIR_AGE, toAge: Math.ceil(Math.max(0, HEIR_AGE - (c.turn - h.born)) / SEASONS_A_YEAR), ...(h.parent ? { parent: h.parent } : {}) }));
   // The household as it stands on record (kin.ts makes it the first time a season turns): read, not made here.
   const kin = fac.kin, sp = kin?.spouse;
   const spouse = sp ? { name: sp.name, female: sp.female, years: Math.floor((c.turn - sp.born) / SEASONS_A_YEAR), ...(sp.lost ? { lost: { ...sp.lost } } : {}) } : undefined;
