@@ -28,7 +28,7 @@ export interface House {
   asked?: boolean;
 }
 
-export const HEIR_AGE = GROWN_SEASON; // turns (seasons) from birth until an heir can lead: fifteen years, as for everyone
+export const HEIR_AGE = GROWN_SEASON; // turns (seasons) from birth until an heir can lead: eighteen years, as for everyone (ageing.ts)
 /** The child a leader comes to the campaign with is in their teens, a couple of years from leading. */
 export const FIRST_HEIR_AGE = HEIR_AGE - 8;
 export const HEIR_EVERY = 5; // turns between children

@@ -19,9 +19,9 @@ const family = () => {
 };
 
 describe('the record itself', () => {
-  it('counts a child\'s years towards fifteen', () => {
+  it('counts a child\'s years towards coming of age (GROWN_AT, eighteen)', () => {
     expect([yearsOld(child()), yearsLeft(child())]).toEqual([0, GROWN_AT]);
-    expect(yearsOld(child({ left: GROW_TIME / 2 }))).toBe(7);
+    expect(yearsOld(child({ left: GROW_TIME / 2 }))).toBe(Math.floor(GROWN_AT / 2));
     expect(yearsLeft(child({ left: 0.01 }))).toBe(1);
   });
   it('hands back those grown and keeps the rest: no child is ever lost', () => {

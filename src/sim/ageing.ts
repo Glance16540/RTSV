@@ -5,7 +5,7 @@
 // ages and writes back the ages it finds; nobody grows older there and nobody dies of age there (birthonly.ts stops
 // the clock in a campaign town). On the map, once a season (seasonfolk.ts):
 //
-//  - every child is a season older, and at fifteen years steps out as a man or a woman;
+//  - every child is a season older, and at eighteen years (GROWN_YEARS) steps out as a man or a woman;
 //  - every grown person is a season older, and is old at sixty;
 //  - the old die over the years after: a small chance each season at sixty, larger every year past it.
 //
@@ -19,7 +19,7 @@ import { ELDER_AT } from './data';
 
 /** Seasons in a year; the years a child is grown at and a grown person is old at. */
 export const SEASONS_A_YEAR = 4;
-export const GROWN_YEARS = 15;
+export const GROWN_YEARS = 18; // nobody under eighteen is grown, in any mode (the owner's word, 18 November 2026)
 export const OLD_YEARS = 60;
 export const GROWN_SEASON = GROWN_YEARS * SEASONS_A_YEAR;
 export const OLD_SEASON = OLD_YEARS * SEASONS_A_YEAR;
@@ -46,7 +46,7 @@ export const yearsOf = (age: number, lifespan: number): number => GROWN_YEARS + 
 export const ageFor = (years: number, lifespan: number): number => Math.max(1, ((years - GROWN_YEARS) / (OLD_YEARS - GROWN_YEARS)) * ELDER_AT * lifespan);
 /** A child's age in seasons from how far it is from coming of age in a battle (`left` of `grow` seconds), and back. */
 export const childSeasons = (left: number, grow: number): number => Math.max(0, Math.min(GROWN_SEASON - 1, Math.round(GROWN_SEASON * (1 - left / grow))));
-// A child on the record at 59 seasons has under a second left in a battle's measure: kept exactly (above nothing),
+// A child on the record a season short of coming of age has under a second left in a battle's measure: kept exactly (above nothing),
 // so that a visit hands back the same age and a child visited every season still comes of age.
 export const leftFor = (seasons: number, grow: number): number => Math.max(grow / (4 * GROWN_SEASON), grow * (1 - seasons / GROWN_SEASON));
 
@@ -96,7 +96,7 @@ export function countFrom(f: Folk, a: Ages): void {
 /** The chance an old person of this many seasons dies in a season. */
 export const deathChance = (seasons: number): number => (seasons < OLD_SEASON ? 0 : Math.min(1, DEATH_AT_60 + DEATH_A_YEAR * (seasons - OLD_SEASON) / SEASONS_A_YEAR));
 
-/** A season passes for the people of a town: children grow toward fifteen, the grown toward sixty, the old die. */
+/** A season passes for the people of a town: children grow toward eighteen, the grown toward sixty, the old die. */
 export function ageTown(c: Campaign, tid: number, f: Folk, max = 60): { grew: number; aged: number; died: number } {
   const a = agesOf(c, tid, f), salt = c.seed * 31 + tid * 977 + c.turn * 13;
   let grew = 0, aged = 0, died = 0, n = 0;

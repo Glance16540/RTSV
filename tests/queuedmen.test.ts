@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/sim/game';
 import { armyAt, endTurn, newCampaign } from '../src/sim/campaign';
-import { agesOf } from '../src/sim/ageing';
+import { GROWN_SEASON, agesOf } from '../src/sim/ageing';
 import { menOf, musterOf } from '../src/sim/armytown';
 import { keepOrders } from '../src/sim/governor';
 import { queuedOf } from '../src/sim/queuedmen';
@@ -109,7 +109,7 @@ describe('on the map: they come out as themselves', () => {
   it('what comes back from the field is not believed blindly', () => {
     expect(cleanQueued(null)).toEqual([]);
     expect(cleanQueued([{ as: 'dragon', name: 'X', seasons: 80 }, { as: 'clubman', name: '', seasons: 80 }, { as: 'clubman', name: 'Holt', seasons: 'old' }, 7, null])).toEqual([]);
-    expect(cleanQueued([{ as: 'clubman', name: 'Ivo<b>', family: 'Barrow', seasons: 3 }])).toEqual([{ as: 'clubman', name: 'Ivob', family: 'Barrow', seasons: 60 }]);
+    expect(cleanQueued([{ as: 'clubman', name: 'Ivo<b>', family: 'Barrow', seasons: 3 }])).toEqual([{ as: 'clubman', name: 'Ivob', family: 'Barrow', seasons: GROWN_SEASON }]); // no younger than the grown (ageing.ts)
     expect(cleanQueued(Array.from({ length: 30 }, (_, i) => ({ as: 'clubman', name: `N${i}`, seasons: 80 })))).toHaveLength(QUEUED.most);
   });
 
