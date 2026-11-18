@@ -210,7 +210,7 @@ interface Watch {
   grain: { buys: number; food: number; gold: number }; // the player's grain bought abroad by decree in twenty years (grain.ts), from the log
   halls: { rivals: number; with: number }; // at 20 years: rival nations alive, and those with a Hall of Judgement standing (townworks.ts)
   houses: { holy: number; with: number }; // at 20 years: Righteous towns, and those with a Monastery or Convent standing
-  raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean; /** Stage three, report only: what it would have come to with the town's men turned out as bands; the town's men; the share of its companies' weight it would have lost; the men it did lose. */ would?: string; men?: number; pressed?: number; killed?: number }[]; raidTownYears: number;
+  raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean; /** Stage three, report only: what it would have come to with the town's men turned out as bands; the town's men; the share of its companies' weight it would have lost; the men it did lose. */ would?: string; men?: number; pressed?: number; killed?: number; /** Where it would have broken (and could be taken): what that cost the band, as a share of its weight. */ cost?: number }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
   strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean; /** What the sum made of it, and what a clash would have (raidclash.ts); not for a strike on the road. */ sum: string; clash: string; road: boolean; /** The sum's own line for a taking was crossed, whether or not the town could be taken again. */ low: boolean; /** The town's defence over the band's force, as the old lines read it. */ ratio: number }[];
   /** Unrest begun in a town (unrest.ts), with what weighed on it then; towns that rose and became free (freetown.ts), and what became of them. */
@@ -374,7 +374,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       if (e.kind === 'plague' || e.kind === 'fever') strife[e.at].plague = now;
     }
     const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
-    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome, army: r.defence.army > 0 && r.kind !== 'highwaymen', road: r.kind === 'highwaymen', ...(r.would ? { would: r.would, men: r.men ?? 0, pressed: r.wouldLost ?? 0, killed: r.killed } : {}) }); if (r.outcome !== 'held') strife[r.at].war = now; }
+    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome, army: r.defence.army > 0 && r.kind !== 'highwaymen', road: r.kind === 'highwaymen', ...(r.would ? { would: r.would, men: r.men ?? 0, pressed: r.wouldLost ?? 0, killed: r.killed, ...(r.wouldCost !== undefined ? { cost: r.wouldCost } : {}) } : {}) }); if (r.outcome !== 'held') strife[r.at].war = now; }
     for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0, sum: r.outcome, clash: raidForeseen(r, faithAt(c, r.at)).outcome, road: r.kind === 'highwaymen', low: r.defence.total / Math.max(0.1, r.force) < THREATS.fall, ratio: r.defence.total / Math.max(0.1, r.force) });
     // Thieves and killers at large this season: begun, not ended, and (a thief) not yet standing for judgement.
     for (const x of c.intrigues ?? []) {
@@ -919,6 +919,13 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       ? `as it is: ${line(both, 'outcome')}; turned out: ${line(both, 'would')} (${both.length} strikes on towns, ${pct(changed / both.length)} would have gone otherwise). The whole row would read held off ${pct(all3('held'))}, raided ${pct(all3('raided'))}, taken ${pct(all3('taken'))}. By the town's men: ${bySize}`
       : 'none', 'report',
       'Every strike on a town (not on a road), fought twice with the same band and the same day: as threats.ts decides it now (the town a sum of its men, works, walls and army), and with its own men turned out as militia bands on foot beside any army, as against a nation (militia.ts; stage three, not yet what decides a strike). A town bled already cannot be taken either way. The second fight decides nothing: it is recorded on the raid for this row only.');
+    {
+      // Where the line for a taking would have to lie, turned out, for as many towns to be taken as are now.
+      const broke = both.filter((r) => r.cost !== undefined), lines = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16];
+      const at = lines.map((x) => `${x}: ${pct(broke.filter((r) => r.cost! <= x).length / Math.max(1, both.length))}`).join(', ');
+      add('Threats', 'Turned out: towns taken, by where the line for a taking lies', 'report only', both.length ? `taken now ${sh(both, (r) => r.outcome === 'taken')} of strikes on towns; turned out, a town that could be taken would break in ${pct(broke.length / both.length)} of them, and be taken at a line of ${at}` : 'none', 'report',
+        'A town is taken, not only raided, where breaking it cost the band no more than a share of its own weight (raidclash.ts RAID.easily, 0.16 today). Every strike where the town would have broken with its men turned out, and had nobody in a band\'s hands already, by what that cost the band: so the line that gives as many takings as now can be read off before anything is switched.');
+    }
     const press = both.filter((r) => (r.pressed ?? 0) > 0), meanPress = press.length ? press.reduce((k, r) => k + (r.pressed ?? 0), 0) / both.length : 0;
     add('Threats', 'Men a town loses to a strike, by rule now, and what its bands would lose', 'report only', both.length
       ? `${num(both.reduce((k, r) => k + (r.killed ?? 0), 0) / both.length, 2)} men killed a strike now; turned out, its side would lose ${pct(meanPress)} of its weight a strike on average (${pct(press.length / both.length)} of strikes cost it something)`
