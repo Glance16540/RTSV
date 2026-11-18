@@ -192,6 +192,7 @@ interface Watch {
   growth: number[]; // all its people (grown and children) after 20 years over all at the start, for towns held by one people throughout
   grownGrowth: number[]; // the same, grown people alone
   townSeasons: TownSeason[];
+  caravans?: Campaign['caravanTally']; // the markets' caravans (caravans.ts)
   stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
   townLives: number; diedOut: number; diedAfterAll: number;
   /** Every town that died out (tribes' too), with what emptied it: see `whyDead`. */
@@ -534,6 +535,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
   }
   w.sieges = watched;
+  w.caravans = c.caravanTally ? JSON.parse(JSON.stringify(c.caravanTally)) : undefined;
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
   w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0).length;
   w.crimes = [...atLarge.values()];
@@ -862,6 +864,13 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     const share = n.flatMap((x) => x.share), kills = n.flatMap((x) => x.kills), over = kills.filter((k) => k > 3).length / Math.max(1, kills.length);
     add('People', 'Of the felled in a map battle that names a soldier, the share he is credited with', '25 to 40%, with over half of them credited more than the three that make a name', share.length ? `${pct(mean(share))} of the felled credited (${share.length} named by a battle, every people's); ${pct(over)} credited more than three, median ${num(median(kills), 0)} (middle half ${num(quart(kills, 0.25), 0)} to ${num(quart(kills, 0.75), 0)})` : 'none named by a battle', share.length ? mean(share) >= 0.25 && mean(share) <= 0.4 && over > 0.5 : null,
       `veteranhome.ts: credited NAMED.share (${NAMED.share}) of the felled, three at least (the least that makes a name, champion.ts), in a battle that felled NAMED.least (${NAMED.least}) or more.`);
+  }
+  // The markets' caravans (caravans.ts): report only, so the first guesses have numbers.
+  {
+    const all = ruled.map((w) => w.caravans), sum = (k: 'sent' | 'came' | 'robbed' | 'gold', mine = false): number => all.reduce((n, x) => n + (x ? (mine ? x.mine[k] : x[k]) : 0), 0);
+    const n = Math.max(1, ruled.length), years = ruled.reduce((k, w) => k + w.storyYears, 0);
+    add('Stores', 'The markets\' caravans: how many, how many come home, how many are robbed, and the gold they bring', 'report only', sum('sent') ? `${num(sum('sent') / n, 0)} sent a campaign, every people's (${num(sum('sent', true) / n, 0)} the player's); ${pct(sum('came') / sum('sent'))} came home, ${pct(sum('robbed') / sum('sent'))} robbed on the way; ${num(sum('gold') / Math.max(1, years), 0)} gold a year every people's together, ${num(sum('gold', true) / Math.max(1, years), 0)} the player's (${num(sum('gold') / Math.max(1, sum('came')), 0)} a caravan)` : 'none sent', 'report',
+      'A town with a Market standing trades by road with the nearest other market town within CARAVANS.reach lands, its own people's or one at peace with it, and its caravan comes home the season after with gold; highwaymen and pirates on its road meet it as a convoy, and a band standing on its road may fall on it (caravans.ts).');
   }
   // When the computer-played player takes its first age: report only.
   {
