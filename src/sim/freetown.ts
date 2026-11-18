@@ -24,7 +24,7 @@ import { canPayFor, payFor } from './prices';
 declare module './campaign' {
   interface Territory {
     /** A free town: it rose against this people in this season, and is nobody's since; `struck`: the season that people last marched on it and was thrown back (freetown.ts). */
-    free?: { from: number; since: number; struck?: number };
+    free?: { from: number; since: number; struck?: number; /** It rose for a claimant to the throne, by the claim's id (claimantrising.ts). */ claimant?: number };
   }
 }
 
@@ -41,6 +41,8 @@ export const FREE = {
   folk: 10, fresh: 3, ease: 24, beside: 0.75, least: 1,
   /** A computer people asks only with this many supplies left over after the price, and then this often in a season. */
   spare: 12, asks: 0.25,
+  /** A town that rose for a claimant to the throne asks this many times the price. */
+  claimant: 2,
 };
 
 const hash = (a: number, b: number): number => { let h = (Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35)) >>> 0; h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 13; return (h >>> 0) / 4294967296; };
@@ -74,7 +76,7 @@ export function treatCost(c: Campaign, tid: number): number {
   if (!isFree(c, tid)) return 0;
   const fresh = FREE.fresh * Math.max(0, 1 - (c.turn - t.free!.since) / FREE.ease);
   const price = (Math.ceil(headcount(folkOf(c, tid)) / (FREE.folk * TOWN_SCALE)) + fresh) * (armyBeside(c, tid, t.free!.from) ? FREE.beside : 1);
-  return Math.max(FREE.least, Math.round(price));
+  return Math.max(FREE.least, Math.round(price * (t.free!.claimant !== undefined ? FREE.claimant : 1))); // a town risen for a claimant asks more to give him up (claimantrising.ts)
 }
 /** Why a free town will not treat with this people now, or '' if it will (whether they can pay is `canTreat`). */
 export function treatBar(c: Campaign, f: number, tid: number): string {

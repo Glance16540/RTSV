@@ -221,6 +221,8 @@ interface Watch {
   firstAge: number;
   /** Marches in from the far wilds (bandwilds.ts), and how many bands of any kind came in the campaign. */
   marches: March[]; bandsCame: number;
+  /** Claimants to the throne (claimants.ts): wives taken into a lord's house, children written down by parent, and what became of each. */
+  claims: { wives: number; noble: number; band: number; home: number; grown: number; nofollowing: number; towns: number; putdown: number; swallowed: number; lapsed: number; crowned: number; standing: number; mine: number };
   /** Every thief and killer (intrigue.ts): the seasons it was at large, and how many of them a Watch House stood in the town. */
   crimes: { seasons: number; watched: number }[];
   /** The player's convoys that finished their road (convoys.ts, read from the log): whether the player had an Inn standing or sent Escorts that season, whether a band stopped it, and the stores it took. */
@@ -268,7 +270,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [], named: { battle: 0, wins: 0, share: [], kills: [], mine: 0 } };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, claims: { wives: 0, noble: 0, band: 0, home: 0, grown: 0, nofollowing: 0, towns: 0, putdown: 0, swallowed: 0, lapsed: 0, crowned: 0, standing: 0, mine: 0 }, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [], named: { battle: 0, wins: 0, share: [], kills: [], mine: 0 } };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -364,9 +366,9 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
     for (const t of c.territories) {
       const was = freeWas[t.id];
-      if (t.free && !was) w.free.rose++;
+      if (t.free && !was && t.free.claimant === undefined) w.free.rose++; // a town risen for a claimant is counted with the claimants, not here
       if (was && !t.free) { if (t.owner === was.from && treaties.has(t.id)) w.free.back++; else if (t.owner === was.from) w.free.retaken++; else w.free.taken++; }
-      freeWas[t.id] = t.free ? { from: t.free.from } : null;
+      freeWas[t.id] = t.free && (was || t.free.claimant === undefined) ? { from: t.free.from } : null;
     }
     // Acts of God and raids this season, at each town.
     for (const e of c.events ?? []) {
@@ -541,6 +543,15 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   w.crimes = [...atLarge.values()];
   w.free.still = c.territories.filter((t) => t.free && t.owner < 0).length;
   w.marches = [...(c.marches ?? [])]; w.bandsCame = c.bandSeq ?? 0;
+  w.claims.wives = c.wivesTaken ?? 0;
+  for (const cl of c.claims ?? []) {
+    w.claims[cl.parent]++;
+    if (cl.owner === 0) w.claims.mine++;
+    if (cl.grown !== undefined) { w.claims.grown++; w.claims.towns += cl.towns?.length ?? 0; }
+    const how = cl.ended?.how;
+    if (how === 'home' || how === 'nofollowing' || how === 'putdown' || how === 'swallowed' || how === 'lapsed' || how === 'crowned') w.claims[how]++;
+    else if (!cl.ended && cl.grown !== undefined) w.claims.standing++;
+  }
   for (const sp of hungrySpell) if (sp) w.hungers.push({ seasons: sp.seasons, paved: sp.paved, mine: sp.owner === 0 });
   for (const xs of fed) if (xs.length) { w.storeSeasons.push(median(xs)); w.peaceSeasons += xs.length; }
   w.unsettled = takenAt.size;
@@ -905,6 +916,13 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       'Camps of raiders and slavers born in wild country that is still empty, the rim of wilderness at the map\'s edge above all (rim.ts, wilds.ts), that march in for a mark (bandwilds.ts), a campaign; and against every band of any kind that came in the campaigns above. There must be such a land free, with a way in of more than one land.');
     add('Threats', 'A band from the far wilds is seen before it strikes or arrives', 'at least 8 in 10, a season or more ahead', ms.length ? `seen ${pct(seen.length / ms.length)}, ${ahead.length ? num(warned, 1) : '?'} seasons before it struck or was there; met by an army first ${pct(met.length / ms.length)} (${met.length}, ${ms.filter((m) => m.broken).length} broken), struck someone ${pct(struck.length / ms.length)}` : 'none', ms.length ? seen.length / ms.length >= 0.8 && warned >= 1 : null,
       'Seen: an army in or beside a land it passed, or a town within two lands (of the rim where it gathered, too), told its people. Ahead: from when it was first seen to when it struck or arrived, the mean over those seen that did either. Both must hold: eight in ten seen, and a season or more. Met: an army went against it (not the band against the army) before it had struck anyone.');
+  }
+  // Claimants to the throne (noblefaith.ts, wifetaken.ts, claimants.ts, claimantrising.ts): report only, how often any of it happens.
+  {
+    const k = ruled.reduce((a, w) => { for (const key of Object.keys(a) as (keyof typeof a)[]) a[key] += w.claims[key]; return a; }, { wives: 0, noble: 0, band: 0, home: 0, grown: 0, nofollowing: 0, towns: 0, putdown: 0, swallowed: 0, lapsed: 0, crowned: 0, standing: 0, mine: 0 });
+    const n = ruled.length, kids = k.noble + k.band;
+    add('Rule', 'Claimants to the throne', 'report only', `in ${n} campaigns, every people's: ${k.wives} wives taken into a lord's house; ${kids} children written down (${k.noble} in a lord's house, ${k.band} among a band; ${k.mine} of the player's house), ${k.home} of them home with their mothers; ${k.grown} came of age and claimed a throne (one campaign in ${k.grown ? num(n / k.grown, 1) : '?'}), ${k.nofollowing} with nobody following; ${k.towns} towns rose for the other ${k.grown - k.nofollowing}; of those risings ${k.putdown} were put down or came back, ${k.swallowed} fell to others, ${k.lapsed} lapsed, ${k.crowned} ended on the throne, ${k.standing} still stood`, 'report',
+      'A plot by a lord who is not of the leader\'s faith in which he takes the leader\'s wife into his house; a child born there, or to a wife held by a band; and those children grown, eighteen years on (HEIR_AGE), raising the towns that will follow. Towns that rise for a claimant are counted here and not among the free towns risen from unrest.');
   }
   const out = (o: string) => share(raids, (r) => r.outcome === o);
   {

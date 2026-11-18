@@ -103,6 +103,8 @@ const hash = (a: number, b: number): number => {
 import { HeroSpec, cleanHero, MAX_RANK } from './hero';
 import { seasonTurned } from './seasonreport';
 import { rivalStoriesSeason } from './rivalstories';
+import { claimantsSeason } from './claimantrising';
+import './wifetaken'; // a plot may go this way (it puts itself among courtstory.ts's stages)
 
 /** Some land is special. */
 export interface TraitDef { name: string; icon: string; desc: string }
@@ -1256,6 +1258,7 @@ export function continueAI(c: Campaign): void {
       marriageSeason(c); // the unmarried of a town marry, or go to a town beside to marry (marriage.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
       kinSeasons(c); // the leaders' households and inner circles (kin.ts)
+      claimantsSeason(c); // children who may claim a throne, and those who have (claimantrising.ts)
       noblesSeasons(c); // who is noble, and how they feel (nobles.ts)
       temperSeasons(c); // war, a quiet year, the leader's presence or neglect, taxes move them (nobletemper.ts)
       nobleActsSeasons(c); // a content lord helps in need, an angry one withholds or joins a plot (nobleacts.ts)
