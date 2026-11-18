@@ -346,6 +346,9 @@ export function intrigueSeason(c: Campaign): Intrigue[] {
   const T = INTRIGUE.thief, K = INTRIGUE.killer, began: Intrigue[] = [];
   for (const it of [...(c.intrigues ?? [])]) {
     if (it.ended) continue;
+    // A story whose people are gone (a nation fallen, or a story that was never any people's) ends here, before anything
+    // reads that people: there is no court left for it to be told at, and no town of theirs for it to go on in.
+    if (!c.factions[it.owner]?.alive) { end(c, it, 'outlived', `What was afoot ${it.at >= 0 && c.territories[it.at] ? `at ${c.territories[it.at].name} ` : ''}went with the people it was told of.`, 'plain'); continue; }
     if (!ofTown(it)) { courtStep(c, it); continue; }
     const t = c.territories[it.at];
     if (!t || t.owner !== it.owner || t.horde) { end(c, it, 'lost', `${t?.name ?? 'The town'} was lost, and what was afoot there (${it.kind === 'thief' ? 'a thief' : 'a killer'} never taken) went with it.`, 'plain'); continue; }

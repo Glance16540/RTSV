@@ -183,6 +183,8 @@ function defy(c: Campaign, it: Intrigue, silent = false): void {
 
 /** A season for one story of the house. */
 export function courtStep(c: Campaign, it: Intrigue): void {
+  // A story of a house whose people are gone has no court to go on at: intrigueSeason ends it first; here too, for any other caller.
+  if (!c.factions[it.owner]?.alive) { end(c, it, 'outlived', 'The house it was told of is gone with its people.', 'plain'); return; }
   const f = it.owner, fac = c.factions[f], r = c.factions[it.rival ?? -1], king = it.cast?.king ?? 'The rival';
   if (seatOf(c, f) >= 0) it.at = seatOf(c, f); // the story is wherever the court is
   if (it.kind === 'plot') { plotStep(c, it); return; }
