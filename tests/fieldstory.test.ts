@@ -81,7 +81,7 @@ describe('a thief on the field', () => {
   it('a villager standing there is no guard, and nobody is struck or killed', () => {
     const { c, at } = world();
     thiefIn(c, at);
-    const g = enter(c, at);
+    const g = enter(c, at); // the town at work: villagers walking out jostle the soldiers camped by the hall (atwork.ts)
     run(g, 1);
     const b = g.buildings.find((x) => x.robbed)!;
     g.spawnUnit('villager', 0, b.x, b.y + b.size / 2 + 1, 'm');
@@ -89,6 +89,18 @@ describe('a thief on the field', () => {
     run(g, FIELD_STORY.guard + 5);
     expect(storyOut(g, 0)!.caught).toBeUndefined();
     expect(g.units.filter((u) => u.owner === 0 && !u.dead).length).toBeGreaterThanOrEqual(alive - 1);
+  }, 60_000);
+});
+
+describe('the hall', () => {
+  it('never stands in for a robbed house, so the army camped about it takes nobody by camping', () => {
+    const { c, at } = world();
+    thiefIn(c, at);
+    const g = enter(c, at);
+    run(g, FIELD_STORY.guard + 20);
+    expect(g.buildings.filter((b) => b.robbed).length).toBeGreaterThan(0);
+    expect(g.buildings.some((b) => b.robbed && b.type === 'towncenter')).toBe(false);
+    expect(storyOut(g, 0)!.caught).toBeUndefined();
   }, 60_000);
 });
 
@@ -108,13 +120,28 @@ describe('a killer on the field', () => {
     }
   }, 60_000);
 
+  it('renames nobody the town keeps on its record: one already of the name is taken, else one with no record', () => {
+    const { c, at } = world();
+    const it = beginKiller(c, at), g = enter(c, at);
+    const vs = g.units.filter((u) => u.owner === 0 && u.type === 'villager' && !u.dead);
+    const p0 = it.people[0], same = vs.find((u) => u.gender === p0.gender)!;
+    same.name = p0.name; same.family = p0.family; // already of the town, by that name
+    const kept = vs.filter((u) => u !== same).slice(0, Math.floor(vs.length / 2));
+    for (const u of kept) u.kids = 1; // a mother or father on the record by name
+    const was = new Map(kept.map((u) => [u.id, `${u.name} ${u.family}`]));
+    run(g, 1);
+    expect(same.suspect).toBe(0);
+    for (const u of kept) { expect(`${u.name} ${u.family}`).toBe(was.get(u.id)); expect(u.suspect).toBeUndefined(); }
+  }, 60_000);
+
   it('questioning may clear an innocent, never the guilty; once each; and the map takes the clearing with a clue', () => {
     const { c, at } = world();
     const it = beginKiller(c, at), g = enter(c, at);
     run(g, 1);
-    const was = FIELD_STORY.question;
+    const was = { ...FIELD_STORY };
     try {
       FIELD_STORY.question = 1; // every innocent questioned is cleared
+      FIELD_STORY.questions = 9; // and as many questioned as the test likes: one a visit is the next test's
       const named = g.units.filter((u) => u.suspect !== undefined);
       const guilty = named.find((u) => u.suspect === it.culprit)!, innocent = named.find((u) => u.suspect !== it.culprit)!;
       expect(cmdQuestion(g, 0, guilty.id)).toBe(false);
@@ -128,7 +155,20 @@ describe('a killer on the field', () => {
       expect(it.cleared).toContain(innocent.suspect);
       expect(it.cleared).not.toContain(it.culprit);
       expect(it.clues.at(-1)!.clears).toEqual([innocent.suspect]);
-    } finally { FIELD_STORY.question = was; }
+    } finally { Object.assign(FIELD_STORY, was); }
+  }, 60_000);
+
+  it('one of those spoken of may be questioned a visit; the rest wait until the leader comes again', () => {
+    const { c, at } = world();
+    beginKiller(c, at);
+    const g = enter(c, at);
+    run(g, 1);
+    const [a, b] = g.units.filter((u) => u.suspect !== undefined);
+    expect(questionBar(g, 0, a)).toBe('');
+    cmdQuestion(g, 0, a.id);
+    expect(questionBar(g, 0, b)).toMatch(/come again/);
+    expect(cmdQuestion(g, 0, b.id)).toBe(false);
+    expect(g.players[0].story!.asked).toHaveLength(1);
   }, 60_000);
 
   it('what comes back from the field is not believed blindly', () => {

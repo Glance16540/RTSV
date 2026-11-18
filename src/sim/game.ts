@@ -3,9 +3,11 @@
 import { layCoarse, layKept } from './firstlay';
 import { unlaidOf, unplaced } from './unlaid';
 import { RoofsIn, roofsOf, seatRoofs } from './roofs';
+import { setToWork, workChanged } from './atwork';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
 import { Roll, nameSoldiers } from './soldiernames';
+import { namesIn, pickName, unlikeNames } from './namesakes';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
 import { tribeName } from './tribenames';
@@ -37,6 +39,7 @@ import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { storyTick, type FieldStory } from './fieldstory';
+import { courtTick, type FieldCourt } from './courtfield';
 import { boughtIn } from './contagion';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
 import { Pathfinder, rectDist } from './path';
@@ -359,7 +362,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -524,6 +527,7 @@ export class Game {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
         if (s.bonus?.story) this.players[i].story = { ...s.bonus.story, people: s.bonus.story.people.map((p) => ({ ...p })), robbed: [...s.bonus.story.robbed], cleared: [...s.bonus.story.cleared] }; // a story afoot here (fieldstory.ts)
+        if (s.bonus?.court) this.players[i].court = structuredClone(s.bonus.court); // a story of the leader's house, where the court is kept (courtfield.ts)
         if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
         if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
         else {
@@ -585,6 +589,7 @@ export class Game {
         if (s.bonus.roofs && !field) seatRoofs(this, i, s.bonus.roofs); // and every other household under its roof (roofs.ts)
         if (s.bonus.people?.children && !field) cradledOf(this, i, s.bonus.people);
         if (s.bonus.people?.orphans?.length && !field) seatOrphans(this, i, s.bonus.people.orphans); // the map's orphans, the same children in the town (orphantown.ts)
+        if (s.bonus.work && !field && !s.isAI) setToWork(this, i, s.bonus.work, st); // the player's town is at work from its first second, by its shares (atwork.ts)
         let k = 0;
         const laid = new Map<string, Unit[]>();
         for (const [type, n] of Object.entries(s.bonus.units ?? {})) {
@@ -597,6 +602,7 @@ export class Game {
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
       }
     });
+    for (let i = 0; i < this.players.length; i++) unlikeNames(this, i); // no two of a people under one given name where it can be helped (namesakes.ts)
     this.wild = this.players.length;
     this.players.push({
       id: this.wild, name: 'Wild', color: 0x8a6a48, isAI: false, team: 99, civ: '', res: { food: 0, wood: 0, gold: 0, stone: 0 },
@@ -639,7 +645,8 @@ export class Game {
     };
     if (type === 'villager') {
       const names = u.gender === 'm' ? NAMES_M : NAMES_F, roll = this.rng();
-      u.name = this.setups[owner]?.tribe ? tribeName(u.gender ?? 'm', roll, new Set(this.units.filter((o) => o.owner === owner).map((o) => o.name))) : names[Math.floor(roll * names.length)]; // a tribe's people have their own names, no two alike (tribenames.ts)
+      u.name = this.setups[owner]?.tribe ? tribeName(u.gender ?? 'm', roll, new Set(this.units.filter((o) => o.owner === owner).map((o) => o.name))) : pickName(names, roll, namesIn(this, owner, u.gender)); // a tribe's people have their own names, no two alike (tribenames.ts); a town's too, where it can (namesakes.ts)
+      if (this.tick === 0) u.drawn = u.name; // while the battle is being laid out (namesakes.ts)
       if (this.rng() < 0.3) this.setTrait(u, Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)]);
       u.lifespan = LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]);
     }
@@ -891,7 +898,7 @@ export class Game {
   /** What a side's town is set to as things stand (governor.ts): how many of its people are at each kind of work, what stands half built, what is being trained. */
   orders(owner: number): { work: Stores; build: string[]; train: string[]; men?: QueuedMan[]; hands: number } {
     const work: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
-    for (const u of this.units) if (u.owner === owner && u.type === 'villager' && !u.dead && u.order?.t === 'gather') work[u.order.res]++;
+    if (workChanged(this, owner)) for (const u of this.units) if (u.owner === owner && u.type === 'villager' && !u.dead && u.order?.t === 'gather') work[u.order.res]++; // work the town was set to on arrival and nobody changed is not the player's orders (atwork.ts)
     const mine = this.buildings.filter((b) => b.owner === owner && !b.dead);
     return { work, build: [...new Set(mine.filter((b) => !b.complete).map((b) => b.type))], train: [...new Set(mine.flatMap((b) => b.queue.filter((q) => q.kind === 'unit').map((q) => q.id)))], men: queuedOf(this, owner), hands: this.units.filter((u) => u.owner === owner && u.type === 'villager' && !u.dead).length }; // and the very men in the queues; and how many hands there were, working or not (givenorders.ts) (queuedmen.ts)
   }
@@ -2114,7 +2121,7 @@ export class Game {
     this.tick++;
     this.time += DT;
     this.stepWeather();
-    if (this.tick % 20 === 0) { calamity(this); storyTick(this); } // a story afoot in the town (fieldstory.ts)
+    if (this.tick % 20 === 0) { calamity(this); storyTick(this); courtTick(this); } // a story afoot in the town (fieldstory.ts)
     this.pathBudget = 16;
 
     for (const bucket of this.hash) bucket.length = 0;

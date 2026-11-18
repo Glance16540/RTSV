@@ -14,6 +14,7 @@
 //
 // A land marked as the marauders' with no band on record (a campaign saved before this, or a land made so by hand)
 // is taken up as one the first season it is seen.
+import { landsWithin } from './rim';
 import type { Campaign, Territory } from './campaign';
 import { HORDE_MAX, HORDE_PRIZE, HORDE_SPREAD, HORDE_TURN } from './campaignbase';
 import { Band, Raid, bringHome, chance, mark, note, reachOf, softest, strike } from './threats';
@@ -30,8 +31,10 @@ export const HORDE = {
   lands: 10,
 };
 
+// The marauders never make a camp in the rim of wilderness (rim.ts): they come to the land farthest from every chief
+// town, which the rim always is, and nobody could come at them there.
 /** How many camps of the marauders the map will bear. */
-export const campsBorne = (c: Campaign): number => Math.max(1, Math.floor(c.territories.length / HORDE.lands));
+export const campsBorne = (c: Campaign): number => Math.max(1, Math.floor(landsWithin(c) / HORDE.lands)); // the rim of wilderness is not counted (rim.ts)
 
 const bandAt = (c: Campaign, tid: number): Band | undefined => (c.bands ?? []).find((b) => b.kind === 'marauders' && b.at === tid);
 function raise(c: Campaign, t: Territory, name?: string): Band {
@@ -70,7 +73,7 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
     const caps = c.territories.filter((t) => t.capital >= 0);
     const far = (t: Territory): number => Math.min(...caps.map((k) => Math.hypot(k.x - t.x, k.y - t.y)));
     const taken = new Set((c.bands ?? []).map((b) => b.at));
-    const t = c.territories.filter((x) => x.owner < 0 && x.capital < 0 && !taken.has(x.id)).sort((a, b) => far(b) - far(a) || a.id - b.id)[0];
+    const t = c.territories.filter((x) => x.owner < 0 && x.capital < 0 && !x.rim && !taken.has(x.id)).sort((a, b) => far(b) - far(a) || a.id - b.id)[0];
     if (!t) return raids;
     t.horde = true;
     t.militia = Math.max(t.militia, HORDE.first);
@@ -100,7 +103,7 @@ export function hordeSeason(c: Campaign, out: string[]): Raid[] {
     // Strong enough, they take a tribe's land next door for their own, while the map will bear another camp. (They
     // no longer throw a people out of its town: a town falls to those who fight for it, and its people are counted.)
     if (b.strength >= HORDE_SPREAD && (c.bands ?? []).filter((k) => k.kind === 'marauders').length < campsBorne(c) && chance(c, b.id, 79 + i) < HORDE.overrun) {
-      const open = t.adj.map((n) => c.territories[n]).filter((x) => !x.horde && x.capital < 0 && x.owner < 0 && !(c.bands ?? []).some((k) => k.at === x.id));
+      const open = t.adj.map((n) => c.territories[n]).filter((x) => !x.horde && !x.rim && x.capital < 0 && x.owner < 0 && !(c.bands ?? []).some((k) => k.at === x.id));
       const next = open[Math.floor(chance(c, b.id, 83 + i) * open.length)];
       if (next) {
         const was = next.owner;

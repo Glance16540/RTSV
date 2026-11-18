@@ -24,6 +24,7 @@
 // Every campaign is played twice from the same seed: as the rules stand, the player giving the decrees a sensible
 // ruler would ('ruled'), and with nobody giving decrees ('no decrees'). Every figure is read from the first, but
 // the decrees' own. Skipped unless HEALTH is set.
+import { NAMED } from '../src/sim/veteranhome';
 import { sensibleAnswers } from '../src/sim/storypolicy';
 import { it } from 'vitest';
 import { writeFileSync } from 'node:fs';
@@ -209,7 +210,7 @@ interface Watch {
   grain: { buys: number; food: number; gold: number }; // the player's grain bought abroad by decree in twenty years (grain.ts), from the log
   halls: { rivals: number; with: number }; // at 20 years: rival nations alive, and those with a Hall of Judgement standing (townworks.ts)
   houses: { holy: number; with: number }; // at 20 years: Righteous towns, and those with a Monastery or Convent standing
-  raids: { outcome: string }[]; raidTownYears: number;
+  raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
   strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean; /** What the sum made of it, and what a clash would have (raidclash.ts); not for a strike on the road. */ sum: string; clash: string; road: boolean; /** The sum's own line for a taking was crossed, whether or not the town could be taken again. */ low: boolean; /** The town's defence over the band's force, as the old lines read it. */ ratio: number }[];
   /** Unrest begun in a town (unrest.ts), with what weighed on it then; towns that rose and became free (freetown.ts), and what became of them. */
@@ -373,7 +374,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       if (e.kind === 'plague' || e.kind === 'fever') strife[e.at].plague = now;
     }
     const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
-    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome }); if (r.outcome !== 'held') strife[r.at].war = now; }
+    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome, army: r.defence.army > 0 && r.kind !== 'highwaymen', road: r.kind === 'highwaymen' }); if (r.outcome !== 'held') strife[r.at].war = now; }
     for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0, sum: r.outcome, clash: raidForeseen(r, faithAt(c, r.at)).outcome, road: r.kind === 'highwaymen', low: r.defence.total / Math.max(0.1, r.force) < THREATS.fall, ratio: r.defence.total / Math.max(0.1, r.force) });
     // Thieves and killers at large this season: begun, not ended, and (a thief) not yet standing for judgement.
     for (const x of c.intrigues ?? []) {
@@ -851,12 +852,16 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
         `Spells of hunger in the player\'s own towns in the same two tellings (the Inns and Escorts are there too). In all, ${hungrySeasons(roads)} hungry town-seasons with against ${hungrySeasons(ruled)} as it is. ${mineLine(roads)} with; ${mineLine(ruled)} as it is.`);
     }
   }
-  // Soldiers named on the map (veteranhome.ts, rivalrule.ts): report only, so the first guesses have numbers.
+  // Soldiers named on the map (veteranhome.ts, rivalrule.ts): how often for the player, and what a battle credits one with.
   {
     const n = ruled.map((w) => w.named), battle = n.reduce((k, x) => k + x.battle, 0), wins = n.reduce((k, x) => k + x.wins, 0), mine = n.reduce((k, x) => k + x.mine, 0);
-    const share = n.flatMap((x) => x.share), kills = n.flatMap((x) => x.kills);
-    add('People', 'Soldiers named on the map a campaign, and the share of the felled a battle credits one with', 'report only', `${num((battle + wins) / Math.max(1, ruled.length), 1)} a campaign until it is decided (${num(battle / Math.max(1, ruled.length), 1)} by a battle fought out on the map, ${num(wins / Math.max(1, ruled.length), 1)} by an army's second win; ${num(mine / Math.max(1, ruled.length), 1)} the player's); named by a battle: ${share.length ? `${pct(mean(share))} of the felled credited, median ${num(median(kills), 0)} credited (middle half ${num(quart(kills, 0.25), 0)} to ${num(quart(kills, 0.75), 0)})` : 'none'}`, 'report',
-      'Every army that comes to have a soldier known by name while the campaign is undecided, every people\'s. "By a battle" is one fought out on the map that the army won felling at least NAMED.least, with nobody known by name (veteranhome.ts: credited NAMED.share of the felled, three at least); "by a second win" is rivalrule.ts\'s rule. A battle fought in person names its own and is not counted.');
+    const years = ruled.reduce((k, w) => k + (w.decided >= 0 ? w.decided / 4 : w.storyYears), 0); // years the campaigns ran undecided, as the names are counted
+    const every = mine ? years / mine : NaN;
+    add('People', 'Soldiers named on the map for the player\'s nation, by a battle fought out there or an army\'s second win', 'about one every 1 to 4 years of campaign', `${mine ? `once in ${num(every, 1)} years` : 'none'} (${mine} in ${num(years, 0)} years undecided; every people's together ${num((battle + wins) / Math.max(1, ruled.length), 1)} a campaign, ${num(battle / Math.max(1, ruled.length), 1)} by a battle fought out on the map and ${num(wins / Math.max(1, ruled.length), 1)} by an army's second win)`, mine ? every >= 1 && every <= 4 : false,
+      'Every army of the player\'s that comes to have a soldier known by name while the campaign is undecided. "By a battle" is one fought out on the map that the army won felling at least NAMED.least, with nobody known by name (veteranhome.ts); "by a second win" is rivalrule.ts\'s rule. A battle fought in person names its own and is not counted.');
+    const share = n.flatMap((x) => x.share), kills = n.flatMap((x) => x.kills), over = kills.filter((k) => k > 3).length / Math.max(1, kills.length);
+    add('People', 'Of the felled in a map battle that names a soldier, the share he is credited with', '25 to 40%, with over half of them credited more than the three that make a name', share.length ? `${pct(mean(share))} of the felled credited (${share.length} named by a battle, every people's); ${pct(over)} credited more than three, median ${num(median(kills), 0)} (middle half ${num(quart(kills, 0.25), 0)} to ${num(quart(kills, 0.75), 0)})` : 'none named by a battle', share.length ? mean(share) >= 0.25 && mean(share) <= 0.4 && over > 0.5 : null,
+      `veteranhome.ts: credited NAMED.share (${NAMED.share}) of the felled, three at least (the least that makes a name, champion.ts), in a battle that felled NAMED.least (${NAMED.least}) or more.`);
   }
   // When the computer-played player takes its first age: report only.
   {
@@ -881,17 +886,25 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     add('Threats', 'A raid fought out a round at a time, against the old sum\'s lines', 'report only', n ? `as it was fought: held off ${of('sum', 'held')}, raided ${of('sum', 'raided')}, taken ${of('sum', 'taken')}; by the old lines the same strikes would have been held off ${pct(st.filter(hold).length / n)} and crossed the line for a taking ${pct(st.filter((x) => x.low).length / n)}; a town the old lines would have held was broken into in ${pct(st.filter((x) => hold(x) && x.sum !== 'held').length / Math.max(1, st.filter(hold).length))}, and one they would not have held held in ${pct(st.filter((x) => !hold(x) && x.sum === 'held').length / Math.max(1, st.filter((x) => !hold(x)).length))} (${n} strikes)` : 'no strikes', 'report',
       `Every strike on a town (not on a road). It is decided by mapbattle.ts's clash (raidclash.ts: a band's force worth ${RAID.press} of itself; taken where breaking the town cost the band ${pct(RAID.easily)} of its weight or less and the town is not already bled). The old lines: held at ${THREATS.hold} of the band's force, a taking under ${THREATS.fall}.`);
   }
-  // Bands from the far wilds (bandwilds.ts): report only.
+  // Bands from the far wilds (bandwilds.ts, rim.ts), against docs/TUNING.md: how many a campaign, and whether they are seen coming.
   {
     const ms = all('marches'), came = ruled.reduce((k, w) => k + w.bandsCame, 0), avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
     const there = ms.filter((m) => m.arrived !== undefined), seen = ms.filter((m) => m.seen !== undefined), ahead = seen.filter((m) => (m.struck ?? m.arrived) !== undefined);
     const met = ms.filter((m) => m.met !== undefined), struck = ms.filter((m) => m.struck !== undefined);
-    add('Threats', 'Bands that come from the far wilds', 'report only', ms.length ? `${ms.length} of ${came} bands (${pct(ms.length / came)}), ${num(ms.length / ruled.length, 1)} a campaign; a march of ${num(avg(ms.map((m) => m.lands)), 1)} lands, ${there.length ? num(avg(there.map((m) => m.arrived! - m.born)), 1) : '?'} seasons for the ${there.length} that got there` : 'none', 'report',
-      'Camps of raiders and slavers born in a land that began wild and is still empty (wilds.ts), that set out at once for a mark (bandwilds.ts), against every band of any kind that came in the campaigns above. There must be such a land free, with a way in of more than one land.');
-    add('Threats', 'A band from the far wilds is seen coming, and met before it strikes', 'report only', ms.length ? `seen ${pct(seen.length / ms.length)}, ${ahead.length ? num(avg(ahead.map((m) => (m.struck ?? m.arrived)! - m.seen!)), 1) : '?'} seasons before it struck or was there; met by an army first ${pct(met.length / ms.length)} (${met.length}, ${ms.filter((m) => m.broken).length} broken), struck someone ${pct(struck.length / ms.length)}` : 'none', 'report',
-      'Seen: an army in or beside a land it passed, or a town within two lands, told its people. Met: an army went against it (not the band against the army) before it had struck anyone.');
+    const each = ms.length / ruled.length, warned = ahead.length ? avg(ahead.map((m) => (m.struck ?? m.arrived)! - m.seen!)) : NaN;
+    add('Threats', 'Bands that come from the far wilds', '1.5 to 4 a campaign', ms.length ? `${ms.length} of ${came} bands (${pct(ms.length / came)}), ${num(ms.length / ruled.length, 1)} a campaign; a march of ${num(avg(ms.map((m) => m.lands)), 1)} lands, ${there.length ? num(avg(there.map((m) => m.arrived! - m.born)), 1) : '?'} seasons for the ${there.length} that got there` : 'none', ruled.length ? within(each, 1.5, 4) : null,
+      'Camps of raiders and slavers born in wild country that is still empty, the rim of wilderness at the map\'s edge above all (rim.ts, wilds.ts), that march in for a mark (bandwilds.ts), a campaign; and against every band of any kind that came in the campaigns above. There must be such a land free, with a way in of more than one land.');
+    add('Threats', 'A band from the far wilds is seen before it strikes or arrives', 'at least 8 in 10, a season or more ahead', ms.length ? `seen ${pct(seen.length / ms.length)}, ${ahead.length ? num(warned, 1) : '?'} seasons before it struck or was there; met by an army first ${pct(met.length / ms.length)} (${met.length}, ${ms.filter((m) => m.broken).length} broken), struck someone ${pct(struck.length / ms.length)}` : 'none', ms.length ? seen.length / ms.length >= 0.8 && warned >= 1 : null,
+      'Seen: an army in or beside a land it passed, or a town within two lands (of the rim where it gathered, too), told its people. Ahead: from when it was first seen to when it struck or arrived, the mean over those seen that did either. Both must hold: eight in ten seen, and a season or more. Met: an army went against it (not the band against the army) before it had struck anyone.');
   }
   const out = (o: string) => share(raids, (r) => r.outcome === o);
+  {
+    // Report only: what an army in the town is worth to it when a band strikes (the towns' strikes; not the roads').
+    const town = raids.filter((r) => !r.road), withArmy = town.filter((r) => r.army), bare = town.filter((r) => !r.army);
+    const of = (xs: typeof town, o: string): string => pct(xs.length ? xs.filter((r) => r.outcome === o).length / xs.length : NaN);
+    add('Threats', 'Raids on a town with an army of its people in it, against without', 'report only', town.length ? `${pct(withArmy.length / town.length)} of strikes on towns met an army; with one: held off ${of(withArmy, 'held')}, raided ${of(withArmy, 'raided')}, taken ${of(withArmy, 'taken')} (${withArmy.length}); without: held off ${of(bare, 'held')}, raided ${of(bare, 'raided')}, taken ${of(bare, 'taken')} (${bare.length})` : 'none', 'report',
+      'Every strike on a held town, not on a road: whether an army of the town\'s people stood in it when the band struck (threats.ts defenceOf counts it), and how those strikes went against the rest. Roads have their own guard and are left out, so the shares here are not the row below\'s.');
+  }
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);
   const back = share(caps, (x) => x.back);

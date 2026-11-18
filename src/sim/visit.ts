@@ -7,9 +7,11 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { companySoldiers, rollOf } from './soldiernames';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { storyForVisit, storyFromVisit } from './storyvisit';
+import { courtForVisit, courtFromVisit } from './courtvisit';
 import { keepQueued } from './queueddrill';
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
@@ -22,7 +24,7 @@ import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, 
 import { faithAt } from './townfaith';
 import { settleStores } from './stores';
 import { sideName } from './naming';
-import { Orders, keepOrders } from './governor';
+import { Orders, keepOrders, shareOf } from './governor';
 import type { Sky } from './campaign';
 import { driftBack, withDrift } from './driftintown';
 import { companyOf } from './townmuster';
@@ -77,6 +79,8 @@ export interface VisitAfter {
   studies?: string[];
   /** What came of a story afoot in the town (`storyOut`, fieldstory.ts): the thief taken, suspects cleared. */
   story?: unknown;
+  /** What came of a story of the leader's house (`courtOut`, courtfield.ts): an answer given at the hall, the great shown true. */
+  court?: unknown;
 }
 
 /** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
@@ -192,12 +196,14 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
       name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
-        buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}), ...(!record.town && t.town?.coarse ? { coarse: t.town.b } : {}), ...(roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // a first visit: the town as big as its record (firstlay.ts)
+        buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}), ...(!record.town && t.town?.coarse ? { coarse: t.town.b } : {}), ...(roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), work: shareOf(c, t.id).share, // a first visit: the town as big as its record (firstlay.ts)
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
         ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)
+        ...(courtForVisit(c, t.id) ? { court: courtForVisit(c, t.id) } : {}), // a rival's envoy, a suitor or a plot, where the court is kept (courtvisit.ts)
         ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
+        ...(army && army.owner === 0 ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}), // its companies led by the men of its roll, as in a battle (soldiernames.ts)
       },
     }],
   };
@@ -223,6 +229,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   keepQueued(c, land.id, after.orders?.men); // and the men who stood in its queues, to come out as themselves (queuedmen.ts)
   if (after.arms) armsHome(c, land.id, after.arms, had); // its soldiers go home to the map: the army's losses, and companies trained there
   storyFromVisit(c, land.id, after.story); // a story's outcome on the field, written back to it (storyvisit.ts)
+  courtFromVisit(c, land.id, after.court); // and a story of the leader's house (courtvisit.ts)
   if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.

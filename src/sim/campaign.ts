@@ -5,6 +5,8 @@ import { turnLeft, turnOpened } from './seasongain';
 import { militiaOf } from './militia';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
+import { onFrontier, reckoned } from './reckon';
+import { dominionNext } from './dominion';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
@@ -26,6 +28,7 @@ import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from '.
 import { convoysTurn, relieve } from './convoys';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import { makeRim } from './rim';
 import { nobodyThere } from './founding';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
@@ -57,7 +60,7 @@ import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
 import { countryOf, countryYield, rivalOpens } from './country';
 import { gainAt, settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf } from './naming';
-import { Orders, governTowns, keepOrders } from './governor';
+import { Orders, governTowns, keepOrders, shareOf } from './governor';
 import { drillWithQueued, keepQueued } from './queueddrill';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
@@ -73,6 +76,7 @@ import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
 export { shiftVirtue } from './townfaith'; // where it was found before it was moved
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { companySoldiers, noteDowned, rollOf } from './soldiernames';
+import { takeDowned } from './downedmap';
 import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
@@ -710,6 +714,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
   }
   raiseBarriers(c);
   makeWilds(c); // a share of the far and poor lands start with no tribe and no town (wilds.ts)
+  makeRim(c); // and the map's edge is ringed with true wilderness: new lands, nobody's for good (rim.ts)
   nameNation(c, 0, opts.names); // the player's own names for their people and house (naming.ts)
   c.log.push(`Turn 1. You lead the ${peopleName(c, 0)}${houseName(c, 0) ? `, under the House of ${houseName(c, 0)}` : ''}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
   tell(c, `The ${[peopleName(c, 0), ...c.factions.slice(1).map((f) => `the ${f.name}`)].join(', ').replace(/, ([^,]*)$/, ' and $1')} came into a country of ${c.territories.length} lands, and each meant to have all of it.`);
@@ -1037,7 +1042,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
   .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
   .on('housed', 'queuedmen', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepQueued(c, p.to, b.after?.orders?.men); }) // and the men in its queues are remembered with them
-  .on('housed', 'roofs', (c, p, b) => { if (p.mode !== 'field') keepRoofs(c, p.to, b.after?.folk?.roofs); }) // who lived where as it ended (roofsmap.ts)
+  .on('housed', 'roofs', (c, p, b) => { if (p.mode !== 'field' && !b.after?.folk?.unfielded) keepRoofs(c, p.to, b.after?.folk?.roofs); }) // who lived where as it ended (roofsmap.ts)
   .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
 
 // What only the hub can do is lent to the systems below it (campaignbase.ts): they call it there, and import nothing from here.
@@ -1171,8 +1176,14 @@ function checkElimination(c: Campaign): void {
 function checkDominion(c: Campaign): void {
   const need = dominionNeed(c);
   const lead = c.factions.find((f) => f.alive && landOf(c, f.id) >= need);
-  if (!lead) { c.dominion = { f: -1, turns: 0 }; return; }
-  c.dominion = { f: lead.id, turns: c.dominion.f === lead.id ? c.dominion.turns + 1 : 1 };
+  if (!lead) {
+    // A season under the share takes turns off the count, not all of it (dominion.ts; the owner's word).
+    const was = c.dominion, whose = was.f >= 0 ? c.factions[was.f] : undefined;
+    c.dominion = dominionNext(was, -1, !!whose?.alive);
+    if (whose && c.dominion.f >= 0) c.log.push(`${whose.id === 0 ? 'You no longer hold' : `${whose.name} no longer hold`} most of the land: ${c.dominion.turns} of the ${DOMINION_TURNS} turns still stand${c.dominion.turns === 1 ? 's' : ''} to ${whose.id === 0 ? 'your' : 'their'} count.`);
+    return;
+  }
+  c.dominion = dominionNext(c.dominion, lead.id);
   const left = DOMINION_TURNS - c.dominion.turns;
   if (left <= 0) {
     c.phase = 'over';
@@ -1348,7 +1359,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
       if (at) build(c, f.id, at.id, house);
     }
     for (const t of own) {
-      const border = t.adj.some((n) => c.territories[n].owner !== f.id);
+      const border = onFrontier(c, f.id, t.id); // beside somebody, not beside empty or wild land (reckon.ts)
       if (t.capital === f.id && f.supplies > 12 && rand(c) < 0.5) build(c, f.id, t.id, rand(c) < 0.5 ? 'range' : 'stable');
       else if (onSea(c, t.id) && !t.buildings.includes('harbour') && f.supplies > 12 && rand(c) < 0.4) build(c, f.id, t.id, 'harbour');
       else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
@@ -1398,7 +1409,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     moveArmy(c, army.id, dared);
     return false;
   }
-  if (!reach(c, here.id).some((id) => c.territories[id].owner !== f.id)) {
+  if (!reach(c, here.id).some((id) => reckoned(c, f.id, id))) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
     if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
@@ -1419,12 +1430,13 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
     for (const n of reach(c, cur)) {
       if (prev.has(n)) continue;
       prev.set(n, cur);
-      if (c.territories[n].owner !== f) {
+      if (reckoned(c, f, n)) {
         // Found foreign land: walk back to the first step, which must be our own.
         let s = cur;
         while (prev.get(s) !== from && prev.get(s) !== -1) s = prev.get(s)!;
         return s === from ? -1 : s;
       }
+      if (c.territories[n].owner !== f) continue; // an empty or a wild land is not ours to march through
       queue.push(n);
     }
   }
@@ -1473,6 +1485,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
       ...(defending && !field && !t.horde && roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // every household under its roof (roofs.ts)
+      ...(defending && !field && t.owner === 0 ? { work: shareOf(c, t.id).share } : {}), // and the player's town at its work (atwork.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id, { arms: out?.warriors ?? 0 })) : {}), // its men in arms go to the field whatever its cap (fieldcap.ts)
     };
@@ -1564,8 +1577,8 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   noteDowned(c, after.downed); // the men of the rolls whose soldiers went down there: the map counts them first (soldiernames.ts)
   // The town is what the battle left of it: its people and its stores, whoever holds it now.
   const census = p.mode === 'field' || camp ? undefined : cleanCensus(after.folk);
-  if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks });
-  note.census = !!census;
+  if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks, was: p.defender }); // its dead were its holder's when the battle began
+  note.census = !!census && !census.unfielded; // a count of a town never on the field is not the town (writeguard.ts): nothing after reads it as such
   BATTLE_HOOKS.run('housed', c, p, note); // the town's people and stores are as the battle left them
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
   if (known && mine && !c.armies.includes(mine)) loseVeteran(c, 0, known);
@@ -1601,7 +1614,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
     if (after.fell) { c.factions[0].heroAlive = false; c.factions[0].heroRank = Math.max(0, rankBefore - 1); c.log.push(`${heroFor(c, 0).name} fell defending ${land.name}.`); }
     else if (heroRank != null) c.factions[0].heroRank = Math.max(0, Math.min(MAX_RANK, Math.round(heroRank)));
   }
-  if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) { reckonArmies(c); return; }
+  if (!playerWon || !survivors || !mine || !before || !c.armies.includes(mine)) { reckonArmies(c); takeDowned(c); return; } // and the men the field saw fall are the dead (downedmap.ts)
   const units: Record<string, number> = {};
   for (const [type, had] of Object.entries(before.units)) {
     const [unit, per] = unitsOf(type);
@@ -1615,6 +1628,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   if (!Object.keys(units).length) units[Object.keys(before.units)[0] ?? 'infantry'] = 1;
   mine.units = units;
   reckonArmies(c);
+  takeDowned(c); // the men the field saw fall are the dead, every one (downedmap.ts)
   const hero = heroFor(c, 0);
   const kept = cleanChampion(after.champion);
   if (kept) mine.champion = kept; else delete mine.champion;
