@@ -10,7 +10,7 @@
 // What came of it is read back as the player leaves (`courtOut`) and written to the story on the map (courtvisit.ts),
 // which believes none of it unchecked. Nobody is struck, held or killed here: a judgement is the map's, and so is
 // everything that follows an answer. Children are no units on the field (nursery.ts) and are never in this: the
-// daughter asked for is a grown woman of the house, named and not shown. It reads the game and writes only these marks:
+// daughter asked for is a grown woman of the house, named; she comes to the hall as a figure once asked (hallguests.ts). It reads the game and writes only these marks:
 // a villager shown as one of the great keeps their own name and house on the town's record.
 import type { Game, Unit } from './game';
 
@@ -28,6 +28,8 @@ export interface FieldCourt {
   guest?: string;
   /** What the guest has come about, in a line. */
   errand?: string;
+  /** The guest's people, for their dress at the hall (hallguests.ts). */
+  civ?: string;
   /** The answers the leader may give now; none while a rival has only threatened. */
   answers: CourtAnswer[];
   /** A suitor: the daughter asked for, whether she is willing, and whether she has been asked. */
