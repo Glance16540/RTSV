@@ -30,11 +30,11 @@ import { kinOf } from './kin';
 import { heroFor } from './campaignbase';
 import { canPayFor, payFor } from './prices';
 import { BORN } from './bandborn';
-import { recordChild } from './claimants';
+import { CLAIM, recordChild } from './claimants';
 
 export const WIFE = {
-  /** Seasons a plot over faith has run when its lord may take her, and the chance that he does. */
-  after: 2, chance: 1 / 3,
+  /** Seasons a plot over faith has run before its lord may take her, and the chance each season from then that he does. */
+  after: 2, chance: 0.6,
   /** With a loyal marshal or right hand at court, the chance is this much of that. */
   loyal: 0.5,
   /** Demanded back: the gifts it costs in supplies, the chance he yields, and seasons before he will hear it again. */
@@ -95,7 +95,7 @@ export function takeWife(c: Campaign, it: Intrigue): boolean {
 
 function step(c: Campaign, it: Intrigue): boolean {
   if (!it.wife) {
-    if (c.turn - it.since !== WIFE.after || !mayTake(c, it)) return false;
+    if (c.turn - it.since < WIFE.after || !mayTake(c, it)) return false; // each season from then on, while he is unnamed
     const loyal = kinOf(c, it.owner).circle.some((x) => (x.post === 'marshal' || x.post === 'right') && x.loyalty >= COURT.rival.loyalAt);
     return chance(c, it.id * 97 + 11) < WIFE.chance * (loyal ? WIFE.loyal : 1) && takeWife(c, it);
   }
@@ -103,7 +103,7 @@ function step(c: Campaign, it: Intrigue): boolean {
   if (!fac.alive || !fac.heroAlive) { gone(c, it); end(c, it, 'outlived', `${p.title} kept ${w.name} in his house, and the leader she was taken from is dead.`, 'plain'); return true; }
   if (town.owner !== f) { gone(c, it); end(c, it, 'lost', `${town.name} is lost, and ${w.name} with it: she will not be seen at court again.`, 'bad'); return true; }
   if (!n || n.town !== w.town) { home(c, it); end(c, it, 'nothing', `${p.title} is no longer lord in ${town.name}, and ${w.name} has come home.`, 'good'); return true; }
-  if (!w.child && c.turn - w.since >= BORN.after && chance(c, it.id * 97 + 13) < BORN.chance) {
+  if (!w.child && c.turn - w.since >= BORN.after && chance(c, it.id * 97 + 13) < CLAIM.born) {
     w.child = true;
     recordChild(c, { owner: f, mother: w.name, parent: 'noble', by: p.title, town: w.town });
     const text = `A child is born to ${w.name} in the house of ${p.title}.`;

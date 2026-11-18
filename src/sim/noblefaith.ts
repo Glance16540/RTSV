@@ -14,7 +14,7 @@ import { faithAt, nationVirtue } from './townfaith';
 
 export const OTHER = {
   /** How many times likelier an angry noble of another faith is to be the plotter than one of the leader's. */
-  weight: 3,
+  weight: 6,
 };
 declare module './intriguebase' {
   interface Intrigue {

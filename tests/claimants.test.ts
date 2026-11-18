@@ -111,7 +111,7 @@ describe('the leader\'s wife taken into a lord\'s house', () => {
     expect(k.spouse!.name).toBe('Maren');
     expect(k.spouse!.lost?.house).toBe(other.key);
   });
-  it('comes in the season the plot is two seasons old, by a chance a loyal marshal halves', () => {
+  it('comes no sooner than the plot is two seasons old, by a chance each season that a loyal marshal halves', () => {
     const count = (loyal: boolean): number => {
       let n = 0;
       for (let seed = 1; seed <= 120; seed++) {
@@ -121,13 +121,13 @@ describe('the leader\'s wife taken into a lord\'s house', () => {
         const x = beginPlot(c, other.key)!;
         x.cleared = []; // nothing comes out meanwhile
         for (let i = 0; i < WIFE.after; i++) { c.turn++; if (!x.found && !x.ended) intrigueSeason(c); }
-        if (x.wifeTaken !== undefined) { n++; expect(x.wifeTaken - x.since).toBe(WIFE.after); }
+        if (x.wifeTaken !== undefined) { n++; expect(x.wifeTaken - x.since).toBe(WIFE.after); } // never sooner
       }
       return n;
     };
     const plain = count(false), guarded = count(true);
-    expect(plain).toBeGreaterThan(15);
-    expect(plain).toBeLessThan(60);
+    expect(plain).toBeGreaterThan(120 * WIFE.chance * 0.5);
+    expect(plain).toBeLessThan(120 * WIFE.chance * 1.4);
     expect(guarded).toBeLessThan(plain);
   });
   it('she can be demanded back with gifts: he yields or he refuses, and will not hear it again at once', () => {

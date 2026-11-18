@@ -19,6 +19,10 @@ import { NAMES_F, NAMES_M } from './data';
 import { HEIR_AGE } from './dynasty';
 import { BORN } from './bandborn';
 
+export const CLAIM = {
+  /** The chance a season, once the wait is over (bandborn.ts, `BORN.after`), that a child is born to the leader's wife where she is held. */
+  born: 0.5,
+};
 export interface Claim {
   id: number;
   /** The people whose throne it is, and the leader's wife who bore the child. */
@@ -85,7 +89,7 @@ export function bandChildren(c: Campaign): Claim[] {
     const band = (c.bands ?? []).find((b) => b.id === s.lost!.band && b.held.some((h) => h.owner === f && (h.names ?? []).includes(s.name)));
     if (!band || c.turn - s.lost.turn < BORN.after) continue;
     if ((c.claims ?? []).some((x) => x.owner === f && x.mother === s.name && x.parent === 'band' && x.born >= s.lost!.turn)) continue; // one at most
-    if (claimChance(c, f * 37 + band.id * 11 + 3) >= BORN.chance) continue;
+    if (claimChance(c, f * 37 + band.id * 11 + 3) >= CLAIM.born) continue;
     const cl = recordChild(c, { owner: f, mother: s.name, parent: 'band', by: band.name, town: band.at });
     tell(c, f, `Word comes that a child is born to ${s.name}, wife of ${s.of}, where ${band.name} hold her.`);
     out.push(cl);
