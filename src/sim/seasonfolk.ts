@@ -22,7 +22,7 @@ import { creedOf } from './creed';
 import { faithAt } from './townfaith';
 import { BIRTH_COST } from './data';
 import { Folk, MAX_KIND, TOWN_SCALE, folkOf, grown } from './township';
-import { GROWN_SEASON, ageTown } from './ageing';
+import { CHILD_SEASONS, ageTown } from './ageing';
 import { tally } from './ledger';
 import { birthPace } from './ownstudies';
 import { midwifeLoss } from './midwifery';
@@ -45,7 +45,7 @@ const MAP_BIRTH_COST = BIRTH_COST / TOWN_SCALE;
 /** Children under this many seasons (five years) are the ones who slow a couple's next. */
 export const YOUNG_SEASONS = 20;
 /** Seasons a child on the map takes to come of age. */
-export const GROWN_SEASONS = GROWN_SEASON; // as everyone comes of age (ageing.ts)
+export const GROWN_SEASONS = CHILD_SEASONS; // seasons from birth to eighteen (ageing.ts)
 /** Room in a town, as in a battle: so many to a finished house and so many to the hall. */
 export const HOUSE_ROOM = 5;
 export const HALL_ROOM = 10;

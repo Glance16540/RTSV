@@ -1,4 +1,5 @@
 // The roll of a people, for the "Your people" screen (src/sim/roll.ts).
+import { yearsFromBirth } from '../src/sim/ageing';
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
@@ -35,7 +36,7 @@ describe('the roll of your people', () => {
     expect(r.leader.alive).toBe(true);
     expect(r.leader.name.length).toBeGreaterThan(0);
     const h = houseOf(c, 0).heirs[0];
-    expect(r.heirs[0]).toEqual({ name: h.name, female: h.female, years: Math.floor((c.turn - h.born) / 4), ofAge: c.turn - h.born >= HEIR_AGE, parent: h.parent });
+    expect(r.heirs[0]).toEqual({ name: h.name, female: h.female, years: Math.floor(yearsFromBirth(c.turn - h.born)), ofAge: c.turn - h.born >= HEIR_AGE, toAge: Math.ceil(Math.max(0, HEIR_AGE - (c.turn - h.born)) / 4), parent: h.parent }); // a child's years run 1.2 a year (ageing.ts)
     expect(h.parent).toBe(r.spouse!.name); // the other parent is the leader's husband or wife (kin.ts)
   });
 
