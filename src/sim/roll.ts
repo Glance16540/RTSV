@@ -31,7 +31,7 @@ export interface Roll {
   leader: { name: string; female: boolean; rank: string; alive: boolean; at?: string };
   heirs: { name: string; female: boolean; years: number; ofAge: boolean; parent?: string }[];
   /** The leader's husband or wife (kin.ts), with their age; `lost`: widowed, dead or taken, and when. */
-  spouse?: { name: string; female: boolean; years: number; lost?: { turn: number; how: string; final?: boolean } };
+  spouse?: { name: string; female: boolean; years: number; lost?: { turn: number; how: string; final?: boolean; /** Taken into a lord's house (wifetaken.ts). */ house?: string } };
   /** The inner circle (kin.ts). */
   circle: { post: Post; postName: string; name: string; female: boolean; family?: string; kind?: string; unit?: string; town: number; townName: string; loyalty: number; feeling: Feeling; /** What a story has left on them (aftermath.ts). */ marks: string[] }[];
   towns: RollTown[];
