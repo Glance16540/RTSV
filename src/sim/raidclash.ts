@@ -49,6 +49,8 @@ export interface RaidFight {
   bandLost: number; cost: number;
   /** How hard the town was pressed: the share of its weight lost, and of its works beaten down, 0 to 1. */
   pressed: number; works: number;
+  /** Of its companies' strength, the share lost in the fighting and the rout (mapbattle.ts SideOut.body): what a town's bands lost. */
+  body: number;
   /** Companies the army standing in the town lost, by kind. */
   garrisonLost: Record<string, number>;
 }
@@ -103,7 +105,7 @@ export function raidOf(out: Outcome, strength: number, line: number = RAID.easil
   return {
     outcome, rounds: out.rounds, broke: out.broke,
     bandLost: out.broke === 'attacker' ? Math.max(1, lost) : lost, cost: out.a.share,
-    pressed: out.d.share, works: out.d.works,
+    pressed: out.d.share, works: out.d.works, body: out.d.body ?? 0,
     garrisonLost: { ...out.d.lost },
   };
 }
