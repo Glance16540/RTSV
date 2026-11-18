@@ -210,7 +210,7 @@ interface Watch {
   grain: { buys: number; food: number; gold: number }; // the player's grain bought abroad by decree in twenty years (grain.ts), from the log
   halls: { rivals: number; with: number }; // at 20 years: rival nations alive, and those with a Hall of Judgement standing (townworks.ts)
   houses: { holy: number; with: number }; // at 20 years: Righteous towns, and those with a Monastery or Convent standing
-  raids: { outcome: string }[]; raidTownYears: number;
+  raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
   strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean; /** What the sum made of it, and what a clash would have (raidclash.ts); not for a strike on the road. */ sum: string; clash: string; road: boolean; /** The sum's own line for a taking was crossed, whether or not the town could be taken again. */ low: boolean; /** The town's defence over the band's force, as the old lines read it. */ ratio: number }[];
   /** Unrest begun in a town (unrest.ts), with what weighed on it then; towns that rose and became free (freetown.ts), and what became of them. */
@@ -374,7 +374,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       if (e.kind === 'plague' || e.kind === 'fever') strife[e.at].plague = now;
     }
     const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
-    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome }); if (r.outcome !== 'held') strife[r.at].war = now; }
+    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome, army: r.defence.army > 0 && r.kind !== 'highwaymen', road: r.kind === 'highwaymen' }); if (r.outcome !== 'held') strife[r.at].war = now; }
     for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0, sum: r.outcome, clash: raidForeseen(r, faithAt(c, r.at)).outcome, road: r.kind === 'highwaymen', low: r.defence.total / Math.max(0.1, r.force) < THREATS.fall, ratio: r.defence.total / Math.max(0.1, r.force) });
     // Thieves and killers at large this season: begun, not ended, and (a thief) not yet standing for judgement.
     for (const x of c.intrigues ?? []) {
@@ -898,6 +898,13 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       'Seen: an army in or beside a land it passed, or a town within two lands (of the rim where it gathered, too), told its people. Ahead: from when it was first seen to when it struck or arrived, the mean over those seen that did either. Both must hold: eight in ten seen, and a season or more. Met: an army went against it (not the band against the army) before it had struck anyone.');
   }
   const out = (o: string) => share(raids, (r) => r.outcome === o);
+  {
+    // Report only: what an army in the town is worth to it when a band strikes (the towns' strikes; not the roads').
+    const town = raids.filter((r) => !r.road), withArmy = town.filter((r) => r.army), bare = town.filter((r) => !r.army);
+    const of = (xs: typeof town, o: string): string => pct(xs.length ? xs.filter((r) => r.outcome === o).length / xs.length : NaN);
+    add('Threats', 'Raids on a town with an army of its people in it, against without', 'report only', town.length ? `${pct(withArmy.length / town.length)} of strikes on towns met an army; with one: held off ${of(withArmy, 'held')}, raided ${of(withArmy, 'raided')}, taken ${of(withArmy, 'taken')} (${withArmy.length}); without: held off ${of(bare, 'held')}, raided ${of(bare, 'raided')}, taken ${of(bare, 'taken')} (${bare.length})` : 'none', 'report',
+      'Every strike on a held town, not on a road: whether an army of the town\'s people stood in it when the band struck (threats.ts defenceOf counts it), and how those strikes went against the rest. Roads have their own guard and are left out, so the shares here are not the row below\'s.');
+  }
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);
   const back = share(caps, (x) => x.back);
