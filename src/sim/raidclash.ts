@@ -30,12 +30,12 @@ export const RAID = {
   press: 0.82,
   /** A band that breaks a town having lost no more than this share of its own weight has taken it, not only raided it. */
   easily: 0.16,
-  /** The same line where the town's men are turned out as bands (stage three): far lower, since less of the town is the place that strikes back and a band breaks it more cheaply. Read off 192 campaigns, report only: at 0.16 a third of strikes on towns would end in a taking (33.7%, against 17.6% as it is); at 0.04, 18.6%; at 0.035, 16.9%, and the whole row would read held off 38.4%, raided 47.4%, taken 14.2%. */
-  easilyOut: 0.035,
+  /** The line for a taking where the town's men are turned out as bands (stage three, what decides a strike): lower than the old one, since less of the town is the place that strikes back and a band breaks it more cheaply. About five to two in the band's favour. On paper (the old world's strikes) 0.035 gave as many takings as before; switched, the world answers back (fewer carried off, weaker bands) and 0.035 read taken 8.3% of raids at 384; 0.07 reads 11%, with captives got back 38 to 41%. */
+  easilyOut: 0.07,
   /** Of what a clash says a band lost, the share its strength is the weaker by: most of those who run find the camp again. Never less than one point where it broke. */
   rally: 0.3,
-  /** A town that held is blooded (a man of it dies, as a town was) where it lost this share of its weight or more in holding. */
-  blooded: 0.3,
+  /** Of the men of a town's band lost to a band, the share who are dead (against a nation it is half, militiatoll.ts FELL.dead): a band has come to rob, not to hold the town, and most who break before it get home. Set so that a strike kills about what it did by rule (0.6 men a strike; at a half it would be 2.5). */
+  dead: 0.13,
 };
 
 /** What a town has, as the sum has it (threats.ts `Defence`), read here as plain data. */
