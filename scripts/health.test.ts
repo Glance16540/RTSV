@@ -906,33 +906,33 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       'Every strike on a held town, not on a road: whether an army of the town\'s people stood in it when the band struck (threats.ts defenceOf counts it), and how those strikes went against the rest. Roads have their own guard and are left out, so the shares here are not the row below\'s.');
   }
   {
-    // Report only, before any switch: the same strikes with the town's own men turned out as militia bands (raidclash.ts `turnedOut`).
+    // Report only, kept for a release after the switch: the same strikes by the fight as it was before stage three (`would`), beside the fight that decides them now, the town's own men turned out as militia bands (raidclash.ts `turnedOut`).
     const both = raids.filter((r) => r.would !== undefined), roads = raids.filter((r) => r.road);
     const sh = (xs: typeof both, f: (r: (typeof both)[number]) => boolean): string => pct(xs.length ? xs.filter(f).length / xs.length : NaN);
     const line = (xs: typeof both, key: 'outcome' | 'would'): string => `held off ${sh(xs, (r) => r[key] === 'held')}, raided ${sh(xs, (r) => r[key] === 'raided')}, taken ${sh(xs, (r) => r[key] === 'taken')}`;
     // With the roads' strikes as they are (they are not fought), what the whole row would read.
     const all3 = (o: string): number => (raids.length ? (both.filter((r) => r.would === o).length + roads.filter((r) => r.outcome === o).length) / raids.length : NaN);
     const sizes: [string, (m: number) => boolean][] = [['under 12 men', (m) => m < 12], ['12 to 23', (m) => m >= 12 && m < 24], ['24 to 47', (m) => m >= 24 && m < 48], ['48 and over', (m) => m >= 48]];
-    const bySize = sizes.map(([name, f]) => { const xs = both.filter((r) => f(r.men ?? 0)); return `${name} (${xs.length}): taken ${sh(xs, (r) => r.outcome === 'taken')} now, ${sh(xs, (r) => r.would === 'taken')} turned out; held off ${sh(xs, (r) => r.outcome === 'held')} and ${sh(xs, (r) => r.would === 'held')}`; }).join('; ');
+    const bySize = sizes.map(([name, f]) => { const xs = both.filter((r) => f(r.men ?? 0)); return `${name} (${xs.length}): taken ${sh(xs, (r) => r.outcome === 'taken')} now, ${sh(xs, (r) => r.would === 'taken')} by the old fight; held off ${sh(xs, (r) => r.outcome === 'held')} and ${sh(xs, (r) => r.would === 'held')}`; }).join('; ');
     const changed = both.filter((r) => r.would !== r.outcome).length;
-    add('Threats', 'A raid with the town\'s men turned out as bands, against the fight as it is', 'report only', both.length
-      ? `as it is: ${line(both, 'outcome')}; turned out: ${line(both, 'would')} (${both.length} strikes on towns, ${pct(changed / both.length)} would have gone otherwise). The whole row would read held off ${pct(all3('held'))}, raided ${pct(all3('raided'))}, taken ${pct(all3('taken'))}. By the town's men: ${bySize}`
+    add('Threats', 'A raid with the town\'s men turned out as bands, against the fight as it was', 'report only', both.length
+      ? `as it is fought now, turned out: ${line(both, 'outcome')}; by the old fight: ${line(both, 'would')} (${both.length} strikes on towns, ${pct(changed / both.length)} would have gone otherwise). By the old fight the whole row would read held off ${pct(all3('held'))}, raided ${pct(all3('raided'))}, taken ${pct(all3('taken'))}. By the town's men: ${bySize}`
       : 'none', 'report',
-      'Every strike on a town (not on a road), fought twice with the same band and the same day: as threats.ts decides it now (the town a sum of its men, works, walls and army), and with its own men turned out as militia bands on foot beside any army, as against a nation (militia.ts; stage three, not yet what decides a strike). A town bled already cannot be taken either way. The second fight decides nothing: it is recorded on the raid for this row only.');
+      'Every strike on a town (not on a road), fought twice with the same band and the same day: as threats.ts decides it now, with the town\'s own men turned out as militia bands on foot beside any army and only its works, walls and guard as the place, as against a nation (militia.ts; stage three); and as it was decided before (the town a sum of its men, works, walls and army, its men part of the place). A town bled already cannot be taken either way. The old fight decides nothing: it is recorded on the raid for this row only, for a release.');
     {
       // Where the line for a taking would have to lie, turned out, for as many towns to be taken as are now.
       const broke = both.filter((r) => r.cost !== undefined), lines = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16];
       const at = lines.map((x) => `${x}: ${pct(broke.filter((r) => r.cost! <= x).length / Math.max(1, both.length))}`).join(', ');
-      add('Threats', 'Turned out: towns taken, by where the line for a taking lies', 'report only', both.length ? `taken now ${sh(both, (r) => r.outcome === 'taken')} of strikes on towns; turned out, a town that could be taken would break in ${pct(broke.length / both.length)} of them, and be taken at a line of ${at}` : 'none', 'report',
-        'A town is taken, not only raided, where breaking it cost the band no more than a share of its own weight (raidclash.ts RAID.easily, 0.16 today). Every strike where the town would have broken with its men turned out, and had nobody in a band\'s hands already, by what that cost the band: so the line that gives as many takings as now can be read off before anything is switched.');
+      add('Threats', 'Towns taken, by where the line for a taking lies', 'report only', both.length ? `taken now ${sh(both, (r) => r.outcome === 'taken')} of strikes on towns; a town that could be taken broke in ${pct(broke.length / both.length)} of them, and would be taken at a line of ${at}` : 'none', 'report',
+        'A town is taken, not only raided, where breaking it cost the band no more than a share of its own weight (raidclash.ts RAID.easilyOut). Every strike where the town broke and had nobody in a band\'s hands already, by what that cost the band: so what another line would give can be read off. (These are the strikes of a world run at the line as it is; moved, the world answers back.)');
     }
     const press = both.filter((r) => (r.pressed ?? 0) > 0), meanPress = press.length ? press.reduce((k, r) => k + (r.pressed ?? 0), 0) / both.length : 0;
     const per = (xs: typeof both, f: (r: (typeof both)[number]) => number): string => num(xs.length ? xs.reduce((k, r) => k + f(r), 0) / xs.length : NaN, 2);
-    const by = (o: string): string => { const xs = both.filter((r) => r.would === o); return `${o === 'held' ? 'held off' : o} ${per(xs.filter((r) => r.outcome === o), (r) => r.killed ?? 0)} now and ${per(xs, (r) => r.dead ?? 0)}`; };
-    add('Threats', 'Men a town loses to a strike, by rule now, and by what its bands would lose', 'report only', both.length
-      ? `${per(both, (r) => r.killed ?? 0)} men killed a strike now; by the bands' losses ${per(both, (r) => r.dead ?? 0)} (its side would lose ${pct(meanPress)} of its weight a strike). By how it went: ${by('held')}; ${by('raided')}; ${by('taken')}`
+    const by = (o: string): string => { const xs = both.filter((r) => r.outcome === o); return `${o === 'held' ? 'held off' : o} ${per(xs, (r) => r.killed ?? 0)} and ${per(xs, (r) => r.dead ?? 0)}`; };
+    add('Threats', 'Men a town loses to a strike, and what a battle with a nation would have cost it', 'report only', both.length
+      ? `${per(both, (r) => r.killed ?? 0)} men killed a strike; at a nation's share dead it would be ${per(both, (r) => r.dead ?? 0)} (its side loses ${pct(meanPress)} of its weight a strike). By how it went: ${by('held')}; ${by('raided')}; ${by('taken')}`
       : 'none', 'report',
-      'For the last part of stage three: the men killed a strike as threats.ts takes them now by rule, beside the men who would die by what the town\'s bands lost in the turned-out fight above, counted as a battle with a nation counts them (militiatoll.ts: the men who stood, by the share of their strength lost, half of a band lost being dead).');
+      'The men of a town killed in a strike are those its bands lost in the fight (militiatoll.ts: the men who stood, by the share of their strength lost in the fight and the rout), at a raid\'s own share dead (raidclash.ts RAID.dead): beside it, what the same losses would be at the share a battle with a nation goes by (FELL.dead, a half). By rule, before stage three, it was 0.6 a strike.');
   }
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);
