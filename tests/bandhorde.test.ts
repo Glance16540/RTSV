@@ -47,6 +47,7 @@ describe('the marauders are a band', () => {
   it('a camp grows every season up to its most, and its raid is a strike on a town that defends itself, with a report', () => {
     const { c, home, camp } = world();
     camp.horde = true; camp.militia = 6;
+    home.capital = -1; // a town like any other: a chief town's guard and its men turned out are more than a camp of six breaks cheaply enough to sack it (raidclash.ts RAID.easilyOut)
     const f = folkOf(c, home.id);
     Object.assign(f, { men: 1 * S, women: 8 * S, elders: 0, children: 3 * S }); delete f.ages; // as many as that was of a town (township.ts TOWN_SCALE)
     home.buildings = []; delete home.town;

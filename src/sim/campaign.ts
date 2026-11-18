@@ -85,6 +85,7 @@ import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
 import { battleNamed, veteranHome } from './veteranhome';
+import { noteLost } from './companyroll';
 
 
 /** How far a people's churches and taverns will move it next turn. */
@@ -1018,6 +1019,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settling', 'stores', (c) => settleStores(c)) // and what each people has spent or earned is in its towns before any is lost
   .on('settling', 'mapbattle', (c, p, b) => { if (b.fought) { b.fallenBefore = fallenBefore(c, p); b.led = whoLed(c, p, p.defender >= 0 && leaderAt(c, p.defender, p.to)); } }) // who leads, and who had fallen before it
   // counted: the armies are known and the town's toll is taken.
+  .on('counted', 'companyroll', (c, _p, b) => { if (b.fought) { noteLost(c, b.army?.id, b.fought.a.lost); noteLost(c, b.defArmy?.id, b.fought.d.lost); } }) // which companies each side lost, so their men are the dead and the rest are credited (companyroll.ts)
   .on('counted', 'warhouse', (c, _p, b) => { // what the victor felled is counted to the houses of its men: the companies it broke, and the town's dead
     const felled = b.fought ? felledOf(b.fought, MEN.company) : undefined; // fought out, the beaten are not lost to the last man (mapbattle.ts)
     if (b.attackerWon && b.army) creditArmy(c, b.army.id, (felled ? felled.byAttacker : b.defArmy ? armySize(b.defArmy) * MEN.company : 0) + (b.toll ?? 0));
