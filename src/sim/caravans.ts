@@ -54,9 +54,10 @@ export const CARAVANS = {
   reach: 4,
   /** Gold a caravan brings home, and more for each land of road; times for a partner abroad, and for a people of Traders. */
   gold: 100, perLand: 20, abroad: 1.5, traders: 1.5,
-  /** A governor begins a Market only if, after paying, the town still holds this many times what it keeps by it. Once over:
-   *  four times over, as for an Inn, raised almost none in 100 seasons (towns seldom have the wood to spare so far over). */
-  plenty: 1,
+  /** A governor begins a Market only if, after paying, the town still holds this many times what it keeps by it, as for an
+   *  Inn. Once over, every town raised one as soon as it had the wood, and the computer-played player won 15 campaigns in
+   *  384 fewer in either course for it, with or without the caravans' gold; four times over it wins as many as without. */
+  plenty: 4,
   /** Caravans are numbered from here, apart from the convoys, so their chances are their own. */
   ids: 500000,
 };
