@@ -109,3 +109,38 @@ describe('a band and a caravan on the road', () => {
     expect(here.filter((x) => x.fallen).length).toBe(1);
   });
 });
+
+describe('the news of a caravan robbed', () => {
+  it('is in the season\'s news of the caravan\'s people, and of whoever holds the land, with the band, the place and the gold; nobody else hears', async () => {
+    const { seasonNews } = await import('../src/sim/raidnews');
+    const { c, a, b } = road();
+    const [x] = sendCaravans(c).filter((y) => y.to === a.id || y.from === a.id);
+    band(c, b.id, 'raiders');
+    const logged = c.log.length;
+    const took = until(c);
+    expect(took).toBeGreaterThan(0);
+    const mine = seasonNews(c).filter((n) => n.kind === 'robbed');
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ at: b.id, band: 9, tone: 'bad' });
+    expect(mine[0].headline).toContain('your caravan');
+    expect(mine[0].headline).toContain(`${took} gold`);
+    expect(mine[0].headline).toContain(c.territories[x.to].name);
+    // The log has caravans.ts's own line and no second one from here.
+    expect(c.log.slice(logged).filter((l) => l.includes('caravan')).length).toBe(1);
+    const other = c.factions.find((f) => f.id > 0 && f.alive)!.id;
+    expect(seasonNews(c, c.turn, other).filter((n) => n.kind === 'robbed')).toHaveLength(0);
+    // Robbed in another people's land, that people hears of it too, in other words.
+    const two = road();
+    const [y] = sendCaravans(two.c).filter((w) => w.to === two.a.id || w.from === two.a.id);
+    const rival = two.c.factions.find((f) => f.id > 0 && f.alive)!.id;
+    two.b.owner = rival;
+    band(two.c, two.b.id, 'slavers');
+    if (until(two.c)) {
+      expect(y.fallen).toBe(true);
+      const theirs = seasonNews(two.c, two.c.turn, rival).filter((n) => n.kind === 'robbed');
+      expect(theirs).toHaveLength(1);
+      expect(theirs[0].headline).toContain('a caravan of the');
+      expect(seasonNews(two.c).filter((n) => n.kind === 'robbed')).toHaveLength(1);
+    }
+  });
+});
