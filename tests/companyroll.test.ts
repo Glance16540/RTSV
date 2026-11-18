@@ -6,7 +6,7 @@ import { armyAt, raise } from '../src/sim/campaign';
 import { musterOf, reckonArmies } from '../src/sim/armytown';
 import { agesOf } from '../src/sim/ageing';
 import { folkOf } from '../src/sim/township';
-import { awayMen, creditArmy, housesOf } from '../src/sim/warhouse';
+import { awayMen, creditArmy, enlist, housesOf } from '../src/sim/warhouse';
 import { levelKinds, lostIn, lostRank, noteLost, standWeight } from '../src/sim/companyroll';
 
 /** A town of the player's with a Barracks and a Stable, men to spare, and an army of two companies of foot and one of horse. */
@@ -36,6 +36,27 @@ describe('each man of the roll is of a company', () => {
     const was = roll.map((r) => r.man.kind);
     expect(levelKinds(c, a.id).map((r) => r.man.kind)).toEqual(was); // asked again, nothing moves
     expect(awayMen(c, home.id).length).toBe(roll.length);
+  });
+
+  it('each kind is of every town of the army in its share, not of the town that raised it alone', () => {
+    const { c, a, home } = army();
+    // Six more men, of a town beside, join the army: three more companies of foot and three of horse.
+    const near = c.territories.find((t) => home.adj.includes(t.id) && !t.horde && t.capital < 0)!;
+    near.owner = 0;
+    const g = folkOf(c, near.id); Object.assign(g, { men: 40, women: 20, elders: 0, children: 0 }); g.notables = []; delete g.ages; delete g.houses; agesOf(c, near.id, g);
+    const m = musterOf(c, a.id)!;
+    g.men -= 6; m.men[near.id] = [80, 80, 80, 80, 80, 80]; enlist(c, near.id, 6, a.id);
+    a.units.infantry += 3; a.units.cavalry += 3; m.size += 6;
+    const roll = levelKinds(c, a.id);
+    for (const k of ['infantry', 'cavalry']) {
+      const towns = new Set(roll.filter((r) => r.man.kind === k).map((r) => r.tid));
+      expect(towns.has(home.id) && towns.has(near.id)).toBe(true);
+    }
+    // Two companies of horse lost: their dead are the horsemen last raised, whichever town they are of.
+    noteLost(c, a.id, { cavalry: 2 });
+    const horse = roll.filter((r) => r.man.kind === 'cavalry').sort((p, q) => q.man.since - p.man.since);
+    for (const r of horse.slice(0, 2)) expect(lostRank(c, a.id, r.house.family, r.man.name)).toBe(0);
+    for (const r of horse.slice(2)) expect(lostRank(c, a.id, r.house.family, r.man.name)).toBe(1);
   });
 
   it('the men of the companies lost on the map are the dead, those last raised first, before any lot', () => {
