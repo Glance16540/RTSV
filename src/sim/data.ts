@@ -736,8 +736,8 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   market: B({
     id: 'market', name: 'Market', icon: '⚖️',
-    desc: 'Trade food, wood and stone for gold, or gold for what you are short of.',
-    cost: { wood: 150 }, time: 26, age: 1, hp: 800, size: 3, pop: 0, sight: 6, trains: [], techs: [],
+    desc: 'Trade food, wood and stone for gold, or gold for what you are short of. On the map its caravans carry the town\'s trade by road to the nearest market it can reach, and bring home gold each season, if no band falls on them.',
+    cost: { wood: 150 }, time: 26, age: 1, hp: 800, size: 3, pop: 0, sight: 6, trains: [], techs: [], onMap: true, // its caravans on the map (caravans.ts)
   }),
   palisade: B({
     id: 'palisade', name: 'Palisade', icon: '🪵',

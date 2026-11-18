@@ -204,6 +204,28 @@ function waylaid(c: Campaign, x: Convoy): { name: string; strength: number; sea:
 }
 
 /**
+ * Highwaymen on the road, or pirates at sea, unless an escort of the people's own as strong as they are stands on it:
+ * they take CONVOYS.rob of every store a convoy (or a caravan, caravans.ts) carries. Writes what was taken into `a`,
+ * and returns who lay in wait and how strong an escort it had, or null if nobody met it. `what` names it in the log.
+ */
+export function waylay(c: Campaign, x: Convoy, a: { robbed?: Arrival['robbed'] }, what = 'convoy'): { band: ReturnType<typeof waylaid>; escort: number } | null {
+  const mine = x.owner === 0;
+  const band = waylaid(c, x);
+  if (!band || hash(c, x.id, 3) >= CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road)) return null; // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
+  const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
+  if (escort < band.strength && worth(x.cargo) > 0) {
+    const took = empty();
+    for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
+    if (worth(took) > 0) {
+      a.robbed = { by: band.name, took };
+      band.band.strength = Math.min(10, band.band.strength + 1);
+      if (mine) c.log.push(`🗡️ ${band.name[0].toUpperCase() + band.name.slice(1)} stopped your ${what} to ${c.territories[x.to].name} ${band.sea ? 'at sea' : 'on the road'} and took ${STORE_KINDS.filter((s) => took[s]).map((s) => `${took[s]} ${s}`).join(', ')}.`);
+    }
+  }
+  return { band, escort };
+}
+
+/**
  * The season turns for every convoy on the road: highwaymen may stop it, and it comes in. Called once a turn, after
  * the bands have struck. Returns what happened to each; the same is written in the log for the player's.
  */
@@ -212,19 +234,8 @@ function waylaid(c: Campaign, x: Convoy): { name: string; strength: number; sea:
 export function convoyArrives(c: Campaign, x: Convoy): Arrival {
   const a: Arrival = { convoy: x, at: x.to };
   const mine = x.owner === 0;
-  // Highwaymen on the road, or pirates at sea, unless an escort of the people's own as strong as they are stands on it.
-  const band = waylaid(c, x);
-  if (band && hash(c, x.id, 3) < CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road)) { // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
-    const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
-    if (escort < band.strength && worth(x.cargo) > 0) {
-      const took = empty();
-      for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
-      if (worth(took) > 0) {
-        a.robbed = { by: band.name, took };
-        band.band.strength = Math.min(10, band.band.strength + 1);
-        if (mine) c.log.push(`🗡️ ${band.name[0].toUpperCase() + band.name.slice(1)} stopped your convoy to ${c.territories[x.to].name} ${band.sea ? 'at sea' : 'on the road'} and took ${STORE_KINDS.filter((s) => took[s]).map((s) => `${took[s]} ${s}`).join(', ')}.`);
-      }
-    }
+  const met = waylay(c, x, a), band = met?.band ?? null, escort = met?.escort ?? 0;
+  if (met && band) {
     // A family on the road (migration.ts) is met as a convoy is: the band carries off grown people, never a child. They are
     // held as any captives are (threats.ts), on the same clock, and come home if the band is broken in time.
     if (escort < band.strength && x.movers && x.cargo.men.length + x.cargo.women.length > 0) {

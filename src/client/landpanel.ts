@@ -8,6 +8,7 @@ import { creedOf } from '../sim/creed';
 import { PLACES, WORLD_EVENTS } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield } from '../sim/country';
 import { nationHtml, townHtml } from './townpanel';
+import { marketLine } from './caravandraw';
 import { canSendHome, menOf, noMenText } from '../sim/armytown';
 import { bandButtons, threatHtml } from './threatpanel';
 import { intrigueButtons, intrigueHtml } from './intriguepanel';
@@ -120,6 +121,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
       ${weather ? `<div class="bad">${WEATHER[weather as 'rain'].icon} ${WEATHER[weather as 'rain'].name}: ${WEATHER[weather as 'rain'].desc}</div>` : ''}
       ${events.map((e) => `<div class="hint">${EVENTS[e.kind].icon} <b>${EVENTS[e.kind].name}</b>${e.until > c.turn ? ` <small>(${e.until - c.turn + 1} turns left)</small>` : e.kind === 'unrest' || e.kind === 'hoard' ? ' <small>(comes to a head next turn)</small>' : ''}: ${EVENTS[e.kind].desc}</div>`).join('')}
       ${t.town?.b.length && !t.town.coarse ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle${t.town.b.some((b) => b[3] !== undefined && b[4] === undefined) ? `, ${t.town.b.filter((b) => b[3] !== undefined && b[4] === undefined).length} of them damaged and being mended, a tenth each turn` : ''}${t.town.b.some((b) => b[4] !== undefined) ? `, ${t.town.b.filter((b) => b[4] !== undefined).length} left unfinished` : ''}${t.owner >= 0 && !styleOf(c.factions[t.owner].civ).raid && !t.town.b.some((b) => b[0] === 'towncenter') ? '. Its Town Center was razed and has not been raised again' : ''}. Whoever holds the land fights from it as it stands.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
+      ${t.owner === 0 ? marketLine(c, t.id) : ''}
       ${t.ground && t.ground.gone.length + t.ground.left.length ? '<div class="hint">🪓 This ground has been worked: wood felled, berries picked or stone dug. None of it comes back.</div>' : ''}`;
   const landTitle = `The land <small>${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}${t.trait ? ` · ${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}` : ''}${place ? ` · ${PLACES[place.kind].icon}` : ''}</small>`;
   return `${head}<div class="lp-section">${people}</div>${danger.trim() ? `<div class="lp-section">${danger}</div>` : ''}<div class="lp-section">${army}</div>${fold('land', landTitle, land)}`;
