@@ -14,7 +14,7 @@ poorer for a generation.
 
 ## Decided
 
-**Time.** A turn on the map is a season, four to a year. A child is grown at 18 (the owner's word, 18 November 2026: every child comes of age at eighteen, whatever the age or people) and old at
+**Time.** A turn on the map is a season, four to a year. A child is grown at 18 (the owner's word, 18 November 2026: every child comes of age at eighteen, whatever the age or people; a child's years run faster to make up for it, so that eighteen is reached in the fifteen years of seasons it took before) and old at
 about 60. Entering a town plays a fixed stretch of that season in real time. Every town the player
 does not visit lives the same season by the same rules, run coarsely.
 
