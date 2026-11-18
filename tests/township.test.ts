@@ -188,6 +188,8 @@ describe('a battle is fought by the town and goes home to it', () => {
     // And settling a battle from the map does it.
     const d = besieged(11), dh = home(d), women = folkOf(d, dh.id).women;
     folkOf(d, dh.id).men = 10;
+    d.armies = d.armies.filter((a) => a.at !== dh.id); // with no army of its own there, the town's men are its companies, and fall as they do (militiatoll.ts)
+    d.armies.find((a) => a.id === 99)!.units = { infantry: 12 }; d.pending!.aStr = 40; // and an attack that carries the town: one driven off at the first rush kills nobody
     resolvePending(d, 'auto');
     expect(folkOf(d, dh.id).men).toBeLessThan(10);
     expect(folkOf(d, dh.id).women).toBe(women); // war takes the men
