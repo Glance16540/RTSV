@@ -165,26 +165,31 @@ describe('stage three, report only: the town turned out as bands (raidclash.ts t
     expect(low.weight).toBeCloseTo((3 + 1 + 1 + 4 + 1) * 0.5, 5);
   });
 
-  it('a strike records what it would have come to, and is decided exactly as before', async () => {
+  it('a strike is decided by the turned-out fight, and still records what the old fight would have made of it', async () => {
     const { newCampaign } = await import('../src/sim/campaign');
-    const { strike, townMilitia, defenceOf } = await import('../src/sim/threats');
+    const { strike, townMilitia, defenceOf, bandsFell } = await import('../src/sim/threats');
     const { folkOf } = await import('../src/sim/township');
-    for (let seed = 1; seed <= 12; seed++) {
+    const { raidClash, RAID } = await import('../src/sim/raidclash');
+    const { faithAt } = await import('../src/sim/townfaith');
+    let differed = 0;
+    for (let seed = 1; seed <= 24; seed++) {
       const c = newCampaign(seed, 2), home = c.territories.find((t) => t.capital === 0)!;
-      folkOf(c, home.id);
-      const m = townMilitia(c, home.id, defenceOf(c, home.id));
+      const f = folkOf(c, home.id), men = f.men;
+      c.armies = c.armies.filter((a) => a.at !== home.id);
+      const stand = defenceOf(c, home.id), m = townMilitia(c, home.id, stand), virtue = faithAt(c, home.id);
       expect(m.worth).toBeGreaterThan(0);
-      const twin = structuredClone(c);
-      const band = { id: 900, kind: 'raiders' as const, name: 'the test band', at: home.adj[0], strength: 3 + (seed % 5), since: 0, held: [] };
-      (c.bands ??= []).push(band); (twin.bands ??= []).push(structuredClone(band));
-      const r = strike(c, c.bands.at(-1)!, home.id, []);
-      expect(['held', 'raided', 'taken']).toContain(r.would);
-      expect(r.men).toBeGreaterThanOrEqual(0);
-      // The same strike with the record's new fields taken off is the strike as it was: they decide nothing.
-      const again = strike(twin, twin.bands!.at(-1)!, home.id, []);
-      expect(again.outcome).toBe(r.outcome);
-      expect(again.killed).toBe(r.killed);
-      expect(folkOf(twin, home.id).men).toBe(folkOf(c, home.id).men);
+      const band = { id: 900, kind: 'raiders' as const, name: 'the test band', at: home.adj[0], strength: 3 + (seed % 7), since: 0, held: [] };
+      (c.bands ??= []).push(band);
+      const r = strike(c, band, home.id, []);
+      const now = raidClash(r.strength!, r.force, stand, {}, virtue, 0.5, 0.5, m), old = raidClash(r.strength!, r.force, stand, {}, virtue);
+      expect(r.outcome === now.outcome || (now.outcome === 'taken' && r.outcome === 'raided')).toBe(true); // raided only where nobody could be carried off
+      expect(r.rounds).toBe(now.rounds);
+      expect(r.would).toBe(old.outcome);
+      if (old.outcome !== now.outcome) differed++;
+      // The dead are what its bands lost, at a raid's share: never more, and never the town's last men.
+      expect(r.killed).toBeLessThanOrEqual(bandsFell(c, home.id, 1, RAID.dead) + 1);
+      expect(f.men).toBe(men - r.killed - r.taken.men);
     }
+    expect(differed).toBeGreaterThan(0);
   });
 });
