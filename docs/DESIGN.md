@@ -242,6 +242,10 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **A dip does not undo dominion** (the owner's word, 17 November 2026). A people that holds the share for dominion counts its turns toward the ten; a season under the share takes two turns off the count, not all of it, so one town rising after nine turns does not throw away a won war.
 
+**One rule for who defends a town** (the owner's word, 18 November 2026). A town struck by a band turns out as it does against a nation: its men as militia bands, any army there beside them, its walls and towers striking and sheltering. A large town holds against a band somewhat less often than when its every man was counted, and that is accepted, since it now holds by the same rule whoever comes.
+
+**Caravans on the roads** (the owner's word, 18 November 2026). A market's trade is carried by caravans that can be seen on the roads between towns, and a band can fall on one, as it can on an army. What a market earns comes by the caravans that arrive, not by rule alone.
+
 ## The order of building
 
 Each step is to be playable by itself.
