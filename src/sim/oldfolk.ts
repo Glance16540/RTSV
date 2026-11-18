@@ -18,13 +18,9 @@
 // The land's panel says how many of the old people there are and what they cost this season. Plain data on the town.
 import type { Campaign, Territory } from './campaign';
 import { folkOf, grown } from './township';
+import { markTaken, passOver, trimOld } from './oldmarks';
 
-declare module './campaign' {
-  interface Territory {
-    /** Those within a taken town still of the people it was taken from (oldfolk.ts). `wed`: its couples last season. */
-    oldFolk?: { from: number; n: number; wed?: number };
-  }
-}
+// (`Territory.oldFolk` is declared in oldmarks.ts: `n` in all, `names` of them known by name, `wed` its couples last season.)
 
 export const OLD = {
   /** The share of the old who become the holder's a season, and what more as their resentment eases (at none, all of this). */
@@ -48,14 +44,16 @@ export const oldBuild = (c: Campaign, tid: number): number => 1 - OLD.build * ol
 export function oldSeason(c: Campaign, t: Territory): void {
   const y = t.yoke;
   if (t.owner < 0 || t.horde || (t.oldFolk && t.oldFolk.from === t.owner)) { delete t.oldFolk; return; } // back with its own people, or nobody's
-  if (y && !y.settled && !t.oldFolk && y.from !== t.owner) t.oldFolk = { from: y.from, n: people(c, t.id), wed: folkOf(c, t.id).wed };
+  if (y && !y.settled && !t.oldFolk && y.from !== t.owner) { t.oldFolk = { from: y.from, n: people(c, t.id), wed: folkOf(c, t.id).wed }; markTaken(t); } // those it knows by name are marked by name (oldmarks.ts)
   const o = t.oldFolk;
   if (!o) return;
   const f = folkOf(c, t.id), resent = y && !y.settled ? y.resent : 0;
-  o.n = Math.min(o.n, people(c, t.id));
+  trimOld(t, people(c, t.id));
   const wed = Math.max(0, (f.wed ?? 0) - (o.wed ?? f.wed ?? 0));
   o.wed = f.wed;
-  o.n = Math.max(0, o.n - Math.ceil(o.n * (OLD.ease + OLD.settled * (1 - resent / 100))) - wed);
+  const go = Math.min(o.n, Math.ceil(o.n * (OLD.ease + OLD.settled * (1 - resent / 100))) + wed);
+  passOver(c, t, go); // which of them: among the named and the rest in their share (oldmarks.ts)
+  o.n = Math.max(0, o.n - go);
   if (o.n <= 0) delete t.oldFolk;
 }
 /** A season of every taken town's old people. */

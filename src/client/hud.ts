@@ -3,6 +3,7 @@
 import { mayGoHome, mayRejoin } from '../sim/furlough';
 import { endCard } from './briefing';
 import { bereftLines } from '../sim/bereft';
+import { oldLine } from '../sim/oldmarks';
 import { possessive, renameOwn } from '../sim/naming';
 const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
@@ -541,6 +542,7 @@ export class Hud {
         const years = Math.floor(16 + (e.age / e.lifespan) * 54);
         extra += game.isElder(e) ? `<div class="hint">🧓 Elder, ${years} years old: works and walks more slowly</div>` : `<div class="hint">${years} years old</div>`;
       }
+      { const old = oldLine(e); if (old) extra += `<div class="hint">${old}</div>`; } // still of the people a taken town was taken from (oldmarks.ts)
       // The nation's leader: their veterancy, what it has added, and what their town makes of them.
       const lead = e.hero ? game.leaderBonus(e) : null;
       if (e.hero && lead) {
