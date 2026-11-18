@@ -30,10 +30,12 @@ export const RAID = {
   press: 0.82,
   /** A band that breaks a town having lost no more than this share of its own weight has taken it, not only raided it. */
   easily: 0.16,
+  /** The line for a taking where the town's men are turned out as bands (stage three, what decides a strike): lower than the old one, since less of the town is the place that strikes back and a band breaks it more cheaply. About five to two in the band's favour. On paper (the old world's strikes) 0.035 gave as many takings as before; switched, the world answers back (fewer carried off, weaker bands) and 0.035 read taken 8.3% of raids at 384; 0.07 reads 11%, with captives got back 38 to 41%. */
+  easilyOut: 0.07,
   /** Of what a clash says a band lost, the share its strength is the weaker by: most of those who run find the camp again. Never less than one point where it broke. */
   rally: 0.3,
-  /** A town that held is blooded (a man of it dies, as a town was) where it lost this share of its weight or more in holding. */
-  blooded: 0.3,
+  /** Of the men of a town's band lost to a band, the share who are dead (against a nation it is half, militiatoll.ts FELL.dead): a band has come to rob, not to hold the town, and most who break before it get home. Set so that a strike kills about what it did by rule (0.6 men a strike; at a half it would be 2.5). */
+  dead: 0.13,
 };
 
 /** What a town has, as the sum has it (threats.ts `Defence`), read here as plain data. */
@@ -43,10 +45,12 @@ export interface RaidFight {
   outcome: RaidOutcome;
   /** How it went: rounds fought, and who broke (neither: the band drew off). */
   rounds: number; broke: Outcome['broke'];
-  /** Points of its strength the band lost. */
-  bandLost: number;
+  /** Points of its strength the band lost, and the share of its weight the fight cost it (what the line for a taking is read against). */
+  bandLost: number; cost: number;
   /** How hard the town was pressed: the share of its weight lost, and of its works beaten down, 0 to 1. */
   pressed: number; works: number;
+  /** Of its companies' strength, the share lost in the fighting and the rout (mapbattle.ts SideOut.body): what a town's bands lost. */
+  body: number;
   /** Companies the army standing in the town lost, by kind. */
   garrisonLost: Record<string, number>;
 }
@@ -95,13 +99,13 @@ function turnedOut(strength: number, force: number, stand: TownStand, garrison: 
 }
 
 /** Read a clash as a raid. */
-export function raidOf(out: Outcome, strength: number): RaidFight {
-  const outcome: RaidOutcome = out.broke === 'defender' ? (out.a.share <= RAID.easily ? 'taken' : 'raided') : 'held';
+export function raidOf(out: Outcome, strength: number, line: number = RAID.easily): RaidFight {
+  const outcome: RaidOutcome = out.broke === 'defender' ? (out.a.share <= line ? 'taken' : 'raided') : 'held';
   const lost = Math.round(strength * out.a.share * RAID.rally);
   return {
     outcome, rounds: out.rounds, broke: out.broke,
-    bandLost: out.broke === 'attacker' ? Math.max(1, lost) : lost,
-    pressed: out.d.share, works: out.d.works,
+    bandLost: out.broke === 'attacker' ? Math.max(1, lost) : lost, cost: out.a.share,
+    pressed: out.d.share, works: out.d.works, body: out.d.body ?? 0,
     garrisonLost: { ...out.d.lost },
   };
 }
@@ -110,7 +114,7 @@ export function raidOf(out: Outcome, strength: number): RaidFight {
 export function raidClash(strength: number, force: number, stand: TownStand, garrison: Record<string, number> = {}, virtue = 0, luckA = 0.5, luckD = 0.5, militia?: Militia): RaidFight {
   const { a, d } = raidForces(strength, force, stand, garrison, virtue, militia);
   const day = (roll: number): number => 1 - CLASH.day + 2 * CLASH.day * Math.max(0, Math.min(1, roll));
-  return raidOf(clash(a, d, day(luckA), day(luckD)), strength);
+  return raidOf(clash(a, d, day(luckA), day(luckD)), strength, militia ? RAID.easilyOut : RAID.easily);
 }
 
 /**

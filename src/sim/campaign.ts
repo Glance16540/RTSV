@@ -27,6 +27,7 @@ import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
 import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
 import { convoysTurn, relieve } from './convoys';
+import { caravansSeason } from './caravans';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
 import { makeRim } from './rim';
@@ -84,6 +85,7 @@ import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
 import { Census, Folk, cleanCensus, loseVeteran, musterFolk, rememberVeteran, settleFolk, tollFolk } from './township';
 import { veteranTown } from './notableweight';
 import { battleNamed, veteranHome } from './veteranhome';
+import { noteLost } from './companyroll';
 
 
 /** How far a people's churches and taverns will move it next turn. */
@@ -1017,6 +1019,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settling', 'stores', (c) => settleStores(c)) // and what each people has spent or earned is in its towns before any is lost
   .on('settling', 'mapbattle', (c, p, b) => { if (b.fought) { b.fallenBefore = fallenBefore(c, p); b.led = whoLed(c, p, p.defender >= 0 && leaderAt(c, p.defender, p.to)); } }) // who leads, and who had fallen before it
   // counted: the armies are known and the town's toll is taken.
+  .on('counted', 'companyroll', (c, _p, b) => { if (b.fought) { noteLost(c, b.army?.id, b.fought.a.lost); noteLost(c, b.defArmy?.id, b.fought.d.lost); } }) // which companies each side lost, so their men are the dead and the rest are credited (companyroll.ts)
   .on('counted', 'warhouse', (c, _p, b) => { // what the victor felled is counted to the houses of its men: the companies it broke, and the town's dead
     const felled = b.fought ? felledOf(b.fought, MEN.company) : undefined; // fought out, the beaten are not lost to the last man (mapbattle.ts)
     if (b.attackerWon && b.army) creditArmy(c, b.army.id, (felled ? felled.byAttacker : b.defArmy ? armySize(b.defArmy) * MEN.company : 0) + (b.toll ?? 0));
@@ -1246,6 +1249,7 @@ export function continueAI(c: Campaign): void {
       governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
+      caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)

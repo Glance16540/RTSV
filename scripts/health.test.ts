@@ -192,6 +192,7 @@ interface Watch {
   growth: number[]; // all its people (grown and children) after 20 years over all at the start, for towns held by one people throughout
   grownGrowth: number[]; // the same, grown people alone
   townSeasons: TownSeason[];
+  caravans?: Campaign['caravanTally']; // the markets' caravans (caravans.ts)
   stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
   townLives: number; diedOut: number; diedAfterAll: number;
   /** Every town that died out (tribes' too), with what emptied it: see `whyDead`. */
@@ -210,7 +211,7 @@ interface Watch {
   grain: { buys: number; food: number; gold: number }; // the player's grain bought abroad by decree in twenty years (grain.ts), from the log
   halls: { rivals: number; with: number }; // at 20 years: rival nations alive, and those with a Hall of Judgement standing (townworks.ts)
   houses: { holy: number; with: number }; // at 20 years: Righteous towns, and those with a Monastery or Convent standing
-  raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean; /** Stage three, report only: what it would have come to with the town's men turned out as bands; the town's men; the share of its companies' weight it would have lost; the men it did lose. */ would?: string; men?: number; pressed?: number; killed?: number }[]; raidTownYears: number;
+  raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean; /** Stage three, report only: what it would have come to with the town's men turned out as bands; the town's men; the share of its companies' weight it would have lost; the men it did lose. */ would?: string; men?: number; pressed?: number; killed?: number; /** The men who would have died of it by what the bands lost. */ dead?: number; /** Where it would have broken (and could be taken): what that cost the band, as a share of its weight. */ cost?: number }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
   strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean; /** What the sum made of it, and what a clash would have (raidclash.ts); not for a strike on the road. */ sum: string; clash: string; road: boolean; /** The sum's own line for a taking was crossed, whether or not the town could be taken again. */ low: boolean; /** The town's defence over the band's force, as the old lines read it. */ ratio: number }[];
   /** Unrest begun in a town (unrest.ts), with what weighed on it then; towns that rose and became free (freetown.ts), and what became of them. */
@@ -374,7 +375,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
       if (e.kind === 'plague' || e.kind === 'fever') strife[e.at].plague = now;
     }
     const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
-    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome, army: r.defence.army > 0 && r.kind !== 'highwaymen', road: r.kind === 'highwaymen', ...(r.would ? { would: r.would, men: r.men ?? 0, pressed: r.wouldLost ?? 0, killed: r.killed } : {}) }); if (r.outcome !== 'held') strife[r.at].war = now; }
+    for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome, army: r.defence.army > 0 && r.kind !== 'highwaymen', road: r.kind === 'highwaymen', ...(r.would ? { would: r.would, men: r.men ?? 0, pressed: r.wouldLost ?? 0, killed: r.killed, dead: r.wouldDead ?? 0, ...(r.wouldCost !== undefined ? { cost: r.wouldCost } : {}) } : {}) }); if (r.outcome !== 'held') strife[r.at].war = now; }
     for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0, sum: r.outcome, clash: raidForeseen(r, faithAt(c, r.at)).outcome, road: r.kind === 'highwaymen', low: r.defence.total / Math.max(0.1, r.force) < THREATS.fall, ratio: r.defence.total / Math.max(0.1, r.force) });
     // Thieves and killers at large this season: begun, not ended, and (a thief) not yet standing for judgement.
     for (const x of c.intrigues ?? []) {
@@ -534,6 +535,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
     }
   }
   w.sieges = watched;
+  w.caravans = c.caravanTally ? JSON.parse(JSON.stringify(c.caravanTally)) : undefined;
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
   w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0).length;
   w.crimes = [...atLarge.values()];
@@ -863,6 +865,13 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
     add('People', 'Of the felled in a map battle that names a soldier, the share he is credited with', '25 to 40%, with over half of them credited more than the three that make a name', share.length ? `${pct(mean(share))} of the felled credited (${share.length} named by a battle, every people's); ${pct(over)} credited more than three, median ${num(median(kills), 0)} (middle half ${num(quart(kills, 0.25), 0)} to ${num(quart(kills, 0.75), 0)})` : 'none named by a battle', share.length ? mean(share) >= 0.25 && mean(share) <= 0.4 && over > 0.5 : null,
       `veteranhome.ts: credited NAMED.share (${NAMED.share}) of the felled, three at least (the least that makes a name, champion.ts), in a battle that felled NAMED.least (${NAMED.least}) or more.`);
   }
+  // The markets' caravans (caravans.ts): report only, so the first guesses have numbers.
+  {
+    const all = ruled.map((w) => w.caravans), sum = (k: 'sent' | 'came' | 'robbed' | 'gold', mine = false): number => all.reduce((n, x) => n + (x ? (mine ? x.mine[k] : x[k]) : 0), 0);
+    const n = Math.max(1, ruled.length), years = ruled.reduce((k, w) => k + w.storyYears, 0);
+    add('Stores', 'The markets\' caravans: how many, how many come home, how many are robbed, and the gold they bring', 'report only', sum('sent') ? `${num(sum('sent') / n, 0)} sent a campaign, every people's (${num(sum('sent', true) / n, 0)} the player's); ${pct(sum('came') / sum('sent'))} came home, ${pct(sum('robbed') / sum('sent'))} robbed on the way; ${num(sum('gold') / Math.max(1, years), 0)} gold a year every people's together, ${num(sum('gold', true) / Math.max(1, years), 0)} the player's (${num(sum('gold') / Math.max(1, sum('came')), 0)} a caravan)` : 'none sent', 'report',
+      'A town with a Market standing trades by road with the nearest other market town within CARAVANS.reach lands, its own people\'s or one at peace with it, and its caravan comes home the season after with gold; highwaymen and pirates on its road meet it as a convoy, and a band standing on its road may fall on it (caravans.ts).');
+  }
   // When the computer-played player takes its first age: report only.
   {
     const got = ruled.filter((w) => w.firstAge > 0).map((w) => w.firstAge);
@@ -906,24 +915,33 @@ it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
       'Every strike on a held town, not on a road: whether an army of the town\'s people stood in it when the band struck (threats.ts defenceOf counts it), and how those strikes went against the rest. Roads have their own guard and are left out, so the shares here are not the row below\'s.');
   }
   {
-    // Report only, before any switch: the same strikes with the town's own men turned out as militia bands (raidclash.ts `turnedOut`).
+    // Report only, kept for a release after the switch: the same strikes by the fight as it was before stage three (`would`), beside the fight that decides them now, the town's own men turned out as militia bands (raidclash.ts `turnedOut`).
     const both = raids.filter((r) => r.would !== undefined), roads = raids.filter((r) => r.road);
     const sh = (xs: typeof both, f: (r: (typeof both)[number]) => boolean): string => pct(xs.length ? xs.filter(f).length / xs.length : NaN);
     const line = (xs: typeof both, key: 'outcome' | 'would'): string => `held off ${sh(xs, (r) => r[key] === 'held')}, raided ${sh(xs, (r) => r[key] === 'raided')}, taken ${sh(xs, (r) => r[key] === 'taken')}`;
     // With the roads' strikes as they are (they are not fought), what the whole row would read.
     const all3 = (o: string): number => (raids.length ? (both.filter((r) => r.would === o).length + roads.filter((r) => r.outcome === o).length) / raids.length : NaN);
     const sizes: [string, (m: number) => boolean][] = [['under 12 men', (m) => m < 12], ['12 to 23', (m) => m >= 12 && m < 24], ['24 to 47', (m) => m >= 24 && m < 48], ['48 and over', (m) => m >= 48]];
-    const bySize = sizes.map(([name, f]) => { const xs = both.filter((r) => f(r.men ?? 0)); return `${name} (${xs.length}): taken ${sh(xs, (r) => r.outcome === 'taken')} now, ${sh(xs, (r) => r.would === 'taken')} turned out; held off ${sh(xs, (r) => r.outcome === 'held')} and ${sh(xs, (r) => r.would === 'held')}`; }).join('; ');
+    const bySize = sizes.map(([name, f]) => { const xs = both.filter((r) => f(r.men ?? 0)); return `${name} (${xs.length}): taken ${sh(xs, (r) => r.outcome === 'taken')} now, ${sh(xs, (r) => r.would === 'taken')} by the old fight; held off ${sh(xs, (r) => r.outcome === 'held')} and ${sh(xs, (r) => r.would === 'held')}`; }).join('; ');
     const changed = both.filter((r) => r.would !== r.outcome).length;
-    add('Threats', 'A raid with the town\'s men turned out as bands, against the fight as it is', 'report only', both.length
-      ? `as it is: ${line(both, 'outcome')}; turned out: ${line(both, 'would')} (${both.length} strikes on towns, ${pct(changed / both.length)} would have gone otherwise). The whole row would read held off ${pct(all3('held'))}, raided ${pct(all3('raided'))}, taken ${pct(all3('taken'))}. By the town's men: ${bySize}`
+    add('Threats', 'A raid with the town\'s men turned out as bands, against the fight as it was', 'report only', both.length
+      ? `as it is fought now, turned out: ${line(both, 'outcome')}; by the old fight: ${line(both, 'would')} (${both.length} strikes on towns, ${pct(changed / both.length)} would have gone otherwise). By the old fight the whole row would read held off ${pct(all3('held'))}, raided ${pct(all3('raided'))}, taken ${pct(all3('taken'))}. By the town's men: ${bySize}`
       : 'none', 'report',
-      'Every strike on a town (not on a road), fought twice with the same band and the same day: as threats.ts decides it now (the town a sum of its men, works, walls and army), and with its own men turned out as militia bands on foot beside any army, as against a nation (militia.ts; stage three, not yet what decides a strike). A town bled already cannot be taken either way. The second fight decides nothing: it is recorded on the raid for this row only.');
+      'Every strike on a town (not on a road), fought twice with the same band and the same day: as threats.ts decides it now, with the town\'s own men turned out as militia bands on foot beside any army and only its works, walls and guard as the place, as against a nation (militia.ts; stage three); and as it was decided before (the town a sum of its men, works, walls and army, its men part of the place). A town bled already cannot be taken either way. The old fight decides nothing: it is recorded on the raid for this row only, for a release.');
+    {
+      // Where the line for a taking would have to lie, turned out, for as many towns to be taken as are now.
+      const broke = both.filter((r) => r.cost !== undefined), lines = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16];
+      const at = lines.map((x) => `${x}: ${pct(broke.filter((r) => r.cost! <= x).length / Math.max(1, both.length))}`).join(', ');
+      add('Threats', 'Towns taken, by where the line for a taking lies', 'report only', both.length ? `taken now ${sh(both, (r) => r.outcome === 'taken')} of strikes on towns; a town that could be taken broke in ${pct(broke.length / both.length)} of them, and would be taken at a line of ${at}` : 'none', 'report',
+        'A town is taken, not only raided, where breaking it cost the band no more than a share of its own weight (raidclash.ts RAID.easilyOut). Every strike where the town broke and had nobody in a band\'s hands already, by what that cost the band: so what another line would give can be read off. (These are the strikes of a world run at the line as it is; moved, the world answers back.)');
+    }
     const press = both.filter((r) => (r.pressed ?? 0) > 0), meanPress = press.length ? press.reduce((k, r) => k + (r.pressed ?? 0), 0) / both.length : 0;
-    add('Threats', 'Men a town loses to a strike, by rule now, and what its bands would lose', 'report only', both.length
-      ? `${num(both.reduce((k, r) => k + (r.killed ?? 0), 0) / both.length, 2)} men killed a strike now; turned out, its side would lose ${pct(meanPress)} of its weight a strike on average (${pct(press.length / both.length)} of strikes cost it something)`
+    const per = (xs: typeof both, f: (r: (typeof both)[number]) => number): string => num(xs.length ? xs.reduce((k, r) => k + f(r), 0) / xs.length : NaN, 2);
+    const by = (o: string): string => { const xs = both.filter((r) => r.outcome === o); return `${o === 'held' ? 'held off' : o} ${per(xs, (r) => r.killed ?? 0)} and ${per(xs, (r) => r.dead ?? 0)}`; };
+    add('Threats', 'Men a town loses to a strike, and what a battle with a nation would have cost it', 'report only', both.length
+      ? `${per(both, (r) => r.killed ?? 0)} men killed a strike; at a nation's share dead it would be ${per(both, (r) => r.dead ?? 0)} (its side loses ${pct(meanPress)} of its weight a strike). By how it went: ${by('held')}; ${by('raided')}; ${by('taken')}`
       : 'none', 'report',
-      'For the last part of stage three (a town\'s dead taken from what its bands lost): the men killed a strike as threats.ts takes them now, beside the share of its own weight the town\'s side would lose in the second fight above.');
+      'The men of a town killed in a strike are those its bands lost in the fight (militiatoll.ts: the men who stood, by the share of their strength lost in the fight and the rout), at a raid\'s own share dead (raidclash.ts RAID.dead): beside it, what the same losses would be at the share a battle with a nation goes by (FELL.dead, a half). By rule, before stage three, it was 0.6 a strike.');
   }
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);

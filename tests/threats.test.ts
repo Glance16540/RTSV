@@ -1,4 +1,5 @@
 // Threats of men on the map: bands that choose a town and strike it (src/sim/threats.ts).
+import { RAID } from '../src/sim/raidclash';
 import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { endTurn, continueAI, eventsAt } from '../src/sim/campaign';
@@ -124,7 +125,10 @@ describe('a band strikes a town', () => {
     const had = goods(nationStores(c, 0));
     const r = untilStrike(c, b);
     expect(r.outcome).toBe('taken');
-    expect(r.killed).toBe(Math.round(6 * S * THREATS.dead.taken));
+    // The men who die are those its bands lost (militiatoll.ts's rule, at a raid's own share dead): some, never more than
+    // that share of the men who stood, and never the town's last.
+    expect(r.killed).toBeGreaterThan(0);
+    expect(r.killed).toBeLessThanOrEqual(Math.round(6 * S * RAID.dead));
     expect(f.men).toBe(6 * S - r.killed);
     expect(r.taken.women).toBe(Math.ceil(8 * S * THREATS.carried));
     expect(r.taken.men).toBe(0); // raiders take women
