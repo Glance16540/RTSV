@@ -38,6 +38,7 @@
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
 import { inAll, strengthOf, whole } from './strengthwords';
 import { outOf } from './rim';
+import { militiaBands, militiaOf } from './militia';
 import { faithAt, swayTown } from './townfaith';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { armySize, armyStrength } from './campaignbase';
@@ -99,6 +100,8 @@ export interface Raid {
   broken?: boolean;
   /** A strike on a town, fought out (raidclash.ts): rounds fought, who broke (neither: the band drew off), and the companies the army standing there lost. */
   rounds?: number; broke?: 'attacker' | 'defender' | 'neither'; garrison?: number;
+  /** Report only (stage three, raidclash.ts `turnedOut`): what the same strike would have come to with the town's men turned out as bands, the share of the town's own companies it would have lost, and the town's men at the time. Nothing reads these but the health report. */
+  would?: Outcome; wouldLost?: number; men?: number;
 }
 
 declare module './campaign' {
@@ -183,6 +186,16 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   const guard = t.capital >= 0 ? THREATS.capital : 0;
   const spirit = (t.owner >= 0 ? creedOf(faithAt(c, tid)).morale : 1) * (sick(c, tid) ? THREATS.sick : 1); // the town's own standing (townfaith.ts)
   return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit * bandStand(c, tid)) }; // a people's own study may stiffen it (ownstudies.ts)
+}
+
+/**
+ * A town's own men as they turn out against a band: the bands militia.ts counts, worth what it weighs them at, stiffened
+ * or thinned as the sum's men are (the watch kept, drift to the mines, a taken town's grudge): the sum's `men` over what
+ * the same men would be with none of that.
+ */
+export function townMilitia(c: Campaign, tid: number, d: Defence = defenceOf(c, tid)): { bands: number; worth: number } {
+  const f = folkOf(c, tid), plain = (f.men / TOWN_SCALE) * THREATS.man, kept = plain > 0 ? Math.min(2, d.men / plain) : 1;
+  return { bands: militiaBands(c, tid), worth: Math.round(militiaOf(c, tid) * kept * 100) / 100 };
 }
 
 /** The lands a band can reach to strike. */
@@ -295,6 +308,10 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
     killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0,
     ...(fight ? { rounds: fight.rounds, broke: fight.broke } : {}),
   };
+  if (fight) { // report only: the same strike with the town's men turned out as bands (stage three); nothing is decided by it
+    const w = raidClash(b.strength, force, defence, garrison?.units ?? {}, faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence));
+    raid.would = w.outcome === 'taken' && bled ? 'raided' : w.outcome; raid.wouldLost = w.pressed; raid.men = f.men;
+  }
   // An army standing in the town loses the companies the fight cost it, each a man of his town; never its last (it falls back inside).
   if (fight && garrison) {
     let spare = armySize(garrison) - 1, gone = 0;
