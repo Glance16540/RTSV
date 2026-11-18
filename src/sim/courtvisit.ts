@@ -39,7 +39,7 @@ function one(c: Campaign, it: Intrigue): FieldCourt | undefined {
   if (it.kind === 'rival') {
     const queen = !!heroFor(c, it.rival ?? 0).female, spouse = it.cast?.spouse ?? 'your consort';
     return {
-      id: it.id, kind: 'rival', guest: `the envoy of ${king}${of}`, answers,
+      id: it.id, kind: 'rival', guest: `the envoy of ${king}${of}`, answers, ...(r ? { civ: r.civ } : {}), // of his people's dress at the hall (hallguests.ts)
       errand: it.stage === 1 ? `${queen ? 'She' : 'He'} demands that ${spouse} be sent over the border, and waits for your answer.`
         : it.stage === 0 ? `${king} has sworn to have your head, and ${spouse} for ${queen ? 'her' : 'his'} own. The envoy has said so, and stays to see how it is taken.`
         : `${king} has been defied. The envoy is making ready to go.`,
@@ -47,7 +47,7 @@ function one(c: Campaign, it: Intrigue): FieldCourt | undefined {
   }
   const suitor = it.cast?.suitor ?? 'a suitor', daughter = it.cast?.daughter ?? 'your daughter';
   return {
-    id: it.id, kind: 'suitor', guest: `${suitor} of the house of ${king}${of}`, answers, daughter, willing: !!it.willing, ...(it.asked ? { asked: true } : {}),
+    id: it.id, kind: 'suitor', guest: `${suitor} of the house of ${king}${of}`, answers, ...(r ? { civ: r.civ } : {}), daughter, willing: !!it.willing, ...(it.asked ? { asked: true } : {}),
     errand: `He asks for your daughter ${daughter}, and waits for your answer.`,
   };
 }
