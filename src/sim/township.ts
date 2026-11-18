@@ -222,10 +222,11 @@ export function loseVeteran(c: Campaign, f: number, name: string, how = 'fell in
 
 /**
  * A battle nobody watched: the town pays for it by rule. Its men fall, more of them if it is taken, and a town
- * taken is looted of half its stores. (Step 4 of the design replaces this with the town defending itself.)
+ * taken is looted of half its stores. Where the battle was fought out and the town's own men were in it, `men`
+ * is how many of them fell there (militiatoll.ts), and that many die instead of a share by rule.
  */
-export function tollFolk(c: Campaign, tid: number, taken: boolean): number {
-  const f = folkOf(c, tid), dead = Math.min(Math.max(0, f.men - (f.women > 0 ? TOLL.last : 0)), Math.ceil(f.men * (taken ? TOLL.taken : TOLL.held)));
+export function tollFolk(c: Campaign, tid: number, taken: boolean, by: { men?: number } = {}): number {
+  const f = folkOf(c, tid), dead = Math.min(Math.max(0, f.men - (f.women > 0 ? TOLL.last : 0)), by.men !== undefined ? Math.max(0, Math.round(by.men)) : Math.ceil(f.men * (taken ? TOLL.taken : TOLL.held)));
   f.men -= dead;
   if (dead && f.ages) agesOf(c, tid, f); // the record of ages loses them too
   tally(c, tid, 'fell', dead); // for the season's report (ledger.ts)

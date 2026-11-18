@@ -2,6 +2,7 @@
 
 import { bake, unbake } from './bake';
 import { TownBatch } from './townbatch';
+import { HallFigures } from './hallguests';
 import { cullBeast, foldFigure } from './foldfigure';
 import * as THREE from 'three';
 import { standInBuilding } from './standins'; // a new building's stand-in look until it has a model (standins.ts)
@@ -70,7 +71,8 @@ export class Renderer {
   private unitViews = new Map<number, UnitView>();
   private buildingViews = new Map<number, THREE.Group>();
   private batch = new TownBatch(this.scene);
-  private resBatch = new TownBatch(this.scene, { tile: 32 }); // stone, gold, bushes, carcasses: drawn together as the buildings are
+  private resBatch = new TownBatch(this.scene, { tile: 32 });
+  private hallFigures = new HallFigures(this.scene); // who stands at the hall in a court visit (hallguests.ts) // stone, gold, bushes, carcasses: drawn together as the buildings are
   private resViews = new Map<number, THREE.Group>();
   private treeIndex = new Map<number, { ims: THREE.InstancedMesh[]; i: number }>();
   /** Every instanced part of the forest; a felled tree is hidden in each. */
@@ -1415,6 +1417,7 @@ export class Renderer {
     if (!Renderer.noBake) this.batch.sync(this.buildingViews.values()); // a town's still buildings drawn together (townbatch.ts)
     if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
+    this.hallFigures.sync(game, game.humanId, dt, (x, y) => this.scenery.heightAt(x, y));
     if (!Renderer.noBake) this.resBatch.sync(this.resViews.values()); // made again when one is used up or a kill is left
     this.lightNight();
     this.campScenes.update(this.game, dt, {

@@ -145,3 +145,46 @@ describe('a strike on a town is fought out', () => {
     expect(r.outcome).toBe('raided');
   });
 });
+
+describe('stage three, report only: the town turned out as bands (raidclash.ts turnedOut)', () => {
+  it('the town\'s men are companies on foot beside its army, and only its works, walls and guard are the place', async () => {
+    const { raidForces } = await import('../src/sim/raidclash');
+    const stand = { men: 2, works: 3, walls: 1, army: 4, guard: 1, spirit: 1, total: 11 };
+    const now = raidForces(5, 5, stand, { infantry: 4 }).d, out = raidForces(5, 5, stand, { infantry: 4 }, 0, { bands: 2.4, worth: 1.2 }).d;
+    expect(now.units).toEqual({ infantry: 4 });
+    expect(out.units).toEqual({ infantry: 6 }); // two bands of its own men beside the four companies
+    expect(now.weight).toBe(11);
+    expect(out.weight).toBeCloseTo(3 + 1 + 1 + 4 + 1.2, 5); // the sum's men put aside for what the bands are worth
+    expect(out.own).toBeCloseTo(4 + 1.2, 5); // the army and the bands; the rest is the place
+    expect(out.walled).toBe(true);
+    // No man in the town: no band, and nothing of its own but the army.
+    const none = raidForces(5, 5, { ...stand, men: 0, total: 9 }, {}, 0, { bands: 0, worth: 0 }).d;
+    expect(none.units).toEqual({});
+    // The town's spirit (the sum's total over its parts) is kept on everything.
+    const low = raidForces(5, 5, { ...stand, spirit: 0.5, total: 5.5 }, {}, 0, { bands: 1, worth: 1 }).d;
+    expect(low.weight).toBeCloseTo((3 + 1 + 1 + 4 + 1) * 0.5, 5);
+  });
+
+  it('a strike records what it would have come to, and is decided exactly as before', async () => {
+    const { newCampaign } = await import('../src/sim/campaign');
+    const { strike, townMilitia, defenceOf } = await import('../src/sim/threats');
+    const { folkOf } = await import('../src/sim/township');
+    for (let seed = 1; seed <= 12; seed++) {
+      const c = newCampaign(seed, 2), home = c.territories.find((t) => t.capital === 0)!;
+      folkOf(c, home.id);
+      const m = townMilitia(c, home.id, defenceOf(c, home.id));
+      expect(m.worth).toBeGreaterThan(0);
+      const twin = structuredClone(c);
+      const band = { id: 900, kind: 'raiders' as const, name: 'the test band', at: home.adj[0], strength: 3 + (seed % 5), since: 0, held: [] };
+      (c.bands ??= []).push(band); (twin.bands ??= []).push(structuredClone(band));
+      const r = strike(c, c.bands.at(-1)!, home.id, []);
+      expect(['held', 'raided', 'taken']).toContain(r.would);
+      expect(r.men).toBeGreaterThanOrEqual(0);
+      // The same strike with the record's new fields taken off is the strike as it was: they decide nothing.
+      const again = strike(twin, twin.bands!.at(-1)!, home.id, []);
+      expect(again.outcome).toBe(r.outcome);
+      expect(again.killed).toBe(r.killed);
+      expect(folkOf(twin, home.id).men).toBe(folkOf(c, home.id).men);
+    }
+  });
+});
