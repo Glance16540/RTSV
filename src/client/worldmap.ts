@@ -7,6 +7,7 @@
 // shadow, weather fronts pass with rain, snow or dust, birds wheel, ships go by, and smoke rises from the towns.
 
 import { RIM_PAINT, bandCamp, paintRim, rimTint, seenByPlayer, wasteOf } from './rimdraw';
+import { Walker, walk, walkerFor } from './caravandraw';
 import { bandsAt } from '../sim/threats';
 import { lowDetail, reportMapTime } from './detail';
 import * as THREE from 'three';
@@ -85,6 +86,8 @@ export class WorldMap {
   private bobs: THREE.Object3D[] = [];
   private smokes: { m: THREE.Mesh; x: number; y: number; z: number; ph: number }[] = [];
   /** Armies on the march from where they stood to where they now stand. */
+  /** The markets' caravans walking their roads (caravandraw.ts). */
+  private caravans: Walker[] = [];
   private movers: { g: THREE.Group; fx: number; fz: number; tx: number; tz: number; t0: number; men: RealPerson[] }[] = [];
   private stood = new Map<number, { x: number; z: number }>();
   /** Names and numbers, which are drawn larger the farther back the eye stands, so they can still be read. */
@@ -1277,6 +1280,8 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       holder.add(shield);
     }
     for (const id of [...this.stood.keys()]) if (!live.has(id)) this.stood.delete(id);
+    this.caravans = (c.caravans ?? []).map((x) => walkerFor(c, x)); // the markets' caravans on their roads (caravandraw.ts)
+    for (const w of this.caravans) this.pieces.add(w.g);
   }
 
   private frame(): void {
@@ -1327,6 +1332,7 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
     for (const p of this.people) p.mixer.update(dt);
     for (const f of this.flags) f.rotation.y = Math.sin(now * 2.2 + f.position.x) * 0.35 - 0.2;
     for (const r of this.rings) if (r.live) { const k = (now * 0.8) % 1; r.m.scale.setScalar(0.85 + k * 0.45); (r.m.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - k); }
+    for (const w of this.caravans) walk(w, now, (x, y) => [WX(x), Math.max(0.2, this.heightAt(x, y)), WZ(y)]);
     for (const b of this.bobs) b.position.y = (b.userData.y0 as number) + Math.sin(now * 1.6 + (b.userData.ph as number)) * 0.18;
     // Cloud glides to where its front now lies; rain drives down, snow drifts, dust blows across.
     const fronts = frontsOf(this.c);

@@ -2,6 +2,7 @@
 // The parts are modules of their own: who the bands are and how a town struck defends itself (threats.ts), an
 // army's fight with a band (bandfight.ts), bands moving (bandroam.ts), and the marauders who hold a land
 // (bandhorde.ts). What came of the season is read back as plain data from raidnews.ts.
+import { caravanSeason } from './bandcaravan';
 import { heraldSeason } from './raidnews';
 import { governInns } from './inn';
 import { carriedSeason } from './carriedoff';
@@ -30,6 +31,7 @@ export function threatsOfMen(c: Campaign): Raid[] {
   const told = out.length, born = appearSeason(c, out, (kind) => { const at = farPlace(c, kind); far ||= !!at; return at; }); // some are born in the far wilds (bandwilds.ts)
   if (born && far && setOutFromAfar(c, born)) { out.splice(told); seenGathering(c, born, out); } // nobody is there to see them gather, but for the towns that look out on the rim of wilderness
   ambushSeason(c, out); // a band may fall on an army that is weak, or seeing a convoy along the road
+  caravanSeason(c); // and raiders, slavers or marauders on a land a caravan's road crosses may fall on it (bandcaravan.ts, caravans.ts)
   heraldSeason(c, out); // a people who keep heralds hear of the bands that mean to strike them, a season before (heralds.ts)
   c.log.push(...out);
   return raids;

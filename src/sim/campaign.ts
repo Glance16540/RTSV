@@ -27,6 +27,7 @@ import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
 import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
 import { convoysTurn, relieve } from './convoys';
+import { caravansSeason } from './caravans';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
 import { makeRim } from './rim';
@@ -1248,6 +1249,7 @@ export function continueAI(c: Campaign): void {
       governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
+      caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
