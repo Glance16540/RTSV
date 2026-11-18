@@ -203,7 +203,22 @@ export function biomeAt(seed: number, x: number, y: number): Biome {
   return 'grass';
 }
 
-export const biomeOf = (c: Campaign, tid: number): Biome => biomeAt(c.seed, c.territories[tid].x, c.territories[tid].y);
+/**
+ * The waste a land of the rim at this place is (rim.ts): always snow or desert, the waste nobody farms. Where the place is
+ * already snow or desert it is that; elsewhere snow on the colder side of `middle` warmth and desert on the hotter, so that
+ * it leans as the map's climate does (a cold world's rim mostly snow, a hot world's mostly sand, the cold side's snow).
+ */
+export function wasteAt(seed: number, x: number, y: number, middle = 0.5): 'snow' | 'desert' {
+  const b = biomeAt(seed, x, y);
+  if (b === 'snow' || b === 'desert') return b;
+  return climateAt(seed, x, y).warm < middle ? 'snow' : 'desert';
+}
+
+/** A land's climate: where it lies, but a land of the rim is its waste (rim.ts), also in a campaign saved before it kept one. */
+export const biomeOf = (c: Campaign, tid: number): Biome => {
+  const t = c.territories[tid];
+  return t.rim ? t.waste ?? wasteAt(c.seed, t.x, t.y) : biomeAt(c.seed, t.x, t.y);
+};
 
 /**
  * Close the borders an army cannot cross. A march goes by the straight road from town to town; where mountains, a
