@@ -101,7 +101,7 @@ export interface Raid {
   /** A strike on a town, fought out (raidclash.ts): rounds fought, who broke (neither: the band drew off), and the companies the army standing there lost. */
   rounds?: number; broke?: 'attacker' | 'defender' | 'neither'; garrison?: number;
   /** Report only (stage three, raidclash.ts `turnedOut`): what the same strike would have come to with the town's men turned out as bands, the share of the town's own companies it would have lost, and the town's men at the time. Nothing reads these but the health report. */
-  would?: Outcome; wouldLost?: number; men?: number;
+  would?: Outcome; wouldLost?: number; men?: number; /** And, where the town would have broken, the share of its weight that cost the band. */ wouldCost?: number;
 }
 
 declare module './campaign' {
@@ -310,7 +310,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   };
   if (fight) { // report only: the same strike with the town's men turned out as bands (stage three); nothing is decided by it
     const w = raidClash(b.strength, force, defence, garrison?.units ?? {}, faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence));
-    raid.would = w.outcome === 'taken' && bled ? 'raided' : w.outcome; raid.wouldLost = w.pressed; raid.men = f.men;
+    raid.would = w.outcome === 'taken' && bled ? 'raided' : w.outcome; raid.wouldLost = w.pressed; raid.men = f.men; if (w.broke === 'defender' && !bled) raid.wouldCost = w.cost;
   }
   // An army standing in the town loses the companies the fight cost it, each a man of his town; never its last (it falls back inside).
   if (fight && garrison) {
