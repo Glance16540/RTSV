@@ -41,7 +41,7 @@ describe('battle hooks', () => {
     // this list only with the health report to show that nothing moved, or that what moved was meant.
     expect(BATTLE_HOOKS.order()).toEqual([
       'settling: townfaith', 'settling: stores', 'settling: mapbattle',
-      'counted: warhouse',
+      'counted: companyroll', 'counted: warhouse',
       'taken: conquered', 'taken: carriedoff',
       'repulsed: tribes', 'repulsed: freetown',
       'settled: stores', 'settled: armytown', 'settled: townfaith', 'settled: mapbattle', 'settled: veteranhome',
