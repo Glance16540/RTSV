@@ -92,6 +92,8 @@ export interface SideOut {
   share: number; breakAt: number;
   /** Of a town's own defence, the share that was beaten down. */
   works: number;
+  /** Of its companies' strength, the share that fell in the fighting and the rout, parts of a company counted (before any scattering). */
+  body?: number;
   /** Broken, and too few left to hold together: what was left of it scattered for home. */
   scattered?: boolean;
 }
@@ -114,14 +116,14 @@ export function breakOf(f: Force): number {
 }
 
 /** One side as it fights: what each kind has left, in companies and parts of a company, and what is left of its works. */
-interface Line { hp: Record<string, number>; scale: number; works: number; works0: number; start: number; breakAt: number }
+interface Line { hp: Record<string, number>; scale: number; works: number; works0: number; start: number; breakAt: number; body0: number }
 const plain = (l: Line): number => KINDS.reduce((n, k) => n + l.hp[k] * COMPANIES[k].str, 0);
 const whole = (l: Line): number => plain(l) * l.scale + l.works;
 function line(f: Force): Line {
   const hp: Record<string, number> = {};
   for (const k of KINDS) hp[k] = Math.max(0, f.units[k] ?? 0);
-  const l: Line = { hp, scale: 1, works: 0, works0: 0, start: 0, breakAt: breakOf(f) };
-  const body = plain(l), weight = Math.max(0, f.weight), own = body > 0 ? clamp(f.own ?? weight, 0, weight) : 0;
+  const l: Line = { hp, scale: 1, works: 0, works0: 0, start: 0, breakAt: breakOf(f), body0: 0 };
+  const body = l.body0 = plain(l), weight = Math.max(0, f.weight), own = body > 0 ? clamp(f.own ?? weight, 0, weight) : 0;
   l.scale = body > 0 ? own / body : 0; // leaders, veterans, the weather and the march are in every company's arm
   l.works = l.works0 = weight - own;
   l.start = weight;
@@ -167,7 +169,7 @@ function muster(f: Force, l: Line, keep: boolean): SideOut {
     left[k] = 1;
     if (--lost[k] <= 0) delete lost[k];
   }
-  return { began, lost, left, share: Math.round(clamp(lostShare(l), 0, 1) * 1000) / 1000, breakAt: l.breakAt, works: l.works0 > 0 ? Math.round((1 - l.works / l.works0) * 1000) / 1000 : 0 };
+  return { began, lost, left, share: Math.round(clamp(lostShare(l), 0, 1) * 1000) / 1000, breakAt: l.breakAt, works: l.works0 > 0 ? Math.round((1 - l.works / l.works0) * 1000) / 1000 : 0, body: l.body0 > 0 ? Math.round(clamp(1 - plain(l) / l.body0, 0, 1) * 1000) / 1000 : 0 };
 }
 
 /**

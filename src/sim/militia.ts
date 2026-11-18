@@ -17,8 +17,7 @@
  * A town with a man in it is the one point it was always given at the least, a town full of men up to twice
  * that, and an empty one nothing. (Without the least, at 384 campaigns the computer took the walled towns whose
  * men were away: sieges held fell from 67% to 63% and campaigns undecided or ruined rose to one in ten.) The men who die of it are
- * counted as they were (township.ts, the toll of a battle nobody watched): this weighs them, it does not kill
- * them twice.
+ * those the bands lost in the fight (militiatoll.ts): this weighs them, and that counts their dead.
  */
 import type { Campaign } from './campaign';
 import { bandMen } from './tribes';
