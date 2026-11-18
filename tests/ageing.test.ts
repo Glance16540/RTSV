@@ -5,7 +5,7 @@ import { Campaign, newCampaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
 import { beginVisit, finishVisit, visitConfig } from '../src/sim/visit';
 import { folkOf, tollFolk } from '../src/sim/township';
-import { GROWN_SEASON, OLD_SEASON, SEASONS_A_YEAR, ageTown, agesOf, childSeasons, deathChance, leftFor } from '../src/sim/ageing';
+import { CHILD_SEASONS, GROWN_SEASON, OLD_SEASON, SEASONS_A_YEAR, ageTown, agesOf, childSeasons, deathChance, leftFor } from '../src/sim/ageing';
 import { GROW_TIME } from '../src/sim/data';
 import { seasonTown } from '../src/sim/seasonfolk';
 import { run, setups, spot, villagers } from './helpers';
@@ -116,20 +116,20 @@ describe('on the map a person ages a season at a time', () => {
 
 describe('a child on the record keeps its age through a town', () => {
   it('every age from nought to the season before coming of age comes back the same', () => {
-    for (let s = 0; s < GROWN_SEASON; s++) expect(childSeasons(leftFor(s, GROW_TIME), GROW_TIME)).toBe(s);
-    expect(leftFor(GROWN_SEASON - 1, GROW_TIME)).toBeGreaterThan(0);
+    for (let s = 0; s < CHILD_SEASONS; s++) expect(childSeasons(leftFor(s, GROW_TIME), GROW_TIME)).toBe(s);
+    expect(leftFor(CHILD_SEASONS - 1, GROW_TIME)).toBeGreaterThan(0);
   });
 
   it('a child of 59 seasons comes back from a visit at 59, and comes of age with the next season', () => {
     const c = world(), h = home(c), f = folkOf(c, h.id);
     f.men = 1; f.women = 1; f.elders = 0; f.children = 1;
-    f.ages = { m: [100], f: [100], k: [GROWN_SEASON - 1] };
+    f.ages = { m: [100], f: [100], k: [CHILD_SEASONS - 1] };
     beginVisit(c, h.id);
     const cfg = visitConfig(c)!, g = new Game(cfg.seed, cfg.setups, cfg.size, cfg.field, cfg.sea, true, cfg.climate ?? '');
     g.bornOnly = true;
     run(g, 30);
     finishVisit(c, { folk: g.census(0), seconds: 30 });
-    expect(f.ages!.k).toEqual([GROWN_SEASON - 1]);
+    expect(f.ages!.k).toEqual([CHILD_SEASONS - 1]);
     c.turn++;
     expect(ageTown(c, h.id, f).grew).toBe(1);
   }, LONG);
