@@ -3,6 +3,7 @@
 
 import { turnLeft, turnOpened } from './seasongain';
 import { militiaOf } from './militia';
+import { militiaFell } from './militiatoll';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { onFrontier, reckoned } from './reckon';
@@ -1084,7 +1085,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   const note: BattleNote = { how, attackerWon, ...(fought ? { fought } : {}) };
   BATTLE_HOOKS.run('settling', c, p, note); // every town's standing and stores are written down before any changes hands
   // A battle nobody watched is paid for by the town in men, and in stores if it falls.
-  note.toll = how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde ? tollFolk(c, p.to, attackerWon) : 0;
+  note.toll = how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde ? tollFolk(c, p.to, attackerWon, { men: militiaFell(c, p.to, fought) }) : 0; // by what its bands lost, where it was fought out (militiatoll.ts)
   // The rival leader has something to say about a battle against the player.
   if (p.attacker === 0 || p.defender === 0) {
     const won = attackerWon === (p.attacker === 0);
