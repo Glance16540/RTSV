@@ -23,6 +23,7 @@ import { GRIEF_SEASONS } from './grief';
 import { Folk, MAX_NOTABLES, Notable, folkOf } from './township';
 import { veteransFell } from './veteranhome';
 import { downRank } from './soldiernames';
+import { levelKinds, lostRank, standWeight } from './companyroll';
 
 export type Tie = 'husband' | 'son';
 /** A man of the house away with the armies: his name, what he is to the house, the turn he left, and the army he marches with. */
@@ -64,7 +65,7 @@ export function housesOf(f: Folk): WarHouse[] {
   if (!Array.isArray(f.houses)) f.houses = [];
   for (const h of f.houses) {
     h.family = text(h?.family) || 'Nameless';
-    h.away = (Array.isArray(h.away) ? h.away : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), as: TIES.includes(s.as) ? s.as : 'son', since: Math.round(Number(s.since) || 0), ...(Number.isFinite(Number(s.army)) && s.army !== undefined && s.army !== null ? { army: Math.round(Number(s.army)) } : {}) }));
+    h.away = (Array.isArray(h.away) ? h.away : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), as: TIES.includes(s.as) ? s.as : 'son', since: Math.round(Number(s.since) || 0), ...(Number.isFinite(Number(s.army)) && s.army !== undefined && s.army !== null ? { army: Math.round(Number(s.army)) } : {}), ...(typeof s.kind === 'string' && /^[a-z]{1,16}$/.test(s.kind) ? { kind: s.kind } : {}) })); // his company's kind (companyroll.ts)
     if (h.war !== undefined) { h.war = Math.max(0, Math.round(Number(h.war) || 0)); if (!h.war) delete h.war; }
     if (h.home) { h.home = (Array.isArray(h.home) ? h.home : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), door: DOORS.includes(s.door) ? s.door : 'none', turn: Math.round(Number(s.turn) || 0) })); if (!h.home.length) delete h.home; }
     if (h.fallen) h.fallen = (Array.isArray(h.fallen) ? h.fallen : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), as: TIES.includes(s.as) ? s.as : 'son', turn: Math.round(Number(s.turn) || 0), how: text(s.how, 60) }));
@@ -196,7 +197,7 @@ export function fell(c: Campaign, tid: number, n: number, how = 'fell with the a
   const f = folkOf(c, tid), all = housesOf(f);
   const short = n - recordedAway(f);
   if (short > 0) enlist(c, tid, short, army); // men who went before houses were kept: they are given theirs now
-  const lots = all.flatMap((h) => h.away.map((s, i) => ({ h, s, lot: hash(c.seed * 23 + tid * 97 + i, c.turn * 29 + h.family.length * 7 + s.since) }))).sort((p, q) => rank(p.s, army) - rank(q.s, army) || downRank(c, army, p.h.family, p.s.name) - downRank(c, army, q.h.family, q.s.name) || p.lot - q.lot).slice(0, n); // who went down on the field just fought, before the lot (soldiernames.ts)
+  const lots = all.flatMap((h) => h.away.map((s, i) => ({ h, s, lot: hash(c.seed * 23 + tid * 97 + i, c.turn * 29 + h.family.length * 7 + s.since) }))).sort((p, q) => rank(p.s, army) - rank(q.s, army) || downRank(c, army, p.h.family, p.s.name) - downRank(c, army, q.h.family, q.s.name) || lostRank(c, army, p.h.family, p.s.name) - lostRank(c, army, q.h.family, q.s.name) || p.lot - q.lot).slice(0, n); // who went down on the field just fought, before the lot (soldiernames.ts)
   for (const { h, s } of lots) {
     h.away.splice(h.away.indexOf(s), 1);
     (h.fallen ??= []).push({ name: s.name, as: s.as, turn: c.turn, how });
@@ -255,8 +256,13 @@ export function creditArmy(c: Campaign, armyId: number, felled: number): number 
   }
   if (!men.length) return 0;
   const n = Math.min(Math.round(felled), 200);
+  // Counted to the men of the companies that stood, each by his company's weight (companyroll.ts); by lot among them.
+  levelKinds(c, armyId);
+  const weights = men.map((m) => standWeight(c, armyId, m.h.away[m.k], m.h.family)), all = weights.reduce((k, w) => k + w, 0);
   for (let i = 0; i < n; i++) {
-    const m = men[Math.floor(hash(c.seed * 37 + armyId * 101 + i, c.turn * 41 + men.length) * men.length)];
+    const r = hash(c.seed * 37 + armyId * 101 + i, c.turn * 41 + men.length);
+    let m = men[Math.floor(r * men.length)];
+    if (all > 0) { let at = r * all; for (let j = 0; j < men.length; j++) { at -= weights[j]; if (at < 0) { m = men[j]; break; } } }
     m.h.war = (m.h.war ?? 0) + 1;
     const wife = knownHomes(m.f).find((w) => w.family === m.h.family);
     if (wife) wife.war = (wife.war ?? 0) + 1;
