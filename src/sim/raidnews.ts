@@ -11,7 +11,7 @@ import { keepsHeralds, warn } from './heralds';
 export interface NewsItem {
   turn: number;
   /** A strike on a town ('raid'), or what else a band did. */
-  kind: 'raid' | 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush' | 'seen';
+  kind: 'raid' | 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush' | 'seen' | 'robbed';
   /** The land it happened in: open this one. */
   at: number; land: string;
   band: number;
@@ -25,7 +25,7 @@ export interface NewsItem {
   raid?: Raid;
 }
 
-const TONE: Record<string, NewsItem['tone']> = { came: 'bad', moved: 'plain', fled: 'good', settled: 'bad', gone: 'good', broken: 'good', beaten: 'bad', freed: 'good', lost: 'bad', warned: 'bad', overran: 'bad', ambush: 'bad' };
+const TONE: Record<string, NewsItem['tone']> = { came: 'bad', moved: 'plain', fled: 'good', settled: 'bad', gone: 'good', broken: 'good', beaten: 'bad', freed: 'good', lost: 'bad', warned: 'bad', overran: 'bad', ambush: 'bad', robbed: 'bad' };
 
 /** The season's news for a people (the player by default): strikes on their towns first, then the rest, in the order it happened. */
 export function seasonNews(c: Campaign, turn = c.turn, f = 0): NewsItem[] {

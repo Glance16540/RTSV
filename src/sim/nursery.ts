@@ -4,6 +4,7 @@
 // creed makes families weak, fewer children are born, and the house keeps a note of it (`missed`).
 // When a house falls its children pass to another roof of the town; see `wardFor`.
 import { GROW_TIME } from './data';
+import { GROWN_YEARS } from './ageing';
 
 export interface Child {
   /** Its number in the game's count of things, which also decides (without the game's dice) whether it thrives. */
@@ -20,7 +21,7 @@ export interface Child {
 }
 
 /** The age a child is grown at, in years, and what a child's age is by that measure. */
-export const GROWN_AT = 15;
+export const GROWN_AT = GROWN_YEARS; // years: as everyone comes of age (ageing.ts), eighteen
 export const yearsOld = (c: Child): number => Math.max(0, Math.min(GROWN_AT - 1, Math.floor(GROWN_AT * (1 - c.left / GROW_TIME))));
 export const yearsLeft = (c: Child): number => Math.max(1, GROWN_AT - yearsOld(c));
 
