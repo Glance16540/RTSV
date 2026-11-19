@@ -7,7 +7,8 @@ import { Gender } from '../sim/game';
 import { generatedModel } from './assets';
 import { banner, boxGeo, shapedBuilding, Surface, toon } from './shapes';
 import { greatWork } from './greatworks';
-import './civic'; // the buildings that answer the systems add their makers to shapedBuilding (civic.ts)
+import './civic';
+import './faithhouses'; // each people's house of faith in place of the church (faithhouses.ts) // the buildings that answer the systems add their makers to shapedBuilding (civic.ts)
 
 /**
  * What each colour of the building in hand is made of, so its walls, roof and timbers are painted as such.
