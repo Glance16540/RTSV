@@ -2,8 +2,8 @@
 
 import { highGroundNear, holdBack } from './aiground';
 import { WardState, wardScout, wardWomen } from './aiward';
-import { BESIEGE, assaultDue, besieging } from './besieger';
-import { CAMP, campReady, campWorks } from './siegecamp';
+import { assaultDue, besieging } from './besieger';
+import { CAMP, campWorks } from './siegecamp';
 import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
@@ -395,7 +395,7 @@ export class AIController {
       const margin = Math.max(1, 1.4 - Math.max(0, g.time - 1500) / 2250);
       const outweighs = this.level < 1 || foe < 0 || fight.eager || this.weight(pid, false) >= this.weight(foe, true) * margin || g.time - this.readyT > (g.time > 1800 ? 150 : 360);
       // A besieger does not wait: it came to assault the town, and goes in with what it brought (besieger.ts).
-      const storm = !this.stormed && assaultDue(g, pid, fighters.length, !!underAttack) && campReady(g, pid, BESIEGE.form); // with rams to be had, it waits for them a while (siegecamp.ts)
+      const storm = !this.stormed && assaultDue(g, pid, fighters.length, !!underAttack);
       if (storm) this.stormed = true;
       // Not in a storm or by night while the weaker, nor uphill at them without the edge for it (aiground.ts).
       const hall = foe >= 0 ? g.buildings.find((b) => b.owner === foe && b.type === 'towncenter' && !b.dead) : undefined;
