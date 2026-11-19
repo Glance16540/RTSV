@@ -45,6 +45,7 @@ export function fallPerson(g: THREE.Object3D, p: RealPerson, way: number, t: num
     g.rotation.x = k * 1.42;
     g.rotation.z = 0;
     lift(g, k * 0.1 * Math.abs(g.scale.y));
+    sprawl(p, 1, ease((t - 1.0) / 0.5)); // the legs laid out straight behind
     sprawl(p, 2, ease((t - 1.3) / 0.6));
   } else if (way === 2) {
     // Struck on the head: spun half round as they go down in the recorded fall.
@@ -61,6 +62,7 @@ export function fallPerson(g: THREE.Object3D, p: RealPerson, way: number, t: num
     g.rotation.x = 0;
     g.rotation.z = side * k * 1.45;
     lift(g, k * 0.12 * Math.abs(g.scale.y));
+    sprawl(p, 1, ease((t - 0.9) / 0.6));
     sprawl(p, 2, ease((t - 1.1) / 0.7));
   } else {
     // The recorded fall, a little quicker or slower, and one of the sprawls.
