@@ -1,8 +1,8 @@
 skirmish 1 (forge v england) at 2m: 1af124197d12f597
 skirmish 1 (forge v england) at 4m: 345be51e08896ff5
 skirmish 1 (forge v england) at 6m: 884fc102315086fc
-skirmish 1 (forge v england) at 8m: 66ebdc5f14d2081d
-skirmish 1 (forge v england) end: tick 9600 winner -1 units 92 buildings 40 66ebdc5f14d2081d
+skirmish 1 (forge v england) at 8m: 19409ad5e5aa5d5e
+skirmish 1 (forge v england) end: tick 9600 winner -1 units 92 buildings 41 19409ad5e5aa5d5e
 skirmish 2 (persia v mali) at 2m: c98d4d4ee25482c9
 skirmish 2 (persia v mali) at 4m: 7f9debd72388cc47
 skirmish 2 (persia v mali) at 6m: 7eb8d6929d550371
@@ -11,23 +11,23 @@ skirmish 2 (persia v mali) end: tick 9600 winner -1 units 97 buildings 40 1973af
 skirmish 3 (arabs v wild) at 2m: 810b195ea27d7f13
 skirmish 3 (arabs v wild) at 4m: 71e0f268fd06a824
 skirmish 3 (arabs v wild) at 6m: ac9e8988d78ee1a7
-skirmish 3 (arabs v wild) at 8m: c205434822a8dc6f
-skirmish 3 (arabs v wild) end: tick 9600 winner -1 units 85 buildings 25 c205434822a8dc6f
+skirmish 3 (arabs v wild) at 8m: c0e9bfc16138671d
+skirmish 3 (arabs v wild) end: tick 9600 winner -1 units 84 buildings 25 c0e9bfc16138671d
 skirmish 4 (kush v hearth) at 2m: 21cf19dac189e61c
 skirmish 4 (kush v hearth) at 4m: 57391808695ab8e9
 skirmish 4 (kush v hearth) at 6m: 76120d71f0f42d97
-skirmish 4 (kush v hearth) at 8m: aa5b1a725b48ae73
-skirmish 4 (kush v hearth) end: tick 9600 winner -1 units 90 buildings 36 aa5b1a725b48ae73
+skirmish 4 (kush v hearth) at 8m: 5da349fc7288fe2a
+skirmish 4 (kush v hearth) end: tick 9600 winner -1 units 89 buildings 36 5da349fc7288fe2a
 skirmish 5 (stonekin v babylon) at 2m: 1de81db41c825d70
 skirmish 5 (stonekin v babylon) at 4m: f7eb8fa407d7be43
 skirmish 5 (stonekin v babylon) at 6m: 6071597d75658e53
-skirmish 5 (stonekin v babylon) at 8m: 2c3ba2245f7c4dd0
-skirmish 5 (stonekin v babylon) end: tick 9600 winner -1 units 98 buildings 36 2c3ba2245f7c4dd0
+skirmish 5 (stonekin v babylon) at 8m: ba38caca2505247c
+skirmish 5 (stonekin v babylon) end: tick 9600 winner -1 units 98 buildings 36 ba38caca2505247c
 skirmish 6 (forge v england) at 2m: 68a09721a59040d7
 skirmish 6 (forge v england) at 4m: 82ce6d31ead69f92
 skirmish 6 (forge v england) at 6m: bf0ecdad82c4e9f6
-skirmish 6 (forge v england) at 8m: 2db217a05bf4a250
-skirmish 6 (forge v england) end: tick 9600 winner -1 units 94 buildings 37 2db217a05bf4a250
+skirmish 6 (forge v england) at 8m: 9eb4ab14b12886f5
+skirmish 6 (forge v england) end: tick 9600 winner -1 units 94 buildings 37 9eb4ab14b12886f5
 siege 1 at 2m: 12db33b9a909206f
 siege 1 at 4m: 8b363b794c283dd9
 siege 1 at 6m: 8dd95869af9762d9
@@ -57,46 +57,46 @@ siege 5 census 0: ecf55a13955a43ee
 siege 5 census 1: c957b4b6b9913e22
 siege 5 census 2: 4756d45081ea5674
 siege 6 at 2m: 0762d96dce941ac2
-siege 6 end: tick 3020 winner 0 units 79 buildings 22 8f2d1d2f156b1e0a
+siege 6 end: tick 3020 winner 0 units 79 buildings 22 5771ad2d98614529
 siege 6 census 0: a8f91380b6ad88a1
 siege 6 census 1: 244fba94d1042c21
 siege 6 census 2: 4756d45081ea5674
 drill 1 (greece v japan) at 2m: 9a71961e1ca28147
 drill 1 (greece v japan) at 4m: d7d62ef1cc783de6
 drill 1 (greece v japan) at 6m: 87121b72a407f34b
-drill 1 (greece v japan) at 8m: 5dca693ebc321a00
-drill 1 (greece v japan) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 35 5dca693ebc321a00
-drill 1 (greece v japan) after the leaders fell: cfad003c014a2b52 acclaimed true/true/false 97b6c563dcc3b562
+drill 1 (greece v japan) at 8m: 2dd212c319c759b0
+drill 1 (greece v japan) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 33 2dd212c319c759b0
+drill 1 (greece v japan) after the leaders fell: cfad003c014a2b52 acclaimed true/true/false f043812ccb290c58
 drill 2 (wild v hearth) at 2m: 6f71e99352c0dddc
 drill 2 (wild v hearth) at 4m: 0e013fb01e32b13d
-drill 2 (wild v hearth) at 6m: ea9bd7dd0a72c4d3
-drill 2 (wild v hearth) at 8m: 1adb7f0340828d75
-drill 2 (wild v hearth) end: tick 9600 leaders rank 4, rank 4 calls 1 powers learnt 0 fires set 4, buildings standing 62 1adb7f0340828d75
-drill 2 (wild v hearth) after the leaders fell: 40816762ab9f774a acclaimed true/true/false 61219a435b205f25
+drill 2 (wild v hearth) at 6m: af0b27acb60ea238
+drill 2 (wild v hearth) at 8m: fcf0a9ea802b7519
+drill 2 (wild v hearth) end: tick 9600 leaders rank 4, rank 4 calls 1 powers learnt 0 fires set 4, buildings standing 54 fcf0a9ea802b7519
+drill 2 (wild v hearth) after the leaders fell: 40816762ab9f774a acclaimed true/true/false a96ab3c62c5fd67d
 drill 3 (persia v arabs) at 2m: 24087c79d20d5b18
 drill 3 (persia v arabs) at 4m: 83a02be24542ed96
 drill 3 (persia v arabs) at 6m: b5c090cd4217b725
-drill 3 (persia v arabs) at 8m: c95af1544770fea1
-drill 3 (persia v arabs) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 36 c95af1544770fea1
-drill 3 (persia v arabs) after the leaders fell: b8c22ee4941911eb acclaimed true/false/false 2934268bf3728d98
+drill 3 (persia v arabs) at 8m: c0bebc95b51e786c
+drill 3 (persia v arabs) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 36 c0bebc95b51e786c
+drill 3 (persia v arabs) after the leaders fell: b8c22ee4941911eb acclaimed true/false/false 683aad10f35b6dc2
 drill 4 (dawn v steppe) at 2m: 42f3327ab86895ec
 drill 4 (dawn v steppe) at 4m: 043d4756005364d4
 drill 4 (dawn v steppe) at 6m: 340e8269b7921bbb
-drill 4 (dawn v steppe) at 8m: dc6356e0ff45fc97
-drill 4 (dawn v steppe) end: tick 9600 leaders rank 5, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 24 dc6356e0ff45fc97
-drill 4 (dawn v steppe) after the leaders fell: 1baeba509a6ba1b6 acclaimed false/true/false 331b24b7c0996165
+drill 4 (dawn v steppe) at 8m: adb1c18431c80c64
+drill 4 (dawn v steppe) end: tick 9600 leaders rank 5, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 24 adb1c18431c80c64
+drill 4 (dawn v steppe) after the leaders fell: 1baeba509a6ba1b6 acclaimed false/true/false 8a2577853f629fb1
 drill 5 (babylon v england) at 2m: e679e2d94ba0cee0
 drill 5 (babylon v england) at 4m: cf0446a248d2cd82
-drill 5 (babylon v england) at 6m: 6df8c865be048156
-drill 5 (babylon v england) at 8m: febafb1f0b1daff2
-drill 5 (babylon v england) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 35 febafb1f0b1daff2
-drill 5 (babylon v england) after the leaders fell: bd0b23ab435cc101 acclaimed true/true/false 182da5c2bd19cbe7
+drill 5 (babylon v england) at 6m: 3c3bf2c2725252e2
+drill 5 (babylon v england) at 8m: 1037f16dc06e9558
+drill 5 (babylon v england) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 35 1037f16dc06e9558
+drill 5 (babylon v england) after the leaders fell: bd0b23ab435cc101 acclaimed true/true/false 6d430ff25b95ffee
 drill 6 (kush v stonekin) at 2m: d5e56465104e3a45
 drill 6 (kush v stonekin) at 4m: 0ba05a4fa8a5833d
 drill 6 (kush v stonekin) at 6m: 2a28b6eb39f7b574
-drill 6 (kush v stonekin) at 8m: 048cdf637b6bb1f0
-drill 6 (kush v stonekin) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 43 048cdf637b6bb1f0
-drill 6 (kush v stonekin) after the leaders fell: eb546212b3af1d96 acclaimed false/true/false 807117363c6560ac
+drill 6 (kush v stonekin) at 8m: 75192430461fa6f8
+drill 6 (kush v stonekin) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 43 75192430461fa6f8
+drill 6 (kush v stonekin) after the leaders fell: eb546212b3af1d96 acclaimed false/true/false a2d7b348df878ed9
 camp drill 1 (babylon v greece) at 2m: 46a79e3d37de1b8b
 camp drill 1 (babylon v greece) at 4m: 65e53eb4b1fdcd30
 camp drill 1 (babylon v greece) at 6m: d5534e6f3c33fcab
@@ -105,8 +105,8 @@ camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 10, mo
 camp drill 2 (japan v kush) at 2m: f04a106db0e2dbfe
 camp drill 2 (japan v kush) at 4m: 90fe8db2f92bf24a
 camp drill 2 (japan v kush) at 6m: 485a78b1684638e2
-camp drill 2 (japan v kush) at 8m: 00f4c77dfaa17f61
-camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 2, got out by night 5 00f4c77dfaa17f61
+camp drill 2 (japan v kush) at 8m: 31f1ceabe394893e
+camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 2, got out by night 5 31f1ceabe394893e
 camp drill 3 (steppe v forge) at 2m: ac8992f7587024f7
 camp drill 3 (steppe v forge) at 4m: a6fa8484b5d93c93
 camp drill 3 (steppe v forge) at 6m: 25251bc9e091157e
@@ -114,6 +114,6 @@ camp drill 3 (steppe v forge) at 8m: c07e3883abaa2c4b
 camp drill 3 (steppe v forge) end: tick 9600 most held in the work camp 7, most in the marauders' camp 0, camps burnt 2, freed and home 8, got out by night 0 c07e3883abaa2c4b
 camp drill 4 (persia v england) at 2m: 445f9ada829a2e69
 camp drill 4 (persia v england) at 4m: 54324bb5f46f431b
-camp drill 4 (persia v england) at 6m: a8485e0d3f0a910d
-camp drill 4 (persia v england) at 8m: 231c6e42fae7b714
-camp drill 4 (persia v england) end: tick 9600 most held in the work camp 11, most in the marauders' camp 0, camps burnt 2, freed and home 12, got out by night 1 231c6e42fae7b714
+camp drill 4 (persia v england) at 6m: 63b597b8579e0853
+camp drill 4 (persia v england) at 8m: 7feeff794f298644
+camp drill 4 (persia v england) end: tick 9600 most held in the work camp 11, most in the marauders' camp 0, camps burnt 2, freed and home 12, got out by night 1 7feeff794f298644
