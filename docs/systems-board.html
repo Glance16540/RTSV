@@ -127,8 +127,8 @@ footer { color: var(--dim); font-size: 13px; }
 </article><article class="sys solid" id="sys-1" data-status="solid">
   <header><h3>Building and walls</h3><span class="pill solid">Working</span></header>
   <p class="what">Raise a town and fortify it.</p>
-  <ul class="has"><li>30 buildings across two build pages</li><li>Palisades, stone walls, gates and towers; drag to draw walls</li><li>A Wonder that wins the game if it stands</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>Buildings need nearly level ground, but nothing tells you why a spot is refused</li></ul>
+  <ul class="has"><li>30 buildings across two build pages</li><li>Palisades, stone walls, gates and towers; drag to draw walls</li><li>A Wonder that wins the game if it stands</li><li>A spot refused says why, at the cursor as the building is held over it and in the message if the order is given (src/sim/placebar.ts, src/client/placetip.ts): too near the edge, too steep (a building needs nearly level ground), water, bare rock, a building standing there, trees or stone in the way, ground not yet seen, or a dock with no water beside it. Tested in `tests/placebar.test.ts`</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>A building may stand anywhere on the field that is open and level: there is no rule of how near the town it must be</li></ul>
 </article><article class="sys solid" id="sys-2" data-status="solid">
   <header><h3>Ages and research</h3><span class="pill solid">Working</span></header>
   <p class="what">Advance through five ages and buy upgrades.</p>
@@ -137,8 +137,8 @@ footer { color: var(--dim); font-size: 13px; }
 </article><article class="sys rough" id="sys-3" data-status="rough">
   <header><h3>Roads</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Every building is joined to its town centre.</p>
-  <ul class="has"><li>A road is laid the moment a building is placed, and joins nearby roads into streets</li><li>Units move faster on roads and their routes prefer them</li><li>Dirt tracks become cobbles from the Iron Age</li><li>Saved with the game</li></ul>
-  <h4>Gaps</h4><ul class="gaps"><li>You cannot lay or remove a road yourself</li><li>Roads do not join one town to another</li><li>Only checked on level ground</li></ul>
+  <ul class="has"><li>Lay and lift roads by hand (src/sim/handroads.ts, src/client/roadtool.ts): from the Town Center's card, a straight road from one point to another, up to 40 tiles at once, on open ground seen and within 40 tiles of a Town Center of one's own, free as the town's own roads are; and any road of one's own lifted, laid by hand or worn to a building (worn again only when a Town Center rises or falls). Hand roads stay through a new Town Center and in a saved game, and the town keeps them from visit to visit. The computer player lays none. Tested in `tests/handroads.test.ts`</li><li>A road is laid the moment a building is placed, and joins nearby roads into streets</li><li>Units move faster on roads and their routes prefer them</li><li>Dirt tracks become cobbles from the Iron Age</li><li>Saved with the game</li></ul>
+  <h4>Gaps</h4><ul class="gaps"><li>A road laid by hand in a siege is not kept: only a visit keeps them on the town's record</li><li>Roads do not join one town to another</li><li>Only checked on level ground</li></ul>
 </article><article class="sys rough" id="sys-4" data-status="rough">
   <header><h3>Market</h3><span class="pill rough">Working, rough</span></header>
   <p class="what">Buy and sell resources for gold.</p>
@@ -620,7 +620,7 @@ footer { color: var(--dim); font-size: 13px; }
   <section class="area"><h2>Behind the scenes <span class="n">2</span></h2><div class="grid"><article class="sys solid" id="sys-98" data-status="solid">
   <header><h3>Automated tests</h3><span class="pill solid">Working</span></header>
   <p class="what">Checks that the rules still work after each change.</p>
-  <ul class="has"><li>1584 tests, all passing</li><li>A health report (scripts/health.test.ts, HEALTH=1) plays two dozen whole campaigns by the computer in seconds and measures every figure docs/TUNING.md asks for against its band, into docs/health-report.md</li></ul>
+  <ul class="has"><li>1592 tests, all passing</li><li>A health report (scripts/health.test.ts, HEALTH=1) plays two dozen whole campaigns by the computer in seconds and measures every figure docs/TUNING.md asks for against its band, into docs/health-report.md</li></ul>
   <h4>Gaps</h4><ul class="gaps"><li>No person has played a full game start to finish</li><li>The health report follows people by cohort, not one by one, reads hunger deaths from the log, fights only a handful of real-time sieges (a rival against a capital given a Fortress), and lets a decided campaign go on turning to twenty years for the long figures; a visit to every town is measured only on request (VISITS=n), as each is ten minutes of a real battle</li></ul>
 </article><article class="sys thin" id="sys-99" data-status="thin">
   <header><h3>Sharing the game</h3><span class="pill thin">First pass</span></header>

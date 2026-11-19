@@ -41,6 +41,8 @@ import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { storyTick, type FieldStory } from './fieldstory';
+import { placeBar } from './placebar';
+import { handRoadsTick } from './handroads';
 import { courtTick, type FieldCourt } from './courtfield';
 import { boughtIn } from './contagion';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
@@ -364,7 +366,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][] };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -528,6 +530,7 @@ export class Game {
       } else if (!field) {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        if (s.bonus?.roads?.length) this.players[i].roadsIn = s.bonus.roads.map(([x, y]) => [x, y] as [number, number]); // its roads laid by hand (handroads.ts)
         if (s.bonus?.story) this.players[i].story = { ...s.bonus.story, people: s.bonus.story.people.map((p) => ({ ...p })), robbed: [...s.bonus.story.robbed], cleared: [...s.bonus.story.cleared] }; // a story afoot here (fieldstory.ts)
         if (s.bonus?.court) this.players[i].court = structuredClone(s.bonus.court); // a story of the leader's house, where the court is kept (courtfield.ts)
         if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
@@ -1271,7 +1274,7 @@ export class Game {
     const bar = this.creedBar(owner, def);
     if (bar) { this.msg(owner, bar); return null; }
     if (def.townAt && this.units.filter((u) => u.owner === owner && u.type === 'villager' && !u.dead && u.growT <= 0).length < def.townAt) { this.msg(owner, `Only a town of ${def.townAt} grown people or more has a ${def.name}.`); return null; } // townworks.ts
-    if (!this.canPlace(type, cx, cy, owner === this.humanId && !p.isAI)) { this.msg(owner, 'Cannot build there.'); return null; }
+    if (!this.canPlace(type, cx, cy, owner === this.humanId && !p.isAI)) { this.msg(owner, placeBar(this, type, cx, cy, owner === this.humanId && !p.isAI) || 'Cannot build there.'); return null; } // why (placebar.ts)
     if (!this.canAfford(p, def.cost)) { this.msg(owner, `Not enough resources for ${def.name}.`); return null; }
     this.pay(p, def.cost);
     const b = this.spawnBuilding(type, owner, cx, cy, false);
@@ -1319,8 +1322,7 @@ export class Game {
 
   /** Every road laid again from nothing, oldest building first. */
   private relayRoads(): void {
-    for (const cells of this.roadOf.values()) this.setRoad(cells, -1);
-    this.roadOf.clear();
+    for (const [k, cells] of [...this.roadOf]) if (k >= 0) { this.setRoad(cells, -1); this.roadOf.delete(k); } // a road laid by hand stays (handroads.ts)
     for (const b of [...this.buildings].sort((p, q) => p.id - q.id)) this.layRoad(b);
     this.roadVersion++;
   }
@@ -2124,7 +2126,7 @@ export class Game {
     this.tick++;
     this.time += DT;
     this.stepWeather();
-    if (this.tick % 20 === 0) { calamity(this); storyTick(this); courtTick(this); } // a story afoot in the town (fieldstory.ts)
+    if (this.tick % 20 === 0) { calamity(this); storyTick(this); courtTick(this); handRoadsTick(this); } // a story afoot in the town (fieldstory.ts); roads laid by hand there before (handroads.ts)
     this.pathBudget = 16;
 
     for (const bucket of this.hash) bucket.length = 0;

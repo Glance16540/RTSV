@@ -9,6 +9,7 @@ import { learnedIn } from '../sim/studies';
 import type { VisitAfter } from '../sim/visit';
 import { driftedIn } from '../sim/driftintown';
 import { storyOut } from '../sim/fieldstory';
+import { handRoadsOut } from '../sim/handroads';
 import { courtOut } from '../sim/courtfield';
 import type { App } from './main';
 
@@ -69,6 +70,7 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
       arms: visitArms(app.game.units, app.pid), // and its soldiers: the army's losses, and companies trained here (visit.ts)
       studies: learnedIn(app.game.players[app.pid].techs), // and what was learned here, the nation's now (studies.ts)
       story: storyOut(app.game, app.pid), // and what came of a story afoot here (fieldstory.ts)
+      roads: handRoadsOut(app.game, app.pid), // and the roads laid by hand here, which the town keeps (handroads.ts)
       court: courtOut(app.game, app.pid), // and of a story of the leader's house (courtfield.ts)
     };
     try { localStorage.setItem(RESULT_KEY, JSON.stringify(after)); localStorage.removeItem(VISIT_SAVE_KEY); } catch { /* storage unavailable */ }

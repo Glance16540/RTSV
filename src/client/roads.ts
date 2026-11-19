@@ -69,19 +69,34 @@ export class Roads {
       for (const m of this.laid.values()) { this.scene.remove(m); m.geometry.dispose(); }
       this.laid.clear();
       for (const [id, cells] of g.roadOf) {
-        const b = g.entities.get(id) as Building | undefined, tc = g.entities.get(cells[0]) as Building | undefined;
-        if (!b || !tc) continue;
-        const way: [number, number][] = [[tc.x, tc.y]];
+        // A road laid by hand (handroads.ts) has a key below zero and its owner first; a worn one runs from its town centre to its building.
+        const hand = id < 0, b = hand ? undefined : (g.entities.get(id) as Building | undefined), tc = hand ? undefined : (g.entities.get(cells[0]) as Building | undefined);
+        if (!hand && (!b || !tc)) continue;
+        const owner = hand ? cells[0] : b!.owner;
+        const way: [number, number][] = hand ? [] : [[tc!.x, tc!.y]];
         for (let k = 1; k < cells.length; k++) way.push([(cells[k] % N) + 0.5, ((cells[k] / N) | 0) + 0.5]);
-        way.push([b.x, b.y]);
-        const mesh = this.ribbon(way, g.players[b.owner].age >= 2);
-        for (const [wx, wy] of way) this.scenery.clearAt(wx, wy, 0.75);
-        this.laid.set(id, mesh);
-        this.scene.add(mesh);
+        if (!hand) way.push([b!.x, b!.y]);
+        // Where a stretch has been lifted (handroads.ts), the road is in pieces: each piece is drawn alone.
+        const pieces: [number, number][][] = [[]];
+        for (let k = 0; k < way.length; k++) {
+          const cur = pieces[pieces.length - 1], prev = cur[cur.length - 1];
+          const end = !hand && (k === 1 || k === way.length - 1); // a worn road joins its town centre and its building whatever the distance
+          if (prev && !end && Math.max(Math.abs(prev[0] - way[k][0]), Math.abs(prev[1] - way[k][1])) > 1.5) pieces.push([]);
+          pieces[pieces.length - 1].push(way[k]);
+        }
+        pieces.forEach((piece, n) => {
+          if (!piece.length) return;
+          const pts = piece.length > 1 ? piece : [[piece[0][0] - 0.3, piece[0][1]], [piece[0][0] + 0.3, piece[0][1]]] as [number, number][];
+          const mesh = this.ribbon(pts, (g.players[owner]?.age ?? 0) >= 2);
+          mesh.userData.owner = owner; mesh.userData.hand = hand;
+          for (const [wx, wy] of pts) this.scenery.clearAt(wx, wy, 0.75);
+          this.laid.set(id * 64 + (id < 0 ? -n : n), mesh);
+          this.scene.add(mesh);
+        });
       }
     }
     // A rival's roads are seen only once their buildings have been.
-    for (const [id, m] of this.laid) { const b = g.entities.get(id) as Building | undefined; m.visible = !!b && (b.owner === g.humanId || shown(b) || !!b.seen); }
+    for (const [key, m] of this.laid) { if (m.userData.hand) { m.visible = m.userData.owner === g.humanId; continue; } const b = g.entities.get(Math.floor(key / 64)) as Building | undefined; m.visible = !!b && (b.owner === g.humanId || shown(b) || !!b.seen); }
   }
 
   /** A strip of road along the way, lying on the ground. */
