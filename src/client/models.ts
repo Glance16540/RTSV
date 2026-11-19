@@ -772,7 +772,7 @@ export function makeUnit(type: string, color: number, gender: Gender | null, see
     disc.castShadow = false;
     return gen;
   }
-  if (type === 'tradecart') { const t = caravanTrain(color, false); t.scale.setScalar(0.85); return t; } // a Market's caravan on the field: the map's mule train, at the field's size (fieldcaravan.ts)
+  if (type === 'tradecart') { const g = new THREE.Group(), t = caravanTrain(color, false); t.scale.setScalar(0.45); t.position.z = 0.6; g.add(t); return g; } // a Market's caravan on the field: the map's mule train, at the field's size (fieldcaravan.ts)
   const g = new THREE.Group();
   person(g, seed);
   if (machine(g, type, color, seed)) return g;

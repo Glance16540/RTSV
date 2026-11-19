@@ -574,7 +574,7 @@ export class Renderer {
     // A village woman dresses as her town lives: covered where it is pious, laced low where it is decadent.
     const virtue = this.game.players[u.owner].virtue ?? 0, wear = u.type !== 'villager' || u.gender !== 'f' ? 0 : virtue >= 30 ? 1 : virtue <= -70 ? 3 : virtue <= -30 ? 2 : 0;
     let turned: number | null = null;
-    const afoot = drawnReal(u.def.cls), real = peopleReady() && afoot;
+    const afoot = drawnReal(u.def.cls) && !u.def.cart, real = peopleReady() && afoot; // a Market's caravan is its mule train, not a figure (fieldcaravan.ts)
     const ridden = peopleReady() && (u.def.cls === 'cavalry' || u.def.cls === 'beast' || u.def.cls === 'siege');
     // Wolves, deer and hounds are each one animal, drawn whole from the real figure.
     const animal: BeastKind | null = u.type === 'wolf' ? 'wolf' : u.type === 'hound' ? 'husky' : u.type === 'deer' ? (u.id % 3 === 0 ? 'stag' : 'deer') : null;
