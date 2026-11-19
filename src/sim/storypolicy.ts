@@ -24,6 +24,7 @@ export function sensibleAnswers(c: Campaign, f = 0): string[] {
     else if (it.kind === 'rival') { if (it.stage === 1) take(it, 'defy'); if ((it.stage ?? 0) >= 1) take(it, 'watch'); }
     else if (it.kind === 'suitor') { if (!it.asked) take(it, 'ask'); if (it.asked) { if (it.willing) take(it, 'give'); else take(it, 'decline'); } }
     else if (it.kind === 'plot') {
+      if (it.wife) { if (!take(it, 'march')) take(it, 'demand'); continue; } // the leader's wife in a lord's house (wifetaken.ts): take him if an army stands there, else ask
       if (it.found) { take(it, 'pardon'); continue; }
       take(it, 'watch');
       if (!it.sweetened) take(it, 'gifts');

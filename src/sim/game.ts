@@ -3,6 +3,7 @@
 import { layCoarse, layKept } from './firstlay';
 import { unlaidOf, unplaced } from './unlaid';
 import { RoofsIn, roofsOf, seatRoofs } from './roofs';
+import { oldOut, seatOld } from './oldmarks';
 import { setToWork, workChanged } from './atwork';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
@@ -587,6 +588,7 @@ export class Game {
         if (s.bonus.people?.named?.length && !field) { settleHomes(this, i, s.bonus.people.named.filter((n) => n.gender === 'f')); restoreMade(this, i, s.bonus.people.named); }
         if (s.bonus.people?.widowed?.length && !field) seatWidows(this, i, s.bonus.people.widowed); // the map's widowed, the same in the town (widowtown.ts)
         if (s.bonus.roofs && !field) seatRoofs(this, i, s.bonus.roofs); // and every other household under its roof (roofs.ts)
+        if (s.bonus.people?.old && !field) seatOld(this, i, s.bonus.people.old); // a taken town's old people, by name and the rest by lot (oldmarks.ts)
         if (s.bonus.people?.children && !field) cradledOf(this, i, s.bonus.people);
         if (s.bonus.people?.orphans?.length && !field) seatOrphans(this, i, s.bonus.people.orphans); // the map's orphans, the same children in the town (orphantown.ts)
         if (s.bonus.work && !field && !s.isAI) setToWork(this, i, s.bonus.work, st); // the player's town is at work from its first second, by its shares (atwork.ts)
@@ -893,7 +895,7 @@ export class Game {
    * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name
    * (battlefolk.ts).
    */
-  census(owner: number): Census { return { ...censusOf(this, owner), roofs: roofsOf(this, owner) }; } // and who lives under each roof (roofs.ts)
+  census(owner: number): Census { return { ...censusOf(this, owner), roofs: roofsOf(this, owner), ...oldOut(this, owner) }; } // and who lives under each roof (roofs.ts)
 
   /** What a side's town is set to as things stand (governor.ts): how many of its people are at each kind of work, what stands half built, what is being trained. */
   orders(owner: number): { work: Stores; build: string[]; train: string[]; men?: QueuedMan[]; hands: number } {

@@ -80,6 +80,7 @@ export function judge(c: Campaign, it: Intrigue): string | null {
   }
   if (it.kind === 'suitor') return !it.asked ? 'ask' : it.willing ? 'give' : has('decline') ? 'decline' : 'spurn';
   if (it.kind === 'plot') {
+    if (it.wife) return has('march') ? 'march' : has('demand') ? 'demand' : null; // his wife is in a lord's house (wifetaken.ts): by arms where his army stands there, else by asking
     if (it.found) return worldly ? 'death' : 'pardon';
     if (has('watch')) return 'watch';
     const spoken = (it.nobles ?? []).length - it.cleared.length;

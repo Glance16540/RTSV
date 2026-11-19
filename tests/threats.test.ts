@@ -4,7 +4,7 @@ import { bareCampaign } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { endTurn, continueAI, eventsAt } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
-import { GROWN_SEASON, OLD_SEASON, SEASONS_A_YEAR, agesOf } from '../src/sim/ageing';
+import { CHILD_SEASONS, GROWN_SEASON, OLD_SEASON, SEASONS_A_YEAR, agesOf } from '../src/sim/ageing';
 import '../src/sim/convoys';
 import { THREATS, Band, BandKind, Raid, bandsAt, defenceOf, raidsAt, reachOf, reportLine, reportText, seasonsLeft, wanted } from '../src/sim/threats';
 import { threatsOfMen } from '../src/sim/bandseason';
@@ -408,7 +408,7 @@ describe('bands on the map', () => {
       for (let i = 0; i < 40 && c.phase !== 'over' && !c.pending; i++) {
         // Each town's children, and how many of them are due to come of age this season.
         const kids = c.territories.map((t) => t.folk?.children ?? -1);
-        const due = c.territories.map((t) => (t.folk ? agesOf(c, t.id, t.folk).k.filter((s) => s + 1 >= GROWN_SEASON).length : 0));
+        const due = c.territories.map((t) => (t.folk ? agesOf(c, t.id, t.folk).k.filter((s) => s + 1 >= CHILD_SEASONS).length : 0));
         const seen = (c.raids ?? []).length;
         endTurn(c);
         while (c.demand) { c.demand = null; continueAI(c); }
