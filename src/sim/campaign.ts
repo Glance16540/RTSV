@@ -98,6 +98,7 @@ import { freeStruck, freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { letGoSeason } from './emptied';
+import { marchedIn, snowbound } from './winter';
 import { caravanAtField, caravanFromField } from './fieldcaravan';
 import { canPayFor, payFor, paysHere } from './prices';
 import { SentFor, sentForSeason } from './sentfor';
@@ -902,12 +903,13 @@ const fname = (c: Campaign, f: number, start = false) =>
  */
 export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'battle' | 'invalid' {
   const a = c.armies.find((x) => x.id === armyId);
-  if (!a || a.moved || c.pending || c.demand || !reach(c, a.at).includes(to)) return 'invalid';
+  if (!a || a.moved || c.pending || c.demand || !reach(c, a.at).includes(to) || snowbound(c, a)) return 'invalid'; // an army that marched in winter rests a season (winter.ts)
   if (nobodyThere(c, to)) return 'invalid'; // nobody there to conquer: such a land is settled, not taken (founding.ts)
   const sea = !c.territories[a.at].adj.includes(to);
   const t = c.territories[to];
   const civ = c.factions[a.owner].civ;
   marchesOut(c, a); // the leader rides with the army they are with, unless they keep to the town
+  marchedIn(c, a, biomeOf(c, a.at)); // in winter: one march a season, and snowbound the season after (winter.ts)
   if (t.owner === a.owner) {
     const other = armyAt(c, to);
     // The Mongols cover ground: one march through friendly land does not end an army's turn.
@@ -1270,7 +1272,7 @@ export function continueAI(c: Campaign): void {
       c.turn++;
       c.phase = 'player';
       tickHouses(c);
-      for (const a of c.armies) { a.moved = resting(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts)
+      for (const a of c.armies) { a.moved = resting(c, a) || snowbound(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts), and one that marched in winter (winter.ts)
       courtTurn(c);
       for (const x of c.factions) x.angry = false;
       rumourSeason(c); // what the player's taverns hear of rival towns (tavernrumour.ts)

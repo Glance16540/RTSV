@@ -9,6 +9,7 @@
  * The campaign's record itself (the Campaign, Territory, Army and Faction interfaces) stays in campaign.ts: the
  * systems add their own fields to it there, and an import of types alone ties nothing.
  */
+import { iceBridges } from './winter';
 import type { Army, Campaign, Territory } from './campaign';
 import { creedOf } from './creed';
 import type { HeroSpec } from './hero';
@@ -329,6 +330,13 @@ export function weatherAt(c: Campaign, tid: number): Sky | '' {
 
 /** Where an army in this territory can go in one march: next door, or from a harbour along its sea lanes and to any other open coast. */
 export function reach(c: Campaign, tid: number): number[] {
+  const t = c.territories[tid];
+  const ice = iceBridges(c, tid, biomeOf); // a river frozen in winter is crossed on foot (winter.ts)
+  if (ice.length) return [...new Set([...reachOpen(c, tid), ...ice])];
+  return reachOpen(c, tid);
+}
+/** The lands a land reaches by its open borders and its sea lanes, as in any season but winter's ice (reach). */
+function reachOpen(c: Campaign, tid: number): number[] {
   const t = c.territories[tid];
   if (!t.buildings.includes('harbour')) return t.adj;
   const lanes = lanesOf(c, tid);

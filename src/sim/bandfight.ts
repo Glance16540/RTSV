@@ -19,6 +19,7 @@
 // player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
+import { snowbound } from './winter';
 import { ROAD, loseBy, roadClash, roadCost, roadTally, soldiersOf } from './roadclash';
 import { outOf } from './rim';
 import { peoplesArmy, sideName } from './naming';
@@ -261,7 +262,7 @@ export function huntBands(c: Campaign, out: string[]): number {
       .sort((x, y) => armyStrength(y, c) - armyStrength(x, c) || x.id - y.id);
     if (!hunters.length) continue;
     fightByMeans(c, hunters[0], b, out);
-    hunters[0].moved = false; // it was done in the turning of the season, and is theirs to order again
+    hunters[0].moved = snowbound(c, hunters[0]); // it was done in the turning of the season, and is theirs to order again (unless it marched in winter, winter.ts)
     fights++;
   }
   return fights;
@@ -299,7 +300,7 @@ export function ambushSeason(c: Campaign, out: string[]): number {
     if (!a || chance(c, b.id, 101) >= AMBUSH.dare) continue;
     if (c.factions[a.owner].isAI) {
       fightByMeans(c, a, b, out, true);
-      a.moved = false; // it happened in the turning of the season
+      a.moved = snowbound(c, a); // it happened in the turning of the season (unless it marched in winter, winter.ts)
       n++;
     } else if (!c.pending && !c.demand) {
       const to = placeOf(b).find((id) => id === a.at || c.territories[a.at].adj.includes(id) || rimOver(c, id, a.at)) ?? b.at;
