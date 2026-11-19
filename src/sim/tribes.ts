@@ -101,6 +101,14 @@ export function tribesSeason(c: Campaign): void {
   }
 }
 
+/**
+ * Did this battle's toll follow the fight (militiatoll.ts)? One nobody watched, for the town and not in the open, that was
+ * fought out on the map, in a land that is not the marauders'. Then a tribe's dead are already what its bands lost, and it
+ * does not lose bands by a share of the attacker's strength besides.
+ */
+export const tollByFight = (c: Campaign, p: Pending, b: { how?: string; fought?: unknown }): boolean =>
+  b.how === 'auto' && p.mode !== 'field' && !!b.fought && !c.territories[p.to]?.horde;
+
 /** A land of no nation beat off an attack and lost so many bands in doing it: a tribe's are men of its town, the marauders' their band's. Returns the men lost. */
 export function tribeBeaten(c: Campaign, tid: number, bands: number): number {
   const t = c.territories[tid];
