@@ -2,6 +2,7 @@
 // then the land selected, leading with what matters (its name and holder, its people and stores, what threatens it,
 // the army there), then what can be done there in groups, and last the lie of the land folded under "The land".
 // Nothing here decides anything: overworld.ts keeps the logic and the clicks (every button keeps its `data-act`).
+import { landTalesHtml } from './talepanel';
 import { lastGain } from '../sim/seasongain';
 import { ruinWarning } from '../sim/ruin';
 import { creedOf } from '../sim/creed';
@@ -110,6 +111,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
   const danger = `${intrigueHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}`;
+  const fought = landTalesHtml(c, t.id); // the battles fought here (talepanel.ts)
   const army = `${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a, c)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 && !empty ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 || empty ? '' : 'Select one of your armies to march on this land.'}</div>`;
   const land = `<div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc} <i>${countryOf(c, t.id).rule}</i></div>
@@ -124,7 +126,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
       ${t.owner === 0 ? marketLine(c, t.id) : ''}
       ${t.ground && t.ground.gone.length + t.ground.left.length ? '<div class="hint">🪓 This ground has been worked: wood felled, berries picked or stone dug. None of it comes back.</div>' : ''}`;
   const landTitle = `The land <small>${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}${t.trait ? ` · ${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}` : ''}${place ? ` · ${PLACES[place.kind].icon}` : ''}</small>`;
-  return `${head}<div class="lp-section">${people}</div>${danger.trim() ? `<div class="lp-section">${danger}</div>` : ''}<div class="lp-section">${army}</div>${fold('land', landTitle, land)}`;
+  return `${head}<div class="lp-section">${people}</div>${danger.trim() ? `<div class="lp-section">${danger}</div>` : ''}<div class="lp-section">${army}${fought}</div>${fold('land', landTitle, land)}`;
 }
 
 /** What can be done in the land selected, in groups: Raise, Build, Leader, Town, Diplomacy, and the age. Every button keeps its `data-act`. */
