@@ -1,6 +1,7 @@
 // What an answer to the 'held' dilemma does to those held (src/sim/dilemmaacts.ts, src/sim/captivity.ts).
 import { describe, expect, it } from 'vitest';
 import { SOLD_GOLD } from '../src/sim/captivity';
+import { ACTS, dilemmaAct } from '../src/sim/dilemmaacts';
 import { DILEMMAS } from '../src/sim/creed';
 import type { Captive } from '../src/sim/game';
 import { Game } from '../src/sim/game';
@@ -50,5 +51,19 @@ describe('the dilemma of those held in the camp', () => {
     const d = DILEMMAS.find((x) => x.id === 'held')!;
     expect(d.b.res.gold).toBeUndefined();
     expect(d.b.label).toMatch(/camp's price/);
+  });
+});
+
+describe('the acts themselves', () => {
+  it('are kept for the dilemmas whose words say more, and do nothing for any other', () => {
+    expect(Object.keys(ACTS)).toEqual(['held']);
+    expect(Object.keys(ACTS.held).sort()).toEqual(['a', 'b']);
+    const { g } = camp();
+    const before = inCamp(g);
+    dilemmaAct(g, 0, 'harvest', 'a'); // no act of its own
+    dilemmaAct(g, 0, 'held', 'c' as 'a');
+    expect(inCamp(g)).toBe(before);
+    dilemmaAct(g, 0, 'held', 'a');
+    expect(inCamp(g)).toBe(0);
   });
 });
