@@ -1,6 +1,7 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
-import { assaultDue } from './besieger';
+import { assaultDue, besieging } from './besieger';
+import { CAMP, campWorks } from './siegecamp';
 import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
@@ -111,6 +112,11 @@ export class AIController {
     if (!home) {
       // A raiding band with no roof yet: settle where it stands.
       if (g.raider(pid) && villagers.length && Math.floor(g.time) % 2 === 0) this.build('towncenter', g.spec.starts[pid], villagers, 0, 9);
+      // A band besieging a town, with no hall and nobody to raise one (siegecamp.ts): it storms once formed up, and fights on.
+      else if (!villagers.length && besieging(g, pid)) {
+        if (this.state !== 'attack' && assaultDue(g, pid, army.filter((u) => u.def.atk > 0).length, false)) { this.state = 'attack'; this.stormed = true; }
+        if (this.state === 'attack') this.fieldBattle();
+      }
       return;
     }
     // A settled people whose hall is gone (razed in an earlier siege of this land) raise it again before anything
@@ -125,6 +131,8 @@ export class AIController {
       const at = (node && this.findSpot('storehouse', node.x, node.y, 2.5, 6)) ?? this.findSpot('storehouse', st.x, st.y, 3, 10), v = at && this.pickBuilder(villagers, at.cx, at.cy);
       if (at && v) g.cmdPlace(pid, 'storehouse', at.cx, at.cy, [v.id]);
     }
+    // A besieging camp with no villagers: its soldiers raise its workshop and it crews rams from them (siegecamp.ts).
+    if (Math.floor(g.time) % 3 === 0) campWorks(g, pid, (type, near, men) => { const at = this.findSpot(type, near.x, near.y, 4, CAMP.near); return at ? g.cmdPlace(pid, type, at.cx, at.cy, men.map((u) => u.id)) : null; });
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
     // A soldier is a hand taken from the fields: the town keeps enough of them to live.
     this.spare = villagers.length > HANDS_KEPT[p.age] * (underAttack ? 0.5 : 1);
