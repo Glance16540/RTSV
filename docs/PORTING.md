@@ -398,6 +398,41 @@ by name.
 | `wrath` | 29 | How hard acts of God fall on a people (docs/DESIGN.md, "Acts of God"). | game (types only) | wrath.test.ts | not yet |
 | `writtenlaw` | 12 | Written Law, a study: unrest is less likely, and a taken town's resentment eases the faster. | campaign (types only), studies | writtenlaw.test.ts | not yet |
 
+## Behaviour pinned as it is
+
+Some tests hold the game to what it does now in a place a reader might take for a bug. Each is meant, or at least
+accepted: port it as it is, and change the test on purpose if the Unity side should differ.
+
+- **The computer does not call home an army already attacking when its own town is struck.** Only its idle soldiers
+  go to the blow; the only recall is the beaten one (below). `tests/ai.test.ts`, "does not call back an army already
+  marching when its own town is struck". Port as is.
+- **The computer calls an attack home only when it is beaten:** under 35% of those who set out, at Normal or above,
+  and only in the first 30 minutes. `tests/ai.test.ts`, "an attack that has lost most of its men is called home; one
+  still strong fights on". Port as is.
+- **The computer's storehouse at ten villagers is the next work of its order, not a gate:** storehouses beside far
+  resources are laid from nine as well. `tests/ai.test.ts`, "raises a barracks first, once it has eight villagers, and
+  a storehouse next at ten" checks the order only. Port as is.
+- **A drifted villager may be brought back by the town's own care while the computer never sets them back.** The care
+  roll (driftintown.ts) is the town's, not the computer's. `tests/driftintown.test.ts`, "the computer does not set a
+  drifted villager back to its own work". Port as is.
+- **A man carried home is older by the seasons since the record last counted, not since he was taken.** The record
+  adds its own seasons when it is written. `tests/carriedhome.test.ts`, "the seasons the record has not yet counted
+  are not counted twice". Port as is.
+- **The season changes nothing in a battle.** It is a look only; a battle with a season and one without play out
+  alike. `tests/seasonsky.test.ts`, "is kept with a battle when it is saved, and moves nothing in it". Port as is.
+- **The dilemmas a town was asked are kept only for a town of the player's;** a battle over a rival's town starts a
+  round of its own. `tests/askedhere.test.ts`, "keeps only names of dilemmas there are, only for a town of the
+  player's, and at most a round". Port as is.
+- **Freeing or selling those held answers for the people's own work camps only;** a marauders' lair is never touched.
+  `tests/dilemmaacts.test.ts`, both answers. Port as is.
+- **A war of succession between two rivals is only the end of their peace;** neither presses the claim by arms, and a
+  claimant of both houses rules one throne at most. `tests/bothhouses.test.ts`, "passed over on the player's throne"
+  (the player's case is the only one pressed). Port as is.
+
+Fixed rather than pinned: a rival leader rising in rank now names the power it learnt ("X is now Blooded and has
+learnt ..."); the words were made before it chose. `tests/battleleader.test.ts`, "a rival's leader chooses for
+themself, at once".
+
 <!-- generated:order -->
 ## The order to port in (generated)
 

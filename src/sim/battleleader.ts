@@ -38,9 +38,9 @@ export function deed(g: Game, owner: number, t: Entity): void {
   if (rank > l.hero.rank) {
     l.hero.rank = g.players[owner].heroRank = rank;
     fitLeader(g, l);
-    const learnt = powersHeld(g.heroOf(owner), rank).length > powersHeld(g.heroOf(owner), rank - 1).length ? powersHeld(g.heroOf(owner), rank).at(-1) : null;
-    // A rival does not wait to be asked what it will learn.
+    // A rival does not wait to be asked what it will learn; what was learnt is named after it has chosen.
     if (g.players[owner].isAI) while (g.powerDue(owner) >= 0) g.cmdLearn(owner, 0);
+    const learnt = powersHeld(g.heroOf(owner), rank).length > powersHeld(g.heroOf(owner), rank - 1).length ? powersHeld(g.heroOf(owner), rank).at(-1) : null;
     g.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : g.powerDue(owner) >= 0 ? ': choose what they learn' : ''}.`);
   }
 }
