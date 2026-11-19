@@ -3,7 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { battleConfig, moveArmy, newCampaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
-import { CAMP, campBuilds, campWorks } from '../src/sim/siegecamp';
+import { CAMP, campBuilds, campReady, campStock, campWants, campWorks } from '../src/sim/siegecamp';
+import { BESIEGE } from '../src/sim/besieger';
 import { run, setups, spot } from './helpers';
 
 /** A rival's army marched on the player's capital, as a campaign siege; the rival (1) besieges. */
@@ -93,5 +94,40 @@ describe('siegecamp', () => {
     expect(shop.queue.filter((q) => q.id === 'ram').length).toBe(1);
     expect(CAMP.rams).toBeGreaterThan(0);
     expect(campWorks(g, 0, place)).toBeNull(); // the defender is no camp
+  });
+
+  it('a camp of the workshop\'s age brings the stores for a workshop and its rams; a younger one, and the town, as they were', () => {
+    const want = campWants();
+    expect(want.wood).toBeGreaterThan(0);
+    const g = siege();
+    g.players[1].age = 2;
+    g.players[1].res = { food: 0, wood: 10, gold: 10, stone: 0 };
+    expect(campStock(g, 1, g.setups[1])).toBe(true);
+    for (const [r, n] of Object.entries(want)) expect(g.players[1].res[r as 'wood']).toBeGreaterThanOrEqual(n);
+    g.players[1].res.wood = 9999;
+    campStock(g, 1, g.setups[1]);
+    expect(g.players[1].res.wood).toBe(9999); // never lowered
+    const young = siege();
+    young.players[1].age = 1; const was = { ...young.players[1].res };
+    expect(campStock(young, 1, young.setups[1])).toBe(false);
+    expect(young.players[1].res).toEqual(was);
+    expect(campStock(young, 0, young.setups[0])).toBe(false);
+  });
+
+  it('the computer waits for its rams a while before it storms, and goes in without them after that', () => {
+    const g = siege();
+    g.players[1].age = 2;
+    g.time = BESIEGE.form + 1;
+    expect(campReady(g, 1, BESIEGE.form)).toBe(false);
+    const by = g.units.find((u) => u.owner === 1)!;
+    for (let i = 0; i < CAMP.rams; i++) g.spawnUnit('ram', 1, by.x, by.y);
+    expect(campReady(g, 1, BESIEGE.form)).toBe(true);
+    const late = siege();
+    late.players[1].age = 2;
+    late.time = BESIEGE.form + CAMP.wait;
+    expect(campReady(late, 1, BESIEGE.form)).toBe(true);
+    const young = siege();
+    young.time = BESIEGE.form + 1;
+    expect(campReady(young, 1, BESIEGE.form)).toBe(true); // too young for rams: storms as before
   });
 });

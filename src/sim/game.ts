@@ -16,7 +16,7 @@ import { dyingOut } from './dyingout';
 import { carriedOut } from './carriedout';
 import { seatRecords } from './warrecord';
 import { sendMan } from './pickman';
-import { campBuilds, campUnhoused, campWithoutPeople } from './siegecamp';
+import { campBuilds, campStock, campUnhoused, campWithoutPeople } from './siegecamp';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -629,6 +629,7 @@ export class Game {
         // In a battle in the open there is no town on the field: the men of it who marched out stand with the army (tribes.ts).
         if (field && s.bonus.people) peopled(this, i, s.bonus.people, st, dir);
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
+        campStock(this, i, s); // a besieging camp brings the stores for its workshop and rams (siegecamp.ts)
         if (s.bonus.captain) setCaptain(this, i, s.bonus.captain); // the leader of a claimant's rising, by name (claimantcaptain.ts)
       }
     });

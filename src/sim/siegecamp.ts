@@ -27,7 +27,38 @@ export const CAMP = {
   near: 9,
   /** Rams the computer keeps in hand from its workshop, while it has more foot soldiers than that and two besides. */
   rams: 2,
+  /** Seconds past forming up the computer waits for its rams before it storms without them. */
+  wait: 120,
 };
+
+/** What a workshop and CAMP.rams rams cost together: the stores a besieging camp of their age brings (`campStock`). */
+export const campWants = (): Record<string, number> => {
+  const out: Record<string, number> = {};
+  for (const [r, n] of Object.entries(BUILDINGS.workshop.cost)) out[r] = (out[r] ?? 0) + (n ?? 0);
+  for (const [r, n] of Object.entries(UNITS.ram.cost)) out[r] = (out[r] ?? 0) + CAMP.rams * (n ?? 0);
+  return out;
+};
+/**
+ * A besieging camp brings the stores to press its siege: once its people are of the workshop's age, what it has is raised to
+ * cover a workshop and CAMP.rams rams (an army marching on a town brings its engines' timber with it), and never lowered.
+ * Its soldiers build them (`campBuilds`, `campCrew`). Returns whether anything was added.
+ */
+export function campStock(g: Game, pid: number, setup: { besieger?: boolean } | undefined): boolean {
+  const p = g.players[pid];
+  if (!campWithoutPeople(setup) || g.field || !p || p.age < BUILDINGS.workshop.age) return false;
+  let added = false;
+  for (const [r, n] of Object.entries(campWants()) as [keyof typeof p.res, number][]) if (p.res[r] < n) { p.res[r] = n; added = true; }
+  return added;
+}
+/**
+ * Is the computer's camp ready to storm? Not while it is of the age for rams, has none in hand yet, and is still within
+ * CAMP.wait of forming up: an army that can bring rams to the gate waits for them, and goes in without them after that.
+ */
+export function campReady(g: Game, pid: number, formed: number): boolean {
+  if (!besieging(g, pid) || g.field || g.players[pid].age < BUILDINGS.workshop.age || g.time >= formed + CAMP.wait) return true;
+  if (g.units.some((u) => u.owner === pid && !u.dead && u.type === 'villager')) return true; // one with villagers plays as it always has
+  return g.units.filter((u) => u.owner === pid && !u.dead && u.type === 'ram').length >= CAMP.rams;
+}
 
 /** A foot soldier of a besieging side: one who may build the camp's works, or crew an engine. */
 const footman = (g: Game, u: Unit): boolean => !u.dead && !u.hero && !u.inside && (u.def.cls === 'infantry' || u.def.cls === 'ranged') && besieging(g, u.owner) && !g.field;
