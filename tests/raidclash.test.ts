@@ -193,3 +193,46 @@ describe('stage three, report only: the town turned out as bands (raidclash.ts t
     expect(differed).toBeGreaterThan(0);
   });
 });
+
+describe('what a band comes away with follows the fight (raidclash.ts spoilsOf)', () => {
+  it('the whole day where the town broke at the first rush, less for every round it stood; and the hands the band has left', async () => {
+    const { spoilsOf, RAID } = await import('../src/sim/raidclash');
+    const { CLASH } = await import('../src/sim/mapbattle');
+    expect(spoilsOf({ rounds: 1, cost: 0 })).toEqual({ time: 1, hands: 1 });
+    expect(spoilsOf({ rounds: 0, cost: 0 }).time).toBe(1);
+    expect(spoilsOf({ rounds: 3, cost: 0.2 }).time).toBeCloseTo(1 - 2 / CLASH.rounds, 6);
+    expect(spoilsOf({ rounds: 3, cost: 0.2 }).hands).toBeCloseTo(0.8, 6);
+    expect(spoilsOf({ rounds: CLASH.rounds, cost: 2 })).toEqual({ time: 1 / CLASH.rounds, hands: 0 });
+    for (let r = 1; r < CLASH.rounds; r++) expect(spoilsOf({ rounds: r + 1, cost: 0 }).time).toBeLessThan(spoilsOf({ rounds: r, cost: 0 }).time);
+    expect(RAID.loot).toBeGreaterThan(0.2);
+    expect(RAID.loot).toBeLessThan(0.5);
+  });
+
+  it('a town that stands longer before it breaks loses less of its stores to the same band, and never more than the band\'s hands can carry', async () => {
+    const { newCampaign } = await import('../src/sim/campaign');
+    const { strike } = await import('../src/sim/threats');
+    const { THREATS } = await import('../src/sim/threatsbase');
+    const { RAID, spoilsOf } = await import('../src/sim/raidclash');
+    const { folkOf } = await import('../src/sim/township');
+    const seen: { rounds: number; share: number }[] = [];
+    for (let seed = 1; seed <= 60; seed++) {
+      const c = newCampaign(seed, 2), home = c.territories.find((t) => t.capital === 0)!;
+      c.armies = c.armies.filter((a) => a.at !== home.id);
+      const f = folkOf(c, home.id);
+      f.stores = { food: 0, wood: 4000, gold: 4000, stone: 4000 }; // no food, so the larder's rule is out of it
+      const had = 12000;
+      const band = { id: 900, kind: 'raiders' as const, name: 'the test band', at: home.adj[0], strength: 2 + (seed % 9), since: 0, held: [] };
+      (c.bands ??= []).push(band);
+      const r = strike(c, band, home.id, []);
+      if (r.outcome === 'held') continue;
+      const took = r.stores.wood + r.stores.gold + r.stores.stone, s = spoilsOf({ rounds: r.rounds!, cost: 0 });
+      expect(took).toBeLessThanOrEqual(Math.ceil(had * RAID.loot * s.time));
+      expect(took).toBeLessThanOrEqual(r.force * THREATS.carry.raiders);
+      seen.push({ rounds: r.rounds!, share: took / had });
+    }
+    const quick = seen.filter((x) => x.rounds <= 1), slow = seen.filter((x) => x.rounds >= 3);
+    expect(seen.length).toBeGreaterThan(10);
+    // The bound itself falls with the rounds, whatever a band of a given size can carry.
+    if (quick.length && slow.length) expect(Math.max(...slow.map((x) => x.share))).toBeLessThanOrEqual(RAID.loot * (1 - 2 / 8) + 1e-9);
+  });
+});

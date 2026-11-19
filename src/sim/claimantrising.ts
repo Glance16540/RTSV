@@ -31,6 +31,7 @@
 import type { Campaign, Territory } from './campaign';
 import { Claim, bandChildren, claimChance, claimsOn, endClaim, named, ofAgeNow } from './claimants';
 import { noblesOf, titleOf } from './nobles';
+import { bringToJudgement } from './claimantjudged';
 import { leaderCreed } from './noblefaith';
 import { creedOf } from './creed';
 import { faithAt } from './townfaith';
@@ -179,7 +180,7 @@ export function claimantsSeason(c: Campaign): void {
       if (grown) endClaim(c, cl, how, text); else cl.over = c.turn;
       tell(c, f, text);
     };
-    if (at.owner === f) { over('putdown', `${at.name} is ${f === 0 ? 'yours' : `the ${fac.name}'`} again. The rising for ${who} is over${grown ? `, and ${cl.female ? 'she' : 'he'} is not heard of again` : ''}.`); continue; }
+    if (at.owner === f) { over('putdown', `${at.name} is ${f === 0 ? 'yours' : `the ${fac.name}'`} again. The rising for ${who} is over.`); bringToJudgement(c, cl, at.id); continue; } // whoever led it answers for it (claimantjudged.ts)
     if (at.owner >= 0 || at.horde) { over('swallowed', `${at.name} has fallen to others, and the rising for ${who} with it.`); continue; }
     if (grown && !fac.heroAlive && !houseOf(c, f).heirs.some((h) => ofAge(c, h))) { crown(c, cl); continue; }
     if (c.turn - (cl.grown ?? cl.raised!) >= RISING.lapse) over('lapsed', `${at.name} has stood free ${RISING.lapse / 4} years. The claim of ${grown ? cl.name : `the child of ${cl.mother}`} to the throne is heard no more.`);
