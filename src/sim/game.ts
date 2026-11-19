@@ -12,6 +12,7 @@ import { liftSieges } from './siegelift';
 import { dyingOut } from './dyingout';
 import { carriedOut } from './carriedout';
 import { seatRecords } from './warrecord';
+import { sendMan } from './pickman';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -1457,6 +1458,9 @@ export class Game {
     g.upkeep();
     return g;
   }
+
+  /** The player sends this villager to arms, in place of whoever the queue would call (pickman.ts). */
+  cmdSendMan(owner: number, vid: number): boolean { return sendMan(this, owner, vid); }
 
   cmdTrain(owner: number, bid: number, type: string, gender?: Gender): boolean {
     const b = this.entities.get(bid);
