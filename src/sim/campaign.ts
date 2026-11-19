@@ -86,6 +86,7 @@ import { Orders, governTowns, keepOrders, shareOf } from './governor';
 import { drillWithQueued, keepQueued } from './queueddrill';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
+import { heldFirst } from './rivalcaptives';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
 import { unrestSeason } from './unrest';
@@ -1452,6 +1453,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
   }
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
   targets.splice(0, targets.length, ...sickLast(c, targets)); // a land with plague in it last (aiplague.ts)
+  targets.splice(0, targets.length, ...heldFirst(c, f.id, targets)); // a land holding its carried-off in their last seasons first (rivalcaptives.ts)
   // Cautious leaders want better odds; a leader who has just been refused wants blood.
   const dares = (from: number, to: number): boolean => {
     const t = c.territories[to];

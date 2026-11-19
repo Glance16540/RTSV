@@ -51,6 +51,7 @@ import { OLD_SEASON, SEASONS_A_YEAR, agesOf, countFrom } from './ageing';
 import { STORE_KINDS, TOWN_SCALE, folkOf, living } from './township';
 import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
+import { tallyWatch } from './watchtally';
 import { fortShelter, hasFortress } from './fortress';
 import { stoodTo } from './heralds';
 import { RAID, raidClash, spoilsOf } from './raidclash';
@@ -326,6 +327,10 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
     killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0,
     ...(fight ? { rounds: fight.rounds, broke: fight.broke } : {}),
   };
+  if (fight && watchDefence(c, tid) > 0) { // report only (watchtally.ts): the same strike on the town with its town watch's company left out
+    const less = watchDefence(c, tid), parts = defence.men + defence.works + defence.walls + defence.army + defence.guard, bare: Defence = { ...defence, works: round1(defence.works - less), total: parts > 0 ? round1(defence.total * (parts - less) / parts) : defence.total };
+    tallyWatch(c, 'held', fight.outcome === 'held', raidClash(b.strength, force, bare, garrison?.units ?? {}, faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence)).outcome === 'held');
+  }
   if (fight) { // report only, kept for a release: the same strike by the fight as it was before stage three (the town a sum, its men part of the place); nothing is decided by it
     const w = raidClash(b.strength, force, defence, garrison?.units ?? {}, faithAt(c, tid));
     raid.would = w.outcome === 'taken' && bled ? 'raided' : w.outcome; raid.wouldLost = fight.pressed; raid.men = f.men; raid.wouldDead = bandsFell(c, tid, fight.body, FELL.dead); if (fight.broke === 'defender' && !bled) raid.wouldCost = fight.cost;

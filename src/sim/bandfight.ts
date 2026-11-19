@@ -32,6 +32,7 @@ import { raisedInBattle } from './dynasty';
 import { HeroSpec, MAX_RANK } from './hero';
 import { Band, breakBand, chance, note } from './threats';
 import { exposedHow, exposure, marchOf, marched } from './bandmarch';
+import { bandOdds } from './rivalcaptives';
 
 declare module './campaign' {
   interface Pending {
@@ -56,7 +57,7 @@ export const FIGHT = {
    * about for `grace` seasons, and then only in so many seasons out of a hundred: an army has other work.
    */
   hunt: 1.5, grace: 3, keen: 0.3,
-  /** But a people whose own are held by a band goes after it at once, and at shorter odds. */
+  /** But a people whose own are held by a band goes after it at once, and at shorter odds; shorter still as their seasons run out (rivalcaptives.ts). */
   theirs: 1.6,
   /** Of a band's strength, the share that fights as archers when the battle is fought out; the rest as infantry. */
   bows: 0.35,
@@ -256,7 +257,7 @@ export function huntBands(c: Campaign, out: string[]): number {
     const near = new Set(placeOf(b).flatMap((id) => [id, ...outOf(c, id)]));
     // Whose business it is: a people that holds the band's place or a land next to it.
     const owners = new Set([...near].map((id) => c.territories[id].owner).filter((f) => f > 0 && c.factions[f]?.alive && c.factions[f].isAI));
-    const hunters = c.armies.filter((a) => owners.has(a.owner) && near.has(a.at) && c.territories[a.at].owner === a.owner && (wronged.has(a.owner) ? armyStrength(a, c) >= b.strength * FIGHT.theirs : !idle && armyStrength(a, c) >= b.strength * FIGHT.hunt))
+    const hunters = c.armies.filter((a) => owners.has(a.owner) && near.has(a.at) && c.territories[a.at].owner === a.owner && (wronged.has(a.owner) ? armyStrength(a, c) >= b.strength * bandOdds(c, b.held.filter((h) => h.owner === a.owner), FIGHT.theirs) : !idle && armyStrength(a, c) >= b.strength * FIGHT.hunt))
       .sort((x, y) => armyStrength(y, c) - armyStrength(x, c) || x.id - y.id);
     if (!hunters.length) continue;
     fightByMeans(c, hunters[0], b, out);

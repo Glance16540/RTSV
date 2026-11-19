@@ -220,6 +220,7 @@ interface Watch {
   grownGrowth: number[]; // the same, grown people alone
   townSeasons: TownSeason[];
   caravans?: Campaign['caravanTally']; // the markets' caravans (caravans.ts)
+  watchRules?: Campaign['watchTally']; // what the Watch House and Town Watch did beside the same draws without them (watchtally.ts)
   innRoads?: Campaign['convoyTally']; // the player's convoys a band lay in wait for, with an Inn on the road and without (convoys.ts)
   roadCosts?: Campaign['roadCost'];
   roads?: Campaign['roadTally']; // meetings on the road, by their rule and by the clash (roadclash.ts)
@@ -229,6 +230,8 @@ interface Watch {
   dead: DeadTown[];
   /** People killed by plague in the first twenty years, every people and the tribes together (the season's ledger). */
   plagueDead: number;
+  /** Households that moved between a people's towns in the first twenty years (migration.ts), the people with them, why they went, and settlers who founded a town. */
+  moves: { households: number; people: number; settlers: number; why: Record<string, number> };
   hungerDead: Record<number, number>; // by people, over the first 20 years
   worstHunger: number; // the largest share of a town lost to hunger in one season
   storeSeasons: number[]; // each nation that had a stretch of peace: the median, over its seasons of peace, of the seasons of food it had in store
@@ -301,7 +304,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, claims: { wives: 0, noble: 0, band: 0, home: 0, grown: 0, nofollowing: 0, towns: 0, putdown: 0, swallowed: 0, lapsed: 0, crowned: 0, standing: 0, mine: 0, mineGrown: 0, mineGrownNoble: 0, raised: 0, mineRisen: 0, mineRisenNoble: 0, mineChild: 0 }, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [], named: { battle: 0, wins: 0, share: [], kills: [], mine: 0 } };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, moves: { households: 0, people: 0, settlers: 0, why: {} }, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, claims: { wives: 0, noble: 0, band: 0, home: 0, grown: 0, nofollowing: 0, towns: 0, putdown: 0, swallowed: 0, lapsed: 0, crowned: 0, standing: 0, mine: 0, mineGrown: 0, mineGrownNoble: 0, raised: 0, mineRisen: 0, mineRisenNoble: 0, mineChild: 0 }, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [], named: { battle: 0, wins: 0, share: [], kills: [], mine: 0 } };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -315,6 +318,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const alive = c.territories.map((t) => grown(folkOf(c, t.id)) + folkOf(c, t.id).children > 0);
   const convoyTo = new Set<number>();
   const groups = new Map<string, { near: boolean; since: number }>();
+  const movesSeen = new WeakSet<object>(); // the moves already counted (migration.ts keeps the last few on `c.moves`)
   const takenAt = new Map<number, { since: number; owner: number; garrisoned: number; seen: number }>();
   let logAt = c.log.length;
   const hungrySpell = c.territories.map((): { seasons: number; paved: boolean; owner: number } | null => null); // the spell of hunger each town is in
@@ -345,6 +349,13 @@ for (const x of c.convoys ?? []) convoyTo.add(x.to);
 const counted = c.territories.map((t) => ({ grown: grown(folkOf(c, t.id)), away: awayFrom(c, t.id) })), seq = c.ledgerSeq ?? 0;
 season(c, ruled);
 const now = c.turn;
+// Families that set out this season (migration.ts): each move is counted once, as it is first seen on the record.
+for (const m of c.moves ?? []) {
+  if (movesSeen.has(m) || s > YEARS20) continue;
+  movesSeen.add(m);
+  if (m.found) { w.moves.settlers++; continue; }
+  w.moves.households++; w.moves.people += m.people; w.moves.why[m.why] = (w.moves.why[m.why] ?? 0) + 1;
+}
 // What took each town's people this season, by cause (the ledger, the raids, the levy); what is missing besides is `other`.
 {
   const got = c.territories.map((): Losses => ({ war: 0, raids: 0, hunger: 0, plague: 0, age: 0, levy: 0, other: 0, born: 0, grew: 0, oneSex: false, taken: false }));
@@ -570,6 +581,7 @@ if (churched[f.id] >= YEARS20 / 2 && townSeasonsOf[f.id] > 0 && hungryOf[f.id] /
   w.sieges = watched;
   w.caravans = c.caravanTally ? JSON.parse(JSON.stringify(c.caravanTally)) : undefined;
   w.innRoads = c.convoyTally ? JSON.parse(JSON.stringify(c.convoyTally)) : undefined;
+  w.watchRules = c.watchTally ? JSON.parse(JSON.stringify(c.watchTally)) : undefined;
   w.roads = c.roadTally ? JSON.parse(JSON.stringify(c.roadTally)) : undefined;
   w.roadCosts = c.roadCost ? JSON.parse(JSON.stringify(c.roadCost)) : undefined;
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
@@ -869,9 +881,11 @@ const landed = strikes.filter((x) => !x.held);
 add('Crime', 'Raids held off with a town watch against without', 'report only', `${heldOf(strikes.filter((x) => x.watch))} with against ${heldOf(strikes.filter((x) => !x.watch))} without`, 'report', 'Every strike by a band on a held town. "With" is a town whose people had learned Town Watch and where a Watch House stood when the band struck.');
 add('Crime', 'People lost per band strike with a Fortress against without', 'report only', `${lostOf(strikes.filter((x) => x.fort))} with against ${lostOf(strikes.filter((x) => !x.fort))} without; of strikes not held off, ${lostOf(landed.filter((x) => x.fort))} against ${lostOf(landed.filter((x) => !x.fort))}`, 'report', 'The killed and the carried off in each strike by a band on a held town, the strikes held off counted too (a Fortress holds more of them off). A town that fell to the band is counted by what the strike itself cost it.');
 // The forced comparison (CRIME=1): the same campaigns told again with a Watch House in every town of the player's, and with Town Watch besides.
+const told: Watch[] = [...ruled]; // every telling, for the rules read like for like below
 if (CRIME && process.env.CRIME !== 'roads') {
   const house: Watch[] = [], watch: Watch[] = [];
   for (let seed = 1; seed <= CAMPAIGNS; seed++) { house.push(play(seed, true, SEASONS, 'house')); watch.push(play(seed, true, SEASONS, 'watch')); }
+  told.push(...house, ...watch);
   const large = (ws: Watch[]) => { const xs = ws.flatMap((w) => w.crimes); return xs.length ? `${num(mean(xs.map((x) => x.seasons)), 2)} (${xs.length})` : 'none'; };
   const heldMine = (ws: Watch[]) => heldOf(ws.flatMap((w) => w.strikes).filter((x) => x.mine));
   const lostMine = (ws: Watch[]) => lostOf(ws.flatMap((w) => w.strikes).filter((x) => x.mine));
@@ -905,6 +919,7 @@ add('Crime', 'Seasons running a hungry town stays hungry, with Paved Roads again
 if (CRIME) {
   const roads: Watch[] = [];
   for (let seed = 1; seed <= CAMPAIGNS; seed++) roads.push(play(seed, true, SEASONS, 'roads'));
+  told.push(...roads);
   const cv = (ws: Watch[]) => ws.flatMap((w) => w.convoys), mineOf = (ws: Watch[]) => ws.flatMap((w) => w.hungers).filter((x) => x.mine);
   const hungrySeasons = (ws: Watch[]) => mineOf(ws).reduce((k, x) => k + x.seasons, 0);
   const wins = (ws: Watch[]) => ws.filter((w) => w.how === 'player').length;
@@ -914,9 +929,36 @@ if (CRIME) {
   add('Crime', 'Forced: seasons running a town of the player\'s stays hungry, with Paved Roads against as it is', 'report only', `${spellOf(mineOf(roads))} with against ${spellOf(mineOf(ruled))} as it is`, 'report',
 `Spells of hunger in the player\'s own towns in the same two tellings (the Inns and Escorts are there too). In all, ${hungrySeasons(roads)} hungry town-seasons with against ${hungrySeasons(ruled)} as it is. ${mineLine(roads)} with; ${mineLine(ruled)} as it is.`);
 }
+{
+  // Each rule of the row read like for like: the same convoys, thieves, killers and strikes, by the same draws, with the
+  // rule and with it left out (convoys.ts ConvoySide.would, watchtally.ts). Where the towns or roads that have the
+  // building are set beside those that have not, what is measured is where the building is raised, not what it does.
+  // Read over every telling of the campaigns: as they are, and (CRIME=1) those with the buildings and studies given from the start.
+  const ENOUGH = 100; // applications of a rule before its row is judged
+  const inn = told.reduce((a, w) => ({ met: a.met + (w.innRoads?.inn.met ?? 0), stopped: a.stopped + (w.innRoads?.inn.stopped ?? 0), would: a.would + (w.innRoads?.inn.would ?? 0), robbed: a.robbed + (w.innRoads?.inn.robbed ?? 0) }), { met: 0, stopped: 0, would: 0, robbed: 0 });
+  add('Crime', 'Convoys of the player\'s with an Inn on the road that a band in wait came on, against the same convoys with no Inn', '0.4 to 0.6 times as many', inn.would ? `${num(inn.stopped / inn.would, 2)} times (${inn.stopped} against ${inn.would}, of ${inn.met} a band lay in wait for; ${inn.robbed} robbed)` : 'none', inn.would >= ENOUGH ? within(inn.stopped / inn.would, 0.4, 0.6) : null,
+    'The Inn\'s rule (roads.ts): a band is half as likely to come on a convoy whose road passes a town of its people with an Inn. Every convoy of the player\'s with an Inn on its road and a band in wait, by the draw that decided it: those the band came on, against those it would have come on by the same draw with no Inn there. Fewer are robbed than are come on, Inn or none: an army of the player\'s on the road fights the band and may see it off.');
+  const rule = (k: 'thief' | 'clue' | 'kill' | 'begin' | 'held') => told.reduce((a, w) => ({ n: a.n + (w.watchRules?.[k]?.n ?? 0), did: a.did + (w.watchRules?.[k]?.did ?? 0), would: a.would + (w.watchRules?.[k]?.would ?? 0) }), { n: 0, did: 0, would: 0 });
+  const more = (k: 'thief' | 'clue', figure: string, lo: number, hi: number, note: string) => { const r = rule(k), gain = r.n ? (100 * (r.did - r.would)) / r.n : NaN; add('Crime', figure, `${lo} to ${hi} more in every 100 seasons`, r.n ? `${num(gain, 1)} more (${r.did} against ${r.would} in ${r.n} seasons)` : 'none', r.n >= ENOUGH ? within(gain, lo, hi) : null, note); };
+  const fewer = (k: 'kill' | 'begin', figure: string, lo: number, hi: number, note: string) => { const r = rule(k); add('Crime', figure, `${lo} to ${hi} times as many`, r.would ? `${num(r.did / r.would, 2)} times (${r.did} against ${r.would} in ${r.n} seasons)` : 'none', r.would >= ENOUGH ? within(r.did / r.would, lo, hi) : null, note); };
+  more('thief', 'Thieves taken in a season in a town with a Watch House, against the same seasons with none', 10, 20, 'The Watch House\'s rule (watchhouse.ts): a thief is 15 in a hundred likelier to be taken each season. Every season a thief was at large in a town with a Watch House standing, any people\'s, by the draw that decided it.');
+  more('clue', 'Clues to a killer found in a season in a town with a Watch House, against the same seasons with none', 15, 25, 'The Watch House\'s rule: a clue to a killer is 20 in a hundred likelier to turn up each season. Every season a killer was at large in a town with a Watch House standing, by the draw that decided it.');
+  fewer('kill', 'Killings in a season by a killer in a town with a Watch House, against the same seasons with none', 0.65, 0.85, 'The Watch House\'s rule: a killer\'s chance of killing in a season is three quarters of what it was. The same seasons, by the draw that decided each.');
+  fewer('begin', 'Thieves and killers beginning among the player\'s people with Town Watch learnt, against the same seasons without', 0.6, 0.8, 'Town Watch\'s rule (townwatch.ts): three in ten fewer thieves and killers begin. Every season the player\'s towns were looked at for a new one while the player had Town Watch, by the draws that decided it.');
+  const held = rule('held');
+  add('Crime', 'Strikes held off by a town that keeps a town watch, against the same strikes with its company left out', 'report only', held.n ? `${pct(held.did / held.n)} against ${pct(held.would / held.n)} (${held.n} strikes)` : 'none', 'report', 'Town Watch\'s rule: a town with a Watch House stands a company stronger against a band. Every strike on such a town, any people\'s, fought again with that company left out of its works. The rule gives a company, not a share of strikes held, so there is no band.');
+}
   }
   // Soldiers named on the map (veteranhome.ts, rivalrule.ts): how often for the player, and what a battle credits one with.
   {
+{
+  const mv = ruled.map((w) => w.moves), nations = ruled.length * 3, homes = mv.reduce((k, x) => k + x.households, 0), folk = mv.reduce((k, x) => k + x.people, 0), settlers = mv.reduce((k, x) => k + x.settlers, 0);
+  const why: Record<string, number> = {};
+  for (const x of mv) for (const [k, v] of Object.entries(x.why)) why[k] = (why[k] ?? 0) + v;
+  const whyText = Object.entries(why).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${pct(v / Math.max(1, homes))}`).join(', ');
+  add('People', 'Households that move between a people\'s towns, per nation per 20 years', 'report only', `${num(homes / nations)} households a nation, ${num(homes ? folk / homes : NaN)} people a move (${whyText || 'none'}); ${num(settlers / nations)} parties of settlers a nation founding a town`, 'report',
+'Every family that set out by road from one town of its people to another in the first twenty years (migration.ts migrateOf, the household of householdmove.ts: the couple, their children and an old one), every people\'s, over three peoples a campaign; the people a move counts those on the convoy, children included. Why: the push that sent them. Settlers who went to found a town on empty land are counted apart.');
+}
 const n = ruled.map((w) => w.named), battle = n.reduce((k, x) => k + x.battle, 0), wins = n.reduce((k, x) => k + x.wins, 0), mine = n.reduce((k, x) => k + x.mine, 0);
 const years = ruled.reduce((k, w) => k + (w.decided >= 0 ? w.decided / 4 : w.storyYears), 0); // years the campaigns ran undecided, as the names are counted
 const every = mine ? years / mine : NaN;
