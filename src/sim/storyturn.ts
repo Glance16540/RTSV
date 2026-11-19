@@ -4,6 +4,7 @@
 //
 // campaign.ts calls `storyTurn(c)` once a season. Whoever puts a tale to the player uses `taleNow`, `taleText`,
 // `canAnswer` and `answerTale`.
+import { cameOf } from './chroniclethreads';
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
 import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, tell } from './campaignbase';
@@ -68,7 +69,7 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
     else if (from && !a) { const fresh = { id: c.nextArmy++, owner: 0, at: home.id, units: {}, hero: false, vet: 0, moved: true }; if (levyFrom(c, fresh, from.id, 1)) c.armies.push(fresh); }
   }
   c.log.push(result);
-  tell(c, `${tale.title}: ${result}`);
+  tell(c, `${tale.title}: ${result}${cameOf(c, tale.after, (id) => TALES.find((x) => x.id === id)?.title)}`); // a tale that came of an earlier answer says so (chroniclethreads.ts)
   shiftVirtue(c, 0, ch.virtue);
   return true;
 }
