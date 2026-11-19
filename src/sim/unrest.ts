@@ -19,6 +19,7 @@ import { armyAt, FAITH, faithOf } from './campaignbase';
 import { creedOf } from './creed';
 import { faithAt } from './townfaith';
 import { leaderAt } from './court';
+import { leaderSteady } from './leaderstay';
 import { angryAt, noblesAt } from './nobles';
 import { folkOf, headcount } from './township';
 import { unrestEase } from './ownstudies';
@@ -97,7 +98,7 @@ export function unrestChance(c: Campaign, tid: number, busy?: ReadonlySet<number
   if (!mayStir(c, tid, busy)) return 0;
   if (faithOf(c, c.territories[tid].owner).steadfast) return 0; // a steadfast people's towns keep faith
   const w = unrestWeights(c, tid);
-  return Math.min(UNREST.most, UNREST.base * w.hungry * w.church * w.farm * w.tavern * w.pious * w.held * w.nobles * unrestEase(c, tid) * lawUnrest(c, tid)); // and written law (writtenlaw.ts) // and a people's own study (ownstudies.ts)
+  return Math.min(UNREST.most, UNREST.base * w.hungry * w.church * w.farm * w.tavern * w.pious * w.held * w.nobles * unrestEase(c, tid) * lawUnrest(c, tid) * leaderSteady(c, tid)); // and a Warlord staying beside it (leaderstay.ts) // and written law (writtenlaw.ts) // and a people's own study (ownstudies.ts)
 }
 /**
  * A season of it: every town is asked by its own chance. Returns the towns where unrest has begun, and marks it

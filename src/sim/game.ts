@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { intoField } from './fieldwork';
 import { StyleSign, styleSign } from './stylesigns';
 import { layCoarse, layKept } from './firstlay';
 import { unlaidOf, unplaced } from './unlaid';
@@ -56,6 +57,7 @@ import { Pathfinder, rectDist } from './path';
 
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
+import { stewardPace, stewardWard } from './steward';
 import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
 import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND } from './hero';
@@ -2727,7 +2729,7 @@ export class Game {
           if (b.burnT > 0) { douse(this, b); break; } // the fire first: nothing is mended while it burns
           const p0 = this.players[u.owner];
           if (!b.complete) {
-            const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build * griefPace(this, u);
+            const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build * griefPace(this, u) * stewardPace(this, u); // the faster near a Steward (steward.ts)
             b.progress += work;
             b.hp = Math.min(b.maxHp, b.hp + b.maxHp * work);
             if (b.progress >= 1) {
@@ -2739,7 +2741,7 @@ export class Game {
               this.upkeep();
             }
           } else {
-            b.hp = Math.min(b.maxHp, b.hp + (b.maxHp * DT) / (b.def.time * 1.5));
+            b.hp = Math.min(b.maxHp, b.hp + ((b.maxHp * DT) / (b.def.time * 1.5)) * stewardPace(this, u));
           }
         } else if (r === 'fail') this.setOrder(u, null);
         break;
@@ -2843,8 +2845,9 @@ export class Game {
     o.fails = 0;
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
+    if (t.kind === 'building' && t.type === 'farm') intoField(u, t, DT); // in among the rows, not at the fence, working as they go (fieldwork.ts)
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * millPace(this, u.owner) * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * stewardPace(this, u) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * millPace(this, u.owner) * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
@@ -2966,7 +2969,7 @@ export class Game {
     } else armor = 1;
     // A leader is still flesh: however armoured, a blow tells on them.
     const raw = atk * mult * aura;
-    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale * callWard(this, t);
+    const dmg = Math.max(1, raw - armor, t.kind === 'unit' && t.hero ? raw * HERO_MIN_HURT : 0) * (1 - morale) * scale * callWard(this, t) * stewardWard(this, t);
     t.hp -= dmg;
     tp.lastAttacked = { x: t.x, y: t.y, t: this.time };
     if (this.time - tp.alertT > 12) {
@@ -3021,7 +3024,7 @@ export class Game {
   /** The leader raises their call: for a few seconds it tells on everyone of theirs within reach. */
   cmdCall(owner: number): boolean { return cmdCall(this, owner); }
   /** Whose call, if any, is sounding over this spot for this player's people: a Warlord's or a Strategist's. */
-  calledAt(owner: number, x: number, y: number): 'warlord' | 'strategist' | null { return calledAt(this, owner, x, y); }
+  calledAt(owner: number, x: number, y: number): ReturnType<typeof calledAt> { return calledAt(this, owner, x, y); }
 
   /** Could this soldier be raised to lead? Only when the leader has fallen and nobody has taken their place. */
   canAcclaim(owner: number, u: Unit): boolean { return canAcclaim(this, owner, u); }
