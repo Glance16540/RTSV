@@ -8,7 +8,7 @@
 
 import { scarsOf } from '../sim/battlescars';
 import { scarPieces } from './scardraw';
-import { RIM_PAINT, bandCamp, paintRim, rimTint, seenByPlayer, wasteOf } from './rimdraw';
+import { RIM_PAINT, bandCamp, paintRim, paintRimTracks, rimTint, seenByPlayer, wasteOf } from './rimdraw';
 import { Walker, walk, walkerFor } from './caravandraw';
 import { convoyWalkers } from './convoydraw';
 import { bandsAt } from '../sim/threats';
@@ -295,6 +295,7 @@ export class WorldMap {
       }
     }
     ctx.setLineDash([]);
+    paintRimTracks(ctx, c); // the trodden ways down out of the rim (rimdraw.ts)
     this.paintTex = new THREE.CanvasTexture(this.sheet);
     this.paintTex.colorSpace = THREE.SRGBColorSpace;
     this.paintTex.anisotropy = this.gl.capabilities.getMaxAnisotropy();
