@@ -1,6 +1,7 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
-import { onTheMove, raiderSteps } from '../sim/raiderguide';
+import { storyEnd } from './missionstory';
+import { bandCount, onTheMove, raiderSteps } from '../sim/raiderguide';
 import { buildingLook, inFaith } from '../sim/faithhouse';
 import { mayGoHome, mayRejoin } from '../sim/furlough';
 import { endCard } from './briefing';
@@ -234,7 +235,7 @@ export class Hud {
       // A battle out of the campaign has its own card: the count of both sides and words its size (briefing.ts). A field has no score to chart.
       const card = this.app.tally ? endCard(game, pid, this.app.tally, win, hex) : null;
       if (card && !byWonder) $('end-text').textContent = card.text;
-      $('end-stats').innerHTML = (LEADERS[civ] ? speechHtml(last) : '') + (card ? card.html : '') + (card && game.field ? '' : this.summary());
+      $('end-stats').innerHTML = storyEnd(this.app.mission?.id, win) + (LEADERS[civ] ? speechHtml(last) : '') + (card ? card.html : '') + (card && game.field ? '' : this.summary()); // a mission's thread goes on (missionstory.ts)
       playLine(last);
       $('end').classList.remove('hidden');
     }
@@ -788,7 +789,7 @@ export class Hud {
       game.field
         ? `<span title="Your soldiers still standing">${ico('attackmove', '⚔️')} Yours ${mine}</span><span title="The enemy's soldiers still standing" class="${theirs > mine ? 'warn' : ''}">${ico('attackmove', '⚔️')} Theirs ${theirs}</span>`
         : RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
-          `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
+          (onTheMove(game, pid) ? `<span title="${bandCount(p.pop, p.popCap).tip}">${ico('population', '👥')} ${bandCount(p.pop, p.popCap).text}</span>` : `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`), // a war band at its size is not short of houses (raiderguide.ts)
       `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder + this.weatherTag() + (game.field ? '' : ` · <span class="creed" title="${this.creedTip(p.virtue)}">${creedOf(p.virtue).icon} ${creedOf(p.virtue).name}</span>`),
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,
