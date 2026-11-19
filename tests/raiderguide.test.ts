@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { BAND } from '../src/sim/data';
 import { Game } from '../src/sim/game';
-import { onTheMove, raiderSteps } from '../src/sim/raiderguide';
+import { bandCount, onTheMove, raiderSteps } from '../src/sim/raiderguide';
 import { run, villagers } from './helpers';
 
 const band = () => { const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'steppe' }, { name: 'B', color: 2, isAI: true, civ: 'hearth' }], 72); run(g, 1); return g; };
@@ -30,5 +30,14 @@ describe('the war band\'s guide', () => {
     g.spawnBuilding('towncenter', 0, Math.floor(v.x) - 1, Math.floor(v.y) - 5, true);
     expect(raiderSteps(g, 0)[2].done).toBe(true);
     expect(onTheMove(g, 0)).toBe(false); // a town now: the settled town's steps follow
+  });
+});
+
+describe('the band\'s head count', () => {
+  it('says a full band is full, plainly, and how to grow', () => {
+    expect(bandCount(9, 12)).toMatchObject({ text: '9/12' });
+    const full = bandCount(12, 12);
+    expect(full.text).toBe('12 · band full');
+    expect(full.tip).toMatch(/raise a Town Center/);
   });
 });

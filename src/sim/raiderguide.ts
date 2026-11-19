@@ -29,3 +29,16 @@ export function raiderSteps(g: Game, pid: number): GuideStep[] {
     { title: 'Settle when you choose', how: `A band can raise its ${tc.name} in any age. Select a villager and build one where you mean to stay (${cost}: the band set out with wood and stone for it). Until it stands, you are beaten when the last of your band falls.`, done: g.buildings.some((b) => b.owner === pid && b.type === 'towncenter' && b.complete) },
   ];
 }
+
+/**
+ * The band's head count as the top bar shows it. A band in the open is capped at what it can feed on the move
+ * (BAND.pop); reaching that is how a band is, not a fault, so it is told plainly: the count, and when full, that a
+ * hall makes room for more (those it carries off still join).
+ */
+export function bandCount(pop: number, cap: number): { text: string; tip: string } {
+  const full = pop >= cap;
+  return {
+    text: full ? `${pop} · band full` : `${pop}/${cap}`,
+    tip: full ? `The band is full at ${cap}: raise a Town Center to train more. Those you carry off still join.` : `The band: ${pop} of the ${cap} it can keep on the move. Raise a Town Center to grow beyond it.`,
+  };
+}
