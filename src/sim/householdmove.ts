@@ -17,7 +17,7 @@ import { folkOf } from './township';
 
 export const HOUSEHOLD = {
   /** Children who go with a household, at most. */
-  children: 3,
+  children: 2,
   /** Old people who go with it, at most. */
   old: 1,
 };
