@@ -1044,10 +1044,10 @@ export const CIVS: Record<string, CivDef> = {
   },
   greece: {
     id: 'greece', name: 'Greeks', icon: '🏺', desc: 'Free cities of citizen-soldiers and thinkers.', unique: 'hoplite', unique2: 'companion',
-    bonuses: ['Their Hoplites turn a third of every missile and break cavalry', 'Their Companion Cavalry strike hardest after a run-up'],
-    // Their two gifts beside their own units are gone (research a fifth cheaper, soldiers' one more armour): on the scholars' rule they won 60 decided
-    // games to 23 against the other fourteen peoples' computers; without the cheap research 62 to 31, and without the armour too 48 to 31.
-    apply: (_m) => { /* their gifts are their own two units and the scholars' rule */ },
+    bonuses: ['Soldiers have 1 more armour'],
+    // Research a fifth cheaper is gone: with it, on the scholars' rule, they won 60 decided games to 23 against the other fourteen peoples'
+    // computers; without it 62 to 31 in the round of all fifteen. (Without the armour too it was 48 to 31; the armour is kept.)
+    apply: (m) => { m.armor += 1; },
   },
   england: {
     id: 'england', name: 'English', icon: '🌹', desc: 'Yeoman farmers and bowmen of a green island.', unique: 'longbowman', unique2: 'billman',

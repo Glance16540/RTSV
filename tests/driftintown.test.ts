@@ -1,6 +1,7 @@
 // Drift inside a town (src/sim/driftintown.ts): the town turns out as the map left it, who works where shifts
 // under pressure in real time, decrees are felt there, the computer leaves the drifted be, and those at the tavern
 // and the mine go home as the town's drifted.
+import { TEMPER } from '../src/sim/churchtavern';
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
@@ -68,10 +69,15 @@ describe('decrees and the computer, in a town', () => {
       run(g, 1200, () => raid(g, tc.x, tc.y));
       return p.drifted ?? { tavern: 0, mine: 0 };
     };
-    const free = count();
-    expect(count([{ kind: 'closeTavern', strength: 1 }]).tavern).toBe(0);
-    const guarded = count([{ kind: 'guards', strength: 1 }]);
-    expect(guarded.tavern + guarded.mine).toBeLessThanOrEqual(free.tavern + free.mine);
+    // This is about decrees alone: the Church beside the test town's Tavern is let not temper it (churchtavern.ts).
+    const tempers = TEMPER.drift;
+    TEMPER.drift = 0;
+    try {
+      const free = count();
+      expect(count([{ kind: 'closeTavern', strength: 1 }]).tavern).toBe(0);
+      const guarded = count([{ kind: 'guards', strength: 1 }]);
+      expect(guarded.tavern + guarded.mine).toBeLessThanOrEqual(free.tavern + free.mine);
+    } finally { TEMPER.drift = tempers; }
   }, 120_000);
 
   it('the computer does not set a drifted villager back to its own work', () => {

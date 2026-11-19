@@ -13,10 +13,11 @@
  * battle or visit fought there in person; a raid it held off or was broken by. What moves every town of a nation
  * at once: a tale answered, a comet. A town taken keeps its own standing under its new holder.
  */
+import { tavernPull } from './churchtavern'; // a Church beside the Tavern tempers its pull
 import { pilgrimPull } from './pilgrimage';
 import type { Campaign } from './campaign';
 import { placeAt } from './places';
-import { CHURCH_VIRTUE, FAITH, TAVERN_VIRTUE, tell } from './campaignbase';
+import { CHURCH_VIRTUE, FAITH, tell } from './campaignbase';
 import { creedOf } from './creed';
 import { PLACES } from './story';
 import { faithPull } from './ownstudies';
@@ -77,7 +78,7 @@ export function townDrift(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   if (!t || t.owner < 0) return 0;
   const place = placeAt(c, tid);
-  return (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0) + (place ? PLACES[place.kind].virtue ?? 0 : 0) + faithPull(c, tid) + lifeDrift(c, tid) + leanOf(c, tid); // its own life (townlife.ts), a people's own study (ownstudies.ts), and its own lean (townlean.ts)
+  return (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - tavernPull(c, tid) + (place ? PLACES[place.kind].virtue ?? 0 : 0) + faithPull(c, tid) + lifeDrift(c, tid) + leanOf(c, tid); // its own life (townlife.ts), a people's own study (ownstudies.ts), and its own lean (townlean.ts)
 }
 /** A season of faith: every held town moves by its own drift. `shift` does the moving, so the map can say when a nation's creed turns. */
 export function seasonOfFaith(c: Campaign, shift: (f: number, by: number, at: number) => void): void {

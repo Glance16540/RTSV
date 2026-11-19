@@ -40,12 +40,12 @@ describe('the Norse', () => {
 });
 
 describe('the Greeks', () => {
-  it('pay for research what anyone pays, and their soldiers have no more armour than anyone\'s', () => {
+  it('pay for research what anyone pays, and keep their soldiers\' armour', () => {
     const plain = baseMods(), m = baseMods();
     CIVS.greece.apply(m);
     expect(m.techCost).toBe(plain.techCost);
-    expect(m.armor).toBe(plain.armor);
-    expect(CIVS.greece.bonuses.join(' ')).not.toMatch(/Research costs|more armour/);
+    expect(m.armor).toBe(plain.armor + 1);
+    expect(CIVS.greece.bonuses).toEqual(['Soldiers have 1 more armour']);
   });
   it('are scholars still, with their own two units as they were', () => {
     const g = new Game(3, [{ name: 'A', color: 1, isAI: false, civ: 'greece' }, { name: 'B', color: 2, isAI: true, civ: 'hearth' }]);
