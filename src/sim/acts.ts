@@ -22,7 +22,7 @@
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was. How often they
 // fall is by the town's own standing (townfaith.ts; `wrathAt`), not its people's; and the dead of plague are
-// counted, not named.
+// counted, a known person among them lost by name (plaguenamed.ts).
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { weatherAt } from './campaignbase';
 import { armySize } from './campaignbase';
@@ -41,6 +41,7 @@ import { infirmaryCare } from './infirmary';
 import { rotationFail } from './croprotation'; // food and health studies
 import { quarantinePass } from './quarantine';
 import { physicianCare } from './physicians';
+import { plagueTakes } from './plaguenamed';
 
 export const ACTS = {
   /** The season from which they may come. */
@@ -116,6 +117,7 @@ export function sicken(c: Campaign, t: Territory): number {
     else { k.women--; man = true; }
     dead++;
   }
+  plagueTakes(c, t.id, dead, grownNow); // a known person among them is lost by name (plaguenamed.ts)
   tally(c, t.id, 'sick', dead); // for the season's report (ledger.ts)
   return dead; // the ages on the record follow the counts the next time they are read (ageing.ts)
 }

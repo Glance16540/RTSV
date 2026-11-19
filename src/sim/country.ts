@@ -56,7 +56,7 @@ export function openBorder(c: Campaign, f: number, from: number, to: number): bo
   if (!canOpen(c, f, from, to)) return false;
   const w = barrierBetween(c, from, to)!, work = workFor(c, from, to)!;
   const A = c.territories[from], B = c.territories[to];
-  payFor(c, f, work === WORKS.river ? 'bridge' : 'pass', work.cost, { at: from });
+  if (!payFor(c, f, work === WORKS.river ? 'bridge' : 'pass', work.cost, { at: from, act: { kind: 'work', arg: to } })) return false; // or it waits for goods sent for by road (sentfor.ts)
   c.barriers = (c.barriers ?? []).filter((x) => x !== w);
   if (!A.adj.includes(to)) A.adj.push(to);
   if (!B.adj.includes(from)) B.adj.push(from);
@@ -72,12 +72,23 @@ export function openBorder(c: Campaign, f: number, from: number, to: number): bo
  * Returns whether anything was built.
  */
 export function rivalOpens(c: Campaign, f: number, spare = 12): boolean {
+  const way = rivalWay(c, f, { spare });
+  return !!way && openBorder(c, f, way.from, way.to);
+}
+/**
+ * The border a rival would open now (rivalOpens), or would open with `extra` more supplies in hand: from where, to where,
+ * and at what cost. Changes nothing (rivalstock.ts reads it a season ahead).
+ */
+export function rivalWay(c: Campaign, f: number, o: { spare?: number; extra?: number } = {}): { from: number; to: number; cost: number; what: 'bridge' | 'pass' } | null {
+  const spare = o.spare ?? 12, purse = c.factions[f].supplies + (o.extra ?? 0);
   const own = new Set(c.territories.filter((t) => t.owner === f).map((t) => t.id));
   const shut = ![...own].some((id) => c.territories[id].adj.some((n) => !own.has(n)));
-  if (!shut && (c.works ?? []).some((w) => w.by === f)) return false;
+  if (!shut && (c.works ?? []).some((w) => w.by === f)) return null;
   const ways = (c.barriers ?? []).filter((w) => w.kind !== 'water' && own.has(w.a) !== own.has(w.b))
     .map((w) => (own.has(w.a) ? { from: w.a, to: w.b } : { from: w.b, to: w.a }))
-    .filter((w) => c.factions[f].supplies >= WORKS[barrierBetween(c, w.from, w.to)!.kind as 'river'].cost + (shut ? 0 : spare))
+    .filter((w) => purse >= WORKS[barrierBetween(c, w.from, w.to)!.kind as 'river'].cost + (shut ? 0 : spare))
     .sort((p, q) => WORKS[barrierBetween(c, p.from, p.to)!.kind as 'river'].cost - WORKS[barrierBetween(c, q.from, q.to)!.kind as 'river'].cost || p.from - q.from || p.to - q.to);
-  return ways.length > 0 && openBorder(c, f, ways[0].from, ways[0].to);
+  if (!ways.length) return null;
+  const work = workFor(c, ways[0].from, ways[0].to)!;
+  return { ...ways[0], cost: work.cost, what: work === WORKS.river ? 'bridge' : 'pass' };
 }

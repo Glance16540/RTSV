@@ -78,6 +78,45 @@ export function paintRim(ctx: CanvasRenderingContext2D, c: Campaign, landAt: (x:
   return n;
 }
 
+/** A way out of the rim: from a rim land to a land it looks down on (rim.ts `down`), as a bent line in the map's units. */
+export interface RimTrack { rim: number; to: number; ax: number; ay: number; mx: number; my: number; bx: number; by: number }
+
+/**
+ * The tracks out of the rim: one from each rim land to each land it looks down on. They bend as the roads do
+ * (worldmap.ts), the other way, so that a track never lies along a road. No army marches them: the rim is nobody's
+ * neighbour, and only what is born there comes down them (rim.ts `outOf`).
+ */
+export function rimTracks(c: Campaign): RimTrack[] {
+  const out: RimTrack[] = [];
+  for (const t of c.territories) {
+    if (!t.rim) continue;
+    for (const d of t.down ?? []) {
+      const u = c.territories[d];
+      if (!u) continue;
+      out.push({ rim: t.id, to: u.id, ax: t.x, ay: t.y + 8, mx: (t.x + u.x) / 2 - (u.y - t.y) * 0.08, my: (t.y + u.y) / 2 + (u.x - t.x) * 0.08 + 8, bx: u.x, by: u.y + 8 });
+    }
+  }
+  return out;
+}
+
+/**
+ * Draw the tracks out of the rim on the map's paint, after its roads: a trodden trail, narrower and darker than a road
+ * and broken shorter, so it reads as a way that feet have made and nobody keeps. Returns how many were drawn.
+ */
+export function paintRimTracks(ctx: CanvasRenderingContext2D, c: Campaign): number {
+  const tracks = rimTracks(c);
+  if (!tracks.length) return 0;
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.setLineDash([1.6, 4.2]);
+  for (const [tone, wide] of [['rgba(240,224,176,0.5)', 1.9], ['rgba(74,50,28,0.85)', 1]] as [string, number][]) {
+    ctx.strokeStyle = tone; ctx.lineWidth = wide;
+    for (const k of tracks) { ctx.beginPath(); ctx.moveTo(k.ax, k.ay); ctx.quadraticCurveTo(k.mx, k.my, k.bx, k.by); ctx.stroke(); }
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+  return tracks.length;
+}
+
 /**
  * Has the player sight of this band's camp? The sim's own rule (bandmarch.ts townsThatSee, as bandwilds.ts tells a
  * gathering camp): the towns within two lands of it see its fires. A camp nobody of the player's can see is not drawn.

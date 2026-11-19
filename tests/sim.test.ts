@@ -3577,7 +3577,7 @@ describe('faith on the campaign map', () => {
         c.factions[1].civ = civ;
         // Only what they raise themselves is counted: a church that stands on land they have taken was someone else's doing.
         const here = { church: 0, tavern: 0 };
-        for (let i = 0; i < 14 && c.phase !== 'over'; i++) {
+        for (let i = 0; i < 20 && c.phase !== 'over'; i++) { // long enough that a church built late, after waiting a season for its timber (sentfor.ts), has time to tell
           c.factions[1].supplies += 6;
           const had = new Map(c.territories.filter((t) => t.owner === 1).map((t) => [t.id, [...t.buildings]]));
           turn(c);

@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import type { Season } from './seasonsky';
 import { formationPlan } from './formations';
 import type { Formation } from './formations';
 import { slopePace } from './slopes';
@@ -16,6 +17,9 @@ import { dyingOut } from './dyingout';
 import { carriedOut } from './carriedout';
 import { seatRecords } from './warrecord';
 import { sendMan } from './pickman';
+import { ruleAt, seatHall } from './hallfield';
+import { markBegun, studyBuild } from './studiesintown';
+import { campBuilds, campUnhoused, campWithoutPeople } from './siegecamp';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -479,6 +483,8 @@ export class Game {
   weatherAmt = 0;
   weatherWant = 0;
   weatherT = 0;
+  /** The season the map is in, for the look of the land only: nothing in the rules reads it (seasonsky.ts). */
+  season: Season | '' = '';
   private wxSeed = 1;
 
   constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false, public climate: Climate = '') {
@@ -540,9 +546,12 @@ export class Game {
       const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
       if (this.raider(i) && atHome(s.bonus, field)) this.players[i].atHome = true; // a raiding people in a town of the map's begins as a town (raidertown.ts)
       if (!field && this.warband(i)) {
-        // A war band: a man and a woman to found the hall when they choose to settle, and fighters to feed it.
-        this.spawnUnit('villager', i, st.x - 0.5, st.y + 1.5 * dir, 'm');
-        this.spawnUnit('villager', i, st.x + 0.5, st.y + 1.5 * dir, 'f');
+        // A war band: a man and a woman to found the hall when they choose to settle, and fighters to feed it. Not a band
+        // besieging a town of the map: a besieging army's camp has no people from nowhere (siegecamp.ts).
+        if (!campWithoutPeople(s)) {
+          this.spawnUnit('villager', i, st.x - 0.5, st.y + 1.5 * dir, 'm');
+          this.spawnUnit('villager', i, st.x + 0.5, st.y + 1.5 * dir, 'f');
+        }
         for (let k = 0; k < BAND.fighters; k++) this.spawnUnit(this.trainedAs(i, 'clubman'), i, st.x - (BAND.fighters - 1) / 2 + k, st.y + 3 * dir);
         this.players[i].res.wood += BAND.wood;
         this.players[i].res.stone += BAND.stone;
@@ -552,9 +561,11 @@ export class Game {
         if (s.bonus?.roads?.length) this.players[i].roadsIn = s.bonus.roads.map(([x, y]) => [x, y] as [number, number]); // its roads laid by hand (handroads.ts)
         if (s.bonus?.story) this.players[i].story = { ...s.bonus.story, people: s.bonus.story.people.map((p) => ({ ...p })), robbed: [...s.bonus.story.robbed], cleared: [...s.bonus.story.cleared] }; // a story afoot here (fieldstory.ts)
         if (s.bonus?.court) this.players[i].court = structuredClone(s.bonus.court); // a story of the leader's house, where the court is kept (courtfield.ts)
+        if (s.hall) seatHall(this, i, s.hall); // the cases waiting on the leader's judgement at the town's Hall (hallfield.ts)
+        if (s.bonus?.studies?.length) markBegun(this, i); // works standing half-built, for the nation's Stewardship (studiesintown.ts)
         if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
         if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
-        else {
+        else if (!campWithoutPeople(s)) { // a besieging army's camp has no people from nowhere: its men are its soldiers (siegecamp.ts)
           this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
           this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
           this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
@@ -1263,6 +1274,8 @@ export class Game {
         this.setOrder(u, { t: 'board', id: t.id });
       } else if (t.owner !== owner) {
         this.setOrder(u, { t: 'move', x: t.x, y: t.y }); // an ally's: just walk over
+      } else if (t.kind === 'building' && !villager && campBuilds(this, u, t.type) && (!t.complete || t.hp < t.maxHp)) {
+        this.setOrder(u, { t: 'build', id: t.id, then: null }); // a besieger's soldier builds or mends its camp's works (siegecamp.ts)
       } else if (t.kind === 'building' && villager) {
         if (!t.complete || t.hp < t.maxHp) this.setOrder(u, { t: 'build', id: t.id, then: this.job(u) });
         else if (t.type === 'farm') this.orderGather(u, t);
@@ -1317,7 +1330,7 @@ export class Game {
     this.pay(p, def.cost);
     const b = this.spawnBuilding(type, owner, cx, cy, false);
     if (type === 'dock' && !this.findResourceNear(b.x, b.y, 'food', owner, 26, 0, true)) this.msg(owner, 'There are no fish near this water: boats built here will have nothing to catch.');
-    const us = this.ownUnits(builderIds, owner).filter((u) => u.type === 'villager' && u.growT <= 0);
+    const us = this.ownUnits(builderIds, owner).filter((u) => (u.type === 'villager' && u.growT <= 0) || campBuilds(this, u, type)); // a besieger's soldiers build its camp's works (siegecamp.ts)
     const done = this.command(us, queue);
     for (const u of us) this.setOrder(u, { t: 'build', id: b.id, then: queue ? null : this.job(u) });
     done();
@@ -1338,7 +1351,7 @@ export class Game {
       first ??= this.spawnBuilding(type, owner, c.cx, c.cy, false);
       if (n++) this.spawnBuilding(type, owner, c.cx, c.cy, false);
     }
-    if (first) for (const u of this.ownUnits(builderIds, owner)) if (u.type === 'villager' && u.growT <= 0) this.setOrder(u, { t: 'build', id: first.id, then: this.job(u) });
+    if (first) for (const u of this.ownUnits(builderIds, owner)) if ((u.type === 'villager' && u.growT <= 0) || campBuilds(this, u, type)) this.setOrder(u, { t: 'build', id: first.id, then: this.job(u) });
     return n;
   }
 
@@ -1430,7 +1443,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, bornOnly: this.bornOnly, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, bornOnly: this.bornOnly, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], ...(this.season ? { season: this.season } : {}), roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -1442,6 +1455,7 @@ export class Game {
     if (d.v !== SAVE_VERSION) throw new Error('Incompatible save');
     const g = new Game(d.seed, d.setups, d.size, d.field, d.sea, !!d.relief, d.climate ?? ''); // regenerates the same terrain from the seed
     if (d.wx) [g.weather, g.weatherAmt, g.weatherWant, g.weatherT, g.wxSeed] = d.wx;
+    if (d.season) g.season = d.season; // the season the map was in (seasonsky.ts)
     for (const cells of g.roadOf.values()) g.setRoad(cells, -1);
     g.roadOf = new Map(d.roads ?? []);
     for (const cells of g.roadOf.values()) g.setRoad(cells, 1);
@@ -1483,6 +1497,8 @@ export class Game {
 
   /** The player sends this villager to arms, in place of whoever the queue would call (pickman.ts). */
   cmdSendMan(owner: number, vid: number): boolean { return sendMan(this, owner, vid); }
+  /** The player rules on a case before the town's Hall of Judgement (hallfield.ts). */
+  cmdRule(owner: number, caseId: string, answer: string): boolean { return ruleAt(this, owner, caseId, answer); }
 
   cmdTrain(owner: number, bid: number, type: string, gender?: Gender): boolean {
     const b = this.entities.get(bid);
@@ -2762,7 +2778,7 @@ export class Game {
           if (b.burnT > 0) { douse(this, b); break; } // the fire first: nothing is mended while it burns
           const p0 = this.players[u.owner];
           if (!b.complete) {
-            const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build * griefPace(this, u) * stewardPace(this, u); // the faster near a Steward (steward.ts)
+            const work = (DT / b.def.time) * (this.has(u, 'skilled') ? 1.6 : 1) * p0.mods.build * griefPace(this, u) * stewardPace(this, u) * studyBuild(this, b); // the faster near a Steward (steward.ts), and a work begun before under Stewardship (studiesintown.ts)
             b.progress += work;
             b.hp = Math.min(b.maxHp, b.hp + b.maxHp * work);
             if (b.progress >= 1) {
@@ -3148,7 +3164,7 @@ export class Game {
         if (q.kind === 'unit') {
           const def = UNITS[q.id];
           const was = q.who ? this.entities.get(q.who) : undefined;
-          if (p.pop + def.pop - (was ? UNITS.villager.pop : 0) <= p.popCap) {
+          if (p.pop + def.pop - (was && was.kind === 'unit' ? was.def.pop : 0) <= p.popCap || campUnhoused(this, b.owner)) { // whoever goes in makes room: a villager, or a besieger's soldier crewing an engine, whose army no roof holds (siegecamp.ts)
             b.queue.shift();
             if (was && was.kind === 'unit') { was.inside = 0; was.enlisted = true; this.kill(was); }
             const u = this.spawnFrom(b, q.id, q.gender);

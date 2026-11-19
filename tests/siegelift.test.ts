@@ -68,7 +68,9 @@ describe('siegelift', () => {
     const g = siege(6);
     run(g, BESIEGE.form + 1);
     thin(g, 1);
-    const v = g.units.find((u) => u.owner === 1 && u.type === 'villager' && !u.dead)!;
+    // A camp has no villagers of its own now (siegecamp.ts): one is set down to be the someone to train.
+    const by = g.units.find((u) => u.owner === 1 && !u.dead)!;
+    const v = g.spawnUnit('villager', 1, by.x, by.y, 'm');
     g.spawnBuilding('barracks', 1, Math.round(v.x) + 3, Math.round(v.y) + 3, false);
     expect(spent(g, 1)).toBe(false);
   });

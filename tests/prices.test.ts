@@ -1,7 +1,9 @@
 // Prices by kind (src/sim/prices.ts, docs/DESIGN.md "Stores").
 import { describe, expect, it } from 'vitest';
 import { COMPANIES, SITES, advanceAge, ageCost, build, companyCost, hireOff, newCampaign, raise } from '../src/sim/campaign';
-import { CARRY, MADE_OF, SHORT_RATE, canPayFor, fundFor, payBar, payFor, priceOf, priceText } from '../src/sim/prices';
+import { CARRY, MADE_OF, SHORT_RATE, canPayFor, fundFor, payBar, payFor, paysHere, priceOf, priceText } from '../src/sim/prices';
+import { convoysTurn } from '../src/sim/convoys';
+import { sentForSeason } from '../src/sim/sentfor';
 import { SUPPLY_UNITS, settleStores } from '../src/sim/stores';
 import { STORE_KINDS, folkOf, nationStores } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
@@ -29,7 +31,7 @@ describe('prices by kind', () => {
     expect(priceText(priceOf('church', 5))).toBe('200 gold, 300 stone');
   });
 
-  it('a Barracks is paid in timber from the town where it is raised, and what it lacks is sent by road from another, at a cost', () => {
+  it('a Barracks is paid in timber from the town where it is raised, and what it lacks is sent by road from another, at a cost, and waits for it', () => {
     const { c, home, land } = world();
     fundFor(c, 0, 'dealing', 10); // ten supplies, all in gold
     land.buildings = [];
@@ -37,11 +39,25 @@ describe('prices by kind', () => {
     folkOf(c, land.id).stores.wood += 300;
     folkOf(c, home.id).stores.wood += 400;
     settleStores(c);
-    const homeWood = folkOf(c, home.id).stores.wood, gold = nationStores(c, 0).gold;
+    const homeWood = folkOf(c, home.id).stores.wood, landWood = folkOf(c, land.id).stores.wood, gold = nationStores(c, 0).gold;
     const lack = SITES.barracks.cost * SUPPLY_UNITS - (150 + 300);
-    expect(build(c, 0, land.id, 'barracks')).toBe(true);
-    expect(folkOf(c, land.id).stores.wood).toBe(0); // all the land's own timber first
-    expect(folkOf(c, home.id).stores.wood).toBe(homeWood - Math.ceil(lack * (1 + CARRY.cost))); // the rest by road, and the road's cost
+    // The town lacks timber: it is sent for by road, a season on the way, and the Barracks waits for it (sentfor.ts).
+    expect(build(c, 0, land.id, 'barracks')).toBe(false);
+    expect(land.buildings).not.toContain('barracks');
+    expect(folkOf(c, land.id).stores.wood).toBe(0); // the town's own timber set aside for it, so that nothing else spends it meanwhile
+    expect(c.sentFor![0].held!.wood).toBe(landWood);
+    expect(folkOf(c, home.id).stores.wood).toBe(homeWood - Math.ceil(lack * (1 + CARRY.cost))); // the rest set out by road, and the road's cost
+    const convoy = (c.convoys ?? []).find((x) => x.to === land.id && x.pays !== undefined)!;
+    expect(convoy.cargo.wood).toBe(lack);
+    expect(build(c, 0, land.id, 'barracks')).toBe(false); // waiting: not sent for twice
+    expect((c.convoys ?? []).filter((x) => x.pays !== undefined)).toHaveLength(1);
+    expect(payBar(c, 0, 'barracks', SITES.barracks.cost, { at: land.id })).toContain('on the road');
+    // The season turns: the timber comes in, and the Barracks is raised out of the town's own stores.
+    c.turn++;
+    convoysTurn(c);
+    sentForSeason(c, (w) => paysHere(c, w.f, w.what, w.n, { at: w.at }) && build(c, w.f, w.at, String(w.act.arg)));
+    expect(land.buildings).toContain('barracks');
+    expect(folkOf(c, land.id).stores.wood).toBe(0); // all the land's own timber, and what came in
     expect(nationStores(c, 0).gold).toBe(gold); // and nothing else
   });
 

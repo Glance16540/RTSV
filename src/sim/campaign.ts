@@ -1,6 +1,10 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { pressClaims } from './bothhouses';
+import { seasonOfTurn } from './seasonsky';
+import type { Season } from './seasonsky';
+import { leavePlague, safeStep, sickLast } from './aiplague';
 import { beatenBack } from './siegeretreat';
 import { finishWorks, scarTown } from './battlescars';
 import { rivalBattleHeard } from './chroniclethreads';
@@ -53,6 +57,7 @@ import { petitionSeasons } from './petitions';
 import { breakPacts } from './pacts';
 import { royalSeason } from './royalmarriage';
 import { tradeSeason } from './tradedeal';
+import { hallCasesAt, hallFromSitting } from './hallcases';
 import { widowsSeason } from './widowhood';
 import { studiedHome, studiesSeason, withStudies } from './studies';
 import { rulesSeason } from './rule';
@@ -71,7 +76,7 @@ export { answerTale, canAnswer, taleNow, taleText } from './storyturn'; // where
 export const HERO_COST = 8;
 import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
-import { countryOf, countryYield, rivalOpens } from './country';
+import { countryOf, countryYield, openBorder, rivalOpens } from './country';
 import { gainAt, settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf } from './naming';
 import { Orders, governTowns, keepOrders, shareOf } from './governor';
@@ -84,7 +89,10 @@ import { unrestSeason } from './unrest';
 import { freeStruck, freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
-import { canPayFor, payFor } from './prices';
+import { letGoSeason } from './emptied';
+import { canPayFor, payFor, paysHere } from './prices';
+import { SentFor, sentForSeason } from './sentfor';
+import { rivalForesight, spendIn } from './rivalstock';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
 export { shiftVirtue } from './townfaith'; // where it was found before it was moved
@@ -756,7 +764,7 @@ export const canAdvance = (c: Campaign, f: number): boolean => ageOf(c, f) < AGE
 export function advanceAge(c: Campaign, f: number): boolean {
   if (!canAdvance(c, f)) return false;
   const fac = c.factions[f];
-  payFor(c, f, 'age', ageCost(c, f));
+  if (!payFor(c, f, 'age', ageCost(c, f), { act: { kind: 'age' } })) return false; // or it waits for goods sent for by road (sentfor.ts)
   fac.age = ageOf(c, f) + 1;
   c.log.push(`${f === 0 ? 'Your people have' : `${fac.name} have`} entered the ${AGES[fac.age].name}.`);
   if (f === 0) advise(c, 'p_ageup');
@@ -833,9 +841,14 @@ export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
 
 // ---- Actions ----
 
+/** Do a thing that waited for its goods to come in by road (sentfor.ts), as it was ordered. */
+const doSentFor = (c: Campaign, s: SentFor): boolean =>
+  s.act.kind === 'build' ? build(c, s.f, s.at, String(s.act.arg)) : s.act.kind === 'hero' ? summonHero(c, s.f, s.at)
+    : s.act.kind === 'age' ? advanceAge(c, s.f) : s.act.kind === 'work' ? openBorder(c, s.f, s.at, Number(s.act.arg)) : false;
+
 export function build(c: Campaign, f: number, tid: number, site: string): boolean {
   if (!canBuild(c, f, tid, site)) return false;
-  payFor(c, f, site, siteCost(c.territories[tid], site, c.factions[f].civ), { at: tid });
+  if (!payFor(c, f, site, siteCost(c.territories[tid], site, c.factions[f].civ), { at: tid, act: { kind: 'build', arg: site } })) return false; // or it waits for goods sent for by road (sentfor.ts)
   c.territories[tid].buildings.push(site);
   return true;
 }
@@ -856,7 +869,7 @@ export function raise(c: Campaign, f: number, tid: number, type: string): boolea
 
 export function summonHero(c: Campaign, f: number, tid: number): boolean {
   if (!canSummonHero(c, f, tid)) return false;
-  payFor(c, f, 'hero', heroCost(c.factions[f].civ), { at: tid });
+  if (!payFor(c, f, 'hero', heroCost(c.factions[f].civ), { at: tid, act: { kind: 'hero' } })) return false; // or it waits (sentfor.ts)
   strangerLeads(c, f);
   c.factions[f].heroAlive = true;
   seat(c, f, tid);
@@ -1060,6 +1073,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
   // written: a battle fought in person has been settled and its field is being read back.
   .on('written', 'studies', (c, _p, b) => { studiedHome(c, 0, b.after?.studies); }) // what the player's side researched in the fighting is the nation's, as from a visit
+  .on('written', 'hallcases', (c, p, b) => { if (p.defender === 0 && p.mode !== 'field') hallFromSitting(c, p.to, b.after?.hall); }) // the rulings given at the town's Hall in the battle (hallcases.ts)
   .on('written', 'warrecord', (c, p, b) => { recordsBack(c, p, b.after?.records); }) // each named soldier who stood adds the battle to his record (warrecord.ts)
   .on('written', 'tribes', (c, p, b) => fieldReckoned(c, p, b.after?.folk)) // those of the town who marched out to a battle in the open and fell
   // housed: the town's people and stores are as that battle left them.
@@ -1247,6 +1261,7 @@ export function continueAI(c: Campaign): void {
       for (const a of c.armies) { a.moved = resting(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts)
       courtTurn(c);
       for (const x of c.factions) x.angry = false;
+      pressClaims(c); // a house refused its claim on your throne presses it by war (bothhouses.ts)
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
       c.truces = c.truces.filter((tr) => tr.until >= c.turn);
       seasonOfFaith(c, (f, by, at) => shiftVirtue(c, f, by, { at })); // every town moves by its own church, tavern and holy place (townfaith.ts)
@@ -1265,6 +1280,7 @@ export function continueAI(c: Campaign): void {
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
       tribesSeason(c); // a tribe's bands are counted from its town's men (tribes.ts)
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
+      if (letGoSeason(c).length) checkElimination(c); // and one nobody comes for is let go, an empty land for settlers (emptied.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       studiesSeason(c); // rival nations learn the study that answers what presses on them (studies.ts)
@@ -1272,6 +1288,7 @@ export function continueAI(c: Campaign): void {
       governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
+      sentForSeason(c, (s) => paysHere(c, s.f, s.what, s.n, { at: s.at }) && doSentFor(c, s)); // what waited for goods sent for by road is done, if they came in (sentfor.ts)
       caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
@@ -1377,19 +1394,21 @@ function aiStep(c: Campaign, f: Faction): boolean {
     if (!f.heroAlive) autoSucceed(c, f.id);
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
+    rivalForesight(c, f.id, { ageCost: ageCost(c, f.id), income: income(c, f.id), maxAge: AGE_COST.length }); // goods sent a season ahead of its next age and its chosen work (rivalstock.ts)
     // A people with stores to spare moves with the times.
     if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8 && mayAdvance(c, f.id)) advanceAge(c, f.id); // and has lived in this age long enough (rivalrule.ts)
     // A people shut in by the sea builds a harbour before anything else.
     const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
-    if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }
+    if (shut) { const port = spendIn(c, f.id, 'harbour', own.filter((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')).map((t) => ({ tid: t.id, n: siteCost(t, 'harbour', civ) }))); if (port !== undefined) build(c, f.id, port, 'harbour'); } // where it can pay (rivalstock.ts)
     // A people with stores to spare bridges a river or cuts a pass towards land that is not its own.
     if (c.turn >= 6) rivalOpens(c, f.id);
     // A people builds what it believes in: the pious a church, the worldly a tavern, each in its chief town first.
     const lean = leaningWith(civ, LEANING[civ] ?? 0.5);
     const house = lean >= 0.6 ? 'church' : lean <= 0.4 ? 'tavern' : '';
     if (house && c.turn >= 3 && f.supplies >= siteCost(own[0] ?? c.territories[0], house, civ) + 6 && own.filter((t) => t.buildings.includes(house)).length < 1 + Math.floor(own.length / 5)) {
-      const at = own.find((t) => t.capital === f.id && canBuild(c, f.id, t.id, house)) ?? own.find((t) => !t.adj.some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, house));
-      if (at) build(c, f.id, at.id, house);
+      const cands = [...own.filter((t) => t.capital === f.id), ...own.filter((t) => t.capital !== f.id && !t.adj.some((n) => c.territories[n].owner !== f.id))].filter((t) => canBuild(c, f.id, t.id, house));
+      const at = spendIn(c, f.id, house, cands.map((t) => ({ tid: t.id, n: siteCost(t, house, civ) }))); // its chief town first, else a town within, where it can pay (rivalstock.ts)
+      if (at !== undefined) build(c, f.id, at, house);
     }
     for (const t of own) {
       const border = onFrontier(c, f.id, t.id); // beside somebody, not beside empty or wild land (reckon.ts)
@@ -1428,6 +1447,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     targets.sort((a, b) => foe(a) - foe(b));
   }
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
+  targets.splice(0, targets.length, ...sickLast(c, targets)); // a land with plague in it last (aiplague.ts)
   // Cautious leaders want better odds; a leader who has just been refused wants blood.
   const dares = (from: number, to: number): boolean => {
     const t = c.territories[to];
@@ -1442,14 +1462,17 @@ function aiStep(c: Campaign, f: Faction): boolean {
     moveArmy(c, army.id, dared);
     return false;
   }
+  // Nothing it dares, and plague where it stands: it goes to a healthy land of its own next door (aiplague.ts).
+  const away = leavePlague(c, army);
+  if (away >= 0 && moveArmy(c, army.id, away) === 'moved') { army.moved = true; return false; }
   if (!reach(c, here.id).some((id) => reckoned(c, f.id, id))) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
-    if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
+    if (next >= 0 && safeStep(c, next) && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
   } else {
     // On a border with nothing it dares: it goes by its own lands to a border where there is something (rivalaim.ts).
     const next = redeploy(c, f.id, army.at, (from) => reach(c, from).some((id) => dares(from, id)), (id) => reach(c, id));
-    if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
+    if (next >= 0 && safeStep(c, next) && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
   }
   army.moved = true;
   return false;
@@ -1478,7 +1501,7 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
 
 // ---- Real-time battles ----
 
-export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky; /** The country it lies in. */ climate?: 'temperate' | 'desert' | 'steppe' | 'snow'; /** Wood and stone already taken from this ground in earlier sieges. */ ground?: Ground }
+export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky; /** The country it lies in. */ climate?: 'temperate' | 'desert' | 'steppe' | 'snow'; /** The season the map is in, for the look of the land (seasonsky.ts). */ season?: Season; /** Wood and stone already taken from this ground in earlier sieges. */ ground?: Ground }
 
 /** Turn the pending battle into a real-time match: each side fields the troops it has on the map. */
 export function battleConfig(c: Campaign): BattleConfig | null {
@@ -1537,12 +1560,12 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
     ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
-    climate: BIOMES[biomeOf(c, p.to)].climate,
+    climate: BIOMES[biomeOf(c, p.to)].climate, season: seasonOfTurn(c.turn),
     ...(!field && t.ground ? { ground: t.ground } : {}),
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
+      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...(!humanAttacks && !field && hallCasesAt(c, p.to).length ? { hall: hallCasesAt(c, p.to) } : {}), /* the cases before the town's Hall (hallcases.ts) */ ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
       {
         name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...(foe < 0 ? { tribe: true } : {}), ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: withStudies(c, foe, humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe))),

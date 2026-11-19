@@ -1,6 +1,10 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
-import { assaultDue } from './besieger';
+import { highGroundNear, holdBack } from './aiground';
+import { bestSite, level, lookOn, wallRadius } from './aisiting';
+import { WardState, wardScout, wardWomen } from './aiward';
+import { assaultDue, besieging } from './besieger';
+import { CAMP, campWorks } from './siegecamp';
 import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
 import { Building, Entity, Game, Unit } from './game';
@@ -64,6 +68,8 @@ export class AIController {
   /** Marching on the marauders' camp, not on a rival. */
   private hunt = false;
   private knowsLair = false;
+  /** The women got in from a raiding party, and the rider looking for the camp (aiward.ts). */
+  private ward: WardState = {};
   /** A besieger's first assault has gone in (besieger.ts): from then on it attacks by the usual rules. */
   private stormed = false;
   /** Seconds before the first attack may launch. */
@@ -111,6 +117,11 @@ export class AIController {
     if (!home) {
       // A raiding band with no roof yet: settle where it stands.
       if (g.raider(pid) && villagers.length && Math.floor(g.time) % 2 === 0) this.build('towncenter', g.spec.starts[pid], villagers, 0, 9);
+      // A band besieging a town, with no hall and nobody to raise one (siegecamp.ts): it storms once formed up, and fights on.
+      else if (!villagers.length && besieging(g, pid)) {
+        if (this.state !== 'attack' && assaultDue(g, pid, army.filter((u) => u.def.atk > 0).length, false)) { this.state = 'attack'; this.stormed = true; }
+        if (this.state === 'attack') this.fieldBattle();
+      }
       return;
     }
     // A settled people whose hall is gone (razed in an earlier siege of this land) raise it again before anything
@@ -125,6 +136,8 @@ export class AIController {
       const at = (node && this.findSpot('storehouse', node.x, node.y, 2.5, 6)) ?? this.findSpot('storehouse', st.x, st.y, 3, 10), v = at && this.pickBuilder(villagers, at.cx, at.cy);
       if (at && v) g.cmdPlace(pid, 'storehouse', at.cx, at.cy, [v.id]);
     }
+    // A besieging camp with no villagers: its soldiers raise its workshop and it crews rams from them (siegecamp.ts).
+    if (Math.floor(g.time) % 3 === 0) campWorks(g, pid, (type, near, men) => { const at = this.findSpot(type, near.x, near.y, 4, CAMP.near); return at ? g.cmdPlace(pid, type, at.cx, at.cy, men.map((u) => u.id)) : null; });
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
     // A soldier is a hand taken from the fields: the town keeps enough of them to live.
     this.spare = villagers.length > HANDS_KEPT[p.age] * (underAttack ? 0.5 : 1);
@@ -340,6 +353,7 @@ export class AIController {
 
     // ---- Marauders ----
     const lair = g.marauders ? g.buildings.find((b) => b.type === 'lair') : undefined;
+    if (g.marauders) wardWomen(g, pid, this.ward); // a party after its women: get them indoors, and out again when it has gone (aiward.ts)
     if (!lair) {
       // The camp is burnt (or was never there): the men who went after it come home.
       if (this.hunt) {
@@ -358,6 +372,8 @@ export class AIController {
       // It learns where the camp is by losing a woman to it, or by one of its own coming in sight of it.
       const lost = (lair.captives ?? []).some((c) => c.from === pid);
       if (!this.knowsLair) this.knowsLair = lost || g.units.some((u) => u.owner === pid && Math.hypot(u.x - lair.x, u.y - lair.y) < u.def.sight + 2);
+      // Until it knows, a rider looks for it where a camp could be (aiward.ts).
+      wardScout(g, pid, this.ward, fighters.filter((u) => !u.order && !u.inside), !this.knowsLair && this.state === 'build' && !underAttack);
       if (this.knowsLair && this.state === 'build' && !underAttack && fighters.length >= 4) {
         // It marches when it can beat the band: sooner if its own women are held there.
         const band = g.units.filter((u) => u.def.marauder).length;
@@ -382,7 +398,11 @@ export class AIController {
       // A besieger does not wait: it came to assault the town, and goes in with what it brought (besieger.ts).
       const storm = !this.stormed && assaultDue(g, pid, fighters.length, !!underAttack);
       if (storm) this.stormed = true;
-      if ((ready && outweighs) || storm || (clock && fighters.length >= 3)) {
+      // Not in a storm or by night while the weaker, nor uphill at them without the edge for it (aiground.ts).
+      const hall = foe >= 0 ? g.buildings.find((b) => b.owner === foe && b.type === 'towncenter' && !b.dead) : undefined;
+      const at = fighters.length ? { x: fighters.reduce((n, u) => n + u.x, 0) / fighters.length, y: fighters.reduce((n, u) => n + u.y, 0) / fighters.length } : home;
+      const wait = ready && outweighs && foe >= 0 && this.level >= 1 ? holdBack(g, { ours: this.weight(pid, false), theirs: this.weight(foe, true), from: at, ...(hall ? { to: hall } : {}), waited: this.readyT >= 0 ? g.time - this.readyT : 0 }) : '';
+      if ((ready && outweighs && !wait) || storm || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
         this.launched = fighters.length;
@@ -397,7 +417,7 @@ export class AIController {
         // Keep idle troops gathered in front of the base.
         const mid = g.size / 2;
         const d = Math.hypot(mid - home.x, mid - home.y) || 1;
-        const rx = home.x + ((mid - home.x) / d) * 9, ry = home.y + ((mid - home.y) / d) * 9;
+        const { x: rx, y: ry } = highGroundNear(g, home.x + ((mid - home.x) / d) * 9, home.y + ((mid - home.y) / d) * 9); // on the high ground near it (aiground.ts)
         const stray = army.filter((u) => !u.order && !back.has(u.id) && Math.hypot(u.x - rx, u.y - ry) > 6);
         if (stray.length) g.cmdMove(pid, stray.map((u) => u.id), rx, ry, false);
       }
@@ -435,6 +455,9 @@ export class AIController {
     this.attackT = 3;
     const idle = g.units.filter((u) => u.owner === pid && !u.order);
     if (!idle.length) return;
+    // The weaker side waits out a storm, for a while (aiground.ts).
+    const foes = g.players.filter((q) => !q.neutral && g.hostile(q.id, pid)).reduce((n, q) => n + this.weight(q.id, true), 0);
+    if (this.level >= 1 && holdBack(g, { ours: this.weight(pid, false), theirs: foes, from: idle[0], waited: g.time })) return;
     const lead = idle[0];
     let target: Unit | null = null, best = Infinity;
     for (const u of g.units) {
@@ -492,7 +515,7 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, hunt: this.hunt, knowsLair: this.knowsLair, raid: this.raid, raidT: this.raidT };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, hunt: this.hunt, knowsLair: this.knowsLair, raid: this.raid, raidT: this.raidT, ward: { ...this.ward } };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {
@@ -505,7 +528,7 @@ export class AIController {
     const walls = battleHabits(p.civ).walls; // some leaders never wall their town; others do it before anything else
     if (walls === 'never' || this.level < 1 || p.age < 1 || busy || p.res.wood < (walls === 'early' ? 150 : 260)) return;
     if (!this.ring) {
-      const R = 16, x0 = Math.floor(home.x), y0 = Math.floor(home.y);
+      const x0 = Math.floor(home.x), y0 = Math.floor(home.y), R = wallRadius(g, x0, y0); // on the highest line about the hall (aisiting.ts)
       this.ring = [];
       for (let i = -R; i < R; i++) this.ring.push({ cx: x0 + i, cy: y0 - R });
       for (let i = -R; i < R; i++) this.ring.push({ cx: x0 + R, cy: y0 + i });
@@ -865,21 +888,30 @@ export class AIController {
     const s = BUILDINGS[type].size;
     // First a spot out of the bog; failing that, anywhere that is free. (Keeping off its own roads as well was
     // tried and pushed its town so far apart that a Hard opponent stopped beating an Easy one.)
+    // On each ring it takes the best of the free spots there for the ground (aisiting.ts); a tower looks a little further out for height.
     let bog = false;
-    for (const fussy of [true, false]) if (fussy || bog) for (let r = minR; r <= maxR; r += 1.5) {
-      const steps = Math.ceil(r * 5);
-      const a0 = g.rng() * Math.PI * 2;
-      for (let k = 0; k < steps; k++) {
-        const a = a0 + (k / steps) * Math.PI * 2;
-        const cx = Math.round(x + Math.cos(a) * r - s / 2), cy = Math.round(y + Math.sin(a) * r - s / 2);
-        let ok = true;
-        for (let yy = cy - 1; yy <= cy + s && ok; yy++)
-          for (let xx = cx - 1; xx <= cx + s; xx++) {
-            if (xx < 1 || yy < 1 || xx >= g.size - 1 || yy >= g.size - 1 || g.occupied[yy * g.size + xx]) { ok = false; break; }
-            if (fussy && g.terrain[yy * g.size + xx] === T_MARSH) { ok = false; bog = true; break; }
-          }
-        if (ok) return { cx, cy };
+    for (const fussy of [true, false]) if (fussy || bog) {
+      const free: { cx: number; cy: number }[] = [];
+      let found = -1;
+      for (let r = minR; r <= maxR; r += 1.5) {
+        const steps = Math.ceil(r * 5);
+        const a0 = g.rng() * Math.PI * 2;
+        for (let k = 0; k < steps; k++) {
+          const a = a0 + (k / steps) * Math.PI * 2;
+          const cx = Math.round(x + Math.cos(a) * r - s / 2), cy = Math.round(y + Math.sin(a) * r - s / 2);
+          let ok = true;
+          for (let yy = cy - 1; yy <= cy + s && ok; yy++)
+            for (let xx = cx - 1; xx <= cx + s; xx++) {
+              if (xx < 1 || yy < 1 || xx >= g.size - 1 || yy >= g.size - 1 || g.occupied[yy * g.size + xx]) { ok = false; break; }
+              if (fussy && g.terrain[yy * g.size + xx] === T_MARSH) { ok = false; bog = true; break; }
+            }
+          if (ok && level(g, s, cx, cy)) free.push({ cx, cy }); // not on ground too steep to build on
+        }
+        if (free.length && found < 0) found = r;
+        if (found >= 0 && r >= found + lookOn(g, type, s, free)) break;
       }
+      const best = bestSite(g, type, s, free);
+      if (best) return best;
     }
     return null;
   }

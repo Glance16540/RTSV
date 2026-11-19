@@ -15,6 +15,7 @@
 // brought to a battle) arrive as they always did.
 import type { Building, Game, Unit } from './game';
 import type { UnitDef } from './data';
+import { campCrew } from './siegecamp';
 
 /** A woman who fights strikes this much as hard as a man would (hunting is not fighting). */
 export const WOMAN_ATK = 0.4;
@@ -46,5 +47,5 @@ export function recruitFor(g: Game, b: Building, def: UnitDef): Unit | null {
     const d = Math.hypot(v.x - b.x, v.y - b.y) + (v.order ? 1000 : 0) + (v.homeId ? 2000 : 0) + (def.cls === 'support' && v.gender === 'm' ? 5000 : 0);
     if (d < bestD) { bestD = d; best = v; }
   }
-  return best;
+  return best ?? campCrew(g, b, def); // with no villager, a besieger's foot soldier crews an engine (siegecamp.ts)
 }
