@@ -2,6 +2,8 @@
 
 import { drawNotableMarks } from './notables';
 import { drawStoryMarks } from './fieldstoryui';
+import { drawPlaceTip } from './placetip';
+import { drawRoadTool, roadDown, roadEscape } from './roadtool';
 import { drawGates } from './gate';
 import { bark } from './voice';
 import { BUILDINGS } from '../sim/data';
@@ -112,6 +114,7 @@ export class Input {
   private down(e: PointerEvent): void {
     const app = this.app;
     if (e.button === 1) { this.pan = { x: e.clientX, y: e.clientY }; e.preventDefault(); return; }
+    if (roadDown(app, e)) return; // the road tool in hand (roadtool.ts)
     if (e.button === 2) {
       if (app.placing || app.attackMode || app.patrolMode || app.casting) { app.select(app.sel); return; }
       const p = app.r.groundAt(e.clientX, e.clientY);
@@ -278,6 +281,7 @@ export class Input {
     if (slot >= 0 && !e.repeat) { app.hud.press(slot); return; }
     switch (k) {
       case 'Escape':
+        if (roadEscape(app)) break; // the road tool put away (roadtool.ts)
         this.line = null;
         if (app.placing || app.attackMode || app.patrolMode || app.casting) app.select(app.sel);
         else app.select([]);
@@ -414,6 +418,8 @@ export class Input {
         ctx.fillRect(s.x - ppt * 0.22, s.y - ppt * 0.22, ppt * 0.44, ppt * 0.44);
       }
     }
+    drawRoadTool(ctx, this.app, game, this.mx, this.my, ppt); // the road tool (roadtool.ts)
+    if (this.app.placing && !this.line) drawPlaceTip(ctx, game, this.app.placing, this.placeCell(this.app.placing), this.mx, this.my); // why a spot is refused (placebar.ts)
     if (this.drag?.active) {
       ctx.strokeStyle = '#9dff9a';
       ctx.fillStyle = 'rgba(120,255,120,0.12)';
