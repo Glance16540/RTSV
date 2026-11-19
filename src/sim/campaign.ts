@@ -3,7 +3,7 @@
 
 import { turnLeft, turnOpened } from './seasongain';
 import { militiaOf } from './militia';
-import { militiaFell } from './militiatoll';
+import { militiaFell, openToll } from './militiatoll';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { onFrontier, reckoned } from './reckon';
@@ -25,9 +25,10 @@ import { townFell } from './carriedoff';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
-import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
+import { fieldReckoned, tollByFight, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
 import { convoysTurn, relieve } from './convoys';
 import { caravansSeason } from './caravans';
+import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
 import { makeRim } from './rim';
@@ -79,6 +80,7 @@ export { shiftVirtue } from './townfaith'; // where it was found before it was m
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { companySoldiers, noteDowned, rollOf } from './soldiernames';
 import { takeDowned } from './downedmap';
+import { captainBonus } from './claimantcaptain';
 import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
@@ -1031,7 +1033,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('taken', 'conquered', (c, p) => townTaken(c, p.to, p.defender, p.attacker)) // its people stay, and resent it
   .on('taken', 'carriedoff', (c, p) => townFell(c, p.to, p.defender, p.attacker, p.from)) // those held in it go free, and a worldly taker leads some of its people away
   // repulsed: the attacker was thrown back.
-  .on('repulsed', 'tribes', (c, p, b) => { if (!b.defArmy && c.territories[p.to].owner < 0) tribeBeaten(c, p.to, Math.floor(p.aStr * 0.3)); }) // the bands a tribe lost are men of its town
+  .on('repulsed', 'tribes', (c, p, b) => { if (!b.defArmy && c.territories[p.to].owner < 0) tribeBeaten(c, p.to, tollByFight(c, p, b) ? 0 : Math.floor(p.aStr * 0.3)); }) // the bands a tribe lost are men of its town: by the fight where it was fought out (militiatoll.ts tribeFell, in the toll), else by a share of the attacker's strength
   .on('repulsed', 'freetown', (c, p) => freeStruck(c, p.to, p.attacker)) // a free town marched on by the people it left will not treat with them for a while
   // settled: all of it is done, and whoever is beaten is gone from the map.
   .on('settled', 'stores', (c) => settleStores(c))
@@ -1090,7 +1092,9 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   const note: BattleNote = { how, attackerWon, ...(fought ? { fought } : {}) };
   BATTLE_HOOKS.run('settling', c, p, note); // every town's standing and stores are written down before any changes hands
   // A battle nobody watched is paid for by the town in men, and in stores if it falls.
-  note.toll = how === 'auto' && p.mode !== 'field' && !c.territories[p.to].horde ? tollFolk(c, p.to, attackerWon, { men: militiaFell(c, p.to, fought) }) : 0; // by what its bands lost, where it was fought out (militiatoll.ts)
+  note.toll = how !== 'auto' || c.territories[p.to].horde ? 0
+    : p.mode !== 'field' ? tollFolk(c, p.to, attackerWon, { men: militiaFell(c, p.to, fought) }) // by what its bands lost, where it was fought out (militiatoll.ts)
+    : openToll(c, p.to, fought) !== undefined ? tollFolk(c, p.to, false, { men: openToll(c, p.to, fought) }) : 0; // a tribe met in the open buries those its bands lost; its town is not looted for it
   // The rival leader has something to say about a battle against the player.
   if (p.attacker === 0 || p.defender === 0) {
     const won = attackerWon === (p.attacker === 0);
@@ -1488,7 +1492,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
-      ...(army ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}), // its companies led by the men of its roll (soldiernames.ts)
+      ...(army ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}),
+      ...(defending && !field ? captainBonus(c, t.id) : {}), // a town risen for a claimant: its rising's leader on the field (claimantcaptain.ts) // its companies led by the men of its roll (soldiernames.ts)
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
@@ -1506,6 +1511,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const myReserve = reserves(c, 0, p.to, p.armyId)[0];
   const foeReserve = foe < 0 ? undefined : reserves(c, foe, p.to, p.armyId)[0];
   const allyReserve = c.ally < 0 ? undefined : reserves(c, c.ally, p.to, p.armyId)[0];
+  // The land's own water (townwater.ts); a field battle's is where the field lies, between the land it came from and this one.
+  const groundWater = waterOf(c, p.to, terrainOf(c), field && c.territories[p.from] ? { x: (c.territories[p.from].x + t.x) / 2, y: (c.territories[p.from].y + t.y) / 2 } : undefined);
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
     ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
@@ -1514,7 +1521,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
+      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
       {
         name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...(foe < 0 ? { tribe: true } : {}), ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: withStudies(c, foe, humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe))),

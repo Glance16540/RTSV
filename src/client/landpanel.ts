@@ -13,7 +13,7 @@ import { canSendHome, menOf, noMenText } from '../sim/armytown';
 import { bandButtons, threatHtml } from './threatpanel';
 import { intrigueButtons, intrigueHtml } from './intriguepanel';
 import { orderHtml } from './orderpanel';
-import { freeTownButtons } from './freetown';
+import { freeTownButtons, risenFor } from './freetown';
 import { AGES, CIVS, styleOf } from '../sim/data';
 import {
   EVENTS, WEATHER, eventsAt, weatherAt, Army, FAITH, faithOf, virtueOf, placeAt, worldNow, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS,
@@ -97,7 +97,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
   wire();
   const t = c.territories[sel], a = armyAt(c, sel);
   const empty = emptyWords(c, t.id); // wilderness or an empty land: nobody to rule, nothing to march on (founding.ts)
-  const owner = empty ? { name: `${empty.icon} ${empty.name}`, color: LOCALS.color } : t.owner < 0 ? LOCALS : c.factions[t.owner];
+  const owner = empty ? { name: `${empty.icon} ${empty.name}`, color: LOCALS.color } : t.owner < 0 ? (risenFor(c, t.id) ? { name: `👑 ${risenFor(c, t.id)}`, color: LOCALS.color } : LOCALS) : c.factions[t.owner];
   const troops = (army: Army) => Object.entries(army.units).map(([k, n]) => `${COMPANIES[k].icon} ${n} ${COMPANIES[k].name.toLowerCase()}`).join(' · ') + (army.hero ? ` · ♛ ${heroFor(c, army.owner).name}` : '') + (army.vet ? ` · veterans ${'★'.repeat(army.vet)}${'☆'.repeat(MAX_VETERAN - army.vet)}` : '');
   const events = eventsAt(c, t.id), weather = weatherAt(c, t.id), place = placeAt(c, t.id);
   // What is going on in the land, as signs beside its name: the whole of each is under "The land".

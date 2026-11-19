@@ -12,6 +12,9 @@ import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { storyForVisit, storyFromVisit } from './storyvisit';
 import { courtForVisit, courtFromVisit } from './courtvisit';
+import { keepRoads, roadsFor } from './handroads';
+import { waterOf } from './townwater';
+import { terrainOf } from './campaign';
 import { keepQueued } from './queueddrill';
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
@@ -81,6 +84,8 @@ export interface VisitAfter {
   story?: unknown;
   /** What came of a story of the leader's house (`courtOut`, courtfield.ts): an answer given at the hall, the great shown true. */
   court?: unknown;
+  /** The roads laid by hand in the town, by their tiles (`handRoadsOut`, handroads.ts). */
+  roads?: unknown;
 }
 
 /** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
@@ -193,13 +198,14 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
     seed: t.seed, size: t.trait === 'coast' ? 96 : 72, level: 0, humanAttacks: false, field: false, sea: t.trait === 'coast',
     title: `A visit to ${t.name}`,
     setups: [{
-      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id),
+      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, virtue: faithAt(c, t.id), ...(waterOf(c, t.id, terrainOf(c)) ? { water: waterOf(c, t.id, terrainOf(c)) } : {}), // the land's own shore, river and islands (townwater.ts)
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
         buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], ...(town.length ? { town } : {}), ...(!record.town && t.town?.coarse ? { coarse: t.town.b } : {}), ...(roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), work: shareOf(c, t.id).share, // a first visit: the town as big as its record (firstlay.ts)
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
+        ...(roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // roads laid by hand there before (handroads.ts)
         ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)
         ...(courtForVisit(c, t.id) ? { court: courtForVisit(c, t.id) } : {}), // a rival's envoy, a suitor or a plot, where the court is kept (courtvisit.ts)
         ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
@@ -250,6 +256,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
       }).slice(0, MAX_TOWN);
     // An empty list would be a town with nothing standing: the land keeps what it had sooner than lose it to a bad report.
     if (b.length) land.town = { at: homeCorner(land), b };
+    if (b.length) keepRoads(c, land.id, after.roads); // and the roads laid by hand there (handroads.ts)
     for (const [site, type] of Object.entries(SITE_BUILDING)) {
       if (site === 'fortress' || land.buildings.includes(site) || land.buildings.length >= slots(land)) continue;
       if (site === 'harbour' && !onSea(c, land.id)) continue;

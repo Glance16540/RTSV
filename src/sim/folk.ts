@@ -123,7 +123,7 @@ export const FOLK: FolkRole[] = [
     hurt: ['Stand fast. No one behind us is harmed.', "We're exposed!", 'One more shot! Into the thick of them!'],
   } },
   { id: 'healer', name: 'Priest or shaman', kind: 'warrior', about: 'Marches with the army to heal, bless and curse. Holy, he tends friend and foe alike; decadent, he blesses the slaughter.', lines: {
-    ready: ['Bring me the wounded, friend or foe.', 'I am here.', 'The gods are hungry. Feed them.'],
+    ready: ['Bring me the wounded, friend or foe.', 'I am here.', 'Death is hungry. Feed him.'],
     march: ['I walk among the fallen, and leave none.', 'Coming.', 'I come to bless the killing.'],
     charge: ['Be whole. Go, and do no cruelty.', 'Hold still.', 'Rise and kill again!'],
     hurt: ['Tend the others first.', 'I am struck!', 'My blood for theirs! Avenge me!'],

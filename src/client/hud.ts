@@ -1,5 +1,6 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { buildingLook, inFaith } from '../sim/faithhouse';
 import { mayGoHome, mayRejoin } from '../sim/furlough';
 import { endCard } from './briefing';
 import { bereftLines } from '../sim/bereft';
@@ -40,6 +41,7 @@ import { playLine, speechHtml } from './voice';
 import { sfx } from './sfx';
 import { researchAt } from '../sim/ownstudies';
 import { questionCommand, robbedLine, suspectLine } from './fieldstoryui';
+import { roadCommands } from './roadtool';
 import { answerCommands, guestLine, nobleLine, nobleName } from './courtfieldui';
 
 export const SLOT_KEYS = 'QWERTASDFGZXCVB';
@@ -63,6 +65,13 @@ const RI = (r: ResType) => ico(r, RES_ICON[r]);
 const MAN = () => ico('villager_m', '👨‍🌾');
 const WOMAN = () => ico('villager_f', '👩‍🌾');
 const NODE_ICON: Record<string, string> = { tree: '🌲', berries: '🫐', gold: '🪙', stone: '🪨', carcass: '🍖', fish: '🐟' };
+
+/** A picture for each power a leader may choose, so the two offered at a rank can be told apart at a glance. */
+const POWER_ICON: Record<string, string> = {
+  'Battle cry': 'morale', 'The long banner': 'gateguard', 'Drinker of blood': 'weapons2', 'Shield high': 'armor2', Dread: 'wolf', Fury: 'berserker',
+  'Field surgeon': 'herbalism', 'Signal fires': 'watchhouse', 'Cold counsel': 'dilemma', 'Behind the mantlet': 'armor3', 'By example': 'morale', 'Master of the engines': 'trebuchet',
+  'Master of works': 'wheelbarrow', 'The long road': 'trade', 'Hard as the walls': 'stonewall', 'Their own people': 'population',
+};
 
 export class Hud {
   private btns: Btn[] = [];
@@ -268,7 +277,7 @@ export class Hud {
         for (const type of screens[at].types) {
           const d = BUILDINGS[type];
           out.push({
-            id: 'b:' + type, icon: ico(type, d.icon), name: 'Build ' + d.name, desc: d.desc, cost: d.cost,
+            id: 'b:' + type, icon: ico(type, d.icon), name: 'Build ' + buildingLook(type, d, p.civ).name, desc: type === 'temple' ? inFaith(d.desc, p.civ) : d.desc, cost: d.cost, // the house of the people's own faith (faithhouse.ts)
             locked: game.ageFor(pid, d) > p.age ? `Requires the ${AGES[d.age].name}.` : game.creedBar(pid, d) ?? undefined,
             active: this.app.placing === type,
             act: () => { this.app.select(this.app.sel); this.app.placing = type; },
@@ -316,7 +325,7 @@ export class Hud {
       // A rank has been earned that brings a power: the player chooses which of the two it is.
       const due = chief ? game.powerDue(pid) : -1;
       if (chief && due >= 0) {
-        POWERS[game.heroOf(pid).calling][due].forEach((p, k) => out.push({ id: `learn${k}`, icon: ico('warlord', '✦'), name: `Learn ${p.name}`, desc: `${p.desc}<br><span class="stat">Earned at ${RANK_NAMES[POWER_RANKS[due]]}. One or the other: it cannot be changed afterwards.</span>`, act: () => { game.cmdLearn(pid, k); } }));
+        POWERS[game.heroOf(pid).calling][due].forEach((p, k) => out.push({ id: `learn${k}`, icon: ico(POWER_ICON[p.name] ?? 'warlord', '✦'), name: `Learn ${p.name}`, desc: `${p.desc}<br><span class="stat">Earned at ${RANK_NAMES[POWER_RANKS[due]]}. One or the other: it cannot be changed afterwards.</span>`, act: () => { game.cmdLearn(pid, k); } }));
       }
       // The leader is dead: a soldier who has made a name can be raised in their place.
       if (units.length === 1 && game.canAcclaim(pid, units[0])) {
@@ -405,6 +414,7 @@ export class Hud {
         act: () => { game.cmdBell(pid, !p.bell); sfx.play('alert'); },
       });
       for (const x of answerCommands(game, pid, b)) out.push(x); // the answers the leader may give a guest in the hall (courtfield.ts)
+      for (const x of roadCommands(this.app, b.owner)) out.push(x); // lay or lift a road in the town (handroads.ts)
     }
     if (b.type === 'market') {
       for (const dir of ['sell', 'buy'] as const) {
@@ -503,7 +513,8 @@ export class Hud {
     }
     const owner = game.players[e.owner];
     const mine = e.owner === pid;
-    const tag = mine ? '' : ` <span style="color:${hex(owner.color)}">(${owner.name}${owner.neutral || game.hostile(e.owner, pid) ? '' : ', ally'})</span>`;
+    const rising = e.kind === 'unit' && e.captain; // the one who leads a claimant's rising (claimantcaptain.ts)
+    const tag = mine ? '' : ` <span style="color:${hex(owner.color)}">(${rising ? 'leads the rising' : `${owner.name}${owner.neutral || game.hostile(e.owner, pid) ? '' : ', ally'}`})</span>`;
     const hp = `${this.bar(e.hp / e.maxHp, 'hp')}<small>${Math.ceil(e.hp)} / ${e.maxHp}</small>`;
     if (e.kind === 'unit') {
       const d = e.def;
@@ -641,7 +652,7 @@ export class Hud {
       if (b.type === 'tavern' && b.complete) { const w = (b.staff ?? []).map((id) => game.entities.get(id)).filter((u) => !!u && u.kind === 'unit' && u.gender === 'f').length; body += tavernPanel(owner.virtue ?? 0, game.field ? 0 : game.dayT, w); }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
     }
-    return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${b.def.name}</b>${b.type === 'towncenter' && !owner.neutral ? standingHtml(owner.civ, owner.virtue) : ''}${tag}${hp}</div></div>${body}`;
+    return `<div class="head"><span class="icon">${ico(b.type, b.def.icon)}</span><div><b>${buildingLook(b.type, b.def, owner.civ).name}</b>${b.type === 'towncenter' && !owner.neutral ? standingHtml(owner.civ, owner.virtue) : ''}${tag}${hp}</div></div>${body}`;
   }
 
   // ---- First steps guide ----

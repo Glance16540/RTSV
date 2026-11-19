@@ -15,14 +15,16 @@
  *
  * So a town that drove the attack off at the first rush buries few, one that stood to the last round buries
  * many, one taken after its bands were ridden down buries most, and a town whose army did the fighting in front
- * of whole walls buries hardly any. A tribe's town, and a battle that was summed and not fought, are counted by
- * the old rule: `militiaFell` answers nothing for them.
+ * of whole walls buries hardly any. A tribe's town is the same kind of fight and is counted the same way
+ * (`tribeFell`): its warriors are its companies (mapbattle.ts forcesOf), so the men who stood are those its bands stand
+ * for and they fall by what the companies lost, half of a band lost being dead. A battle that was summed and not
+ * fought, and the marauders' land, are counted by the old rule: `militiaFell` answers nothing for them.
  */
 import type { Campaign } from './campaign';
 import { armyAt } from './campaignbase';
 import { MILITIA, militiaBands } from './militia';
 import type { Outcome } from './mapbattle';
-import { bandMen } from './tribes';
+import { bandMen, warriorsOf } from './tribes';
 import { folkOf } from './township';
 
 export const FELL = {
@@ -43,9 +45,31 @@ export function menStood(c: Campaign, tid: number): number {
  */
 export function militiaFell(c: Campaign, tid: number, out: Outcome | null | undefined): number | undefined {
   const t = c.territories[tid];
-  if (!out || !t || t.owner < 0 || t.horde) return undefined;
+  if (!out || !t || t.horde) return undefined;
+  if (t.owner < 0) return tribeFell(c, tid, out);
   const held = armyAt(c, tid), army = !!held && held.owner === t.owner;
   const asCompanies = !army && militiaBands(c, tid) >= 1; // as mapbattle.ts sets the sides out
   const share = asCompanies ? out.d.body ?? 0 : out.d.works;
   return Math.round(menStood(c, tid) * share * FELL.dead);
+}
+
+/**
+ * The men of a tribe's town who fell in a battle fought out on the map. Its warriors are its companies there, each band
+ * so many men of the town (tribes.ts): those who stood are the men its bands stand for, and no more than the town has.
+ */
+export function tribeFell(c: Campaign, tid: number, out: Outcome): number {
+  const stood = Math.min(Math.max(0, folkOf(c, tid).men), Math.max(0, warriorsOf(c, tid)) * bandMen());
+  return Math.round(stood * Math.max(0, Math.min(1, out.d.body ?? 0)) * FELL.dead);
+}
+
+/**
+ * A tribe met in the open, in a battle nobody watched: its warriors marched out and are its companies there too, so the
+ * men of its town who fell are counted as in a battle for the town (`tribeFell`). Nothing (undefined) for a nation's
+ * land (in the open a nation is met by its army, whose companies are counted with it), for the marauders', or where no
+ * battle was fought out.
+ */
+export function openToll(c: Campaign, tid: number, out: Outcome | null | undefined): number | undefined {
+  const t = c.territories[tid];
+  if (!out || !t || t.horde || t.owner >= 0) return undefined;
+  return tribeFell(c, tid, out);
 }

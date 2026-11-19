@@ -29,7 +29,7 @@ function storyHtml(c: Campaign, it: Intrigue): string {
     people = named(c, it.rival ?? 0, it.cast?.suitor, 'm', `a son of the house of ${it.cast?.king ?? 'a rival'}`) + named(c, 0, it.cast?.daughter, 'f', 'your daughter');
   } else if (it.kind === 'plot') {
     people = (it.nobles ?? []).map((n, i) => {
-      const cleared = it.cleared.includes(i), words = it.found && !cleared ? 'the plotter, held for your judgement' : cleared ? 'cleared' : 'is spoken of';
+      const cleared = it.cleared.includes(i), words = it.found && !cleared ? 'the plotter, held for your judgement' : cleared ? 'cleared' : it.wifeTaken !== undefined && i === it.culprit ? 'the plotter: he took your wife into his house' : 'is spoken of';
       return `<div class="likeness-row story-person ${cleared ? 'cleared' : ''}">${portraitHtml(notablePortrait(nationOf(c.factions[0]?.civ), { name: n.name, gender: n.female ? 'f' : 'm', kind: 'person' }, {}), '', 'sm')}<span><b>${esc(n.title)}</b> <small>${words}</small></span></div>`;
     }).join('') + it.clues.map((k) => `<div class="hint">🔎 ${esc(k.text)}</div>`).join('');
   } else if (it.kind === 'thief') {

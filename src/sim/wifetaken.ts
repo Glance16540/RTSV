@@ -71,11 +71,11 @@ function gone(c: Campaign, it: Intrigue): void {
   delete it.wife;
 }
 
-/** Could the lord of this plot take the leader's wife this season? For the season's chance, and for whoever would warn of it. */
+/** Could the lord of this plot take the leader's wife this season? For the season's chance, and for whoever would warn of it. A lady who holds a town plots, but takes no wife into her house. */
 export function mayTake(c: Campaign, it: Intrigue): boolean {
   if (it.kind !== 'plot' || it.ended || it.found || it.wife || it.wifeTaken !== undefined || !it.faith) return false;
   const fac = c.factions[it.owner], n = lordOf(c, it), s = fac?.kin?.spouse;
-  return !!fac?.alive && !!fac.heroAlive && !!n && n.rank === 'lord' && !!s && s.female && !s.lost && c.territories[n.town]?.owner === it.owner;
+  return !!fac?.alive && !!fac.heroAlive && !!n && n.rank === 'lord' && !n.female && !!s && s.female && !s.lost && c.territories[n.town]?.owner === it.owner;
 }
 /** He takes her into his house. For the season's chance, and for tests. */
 export function takeWife(c: Campaign, it: Intrigue): boolean {

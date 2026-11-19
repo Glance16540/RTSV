@@ -29,6 +29,7 @@ import { leaderAt } from './court';
 import { nobleStrain, nobleWatch } from './nobles';
 import { monasteryCare } from './monastery';
 import { infirmaryEase } from './infirmary';
+import { leaderEase, leaderGrief } from './leaderstay';
 
 declare module './township' {
   interface Folk {
@@ -81,7 +82,7 @@ export function driftTown(c: Campaign, tid: number): number {
   // A band's raid (threats.ts marks it 'raid', or 'carried' when it took people) is a raid, and people carried off are mourned.
   const struck = (kinds: string[]): boolean => (c.events ?? []).some((x) => x.at === tid && kinds.includes(x.kind) && x.until >= c.turn - 1);
   const raided = !!mood.raided || struck(['raid', 'carried']);
-  griefSeason(f, !!mood.bereaved || struck(['carried']), { ease: infirmaryEase(c, tid) });
+  griefSeason(f, !!mood.bereaved || struck(['carried']), { ease: infirmaryEase(c, tid) * leaderGrief(c, tid) }); // the faster with an Infirmary, and with the leader there (leaderstay.ts)
   const people = Math.max(1, grown(f) + f.children), food = f.stores.food / people;
   // Hunger is the town's own larder (larder.ts: it could not feed everyone this season, or it is bare), or a famine on
   // its land (acts.ts); a lean larder that still feeds everyone is no hunger. A hard season on the map costs supplies, not food.
@@ -92,7 +93,7 @@ export function driftTown(c: Campaign, tid: number): number {
   const mon = monasteryCare(c, tid); // a Monastery or Convent cares for the town and tends its sick and bereaved (monastery.ts)
   const tended = 1 - TEND_EASE * Math.max(e.tend, mon.tend);
   const griefNow = Math.max(Number((f.grief ?? 0) > 0) * 0.5, townGrief(f.notables, c.turn) / GRIEF_MAX);
-  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + (STRAIN.sick * Number(mood.sick) + STRAIN.grief * griefNow) * tended + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid))) * e.strainScale + e.strainAdd + nobleStrain(c, tid));
+  const strain = clamp((STRAIN.hunger * hunger + STRAIN.raided * Number(raided) + (STRAIN.sick * Number(mood.sick) + STRAIN.grief * griefNow) * tended + STRAIN.rebel * Number(mood.rebel) + STRAIN.taken * Number(newlyTaken(c, tid))) * e.strainScale + e.strainAdd + nobleStrain(c, tid)) * leaderEase(c, tid); // the leader there eases it (leaderstay.ts)
   const church = t.buildings.includes('church'), tavern = t.buildings.includes('tavern') && !e.tavernShut;
   const care = strain > 0 || e.holyBarred ? 0 : clamp((food >= FED_FOOD ? 0.3 : 0) + 0.3 + (church ? 0.2 : 0) + (leaderHere(c, tid) ? 0.2 : 0) + e.care + mon.care);
   // Only the call to church raises a town here; the rest of its care is shown, and its church is counted by townfaith.ts.

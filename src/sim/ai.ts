@@ -12,6 +12,7 @@ import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
 import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
+import { fallBack, fightStyle, roomWork, studyReserve, styleWork } from './styleplay';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -161,7 +162,8 @@ export class AIController {
     this.holdWood = p.age >= 1 && count('market') === 0 && !building.some((b) => b.type === 'market') && p.res.gold > 400 && (p.res.food < 100 || p.res.wood < 100);
     // Houses: keep population headroom, and fill them with couples.
     const housesBuilding = building.filter((b) => b.type === 'house').length;
-    if (p.popCap - p.pop < 5 && p.popCap < 150 && housesBuilding < (p.age > 0 ? 2 : 1)) this.build('house', home, villagers, 5, 12);
+    const styleTown = { villagers: villagers.length, age: p.age, peace: inPeace(g, pid), count };
+    if (p.popCap - p.pop < 5 && p.popCap < 150 && housesBuilding < (p.age > 0 ? 2 : 1)) { if (roomWork(g, pid, styleTown) === 'farm' && !building.some((b) => b.type === 'farm')) this.build('farm', home, villagers, 5, 26); else this.build('house', home, villagers, 5, 12); } // a farmer's farm is room too (styleplay.ts)
     // Where people come only by birth, a man and a woman with no roof are children never born: house them first.
     else if (g.bornOnly && housesBuilding < 2 && roomForCouples(g, pid) < unhousedCouples(g, pid)) this.build('house', home, villagers, 5, 12);
     const enough = villagers.length >= VILLAGER_TARGET[p.age];
@@ -183,6 +185,8 @@ export class AIController {
       const town = { villagers: villagers.length, peace, home };
       const need = marketFirst ? null : workNeeded(g, pid, town), needed = saving && need === 'fortress' ? null : need; // a town in need does not wait for the next age, but its stone does
       let ordered = !!needed && !!(this.build(needed, home, villagers, 7, 13) ?? this.build(needed, home, villagers, 13, 26));
+      const own = ordered || saving || marketFirst ? null : styleWork(g, pid, styleTown); // what its people's rule makes worth raising (styleplay.ts)
+      if (own) ordered = !!(this.build(own, home, villagers, 7, 13) ?? this.build(own, home, villagers, 13, 26));
       for (const step of ordered ? [] : BUILD_ORDER) {
         if (peace && MILITARY_WORKS.includes(step.type)) continue;
         if (marketFirst && step.type !== 'market') continue;
@@ -243,6 +247,7 @@ export class AIController {
 
     // Technologies.
     if (!saving) {
+      const reserve = studyReserve(g, pid); // scholars keep nothing back (styleplay.ts)
       for (const b of mine) {
         if (!b.complete) continue;
         const busy = b.queue.length > 0;
@@ -251,7 +256,7 @@ export class AIController {
           // teaches it is training villagers nearly all the time, and would otherwise never get to it.
           if (busy && !nationOf(id) && !queuesBehind(id, b.queue.length)) continue; // and so are the nation's studies taught at its other buildings (aiworks.ts)
           const t = TECHS[id];
-          if (g.techAvailable(p, id) && g.canAfford(p, { food: (t.cost.food ?? 0) + 150, wood: (t.cost.wood ?? 0) + 100, gold: t.cost.gold, stone: t.cost.stone })) {
+          if (g.techAvailable(p, id) && g.canAfford(p, { food: (t.cost.food ?? 0) + reserve.food, wood: (t.cost.wood ?? 0) + reserve.wood, gold: t.cost.gold, stone: t.cost.stone })) {
             g.cmdResearch(pid, b.id, id);
             break;
           }
@@ -264,7 +269,8 @@ export class AIController {
     // Wealth lying idle is turned into soldiers: the richer the treasury, the larger the army it keeps.
     // Counted across all three stores, so a mountain of timber is not left to rot for want of gold.
     const spare = Math.max(0, Math.min((p.res.food + p.res.wood + p.res.gold) / 3, Math.max(p.res.food, p.res.wood) / 2) - 300);
-    const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale) + (this.level >= 1 ? Math.min(24, Math.floor(spare / 110)) : 0);
+    const fight = fightStyle(g, pid, mine, this.nearestFoe(home)); // how its people's rule shapes the war (styleplay.ts)
+    const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale * fight.army) + (this.level >= 1 ? Math.min(24, Math.floor(spare * fight.army / 110)) : 0);
     this.castCalamities(army);
     // A town kept in peace raises no soldiers: they would be its men taken to the army (keeper.ts, visit.ts).
     if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0) && !inPeace(g, pid)) {
@@ -278,7 +284,7 @@ export class AIController {
         if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; }
         const def = UNITS[type];
         // Yesterday's soldiers are only raised in need: an army of bowmen is no use against knights.
-        if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && army.length >= armyTarget / 2 && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
+        if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && (fight.newest || army.length >= armyTarget / 2) && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
         if (needsPerson(def) && !this.spare) continue;
@@ -302,6 +308,14 @@ export class AIController {
     if (underAttack && this.state === 'build') {
       const idle = army.filter((u) => !u.order || u.order.t === 'move');
       if (idle.length) g.cmdMove(pid, idle.map((u) => u.id), p.lastAttacked!.x, p.lastAttacked!.y, true);
+    }
+
+    // Those its people's rule sends out of the fight go, and are left there: the hurt to their church, a veteran home (styleplay.ts).
+    const back = new Set<number>();
+    for (const party of fallBack(g, pid, army, mine, home)) {
+      for (const id of party.ids) back.add(id);
+      const far = party.ids.filter((id) => { const u = g.entities.get(id) as Unit; return u.order?.t !== 'move' && Math.hypot(u.x - party.x, u.y - party.y) > 3; });
+      if (far.length) g.cmdMove(pid, far, party.x, party.y, false);
     }
 
     // ---- Fighting as a side ----
@@ -353,16 +367,16 @@ export class AIController {
     }
 
     // How many make an army worth sending is set by the age, not by the treasury: a rich people keeps more men, it does not wait for more.
-    const attackSize = Math.max(4, Math.floor(Math.round(ARMY_TARGET[p.age] * this.armyScale) * 0.8));
+    const attackSize = Math.max(4, Math.floor(Math.round(ARMY_TARGET[p.age] * this.armyScale * fight.army) * 0.8));
     if (this.state === 'build') {
       const clock = g.buildings.some((b) => g.hostile(b.owner, pid) && b.type === 'wonder'); // no time to wait for a full army
       // It does not march into an army it cannot beat: it waits to outweigh the defenders, though not for ever.
-      const ready = fighters.length >= attackSize && g.time > this.firstAttack && !underAttack;
+      const ready = fighters.length >= attackSize && g.time > this.firstAttack && !underAttack && !fight.hold;
       if (!ready) this.readyT = -1; else if (this.readyT < 0) this.readyT = g.time;
       const foe = this.nearestFoe(home);
       // A long war makes everyone bolder: the margin it waits for shrinks from the twenty-fifth minute.
       const margin = Math.max(1, 1.4 - Math.max(0, g.time - 1500) / 2250);
-      const outweighs = this.level < 1 || foe < 0 || this.weight(pid, false) >= this.weight(foe, true) * margin || g.time - this.readyT > (g.time > 1800 ? 150 : 360);
+      const outweighs = this.level < 1 || foe < 0 || fight.eager || this.weight(pid, false) >= this.weight(foe, true) * margin || g.time - this.readyT > (g.time > 1800 ? 150 : 360);
       // A besieger does not wait: it came to assault the town, and goes in with what it brought (besieger.ts).
       const storm = !this.stormed && assaultDue(g, pid, fighters.length, !!underAttack);
       if (storm) this.stormed = true;
@@ -382,7 +396,7 @@ export class AIController {
         const mid = g.size / 2;
         const d = Math.hypot(mid - home.x, mid - home.y) || 1;
         const rx = home.x + ((mid - home.x) / d) * 9, ry = home.y + ((mid - home.y) / d) * 9;
-        const stray = army.filter((u) => !u.order && Math.hypot(u.x - rx, u.y - ry) > 6);
+        const stray = army.filter((u) => !u.order && !back.has(u.id) && Math.hypot(u.x - rx, u.y - ry) > 6);
         if (stray.length) g.cmdMove(pid, stray.map((u) => u.id), rx, ry, false);
       }
     } else {
@@ -397,7 +411,7 @@ export class AIController {
         g.cmdMove(pid, army.map((u) => u.id), home.x + ((mid - home.x) / d) * 9, home.y + ((mid - home.y) / d) * 9, false);
       } else if ((this.attackT -= 1) <= 0) {
         this.attackT = 5;
-        const idle = army.filter((u) => !u.order);
+        const idle = army.filter((u) => !u.order && !back.has(u.id));
         // Men fresh from the barracks wait until there are enough of them to go up together, not one by one.
         const fresh = idle.filter((u) => Math.hypot(u.x - home.x, u.y - home.y) < 16), afield = idle.filter((u) => !fresh.includes(u));
         const go = g.time >= 1800 || fresh.length >= Math.max(3, Math.floor(attackSize / 3)) || fresh.length === fighters.length ? idle : afield;
@@ -752,7 +766,7 @@ export class AIController {
     // Warships once there is something to protect, and the ships to match the age.
     if (this.level >= 1 && p.age >= 1 && boats.length) {
       if (p.age >= 4 && !p.techs.has('up_frigate') && !p.pending.has('up_frigate') && dock.queue.length === 0) g.cmdResearch(pid, dock.id, 'up_frigate');
-      const fleet = ships.filter((u) => u.def.atk > 0).length + queued('galley');
+      const fleet = ships.filter((u) => u.def.atk > 0).length + queued(g.trainedAs(pid, 'galley')); // its own kind of warship (fleets.ts)
       // Match whatever the enemy has put on the water, and one more.
       const theirs = g.units.filter((u) => u.def.naval && u.def.atk > 0 && g.hostile(u.owner, pid)).length;
       const want = Math.min(6, Math.max([0, 2, 3][this.level], theirs + 1));

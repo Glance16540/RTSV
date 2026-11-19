@@ -5,6 +5,7 @@
 // Here, from that story as the field keeps it, the people who stand at the hall:
 //   - a rival's envoy, while the answer to his king is not given;
 //   - a suitor, while the answer to him is not given;
+//   - the leader of a claimant's rising the town stands in, where no soldier on the field is them (claimantcaptain.ts);
 //   - the daughter he asks for, once she has been asked what she wants: she comes to the hall to say it, and stays
 //     while the answer is not given. She is a grown woman of the house (courtstory.ts asks for no child), dressed as
 //     the town's women are.
@@ -18,7 +19,7 @@ import { courtsOf } from './courtfield';
 export interface HallGuest {
   /** The same for as long as they stand there: the story's number and what they are in it. */
   key: string;
-  role: 'envoy' | 'suitor' | 'daughter';
+  role: 'envoy' | 'suitor' | 'daughter' | 'captain';
   name: string;
   female: boolean;
   /** Of which people they are, for their dress: the rival's for an envoy or a suitor, the town's for the daughter. */
@@ -27,9 +28,12 @@ export interface HallGuest {
 
 const cap = (t: string): string => t.charAt(0).toUpperCase() + t.slice(1);
 
-/** Those who stand at the hall of this side's town now, in the order they stand. Nobody where there is no story. */
+/** Those who stand at the hall of this side's town now, in the order they stand. Nobody where there is no story and no rising. */
 export function hallGuests(g: Game, owner: number): HallGuest[] {
   const out: HallGuest[] = [], home = g.players[owner]?.civ ?? '';
+  // The leader of a claimant's rising, where no soldier on the field is them (claimantcaptain.ts).
+  const leader = g.players[owner]?.captain;
+  if (leader) out.push({ key: 'captain', role: 'captain', name: leader.name, female: leader.female, civ: home });
   for (const s of courtsOf(g, owner)) {
     if (s.answer || s.kind === 'plot') continue; // answered: the story is ended at the hall; a plot has nobody waiting there
     const theirs = s.civ ?? home;

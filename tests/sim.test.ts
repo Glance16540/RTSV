@@ -1,3 +1,4 @@
+import { hullOf } from '../src/sim/fleets';
 import { militiaOf } from '../src/sim/militia';
 import { distinctColours } from '../src/sim/nationcolours';
 import { leanOf as townLean } from '../src/sim/townlean';
@@ -1688,9 +1689,9 @@ describe('water and ships', () => {
     const g2 = r.units.find((u) => u.type === 'galley')!;
     run(r, 5);
     expect(r.terrain[Math.floor(g2.y) * r.size + Math.floor(g2.x)]).toBe(1);
-    // Frigates replace galleys once researched.
+    // Frigates replace galleys once researched: the people's own kind of Frigate (fleets.ts).
     g.players[0].upgrades.galley = 'frigate';
-    expect(g.trainedAs(0, 'galley')).toBe('frigate');
+    expect(hullOf(g.trainedAs(0, 'galley'))).toBe('frigate');
   });
 });
 

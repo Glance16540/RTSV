@@ -5,6 +5,7 @@
 
 import { CIV_STYLE, StyleId, UNITS, UnitDef } from './data';
 import { Calling, HeroSpec, cleanHero } from './hero';
+import { STEWARD_CALL, STEWARD_POWERS } from './steward';
 
 /** The ranks at which a power is come into. */
 export const POWER_RANKS = [1, 3, 5];
@@ -28,6 +29,7 @@ export const POWERS: Record<Calling, [Power, Power][]> = {
     [{ name: 'By example', desc: 'Those fighting near them strike 15% harder.', mod: () => ({ aura: 1.15 }) },
       { name: 'Master of the engines', desc: 'Their own shot flies two tiles farther and hits half again as hard.', mod: (d) => ({ range: d.range + 2, atk: Math.round(d.atk * 1.5) }) }],
   ],
+  steward: STEWARD_POWERS, // the town's keeper (steward.ts)
 };
 
 /** The rank (Seasoned) from which a leader can raise their call, how long it lasts, and how long before it can be raised again. */
@@ -41,6 +43,7 @@ export const CALL_REST = 90;
 export const CALLS: Record<Calling, { name: string; desc: string; haste?: number; ward?: number }> = {
   warlord: { name: 'Sound the charge', desc: `For ${CALL_LASTS} seconds everyone of yours within their reach strikes a third faster.`, haste: 0.75 },
   strategist: { name: 'Hold fast', desc: `For ${CALL_LASTS} seconds everyone of yours within their reach takes 30% less harm.`, ward: 0.7 },
+  steward: STEWARD_CALL, // buildings within reach (steward.ts)
 };
 
 /** The powers a leader of this making holds at a rank, in the order they came into them. */

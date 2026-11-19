@@ -37,7 +37,9 @@
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
 import { inAll, strengthOf, whole } from './strengthwords';
+import { leaderWatch } from './leaderstay'; // a Strategist staying in the town (leaderstay.ts)
 import { outOf } from './rim';
+import { loseBy, roadClash, roadTally, soldiersOf } from './roadclash';
 import { militiaBands, militiaOf } from './militia';
 import { FELL, menStood } from './militiatoll';
 import { faithAt, swayTown } from './townfaith';
@@ -186,7 +188,7 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   const army = a ? armyStrength(a) : 0;
   const guard = t.capital >= 0 ? THREATS.capital : 0;
   const spirit = (t.owner >= 0 ? creedOf(faithAt(c, tid)).morale : 1) * (sick(c, tid) ? THREATS.sick : 1); // the town's own standing (townfaith.ts)
-  return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit * bandStand(c, tid)) }; // a people's own study may stiffen it (ownstudies.ts)
+  return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit * bandStand(c, tid) * leaderWatch(c, tid)) }; // a people's own study may stiffen it (ownstudies.ts)
 }
 
 /**
@@ -305,6 +307,12 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const guard = road ? Math.max(...[b.at, b.to!].map((id) => { const a = c.armies.find((x) => x.at === id && x.owner === owner); return a ? armyStrength(a) : 0; })) + THREATS.wayfarers : defence.total;
   const force = round1(b.strength * (0.8 + 0.4 * chance(c, b.id, 29)));
   const r = guard / Math.max(0.1, force);
+  // On a road, where an army of the town's people stands at either end, it is fought out (roadclash.ts): the army's companies,
+  // with the wayfarers on the road as the place that strikes and shelters, against the band. With no army there it is the
+  // wayfarers against the band by the old line.
+  const escort = road ? [b.at, b.to!].map((id) => c.armies.find((x) => x.at === id && x.owner === owner)).filter((x): x is Army => !!x).sort((x, y) => armyStrength(y) - armyStrength(x) || x.id - y.id)[0] : undefined;
+  const met = escort ? roadClash(b.strength, force, { ...soldiersOf(c, escort), place: THREATS.wayfarers }) : null;
+  if (met) roadTally(c, 'road', r < THREATS.hold, met); // beside the old rule, for the report
   // A town that already has people in some band's hands has no more to give: it is raided, not taken again.
   const bled = (c.bands ?? []).some((k) => k.held.some((h) => h.from === tid));
   // A strike on a town is fought out a round at a time (raidclash.ts); on a road it is an escort or nothing, by the old lines.
@@ -312,7 +320,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   // Stage three: the town turns out as against a nation, its own men as bands on foot beside any army, and only its works,
   // walls and guard as the place (raidclash.ts `turnedOut`, militia.ts).
   const fight = road ? null : raidClash(b.strength, force, defence, garrison?.units ?? {}, faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence));
-  let outcome: Outcome = fight ? (fight.outcome === 'taken' && bled ? 'raided' : fight.outcome) : r >= THREATS.hold ? 'held' : 'raided';
+  let outcome: Outcome = fight ? (fight.outcome === 'taken' && bled ? 'raided' : fight.outcome) : met ? (met.broke === 'soldiers' ? 'raided' : 'held') : r >= THREATS.hold ? 'held' : 'raided';
   const raid: Raid = {
     turn: c.turn, band: b.id, kind: b.kind, name: b.name, at: tid, owner, outcome, force, strength: b.strength, defence: road ? { ...defence, total: round1(guard) } : defence,
     killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0,
@@ -323,6 +331,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
     raid.would = w.outcome === 'taken' && bled ? 'raided' : w.outcome; raid.wouldLost = fight.pressed; raid.men = f.men; raid.wouldDead = bandsFell(c, tid, fight.body, FELL.dead); if (fight.broke === 'defender' && !bled) raid.wouldCost = fight.cost;
   }
   // An army standing in the town loses the companies the fight cost it, each a man of his town; never its last (it falls back inside).
+  if (met && escort) { const gone = loseBy(escort, met.lost); if (gone) { raid.garrison = gone; reckonArmies(c); } } // the army on the road loses the companies the fight cost it, never its last
   if (fight && garrison) {
     let spare = armySize(garrison) - 1, gone = 0;
     for (const k of Object.keys(fight.garrisonLost)) { const n = Math.min(spare, fight.garrisonLost[k], garrison.units[k] ?? 0); if (n <= 0) continue; garrison.units[k] -= n; if (garrison.units[k] <= 0) delete garrison.units[k]; spare -= n; gone += n; }
@@ -334,15 +343,15 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   // town's last men.
   const fallen = (body: number): number => takeOut(c, tid, 'm', Math.min(Math.max(0, f.men - TOWN_SCALE), Math.round(bandsFell(c, tid, body, RAID.dead) * fortShelter(c, tid)))).length;
   if (outcome === 'held') {
-    b.strength -= fight ? fight.bandLost : r >= 2 ? 2 : 1;
+    b.strength -= fight ? fight.bandLost : met ? Math.max(1, met.bandLost) : r >= 2 ? 2 : 1;
     if (fight) raid.killed = fallen(fight.body); // the men its bands lost in holding (below)
     else if (r < 1.6 && !road && f.men > TOWN_SCALE) raid.killed = takeOut(c, tid, 'm', TOWN_SCALE).length;
     if (b.strength <= 0) raid.broken = true;
   } else {
     if (fight) raid.killed = fallen(fight.body); // by what its bands lost, not by rule
     // What it takes follows the fight (raidclash.ts `spoilsOf`): how long it had the town, and the hands it has left to carry.
-    const spoils = fight ? spoilsOf(fight) : { time: 1, hands: 1 };
-    const share = road ? THREATS.road : RAID.loot * spoils.time + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
+    const spoils = fight ? spoilsOf(fight) : met ? { time: met.time, hands: met.hands } : { time: 1, hands: 1 };
+    const share = road ? THREATS.road * spoils.time : RAID.loot * spoils.time + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
     // What they would take, and then no more of it than they can carry.
     // Of the food, only what the town holds beyond a couple of seasons of its own eating: a town robbed is poorer, not starved.
     const spare = Math.max(0, f.stores.food - THREATS.larder * needOf(c, tid));

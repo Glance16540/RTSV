@@ -137,6 +137,8 @@ export interface Outfit {
   /** Build: 0 slight, 1 average, 2 heavy; and the chest, 0 small to 2 full (a woman's bust, a man's breadth). */
   girth: 0 | 1 | 2; chest: 0 | 1 | 2;
   skin: number; hair: number; seed: number;
+  /** Whose people they are, for the build of their head (heads.ts). */
+  civ?: string;
   /** Which face they have, if it is chosen and not left to the seed. */
   face?: number;
   /** Cloth on the body and arms; `mail` paints them as ring mail instead. */
@@ -213,11 +215,11 @@ export function roleOutfit(role: 'captive' | 'monk' | 'nun' | 'milkmaid' | 'patr
  * which dresses its villagers and plain soldiers its own way (`dress.ts`).
  */
 export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; naval?: boolean; civ?: string } = { cls: 'villager', age: 0 }): Outfit {
-  const o = plainOutfit(type, female, color, look, seed, wear, info);
+  const o: Outfit = { ...plainOutfit(type, female, color, look, seed, wear, info), ...(info.civ ? { civ: info.civ } : {}) };
   return info.civ && plainDress(type, NAMED.has(type)) ? nationDress(info.civ, type, o, color) : o;
 }
 /** Units with a dress of their own below. */
-const NAMED = new Set(['clubman', 'spearman', 'marauder', 'swordsman', 'pikeman', 'berserker', 'grenadier', 'slaver', 'slinger', 'javelineer', 'bowman', 'crossbowman', 'musketeer', 'shaman', 'priest', 'prophet', 'herbwife', 'warlord', 'strategist', 'hearthguard', 'zealot', 'shieldbearer', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai', 'firethrower', 'rider', 'knight', 'hussar', 'lancer', 'horsearcher', 'wolfrider', 'templar', 'companion', 'camelrider', 'mameluke', 'chariot', 'warchariot', 'longbowman', 'ashigaru']);
+const NAMED = new Set(['clubman', 'spearman', 'marauder', 'swordsman', 'pikeman', 'berserker', 'grenadier', 'slaver', 'slinger', 'javelineer', 'bowman', 'crossbowman', 'musketeer', 'shaman', 'priest', 'prophet', 'herbwife', 'warlord', 'strategist', 'steward', 'hearthguard', 'zealot', 'shieldbearer', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai', 'firethrower', 'rider', 'knight', 'hussar', 'lancer', 'horsearcher', 'wolfrider', 'templar', 'companion', 'camelrider', 'mameluke', 'chariot', 'warchariot', 'longbowman', 'ashigaru']);
 function plainOutfit(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; naval?: boolean }): Outfit {
   const s = Math.abs(seed | 0);
   const pick = (k: number): 0 | 1 | 2 => ([1, 0, 1, 2, 1, 1, 2, 0, 1][(s >> k) % 9] as 0 | 1 | 2);
@@ -252,6 +254,7 @@ function plainOutfit(type: string, female: boolean, color: number, look: { skin:
     // ---- leaders ----
     warlord: { mail: true, sleeves: 'long', plate: true, helmet: 'iron', shield: color, weapon: 'sword', cloak: color, trim: 0xd8b040, girth: 2, beard: true },
     strategist: { skirt: 'long', sleeves: 'long', hat: 'cap', hatColor: 0x2a2a3a, cloak: 0x2a2a3a, trim: 0xd8b040, weapon: 'staff' },
+    steward: { top: leather, sleeves: 'long', mantle: true, cloak: color, trim: 0xd8b040, girth: 1, weapon: 'sword', beard: true }, // the town's keeper (steward.ts)
     // ---- each nation's own ----
     hearthguard: { top: leather, helmet: 'leather', shield: color, weapon: 'spear', mantle: s % 2 === 0 },
     zealot: { top: linen, skirt: 'long', skirtColor: linen, sleeves: 'long', hat: 'hood', hatColor: linen, trim: color, weapon: 'sword', beard: true },
@@ -672,7 +675,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const crop = !!o.helmet || o.hat === 'cap' || o.hat === 'fur' || o.hat === 'straw' || o.hat === 'turban';
   const hidden = o.hairStyle === 'covered' || o.hat === 'hood';
   const cut = hidden ? null : o.female ? (crop && o.hat !== 'turban' ? 'buzzedF' : o.hairStyle === 'long' ? 'long' : o.hairStyle === 'bun' ? 'buns' : 'buzzedF') : crop || o.seed % 3 === 0 ? 'buzzed' : 'parted';
-  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard, cut, o.face ?? o.seed);
+  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard, cut, o.face ?? o.seed, { civ: o.civ }); // the build of the head runs by the person's people (heads.ts)
   if (sculpt) {
     const F = sculpt.fig, sc = (0.118 / (F.crown - F.eyeY)) * HEAD_FIT;
     // No two heads quite of a size: a little broader or narrower, longer or shorter, by the person.

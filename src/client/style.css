@@ -877,3 +877,9 @@ body.looking-out #visit { display: none; }
 /* The playtest's fifth pass (docs/PLAYTEST.md 5.6): where a record (a roof's children, a person's story) stands at the
    right of the panel, everything else keeps to the left of it, so no line runs on under it and is cut off. */
 @media (min-width: 1100px) { #info:has(> .record) > :not(.record) { margin-right: calc(44% + 12px); } }
+
+/* A record standing at the right of the panel (a roof's children, a person's story) scrolls, and on a wide screen it is
+   a card of plain colour. Chromium lifts a scroller with a plain opaque background into a layer of its own, and here drew
+   that layer at the top of the screen, an empty dark box over the field, whenever a Town Center was selected. The same
+   colour painted as a gradient is drawn with the record and looks the same. */
+@media (min-width: 1100px) { .record { background: linear-gradient(#efdbb3, #efdbb3); } }
