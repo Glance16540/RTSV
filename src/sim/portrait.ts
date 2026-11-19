@@ -24,6 +24,8 @@ import { grieving } from './grief';
 import { folkOf } from './township';
 import { serving } from './household';
 import { townGrief } from './notableweight';
+import { faceOf, stationOf } from './faces';
+import type { Face } from './faces';
 
 export const NATIONS = ['wild', 'england', 'hearth', 'stonekin', 'greece', 'dawn', 'babylon', 'persia', 'arabs', 'egypt', 'steppe', 'forge', 'japan', 'mali', 'kush'] as const;
 export type Sex = 'm' | 'f';
@@ -52,7 +54,7 @@ export const FEELING_WORDS: Record<Feeling, string> = { content: 'content', afra
 export const STANDING_WORDS: Record<Standing, string> = { holy: 'devout', plain: 'ordinary', worldly: 'worldly', low: 'decadent' };
 
 /** What a portrait shows: the keys to try, best first, and the marks over it. */
-export interface Portrait { keys: string[]; marks: Mark[]; sex?: Sex; feeling?: Feeling; body?: Body; nation: string; words: string }
+export interface Portrait { keys: string[]; marks: Mark[]; sex?: Sex; feeling?: Feeling; body?: Body; nation: string; words: string; /** Their own face, drawn in place of their people's picture (faces.ts). */ face?: Face }
 
 const NEVER = /child|baby|infant|kid/;
 /** Keys a portrait may use: never one of a child. */
@@ -184,6 +186,9 @@ export function marksOf(g: Game, u: Unit, mood: Mood = moodOf(g, u)): Mark[] {
   return sorted(m);
 }
 
+/** The kinds of unit that are a person, and so have a face. */
+const PERSONS = new Set(['infantry', 'ranged', 'cavalry', 'hero', 'support']);
+
 /** The portrait of anyone on a battlefield, or null for one who is never shown (a child). */
 export function unitPortrait(g: Game, u: Unit): Portrait | null {
   if (u.growT > 0) return null;
@@ -192,9 +197,16 @@ export function unitPortrait(g: Game, u: Unit): Portrait | null {
   const nation = u.def.marauder ? '' : nationOf(u.people ?? owner?.civ);
   if (u.type === 'villager' && u.gender) {
     const mood = moodOf(g, u), feeling = feelingOf(mood), body = bodyOf(u.gender, seedOf(u)), marks = marksOf(g, u, mood);
-    return { keys: personKeys(nation, u.gender, body, feeling), marks, sex: u.gender, feeling, body, nation, words: words(FEELING_WORDS[feeling], marks) };
+    const face = faceOf({ seed: seedOf(u), sex: u.gender, nation, feeling, body, old: g.isElder(u), station: 'common', mother: u.gender === 'f' && (homeOf(g, u)?.children ?? 0) > 0 }) ?? undefined;
+    return { keys: personKeys(nation, u.gender, body, feeling), marks, sex: u.gender, feeling, body, nation, words: words(FEELING_WORDS[feeling], marks), ...(face ? { face } : {}) };
   }
   const marks = marksOf(g, u);
+  // A soldier is a person too: their own face, under their people's helmet (a man unless the rules say otherwise).
+  if (PERSONS.has(u.def.cls) && !u.def.marauder) {
+    const sex: Sex = u.gender ?? 'm', mood = moodOf(g, u), feeling = feelingOf(mood);
+    const face = faceOf({ seed: seedOf(u), sex, nation, feeling, body: bodyOf(sex, seedOf(u)), old: g.isElder(u), station: u.def.cls === 'support' ? 'common' : 'soldier' }) ?? undefined;
+    return { keys: unitKeys(nation, u.type), marks, sex, feeling, nation, words: words('', marks), ...(face ? { face } : {}) };
+  }
   return { keys: unitKeys(nation, u.type), marks, sex: u.gender ?? undefined, nation, words: words('', marks) };
 }
 
@@ -203,7 +215,8 @@ export function captivePortrait(g: Game, c: Captive, captor: Captor, led = false
   const nation = nationOf(c.people ?? g.players[c.from]?.civ), body = bodyOf(c.gender, seedOf({ id: 0, name: c.name, family: c.family }));
   const old = c.lifespan > 0 && g.aging && c.age > c.lifespan * 0.75;
   const marks = sorted([...(led ? ['led' as const] : ['captive' as const]), ...(old ? ['old' as const] : [])]);
-  return { keys: captiveKeys(nation, c.gender, captor, body, old), marks, sex: c.gender, feeling: 'angry', body, nation, words: words(captor === 'rival' ? 'held by a rival people' : 'held as a slave', marks) };
+  const face = faceOf({ seed: seedOf({ id: 0, name: c.name, family: c.family }), sex: c.gender, nation, feeling: 'angry', body, old, station: 'captive' }) ?? undefined;
+  return { keys: captiveKeys(nation, c.gender, captor, body, old), marks, sex: c.gender, feeling: 'angry', body, nation, words: words(captor === 'rival' ? 'held by a rival people' : 'held as a slave', marks), ...(face ? { face } : {}) };
 }
 /** Who holds a captive being led by `u`, or kept in `b`. */
 export const captorOf = (x: Unit | Building): Captor => (x.kind === 'unit' ? (x.def.slaver ? 'slaver' : 'rival') : 'slaver');
@@ -234,7 +247,8 @@ export function notablePortrait(nation: string, n: { name: string; family?: stri
   const feeling = feelingOf(mood), body = bodyOf(n.gender, seedOf({ id: 0, name: n.name, family: n.family }));
   const keys = n.kind === 'veteran' && n.unit ? [...unitKeys(nation, n.unit), ...personKeys(nation, n.gender, body, feeling)] : personKeys(nation, n.gender, body, feeling);
   const marks: Mark[] = n.kind === 'veteran' ? ['veteran'] : [];
-  return { keys: clean(keys), marks, sex: n.gender, feeling, body, nation, words: words(n.kind === 'veteran' ? '' : FEELING_WORDS[feeling], marks) };
+  const face = faceOf({ seed: seedOf({ id: 0, name: n.name, family: n.family }), sex: n.gender, nation, feeling, body, station: stationOf(n.kind), mother: n.kind === 'mother' || n.kind === 'matron' }) ?? undefined;
+  return { keys: clean(keys), marks, sex: n.gender, feeling, body, nation, words: words(n.kind === 'veteran' ? '' : FEELING_WORDS[feeling], marks), ...(face ? { face } : {}) };
 }
 /** A town's standing, as a man and a woman of it. */
 export function townStanding(nation: string, virtue: number): { standing: Standing; man: string[]; woman: string[] } {

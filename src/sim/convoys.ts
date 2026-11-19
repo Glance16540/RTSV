@@ -37,7 +37,7 @@ import { claimLand, settleable, wayOut } from './founding';
 
 /** What a convoy carries: stores, and grown people by their ages in seasons. */
 export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[]; /** Children, by their ages in seasons: a family moving (migration.ts). */ children?: number[]; /** Known people going with a family, their records whole (migration.ts). */ notables?: Notable[] }
-export interface Convoy { id: number; owner: number; from: number; to: number; road: number[]; cargo: Cargo; since: number; /** A family moving of its own accord (migration.ts): not one of the people's convoys, and not told of one by one. */ movers?: boolean; /** Settlers bound for an empty land, to found a town there (founding.ts). */ found?: boolean }
+export interface Convoy { id: number; owner: number; from: number; to: number; road: number[]; cargo: Cargo; since: number; /** A family moving of its own accord (migration.ts): not one of the people's convoys, and not told of one by one. */ movers?: boolean; /** Settlers bound for an empty land, to found a town there (founding.ts). */ found?: boolean; /** Goods sent to pay for a thing waiting at the town it is bound for (sentfor.ts): the waiting's id. */ pays?: number }
 /** What happened to a convoy as the season turned. */
 export interface Arrival { convoy: Convoy; at: number; robbed?: { by: string; took: Stores }; lost?: boolean; /** Grown movers carried off on the road. */ taken?: number; /** Settlers founded a town where they came in (founding.ts). */ founded?: boolean; /** Who might have met it: a band lay in wait on its road (`danger`), and an Inn of its people's stood on it (`inn`, roads.ts). */ met?: { danger: boolean; inn: boolean } }
 
@@ -113,11 +113,11 @@ export function roadBetween(c: Campaign, f: number, from: number, to: number): n
 }
 
 /** Why this convoy cannot go, in words; '' if it can. */
-export function cannotSend(c: Campaign, f: number, from: number, to: number, what: Send): string {
+export function cannotSend(c: Campaign, f: number, from: number, to: number, what: Send, opts: { pays?: number } = {}): string {
   if (c.territories[from]?.owner !== f || c.territories[to]?.owner !== f) return 'Both towns must be your people\'s.';
   if (from === to) return 'A convoy goes from one town to another.';
   if (!roadBetween(c, f, from, to)) return 'There is no road through your own lands between them, nor a sea lane from a Harbour.';
-  if ((c.convoys ?? []).filter((x) => x.owner === f && !x.movers).length >= CONVOYS.most) return `No more than ${CONVOYS.most} convoys can be on the road at once.`;
+  if (opts.pays === undefined && (c.convoys ?? []).filter((x) => x.owner === f && !x.movers && x.pays === undefined).length >= CONVOYS.most) return `No more than ${CONVOYS.most} convoys can be on the road at once.`;
   const k = folkOf(c, from);
   for (const s of STORE_KINDS) if (whole(what[s]) > k.stores[s]) return `${c.territories[from].name} has only ${k.stores[s]} ${s}.`;
   if (whole(what.men) > Math.max(0, k.men - 1)) return `${c.territories[from].name} cannot spare ${whole(what.men)} ${whole(what.men) === 1 ? 'man' : 'men'}: a town keeps at least one.`;
@@ -138,16 +138,16 @@ function setOut(c: Campaign, tid: number, sex: 'm' | 'f' | 'k', n: number): numb
 }
 
 /** Send a convoy. It leaves at once and comes in when the season turns. Returns it, or null if it cannot go. */
-export function sendConvoy(c: Campaign, f: number, from: number, to: number, what: Send): Convoy | null {
-  if (cannotSend(c, f, from, to, what)) return null;
+export function sendConvoy(c: Campaign, f: number, from: number, to: number, what: Send, opts: { /** Goods sent to pay for a thing waiting there (sentfor.ts): not one of the people's own convoys, and told of with it. */ pays?: number } = {}): Convoy | null {
+  if (cannotSend(c, f, from, to, what, opts)) return null;
   const k = folkOf(c, from), cargo: Cargo = { ...empty(), men: [], women: [] };
   for (const s of STORE_KINDS) { cargo[s] = whole(what[s]); k.stores[s] -= cargo[s]; }
   cargo.men = setOut(c, from, 'm', whole(what.men));
   cargo.women = setOut(c, from, 'f', whole(what.women));
-  const convoy: Convoy = { id: (c.convoySeq = (c.convoySeq ?? 0) + 1), owner: f, from, to, road: roadBetween(c, f, from, to)!, cargo, since: c.turn };
+  const convoy: Convoy = { id: (c.convoySeq = (c.convoySeq ?? 0) + 1), owner: f, from, to, road: roadBetween(c, f, from, to)!, cargo, since: c.turn, ...(opts.pays !== undefined ? { pays: opts.pays } : {}) };
   (c.convoys ??= []).push(convoy);
   const goods = STORE_KINDS.filter((s) => cargo[s]).map((s) => `${cargo[s]} ${s}`), folk = [cargo.men.length ? `${cargo.men.length} ${cargo.men.length === 1 ? 'man' : 'men'}` : '', cargo.women.length ? `${cargo.women.length} ${cargo.women.length === 1 ? 'woman' : 'women'}` : ''].filter(Boolean);
-  if (f === 0) c.log.push(`A convoy has left ${c.territories[from].name} for ${c.territories[to].name} with ${[...goods, ...folk].join(', ')}. It will come in next season.${paved(c, f) && cargo.food ? ' The road is paved: none of the food will spoil on the way.' : ''}`);
+  if (f === 0 && opts.pays === undefined) c.log.push(`A convoy has left ${c.territories[from].name} for ${c.territories[to].name} with ${[...goods, ...folk].join(', ')}. It will come in next season.${paved(c, f) && cargo.food ? ' The road is paved: none of the food will spoil on the way.' : ''}`);
   return convoy;
 }
 
@@ -225,7 +225,7 @@ export function waylay(c: Campaign, x: Convoy, a: { robbed?: Arrival['robbed'] }
     for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * met.share * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
     if (worth(took) > 0) {
       a.robbed = { by: band.name, took };
-      band.band.strength = Math.min(10, band.band.strength + 1);
+      if (x.pays === undefined) band.band.strength = Math.min(10, band.band.strength + 1); // goods sent to pay for a thing (sentfor.ts) feed no band's strength: the owner's word, DESIGN ae5db6f
       if (mine) c.log.push(`🗡️ ${band.name[0].toUpperCase() + band.name.slice(1)} stopped your ${what} to ${c.territories[x.to].name} ${band.sea ? 'at sea' : 'on the road'} and took ${STORE_KINDS.filter((s) => took[s]).map((s) => `${took[s]} ${s}`).join(', ')}.`);
     }
   }
