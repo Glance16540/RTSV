@@ -39,6 +39,7 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Stories | A story inside the story begins for the player's nation (a thief, a killer, a rival king, a suitor, a plot: `src/sim/intrigue.ts`, `src/sim/courtstory.ts`), over the years the campaign ran | about once in 3 to 6 years |
 | Crime | Seasons a thief or a killer is at large, with a Watch House in every town against as it is (read with CRIME=1) | 10 to 30% fewer |
 | Crime | Raids on the player's towns held off, with Town Watch learnt against without (read with CRIME=1) | 5 to 20 more in every 100 |
+| Crime | Of the player's convoys a band lay in wait for (highwaymen at an end of a stretch of its road, or pirates on its sea leg), stopped with an Inn on its own road against without; not sorted by the nation, since Inns are raised where the bands sit | fewer with an Inn |
 | Rule | Rival nations with a Hall of Judgement by 20 years | most (over half) |
 | Rule | Lords angry at 20 years, the player's and the rivals' each | 1 to 8% (some at the edge of anger, never a revolt of the great) |
 | Rule | Lords content at 20 years, the player's and the rivals' each | 5 to 20% |
