@@ -5,7 +5,7 @@ import { Campaign, atTruce, moveArmy, newCampaign } from '../src/sim/campaign';
 import { CHILD_SEASONS } from '../src/sim/ageing';
 import { houseOf } from '../src/sim/dynasty';
 import { pactOf, wedPeace } from '../src/sim/pacts';
-import { MARRY, answerMarriage, claimsOn, marryBar, matchOf, offerMarriage, royalSeason } from '../src/sim/royalmarriage';
+import { MARRY, answerMarriage, bordering, claimsOn, marryBar, matchOf, offerMarriage, royalSeason } from '../src/sim/royalmarriage';
 import { sensibleAnswers } from '../src/sim/storypolicy';
 
 const grown = (c: Campaign, name: string, female: boolean) => ({ name, female, born: c.turn - CHILD_SEASONS - 10 });
@@ -95,8 +95,15 @@ describe('royal marriages', () => {
     expect(c.chronicle!.at(-1)!.text).toContain('claim on both thrones');
   });
 
-  it('rulers of the computer match their houses now and then by the same rules', () => {
+  it('rulers of the computer match their houses now and then by the same rules, two rivals only where neither can march on the other', () => {
     const { c, r1, r2 } = world();
+    const near = bordering(c, r1, r2);
+    if (near) for (let t = 0; t < 200; t++) { c.turn++; houseOf(c, r1).heirs = [grown(c, `B${t}`, false)]; houseOf(c, r2).heirs = [grown(c, `W${t}`, true)]; delete c.pactOffer; c.pacts = []; royalSeason(c); expect(wedPeace(c, r1, r2)).toBe(false); }
+    // Apart: r2 holds one land only, out of r1's reach and r1 out of its.
+    for (const t of c.territories) if (t.owner === r2) t.owner = -1;
+    const far = c.territories.find((t) => t.owner < 0 && !t.rim && !t.horde && !c.territories.some((x) => x.owner === r1 && x.adj.includes(t.id)) && !t.adj.some((n) => c.territories[n].owner === r1))!;
+    far.owner = r2;
+    expect(bordering(c, r1, r2) || bordering(c, r2, r1)).toBe(false);
     let wed = 0;
     for (let t = 0; t < 400; t++) {
       c.turn++;

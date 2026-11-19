@@ -10,12 +10,13 @@
 //   - in time a child of both houses may be born to them, a record only (a name, the turn of birth), never shown as a
 //     person; once grown it is told that the child has a claim on both thrones (`claimsOn`), and the chronicle keeps it.
 // A people that marches on a house it is bound to breaks the pact (campaign.ts): the marriage stands, its peace is over.
-// Rival rulers offer marriages to one another and to the player by the same rules, now and then (MARRY.chance a season
+// Rival rulers offer marriages to one another and to the player by the same rules, now and then (MARRY.chance a season;
+// two rivals only where neither can march on the other, `bordering`, so that a match between them takes no war off the map
 // for a ruler with a child of age to offer); an offer to the player waits two seasons for an answer (`c.pactOffer`).
 // A ruler's readiness to accept is their temper's openness to peace (HUB.peaceOf), more toward a stronger people and with
 // goodwill. Chances here are a run of their own. Nothing suggestive is told: who weds whom, and that is all.
 import type { Campaign } from './campaign';
-import { HUB } from './campaignbase';
+import { HUB, reach } from './campaignbase';
 import { houseOf, ofAge, rulerName } from './dynasty';
 import type { Heir } from './dynasty';
 import { NAMES_F, NAMES_M } from './data';
@@ -59,6 +60,11 @@ export function matchOf(c: Campaign, a: number, b: number): [Heir, Heir] | null 
     if (g) return [h, g];
   }
   return null;
+}
+
+/** Can either of two peoples march on the other: does a land of one lie within reach of a land of the other? */
+export function bordering(c: Campaign, a: number, b: number): boolean {
+  return c.territories.some((t) => t.owner === a && reach(c, t.id).some((n) => c.territories[n]?.owner === b));
 }
 
 /** Why `a` cannot offer `b` a match now, or ''. */
@@ -123,7 +129,9 @@ export function royalSeason(c: Campaign): void {
   if (c.pactOffer && c.turn - c.pactOffer.turn >= MARRY.waits) delete c.pactOffer; // unanswered: the offer lapses
   for (const f of c.factions) {
     if (!f.alive || !f.isAI || !freeHeir(c, f.id) || chance(c, f.id * 31 + 7) >= MARRY.chance) continue;
-    const others = c.factions.filter((g) => g.alive && g.id !== f.id && !wedPeace(c, f.id, g.id) && matchOf(c, f.id, g.id));
+    // Two rivals match only where neither can march on the other: their match takes no war off the map (at 384 campaigns,
+    // rivals wed across a border sat out each other's wars and the attended player won 13 fewer campaigns).
+    const others = c.factions.filter((g) => g.alive && g.id !== f.id && !wedPeace(c, f.id, g.id) && matchOf(c, f.id, g.id) && (g.id === 0 || !bordering(c, f.id, g.id)));
     if (!others.length) continue;
     const g = others[Math.floor(chance(c, f.id * 17 + 3) * others.length)];
     const [ha, hb] = matchOf(c, f.id, g.id)!;
