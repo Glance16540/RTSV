@@ -219,6 +219,11 @@ class Sfx {
     src.start(t);
   }
 
+  /** The running audio and its output, for sounds made elsewhere (stormsky.ts); null while there is none or sound is off. */
+  bus(): { ctx: AudioContext; out: GainNode } | null {
+    return this.ctx && this.out && !this.muted && this.ctx.state === 'running' ? { ctx: this.ctx, out: this.out } : null;
+  }
+
   play(name: Name): void {
     const c = this.ctx;
     if (!c || this.muted || c.state !== 'running') return;

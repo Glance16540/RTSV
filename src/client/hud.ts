@@ -10,6 +10,7 @@ import { bereftLines } from '../sim/bereft';
 import { oldLine } from '../sim/oldmarks';
 import { recordLines } from '../sim/warrecord';
 import { enlistLine, queueLines, slotFor } from '../sim/pickman';
+import { hallPanelHtml } from './hallpanel';
 import { possessive, renameOwn } from '../sim/naming';
 const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
@@ -121,6 +122,8 @@ export class Hud {
       if (q && b) this.app.game.cmdCancel(this.app.pid, b.id, Number(q.dataset.q));
       const send = t.closest('[data-send]') as HTMLElement | null;
       if (send) { this.app.game.cmdSendMan(this.app.pid, Number(send.dataset.send)); this.app.select(this.app.sel); } // who goes to arms (pickman.ts)
+      const rule = t.closest('[data-rule]') as HTMLElement | null;
+      if (rule) { const [id, answer] = (rule.dataset.rule ?? '').split('|'); this.app.game.cmdRule(this.app.pid, id, answer); this.app.select(this.app.sel); } // a case judged at the Hall (hallfield.ts)
       const pick = t.closest('[data-type]') as HTMLElement | null;
       if (pick) this.app.select(this.app.sel.filter((id) => this.app.game.entities.get(id)?.type === pick.dataset.type));
     });
@@ -609,6 +612,7 @@ export class Hud {
     if (b.def.camp) body += heldPanel(game, b, pid);
     if (b.type === 'towncenter' && b.owner === pid) body += takenPanel(game, pid);
     body += robbedLine(game, b); // robbed by a thief afoot in the town (fieldstory.ts)
+    body += hallPanelHtml(game, b, pid); // the cases before the town's Hall of Judgement (hallfield.ts)
     if (b.blightT) body += `<div class="warn">🦗 Blighted: nothing will grow here for ${Math.ceil(b.blightT)} seconds</div>`;
     if (b.type === 'farm' && b.complete && !b.blightT && game.foul) body += `<div class="${game.foul === 'rain' ? 'good' : 'warn'}">${game.foul === 'rain' ? '🌧️ Rain: the field yields 15% more' : game.foul === 'snow' ? '🌨️ Snow: the field yields 40% less' : '🌪️ Dust: the field yields 30% less'}</div>`;
     else if (mine) {

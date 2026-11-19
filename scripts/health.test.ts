@@ -22,6 +22,8 @@
 //  The player begins with one town, so a campaign gives one pair at most: the figure swings 30 to 40 points
 //  at 8, and reads steadily from 24 (18 pairs or so). `npm run health` is the baseline: 96 campaigns and 24 visits.
 //   OUTwhere the report is written. Default docs/health-report.md.
+//   POOL   a sparse row (the claimant risings) judged over this run and the runs named, by their <OUT>.sparse.json (other seeds,
+//  the same course): marked "pooled". SPARSE=768: plays the campaigns past CAMPAIGNS for the sparse rows alone (slow).
 //
 // Every campaign is played twice from the same seed: as the rules stand, the player giving the decrees a sensible
 // ruler would ('ruled'), and with nobody giving decrees ('no decrees'). Every figure is read from the first, but
@@ -29,7 +31,7 @@
 import { NAMED } from '../src/sim/veteranhome';
 import { sensibleAnswers } from '../src/sim/storypolicy';
 import { it } from 'vitest';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
 import { Game } from '../src/sim/game';
 import type { Campaign } from '../src/sim/campaign';
@@ -77,6 +79,28 @@ const VISITS = +(process.env.VISITS ?? 0);
 const CRIME = !!process.env.CRIME;
 const STORIES = process.env.STORIES === 'answer' ? 'answer' : 'ignore';
 const OUT = process.env.OUT ?? 'docs/health-report.md';
+/**
+ * Sparse rows (a handful of events in hundreds of campaigns: the claimant risings) swing from one set of seeds to the next,
+ * so they may be judged over more campaigns than the run plays. Each run writes its sparse counts beside the report
+ * (`<OUT>.sparse.json`). POOL=file[,file] judges them over this run's campaigns and those of the runs named (of the same
+ * course, other seeds); SPARSE=768 plays the campaigns past CAMPAIGNS for the sparse rows alone (slow: as long again as
+ * the run for every 384 more). A row judged so says "pooled". Neither changes a band; the default run is as it was.
+ */
+const POOL = (process.env.POOL ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+const SPARSE = Math.max(0, Math.floor(+(process.env.SPARSE ?? 0)) || 0);
+interface SparseCounts { course: string; player: string; first: number; campaigns: number; claimants: { risen: number; noble: number } }
+const sparseCounts: SparseCounts = { course: '', player: '', first: 0, campaigns: 0, claimants: { risen: 0, noble: 0 } };
+/** This run's claimant risings with those of the runs pooled (POOL) and the sparse campaigns played (`extra`). */
+function pooledClaims(mine: { risen: number; noble: number }, n: number, extra?: { risen: number; noble: number; n: number; first: number }): { risen: number; noble: number; n: number; from: string[] } {
+  const out = { risen: mine.risen, noble: mine.noble, n, from: [] as string[] };
+  for (const f of POOL) {
+    const x = JSON.parse(readFileSync(f, 'utf8')) as SparseCounts;
+    if (x.course !== STORIES || x.player !== PLAYER || (x.first < FIRST + CAMPAIGNS && x.first + x.campaigns > FIRST)) continue; // another course, or the same seeds: not pooled
+    out.risen += x.claimants.risen; out.noble += x.claimants.noble; out.n += x.campaigns; out.from.push(`seeds ${x.first} to ${x.first + x.campaigns - 1}`);
+  }
+  if (extra && extra.n) { out.risen += extra.risen; out.noble += extra.noble; out.n += extra.n; out.from.push(`seeds ${extra.first} to ${extra.first + extra.n - 1}`); }
+  return out;
+}
 const SIEGES = +(process.env.SIEGES ?? 8);
 const MINUTES = +(process.env.MINUTES ?? 20);
 /** Sixty and seventy years old, in seasons (ageing.ts). */
@@ -682,6 +706,10 @@ const num = (x: number, d = 1): string => (Number.isFinite(x) ? x.toFixed(d) : '
 const share = <T>(xs: T[], p: (x: T) => boolean): number => (xs.length ? xs.filter(p).length / xs.length : NaN);
 const within = (x: number, lo: number, hi: number): boolean => Number.isFinite(x) && x >= lo && x <= hi;
 
+/** The words before a sparse row's own count when it is judged pooled. */
+const claimPooled = (pool: { risen: number; n: number; from: string[] }, n: number, risen: number): string =>
+  pool.n > n ? `pooled over ${pool.n} campaigns (this set and ${pool.from.join(', ')}): ${num((100 * pool.risen) / pool.n, 1)} every 100 (${pool.risen} in ${pool.n}); this set alone: ` : '';
+let claimBase = { risen: 0, noble: 0, n: 0 };
 interface Row { area: string; figure: string; band: string; measured: string; verdict: 'IN' | 'OUT' | 'not measurable' | 'not measured' | 'no band yet'; note?: string }
 
 it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
@@ -976,8 +1004,11 @@ add('Threats', 'A band from the far wilds is seen before it strikes or arrives',
   {
 const k = ruled.reduce((a, w) => { for (const key of Object.keys(a) as (keyof typeof a)[]) a[key] += w.claims[key]; return a; }, { wives: 0, noble: 0, band: 0, home: 0, grown: 0, nofollowing: 0, towns: 0, putdown: 0, swallowed: 0, lapsed: 0, crowned: 0, standing: 0, mine: 0, mineGrown: 0, mineGrownNoble: 0, raised: 0, mineRisen: 0, mineRisenNoble: 0, mineChild: 0 });
 const n = ruled.length, kids = k.noble + k.band;
-const per = (100 * k.mineRisen) / n;
-    add('Rule', 'Risings for a claimant to the throne against the player\'s nation, proclaimed in a child\'s name or by one come of age', '2 to 5 every 100 campaigns, some of them for a lord\'s son by the leader\'s wife', `${num(per, 1)} every 100 campaigns (${k.mineRisen} in ${n}: ${k.mineChild} proclaimed in a child's name, ${k.mineRisen - k.mineChild} by a claimant grown), ${k.mineRisenNoble} of them for a child born in a lord's house and ${k.mineRisen - k.mineRisenNoble} for one born among a band; ${k.mineGrown} of the player's claimants came of age; every people's together: ${k.wives} wives taken into a lord's house; ${kids} children written down (${k.noble} in a lord's house, ${k.band} among a band; ${k.mine} of the player's house), ${k.home} of them home with their mothers; ${k.raised} risings proclaimed in a child's name; ${k.grown} came of age (${k.nofollowing} with nobody following); ${k.towns} towns out for a claim at the end; grown claimants' risings: ${k.putdown} put down or come back, ${k.swallowed} fallen to others, ${k.lapsed} lapsed, ${k.crowned} ended on the throne, ${k.standing} still standing`, n ? within(per, 2, 5) && k.mineRisenNoble > 0 : null,
+claimBase = { risen: k.mineRisen, noble: k.mineRisenNoble, n };
+const pool = pooledClaims({ risen: k.mineRisen, noble: k.mineRisenNoble }, n); // a sparse row, judged over more campaigns where they are to hand (POOL, SPARSE)
+const per = (100 * pool.risen) / pool.n;
+sparseCounts.claimants = { risen: k.mineRisen, noble: k.mineRisenNoble };
+    add('Rule', 'Risings for a claimant to the throne against the player\'s nation, proclaimed in a child\'s name or by one come of age', '2 to 5 every 100 campaigns, some of them for a lord\'s son by the leader\'s wife', `${claimPooled(pool, n, k.mineRisen)}${num(100 * k.mineRisen / Math.max(1, n), 1)} every 100 campaigns (${k.mineRisen} in ${n}: ${k.mineChild} proclaimed in a child's name, ${k.mineRisen - k.mineChild} by a claimant grown), ${k.mineRisenNoble} of them for a child born in a lord's house and ${k.mineRisen - k.mineRisenNoble} for one born among a band; ${k.mineGrown} of the player's claimants came of age; every people's together: ${k.wives} wives taken into a lord's house; ${kids} children written down (${k.noble} in a lord's house, ${k.band} among a band; ${k.mine} of the player's house), ${k.home} of them home with their mothers; ${k.raised} risings proclaimed in a child's name; ${k.grown} came of age (${k.nofollowing} with nobody following); ${k.towns} towns out for a claim at the end; grown claimants' risings: ${k.putdown} put down or come back, ${k.swallowed} fallen to others, ${k.lapsed} lapsed, ${k.crowned} ended on the throne, ${k.standing} still standing`, n ? within(per, 2, 5) && pool.noble > 0 : null,
       'A plot by a lord who is not of the leader\'s faith in which he takes the leader\'s wife into his house; a child born there, or to a wife held by a band; a rising proclaimed in the child\'s name by whoever holds it, from half a year after the birth; and the child grown (HEIR_AGE), leading that rising or raising one. In band: 2 to 5 risings against the player every 100 campaigns, and at least one of them for a child born in a lord\'s house. Towns that rise for a claimant are counted here and not among the free towns risen from unrest.');
   }
   const out = (o: string) => share(raids, (r) => r.outcome === o);
@@ -1072,6 +1103,18 @@ add('Threats', 'Men a town loses to a strike, and what a battle with a nation wo
   add('Sieges', 'A besieged town with walls or a fortress and its men (or an army) in it', 'holds 60 to 85%', both.length ? `${pct(bothHolds)} in all: on the map ${pct(holds)} (${sieges.length}), in real time ${pct(liveHolds)} (${live.filter((x) => x.walls && x.men).length} of ${live.length} fought, at odds ${drawn.odds.length ? `${num(Math.min(...drawn.odds), 2)} to ${num(Math.max(...drawn.odds), 2)}` : '—'}; attacker's age ${drawn.ages.map((a) => a[0]).join(',')} against ${drawn.ages.map((a) => a[1]).join(',')})` : 'none', both.length ? within(bothHolds, 0.6, 0.85) : null,
 `On the map: every siege of a nation's town settled in resolvePending, the rivals' among themselves included (campaign.ts battleWatchers), with a Fortress or a tower, wall or gate standing in its town, and its men or an army of its own in it. In real time: ${SIEGES} sieges drawn like those a campaign has. A campaign is played on by the computer for 20 to 48 seasons, so that each people is at its own age, and then the rival comes against the player\'s capital (given a Fortress: it stands as towers in its town) with infantry and archers grown until the map rates the assault at ${SIEGE_ODDS[0]} to ${SIEGE_ODDS[1]} times the town\'s defence (its own measure, as in resolvePending); the computer plays both sides for up to ${MINUTES} minutes; a town still standing then is counted as having held. Holds means the attacker was thrown back.`);
 
+  // SPARSE: the campaigns past this run's for the sparse rows alone, played last so that nothing else reads them.
+  if (SPARSE > CAMPAIGNS) {
+    const extra = { risen: 0, noble: 0, n: 0, first: FIRST + CAMPAIGNS };
+    for (let seed = FIRST + CAMPAIGNS; seed < FIRST + SPARSE; seed++) { const w = play(seed, true, SEASONS); extra.risen += w.claims.mineRisen; extra.noble += w.claims.mineRisenNoble; extra.n++; }
+    const row = rows.find((r) => r.figure.startsWith('Risings for a claimant'));
+    if (row) {
+      const pool = pooledClaims({ risen: claimBase.risen, noble: claimBase.noble }, claimBase.n, extra), per = (100 * pool.risen) / pool.n;
+      row.measured = claimPooled(pool, claimBase.n, claimBase.risen) + row.measured.replace(/^pooled over [^;]*; this set alone: /, '');
+      row.verdict = within(per, 2, 5) && pool.noble > 0 ? 'IN' : 'OUT';
+    }
+  }
+  for (const r of rows) if (r.measured.startsWith('pooled over') && !r.figure.endsWith('(pooled)')) r.figure += ' (pooled)';
   const secs = ((Date.now() - t0) / 1000).toFixed(0);
   const inN = rows.filter((r) => r.verdict === 'IN').length, outN = rows.filter((r) => r.verdict === 'OUT').length;
   const lines = [
@@ -1092,4 +1135,5 @@ add('Threats', 'Men a town loses to a strike, and what a battle with a nation wo
 '',
   ];
   writeFileSync(OUT, lines.join('\n'));
+  writeFileSync(`${OUT}.sparse.json`, JSON.stringify({ ...sparseCounts, course: STORIES, player: PLAYER, first: FIRST, campaigns: CAMPAIGNS }, null, 1)); // for a later run to pool (POOL)
 }, 36_000_000);

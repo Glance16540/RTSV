@@ -2,7 +2,7 @@
 // town's own people and stores, both sides played by the computer. Run with the villager for hire and without it
 // (birthonly.ts), over the same seeds, to see what people coming only by birth does to a siege.
 //
-//   SIEGES=1 SEEDS=1-12 OUT=sieges.jsonl npx vitest run scripts/sieges.test.ts   (AGING=0: nobody grows old)
+//   SIEGES=1 SEEDS=1-12 OUT=sieges.jsonl npx vitest run scripts/sieges.test.ts   (AGING=0: nobody grows old; AGE=2: every people in that age, as a later war is)
 //
 // Each game is written as one line of JSON to OUT. Skipped unless SIEGES is set.
 import { it } from 'vitest';
@@ -20,6 +20,7 @@ const MODES = (process.env.MODES ?? 'hire,born').split(',');
 function siege(seed: number) {
   const settled = CIV_IDS.filter((id) => id !== 'wild');
   const c = newCampaign(seed, 1, 1, settled[seed % settled.length]);
+  if (process.env.AGE) for (const f of c.factions) f.age = +process.env.AGE;
   const home = c.territories.find((t) => t.capital === 0)!;
   if (seed % 2 === 0) {
     c.armies.push({ id: 99, owner: 1, at: home.adj[0], units: { infantry: 2 + (seed % 3), archers: 1 + (seed % 2) }, hero: false, vet: 0, moved: false });

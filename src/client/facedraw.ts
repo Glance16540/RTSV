@@ -25,7 +25,9 @@ function headPath(jaw: Face['jaw']): string {
 function backHair(f: Face): string {
   const h = f.hair;
   switch (f.hairStyle) {
-    case 'long': return path('M18 30 C15 14 23 9 32 9 C41 9 49 14 46 30 L48 50 C44 51 41 50 40 48 L40 36 L24 36 L24 48 C23 50 20 51 16 50 Z', h);
+    // A man's long hair falls to his jaw; a woman's past her shoulders.
+    case 'long': return f.sex === 'm' ? path('M18 30 C15 14 23 9 32 9 C41 9 49 14 46 30 L46.5 40 C44 41.5 42 41 41 39.5 L41 33 L23 33 L23 39.5 C22 41 20 41.5 17.5 40 Z', h)
+      : path('M18 30 C15 14 23 9 32 9 C41 9 49 14 46 30 L48 50 C44 51 41 50 40 48 L40 36 L24 36 L24 48 C23 50 20 51 16 50 Z', h);
     case 'braids': return path('M18 28 L16 52 L20 53 L22 30 Z', h) + path('M46 28 L48 52 L44 53 L42 30 Z', h) + line('M16.5 36 L21 37 M16.3 42 L20.6 43 M16.1 48 L20.3 49 M47.5 36 L43 37 M47.7 42 L43.4 43 M47.9 48 L43.7 49', 0.8);
     case 'bun': return `<circle cx="32" cy="10" r="6" fill="${h}" stroke="${INK}" stroke-width="1.3"/>`;
     default: return '';
