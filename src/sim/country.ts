@@ -56,7 +56,7 @@ export function openBorder(c: Campaign, f: number, from: number, to: number): bo
   if (!canOpen(c, f, from, to)) return false;
   const w = barrierBetween(c, from, to)!, work = workFor(c, from, to)!;
   const A = c.territories[from], B = c.territories[to];
-  payFor(c, f, work === WORKS.river ? 'bridge' : 'pass', work.cost, { at: from });
+  if (!payFor(c, f, work === WORKS.river ? 'bridge' : 'pass', work.cost, { at: from, act: { kind: 'work', arg: to } })) return false; // or it waits for goods sent for by road (sentfor.ts)
   c.barriers = (c.barriers ?? []).filter((x) => x !== w);
   if (!A.adj.includes(to)) A.adj.push(to);
   if (!B.adj.includes(from)) B.adj.push(from);
