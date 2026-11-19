@@ -21,7 +21,8 @@ import { creedOf } from './creed';
 import { PLACES } from './story';
 import { faithPull } from './ownstudies';
 import { lifeDrift, lifeSeason } from './townlife';
-import { leanOf, pullFor } from './townlean'; // what a town lives through moves it too
+import { leanOf, pullFor } from './townlean';
+import { leaderPull } from './leaderstay'; // what a town lives through moves it too
 
 const clamp = (v: number): number => Math.max(-100, Math.min(100, Math.round(v)));
 const owned = (c: Campaign, f: number) => c.territories.filter((t) => t.owner === f);
@@ -98,7 +99,7 @@ export function pullTogether(c: Campaign): void {
     const mine = owned(c, x.id);
     if (mine.length < 2) continue;
     const mean = mine.reduce((n, t) => n + (t.virtue ?? 0), 0) / mine.length;
-    for (const t of mine) t.virtue = clamp((t.virtue ?? 0) + Math.round((mean - (t.virtue ?? 0)) * Math.min(1, pullFor(mean - (t.virtue ?? 0), PULL * pilgrimPull(c, x.id))))); // the faster with pilgrimage (pilgrimage.ts), and the harder far off (townlean.ts)
+    for (const t of mine) t.virtue = clamp((t.virtue ?? 0) + Math.round((mean - (t.virtue ?? 0)) * Math.min(1, pullFor(mean - (t.virtue ?? 0), PULL * pilgrimPull(c, x.id) * leaderPull(c, t.id))))); // the faster with pilgrimage (pilgrimage.ts) and the leader there (leaderstay.ts), and the harder far off (townlean.ts)
     synced(c, x.id);
   }
 }
