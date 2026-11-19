@@ -25,8 +25,8 @@
 //
 // Plain data on the faction, kept in the save. Rivals have the same, kept coarsely by the same rules.
 // No child is ever in the circle, and none is harmed by anything here.
+import { givenNames } from './peoplenames';
 import type { Campaign } from './campaign';
-import { NAMES_F, NAMES_M } from './data';
 import { folkOf, living } from './township';
 import type { Notable } from './township';
 import type { Feeling } from './portrait';
@@ -80,7 +80,7 @@ const hash = (c: Campaign, a: number, salt: number): number => {
 };
 const rand = (c: Campaign, a: number, salt: number): number => hash(c, a * 7919 + c.turn, salt);
 const named = (c: Campaign, f: number, female: boolean, salt: number, not: string[] = []): string => {
-  const list = female ? NAMES_F : NAMES_M;
+  const list = givenNames(c.factions[f]?.civ, female ? 'f' : 'm'); // the people's own names (peoplenames.ts)
   let i = Math.floor(hash(c, f * 31 + salt, 3) * list.length);
   for (let k = 0; k < list.length && not.includes(list[i]); k++) i = (i + 1) % list.length;
   return list[i];

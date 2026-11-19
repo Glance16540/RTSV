@@ -22,9 +22,9 @@
 // Plain data: an `Intrigue` on the campaign, `intrigueSeason(c)` once a season, `choicesFor` / `choose` for whoever
 // puts it to the player, `intrigueNews` for whoever reports it. Chances are a run of their own, so the rest of a
 // campaign's luck is left as it was. `culprit` is the sim's own knowledge: a client must not show it.
+import { givenNames, houseNames, townPeople } from './peoplenames';
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
-import { FAMILY_NAMES, NAMES_F, NAMES_M } from './data';
 import { agesOf } from './ageing';
 import { leaderAt } from './court';
 import { seatAt } from './hall';
@@ -110,7 +110,7 @@ function person(c: Campaign, at: number, salt: number, not: Person[], gender?: '
   for (let k = 0; ; k++) {
     const r = (n: number): number => chance(c, salt * 97 + k * 13 + n + at * 1009);
     const g = gender ?? (r(1) < (f.men + 0.5) / (f.men + f.women + 1) ? 'm' : 'f');
-    const p: Person = { name: pick(g === 'f' ? NAMES_F : NAMES_M, r(2)), family: houses.length && r(3) < 0.6 ? pick(houses, r(4)) : pick(FAMILY_NAMES, r(4)), gender: g, trade: pick(TRADES, r(5)) };
+    const p: Person = { name: pick(givenNames(townPeople(c, at), g), r(2)), family: houses.length && r(3) < 0.6 ? pick(houses, r(4)) : pick(houseNames(townPeople(c, at)), r(4)), gender: g, trade: pick(TRADES, r(5)) };
     if (k > 40 || !not.some((x) => same(x, p))) return p;
   }
 }

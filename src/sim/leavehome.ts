@@ -18,7 +18,7 @@
  * Returns the house he goes to, or null when the town has no door for him: he is homeless then, as before.
  * The field's side only, and nothing here is random but the stand-in's new name.
  */
-import { NAMES_M } from './data';
+import { givenNames } from './peoplenames';
 import type { Building, Game, Unit } from './game';
 
 const housesOf = (g: Game, owner: number): Building[] => g.buildings.filter((b) => b.owner === owner && b.type === 'house' && b.complete && !b.dead);
@@ -50,7 +50,7 @@ export function comeHome(g: Game, v: Unit): Building | null {
   const m = g.entities.get(house.residents.m);
   if (m && m.kind === 'unit' && m.id !== v.id) {
     house.residents.m = 0; m.homeId = 0;
-    const others = NAMES_M.filter((n) => n !== v.name);
+    const others = givenNames(g.players[m.owner]?.civ, 'm').filter((n) => n !== v.name); // his own people's names (peoplenames.ts)
     m.name = others[Math.floor(g.rng() * others.length)]; m.family = '';
   }
   g.setOrder(v, { t: 'movein', id: house.id, then: null });

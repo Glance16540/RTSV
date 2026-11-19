@@ -6,14 +6,14 @@
 // name nobody of that people's own already has, where one is left (sixty a sex, data.ts); and once a battle is laid out, any
 // villager still under the name the lot gave them who shares it with another of their people is given one nobody has.
 // A name from a record is never changed. Only given names: a family name is a house's.
+import { givenNames } from './peoplenames';
 import type { Game, Gender, Unit } from './game';
-import { NAMES_F, NAMES_M } from './data';
 
 declare module './game' {
   interface Unit { /** The name the lot gave this villager, while the battle is being laid out (namesakes.ts). */ drawn?: string }
 }
 
-const poolOf = (gender: Gender | null | undefined): readonly string[] => (gender === 'f' ? NAMES_F : NAMES_M);
+const poolOf = (g: Game, owner: number, gender: Gender | null | undefined): readonly string[] => givenNames(g.players[owner]?.civ, gender); // its own people's names (peoplenames.ts)
 
 /** The name the lot falls on (`roll` in 0..1), or the next one along nobody of `used` has; the lot's own if all are taken. */
 export function pickName(pool: readonly string[], roll: number, used: ReadonlySet<string>): string {
@@ -36,7 +36,7 @@ export function unlikeNames(g: Game, owner: number): number {
     for (const u of folk) (seen.get(u.name) ?? seen.set(u.name, []).get(u.name)!).push(u);
     // Everyone's name, soldiers' too: a villager is not named after a man of the roll on the field.
     const used = new Set(g.units.filter((u) => u.owner === owner && !u.dead && (u.type !== 'villager' || u.gender === gender)).map((u) => u.name));
-    const pool = poolOf(gender);
+    const pool = poolOf(g, owner, gender);
     for (const [name, list] of seen) {
       // Those named by a record keep it; of those the lot named, the first keeps it unless a record holds it too.
       const recorded = list.some((u) => u.drawn !== u.name) || g.units.some((u) => u.owner === owner && !u.dead && u.type !== 'villager' && u.name === name);

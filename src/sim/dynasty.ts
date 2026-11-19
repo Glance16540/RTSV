@@ -3,11 +3,11 @@
 // rather, a captain who has made a name in one of the armies can be raised in their place and founds a house anew.
 // Rules only: campaign.ts calls in here at the turn of the year and when a leader is lost.
 
+import { givenNames } from './peoplenames';
 import { endHouse, houseName, houseTitle, ofHouse } from './naming';
 import { canBear, householdNames, parentFor } from './kin';
 import { CHILD_SEASONS } from './ageing';
 import type { Army, Campaign } from './campaign';
-import { NAMES_F, NAMES_M } from './data';
 import { HeroSpec, MAX_RANK, RANK_NAMES } from './hero';
 import { leaderOf } from './leaders';
 import { leaderAsMade } from './powers';
@@ -69,7 +69,7 @@ const say = (c: Campaign, f: number, text: string): void => {
 const child = (c: Campaign, f: number, house: House, born: number): Heir => {
   const salt = f * 977 + house.line * 131 + house.births * 17;
   const female = pick(c, salt, 2) === 1;
-  const names = female ? NAMES_F : NAMES_M;
+  const names = givenNames(c.factions[f]?.civ, female ? 'f' : 'm'); // the people's own names (peoplenames.ts)
   const parent = parentFor(c, f);
   let name = names[pick(c, salt + 5, names.length)];
   // No two of one house share a name, nor a child the name of a parent or of one close to the leader (kin.ts).
@@ -109,7 +109,7 @@ const captainOf = (c: Campaign, a: Army): { name: string; female: boolean } => {
   // A soldier the player watched make their name comes before any nameless officer.
   if (a.champion) return { name: a.champion.name, female: !!a.champion.female };
   const female = pick(c, a.id * 53 + 7, 5) === 0;
-  const names = female ? NAMES_F : NAMES_M;
+  const names = givenNames(c.factions[a.owner]?.civ, female ? 'f' : 'm');
   return { name: `Captain ${names[pick(c, a.id * 53 + 11, names.length)]}`, female };
 };
 
@@ -219,7 +219,7 @@ export function strangerLeads(c: Campaign, f: number): void {
   const fac = c.factions[f], house = houseOf(c, f), old = leaderOfFaction(c, f);
   passedOver(c, f, (x) => rulerName(c, x)); // a claimant of both houses set aside (bothhouses.ts)
   const female = pick(c, f * 31 + house.line * 7 + 3, 4) === 0;
-  const names = female ? NAMES_F : NAMES_M;
+  const names = givenNames(c.factions[f]?.civ, female ? 'f' : 'm');
   fac.hero = { ...old, name: `${names[pick(c, f * 31 + house.line * 7 + 9, names.length)]} the Hired`, female, look: {} };
   fac.heroRank = 0;
   house.heirs = [];

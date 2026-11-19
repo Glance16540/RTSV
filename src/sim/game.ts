@@ -1,5 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { dilemmaAct } from './dilemmaacts';
+import { givenNames, houseNames } from './peoplenames';
 import { nextDilemma } from './dilemmas';
 import { maidPull } from './churchtavern';
 import { monksTeach, nunsNurse } from './clergywork';
@@ -36,7 +38,7 @@ import { coupleParted, creditKill, leaveForWar, settleHomes, warRenown } from '.
 import { carriedIn, madeRenown, restoreMade } from './notableweight';
 import { Census, PeopleIn, Stores } from './township';
 import {
-  ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
+  ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, CALAMITY, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
@@ -391,7 +393,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** The leader of the claimant's rising the town stands in (claimantcaptain.ts). */ captain?: Captain; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][] };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** The leader of the claimant's rising the town stands in (claimantcaptain.ts). */ captain?: Captain; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][]; /** The dilemmas the town has been asked in the round now going (askedhere.ts). */ asked?: string[] };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -562,6 +564,7 @@ export class Game {
       } else if (!field) {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        if (s.bonus?.asked?.length) this.players[i].asked = [...s.bonus.asked]; // the dilemmas the town was asked before (askedhere.ts)
         if (s.bonus?.roads?.length) this.players[i].roadsIn = s.bonus.roads.map(([x, y]) => [x, y] as [number, number]); // its roads laid by hand (handroads.ts)
         if (s.bonus?.story) this.players[i].story = { ...s.bonus.story, people: s.bonus.story.people.map((p) => ({ ...p })), robbed: [...s.bonus.story.robbed], cleared: [...s.bonus.story.cleared] }; // a story afoot here (fieldstory.ts)
         if (s.bonus?.court) this.players[i].court = structuredClone(s.bonus.court); // a story of the leader's house, where the court is kept (courtfield.ts)
@@ -686,7 +689,7 @@ export class Game {
       mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
     };
     if (type === 'villager') {
-      const names = u.gender === 'm' ? NAMES_M : NAMES_F, roll = this.rng();
+      const names = givenNames(this.players[owner]?.civ, u.gender), roll = this.rng(); // its own people's names (peoplenames.ts)
       u.name = this.setups[owner]?.tribe ? tribeName(u.gender ?? 'm', roll, new Set(this.units.filter((o) => o.owner === owner).map((o) => o.name))) : pickName(names, roll, namesIn(this, owner, u.gender)); // a tribe's people have their own names, no two alike (tribenames.ts); a town's too, where it can (namesakes.ts)
       if (this.tick === 0) u.drawn = u.name; // while the battle is being laid out (namesakes.ts)
       if (this.rng() < 0.3) this.setTrait(u, Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)]);
@@ -1728,7 +1731,7 @@ export class Game {
    * people from the day it is born, so a town has room for it when it is grown.
    */
   bear(b: Building, gender?: Gender): Child {
-    const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = g === 'm' ? NAMES_M : NAMES_F;
+    const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = givenNames(this.players[b.owner]?.civ, g);
     const c: Child = { id: this.nextId++, name: names[Math.floor(this.rng() * names.length)], family: '', gender: g, trait: '', trait2: '', lifespan: LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]), left: GROW_TIME, bornAt: b.id };
     (b.young ??= []).push(c);
     this.players[b.owner].pop += UNITS.villager.pop;
@@ -1899,6 +1902,7 @@ export class Game {
     for (const r of RES_TYPES) p.res[r] += c.res[r] ?? 0;
     p.dilemma = null;
     p.dilemmaT = this.time + 240;
+    dilemmaAct(this, owner, d.id, choice); // what its words say, through the rules there are (dilemmaacts.ts)
     this.msg(owner, c.result);
     this.shiftVirtue(owner, c.virtue);
     return true;
@@ -3232,7 +3236,7 @@ export class Game {
             // One child in four of two gifted parents gets both gifts.
             const other = trait === mother.trait ? father.trait : mother.trait;
             const second = trait && other && other !== trait && this.rng() < 0.25 ? other : '';
-            if (!b.family) b.family = FAMILY_NAMES[Math.floor(this.rng() * FAMILY_NAMES.length)];
+            if (!b.family) { const hs = houseNames(this.players[b.owner]?.civ); b.family = hs[Math.floor(this.rng() * hs.length)]; } // a house of its own people's (peoplenames.ts)
             child.family = b.family;
             child.trait = trait; child.trait2 = second;
             p.stats.born++;

@@ -22,9 +22,9 @@
 //   mood of the nobles of their town draws on it each season.
 //
 // Plain data on the faction, kept in the save. Rivals' nobles are kept by the same rules.
+import { givenNames } from './peoplenames';
 import type { Campaign } from './campaign';
 import type { DecreeKind } from './decrees';
-import { NAMES_F, NAMES_M } from './data';
 import { kinOf, POST_NAMES } from './kin';
 import type { Post } from './kin';
 import { TOWN_SCALE, folkOf, grown, living } from './township';
@@ -132,7 +132,7 @@ function reckon(c: Campaign, f: number, was: Noble[]): Noble[] {
 
 /** The name of a town's lord, the `gen`th it has had (0 the first), never the same as the one before. */
 function lordName(c: Campaign, f: number, tid: number, gen: number, not = ''): { name: string; female: boolean } {
-  const female = hash(c.seed, tid * 131 + f + gen * 7919, 2) < 0.2, list = female ? NAMES_F : NAMES_M;
+  const female = hash(c.seed, tid * 131 + f + gen * 7919, 2) < 0.2, list = givenNames(c.factions[f]?.civ, female ? 'f' : 'm'); // the people's own names (peoplenames.ts)
   let i = Math.floor(hash(c.seed, tid * 977 + f + gen * 104729, 3) * list.length);
   if (list[i] === not) i = (i + 1) % list.length;
   return { name: list[i], female };

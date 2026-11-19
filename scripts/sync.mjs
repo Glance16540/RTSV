@@ -86,6 +86,7 @@ try {
   // The porting table's line counts and dependencies are written from the merged sources (scripts/porting-check.mjs).
   // What only a person can settle there is left for `npm run check` to say.
   spawnSync('node', ['scripts/porting-check.mjs', '--fix'], { stdio: 'inherit' });
+  spawnSync('node', ['scripts/porting-order.mjs'], { stdio: 'inherit' }); // and its generated sections: the order to port in, the tests, the constants
 } catch (e) { if (CHECK) undo(); stop(String(e.message)); }
 tryGit('add', '--', ...Object.keys(BUILT), 'docs/PORTING.md');
 if (clashes.length) tryGit(...id, 'commit', '--quiet', '--no-edit');
