@@ -8,7 +8,7 @@
  *   itself with next to nothing (`DEAD.defence`), whatever walls it has: there is nobody on them.
  * - A computer-led nation sends an army that can reach an open town of another's to take it (`seizeOpen`).
  * - Marauders holding the land beside an open town with no army in it walk in (`deadTowns`).
- * - A nation that takes one settles it: those who followed the army make their homes there (`DEAD.settlers`).
+ * - A nation that takes one settles it: up to `DEAD.settlers` couples of its nearest towns set out by road (settlersfrom.ts).
  * - The armies of a people with nobody left alive in any town break up: they were men of no town by then.
  * - So that no campaign sits for ever: an open town nobody has come for in `DEAD.found` seasons is found by a
  *   wandering band of marauders, wherever it lies.
@@ -18,16 +18,17 @@ import { HUB, reach } from './campaignbase';
 import { armyAt, atTruce } from './campaignbase';
 import { awayFrom } from './armytown';
 import { folkOf, headcount, TOWN_SCALE } from './township';
+import { settlersTo } from './settlersfrom';
 
 export const DEAD = {
   /** Seasons with nobody in it before a town stands open, and what it defends itself with then. */
   open: 2, defence: 0.5,
-  /** Men and women who settle a dead town a nation has taken. */
+  /** Couples who set out from the taker's nearest towns to settle a dead town it has taken, as many as can be spared (settlersfrom.ts). */
   settlers: 2 * TOWN_SCALE,
   /** Seasons an open town may wait before a wandering band finds it, and the strength of the camp they make of it. */
   found: 24, camp: 3,
 };
-const lives = (c: Campaign, t: Territory): boolean => headcount(folkOf(c, t.id)) + awayFrom(c, t.id) > 0;
+const lives = (c: Campaign, t: Territory): boolean => headcount(folkOf(c, t.id)) + awayFrom(c, t.id) > 0 || (c.convoys ?? []).some((x) => x.to === t.id && x.owner === t.owner && !!x.movers); // settlers on the road to it count (settlersfrom.ts)
 const heldBy = (c: Campaign, t: Territory): boolean => t.owner >= 0 && !t.horde && !!c.factions[t.owner]?.alive;
 const garrisoned = (c: Campaign, t: Territory): boolean => armyAt(c, t.id)?.owner === t.owner;
 
@@ -75,9 +76,7 @@ export function deadTowns(c: Campaign): number[] {
     if (lives(c, t)) { delete seen[t.id]; delete whose[t.id]; continue; }
     // Taken by another nation while it stood open: those who followed the army settle it, and it lives again.
     if (whose[t.id] !== undefined && whose[t.id] !== t.owner && (seen[t.id] ?? 0) >= DEAD.open) {
-      const f = folkOf(c, t.id);
-      f.men += DEAD.settlers; f.women += DEAD.settlers; delete f.ages;
-      c.log.push(`${t.owner === 0 ? 'Your people have' : `The ${c.factions[t.owner].name} have`} settled the empty town at ${t.name}: ${DEAD.settlers * 2} who followed the army make their homes there.`);
+      settlersTo(c, t.owner, t.id, DEAD.settlers); // its own people from its nearest towns, by road (settlersfrom.ts): nobody from nowhere
       delete seen[t.id]; delete whose[t.id];
       continue;
     }

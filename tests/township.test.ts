@@ -155,15 +155,18 @@ describe('a battle is fought by the town and goes home to it', () => {
     expect(folkOf(c, h.id).men).toBe(census.men);
   }, LONG);
 
-  it('a town taken keeps the people who lived, and an empty one is settled by those who followed the army', () => {
+  it('a town taken keeps the people who lived, and an empty one is settled by the taker\'s own people, by road', () => {
     const { c, to } = assault();
     finishBattle(c, true, { clubman: 6, warlord: 1 }, { folk: count({ men: 1, women: 2, elders: 0, children: 1 }) });
     expect(c.territories[to].owner).toBe(0);
     expect(folkOf(c, to)).toMatchObject({ men: 1, women: 2, elders: 0, children: 1, stores: { food: 120 } });
     const waste = assault(9);
     finishBattle(waste.c, true, { clubman: 6, warlord: 1 }, { folk: count({ men: 0, women: 0, elders: 0, children: 0 }) });
-    expect(folkOf(waste.c, waste.to)).toMatchObject({ men: 2, women: 2 });
-    expect(waste.c.log.join('\n')).toContain('have settled there');
+    // Nobody from nowhere: the player's own people set out by road to settle it (settlersfrom.ts).
+    expect(folkOf(waste.c, waste.to)).toMatchObject({ men: 0, women: 0 });
+    const going = (waste.c.convoys ?? []).filter((x) => x.to === waste.to && x.owner === 0 && x.movers);
+    expect(going.reduce((n, x) => n + x.cargo.men.length + x.cargo.women.length, 0)).toBe(4);
+    expect(waste.c.log.join('\n')).toContain('set out by road to settle it');
   }, LONG);
 
   it('a battle that sends nothing home about the town leaves it as it was, and nonsense is not believed', () => {

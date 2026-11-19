@@ -46,7 +46,7 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 | Ten women taken is ten women gone, and held somewhere real | Captives taken in a visit are counted and gone (`battlefolk.ts` taken). Those taken in a battle fought in person are held on the map (`battlecarried.ts`), but a visit's are not. | small | Before: the same hand-off `battlecarried.ts` already makes, and the record should be one rule. |
 | What is built in a town is kept on its record | A Church or Tavern built in a battle stands on the town's record but is not raised as the map site that moves the town's faith (`SITE_BUILDING` has neither). | small | Before: one table entry and a test, and it decides whether a played town's faith follows what was built there. |
 | What is built in a town is kept on its record | A road laid by hand in a siege is not kept; only a visit keeps roads. | small | Unity: roads are field work and the new engine lays its own. |
-| Nobody from nowhere (towns persist, a soldier costs a person) | The four who settle a town emptied in a battle fought in person, the settlers who follow a rival's army into a dead town, and a tribe's town made up to its old strength the first time it is looked into are all people from nowhere. | small | Before: take the settlers from the taker's nearest town as `founding.ts` already does. The tribe's one-time top-up can stay, since it happens once per save. |
+| Nobody from nowhere (towns persist, a soldier costs a person) | **Done for the settlers** (`src/sim/settlersfrom.ts`): a town taken empty, in a battle or as a dead town, is settled by couples its taker's nearest towns can spare, by road; where none can be spared it stands empty. Still from nowhere: a tribe's town made up to its old strength the first time it is looked into. | small | Built. The tribe's one-time top-up stays, since it happens once per save. |
 | An attacking camp has no people from nowhere | **Done.** The check found one more case: a reserve army joining a siege (either side, or an ally's) got a camp with two men and two women from nowhere. `src/sim/reservecamp.ts` marks it in its set-up, so its camp is laid with none (`siegecamp.ts`) and it is not counted as died out (`dyingout.ts`). | small | Built. |
 
 ## No auto-resolve; a town defends itself
@@ -256,7 +256,7 @@ All small, each in its own module with its own test, and none changes a rule's m
 
 1. Captives taken in a visit are held on the map, as a battle's are (`battlecarried.ts`).
 2. A Church or Tavern built in a battle is raised as the map site that moves the town's faith.
-3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town.
+3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town. **Done** (`settlersfrom.ts`).
 4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line. **Done:** a reserve's camp (`reservecamp.ts`).
 5. Men of no town sent home go to the army's chief town, or the last hired men are dropped.
 6. A known person carried off by a nation is marked carried off by name.

@@ -33,6 +33,7 @@ import { threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
 import { battleCarried } from './battlecarried';
+import { settleTaken } from './settlersfrom';
 import { foughtOnMap, recordsBack } from './warrecord';
 import { mayRaiseKind } from './uniquecompany';
 import { bandBattle, settleBandFight } from './bandfight';
@@ -1087,6 +1088,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
   .on('housed', 'queuedmen', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepQueued(c, p.to, b.after?.orders?.men); }) // and the men in its queues are remembered with them
   .on('housed', 'roofs', (c, p, b) => { if (p.mode !== 'field' && !b.after?.folk?.unfielded) keepRoofs(c, p.to, b.after?.folk?.roofs); }) // who lived where as it ended (roofsmap.ts)
+  .on('housed', 'settlersfrom', (c, p, b) => { if (b.census && p.mode !== 'field') settleTaken(c, p.to, p.defender); }) // a town taken empty is settled by the taker's own, by road (settlersfrom.ts)
   .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
 
 // What only the hub can do is lent to the systems below it (campaignbase.ts): they call it there, and import nothing from here.
