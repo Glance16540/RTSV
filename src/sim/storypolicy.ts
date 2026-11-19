@@ -9,12 +9,17 @@
 //   A suitor: ask the daughter; give her if she is willing, otherwise decline with gifts (or let him wait).
 //   An alliance by marriage: call on it.
 //   A plot: keep informers; send gifts once; pardon the plotter when found. Nobody is accused on a guess.
+//   A rival's offer of trade: accepted. Of a royal match: accepted only when the player is the weaker.
 import type { Campaign } from './campaign';
 import { callOn, callable } from './aftermath';
 import { Intrigue, choicesFor, choose, openIntrigues, suspected } from './intrigue';
 import { sensiblePetition } from './petitions';
 import { answerMarriage } from './royalmarriage';
 import { answerTrade } from './tradedeal';
+import { armyStrength } from './campaignbase';
+
+/** A people's strength under arms, as a careful ruler reckons it. */
+const strengthOf = (c: Campaign, f: number): number => c.armies.filter((a) => a.owner === f).reduce((n, a) => n + armyStrength(a), 0);
 
 /** Answer every story of a people's that is waiting on them, by the policy above. Returns the choices made. */
 export function sensibleAnswers(c: Campaign, f = 0): string[] {
@@ -35,8 +40,13 @@ export function sensibleAnswers(c: Campaign, f = 0): string[] {
   }
   // A noble's petition: answered as a careful ruler would (petitions.ts).
   { const did = sensiblePetition(c, f); if (did) made.push(`petition:${did}`); }
-  // A rival's offer of a royal match or a trade deal: accepted, for the peace and the trade (royalmarriage.ts, tradedeal.ts).
-  if (f === 0 && c.pactOffer) { const k = c.pactOffer.kind; if (k === 'marriage' ? answerMarriage(c, true) : answerTrade(c, true)) made.push(`pact:${k}`); }
+  // A rival's offer of a trade deal is accepted; of a royal match only by the weaker side, which wants the peace: a match
+  // binds the stronger player's hands for years (royalmarriage.ts, tradedeal.ts; at 384 campaigns, accepting every match
+  // cost the attended player 17 wins).
+  if (f === 0 && c.pactOffer) {
+    const o = c.pactOffer, weaker = strengthOf(c, 0) < strengthOf(c, o.from);
+    if (o.kind === 'trade' ? answerTrade(c, true) : weaker ? answerMarriage(c, true) : answerMarriage(c, false)) made.push(`pact:${o.kind}`);
+  }
   // An alliance by marriage is called on as soon as there is one: its men are worth most early.
   if (f === 0) for (const m of callable(c, 0)) { const did = callOn(c, m.id); if (did) made.push(`alliance:${did}`); }
   return made;

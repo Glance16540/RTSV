@@ -6,6 +6,7 @@ import { CHILD_SEASONS } from '../src/sim/ageing';
 import { houseOf } from '../src/sim/dynasty';
 import { pactOf, wedPeace } from '../src/sim/pacts';
 import { MARRY, answerMarriage, claimsOn, marryBar, matchOf, offerMarriage, royalSeason } from '../src/sim/royalmarriage';
+import { sensibleAnswers } from '../src/sim/storypolicy';
 
 const grown = (c: Campaign, name: string, female: boolean) => ({ name, female, born: c.turn - CHILD_SEASONS - 10 });
 function world(): { c: Campaign; r1: number; r2: number } {
@@ -107,5 +108,24 @@ describe('royal marriages', () => {
       if (wedPeace(c, r1, r2)) wed++;
     }
     expect(wed).toBeGreaterThan(0);
+  });
+
+  it('a careful ruler accepts a match only when the weaker side, and a trade deal always', () => {
+    const strong = world();
+    strong.c.armies = [{ id: 1, owner: 0, at: 0, units: { infantry: 9 }, hero: false, vet: 0, moved: false }];
+    strong.c.pactOffer = { kind: 'marriage', from: strong.r1, turn: strong.c.turn, wed: ['Brand', 'Edda'] };
+    sensibleAnswers(strong.c, 0);
+    expect(wedPeace(strong.c, 0, strong.r1)).toBe(false);
+    expect(strong.c.pactOffer).toBeUndefined();
+    const weak = world();
+    weak.c.armies = [{ id: 2, owner: weak.r1, at: 0, units: { infantry: 9 }, hero: false, vet: 0, moved: false }];
+    weak.c.pactOffer = { kind: 'marriage', from: weak.r1, turn: weak.c.turn, wed: ['Brand', 'Edda'] };
+    expect(sensibleAnswers(weak.c, 0)).toContain('pact:marriage');
+    expect(wedPeace(weak.c, 0, weak.r1)).toBe(true);
+    const trade = world();
+    trade.c.truces = [{ with: trade.r1, until: trade.c.turn + 9 }];
+    trade.c.armies = [];
+    trade.c.pactOffer = { kind: 'trade', from: trade.r1, turn: trade.c.turn };
+    expect(sensibleAnswers(trade.c, 0)).toContain('pact:trade');
   });
 });
