@@ -13,6 +13,8 @@ import { Job, lookOf, makeResource, makeShot, makeUnit, ofPeople, mat, RES_COLOR
 import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
+import { STYLE_SIGN } from '../sim/stylesigns';
+import { swayable, swaying, swayingShadow, windNow } from './treesway';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
 import { Outfit, RealPerson, leaderOutfit, astride, bear, drawnReal, sprawl, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
@@ -218,18 +220,19 @@ export class Renderer {
   private buildTrees(): void {
     const trees = this.game.resources.filter((r) => r.type === 'tree');
     const cl = this.game.climate;
-    const inked = (color: number): THREE.Material => { const mt = new THREE.MeshToonMaterial({ color, gradientMap: RAMP, vertexColors: true }); mt.userData.outlineParameters = INK; return mt; };
+    const inked = (color: number, leaves = false): THREE.Material => { const mt = swaying(new THREE.MeshToonMaterial({ color, gradientMap: RAMP, vertexColors: true }), leaves); mt.userData.outlineParameters = INK; return mt; };
     const make = (g: THREE.BufferGeometry, mt: THREE.Material, n: number) => {
-      const im = new THREE.InstancedMesh(g, mt, Math.max(1, n));
+      const im = new THREE.InstancedMesh(swayable(g), mt, Math.max(1, n));
       im.count = n;
       im.castShadow = im.receiveShadow = true;
+      im.customDepthMaterial = swayingShadow(); // the shadow sways with the tree (treesway.ts)
       this.forest.push(im);
       return im;
     };
     // Two shapes of each kind, so no two neighbours are quite alike.
     const kinds = { oak: [oak(1), oak(2)], birch: [birch(3), birch(4)], fir: [fir(5), fir(6)], palm: [palm(7), palm(8)], acacia: [acacia(9), acacia(10)] };
     const mesh: Record<string, { trunk: THREE.InstancedMesh; leaf: THREE.InstancedMesh; snow?: THREE.InstancedMesh }[]> = {};
-    const leafM = new THREE.MeshToonMaterial({ color: 0xa0a0a0, gradientMap: RAMP, vertexColors: true, side: THREE.DoubleSide });
+    const leafM = swaying(new THREE.MeshToonMaterial({ color: 0xa0a0a0, gradientMap: RAMP, vertexColors: true, side: THREE.DoubleSide }));
     leafM.userData.outlineParameters = { visible: false }; // fronds are thin: an inked edge would swallow them
     // Stands of one kind with others among them, more of one or the other from grove to grove.
     const kindOf = (t: { id: number; x: number; y: number }): string => {
@@ -242,7 +245,7 @@ export class Renderer {
     // Each shape is drawn only as many times as there are trees of it.
     const tally: Record<string, number> = {};
     for (const t of trees) { const key = kindOf(t) + (t.id % 2); tally[key] = (tally[key] ?? 0) + 1; }
-    for (const [name, list] of Object.entries(kinds)) mesh[name] = list.map((t, v) => { const n = tally[name + v] ?? 0; return { trunk: make(t.trunk, inked(0x9a9a9a), n), leaf: make(t.leaf, name === 'palm' ? leafM : inked(0xa0a0a0), n), snow: t.snow && cl === 'snow' ? make(t.snow, inked(0xffffff), n) : undefined }; });
+    for (const [name, list] of Object.entries(kinds)) mesh[name] = list.map((t, v) => { const n = tally[name + v] ?? 0; return { trunk: make(t.trunk, inked(0x9a9a9a), n), leaf: make(t.leaf, name === 'palm' ? leafM : inked(0xa0a0a0, true), n), snow: t.snow && cl === 'snow' ? make(t.snow, inked(0xffffff), n) : undefined }; });
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color();
     const next: Record<string, number> = {};
     trees.forEach((t) => {
@@ -490,6 +493,10 @@ export class Renderer {
       }
     } else if (ev.t === 'birth' && ev.player === this.game.humanId) {
       this.floaters.push({ x: ev.x, y: ev.y, text: '💗', t: 0 });
+    } else if (ev.t === 'style') {
+      // A play style's rule at work (stylesigns.ts): its mark rising off the spot, where the player can see it.
+      const g = this.game;
+      if (this.noFog || g.vis[Math.floor(ev.y) * g.size + Math.floor(ev.x)] === 2) this.floaters.push({ x: ev.x, y: ev.y, text: STYLE_SIGN[ev.style].icon, t: 0 });
     } else if (ev.t === 'grown' && ev.player === this.game.humanId) {
       this.floaters.push({ x: ev.x, y: ev.y, text: '✨', t: 0 });
     } else if (ev.t === 'signal' && !this.game.hostile(ev.player, this.game.humanId)) {
@@ -1429,6 +1436,7 @@ export class Renderer {
     });
     this.updateFog(dt);
     this.scenery.update(this.clock, 1 - this.nightAmt, this.weather.amount);
+    windNow(this.clock, this.weather.amount); // the trees sway, harder in a storm (treesway.ts)
     for (const m of this.models) m.mixer.update(dt);
     if (!this.still) this.life.update(dt, this.clock, 1 - this.nightAmt, this.weather.amount, this.cx, this.cy);
     // Smoke from the hearths of lived-in houses and the town's hall, thicker in the cold and after dark.
