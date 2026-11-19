@@ -5,6 +5,7 @@ import { mayGoHome, mayRejoin } from '../sim/furlough';
 import { endCard } from './briefing';
 import { bereftLines } from '../sim/bereft';
 import { oldLine } from '../sim/oldmarks';
+import { recordLines } from '../sim/warrecord';
 import { possessive, renameOwn } from '../sim/naming';
 const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
@@ -537,6 +538,7 @@ export class Hud {
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
       if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
       if (e.kills) extra += `<div${game.veteran(e) > 1 ? ' class="good"' : ''}>⚔️ ${e.kills} ${e.kills === 1 ? 'kill' : 'kills'}${game.veteran(e) > 1 ? `: a veteran, +${Math.round((game.veteran(e) - 1) * 100)}% damage` : ''}</div>`;
+      { const rec = recordLines(e); if (rec.length) extra += `<div class="hint">🎖️ ${rec[0]}</div>` + rec.slice(1).map((l) => `<div class="hint"><small>${l}</small></div>`).join(''); } // his record at war, from the map (warrecord.ts)
       if (!e.hero && !e.merc && canLead(d.cls) && (e.kills ?? 0) >= CHAMPION_KILLS) extra += `<div class="hint">♛ Has made a name: if your leader falls, ${game.canAcclaim(e.owner, e) ? 'they can be raised to lead now' : 'they can be raised to lead'}.</div>`;
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
