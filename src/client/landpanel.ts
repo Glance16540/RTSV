@@ -2,6 +2,7 @@
 // then the land selected, leading with what matters (its name and holder, its people and stores, what threatens it,
 // the army there), then what can be done there in groups, and last the lie of the land folded under "The land".
 // Nothing here decides anything: overworld.ts keeps the logic and the clicks (every button keeps its `data-act`).
+import { levyLine } from '../sim/levynext'; // who a levy would take (levynext.ts)
 import { lastGain } from '../sim/seasongain';
 import { ruinWarning } from '../sim/ruin';
 import { creedOf } from '../sim/creed';
@@ -136,7 +137,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
   const group = (title: string, html: string, why = ''): string => (html ? `<div class="lp-group"><h4>${title}</h4>${why ? `<div class="hint lp-why">${why}</div>` : ''}${html}</div>` : '');
   let raise = '', works = '', studies = '', build = '', leader = '', town = '', talk = '', age = '';
   if (t.owner === 0) {
-    for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) raise += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `${noMenText(c, 0, t.id) ? noMenText(c, 0, t.id) + ' ' : ''}Strength ${d.str}. Strong against ${BEATS[k]}. Paid in ${priceText(priceOf(k === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
+    for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) raise += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `${noMenText(c, 0, t.id) ? noMenText(c, 0, t.id) + ' ' : ''}${levyLine(c, t.id) ? levyLine(c, t.id) + ' ' : ''}Strength ${d.str}. Strong against ${BEATS[k]}. Paid in ${priceText(priceOf(k === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
     if (raise && noMenText(c, 0, t.id)) raise += `<p class="lp-note">${noMenText(c, 0, t.id)}</p>`;
     if (a && a.owner === 0) { const men = menOf(c, a); raise += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
     if (ageOf(c, 0) < AGE_COST.length) age += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
