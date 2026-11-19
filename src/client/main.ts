@@ -1,4 +1,5 @@
 import { homeNow } from '../sim/furlough';
+import { storyBrief, storyTag } from './missionstory';
 import { showBriefing } from './briefing';
 import { downedOf, survivorsOf } from '../sim/soldiernames';
 import { recordsOut } from '../sim/warrecord';
@@ -456,7 +457,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   applyPrefs();
 
   // ---- Missions ----
-  el('missions').innerHTML = MISSIONS.map((m) => `<button data-mission="${m.id}"><b>${m.name}</b>${m.about ? `<i>${m.about}</i>` : ''}<small>${m.brief}</small></button>`).join('');
+  el('missions').innerHTML = MISSIONS.map((m) => `<button data-mission="${m.id}"><b>${m.name}</b>${storyTag(m.id)}${m.about ? `<i>${m.about}</i>` : ''}<small>${m.brief}</small></button>`).join('');
   el('missions').addEventListener('click', (e) => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-mission]')?.dataset.mission;
     if (id) go(`?mission=${id}`);
@@ -466,7 +467,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     app.missionStatus = mission.tick(game);
     begun = briefing = true;
     startScreen.querySelector('h1')!.textContent = mission.name;
-    startScreen.querySelector('.lead')!.textContent = mission.brief;
+    storyBrief(startScreen.querySelector<HTMLElement>('.lead')!, mission.id, mission.brief); // its thread's line before it (missionstory.ts)
     resume.textContent = 'Begin';
     el('again-btn').textContent = 'Back to the menu';
   }
