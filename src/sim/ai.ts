@@ -1,5 +1,7 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
+import { highGroundNear, holdBack } from './aiground';
+import { WardState, wardScout, wardWomen } from './aiward';
 import { assaultDue, besieging } from './besieger';
 import { CAMP, campWorks } from './siegecamp';
 import { T_MARSH } from './map';
@@ -65,6 +67,8 @@ export class AIController {
   /** Marching on the marauders' camp, not on a rival. */
   private hunt = false;
   private knowsLair = false;
+  /** The women got in from a raiding party, and the rider looking for the camp (aiward.ts). */
+  private ward: WardState = {};
   /** A besieger's first assault has gone in (besieger.ts): from then on it attacks by the usual rules. */
   private stormed = false;
   /** Seconds before the first attack may launch. */
@@ -348,6 +352,7 @@ export class AIController {
 
     // ---- Marauders ----
     const lair = g.marauders ? g.buildings.find((b) => b.type === 'lair') : undefined;
+    if (g.marauders) wardWomen(g, pid, this.ward); // a party after its women: get them indoors, and out again when it has gone (aiward.ts)
     if (!lair) {
       // The camp is burnt (or was never there): the men who went after it come home.
       if (this.hunt) {
@@ -366,6 +371,8 @@ export class AIController {
       // It learns where the camp is by losing a woman to it, or by one of its own coming in sight of it.
       const lost = (lair.captives ?? []).some((c) => c.from === pid);
       if (!this.knowsLair) this.knowsLair = lost || g.units.some((u) => u.owner === pid && Math.hypot(u.x - lair.x, u.y - lair.y) < u.def.sight + 2);
+      // Until it knows, a rider looks for it where a camp could be (aiward.ts).
+      wardScout(g, pid, this.ward, fighters.filter((u) => !u.order && !u.inside), !this.knowsLair && this.state === 'build' && !underAttack);
       if (this.knowsLair && this.state === 'build' && !underAttack && fighters.length >= 4) {
         // It marches when it can beat the band: sooner if its own women are held there.
         const band = g.units.filter((u) => u.def.marauder).length;
@@ -390,7 +397,11 @@ export class AIController {
       // A besieger does not wait: it came to assault the town, and goes in with what it brought (besieger.ts).
       const storm = !this.stormed && assaultDue(g, pid, fighters.length, !!underAttack);
       if (storm) this.stormed = true;
-      if ((ready && outweighs) || storm || (clock && fighters.length >= 3)) {
+      // Not in a storm or by night while the weaker, nor uphill at them without the edge for it (aiground.ts).
+      const hall = foe >= 0 ? g.buildings.find((b) => b.owner === foe && b.type === 'towncenter' && !b.dead) : undefined;
+      const at = fighters.length ? { x: fighters.reduce((n, u) => n + u.x, 0) / fighters.length, y: fighters.reduce((n, u) => n + u.y, 0) / fighters.length } : home;
+      const wait = ready && outweighs && foe >= 0 && this.level >= 1 ? holdBack(g, { ours: this.weight(pid, false), theirs: this.weight(foe, true), from: at, ...(hall ? { to: hall } : {}), waited: this.readyT >= 0 ? g.time - this.readyT : 0 }) : '';
+      if ((ready && outweighs && !wait) || storm || (clock && fighters.length >= 3)) {
         this.state = 'attack';
         this.attackT = 0;
         this.launched = fighters.length;
@@ -405,7 +416,7 @@ export class AIController {
         // Keep idle troops gathered in front of the base.
         const mid = g.size / 2;
         const d = Math.hypot(mid - home.x, mid - home.y) || 1;
-        const rx = home.x + ((mid - home.x) / d) * 9, ry = home.y + ((mid - home.y) / d) * 9;
+        const { x: rx, y: ry } = highGroundNear(g, home.x + ((mid - home.x) / d) * 9, home.y + ((mid - home.y) / d) * 9); // on the high ground near it (aiground.ts)
         const stray = army.filter((u) => !u.order && !back.has(u.id) && Math.hypot(u.x - rx, u.y - ry) > 6);
         if (stray.length) g.cmdMove(pid, stray.map((u) => u.id), rx, ry, false);
       }
@@ -443,6 +454,9 @@ export class AIController {
     this.attackT = 3;
     const idle = g.units.filter((u) => u.owner === pid && !u.order);
     if (!idle.length) return;
+    // The weaker side waits out a storm, for a while (aiground.ts).
+    const foes = g.players.filter((q) => !q.neutral && g.hostile(q.id, pid)).reduce((n, q) => n + this.weight(q.id, true), 0);
+    if (this.level >= 1 && holdBack(g, { ours: this.weight(pid, false), theirs: foes, from: idle[0], waited: g.time })) return;
     const lead = idle[0];
     let target: Unit | null = null, best = Infinity;
     for (const u of g.units) {
@@ -500,7 +514,7 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, hunt: this.hunt, knowsLair: this.knowsLair, raid: this.raid, raidT: this.raidT };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, hunt: this.hunt, knowsLair: this.knowsLair, raid: this.raid, raidT: this.raidT, ward: { ...this.ward } };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {
