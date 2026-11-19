@@ -1,5 +1,6 @@
 // A visit to one of your own towns from the campaign map: the button on the land's panel, the clock and the way
 // out while you are there, and the carrying of what you built back to the map. The rules are in src/sim/visit.ts.
+import { caravanOut } from '../sim/fieldcaravan';
 import { homeNow } from '../sim/furlough';
 import { showBriefing } from './briefing';
 import type { BattleConfig, Campaign } from '../sim/campaign';
@@ -74,6 +75,7 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
       roads: handRoadsOut(app.game, app.pid), // and the roads laid by hand here, which the town keeps (handroads.ts)
       court: courtOut(app.game, app.pid), // and of a story of the leader's house (courtfield.ts)
       hall: hallOut(app.game, app.pid), // and the rulings given at the town's Hall (hallfield.ts)
+      caravan: caravanOut(app.game, app.pid), // and its Market's caravan (fieldcaravan.ts)
     };
     try { localStorage.setItem(RESULT_KEY, JSON.stringify(after)); localStorage.removeItem(VISIT_SAVE_KEY); } catch { /* storage unavailable */ }
     back();

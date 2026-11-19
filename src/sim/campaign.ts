@@ -90,6 +90,7 @@ import { freeStruck, freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { letGoSeason } from './emptied';
+import { caravanAtField, caravanFromField } from './fieldcaravan';
 import { canPayFor, payFor, paysHere } from './prices';
 import { SentFor, sentForSeason } from './sentfor';
 import { rivalForesight, spendIn } from './rivalstock';
@@ -1074,6 +1075,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   // written: a battle fought in person has been settled and its field is being read back.
   .on('written', 'studies', (c, _p, b) => { studiedHome(c, 0, b.after?.studies); }) // what the player's side researched in the fighting is the nation's, as from a visit
   .on('written', 'hallcases', (c, p, b) => { if (p.defender === 0 && p.mode !== 'field') hallFromSitting(c, p.to, b.after?.hall); }) // the rulings given at the town's Hall in the battle (hallcases.ts)
+  .on('written', 'fieldcaravan', (c, p, b) => { if (p.defender === 0 && p.mode !== 'field') caravanFromField(c, p.to, b.after?.caravan); }) // the town's caravan, home or caught on the field (fieldcaravan.ts)
   .on('written', 'warrecord', (c, p, b) => { recordsBack(c, p, b.after?.records); }) // each named soldier who stood adds the battle to his record (warrecord.ts)
   .on('written', 'tribes', (c, p, b) => fieldReckoned(c, p, b.after?.folk)) // those of the town who marched out to a battle in the open and fell
   // housed: the town's people and stores are as that battle left them.
@@ -1565,7 +1567,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...(!humanAttacks && !field && hallCasesAt(c, p.to).length ? { hall: hallCasesAt(c, p.to) } : {}), /* the cases before the town's Hall (hallcases.ts) */ ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
+      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...(!humanAttacks && !field && hallCasesAt(c, p.to).length ? { hall: hallCasesAt(c, p.to) } : {}), /* the cases before the town's Hall (hallcases.ts) */ ...(!humanAttacks && !field && caravanAtField(c, p.to) ? { caravan: caravanAtField(c, p.to) } : {}), /* its Market's caravan on the road (fieldcaravan.ts) */ ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
       {
         name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...(foe < 0 ? { tribe: true } : {}), ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: withStudies(c, foe, humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe))),
@@ -1588,6 +1590,8 @@ const unitsOf = (type: string): [string, number] => Object.entries(COMPANIES[typ
  * `after`, by name, so that two features adding to it never fight over an argument's place.
  */
 export interface BattleAfter {
+  /** The town's Market caravan as the field left it (fieldcaravan.ts caravanOut). */
+  caravan?: unknown;
   /** The town's men who went home from the army defending it and were home when it ended (`homeNow`, furlough.ts). */
   leave?: unknown;
   /** Where the town's standing ended, to carry half the change home. */

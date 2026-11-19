@@ -68,6 +68,7 @@ import { Pathfinder, rectDist } from './path';
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
 import { stewardPace, stewardWard } from './steward';
+import { caravanSecond, caravanSet } from './fieldcaravan';
 import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
 import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND } from './hero';
@@ -562,6 +563,7 @@ export class Game {
         if (s.bonus?.story) this.players[i].story = { ...s.bonus.story, people: s.bonus.story.people.map((p) => ({ ...p })), robbed: [...s.bonus.story.robbed], cleared: [...s.bonus.story.cleared] }; // a story afoot here (fieldstory.ts)
         if (s.bonus?.court) this.players[i].court = structuredClone(s.bonus.court); // a story of the leader's house, where the court is kept (courtfield.ts)
         if (s.hall) seatHall(this, i, s.hall); // the cases waiting on the leader's judgement at the town's Hall (hallfield.ts)
+        if (s.caravan) caravanSet(this, i, s.caravan); // the town's Market caravan, on the field (fieldcaravan.ts)
         if (s.bonus?.studies?.length) markBegun(this, i); // works standing half-built, for the nation's Stewardship (studiesintown.ts)
         if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
         if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
@@ -1827,7 +1829,7 @@ export class Game {
           if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + heal);
         }
       }
-    } else if (style === 'trader' && this.tick % (R.caravanEvery * 20) === 0) {
+    } else if (style === 'trader' && !p.caravan && this.tick % (R.caravanEvery * 20) === 0) { // a town whose caravan is on the field earns by it (fieldcaravan.ts)
       let own = 0;
       const abroad = new Set<number>();
       for (const b of this.buildings) {
@@ -2234,6 +2236,7 @@ export class Game {
     if (this.tick % 20 === 0) {
       griefSecond(this);
       driftSecond(this); // in a campaign town, the strained drift to worse and the cared-for to better (drift.ts)
+      caravanSecond(this); // a Market's caravan on its road across the field (fieldcaravan.ts)
       this.upkeep();
       stepLair(this); // the marauders' camp (marauders.ts)
       this.checkVictory();
