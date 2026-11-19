@@ -63,7 +63,7 @@ Built as written (`muster.ts`, `birthonly.ts`; a woman fights at `WOMAN_ATK` 0.4
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A company is the men of its towns, never hired | Men of no town who are sent home vanish, and hired men of no town who fall are counted, not named (board, Armies belong to towns). | small | Before: say where they go (the army's chief town), or drop the last hired men. |
+| A company is the men of its towns, never hired | **Done for those sent home** (`src/sim/hiredhome.ts`): an army sent home settles its men of no town in its chief town as grown men. Still: hired men of no town who fall are counted, not named. | small | Built. The naming ports with the larger question of naming everyone (see No auto-resolve). |
 
 ## Children are never shown
 
@@ -258,7 +258,7 @@ All small, each in its own module with its own test, and none changes a rule's m
 2. A Church or Tavern built in a battle is raised as the map site that moves the town's faith.
 3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town. **Done** (`settlersfrom.ts`).
 4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line. **Done:** a reserve's camp (`reservecamp.ts`).
-5. Men of no town sent home go to the army's chief town, or the last hired men are dropped.
+5. Men of no town sent home go to the army's chief town, or the last hired men are dropped. **Done** (`hiredhome.ts`).
 6. A known person carried off by a nation is marked carried off by name.
 7. The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).
 8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map.
