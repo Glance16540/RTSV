@@ -97,23 +97,23 @@ drill 6 (kush v stonekin) at 6m: 2a28b6eb39f7b574
 drill 6 (kush v stonekin) at 8m: 75192430461fa6f8
 drill 6 (kush v stonekin) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 43 75192430461fa6f8
 drill 6 (kush v stonekin) after the leaders fell: eb546212b3af1d96 acclaimed false/true/false a2d7b348df878ed9
-camp drill 1 (babylon v greece) at 2m: 46a79e3d37de1b8b
-camp drill 1 (babylon v greece) at 4m: 65e53eb4b1fdcd30
-camp drill 1 (babylon v greece) at 6m: d5534e6f3c33fcab
-camp drill 1 (babylon v greece) at 8m: f11dcffdef5db09b
-camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 9, got out by night 2 f11dcffdef5db09b
-camp drill 2 (japan v kush) at 2m: f04a106db0e2dbfe
-camp drill 2 (japan v kush) at 4m: 90fe8db2f92bf24a
-camp drill 2 (japan v kush) at 6m: 485a78b1684638e2
-camp drill 2 (japan v kush) at 8m: 31f1ceabe394893e
-camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 2, got out by night 5 31f1ceabe394893e
-camp drill 3 (steppe v forge) at 2m: ac8992f7587024f7
-camp drill 3 (steppe v forge) at 4m: a6fa8484b5d93c93
-camp drill 3 (steppe v forge) at 6m: 25251bc9e091157e
-camp drill 3 (steppe v forge) at 8m: c07e3883abaa2c4b
-camp drill 3 (steppe v forge) end: tick 9600 most held in the work camp 7, most in the marauders' camp 0, camps burnt 2, freed and home 8, got out by night 0 c07e3883abaa2c4b
-camp drill 4 (persia v england) at 2m: 445f9ada829a2e69
-camp drill 4 (persia v england) at 4m: 54324bb5f46f431b
-camp drill 4 (persia v england) at 6m: 63b597b8579e0853
-camp drill 4 (persia v england) at 8m: 7feeff794f298644
-camp drill 4 (persia v england) end: tick 9600 most held in the work camp 11, most in the marauders' camp 0, camps burnt 2, freed and home 12, got out by night 1 7feeff794f298644
+camp drill 1 (babylon v greece) at 2m: e324716f2930e42d
+camp drill 1 (babylon v greece) at 4m: 0d83e53eda445ad1
+camp drill 1 (babylon v greece) at 6m: 09cc86f29c835c82
+camp drill 1 (babylon v greece) at 8m: f7543af785b1f6cd
+camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 12, most in the marauders' camp 0, camps burnt 2, freed and home 13, got out by night 0 f7543af785b1f6cd
+camp drill 2 (japan v kush) at 2m: 276bd81fc39bd387
+camp drill 2 (japan v kush) at 4m: 262b2753dded9400
+camp drill 2 (japan v kush) at 6m: e5c55cd1284445ed
+camp drill 2 (japan v kush) at 8m: d56be37b4e4427d8
+camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 9, most in the marauders' camp 0, camps burnt 2, freed and home 9, got out by night 0 d56be37b4e4427d8
+camp drill 3 (steppe v forge) at 2m: 6cf39174e10a7b3a
+camp drill 3 (steppe v forge) at 4m: 86fb7072b17e4500
+camp drill 3 (steppe v forge) at 6m: 01df6b7c7c9b5cf2
+camp drill 3 (steppe v forge) at 8m: 71ddbcd6b290861f
+camp drill 3 (steppe v forge) end: tick 9600 most held in the work camp 6, most in the marauders' camp 0, camps burnt 2, freed and home 6, got out by night 0 71ddbcd6b290861f
+camp drill 4 (persia v england) at 2m: 5f23756af36a3ebd
+camp drill 4 (persia v england) at 4m: 362ea465d7ee6a78
+camp drill 4 (persia v england) at 6m: 4b315caea6ae53f2
+camp drill 4 (persia v england) at 8m: 116ad1e5f193d758
+camp drill 4 (persia v england) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 7, got out by night 0 116ad1e5f193d758

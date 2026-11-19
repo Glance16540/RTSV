@@ -13,6 +13,7 @@ import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
 import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
 import { fallBack, fightStyle, roomWork, studyReserve, styleWork } from './styleplay';
+import { aiCare } from './aicare';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -219,6 +220,7 @@ export class AIController {
 
     this.assignWorkers(villagers, mine, home);
     if (!underAttack) this.staffHouses(mine, villagers, home);
+    aiCare(g, pid, { army, busy: !!underAttack || this.state === 'attack' }); // its guards, its hungry and its allies', its people held (aicare.ts)
     if (!underAttack) this.slaving(mine, villagers, home);
     if (!underAttack) this.raiding(army, home);
     if (g.sea && !saving) this.navy(mine, ships, villagers, home);
