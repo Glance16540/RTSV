@@ -43,7 +43,11 @@ import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { storyTick, type FieldStory } from './fieldstory';
 import { placeBar } from './placebar';
+import type { WaterShape } from './waterlay';
+/** The land's water, carried on the town's side, with the corners anyone starts in kept dry (waterlay.ts). */
+const waterWith = (setups: PlayerSetup[]): WaterShape | undefined => { const w = setups.find((x) => x.water)?.water; const dry = setups.map((x) => x.start).filter((v): v is number => v !== undefined); return w ? { ...w, ...(dry.length ? { dry } : {}) } : undefined; };
 import { handRoadsTick } from './handroads';
+import { fleetKind, ramBlow } from './fleets';
 import { courtTick, type FieldCourt } from './courtfield';
 import { boughtIn } from './contagion';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
@@ -373,6 +377,8 @@ export interface PlayerSetup {
    * four, whoever is there, so the same ground is the same every time it is fought over.
    */
   start?: number;
+  /** The water of the land round the ground, on the side whose town it is (waterlay.ts, townwater.ts). */
+  water?: WaterShape;
 }
 
 /** How a raider's taking of someone is set down in their record. */
@@ -466,7 +472,7 @@ export class Game {
   constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false, public climate: Climate = '') {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
     const placed = setups.some((s) => s.start !== undefined);
-    this.spec = generateMap(seed, size, placed ? 4 : setups.length, sea, relief, climate);
+    this.spec = generateMap(seed, size, placed ? 4 : setups.length, sea, relief, climate, { water: waterWith(setups) }); // the land's own water, carried on the town's side (waterlay.ts)
     if (placed) {
       // Corners named by the players are theirs; the rest take what is left, in order.
       const free = [0, 1, 2, 3].filter((k) => !setups.some((s) => s.start === k));
@@ -2917,6 +2923,8 @@ export class Game {
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
+    const ram = ramBlow(u, t); // a ram-ship rams a ship close by, at once, in place of a shot (fleets.ts)
+    if (ram > 1) { this.hit(u.owner, atk * ram, aura, u.def.cls, u.def.bonus, t, 1, u.id); return; }
     if (u.def.projectile) {
       this.projectiles.push({
         x: u.x, y: u.y, sx: u.x, sy: u.y, tx: t.x, ty: t.y, targetId: t.id,
@@ -3036,7 +3044,7 @@ export class Game {
   trainedAs(owner: number, type: string): string {
     const up = this.players[owner].upgrades;
     while (up[type]) type = up[type];
-    return type;
+    return fleetKind(this.players[owner].civ, type); // a people's own kind of warship (fleets.ts)
   }
 
   /** Free cell next to a building, closest to a desired point. */
@@ -3115,8 +3123,10 @@ export class Game {
           TECHS[q.id].apply(p.mods);
           const up = TECHS[q.id].upgrade;
           if (up) {
+            const was = this.trainedAs(b.owner, up[0]); // a people's own kind of it (fleets.ts), or the type itself
             p.upgrades[up[0]] = up[1];
-            for (const u of this.units) if (u.owner === b.owner && u.type === up[0]) this.reequip(u, up[1]);
+            const now = this.trainedAs(b.owner, up[0]);
+            for (const u of this.units) if (u.owner === b.owner && (u.type === up[0] || u.type === was)) this.reequip(u, now);
           }
           this.msg(b.owner, `${TECHS[q.id].name} researched.`);
           this.upkeep();

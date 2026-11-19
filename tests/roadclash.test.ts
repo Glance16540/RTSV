@@ -1,7 +1,7 @@
 // A band meets soldiers on the road, fought out (src/sim/roadclash.ts). Stage one: it decides nothing.
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
-import { ROAD, escortTally, roadClash, roadForces, roadTally, soldiersOf } from '../src/sim/roadclash';
+import { ROAD, escortFight, loseBy, roadClash, roadForces, roadTally, soldiersOf } from '../src/sim/roadclash';
 import { armyStrength } from '../src/sim/campaignbase';
 
 const men = (n: number, strength = n): { units: Record<string, number>; strength: number } => ({ units: { infantry: n }, strength });
@@ -49,15 +49,49 @@ describe('the road fight', () => {
     expect(s.led).toBe(a.hero);
   });
 
-  it('stage one keeps a tally and changes nothing: how the rule went, how the clash would have, and whether they agree', () => {
-    const c = newCampaign(7, 2), a = c.armies.find((x) => x.owner === 0)!, before = JSON.stringify({ armies: c.armies, bands: c.bands });
+  it('the tally sets the old rule beside the fight', () => {
+    const c = newCampaign(7, 2);
     roadTally(c, 'hunt', false, roadClash(1, 1, men(8)));
     roadTally(c, 'hunt', true, roadClash(1, 1, men(8)));
     expect(c.roadTally!.hunt).toEqual({ n: 2, ruleBand: 1, clashBand: 0, agree: 1, neither: 0 });
-    escortTally(c, 'convoy', { strength: 2 }, 0, [a.at], armyStrength(a));
-    expect(c.roadTally!.convoy.n).toBe(1);
-    escortTally(c, 'convoy', { strength: 2 }, 0, [a.at], 0); // no escort: nobody to fight
-    expect(c.roadTally!.convoy.n).toBe(1);
-    expect(JSON.stringify({ armies: c.armies, bands: c.bands })).toBe(before);
+  });
+
+  it('an army loses the companies a fight took, kind by kind, and never its last', () => {
+    const a = { id: 1, owner: 0, at: 0, units: { infantry: 3, archers: 2 }, hero: false, vet: 0, moved: false };
+    expect(loseBy(a, { infantry: 1.4, archers: 0 })).toBe(1);
+    expect(a.units).toEqual({ infantry: 2, archers: 2 });
+    expect(loseBy(a, { infantry: 9, archers: 9 })).toBe(3);
+    expect(Object.values(a.units).reduce((n, v) => n + v, 0)).toBe(1);
+    expect(loseBy(a, { infantry: 5, archers: 5 })).toBe(0);
+  });
+
+  it('with no army on the road nobody fights and the band takes its whole share', () => {
+    const c = newCampaign(7, 2), band = { strength: 5 };
+    c.armies = [];
+    expect(escortFight(c, 'convoy', band, 0, [0, 1])).toEqual({ robbed: true, share: 1, fought: false, lost: 0 });
+    expect(band.strength).toBe(5);
+    expect(c.roadTally).toBeUndefined();
+  });
+
+  it('an escort far stronger sees the band off, which is the weaker for it; one far weaker is broken, and the band takes less than a whole share', () => {
+    const c = newCampaign(7, 2), home = c.territories.find((t) => t.capital === 0)!;
+    c.armies = [{ id: 5, owner: 0, at: home.id, units: { infantry: 9 }, hero: false, vet: 0, moved: false }];
+    const weak = { strength: 2 };
+    const safe = escortFight(c, 'convoy', weak, 0, [home.id]);
+    expect(safe).toMatchObject({ robbed: false, share: 0, fought: true });
+    expect(weak.strength).toBe(1);
+    c.armies = [{ id: 6, owner: 0, at: home.id, units: { infantry: 2 }, hero: false, vet: 0, moved: false }];
+    const strong = { strength: 9 };
+    const hit = escortFight(c, 'convoy', strong, 0, [home.id]);
+    expect(hit.robbed).toBe(true);
+    expect(hit.fought).toBe(true);
+    expect(hit.share).toBeGreaterThan(0.3);
+    expect(hit.share).toBeLessThan(1);
+    expect(hit.lost).toBeGreaterThanOrEqual(1);
+    expect(c.armies[0].units.infantry).toBe(2 - hit.lost);
+    expect(c.armies[0].units.infantry).toBeGreaterThanOrEqual(1); // never its last
+    expect(strong.strength).toBe(9); // it won: what it lost is in the hands it has left
+    // An escort that is not on the road is no escort.
+    expect(escortFight(c, 'convoy', { strength: 9 }, 0, [home.adj[0]]).fought).toBe(false);
   });
 });

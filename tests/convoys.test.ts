@@ -81,7 +81,7 @@ describe('convoys by road', () => {
       const band: Band = { id: 1, kind: 'highwaymen', name: 'the Night Road', at: b.id, to: z.id, strength: 4, since: 1, held: [] };
       c.bands = [band];
       const escorted = n % 2 === 1;
-      if (escorted) c.armies.push({ id: 77, owner: 0, at: b.id, units: { infantry: 4 }, hero: false, vet: 0, moved: false });
+      if (escorted) c.armies.push({ id: 77, owner: 0, at: b.id, units: { infantry: 8 }, hero: false, vet: 0, moved: false }); // an escort that beats the band: it is fought out now (roadclash.ts), and an even match may go either way
       sendConvoy(c, 0, a.id, z.id, { food: 200, wood: 100, men: 1 });
       const [x] = season(c);
       expect(folkOf(c, z.id).men).toBe(7); // people always come through
