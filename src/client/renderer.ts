@@ -13,6 +13,7 @@ import { Job, lookOf, makeResource, makeShot, makeUnit, ofPeople, mat, RES_COLOR
 import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
+import { STYLE_SIGN } from '../sim/stylesigns';
 import { swayable, swaying, swayingShadow, windNow } from './treesway';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
@@ -492,6 +493,10 @@ export class Renderer {
       }
     } else if (ev.t === 'birth' && ev.player === this.game.humanId) {
       this.floaters.push({ x: ev.x, y: ev.y, text: '💗', t: 0 });
+    } else if (ev.t === 'style') {
+      // A play style's rule at work (stylesigns.ts): its mark rising off the spot, where the player can see it.
+      const g = this.game;
+      if (this.noFog || g.vis[Math.floor(ev.y) * g.size + Math.floor(ev.x)] === 2) this.floaters.push({ x: ev.x, y: ev.y, text: STYLE_SIGN[ev.style].icon, t: 0 });
     } else if (ev.t === 'grown' && ev.player === this.game.humanId) {
       this.floaters.push({ x: ev.x, y: ev.y, text: '✨', t: 0 });
     } else if (ev.t === 'signal' && !this.game.hostile(ev.player, this.game.humanId)) {
