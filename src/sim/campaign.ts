@@ -51,6 +51,9 @@ import { marriageSeason } from './marriage';
 import { temperSeasons } from './nobletemper';
 import { marchMargin, treatLean, weighSeasons } from './nobleweigh';
 import { petitionSeasons } from './petitions';
+import { breakPacts } from './pacts';
+import { royalSeason } from './royalmarriage';
+import { tradeSeason } from './tradedeal';
 import { widowsSeason } from './widowhood';
 import { studiedHome, studiesSeason, withStudies } from './studies';
 import { rulesSeason } from './rule';
@@ -909,6 +912,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'ba
     // The player marches on a truce partner: the truce is over and nobody forgets it.
     const sworn = c.ally === t.owner;
     c.truces = c.truces.filter((x) => x.with !== t.owner);
+    if (breakPacts(c, 0, t.owner)) c.log.push(`Your pacts with ${c.factions[t.owner].name}, of marriage or of trade, are broken.`); // a royal marriage's peace, or a trade deal (pacts.ts)
     if (sworn) c.ally = -1;
     c.honor -= sworn ? 2 : 1;
     say(c, t.owner, 'betray');
@@ -1068,7 +1072,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
 
 // What only the hub can do is lent to the systems below it (campaignbase.ts): they call it there, and import nothing from here.
-Object.assign(HUB, { moveArmy, defence, canRaise });
+Object.assign(HUB, { moveArmy, defence, canRaise, peaceOf: (c: Campaign, f: number) => (c.factions[f] ? habitsWith(c.factions[f].civ, PERSONA[c.factions[f].civ] ?? PERSONA.hearth).peace : 0) });
 
 /** What a battle asks, and of whom (battlehooks.ts): each question has one system that answers it. */
 export type BattleQuestions = {
@@ -1282,6 +1286,8 @@ export function continueAI(c: Campaign): void {
       nobleActsSeasons(c); // a content lord helps in need, an angry one withholds or joins a plot (nobleacts.ts)
       weighSeasons(c); // a computer-led ruler deals with its angriest lord (nobleweigh.ts)
       petitionSeasons(c); // a noble comes with a petition now and then; a computer-led ruler answers it (petitions.ts)
+      royalSeason(c); // rulers offer their grown children in marriage, binding peoples in peace (royalmarriage.ts)
+      tradeSeason(c); // peoples at peace open their markets to each other (tradedeal.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)

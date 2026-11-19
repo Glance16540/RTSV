@@ -37,7 +37,7 @@ describe('a market\'s partner', () => {
     expect(partnerOf(c, a.id)).toBeNull();
   });
 
-  it('a road never runs through a people it is not at peace with; through one at truce it may, and trade abroad', () => {
+  it('a road never runs through a people it is not at peace with; through one at truce it may, and trade abroad under a trade deal', () => {
     const { c, a, b, z } = road();
     const rival = c.factions.find((f) => f.id > 0 && f.alive)!.id;
     b.owner = rival; c.truces = []; c.ally = -1;
@@ -45,6 +45,8 @@ describe('a market\'s partner', () => {
     expect(p === null || !p.road.includes(b.id)).toBe(true);
     c.truces = [{ with: rival, until: c.turn + 10 }];
     z.owner = rival;
+    expect(partnerOf(c, a.id)?.at).not.toBe(z.id); // at peace, but their markets are not open to it (tradedeal.ts)
+    c.pacts = [{ kind: 'trade', a: 0, b: rival, since: c.turn, until: c.turn + 10 }];
     const q = partnerOf(c, a.id)!;
     expect(q.at).toBe(z.id);
     expect(caravanWorth(c, a.id, z.id, q.road)).toBeGreaterThan(caravanWorth(c, a.id, a.id, q.road)); // more from a partner abroad
