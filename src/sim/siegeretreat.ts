@@ -1,8 +1,10 @@
 // A besieger thrown back from the walls falls back with what it has left (docs/systems-board, "War": an army that
 // attacked in person and was beaten was struck from the map whole, however many of its men lived).
 //
-// A battle settled on the map already left a beaten attacker what the fight left it (mapbattle.ts leftWith). One
-// fought in person did not: the battle handed back only the player's survivors, and a repulsed attacker of either
+// On the map: a battle settled there left a beaten attacker what the fight left it (mapbattle.ts leftWith), but one
+// thrown back from walls was chased down by the garrison and, too few to hold together, scattered whole. Men on walls
+// hold them: a besieger thrown back is not run down, and does not scatter (mapbattle.ts clash); it keeps what the
+// assault left of it. In person: a battle fought there did not leave it anything: the battle handed back only the player's survivors, and a repulsed attacker of either
 // side was lost to the last man. Now the field hands back both sides' survivors (main.ts `foes`), and an attacker
 // thrown back keeps, company by company, the companies whose men lived (a company is as many companies as its men
 // still make up, counting men who fought with the better weapons of a later age); the rest are its dead, counted
