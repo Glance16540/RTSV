@@ -5,7 +5,7 @@ import { newCampaign, terrainOf } from '../src/sim/campaign';
 import { beginVisit, visitConfig } from '../src/sim/visit';
 import { generateMap, T_WATER } from '../src/sim/map';
 import { WATER_LAY, layWater } from '../src/sim/waterlay';
-import { waterOf } from '../src/sim/townwater';
+import { RIVER_NAME, TOWN_WATER, waterOf } from '../src/sim/townwater';
 
 const N = 72, corners = [{ x: 17, y: 17 }, { x: N - 17, y: 17 }, { x: N - 17, y: N - 17 }, { x: 17, y: N - 17 }];
 const wetAt = (t: Uint8Array, x: number, y: number): boolean => t[Math.floor(y) * N + Math.floor(x)] === T_WATER;
@@ -87,4 +87,42 @@ describe('a town\'s water, from the campaign map', () => {
     }
     throw new Error('no coastal town of the player\'s');
   }, 60_000);
+});
+
+describe('names and fields', () => {
+  it('a town named for a river has one on its ground, wherever it lies; one not so named has the water it had', () => {
+    let named = 0;
+    for (const seed of [3, 5, 7, 11, 13]) {
+      const c = newCampaign(seed, 2), T = terrainOf(c);
+      for (const t of c.territories.filter((x) => !x.rim)) {
+        const w = waterOf(c, t.id, T);
+        if (RIVER_NAME.test(t.name)) { named++; expect(w?.river).toBeDefined(); expect(Math.abs(w!.river!.offset)).toBeLessThanOrEqual(TOWN_WATER.riverOff); }
+      }
+    }
+    expect(named).toBeGreaterThan(5);
+    // Riverbend, which had no river within reach, has one now.
+    const c = newCampaign(4, 1, 1, 'hearth'), rb = c.territories.find((t) => t.name === 'Riverbend');
+    if (rb) expect(waterOf(c, rb.id, terrainOf(c))?.river).toBeDefined();
+  });
+
+  it('a field battle\'s water is where the field lies, between the lands, and laid from the middle of the ground', () => {
+    for (const seed of [3, 5, 7]) {
+      const c = newCampaign(seed, 2), T = terrainOf(c);
+      for (const t of c.territories.filter((x) => !x.rim)) for (const n of t.adj) {
+        const u = c.territories[n], at = { x: (t.x + u.x) / 2, y: (t.y + u.y) / 2 };
+        const w = waterOf(c, t.id, T, at);
+        if (!w?.shore) continue;
+        expect(w.corner).toBe(-1);
+        const g = new Uint8Array(56 * 56), cs = [{ x: 17, y: 17 }, { x: 39, y: 39 }];
+        layWater(g, 56, 1, w, cs);
+        // Laid from the middle: the middle is dry, the sea lies on its side of it, and not on the other.
+        const wetAt56 = (x: number, y: number) => g[Math.min(55, Math.max(0, Math.round(y))) * 56 + Math.min(55, Math.max(0, Math.round(x)))] === T_WATER;
+        const dx = Math.cos(w.shore.angle), dy = Math.sin(w.shore.angle);
+        expect(wetAt56(28, 28)).toBe(false);
+        expect(wetAt56(28 + dx * 27, 28 + dy * 27)).toBe(true);
+        expect(wetAt56(28 - dx * 20, 28 - dy * 20)).toBe(false);
+        return;
+      }
+    }
+  });
 });
