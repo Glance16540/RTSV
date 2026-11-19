@@ -17,6 +17,7 @@ import { canSendHome, menOf, noMenText } from '../sim/armytown';
 import { bandButtons, threatHtml } from './threatpanel';
 import { intrigueButtons, intrigueHtml } from './intriguepanel';
 import { petitionButtons, petitionHtml } from './petitionpanel'; // a noble's petition (petitions.ts)
+import { pactHtml } from './pactpanel';
 import { orderHtml } from './orderpanel';
 import { freeTownButtons, risenFor } from './freetown';
 import { AGES, CIVS, styleOf } from '../sim/data';
@@ -173,6 +174,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
       if (c.ally < 0 && c.factions.filter((f) => f.alive).length >= 3) talk += btn('ally:' + t.owner, `🤝 Offer ${rulerName(c, t.owner)} an alliance`, ALLIANCE_COST, canAlly(c, t.owner), c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts until one of you breaks it or only you two remain.');
     } else talk += btn('truce:' + t.owner, `🕊️ Offer ${rulerName(c, t.owner)} a truce`, truceCost(me.civ), me.supplies >= truceCost(me.civ) && c.factions[t.owner].refused !== c.turn, c.factions[t.owner].refused === c.turn ? 'They have given their answer for this turn.' : c.honor < 0 ? 'They know you broke your word.' : 'Paid only if they accept. Lasts six turns.');
   }
+  if (t.owner > 0) talk += pactHtml(c, t.owner); // royal marriages and trade deals (royalmarriage.ts, tradedeal.ts)
   talk += freeTownButtons(c, t.id); // a free town: what it is, and treating with it (freetown.ts)
   if (t.owner > 0 && c.factions[t.owner].alive) {
     const fav = c.factions[t.owner].favor ?? 0;
