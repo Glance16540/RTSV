@@ -58,3 +58,38 @@ describe('the men a tribe\'s town loses in a battle nobody watched', () => {
     expect(differs).toBeGreaterThan(0);
   });
 });
+
+describe('a tribe that beats an attack off (the double count)', () => {
+  it('loses the men its bands lost in the fight, and no bands by a share of the attacker\'s strength besides', async () => {
+    const { tollByFight } = await import('../src/sim/tribes');
+    let held = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const { c, home, tribe } = world(seed);
+      setTribe(c, tribe.id, 6);
+      const f = folkOf(c, tribe.id), men = f.men;
+      c.armies = c.armies.filter((a) => a.owner !== 0);
+      c.armies.push({ id: 801, owner: 0, at: home.id, units: { infantry: 3 }, hero: false, vet: 0, moved: false });
+      if (moveArmy(c, 801, tribe.id) !== 'battle') continue;
+      c.pending!.mode = 'siege';
+      const aStr = c.pending!.aStr;
+      resolvePending(c, 'auto');
+      if (c.territories[tribe.id].owner >= 0) continue;
+      held++;
+      const lost = men - folkOf(c, tribe.id).men;
+      // By the fight alone: never more than half of those who stood (it held, so far fewer), and less than the old two rules
+      // together would have taken (fifteen in a hundred of its men, and three tenths of the attacker's strength in bands).
+      expect(lost).toBeLessThanOrEqual(Math.round(men * FELL.dead));
+      const old = Math.ceil(men * TOLL.held) + Math.floor(aStr * 0.3) * bandMen();
+      expect(lost).toBeLessThanOrEqual(old);
+    }
+    expect(held).toBeGreaterThan(5);
+    const p = { to: 0, mode: 'siege' } as never, c0 = newCampaign(3, 2);
+    c0.territories[0].horde = false;
+    expect(tollByFight(c0, p, { how: 'auto', fought: {} })).toBe(true);
+    expect(tollByFight(c0, p, { how: 'attacker', fought: {} })).toBe(false); // fought in person: the census says who fell
+    expect(tollByFight(c0, p, { how: 'auto' })).toBe(false); // summed, not fought
+    expect(tollByFight(c0, { to: 0, mode: 'field' } as never, { how: 'auto', fought: {} })).toBe(false);
+    c0.territories[0].horde = true;
+    expect(tollByFight(c0, p, { how: 'auto', fought: {} })).toBe(false); // the marauders' land
+  });
+});
