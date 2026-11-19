@@ -9,7 +9,7 @@ import { caravansOf, partnerOf } from '../sim/caravans';
 import { standsAt } from '../sim/studies';
 
 /** A caravan as the map walks it: its piece, the road's points in the map's units, and where along it it starts. */
-export interface Walker { g: THREE.Group; pts: [number, number][]; ph: number }
+export interface Walker { g: THREE.Group; pts: [number, number][]; ph: number; /** One way only, from the first point to the last and over again (a convoy, convoydraw.ts), not out and back. */ one?: boolean }
 
 const box = (w: number, h: number, d: number): THREE.BoxGeometry => new THREE.BoxGeometry(w, h, d);
 const BODY = box(0.9, 0.42, 0.36), HEAD = box(0.26, 0.22, 0.2), NECK = box(0.16, 0.42, 0.14), LEG = box(0.09, 0.42, 0.09), PACK = box(0.6, 0.3, 0.5), HUMP = box(0.32, 0.22, 0.3);
@@ -51,7 +51,7 @@ export function walkerFor(c: Campaign, x: Caravan): Walker {
 export function walk(w: Walker, now: number, place: (x: number, y: number) => [number, number, number], lap = 40): void {
   const seg = w.pts.slice(1).map((p, i) => Math.hypot(p[0] - w.pts[i][0], p[1] - w.pts[i][1])), L = seg.reduce((a, b) => a + b, 0);
   if (!L) { const [X, Y, Z] = place(w.pts[0][0], w.pts[0][1]); w.g.position.set(X, Y, Z); return; }
-  const k = ((now / lap + w.ph) % 1) * 2, back = k > 1;
+  const k = ((now / lap + w.ph) % 1) * (w.one ? 1 : 2), back = k > 1;
   let s = (back ? 2 - k : k) * L, i = 0;
   while (i < seg.length - 1 && s > seg[i]) s -= seg[i++];
   const [ax, ay] = w.pts[i], [bx, by] = w.pts[i + 1], f = seg[i] ? s / seg[i] : 0;
