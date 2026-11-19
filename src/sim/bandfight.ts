@@ -19,7 +19,7 @@
 // player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
-import { loseBy, roadClash, roadCost, roadTally, soldiersOf } from './roadclash';
+import { ROAD, loseBy, roadClash, roadCost, roadTally, soldiersOf } from './roadclash';
 import { outOf } from './rim';
 import { peoplesArmy, sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
@@ -116,7 +116,9 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
   roadTally(c, ambush ? 'ambush' : 'hunt', mine < theirs, f); // beside the old rule (the stronger on the day), for the report
   if (!ambush) marched(c, b.id, 'met', won); // an army went out against a band on its way in from the far wilds (bandmarch.ts)
   const size = armySize(a), was = b.strength;
-  const lost = loseBy(a, f.lost);
+  // A beaten army's companies are not all lost: a share come together again (ROAD.regroup), a part of a company by the day's chance.
+  const took = Object.values(f.lost).reduce((n, v) => n + Math.max(0, Math.round(v)), 0), kept = took * (1 - ROAD.regroup);
+  const lost = won ? loseBy(a, f.lost) : loseBy(a, f.lost, Math.floor(kept) + (chance(c, b.id * 97 + a.id, 73) < kept - Math.floor(kept) ? 1 : 0));
   // Report only: beside what the old shares took (a quarter of its companies beating its equal, four tenths routed; the band three tenths of the army's strength).
   roadCost(c, `${ambush ? 'ambush' : 'hunt'} ${won ? 'won' : 'lost'}`, lost, won ? Math.min(size - 1, Math.round(size * 0.25 * Math.min(1, theirs / mine))) : Math.min(size - 1, Math.max(1, Math.round(size * FIGHT.rout))), won ? was : Math.min(was - 1, Math.max(1, f.bandLost)), won ? was : Math.min(was - 1, Math.max(1, Math.round(mine * 0.3))));
   if (won) {

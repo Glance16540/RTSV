@@ -40,6 +40,8 @@ export const ROAD = {
   press: 1,
   /** Of what the clash says a band lost, the share its strength is the weaker by (as RAID.rally): most who run find the camp again. */
   rally: 0.3,
+  /** Of the companies a fight took from an army that a band beat, the share that come together again afterwards: most of a broken army runs and is found, as a band's men are. Without it an army fallen on and beaten lost 0.60 companies a time where the old share took 0.36 to 0.43; at 0.4 it loses 0.49, at 0.55 it loses 0.41 (384 campaigns, both courses). An escort, and an army that wins, lose what the fight took. */
+  regroup: 0.55,
 };
 
 /** The soldiers a band meets: their companies, what they are worth there, and what makes them stand. */
@@ -84,11 +86,11 @@ export function roadClash(strength: number, force: number, s: Soldiers, luckA = 
   };
 }
 
-/** An army loses the companies a fight took from it, kind by kind, and never its last (what is left falls back together). Returns how many. */
-export function loseBy(a: Army, lost: Record<string, number>): number {
+/** An army loses the companies a fight took from it, kind by kind, and never its last (what is left falls back together); no more than `most` in all, if given. Returns how many. */
+export function loseBy(a: Army, lost: Record<string, number>, most = Infinity): number {
   let gone = 0;
   for (const k of Object.keys(lost).sort()) {
-    const n = Math.min(Math.max(0, Math.round(lost[k])), a.units[k] ?? 0, armySize(a) - 1);
+    const n = Math.min(Math.max(0, Math.round(lost[k])), a.units[k] ?? 0, armySize(a) - 1, most - gone);
     if (n <= 0) continue;
     a.units[k] -= n; if (a.units[k] <= 0) delete a.units[k];
     gone += n;

@@ -980,14 +980,14 @@ add('Threats', 'Men a town loses to a strike, and what a battle with a nation wo
       'Every strike on a town (not on a road) that broke it: the goods of all four kinds taken from its stores, and for a taking the women (and, by slavers, men) carried off. By the rounds the fight ran before the town broke, since what a band takes follows how long it had the town and what it had left (raidclash.ts).');
   }
   {
-    // Report only (stage one of the road fight): each meeting of a band with soldiers away from a town's walls, by the rule it goes by and by the clash.
+    // Report only: each meeting of a band with soldiers away from a town's walls, by the rule it goes by and by the clash.
     const sum: Record<string, { n: number; ruleBand: number; clashBand: number; agree: number; neither: number }> = {};
     for (const w of ruled) for (const [k, t] of Object.entries(w.roads ?? {})) { const x = (sum[k] ??= { n: 0, ruleBand: 0, clashBand: 0, agree: 0, neither: 0 }); x.n += t.n; x.ruleBand += t.ruleBand; x.clashBand += t.clashBand; x.agree += t.agree; x.neither += t.neither; }
     const kinds = Object.keys(sum).sort((a, b) => sum[b].n - sum[a].n);
     add('Threats', 'A band meets soldiers on the road: by the rule as it is, and fought out', 'report only', kinds.length
       ? kinds.map((k) => { const x = sum[k]; return `${k} (${num(x.n / ruled.length, 1)} a campaign): the band has the better of it ${pct(x.ruleBand / x.n)} by rule and ${pct(x.clashBand / x.n)} fought out (neither breaks ${pct(x.neither / x.n)}); the two agree ${pct(x.agree / x.n)}`; }).join('; ')
       : 'none', 'report',
-      'Stage one of the road fight (roadclash.ts), which decides nothing yet. hunt: an army of a computer people, or the report\'s player unwatched, goes against a band; ambush: a band falls on an army; convoy and caravan: highwaymen or pirates stop one that has an army of its people on its road; camp on a caravan: raiders, slavers or marauders fall on one so escorted; road: highwaymen strike a road\'s end where an army stands. By rule the stronger on the day wins (an escort as strong as the band sees it off); fought out, either may break or neither.');
+      'Each meeting of a band with soldiers away from a town\'s walls is decided by the fight (roadclash.ts); the rule it went by before is tallied beside it. hunt: an army of a computer people, or the report\'s player unwatched, goes against a band; ambush: a band falls on an army; convoy and caravan: highwaymen or pirates stop one that has an army of its people on its road; camp on a caravan: raiders, slavers or marauders fall on one so escorted; road: highwaymen strike a road\'s end where an army stands. By rule the stronger on the day wins (an escort as strong as the band sees it off); fought out, either may break or neither.');
   }
   {
     // Report only: what a fight of an army and a band costs each, fought out, beside the old shares.
