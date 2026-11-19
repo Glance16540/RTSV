@@ -1265,7 +1265,7 @@ export function continueAI(c: Campaign): void {
       c.turn++;
       c.phase = 'player';
       tickHouses(c);
-      for (const a of c.armies) { a.moved = resting(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts)
+      for (const a of c.armies) { a.moved = resting(c, a) || snowbound(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts), and one that marched in winter (winter.ts)
       courtTurn(c);
       for (const x of c.factions) x.angry = false;
       rumourSeason(c); // what the player's taverns hear of rival towns (tavernrumour.ts)
