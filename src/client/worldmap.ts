@@ -608,8 +608,8 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
       greece: { wall: 'stone', stone: 0xe6e2d6, dark: 0xb8b2a2, plaster: 0xf2efe6, roof: 0xb85a38, house: 'gable', tower: 'flat', keep: 'acropolis' },
       england: { wall: 'stone', stone: 0xa8a498, dark: 0x7c786c, plaster: 0xe4d8bc, roof: 0xc9a85a, house: 'gable', tower: 'flat', keep: 'norman' },
       arabs: { wall: 'mud', stone: 0xdcc79c, dark: 0xb89c6c, plaster: 0xeadcb8, roof: 0xd2bd92, house: 'flat', tower: 'flat', keep: 'mosque', trim: 0xf0ece0 },
-      mali: { wall: 'mud', stone: 0xc89a66, dark: 0x9a7044, plaster: 0xd8ae7c, roof: 0xc09460, house: 'flat', tower: 'flat', keep: 'mosque', trim: 0x6a4a2c },
-      kush: { wall: 'mud', stone: 0xd0b07c, dark: 0xa8885a, plaster: 0xdcc090, roof: 0xc8a874, house: 'flat', tower: 'flat', keep: 'pyramid', trim: 0xc8963a },
+      mali: { wall: 'mud', stone: 0xc89a66, dark: 0x9a7044, plaster: 0xd8ae7c, roof: 0xc09460, house: 'flat', tower: 'flat', keep: 'sahel', trim: 0x6a4a2c },
+      kush: { wall: 'mud', stone: 0xd0b07c, dark: 0xa8885a, plaster: 0xdcc090, roof: 0xc8a874, house: 'flat', tower: 'flat', keep: 'meroe', trim: 0xc8963a },
       japan: { wall: 'stone', stone: 0x8c8a84, dark: 0x64625e, plaster: 0xf0eee8, roof: 0x3a3f4a, house: 'hip', tower: 'hip', keep: 'tenshu', trim: 0xc83a2a },
       dawn: { wall: 'stone', stone: 0xe4d8b8, dark: 0xb8aa84, plaster: 0xeee2c4, roof: 0xd8cba6, house: 'flat', tower: 'flat', keep: 'sanctuary', trim: 0xd8b040 },
       wild: { wall: 'wood', stone: 0x6a4a2c, dark: 0x4a3420, plaster: 0x7a5a3a, roof: 0x6f7a44, house: 'long', tower: 'flat', keep: 'meadhall' },
@@ -710,6 +710,30 @@ float sfbm( vec2 p ) { return sn( p ) * 0.5 + sn( p * 2.1 + 7.0 ) * 0.27 + sn( p
           cyl(0.3 * k, 0.12, L.plaster, x, B + 0.45, z, 10); dome(0.3 * k, banner, x, B + 0.57, z, 1.15); cone(0.03, 0.12, GOLD, x, B + 0.9, z, 5);
           for (const [dx, dz] of [[-0.62, 0.42], [0.62, -0.4]]) { cyl(0.065, 1.15, L.plaster, x + dx * k, B, z + dz * k, 8, 0.05); cyl(0.09, 0.05, L.dark, x + dx * k, B + 0.9, z + dz * k, 8); dome(0.06, L.trim ?? GOLD, x + dx * k, B + 1.15, z + dz * k, 1.4); } // minarets
           box(0.2, 0.26, 0.04, 0x3a2a1a, x, B, z + 0.35 * k, 0, 1);
+          break;
+        }
+        case 'sahel': {
+          // Mali's great mosque of mud brick (greatworks.ts draws it on the field): three tapering towers on its east
+          // front with beams standing out of them, and ranks of pinnacles along its walls.
+          const tower = (w: number, h: number, tx: number, tz: number, tone: number): void => { parts.push(put(tinted(new THREE.CylinderGeometry(w * 0.62 * Math.SQRT2, w * Math.SQRT2, h, 4).rotateY(Math.PI / 4).translate(0, h / 2, 0), tone, 0.72), tx, B, tz)); };
+          box(1.05 * k, 0.4, 0.72 * k, L.plaster, x, B, z - 0.05 * k); box(1.08 * k, 0.04, 0.75 * k, L.dark, x, B + 0.4, z - 0.05 * k);
+          box(1.05 * k, 0.55, 0.1 * k, L.plaster, x, B, z + 0.33 * k);
+          for (const [dx, h, w] of [[-0.36, 0.68, 0.12], [0, 0.85, 0.15], [0.36, 0.68, 0.12]]) {
+            tower(w * k, h, x + dx * k, z + 0.36 * k, L.plaster); cone(w * 0.55 * k, 0.13, L.plaster, x + dx * k, B + h, z + 0.36 * k, 6);
+            for (const y of [0.22, 0.42, 0.62].filter((y) => y < h - 0.05)) for (const q of [-0.4, 0.4]) box(0.015, 0.015, 0.09, TIMBER, x + (dx + q * w) * k, B + y, z + (0.36 + w * 0.9) * k, 0, 1);
+          }
+          for (let i = 0; i < 5; i++) for (const s of [-1, 1]) { const pz = z + (-0.35 + i * 0.15) * k; cyl(0.03, 0.5, L.plaster, x + s * 0.54 * k, B, pz, 4, 0.02); cone(0.025, 0.06, L.plaster, x + s * 0.54 * k, B + 0.5, pz, 4); }
+          box(0.12, 0.2, 0.03, 0x3a2a1a, x, B, z + 0.48 * k, 0, 1);
+          break;
+        }
+        case 'meroe': {
+          // Kush's pyramids of Meroë (greatworks.ts draws them on the field): steep and narrow, close together, each
+          // with its chapel at its foot.
+          for (const [dx, dz, r, h] of [[-0.2, -0.2, 0.3, 0.95], [0.32, -0.38, 0.2, 0.7], [0.42, 0.22, 0.16, 0.56], [-0.5, 0.32, 0.14, 0.46]]) {
+            cone(r * Math.SQRT2 * k, h * k, L.stone, x + dx * k, B, z + dz * k, 4, Math.PI / 4);
+            box(r * 0.9 * k, 0.12, 0.16 * k, L.dark, x + dx * k, B, z + (dz + r + 0.08) * k);
+          }
+          cone(0.03, 0.05, GOLD, x - 0.2 * k, B + 0.93 * k, z - 0.2 * k, 4, Math.PI / 4);
           break;
         }
         case 'meadhall': {
