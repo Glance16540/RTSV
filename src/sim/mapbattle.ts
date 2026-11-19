@@ -198,11 +198,12 @@ export function clash(a: Force, d: Force, luckA = 1, luckD = 1): Outcome {
     for (const k of KINDS) beaten.hp[k] *= 1 - share;
   };
   if (broke === 'defender') chase(A, D);
-  else if (broke === 'attacker') chase(D, A);
+  else if (broke === 'attacker' && !d.walled) chase(D, A); // men on walls hold them: they do not sally out to run a beaten besieger down
   const attackerWon = broke === 'defender';
   const out: Outcome = { attackerWon, broke, rounds, a: muster(a, A, attackerWon), d: muster(d, D, !attackerWon) };
   const beaten = broke === 'attacker' ? out.a : broke === 'defender' ? out.d : null;
-  if (beaten && count(beaten.left) < count(beaten.began) * CLASH.scatter) { beaten.lost = { ...beaten.began }; beaten.left = {}; beaten.scattered = true; }
+  // A beaten side too few to hold together scatters for home; a besieger thrown back from walls, unpursued, falls back with what it has (siegeretreat.ts).
+  if (beaten && !(beaten === out.a && d.walled) && count(beaten.left) < count(beaten.began) * CLASH.scatter) { beaten.lost = { ...beaten.began }; beaten.left = {}; beaten.scattered = true; }
   return out;
 }
 
