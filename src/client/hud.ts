@@ -6,6 +6,7 @@ import { endCard } from './briefing';
 import { bereftLines } from '../sim/bereft';
 import { oldLine } from '../sim/oldmarks';
 import { recordLines } from '../sim/warrecord';
+import { enlistLine, queueLines, slotFor } from '../sim/pickman';
 import { possessive, renameOwn } from '../sim/naming';
 const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
@@ -115,6 +116,8 @@ export class Hud {
       const q = t.closest('[data-q]') as HTMLElement | null;
       const b = this.app.game.entities.get(this.app.sel[0]);
       if (q && b) this.app.game.cmdCancel(this.app.pid, b.id, Number(q.dataset.q));
+      const send = t.closest('[data-send]') as HTMLElement | null;
+      if (send) { this.app.game.cmdSendMan(this.app.pid, Number(send.dataset.send)); this.app.select(this.app.sel); } // who goes to arms (pickman.ts)
       const pick = t.closest('[data-type]') as HTMLElement | null;
       if (pick) this.app.select(this.app.sel.filter((id) => this.app.game.entities.get(id)?.type === pick.dataset.type));
     });
@@ -556,6 +559,11 @@ export class Hud {
         extra += game.isElder(e) ? `<div class="hint">🧓 Elder, ${years} years old: works and walks more slowly</div>` : `<div class="hint">${years} years old</div>`;
       }
       { const old = oldLine(e); if (old) extra += `<div class="hint">${old}</div>`; } // still of the people a taken town was taken from (oldmarks.ts)
+      if (e.type === 'villager' && e.owner === pid) { // called to arms, or to be sent (pickman.ts)
+        const going = enlistLine(game, e), slot = going ? null : slotFor(game, e);
+        if (going) extra += `<div class="enlist">⚔️ ${going}</div>`;
+        else if (slot) extra += `<button class="send-man" data-send="${e.id}" title="${slot.q.who && game.entities.get(slot.q.who) ? 'In place of the one on his way, who goes back to his work' : 'The place waits for someone to be trained'}">⚔️ Send to the ${slot.b.def.name} as ${/^[aeiou]/i.test(UNITS[slot.q.id].name) ? 'an' : 'a'} ${UNITS[slot.q.id].name}</button>`;
+      }
       // The nation's leader: their veterancy, what it has added, and what their town makes of them.
       const lead = e.hero ? game.leaderBonus(e) : null;
       if (e.hero && lead) {
@@ -605,6 +613,7 @@ export class Hud {
         }).join('') + '</div>';
         const q = b.queue[0];
         body += this.bar(q.t / q.time) + (q.blocked ? '<div class="warn">Need more houses!</div>' : '');
+        for (const line of queueLines(game, b).slice(0, 4)) body += `<div class="${line.includes('waiting') ? 'warn' : 'hint'}">⚔️ ${line}</div>`; // who goes to arms, or that a place waits for one (pickman.ts)
       }
       if (b.type === 'house') {
         const r = b.residents;
