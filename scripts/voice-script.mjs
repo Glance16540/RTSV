@@ -3,7 +3,8 @@
 import { writeFileSync } from 'node:fs';
 import { EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey } from '../src/sim/leaders.ts';
 import { CIVS } from '../src/sim/data.ts';
-import { FOLK, LEANS, MOMENT_NOTES } from '../src/sim/folk.ts';
+import { FOLK, LEANS, MOMENT_NOTES, folkRole } from '../src/sim/folk.ts';
+import { BELIEF_NOTES, faithVariants } from '../src/sim/folkfaith.ts';
 
 let out = `# Voice script
 
@@ -39,6 +40,15 @@ for (const r of FOLK) {
   out += `\n### ${r.name} (\`${r.id}\`)\n\n${r.about}\n\n| Moment | When | Holy town | Ordinary town | Decadent town |\n| --- | --- | --- | --- | --- |\n`;
   for (const [m, three] of Object.entries(r.lines)) { out += `| \`${m}\` | ${MOMENT_NOTES[m]} | ${three.join(' | ')} |\n`; folkTotal += LEANS.length; }
   if (r.her) { out += `\nAs a woman she is the **${r.herName}**: ${r.herAbout} Same file names, with \`f\`.\n\n| Moment | When | Holy town | Ordinary town | Decadent town |\n| --- | --- | --- | --- | --- |\n`; for (const [m, three] of Object.entries(r.her)) out += `| \`${m}\` | ${MOMENT_NOTES[m]} | ${three.join(' | ')} |\n`; }
+}
+// The lines that speak of faith, as each people says them in its own (folkfaith.ts): recorded under the script's name
+// with the faith after it, for example `folk_farmer_pious_ready_ma_muslim.wav`.
+out += `\n### In their own faith\n\nThe lines above that speak of faith are the Franks' and the English's. Every other people says them in its own faith,\nwith the same sense and temper. Record each under the script's name with the faith after it, for example\n\`folk_farmer_pious_ready_ma_muslim.wav\`.\n`;
+const byBelief = new Map();
+for (const x of faithVariants()) { if (!byBelief.has(x.belief)) byBelief.set(x.belief, []); byBelief.get(x.belief).push(x); }
+for (const [belief, list] of byBelief) {
+  out += `\n#### \`${belief}\`: ${BELIEF_NOTES[belief]}\n\n| Part | Moment | Town | Line |\n| --- | --- | --- | --- |\n`;
+  for (const x of list) { out += `| ${folkRole(x.role).name} | \`${x.moment}\` | ${x.lean} | ${x.text} |\n`; folkTotal++; }
 }
 writeFileSync('docs/VOICE_SCRIPT.md', out);
 console.log(`voice script: ${total} lines for ${Object.keys(LEADERS).length} leaders`);

@@ -5,6 +5,7 @@ import { Speech, leaderOf, lineKey, monogram, speechText } from '../sim/leaders'
 import { portrait, voiceCredit, voiceUrl } from './assets';
 import { sfx } from './sfx';
 import { FOLK_VOICES, FolkMoment, Lean, folkKey, leanOf } from '../sim/folk';
+import { faithKey } from '../sim/folkfaith';
 import type { Game, Unit } from '../sim/game';
 
 let playing: HTMLAudioElement | null = null;
@@ -57,10 +58,10 @@ let barkAt = 0, barking: HTMLAudioElement | null = null;
 export function bark(game: Game, u: Unit, moment: FolkMoment): void {
   if (sfx.muted || performance.now() - barkAt < 900) return;
   const role = folkRoleOf(game, u), sex = u.type === 'villager' && u.gender === 'f' ? 'f' : 'm';
-  const mine = leanOf(game.players[u.owner]?.virtue ?? 0);
+  const mine = leanOf(game.players[u.owner]?.virtue ?? 0), civ = game.players[u.owner]?.civ;
   const fear: FolkMoment = moment === 'go' && u.type !== 'villager' ? 'march' : moment;
   for (const lean of [mine, 'plain'] as Lean[]) {
-    const urls = FOLK_VOICES.map((v) => voiceUrl(folkKey(role, lean, fear, sex, v))).filter((x): x is string => !!x);
+    const urls = FOLK_VOICES.map((v) => voiceUrl(faithKey(folkKey(role, lean, fear, sex, v), role, fear, lean, civ))).filter((x): x is string => !!x); // in their own faith (folkfaith.ts)
     if (!urls.length) continue;
     barkAt = performance.now();
     barking?.pause();

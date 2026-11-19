@@ -1558,7 +1558,7 @@ Marches with the army to heal, bless and curse. Holy, he tends friend and foe al
 
 | Moment | When | Holy town | Ordinary town | Decadent town |
 | --- | --- | --- | --- | --- |
-| `ready` | When you click on them | Bring me the wounded, friend or foe. | I am here. | The gods are hungry. Feed them. |
+| `ready` | When you click on them | Bring me the wounded, friend or foe. | I am here. | Death is hungry. Feed him. |
 | `march` | When you order them to move | I walk among the fallen, and leave none. | Coming. | I come to bless the killing. |
 | `charge` | When you order them to attack | Be whole. Go, and do no cruelty. | Hold still. | Rise and kill again! |
 | `hurt` | When they are badly wounded | Tend the others first. | I am struck! | My blood for theirs! Avenge me! |
@@ -1573,3 +1573,207 @@ Crews the fishing boats, transports and warships. Holy, he pulls the drowning fr
 | `march` | When you order them to move | We sail to bring them safely home. | Making way. | Find me a ship to bleed. |
 | `charge` | When you order them to attack | Take the ship! Pull the drowning aboard! | Ram them! | No quarter! Feed them to the fish! |
 | `hurt` | When they are badly wounded | Save the passengers first! | We're holed! | If I drown, I'm dragging them down! |
+
+### In their own faith
+
+The lines above that speak of faith are the Franks' and the English's. Every other people says them in its own faith,
+with the same sense and temper. Record each under the script's name with the faith after it, for example
+`folk_farmer_pious_ready_ma_muslim.wav`.
+
+#### `hebrew`: The Tribes of the Judges: the One God, His altar and His temple
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Forager | `ready` | pious | He feeds the young ravens. He'll feed us. |
+| Fisher | `ready` | pious | The sea is His, for He made it. |
+| Miner | `ready` | pious | Even the mountains sing His praise. |
+| Cleric | `ready` | plain | The temple doors are open. |
+| Cleric | `ready` | decadent | An offering first, sinner. |
+| Cleric | `go` | decadent | Atonement! Prices are on the door. |
+| Cleric | `fear` | plain | To the temple, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Cleric | `go` | plain | To the altar. |
+
+#### `muslim`: The Abbasids and Mali: Muslims, praying to God, at the mosque
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | God sends the rain; I bring the plough. |
+| Forager | `ready` | pious | God provides for every creature. He'll feed us. |
+| Hunter | `go` | pious | In God's name, swift and clean. |
+| Fisher | `ready` | pious | The sea and all in it are His gift. |
+| Miner | `ready` | pious | Even the stones glorify Him. |
+| Miner | `go` | pious | I dig for the mosque and my neighbour's roof. |
+| Builder | `ready` | pious | Build a house for God, and He builds one for you. |
+| Cleric | `ready` | pious | Peace be upon you. What troubles you? |
+| Cleric | `ready` | plain | The mosque doors are open. |
+| Cleric | `ready` | decadent | Alms in my hand first, sinner. |
+| Cleric | `go` | decadent | Blessings! Prices are on the door. |
+| Cleric | `fear` | plain | To the mosque, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Cleric | `go` | plain | To the prayer hall. |
+
+#### `nile`: Egypt and Kush: the gods of the Nile, Amun and Ra, Hapi of the flood, at the temple
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | Hapi sends the flood; I bring the plough. |
+| Forager | `ready` | pious | The river feeds us all, as the gods meant. |
+| Hunter | `go` | pious | Thanks to the gods for the beast that feeds us. |
+| Fisher | `ready` | pious | The river is the gift of the gods. |
+| Miner | `ready` | pious | Even the stones sing to Ra. |
+| Miner | `go` | pious | I dig for Amun's house and my neighbour's roof. |
+| Builder | `ready` | pious | Unless the gods raise the house, we toil for nothing. |
+| Cleric | `ready` | plain | The temple doors are open. |
+| Cleric | `ready` | decadent | An offering first, sinner. |
+| Cleric | `go` | decadent | Amulets! Prices are on the door. |
+| Cleric | `fear` | plain | To the temple, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Priest or shaman | `ready` | decadent | The gods are hungry. Feed them. |
+
+#### `babylon`: Babylon: Marduk, Shamash and Adad, Ea of the waters, at the temple
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | Adad sends the rain; I bring the plough. |
+| Forager | `ready` | pious | Shamash sees every creature fed. He'll feed us. |
+| Hunter | `go` | pious | Thanks to the gods for the beast that feeds us. |
+| Fisher | `ready` | pious | Ea gave the waters their fish. |
+| Miner | `ready` | pious | Even the stones are Marduk's. |
+| Miner | `go` | pious | I dig for Marduk's house and my neighbour's roof. |
+| Builder | `ready` | pious | Unless Marduk lays the brick, we toil for nothing. |
+| Cleric | `ready` | plain | The temple doors are open. |
+| Cleric | `ready` | decadent | An offering first, sinner. |
+| Cleric | `go` | decadent | Omens read! Prices are on the door. |
+| Cleric | `fear` | plain | To the temple, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Priest or shaman | `ready` | decadent | The gods are hungry. Feed them. |
+
+#### `zoroastrian`: Persia: the Wise Lord, Ahura Mazda, and the sacred fire
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | The Wise Lord sends the rain; I bring the plough. |
+| Forager | `ready` | pious | The Wise Lord feeds the sparrows. He'll feed us. |
+| Hunter | `go` | pious | Good thoughts for the beast that feeds us. |
+| Fisher | `ready` | pious | The waters are holy. Take, and keep them clean. |
+| Miner | `ready` | pious | Even the stones are the Wise Lord's work. |
+| Miner | `go` | pious | I dig for the fire temple and my neighbour's roof. |
+| Builder | `ready` | pious | Good thoughts, good words, good deeds; then good walls. |
+| Cleric | `ready` | plain | The fire temple doors are open. |
+| Cleric | `ready` | decadent | Coin for the fire first, sinner. |
+| Cleric | `go` | decadent | Sins burned away! Prices are on the door. |
+| Cleric | `fear` | plain | To the fire temple, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Cleric | `go` | plain | To the sacred fire. |
+
+#### `greek`: The Greeks: Zeus, Demeter, Artemis, Poseidon and Athena, at the temple
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | Zeus sends the rain; I bring the plough. |
+| Forager | `ready` | pious | Demeter feeds the sparrows. She'll feed us. |
+| Hunter | `go` | pious | Thanks to Artemis for the beast that feeds us. |
+| Fisher | `ready` | pious | Poseidon gives the catch. A share is his. |
+| Miner | `ready` | pious | Even the stones remember the gods. |
+| Miner | `go` | pious | I dig for Athena's temple and my neighbour's roof. |
+| Builder | `ready` | pious | Unless Athena guides the hand, we toil for nothing. |
+| Cleric | `ready` | plain | The temple doors are open. |
+| Cleric | `ready` | decadent | An offering first, sinner. |
+| Cleric | `go` | decadent | Oracles told! Prices are on the door. |
+| Cleric | `fear` | plain | To the temple, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Priest or shaman | `ready` | decadent | The gods are hungry. Feed them. |
+
+#### `roman`: Rome: Jupiter, Ceres, Diana, Neptune and the household gods, at the temple
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | Jupiter sends the rain; I bring the plough. |
+| Forager | `ready` | pious | Ceres feeds the sparrows. She'll feed us. |
+| Hunter | `go` | pious | Thanks to Diana for the beast that feeds us. |
+| Fisher | `ready` | pious | Neptune gives the catch. A share is his. |
+| Miner | `ready` | pious | Even the stones remember the gods. |
+| Miner | `go` | pious | I dig for Jupiter's temple and my neighbour's roof. |
+| Builder | `ready` | pious | Unless the household gods keep it, we toil for nothing. |
+| Cleric | `ready` | plain | The temple doors are open. |
+| Cleric | `ready` | decadent | An offering first, sinner. |
+| Cleric | `go` | decadent | Omens read! Prices are on the door. |
+| Cleric | `fear` | plain | To the temple, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Priest or shaman | `ready` | decadent | The gods are hungry. Feed them. |
+
+#### `japanese`: Japan: the kami and the Buddha, at the shrine
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | The kami send the rain; I bring the plough. |
+| Forager | `ready` | pious | The Buddha's mercy reaches the sparrows. And us. |
+| Hunter | `go` | pious | Thanks to the mountain kami for this beast. |
+| Fisher | `ready` | pious | The sea kami give, and we give thanks. |
+| Miner | `ready` | pious | Even the stones have their kami. |
+| Miner | `go` | pious | I dig for the shrine and my neighbour's roof. |
+| Builder | `ready` | pious | Purify the ground first, then raise the house. |
+| Cleric | `ready` | pious | Be at peace, child. What troubles you? |
+| Cleric | `ready` | plain | The shrine doors are open. |
+| Cleric | `ready` | decadent | Coin in the box first, sinner. |
+| Cleric | `go` | decadent | Charms and blessings! Prices are on the door. |
+| Cleric | `fear` | plain | To the shrine, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Cleric | `go` | plain | To the shrine. |
+
+#### `chinese`: China: Heaven and the ancestors, at the shrine
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | Heaven sends the rain; I bring the plough. |
+| Forager | `ready` | pious | Heaven feeds the sparrows. It will feed us. |
+| Hunter | `go` | pious | Thanks to Heaven for the beast that feeds us. |
+| Fisher | `ready` | pious | The river spirits give. Burn them incense. |
+| Miner | `ready` | pious | Even the mountains bow to Heaven. |
+| Miner | `go` | pious | I dig for the ancestors' hall and my neighbour's roof. |
+| Builder | `ready` | pious | Unless Heaven wills it, we toil for nothing. |
+| Cleric | `ready` | plain | The shrine doors are open. |
+| Cleric | `ready` | decadent | Incense money first, sinner. |
+| Cleric | `go` | decadent | Fortunes told! Prices are on the door. |
+| Cleric | `fear` | plain | To the shrine, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Cleric | `go` | plain | To the shrine. |
+
+#### `tengri`: The steppe: the Eternal Blue Sky and Mother Earth, the spirits, at the sacred grove
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | The Blue Sky sends the rain; I bring the plough. |
+| Forager | `ready` | pious | Mother Earth feeds the sparrows. She'll feed us. |
+| Hunter | `go` | pious | Thanks to the Sky for the beast that feeds us. |
+| Fisher | `ready` | pious | Ask the water spirits before you take. |
+| Miner | `ready` | pious | Even the stones lie under the Eternal Sky. |
+| Miner | `go` | pious | I dig for the cairn of offerings and my neighbour's roof. |
+| Builder | `ready` | pious | Unless the Sky wills it, we toil for nothing. |
+| Cleric | `ready` | plain | The sacred grove doors are open. |
+| Cleric | `ready` | decadent | Coin for the spirits first, sinner. |
+| Cleric | `go` | decadent | Spirits soothed! Prices are on the door. |
+| Cleric | `fear` | plain | To the sacred grove, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Cleric | `go` | plain | To the sacred grove. |
+| Priest or shaman | `ready` | decadent | The spirits are hungry. Feed them. |
+
+#### `norse`: The North: Thor, Freyr, Ullr, Njord and the rest of the gods
+
+| Part | Moment | Town | Line |
+| --- | --- | --- | --- |
+| Farmer | `ready` | pious | Thor sends the rain; I bring the plough. |
+| Forager | `ready` | pious | Freyr feeds the land. He'll feed us. |
+| Hunter | `go` | pious | Thanks to Ullr for the beast that feeds us. |
+| Fisher | `ready` | pious | Njord fills the nets. Give him his share. |
+| Miner | `ready` | pious | Even the stones were Ymir's bones. |
+| Miner | `go` | pious | I dig for the gods' hall and my neighbour's roof. |
+| Builder | `ready` | pious | Unless the gods keep the roof, we toil for nothing. |
+| Cleric | `ready` | plain | The sacred grove doors are open. |
+| Cleric | `ready` | decadent | Silver for the gods first, sinner. |
+| Cleric | `go` | decadent | Runes cast! Prices are on the door. |
+| Cleric | `fear` | plain | To the sacred grove, all of you! |
+| Cleric | `fear` | decadent | Save the silver! Leave the rest! |
+| Priest or shaman | `ready` | decadent | The gods are hungry. Feed them. |
+| Cleric | `go` | plain | To the sacred grove. |
