@@ -137,6 +137,8 @@ export interface Outfit {
   /** Build: 0 slight, 1 average, 2 heavy; and the chest, 0 small to 2 full (a woman's bust, a man's breadth). */
   girth: 0 | 1 | 2; chest: 0 | 1 | 2;
   skin: number; hair: number; seed: number;
+  /** Whose people they are, for the build of their head (heads.ts). */
+  civ?: string;
   /** Which face they have, if it is chosen and not left to the seed. */
   face?: number;
   /** Cloth on the body and arms; `mail` paints them as ring mail instead. */
@@ -213,7 +215,7 @@ export function roleOutfit(role: 'captive' | 'monk' | 'nun' | 'milkmaid' | 'patr
  * which dresses its villagers and plain soldiers its own way (`dress.ts`).
  */
 export function outfitFor(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; naval?: boolean; civ?: string } = { cls: 'villager', age: 0 }): Outfit {
-  const o = plainOutfit(type, female, color, look, seed, wear, info);
+  const o: Outfit = { ...plainOutfit(type, female, color, look, seed, wear, info), ...(info.civ ? { civ: info.civ } : {}) };
   return info.civ && plainDress(type, NAMED.has(type)) ? nationDress(info.civ, type, o, color) : o;
 }
 /** Units with a dress of their own below. */
@@ -672,7 +674,7 @@ export function makePerson(o: Outfit): { g: THREE.Group; real: RealPerson } | nu
   const crop = !!o.helmet || o.hat === 'cap' || o.hat === 'fur' || o.hat === 'straw' || o.hat === 'turban';
   const hidden = o.hairStyle === 'covered' || o.hat === 'hood';
   const cut = hidden ? null : o.female ? (crop && o.hat !== 'turban' ? 'buzzedF' : o.hairStyle === 'long' ? 'long' : o.hairStyle === 'bun' ? 'buns' : 'buzzedF') : crop || o.seed % 3 === 0 ? 'buzzed' : 'parted';
-  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard, cut, o.face ?? o.seed);
+  const sculpt = sculptedHead(o.female, o.skin, o.hair, o.beard, cut, o.face ?? o.seed, { civ: o.civ }); // the build of the head runs by the person's people (heads.ts)
   if (sculpt) {
     const F = sculpt.fig, sc = (0.118 / (F.crown - F.eyeY)) * HEAD_FIT;
     // No two heads quite of a size: a little broader or narrower, longer or shorter, by the person.
