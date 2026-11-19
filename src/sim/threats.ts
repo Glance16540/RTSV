@@ -38,6 +38,7 @@
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
 import { inAll, strengthOf, whole } from './strengthwords';
 import { outOf } from './rim';
+import { roadClash, roadTally, soldiersOf } from './roadclash';
 import { militiaBands, militiaOf } from './militia';
 import { FELL, menStood } from './militiatoll';
 import { faithAt, swayTown } from './townfaith';
@@ -305,6 +306,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const guard = road ? Math.max(...[b.at, b.to!].map((id) => { const a = c.armies.find((x) => x.at === id && x.owner === owner); return a ? armyStrength(a) : 0; })) + THREATS.wayfarers : defence.total;
   const force = round1(b.strength * (0.8 + 0.4 * chance(c, b.id, 29)));
   const r = guard / Math.max(0.1, force);
+  if (road) { const e = [b.at, b.to!].map((id) => c.armies.find((x) => x.at === id && x.owner === owner)).filter((x): x is Army => !!x).sort((x, y) => armyStrength(y) - armyStrength(x))[0]; if (e) roadTally(c, 'road', r < THREATS.hold, roadClash(b.strength, force, soldiersOf(c, e))); } // stage one of the road fight, report only (roadclash.ts)
   // A town that already has people in some band's hands has no more to give: it is raided, not taken again.
   const bled = (c.bands ?? []).some((k) => k.held.some((h) => h.from === tid));
   // A strike on a town is fought out a round at a time (raidclash.ts); on a road it is an escort or nothing, by the old lines.
