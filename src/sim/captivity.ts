@@ -89,17 +89,25 @@ export function tendCaptives(g: Game, b: Building): number {
       say(g, c.from, `⏳ ${c.name} has been held ${Math.round(heldFor(g, c) / 60)} minutes. In two more ${c.gender === 'f' ? 'she' : 'he'} will be ${lair ? 'dead' : 'sold on'}, and past getting back.`);
     }
     if (left > 0) continue;
-    b.captives.splice(i, 1);
+    if (lair) {
+      b.captives.splice(i, 1);
+      const kids = c.young?.length ?? 0, with_ = kids ? ` ${kids === 1 ? 'The child' : `The ${kids} children`} born there ${kids === 1 ? 'is' : 'are'} lost with ${c.gender === 'f' ? 'her' : 'him'}.` : '';
+      say(g, c.from, `🕯️ ${c.name}, held by the marauders, is dead.${with_}`);
+    } else sellOn(g, b, i);
     lost++;
-    const kids = c.young?.length ?? 0, with_ = kids ? ` ${kids === 1 ? 'The child' : `The ${kids} children`} born there ${kids === 1 ? 'is' : 'are'} lost with ${c.gender === 'f' ? 'her' : 'him'}.` : '';
-    if (lair) say(g, c.from, `🕯️ ${c.name}, held by the marauders, is dead.${with_}`);
-    else {
-      say(g, c.from, `🕯️ ${c.name} has been sold on from the work camp and is lost to you.${with_}`);
-      const keeper = g.players[b.owner];
-      if (keeper) { keeper.res.gold += SOLD_GOLD; say(g, b.owner, `⛓️ ${c.name} has been sold on for ${SOLD_GOLD} gold.`); }
-    }
   }
   return lost;
+}
+
+/** One held in a work camp is sold on: lost to their people, and SOLD_GOLD to the camp's keeper. */
+export function sellOn(g: Game, b: Building, i: number): void {
+  const c = b.captives?.[i];
+  if (!c) return;
+  b.captives!.splice(i, 1);
+  const kids = c.young?.length ?? 0, with_ = kids ? ` ${kids === 1 ? 'The child' : `The ${kids} children`} born there ${kids === 1 ? 'is' : 'are'} lost with ${c.gender === 'f' ? 'her' : 'him'}.` : '';
+  say(g, c.from, `🕯️ ${c.name} has been sold on from the work camp and is lost to you.${with_}`);
+  const keeper = g.players[b.owner];
+  if (keeper) { keeper.res.gold += SOLD_GOLD; say(g, b.owner, `⛓️ ${c.name} has been sold on for ${SOLD_GOLD} gold.`); }
 }
 
 /**

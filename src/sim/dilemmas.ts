@@ -8,7 +8,9 @@
 // the Church, people held in a camp, the season, a storm, the fighting, hunger. Such a one is only asked while its
 // moment holds (`FITS`). Which is asked next is not drawn from the battle's dice: each people has an order of every
 // dilemma set by the battle's seed, and is asked the first in it not yet asked whose moment holds, so it is asked
-// each fitting one before any comes round again (`Player.asked`, kept with the battle).
+// each fitting one before any comes round again (`Player.asked`, kept with the battle, and on the town's record
+// from one visit or battle there to the next: askedhere.ts). What an answer does beyond goods and standing is
+// dilemmaacts.ts's.
 //
 // Content: no child is in any of them, nothing suggestive is said, people held are spoken of only as held, and
 // anyone wed is grown.
@@ -61,7 +63,7 @@ export const MORE_DILEMMAS: Dilemma[] = [
     b: { label: 'Sell them lodging and charms', virtue: -15, res: { gold: 110 }, result: 'They leave lighter of purse.' } },
   { id: 'held', title: 'Those held in the camp', text: 'A merchant offers to buy those held in the camp and take them far away.',
     a: { label: 'Set them free on the road home', virtue: 20, res: { food: -60 }, result: 'They are given bread for the road, and the gate is opened.' },
-    b: { label: 'Sell them to the merchant', virtue: -20, res: { gold: 150 }, result: 'They are led away by the merchant\'s men.' } },
+    b: { label: 'Sell them to the merchant, at the camp\'s price', virtue: -20, res: {}, result: 'They are led away by the merchant\'s men.' } }, // both done through the camp's own rules (dilemmaacts.ts)
   { id: 'frost', title: 'A hard frost', text: 'The frost is deep, and the poor have no wood for their fires.',
     a: { label: 'Give from the woodpiles', virtue: 15, res: { wood: -120 }, result: 'Smoke rises from every chimney.' },
     b: { label: 'Sell wood to those who can pay', virtue: -15, res: { wood: -60, gold: 100 }, result: 'Those who could pay are warm.' } },

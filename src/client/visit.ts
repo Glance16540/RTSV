@@ -1,5 +1,7 @@
 // A visit to one of your own towns from the campaign map: the button on the land's panel, the clock and the way
 // out while you are there, and the carrying of what you built back to the map. The rules are in src/sim/visit.ts.
+import { visitSteps } from '../sim/visitguide';
+import { askedOut } from '../sim/askedhere';
 import { homeNow } from '../sim/furlough';
 import { showBriefing } from './briefing';
 import type { BattleConfig, Campaign } from '../sim/campaign';
@@ -72,6 +74,7 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
       studies: learnedIn(app.game.players[app.pid].techs), // and what was learned here, the nation's now (studies.ts)
       story: storyOut(app.game, app.pid), // and what came of a story afoot here (fieldstory.ts)
       roads: handRoadsOut(app.game, app.pid), // and the roads laid by hand here, which the town keeps (handroads.ts)
+      asked: askedOut(app.game, app.pid), // and the dilemmas asked here (askedhere.ts)
       court: courtOut(app.game, app.pid), // and of a story of the leader's house (courtfield.ts)
       hall: hallOut(app.game, app.pid), // and the rulings given at the town's Hall (hallfield.ts)
     };
@@ -97,4 +100,30 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
   };
   tick();
   setInterval(tick, 250);
+  mountVisitGuide(app);
+}
+
+/** The visit's own guide, in place of the first-steps one (visitguide.ts). Shown on the first visit only, or until put away. */
+const GUIDE_KEY = 'rtsv-visit-guide';
+function mountVisitGuide(app: App): void {
+  try { if (localStorage.getItem(GUIDE_KEY)) return; } catch { /* storage unavailable: show it */ }
+  const el = document.createElement('div');
+  el.id = 'visit-guide';
+  document.getElementById('hud')!.append(el);
+  const done = (): void => { el.remove(); try { localStorage.setItem(GUIDE_KEY, '1'); } catch { /* storage unavailable */ } };
+  el.addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).closest('button')) done(); });
+  let sig = '';
+  const draw = (): void => {
+    if (!el.isConnected) return;
+    const steps = visitSteps(app.game, app.pid, Math.round(VISIT_SECONDS / 60)), i = steps.findIndex((s) => !s.done);
+    const now = String(i);
+    if (now === sig) return;
+    sig = now;
+    if (i < 0) { done(); return; }
+    el.innerHTML = `<h4>A visit ${i + 1}/${steps.length}<button title="Put this away">✕</button></h4>` +
+      (i > 0 ? `<div class="done">✓ ${steps[i - 1].title}</div>` : '') + `<div class="now"><b>${steps[i].title}</b><small>${steps[i].how}</small></div>`;
+  };
+  draw();
+  setInterval(draw, 500);
+  window.addEventListener('pagehide', () => { if (el.isConnected) try { localStorage.setItem(GUIDE_KEY, '1'); } catch { /* storage unavailable */ } }); // once seen, the first visit is over
 }
