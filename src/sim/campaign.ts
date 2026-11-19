@@ -25,7 +25,7 @@ import { townFell } from './carriedoff';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
-import { fieldReckoned, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
+import { fieldReckoned, tollByFight, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
 import { convoysTurn, relieve } from './convoys';
 import { caravansSeason } from './caravans';
 import { migrationSeason } from './migration';
@@ -79,6 +79,7 @@ export { shiftVirtue } from './townfaith'; // where it was found before it was m
 import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { companySoldiers, noteDowned, rollOf } from './soldiernames';
 import { takeDowned } from './downedmap';
+import { captainBonus } from './claimantcaptain';
 import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
@@ -1031,7 +1032,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('taken', 'conquered', (c, p) => townTaken(c, p.to, p.defender, p.attacker)) // its people stay, and resent it
   .on('taken', 'carriedoff', (c, p) => townFell(c, p.to, p.defender, p.attacker, p.from)) // those held in it go free, and a worldly taker leads some of its people away
   // repulsed: the attacker was thrown back.
-  .on('repulsed', 'tribes', (c, p, b) => { if (!b.defArmy && c.territories[p.to].owner < 0) tribeBeaten(c, p.to, Math.floor(p.aStr * 0.3)); }) // the bands a tribe lost are men of its town
+  .on('repulsed', 'tribes', (c, p, b) => { if (!b.defArmy && c.territories[p.to].owner < 0) tribeBeaten(c, p.to, tollByFight(c, p, b) ? 0 : Math.floor(p.aStr * 0.3)); }) // the bands a tribe lost are men of its town: by the fight where it was fought out (militiatoll.ts tribeFell, in the toll), else by a share of the attacker's strength
   .on('repulsed', 'freetown', (c, p) => freeStruck(c, p.to, p.attacker)) // a free town marched on by the people it left will not treat with them for a while
   // settled: all of it is done, and whoever is beaten is gone from the map.
   .on('settled', 'stores', (c) => settleStores(c))
@@ -1488,7 +1489,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     return {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
-      ...(army ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}), // its companies led by the men of its roll (soldiernames.ts)
+      ...(army ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}),
+      ...(defending && !field ? captainBonus(c, t.id) : {}), // a town risen for a claimant: its rising's leader on the field (claimantcaptain.ts) // its companies led by the men of its roll (soldiernames.ts)
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)

@@ -2,9 +2,15 @@
 import type { Campaign } from '../sim/campaign';
 import { canPayFor } from '../sim/prices';
 import { FREE, isFree, treatBar, treatCost } from '../sim/freetown';
-import { claimantLine } from '../sim/claimantrising';
+import { claimantAt, claimantLine } from '../sim/claimantrising';
 
 const esc = (s: string): string => s.replace(/[<>&"]/g, '');
+
+/** Who holds a town risen for a claimant, as the land's panel heads it ('' for any other land): not the local tribe, but the rising. */
+export function risenFor(c: Campaign, tid: number): string {
+  const cl = isFree(c, tid) ? claimantAt(c, tid) : undefined;
+  return !cl || cl.ended ? '' : cl.name ? `Risen for ${esc(cl.name)}` : `Risen for the child of ${esc(cl.mother)}`;
+}
 
 /** The line and the button for a free town: whose it was, what it asks, and why it might refuse. '' for any other land. */
 export function freeTownButtons(c: Campaign, tid: number): string {
