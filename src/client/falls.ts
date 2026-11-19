@@ -145,8 +145,8 @@ export function markBeast(b: Beast, hurt: number, gore: boolean): void {
     const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
     for (let i = 0; i < want; i++) {
       const m = new THREE.Mesh(MARK_GEO, MARK);
-      const s = i ? -1 : 1, r = Math.max(0.025, Math.min(size.x, size.y) * 0.09);
-      m.scale.set(r * 0.25, r * (1.1 - i * 0.3), r * (1.4 - i * 0.4));
+      const s = i ? -1 : 1, r = Math.max(0.02, Math.min(size.x, size.y) * 0.05);
+      m.scale.set(r * 0.2, r * (1 - i * 0.25), r * (1.3 - i * 0.3));
       m.position.set(mid.x + s * size.x * 0.47, box.min.y + size.y * (0.58 - i * 0.08), mid.z + size.z * (0.08 - i * 0.18));
       b.g.add(m);
       marks.push(m);
