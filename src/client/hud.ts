@@ -70,6 +70,7 @@ const NODE_ICON: Record<string, string> = { tree: '🌲', berries: '🫐', gold:
 const POWER_ICON: Record<string, string> = {
   'Battle cry': 'morale', 'The long banner': 'gateguard', 'Drinker of blood': 'weapons2', 'Shield high': 'armor2', Dread: 'wolf', Fury: 'berserker',
   'Field surgeon': 'herbalism', 'Signal fires': 'watchhouse', 'Cold counsel': 'dilemma', 'Behind the mantlet': 'armor3', 'By example': 'morale', 'Master of the engines': 'trebuchet',
+  'Master of works': 'wheelbarrow', 'The long road': 'trade', 'Hard as the walls': 'stonewall', 'Their own people': 'population',
 };
 
 export class Hud {
