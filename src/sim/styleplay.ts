@@ -6,9 +6,11 @@
  * were hurt. Here each rule shapes what its people build and do, as plain answers ai.ts asks for:
  *
  *   - `styleWork`: a building the people's rule makes worth raising now, ahead of the common order of building.
- *     Traders raise a market as soon as they may, and then up to the three that earn (`caravanMarkets`). The Faithful raise their church (the
- *     Temple) before anything else of its age. Builders, whose works mend themselves, raise more towers than
- *     others do (`STYLE_PLAY.towers`).
+ *     Traders raise a market as soon as they may, and then up to the three that earn (`caravanMarkets`). The
+ *     Faithful raise their church (the Temple) as soon as their Range stands, ahead of the stable, the smith and
+ *     the market. (Before the Range it cost them the game: in 36 computer games against the six other styles
+ *     they won none and lost seven, with half the bowmen at fifteen minutes, where without it they won six and
+ *     lost three.) Builders, whose works mend themselves, raise more towers than others do (`STYLE_PLAY.towers`).
  *   - `roomWork`: what to raise when the town is short of room. A farmer's farm makes room for a villager
  *     (`farmPop`, up to `farmPopMax`), and feeds one besides, so farmers raise a farm where others raise a house,
  *     while a farm still adds room and they have houses enough for their couples.
@@ -17,6 +19,12 @@
  *   - `fallBack`: soldiers the rule tells to leave the fight, and where to. The Faithful's hurt go to their
  *     nearest church, where they are healed (`sanctuary`), and come back whole. A warrior people's veterans strike
  *     harder for every foe felled (`veteran`), so a veteran badly hurt is sent home rather than spent.
+ *
+ *   - `fightStyle`: how the rule shapes the war itself. Builders sit out a siege: while the town has been struck
+ *     lately and its works are still hurt, they do not march, for their walls are mending behind them. Scholars
+ *     time an attack to an age: they do not march while the next age is being reached, and with an age in hand
+ *     over their nearest foe they march without waiting to outweigh him. Warriors field fewer and better men:
+ *     a smaller army (`STYLE_FIGHT.warriors`), and none of yesterday's soldiers in it.
  *
  * Raiders already play to theirs (ai.ts `raiding`, `slaving`). Nothing here gives an order: ai.ts does, by these.
  */
@@ -46,7 +54,7 @@ const can = (g: Game, pid: number, type: string): boolean => !!BUILDINGS[type] &
 /** A building this people's rule makes worth raising now, ahead of the common order: or null. */
 export function styleWork(g: Game, pid: number, s: StyleTown): string | null {
   const style = g.style(pid);
-  if (style === 'faithful') return s.count('temple') === 0 && can(g, pid, 'temple') ? 'temple' : null;
+  if (style === 'faithful') return s.count('temple') === 0 && s.count('range') > 0 && can(g, pid, 'temple') ? 'temple' : null; // not before its archers: see the header
   if (style === 'trader') return s.count('market') < STYLE_RULES.caravanMarkets && (s.count('market') === 0 || s.villagers >= STYLE_PLAY.marketHands) && can(g, pid, 'market') ? 'market' : null;
   if (style === 'builder') return !s.peace && s.count('tower') >= 2 && s.count('tower') < STYLE_PLAY.towers && can(g, pid, 'tower') ? 'tower' : null;
   return null;
@@ -84,4 +92,23 @@ export function fallBack(g: Game, pid: number, army: Unit[], mine: Building[], h
     return ids.length ? [{ ids, x: home.x, y: home.y }] : [];
   }
   return [];
+}
+
+export const STYLE_FIGHT = {
+  /** Builders: seconds after the town was last struck in which they stay behind their walls, while any work of theirs is under this share of its health. */
+  siege: 120, hurt: 0.8,
+  /** Warriors: their army beside another people's of the same age. */
+  warriors: 0.8,
+};
+/** How a people's rule shapes its war: its army's size beside the common one, whether it holds back now, whether it marches without waiting to outweigh its foe, and whether it raises only the arms of its own age. */
+export interface FightStyle { army: number; hold: boolean; eager: boolean; newest: boolean }
+export function fightStyle(g: Game, pid: number, mine: Building[], foe: number): FightStyle {
+  const style = g.style(pid), p = g.players[pid], F = STYLE_FIGHT, plain: FightStyle = { army: 1, hold: false, eager: false, newest: false };
+  if (style === 'builder') {
+    const struck = !!p.lastAttacked && g.time - p.lastAttacked.t < F.siege;
+    return { ...plain, hold: struck && mine.some((b) => b.complete && !b.dead && !b.def.wall && b.hp < b.maxHp * F.hurt) };
+  }
+  if (style === 'scholar') return { ...plain, hold: p.agingUp, eager: foe >= 0 && !!g.players[foe] && p.age > g.players[foe].age };
+  if (style === 'warrior') return { ...plain, army: F.warriors, newest: true };
+  return plain;
 }

@@ -14,10 +14,10 @@ skirmish 3 (arabs v wild) at 6m: ac9e8988d78ee1a7
 skirmish 3 (arabs v wild) at 8m: c205434822a8dc6f
 skirmish 3 (arabs v wild) end: tick 9600 winner -1 units 85 buildings 25 c205434822a8dc6f
 skirmish 4 (kush v hearth) at 2m: 21cf19dac189e61c
-skirmish 4 (kush v hearth) at 4m: 68f5b9c3f2375a59
-skirmish 4 (kush v hearth) at 6m: c7ba54ad7624a0d5
-skirmish 4 (kush v hearth) at 8m: ca75b21d7ca2c38d
-skirmish 4 (kush v hearth) end: tick 9600 winner -1 units 89 buildings 35 ca75b21d7ca2c38d
+skirmish 4 (kush v hearth) at 4m: 57391808695ab8e9
+skirmish 4 (kush v hearth) at 6m: 76120d71f0f42d97
+skirmish 4 (kush v hearth) at 8m: aa5b1a725b48ae73
+skirmish 4 (kush v hearth) end: tick 9600 winner -1 units 90 buildings 36 aa5b1a725b48ae73
 skirmish 5 (stonekin v babylon) at 2m: 1de81db41c825d70
 skirmish 5 (stonekin v babylon) at 4m: f7eb8fa407d7be43
 skirmish 5 (stonekin v babylon) at 6m: 6071597d75658e53
@@ -62,11 +62,11 @@ siege 6 census 0: a8f91380b6ad88a1
 siege 6 census 1: 244fba94d1042c21
 siege 6 census 2: 4756d45081ea5674
 drill 1 (greece v japan) at 2m: 9a71961e1ca28147
-drill 1 (greece v japan) at 4m: 010f451ffb3e6591
-drill 1 (greece v japan) at 6m: 8071f3de2912c956
-drill 1 (greece v japan) at 8m: 26cee4136a505245
-drill 1 (greece v japan) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 36 26cee4136a505245
-drill 1 (greece v japan) after the leaders fell: cfad003c014a2b52 acclaimed true/true/false 17735b9516fa6f63
+drill 1 (greece v japan) at 4m: d7d62ef1cc783de6
+drill 1 (greece v japan) at 6m: 87121b72a407f34b
+drill 1 (greece v japan) at 8m: 5dca693ebc321a00
+drill 1 (greece v japan) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 35 5dca693ebc321a00
+drill 1 (greece v japan) after the leaders fell: cfad003c014a2b52 acclaimed true/true/false 97b6c563dcc3b562
 drill 2 (wild v hearth) at 2m: 6f71e99352c0dddc
 drill 2 (wild v hearth) at 4m: 0e013fb01e32b13d
 drill 2 (wild v hearth) at 6m: ea9bd7dd0a72c4d3
@@ -92,21 +92,21 @@ drill 5 (babylon v england) at 8m: febafb1f0b1daff2
 drill 5 (babylon v england) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 35 febafb1f0b1daff2
 drill 5 (babylon v england) after the leaders fell: bd0b23ab435cc101 acclaimed true/true/false 182da5c2bd19cbe7
 drill 6 (kush v stonekin) at 2m: d5e56465104e3a45
-drill 6 (kush v stonekin) at 4m: b3a7bc4805bd7a30
-drill 6 (kush v stonekin) at 6m: b2cf58e6a3387a03
-drill 6 (kush v stonekin) at 8m: 276b89cfe53a7dcf
-drill 6 (kush v stonekin) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 36 276b89cfe53a7dcf
-drill 6 (kush v stonekin) after the leaders fell: eb546212b3af1d96 acclaimed false/true/false 371f5291a972eabe
+drill 6 (kush v stonekin) at 4m: 0ba05a4fa8a5833d
+drill 6 (kush v stonekin) at 6m: 2a28b6eb39f7b574
+drill 6 (kush v stonekin) at 8m: 048cdf637b6bb1f0
+drill 6 (kush v stonekin) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 43 048cdf637b6bb1f0
+drill 6 (kush v stonekin) after the leaders fell: eb546212b3af1d96 acclaimed false/true/false 807117363c6560ac
 camp drill 1 (babylon v greece) at 2m: 46a79e3d37de1b8b
 camp drill 1 (babylon v greece) at 4m: 65e53eb4b1fdcd30
 camp drill 1 (babylon v greece) at 6m: d5534e6f3c33fcab
 camp drill 1 (babylon v greece) at 8m: f11dcffdef5db09b
 camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 9, got out by night 2 f11dcffdef5db09b
 camp drill 2 (japan v kush) at 2m: f04a106db0e2dbfe
-camp drill 2 (japan v kush) at 4m: b896e78a8f2fb597
-camp drill 2 (japan v kush) at 6m: a35f0d480a8b5386
-camp drill 2 (japan v kush) at 8m: 2270a59b564df0a8
-camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 1, got out by night 2 2270a59b564df0a8
+camp drill 2 (japan v kush) at 4m: 90fe8db2f92bf24a
+camp drill 2 (japan v kush) at 6m: 485a78b1684638e2
+camp drill 2 (japan v kush) at 8m: 00f4c77dfaa17f61
+camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 2, got out by night 5 00f4c77dfaa17f61
 camp drill 3 (steppe v forge) at 2m: ac8992f7587024f7
 camp drill 3 (steppe v forge) at 4m: a6fa8484b5d93c93
 camp drill 3 (steppe v forge) at 6m: 25251bc9e091157e
