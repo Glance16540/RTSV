@@ -114,5 +114,5 @@ describe('the computer player does both', () => {
     }
     expect(rode).toBeGreaterThan(0);
     expect(found).toBeGreaterThan(0);
-  });
+  }, 90_000); // four whole battles of eleven minutes each: about ten seconds alone, more than twenty with the machine busy
 });
