@@ -129,6 +129,57 @@ function upper(out: Float32Array, fig: Sculpt, u: (typeof UPPERS)[number], kind:
 }
 
 /**
+ * The build of a head, under the casts above: one sculpted head per sex made every face plainly kin, however its
+ * jaw, nose and brows were recast. So each head is first given a build, the whole of it moved together (skin, eyes,
+ * brows, beard and hair, so that the hair still fits): an even head as the kit has it, a broad one, a narrow one, a
+ * long one and a round one. Which builds a people runs to is its own (`BUILDS_OF`); which of them a person has is by lot.
+ */
+const BUILDS: { wide: number; jaw: number; long: number; top: number; deep: number }[] = [
+  { wide: 0, jaw: 0, long: 0, top: 0, deep: 0 }, // even
+  { wide: 0.14, jaw: 0.13, long: -0.06, top: -0.03, deep: 0.04 }, // broad, square in the jaw
+  { wide: -0.13, jaw: -0.07, long: 0.07, top: 0.03, deep: -0.02 }, // narrow
+  { wide: -0.06, jaw: -0.04, long: 0.18, top: 0.05, deep: 0.05 }, // long
+  { wide: 0.11, jaw: -0.05, long: -0.12, top: -0.02, deep: 0.07 }, // round
+];
+export const HEAD_BUILDS = BUILDS.length;
+/** How often each people's heads take each build (even, broad, narrow, long, round); a people not here takes each alike. */
+const BUILDS_OF: Record<string, number[]> = {
+  hearth: [3, 3, 1, 2, 1], england: [2, 1, 3, 3, 1], stonekin: [3, 3, 1, 1, 2], greece: [3, 1, 2, 3, 1], dawn: [2, 1, 3, 3, 1],
+  arabs: [2, 1, 3, 3, 1], mali: [2, 3, 1, 3, 1], egypt: [2, 1, 3, 3, 1], kush: [2, 2, 2, 3, 1], babylon: [3, 3, 1, 1, 2],
+  persia: [3, 1, 2, 3, 1], japan: [3, 1, 1, 1, 4], forge: [3, 1, 1, 1, 4], steppe: [2, 3, 1, 0, 4], wild: [2, 4, 1, 3, 0],
+};
+/** A person's build, by their people and by lot. */
+export function buildOf(civ: string | undefined, seed: number): number {
+  const w = BUILDS_OF[civ ?? ''] ?? BUILDS.map(() => 1), sum = w.reduce((a, b) => a + b, 0);
+  let r = (Math.abs(Math.imul(seed ^ 0x5bd1e995, 0x27d4eb2d) >> 9) % 1000) / 1000 * sum;
+  for (let i = 0; i < w.length; i++) { if ((r -= w[i]) < 0) return i; }
+  return 0;
+}
+/** Give a piece of a head its build: every piece by the same rule, by height alone, so they stay together. */
+function built(out: Float32Array, fig: Sculpt, b: (typeof BUILDS)[number]): Float32Array {
+  const cz = fig.eyeZ - 0.09;
+  for (let i = 0; i < out.length; i += 3) {
+    const y = out[i + 1], low = ease(fig.eyeY + 0.02, fig.eyeY - 0.1, y);
+    out[i] *= 1 + b.wide * (0.45 + 0.55 * low) + b.jaw * low * low;
+    out[i + 1] = fig.eyeY + (y - fig.eyeY) * (1 + (y < fig.eyeY ? b.long : b.top));
+    out[i + 2] = cz + (out[i + 2] - cz) * (1 + b.deep);
+  }
+  return out;
+}
+/** Years on a grown face (0 young, 1 in middle life, 2 older): the jowls a little fuller and lower, the nose a little longer. Never a child's. */
+function aged(out: Float32Array, fig: Sculpt, years: number): Float32Array {
+  if (!years) return out;
+  for (let i = 0; i < out.length; i += 3) {
+    const x = out[i], y = out[i + 1], z = out[i + 2], front = ease(fig.eyeZ - 0.09, fig.eyeZ - 0.03, z);
+    const jowl = Math.exp(-(((Math.abs(x) - 0.04) / 0.022) ** 2 + ((y - (fig.eyeY - 0.105)) / 0.022) ** 2)) * front;
+    out[i] += Math.sign(x) * 0.005 * years * jowl; out[i + 1] -= 0.004 * years * jowl;
+    const nose = Math.exp(-((x / 0.02) ** 2 + ((y - (fig.eyeY - 0.045)) / 0.03) ** 2)) * ease(fig.eyeZ - 0.02, fig.eyeZ + 0.012, z);
+    out[i + 1] -= 0.0018 * years * nose; out[i + 2] += 0.0012 * years * nose;
+  }
+  return out;
+}
+
+/**
  * A head for one person: its skin in their colour, eyes, brows and hair in the colour of their hair, and a beard if
  * they wear one. `cut` is how the hair is worn, or null for none (under a helmet or a hood). Returned in the kit's
  * space with the measures needed to set it on a figure, or null if the heads never came.
@@ -146,7 +197,7 @@ function geo(key: string, piece: Piece, shaped?: Float32Array): THREE.BufferGeom
   return g;
 }
 
-export function sculptedHead(female: boolean, skin: number, hair: number, beard: boolean, cut: HairCut | null, seed = 0): { g: THREE.Group; fig: Sculpt } | null {
+export function sculptedHead(female: boolean, skin: number, hair: number, beard: boolean, cut: HairCut | null, seed = 0, opts: { civ?: string } = {}): { g: THREE.Group; fig: Sculpt } | null {
   if (!kit) return null;
   const tag = female ? 'f' : 'm', fig = kit[tag], key = tag + skin;
   let sm = skins.get(key);
@@ -155,6 +206,8 @@ export function sculptedHead(female: boolean, skin: number, hair: number, beard:
   const cast = Math.abs(seed >> 3) % CASTS.length, shape = CASTS[cast];
   // The upper face goes by other figures of the same number, so that it does not march in step with the lower.
   const up = Math.abs(seed * 13 + 5) % UPPERS.length, brow = UPPERS[up];
+  // The build of the whole head, by the person's people and by lot; and the years on it, by lot, among the grown.
+  const bi = buildOf(opts.civ, seed), build = BUILDS[bi], years = Math.abs(seed >> 11) % 3;
   // Hair is the same: a picture of the strands in light and shade, under the person's own colour. There are two sheets of it.
   const strands = (sheet: 1 | 2): THREE.Material => {
     const k = sheet + '|' + hair;
@@ -163,12 +216,15 @@ export function sculptedHead(female: boolean, skin: number, hair: number, beard:
     return m;
   };
   const g = new THREE.Group();
-  const add = (k: string, piece: Piece, m: THREE.Material, kind: '' | 'skin' | 'eyes' | 'brows' | 'beard' = ''): void => {
-    const key = kind ? `${k}|${tag}${kind === 'eyes' || kind === 'brows' ? '' : cast}u${kind === 'beard' ? 0 : up}` : k;
+  const add = (k: string, piece: Piece, m: THREE.Material, kind: 'hair' | 'skin' | 'eyes' | 'brows' | 'beard'): void => {
+    const lower = kind === 'skin' || kind === 'beard';
+    const key = kind === 'hair' ? `${k}|b${bi}` : `${k}|${tag}${lower ? cast : ''}u${kind === 'beard' ? 0 : up}b${bi}${lower ? `a${years}` : ''}`;
     let shaped: Float32Array | undefined;
-    if (kind && !geos.has(key)) {
-      shaped = (kind === 'skin' || kind === 'beard') && cast ? recast(piece.p, fig, shape) : new Float32Array(piece.p);
-      if (kind !== 'beard' && up) upper(shaped, fig, brow, kind);
+    if (!geos.has(key)) {
+      shaped = lower && cast ? recast(piece.p, fig, shape) : new Float32Array(piece.p);
+      if (lower) aged(shaped, fig, years);
+      if (kind !== 'beard' && kind !== 'hair' && up) upper(shaped, fig, brow, kind);
+      if (bi) built(shaped, fig, build);
     }
     const mesh = new THREE.Mesh(geo(key, piece, shaped), m);
     mesh.castShadow = true; g.add(mesh);
@@ -176,6 +232,6 @@ export function sculptedHead(female: boolean, skin: number, hair: number, beard:
   add('skin' + tag, fig.skin, sm, 'skin');
   add('eyes' + tag, fig.eyes, eyes(Math.abs(seed) % EYES.length), 'eyes'); add('brows' + tag, fig.brows, strands(female ? 2 : 1), 'brows');
   if (beard && !female) add('beard', kit.beard, strands(1), 'beard');
-  if (cut) add('hair' + cut, kit.hair[cut], strands(cut === 'long' || cut === 'buns' ? 2 : 1));
+  if (cut) add('hair' + cut + tag, kit.hair[cut], strands(cut === 'long' || cut === 'buns' ? 2 : 1), 'hair');
   return { g, fig };
 }
