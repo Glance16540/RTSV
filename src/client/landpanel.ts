@@ -15,6 +15,7 @@ import { emptyingText, emptyingTowns } from '../sim/larderwatch';
 import { canSendHome, menOf, noMenText } from '../sim/armytown';
 import { bandButtons, threatHtml } from './threatpanel';
 import { intrigueButtons, intrigueHtml } from './intriguepanel';
+import { petitionButtons, petitionHtml } from './petitionpanel'; // a noble's petition (petitions.ts)
 import { orderHtml } from './orderpanel';
 import { freeTownButtons, risenFor } from './freetown';
 import { AGES, CIVS, styleOf } from '../sim/data';
@@ -111,7 +112,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
   const people = `${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div>${t.buildings.map((b) => { const l = siteLook(b, SITES[b], c.factions[t.owner]?.civ); return `${l.icon} ${l.name}`; }).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>`;
   const emptying = t.owner === 0 ? emptyingTowns(c, 0).filter((x) => x.at === t.id).map((x) => `<div class="bad">🌾 ${emptyingText(x)}</div>`).join('') : ''; // its granary emptying soon (larderwatch.ts)
-  const danger = `${emptying}${intrigueHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
+  const danger = `${emptying}${intrigueHtml(c, t.id)}${petitionHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}`;
   const fought = landTalesHtml(c, t.id); // the battles fought here (talepanel.ts)
@@ -179,7 +180,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
   return group('Raise troops', raise) +
     group('Raise in this town', works, 'Paid from the town\'s own stores; its governor builds it over the next seasons.') +
     group('Study', studies, 'Paid from this town\'s stores first; once learned, the whole nation knows it.') +
-    group('Build on the land', build, `Paid in supplies. The land holds ${slots(t)} sites; ${t.buildings.length} stand here.`) + group('Leader', leader) + group('Town', town) + group('Diplomacy', talk) + group('The age', age) + group('Bands', bandButtons(c, t.id)) + group('A matter in the town', intrigueButtons(c, t.id));
+    group('Build on the land', build, `Paid in supplies. The land holds ${slots(t)} sites; ${t.buildings.length} stand here.`) + group('Leader', leader) + group('Town', town) + group('Diplomacy', talk) + group('The age', age) + group('Bands', bandButtons(c, t.id)) + group('A matter in the town', intrigueButtons(c, t.id) + petitionButtons(c, t.id));
 }
 
 /** What the last season truly added to what there is to spend (seasongain.ts), or the lands' yield before one is measured. */
