@@ -912,3 +912,8 @@ body.looking-out #visit { display: none; }
 .ms-after p { margin: 0 0 8px; font-style: italic; }
 .ms-next { display: inline-block; padding: 6px 14px; border: 1px solid currentColor; text-decoration: none; color: inherit; font: 400 15px var(--caps); }
 .ms-end { font-style: normal; }
+
+/* Judgement at the Hall (src/sim/hallfield.ts, src/client/hallpanel.ts) */
+#info .hall-cases { margin-top: 4px; }
+#info .hall-case { margin: 4px 0; padding-top: 3px; border-top: 1px solid rgba(160, 130, 80, 0.35); }
+#info .hall-case button { margin: 2px 3px 0 0; }

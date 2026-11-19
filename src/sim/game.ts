@@ -17,6 +17,7 @@ import { dyingOut } from './dyingout';
 import { carriedOut } from './carriedout';
 import { seatRecords } from './warrecord';
 import { sendMan } from './pickman';
+import { ruleAt, seatHall } from './hallfield';
 import { campBuilds, campUnhoused, campWithoutPeople } from './siegecamp';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
@@ -559,6 +560,7 @@ export class Game {
         if (s.bonus?.roads?.length) this.players[i].roadsIn = s.bonus.roads.map(([x, y]) => [x, y] as [number, number]); // its roads laid by hand (handroads.ts)
         if (s.bonus?.story) this.players[i].story = { ...s.bonus.story, people: s.bonus.story.people.map((p) => ({ ...p })), robbed: [...s.bonus.story.robbed], cleared: [...s.bonus.story.cleared] }; // a story afoot here (fieldstory.ts)
         if (s.bonus?.court) this.players[i].court = structuredClone(s.bonus.court); // a story of the leader's house, where the court is kept (courtfield.ts)
+        if (s.hall) seatHall(this, i, s.hall); // the cases waiting on the leader's judgement at the town's Hall (hallfield.ts)
         if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
         if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
         else if (!campWithoutPeople(s)) { // a besieging army's camp has no people from nowhere: its men are its soldiers (siegecamp.ts)
@@ -1495,6 +1497,8 @@ export class Game {
 
   /** The player sends this villager to arms, in place of whoever the queue would call (pickman.ts). */
   cmdSendMan(owner: number, vid: number): boolean { return sendMan(this, owner, vid); }
+  /** The player rules on a case before the town's Hall of Judgement (hallfield.ts). */
+  cmdRule(owner: number, caseId: string, answer: string): boolean { return ruleAt(this, owner, caseId, answer); }
 
   cmdTrain(owner: number, bid: number, type: string, gender?: Gender): boolean {
     const b = this.entities.get(bid);
