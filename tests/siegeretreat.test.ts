@@ -60,3 +60,16 @@ describe('a besieger thrown back', () => {
     expect(two.c.armies.some((x) => x.id === two.armyId)).toBe(false);
   });
 });
+
+describe('on the map', () => {
+  it('a besieger broken at the walls is not run down and does not scatter; in the open the same army would', async () => {
+    const { clash } = await import('../src/sim/mapbattle');
+    const a = { units: { infantry: 4 }, weight: 4 }, walls = { units: { infantry: 4 }, weight: 7, own: 4, walled: true }, open = { ...walls, walled: false };
+    const atWalls = clash(a, walls), inField = clash(a, open);
+    expect(atWalls.broke).toBe('attacker');
+    expect(atWalls.a.scattered).toBeFalsy();
+    expect(Object.values(atWalls.a.left).reduce((n, v) => n + v, 0)).toBeGreaterThan(0);
+    expect(inField.broke).toBe('attacker');
+    expect(Object.values(inField.a.left).reduce((n, v) => n + v, 0)).toBeLessThan(Object.values(atWalls.a.left).reduce((n, v) => n + v, 0));
+  });
+});
