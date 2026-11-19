@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { pressClaims } from './bothhouses';
 import { seasonOfTurn } from './seasonsky';
 import type { Season } from './seasonsky';
 import { leavePlague, safeStep, sickLast } from './aiplague';
@@ -88,6 +89,7 @@ import { unrestSeason } from './unrest';
 import { freeStruck, freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
+import { letGoSeason } from './emptied';
 import { canPayFor, payFor, paysHere } from './prices';
 import { SentFor, sentForSeason } from './sentfor';
 import { rivalForesight, spendIn } from './rivalstock';
@@ -1259,6 +1261,7 @@ export function continueAI(c: Campaign): void {
       for (const a of c.armies) { a.moved = resting(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts)
       courtTurn(c);
       for (const x of c.factions) x.angry = false;
+      pressClaims(c); // a house refused its claim on your throne presses it by war (bothhouses.ts)
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
       c.truces = c.truces.filter((tr) => tr.until >= c.turn);
       seasonOfFaith(c, (f, by, at) => shiftVirtue(c, f, by, { at })); // every town moves by its own church, tavern and holy place (townfaith.ts)
@@ -1277,6 +1280,7 @@ export function continueAI(c: Campaign): void {
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
       tribesSeason(c); // a tribe's bands are counted from its town's men (tribes.ts)
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
+      if (letGoSeason(c).length) checkElimination(c); // and one nobody comes for is let go, an empty land for settlers (emptied.ts)
       rivalSeason(c); // rivals' towns are on record, their idle armies go home, their soldiers and homes make names (rivalrule.ts)
       governTowns(c); // every town works, eats and is kept by its last orders and its governor (governor.ts)
       studiesSeason(c); // rival nations learn the study that answers what presses on them (studies.ts)

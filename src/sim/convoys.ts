@@ -32,11 +32,12 @@ import { needOf } from './larder';
 import { roadRisk } from './ownstudies';
 import { escortEdge, innRisk, paved, pavedLoad } from './roads';
 import { leaderRoads } from './leaderstay';
+import { houseArrives } from './householdmove';
 import type { Band } from './threats';
 import { claimLand, settleable, wayOut } from './founding';
 
 /** What a convoy carries: stores, and grown people by their ages in seasons. */
-export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[]; /** Children, by their ages in seasons: a family moving (migration.ts). */ children?: number[]; /** Known people going with a family, their records whole (migration.ts). */ notables?: Notable[] }
+export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[]; /** Children, by their ages in seasons: a family moving (migration.ts). */ children?: number[]; /** Known people going with a family, their records whole (migration.ts). */ notables?: Notable[]; /** The house a household goes as, by its family name: its record of men at war follows it in (householdmove.ts). */ house?: string }
 export interface Convoy { id: number; owner: number; from: number; to: number; road: number[]; cargo: Cargo; since: number; /** A family moving of its own accord (migration.ts): not one of the people's convoys, and not told of one by one. */ movers?: boolean; /** Settlers bound for an empty land, to found a town there (founding.ts). */ found?: boolean; /** Goods sent to pay for a thing waiting at the town it is bound for (sentfor.ts): the waiting's id. */ pays?: number }
 /** What happened to a convoy as the season turned. */
 export interface Arrival { convoy: Convoy; at: number; robbed?: { by: string; took: Stores }; lost?: boolean; /** Grown movers carried off on the road. */ taken?: number; /** Settlers founded a town where they came in (founding.ts). */ founded?: boolean; /** Who might have met it: a band lay in wait on its road (`danger`), and an Inn of its people's stood on it (`inn`, roads.ts). */ met?: { danger: boolean; inn: boolean } }
@@ -137,6 +138,17 @@ function setOut(c: Campaign, tid: number, sex: 'm' | 'f' | 'k', n: number): numb
   return going.map(([s]) => s);
 }
 
+/** Take so many of a town's old out of it, the youngest of them first, men and women as they come. Returns their ages by sex. */
+function setOutOld(c: Campaign, tid: number, n: number): { m: number[]; f: number[] } {
+  if (n <= 0) return { m: [], f: [] };
+  const k = folkOf(c, tid), ages = agesOf(c, tid, k);
+  const old = [...ages.m.map((s, i) => ['m', s, i] as const), ...ages.f.map((s, i) => ['f', s, i] as const)].filter(([, s]) => s >= OLD_SEASON).sort((a, b) => a[1] - b[1] || a[2] - b[2]).slice(0, n);
+  const out = { m: old.filter(([x]) => x === 'm').map(([, s]) => s), f: old.filter(([x]) => x === 'f').map(([, s]) => s) };
+  for (const sex of ['m', 'f'] as const) { const gone = new Set(old.filter(([x]) => x === sex).map(([, , i]) => i)); ages[sex] = ages[sex].filter((_, i) => !gone.has(i)); }
+  countFrom(k, ages);
+  return out;
+}
+
 /** Send a convoy. It leaves at once and comes in when the season turns. Returns it, or null if it cannot go. */
 export function sendConvoy(c: Campaign, f: number, from: number, to: number, what: Send, opts: { /** Goods sent to pay for a thing waiting there (sentfor.ts): not one of the people's own convoys, and told of with it. */ pays?: number } = {}): Convoy | null {
   if (cannotSend(c, f, from, to, what, opts)) return null;
@@ -157,10 +169,13 @@ export function sendConvoy(c: Campaign, f: number, from: number, to: number, wha
  * as one is, but it is not one of the people's convoys (CONVOYS.most does not count it) and is not told of one by one.
  * Returns it, or null if there is no road.
  */
-export function sendFamily(c: Campaign, f: number, from: number, to: number, who: { men: number; women: number; children: number; notable?: Notable }): Convoy | null {
+export function sendFamily(c: Campaign, f: number, from: number, to: number, who: { men: number; women: number; children: number; notable?: Notable; /** Old people who go with them (householdmove.ts). */ old?: number; /** The house they go as (householdmove.ts). */ family?: string }): Convoy | null {
   const road = c.territories[from]?.owner === f && c.territories[to]?.owner === f && from !== to ? roadBetween(c, f, from, to) : null;
   if (!road) return null;
   const cargo: Cargo = { ...empty(), men: setOut(c, from, 'm', whole(who.men)), women: setOut(c, from, 'f', whole(who.women)), children: setOut(c, from, 'k', whole(who.children)) };
+  const old = setOutOld(c, from, whole(who.old)); // its old go too, counted with the grown on the road and old again where they come in
+  cargo.men.push(...old.m); cargo.women.push(...old.f);
+  if (who.family) cargo.house = who.family;
   // A known person goes with them, record and all: struck from the town they leave, set down where they arrive.
   if (who.notable) { const list = folkOf(c, from).notables; const i = list.indexOf(who.notable); if (i >= 0) { list.splice(i, 1); cargo.notables = [who.notable]; } }
   const convoy: Convoy = { id: (c.convoySeq = (c.convoySeq ?? 0) + 1), owner: f, from, to, road, cargo, since: c.turn, movers: true };
@@ -274,6 +289,7 @@ export function convoyArrives(c: Campaign, x: Convoy): Arrival {
     countFrom(k, ages);
   }
   if (x.cargo.notables?.length) k.notables.push(...x.cargo.notables);
+  if (x.cargo.house) houseArrives(c, x.from, at, x.cargo.house); // a household's record of its men at war, and their places on the rolls (householdmove.ts)
   if (mine && !x.movers) c.log.push(`A convoy from ${c.territories[x.from].name} has come in to ${c.territories[at].name}${at !== x.to ? ` (${c.territories[x.to].name} is lost to you)` : ''}.`);
   return a;
 }

@@ -13,6 +13,7 @@ import { leaderOf } from './leaders';
 import { leaderAsMade } from './powers';
 import { rankForKills } from './champion';
 import { seat } from './court';
+import { bloodClaim, bloodSucceeds, bloodWhat, passedOver } from './bothhouses';
 
 /** A child of the house. `parent`: the leader's husband or wife when they were born (kin.ts). */
 export interface Heir { name: string; female: boolean; born: number; parent?: string }
@@ -38,7 +39,7 @@ export const CAPTAIN_VET = 1;
 
 /** One who could take up the rule. */
 export interface Claim {
-  kind: 'heir' | 'captain';
+  kind: 'heir' | 'blood' | 'captain';
   /** Which heir of the house, or which army the captain serves in. */
   i: number;
   name: string; female: boolean;
@@ -124,6 +125,9 @@ export function claimants(c: Campaign, f: number): Claim[] {
     out.push({ kind: 'heir', i, name: `${h.name}, ${h.female ? 'daughter' : 'son'} of ${fallen.name}`.slice(0, 60), female: h.female, rank: Math.floor((fac.heroRank ?? 0) / 2), what: `${h.female ? 'Daughter' : 'Son'} of ${fallen.name}, ${c.turn - h.born} turns old. Keeps their parent's gifts and ${houseName(c, f) ? `the House of ${houseName(c, f)}` : 'the house'}.` });
   });
   out.sort((a, b) => house.heirs[a.i].born - house.heirs[b.i].born);
+  // With no heir of age, a grown child of both houses by a royal marriage comes before any captain (bothhouses.ts).
+  const blood = out.length ? undefined : bloodClaim(c, f);
+  if (blood) out.push({ kind: 'blood', i: -1, name: blood.name, female: blood.female, rank: Math.floor((fac.heroRank ?? 0) / 2), what: bloodWhat(c, f, (x) => rulerName(c, x)) });
   const armies = c.armies.filter((a) => a.owner === f && (a.vet >= CAPTAIN_VET || !!a.champion)).sort((a, b) => b.vet - a.vet || a.id - b.id).slice(0, 2);
   for (const a of armies) {
     const who = captainOf(c, a);
@@ -147,6 +151,7 @@ const homeFor = (c: Campaign, f: number): number =>
 /** Could this claim be taken up now? An heir needs a land or an army left to rule from; a captain needs their army still standing. */
 export function canSucceed(c: Campaign, f: number, claim: Claim): boolean {
   if (c.factions[f].heroAlive) return false;
+  if (claim.kind === 'blood') return !!bloodClaim(c, f) && homeFor(c, f) >= 0;
   return claim.kind === 'heir' ? !!houseOf(c, f).heirs[claim.i] && homeFor(c, f) >= 0 : c.armies.some((a) => a.id === claim.i && a.owner === f);
 }
 
@@ -154,7 +159,11 @@ export function canSucceed(c: Campaign, f: number, claim: Claim): boolean {
 export function succeed(c: Campaign, f: number, claim: Claim): boolean {
   if (!canSucceed(c, f, claim)) return false;
   const fac = c.factions[f], house = houseOf(c, f), old = leaderOfFaction(c, f);
-  if (claim.kind === 'heir') {
+  if (claim.kind === 'blood') {
+    // One of both houses: the houses are joined in them, the peoples at peace (bothhouses.ts).
+    bloodSucceeds(c, f, (x) => rulerName(c, x));
+    seat(c, f, homeFor(c, f));
+  } else if (claim.kind === 'heir') {
     // The child has the parent's making and bearing, and their own face.
     fac.hero = { ...old, name: claim.name, female: claim.female, look: { ...old.look, beard: claim.female ? false : old.look?.beard } };
     house.heirs.splice(claim.i, 1);
@@ -162,6 +171,7 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
     seat(c, f, homeFor(c, f));
     say(c, f, fac.id === 0 ? `${ofHouse(c, f, claim.name)} takes up the rule of your people.` : `${old.name} of the ${fac.name} is dead. ${claim.name} rules them now.`);
   } else {
+    passedOver(c, f, (x) => rulerName(c, x)); // a claimant of both houses set aside (bothhouses.ts)
     // A soldier's soldier: strong in the arm, and no house behind them yet.
     // One the player watched make a name goes on fighting as what they were, and the player chooses what they learn.
     const made = c.armies.find((a) => a.id === claim.i)!.champion;
@@ -185,6 +195,7 @@ export function succeed(c: Campaign, f: number, claim: Claim): boolean {
 /** The leader fell in a battle fought in person and the army raised one of its own there: they lead now, and the old house ends. */
 export function raisedInBattle(c: Campaign, f: number, who: Partial<HeroSpec>, rank: number): void {
   const fac = c.factions[f], house = houseOf(c, f), old = leaderOfFaction(c, f);
+  passedOver(c, f, (x) => rulerName(c, x)); // a claimant of both houses set aside (bothhouses.ts)
   fac.hero = leaderAsMade(who, fac.civ, false);
   fac.heroRank = Math.max(0, Math.min(MAX_RANK, Math.round(rank)));
   fac.heroAlive = true;
@@ -197,7 +208,7 @@ export function raisedInBattle(c: Campaign, f: number, who: Partial<HeroSpec>, r
   endHouse(c, f);
 }
 
-/** A rival people settles its own succession: the eldest heir of age, else its best captain. */
+/** A rival people settles its own succession: the eldest heir of age, else a grown child of both houses, else its best captain. */
 export function autoSucceed(c: Campaign, f: number): boolean {
   const claim = claimants(c, f).find((x) => canSucceed(c, f, x));
   return !!claim && succeed(c, f, claim);
@@ -206,6 +217,7 @@ export function autoSucceed(c: Campaign, f: number): boolean {
 /** A stranger is hired to lead (the old "summon"): whoever they are, they are not the one who fell. */
 export function strangerLeads(c: Campaign, f: number): void {
   const fac = c.factions[f], house = houseOf(c, f), old = leaderOfFaction(c, f);
+  passedOver(c, f, (x) => rulerName(c, x)); // a claimant of both houses set aside (bothhouses.ts)
   const female = pick(c, f * 31 + house.line * 7 + 3, 4) === 0;
   const names = female ? NAMES_F : NAMES_M;
   fac.hero = { ...old, name: `${names[pick(c, f * 31 + house.line * 7 + 9, names.length)]} the Hired`, female, look: {} };
