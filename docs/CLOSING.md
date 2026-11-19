@@ -44,7 +44,7 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Ten women taken is ten women gone, and held somewhere real | **Checked: nothing to hand over.** A visit has only the player's side on the field, so the only ones who can take anyone there are the field's own marauders. A battle's marauder-held captives are already gone by `battlecarried.ts`'s rule, since the field's marauders are no band on the map to hold them. To hold them would mean giving them to a band of the map (the nearest marauders, or one made for it), which is a new rule, not a hand-off. | small | Unity: decide there whether the field's marauders are a band of the map. |
-| What is built in a town is kept on its record | A Church or Tavern built in a battle stands on the town's record but is not raised as the map site that moves the town's faith (`SITE_BUILDING` has neither). | small | Before: one table entry and a test, and it decides whether a played town's faith follows what was built there. |
+| What is built in a town is kept on its record | **Done (19 November 2026, `faithsites.ts`).** A Church or Tavern built in a battle or on a visit is raised as the map site that moves the town's faith, where the land has room and has none. | small | Done. |
 | What is built in a town is kept on its record | A road laid by hand in a siege is not kept; only a visit keeps roads. | small | Unity: roads are field work and the new engine lays its own. |
 | Nobody from nowhere (towns persist, a soldier costs a person) | **Done for the settlers** (`src/sim/settlersfrom.ts`): a town taken empty, in a battle or as a dead town, is settled by couples its taker's nearest towns can spare, by road; where none can be spared it stands empty. Still from nowhere: a tribe's town made up to its old strength the first time it is looked into. | small | Built. The tribe's one-time top-up stays, since it happens once per save. |
 | An attacking camp has no people from nowhere | **Done.** The check found one more case: a reserve army joining a siege (either side, or an ally's) got a camp with two men and two women from nowhere. `src/sim/reservecamp.ts` marks it in its set-up, so its camp is laid with none (`siegecamp.ts`) and it is not counted as died out (`dyingout.ts`). | small | Built. |
@@ -109,7 +109,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Famine, plague, fire and the like | No flood. Rivers run on the map and are laid on a town's ground, but nothing lets ground go under water. A failed harvest strikes only fields, never a town that lives by hunting, fishing or herds. | medium | Unity: a flood is terrain work. Port `acts.ts` as it is. |
-| By creed, sparing nobody | A Prophet's fire, blight and earthquake fall the same on every creed; only his plague goes by it. The older chance events of a turn do not go by creed. | small | Before: run the remaining chance events through `wrathAt`. It is one rule, and Unity would otherwise inherit two. |
+| By creed, sparing nobody | **Done (19 November 2026).** A Prophet's fire, blight and earthquake go by the creed of those they fall on, as his plague does (`wrath.ts`, `game.ts`); fever in the camp and a hard season go by the town's own standing (`chancecreed.ts`, through `wrathAt`). An ordinary people is struck exactly as before. | small | Done. |
 | They carry over into a town | A battle in a land with plague on the map begins with nobody sick, and one after a failed harvest with nobody hungry. | small | Unity: the field's start-up reads the map's state, and that start-up is being rebuilt. |
 
 ## Threats of men never stop
@@ -189,7 +189,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | The leader's household can be threatened, married off, lost or taken | A spouse cannot be married off or offered in a treaty or ransom (only a rival's threat and demand exist). Royal matches go through `royalmarriage.ts`, but not the spouse. | medium | Unity: port as is. Asked 19 November 2026, the owner had no preference, so it stays as built: the player never offers the spouse. |
-| The inner circle: a mood and a loyalty that can turn | Built. The confidant does not warn of the knife, and a rival king's threats lead neither to war nor to a raid on the court. | small | Before for the war: the threat has a defied-king feud already (`aftermath.ts`), so letting it declare war is a small step. Unity for the warning, which is a scene. |
+| The inner circle: a mood and a loyalty that can turn | Built. The confidant does not warn of the knife. **The war is done (19 November 2026, `feudwar.ts`):** a defied rival king may declare war as his feud begins, which ends the truce or alliance between them and bars a new truce while the feud runs. A raid on the court is not built. | small | Done for the war. Unity for the warning, which is a scene. |
 | Nobles | Built (`nobles.ts`, `nobledeal.ts`, `nobleacts.ts`, `nobleweigh.ts`, `nobletemper.ts`). Only the plot story has a plot. | none | Unity: port as is. |
 | Stories inside the story | All five are built, for the player and for rivals. They come onto the field only in a visit, not in a battle, and a killer's suspects can be questioned there but not accused or seized. | medium | Unity: field work. |
 | Several campaigns | Built. Worlds are kept in this browser only, and a skirmish has one save. | small | Unity: saving is the engine's. |
@@ -255,13 +255,13 @@ These are not single promises, but they stand against the whole of DESIGN.md:
 All small, each in its own module with its own test, and none changes a rule's meaning:
 
 1. Captives taken in a visit are held on the map, as a battle's are (`battlecarried.ts`). **Checked, not built:** in a visit only the field's marauders take anyone, and a battle's marauder-held are gone by the same rule; there is no taker on the map to hold them (see Towns persist).
-2. A Church or Tavern built in a battle is raised as the map site that moves the town's faith.
+2. ~~A Church or Tavern built in a battle is raised as the map site that moves the town's faith.~~ Done: `faithsites.ts`.
 3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town. **Done** (`settlersfrom.ts`).
 4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line. **Done:** a reserve's camp (`reservecamp.ts`).
 5. Men of no town sent home go to the army's chief town, or the last hired men are dropped. **Done** (`hiredhome.ts`).
 6. A known person carried off by a nation is marked carried off by name. **Done** (`carriednamed.ts`).
-7. The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).
+7. ~~The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).~~ Done: `wrath.ts` in `game.ts`, and `chancecreed.ts`.
 8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map. **Done** (`seatedleader.ts`).
-9. A defied rival king may declare war.
+9. ~~A defied rival king may declare war.~~ Done: `feudwar.ts`.
 
 Everything else ports as it is, and is built or decided in Unity.
