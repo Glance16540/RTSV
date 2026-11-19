@@ -12,7 +12,7 @@ import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
 import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
-import { fallBack, roomWork, studyReserve, styleWork } from './styleplay';
+import { fallBack, fightStyle, roomWork, studyReserve, styleWork } from './styleplay';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -269,7 +269,8 @@ export class AIController {
     // Wealth lying idle is turned into soldiers: the richer the treasury, the larger the army it keeps.
     // Counted across all three stores, so a mountain of timber is not left to rot for want of gold.
     const spare = Math.max(0, Math.min((p.res.food + p.res.wood + p.res.gold) / 3, Math.max(p.res.food, p.res.wood) / 2) - 300);
-    const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale) + (this.level >= 1 ? Math.min(24, Math.floor(spare / 110)) : 0);
+    const fight = fightStyle(g, pid, mine, this.nearestFoe(home)); // how its people's rule shapes the war (styleplay.ts)
+    const armyTarget = Math.round(ARMY_TARGET[p.age] * this.armyScale * fight.army) + (this.level >= 1 ? Math.min(24, Math.floor(spare * fight.army / 110)) : 0);
     this.castCalamities(army);
     // A town kept in peace raises no soldiers: they would be its men taken to the army (keeper.ts, visit.ts).
     if ((!saving || underAttack) && army.length < armyTarget + (underAttack ? 6 : 0) && !inPeace(g, pid)) {
@@ -283,7 +284,7 @@ export class AIController {
         if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; }
         const def = UNITS[type];
         // Yesterday's soldiers are only raised in need: an army of bowmen is no use against knights.
-        if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && army.length >= armyTarget / 2 && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
+        if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && (fight.newest || army.length >= armyTarget / 2) && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
         if (needsPerson(def) && !this.spare) continue;
@@ -366,16 +367,16 @@ export class AIController {
     }
 
     // How many make an army worth sending is set by the age, not by the treasury: a rich people keeps more men, it does not wait for more.
-    const attackSize = Math.max(4, Math.floor(Math.round(ARMY_TARGET[p.age] * this.armyScale) * 0.8));
+    const attackSize = Math.max(4, Math.floor(Math.round(ARMY_TARGET[p.age] * this.armyScale * fight.army) * 0.8));
     if (this.state === 'build') {
       const clock = g.buildings.some((b) => g.hostile(b.owner, pid) && b.type === 'wonder'); // no time to wait for a full army
       // It does not march into an army it cannot beat: it waits to outweigh the defenders, though not for ever.
-      const ready = fighters.length >= attackSize && g.time > this.firstAttack && !underAttack;
+      const ready = fighters.length >= attackSize && g.time > this.firstAttack && !underAttack && !fight.hold;
       if (!ready) this.readyT = -1; else if (this.readyT < 0) this.readyT = g.time;
       const foe = this.nearestFoe(home);
       // A long war makes everyone bolder: the margin it waits for shrinks from the twenty-fifth minute.
       const margin = Math.max(1, 1.4 - Math.max(0, g.time - 1500) / 2250);
-      const outweighs = this.level < 1 || foe < 0 || this.weight(pid, false) >= this.weight(foe, true) * margin || g.time - this.readyT > (g.time > 1800 ? 150 : 360);
+      const outweighs = this.level < 1 || foe < 0 || fight.eager || this.weight(pid, false) >= this.weight(foe, true) * margin || g.time - this.readyT > (g.time > 1800 ? 150 : 360);
       // A besieger does not wait: it came to assault the town, and goes in with what it brought (besieger.ts).
       const storm = !this.stormed && assaultDue(g, pid, fighters.length, !!underAttack);
       if (storm) this.stormed = true;

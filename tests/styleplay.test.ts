@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { AIController } from '../src/sim/ai';
 import { Game } from '../src/sim/game';
 import { BUILDINGS, STYLE_RULES } from '../src/sim/data';
-import { STYLE_PLAY, fallBack, roomWork, studyReserve, styleWork } from '../src/sim/styleplay';
+import { STYLE_FIGHT, STYLE_PLAY, fallBack, fightStyle, roomWork, studyReserve, styleWork } from '../src/sim/styleplay';
 import { spot } from './helpers';
 
 const game = (civ: string, seed = 7): Game => new Game(seed, [{ name: 'A', color: 1, isAI: true, civ }, { name: 'B', color: 2, isAI: true, civ: 'hearth' }]);
@@ -33,10 +33,12 @@ describe('what a people\'s rule makes worth raising', () => {
     const other = game('hearth'); rich(other); other.players[0].age = 1; stand(other, 'market');
     expect(styleWork(other, 0, town(other))).toBeNull(); // nobody else wants a second
   });
-  it('the Faithful raise their church before the rest of its age; builders keep more towers than others, but not a town in peace', () => {
+  it('the Faithful raise their church once their Range stands; builders keep more towers than others, but not a town in peace', () => {
     const f = game('dawn'); rich(f);
     expect(styleWork(f, 0, town(f))).toBeNull(); // not of their age yet
     f.players[0].age = Math.max(1, f.ageFor(0, BUILDINGS.temple));
+    expect(styleWork(f, 0, town(f))).toBeNull(); // not before their archers: church first cost them every game
+    stand(f, 'range');
     expect(styleWork(f, 0, town(f))).toBe('temple');
     stand(f, 'temple');
     expect(styleWork(f, 0, town(f))).toBeNull();
@@ -101,6 +103,40 @@ describe('who a people\'s rule sends out of the fight', () => {
     play(g, 30);
     expect(u.hp).toBeGreaterThanOrEqual(u.maxHp * STYLE_PLAY.whole); // whole again, and back to the army
   }, LONG);
+});
+
+describe('how a people\'s rule shapes its war', () => {
+  const mine = (g: Game) => g.buildings.filter((b) => b.owner === 0);
+  it('builders sit out a siege: struck lately and with works still hurt, they do not march', () => {
+    const g = game('stonekin'), home = g.buildings.find((b) => b.owner === 0)!;
+    expect(fightStyle(g, 0, mine(g), 1)).toEqual({ army: 1, hold: false, eager: false, newest: false });
+    home.hp = home.maxHp * 0.5;
+    expect(fightStyle(g, 0, mine(g), 1).hold).toBe(false); // hurt, but nobody is at the walls
+    g.players[0].lastAttacked = { x: home.x, y: home.y, t: g.time };
+    expect(fightStyle(g, 0, mine(g), 1).hold).toBe(true);
+    home.hp = home.maxHp * (STYLE_FIGHT.hurt + 0.05); // mended
+    expect(fightStyle(g, 0, mine(g), 1).hold).toBe(false);
+    home.hp = home.maxHp * 0.5; g.time += STYLE_FIGHT.siege + 1; // the siege is long over
+    expect(fightStyle(g, 0, mine(g), 1).hold).toBe(false);
+    const other = game('hearth'), h2 = other.buildings.find((b) => b.owner === 0)!;
+    h2.hp = 1; other.players[0].lastAttacked = { x: h2.x, y: h2.y, t: other.time };
+    expect(fightStyle(other, 0, mine(other), 1).hold).toBe(false);
+  });
+  it('scholars time an attack to an age: not while the next is being reached, and at once with an age in hand', () => {
+    const g = game('forge');
+    expect(fightStyle(g, 0, mine(g), 1)).toMatchObject({ hold: false, eager: false });
+    g.players[0].agingUp = true;
+    expect(fightStyle(g, 0, mine(g), 1).hold).toBe(true);
+    g.players[0].agingUp = false; g.players[0].age = 2; g.players[1].age = 1;
+    expect(fightStyle(g, 0, mine(g), 1).eager).toBe(true);
+    g.players[1].age = 2;
+    expect(fightStyle(g, 0, mine(g), 1).eager).toBe(false);
+    expect(fightStyle(g, 0, mine(g), -1).eager).toBe(false); // nobody to be ahead of
+  });
+  it('warriors field fewer and better men; everyone else fights as before', () => {
+    expect(fightStyle(game('japan'), 0, [], 1)).toEqual({ army: STYLE_FIGHT.warriors, hold: false, eager: false, newest: true });
+    for (const civ of ['hearth', 'persia', 'dawn', 'steppe']) expect(fightStyle(game(civ), 0, [], 1)).toEqual({ army: 1, hold: false, eager: false, newest: false });
+  });
 });
 
 describe('the computer plays it out', () => {
