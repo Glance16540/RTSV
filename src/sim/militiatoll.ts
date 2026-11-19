@@ -61,3 +61,15 @@ export function tribeFell(c: Campaign, tid: number, out: Outcome): number {
   const stood = Math.min(Math.max(0, folkOf(c, tid).men), Math.max(0, warriorsOf(c, tid)) * bandMen());
   return Math.round(stood * Math.max(0, Math.min(1, out.d.body ?? 0)) * FELL.dead);
 }
+
+/**
+ * A tribe met in the open, in a battle nobody watched: its warriors marched out and are its companies there too, so the
+ * men of its town who fell are counted as in a battle for the town (`tribeFell`). Nothing (undefined) for a nation's
+ * land (in the open a nation is met by its army, whose companies are counted with it), for the marauders', or where no
+ * battle was fought out.
+ */
+export function openToll(c: Campaign, tid: number, out: Outcome | null | undefined): number | undefined {
+  const t = c.territories[tid];
+  if (!out || !t || t.horde || t.owner >= 0) return undefined;
+  return tribeFell(c, tid, out);
+}
