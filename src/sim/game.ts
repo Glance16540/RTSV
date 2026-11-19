@@ -1065,8 +1065,6 @@ export class Game {
     let bestD = Infinity;
     for (const v of buildingsOnly ? [] : this.unitsNear(x, y, radius, this.scratch)) {
       if (!this.hostile(v.owner, owner) || v.def.docile || (noShips && v.def.naval) || (noVillagers && v.type === 'villager')) continue;
-      // Wolves and the Norse leave each other alone.
-      if ((owner === this.wild && this.players[v.owner].civ === 'wild') || (v.owner === this.wild && this.players[owner].civ === 'wild')) continue;
       const d = Math.hypot(v.x - x, v.y - y);
       if (d > radius || d < minRange) continue;
       // Prefer things that fight back over villagers.
