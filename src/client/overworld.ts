@@ -1,5 +1,6 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
+import { whenOf } from '../sim/chroniclethreads';
 import { inTime } from '../sim/inyears';
 import { nobodyThere } from '../sim/founding'; // a land with nobody on it is not marched on
 import { inRuin, ruinWords } from '../sim/ruin';
@@ -346,7 +347,7 @@ export class Overworld {
   /** The story so far, oldest first. */
   private showChronicle(): void {
     const c = this.c;
-    const lines = (c.chronicle ?? []).map((l) => `<div><small>Turn ${l.turn}.</small> ${l.text}</div>`).join('');
+    const lines = (c.chronicle ?? []).map((l) => `<div><small>${whenOf(l.turn)}.</small> ${l.text}</div>`).join(''); // dated by year and season (chroniclethreads.ts)
     const places = placesOf(c).map((p) => { const t = c.territories[p.at]; return `<div>${PLACES[p.kind].icon} <b>${p.name[0].toUpperCase() + p.name.slice(1)}</b>, in ${t.name} <small>(${t.owner < 0 ? 'the local tribes' : t.owner === 0 ? 'yours' : c.factions[t.owner].name})</small>. ${p.legend}</div>`; }).join('');
     const last = epilogue(c).map((l) => `<div><i>${l}</i></div>`).join('');
     this.dialog('The chronicle', `<span class="ow-chronicle">${lines || 'Nothing is written yet.'}${last ? `<h3>How it ended</h3>${last}` : ''}<h3>Places of note</h3>${places}</span>`, [['Close', () => this.changed()]]);

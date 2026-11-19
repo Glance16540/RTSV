@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { rivalBattleHeard } from './chroniclethreads';
 import { noteStood } from './battletales';
 import { turnLeft, turnOpened } from './seasongain';
 import { militiaOf } from './militia';
@@ -1045,6 +1046,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settled', 'townfaith', (c) => settleFaith(c))
   .on('settled', 'mapbattle', (c, p, b) => { if (b.fought) tellBattle(c, p, b.fought, b.led ?? {}, b.fallenBefore); }) // told once the dead are counted: who led, what broke, who fell by name
   .on('settled', 'veteranhome', (c, _p, b) => { if (b.fought) { const k = felledOf(b.fought, MEN.company); noteStood(c, battleNamed(c, b.attackerWon ? b.army?.id : b.defArmy?.id, b.attackerWon ? k.byAttacker : k.byDefender)); } }) // the winners name a man who stood (veteranhome.ts)
+  .on('settled', 'chroniclethreads', (c, p, b) => { rivalBattleHeard(c, p, b); }) // a great battle between rivals, heard of (chroniclethreads.ts)
   .on('settled', 'warrecord', (c, p, b) => { if (b.fought) foughtOnMap(c, p, [b.army?.id, b.defArmy?.id]); }) // every man still on both rolls has come through it (warrecord.ts)
   // setup: a battle is about to be laid out for play.
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
