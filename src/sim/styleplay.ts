@@ -34,6 +34,8 @@ import { BUILDINGS, STYLE_RULES } from './data';
 export const STYLE_PLAY = {
   /** The Faithful raise their church once these stand. */
   churchAfter: ['range'] as string[],
+  /** Scholars: the share of the common reserve they keep back when a technology is bought. */
+  scholarKeeps: 0,
   /** Builders: towers kept, where the common order keeps two. */
   towers: 4,
   /** Traders: villagers a town has before it raises a second and a third market. */
@@ -71,7 +73,7 @@ export function roomWork(g: Game, pid: number, s: StyleTown): 'farm' | 'house' {
 }
 
 /** What is kept back in the stores when a technology is bought: scholars keep nothing back. */
-export const studyReserve = (g: Game, pid: number): { food: number; wood: number } => (g.style(pid) === 'scholar' ? { food: 0, wood: 0 } : { food: 150, wood: 100 });
+export const studyReserve = (g: Game, pid: number): { food: number; wood: number } => { const k = g.style(pid) === 'scholar' ? STYLE_PLAY.scholarKeeps : 1; return { food: 150 * k, wood: 100 * k }; };
 
 /** Soldiers this people's rule tells to leave the fight, and where each party goes. */
 export function fallBack(g: Game, pid: number, army: Unit[], mine: Building[], home: { x: number; y: number }): { ids: number[]; x: number; y: number }[] {
@@ -99,6 +101,8 @@ export function fallBack(g: Game, pid: number, army: Unit[], mine: Building[], h
 export const STYLE_FIGHT = {
   /** Builders: seconds after the town was last struck in which they stay behind their walls, while any work of theirs is under this share of its health. */
   siege: 120, hurt: 0.8,
+  /** Scholars: they hold an attack while the next age is being reached, and march at once with an age in hand. */
+  ageHold: true, ageEager: true,
   /** Warriors: their army beside another people's of the same age. */
   warriors: 0.8,
 };
@@ -110,7 +114,7 @@ export function fightStyle(g: Game, pid: number, mine: Building[], foe: number):
     const struck = !!p.lastAttacked && g.time - p.lastAttacked.t < F.siege;
     return { ...plain, hold: struck && mine.some((b) => b.complete && !b.dead && !b.def.wall && b.hp < b.maxHp * F.hurt) };
   }
-  if (style === 'scholar') return { ...plain, hold: p.agingUp, eager: foe >= 0 && !!g.players[foe] && p.age > g.players[foe].age };
+  if (style === 'scholar') return { ...plain, hold: F.ageHold && p.agingUp, eager: F.ageEager && foe >= 0 && !!g.players[foe] && p.age > g.players[foe].age };
   if (style === 'warrior') return { ...plain, army: F.warriors, newest: true };
   return plain;
 }

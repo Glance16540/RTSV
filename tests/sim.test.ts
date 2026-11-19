@@ -3381,10 +3381,10 @@ describe('a rule of its own for every play style', () => {
 
   it('the Scholars gather faster for everything they have learned', () => {
     const g = two('greece');
-    expect(g.lore(0)).toBe(1);
+    expect(g.lore(0)).toBeCloseTo(1 + R.loreBase);
     g.players[0].techs.add('stonetools'); g.players[0].techs.add('bronzetools');
     g.players[1].techs.add('stonetools');
-    expect(g.lore(0)).toBeCloseTo(1 + 2 * R.lore);
+    expect(g.lore(0)).toBeCloseTo(1 + R.loreBase + 2 * R.lore);
     expect(g.lore(1)).toBe(1);
     for (let i = 0; i < 40; i++) g.players[0].techs.add('t' + i);
     expect(g.lore(0)).toBeCloseTo(1 + R.loreMax);
