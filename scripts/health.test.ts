@@ -193,6 +193,7 @@ interface Watch {
   grownGrowth: number[]; // the same, grown people alone
   townSeasons: TownSeason[];
   caravans?: Campaign['caravanTally']; // the markets' caravans (caravans.ts)
+  innRoads?: Campaign['convoyTally']; // the player's convoys a band lay in wait for, with an Inn on the road and without (convoys.ts)
   roadCosts?: Campaign['roadCost'];
   roads?: Campaign['roadTally']; // meetings on the road, by their rule and by the clash (roadclash.ts)
   stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
@@ -248,6 +249,7 @@ interface Watch {
 }
 
 const CRIME_ROW = 'Seasons a thief or a killer is at large, with a Watch House in every town against as it is (read with CRIME=1)', CRIME_BAND = '10 to 30% fewer';
+const INN_ROW = 'Of the player\'s convoys a band lay in wait for, stopped with an Inn on the road against without', INN_BAND = 'fewer with an Inn';
 const WATCH_ROW = 'Raids on the player\'s towns held off, with Town Watch learnt against without (read with CRIME=1)', WATCH_BAND = '5 to 20 more in every 100';
 /** For the forced comparison (CRIME=1): these buildings finished in every town the player holds, free, and these studies learnt. */
 const FORCED = {
@@ -540,6 +542,7 @@ if (churched[f.id] >= YEARS20 / 2 && townSeasonsOf[f.id] > 0 && hungryOf[f.id] /
   }
   w.sieges = watched;
   w.caravans = c.caravanTally ? JSON.parse(JSON.stringify(c.caravanTally)) : undefined;
+  w.innRoads = c.convoyTally ? JSON.parse(JSON.stringify(c.convoyTally)) : undefined;
   w.roads = c.roadTally ? JSON.parse(JSON.stringify(c.roadTally)) : undefined;
   w.roadCosts = c.roadCost ? JSON.parse(JSON.stringify(c.roadCost)) : undefined;
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
@@ -855,7 +858,16 @@ if (CRIME && process.env.CRIME !== 'roads') {
 // Report only: the roads (roads.ts). The player's convoys alone: only theirs are written in the log.
 const convoys = all('convoys'), stoppedOf = (xs: typeof convoys) => (xs.length ? `${pct(share(xs, (x) => x.stopped))} (${xs.length})` : 'none');
 const tookOf = (xs: typeof convoys) => { const st = xs.filter((x) => x.stopped); return st.length ? `${num(mean(st.map((x) => x.took)), 0)} (${st.length})` : 'none'; };
-add('Crime', 'The player\'s convoys stopped by a band, with an Inn against without', 'report only', `${stoppedOf(convoys.filter((x) => x.inn))} with against ${stoppedOf(convoys.filter((x) => !x.inn))} without`, 'report', 'Every convoy of the player\'s that finished its road, read from the log (rivals\' convoys are not written there). "With" is a season in which the player had an Inn standing in any town, whether or not it was on that convoy\'s road.');
+{
+  // The Inn's row: only the convoys a band lay in wait for, sorted by the convoy's own road (convoys.ts convoyTally). Inns
+  // are raised where the highwaymen sit (inn.ts), so a nation with an Inn sends more convoys down dangerous roads: sorting
+  // by the nation, or counting the safe roads in, measures the danger and not the Inn.
+  const side = (k: 'inn' | 'none') => ruled.reduce((a, w) => ({ met: a.met + (w.innRoads?.[k].met ?? 0), robbed: a.robbed + (w.innRoads?.[k].robbed ?? 0) }), { met: 0, robbed: 0 });
+  const inn = side('inn'), none = side('none'), rate = (x: { met: number; robbed: number }) => (x.met ? x.robbed / x.met : NaN);
+  const fine = inn.met && none.met ? rate(inn) < rate(none) : undefined;
+  add('Crime', INN_ROW, INN_BAND, `${inn.met ? pct(rate(inn)) : '-'} (${inn.met}) with an Inn on the road against ${none.met ? pct(rate(none)) : '-'} (${none.met}) without`, fine === undefined ? null : fine,
+    'The player\'s convoys that finished their road with a band lying in wait on it (highwaymen at either end of a stretch of it, or pirates where it crosses the sea), counted as each comes in. "With" is a convoy whose own road passes a town of the player\'s with an Inn standing. A convoy no band lay in wait for is never stopped, Inn or none, and is left out.');
+}
 add('Crime', 'Stores a band takes from a convoy of the player\'s it stops, with Escorts against without', 'report only', `${tookOf(convoys.filter((x) => x.escorts))} with against ${tookOf(convoys.filter((x) => !x.escorts))} without`, 'report', 'Food, wood, gold and stone together, for each convoy stopped. "With" is a player who had learned Escorts by then.');
 const hungers = all('hungers'), spellOf = (xs: typeof hungers) => (xs.length ? `${num(mean(xs.map((x) => x.seasons)), 2)} (${xs.length})` : 'none');
 add('Crime', 'Seasons running a hungry town stays hungry, with Paved Roads against without', 'report only', `${spellOf(hungers.filter((x) => x.paved))} with against ${spellOf(hungers.filter((x) => !x.paved))} without`, 'report', 'Every spell of hunger in a held town, every people\'s: the seasons from the first hungry one until it is fed, changes hands or the count stops. "With" is a town whose people had learned Paved Roads when the spell began. The spell ends when the town is fed, by a convoy or by anything else.');
