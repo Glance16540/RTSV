@@ -104,7 +104,7 @@ describe('a battle is fought by the town and goes home to it', () => {
     expect(mine.filter((u) => (u.gender === 'm' || u.type !== 'villager') && u.age < u.lifespan * ELDER_AT).length).toBe(5); // a man in arms carries no mark of it, as any soldier
     expect(g.players[0].res).toMatchObject({ food: 321, wood: 210, gold: 55, stone: 7 });
     expect(g.census(0)).toMatchObject({ men: 5, women: 4, elders: 3, children: 6, taken: 0, stores: { food: 321, wood: 210, gold: 55, stone: 7 } });
-    expect(g.units.filter((u) => u.owner === 1 && u.type === 'villager').length).toBe(4); // a camp still has its four
+    expect(g.units.filter((u) => u.owner === 1 && u.type === 'villager').length).toBe(0); // a besieging camp has no people from nowhere (siegecamp.ts, the owner's word)
   }, LONG);
 
   it('what the battle leaves of the town is the town from then on', () => {

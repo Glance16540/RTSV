@@ -16,6 +16,7 @@ import { dyingOut } from './dyingout';
 import { carriedOut } from './carriedout';
 import { seatRecords } from './warrecord';
 import { sendMan } from './pickman';
+import { campBuilds, campUnhoused, campWithoutPeople } from './siegecamp';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -540,9 +541,12 @@ export class Game {
       const dir = st.y < size / 2 ? 1 : -1; // villagers start on the side facing the middle
       if (this.raider(i) && atHome(s.bonus, field)) this.players[i].atHome = true; // a raiding people in a town of the map's begins as a town (raidertown.ts)
       if (!field && this.warband(i)) {
-        // A war band: a man and a woman to found the hall when they choose to settle, and fighters to feed it.
-        this.spawnUnit('villager', i, st.x - 0.5, st.y + 1.5 * dir, 'm');
-        this.spawnUnit('villager', i, st.x + 0.5, st.y + 1.5 * dir, 'f');
+        // A war band: a man and a woman to found the hall when they choose to settle, and fighters to feed it. Not a band
+        // besieging a town of the map: a besieging army's camp has no people from nowhere (siegecamp.ts).
+        if (!campWithoutPeople(s)) {
+          this.spawnUnit('villager', i, st.x - 0.5, st.y + 1.5 * dir, 'm');
+          this.spawnUnit('villager', i, st.x + 0.5, st.y + 1.5 * dir, 'f');
+        }
         for (let k = 0; k < BAND.fighters; k++) this.spawnUnit(this.trainedAs(i, 'clubman'), i, st.x - (BAND.fighters - 1) / 2 + k, st.y + 3 * dir);
         this.players[i].res.wood += BAND.wood;
         this.players[i].res.stone += BAND.stone;
@@ -554,7 +558,7 @@ export class Game {
         if (s.bonus?.court) this.players[i].court = structuredClone(s.bonus.court); // a story of the leader's house, where the court is kept (courtfield.ts)
         if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
         if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
-        else {
+        else if (!campWithoutPeople(s)) { // a besieging army's camp has no people from nowhere: its men are its soldiers (siegecamp.ts)
           this.spawnUnit('villager', i, st.x - 1.5, st.y + 3.5 * dir, 'm');
           this.spawnUnit('villager', i, st.x - 0.5, st.y + 3.5 * dir, 'f');
           this.spawnUnit('villager', i, st.x + 0.5, st.y + 3.5 * dir, 'm');
@@ -1265,6 +1269,8 @@ export class Game {
         this.setOrder(u, { t: 'board', id: t.id });
       } else if (t.owner !== owner) {
         this.setOrder(u, { t: 'move', x: t.x, y: t.y }); // an ally's: just walk over
+      } else if (t.kind === 'building' && !villager && campBuilds(this, u, t.type) && (!t.complete || t.hp < t.maxHp)) {
+        this.setOrder(u, { t: 'build', id: t.id, then: null }); // a besieger's soldier builds or mends its camp's works (siegecamp.ts)
       } else if (t.kind === 'building' && villager) {
         if (!t.complete || t.hp < t.maxHp) this.setOrder(u, { t: 'build', id: t.id, then: this.job(u) });
         else if (t.type === 'farm') this.orderGather(u, t);
@@ -1319,7 +1325,7 @@ export class Game {
     this.pay(p, def.cost);
     const b = this.spawnBuilding(type, owner, cx, cy, false);
     if (type === 'dock' && !this.findResourceNear(b.x, b.y, 'food', owner, 26, 0, true)) this.msg(owner, 'There are no fish near this water: boats built here will have nothing to catch.');
-    const us = this.ownUnits(builderIds, owner).filter((u) => u.type === 'villager' && u.growT <= 0);
+    const us = this.ownUnits(builderIds, owner).filter((u) => (u.type === 'villager' && u.growT <= 0) || campBuilds(this, u, type)); // a besieger's soldiers build its camp's works (siegecamp.ts)
     const done = this.command(us, queue);
     for (const u of us) this.setOrder(u, { t: 'build', id: b.id, then: queue ? null : this.job(u) });
     done();
@@ -1340,7 +1346,7 @@ export class Game {
       first ??= this.spawnBuilding(type, owner, c.cx, c.cy, false);
       if (n++) this.spawnBuilding(type, owner, c.cx, c.cy, false);
     }
-    if (first) for (const u of this.ownUnits(builderIds, owner)) if (u.type === 'villager' && u.growT <= 0) this.setOrder(u, { t: 'build', id: first.id, then: this.job(u) });
+    if (first) for (const u of this.ownUnits(builderIds, owner)) if ((u.type === 'villager' && u.growT <= 0) || campBuilds(this, u, type)) this.setOrder(u, { t: 'build', id: first.id, then: this.job(u) });
     return n;
   }
 
@@ -3150,7 +3156,7 @@ export class Game {
         if (q.kind === 'unit') {
           const def = UNITS[q.id];
           const was = q.who ? this.entities.get(q.who) : undefined;
-          if (p.pop + def.pop - (was ? UNITS.villager.pop : 0) <= p.popCap) {
+          if (p.pop + def.pop - (was && was.kind === 'unit' ? was.def.pop : 0) <= p.popCap || campUnhoused(this, b.owner)) { // whoever goes in makes room: a villager, or a besieger's soldier crewing an engine, whose army no roof holds (siegecamp.ts)
             b.queue.shift();
             if (was && was.kind === 'unit') { was.inside = 0; was.enlisted = true; this.kill(was); }
             const u = this.spawnFrom(b, q.id, q.gender);
