@@ -8,7 +8,8 @@
 //   - every module in src/sim has exactly one row, and every row is a module that exists;
 //   - no module in src/sim imports from src/client or three.js, or reaches for the DOM (the porting rule);
 //   - every test file a row names exists, and every row names one;
-//   - the "Depends on" column names the modules it really imports (--fix adds "(types only)" where it imports only types);
+//   - the "Depends on" column names the modules it really imports (--fix marks "(types only)" where it imports only types,
+//     and scripts/porting-order.mjs works the order to port in out of those marks);
 //   - no import cycle among the rules modules (imports of types alone aside);
 //   - the "Lines" column is within a fifth of the truth (it is a size to plan by, not a count to keep exact).
 // The last two are what --fix writes; `npm run sync` runs --fix after a merge. The words in "What it is", the
@@ -76,7 +77,10 @@ const text = readFileSync(TABLE, 'utf8'), lines = text.split('\n');
 const rows = new Map(), errors = [], drift = [];
 // A clash left unsettled: the marks of a merge still in the table (it has happened: a commit took them with it).
 lines.forEach((line, i) => { if (/^(<{7}|>{7}|={7})( |$)/.test(line)) errors.push(`${TABLE} line ${i + 1} is the mark of an unsettled merge (${line.slice(0, 7)}): settle the clash, keeping both sides' rows`); });
+// The table ends where the generated sections begin (scripts/porting-order.mjs writes tables of its own there, whose rows also open with a module's name).
+const tableEnd = lines.findIndex((line) => line.startsWith('<!-- generated:'));
 lines.forEach((line, i) => {
+  if (tableEnd >= 0 && i >= tableEnd) return;
   const m = /^\| `([\w-]+)` \|/.exec(line);
   if (!m) return;
   const cells = line.split(' | ');
@@ -95,6 +99,7 @@ for (const name of modules) {
   const count = source[name].split('\n').length - (source[name].endsWith('\n') ? 1 : 0), had = Number(row.cells[1]);
   const want = depsText(deps);
   if (depsKey(row.cells[3]) !== depsKey(want)) { drift.push(`\`${name}\` depends on: ${want}   (the table says: ${row.cells[3]})`); row.cells[3] = want; row.changed = true; }
+  else if (fix && row.cells[3] !== want) { row.cells[3] = want; row.changed = true; } // the same modules, but "(types only)" not marked as it is: the order to port in is worked out from those marks (porting-order.mjs)
   if (!(Math.abs(had - count) <= Math.max(5, count * SLACK))) { drift.push(`\`${name}\` is ${count} lines (the table says ${row.cells[1]})`); row.cells[1] = String(count); row.changed = true; }
   else if (fix && had !== count) { row.cells[1] = String(count); row.changed = true; }
   const tests = row.cells[4].match(/[\w-]+\.test\.ts/g) ?? [];

@@ -17,7 +17,7 @@
     "trials": "TRIALS=1 OUT=trials.txt vitest run scripts/trials.test.ts",
     "framecost": "FRAMECOST=1 OUT=framecost vitest run scripts/framecost-saves.test.ts && OUT=framecost node scripts/framecost.mjs",
     "health": "HEALTH=1 CAMPAIGNS=96 VISITS=24 vitest run scripts/health.test.ts",
-    "porting": "node scripts/porting-check.mjs --fix",
+    "porting": "node scripts/porting-check.mjs --fix && node scripts/porting-order.mjs",
     "check": "node scripts/porting-check.mjs && tsc --noEmit && vitest run && npm run build",
     "sync": "node scripts/sync.mjs"
   },
