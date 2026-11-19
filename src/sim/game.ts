@@ -1,5 +1,9 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { formationPlan } from './formations';
+import type { Formation } from './formations';
+import { slopePace } from './slopes';
+import { intoField } from './fieldwork';
 import { StyleSign, styleSign } from './stylesigns';
 import { layCoarse, layKept } from './firstlay';
 import { unlaidOf, unplaced } from './unlaid';
@@ -9,6 +13,9 @@ import { setToWork, workChanged } from './atwork';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
 import { dyingOut } from './dyingout';
+import { carriedOut } from './carriedout';
+import { seatRecords } from './warrecord';
+import { sendMan } from './pickman';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -89,8 +96,8 @@ interface Base {
 }
 
 export type Order =
-  | { t: 'move'; x: number; y: number; started?: boolean; tries?: number }
-  | { t: 'attackMove'; x: number; y: number; started?: boolean; tries?: number }
+  | { t: 'move'; x: number; y: number; started?: boolean; tries?: number; /** In a group's order: the pace it keeps, and the way to face on arriving (formations.ts). */ pace?: number; face?: number }
+  | { t: 'attackMove'; x: number; y: number; started?: boolean; tries?: number; pace?: number; face?: number }
   | { t: 'patrol'; x: number; y: number; ax: number; ay: number; bx: number; by: number; started?: boolean; tries?: number }
   | { t: 'attack'; id: number; then?: Order | null; auto?: boolean; ox?: number; oy?: number }
   | { t: 'gather'; id: number; res: ResType; phase: 'go' | 'return'; nx: number; ny: number; dropId: number; fails: number }
@@ -157,6 +164,8 @@ export interface Unit extends Base {
   growT: number; // always 0: a child is never a unit (see nursery.ts); kept so that older code asking still gets its answer
   bornAt: number; // the house they were born in
   plagueT: number; // seconds of plague remaining
+  /** The order this soldier keeps in a group, if set: a line, a column or a loose order (formations.ts). */
+  form?: Formation;
   mana: number;
   homeX: number; // where a wild animal lives
   homeY: number;
@@ -612,7 +621,7 @@ export class Game {
           // In a field battle the army forms up where the town would have been.
           for (let j = 0; j < n; j++, k++) (laid.get(type) ?? laid.set(type, []).get(type)!).push(this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir));
         }
-        if (s.bonus.roll) nameSoldiers(this, i, laid, s.bonus.roll); // each company led by the men of the army's roll (soldiernames.ts)
+        if (s.bonus.roll) { nameSoldiers(this, i, laid, s.bonus.roll); seatRecords(this, i, s.bonus.roll); } // each company led by the men of the army's roll (soldiernames.ts), each with his record at war (warrecord.ts)
         // In a battle in the open there is no town on the field: the men of it who marched out stand with the army (tribes.ts).
         if (field && s.bonus.people) peopled(this, i, s.bonus.people, st, dir);
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
@@ -859,9 +868,10 @@ export class Game {
   veteran(u: Unit): number {
     return this.style(u.owner) === 'warrior' && this.isMilitary(u) ? 1 + STYLE_RULES.veteran * Math.min(STYLE_RULES.veteranKills, u.kills ?? 0) : 1;
   }
-  /** How much faster the Scholars' villagers gather for what their people have learned. */
+  /** How much faster a people's villagers gather by their style's rule: the Scholars' for what they have learned (and a little from the first), the Builders' a little always. */
   lore(owner: number): number {
-    return this.style(owner) === 'scholar' ? 1 + Math.min(STYLE_RULES.loreMax, STYLE_RULES.lore * this.players[owner].techs.size) : 1;
+    const style = this.style(owner);
+    return style === 'scholar' ? 1 + Math.min(STYLE_RULES.loreMax, STYLE_RULES.loreBase + STYLE_RULES.lore * this.players[owner].techs.size) : style === 'builder' ? 1 + STYLE_RULES.masonry : 1;
   }
   raider(owner: number): boolean { return !!this.players[owner] && !!styleOf(this.players[owner].civ).raid; }
   /** A raiding people with no town of the map's under it: it begins, and falls, as a war band (raidertown.ts). */
@@ -910,7 +920,7 @@ export class Game {
    * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name
    * (battlefolk.ts).
    */
-  census(owner: number): Census { return { ...censusOf(this, owner), roofs: roofsOf(this, owner), ...oldOut(this, owner) }; } // and who lives under each roof (roofs.ts)
+  census(owner: number): Census { return { ...censusOf(this, owner), roofs: roofsOf(this, owner), ...oldOut(this, owner), ...carriedOut(this, owner) }; } // and who lives under each roof (roofs.ts)
 
   /** What a side's town is set to as things stand (governor.ts): how many of its people are at each kind of work, what stands half built, what is being trained. */
   orders(owner: number): { work: Stores; build: string[]; train: string[]; men?: QueuedMan[]; hands: number } {
@@ -1173,14 +1183,33 @@ export class Game {
   cmdMove(owner: number, ids: number[], x: number, y: number, attackMove = false, queue = false): void {
     const us = this.ownUnits(ids, owner);
     const done = this.command(us, queue);
-    const side = Math.ceil(Math.sqrt(us.length));
+    const side = Math.ceil(Math.sqrt(us.length)), plan = formationPlan(us, x, y); // a group in an order goes in it (formations.ts)
     us.forEach((u, i) => {
       const ox = us.length > 1 ? ((i % side) - (side - 1) / 2) * 0.85 : 0;
       const oy = us.length > 1 ? (Math.floor(i / side) - (side - 1) / 2) * 0.85 : 0;
-      const tx = Math.min(this.size - 1.5, Math.max(1.5, x + ox));
-      const ty = Math.min(this.size - 1.5, Math.max(1.5, y + oy));
-      this.setOrder(u, attackMove && u.def.atk > 0 ? { t: 'attackMove', x: tx, y: ty } : { t: 'move', x: tx, y: ty });
+      const tx = Math.min(this.size - 1.5, Math.max(1.5, plan ? plan.places[i][0] : x + ox));
+      const ty = Math.min(this.size - 1.5, Math.max(1.5, plan ? plan.places[i][1] : y + oy));
+      const kept = plan ? { pace: plan.pace, face: plan.face } : {};
+      this.setOrder(u, attackMove && u.def.atk > 0 ? { t: 'attackMove', x: tx, y: ty, ...kept } : { t: 'move', x: tx, y: ty, ...kept });
     });
+    done();
+  }
+
+  /**
+   * Set a group in an order (formations.ts), or none. A group standing still forms up where it stands, facing the way
+   * most of it faces; one on the move keeps going, and forms when it is next sent.
+   */
+  cmdFormation(owner: number, ids: number[], kind: Formation | null): void {
+    const us = this.ownUnits(ids, owner).filter((u) => this.isMilitary(u));
+    for (const u of us) { if (kind) u.form = kind; else delete u.form; }
+    const still = us.filter((u) => !u.order);
+    if (!kind || still.length < 2) return;
+    const cx = still.reduce((a, u) => a + u.x, 0) / still.length, cy = still.reduce((a, u) => a + u.y, 0) / still.length;
+    const fx = still.reduce((a, u) => a + Math.sin(u.facing), 0), fy = still.reduce((a, u) => a + Math.cos(u.facing), 0);
+    const plan = formationPlan(still, cx, cy, Math.atan2(fx, fy));
+    if (!plan) return;
+    const done = this.command(still, false);
+    still.forEach((u, i) => this.setOrder(u, { t: 'move', x: Math.min(this.size - 1.5, Math.max(1.5, plan.places[i][0])), y: Math.min(this.size - 1.5, Math.max(1.5, plan.places[i][1])), pace: plan.pace, face: plan.face }));
     done();
   }
 
@@ -1453,6 +1482,9 @@ export class Game {
     g.upkeep();
     return g;
   }
+
+  /** The player sends this villager to arms, in place of whoever the queue would call (pickman.ts). */
+  cmdSendMan(owner: number, vid: number): boolean { return sendMan(this, owner, vid); }
 
   cmdTrain(owner: number, bid: number, type: string, gender?: Gender): boolean {
     const b = this.entities.get(bid);
@@ -2324,6 +2356,10 @@ export class Game {
     let step = u.def.speed * (this.has(u, 'swift') ? 1.2 : 1) * (this.isElder(u) ? 0.85 : 1) * (u.def.cls === 'cavalry' ? this.players[u.owner].mods.cavSpeed : 1) * DT;
     // Roads speed a march; sand, snow, marsh and slopes slow it.
     if (!u.def.naval) { const at = Math.min(this.size - 1, Math.max(0, Math.floor(u.y))) * this.size + Math.min(this.size - 1, Math.max(0, Math.floor(u.x))); step /= this.moveCost[at] * (this.foul === 'snow' && !this.road[at] ? 1.18 : 1); }
+    // A group in an order keeps the pace of its slowest; and a march uphill is slower, downhill a little quicker (slopes.ts).
+    const pace = u.order && (u.order.t === 'move' || u.order.t === 'attackMove') ? u.order.pace : undefined;
+    if (pace !== undefined) step = Math.min(step, pace * DT);
+    if (u.pathI < u.path.length) step *= slopePace(this, u.x, u.y, u.path[u.pathI], u.path[u.pathI + 1]);
     if (u.def.charge) u.chargeD += step;
     const ox = u.x, oy = u.y;
     while (step > 0 && u.pathI < u.path.length) {
@@ -2375,9 +2411,9 @@ export class Game {
     return 'moving';
   }
 
-  private walkTo(u: Unit, o: { x: number; y: number; started?: boolean; tries?: number }): boolean {
+  private walkTo(u: Unit, o: { x: number; y: number; started?: boolean; tries?: number; face?: number }): boolean {
     if (!u.path) {
-      if (o.started) return true;
+      if (o.started) { if (o.face !== undefined) u.facing = o.face; return true; } // a man of an order turns to face the way it was sent
       if (this.pathBudget <= 0) return false; // wait for a later tick
       this.pathBudget--;
       o.started = true;
@@ -2400,6 +2436,7 @@ export class Game {
       o.tries = (o.tries ?? 0) + 1;
       return o.tries > 3;
     }
+    if (r === 'done' && o.face !== undefined) u.facing = o.face; // a man of an order turns to face the way it was sent
     return r === 'done';
   }
 
@@ -2843,6 +2880,7 @@ export class Game {
     o.fails = 0;
     u.anchored = true;
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
+    if (t.kind === 'building' && t.type === 'farm') intoField(u, t, DT); // in among the rows, not at the fence, working as they go (fieldwork.ts)
     u.attackAnim = 0.3;
     u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * stewardPace(this, u) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * millPace(this, u.owner) * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {

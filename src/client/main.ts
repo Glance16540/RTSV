@@ -1,8 +1,10 @@
 import { homeNow } from '../sim/furlough';
+import { storyBrief, storyTag } from './missionstory';
 import { showBriefing } from './briefing';
 import { downedOf, survivorsOf } from '../sim/soldiernames';
+import { recordsOut } from '../sim/warrecord';
 import { Tally } from '../sim/battlecard';
-import { bark } from './voice';
+import { FolkBarks } from './folkbarks';
 import { Climate } from '../sim/map';
 import { AIController } from '../sim/ai';
 import { CIVS, CIV_IDS, UNITS, AGES, styleOf } from '../sim/data';
@@ -108,6 +110,9 @@ export class App {
     this.centerOnSelection();
   }
 
+  private barks = new FolkBarks();
+  /** Can the player hear this spot: on screen and in sight. */
+  private heard = (x: number, y: number): boolean => this.onScreen(x, y) && this.game.vis[Math.floor(y) * this.game.size + Math.floor(x)] === 2;
   private onScreen(x: number, y: number): boolean {
     const s = this.r.project(x, y);
     return s.x > 0 && s.y > 0 && s.x < window.innerWidth && s.y < window.innerHeight;
@@ -116,7 +121,7 @@ export class App {
   private sound(ev: GameEvent): void {
     const mine = 'player' in ev && ev.player === this.pid;
     if (ev.t === 'age' && mine) sfx.play('age');
-    else if (ev.t === 'alert' && mine) { sfx.play('alert'); const v = this.game.units.find((u) => u.owner === this.pid && u.type === 'villager' && !u.inside); if (v) bark(this.game, v, 'fear'); }
+    else if (ev.t === 'alert' && mine) { sfx.play('alert'); this.barks.struck(this.game, this.pid, ev.x, ev.y, this.heard); } // the nearest of the people cries out (folkbarks.ts)
     else if (ev.t === 'wonder') sfx.play(mine ? 'age' : 'alert');
     else if (ev.t === 'birth' && mine) sfx.play('birth');
     else if (ev.t === 'grown' && mine) sfx.play('grown');
@@ -154,6 +159,7 @@ export class App {
     this.last = t;
     if (this.asleep) { requestAnimationFrame((n) => this.frame(n)); return; }
     const game = this.game;
+    if (!this.paused) this.barks.update(game, this.pid, dt, this.heard); // the badly hurt cry out (folkbarks.ts)
     if (!this.paused && game.winner < 0) {
       this.acc += dt * this.speed;
       let steps = 0;
@@ -401,7 +407,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
       // The town fought over is counted as the battle leaves it: the people and stores of the side that held it.
       const folk = app.game.census(cfg.humanAttacks ? 1 : app.pid); // in the open too: the town's men who marched out are counted back (tribes.ts)
       const drifted = cfg.field ? undefined : driftedIn(app.game, cfg.humanAttacks ? 1 : app.pid); // driftintown.ts
-      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, leave: homeNow(app.game, app.pid), heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, studies: learnedIn(app.game.players[app.pid].techs), champion: app.game.champion(app.pid) ?? undefined, town, folk, drifted, orders: cfg.field ? undefined : app.game.orders(app.pid), downed: downedOf(app.game), ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
+      try { localStorage.setItem(RESULT_KEY, JSON.stringify({ won, survivors, foes: survivorsOf(app.game, 1), foesLed: !app.game.players[1]?.heroFell, leave: homeNow(app.game, app.pid), heroRank, fell: !!app.game.players[app.pid].heroFell, acclaimed: app.game.players[app.pid].acclaimed ? app.game.heroOf(app.pid) : undefined, powers: app.game.heroOf(app.pid).powers, studies: learnedIn(app.game.players[app.pid].techs), champion: app.game.champion(app.pid) ?? undefined, town, folk, drifted, orders: cfg.field ? undefined : app.game.orders(app.pid), downed: downedOf(app.game), records: recordsOut(app.game), ground: cfg.field ? undefined : app.game.ground(), virtue: app.game.field ? undefined : app.game.players[app.pid].virtue })); localStorage.removeItem(SAVE_KEY); } catch { /* storage unavailable */ }
     };
     app.onGameOver = finish;
     el('again-btn').textContent = 'Return to the map';
@@ -451,7 +457,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   applyPrefs();
 
   // ---- Missions ----
-  el('missions').innerHTML = MISSIONS.map((m) => `<button data-mission="${m.id}"><b>${m.name}</b>${m.about ? `<i>${m.about}</i>` : ''}<small>${m.brief}</small></button>`).join('');
+  el('missions').innerHTML = MISSIONS.map((m) => `<button data-mission="${m.id}"><b>${m.name}</b>${storyTag(m.id)}${m.about ? `<i>${m.about}</i>` : ''}<small>${m.brief}</small></button>`).join('');
   el('missions').addEventListener('click', (e) => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-mission]')?.dataset.mission;
     if (id) go(`?mission=${id}`);
@@ -461,7 +467,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     app.missionStatus = mission.tick(game);
     begun = briefing = true;
     startScreen.querySelector('h1')!.textContent = mission.name;
-    startScreen.querySelector('.lead')!.textContent = mission.brief;
+    storyBrief(startScreen.querySelector<HTMLElement>('.lead')!, mission.id, mission.brief); // its thread's line before it (missionstory.ts)
     resume.textContent = 'Begin';
     el('again-btn').textContent = 'Back to the menu';
   }
@@ -473,7 +479,7 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
     try { result = localStorage.getItem(RESULT_KEY); localStorage.removeItem(RESULT_KEY); } catch { /* storage unavailable */ }
     if (c && c.pending && result) {
       const r = JSON.parse(result) as { won: boolean; survivors: Record<string, number>; leave?: unknown; virtue?: number; heroRank?: number; fell?: boolean; acclaimed?: Partial<HeroSpec>; powers?: number[]; studies?: string[]; champion?: { name: string; kills: number; unit: string; female?: boolean; type?: string }; town?: [string, number, number, number?, number?][]; downed?: unknown; ground?: { gone: number[]; left: [number, number][] }; folk?: Partial<Census>; drifted?: { tavern?: number; mines?: number }; orders?: { work: Record<string, number>; build: string[]; train: string[] } };
-      finishBattle(c, r.won, r.survivors, { virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, powers: r.powers, studies: r.studies, champion: r.champion, town: r.town, ground: r.ground, folk: r.folk, drifted: r.drifted, orders: r.orders as never, leave: r.leave, downed: r.downed });
+      finishBattle(c, r.won, r.survivors, { foes: (r as { foes?: Record<string, number> }).foes, foesLed: (r as { foesLed?: boolean }).foesLed, virtue: r.virtue, heroRank: r.heroRank, fell: r.fell, acclaimed: r.acclaimed, powers: r.powers, studies: r.studies, champion: r.champion, town: r.town, ground: r.ground, folk: r.folk, drifted: r.drifted, orders: r.orders as never, leave: r.leave, downed: r.downed, records: (r as { records?: unknown }).records });
       if (c.phase === 'ai') continueAI(c);
     }
     if (c && returnFromVisit(c)) writeCampaign(c);

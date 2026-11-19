@@ -17,6 +17,7 @@ import type { Campaign } from './campaign';
 import { COMPANIES } from './campaignbase';
 import type { Game, Unit } from './game';
 import type { WarHouse } from './warhouse';
+import { recordFor } from './warrecord';
 
 /** A man of an army's roll, as a battle is given him: the army, his town, his name and his house. */
 export interface RollMan { army: number; town: number; name: string; family: string }
@@ -46,7 +47,7 @@ export function rollOf(c: Campaign, army: number): RollMan[] {
   for (const t of c.territories) {
     const houses = (t.folk as { houses?: WarHouse[] } | undefined)?.houses;
     if (!Array.isArray(houses)) continue;
-    for (const h of houses) for (const s of h.away ?? []) if (s.army === army && s.name) out.push({ army, town: t.id, name: s.name, family: h.family, since: s.since });
+    for (const h of houses) for (const s of h.away ?? []) if (s.army === army && s.name) out.push({ army, town: t.id, name: s.name, family: h.family, since: s.since, ...(recordFor(c, s.record) ? { record: recordFor(c, s.record) } : {}) }); // and his record at war (warrecord.ts)
   }
   return out.sort((a, b) => a.since - b.since || a.town - b.town || a.family.localeCompare(b.family) || a.name.localeCompare(b.name)).map(({ since: _, ...m }) => m);
 }

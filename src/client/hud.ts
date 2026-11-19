@@ -1,10 +1,15 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { FORM_WORDS, formOf } from '../sim/formations';
+import { storyEnd } from './missionstory';
+import { bandCount, onTheMove, raiderSteps } from '../sim/raiderguide';
 import { buildingLook, inFaith } from '../sim/faithhouse';
 import { mayGoHome, mayRejoin } from '../sim/furlough';
 import { endCard } from './briefing';
 import { bereftLines } from '../sim/bereft';
 import { oldLine } from '../sim/oldmarks';
+import { recordLines } from '../sim/warrecord';
+import { enlistLine, queueLines, slotFor } from '../sim/pickman';
 import { possessive, renameOwn } from '../sim/naming';
 const cap1 = (s: string): string => s[0].toUpperCase() + s.slice(1);
 import { awayHtml } from './housepanel';
@@ -114,6 +119,8 @@ export class Hud {
       const q = t.closest('[data-q]') as HTMLElement | null;
       const b = this.app.game.entities.get(this.app.sel[0]);
       if (q && b) this.app.game.cmdCancel(this.app.pid, b.id, Number(q.dataset.q));
+      const send = t.closest('[data-send]') as HTMLElement | null;
+      if (send) { this.app.game.cmdSendMan(this.app.pid, Number(send.dataset.send)); this.app.select(this.app.sel); } // who goes to arms (pickman.ts)
       const pick = t.closest('[data-type]') as HTMLElement | null;
       if (pick) this.app.select(this.app.sel.filter((id) => this.app.game.entities.get(id)?.type === pick.dataset.type));
     });
@@ -229,7 +236,7 @@ export class Hud {
       // A battle out of the campaign has its own card: the count of both sides and words its size (briefing.ts). A field has no score to chart.
       const card = this.app.tally ? endCard(game, pid, this.app.tally, win, hex) : null;
       if (card && !byWonder) $('end-text').textContent = card.text;
-      $('end-stats').innerHTML = (LEADERS[civ] ? speechHtml(last) : '') + (card ? card.html : '') + (card && game.field ? '' : this.summary());
+      $('end-stats').innerHTML = storyEnd(this.app.mission?.id, win) + (LEADERS[civ] ? speechHtml(last) : '') + (card ? card.html : '') + (card && game.field ? '' : this.summary()); // a mission's thread goes on (missionstory.ts)
       playLine(last);
       $('end').classList.remove('hidden');
     }
@@ -342,6 +349,9 @@ export class Hud {
         for (const [st, icon, name, desc] of stances) {
           out.push({ id: 'st:' + st, icon: ico('stance_' + st, icon), name: 'Stance: ' + name, desc, active: units.every((u) => u.stance === st), act: () => game.cmdStance(pid, ids, st) });
         }
+        // The order the group keeps on the march: one button (F) that goes round none, line, column, loose (formations.ts).
+        const form = formOf(units), next = form === null ? 'line' : form === 'line' ? 'column' : form === 'column' ? 'loose' : null;
+        out.push({ id: 'form', icon: form === 'column' ? '⫴' : form === 'loose' ? '⁘' : '☰', name: `Order: ${form ? FORM_WORDS[form].name : 'none'}`, desc: `${form ? FORM_WORDS[form].desc : 'Sent somewhere, the group stands in a square about the point.'}<br><span class="stat">Click to set ${next ? `a ${FORM_WORDS[next].name.toLowerCase()}: ${FORM_WORDS[next].desc.toLowerCase()}` : 'no order'}</span>`, active: !!form, act: () => game.cmdFormation(pid, ids, next) });
       }
       // A soldier who is a man of this town may go home to it, and a man home on leave may take up arms again (furlough.ts).
       const away = game.players[pid].furlough?.men.length ?? 0;
@@ -537,6 +547,7 @@ export class Hud {
       if (!d.aura && d.atk > 0 && game.auraAt(e.owner, e.x, e.y) > 1) extra += '<div class="good">👑 Inspired by the Warlord: +25% damage</div>';
       if (d.atk > 0 && game.weakenAt(e.owner, e.x, e.y) < 1) extra += '<div class="warn">📜 Unnerved by an enemy Strategist: −20% damage</div>';
       if (e.kills) extra += `<div${game.veteran(e) > 1 ? ' class="good"' : ''}>⚔️ ${e.kills} ${e.kills === 1 ? 'kill' : 'kills'}${game.veteran(e) > 1 ? `: a veteran, +${Math.round((game.veteran(e) - 1) * 100)}% damage` : ''}</div>`;
+      { const rec = recordLines(e); if (rec.length) extra += `<div class="hint">🎖️ ${rec[0]}</div>` + rec.slice(1).map((l) => `<div class="hint"><small>${l}</small></div>`).join(''); } // his record at war, from the map (warrecord.ts)
       if (!e.hero && !e.merc && canLead(d.cls) && (e.kills ?? 0) >= CHAMPION_KILLS) extra += `<div class="hint">♛ Has made a name: if your leader falls, ${game.canAcclaim(e.owner, e) ? 'they can be raised to lead now' : 'they can be raised to lead'}.</div>`;
       if (d.frenzy) extra += `<div>🪓 Frenzy: striking ${Math.round((1 / (0.45 + 0.55 * (e.hp / e.maxHp)) - 1) * 100)}% faster</div>`;
       for (const tr of [e.trait2, e.trait]) if (tr) extra = `<div class="good">${VILLAGER_TRAITS[tr].icon} ${VILLAGER_TRAITS[tr].name}: ${VILLAGER_TRAITS[tr].desc}</div>` + extra;
@@ -554,6 +565,11 @@ export class Hud {
         extra += game.isElder(e) ? `<div class="hint">🧓 Elder, ${years} years old: works and walks more slowly</div>` : `<div class="hint">${years} years old</div>`;
       }
       { const old = oldLine(e); if (old) extra += `<div class="hint">${old}</div>`; } // still of the people a taken town was taken from (oldmarks.ts)
+      if (e.type === 'villager' && e.owner === pid) { // called to arms, or to be sent (pickman.ts)
+        const going = enlistLine(game, e), slot = going ? null : slotFor(game, e);
+        if (going) extra += `<div class="enlist">⚔️ ${going}</div>`;
+        else if (slot) extra += `<button class="send-man" data-send="${e.id}" title="${slot.q.who && game.entities.get(slot.q.who) ? 'In place of the one on his way, who goes back to his work' : 'The place waits for someone to be trained'}">⚔️ Send to the ${slot.b.def.name} as ${/^[aeiou]/i.test(UNITS[slot.q.id].name) ? 'an' : 'a'} ${UNITS[slot.q.id].name}</button>`;
+      }
       // The nation's leader: their veterancy, what it has added, and what their town makes of them.
       const lead = e.hero ? game.leaderBonus(e) : null;
       if (e.hero && lead) {
@@ -603,6 +619,7 @@ export class Hud {
         }).join('') + '</div>';
         const q = b.queue[0];
         body += this.bar(q.t / q.time) + (q.blocked ? '<div class="warn">Need more houses!</div>' : '');
+        for (const line of queueLines(game, b).slice(0, 4)) body += `<div class="${line.includes('waiting') ? 'warn' : 'hint'}">⚔️ ${line}</div>`; // who goes to arms, or that a place waits for one (pickman.ts)
       }
       if (b.type === 'house') {
         const r = b.residents;
@@ -674,7 +691,8 @@ export class Hud {
     const p = game.players[pid];
     const mine = game.buildings.filter((b) => b.owner === pid);
     const units = game.units.filter((u) => u.owner === pid);
-    const steps: [string, string, boolean][] = [
+    const band = onTheMove(game, pid); // a war band in the open has steps of its own (raiderguide.ts)
+    const steps: [string, string, boolean][] = band ? raiderSteps(game, pid).map((s) => [s.title, s.how, s.done]) : [
       ['Put your villagers to work', 'Drag a box around them, then right-click berries or trees.', units.some((u) => u.order?.t === 'gather') || game.time > 240],
       ['Build a House', 'Select a villager, press Q, then click a spot near the Town Center.', mine.some((b) => b.type === 'house' && b.complete)],
       ['Start a family', 'Select the house and press Q, or right-click it with a man and a woman.', mine.some((b) => b.residents.m && b.residents.f)],
@@ -688,13 +706,13 @@ export class Hud {
     ];
     const i = steps.findIndex((s) => !s[2]);
     const show = !this.guideOff && i >= 0 && !this.app.paused;
-    const sig = show ? String(i) : '';
+    const sig = show ? (band ? 'b' : '') + String(i) : '';
     if (sig === this.guideSig) return;
     this.guideSig = sig;
     const el = $('guide');
     el.classList.toggle('hidden', !show);
     if (!show) return;
-    el.innerHTML = `<h4>First steps ${i + 1}/${steps.length}<button title="Hide these tips">✕</button></h4>` +
+    el.innerHTML = `<h4>${band ? 'A war band' : 'First steps'} ${i + 1}/${steps.length}<button title="Hide these tips">✕</button></h4>` +
       (i > 0 ? `<div class="done">✓ ${steps[i - 1][0]}</div>` : '') +
       `<div class="now"><b>${steps[i][0]}</b><small>${steps[i][1]}</small></div>`;
   }
@@ -775,7 +793,7 @@ export class Hud {
       game.field
         ? `<span title="Your soldiers still standing">${ico('attackmove', '⚔️')} Yours ${mine}</span><span title="The enemy's soldiers still standing" class="${theirs > mine ? 'warn' : ''}">${ico('attackmove', '⚔️')} Theirs ${theirs}</span>`
         : RES_TYPES.map((r) => `<span title="${r}">${RI(r)} ${Math.floor(p.res[r])}</span>`).join('') +
-          `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`,
+          (onTheMove(game, pid) ? `<span title="${bandCount(p.pop, p.popCap).tip}">${ico('population', '👥')} ${bandCount(p.pop, p.popCap).text}</span>` : `<span title="Population" class="${p.pop >= p.popCap ? 'warn' : ''}">${ico('population', '👥')} ${p.pop}/${p.popCap}</span>`), // a war band at its size is not short of houses (raiderguide.ts)
       `${CIVS[p.civ].icon} ${CIVS[p.civ].name} · ` + AGES[p.age].name + aging + wonder + this.weatherTag() + (game.field ? '' : ` · <span class="creed" title="${this.creedTip(p.virtue)}">${creedOf(p.virtue).icon} ${creedOf(p.virtue).name}</span>`),
       String(idle),
       `${mins}:${String(secs).padStart(2, '0')}`,

@@ -14,6 +14,7 @@
  *     is raised in the leader's house, and is no claimant.
  *   - `ofAgeNow`, `named`: a record comes of age and is given a name.
  */
+import { toldIn } from './chroniclethreads';
 import type { Campaign } from './campaign';
 import { NAMES_F, NAMES_M } from './data';
 import { HEIR_AGE } from './dynasty';
@@ -73,7 +74,8 @@ export function named(c: Campaign, cl: Claim): Claim {
 }
 export const endClaim = (c: Campaign, cl: Claim, how: NonNullable<Claim['ended']>['how'], text: string): void => { cl.ended = { turn: c.turn, how, text }; };
 
-const tell = (c: Campaign, f: number, text: string): void => { if (f === 0) c.log.push(text); (c.chronicle ??= []).push({ turn: c.turn, text }); };
+/** Told in the log (the player's own) and the chronicle; a later line of a claimant's story says the year the child was born (chroniclethreads.ts). */
+const tell = (c: Campaign, f: number, text: string, born?: number): void => { if (f === 0) c.log.push(text); (c.chronicle ??= []).push({ turn: c.turn, text: text + toldIn(c, born) }); };
 
 /**
  * A season for the leaders' wives held by bands. Returns the children written down this season.
@@ -87,7 +89,7 @@ export function bandChildren(c: Campaign): Claim[] {
     for (const cl of claimsOn(c, f)) {
       if (cl.parent !== 'band' || cl.grown !== undefined || !s || s.name !== cl.mother || s.lost) continue;
       endClaim(c, cl, 'home', `The child born to ${cl.mother} while she was held has come home with her, and is raised in the leader's house.`);
-      tell(c, f, cl.ended!.text);
+      tell(c, f, cl.ended!.text, cl.born);
     }
     if (!fac.alive || !s || !s.female || s.lost?.how !== 'taken' || s.lost.band === undefined || s.lost.final) continue;
     const band = (c.bands ?? []).find((b) => b.id === s.lost!.band && b.held.some((h) => h.owner === f && (h.names ?? []).includes(s.name)));

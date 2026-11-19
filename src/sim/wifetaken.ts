@@ -38,7 +38,7 @@ export const WIFE = {
   /** With a loyal marshal or right hand at court, the chance is this much of that. */
   loyal: 0.5,
   /** Demanded back: the gifts it costs in supplies, the chance he yields, and seasons before he will hear it again. */
-  gifts: 6, yields: 0.3, again: 4,
+  gifts: 6, yields: 0.15, again: 4,
   /** Seasons she is held with nothing done before she is not seen at court again. */
   keeps: 12,
 };

@@ -1476,7 +1476,12 @@ describe('field battles', () => {
     expect(armySize(army)).toBe(1); // a won battle never erases the army
     ({ c, army } = setup());
     finishBattle(c, false, { clubman: 9 });
-    expect(c.armies.includes(army)).toBe(false); // a lost attack still costs the army
+    // A lost attack falls back with the companies whose men lived, never more than marched (siegeretreat.ts) ...
+    expect(c.armies.includes(army)).toBe(true);
+    expect(army.units).toEqual({ infantry: 5 });
+    ({ c, army } = setup());
+    finishBattle(c, false, {});
+    expect(c.armies.includes(army)).toBe(false); // ... and one where nobody lived is gone
   });
 });
 
@@ -3381,10 +3386,10 @@ describe('a rule of its own for every play style', () => {
 
   it('the Scholars gather faster for everything they have learned', () => {
     const g = two('greece');
-    expect(g.lore(0)).toBe(1);
+    expect(g.lore(0)).toBeCloseTo(1 + R.loreBase);
     g.players[0].techs.add('stonetools'); g.players[0].techs.add('bronzetools');
     g.players[1].techs.add('stonetools');
-    expect(g.lore(0)).toBeCloseTo(1 + 2 * R.lore);
+    expect(g.lore(0)).toBeCloseTo(1 + R.loreBase + 2 * R.lore);
     expect(g.lore(1)).toBe(1);
     for (let i = 0; i < 40; i++) g.players[0].techs.add('t' + i);
     expect(g.lore(0)).toBeCloseTo(1 + R.loreMax);

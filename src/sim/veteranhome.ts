@@ -20,6 +20,7 @@
 import type { Campaign } from './campaign';
 import type { Folk, Notable } from './township';
 import { rememberVeteran } from './township';
+import { soldierWord } from './campaignbase';
 
 declare module './champion' {
   interface Champion {
@@ -110,7 +111,7 @@ export function battleNamed(c: Campaign, armyId: number | undefined, felled: num
   const man = manOfRoll(c, a.owner, a.id, c.turn * 7 + felled);
   if (!man) return undefined;
   const kind = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p])[0] ?? 'infantry';
-  a.champion = { name: man.name, kills: Math.max(3, Math.round(felled * NAMED.share)), unit: kind === 'cavalry' ? 'Rider' : kind === 'archers' ? 'Archer' : 'Soldier', town: man.town, named: { felled } };
+  a.champion = { name: man.name, kills: Math.max(3, Math.round(felled * NAMED.share)), unit: soldierWord(kind), town: man.town, named: { felled } };
   rememberVeteran(c, man.town, { name: man.name, kills: a.champion.kills, unit: a.champion.unit, family: man.family });
   return { name: man.name, town: man.town };
 }

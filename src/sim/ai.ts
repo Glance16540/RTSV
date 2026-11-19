@@ -13,6 +13,7 @@ import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
 import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
 import { fallBack, fightStyle, roomWork, studyReserve, styleWork } from './styleplay';
+import { aiCare } from './aicare';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -219,6 +220,7 @@ export class AIController {
 
     this.assignWorkers(villagers, mine, home);
     if (!underAttack) this.staffHouses(mine, villagers, home);
+    aiCare(g, pid, { army, busy: !!underAttack || this.state === 'attack' }); // its guards, its hungry and its allies', its people held (aicare.ts)
     if (!underAttack) this.slaving(mine, villagers, home);
     if (!underAttack) this.raiding(army, home);
     if (g.sea && !saving) this.navy(mine, ships, villagers, home);
@@ -416,6 +418,7 @@ export class AIController {
         const fresh = idle.filter((u) => Math.hypot(u.x - home.x, u.y - home.y) < 16), afield = idle.filter((u) => !fresh.includes(u));
         const go = g.time >= 1800 || fresh.length >= Math.max(3, Math.floor(attackSize / 3)) || fresh.length === fighters.length ? idle : afield;
         const target = go.length ? this.pickTarget(go[0]) : null;
+        if (target && this.level >= 1) for (const u of go) if (g.isMilitary(u)) u.form = 'line'; // it goes out in a line (formations.ts)
         if (target) g.cmdMove(pid, go.map((u) => u.id), target.x, target.y, true);
       }
     }

@@ -17,6 +17,7 @@
  * - A man whose town is no longer his people's when he comes home settles where the army stands; his old house's
  *   record lets him go.
  */
+import { cleanRecord } from './warrecord';
 import type { Campaign } from './campaign';
 import { FAMILY_NAMES, NAMES_M } from './data';
 import { GRIEF_SEASONS } from './grief';
@@ -65,7 +66,7 @@ export function housesOf(f: Folk): WarHouse[] {
   if (!Array.isArray(f.houses)) f.houses = [];
   for (const h of f.houses) {
     h.family = text(h?.family) || 'Nameless';
-    h.away = (Array.isArray(h.away) ? h.away : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), as: TIES.includes(s.as) ? s.as : 'son', since: Math.round(Number(s.since) || 0), ...(Number.isFinite(Number(s.army)) && s.army !== undefined && s.army !== null ? { army: Math.round(Number(s.army)) } : {}), ...(typeof s.kind === 'string' && /^[a-z]{1,16}$/.test(s.kind) ? { kind: s.kind } : {}) })); // his company's kind (companyroll.ts)
+    h.away = (Array.isArray(h.away) ? h.away : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), as: TIES.includes(s.as) ? s.as : 'son', since: Math.round(Number(s.since) || 0), ...(Number.isFinite(Number(s.army)) && s.army !== undefined && s.army !== null ? { army: Math.round(Number(s.army)) } : {}), ...(typeof s.kind === 'string' && /^[a-z]{1,16}$/.test(s.kind) ? { kind: s.kind } : {}), ...(cleanRecord(s.record) ? { record: cleanRecord(s.record) } : {}) })); // his company's kind (companyroll.ts), his record at war (warrecord.ts)
     if (h.war !== undefined) { h.war = Math.max(0, Math.round(Number(h.war) || 0)); if (!h.war) delete h.war; }
     if (h.home) { h.home = (Array.isArray(h.home) ? h.home : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), door: DOORS.includes(s.door) ? s.door : 'none', turn: Math.round(Number(s.turn) || 0) })); if (!h.home.length) delete h.home; }
     if (h.fallen) h.fallen = (Array.isArray(h.fallen) ? h.fallen : []).filter((s) => s && text(s.name)).map((s) => ({ name: text(s.name), as: TIES.includes(s.as) ? s.as : 'son', turn: Math.round(Number(s.turn) || 0), how: text(s.how, 60) }));

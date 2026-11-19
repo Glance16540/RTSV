@@ -2,6 +2,9 @@
 // then the land selected, leading with what matters (its name and holder, its people and stores, what threatens it,
 // the army there), then what can be done there in groups, and last the lie of the land folded under "The land".
 // Nothing here decides anything: overworld.ts keeps the logic and the clicks (every button keeps its `data-act`).
+import { unfinishedWords } from '../sim/battlescars';
+import { levyLine } from '../sim/levynext'; // who a levy would take (levynext.ts)
+import { landTalesHtml } from './talepanel';
 import { lastGain } from '../sim/seasongain';
 import { ruinWarning } from '../sim/ruin';
 import { creedOf } from '../sim/creed';
@@ -9,14 +12,16 @@ import { PLACES, WORLD_EVENTS } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield } from '../sim/country';
 import { nationHtml, townHtml } from './townpanel';
 import { marketLine } from './caravandraw';
+import { emptyingText, emptyingTowns } from '../sim/larderwatch';
 import { canSendHome, menOf, noMenText } from '../sim/armytown';
 import { bandButtons, threatHtml } from './threatpanel';
 import { intrigueButtons, intrigueHtml } from './intriguepanel';
+import { petitionButtons, petitionHtml } from './petitionpanel'; // a noble's petition (petitions.ts)
 import { orderHtml } from './orderpanel';
 import { freeTownButtons, risenFor } from './freetown';
 import { AGES, CIVS, styleOf } from '../sim/data';
 import {
-  EVENTS, WEATHER, eventsAt, weatherAt, Army, FAITH, faithOf, virtueOf, placeAt, worldNow, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS,
+  EVENTS, WEATHER, eventsAt, weatherAt, Army, FAITH, familyOf, faithOf, virtueOf, placeAt, worldNow, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS,
   ALLIANCE_COST, DOMINION_TURNS, canAlly, canGift, giftCost, truceCost, MAX_FAVOR, MAX_VETERAN, SITES, AGE_COST, AGE_EDGE, ageCost, ageOf, atTruce, armyAt, armyStrength,
   canAdvance, canBuild, canRaise, canSummonHero, defence, dominionNeed, heroCost, landOf, income, slots, territoryIncome, companyCost, siteCost, traitOf, BEATS, WORLD_SHAPES, worldOf, lanesOf, onSea, heroFor,
 } from '../sim/campaign';
@@ -107,9 +112,11 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
       ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · <span title="What an army marching on this town would meet. Against a band the town musters differently: see below.">Defence against an army ${defence(c, t.id)}</span></div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
   const people = `${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div>${t.buildings.map((b) => { const l = siteLook(b, SITES[b], c.factions[t.owner]?.civ); return `${l.icon} ${l.name}`; }).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>`;
-  const danger = `${intrigueHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
+  const emptying = t.owner === 0 ? emptyingTowns(c, 0).filter((x) => x.at === t.id).map((x) => `<div class="bad">🌾 ${emptyingText(x)}</div>`).join('') : ''; // its granary emptying soon (larderwatch.ts)
+  const danger = `${emptying}${intrigueHtml(c, t.id)}${petitionHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}`;
+  const fought = landTalesHtml(c, t.id); // the battles fought here (talepanel.ts)
   const army = `${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a, c)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 && !empty ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 || empty ? '' : 'Select one of your armies to march on this land.'}</div>`;
   const land = `<div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc} <i>${countryOf(c, t.id).rule}</i></div>
@@ -121,10 +128,11 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
       ${weather ? `<div class="bad">${WEATHER[weather as 'rain'].icon} ${WEATHER[weather as 'rain'].name}: ${WEATHER[weather as 'rain'].desc}</div>` : ''}
       ${events.map((e) => `<div class="hint">${EVENTS[e.kind].icon} <b>${EVENTS[e.kind].name}</b>${e.until > c.turn ? ` <small>(${e.until - c.turn + 1} turns left)</small>` : e.kind === 'unrest' || e.kind === 'hoard' ? ' <small>(comes to a head next turn)</small>' : ''}: ${EVENTS[e.kind].desc}</div>`).join('')}
       ${t.town?.b.length && !t.town.coarse ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle${t.town.b.some((b) => b[3] !== undefined && b[4] === undefined) ? `, ${t.town.b.filter((b) => b[3] !== undefined && b[4] === undefined).length} of them damaged and being mended, a tenth each turn` : ''}${t.town.b.some((b) => b[4] !== undefined) ? `, ${t.town.b.filter((b) => b[4] !== undefined).length} left unfinished` : ''}${t.owner >= 0 && !styleOf(c.factions[t.owner].civ).raid && !t.town.b.some((b) => b[0] === 'towncenter') ? '. Its Town Center was razed and has not been raised again' : ''}. Whoever holds the land fights from it as it stands.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
+      ${unfinishedWords(c, t.id) ? `<div class="hint">${unfinishedWords(c, t.id)}</div>` : ''}
       ${t.owner === 0 ? marketLine(c, t.id) : ''}
       ${t.ground && t.ground.gone.length + t.ground.left.length ? '<div class="hint">🪓 This ground has been worked: wood felled, berries picked or stone dug. None of it comes back.</div>' : ''}`;
   const landTitle = `The land <small>${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}${t.trait ? ` · ${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}` : ''}${place ? ` · ${PLACES[place.kind].icon}` : ''}</small>`;
-  return `${head}<div class="lp-section">${people}</div>${danger.trim() ? `<div class="lp-section">${danger}</div>` : ''}<div class="lp-section">${army}</div>${fold('land', landTitle, land)}`;
+  return `${head}<div class="lp-section">${people}</div>${danger.trim() ? `<div class="lp-section">${danger}</div>` : ''}<div class="lp-section">${army}${fought}</div>${fold('land', landTitle, land)}`;
 }
 
 /** What can be done in the land selected, in groups: Raise, Build, Leader, Town, Diplomacy, and the age. Every button keeps its `data-act`. */
@@ -134,7 +142,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
   const group = (title: string, html: string, why = ''): string => (html ? `<div class="lp-group"><h4>${title}</h4>${why ? `<div class="hint lp-why">${why}</div>` : ''}${html}</div>` : '');
   let raise = '', works = '', studies = '', build = '', leader = '', town = '', talk = '', age = '';
   if (t.owner === 0) {
-    for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) raise += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `${noMenText(c, 0, t.id) ? noMenText(c, 0, t.id) + ' ' : ''}Strength ${d.str}. Strong against ${BEATS[k]}. Paid in ${priceText(priceOf(k === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
+    for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs) && (!d.civ || d.civ === me.civ)) raise += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `${noMenText(c, 0, t.id) ? noMenText(c, 0, t.id) + ' ' : ''}${levyLine(c, t.id) ? levyLine(c, t.id) + ' ' : ''}${d.civ ? `Your people's own soldiers, fighting as ${d.base}${(d.age ?? 0) > ageOf(c, 0) ? `, from the ${AGES[d.age ?? 0].name}` : ''}. ` : ''}Strength ${d.str}. Strong against ${BEATS[familyOf(k)]}. Paid in ${priceText(priceOf(familyOf(k) === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
     if (raise && noMenText(c, 0, t.id)) raise += `<p class="lp-note">${noMenText(c, 0, t.id)}</p>`;
     if (a && a.owner === 0) { const men = menOf(c, a); raise += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
     if (ageOf(c, 0) < AGE_COST.length) age += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);
@@ -174,7 +182,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
   return group('Raise troops', raise) +
     group('Raise in this town', works, 'Paid from the town\'s own stores; its governor builds it over the next seasons.') +
     group('Study', studies, 'Paid from this town\'s stores first; once learned, the whole nation knows it.') +
-    group('Build on the land', build, `Paid in supplies. The land holds ${slots(t)} sites; ${t.buildings.length} stand here.`) + group('Leader', leader) + group('Town', town) + group('Diplomacy', talk) + group('The age', age) + group('Bands', bandButtons(c, t.id)) + group('A matter in the town', intrigueButtons(c, t.id));
+    group('Build on the land', build, `Paid in supplies. The land holds ${slots(t)} sites; ${t.buildings.length} stand here.`) + group('Leader', leader) + group('Town', town) + group('Diplomacy', talk) + group('The age', age) + group('Bands', bandButtons(c, t.id)) + group('A matter in the town', intrigueButtons(c, t.id) + petitionButtons(c, t.id));
 }
 
 /** What the last season truly added to what there is to spend (seasongain.ts), or the lands' yield before one is measured. */
