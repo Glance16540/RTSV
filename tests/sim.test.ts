@@ -1292,7 +1292,7 @@ describe('dawn court and wildborn', () => {
     const g = new Game(7, [{ ...setups[0], civ: 'dawn' }, { ...setups[1], civ: 'wild' }]);
     expect(g.unitCost(0, 'shaman')).toEqual({ food: 30, gold: 45 });
     expect(g.unitCost(1, 'shaman')).toEqual({ food: 40, gold: 60 });
-    expect(g.unitCost(1, 'hound')).toEqual({ food: 26 });
+    expect(g.unitCost(1, 'hound')).toEqual({ food: 35 }); // the Norse pay for a hound what anyone pays now (tests/peoplegifts.test.ts)
     // Faith comes back faster to the Dawn Court.
     const mine = g.spawnUnit('prophet', 0, 40.5, 40.5), theirs = g.spawnUnit('prophet', 1, 60.5, 60.5);
     mine.mana = theirs.mana = 0;
@@ -1312,16 +1312,13 @@ describe('dawn court and wildborn', () => {
     expect(g.cmdTrain(0, b0.id, 'wolfrider')).toBe(false);
   });
 
-  it('wild wolves leave the Wildborn alone, and are left alone by them', () => {
+  it('wild wolves attack the Norse as they do anyone (their peace with the wolves was taken away: tests/peoplegifts.test.ts)', () => {
     const g = new Game(3, [{ ...setups[0], civ: 'wild' }, { ...setups[1], civ: 'stonekin' }]);
     const wolf = g.units.find((u) => u.type === 'wolf')!;
-    const friend = g.spawnUnit('villager', 0, wolf.x + 1.5, wolf.y, 'm'), guard = g.spawnUnit('clubman', 0, wolf.x - 1.5, wolf.y);
-    const stranger = g.spawnUnit('villager', 1, wolf.x, wolf.y + 2.5, 'm');
+    const norse = g.spawnUnit('villager', 0, wolf.x + 1.5, wolf.y, 'm');
     g.aging = false;
     run(g, 12);
-    expect(friend.hp).toBe(friend.maxHp);
-    expect(guard.order).toBe(null);
-    expect(stranger.hp < stranger.maxHp || stranger.dead).toBe(true);
+    expect(norse.hp < norse.maxHp || norse.dead).toBe(true);
   });
 });
 
@@ -2503,7 +2500,7 @@ describe('the thirteen nations', () => {
     expect(g.cmdTrain(0, range.id, 'longbowman')).toBe(true);
     expect(g.cmdTrain(0, range.id, 'ashigaru')).toBe(false); // Japanese only
     expect(UNITS.longbowman.range).toBeGreaterThan(UNITS.crossbowman.range);
-    expect(g.players[1].mods.armor).toBe(1); // Greek soldiers
+    expect(g.players[1].mods.armor).toBe(0); // Greek soldiers have no more armour than anyone's now (tests/peoplegifts.test.ts)
     // A billman beats a knight; a hoplite shrugs off arrows.
     const bill = g.spawnUnit('billman', 0, 48, 48), knight = g.spawnUnit('knight', 1, 49, 48);
     g.cmdTarget(0, [bill.id], knight.id); g.cmdTarget(1, [knight.id], bill.id);
