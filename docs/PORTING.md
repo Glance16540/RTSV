@@ -462,7 +462,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 267 modules, 0 naming no test, 0 naming a test file that is missing; 3,667 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 267 modules, 0 naming no test, 0 naming a test file that is missing; 3,746 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -473,17 +473,10 @@ None.
 | Module | Lines | Cases | Tests named |
 | --- | --- | --- | --- |
 | `ai` | 1010 | 4 | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts |
-| `campaignbase` | 356 | 3 | campaignbase.test.ts |
 
 **Few: a smaller module (50 to 149 lines) with 2 cases or fewer.**
 
-| Module | Lines | Cases | Tests named |
-| --- | --- | --- | --- |
-| `raidnews` | 70 | 2 | raidnews.test.ts |
-| `bereft` | 65 | 2 | bereft.test.ts |
-| `battletales` | 57 | 2 | battletales.test.ts |
-| `storypolicy` | 53 | 2 | storypolicy.test.ts |
-| `studiesintown` | 52 | 2 | studiesintown.test.ts |
+None.
 
 **Tested only through another module: none of the tests named takes anything from the module itself.** Its rules are reached by way of a hub or a neighbour, so the cases counted for it are not all about it; when it is ported, the test that proves it is the neighbour's.
 
@@ -493,11 +486,9 @@ None.
 | `storyturn` | 144 | 166 | story.test.ts, sim.test.ts |
 | `battleleader` | 119 | 18 | leader-play.test.ts, leader-rise.test.ts, powers.test.ts |
 | `battlefolk` | 99 | 18 | persistfolk.test.ts, ageing.test.ts |
-| `downedmap` | 64 | 3 | downedmap.test.ts |
 | `places` | 58 | 166 | story.test.ts, sim.test.ts |
 | `threatsbase` | 47 | 17 | threats.test.ts |
 | `carriedhome` | 37 | 8 | battlecarried.test.ts |
-| `writeguard` | 35 | 6 | writeguard.test.ts |
 | `dilemmaacts` | 26 | 3 | dilemmaacts.test.ts |
 | `townrecord` | 9 | 5 | granary.test.ts |
 <!-- /generated:tests -->
