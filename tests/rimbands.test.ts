@@ -85,3 +85,47 @@ describe('the other bands and the rim', () => {
     }
   });
 });
+
+describe('a host out of the wilds is drawn by the richest mark, not the nearest (bandwilds.ts deepWay; report only until the switch)', () => {
+  it('never takes a place it need not march to; goes at least as far as the old weighing on the whole; and some of the time takes the farthest of those nearly as good', async () => {
+    const { deepWay, wayIn: near, markOf } = await import('../src/sim/bandwilds');
+    const { WILDS: W } = await import('../src/sim/bandmarch');
+    let n = 0, farther = 0, nearer = 0, sumDeep = 0, sumOld = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const c = newCampaign(seed, 2, 1, 'hearth');
+      for (const t of c.territories.filter((x) => x.rim)) {
+        const old = near(c, t.id), picks = [0, 1, 2, 3, 4, 5, 6, 7].map((salt) => deepWay(c, t.id, 'raiders', salt));
+        if (!picks[0]) { continue; }
+        for (const d of picks) { expect(d!.steps).toBeGreaterThanOrEqual(2); expect(c.territories[d!.bound].rim).toBeFalsy(); }
+        if (!old) continue; // the old weighing's best was one land off: no march in at all
+        n++;
+        const mean = picks.reduce((k, d) => k + d!.steps, 0) / picks.length;
+        sumDeep += mean; sumOld += old.steps;
+        if (mean > old.steps) farther++; else if (mean < old.steps) nearer++;
+        const m = markOf(c, t.id, picks[0]!, 'raiders');
+        expect(m.depth).toBeGreaterThanOrEqual(picks[0]!.steps);
+        expect(m.depth).toBeLessThanOrEqual(picks[0]!.steps + 1);
+        expect(m.meets).toBeGreaterThanOrEqual(0);
+      }
+    }
+    expect(n).toBeGreaterThan(40);
+    expect(sumDeep / n).toBeGreaterThan(sumOld / n);
+    expect(farther).toBeGreaterThan(nearer);
+    expect(W.near).toBeLessThan(1);
+    expect(W.deep).toBeGreaterThan(0);
+  });
+
+  it('the same seed and salt make the same choice, and a camp that sets out is recorded with its mark and the march it would have made', async () => {
+    const { deepWay } = await import('../src/sim/bandwilds');
+    const { c, b, rim } = born();
+    expect(deepWay(c, rim, 'raiders', 5)).toEqual(deepWay(c, rim, 'raiders', 5));
+    const at = b.at;
+    expect(setOutFromAfar(c, b)).toBe(true);
+    const m = marchOf(c, b.id)!;
+    expect(m.depth).toBeGreaterThanOrEqual(m.lands);
+    expect(m.meets).toBeGreaterThanOrEqual(0);
+    expect(m.would!.lands).toBeGreaterThanOrEqual(2);
+    expect(b.bound).toBe(m.bound); // decided as before: the record's `would` moves nothing
+    expect(b.at).toBe(at);
+  });
+});
