@@ -2,6 +2,7 @@
 // then the land selected, leading with what matters (its name and holder, its people and stores, what threatens it,
 // the army there), then what can be done there in groups, and last the lie of the land folded under "The land".
 // Nothing here decides anything: overworld.ts keeps the logic and the clicks (every button keeps its `data-act`).
+import { unfinishedWords } from '../sim/battlescars';
 import { levyLine } from '../sim/levynext'; // who a levy would take (levynext.ts)
 import { landTalesHtml } from './talepanel';
 import { lastGain } from '../sim/seasongain';
@@ -127,6 +128,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
       ${weather ? `<div class="bad">${WEATHER[weather as 'rain'].icon} ${WEATHER[weather as 'rain'].name}: ${WEATHER[weather as 'rain'].desc}</div>` : ''}
       ${events.map((e) => `<div class="hint">${EVENTS[e.kind].icon} <b>${EVENTS[e.kind].name}</b>${e.until > c.turn ? ` <small>(${e.until - c.turn + 1} turns left)</small>` : e.kind === 'unrest' || e.kind === 'hoard' ? ' <small>(comes to a head next turn)</small>' : ''}: ${EVENTS[e.kind].desc}</div>`).join('')}
       ${t.town?.b.length && !t.town.coarse ? `<div class="hint">🏘️ A town of ${t.town.b.length} building${t.town.b.length > 1 ? 's' : ''} stands on this ground from the last battle${t.town.b.some((b) => b[3] !== undefined && b[4] === undefined) ? `, ${t.town.b.filter((b) => b[3] !== undefined && b[4] === undefined).length} of them damaged and being mended, a tenth each turn` : ''}${t.town.b.some((b) => b[4] !== undefined) ? `, ${t.town.b.filter((b) => b[4] !== undefined).length} left unfinished` : ''}${t.owner >= 0 && !styleOf(c.factions[t.owner].civ).raid && !t.town.b.some((b) => b[0] === 'towncenter') ? '. Its Town Center was razed and has not been raised again' : ''}. Whoever holds the land fights from it as it stands.</div>` : t.owner === 0 && t.buildings.some((b) => b !== 'fortress') ? '<div class="hint">🏘️ What is built here stands in the town when this land is fought over, and what you build in a siege you win stays.</div>' : ''}
+      ${unfinishedWords(c, t.id) ? `<div class="hint">${unfinishedWords(c, t.id)}</div>` : ''}
       ${t.owner === 0 ? marketLine(c, t.id) : ''}
       ${t.ground && t.ground.gone.length + t.ground.left.length ? '<div class="hint">🪓 This ground has been worked: wood felled, berries picked or stone dug. None of it comes back.</div>' : ''}`;
   const landTitle = `The land <small>${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}${t.trait ? ` · ${traitOf(t.trait)!.icon} ${traitOf(t.trait)!.name}` : ''}${place ? ` · ${PLACES[place.kind].icon}` : ''}</small>`;
