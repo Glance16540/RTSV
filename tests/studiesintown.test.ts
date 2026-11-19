@@ -49,3 +49,73 @@ describe('studies in a town', () => {
     expect(STUDY_TOWN.feast).toBeGreaterThan(1);
   });
 });
+
+describe('studies in a town: each rule on its own', () => {
+  const place = (g: Game, type: string, owner: number, complete: boolean) => { const at = spot(g, type, owner); return g.spawnBuilding(type, owner, at.cx, at.cy, complete); };
+
+  it('the figures are the map\'s: half again as fast, four-fifths, seven-tenths, a quarter more', () => {
+    expect(STUDY_TOWN).toEqual({ steward: 1.5, law: 0.8, spies: 0.7, feast: 1.25 });
+  });
+
+  it('markBegun marks only this side\'s works standing half-built and whole, and counts them', () => {
+    const g = new Game(5, setups);
+    const half = place(g, 'barracks', 0, false), done = place(g, 'house', 0, true), fallen = place(g, 'range', 0, false), theirs = place(g, 'barracks', 1, false);
+    fallen.dead = true;
+    const before = g.buildings.filter((b) => b.owner === 0 && !b.dead && !b.complete).length;
+    expect(markBegun(g, 0)).toBe(before);
+    expect(before).toBeGreaterThanOrEqual(1);
+    expect(half.begun).toBe(true);
+    expect(done.begun).toBeUndefined();
+    expect(fallen.begun).toBeUndefined();
+    expect(theirs.begun).toBeUndefined();
+    // Asked again it finds the same works.
+    expect(markBegun(g, 0)).toBe(before);
+    expect(markBegun(g, 1)).toBe(g.buildings.filter((b) => b.owner === 1 && !b.dead && !b.complete).length);
+    expect(theirs.begun).toBe(true);
+  });
+
+  it('a side with nothing half-built marks nothing', () => {
+    const g = new Game(5, setups);
+    for (const b of g.buildings) if (b.owner === 0) b.complete = true;
+    expect(markBegun(g, 0)).toBe(0);
+    expect(g.buildings.some((b) => b.begun)).toBe(false);
+  });
+
+  it('studyBuild: half again as fast only for a work begun before, its people knowing Stewardship', () => {
+    const g = new Game(5, setups);
+    const b = place(g, 'barracks', 0, false), t = place(g, 'barracks', 1, false);
+    expect(studyBuild(g, b)).toBe(1); // not begun, no study
+    markBegun(g, 0); markBegun(g, 1);
+    expect(studyBuild(g, b)).toBe(1); // begun, but the study unknown
+    g.players[0].techs.add('stewardship');
+    expect(studyBuild(g, b)).toBe(STUDY_TOWN.steward);
+    expect(studyBuild(g, t)).toBe(1); // the other side does not know it
+    g.players[0].techs.add('writtenlaw');
+    expect(studyBuild(g, b)).toBe(STUDY_TOWN.steward); // another study changes nothing here
+    b.begun = false;
+    expect(studyBuild(g, b)).toBe(1);
+  });
+
+  it('each study acts on its own measure only, and a side that is not there knows nothing', () => {
+    const g = new Game(5, setups);
+    const all = () => [lawGuard(g, 0), spyWatch(g, 0), feastCare(g, 0)];
+    g.players[0].techs.add('writtenlaw');
+    expect(all()).toEqual([STUDY_TOWN.law, 1, 1]);
+    g.players[0].techs.delete('writtenlaw'); g.players[0].techs.add('spymasters');
+    expect(all()).toEqual([1, STUDY_TOWN.spies, 1]);
+    g.players[0].techs.delete('spymasters'); g.players[0].techs.add('feastdays');
+    expect(all()).toEqual([1, 1, STUDY_TOWN.feast]);
+    // Oaths of Fealty and Pilgrimage do nothing in a town.
+    g.players[0].techs.delete('feastdays'); g.players[0].techs.add('oaths'); g.players[0].techs.add('pilgrimage');
+    expect(all()).toEqual([1, 1, 1]);
+    expect([lawGuard(g, 7), spyWatch(g, 7), feastCare(g, 7)]).toEqual([1, 1, 1]);
+    expect([lawGuard(g, -1), spyWatch(g, -1), feastCare(g, -1)]).toEqual([1, 1, 1]);
+  });
+
+  it('the other side learning them changes nothing for this one', () => {
+    const g = new Game(5, setups);
+    for (const id of ['writtenlaw', 'spymasters', 'feastdays', 'stewardship']) g.players[1].techs.add(id);
+    expect([lawGuard(g, 0), spyWatch(g, 0), feastCare(g, 0)]).toEqual([1, 1, 1]);
+    expect([lawGuard(g, 1), spyWatch(g, 1), feastCare(g, 1)]).toEqual([STUDY_TOWN.law, STUDY_TOWN.spies, STUDY_TOWN.feast]);
+  });
+});

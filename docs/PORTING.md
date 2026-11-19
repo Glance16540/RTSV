@@ -128,7 +128,7 @@ by name.
 | `acts` | 203 | Acts of God on the map: a season of famine, plague and fire in every land that is held, falling on that land's town: its food, its people and its stores (docs/DESIGN.md). | campaign (types only), campaignbase, creed, croprotation, decrees, granary, infirmary, larder, ledger, naming, physicians, plaguenamed, quarantine, stores, townfaith, township, well | acts.test.ts | not yet |
 | `aftermath` | 203 | What a story inside the story leaves behind for years: a town warmed, soured, eased or resentful (its nobles' moods and its own faith), a feud with a defied rival, a bought-off rival who comes back, a marriage alliance that can be called on once, a pardoned plotter who turns loyal or plots again. `Mark`s on the campaign with the town, noble or people each is about; `marksAt`/`marksOfNoble`/`marksWith` for whoever shows them; `callOn`. Run from intrigue's season. | armytown, campaign (types only), campaignbase, chroniclethreads, court, courtstory, intriguebase, kin, nobles, townfaith | aftermath.test.ts | not yet |
 | `ageing` | 137 | A person ages only on the map, a season at a time (docs/DESIGN.md, "Time"). | campaign (types only), data, township (types only) | ageing.test.ts | not yet |
-| `ai` | 1010 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | aicare, aiground, aisiting, aiward, aiworks, besieger, birthonly, calamity, creed, data, game, keeper, map, muster, ownstudies, siegecamp, styleplay, temper | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
+| `ai` | 1010 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | aicare, aiground, aisiting, aiward, aiworks, besieger, birthonly, calamity, creed, data, game, keeper, map, muster, ownstudies, siegecamp, styleplay, temper | ai.test.ts, ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
 | `aicare` | 56 | What the computer player does for its own people and its allies': posts its idle Slavers as guards over unwatched captives, feeds an ally going hungry and buys food when its own go hungry, and sends idle soldiers to free its people held in a rival's camp when it has enough to beat the guard. Called once a second from ai.ts. | aicaptives, famine, game (types only), rescue | aicare.test.ts | not yet |
 | `aicaptives` | 64 | The computer knows captivity is on a clock, in a town: its rescue goes first to the camp where its people have least time left and, in their last two minutes, whatever it is doing; a rescue at a camp of its own is met by its idle soldiers. No sale is made: the sale comes by itself. | captivity, game (types only), rescue | aicaptives.test.ts | not yet |
 | `aiward` | 61 | What a computer-played town does about the marauders in a battle: gets its women indoors while a raiding party is near (marauders' `partyNear`, `hideWomen`) and lets them out when it is gone, and sends its fastest idle soldier round the places a camp could be (`scoutSpots`) while the camp is unfound, the town is at peace and it has soldiers to spare. Called once a second from ai.ts. | game (types only), marauders | aiward.test.ts | not yet |
@@ -143,8 +143,8 @@ by name.
 | `bandroam` | 219 | Bands move: they flee strong armies, plan a way of a few lands toward softer marks, settle as marauders and break up. | bandhorde, bandmarch, campaign (types only), campaignbase, rim, threats | bandroam.test.ts | not yet |
 | `bandseason` | 38 | One season of the threats of men: the one call the campaign makes for all of it. | bandborn, bandcaravan, bandfight, bandhorde, bandmarch, bandroam, bandwilds, campaign (types only), carriedoff, inn, raidnews, threats | threats.test.ts | not yet |
 | `battlecard` | 132 | What a campaign battle or a visit says of itself: the briefing before it (what it is, whom the player leads, what winning means, that no villager is bought), the count of both sides as it is fought, and words the size of what happened. | data, game (types only) | battlecard.test.ts | not yet |
-| `battlefolk` | 99 | A town's people in a battle, out of the battle hub: its own people set down on the field at the ages its record has them (`peopled`), its children set on its roofs' records (`cradled`), and the count of a side's town a battle hands back to the campaign (`censusOf`, which `Game.census` is). | ageing, data, game (types only), household, notableweight, orphantown, township, widowtown, writeguard | persistfolk.test.ts, ageing.test.ts | not yet |
-| `battleleader` | 119 | The leader in a battle, out of the battle hub: who a people's leader is, how their powers are fitted to the hero they are built on, the deeds that raise them through the ranks, the powers they learn, and the call they raise. Game keeps a one-line method of the same name for each. | champion, data, game (types only), hero, powers | leader-play.test.ts, leader-rise.test.ts, powers.test.ts | not yet |
+| `battlefolk` | 99 | A town's people in a battle, out of the battle hub: its own people set down on the field at the ages its record has them (`peopled`), its children set on its roofs' records (`cradled`), and the count of a side's town a battle hands back to the campaign (`censusOf`, which `Game.census` is). | ageing, data, game (types only), household, notableweight, orphantown, township, widowtown, writeguard | battlefolk.test.ts, persistfolk.test.ts, ageing.test.ts | not yet |
+| `battleleader` | 119 | The leader in a battle, out of the battle hub: who a people's leader is, how their powers are fitted to the hero they are built on, the deeds that raise them through the ranks, the powers they learn, and the call they raise. Game keeps a one-line method of the same name for each. | champion, data, game (types only), hero, powers | battleleader.test.ts, leader-play.test.ts, leader-rise.test.ts, powers.test.ts | not yet |
 | `atwork` | 77 | A town at work from its first second: as a visit or a siege defended begins, the player's villagers are set to food, wood, gold and stone by the shares the town works by on the map, each to the nearest of its kind; what they were set to is remembered, so that only work the player changed is written back as orders. | data (types only), game (types only) | atwork.test.ts | not yet |
 | `battlehooks` | 80 | The phases of a battle on the map (set up, settled, written back) and the table of systems registered for each, so that the battle functions in campaign.ts name no system. | campaign (types only), mapbattle (types only) | battlehooks.test.ts | not yet |
 | `battletales` | 57 | A battle fought out on the map read for its panel: where and when, who led, rounds and who broke, losses by kind, walls, who scattered, the named fallen and the man who stood. | campaign (types only), campaignbase, mapbattle (types only), naming | battletales.test.ts | not yet |
@@ -178,7 +178,7 @@ by name.
 | `carriednamed` | 51 | A known person among those a nation leads away from a town it takes is marked carried off by name (as likely as the known are among the grown of that sex), listed with the held, mourned, and known again if got back. | campaign (types only), carriedoff (types only), plaguenamed, township | carriednamed.test.ts | not yet |
 | `carriedout` | 32 | As a battle ends, a side's people held by those who seized them (a raider leading them, a work camp, the lair), by name, house, gender, age and children borne in the camp, for the census (`Census.carried`). | ageing, game (types only), township (types only) | battlecarried.test.ts | not yet |
 | `battlecarried` | 109 | Those carried off in a battle fought in person are held on the map in a land of the attacker's, by name and house (`Held.who`), on carriedoff.ts's clock; a known person is marked carried off; the player is told. Also strikes from the written-back town those a nation led away as it fell (`retake`). | ageing, campaign (types only), carriedoff, carriedout (types only), threats, township | battlecarried.test.ts | not yet |
-| `carriedhome` | 37 | Those a battle carried off, got back, go under their own house's roof on the town's record where it has room. | campaign (types only), roofs (types only), threats (types only) | battlecarried.test.ts | not yet |
+| `carriedhome` | 37 | Those a battle carried off, got back, go under their own house's roof on the town's record where it has room. | campaign (types only), roofs (types only), threats (types only) | carriedhome.test.ts, battlecarried.test.ts | not yet |
 | `warrecord` | 158 | A man's record at war (battles, felled, wounded, the last five) kept on his house's record while he serves, handed to his soldier as a battle is laid out, shown on his panel, and added to by every battle, in person or on the map. | campaign (types only), game (types only), soldiernames (types only), warhouse (types only) | warrecord.test.ts | not yet |
 | `pickman` | 98 | Who goes to arms, seen and chosen: where a villager called to arms is going, who each soldier's place in a queue is to be made from (or that it waits), and the player sending a villager of their choosing. | data, game (types only), muster | pickman.test.ts | not yet |
 | `levynext` | 31 | Who a company raised in a town now would take, by name and house, from the same rule warhouse.ts enlists by, on a copy of the town's record. | armytown, campaign (types only), warhouse | pickman.test.ts | not yet |
@@ -319,10 +319,10 @@ by name.
 | `oaths` | 8 | Oaths of Fealty, a study: the nation's nobles' moods swing less, for decrees and hard seasons alike. | campaign (types only), studies | oaths.test.ts | not yet |
 | `orphans` | 77 | Children taken in: a town left with no grown people sends its children, with their ages, to the nearest town of its own people, or of the nearest other people if it has none (docs/DESIGN.md, "Children are never shown"). | ageing, campaign (types only), township | orphans.test.ts | not yet |
 | `ownstudies` | 109 | Each people its own (docs/DESIGN.md): the one study each nation alone can learn (a study of studies.ts's, marked with its nation), who may learn it, and what it is worth on the map to the system it answers (births, resentment, unrest, stores, defence, governors, convoys, nobles, faith, country). | campaign (types only), data, studies, township | ownstudies.test.ts | not yet |
-| `path` | 266 | Grid A* with rectangle goals and line-of-sight smoothing. | none | sim.test.ts (through game: none of its own) | not yet |
+| `path` | 266 | Grid A* with rectangle goals and line-of-sight smoothing. | none | path.test.ts, sim.test.ts (through game: none of its own) | not yet |
 | `physicians` | 17 | Physicians, a study after Herbalism: plague takes fewer on the map; healers heal faster in a town. | campaign (types only), studies | foodstudies.test.ts | not yet |
 | `pilgrimage` | 8 | Pilgrimage, a study: the nation's towns are drawn toward its faith the faster. | campaign (types only), studies | pilgrimage.test.ts | not yet |
-| `places` | 58 | The named places of a world and what is befalling the whole world, out of the campaign hub: `placesOf`, `placeAt`, `placeGood`, `placeWorth`, `worldNow`. Chosen and named by the seed, the same in every telling. | campaign (types only), campaignbase, story | story.test.ts, sim.test.ts | not yet |
+| `places` | 58 | The named places of a world and what is befalling the whole world, out of the campaign hub: `placesOf`, `placeAt`, `placeGood`, `placeWorth`, `worldNow`. Chosen and named by the seed, the same in every telling. | campaign (types only), campaignbase, story | places.test.ts, story.test.ts, sim.test.ts | not yet |
 | `plaguenamed` | 52 | The dead of plague on the map by name where they are known: each one dead is a known person of the town at home as likely as the known are among its grown, the one known longest taken, marked lost to plague, told and chronicled. | campaign (types only), township | plaguenamed.test.ts | not yet |
 | `plenty` | 80 | What a town or a nation may spend on a work or a study and what it must keep: one rule for every governor's and rival's purchase. | campaign (types only), township | plenty.test.ts | not yet |
 | `portrait` | 257 | Portraits: which woodblock icon stands beside a person, and which marks sit over it (docs/DESIGN.md, "Icons tell | campaign (types only), champion, conquered, faces, famine, game (types only), grief, household, notableweight, township | portrait.test.ts | not yet |
@@ -363,20 +363,20 @@ by name.
 | `stores` | 107 | Stores replace supplies (docs/DESIGN.md, "Stores"): a nation's supplies are what its towns hold above their working stock, and every gain or loss on the map is carried into the towns. | campaign (types only), township | stores.test.ts | not yet |
 | `steward` | 62 | The Steward, a third calling for the leader: a hero whose presence makes villagers near them gather and build faster, whose call (Man the walls) spares buildings near them harm, and their three pairs of powers. Read by powers.ts (calls and powers) and game.ts (work and harm). | data, game (types only) | steward.test.ts | not yet |
 | `story` | 197 | The story of a campaign: places with names and a past, things that happen to the whole world, tales that are | campaign (types only), creed, ruin | story.test.ts | not yet |
-| `storyturn` | 144 | The story's turn, out of the campaign hub: what befalls the whole world, the tales put before the player and how an answer is carried out (`taleNow`, `taleText`, `canAnswer`, `answerTale`), and how each rival answers its own. One call a season (`storyTurn`). | armytown, campaign (types only), campaignbase, chroniclethreads, creed, places, prices, stores, story, temper, townfaith, tribes | story.test.ts, sim.test.ts | not yet |
+| `storyturn` | 144 | The story's turn, out of the campaign hub: what befalls the whole world, the tales put before the player and how an answer is carried out (`taleNow`, `taleText`, `canAnswer`, `answerTale`), and how each rival answers its own. One call a season (`storyTurn`). | armytown, campaign (types only), campaignbase, chroniclethreads, creed, places, prices, stores, story, temper, townfaith, tribes | storyturn.test.ts, story.test.ts, sim.test.ts | not yet |
 | `storyvisit` | 45 | The map side of fieldstory: `storyForVisit` hands a visit the player's thief or killer in the town; `storyFromVisit` writes back what came of it (the thief taken, for judgement; suspects cleared, each with a clue), not believing the field blindly. | campaign (types only), fieldstory (types only), intrigue, intriguebase | fieldstory.test.ts | not yet |
 | `strengthwords` | 19 | Strengths as a player reads them: whole numbers with a word (weak, strong), and totals that say "about" when rounded parts would not add up. | none | strengthwords.test.ts | not yet |
 | `studies` | 153 | A nation's studies on the map: a tech that says what it `answers` is the nation's, learned in a town where the building that teaches it stands (paid in goods from that town first), known in a visit and brought home from one; rival nations learn the one answering what presses on them. | campaign (types only), campaignbase, data, plenty, township | studies.test.ts | not yet |
 | `suitors` | 94 | Going to marry (docs/DESIGN.md): a town with grown people of one sex only, or badly short of one, draws the unmarried of its people's other towns, by road as a convoy goes. | armytown, campaign (types only), convoys, township | suitors.test.ts | not yet |
 | `tavernfall` | 24 | The tavern as a town falls. As a town grows less moral its tavern keeps later hours and takes more gold; what is | creed | tavernfall.test.ts | not yet |
 | `temper` | 127 | A leader's temperament, as answered by whoever plays them in the voice booth. It steers how the | none | sim.test.ts (none of its own) | not yet |
-| `threatsbase` | 47 | The numbers of the threats of men, apart from the rules that use them, so that a system below those rules can read one without a ring of imports. | none | threats.test.ts | not yet |
+| `threatsbase` | 47 | The numbers of the threats of men, apart from the rules that use them, so that a system below those rules can read one without a ring of imports. | none | threatsbase.test.ts, threats.test.ts | not yet |
 | `threats` | 476 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it: who the bands are, how a town struck defends itself, the report, and captives held and got back. | acts, ageing, armytown, campaign (types only), campaignbase, creed, drift, fortress, heralds, larder, leaderstay, militia, militiatoll, naming, oldfolk, ownstudies, raidclash, rim, roadclash, stores, strengthwords, threatsbase, townfaith, township, townwatch, watchtally | threats.test.ts | not yet |
 | `townfaith` | 126 | Faith is a town's (docs/DESIGN.md): every town's own standing between piety and decadence, and the nation's as the mean of its towns'. | campaign (types only), campaignbase, churchtavern, creed, leaderstay, ownstudies, pilgrimage, places, story, townlean, townlife | townfaith.test.ts | not yet |
 | `townlife` | 78 | A town's own life moves its faith: hunger and plague toward decadence, a long peace with full stores toward piety (raids move it already, threats.ts). | campaign (types only), larder, township | townlife.test.ts | not yet |
 | `townorders` | 93 | A governor's standing orders from the player: what to put first, what not to build, how much to keep, whether people may leave; the governor and migration read them. | campaign (types only), township (types only) | townorders.test.ts | not yet |
 | `townmuster` | 113 | A town left to itself keeps training (docs/DESIGN.md): each season a town of the player's with a training order raises one company from its own men and its own stores, within what a town keeps of both. | armytown, campaign (types only), campaignbase, data, governor, places, stores, township | townmuster.test.ts | not yet |
-| `townrecord` | 9 | What stands on a town's record, read with nothing else imported: for rules modules that ask after a building of theirs without a cycle. | campaign (types only) | granary.test.ts | not yet |
+| `townrecord` | 9 | What stands on a town's record, read with nothing else imported: for rules modules that ask after a building of theirs without a cycle. | campaign (types only) | townrecord.test.ts, granary.test.ts | not yet |
 | `townwatch` | 30 | Town Watch, a study taught at the Watch House: a town with a Watch House stands a company stronger against a band, and fewer thieves and killers begin among the people. Reads only the nation's studies and what stands in the town. | campaign (types only), studies | townwatch.test.ts | not yet |
 | `township` | 238 | Towns that keep their people and their stores (docs/DESIGN.md, step 2). | ageing, campaign (types only), fieldcap, household, ledger, notableweight, oldmarks, orphantown, widowtown, writeguard | township.test.ts | not yet |
 | `townworks` | 58 | Buildings raised on the map: any building marked `onMap` is begun on a town's record at a free plot, out of the town's own stores, and the governor finishes it. | campaign (types only), campaignbase, creed, data, governor, rivalrule, studies, townfaith, township | studies.test.ts | not yet |
@@ -468,7 +468,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 272 modules, 0 naming no test, 0 naming a test file that is missing; 3,683 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 272 modules, 0 naming no test, 0 naming a test file that is missing; 3,902 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -476,36 +476,15 @@ None.
 
 **Light: a module of 150 lines or more with fewer than one case for every 60 lines.** These are also exercised through other modules' tests, the fingerprint and the health report; the count here is only of the tests named for them.
 
-| Module | Lines | Cases | Tests named |
-| --- | --- | --- | --- |
-| `ai` | 1010 | 4 | ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts |
-| `campaignbase` | 356 | 3 | campaignbase.test.ts |
+None.
 
 **Few: a smaller module (50 to 149 lines) with 2 cases or fewer.**
 
-| Module | Lines | Cases | Tests named |
-| --- | --- | --- | --- |
-| `raidnews` | 70 | 2 | raidnews.test.ts |
-| `bereft` | 65 | 2 | bereft.test.ts |
-| `battletales` | 57 | 2 | battletales.test.ts |
-| `storypolicy` | 53 | 2 | storypolicy.test.ts |
-| `studiesintown` | 52 | 2 | studiesintown.test.ts |
+None.
 
 **Tested only through another module: none of the tests named takes anything from the module itself.** Its rules are reached by way of a hub or a neighbour, so the cases counted for it are not all about it; when it is ported, the test that proves it is the neighbour's.
 
-| Module | Lines | Cases | Tests named |
-| --- | --- | --- | --- |
-| `path` | 266 | 155 | sim.test.ts |
-| `storyturn` | 144 | 166 | story.test.ts, sim.test.ts |
-| `battleleader` | 119 | 18 | leader-play.test.ts, leader-rise.test.ts, powers.test.ts |
-| `battlefolk` | 99 | 18 | persistfolk.test.ts, ageing.test.ts |
-| `downedmap` | 64 | 3 | downedmap.test.ts |
-| `places` | 58 | 166 | story.test.ts, sim.test.ts |
-| `threatsbase` | 47 | 17 | threats.test.ts |
-| `carriedhome` | 37 | 8 | battlecarried.test.ts |
-| `writeguard` | 35 | 6 | writeguard.test.ts |
-| `dilemmaacts` | 26 | 3 | dilemmaacts.test.ts |
-| `townrecord` | 9 | 5 | granary.test.ts |
+None.
 <!-- /generated:tests -->
 <!-- generated:constants -->
 ## Where the constants live (generated)
