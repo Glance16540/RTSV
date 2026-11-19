@@ -6,6 +6,8 @@
 // figures under a standard that march from land to land, and the map moves: the sea runs, cloud drifts and throws
 // shadow, weather fronts pass with rain, snow or dust, birds wheel, ships go by, and smoke rises from the towns.
 
+import { scarsOf } from '../sim/battlescars';
+import { scarPieces } from './scardraw';
 import { RIM_PAINT, bandCamp, paintRim, rimTint, seenByPlayer, wasteOf } from './rimdraw';
 import { Walker, walk, walkerFor } from './caravandraw';
 import { convoyWalkers } from './convoydraw';
@@ -1165,6 +1167,7 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       if (t.capital >= 0) { const pole = new THREE.Group(); pole.position.set(X - 3.4, y, Z - 0.8); pole.scale.setScalar(1.6); flagOn(pole, 0, 2.55, 0, c.factions[t.capital].color, 1); this.pieces.add(pole); }
       // Hearth-smoke over every place that is lived in.
       if (t.owner >= 0 && (t.capital >= 0 || t.buildings.length)) for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(smokeG, smokeM.clone()); this.pieces.add(m); this.smokes.push({ m, x: X - 3.4, y: y + (t.capital >= 0 ? 4.2 : 1.6), z: Z - 0.8, ph: k / 3 + t.id * 0.37 }); }
+      { const sc = scarsOf(c, t.id); if (sc.damaged) { const s2 = scarPieces(sc.share, sc.damaged, X - 3.4, y, Z - 0.8, t.id); this.pieces.add(s2.group); this.smokes.push(...s2.puffs); } } // its scars, until they are mended (scardraw.ts)
       }
 
       // Its name, standing over it.
