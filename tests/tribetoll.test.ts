@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { moveArmy, newCampaign, resolvePending } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
-import { FELL, militiaFell, tribeFell } from '../src/sim/militiatoll';
+import { FELL, militiaFell, openToll, tribeFell } from '../src/sim/militiatoll';
 import type { Outcome } from '../src/sim/mapbattle';
 import { bandMen, setTribe, warriorsOf } from '../src/sim/tribes';
 import { TOLL, folkOf } from '../src/sim/township';
@@ -88,8 +88,43 @@ describe('a tribe that beats an attack off (the double count)', () => {
     expect(tollByFight(c0, p, { how: 'auto', fought: {} })).toBe(true);
     expect(tollByFight(c0, p, { how: 'attacker', fought: {} })).toBe(false); // fought in person: the census says who fell
     expect(tollByFight(c0, p, { how: 'auto' })).toBe(false); // summed, not fought
+    c0.territories[0].owner = 1; // a nation's land met in the open: its army's companies are counted with the army
     expect(tollByFight(c0, { to: 0, mode: 'field' } as never, { how: 'auto', fought: {} })).toBe(false);
+    c0.territories[0].owner = -1; // a tribe's, met in the open: by the fight (openToll)
+    expect(tollByFight(c0, { to: 0, mode: 'field' } as never, { how: 'auto', fought: {} })).toBe(true);
     c0.territories[0].horde = true;
     expect(tollByFight(c0, p, { how: 'auto', fought: {} })).toBe(false); // the marauders' land
+  });
+});
+
+describe('a tribe met in the open, with nobody watching', () => {
+  it('buries the men its bands lost in that fight, its stores are not looted for it, and a nation\'s land answers nothing', () => {
+    const { c, home, tribe } = world();
+    expect(openToll(c, home.id, fight(1, true))).toBeUndefined();
+    expect(openToll(c, tribe.id, null)).toBeUndefined();
+    setTribe(c, tribe.id, 3);
+    expect(openToll(c, tribe.id, fight(0.5))).toBe(tribeFell(c, tribe.id, fight(0.5)));
+    let fought = 0, buried = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const w = world(seed);
+      setTribe(w.c, w.tribe.id, 3);
+      const f = folkOf(w.c, w.tribe.id), men = f.men, women = f.women, children = f.children;
+      f.stores = { food: 500, wood: 500, gold: 500, stone: 500 };
+      w.c.armies = w.c.armies.filter((a) => a.owner !== 0);
+      w.c.armies.push({ id: 801, owner: 0, at: w.home.id, units: { infantry: 8 }, hero: false, vet: 0, moved: false });
+      if (moveArmy(w.c, 801, w.tribe.id) !== 'battle') continue;
+      w.c.pending!.mode = 'field';
+      resolvePending(w.c, 'auto');
+      fought++;
+      const after = folkOf(w.c, w.tribe.id), lost = men - after.men;
+      expect(lost).toBeGreaterThanOrEqual(0);
+      expect(lost).toBeLessThanOrEqual(Math.round(men * FELL.dead) + 1);
+      if (lost > 0) buried++;
+      expect(after.women).toBeLessThanOrEqual(women);
+      expect(after.children).toBeLessThanOrEqual(children);
+      if (w.c.territories[w.tribe.id].owner < 0) expect(after.stores.gold).toBe(500); // it held: nothing is taken from it
+    }
+    expect(fought).toBeGreaterThan(10);
+    expect(buried).toBeGreaterThan(5); // before, a tribe met in the open and left to the armies buried nobody unless it won
   });
 });
