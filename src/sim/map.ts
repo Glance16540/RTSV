@@ -1,4 +1,5 @@
 // Procedural, point-symmetric two-player map generation.
+import { layWater, type WaterShape } from './waterlay';
 
 export const T_GRASS = 0;
 export const T_WATER = 1;
@@ -58,7 +59,7 @@ function valueNoise(rng: () => number, size: number, scale: number): (x: number,
  * @param sea Put a great lake in the middle of the map, for fishing and warships.
  * @param relief Raise hills and mountain ranges. Mountains cannot be crossed; hills can, and give the high ground.
  */
-export function generateMap(seed: number, size = 96, players = 2, sea = false, relief = false, climate: Climate = ''): MapSpec {
+export function generateMap(seed: number, size = 96, players = 2, sea = false, relief = false, climate: Climate = '', o: { /** The water of the land round the ground (waterlay.ts). */ water?: WaterShape } = {}): MapSpec {
   const rng = mulberry32(seed);
   const N = size;
   const terrain = new Uint8Array(N * N);
@@ -92,9 +93,10 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false, r
       const i = y * N + x;
       if (d < 5) terrain[i] = T_DIRT;
       else if (d > 15 && sym(waterN, x, y) > 0.66) terrain[i] = T_WATER;
-      else if (sea && d > 15 && Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2) < N * 0.2 * (0.75 + 0.5 * sym(waterN, x, y))) terrain[i] = T_WATER;
+      else if (sea && !o.water?.shore && d > 15 && Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2) < N * 0.2 * (0.75 + 0.5 * sym(waterN, x, y))) terrain[i] = T_WATER; // a shore, where the land has one, in place of the lake (waterlay.ts)
     }
   }
+  if (o.water) layWater(terrain, N, seed, o.water, corners); // the land's own shore, river and islands (waterlay.ts)
 
   // Hills and mountains use their own dice, so the rest of the land is laid out by the same rolls with or without them.
   const height = new Float32Array(N * N);
@@ -144,6 +146,8 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false, r
   const putPair = (type: NodeType, cx: number, cy: number) => {
     const s = type === 'gold' || type === 'stone' ? 2 : 1;
     const im = images(cx, cy, s);
+    // On ground with the land's own water (waterlay.ts) the corners are not alike: each image goes where there is room.
+    if (o.water) { let any = false; for (const [x, y] of im) any = put(type, x, y) || any; return any; }
     if (!im.every(([x, y]) => free(x, y, s))) return false;
     for (const [x, y] of im) put(type, x, y);
     return true;
@@ -190,21 +194,22 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false, r
     }
 
   // Guarantee a land route from the first base to every other by carving one where needed.
-  for (const target of starts.slice(1)) {
+  const routed = o.water?.dry?.length ? o.water.dry.map((i) => corners[i]).filter(Boolean) : starts; // with the land's own water, only the corners anyone starts in are joined
+  for (const target of routed.slice(1)) {
     const blocked = new Uint8Array(N * N);
     for (const n of nodes) {
       const sz = n.type === 'gold' || n.type === 'stone' ? 2 : 1;
       for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) blocked[(n.cy + y) * N + n.cx + x] = 1;
     }
     for (let i = 0; i < N * N; i++) if (terrain[i] === T_WATER || terrain[i] === T_ROCK) blocked[i] = 1;
-    if (connected(N, blocked, starts[0], target)) continue;
+    if (connected(N, blocked, routed[0], target)) continue;
     const carve = new Uint8Array(N * N);
     const steps = N * 3;
     for (let k = 0; k <= steps; k++) {
       const t = k / steps;
       const wob = Math.sin(t * Math.PI * 3) * 6;
-      const x = starts[0].x + (target.x - starts[0].x) * t + wob;
-      const y = starts[0].y + (target.y - starts[0].y) * t - wob;
+      const x = routed[0].x + (target.x - routed[0].x) * t + wob;
+      const y = routed[0].y + (target.y - routed[0].y) * t - wob;
       for (let dy = -2; dy <= 2; dy++)
         for (let dx = -2; dx <= 2; dx++) {
           const cx = Math.floor(x) + dx, cy = Math.floor(y) + dy;
@@ -221,9 +226,9 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false, r
   // Fish shoals in open water. They use their own dice so that the land is the same with or without them.
   const fishRng = mulberry32(seed ^ 0x51f15e);
   const wet = (x: number, y: number) => x > 0 && y > 0 && x < N - 1 && y < N - 1 && terrain[y * N + x] === T_WATER && !taken[y * N + x];
-  for (let k = Math.round((sea ? 9 : 3) * ((N * N) / (96 * 96))), tries = 0; k > 0 && tries < 600; tries++) {
+  for (let k = Math.round((sea || o.water ? 9 : 3) * ((N * N) / (96 * 96))), tries = 0; k > 0 && tries < 600; tries++) {
     const x = 2 + Math.floor(fishRng() * (N - 4)), y = 2 + Math.floor(fishRng() * (N - 4));
-    const im = images(x, y);
+    const im: [number, number][] = o.water ? [[x, y]] : images(x, y); // the land's own water is not the same from every corner
     if (!im.every(([ix, iy]) => wet(ix, iy))) continue;
     for (const [ix, iy] of im) if (!taken[iy * N + ix]) { taken[iy * N + ix] = 1; nodes.push({ type: 'fish', cx: ix, cy: iy }); }
     k--;
@@ -236,8 +241,9 @@ export function generateMap(seed: number, size = 96, players = 2, sea = false, r
     for (let k = 0; k < count * 4 && placed < count; k++) {
       const ax = x + (rng() - 0.5) * 4, ay = y + (rng() - 0.5) * 4;
       const im: [number, number][] = quad ? [[ax, ay], [N - ay, ax], [N - ax, N - ay], [ay, N - ax]] : [[ax, ay], [N - ax, N - ay]];
-      if (!im.every(([x, y]) => free(Math.floor(x), Math.floor(y)))) continue;
-      for (const [x, y] of im) animals.push({ type, x, y });
+      const ok = im.filter(([x, y]) => free(Math.floor(x), Math.floor(y)));
+      if (o.water ? !ok.length : ok.length < im.length) continue; // on the land's own water, each beast where there is room
+      for (const [x, y] of ok) animals.push({ type, x, y });
       placed++;
     }
     return placed;

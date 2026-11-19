@@ -43,6 +43,9 @@ import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { storyTick, type FieldStory } from './fieldstory';
 import { placeBar } from './placebar';
+import type { WaterShape } from './waterlay';
+/** The land's water, carried on the town's side, with the corners anyone starts in kept dry (waterlay.ts). */
+const waterWith = (setups: PlayerSetup[]): WaterShape | undefined => { const w = setups.find((x) => x.water)?.water; const dry = setups.map((x) => x.start).filter((v): v is number => v !== undefined); return w ? { ...w, ...(dry.length ? { dry } : {}) } : undefined; };
 import { handRoadsTick } from './handroads';
 import { courtTick, type FieldCourt } from './courtfield';
 import { boughtIn } from './contagion';
@@ -373,6 +376,8 @@ export interface PlayerSetup {
    * four, whoever is there, so the same ground is the same every time it is fought over.
    */
   start?: number;
+  /** The water of the land round the ground, on the side whose town it is (waterlay.ts, townwater.ts). */
+  water?: WaterShape;
 }
 
 /** How a raider's taking of someone is set down in their record. */
@@ -466,7 +471,7 @@ export class Game {
   constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false, public climate: Climate = '') {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
     const placed = setups.some((s) => s.start !== undefined);
-    this.spec = generateMap(seed, size, placed ? 4 : setups.length, sea, relief, climate);
+    this.spec = generateMap(seed, size, placed ? 4 : setups.length, sea, relief, climate, { water: waterWith(setups) }); // the land's own water, carried on the town's side (waterlay.ts)
     if (placed) {
       // Corners named by the players are theirs; the rest take what is left, in order.
       const free = [0, 1, 2, 3].filter((k) => !setups.some((s) => s.start === k));
