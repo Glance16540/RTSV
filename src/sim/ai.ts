@@ -136,7 +136,7 @@ export class AIController {
       if (at && v) g.cmdPlace(pid, 'storehouse', at.cx, at.cy, [v.id]);
     }
     // A besieging camp with no villagers: its soldiers raise its workshop and it crews rams from them (siegecamp.ts).
-    if (Math.floor(g.time) % 3 === 0 && this.stormed && this.state === 'build') campWorks(g, pid, (type, near, men) => { const at = this.findSpot(type, near.x, near.y, 4, CAMP.near); return at ? g.cmdPlace(pid, type, at.cx, at.cy, men.map((u) => u.id)) : null; });
+    if (Math.floor(g.time) % 3 === 0) campWorks(g, pid, (type, near, men) => { const at = this.findSpot(type, near.x, near.y, 4, CAMP.near); return at ? g.cmdPlace(pid, type, at.cx, at.cy, men.map((u) => u.id)) : null; });
     const underAttack = p.lastAttacked && g.time - p.lastAttacked.t < 6 && Math.hypot(p.lastAttacked.x - home.x, p.lastAttacked.y - home.y) < 28;
     // A soldier is a hand taken from the fields: the town keeps enough of them to live.
     this.spare = villagers.length > HANDS_KEPT[p.age] * (underAttack ? 0.5 : 1);

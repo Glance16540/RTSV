@@ -10,8 +10,7 @@
 //   - a siege engine is crewed by one of its foot soldiers, called in as a villager would be (muster.ts asks
 //     `campCrew` when it has no villager to call), so the workshop is of use with nobody else in the camp;
 //   - the computer, besieging, raises its workshop with two of its soldiers once it is of the age and can pay
-//     (`campWorks`), only once its first storm has gone in and failed, with the men idle by then: as a second wave. Raised
-//     before the storm, the workshop and its crews were men out of the line, and the computer won fewer sieges for it.
+//     (`campWorks`, asked by ai.ts each update).
 // A skirmish, a mission, a field battle, the defender and a war band are not touched.
 // Plain data: it reads the field and gives orders only as the field already does.
 import type { Building, Game, Unit } from './game';
