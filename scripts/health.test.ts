@@ -230,6 +230,8 @@ interface Watch {
   dead: DeadTown[];
   /** People killed by plague in the first twenty years, every people and the tribes together (the season's ledger). */
   plagueDead: number;
+  /** Households that moved between a people's towns in the first twenty years (migration.ts), the people with them, why they went, and settlers who founded a town. */
+  moves: { households: number; people: number; settlers: number; why: Record<string, number> };
   hungerDead: Record<number, number>; // by people, over the first 20 years
   worstHunger: number; // the largest share of a town lost to hunger in one season
   storeSeasons: number[]; // each nation that had a stretch of peace: the median, over its seasons of peace, of the seasons of food it had in store
@@ -302,7 +304,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const c = newCampaign(seed, 2, 1, civOf(seed));
   watched = [];
   if (!ruled) c.decreesOff = true;
-  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, claims: { wives: 0, noble: 0, band: 0, home: 0, grown: 0, nofollowing: 0, towns: 0, putdown: 0, swallowed: 0, lapsed: 0, crowned: 0, standing: 0, mine: 0, mineGrown: 0, mineGrownNoble: 0, raised: 0, mineRisen: 0, mineRisenNoble: 0, mineChild: 0 }, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [], named: { battle: 0, wins: 0, share: [], kills: [], mine: 0 } };
+  const w: Watch = { decided: -1, how: '', stories: 0, storyYears: 0, ages: [], growth: [], grownGrowth: [], townSeasons: [], townLives: 0, diedOut: 0, diedAfterAll: 0, dead: [], plagueDead: 0, moves: { households: 0, people: 0, settlers: 0, why: {} }, hungerDead: {}, worstHunger: 0, storeSeasons: [], peaceSeasons: 0, faithGaps: [], holyMoves: [], lords20: { player: 0, playerAngry: 0, playerContent: 0, rivals: 0, rivalsAngry: 0, rivalsContent: 0, plots: 0 }, lordActs: { help: 0, withhold: 0, joined: 0 }, gold20: [], grain: { buys: 0, food: 0, gold: 0 }, halls: { rivals: 0, with: 0 }, houses: { holy: 0, with: 0 }, raids: [], raidTownYears: 0, strikes: [], firstAge: -1, stirs: [], free: { rose: 0, back: 0, retaken: 0, taken: 0, still: 0 }, marches: [], bandsCame: 0, claims: { wives: 0, noble: 0, band: 0, home: 0, grown: 0, nofollowing: 0, towns: 0, putdown: 0, swallowed: 0, lapsed: 0, crowned: 0, standing: 0, mine: 0, mineGrown: 0, mineGrownNoble: 0, raised: 0, mineRisen: 0, mineRisenNoble: 0, mineChild: 0 }, crimes: [], convoys: [], hungers: [], mine: { seasons: 0, hungry: 0, grown: 0 }, captives: [], taken: [], retaken: 0, unsettled: 0, arms: [], reached60: [], reached70: [], sieges: [], falling: 0, fallingTowns: 0, driftSeasons: { lost: 0, ts: 0 }, met: -1, driftLost: [], named: { battle: 0, wins: 0, share: [], kills: [], mine: 0 } };
   const start = c.territories.map((t) => ({ owner: t.owner, grown: grown(folkOf(c, t.id)), all: grown(folkOf(c, t.id)) + folkOf(c, t.id).children, standing: townStanding(c, t.id) }));
   const steady = c.territories.map((t) => t.owner >= 0); // held by the one people since the start
   const lostTo = c.territories.map(() => 0); // standing each town has lost to drift alone (drift.ts)
@@ -316,6 +318,7 @@ function play(seed: number, ruled: boolean, seasons: number, forced: '' | keyof 
   const alive = c.territories.map((t) => grown(folkOf(c, t.id)) + folkOf(c, t.id).children > 0);
   const convoyTo = new Set<number>();
   const groups = new Map<string, { near: boolean; since: number }>();
+  const movesSeen = new WeakSet<object>(); // the moves already counted (migration.ts keeps the last few on `c.moves`)
   const takenAt = new Map<number, { since: number; owner: number; garrisoned: number; seen: number }>();
   let logAt = c.log.length;
   const hungrySpell = c.territories.map((): { seasons: number; paved: boolean; owner: number } | null => null); // the spell of hunger each town is in
@@ -346,6 +349,13 @@ for (const x of c.convoys ?? []) convoyTo.add(x.to);
 const counted = c.territories.map((t) => ({ grown: grown(folkOf(c, t.id)), away: awayFrom(c, t.id) })), seq = c.ledgerSeq ?? 0;
 season(c, ruled);
 const now = c.turn;
+// Families that set out this season (migration.ts): each move is counted once, as it is first seen on the record.
+for (const m of c.moves ?? []) {
+  if (movesSeen.has(m) || s > YEARS20) continue;
+  movesSeen.add(m);
+  if (m.found) { w.moves.settlers++; continue; }
+  w.moves.households++; w.moves.people += m.people; w.moves.why[m.why] = (w.moves.why[m.why] ?? 0) + 1;
+}
 // What took each town's people this season, by cause (the ledger, the raids, the levy); what is missing besides is `other`.
 {
   const got = c.territories.map((): Losses => ({ war: 0, raids: 0, hunger: 0, plague: 0, age: 0, levy: 0, other: 0, born: 0, grew: 0, oneSex: false, taken: false }));
@@ -941,6 +951,14 @@ if (CRIME) {
   }
   // Soldiers named on the map (veteranhome.ts, rivalrule.ts): how often for the player, and what a battle credits one with.
   {
+{
+  const mv = ruled.map((w) => w.moves), nations = ruled.length * 3, homes = mv.reduce((k, x) => k + x.households, 0), folk = mv.reduce((k, x) => k + x.people, 0), settlers = mv.reduce((k, x) => k + x.settlers, 0);
+  const why: Record<string, number> = {};
+  for (const x of mv) for (const [k, v] of Object.entries(x.why)) why[k] = (why[k] ?? 0) + v;
+  const whyText = Object.entries(why).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${pct(v / Math.max(1, homes))}`).join(', ');
+  add('People', 'Households that move between a people\'s towns, per nation per 20 years', 'report only', `${num(homes / nations)} households a nation, ${num(homes ? folk / homes : NaN)} people a move (${whyText || 'none'}); ${num(settlers / nations)} parties of settlers a nation founding a town`, 'report',
+'Every family that set out by road from one town of its people to another in the first twenty years (migration.ts migrateOf, the household of householdmove.ts: the couple, their children and an old one), every people\'s, over three peoples a campaign; the people a move counts those on the convoy, children included. Why: the push that sent them. Settlers who went to found a town on empty land are counted apart.');
+}
 const n = ruled.map((w) => w.named), battle = n.reduce((k, x) => k + x.battle, 0), wins = n.reduce((k, x) => k + x.wins, 0), mine = n.reduce((k, x) => k + x.mine, 0);
 const years = ruled.reduce((k, w) => k + (w.decided >= 0 ? w.decided / 4 : w.storyYears), 0); // years the campaigns ran undecided, as the names are counted
 const every = mine ? years / mine : NaN;

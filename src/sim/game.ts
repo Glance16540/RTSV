@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { nextDilemma } from './dilemmas';
 import { maidPull } from './churchtavern';
 import { monksTeach, nunsNurse } from './clergywork';
 import type { Season } from './seasonsky';
@@ -1875,8 +1876,7 @@ export class Game {
       p.res.food = Math.max(0, p.res.food - Math.min(STAFF_CAP, p.patrons) * PATRON_FOOD);
       if (p.dilemma || this.time < p.dilemmaT) continue;
       // Chosen without the game's dice, so that a match plays out the same with or without them.
-      const pick = (this.seed * 31 + p.id * 17 + p.dilemmas * 7) % DILEMMAS.length;
-      p.dilemma = DILEMMAS[pick].id;
+      p.dilemma = nextDilemma(this, p.id, DILEMMAS); // the next whose moment holds, not yet asked (dilemmas.ts)
       p.dilemmas++;
       if (p.isAI) {
         const roll = ((this.seed * 13 + p.id * 29 + p.dilemmas * 37) % 100) / 100;
