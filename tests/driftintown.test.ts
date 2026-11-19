@@ -82,9 +82,16 @@ describe('decrees and the computer, in a town', () => {
     const gold = g.findResourceNear(man.x, man.y, 'gold', 0, 40)!;
     g.cmdTarget(0, [man.id], gold.id);
     man.drifted = 'mine';
-    run(g, 120, () => ai.update());
-    expect(man.drifted).toBe('mine');
-    expect(man.order?.t === 'gather' && g.entities.get(man.order.id)?.type === 'gold').toBe(true);
+    // The computer never sets him to other work while he is drifted (sheltering him with his work to go back to is not
+    // setting him back); the town's own care may still bring him back, by a roll of its own.
+    const atGold = (o: typeof man.order): boolean => !!o && ((o.t === 'gather' && o.res === 'gold') || atGold((o as { then?: typeof man.order }).then ?? null));
+    let touched = 0;
+    run(g, 120, () => { const was = man.drifted; ai.update(); if (was && (man.drifted !== was || !atGold(man.order))) touched++; });
+    expect(touched).toBe(0);
+    if (!p.drifted?.back) {
+      expect(man.drifted).toBe('mine');
+      expect(man.order?.t === 'gather' && g.entities.get(man.order.id)?.type === 'gold').toBe(true);
+    }
   }, 60_000);
 
   it('a town whose homes do not steady it is shaken the more by a raid', () => {

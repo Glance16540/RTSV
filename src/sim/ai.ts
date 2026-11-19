@@ -1,6 +1,7 @@
 // Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war).
 
 import { highGroundNear, holdBack } from './aiground';
+import { bestSite, level, lookOn, wallRadius } from './aisiting';
 import { WardState, wardScout, wardWomen } from './aiward';
 import { assaultDue, besieging } from './besieger';
 import { CAMP, campWorks } from './siegecamp';
@@ -527,7 +528,7 @@ export class AIController {
     const walls = battleHabits(p.civ).walls; // some leaders never wall their town; others do it before anything else
     if (walls === 'never' || this.level < 1 || p.age < 1 || busy || p.res.wood < (walls === 'early' ? 150 : 260)) return;
     if (!this.ring) {
-      const R = 16, x0 = Math.floor(home.x), y0 = Math.floor(home.y);
+      const x0 = Math.floor(home.x), y0 = Math.floor(home.y), R = wallRadius(g, x0, y0); // on the highest line about the hall (aisiting.ts)
       this.ring = [];
       for (let i = -R; i < R; i++) this.ring.push({ cx: x0 + i, cy: y0 - R });
       for (let i = -R; i < R; i++) this.ring.push({ cx: x0 + R, cy: y0 + i });
@@ -887,21 +888,30 @@ export class AIController {
     const s = BUILDINGS[type].size;
     // First a spot out of the bog; failing that, anywhere that is free. (Keeping off its own roads as well was
     // tried and pushed its town so far apart that a Hard opponent stopped beating an Easy one.)
+    // On each ring it takes the best of the free spots there for the ground (aisiting.ts); a tower looks a little further out for height.
     let bog = false;
-    for (const fussy of [true, false]) if (fussy || bog) for (let r = minR; r <= maxR; r += 1.5) {
-      const steps = Math.ceil(r * 5);
-      const a0 = g.rng() * Math.PI * 2;
-      for (let k = 0; k < steps; k++) {
-        const a = a0 + (k / steps) * Math.PI * 2;
-        const cx = Math.round(x + Math.cos(a) * r - s / 2), cy = Math.round(y + Math.sin(a) * r - s / 2);
-        let ok = true;
-        for (let yy = cy - 1; yy <= cy + s && ok; yy++)
-          for (let xx = cx - 1; xx <= cx + s; xx++) {
-            if (xx < 1 || yy < 1 || xx >= g.size - 1 || yy >= g.size - 1 || g.occupied[yy * g.size + xx]) { ok = false; break; }
-            if (fussy && g.terrain[yy * g.size + xx] === T_MARSH) { ok = false; bog = true; break; }
-          }
-        if (ok) return { cx, cy };
+    for (const fussy of [true, false]) if (fussy || bog) {
+      const free: { cx: number; cy: number }[] = [];
+      let found = -1;
+      for (let r = minR; r <= maxR; r += 1.5) {
+        const steps = Math.ceil(r * 5);
+        const a0 = g.rng() * Math.PI * 2;
+        for (let k = 0; k < steps; k++) {
+          const a = a0 + (k / steps) * Math.PI * 2;
+          const cx = Math.round(x + Math.cos(a) * r - s / 2), cy = Math.round(y + Math.sin(a) * r - s / 2);
+          let ok = true;
+          for (let yy = cy - 1; yy <= cy + s && ok; yy++)
+            for (let xx = cx - 1; xx <= cx + s; xx++) {
+              if (xx < 1 || yy < 1 || xx >= g.size - 1 || yy >= g.size - 1 || g.occupied[yy * g.size + xx]) { ok = false; break; }
+              if (fussy && g.terrain[yy * g.size + xx] === T_MARSH) { ok = false; bog = true; break; }
+            }
+          if (ok && level(g, s, cx, cy)) free.push({ cx, cy }); // not on ground too steep to build on
+        }
+        if (free.length && found < 0) found = r;
+        if (found >= 0 && r >= found + lookOn(g, type, s, free)) break;
       }
+      const best = bestSite(g, type, s, free);
+      if (best) return best;
     }
     return null;
   }
