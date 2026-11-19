@@ -38,13 +38,15 @@ import { claimLand, settleable, wayOut } from './founding';
 export interface Cargo { food: number; wood: number; gold: number; stone: number; men: number[]; women: number[]; /** Children, by their ages in seasons: a family moving (migration.ts). */ children?: number[]; /** Known people going with a family, their records whole (migration.ts). */ notables?: Notable[] }
 export interface Convoy { id: number; owner: number; from: number; to: number; road: number[]; cargo: Cargo; since: number; /** A family moving of its own accord (migration.ts): not one of the people's convoys, and not told of one by one. */ movers?: boolean; /** Settlers bound for an empty land, to found a town there (founding.ts). */ found?: boolean }
 /** What happened to a convoy as the season turned. */
-export interface Arrival { convoy: Convoy; at: number; robbed?: { by: string; took: Stores }; lost?: boolean; /** Grown movers carried off on the road. */ taken?: number; /** Settlers founded a town where they came in (founding.ts). */ founded?: boolean }
+export interface Arrival { convoy: Convoy; at: number; robbed?: { by: string; took: Stores }; lost?: boolean; /** Grown movers carried off on the road. */ taken?: number; /** Settlers founded a town where they came in (founding.ts). */ founded?: boolean; /** Who might have met it: a band lay in wait on its road (`danger`), and an Inn of its people's stood on it (`inn`, roads.ts). */ met?: { danger: boolean; inn: boolean } }
 
 declare module './campaign' {
   interface Campaign {
     /** Convoys on the road (convoys.ts). */
     convoys?: Convoy[];
     convoySeq?: number;
+    /** The player's convoys a band lay in wait for, and how many of those it robbed, with an Inn on the road and without (for the health report). */
+    convoyTally?: { inn: { met: number; robbed: number }; none: { met: number; robbed: number } };
   }
 }
 
@@ -238,7 +240,9 @@ export function waylay(c: Campaign, x: Convoy, a: { robbed?: Arrival['robbed'] }
 export function convoyArrives(c: Campaign, x: Convoy): Arrival {
   const a: Arrival = { convoy: x, at: x.to };
   const mine = x.owner === 0;
+  a.met = { danger: !!waylaid(c, x), inn: innRisk(c, x.owner, x.road) < 1 }; // before the band is met: a band it breaks is still the band that lay in wait
   const met = waylay(c, x, a), band = met?.band ?? null, escort = met?.escort ?? 0;
+  if (mine && !x.movers && !x.found && a.met.danger) { const T = (c.convoyTally ??= { inn: { met: 0, robbed: 0 }, none: { met: 0, robbed: 0 } })[a.met.inn ? 'inn' : 'none']; T.met++; if (a.robbed) T.robbed++; }
   if (met && band) {
     // A family on the road (migration.ts) is met as a convoy is: the band carries off grown people, never a child. They are
     // held as any captives are (threats.ts), on the same clock, and come home if the band is broken in time.
