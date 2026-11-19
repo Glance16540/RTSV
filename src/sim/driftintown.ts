@@ -16,6 +16,7 @@
 //  - When the battle or visit ends, those marked at the tavern and the mine are the town's drifted from then on.
 //
 // A skirmish or a mission has none of this.
+import { feastCare } from './studiesintown';
 import type { Building, Game, Player, Unit } from './game';
 import type { Campaign } from './campaign';
 import type { PeopleIn } from './township';
@@ -131,7 +132,7 @@ export function driftSecond(g: Game): void {
       if (woman) { d.tavern++; say(g, p, `${woman.name} has left her work for the tavern.`); continue; }
       const man = sendMan(g, p);
       if (man) { d.mine++; say(g, p, `${man.name} has left his work for the gold mine.`); }
-    } else if (care > 0 && g.rng() < care * HOLY_RATE * (1 + 2 * CHURCH_CARE * (law.church ?? 0))) {
+    } else if (care > 0 && g.rng() < care * HOLY_RATE * (1 + 2 * CHURCH_CARE * (law.church ?? 0)) * feastCare(g, p.id)) { // the more readily with Feast Days (studiesintown.ts)
       // Care brings them back: a woman out of the tavern (unless the women were ordered there), a man off the gold.
       const tavern = law.tavernWomen ? undefined : g.buildings.find((b) => b.owner === p.id && b.type === 'tavern' && (b.staff ?? []).some((id) => (g.entities.get(id) as Unit | undefined)?.drifted === 'tavern'));
       if (tavern && g.cmdUnstaff(p.id, tavern.id) > 0) { d.back++; say(g, p, 'One of the tavern\'s women has come back to honest work.'); continue; }
