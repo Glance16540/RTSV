@@ -20,15 +20,18 @@
 // Stage one (this): it decides nothing. Each of the four places fights its meeting this way beside the rule it goes by
 // and tallies whether the two agree (`roadTally`), for the health report.
 import type { Army, Campaign } from './campaign';
-import { armyStrength, rankWith, virtueOf } from './campaignbase';
+import { armySize, armyStrength, rankWith, virtueOf } from './campaignbase';
 import { CLASH, clash, heartOf } from './mapbattle';
 import type { Force } from './mapbattle';
 import { RAID, spoilsOf } from './raidclash';
+import { reckonArmies } from './armytown';
 
 declare module './campaign' {
   interface Campaign {
     /** Stage one of the road fight: how each meeting went by its own rule and how the clash would have had it (roadclash.ts). Report only. */
     roadTally?: Record<string, { n: number; ruleBand: number; clashBand: number; agree: number; neither: number }>;
+    /** What a fight of an army and a band cost each side, as it is fought now and as the old shares would have had it (roadclash.ts). Report only. */
+    roadCost?: Record<string, { n: number; army: number; armyOld: number; band: number; bandOld: number }>;
   }
 }
 
@@ -37,10 +40,12 @@ export const ROAD = {
   press: 1,
   /** Of what the clash says a band lost, the share its strength is the weaker by (as RAID.rally): most who run find the camp again. */
   rally: 0.3,
+  /** Of the companies a fight took from an army that a band beat, the share that come together again afterwards: most of a broken army runs and is found, as a band's men are. Without it an army fallen on and beaten lost 0.60 companies a time where the old share took 0.36 to 0.43; at 0.4 it loses 0.49, at 0.55 it loses 0.41 (384 campaigns, both courses). An escort, and an army that wins, lose what the fight took. */
+  regroup: 0.55,
 };
 
 /** The soldiers a band meets: their companies, what they are worth there, and what makes them stand. */
-export interface Soldiers { units: Record<string, number>; strength: number; vet?: number; led?: boolean; rank?: number; virtue?: number }
+export interface Soldiers { units: Record<string, number>; strength: number; vet?: number; led?: boolean; rank?: number; virtue?: number; /** What stands with them that is not companies (the wayfarers on a road, who strike and shelter as a place does): weight added to theirs. */ place?: number }
 /** How a meeting on the road went. */
 export interface RoadFight {
   /** Who broke: the band, the soldiers, or neither (they drew off). */
@@ -61,7 +66,8 @@ export const soldiersOf = (c: Campaign, a: Army, scale = 1): Soldiers => ({ unit
 export function roadForces(strength: number, force: number, s: Soldiers): { a: Force; d: Force } {
   const n = Math.max(1, Math.round(strength)), bows = Math.min(n - 1, Math.round(n * RAID.bows));
   const a: Force = { units: { infantry: n - bows, ...(bows ? { archers: bows } : {}) }, weight: Math.max(0, force) * ROAD.press };
-  const d: Force = { units: s.units, weight: Math.max(0, s.strength), vet: s.vet, led: s.led, rank: s.rank, heart: heartOf(s.virtue ?? 0) };
+  const own = Math.max(0, s.strength);
+  const d: Force = { units: s.units, weight: own + Math.max(0, s.place ?? 0), own, vet: s.vet, led: s.led, rank: s.rank, heart: heartOf(s.virtue ?? 0) };
   return { a, d };
 }
 
@@ -80,6 +86,18 @@ export function roadClash(strength: number, force: number, s: Soldiers, luckA = 
   };
 }
 
+/** An army loses the companies a fight took from it, kind by kind, and never its last (what is left falls back together); no more than `most` in all, if given. Returns how many. */
+export function loseBy(a: Army, lost: Record<string, number>, most = Infinity): number {
+  let gone = 0;
+  for (const k of Object.keys(lost).sort()) {
+    const n = Math.min(Math.max(0, Math.round(lost[k])), a.units[k] ?? 0, armySize(a) - 1, most - gone);
+    if (n <= 0) continue;
+    a.units[k] -= n; if (a.units[k] <= 0) delete a.units[k];
+    gone += n;
+  }
+  return gone;
+}
+
 /** Stage one: note how a meeting went by its own rule (`ruleBand`: the band had the better of it) beside the clash. */
 export function roadTally(c: Campaign, kind: string, ruleBand: boolean, f: RoadFight): void {
   const t = ((c.roadTally ??= {})[kind] ??= { n: 0, ruleBand: 0, clashBand: 0, agree: 0, neither: 0 });
@@ -89,12 +107,26 @@ export function roadTally(c: Campaign, kind: string, ruleBand: boolean, f: RoadF
 }
 
 /**
- * Stage one, for a convoy or a caravan met on its road: where an army of its people stands on the road, how the rule
- * went (an escort as strong as the band sees it off) beside the clash of that army with the band. Nothing where there is
- * no escort: then there is nobody to fight.
+ * A band meets a convoy or a caravan on its road. Where an army of its people stands on that road (the strongest, if more
+ * than one) the two fight: if the band breaks, or neither does, the convoy goes through and the band is the weaker for
+ * it; if the escort breaks, the band takes its share by how long it had the road and the hands it has left (`share`, of
+ * what it would take unopposed). Either way the escort loses the companies the fight cost it, never its last. With no
+ * army on the road nobody fights and the band takes its whole share. `rule`: whether the old rule (an escort as strong as
+ * the band sees it off) would have had the band rob it, for the report's tally.
  */
-export function escortTally(c: Campaign, kind: string, band: { strength: number }, owner: number, road: number[], escort: number): void {
-  if (escort <= 0) return;
+export function escortFight(c: Campaign, kind: string, band: { strength: number }, owner: number, road: number[]): { robbed: boolean; share: number; fought: boolean; lost: number } {
   const a = c.armies.filter((y) => y.owner === owner && road.includes(y.at)).sort((x, y) => armyStrength(y) - armyStrength(x) || x.id - y.id)[0];
-  if (a) roadTally(c, kind, escort < band.strength, roadClash(band.strength, band.strength, soldiersOf(c, a)));
+  if (!a) return { robbed: true, share: 1, fought: false, lost: 0 };
+  const f = roadClash(band.strength, band.strength, soldiersOf(c, a));
+  roadTally(c, kind, armyStrength(a) < band.strength, f);
+  const lost = loseBy(a, f.lost);
+  if (lost) reckonArmies(c); // each company lost is a man of his town (armytown.ts)
+  if (f.broke !== 'soldiers') { band.strength = Math.max(1, band.strength - Math.max(1, f.bandLost)); return { robbed: false, share: 0, fought: true, lost }; }
+  return { robbed: true, share: f.time * f.hands, fought: true, lost };
+}
+
+/** Report only: what a fight cost the army (companies) and the band (points), beside what the old shares would have taken. `key`: how it went, e.g. 'hunt won'. */
+export function roadCost(c: Campaign, key: string, army: number, armyOld: number, band: number, bandOld: number): void {
+  const t = ((c.roadCost ??= {})[key] ??= { n: 0, army: 0, armyOld: 0, band: 0, bandOld: 0 });
+  t.n++; t.army += army; t.armyOld += armyOld; t.band += band; t.bandOld += bandOld;
 }
