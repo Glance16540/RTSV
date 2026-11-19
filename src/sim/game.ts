@@ -10,6 +10,7 @@ import { setToWork, workChanged } from './atwork';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
 import { dyingOut } from './dyingout';
+import { carriedOut } from './carriedout';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -911,7 +912,7 @@ export class Game {
    * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name
    * (battlefolk.ts).
    */
-  census(owner: number): Census { return { ...censusOf(this, owner), roofs: roofsOf(this, owner), ...oldOut(this, owner) }; } // and who lives under each roof (roofs.ts)
+  census(owner: number): Census { return { ...censusOf(this, owner), roofs: roofsOf(this, owner), ...oldOut(this, owner), ...carriedOut(this, owner) }; } // and who lives under each roof (roofs.ts)
 
   /** What a side's town is set to as things stand (governor.ts): how many of its people are at each kind of work, what stands half built, what is being trained. */
   orders(owner: number): { work: Stores; build: string[]; train: string[]; men?: QueuedMan[]; hands: number } {
