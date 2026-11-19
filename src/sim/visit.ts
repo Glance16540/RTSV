@@ -13,6 +13,7 @@ import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { storyForVisit, storyFromVisit } from './storyvisit';
 import { courtForVisit, courtFromVisit } from './courtvisit';
+import { caravanAtField, caravanFromField } from './fieldcaravan';
 import { hallCasesAt, hallFromSitting } from './hallcases';
 import { keepRoads, roadsFor } from './handroads';
 import { waterOf } from './townwater';
@@ -64,6 +65,8 @@ export interface VisitRecord {
 
 /** What comes back from a visit. Everything is by name, so that more can be carried home without changing who calls this. */
 export interface VisitAfter {
+  /** The town's Market caravan as the field left it (fieldcaravan.ts caravanOut). */
+  caravan?: unknown;
   /** The rulings given at the town's Hall of Judgement (`hallOut`, hallfield.ts). */
   hall?: unknown;
   town?: Standing[];
@@ -202,7 +205,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
     seed: t.seed, size: t.trait === 'coast' ? 96 : 72, level: 0, humanAttacks: false, field: false, sea: t.trait === 'coast',
     title: `A visit to ${t.name}`,
     setups: [{
-      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, ...(hallCasesAt(c, t.id).length ? { hall: hallCasesAt(c, t.id) } : {}), // the cases before its Hall of Judgement (hallcases.ts)
+      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, ...(hallCasesAt(c, t.id).length ? { hall: hallCasesAt(c, t.id) } : {}), ...(caravanAtField(c, t.id) ? { caravan: caravanAtField(c, t.id) } : {}), // the cases before its Hall of Judgement (hallcases.ts), and its Market's caravan on the road (fieldcaravan.ts)
        virtue: faithAt(c, t.id), ...(waterOf(c, t.id, terrainOf(c)) ? { water: waterOf(c, t.id, terrainOf(c)) } : {}), // the land's own shore, river and islands (townwater.ts)
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
@@ -242,6 +245,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   storyFromVisit(c, land.id, after.story); // a story's outcome on the field, written back to it (storyvisit.ts)
   courtFromVisit(c, land.id, after.court); // and a story of the leader's house (courtvisit.ts)
   hallFromSitting(c, land.id, after.hall); // and the rulings given at its Hall of Judgement (hallcases.ts)
+  caravanFromField(c, land.id, after.caravan); // and its Market's caravan, home or caught (fieldcaravan.ts)
   if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
