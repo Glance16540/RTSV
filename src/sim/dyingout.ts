@@ -14,6 +14,7 @@
 // nobody at war with it (a visit with no foe).
 // Plain data: it reads the field and keeps one number on the player.
 import { besieging } from './besieger';
+import { reserving } from './reservecamp';
 import type { Game } from './game';
 
 declare module './game' {
@@ -33,7 +34,7 @@ export const DIE_OUT = {
 /** Has this side died out: nobody left to bear a child or grow up, though soldiers of its own still stand? */
 export function diedOut(g: Game, pid: number): boolean {
   const p = g.players[pid];
-  if (!g.bornOnly || g.field || !p || p.neutral || p.defeated || g.warband(pid) || besieging(g, pid)) return false;
+  if (!g.bornOnly || g.field || !p || p.neutral || p.defeated || g.warband(pid) || besieging(g, pid) || reserving(g, pid)) return false; // a reserve is an army too (reservecamp.ts)
   if (!g.players.some((q) => !q.neutral && !q.defeated && q.id !== pid && g.hostile(q.id, pid))) return false; // nobody to lose to
   let any = false;
   for (const u of g.units) {
