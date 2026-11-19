@@ -9,7 +9,7 @@ import { caravansOf, partnerOf } from '../sim/caravans';
 import { standsAt } from '../sim/studies';
 
 /** A caravan as the map walks it: its piece, the road's points in the map's units, and where along it it starts. */
-export interface Walker { g: THREE.Group; pts: [number, number][]; ph: number; /** One way only, from the first point to the last and over again (a convoy, convoydraw.ts), not out and back. */ one?: boolean }
+export interface Walker { g: THREE.Group; pts: [number, number][]; ph: number; /** One way only, from the first point to the last and over again (a convoy, convoydraw.ts), not out and back. */ one?: boolean; /** Legs of the road that go by sea, by index, with the boat that carries it there and the train that walks the rest (convoydraw.ts). */ sea?: boolean[]; boat?: THREE.Object3D; train?: THREE.Object3D }
 
 const box = (w: number, h: number, d: number): THREE.BoxGeometry => new THREE.BoxGeometry(w, h, d);
 const BODY = box(0.9, 0.42, 0.36), HEAD = box(0.26, 0.22, 0.2), NECK = box(0.16, 0.42, 0.14), LEG = box(0.09, 0.42, 0.09), PACK = box(0.6, 0.3, 0.5), HUMP = box(0.32, 0.22, 0.3);
@@ -56,6 +56,7 @@ export function walk(w: Walker, now: number, place: (x: number, y: number) => [n
   while (i < seg.length - 1 && s > seg[i]) s -= seg[i++];
   const [ax, ay] = w.pts[i], [bx, by] = w.pts[i + 1], f = seg[i] ? s / seg[i] : 0;
   const x = ax + (bx - ax) * f, y = ay + (by - ay) * f, [X, Y, Z] = place(x, y);
+  if (w.sea && w.boat && w.train) { const wet = !!w.sea[i]; w.boat.visible = wet; w.train.visible = !wet; } // over a sea lane it goes by boat
   w.g.position.set(X, Y, Z);
   w.g.rotation.y = Math.atan2(back ? ax - bx : bx - ax, back ? ay - by : by - ay);
 }

@@ -28,38 +28,38 @@ skirmish 6 (forge v england) at 4m: c19cf58bea615dd8
 skirmish 6 (forge v england) at 6m: eeac072ae5dd7958
 skirmish 6 (forge v england) at 8m: 529501389e762335
 skirmish 6 (forge v england) end: tick 9600 winner -1 units 94 buildings 37 529501389e762335
-siege 1 at 2m: 12db33b9a909206f
-siege 1 at 4m: 8b363b794c283dd9
-siege 1 at 6m: 8dd95869af9762d9
-siege 1 at 8m: 628f5f3bc6a32f15
-siege 1 end: tick 9600 winner -1 units 69 buildings 28 628f5f3bc6a32f15
-siege 1 census 0: f02a573dccdaf01a
-siege 1 census 1: 97e95a29fc66b066
+siege 1 at 2m: 8a39c5d1fd595ae1
+siege 1 at 4m: 38859770433759f7
+siege 1 at 6m: 33b59d51f8737569
+siege 1 at 8m: 66be2eb4bfc10d51
+siege 1 end: tick 9600 winner -1 units 71 buildings 26 66be2eb4bfc10d51
+siege 1 census 0: 8a2ce4bb9433a113
+siege 1 census 1: 22d3d21cf7c7bfdf
 siege 1 census 2: 4756d45081ea5674
-siege 2 at 2m: d37f01d119ef7eae
-siege 2 end: tick 3060 winner 0 units 60 buildings 29 d164b3eaedfb64f3
-siege 2 census 0: b794413a4500d2f7
-siege 2 census 1: a0836b87a62c87fc
+siege 2 at 2m: 1fed23db06fb8f2c
+siege 2 end: tick 3020 winner 0 units 60 buildings 29 f2dc213c9fcdf80d
+siege 2 census 0: 77311818a56e5c5b
+siege 2 census 1: f751c498a887e1d2
 siege 2 census 2: 4756d45081ea5674
-siege 3 at 2m: 389ef2a91a107dee
-siege 3 end: tick 3760 winner 1 units 42 buildings 19 0e4398dadbdcc569
-siege 3 census 0: 9d297f81f8a1d376
-siege 3 census 1: 12488fb956e67e92
+siege 3 at 2m: 992c40c840ba2b02
+siege 3 end: tick 3520 winner 1 units 42 buildings 19 9bf3967f988756bd
+siege 3 census 0: 15e8d9ed1ae988c0
+siege 3 census 1: 47ae1a8977ac922a
 siege 3 census 2: 4756d45081ea5674
-siege 4 at 2m: e17f09120ba99013
-siege 4 end: tick 4340 winner 0 units 83 buildings 30 180a4afc55c04e30
-siege 4 census 0: 6dabbd651ba57a5f
-siege 4 census 1: 566155102ca0253f
+siege 4 at 2m: 85b43dad61702b9f
+siege 4 end: tick 4620 winner 0 units 76 buildings 28 08f579f0ecc8a0ff
+siege 4 census 0: 5a971952532a0052
+siege 4 census 1: e119446bcb767f14
 siege 4 census 2: 4756d45081ea5674
-siege 5 at 2m: 44b023c9d13aa0c6
-siege 5 end: tick 3640 winner 1 units 48 buildings 24 ea75faaf8744198d
-siege 5 census 0: b8eab675aa39635e
-siege 5 census 1: c957b4b6b9913e22
+siege 5 at 2m: b2350013ad9da96a
+siege 5 end: tick 3220 winner 1 units 56 buildings 24 112f3bfbebc03915
+siege 5 census 0: dfd4fcdc610f43c6
+siege 5 census 1: 057ad79448c41ec8
 siege 5 census 2: 4756d45081ea5674
-siege 6 at 2m: f07e0826462df058
-siege 6 end: tick 3020 winner 0 units 79 buildings 22 8059c8238712c838
+siege 6 at 2m: d5ec7a1696e5b8d0
+siege 6 end: tick 3000 winner 0 units 79 buildings 22 bfec5549cbbd2ca7
 siege 6 census 0: a8f91380b6ad88a1
-siege 6 census 1: 82e656854a37bb98
+siege 6 census 1: 69534a8e5e750738
 siege 6 census 2: 4756d45081ea5674
 drill 1 (greece v japan) at 2m: 39a025c4c00450d4
 drill 1 (greece v japan) at 4m: eb8377dd14c2d2a5
@@ -72,7 +72,7 @@ drill 2 (wild v hearth) at 4m: 0e013fb01e32b13d
 drill 2 (wild v hearth) at 6m: af0b27acb60ea238
 drill 2 (wild v hearth) at 8m: fcf0a9ea802b7519
 drill 2 (wild v hearth) end: tick 9600 leaders rank 4, rank 4 calls 1 powers learnt 0 fires set 4, buildings standing 54 fcf0a9ea802b7519
-drill 2 (wild v hearth) after the leaders fell: 40816762ab9f774a acclaimed true/true/false a96ab3c62c5fd67d
+drill 2 (wild v hearth) after the leaders fell: 40816762ab9f774a acclaimed true/true/false 182e657b3fab0bd7
 drill 3 (persia v arabs) at 2m: 24087c79d20d5b18
 drill 3 (persia v arabs) at 4m: 83a02be24542ed96
 drill 3 (persia v arabs) at 6m: e7dc619fe03e8f48
@@ -100,20 +100,20 @@ drill 6 (kush v stonekin) after the leaders fell: eb546212b3af1d96 acclaimed fal
 camp drill 1 (babylon v greece) at 2m: 16b8788aff0f217f
 camp drill 1 (babylon v greece) at 4m: 2a1073206ef88105
 camp drill 1 (babylon v greece) at 6m: c7c2369f03c5b691
-camp drill 1 (babylon v greece) at 8m: 8671b6c52e427ed8
-camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 7, most in the marauders' camp 0, camps burnt 2, freed and home 8, got out by night 1 8671b6c52e427ed8
+camp drill 1 (babylon v greece) at 8m: fffac093bdf48692
+camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 7, most in the marauders' camp 0, camps burnt 2, freed and home 8, got out by night 1 fffac093bdf48692
 camp drill 2 (japan v kush) at 2m: 276bd81fc39bd387
 camp drill 2 (japan v kush) at 4m: 262b2753dded9400
 camp drill 2 (japan v kush) at 6m: e5c55cd1284445ed
-camp drill 2 (japan v kush) at 8m: d56be37b4e4427d8
-camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 9, most in the marauders' camp 0, camps burnt 2, freed and home 9, got out by night 0 d56be37b4e4427d8
+camp drill 2 (japan v kush) at 8m: e9683ddca8d81c31
+camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 9, most in the marauders' camp 0, camps burnt 2, freed and home 9, got out by night 0 e9683ddca8d81c31
 camp drill 3 (steppe v forge) at 2m: 83409fd9a1e6f0d9
 camp drill 3 (steppe v forge) at 4m: 447751ec6c5e076d
 camp drill 3 (steppe v forge) at 6m: 61581f5ba91ebb40
-camp drill 3 (steppe v forge) at 8m: 825f2acff2829468
-camp drill 3 (steppe v forge) end: tick 9600 most held in the work camp 6, most in the marauders' camp 0, camps burnt 2, freed and home 6, got out by night 0 825f2acff2829468
+camp drill 3 (steppe v forge) at 8m: 69f97ede3217f434
+camp drill 3 (steppe v forge) end: tick 9600 most held in the work camp 6, most in the marauders' camp 0, camps burnt 2, freed and home 7, got out by night 0 69f97ede3217f434
 camp drill 4 (persia v england) at 2m: 5f23756af36a3ebd
 camp drill 4 (persia v england) at 4m: 362ea465d7ee6a78
 camp drill 4 (persia v england) at 6m: 4b315caea6ae53f2
-camp drill 4 (persia v england) at 8m: b8dda8fdb93acf12
-camp drill 4 (persia v england) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 7, got out by night 0 b8dda8fdb93acf12
+camp drill 4 (persia v england) at 8m: 3cb8e160290b6200
+camp drill 4 (persia v england) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 8, got out by night 0 3cb8e160290b6200

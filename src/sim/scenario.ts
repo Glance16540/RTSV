@@ -5,6 +5,7 @@ import type { Building, Game, PlayerSetup } from './game';
 import type { Climate } from './map';
 import { rescueForce, rescuers } from './rescue';
 import { creedOf } from './creed';
+import { raiderSteps } from './raiderguide';
 
 export interface Objective { text: string; done: boolean }
 export interface MissionStatus { objectives: Objective[]; result: 'win' | 'lose' | null }
@@ -309,6 +310,29 @@ export const MISSIONS: Mission[] = [
         { text: `Grow the tribe to 18 (now ${people.length})`, done: people.length >= 18 },
       ];
       return { objectives, result: objectives.every((o) => o.done) ? 'win' : people.length === 0 ? 'lose' : null };
+    },
+  },
+  {
+    id: 'grass', name: 'The Sea of Grass', seed: 27, size: 72, aiLevel: 0, climate: 'steppe', about: 'Play the Mongols: a war band in the open steppe, the war band\'s guide for orders',
+    brief: 'You are a Mongol war band on the open steppe: riders and men on foot, no hall and no fields. The Persians have settled beyond the grass. Take their people alive to swell the band, put them to work, raise a hall when you choose, and then ride on the Persian town and bring its hall down.',
+    setups: [base('You', 0xe0452f, false, 'steppe', { units: { horsearcher: 3 } }), base('Persians', 0xb03a6a, true, 'persia')],
+    init(g) {
+      g.scenario = { id: 'grass', n: 0, ids: [] };
+    },
+    tick(g) {
+      const s = g.scenario!, steps = raiderSteps(g, ME); // the war band's guide (raiderguide.ts), as the mission's orders
+      const people = g.units.filter((u) => u.owner === ME);
+      // Everyone taken into the band is counted once, whatever becomes of them afterwards.
+      s.n = Math.max(s.n, people.filter((u) => u.story?.some((d) => d.s.startsWith('Taken into'))).length);
+      if (s.n >= 3 && steps[1].done && !s.ids.includes(2)) s.ids.push(2); // the band set to work, remembered once seen
+      const theirs = g.buildings.filter((b) => b.owner === FOE && b.type === 'towncenter' && !b.dead).length;
+      const objectives = [
+        { text: `${steps[0].title}: carry off three of the Persians' villagers with a fighter (${Math.min(3, s.n)} of 3)`, done: s.n >= 3 },
+        { text: `${steps[1].title}: set the people you have taken to gathering`, done: s.ids.includes(2) },
+        { text: `${steps[2].title}: raise a Town Center where you mean to stay`, done: steps[2].done || mine(g, 'towncenter').length > 0 },
+        { text: 'Ride on the Persian town and bring down its Town Center', done: theirs === 0 },
+      ];
+      return { objectives, result: theirs === 0 ? 'win' : people.length === 0 ? 'lose' : null };
     },
   },
   {

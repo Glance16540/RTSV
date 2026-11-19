@@ -162,9 +162,9 @@ describe('The Mountain King', () => {
 });
 
 describe('the missions as a set', () => {
-  it('each says what it teaches, and between them they are played in three kinds of country by eight peoples', () => {
+  it('each says what it teaches, and between them they are played in four kinds of country by eight peoples', () => {
     for (const m of MISSIONS) expect(m.about?.length, m.id).toBeGreaterThan(10);
-    expect(new Set(MISSIONS.map((m) => m.climate ?? 'temperate')).size).toBe(3);
+    expect(new Set(MISSIONS.map((m) => m.climate ?? 'temperate')).size).toBe(4); // green, desert, snow and steppe
     expect(new Set(MISSIONS.map((m) => m.setups[0].civ)).size).toBeGreaterThanOrEqual(8);
     expect(new Set(MISSIONS.map((m) => m.id)).size).toBe(MISSIONS.length);
   });

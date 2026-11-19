@@ -13,6 +13,8 @@ import type { Army, Campaign, Territory } from './campaign';
 import { creedOf } from './creed';
 import type { HeroSpec } from './hero';
 import { leaderAsMade } from './powers';
+import { uniqueCompanies } from './uniquecompany';
+import { wedPeace } from './pacts';
 
 export const MAP_W = 1300;
 
@@ -28,13 +30,21 @@ export const HERO_STRENGTH = 2;
 export const HERO_RANK_STRENGTH = 0.5;
 
 /** Troop companies an army is made of. Each needs a building in the territory where it is raised. */
-export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number> }
+export interface CompanyDef { name: string; icon: string; cost: number; str: number; needs: string; units: Record<string, number>; /** A people's own soldiers (uniquecompany.ts): whose, from what age, and the plain kind it fights as. */ civ?: string; age?: number; base?: string }
 
-export const COMPANIES: Record<string, CompanyDef> = {
+const PLAIN: Record<string, CompanyDef> = {
   infantry: { name: 'Infantry', icon: '🗡️', cost: 2, str: 1, needs: 'barracks', units: { clubman: 2 } },
   archers: { name: 'Archers', icon: '🏹', cost: 2, str: 1, needs: 'range', units: { slinger: 2 } },
   cavalry: { name: 'Cavalry', icon: '🐎', cost: 4, str: 2, needs: 'stable', units: { rider: 2 } },
 };
+/** Every kind of company: the three plain kinds, then each people's own soldiers (uniquecompany.ts). */
+export const COMPANIES: Record<string, CompanyDef> = { ...PLAIN, ...uniqueCompanies(PLAIN) };
+/** The plain kind a company fights as: itself, or for a people's own soldiers the kind they are of. */
+export const familyOf = (kind: string): string => COMPANIES[kind]?.base ?? kind;
+/** How many of these companies are of the family this kind beats (`BEATS`). */
+export const beatenIn = (kind: string, foe: Record<string, number>): number => Object.entries(foe).reduce((n, [k, v]) => n + (familyOf(k) === BEATS[familyOf(kind)] ? v : 0), 0);
+/** A soldier of this kind of company, as the map names one who made a name. */
+export const soldierWord = (kind: string): string => (COMPANIES[kind]?.civ ? COMPANIES[kind].name : familyOf(kind) === 'cavalry' ? 'Rider' : familyOf(kind) === 'archers' ? 'Archer' : 'Soldier');
 
 /** Buildings that can stand on a territory. */
 export interface SiteDef { name: string; icon: string; cost: number; desc: string }
@@ -248,7 +258,7 @@ export function strengthVs(a: Army, foe: Record<string, number> = {}, heroRank =
   const total = Object.values(foe).reduce((n, v) => n + v, 0);
   let s = (a.hero ? HERO_STRENGTH + heroRank * HERO_RANK_STRENGTH : 0) + a.vet;
   for (const [type, n] of Object.entries(a.units)) {
-    const edge = total ? (0.3 * (foe[BEATS[type]] ?? 0)) / total : 0;
+    const edge = total ? (0.3 * beatenIn(type, foe)) / total : 0;
     s += n * COMPANIES[type].str * (1 + edge);
   }
   return Math.round(s * 10) / 10;
@@ -259,8 +269,9 @@ export const armyStrength = (a: Army, c?: Campaign): number => strengthVs(a, {},
 
 export const rankWith = (c: Campaign, a: Army): number => (a.hero ? c.factions[a.owner]?.heroRank ?? 0 : 0);
 
-/** True while the player and a rival are bound by a truce. */
+/** True while two peoples are bound in peace: the player and a rival by a truce or an alliance, any two by a royal marriage. */
 export function atTruce(c: Campaign, a: number, b: number): boolean {
+  if (wedPeace(c, a, b)) return true; // two houses bound by a royal marriage, the player's or two rivals' (pacts.ts)
   const other = a === 0 ? b : b === 0 ? a : -1;
   return other > 0 && (other === c.ally || c.truces.some((t) => t.with === other && t.until >= c.turn));
 }
@@ -339,5 +350,7 @@ export interface HubActs {
   defence: (c: Campaign, tid: number, vs?: Record<string, number>, attackerCiv?: string) => number;
   /** Can this people raise this company in this land now? (campaign.ts, canRaise) */
   canRaise: (c: Campaign, f: number, tid: number, type: string) => boolean;
+  /** How open a people's ruler is to peace, 0 to 1, by their temper (campaign.ts PERSONA, temper.ts habitsWith). */
+  peaceOf: (c: Campaign, f: number) => number;
 }
 export const HUB = {} as HubActs;

@@ -1,6 +1,7 @@
 // Teaching the campaign: what a new player is told to do first, and the page that explains the rest.
 // Everything here is worked out from the campaign's own rules and numbers, so it cannot drift from them.
 
+import { CIVS } from './data';
 import { VISIT_SECONDS } from './visit';
 import { creedOf } from './creed';
 import type { Campaign } from './campaign';
@@ -36,7 +37,7 @@ export function primerBase(c: Campaign): PrimerBase {
  * steps already done or passed over, which stay done even if the campaign later loses what earned them.
  */
 export function primerSteps(c: Campaign, base: PrimerBase, seen: readonly string[] = []): PrimerStep[] {
-  const cheapest = Object.values(COMPANIES).reduce((a, b) => (b.cost < a.cost ? b : a));
+  const cheapest = Object.values(COMPANIES).filter((d) => !d.civ).reduce((a, b) => (b.cost < a.cost ? b : a));
   const steps: [string, string, string, boolean][] = [
     ['raise', 'Raise a company',
       `Click your capital, the land marked ★, and raise a company there. Each kind needs its own building: a ${SITES[cheapest.needs].name} for ${cheapest.name.toLowerCase()}. It joins the army standing on that land.`,
@@ -72,7 +73,9 @@ export interface PrimerSection { title: string; lines: string[] }
 export function primerPage(c?: Campaign): PrimerSection[] {
   const pct = (x: number): string => `${Math.round(x * 100)}%`;
   const sites = Object.values(SITES).map((s) => `<b>${s.name}</b> (${s.cost}): ${s.desc}`);
-  const companies = Object.entries(COMPANIES).map(([k, d]) => `<b>${d.name}</b> (${d.cost}, from a ${SITES[d.needs].name}) beat ${BEATS[k]}`);
+  const companies = Object.entries(COMPANIES).filter(([, d]) => !d.civ).map(([k, d]) => `<b>${d.name}</b> (${d.cost}, from a ${SITES[d.needs].name}) beat ${BEATS[k]}`);
+  // Each people's own soldiers, raised as companies of their kind from the age they need (uniquecompany.ts).
+  const own = Object.values(COMPANIES).filter((d) => d.civ).map((d) => `<b>${d.name}</b> (${d.cost}, ${CIVS[d.civ!]?.name ?? d.civ}, as ${d.base}, strength ${d.str})`);
   const creed = (id: string): string => `<b>${creedOf(id === 'zealous' ? 80 : id === 'devout' ? 40 : id === 'worldly' ? -40 : -80).name}.</b> ${FAITH[id].desc}`;
   return [
     { title: 'A turn', lines: [
@@ -86,7 +89,7 @@ export function primerPage(c?: Campaign): PrimerSection[] {
       'Some lands have a gift of their own (good soil, hills, a coast), and a few are places of note with a name and a legend: whoever holds one has the good of it.',
     ] },
     { title: 'Armies and battles', lines: [
-      `An army is up to ${MAX_ARMY} companies standing on one land. ${companies.join('; ')}.`,
+      `An army is up to ${MAX_ARMY} companies standing on one land. ${companies.join('; ')}. Each people may also raise its own soldiers as companies, from the age they need, where their kind\'s building stands: ${own.join('; ')}.`,
       'To march, click the land your army is on and then a neighbour joined to it by a dotted road. Mountains, rivers and open water close some borders; the land\'s panel says which.',
       `Open water is crossed only from a land with a ${SITES.harbour.name}, and troops landing from the sea fight at ${pct(SEA_LANDING)} strength.`,
       'March into land that is not yours and there is a battle. Fight it yourself, in the field or as a siege of the town, or let it be settled on the map by strength.',

@@ -30,7 +30,7 @@ import { NAMES_F, NAMES_M } from './data';
 import { folkOf, living } from './township';
 import type { Notable } from './township';
 import type { Feeling } from './portrait';
-import { MAX_VETERAN } from './campaignbase';
+import { MAX_VETERAN, heroFor } from './campaignbase';
 import { THREATS } from './threatsbase';
 import { needOf } from './larder';
 import { swayTown } from './townfaith';
@@ -86,7 +86,8 @@ const named = (c: Campaign, f: number, female: boolean, salt: number, not: strin
   return list[i];
 };
 const seatOf = (c: Campaign, f: number): number => (c.territories.find((t) => t.capital === f && t.owner === f) ?? c.territories.find((t) => t.owner === f))?.id ?? -1;
-const leaderName = (c: Campaign, f: number): string => c.factions[f]?.hero?.name ?? `leader${f}`;
+/** The leader's own name: the one they were made with, or the one their people's leader goes by (campaignbase.ts heroFor), never a placeholder. */
+const leaderName = (c: Campaign, f: number): string => (c.factions[f] ? heroFor(c, f).name : 'the leader');
 const leaderFemale = (c: Campaign, f: number): boolean => !!c.factions[f]?.hero?.female;
 const landsOf = (c: Campaign, f: number): number => c.territories.filter((t) => t.owner === f).length;
 
@@ -146,6 +147,8 @@ export function kinSeason(c: Campaign, f: number): void {
   const fac = c.factions[f];
   if (!fac?.alive) return;
   const k = kinOf(c, f), mine = f === 0, seat = seatOf(c, f);
+  // A household kept under a placeholder for its leader (games saved before the leader's own name was used) takes the name, and nobody is widowed for it.
+  if (/^leader\d+$/.test(k.leader ?? '')) { const was = k.leader; k.leader = leaderName(c, f); if (k.spouse?.of === was) k.spouse.of = k.leader; }
   // A new leader comes with a household of their own; the old leader's spouse is remembered.
   if (fac.heroAlive && k.leader !== leaderName(c, f)) {
     if (k.spouse && !k.spouse.lost) { k.spouse.lost = { turn: c.turn, how: 'widowed' }; chronicle(c, `${k.spouse.name}, ${k.spouse.female ? 'wife' : 'husband'} of ${k.spouse.of}, is widowed.`); tell(c, k, chronicleLast(c), 'plain'); }

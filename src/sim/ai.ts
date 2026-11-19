@@ -418,6 +418,7 @@ export class AIController {
         const fresh = idle.filter((u) => Math.hypot(u.x - home.x, u.y - home.y) < 16), afield = idle.filter((u) => !fresh.includes(u));
         const go = g.time >= 1800 || fresh.length >= Math.max(3, Math.floor(attackSize / 3)) || fresh.length === fighters.length ? idle : afield;
         const target = go.length ? this.pickTarget(go[0]) : null;
+        if (target && this.level >= 1) for (const u of go) if (g.isMilitary(u)) u.form = 'line'; // it goes out in a line (formations.ts)
         if (target) g.cmdMove(pid, go.map((u) => u.id), target.x, target.y, true);
       }
     }
