@@ -1,5 +1,6 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { FORM_WORDS, formOf } from '../sim/formations';
 import { storyEnd } from './missionstory';
 import { bandCount, onTheMove, raiderSteps } from '../sim/raiderguide';
 import { buildingLook, inFaith } from '../sim/faithhouse';
@@ -348,6 +349,9 @@ export class Hud {
         for (const [st, icon, name, desc] of stances) {
           out.push({ id: 'st:' + st, icon: ico('stance_' + st, icon), name: 'Stance: ' + name, desc, active: units.every((u) => u.stance === st), act: () => game.cmdStance(pid, ids, st) });
         }
+        // The order the group keeps on the march: one button (F) that goes round none, line, column, loose (formations.ts).
+        const form = formOf(units), next = form === null ? 'line' : form === 'line' ? 'column' : form === 'column' ? 'loose' : null;
+        out.push({ id: 'form', icon: form === 'column' ? '⫴' : form === 'loose' ? '⁘' : '☰', name: `Order: ${form ? FORM_WORDS[form].name : 'none'}`, desc: `${form ? FORM_WORDS[form].desc : 'Sent somewhere, the group stands in a square about the point.'}<br><span class="stat">Click to set ${next ? `a ${FORM_WORDS[next].name.toLowerCase()}: ${FORM_WORDS[next].desc.toLowerCase()}` : 'no order'}</span>`, active: !!form, act: () => game.cmdFormation(pid, ids, next) });
       }
       // A soldier who is a man of this town may go home to it, and a man home on leave may take up arms again (furlough.ts).
       const away = game.players[pid].furlough?.men.length ?? 0;
