@@ -5,6 +5,8 @@ import { battleConfig, moveArmy, newCampaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
 import { CAMP, campBuilds, campWorks } from '../src/sim/siegecamp';
 import { run, setups, spot } from './helpers';
+import { AIController } from '../src/sim/ai';
+import { BESIEGE } from '../src/sim/besieger';
 
 /** A rival's army marched on the player's capital, as a campaign siege; the rival (1) besieges. */
 function siege(civ = 'stonekin'): Game {
@@ -93,5 +95,13 @@ describe('siegecamp', () => {
     expect(shop.queue.filter((q) => q.id === 'ram').length).toBe(1);
     expect(CAMP.rams).toBeGreaterThan(0);
     expect(campWorks(g, 0, place)).toBeNull(); // the defender is no camp
+  });
+
+  it('the computer raises no workshop before its first storm: its men go in first, and engines come only as a second wave', () => {
+    const g = siege();
+    rich(g, 1);
+    const ai = new AIController(g, 1);
+    for (let s = 0; s < BESIEGE.form - 5; s++) { run(g, 1); ai.update(); }
+    expect(g.buildings.some((b) => b.owner === 1 && b.type === 'workshop')).toBe(false);
   });
 });
