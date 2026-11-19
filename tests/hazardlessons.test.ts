@@ -81,3 +81,39 @@ describe('lessons for what befalls a battle', () => {
     for (const f of ['rain', 'snow', 'dust'] as const) expect(hazardLessons(f).find((l) => l.id === 'storm')!.text).not.toMatch(/undefined|NaN/);
   });
 });
+
+describe('lessons for what is done to a people', () => {
+  it('tells how to get back one carried off, while they are led away', () => {
+    const g = start();
+    const v = g.units.find((u) => u.owner === 0 && u.type === 'villager')!;
+    const s = g.spawnUnit('swordsman', 1, v.x + 3, v.y);
+    s.captive = { from: 0, people: '', name: v.name, family: v.family, gender: 'm', trait: '', trait2: '', age: 20, lifespan: 60, taken: g.time } as never;
+    expect(hazardsDue(g, 0)).toEqual(['taken']);
+    expect(hazardsDue(g, 1)).toEqual([]);
+    expect(nextLesson(g, 0, [])!.text).toMatch(/\d+ minutes they are lost for good/);
+  });
+
+  it('warns of a rival Prophet once he comes near, and of no Prophet of your own', () => {
+    const g = start();
+    const mine = g.units.find((u) => u.owner === 0)!;
+    const own = g.spawnUnit('prophet', 0, mine.x, mine.y);
+    expect(hazardsDue(g, 0)).toEqual([]);
+    own.dead = true;
+    const theirs = g.spawnUnit('prophet', 1, mine.x + 4, mine.y);
+    expect(hazardsDue(g, 0)).toEqual(['prophet']);
+    expect(nextLesson(g, 0, [])!.text).toContain(`${theirs.def.hp} health`);
+  });
+
+  it('tells of the leader fallen until another is raised, and of a dilemma waiting', () => {
+    const g = start();
+    g.players[0].heroFell = true;
+    expect(hazardsDue(g, 0)).toEqual(['fallen']);
+    const mine = g.units.find((u) => u.owner === 0)!;
+    const w = g.spawnUnit('swordsman', 0, mine.x, mine.y);
+    w.hero = { xp: 0, rank: 0 };
+    expect(hazardsDue(g, 0)).toEqual([]);
+    g.players[0].dilemma = 'harvest';
+    expect(hazardsDue(g, 0)).toEqual(['dilemma']);
+    for (const l of hazardLessons()) expect(l.text).not.toMatch(/undefined|NaN/);
+  });
+});
