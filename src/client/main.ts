@@ -1,4 +1,6 @@
 import { homeNow } from '../sim/furlough';
+import { SEASONS } from '../sim/seasonsky';
+import type { Season } from '../sim/seasonsky';
 import { storyBrief, storyTag } from './missionstory';
 import { showBriefing } from './briefing';
 import { downedOf, survivorsOf } from '../sim/soldiernames';
@@ -305,6 +307,9 @@ loadAssets((done) => loader.bar(0.1 + done * 0.4)).then(async () => {
   if (cfg && !saved) game.bornOnly = true;
   if (!saved && params.get('marauders') !== '0' && !(cfg?.field) && mode !== 'visit') game.marauders = true; // nobody comes against a town being visited
   // A battle is fought in the weather that lies over that land on the campaign map.
+  const heldSeason = params.get('season'); // `?season=spring|summer|autumn|winter` holds one, for a look
+  if (heldSeason && (SEASONS as string[]).includes(heldSeason)) game.season = heldSeason as Season;
+  else if (cfg?.season && !saved) game.season = cfg.season; // the season the map is in, for the look of the land (seasonsky.ts)
   if (cfg?.weather && !saved) { game.weather = cfg.weather; game.weatherWant = 0.9; game.weatherT = 240; }
   // The map is generated before the menu appears, so a different size means a fresh page.
   const sizeSel = el('map-size') as HTMLSelectElement;
