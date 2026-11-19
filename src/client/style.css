@@ -917,3 +917,12 @@ body.looking-out #visit { display: none; }
 #info .hall-cases { margin-top: 4px; }
 #info .hall-case { margin: 4px 0; padding-top: 3px; border-top: 1px solid rgba(160, 130, 80, 0.35); }
 #info .hall-case button { margin: 2px 3px 0 0; }
+
+/* The visit's own guide (src/sim/visitguide.ts, src/client/visit.ts) */
+#visit-guide { pointer-events: auto; position: absolute; top: 50px; left: 12px; width: 270px; padding: 8px 12px; background: var(--paper); border: 1px solid var(--ink); box-shadow: var(--slip); }
+#visit-guide h4 { margin: 0 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--ink); font: 400 19px/1.15 var(--caps); text-transform: lowercase; color: var(--gold); display: flex; justify-content: space-between; }
+#visit-guide h4 button { border: 0; background: none; color: var(--muted); padding: 0 2px; }
+#visit-guide .done { color: var(--muted); text-decoration: line-through; }
+#visit-guide .now { margin-top: 4px; }
+#visit-guide .now b::before { content: '¶ '; color: var(--rubric); font-weight: 400; }
+#visit-guide .now small { display: block; color: var(--muted); }
