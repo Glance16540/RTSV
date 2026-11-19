@@ -19,7 +19,7 @@ import { orderHtml } from './orderpanel';
 import { freeTownButtons, risenFor } from './freetown';
 import { AGES, CIVS, styleOf } from '../sim/data';
 import {
-  EVENTS, WEATHER, eventsAt, weatherAt, Army, FAITH, faithOf, virtueOf, placeAt, worldNow, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS,
+  EVENTS, WEATHER, eventsAt, weatherAt, Army, FAITH, familyOf, faithOf, virtueOf, placeAt, worldNow, hireOff, virtueDrift, BARRIERS, BIOMES, biomeOf, CAMPAIGN_EDGE, COMPANIES, Campaign, LOCALS,
   ALLIANCE_COST, DOMINION_TURNS, canAlly, canGift, giftCost, truceCost, MAX_FAVOR, MAX_VETERAN, SITES, AGE_COST, AGE_EDGE, ageCost, ageOf, atTruce, armyAt, armyStrength,
   canAdvance, canBuild, canRaise, canSummonHero, defence, dominionNeed, heroCost, landOf, income, slots, territoryIncome, companyCost, siteCost, traitOf, BEATS, WORLD_SHAPES, worldOf, lanesOf, onSea, heroFor,
 } from '../sim/campaign';
@@ -139,7 +139,7 @@ export function actionsHtml(c: Campaign, sel: number): string {
   const group = (title: string, html: string, why = ''): string => (html ? `<div class="lp-group"><h4>${title}</h4>${why ? `<div class="hint lp-why">${why}</div>` : ''}${html}</div>` : '');
   let raise = '', works = '', studies = '', build = '', leader = '', town = '', talk = '', age = '';
   if (t.owner === 0) {
-    for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs)) raise += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `${noMenText(c, 0, t.id) ? noMenText(c, 0, t.id) + ' ' : ''}${levyLine(c, t.id) ? levyLine(c, t.id) + ' ' : ''}Strength ${d.str}. Strong against ${BEATS[k]}. Paid in ${priceText(priceOf(k === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
+    for (const [k, d] of Object.entries(COMPANIES)) if (t.buildings.includes(d.needs) && (!d.civ || d.civ === me.civ)) raise += btn('raise:' + k, `${d.icon} Raise ${d.name.toLowerCase()}`, companyCost(t, k, me.civ, hireOff(c, 0, t.id)), canRaise(c, 0, t.id, k), `${noMenText(c, 0, t.id) ? noMenText(c, 0, t.id) + ' ' : ''}${levyLine(c, t.id) ? levyLine(c, t.id) + ' ' : ''}${d.civ ? `Your people's own soldiers, fighting as ${d.base}${(d.age ?? 0) > ageOf(c, 0) ? `, from the ${AGES[d.age ?? 0].name}` : ''}. ` : ''}Strength ${d.str}. Strong against ${BEATS[familyOf(k)]}. Paid in ${priceText(priceOf(familyOf(k) === 'cavalry' ? 'cavalry' : 'company', companyCost(t, k, me.civ, hireOff(c, 0, t.id))))}.`);
     if (raise && noMenText(c, 0, t.id)) raise += `<p class="lp-note">${noMenText(c, 0, t.id)}</p>`;
     if (a && a.owner === 0) { const men = menOf(c, a); raise += `<button data-act="home" title="The army is no more. Its ${men.town} ${men.town === 1 ? 'man' : 'men'} of your towns ${men.town === 1 ? 'goes' : 'go'} back onto ${men.town === 1 ? 'his town\'s record' : 'their towns\' records'}${men.none ? `; ${men.none} of no town are paid off` : ''}. Not with your leader in it." ${canSendHome(c, a.id) && c.phase === 'player' ? '' : 'disabled'}>🏠 Send the army home</button>`; }
     if (ageOf(c, 0) < AGE_COST.length) age += btn('age', `⏳ Advance to the ${AGES[ageOf(c, 0) + 1].name}`, ageCost(c, 0), canAdvance(c, 0), `All your armies grow ${Math.round(AGE_EDGE * 100)}% stronger, and your battles begin in that age with its weapons.`);

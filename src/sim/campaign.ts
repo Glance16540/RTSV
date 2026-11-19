@@ -12,7 +12,7 @@ import { dominionNext } from './dominion';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
-import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront, HUB } from './campaignbase';
+import { familyOf, CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront, HUB } from './campaignbase';
 import type { Biome, CompanyDef, FaithDef, Front, SiteDef, Sky, World, WorldShape } from './campaignbase';
 export * from './campaignbase'; // what the systems share, below all of them: found here as before
 import type { Ground, PlayerSetup, Standing } from './game';
@@ -25,6 +25,7 @@ import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
 import { battleCarried } from './battlecarried';
 import { foughtOnMap, recordsBack } from './warrecord';
+import { mayRaiseKind } from './uniquecompany';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
@@ -815,7 +816,7 @@ export function canBuild(c: Campaign, f: number, tid: number, site: string): boo
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid }) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
+  return t.owner === f && !!def && mayRaiseKind(def, c.factions[f].civ, ageOf(c, f)) && t.buildings.includes(def.needs) && canPayFor(c, f, familyOf(type) === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid }) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
     && menToRaise(c, f, tid) >= MEN.least; // a soldier costs a person: with fewer men to send than this, no company (armytown.ts; none asked for yet)
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
@@ -835,7 +836,7 @@ export function build(c: Campaign, f: number, tid: number, site: string): boolea
 /** Raise one company. It joins the army standing in the territory, or forms a new one. */
 export function raise(c: Campaign, f: number, tid: number, type: string): boolean {
   if (!canRaise(c, f, tid, type)) return false;
-  payFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(c.territories[tid], type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid });
+  payFor(c, f, familyOf(type) === 'cavalry' ? 'cavalry' : 'company', companyCost(c.territories[tid], type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid });
   let a = armyAt(c, tid);
   if (!a) {
     a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, vet: c.factions[f].civ === 'japan' ? 1 : 0, moved: true }; // fresh troops march next turn

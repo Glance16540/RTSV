@@ -15,7 +15,8 @@ import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { PLACES } from '../sim/story';
-import { Campaign, heroFor, placeAt, EVENTS, LAND_STEP, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots, terrainOf } from '../sim/campaign';
+import { UNITS } from '../sim/data';
+import { COMPANIES, Campaign, heroFor, placeAt, EVENTS, LAND_STEP, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots, terrainOf } from '../sim/campaign';
 import { lookOf } from './models';
 import { RealPerson, leaderOutfit, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 
@@ -1238,9 +1239,12 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
         const lead = heroFor(c, a.owner);
         const kinds: string[] = a.hero ? [lead.calling] : [];
         const main = (a.units.cavalry ?? 0) > (a.units.infantry ?? 0) ? 'spearman' : (a.units.archers ?? 0) > (a.units.infantry ?? 0) ? 'bowman' : age >= 2 ? 'swordsman' : age >= 1 ? 'spearman' : 'clubman';
-        kinds.push(main); if (n >= 5) kinds.push(age >= 1 ? 'bowman' : 'slinger');
+        kinds.push(main);
+        const own = Object.keys(a.units).filter((k) => COMPANIES[k]?.civ && a.units[k] > 0).sort((p, q) => a.units[q] - a.units[p])[0]; // a people's own soldiers, drawn as they are (uniquecompany.ts)
+        if (own) kinds.push(own);
+        if (n >= 5) kinds.push(age >= 1 ? 'bowman' : 'slinger');
         kinds.slice(0, 3).forEach((type, k) => {
-          const made = peopleReady() ? makePerson(((o) => (a.hero && k === 0 ? leaderOutfit(o, lead.female, lead.look) : o))(outfitFor(type, a.hero && k === 0 ? lead.female : false, color, lookOf(civ, a.id * 7 + k), a.id * 7 + k, 0, { cls: a.hero && k === 0 ? 'hero' : type === 'bowman' || type === 'slinger' ? 'ranged' : 'infantry', age, civ }))) : null;
+          const made = peopleReady() ? makePerson(((o) => (a.hero && k === 0 ? leaderOutfit(o, lead.female, lead.look) : o))(outfitFor(type, a.hero && k === 0 ? lead.female : false, color, lookOf(civ, a.id * 7 + k), a.id * 7 + k, 0, { cls: a.hero && k === 0 ? 'hero' : COMPANIES[type]?.civ ? UNITS[type].cls : type === 'bowman' || type === 'slinger' ? 'ranged' : 'infantry', age, civ }))) : null;
           const px = kinds.length === 1 ? 0.1 : [0.15, 0.75, -0.25][k], pz = kinds.length === 1 ? 0.1 : [0.35, -0.2, -0.3][k];
           if (made) {
             made.g.scale.setScalar(k === 0 ? 1.75 : 1.5);
