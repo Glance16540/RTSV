@@ -33,10 +33,12 @@ describe('what a people\'s rule makes worth raising', () => {
     const other = game('hearth'); rich(other); other.players[0].age = 1; stand(other, 'market');
     expect(styleWork(other, 0, town(other))).toBeNull(); // nobody else wants a second
   });
-  it('the Faithful raise their church before the rest of its age; builders keep more towers than others, but not a town in peace', () => {
+  it('the Faithful raise their church once their Range stands; builders keep more towers than others, but not a town in peace', () => {
     const f = game('dawn'); rich(f);
     expect(styleWork(f, 0, town(f))).toBeNull(); // not of their age yet
     f.players[0].age = Math.max(1, f.ageFor(0, BUILDINGS.temple));
+    expect(styleWork(f, 0, town(f))).toBeNull(); // not before their archers: church first cost them every game
+    stand(f, 'range');
     expect(styleWork(f, 0, town(f))).toBe('temple');
     stand(f, 'temple');
     expect(styleWork(f, 0, town(f))).toBeNull();

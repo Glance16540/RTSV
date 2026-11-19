@@ -6,9 +6,11 @@
  * were hurt. Here each rule shapes what its people build and do, as plain answers ai.ts asks for:
  *
  *   - `styleWork`: a building the people's rule makes worth raising now, ahead of the common order of building.
- *     Traders raise a market as soon as they may, and then up to the three that earn (`caravanMarkets`). The Faithful raise their church (the
- *     Temple) before anything else of its age. Builders, whose works mend themselves, raise more towers than
- *     others do (`STYLE_PLAY.towers`).
+ *     Traders raise a market as soon as they may, and then up to the three that earn (`caravanMarkets`). The
+ *     Faithful raise their church (the Temple) as soon as their Range stands, ahead of the stable, the smith and
+ *     the market. (Before the Range it cost them the game: in 36 computer games against the six other styles
+ *     they won none and lost seven, with half the bowmen at fifteen minutes, where without it they won six and
+ *     lost three.) Builders, whose works mend themselves, raise more towers than others do (`STYLE_PLAY.towers`).
  *   - `roomWork`: what to raise when the town is short of room. A farmer's farm makes room for a villager
  *     (`farmPop`, up to `farmPopMax`), and feeds one besides, so farmers raise a farm where others raise a house,
  *     while a farm still adds room and they have houses enough for their couples.
@@ -46,7 +48,7 @@ const can = (g: Game, pid: number, type: string): boolean => !!BUILDINGS[type] &
 /** A building this people's rule makes worth raising now, ahead of the common order: or null. */
 export function styleWork(g: Game, pid: number, s: StyleTown): string | null {
   const style = g.style(pid);
-  if (style === 'faithful') return s.count('temple') === 0 && can(g, pid, 'temple') ? 'temple' : null;
+  if (style === 'faithful') return s.count('temple') === 0 && s.count('range') > 0 && can(g, pid, 'temple') ? 'temple' : null; // not before its archers: see the header
   if (style === 'trader') return s.count('market') < STYLE_RULES.caravanMarkets && (s.count('market') === 0 || s.villagers >= STYLE_PLAY.marketHands) && can(g, pid, 'market') ? 'market' : null;
   if (style === 'builder') return !s.peace && s.count('tower') >= 2 && s.count('tower') < STYLE_PLAY.towers && can(g, pid, 'tower') ? 'tower' : null;
   return null;
