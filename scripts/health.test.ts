@@ -5,7 +5,9 @@
 //   HEALTH=1 CAMPAIGNS=48 SEASONS=200 PLAYER=computer VISITS=2 OUT=docs/health-report.md npx vitest run scripts/health.test.ts
 //   npm run health(the baseline: 96 campaigns, 24 visits; about 31 minutes)
 //
-//   CAMPAIGNS  how many campaigns (seeds 1..n, fixed so runs compare). Default 24.
+//   CAMPAIGNS  how many campaigns (seeds FIRST..FIRST+n-1, fixed so runs compare). Default 24.
+//   FIRST  the first seed. Default 1. FIRST=385 CAMPAIGNS=384 reads a second set of seeds beside the first 384,
+//  to tell a real shift from the luck of one set.
 //   SEASONSthe longest a campaign is played. Default 200.
 //   PLAYER 'computer' (the player's turns are played as a rival's, campaign.ts `playForPlayer`) or 'passive'.
 //   SIEGES how many real-time sieges the computer fights on both sides (the rival against a capital). Default 8.
@@ -66,6 +68,7 @@ import { ACTS } from '../src/sim/nobleacts';
 import { awaiting } from '../src/sim/encounter';
 
 const CAMPAIGNS = +(process.env.CAMPAIGNS ?? 24);
+const FIRST = Math.max(1, Math.floor(+(process.env.FIRST ?? 1)) || 1);
 const SEASONS = +(process.env.SEASONS ?? 200);
 const PLAYER = process.env.PLAYER === 'passive' ? 'passive' : 'computer';
 const VISITS = +(process.env.VISITS ?? 0);
@@ -682,7 +685,7 @@ interface Row { area: string; figure: string; band: string; measured: string; ve
 it.skipIf(!process.env.HEALTH)('the health of a campaign', () => {
   const t0 = Date.now();
   const ruled: Watch[] = [], bare: Watch[] = [];
-  for (let seed = 1; seed <= CAMPAIGNS; seed++) {
+  for (let seed = FIRST; seed < FIRST + CAMPAIGNS; seed++) {
 ruled.push(play(seed, true, SEASONS));
 bare.push(play(seed, false, YEARS20));
   }
@@ -1050,7 +1053,7 @@ add('Threats', 'Men a town loses to a strike, and what a battle with a nation wo
   const lines = [
 '# Campaign health report',
 '',
-`Measured by \`scripts/health.test.ts\` against \`docs/TUNING.md\`: ${CAMPAIGNS} campaigns (seeds 1 to ${CAMPAIGNS}, a player and two rivals), up to ${SEASONS} seasons, the player ${PLAYER === 'computer' ? 'played by the computer' : 'let be'}, each also played ${YEARS20} seasons with no decrees${VISITS ? `, and ${VISITS} told again with the player's first towns visited every season` : ''}. ${inN} in band, ${outN} out. Took ${secs} seconds.`,
+`Measured by \`scripts/health.test.ts\` against \`docs/TUNING.md\`: ${CAMPAIGNS} campaigns (seeds ${FIRST} to ${FIRST + CAMPAIGNS - 1}, a player and two rivals), up to ${SEASONS} seasons, the player ${PLAYER === 'computer' ? 'played by the computer' : 'let be'}, each also played ${YEARS20} seasons with no decrees${VISITS ? `, and ${VISITS} told again with the player's first towns visited every season` : ''}. ${inN} in band, ${outN} out. Took ${secs} seconds.`,
 '',
 '| Area | Figure | Target band | Measured | |',
 '| --- | --- | --- | --- | --- |',
