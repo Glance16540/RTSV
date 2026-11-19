@@ -2,7 +2,7 @@ import { homeNow } from '../sim/furlough';
 import { showBriefing } from './briefing';
 import { downedOf, survivorsOf } from '../sim/soldiernames';
 import { Tally } from '../sim/battlecard';
-import { bark } from './voice';
+import { FolkBarks } from './folkbarks';
 import { Climate } from '../sim/map';
 import { AIController } from '../sim/ai';
 import { CIVS, CIV_IDS, UNITS, AGES, styleOf } from '../sim/data';
@@ -108,6 +108,9 @@ export class App {
     this.centerOnSelection();
   }
 
+  private barks = new FolkBarks();
+  /** Can the player hear this spot: on screen and in sight. */
+  private heard = (x: number, y: number): boolean => this.onScreen(x, y) && this.game.vis[Math.floor(y) * this.game.size + Math.floor(x)] === 2;
   private onScreen(x: number, y: number): boolean {
     const s = this.r.project(x, y);
     return s.x > 0 && s.y > 0 && s.x < window.innerWidth && s.y < window.innerHeight;
@@ -116,7 +119,7 @@ export class App {
   private sound(ev: GameEvent): void {
     const mine = 'player' in ev && ev.player === this.pid;
     if (ev.t === 'age' && mine) sfx.play('age');
-    else if (ev.t === 'alert' && mine) { sfx.play('alert'); const v = this.game.units.find((u) => u.owner === this.pid && u.type === 'villager' && !u.inside); if (v) bark(this.game, v, 'fear'); }
+    else if (ev.t === 'alert' && mine) { sfx.play('alert'); this.barks.struck(this.game, this.pid, ev.x, ev.y, this.heard); } // the nearest of the people cries out (folkbarks.ts)
     else if (ev.t === 'wonder') sfx.play(mine ? 'age' : 'alert');
     else if (ev.t === 'birth' && mine) sfx.play('birth');
     else if (ev.t === 'grown' && mine) sfx.play('grown');
@@ -154,6 +157,7 @@ export class App {
     this.last = t;
     if (this.asleep) { requestAnimationFrame((n) => this.frame(n)); return; }
     const game = this.game;
+    if (!this.paused) this.barks.update(game, this.pid, dt, this.heard); // the badly hurt cry out (folkbarks.ts)
     if (!this.paused && game.winner < 0) {
       this.acc += dt * this.speed;
       let steps = 0;
