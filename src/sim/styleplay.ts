@@ -32,6 +32,8 @@ import type { Building, Game, Unit } from './game';
 import { BUILDINGS, STYLE_RULES } from './data';
 
 export const STYLE_PLAY = {
+  /** The Faithful raise their church once these stand. */
+  churchAfter: ['range'] as string[],
   /** Builders: towers kept, where the common order keeps two. */
   towers: 4,
   /** Traders: villagers a town has before it raises a second and a third market. */
@@ -54,7 +56,7 @@ const can = (g: Game, pid: number, type: string): boolean => !!BUILDINGS[type] &
 /** A building this people's rule makes worth raising now, ahead of the common order: or null. */
 export function styleWork(g: Game, pid: number, s: StyleTown): string | null {
   const style = g.style(pid);
-  if (style === 'faithful') return s.count('temple') === 0 && s.count('range') > 0 && can(g, pid, 'temple') ? 'temple' : null; // not before its archers: see the header
+  if (style === 'faithful') return s.count('temple') === 0 && STYLE_PLAY.churchAfter.every((t) => s.count(t) > 0) && can(g, pid, 'temple') ? 'temple' : null; // not before these: see the header
   if (style === 'trader') return s.count('market') < STYLE_RULES.caravanMarkets && (s.count('market') === 0 || s.villagers >= STYLE_PLAY.marketHands) && can(g, pid, 'market') ? 'market' : null;
   if (style === 'builder') return !s.peace && s.count('tower') >= 2 && s.count('tower') < STYLE_PLAY.towers && can(g, pid, 'tower') ? 'tower' : null;
   return null;
