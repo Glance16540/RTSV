@@ -28,6 +28,7 @@
  *
  * `claimantsSeason` is the one call a season; it runs the wives held by bands too (claimants.ts).
  */
+import { toldIn } from './chroniclethreads';
 import type { Campaign, Territory } from './campaign';
 import { Claim, bandChildren, claimChance, claimsOn, endClaim, named, ofAgeNow } from './claimants';
 import { noblesOf, titleOf } from './nobles';
@@ -46,10 +47,11 @@ export const RISING = {
   /** Seasons a rising stands unbeaten before the claim is heard no more. */
   lapse: 40,
   /** A rising in a child's name: the child's age in seasons before whoever holds it may proclaim it heir, and the chance each season from then that they do. */
-  proclaim: 2, chance: 0.5,
+  proclaim: 2, chance: 0.75,
 };
 
-const tell = (c: Campaign, f: number, text: string): void => { if (f === 0) c.log.push(text); (c.chronicle ??= []).push({ turn: c.turn, text }); };
+/** Told in the log (the player's own) and the chronicle; a later line of a claimant's story says the year the child was born (chroniclethreads.ts). */
+const tell = (c: Campaign, f: number, text: string, born?: number): void => { if (f === 0) c.log.push(text); (c.chronicle ??= []).push({ turn: c.turn, text: text + toldIn(c, born) }); };
 const child = (cl: Claim): string => (cl.female ? 'daughter' : 'son');
 const whose = (c: Campaign, f: number): string => heroFor(c, f).name;
 const townOf = (c: Campaign, f: number, t: Territory | undefined): boolean => !!t && t.owner === f && !t.horde && t.capital < 0;
@@ -106,17 +108,17 @@ export function comeOfAge(c: Campaign, cl: Claim): number[] {
   cl.grown = c.turn;
   const where = c.territories[cl.town]?.name ?? 'a far country', raised = cl.parent === 'noble' ? `raised in the house of ${cl.by} at ${where}` : `born while ${cl.by} held her`;
   if (cl.towns) { // the rising raised in the child's name still stands: the claimant leads it now
-    tell(c, f, `${cl.name}, ${child(cl)} of ${cl.mother}, in whose name ${c.territories[cl.towns[0]].name} rose, has come of age and leads the rising against ${whose(c, f)} ${cl.female ? 'herself' : 'himself'}.`);
+    tell(c, f, `${cl.name}, ${child(cl)} of ${cl.mother}, in whose name ${c.territories[cl.towns[0]].name} rose, has come of age and leads the rising against ${whose(c, f)} ${cl.female ? 'herself' : 'himself'}.`, cl.born);
     return cl.towns;
   }
   const towns = followers(c, cl);
   if (!towns.length) {
     endClaim(c, cl, 'nofollowing', `${cl.name}, ${child(cl)} of ${cl.mother}, ${raised}, has come of age and claims the throne of ${whose(c, f)}. Nobody has risen for ${cl.female ? 'her' : 'him'}.`);
-    tell(c, f, cl.ended!.text);
+    tell(c, f, cl.ended!.text, cl.born);
     return [];
   }
   rise(c, cl, towns);
-  tell(c, f, `${cl.name}, ${child(cl)} of ${cl.mother}, ${raised}, has come of age and claims the throne of ${whose(c, f)}. ${list(towns.map((tid) => c.territories[tid].name))} risen for ${cl.female ? 'her' : 'him'}.`);
+  tell(c, f, `${cl.name}, ${child(cl)} of ${cl.mother}, ${raised}, has come of age and claims the throne of ${whose(c, f)}. ${list(towns.map((tid) => c.territories[tid].name))} risen for ${cl.female ? 'her' : 'him'}.`, cl.born);
   return towns;
 }
 /** The towns still out for this claimant. */
@@ -132,7 +134,7 @@ function crown(c: Campaign, cl: Claim): void {
   house.line++; house.births = 0; house.asked = false;
   seat(c, f, c.territories[at].owner === f ? at : (c.territories.find((t) => t.owner === f)?.id ?? at));
   endClaim(c, cl, 'crowned', `${old.name} is dead and no child of the house is of age. ${cl.name}, ${child(cl)} of ${cl.mother}, has taken the throne${f === 0 ? '' : ` of the ${fac.name}`}, and the towns that rose for ${cl.female ? 'her' : 'him'} have come back.`);
-  tell(c, f, cl.ended!.text);
+  tell(c, f, cl.ended!.text, cl.born);
 }
 
 /** Who holds the child and could raise a rising in its name now, in words: '' if nobody can. */
@@ -155,7 +157,7 @@ export function proclaim(c: Campaign, cl: Claim): number[] {
   rise(c, cl, towns);
   cl.raised = c.turn; cl.regent = by;
   const names = towns.map((tid) => c.territories[tid].name);
-  tell(c, f, `${by[0].toUpperCase() + by.slice(1)} ${cl.parent === 'band' ? 'have' : 'has'} proclaimed the child of ${cl.mother} heir to the throne of ${whose(c, f)}. ${list(names)} risen in the child's name.`);
+  tell(c, f, `${by[0].toUpperCase() + by.slice(1)} ${cl.parent === 'band' ? 'have' : 'has'} proclaimed the child of ${cl.mother} heir to the throne of ${whose(c, f)}. ${list(names)} risen in the child's name.`, cl.born);
   return towns;
 }
 
@@ -178,7 +180,7 @@ export function claimantsSeason(c: Campaign): void {
     const over = (how: 'putdown' | 'swallowed' | 'lapsed', text: string): void => {
       unmark(c, cl); delete cl.towns;
       if (grown) endClaim(c, cl, how, text); else cl.over = c.turn;
-      tell(c, f, text);
+      tell(c, f, text, cl.born);
     };
     if (at.owner === f) { over('putdown', `${at.name} is ${f === 0 ? 'yours' : `the ${fac.name}'`} again. The rising for ${who} is over.`); bringToJudgement(c, cl, at.id); continue; } // whoever led it answers for it (claimantjudged.ts)
     if (at.owner >= 0 || at.horde) { over('swallowed', `${at.name} has fallen to others, and the rising for ${who} with it.`); continue; }

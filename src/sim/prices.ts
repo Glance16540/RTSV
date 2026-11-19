@@ -7,8 +7,8 @@
 // truce, an alliance, a gift, a tribute), a leader hired or a new age out of the chief town. What that town lacks of a
 // kind, the nation's other towns send it by road (convoys.ts roadBetween: through the people's own lands, or over a sea
 // lane from a Harbour), at a cost: CARRY.cost of what is sent (a tenth) is spent on the way (the carters' keep, the wagons' wear).
-// For a thing done at a town (payFor's `act`) it goes as convoys, a season on the road, and the thing waits for them
-// (sentfor.ts); a dealing, done at no town, is still paid at once.
+// For a thing built or done at a town (payFor's `act`) it goes as convoys, a season on the road, and the thing waits for
+// them (sentfor.ts); a company, and a dealing, done at no town, are still paid at once (the owner's word, DESIGN ae5db6f).
 // A town with no road to it sends nothing. A town that sends keeps a floor of its own (plenty.ts PLENTY.floor in goods
 // other than bread, and two seasons of its own eating in food), so that its governor is not left unable to raise its own
 // Farmland and its people are not left without bread.

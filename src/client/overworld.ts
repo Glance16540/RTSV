@@ -1,5 +1,6 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
+import { whenOf } from '../sim/chroniclethreads';
 import { inTime } from '../sim/inyears';
 import { nobodyThere } from '../sim/founding'; // a land with nobody on it is not marched on
 import { inRuin, ruinWords } from '../sim/ruin';
@@ -8,6 +9,7 @@ import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
 import { bandPrompt, newsHtml } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
+import { petitionDo } from './petitionpanel';
 import { attackBand } from '../sim/bandfight';
 import { meetBand, meetStory, storyToMeet } from './encounter';
 import { meetComing, tellStrikes } from './bandmeet';
@@ -145,6 +147,7 @@ export class Overworld {
       if (kind === 'succession') { this.askSuccession(); return; }
       if (kind === 'lead') moveLeader(this.c, 0, this.sel);
       if (kind === 'story') intrigueDo(this.c, id);
+      if (kind === 'petition') petitionDo(this.c, id); // a noble's petition answered (petitions.ts)
       if (kind === 'band') attackBand(this.c, Number(id.split('/')[0]), Number(id.split('/')[1]));
       if (kind === 'call') callArmies(this.c, 0);
       if (kind === 'endcall') endCall(this.c, 0);
@@ -346,7 +349,7 @@ export class Overworld {
   /** The story so far, oldest first. */
   private showChronicle(): void {
     const c = this.c;
-    const lines = (c.chronicle ?? []).map((l) => `<div><small>Turn ${l.turn}.</small> ${l.text}</div>`).join('');
+    const lines = (c.chronicle ?? []).map((l) => `<div><small>${whenOf(l.turn)}.</small> ${l.text}</div>`).join(''); // dated by year and season (chroniclethreads.ts)
     const places = placesOf(c).map((p) => { const t = c.territories[p.at]; return `<div>${PLACES[p.kind].icon} <b>${p.name[0].toUpperCase() + p.name.slice(1)}</b>, in ${t.name} <small>(${t.owner < 0 ? 'the local tribes' : t.owner === 0 ? 'yours' : c.factions[t.owner].name})</small>. ${p.legend}</div>`; }).join('');
     const last = epilogue(c).map((l) => `<div><i>${l}</i></div>`).join('');
     this.dialog('The chronicle', `<span class="ow-chronicle">${lines || 'Nothing is written yet.'}${last ? `<h3>How it ended</h3>${last}` : ''}<h3>Places of note</h3>${places}</span>`, [['Close', () => this.changed()]]);

@@ -1,8 +1,9 @@
 // Goods sent for: a thing bought at a town waits for what the town lacks to come in by road (src/sim/sentfor.ts).
 import { describe, expect, it } from 'vitest';
-import { SITES, build, continueAI, endTurn, newCampaign } from '../src/sim/campaign';
+import { SITES, build, companyCost, continueAI, endTurn, newCampaign, raise } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { CONVOYS, cannotSend, convoysTurn } from '../src/sim/convoys';
+import type { Band } from '../src/sim/threats';
 import { fundFor, payFor, paysHere } from '../src/sim/prices';
 import { sentForSeason, waitingFor } from '../src/sim/sentfor';
 import { SUPPLY_UNITS, settleStores } from '../src/sim/stores';
@@ -72,5 +73,32 @@ describe('a thing bought waits for the goods sent for', () => {
     for (let i = 0; i < CONVOYS.most; i++) (c.convoys ??= []).push({ id: 900 + i, owner: 0, from: home.id, to: land.id, road: [home.id, land.id], cargo: { food: 1, wood: 0, gold: 0, stone: 0, men: [], women: [] }, since: c.turn });
     expect(cannotSend(c, 0, home.id, land.id, { food: 1 })).toContain('No more than');
     expect(cannotSend(c, 0, home.id, land.id, { food: 1 }, { pays: 1 })).toBe('');
+  });
+
+  it('a company is raised at once, what its town lacks taken from the nation\'s towns that moment', () => {
+    const { c, land } = world();
+    land.buildings = ['barracks'];
+    for (const k of ['food', 'wood', 'gold', 'stone'] as const) folkOf(c, land.id).stores[k] = 0;
+    settleStores(c);
+    expect(raise(c, 0, land.id, 'infantry')).toBe(true);
+    expect((c.convoys ?? []).some((x) => x.pays !== undefined)).toBe(false);
+    expect(c.sentFor ?? []).toHaveLength(0);
+    expect(companyCost(land, 'infantry', c.factions[0].civ)).toBeGreaterThan(0);
+  });
+
+  it('a band that robs a paying convoy grows no stronger for it', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const { c, home, land } = world(seed);
+      if (!build(c, 0, land.id, 'barracks') && (c.convoys ?? []).some((x) => x.pays !== undefined)) {
+        const band = { id: 1, kind: 'highwaymen', name: 'the Night Road', at: home.id, to: land.id, strength: 4, since: 1, held: [] } as Band;
+        c.bands = [band]; c.armies = c.armies.filter((a) => a.at !== home.id && a.at !== land.id);
+        c.turn++;
+        const robbed = convoysTurn(c).some((a) => a.robbed);
+        if (!robbed) continue;
+        expect(band.strength).toBe(4);
+        return;
+      }
+    }
+    throw new Error('no paying convoy was robbed in 40 seeds');
   });
 });

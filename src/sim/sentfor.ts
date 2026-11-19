@@ -1,27 +1,30 @@
 // Goods sent for: a thing bought waits for what its town lacks to come in by road (docs/DESIGN.md, "Stores": a people's
 // towns send food and goods to one another by road, a season on the way, and a convoy can be robbed).
 //
-// A building, a company, a leader, a new age or a work across a border is paid for out of the town where it is done
-// (prices.ts). What that town lacks of a kind its other towns send, and until now it came at once. Now it goes as it
-// would go by hand: each sending town's share leaves as a convoy (convoys.ts), a season on the road and met by bands as any
-// convoy is, CARRY.cost of it spent on the way as before; and the thing waits. While it waits it cannot be ordered again
+// A building, a leader, a new age or a work across a border is paid for out of the town where it is done (prices.ts).
+// What that town lacks of a kind its other towns send, and until now it came at once. Now it goes as it would go by
+// hand: each sending town's share leaves as a convoy (convoys.ts), a season on the road and met by bands as any convoy is
+// (though a band that robs one grows no stronger for it), CARRY.cost of it spent on the way as before; and the thing waits. While it waits it cannot be ordered again
 // (prices.ts payBar says why). When every convoy for it has come in, or been lost on the way, the thing is done after all,
 // if the town now has what it costs: the convoys' goods, and its own share, set aside when the goods were sent for so that
 // its governor or anything else could not spend it meanwhile. If a band took part of the goods on the road, it is not
 // done (its own share goes back into its stores), and the player is told.
 //
-// The same for every people: the player's orders, a rival's buying, and anything else that buys at a town. A dealing (a
-// truce, a gift, a tale's price) is not a thing done at a town and is paid at once, as before.
+// The same for every people: the player's orders, a rival's buying, and anything else that builds at a town. A company
+// is raised at once, as before, what its town lacks taken from the nation's towns that moment (the owner's word, DESIGN
+// ae5db6f: an army that waits a season for its pay is no army; at 384 campaigns with companies waiting too, the computer's
+// armies thinned to half and a fifth of the campaigns went undecided). A dealing (a truce, a gift, a tale's price) is not
+// a thing done at a town and is paid at once, as before.
 //
 // This module keeps what is waiting and sends the convoys. Who does the thing when the goods are in is the caller's to say
-// (campaign.ts gives the season's pass a hand that knows how to build, raise and the rest), so nothing here imports them.
+// (campaign.ts gives the season's pass a hand that knows how to build and the rest), so nothing here imports them.
 import type { Campaign } from './campaign';
 import { sendConvoy } from './convoys';
 import type { Stores } from './township';
 import { STORE_KINDS, folkOf } from './township';
 
-/** What to do when the goods are in: build a site, raise a company, call a leader, enter an age, open a border. */
-export interface Act { kind: 'build' | 'raise' | 'hero' | 'age' | 'work'; arg?: string | number }
+/** What to do when the goods are in: build a site, call a leader, enter an age, open a border. */
+export interface Act { kind: 'build' | 'hero' | 'age' | 'work'; arg?: string | number }
 /** A thing waiting for its goods: whose, where, what it is and costs, what to do, since when, and the convoys bringing them. */
 export interface SentFor { id: number; f: number; at: number; what: string; n: number; act: Act; since: number; convoys: number[]; /** The town's own share of the price, set aside while it waits so that nothing else spends it. */ held?: Stores }
 
@@ -40,7 +43,7 @@ export const waitingFor = (c: Campaign, f: number, at: number, what: string): Se
 export interface Sending { from: number; take: Stores; arrive: Stores }
 
 const named = (c: Campaign, act: Act, what: string): string =>
-  act.kind === 'build' ? `the ${String(act.arg ?? what)}` : act.kind === 'raise' ? `a company of ${String(act.arg ?? 'soldiers')}` : act.kind === 'hero' ? 'a new leader' : act.kind === 'age' ? 'the new age' : act.kind === 'work' ? `the ${what}` : what;
+  act.kind === 'build' ? `the ${String(act.arg ?? what)}` : act.kind === 'hero' ? 'a new leader' : act.kind === 'age' ? 'the new age' : act.kind === 'work' ? `the ${what}` : what;
 
 /**
  * Send for what the town `at` lacks: each town's share leaves as a convoy to it, with what it loses on the way taken from

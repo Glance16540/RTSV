@@ -1,6 +1,9 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { beatenBack } from './siegeretreat';
+import { finishWorks, scarTown } from './battlescars';
+import { rivalBattleHeard } from './chroniclethreads';
 import { noteStood } from './battletales';
 import { turnLeft, turnOpened } from './seasongain';
 import { militiaOf } from './militia';
@@ -12,7 +15,7 @@ import { dominionNext } from './dominion';
 import { AGES, BUILDINGS, CIVS, CIV_COLOR, CIV_IDS, TECHS } from './data';
 import { oldSeasons } from './oldfolk';
 import { distinctColours } from './nationcolours';
-import { CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront, HUB } from './campaignbase';
+import { familyOf, CAMPAIGN_VERSION, MAP_W, MAP_H, MAX_ARMY, HERO_STRENGTH, HERO_RANK_STRENGTH, COMPANIES, SITES, CHURCH_VIRTUE, TAVERN_VIRTUE, BATTLE_VIRTUE, FAITH, BEATS, MAX_VETERAN, TRUCE_COST, TRUCE_TURNS, ALLIANCE_COST, MAX_FAVOR, DOMINION_SHARE, DOMINION_TURNS, SITE_BUILDING, HORDE_TURN, HORDE_MAX, HORDE_SPREAD, HORDE_PRIZE, SEA_LANDING, BIOMES, virtueOf, faithOf, tell, slots, luck, homeCorner, worldOf, landNoise, climateAt, biomeAt, biomeOf, lanesOf, onSea, ageOf, armyAt, armySize, strengthVs, armyStrength, rankWith, atTruce, dominionNeed, landOf, casualties, siteCost, companyCost, heroFor, WEATHER, frontsOf, weatherAt, reach, newFront, HUB } from './campaignbase';
 import type { Biome, CompanyDef, FaithDef, Front, SiteDef, Sky, World, WorldShape } from './campaignbase';
 export * from './campaignbase'; // what the systems share, below all of them: found here as before
 import type { Ground, PlayerSetup, Standing } from './game';
@@ -25,6 +28,7 @@ import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
 import { battleCarried } from './battlecarried';
 import { foughtOnMap, recordsBack } from './warrecord';
+import { mayRaiseKind } from './uniquecompany';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
@@ -45,6 +49,7 @@ import { nobleActsSeasons } from './nobleacts';
 import { marriageSeason } from './marriage';
 import { temperSeasons } from './nobletemper';
 import { marchMargin, treatLean, weighSeasons } from './nobleweigh';
+import { petitionSeasons } from './petitions';
 import { widowsSeason } from './widowhood';
 import { studiedHome, studiesSeason, withStudies } from './studies';
 import { rulesSeason } from './rule';
@@ -816,7 +821,7 @@ export function canBuild(c: Campaign, f: number, tid: number, site: string): boo
 export function canRaise(c: Campaign, f: number, tid: number, type: string): boolean {
   const t = c.territories[tid], def = COMPANIES[type];
   const a = armyAt(c, tid);
-  return t.owner === f && !!def && t.buildings.includes(def.needs) && canPayFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid }) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
+  return t.owner === f && !!def && mayRaiseKind(def, c.factions[f].civ, ageOf(c, f)) && t.buildings.includes(def.needs) && canPayFor(c, f, familyOf(type) === 'cavalry' ? 'cavalry' : 'company', companyCost(t, type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid }) && (!a || (a.owner === f && armySize(a) < MAX_ARMY))
     && menToRaise(c, f, tid) >= MEN.least; // a soldier costs a person: with fewer men to send than this, no company (armytown.ts; none asked for yet)
 }
 export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
@@ -828,7 +833,7 @@ export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
 
 /** Do a thing that waited for its goods to come in by road (sentfor.ts), as it was ordered. */
 const doSentFor = (c: Campaign, s: SentFor): boolean =>
-  s.act.kind === 'build' ? build(c, s.f, s.at, String(s.act.arg)) : s.act.kind === 'raise' ? raise(c, s.f, s.at, String(s.act.arg)) : s.act.kind === 'hero' ? summonHero(c, s.f, s.at)
+  s.act.kind === 'build' ? build(c, s.f, s.at, String(s.act.arg)) : s.act.kind === 'hero' ? summonHero(c, s.f, s.at)
     : s.act.kind === 'age' ? advanceAge(c, s.f) : s.act.kind === 'work' ? openBorder(c, s.f, s.at, Number(s.act.arg)) : false;
 
 export function build(c: Campaign, f: number, tid: number, site: string): boolean {
@@ -841,7 +846,7 @@ export function build(c: Campaign, f: number, tid: number, site: string): boolea
 /** Raise one company. It joins the army standing in the territory, or forms a new one. */
 export function raise(c: Campaign, f: number, tid: number, type: string): boolean {
   if (!canRaise(c, f, tid, type)) return false;
-  if (!payFor(c, f, type === 'cavalry' ? 'cavalry' : 'company', companyCost(c.territories[tid], type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid, act: { kind: 'raise', arg: type } })) return false; // or it waits (sentfor.ts)
+  payFor(c, f, familyOf(type) === 'cavalry' ? 'cavalry' : 'company', companyCost(c.territories[tid], type, c.factions[f].civ, hireOff(c, f, tid)), { at: tid });
   let a = armyAt(c, tid);
   if (!a) {
     a = { id: c.nextArmy++, owner: f, at: tid, units: {}, hero: false, vet: c.factions[f].civ === 'japan' ? 1 : 0, moved: true }; // fresh troops march next turn
@@ -1050,6 +1055,8 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settled', 'townfaith', (c) => settleFaith(c))
   .on('settled', 'mapbattle', (c, p, b) => { if (b.fought) tellBattle(c, p, b.fought, b.led ?? {}, b.fallenBefore); }) // told once the dead are counted: who led, what broke, who fell by name
   .on('settled', 'veteranhome', (c, _p, b) => { if (b.fought) { const k = felledOf(b.fought, MEN.company); noteStood(c, battleNamed(c, b.attackerWon ? b.army?.id : b.defArmy?.id, b.attackerWon ? k.byAttacker : k.byDefender)); } }) // the winners name a man who stood (veteranhome.ts)
+  .on('settled', 'battlescars', (c, p, b) => { if (b.how === 'auto' && b.fought) scarTown(c, p, b.fought); }) // a battle nobody watched marks the town (battlescars.ts)
+  .on('settled', 'chroniclethreads', (c, p, b) => { rivalBattleHeard(c, p, b); }) // a great battle between rivals, heard of (chroniclethreads.ts)
   .on('settled', 'warrecord', (c, p, b) => { if (b.fought) foughtOnMap(c, p, [b.army?.id, b.defArmy?.id]); }) // every man still on both rolls has come through it (warrecord.ts)
   // setup: a battle is about to be laid out for play.
   .on('setup', 'stores', (c) => settleStores(c)) // a town fights out of what is in its stores now, after all that has been spent
@@ -1087,7 +1094,7 @@ export const BATTLE_ANSWERS = new BattleAnswers<BattleQuestions>()
 
 export const battleWatchers: ((c: Campaign, p: Pending, attackerWon: boolean, how: 'auto' | 'attacker' | 'defender') => void)[] = [];
 
-export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender'): boolean {
+export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender', opts: { /** A battle fought in person: the attacker's men still standing at the end, by unit type, and whether its leader lived (siegeretreat.ts). */ attackerLeft?: Record<string, number>; attackerLed?: boolean } = {}): boolean {
   const p = c.pending;
   if (!p) return false;
   if (p.band !== undefined) return settleBandFight(c, how); // against a band: no nation, and no land changes hands (bandfight.ts)
@@ -1158,7 +1165,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     if (t.town) t.town.b = t.town.b.filter(([type]) => type !== 'tower' && !BUILDINGS[type]?.wall); // nor do the town's own
   } else {
     if (army && fought && leftWith(army, fought.a)) army.moved = true; // beaten, it keeps what is left where it marched from
-    else if (army) destroyArmy(c, army);
+    else if (army && !(!fought && beatenBack(c, army, opts.attackerLeft, p.from, opts.attackerLed ?? true))) destroyArmy(c, army); // fought in person, likewise (siegeretreat.ts)
     if (defArmy) { if (fought) leftWith(defArmy, fought.d); else casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
     BATTLE_HOOKS.run('repulsed', c, p, note); // the attacker was thrown back
     c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and were thrown back.`); // every side's name is plural: you, the Malians, the locals
@@ -1280,6 +1287,7 @@ export function continueAI(c: Campaign): void {
       temperSeasons(c); // war, a quiet year, the leader's presence or neglect, taxes move them (nobletemper.ts)
       nobleActsSeasons(c); // a content lord helps in need, an angry one withholds or joins a plot (nobleacts.ts)
       weighSeasons(c); // a computer-led ruler deals with its angriest lord (nobleweigh.ts)
+      petitionSeasons(c); // a noble comes with a petition now and then; a computer-led ruler answers it (petitions.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
@@ -1288,6 +1296,7 @@ export function continueAI(c: Campaign): void {
       settleFaith(c);
       seasonDrift(c); // towns drift by what strains them, and rulers give decrees (drift.ts, decrees.ts)
       mendTowns(c);
+      finishWorks(c); // the governors go on with half-built works, as the towns' stores allow (battlescars.ts)
       turnEvent(c);
       storyTurn(c);
       intrigueSeason(c); // stories inside the story: a thief, a killer to be found (intrigue.ts)
@@ -1581,6 +1590,10 @@ export interface BattleAfter {
   downed?: unknown;
   /** Who of the town was drifted to the tavern and the mine as the battle ended (driftintown.ts). */
   drifted?: { tavern?: number; mines?: number };
+  /** The other side's men still standing as the battle ended, by unit type: what a rival thrown back keeps (siegeretreat.ts). */
+  foes?: Record<string, number>;
+  /** Whether the other side's leader was still standing as the battle ended (false: they fell). */
+  foesLed?: boolean;
 }
 export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, after: BattleAfter = {}): void {
   const { virtue, heroRank, town: standing, ground } = after;
@@ -1599,7 +1612,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const rankBefore = c.factions[0].heroRank ?? 0;
   const known = mine?.champion?.name;
   const camp = !!land.horde; // marauders hold no town
-  resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
+  resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender', { attackerLeft: humanAttacks ? survivors : after.foes, attackerLed: humanAttacks ? !after.fell : after.foesLed !== false });
   const note: BattleNote = { playerWon, after };
   BATTLE_HOOKS.run('written', c, p, note); // the field is being read back
   noteDowned(c, after.downed); // the men of the rolls whose soldiers went down there: the map counts them first (soldiernames.ts)

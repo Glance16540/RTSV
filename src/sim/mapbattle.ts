@@ -31,7 +31,7 @@
  * Nothing here is drawn or timed: a fight is a few rounds of arithmetic, quick enough for a thousand campaigns.
  */
 import type { Army, Campaign, Pending } from './campaign';
-import { BEATS, COMPANIES, FAITH, MAX_ARMY, armyAt, armySize, rankWith, strengthVs, virtueOf } from './campaignbase';
+import { BEATS, COMPANIES, FAITH, MAX_ARMY, armyAt, armySize, beatenIn, familyOf, rankWith, strengthVs, virtueOf } from './campaignbase';
 import { creedOf } from './creed';
 import { faithAt } from './townfaith';
 import { wallsEdge } from './sieges';
@@ -133,7 +133,7 @@ function line(f: Force): Line {
 function strike(me: Line, foe: Line): number {
   const facing = KINDS.reduce((n, k) => n + foe.hp[k], 0);
   let s = 0;
-  for (const k of KINDS) s += me.hp[k] * COMPANIES[k].str * (1 + (facing > 0 ? (CLASH.counter * foe.hp[BEATS[k]]) / facing : 0));
+  for (const k of KINDS) s += me.hp[k] * COMPANIES[k].str * (1 + (facing > 0 ? (CLASH.counter * beatenIn(k, foe.hp)) / facing : 0)); // a people's own company beats what its plain kind beats (uniquecompany.ts)
   return s * me.scale + me.works;
 }
 /** What lands on a side: on its works and its companies by their weight, and more on a kind the other side beats. */
@@ -143,7 +143,7 @@ function suffer(me: Line, foe: Line, landed: number): void {
   const onWorks = Math.min(me.works, (landed * me.works) / all);
   me.works -= onWorks;
   const facing = KINDS.reduce((n, k) => n + foe.hp[k], 0);
-  const beaters = (k: string): number => (facing > 0 ? KINDS.filter((x) => BEATS[x] === k).reduce((n, x) => n + foe.hp[x], 0) / facing : 0);
+  const beaters = (k: string): number => (facing > 0 ? KINDS.filter((x) => BEATS[familyOf(x)] === familyOf(k)).reduce((n, x) => n + foe.hp[x], 0) / facing : 0);
   const open: Record<string, number> = {};
   let sum = 0;
   for (const k of KINDS) { open[k] = me.hp[k] * COMPANIES[k].str * (1 + CLASH.exposed * beaters(k)); sum += open[k]; }
@@ -198,11 +198,12 @@ export function clash(a: Force, d: Force, luckA = 1, luckD = 1): Outcome {
     for (const k of KINDS) beaten.hp[k] *= 1 - share;
   };
   if (broke === 'defender') chase(A, D);
-  else if (broke === 'attacker') chase(D, A);
+  else if (broke === 'attacker' && !d.walled) chase(D, A); // men on walls hold them: they do not sally out to run a beaten besieger down
   const attackerWon = broke === 'defender';
   const out: Outcome = { attackerWon, broke, rounds, a: muster(a, A, attackerWon), d: muster(d, D, !attackerWon) };
   const beaten = broke === 'attacker' ? out.a : broke === 'defender' ? out.d : null;
-  if (beaten && count(beaten.left) < count(beaten.began) * CLASH.scatter) { beaten.lost = { ...beaten.began }; beaten.left = {}; beaten.scattered = true; }
+  // A beaten side too few to hold together scatters for home; a besieger thrown back from walls, unpursued, falls back with what it has (siegeretreat.ts).
+  if (beaten && !(beaten === out.a && d.walled) && count(beaten.left) < count(beaten.began) * CLASH.scatter) { beaten.lost = { ...beaten.began }; beaten.left = {}; beaten.scattered = true; }
   return out;
 }
 

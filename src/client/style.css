@@ -884,6 +884,11 @@ body.looking-out #visit { display: none; }
    colour painted as a gradient is drawn with the record and looks the same. */
 @media (min-width: 1100px) { .record { background: linear-gradient(#efdbb3, #efdbb3); } }
 
+/* Who goes to arms (src/sim/pickman.ts, src/client/hud.ts) */
+#info .enlist { color: #e8c070; }
+#info .send-man { margin-top: 4px; padding: 3px 8px; font: inherit; cursor: pointer; border: 1px solid #8a6a3a; border-radius: 4px; background: rgba(60, 40, 20, 0.6); color: #f2dfb8; }
+#info .send-man:hover { background: rgba(90, 60, 30, 0.8); }
+
 /* Battles on the map (src/client/talepanel.ts): each battle fought out on the map, told in full. */
 .tales { display: block; text-align: left; max-height: 60vh; overflow-y: auto; font-size: 14px; }
 .tale-fold { border-top: 1px solid rgba(36, 24, 15, 0.3); padding: 2px 0; }
@@ -899,3 +904,11 @@ body.looking-out #visit { display: none; }
 .tale .tale-fell { display: flex; flex-wrap: wrap; gap: 2px 14px; }
 .tale-none { display: block; text-align: left; font-size: 14px; }
 .tale-link { color: inherit; text-decoration: underline dotted; cursor: pointer; }
+
+/* The thread through the missions (src/client/missionstory.ts): its tag in the list, its line before the brief and after a win. */
+.ms-tag { display: block; font: 400 13px var(--caps); letter-spacing: 0.04em; color: var(--rubric); font-style: normal; margin: 2px 0; }
+.ms-before { display: block; font-style: italic; margin: 6px 0 10px; }
+.ms-after { margin: 4px 0 14px; font-size: 16px; line-height: 1.45; }
+.ms-after p { margin: 0 0 8px; font-style: italic; }
+.ms-next { display: inline-block; padding: 6px 14px; border: 1px solid currentColor; text-decoration: none; color: inherit; font: 400 15px var(--caps); }
+.ms-end { font-style: normal; }

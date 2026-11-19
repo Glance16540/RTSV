@@ -6,6 +6,8 @@
 // figures under a standard that march from land to land, and the map moves: the sea runs, cloud drifts and throws
 // shadow, weather fronts pass with rain, snow or dust, birds wheel, ships go by, and smoke rises from the towns.
 
+import { scarsOf } from '../sim/battlescars';
+import { scarPieces } from './scardraw';
 import { RIM_PAINT, bandCamp, paintRim, rimTint, seenByPlayer, wasteOf } from './rimdraw';
 import { Walker, walk, walkerFor } from './caravandraw';
 import { convoyWalkers } from './convoydraw';
@@ -15,7 +17,8 @@ import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { PLACES } from '../sim/story';
-import { Campaign, heroFor, placeAt, EVENTS, LAND_STEP, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots, terrainOf } from '../sim/campaign';
+import { UNITS } from '../sim/data';
+import { COMPANIES, Campaign, heroFor, placeAt, EVENTS, LAND_STEP, LOCALS, MAP_H, MAP_W, ageOf, armyAt, armySize, climateAt, eventsAt, frontsOf, landNoise, slots, terrainOf } from '../sim/campaign';
 import { lookOf } from './models';
 import { RealPerson, leaderOutfit, loadPeople, makePerson, outfitFor, peopleReady, play } from './person';
 
@@ -1164,6 +1167,7 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       if (t.capital >= 0) { const pole = new THREE.Group(); pole.position.set(X - 3.4, y, Z - 0.8); pole.scale.setScalar(1.6); flagOn(pole, 0, 2.55, 0, c.factions[t.capital].color, 1); this.pieces.add(pole); }
       // Hearth-smoke over every place that is lived in.
       if (t.owner >= 0 && (t.capital >= 0 || t.buildings.length)) for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(smokeG, smokeM.clone()); this.pieces.add(m); this.smokes.push({ m, x: X - 3.4, y: y + (t.capital >= 0 ? 4.2 : 1.6), z: Z - 0.8, ph: k / 3 + t.id * 0.37 }); }
+      { const sc = scarsOf(c, t.id); if (sc.damaged) { const s2 = scarPieces(sc.share, sc.damaged, X - 3.4, y, Z - 0.8, t.id); this.pieces.add(s2.group); this.smokes.push(...s2.puffs); } } // its scars, until they are mended (scardraw.ts)
       }
 
       // Its name, standing over it.
@@ -1238,9 +1242,12 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
         const lead = heroFor(c, a.owner);
         const kinds: string[] = a.hero ? [lead.calling] : [];
         const main = (a.units.cavalry ?? 0) > (a.units.infantry ?? 0) ? 'spearman' : (a.units.archers ?? 0) > (a.units.infantry ?? 0) ? 'bowman' : age >= 2 ? 'swordsman' : age >= 1 ? 'spearman' : 'clubman';
-        kinds.push(main); if (n >= 5) kinds.push(age >= 1 ? 'bowman' : 'slinger');
+        kinds.push(main);
+        const own = Object.keys(a.units).filter((k) => COMPANIES[k]?.civ && a.units[k] > 0).sort((p, q) => a.units[q] - a.units[p])[0]; // a people's own soldiers, drawn as they are (uniquecompany.ts)
+        if (own) kinds.push(own);
+        if (n >= 5) kinds.push(age >= 1 ? 'bowman' : 'slinger');
         kinds.slice(0, 3).forEach((type, k) => {
-          const made = peopleReady() ? makePerson(((o) => (a.hero && k === 0 ? leaderOutfit(o, lead.female, lead.look) : o))(outfitFor(type, a.hero && k === 0 ? lead.female : false, color, lookOf(civ, a.id * 7 + k), a.id * 7 + k, 0, { cls: a.hero && k === 0 ? 'hero' : type === 'bowman' || type === 'slinger' ? 'ranged' : 'infantry', age, civ }))) : null;
+          const made = peopleReady() ? makePerson(((o) => (a.hero && k === 0 ? leaderOutfit(o, lead.female, lead.look) : o))(outfitFor(type, a.hero && k === 0 ? lead.female : false, color, lookOf(civ, a.id * 7 + k), a.id * 7 + k, 0, { cls: a.hero && k === 0 ? 'hero' : COMPANIES[type]?.civ ? UNITS[type].cls : type === 'bowman' || type === 'slinger' ? 'ranged' : 'infantry', age, civ }))) : null;
           const px = kinds.length === 1 ? 0.1 : [0.15, 0.75, -0.25][k], pz = kinds.length === 1 ? 0.1 : [0.35, -0.2, -0.3][k];
           if (made) {
             made.g.scale.setScalar(k === 0 ? 1.75 : 1.5);

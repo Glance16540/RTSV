@@ -16,6 +16,7 @@
 //
 // Each mark is kept on the campaign with the town, noble or people it is about, and words for it, so that a
 // town's panel, the roll and the season's report can show it. One call a season (from intrigue.ts).
+import { toldIn } from './chroniclethreads';
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
 import { MAX_ARMY, MAX_FAVOR, armyAt, armySize } from './campaignbase';
@@ -73,6 +74,11 @@ function add(c: Campaign, it: Intrigue, kind: MarkKind, seasons: number, text: s
 function tell(c: Campaign, m: Mark, tone: 'good' | 'bad' | 'plain', text: string): void {
   (c.intrigueNews ??= []).push({ turn: c.turn, id: m.story, kind: m.from, at: m.at ?? courtOf(c, m.owner)?.at ?? 0, owner: m.owner, tone, text });
   if (m.owner === 0) c.log.push(text);
+}
+
+/** A story's sequel, written in the chronicle (the player's own) with the year the story it came of was told (chroniclethreads.ts). */
+function chronicled(c: Campaign, m: Mark, text: string): void {
+  if (m.owner === 0) (c.chronicle ??= []).push({ turn: c.turn, text: text + toldIn(c, m.since) });
 }
 
 /** The marks still running: on a town, with a rival people, about a noble; and every mark of a people's, run out or not. */
@@ -159,7 +165,7 @@ export function aftermathSeason(c: Campaign): void {
       const busy = (c.intrigues ?? []).some((x) => !x.ended && (x.kind === 'rival' || x.kind === 'suitor' || x.kind === 'plot'));
       if (busy) { m.until = c.turn + 1; continue; }
       m.used = true;
-      if (m.rival !== undefined && c.factions[m.rival]?.alive && c.factions[0]?.heroAlive && spouseOf(c, 0)) { tell(c, m, 'bad', `${m.name} has spent what you sent him, and has not forgotten after all.`); beginRival(c, m.rival); }
+      if (m.rival !== undefined && c.factions[m.rival]?.alive && c.factions[0]?.heroAlive && spouseOf(c, 0)) { tell(c, m, 'bad', `${m.name} has spent what you sent him, and has not forgotten after all.`); chronicled(c, m, `${m.name} spent what was sent to buy him off, and came back.`); beginRival(c, m.rival); }
       continue;
     }
     if (!live(c, m)) continue;
@@ -173,12 +179,13 @@ export function aftermathSeason(c: Campaign): void {
       if (!n) continue;
       if (!m.shown && c.turn >= m.until - A.pardoned.seasons) {
         m.shown = true;
-        if (m.fate === 'loyal') { m.text = `${m.name}, who plotted and was pardoned, has become the staunchest of the nobles.`; tell(c, m, 'good', m.text); }
+        if (m.fate === 'loyal') { m.text = `${m.name}, who plotted and was pardoned, has become the staunchest of the nobles.`; tell(c, m, 'good', m.text); chronicled(c, m, m.text); }
         else {
           m.text = `${m.name}, who plotted and was pardoned, plotted again.`; m.until = c.turn;
           const busy = (c.intrigues ?? []).some((x) => !x.ended && (x.kind === 'rival' || x.kind === 'suitor' || x.kind === 'plot'));
           if (busy) { m.shown = false; m.until = c.turn + 1 + A.pardoned.seasons; continue; }
           n.mood = Math.min(n.mood, -60);
+          chronicled(c, m, m.text);
           beginPlot(c, n.key);
         }
       }

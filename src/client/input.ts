@@ -1,6 +1,7 @@
 // Mouse and keyboard: camera control, selection, orders and building placement.
 
 import { drawNotableMarks } from './notables';
+import { drawEnlistMarks } from './enlistmarks';
 import { drawStoryMarks } from './fieldstoryui';
 import { drawPlaceTip } from './placetip';
 import { drawRoadTool, roadDown, roadEscape } from './roadtool';
@@ -384,6 +385,7 @@ export class Input {
       if ((b.hp < b.maxHp || selected.has(b.id)) && r.isVisible(b)) bar(b, b.type === 'farm' ? 0.6 : b.size * 0.5 + 1.2, ppt * b.size * 0.7);
     }
     drawNotableMarks(ctx, game, pid, ppt, (x, y, h) => r.project(x, y, h), (u) => r.isVisible(u));
+    drawEnlistMarks(ctx, game, pid, ppt, (x, y, h) => r.project(x, y, h), (u) => r.isVisible(u)); // a villager on the way to take up arms (pickman.ts)
     drawStoryMarks(ctx, game, pid, ppt, (x, y, h) => r.project(x, y, h), (e) => r.isVisible(e)); // a story afoot in the town (fieldstoryui.ts)
     // Hearts over houses where a family is raising a child.
     ctx.font = `${Math.max(11, ppt * 0.5)}px sans-serif`;

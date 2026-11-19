@@ -225,7 +225,7 @@ export function waylay(c: Campaign, x: Convoy, a: { robbed?: Arrival['robbed'] }
     for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * met.share * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
     if (worth(took) > 0) {
       a.robbed = { by: band.name, took };
-      band.band.strength = Math.min(10, band.band.strength + 1);
+      if (x.pays === undefined) band.band.strength = Math.min(10, band.band.strength + 1); // goods sent to pay for a thing (sentfor.ts) feed no band's strength: the owner's word, DESIGN ae5db6f
       if (mine) c.log.push(`🗡️ ${band.name[0].toUpperCase() + band.name.slice(1)} stopped your ${what} to ${c.territories[x.to].name} ${band.sea ? 'at sea' : 'on the road'} and took ${STORE_KINDS.filter((s) => took[s]).map((s) => `${took[s]} ${s}`).join(', ')}.`);
     }
   }
