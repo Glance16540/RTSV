@@ -2,7 +2,7 @@
 // and a story's later lines did not say what they came of).
 //
 //   - News heard: a great battle between two rival peoples is written in the chronicle where the player would hear
-//     of it: fought in a land beside his own, or by his ally. A great battle is one with the ally in it, or with
+//     of it: fought within two lands of his own (HEARD_REACH), or by his ally. A great battle is one with the ally in it, or with
 //     companies enough on the field (GREAT); a capital or a named place taken is told already (campaign.ts).
 //   - Threads: a later line of a story says when it began. A tale that came of an earlier answer names the answer
 //     and its year; a claimant's later lines (proclaimed, come of age, the rising and its end) name the year the child
@@ -36,11 +36,25 @@ export function cameOf(c: Campaign, after: { id: string; choice: 'a' | 'b' } | u
   return ` It came of ${name ? `"${name}"` : 'an earlier matter'}, as was told in year ${yearOf(was.turn)}.`;
 }
 
-/** Would the player hear of a battle between these two at this land? Beside his own lands, or his ally's fight. */
+/** How far news of a battle carries: lands within this many steps of one of the player's own. */
+export const HEARD_REACH = 2;
+
+/** Would the player hear of a battle between these two at this land? Within HEARD_REACH lands of his own, or his ally's fight. */
 export function heardOf(c: Campaign, p: Pending): boolean {
   const t = c.territories[p.to];
   if (!t || p.attacker <= 0 || p.defender <= 0) return false;
-  return p.attacker === c.ally || p.defender === c.ally || t.adj.some((n) => c.territories[n]?.owner === 0);
+  if (p.attacker === c.ally || p.defender === c.ally) return true;
+  let ring = [t.id];
+  const seen = new Set(ring);
+  for (let step = 0; step < HEARD_REACH; step++) {
+    const next: number[] = [];
+    for (const id of ring) for (const n of c.territories[id]?.adj ?? []) {
+      if (c.territories[n]?.owner === 0) return true;
+      if (!seen.has(n)) { seen.add(n); next.push(n); }
+    }
+    ring = next;
+  }
+  return false;
 }
 
 const count = (u: Record<string, number> | undefined): number => Object.values(u ?? {}).reduce((n, v) => n + Math.max(0, v), 0);

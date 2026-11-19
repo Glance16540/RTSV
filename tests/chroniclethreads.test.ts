@@ -40,7 +40,9 @@ describe('rivals\' great battles, heard of', () => {
     const mine = c.territories.find((t) => t.owner === 0)!;
     const near = c.territories[mine.adj.find((n) => c.territories[n].owner !== 0)!];
     near.owner = 1;
-    const far = c.territories.find((t) => t.owner !== 0 && t.id !== near.id && !t.adj.some((n) => c.territories[n].owner === 0))!;
+    // A land more than HEARD_REACH (two) steps from anything of the player's.
+    const within2 = (t: { adj: number[] }) => t.adj.some((n) => c.territories[n].owner === 0 || c.territories[n].adj.some((m) => c.territories[m].owner === 0));
+    const far = c.territories.find((t) => t.owner !== 0 && t.id !== near.id && !within2(t))!;
     far.owner = 2;
     const other = 2; // the attacker beside the player's land is the people who hold the far one, and the reverse
     return { c, near, far, other };
