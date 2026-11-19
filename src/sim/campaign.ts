@@ -48,6 +48,7 @@ import { nobleActsSeasons } from './nobleacts';
 import { marriageSeason } from './marriage';
 import { temperSeasons } from './nobletemper';
 import { marchMargin, treatLean, weighSeasons } from './nobleweigh';
+import { petitionSeasons } from './petitions';
 import { widowsSeason } from './widowhood';
 import { studiedHome, studiesSeason, withStudies } from './studies';
 import { rulesSeason } from './rule';
@@ -1278,6 +1279,7 @@ export function continueAI(c: Campaign): void {
       temperSeasons(c); // war, a quiet year, the leader's presence or neglect, taxes move them (nobletemper.ts)
       nobleActsSeasons(c); // a content lord helps in need, an angry one withholds or joins a plot (nobleacts.ts)
       weighSeasons(c); // a computer-led ruler deals with its angriest lord (nobleweigh.ts)
+      petitionSeasons(c); // a noble comes with a petition now and then; a computer-led ruler answers it (petitions.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
