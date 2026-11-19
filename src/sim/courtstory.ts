@@ -104,7 +104,7 @@ const truce = (c: Campaign, owner: number, f: number, turns: number): void => { 
  * player's house not the player's ally. A rival ruler's house is visited only by other rivals, never by the player.
  */
 const rivals = (c: Campaign, owner = 0): number[] => c.factions.filter((f) => f.id > 0 && f.id !== owner && f.alive && f.isAI && (owner !== 0 || c.ally !== f.id)).map((f) => f.id);
-const running = (c: Campaign, owner = 0): boolean => (c.intrigues ?? []).some((x) => (x.kind === 'rival' || x.kind === 'suitor' || x.kind === 'plot') && x.owner === owner && (!x.ended || c.turn - x.ended.turn < COURT.rest));
+const running = (c: Campaign, owner = 0): boolean => (c.intrigues ?? []).some((x) => (x.kind === 'rival' || x.kind === 'suitor' || (x.kind === 'plot' && !x.claim)) && x.owner === owner && (!x.ended || c.turn - x.ended.turn < COURT.rest));
 /** A people's goodwill toward the player: only the player's own stories move it. */
 const goodwill = (c: Campaign, it: Intrigue, f: (favor: number) => number): void => { const r = c.factions[it.rival ?? -1]; if (r && it.owner === 0) r.favor = f(r.favor ?? 0); };
 /** A grown daughter of the leader's house, if there is one. Never a child. */
@@ -343,6 +343,7 @@ export function shownTrue(c: Campaign, it: Intrigue, i: number, text: string): b
   return true;
 }
 /** The plotter is gone from the nation's great: put to death, or dead in their own rising. */
+export const removeNoble = (c: Campaign, n: Noble | undefined, how: string, f = 0): void => remove(c, n, how, f);
 function remove(c: Campaign, n: Noble | undefined, how: string, f = 0): void {
   if (!n) return;
   if (n.rank === 'close') { const k = kinOf(c, f); k.circle = k.circle.filter((x) => !(x.name === n.name && x.post === n.post)); }

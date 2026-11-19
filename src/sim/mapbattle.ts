@@ -257,6 +257,9 @@ export function fightPending(c: Campaign, p: Pending, home: number, rollA: numbe
  * to march: `aStr` and `dStr` as the chooser weighs them (its caution is in what it adds to the defence). One
  * thing it cannot know from outside: what walls with men on them are worth beyond their sum (sieges.ts,
  * `SIEGE.walls`). It sees the walls and counts them, and learns the rest at the foot of them.
+ * That is meant (the owner's word, 19 November 2026): read at 384 campaigns with the walls' edge and home ground
+ * known to it, walled and manned towns held 22% of sieges where they hold 67%, two sieges in three were never
+ * begun, and campaigns undecided rose from 6 to 10%.
  */
 export function wouldTake(c: Campaign, army: Army, to: number, aStr: number, dStr: number): boolean {
   const { a, d } = forcesOf(c, army, to, aStr, dStr);

@@ -14,6 +14,9 @@ import { RISING, claimantAt, claimantLine, claimantsSeason, comeOfAge, followers
 import { FREE, isFree, treatCost } from '../src/sim/freetown';
 import { BORN } from '../src/sim/bandborn';
 import { judge } from '../src/sim/rivalstories';
+import { bringToJudgement } from '../src/sim/claimantjudged';
+import { openIntrigues } from '../src/sim/intrigue';
+import { sensibleAnswers } from '../src/sim/storypolicy';
 import { rollOf } from '../src/sim/roll';
 import { folkOf } from '../src/sim/township';
 
@@ -386,7 +389,7 @@ describe('a rising raised in a child\'s name', () => {
     expect(cl.ended).toBeUndefined();
     expect(cl.over).toBe(c.turn);
     expect(cl.towns).toBeUndefined();
-    expect(c.log[c.log.length - 1]).toContain('The rising for the child of Maren is over');
+    expect(c.log.some((l) => l.includes('The rising for the child of Maren is over'))).toBe(true);
     for (let i = 0; i < 12; i++) { c.turn++; claimantsSeason(c); }
     expect(isFree(c, ring[0].id)).toBe(false); // nobody proclaims it a second time
     c.turn = cl.born + HEIR_AGE; claimantsSeason(c);
@@ -403,5 +406,84 @@ describe('a rising raised in a child\'s name', () => {
     expect(cl.towns).toEqual([ring[0].id]);
     expect(c.log[c.log.length - 1]).toContain('has come of age and leads the rising');
     expect(claimantLine(c, ring[0].id)).toContain('claims the throne');
+  });
+});
+
+describe('whoever led a rising is brought to judgement when its seat is retaken', () => {
+  const risen = (seed = 5) => {
+    const w = world(seed);
+    w.other.mood = -80;
+    const cl = recordChild(w.c, { owner: 0, mother: 'Maren', parent: 'noble', by: 'Lord Aldric', town: w.other.town, key: w.other.key });
+    expect(proclaim(w.c, cl)).toEqual([w.ring[0].id]);
+    return { ...w, cl };
+  };
+  const retake = (w: ReturnType<typeof risen>) => { w.ring[0].owner = 0; delete w.ring[0].free; w.c.turn++; claimantsSeason(w.c); return openIntrigues(w.c, 0).find((x) => x.claim)!; };
+  it('a child\'s rising: the lord who proclaimed it is judged by name, and the child is a record untouched', () => {
+    const w = risen(), before = JSON.stringify({ ...w.cl, towns: undefined, over: undefined });
+    const it0 = retake(w);
+    expect(it0.kind).toBe('plot');
+    expect(it0.found).toBe(true);
+    expect(it0.claim).toEqual({ id: w.cl.id, who: 'lord' });
+    expect(it0.nobles).toHaveLength(1);
+    expect(it0.nobles![0].key).toBe(w.other.key);
+    expect(w.c.log[w.c.log.length - 1]).toContain('who proclaimed the child of Maren heir, was taken when');
+    expect(choicesFor(w.c, it0).map((o) => o.id)).toEqual(['pardon', 'exile', 'death']);
+    expect(choose(w.c, it0.id, 'death')).toBe(true);
+    expect(it0.ended?.how).toBe('executed');
+    expect(noblesOf(w.c, 0).some((n) => n.name === 'Aldric' && n.town === w.ring[0].id)).toBe(false); // the town has a new lord
+    // The child: still a record, never named, not ended, and nothing of it changed but that its rising is over.
+    expect(w.cl.name).toBeUndefined();
+    expect(w.cl.ended).toBeUndefined();
+    expect(JSON.stringify({ ...w.cl, towns: undefined, over: undefined })).toBe(before);
+    expect(it0.nobles!.some((n) => n.key.startsWith('claimant'))).toBe(false);
+  });
+  it('pardoned, the lord keeps his town and his mood is mended; banished, the town has a new lord and nobody takes note', () => {
+    const a = risen(), ia = retake(a), moods = noblesOf(a.c, 0).filter((n) => n !== a.other).map((n) => n.mood);
+    expect(choose(a.c, ia.id, 'pardon')).toBe(true);
+    expect(ia.ended?.how).toBe('pardoned');
+    expect(a.other.mood).toBe(10);
+    expect(noblesOf(a.c, 0).includes(a.other)).toBe(true);
+    expect(noblesOf(a.c, 0).filter((n) => n !== a.other).map((n) => n.mood)).not.toEqual(moods);
+    const b = risen(), ib = retake(b), was = noblesOf(b.c, 0).filter((n) => n !== b.other).map((n) => n.mood);
+    expect(choose(b.c, ib.id, 'exile')).toBe(true);
+    expect(ib.ended?.how).toBe('banished');
+    expect(noblesOf(b.c, 0).some((n) => n.name === 'Aldric' && n.town === b.ring[0].id)).toBe(false);
+    expect(noblesOf(b.c, 0).filter((n) => n.name !== 'Aldric' && n.town !== b.ring[0].id).map((n) => n.mood)).toEqual(was.slice(0, 3));
+  });
+  it('a grown claimant who led it is the one judged, by name', () => {
+    const w = world();
+    const cl = recordChild(w.c, { owner: 0, mother: 'Maren', parent: 'noble', by: 'Lord Aldric', town: w.other.town, key: w.other.key });
+    w.c.turn += HEIR_AGE; claimantsSeason(w.c);
+    expect(cl.towns).toEqual([w.ring[0].id]);
+    w.ring[0].owner = 0; delete w.ring[0].free; w.c.turn++; claimantsSeason(w.c);
+    expect(cl.ended?.how).toBe('putdown');
+    const it0 = openIntrigues(w.c, 0).find((x) => x.claim)!;
+    expect(it0.claim).toEqual({ id: cl.id, who: 'claimant' });
+    expect(it0.nobles![0].name).toBe(cl.name);
+    expect(choose(w.c, it0.id, 'exile')).toBe(true);
+    expect(it0.ended?.text).toContain(`${cl.name}, who claimed the throne rose for the throne, was taken, and was sent out of the land.`);
+    expect(noblesOf(w.c, 0)).toHaveLength(4); // no noble is touched by it
+  });
+  it('nobody is judged where a band proclaimed the child, the lord is gone, or the seat fell to others', () => {
+    const a = world();
+    a.c.bands = [{ id: 7, kind: 'slavers', name: 'the Red Hand', at: a.far.id, strength: 5, since: a.c.turn, held: [] }];
+    const band = recordChild(a.c, { owner: 0, mother: 'Maren', parent: 'band', by: 'the Red Hand', town: a.far.id, band: 7 });
+    proclaim(a.c, band);
+    expect(bringToJudgement(a.c, band, a.ring[1].id)).toBeNull();
+    const b = risen();
+    b.c.factions[0].nobles = noblesOf(b.c, 0).filter((n) => n !== b.other);
+    b.ring[0].owner = 0; delete b.ring[0].free; b.c.turn++; claimantsSeason(b.c);
+    expect(openIntrigues(b.c, 0).some((x) => x.claim)).toBe(false);
+    const d = risen();
+    d.ring[0].owner = 1; d.c.turn++; claimantsSeason(d.c);
+    expect((d.c.intrigues ?? []).some((x) => x.claim)).toBe(false);
+  });
+  it('it waits on judgement season after season, is no plot begun, and the rulers answer it as they answer a plotter found', () => {
+    const w = risen(), it0 = retake(w);
+    for (let i = 0; i < 6; i++) { w.c.turn++; intrigueSeason(w.c); }
+    expect(it0.ended).toBeUndefined();
+    expect(judge(w.c, { ...it0, owner: 1 })).toMatch(/^(pardon|death)$/);
+    expect(sensibleAnswers(w.c, 0)).toContain('plot:pardon');
+    expect(it0.ended?.how).toBe('pardoned');
   });
 });
