@@ -329,6 +329,10 @@ export interface BattleTale {
   fell: string[];
   /** All of it in words. */
   text: string;
+  /** What each side brought, by kind; the share of the town's own defence beaten down; which side scattered for home (battletales.ts reads these). */
+  beganA?: Record<string, number>; beganD?: Record<string, number>; works?: number; scattered?: 'attacker' | 'defender';
+  /** The man the winners named for how he stood, if they named one (veteranhome.ts battleNamed; battletales.ts noteStood). */
+  stood?: { name: string; town: number };
 }
 declare module './campaign' {
   interface Campaign {
@@ -363,7 +367,7 @@ export function tellBattle(c: Campaign, p: Pending, out: Outcome, led: { a?: str
   const named = fell.slice(0, TALES.named);
   const dead = named.length ? ` Among the fallen: ${named.join(', ')}${fell.length > named.length ? `, and ${fell.length - named.length} more` : ''}.` : '';
   const text = `${leaders ? `${cap(leaders)}. ` : ''}${cap(accountOf(out, name(p.attacker), name(p.defender), place))}${dead}`;
-  const tale: BattleTale = { turn: c.turn, at: p.to, attacker: p.attacker, defender: p.defender, attackerWon: out.attackerWon, ...(led.a ? { ledA: led.a } : {}), ...(led.d ? { ledD: led.d } : {}), lostA: out.a.lost, lostD: out.d.lost, broke: out.broke, rounds: out.rounds, fell: named, text };
+  const tale: BattleTale = { turn: c.turn, at: p.to, attacker: p.attacker, defender: p.defender, attackerWon: out.attackerWon, ...(led.a ? { ledA: led.a } : {}), ...(led.d ? { ledD: led.d } : {}), lostA: out.a.lost, lostD: out.d.lost, broke: out.broke, rounds: out.rounds, fell: named, text, beganA: out.a.began, beganD: out.d.began, works: out.d.works, ...(out.a.scattered ? { scattered: 'attacker' as const } : out.d.scattered ? { scattered: 'defender' as const } : {}) };
   (c.tales ??= []).push(tale);
   if (c.tales.length > TALES.kept) c.tales.splice(0, c.tales.length - TALES.kept);
   c.log.push(text);
