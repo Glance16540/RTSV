@@ -42,14 +42,19 @@ declare module './township' {
 export interface Drifted { tavern: number; mines: number }
 
 /** Weights of what strains a town on the map (they add to at most 1). */
-export const STRAIN = { hunger: 0.35, raided: 0.25, grief: 0.2, sick: 0.2, rebel: 0.2, taken: 0.25 };
+export const STRAIN = { hunger: 0.35, raided: 0.25, grief: 0.2, sick: 0.2, rebel: 0.2, taken: 0.3 }; // taken: as MILD, so a town newly taken drifts of itself (its standing does not fall for it: `unsettled`)
 /** Seasons after a town is taken by force (conquered.ts) that its people are still unsettled by it: two, as towns change hands often. */
 export const NEWLY_TAKEN = 2;
 /** On the map, a season: the most who drift at full strain, the most who come back at full care, and the most of a town's women or men who drift. */
 export const GO_MOST = 2;
 export const BACK_MOST = 3;
-/** Below this strain (a short larder, a sickness, a grief alone) nobody new drifts, and some come back. */
-export const MILD = 0.25;
+/**
+ * Below this strain nobody new drifts, and some come back: any one cause alone (a sickness, a grief, unrest, a raid still
+ * remembered), where two together or hunger still send people. At 0.25 a remembered raid alone did, and towns strained by
+ * nothing the report counts as hunger, raids or taking carried half of all town-seasons with anyone drifted (health row,
+ * on its edge at 20%).
+ */
+export const MILD = 0.3;
 export const SHARE = 0.5;
 /** Standing a season for every two women at the tavern. */
 export const TAVERN_SWAY = 1;
