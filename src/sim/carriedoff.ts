@@ -20,6 +20,7 @@ import { BORN } from './bandborn';
 import { creedOf } from './creed';
 import { Held, bringHome, mark } from './threats';
 import { TOWN_SCALE, folkOf } from './township';
+import { homeAgain } from './carriedhome';
 
 /** People of one town carried off by a nation: who holds them, in which land, and the record of them. */
 export interface Carried { id: number; by: number; at: number; held: Held }
@@ -58,6 +59,7 @@ function free(c: Campaign, at: number, why: string): number {
   let freed = 0;
   for (const x of carriedAt(c, at)) {
     const k = bringHome(c, x.held);
+    homeAgain(c, x.held); // those a battle carried off, back under their own roofs (carriedhome.ts)
     freed += k;
     say(c, [x.held.owner, x.by], `${who(x.held)[0].toUpperCase() + who(x.held).slice(1)} of ${c.territories[x.held.from].name}, carried off by ${name(c, x.by)}, ${k === 1 ? 'is' : 'are'} free ${why} and going home, the older for it.`);
     if (x.held.owner === 0) mark(c, 'rescued', at);
