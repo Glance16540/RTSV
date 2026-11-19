@@ -109,7 +109,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Famine, plague, fire and the like | No flood. Rivers run on the map and are laid on a town's ground, but nothing lets ground go under water. A failed harvest strikes only fields, never a town that lives by hunting, fishing or herds. | medium | Unity: a flood is terrain work. Port `acts.ts` as it is. |
-| By creed, sparing nobody | A Prophet's fire, blight and earthquake fall the same on every creed; only his plague goes by it. The older chance events of a turn do not go by creed. | small | Before: run the remaining chance events through `wrathAt`. It is one rule, and Unity would otherwise inherit two. |
+| By creed, sparing nobody | **Done (19 November 2026).** A Prophet's fire, blight and earthquake go by the creed of those they fall on, as his plague does (`wrath.ts`, `game.ts`); fever in the camp and a hard season go by the town's own standing (`chancecreed.ts`, through `wrathAt`). An ordinary people is struck exactly as before. | small | Done. |
 | They carry over into a town | A battle in a land with plague on the map begins with nobody sick, and one after a failed harvest with nobody hungry. | small | Unity: the field's start-up reads the map's state, and that start-up is being rebuilt. |
 
 ## Threats of men never stop
@@ -260,7 +260,7 @@ All small, each in its own module with its own test, and none changes a rule's m
 4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line.
 5. Men of no town sent home go to the army's chief town, or the last hired men are dropped.
 6. A known person carried off by a nation is marked carried off by name.
-7. The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).
+7. ~~The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).~~ Done: `wrath.ts` in `game.ts`, and `chancecreed.ts`.
 8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map.
 9. A defied rival king may declare war.
 

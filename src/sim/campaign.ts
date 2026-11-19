@@ -45,6 +45,7 @@ import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import { befalls, feverToll, hardCost } from './chancecreed';
 import { raiseFaithSites } from './faithsites';
 import { makeRim } from './rim';
 import { nobodyThere } from './founding';
@@ -338,9 +339,9 @@ export interface MapEvent { kind: EventKind; at: number; turn: number; until: nu
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
   harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
   volunteers: { name: 'Volunteers', icon: '🚩', desc: 'A company joined the army here.' },
-  fever: { name: 'Fever in the camp', icon: '☠️', desc: 'The army here lost a company.' },
+  fever: { name: 'Fever in the camp', icon: '☠️', desc: 'The army here lost a company; among a worldly people, sometimes two.' },
   raiders: { name: 'Raiders', icon: '🔥', desc: 'The farmland here was burnt.' },
-  hard: { name: 'A hard season', icon: '🥀', desc: 'Its holder lost 3 supplies.' },
+  hard: { name: 'A hard season', icon: '🥀', desc: 'Its holder lost supplies: 3 from an ordinary town, fewer from a pious one, more from a worldly one.' },
   unrest: { name: 'Unrest', icon: '⚔️', desc: 'The people are restless. Unless an army of its holder stands here when it comes to a head, the land goes back to the local tribes.' },
   revolt: { name: 'Revolt', icon: '🏴', desc: 'The land threw off its holder and is the local tribes\' again.' },
   calm: { name: 'Order kept', icon: '🕊️', desc: 'The garrison kept the peace.' },
@@ -1357,17 +1358,21 @@ function turnEvent(c: Campaign): void {
     mark(c, 'volunteers', t.id);
     c.log.push(`Volunteers from ${t.name} join ${who} army.`);
   } else if (roll < 0.7 && a && a.owner === f.id && armySize(a) > 1) {
-    casualties(a, 1);
+    if (!befalls(c, t.id)) return; // it passes the holy by, by their measure (chancecreed.ts)
+    const gone = Math.min(feverToll(c, t.id), armySize(a) - 1); // and takes a second company from the worldly, some of the time
+    casualties(a, gone);
     mark(c, 'fever', t.id);
-    c.log.push(`Fever in the camp at ${t.name} costs ${who} army a company.`);
+    c.log.push(`Fever in the camp at ${t.name} costs ${who} army ${gone === 1 ? 'a company' : `${gone} companies`}.`);
   } else if (roll < 0.85 && t.buildings.includes('farm')) {
     t.buildings.splice(t.buildings.indexOf('farm'), 1);
     mark(c, 'raiders', t.id);
     c.log.push(`Raiders burn the farmland of ${t.name}.`);
   } else {
-    f.supplies = Math.max(0, f.supplies - 3);
+    if (!befalls(c, t.id)) return; // it passes the holy by, by their measure (chancecreed.ts)
+    const cost = hardCost(c, t.id); // and costs by the town's standing: 3 from an ordinary town
+    f.supplies = Math.max(0, f.supplies - cost);
     mark(c, 'hard', t.id);
-    c.log.push(`A hard season in ${t.name} costs 3 of ${who} supplies.`);
+    c.log.push(`A hard season in ${t.name} costs ${cost} of ${who} supplies.`);
   }
 }
 

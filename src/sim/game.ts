@@ -58,6 +58,7 @@ import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
+import { wrath } from './wrath';
 import { storyTick, type FieldStory } from './fieldstory';
 import { placeBar } from './placebar';
 import type { WaterShape } from './waterlay';
@@ -2228,7 +2229,7 @@ export class Game {
       for (const b of this.buildings.slice()) {
         const h = b.size / 2;
         if (!this.hostile(b.owner, q.owner) || rectDist(q.x, q.y, b.x - h, b.y - h, b.x + h, b.y + h) > q.r) continue;
-        b.hp -= 60 * DT;
+        b.hp -= 60 * DT * wrath(this, b.owner); // an earthquake called down shakes the holy less and the decadent more (wrath.ts)
         this.players[b.owner].lastAttacked = { x: b.x, y: b.y, t: this.time };
         if (b.hp <= 0) this.kill(b);
       }
@@ -2748,8 +2749,9 @@ export class Game {
               for (const b of this.buildings) {
                 const h = b.size / 2;
                 if (!this.hostile(b.owner, u.owner) || rectDist(o.x, o.y, b.x - h, b.y - h, b.x + h, b.y + h) > a.radius) continue;
-                if (o.ability === 'fire') { if (!b.def.wall) b.burnT = Math.max(b.burnT, CALAMITY.fire); }
-                else if (b.type === 'farm') b.blightT = CALAMITY.blight;
+                // By the creed of those it falls on, as his plague is (wrath.ts): shorter on the holy, longer on the decadent.
+                if (o.ability === 'fire') { if (!b.def.wall) b.burnT = Math.max(b.burnT, CALAMITY.fire * wrath(this, b.owner)); }
+                else if (b.type === 'farm') b.blightT = CALAMITY.blight * wrath(this, b.owner);
                 this.players[b.owner].lastAttacked = { x: b.x, y: b.y, t: this.time };
               }
               if (o.ability === 'blight') for (const r of this.resources) if (r.type === 'berries' && Math.hypot(r.x - o.x, r.y - o.y) <= a.radius) r.amount = Math.ceil(r.amount * (1 - CALAMITY.berries));
