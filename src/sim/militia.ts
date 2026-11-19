@@ -22,6 +22,7 @@
 import type { Campaign } from './campaign';
 import { bandMen } from './tribes';
 import { folkOf } from './township';
+import { leaderMilitia } from './leaderstay';
 
 export const MILITIA = {
   /** What a band of townsmen is worth beside a company of soldiers. */
@@ -38,4 +39,4 @@ export function militiaBands(c: Campaign, tid: number): number {
   return Math.max(0, folkOf(c, tid).men) / bandMen();
 }
 /** What a town's own men add to its defence against a nation. */
-export const militiaOf = (c: Campaign, tid: number): number => { const b = militiaBands(c, tid); return b <= 0 ? 0 : Math.round(Math.max(MILITIA.least, Math.min(MILITIA.most, b * MILITIA.worth)) * 10) / 10; };
+export const militiaOf = (c: Campaign, tid: number): number => { const b = militiaBands(c, tid); return b <= 0 ? 0 : Math.round(Math.max(MILITIA.least, Math.min(MILITIA.most, b * MILITIA.worth * leaderMilitia(c, tid))) * 10) / 10; };
