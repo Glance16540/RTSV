@@ -34,11 +34,11 @@ import { CLAIM, recordChild } from './claimants';
 
 export const WIFE = {
   /** Seasons a plot over faith has run before its lord may take her, and the chance each season from then that he does. */
-  after: 2, chance: 0.6,
+  after: 2, chance: 0.8,
   /** With a loyal marshal or right hand at court, the chance is this much of that. */
   loyal: 0.5,
   /** Demanded back: the gifts it costs in supplies, the chance he yields, and seasons before he will hear it again. */
-  gifts: 6, yields: 0.5, again: 4,
+  gifts: 6, yields: 0.3, again: 4,
   /** Seasons she is held with nothing done before she is not seen at court again. */
   keeps: 12,
 };
@@ -105,7 +105,7 @@ function step(c: Campaign, it: Intrigue): boolean {
   if (!n || n.town !== w.town) { home(c, it); end(c, it, 'nothing', `${p.title} is no longer lord in ${town.name}, and ${w.name} has come home.`, 'good'); return true; }
   if (!w.child && c.turn - w.since >= BORN.after && chance(c, it.id * 97 + 13) < CLAIM.born) {
     w.child = true;
-    recordChild(c, { owner: f, mother: w.name, parent: 'noble', by: p.title, town: w.town });
+    recordChild(c, { owner: f, mother: w.name, parent: 'noble', by: p.title, town: w.town, key: w.key });
     const text = `A child is born to ${w.name} in the house of ${p.title}.`;
     note(c, it, 'plain', text);
     chronicle(c, it, text);
