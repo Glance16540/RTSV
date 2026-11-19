@@ -22,7 +22,7 @@
 // what it carries is lost.
 //
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was.
-import { escortTally } from './roadclash';
+import { escortFight } from './roadclash';
 import type { Campaign } from './campaign';
 import type { Notable, Stores } from './township';
 import { MAX_STORE, STORE_KINDS, folkOf } from './township';
@@ -214,17 +214,19 @@ export function waylay(c: Campaign, x: Convoy, a: { robbed?: Arrival['robbed'] }
   const band = waylaid(c, x);
   if (!band || hash(c, x.id, 3) >= CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road)) return null; // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
   const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
-  escortTally(c, what, band.band, x.owner, x.road, escort); // stage one of the road fight, report only: what the clash would have made of the escort (roadclash.ts)
-  if (escort < band.strength && worth(x.cargo) > 0) {
+  // An army of its people on the road fights the band (roadclash.ts): it goes through unless the escort is broken, and then
+  // the band takes its share by how long it had the road and the hands it has left; the escort pays for it in companies.
+  const met = escortFight(c, what, band.band, x.owner, x.road);
+  if (met.robbed && worth(x.cargo) > 0) {
     const took = empty();
-    for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
+    for (const s of STORE_KINDS) { took[s] = Math.floor(x.cargo[s] * CONVOYS.rob * met.share * escortEdge(c, x.owner)); /* less from a people who send Escorts (roads.ts) */ x.cargo[s] -= took[s]; }
     if (worth(took) > 0) {
       a.robbed = { by: band.name, took };
       band.band.strength = Math.min(10, band.band.strength + 1);
       if (mine) c.log.push(`🗡️ ${band.name[0].toUpperCase() + band.name.slice(1)} stopped your ${what} to ${c.territories[x.to].name} ${band.sea ? 'at sea' : 'on the road'} and took ${STORE_KINDS.filter((s) => took[s]).map((s) => `${took[s]} ${s}`).join(', ')}.`);
     }
   }
-  return { band, escort };
+  return { band, escort: met.robbed ? Math.min(escort, band.strength - 0.01) : Math.max(escort, band.strength) }; // as its callers read it: less than the band where the convoy was at the band's mercy
 }
 
 /**

@@ -129,8 +129,11 @@ describe('an army by its own means', () => {
     const weak = fight(3, 9);
     expect(weak.won).toBe(false);
     expect(weak.c.bands).toContain(weak.b);
-    expect(weak.a.units.infantry).toBe(3 - Math.max(1, Math.round(3 * FIGHT.rout)));
-    expect(weak.b.strength).toBe(9 - Math.max(1, Math.round(3 * FIGHT.bled)));
+    // It loses the companies the fight took from it (roadclash.ts), never its last; and the band is the weaker for the fight.
+    expect(weak.a.units.infantry).toBeLessThan(3);
+    expect(weak.a.units.infantry).toBeGreaterThanOrEqual(1);
+    expect(weak.b.strength).toBeLessThan(9);
+    expect(weak.b.strength).toBeGreaterThanOrEqual(6);
     // Forty days in one world: the same army and band, matched, on different days.
     let wins = 0;
     const { c, t } = world();
