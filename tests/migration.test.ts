@@ -1,5 +1,6 @@
 // People moving between towns by road of their own accord (src/sim/migration.ts).
 import { describe, expect, it } from 'vitest';
+import { HOUSEHOLD } from '../src/sim/householdmove';
 import { newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { MIGRATE, migrateOf, migrationSeason, movesReport, pullOf, pushOf, settle, settleBar } from '../src/sim/migration';
@@ -47,7 +48,7 @@ describe('families moving of their own accord', () => {
     const moves = untilOneGoes(c);
     expect(moves).toEqual([expect.objectContaining({ from, to, why: 'crowded' })]);
     const n = moves[0].people;
-    expect(n).toBe(2 + MIGRATE.children);
+    expect(n).toBe(2 + (HOUSEHOLD.children - 1) + HOUSEHOLD.old); // a household: the couple, their children and one of the old (householdmove.ts)
     expect(headcount(folkOf(c, from))).toBe(had.from - n);
     expect(onTheRoad(c, 0).filter((x) => x.movers)).toHaveLength(1);
     c.turn++;

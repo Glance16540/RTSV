@@ -384,7 +384,7 @@ export class Overworld {
       '<br><small>Until someone leads, your armies fight without a leader. A stranger can also be hired at your capital.</small>';
     house.asked = true;
     this.dialog(`${fallen} has fallen`, text, [
-      ...open.map((x): [string, () => void] => [`${x.kind === 'heir' ? '♛' : '⚔'} ${x.name.split(',')[0]}`, () => { succeed(c, 0, x); this.changed(); }]),
+      ...open.map((x): [string, () => void] => [`${x.kind === 'captain' ? '⚔' : '♛'} ${x.name.split(',')[0]}`, () => { succeed(c, 0, x); this.changed(); }]),
       ['Decide later', () => this.changed()],
     ]);
   }
