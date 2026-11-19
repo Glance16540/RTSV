@@ -105,7 +105,7 @@ export class AIController {
 
     const villagers: Unit[] = [], army: Unit[] = [], ships: Unit[] = [];
     for (const u of g.units) {
-      if (u.owner !== pid) continue;
+      if (u.owner !== pid || u.def.cart) continue; // a Market's caravan keeps to its road (fieldcaravan.ts)
       if (u.type === 'villager') { if (!mustering(g, u)) villagers.push(u); } // one called to arms is a villager no longer
       else if (u.def.naval) ships.push(u);
       else army.push(u);

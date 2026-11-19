@@ -1,5 +1,8 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { dilemmaAct } from './dilemmaacts';
+import { givenNames, houseNames } from './peoplenames';
+import { nextDilemma } from './dilemmas';
 import { maidPull } from './churchtavern';
 import { monksTeach, nunsNurse } from './clergywork';
 import type { Season } from './seasonsky';
@@ -35,7 +38,7 @@ import { coupleParted, creditKill, leaveForWar, settleHomes, warRenown } from '.
 import { carriedIn, madeRenown, restoreMade } from './notableweight';
 import { Census, PeopleIn, Stores } from './township';
 import {
-  ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
+  ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, CALAMITY, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
@@ -55,6 +58,7 @@ import { Child, ageYoung, wardFor } from './nursery';
 import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
+import { wrath } from './wrath';
 import { storyTick, type FieldStory } from './fieldstory';
 import { placeBar } from './placebar';
 import type { WaterShape } from './waterlay';
@@ -70,6 +74,7 @@ import { Pathfinder, rectDist } from './path';
 export const DT = 1 / 20;
 /** Bump when saved games from older builds can no longer be loaded. */
 import { stewardPace, stewardWard } from './steward';
+import { caravanSecond, caravanSet } from './fieldcaravan';
 import { calledAt, callHaste, callWard, canAcclaim, canCall, champion, cmdAcclaim, cmdCall, cmdLearn, deed, fitLeader, heroOf, leaderBonus, leaderDefOf, leaderTypeOf, powerDue } from './battleleader';
 import { CHAMPION_KILLS, Champion, canLead, championName } from './champion';
 import { HeroSpec, heirName, cleanHero, RANK_XP, HERO_MIN_HURT, HOLY_GUARD, TYRANT_BIND } from './hero';
@@ -389,7 +394,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** The leader of the claimant's rising the town stands in (claimantcaptain.ts). */ captain?: Captain; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][] };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** The leader of the claimant's rising the town stands in (claimantcaptain.ts). */ captain?: Captain; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][]; /** The dilemmas the town has been asked in the round now going (askedhere.ts). */ asked?: string[] };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -560,10 +565,12 @@ export class Game {
       } else if (!field) {
         // A town kept from an earlier battle has its hall where and as that battle left it: battered, or razed and gone.
         if (!s.bonus?.town?.length) this.spawnBuilding('towncenter', i, st.x - 2, st.y - 2, true);
+        if (s.bonus?.asked?.length) this.players[i].asked = [...s.bonus.asked]; // the dilemmas the town was asked before (askedhere.ts)
         if (s.bonus?.roads?.length) this.players[i].roadsIn = s.bonus.roads.map(([x, y]) => [x, y] as [number, number]); // its roads laid by hand (handroads.ts)
         if (s.bonus?.story) this.players[i].story = { ...s.bonus.story, people: s.bonus.story.people.map((p) => ({ ...p })), robbed: [...s.bonus.story.robbed], cleared: [...s.bonus.story.cleared] }; // a story afoot here (fieldstory.ts)
         if (s.bonus?.court) this.players[i].court = structuredClone(s.bonus.court); // a story of the leader's house, where the court is kept (courtfield.ts)
         if (s.hall) seatHall(this, i, s.hall); // the cases waiting on the leader's judgement at the town's Hall (hallfield.ts)
+        if (s.caravan) caravanSet(this, i, s.caravan); // the town's Market caravan, on the field (fieldcaravan.ts)
         if (s.bonus?.studies?.length) markBegun(this, i); // works standing half-built, for the nation's Stewardship (studiesintown.ts)
         if (s.bonus?.furlough) this.players[i].furlough = { men: s.bonus.furlough.men.map((m) => ({ ...m })), per: { ...s.bonus.furlough.per } }; // its own men with the army may go home (furlough.ts)
         if (s.bonus?.people) peopled(this, i, s.bonus.people, st, dir);
@@ -683,7 +690,7 @@ export class Game {
       mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
     };
     if (type === 'villager') {
-      const names = u.gender === 'm' ? NAMES_M : NAMES_F, roll = this.rng();
+      const names = givenNames(this.players[owner]?.civ, u.gender), roll = this.rng(); // its own people's names (peoplenames.ts)
       u.name = this.setups[owner]?.tribe ? tribeName(u.gender ?? 'm', roll, new Set(this.units.filter((o) => o.owner === owner).map((o) => o.name))) : pickName(names, roll, namesIn(this, owner, u.gender)); // a tribe's people have their own names, no two alike (tribenames.ts); a town's too, where it can (namesakes.ts)
       if (this.tick === 0) u.drawn = u.name; // while the battle is being laid out (namesakes.ts)
       if (this.rng() < 0.3) this.setTrait(u, Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)]);
@@ -1725,7 +1732,7 @@ export class Game {
    * people from the day it is born, so a town has room for it when it is grown.
    */
   bear(b: Building, gender?: Gender): Child {
-    const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = g === 'm' ? NAMES_M : NAMES_F;
+    const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = givenNames(this.players[b.owner]?.civ, g);
     const c: Child = { id: this.nextId++, name: names[Math.floor(this.rng() * names.length)], family: '', gender: g, trait: '', trait2: '', lifespan: LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]), left: GROW_TIME, bornAt: b.id };
     (b.young ??= []).push(c);
     this.players[b.owner].pop += UNITS.villager.pop;
@@ -1827,7 +1834,7 @@ export class Game {
           if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + heal);
         }
       }
-    } else if (style === 'trader' && this.tick % (R.caravanEvery * 20) === 0) {
+    } else if (style === 'trader' && !p.caravan && this.tick % (R.caravanEvery * 20) === 0) { // a town whose caravan is on the field earns by it (fieldcaravan.ts)
       let own = 0;
       const abroad = new Set<number>();
       for (const b of this.buildings) {
@@ -1875,8 +1882,7 @@ export class Game {
       p.res.food = Math.max(0, p.res.food - Math.min(STAFF_CAP, p.patrons) * PATRON_FOOD);
       if (p.dilemma || this.time < p.dilemmaT) continue;
       // Chosen without the game's dice, so that a match plays out the same with or without them.
-      const pick = (this.seed * 31 + p.id * 17 + p.dilemmas * 7) % DILEMMAS.length;
-      p.dilemma = DILEMMAS[pick].id;
+      p.dilemma = nextDilemma(this, p.id, DILEMMAS); // the next whose moment holds, not yet asked (dilemmas.ts)
       p.dilemmas++;
       if (p.isAI) {
         const roll = ((this.seed * 13 + p.id * 29 + p.dilemmas * 37) % 100) / 100;
@@ -1897,6 +1903,7 @@ export class Game {
     for (const r of RES_TYPES) p.res[r] += c.res[r] ?? 0;
     p.dilemma = null;
     p.dilemmaT = this.time + 240;
+    dilemmaAct(this, owner, d.id, choice); // what its words say, through the rules there are (dilemmaacts.ts)
     this.msg(owner, c.result);
     this.shiftVirtue(owner, c.virtue);
     return true;
@@ -2222,7 +2229,7 @@ export class Game {
       for (const b of this.buildings.slice()) {
         const h = b.size / 2;
         if (!this.hostile(b.owner, q.owner) || rectDist(q.x, q.y, b.x - h, b.y - h, b.x + h, b.y + h) > q.r) continue;
-        b.hp -= 60 * DT;
+        b.hp -= 60 * DT * wrath(this, b.owner); // an earthquake called down shakes the holy less and the decadent more (wrath.ts)
         this.players[b.owner].lastAttacked = { x: b.x, y: b.y, t: this.time };
         if (b.hp <= 0) this.kill(b);
       }
@@ -2234,6 +2241,7 @@ export class Game {
     if (this.tick % 20 === 0) {
       griefSecond(this);
       driftSecond(this); // in a campaign town, the strained drift to worse and the cared-for to better (drift.ts)
+      caravanSecond(this); // a Market's caravan on its road across the field (fieldcaravan.ts)
       this.upkeep();
       stepLair(this); // the marauders' camp (marauders.ts)
       this.checkVictory();
@@ -2741,8 +2749,9 @@ export class Game {
               for (const b of this.buildings) {
                 const h = b.size / 2;
                 if (!this.hostile(b.owner, u.owner) || rectDist(o.x, o.y, b.x - h, b.y - h, b.x + h, b.y + h) > a.radius) continue;
-                if (o.ability === 'fire') { if (!b.def.wall) b.burnT = Math.max(b.burnT, CALAMITY.fire); }
-                else if (b.type === 'farm') b.blightT = CALAMITY.blight;
+                // By the creed of those it falls on, as his plague is (wrath.ts): shorter on the holy, longer on the decadent.
+                if (o.ability === 'fire') { if (!b.def.wall) b.burnT = Math.max(b.burnT, CALAMITY.fire * wrath(this, b.owner)); }
+                else if (b.type === 'farm') b.blightT = CALAMITY.blight * wrath(this, b.owner);
                 this.players[b.owner].lastAttacked = { x: b.x, y: b.y, t: this.time };
               }
               if (o.ability === 'blight') for (const r of this.resources) if (r.type === 'berries' && Math.hypot(r.x - o.x, r.y - o.y) <= a.radius) r.amount = Math.ceil(r.amount * (1 - CALAMITY.berries));
@@ -3229,7 +3238,7 @@ export class Game {
             // One child in four of two gifted parents gets both gifts.
             const other = trait === mother.trait ? father.trait : mother.trait;
             const second = trait && other && other !== trait && this.rng() < 0.25 ? other : '';
-            if (!b.family) b.family = FAMILY_NAMES[Math.floor(this.rng() * FAMILY_NAMES.length)];
+            if (!b.family) { const hs = houseNames(this.players[b.owner]?.civ); b.family = hs[Math.floor(this.rng() * hs.length)]; } // a house of its own people's (peoplenames.ts)
             child.family = b.family;
             child.trait = trait; child.trait2 = second;
             p.stats.born++;

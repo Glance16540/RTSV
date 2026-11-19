@@ -1,6 +1,7 @@
 // Piety against decadence: one scale per people, moved by how they answer the dilemmas that come
 // up and by their habits. Each end of the scale has boons and banes.
 
+import { MORE_DILEMMAS } from './dilemmas';
 import type { ResType } from './data';
 
 /**
@@ -77,7 +78,7 @@ export function creedOf(virtue: number): Creed {
 export interface Choice { label: string; virtue: number; res: Partial<Record<ResType, number>>; result: string }
 export interface Dilemma { id: string; title: string; text: string; a: Choice; b: Choice }
 
-/** In each, `a` is the pious answer and `b` the worldly one. */
+/** In each, `a` is the pious answer and `b` the worldly one. The first nine may come at any time; the rest are dilemmas.ts's. */
 export const DILEMMAS: Dilemma[] = [
   { id: 'harvest', title: 'The harvest is in', text: 'The granaries are full and the people want to mark it.',
     a: { label: 'Offer the first fruits at the church', virtue: 15, res: { food: -80 }, result: 'The first sheaves are burned on the altar.' },
@@ -97,7 +98,7 @@ export const DILEMMAS: Dilemma[] = [
   { id: 'deserter', title: 'A deserter is caught', text: 'He ran from the line. The soldiers want an example made.',
     a: { label: 'Mercy, and a year of penance', virtue: 10, res: { food: -30 }, result: 'He sweeps the church steps and is fed for it.' },
     b: { label: 'Sell him to the slavers', virtue: -20, res: { gold: 100 }, result: 'He is led off in a rope. Nobody watches.' } },
-  { id: 'masks', title: 'The festival of masks', text: 'The young want a night when nobody knows anybody.',
+  { id: 'masks', title: 'The festival of masks', text: 'The townsfolk want a night when nobody knows anybody.',
     a: { label: 'Forbid it', virtue: 10, res: {}, result: 'The masks are burned in the square.' },
     b: { label: 'Allow it, and charge the visitors', virtue: -15, res: { food: -60, gold: 120 }, result: 'Half the valley comes. Nobody remembers much.' } },
   { id: 'relic', title: 'A pedlar with a relic', text: 'He carries a relic he says belonged to a holy man. He also sells strong wine by the cart.',
@@ -106,6 +107,7 @@ export const DILEMMAS: Dilemma[] = [
   { id: 'tithe', title: 'The priests ask for a tithe', text: 'A tenth of the stone quarried, for the church walls.',
     a: { label: 'Grant it', virtue: 15, res: { stone: -80 }, result: 'The church wall rises another course.' },
     b: { label: 'Refuse, and tax the church instead', virtue: -15, res: { gold: 70 }, result: 'The priests pay, and say nothing.' } },
+  ...MORE_DILEMMAS, // and the ones that belong to a moment (dilemmas.ts)
 ];
 
 /** Which way each people leans when left to decide for itself (chance of the pious answer). */

@@ -19,6 +19,7 @@
 // player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
+import { snowbound } from './winter';
 import { ROAD, loseBy, roadClash, roadCost, roadTally, soldiersOf } from './roadclash';
 import { outOf } from './rim';
 import { peoplesArmy, sideName } from './naming';
@@ -32,6 +33,7 @@ import { raisedInBattle } from './dynasty';
 import { HeroSpec, MAX_RANK } from './hero';
 import { Band, breakBand, chance, note } from './threats';
 import { exposedHow, exposure, marchOf, marched } from './bandmarch';
+import { bandOdds } from './rivalcaptives';
 
 declare module './campaign' {
   interface Pending {
@@ -56,7 +58,7 @@ export const FIGHT = {
    * about for `grace` seasons, and then only in so many seasons out of a hundred: an army has other work.
    */
   hunt: 1.5, grace: 3, keen: 0.3,
-  /** But a people whose own are held by a band goes after it at once, and at shorter odds. */
+  /** But a people whose own are held by a band goes after it at once, and at shorter odds; shorter still as their seasons run out (rivalcaptives.ts). */
   theirs: 1.6,
   /** Of a band's strength, the share that fights as archers when the battle is fought out; the rest as infantry. */
   bows: 0.35,
@@ -256,11 +258,11 @@ export function huntBands(c: Campaign, out: string[]): number {
     const near = new Set(placeOf(b).flatMap((id) => [id, ...outOf(c, id)]));
     // Whose business it is: a people that holds the band's place or a land next to it.
     const owners = new Set([...near].map((id) => c.territories[id].owner).filter((f) => f > 0 && c.factions[f]?.alive && c.factions[f].isAI));
-    const hunters = c.armies.filter((a) => owners.has(a.owner) && near.has(a.at) && c.territories[a.at].owner === a.owner && (wronged.has(a.owner) ? armyStrength(a, c) >= b.strength * FIGHT.theirs : !idle && armyStrength(a, c) >= b.strength * FIGHT.hunt))
+    const hunters = c.armies.filter((a) => owners.has(a.owner) && near.has(a.at) && c.territories[a.at].owner === a.owner && (wronged.has(a.owner) ? armyStrength(a, c) >= b.strength * bandOdds(c, b.held.filter((h) => h.owner === a.owner), FIGHT.theirs) : !idle && armyStrength(a, c) >= b.strength * FIGHT.hunt))
       .sort((x, y) => armyStrength(y, c) - armyStrength(x, c) || x.id - y.id);
     if (!hunters.length) continue;
     fightByMeans(c, hunters[0], b, out);
-    hunters[0].moved = false; // it was done in the turning of the season, and is theirs to order again
+    hunters[0].moved = snowbound(c, hunters[0]); // it was done in the turning of the season, and is theirs to order again (unless it marched in winter, winter.ts)
     fights++;
   }
   return fights;
@@ -298,7 +300,7 @@ export function ambushSeason(c: Campaign, out: string[]): number {
     if (!a || chance(c, b.id, 101) >= AMBUSH.dare) continue;
     if (c.factions[a.owner].isAI) {
       fightByMeans(c, a, b, out, true);
-      a.moved = false; // it happened in the turning of the season
+      a.moved = snowbound(c, a); // it happened in the turning of the season (unless it marched in winter, winter.ts)
       n++;
     } else if (!c.pending && !c.demand) {
       const to = placeOf(b).find((id) => id === a.at || c.territories[a.at].adj.includes(id) || rimOver(c, id, a.at)) ?? b.at;

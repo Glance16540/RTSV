@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { askedFor, keepAsked } from './askedhere';
 import { tavernPull } from './churchtavern';
 import { rumourSeason } from './tavernrumour';
 import { pressClaims } from './bothhouses';
@@ -33,6 +34,7 @@ import { threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
 import { battleCarried } from './battlecarried';
+import { settleTaken } from './settlersfrom';
 import { foughtOnMap, recordsBack } from './warrecord';
 import { mayRaiseKind } from './uniquecompany';
 import { bandBattle, settleBandFight } from './bandfight';
@@ -44,6 +46,9 @@ import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import { atWarWith, warUntil } from './feudwar';
+import { befalls, feverToll, hardCost } from './chancecreed';
+import { raiseFaithSites } from './faithsites';
 import { makeRim } from './rim';
 import { nobodyThere } from './founding';
 import { seasonFolk } from './seasonfolk';
@@ -85,6 +90,7 @@ import { Orders, governTowns, keepOrders, shareOf } from './governor';
 import { drillWithQueued, keepQueued } from './queueddrill';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
+import { heldFirst } from './rivalcaptives';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
 import { unrestSeason } from './unrest';
@@ -92,6 +98,8 @@ import { freeStruck, freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { letGoSeason } from './emptied';
+import { marchedIn, snowbound } from './winter';
+import { caravanAtField, caravanFromField } from './fieldcaravan';
 import { canPayFor, payFor, paysHere } from './prices';
 import { SentFor, sentForSeason } from './sentfor';
 import { rivalForesight, spendIn } from './rivalstock';
@@ -334,9 +342,9 @@ export interface MapEvent { kind: EventKind; at: number; turn: number; until: nu
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
   harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
   volunteers: { name: 'Volunteers', icon: '🚩', desc: 'A company joined the army here.' },
-  fever: { name: 'Fever in the camp', icon: '☠️', desc: 'The army here lost a company.' },
+  fever: { name: 'Fever in the camp', icon: '☠️', desc: 'The army here lost a company; among a worldly people, sometimes two.' },
   raiders: { name: 'Raiders', icon: '🔥', desc: 'The farmland here was burnt.' },
-  hard: { name: 'A hard season', icon: '🥀', desc: 'Its holder lost 3 supplies.' },
+  hard: { name: 'A hard season', icon: '🥀', desc: 'Its holder lost supplies: 3 from an ordinary town, fewer from a pious one, more from a worldly one.' },
   unrest: { name: 'Unrest', icon: '⚔️', desc: 'The people are restless. Unless an army of its holder stands here when it comes to a head, the land goes back to the local tribes.' },
   revolt: { name: 'Revolt', icon: '🏴', desc: 'The land threw off its holder and is the local tribes\' again.' },
   calm: { name: 'Order kept', icon: '🕊️', desc: 'The garrison kept the peace.' },
@@ -895,12 +903,13 @@ const fname = (c: Campaign, f: number, start = false) =>
  */
 export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'battle' | 'invalid' {
   const a = c.armies.find((x) => x.id === armyId);
-  if (!a || a.moved || c.pending || c.demand || !reach(c, a.at).includes(to)) return 'invalid';
+  if (!a || a.moved || c.pending || c.demand || !reach(c, a.at).includes(to) || snowbound(c, a)) return 'invalid'; // an army that marched in winter rests a season (winter.ts)
   if (nobodyThere(c, to)) return 'invalid'; // nobody there to conquer: such a land is settled, not taken (founding.ts)
   const sea = !c.territories[a.at].adj.includes(to);
   const t = c.territories[to];
   const civ = c.factions[a.owner].civ;
   marchesOut(c, a); // the leader rides with the army they are with, unless they keep to the town
+  marchedIn(c, a, biomeOf(c, a.at)); // in winter: one march a season, and snowbound the season after (winter.ts)
   if (t.owner === a.owner) {
     const other = armyAt(c, to);
     // The Mongols cover ground: one march through friendly land does not end an army's turn.
@@ -963,6 +972,7 @@ export const homeEdge = (c: Campaign, attacker: number): number => (c.factions[a
 export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || !canPayFor(c, 0, 'dealing', truceCost(c.factions[0].civ)) || c.phase !== 'player' || fac.refused === c.turn) return false;
+  if (atWarWith(c, f)) { fac.refused = c.turn; say(c, f, 'refuse'); c.log.push(`${fac.name} are at war with you over their king's quarrel, and will hear of no truce before turn ${warUntil(c, f)! + 1}.`); return false; } // a defied king who declared war (feudwar.ts)
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
   const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0) + treatLean(c, f); // and readier to treat (nobleweigh.ts)
   if (c.honor < 0 || rand(c) > willing) {
@@ -1076,6 +1086,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   // written: a battle fought in person has been settled and its field is being read back.
   .on('written', 'studies', (c, _p, b) => { studiedHome(c, 0, b.after?.studies); }) // what the player's side researched in the fighting is the nation's, as from a visit
   .on('written', 'hallcases', (c, p, b) => { if (p.defender === 0 && p.mode !== 'field') hallFromSitting(c, p.to, b.after?.hall); }) // the rulings given at the town's Hall in the battle (hallcases.ts)
+  .on('written', 'fieldcaravan', (c, p, b) => { if (p.defender === 0 && p.mode !== 'field') caravanFromField(c, p.to, b.after?.caravan); }) // the town's caravan, home or caught on the field (fieldcaravan.ts)
   .on('written', 'warrecord', (c, p, b) => { recordsBack(c, p, b.after?.records); }) // each named soldier who stood adds the battle to his record (warrecord.ts)
   .on('written', 'tribes', (c, p, b) => fieldReckoned(c, p, b.after?.folk)) // those of the town who marched out to a battle in the open and fell
   // housed: the town's people and stores are as that battle left them.
@@ -1084,6 +1095,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
   .on('housed', 'queuedmen', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepQueued(c, p.to, b.after?.orders?.men); }) // and the men in its queues are remembered with them
   .on('housed', 'roofs', (c, p, b) => { if (p.mode !== 'field' && !b.after?.folk?.unfielded) keepRoofs(c, p.to, b.after?.folk?.roofs); }) // who lived where as it ended (roofsmap.ts)
+  .on('housed', 'settlersfrom', (c, p, b) => { if (b.census && p.mode !== 'field') settleTaken(c, p.to, p.defender); }) // a town taken empty is settled by the taker's own, by road (settlersfrom.ts)
   .on('housed', 'stores', (c) => settleStores(c)); // what the town gathered or spent is its nation's gain or loss
 
 // What only the hub can do is lent to the systems below it (campaignbase.ts): they call it there, and import nothing from here.
@@ -1260,7 +1272,7 @@ export function continueAI(c: Campaign): void {
       c.turn++;
       c.phase = 'player';
       tickHouses(c);
-      for (const a of c.armies) { a.moved = resting(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts)
+      for (const a of c.armies) { a.moved = resting(c, a) || snowbound(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts), and one that marched in winter (winter.ts)
       courtTurn(c);
       for (const x of c.factions) x.angry = false;
       rumourSeason(c); // what the player's taverns hear of rival towns (tavernrumour.ts)
@@ -1352,17 +1364,21 @@ function turnEvent(c: Campaign): void {
     mark(c, 'volunteers', t.id);
     c.log.push(`Volunteers from ${t.name} join ${who} army.`);
   } else if (roll < 0.7 && a && a.owner === f.id && armySize(a) > 1) {
-    casualties(a, 1);
+    if (!befalls(c, t.id)) return; // it passes the holy by, by their measure (chancecreed.ts)
+    const gone = Math.min(feverToll(c, t.id), armySize(a) - 1); // and takes a second company from the worldly, some of the time
+    casualties(a, gone);
     mark(c, 'fever', t.id);
-    c.log.push(`Fever in the camp at ${t.name} costs ${who} army a company.`);
+    c.log.push(`Fever in the camp at ${t.name} costs ${who} army ${gone === 1 ? 'a company' : `${gone} companies`}.`);
   } else if (roll < 0.85 && t.buildings.includes('farm')) {
     t.buildings.splice(t.buildings.indexOf('farm'), 1);
     mark(c, 'raiders', t.id);
     c.log.push(`Raiders burn the farmland of ${t.name}.`);
   } else {
-    f.supplies = Math.max(0, f.supplies - 3);
+    if (!befalls(c, t.id)) return; // it passes the holy by, by their measure (chancecreed.ts)
+    const cost = hardCost(c, t.id); // and costs by the town's standing: 3 from an ordinary town
+    f.supplies = Math.max(0, f.supplies - cost);
     mark(c, 'hard', t.id);
-    c.log.push(`A hard season in ${t.name} costs 3 of ${who} supplies.`);
+    c.log.push(`A hard season in ${t.name} costs ${cost} of ${who} supplies.`);
   }
 }
 
@@ -1451,6 +1467,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
   }
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
   targets.splice(0, targets.length, ...sickLast(c, targets)); // a land with plague in it last (aiplague.ts)
+  targets.splice(0, targets.length, ...heldFirst(c, f.id, targets)); // a land holding its carried-off in their last seasons first (rivalcaptives.ts)
   // Cautious leaders want better odds; a leader who has just been refused wants blood.
   const dares = (from: number, to: number): boolean => {
     const t = c.territories[to];
@@ -1568,15 +1585,15 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...(!humanAttacks && !field && hallCasesAt(c, p.to).length ? { hall: hallCasesAt(c, p.to) } : {}), /* the cases before the town's Hall (hallcases.ts) */ ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
+      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...(!humanAttacks && !field && hallCasesAt(c, p.to).length ? { hall: hallCasesAt(c, p.to) } : {}), /* the cases before the town's Hall (hallcases.ts) */ ...(!humanAttacks && !field && caravanAtField(c, p.to) ? { caravan: caravanAtField(c, p.to) } : {}), /* its Market's caravan on the road (fieldcaravan.ts) */ ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: { ...withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))), ...(!humanAttacks && !field && askedFor(c, p.to) ? { asked: askedFor(c, p.to) } : {}) } }, // with what the nation has learned (studies.ts)
       {
         name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...(foe < 0 ? { tribe: true } : {}), ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: withStudies(c, foe, humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe))),
       },
       // The strongest army next door on each side joins the battle as an ally with its own camp.
-      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, civ: c.factions[foe].civ, ...led(foe, foeReserve), virtue: virtueOf(c, foe), bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
-      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, civ: c.factions[0].civ, ...led(0, myReserve), virtue: virtueOf(c, 0), bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
-      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, civ: c.factions[c.ally].civ, ...led(c.ally, allyReserve), virtue: virtueOf(c, c.ally), bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
+      ...(foeReserve ? [{ name: `${c.factions[foe].name} reserve`, color: shade(c.factions[foe].color, 0.65), isAI: true, team: 1, reserve: true, civ: c.factions[foe].civ, ...led(foe, foeReserve), virtue: virtueOf(c, foe), bonus: side(foeReserve, false, armyStrength(foeReserve), ageOf(c, foe)) }] : []),
+      ...(myReserve ? [{ name: 'Your reserve', color: shade(c.factions[0].color, 1.5), isAI: true, team: 0, reserve: true, civ: c.factions[0].civ, ...led(0, myReserve), virtue: virtueOf(c, 0), bonus: side(myReserve, false, armyStrength(myReserve), ageOf(c, 0)) }] : []),
+      ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, reserve: true, civ: c.factions[c.ally].civ, ...led(c.ally, allyReserve), virtue: virtueOf(c, c.ally), bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
     ].slice(0, 4),
   };
 }
@@ -1591,6 +1608,10 @@ const unitsOf = (type: string): [string, number] => Object.entries(COMPANIES[typ
  * `after`, by name, so that two features adding to it never fight over an argument's place.
  */
 export interface BattleAfter {
+  /** The town's Market caravan as the field left it (fieldcaravan.ts caravanOut). */
+  caravan?: unknown;
+  /** The dilemmas the player's people were asked there (`askedOut`, askedhere.ts). */
+  asked?: unknown;
   /** The town's men who went home from the army defending it and were home when it ended (`homeNow`, furlough.ts). */
   leave?: unknown;
   /** Where the town's standing ended, to carry half the change home. */
@@ -1646,6 +1667,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   if (census) settleFolk(c, land.id, census, { taken: playerWon === humanAttacks, was: p.defender }); // its dead were its holder's when the battle began
   note.census = !!census && !census.unfielded; // a count of a town never on the field is not the town (writeguard.ts): nothing after reads it as such
   BATTLE_HOOKS.run('housed', c, p, note); // the town's people and stores are as the battle left them
+  if (p.mode !== 'field' && !camp) keepAsked(c, land.id, after.asked); // the dilemmas asked there, if the town is the player's (askedhere.ts)
   // A soldier with a name who marched with an army that did not come back is lost to the town that knew them.
   if (known && mine && !c.armies.includes(mine)) loseVeteran(c, 0, known);
   // Felled wood, picked berries and dug stone are gone whoever won. A field battle is fought on other ground.
@@ -1673,6 +1695,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
         land.buildings.push(site);
         c.log.push(`The ${SITES[site].name} you built in the fighting stands in ${land.name}.`);
       }
+      raiseFaithSites(c, land.id, b, 'in the fighting'); // and a Church or a Tavern (faithsites.ts)
     }
   }
   if (!mine && sat && c.factions[0].heroAlive) {

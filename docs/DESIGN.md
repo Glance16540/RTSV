@@ -252,6 +252,16 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **A siege camp has no people from nowhere** (the owner's word, 19 November 2026). A besieging army's camp starts with no villagers: its men are the army's own, from the map's roll, and nobody is born there. Its soldiers build the camp's works themselves, its rams' workshop and its stores, so a siege can still be pressed.
 
+**Winter is felt, not only seen** (the owner's word, 19 November 2026). Where the land has a winter, armies march more slowly in it, fields yield less, and rivers freeze hard enough to be crossed on foot, so lands a river parts border one another for that season. A desert keeps no winter.
+
+**Early sieges stay hard** (the owner's word, 19 November 2026). Before the siege workshop, a besieging army has no ladder or battering log: it takes a town with its men or not at all.
+
+**Each people names its own** (the owner's word, 19 November 2026). Men, women and houses are named from their own people's names, not one list for all; a person keeps the name given when they move or are taken.
+
+**Before the move to Unity** (the owner's word, 19 November 2026): the ideas are finished here first, then every system is ported. The Greeks keep only the scholars' rule and their two units, as balance left them.
+
+**A Prophet's wrath goes by faith** (the owner's word, 19 November 2026). A Prophet's fire, blight and earthquake fall by the creed of those they strike, by the same measure as his plague and every act of God: lighter on the Righteous, heavier on the Decadent.
+
 ## The order of building
 
 Each step is to be playable by itself.

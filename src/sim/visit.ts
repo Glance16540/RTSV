@@ -7,12 +7,14 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { askedFor, keepAsked } from './askedhere';
 import { seasonOfTurn } from './seasonsky';
 import { companySoldiers, rollOf } from './soldiernames';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { storyForVisit, storyFromVisit } from './storyvisit';
 import { courtForVisit, courtFromVisit } from './courtvisit';
+import { caravanAtField, caravanFromField } from './fieldcaravan';
 import { hallCasesAt, hallFromSitting } from './hallcases';
 import { keepRoads, roadsFor } from './handroads';
 import { waterOf } from './townwater';
@@ -25,6 +27,7 @@ import { Census, cleanCensus, folkOf, musterFolk, settleFolk } from './township'
 import { bornOnVisit } from './seasonfolk';
 import { shiftVirtue } from './townfaith';
 import { weatherAt } from './campaignbase';
+import { raiseFaithSites } from './faithsites';
 import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, slots } from './campaignbase';
 import { faithAt } from './townfaith';
 import { settleStores } from './stores';
@@ -64,6 +67,8 @@ export interface VisitRecord {
 
 /** What comes back from a visit. Everything is by name, so that more can be carried home without changing who calls this. */
 export interface VisitAfter {
+  /** The town's Market caravan as the field left it (fieldcaravan.ts caravanOut). */
+  caravan?: unknown;
   /** The rulings given at the town's Hall of Judgement (`hallOut`, hallfield.ts). */
   hall?: unknown;
   town?: Standing[];
@@ -90,6 +95,8 @@ export interface VisitAfter {
   court?: unknown;
   /** The roads laid by hand in the town, by their tiles (`handRoadsOut`, handroads.ts). */
   roads?: unknown;
+  /** The dilemmas the town was asked (`askedOut`, askedhere.ts). */
+  asked?: unknown;
 }
 
 /** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
@@ -202,7 +209,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
     seed: t.seed, size: t.trait === 'coast' ? 96 : 72, level: 0, humanAttacks: false, field: false, sea: t.trait === 'coast',
     title: `A visit to ${t.name}`,
     setups: [{
-      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, ...(hallCasesAt(c, t.id).length ? { hall: hallCasesAt(c, t.id) } : {}), // the cases before its Hall of Judgement (hallcases.ts)
+      name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, start: homeCorner(t), hero, ...(hallCasesAt(c, t.id).length ? { hall: hallCasesAt(c, t.id) } : {}), ...(caravanAtField(c, t.id) ? { caravan: caravanAtField(c, t.id) } : {}), // the cases before its Hall of Judgement (hallcases.ts), and its Market's caravan on the road (fieldcaravan.ts)
        virtue: faithAt(c, t.id), ...(waterOf(c, t.id, terrainOf(c)) ? { water: waterOf(c, t.id, terrainOf(c)) } : {}), // the land's own shore, river and islands (townwater.ts)
       bonus: {
         units, res: (record.res ?? 0) + (t.buildings.includes('farm') ? 150 : 0), age: Math.max(fort ? 1 : 0, ageOf(c, 0)), armed: true,
@@ -211,6 +218,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
         ...(roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // roads laid by hand there before (handroads.ts)
+        ...(askedFor(c, t.id) ? { asked: askedFor(c, t.id) } : {}), // the dilemmas it was asked before (askedhere.ts)
         ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)
         ...(courtForVisit(c, t.id) ? { court: courtForVisit(c, t.id) } : {}), // a rival's envoy, a suitor or a plot, where the court is kept (courtvisit.ts)
         ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
@@ -242,7 +250,9 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   storyFromVisit(c, land.id, after.story); // a story's outcome on the field, written back to it (storyvisit.ts)
   courtFromVisit(c, land.id, after.court); // and a story of the leader's house (courtvisit.ts)
   hallFromSitting(c, land.id, after.hall); // and the rulings given at its Hall of Judgement (hallcases.ts)
+  caravanFromField(c, land.id, after.caravan); // and its Market's caravan, home or caught (fieldcaravan.ts)
   if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
+  keepAsked(c, land.id, after.asked); // and the dilemmas it was asked (askedhere.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
   // It is this town that was kept so, and this town that is moved (townfaith.ts).
@@ -270,6 +280,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
       land.buildings.push(site);
       c.log.push(`The ${SITES[site].name} you built on your visit stands in ${land.name}.`);
     }
+    raiseFaithSites(c, land.id, b, 'on your visit'); // and a Church or a Tavern (faithsites.ts)
   }
   const mins = Math.max(1, Math.round((seconds ?? VISIT_SECONDS) / 60));
   c.log.push(`You spent ${mins} minute${mins === 1 ? '' : 's'} of the season in ${land.name}.`);

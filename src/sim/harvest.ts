@@ -23,6 +23,7 @@ import { GOVERN, shareOf } from './governor';
 import { millYield } from './mill';
 import { leaderWork } from './leaderstay';
 import { noteReaped } from './larderwatch';
+import { winterYield } from './winter';
 import { griefWork } from './mapgrief';
 
 /** Grown men and women a town needs to work its land in full: six in the towns of today, TOWN_SCALE times as many in bigger towns. */
@@ -86,7 +87,7 @@ export function harvest(c: Campaign, landYield: (f: number, t: Territory) => num
     // A land the marauders still sit in has no town of its people's to keep its yield: that goes to the chief town.
     for (const t of held) {
       // A land the marauders sit in yields what its own town's hands bring in, but into the chief town.
-      const into = t.horde ? chief : t, n = Math.round(landYield(x.id, t) * k * SUPPLY_UNITS * handsShare(c, t.id) * nobleWork(c, t.id) * leaderWork(c, t.id) * griefWork(c, t.id)); // an angry noble's town works slacker (nobles.ts), the leader's harder (leaderstay.ts), its grieving homes slower (mapgrief.ts)
+      const into = t.horde ? chief : t, n = Math.round(landYield(x.id, t) * k * SUPPLY_UNITS * handsShare(c, t.id) * nobleWork(c, t.id) * leaderWork(c, t.id) * griefWork(c, t.id) * winterYield(c, biomeOf(c, t.id))); // and less in winter, where the land has one (winter.ts) // an angry noble's town works slacker (nobles.ts), the leader's harder (leaderstay.ts), its grieving homes slower (mapgrief.ts)
       const got = spread(n, yieldShares(c, into.id));
       noteReaped(c, into.id, got.food); // for the reckoning ahead (larderwatch.ts)
       goods += n; lost += putIn(c, into.id, got);

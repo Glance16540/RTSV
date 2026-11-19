@@ -38,9 +38,9 @@ export function deed(g: Game, owner: number, t: Entity): void {
   if (rank > l.hero.rank) {
     l.hero.rank = g.players[owner].heroRank = rank;
     fitLeader(g, l);
-    const learnt = powersHeld(g.heroOf(owner), rank).length > powersHeld(g.heroOf(owner), rank - 1).length ? powersHeld(g.heroOf(owner), rank).at(-1) : null;
-    // A rival does not wait to be asked what it will learn.
+    // A rival does not wait to be asked what it will learn; what was learnt is named after it has chosen.
     if (g.players[owner].isAI) while (g.powerDue(owner) >= 0) g.cmdLearn(owner, 0);
+    const learnt = powersHeld(g.heroOf(owner), rank).length > powersHeld(g.heroOf(owner), rank - 1).length ? powersHeld(g.heroOf(owner), rank).at(-1) : null;
     g.msg(owner, `${l.name} is now ${RANK_NAMES[rank]}${learnt ? ` and has learnt ${learnt.name}` : g.powerDue(owner) >= 0 ? ': choose what they learn' : ''}.`);
   }
 }
@@ -92,7 +92,7 @@ export function cmdAcclaim(g: Game, owner: number, id: number): boolean {
   const u = g.entities.get(id);
   if (!u || u.kind !== 'unit' || !g.canAcclaim(owner, u)) return false;
   const p = g.players[owner], old = g.heroOf(owner).name;
-  u.name ||= championName(u.id);
+  u.name ||= championName(u.id, u.people ?? g.players[u.owner]?.civ);
   p.hero = championSpec(u.name, !u.roll && championFemale(u.id), u.type); // a man of the army's roll is himself (soldiernames.ts)
   p.heroRank = rankForKills(u.kills ?? 0);
   p.acclaimed = true;
@@ -106,7 +106,7 @@ export function cmdAcclaim(g: Game, owner: number, id: number): boolean {
 export function champion(g: Game, owner: number): Champion | null {
   let best: Unit | null = null;
   for (const u of g.units) if (u.owner === owner && !u.hero && !u.merc && canLead(u.def.cls) && (u.kills ?? 0) >= CHAMPION_KILLS && (!best || (u.kills ?? 0) > (best.kills ?? 0))) best = u;
-  return best ? { name: best.name || championName(best.id), kills: best.kills ?? 0, unit: best.def.name, female: !best.roll && championFemale(best.id), type: best.type } : null;
+  return best ? { name: best.name || championName(best.id, best.people ?? g.players[owner]?.civ), kills: best.kills ?? 0, unit: best.def.name, female: !best.roll && championFemale(best.id), type: best.type } : null;
 }
 
 /** The kind of unit a people's leader is, before their people's own way of training is applied. */

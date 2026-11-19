@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { endTurn, income, newCampaign } from '../src/sim/campaign';
 import { lastGain } from '../src/sim/seasongain';
 import { settleStores } from '../src/sim/stores';
+import { setStanding } from '../src/sim/townorders';
+import { mapWorks } from '../src/sim/townworks';
 
 const play = (c: ReturnType<typeof newCampaign>, turns: number): void => {
   for (let i = 0; i < turns; i++) { endTurn(c); expect(c.phase).toBe('player'); }
@@ -28,7 +30,14 @@ describe('the season\'s gain', () => {
   it('does not count against the season what the player spent in the turn', () => {
     const a = newCampaign(11, 1, 1, 'hearth'), b = newCampaign(11, 1, 1, 'hearth');
     play(a, 2); play(b, 2);
-    b.factions[0].supplies -= 3; // spent in the turn, on something
+    // The governors may raise nothing this season in either: what one buys out of plenty the other, with less in store, may
+    // not (a Mill, in winter's lean harvest, winter.ts), and that is the governor's spending, not the player's.
+    for (const c of [a, b]) for (const t of c.territories) if (t.owner === 0) setStanding(c, t.id, { never: mapWorks() });
+    // Spent in the turn, on something paid in gold: food spent would leave less in the larder to spoil (larder.ts ROT), and
+    // so a different gain by spoilage, which is not what this asks.
+    settleStores(b);
+    b.territories.find((t) => t.capital === 0)!.folk!.stores.gold -= 300; // three supplies' worth
+    settleStores(b);
     endTurn(a); endTurn(b);
     expect(lastGain(b)).toBe(lastGain(a));
   }, 60_000);
