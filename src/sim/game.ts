@@ -858,9 +858,10 @@ export class Game {
   veteran(u: Unit): number {
     return this.style(u.owner) === 'warrior' && this.isMilitary(u) ? 1 + STYLE_RULES.veteran * Math.min(STYLE_RULES.veteranKills, u.kills ?? 0) : 1;
   }
-  /** How much faster the Scholars' villagers gather for what their people have learned. */
+  /** How much faster a people's villagers gather by their style's rule: the Scholars' for what they have learned (and a little from the first), the Builders' a little always. */
   lore(owner: number): number {
-    return this.style(owner) === 'scholar' ? 1 + Math.min(STYLE_RULES.loreMax, STYLE_RULES.lore * this.players[owner].techs.size) : 1;
+    const style = this.style(owner);
+    return style === 'scholar' ? 1 + Math.min(STYLE_RULES.loreMax, STYLE_RULES.loreBase + STYLE_RULES.lore * this.players[owner].techs.size) : style === 'builder' ? 1 + STYLE_RULES.masonry : 1;
   }
   raider(owner: number): boolean { return !!this.players[owner] && !!styleOf(this.players[owner].civ).raid; }
   /** A raiding people with no town of the map's under it: it begins, and falls, as a war band (raidertown.ts). */
