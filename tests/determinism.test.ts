@@ -2,13 +2,17 @@
 // The Unity port compares its fingerprint and health report with this side's character for character
 // (docs/PORTING.md), so nothing may be carried from one game or one campaign into the next: no module-level
 // cache, counter or order of keys that a later game can see.
-import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { AIController } from '../src/sim/ai';
 import { Game } from '../src/sim/game';
 import { answerDemand, continueAI, endTurn, newCampaign, playForPlayer, resolvePending } from '../src/sim/campaign';
 
-const hash = (s: string): string => createHash('sha256').update(s).digest('hex').slice(0, 16);
+/** A plain hash of a whole state: two 32-bit runs over every character, so one changed number anywhere shows. */
+const hash = (s: string): string => {
+  let a = 0x811c9dc5, b = 0x1b873593;
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); a = Math.imul(a ^ c, 0x01000193); b = Math.imul(b + c, 0x85ebca6b) ^ (b >>> 13); }
+  return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
+};
 /** A battle with both sides played by the computer, hashed every minute and at the end. */
 const battle = (seed: number, a: string, b: string, minutes: number): string[] => {
   const g = new Game(seed, [{ name: a, color: 1, isAI: true, civ: a }, { name: b, color: 2, isAI: true, civ: b }]);
