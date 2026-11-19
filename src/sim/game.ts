@@ -10,6 +10,8 @@ import { setToWork, workChanged } from './atwork';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
 import { dyingOut } from './dyingout';
+import { carriedOut } from './carriedout';
+import { seatRecords } from './warrecord';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -613,7 +615,7 @@ export class Game {
           // In a field battle the army forms up where the town would have been.
           for (let j = 0; j < n; j++, k++) (laid.get(type) ?? laid.set(type, []).get(type)!).push(this.spawnUnit(this.trainedAs(i, type), i, st.x - 3.5 + (k % 8), st.y + ((field ? -1 : 5) + Math.floor(k / 8)) * dir));
         }
-        if (s.bonus.roll) nameSoldiers(this, i, laid, s.bonus.roll); // each company led by the men of the army's roll (soldiernames.ts)
+        if (s.bonus.roll) { nameSoldiers(this, i, laid, s.bonus.roll); seatRecords(this, i, s.bonus.roll); } // each company led by the men of the army's roll (soldiernames.ts), each with his record at war (warrecord.ts)
         // In a battle in the open there is no town on the field: the men of it who marched out stand with the army (tribes.ts).
         if (field && s.bonus.people) peopled(this, i, s.bonus.people, st, dir);
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
@@ -911,7 +913,7 @@ export class Game {
    * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name
    * (battlefolk.ts).
    */
-  census(owner: number): Census { return { ...censusOf(this, owner), roofs: roofsOf(this, owner), ...oldOut(this, owner) }; } // and who lives under each roof (roofs.ts)
+  census(owner: number): Census { return { ...censusOf(this, owner), roofs: roofsOf(this, owner), ...oldOut(this, owner), ...carriedOut(this, owner) }; } // and who lives under each roof (roofs.ts)
 
   /** What a side's town is set to as things stand (governor.ts): how many of its people are at each kind of work, what stands half built, what is being trained. */
   orders(owner: number): { work: Stores; build: string[]; train: string[]; men?: QueuedMan[]; hands: number } {
