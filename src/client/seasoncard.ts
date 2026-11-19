@@ -7,7 +7,7 @@ import { nationOf, notablePortrait } from '../sim/portrait';
 import { portraitHtml } from './portrait';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
-const ICON = { people: '👶', loss: '✝', captives: '⛓️', raid: '🔥', drift: '🍺', land: '🏴', story: '🕯️', settle: '🏡' } as const;
+const ICON = { people: '👶', loss: '✝', captives: '⛓️', raid: '🔥', drift: '🍺', land: '🏴', story: '🕯️', settle: '🏡', food: '🌾' } as const;
 
 /** A known person's row: their face, name and what they are known for. */
 function personRow(c: Campaign, n: Named, gone?: string): string {

@@ -8,6 +8,7 @@
 
 import { RIM_PAINT, bandCamp, paintRim, rimTint, seenByPlayer, wasteOf } from './rimdraw';
 import { Walker, walk, walkerFor } from './caravandraw';
+import { convoyWalkers } from './convoydraw';
 import { bandsAt } from '../sim/threats';
 import { lowDetail, reportMapTime } from './detail';
 import * as THREE from 'three';
@@ -1304,7 +1305,7 @@ float dn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.
       holder.add(shield);
     }
     for (const id of [...this.stood.keys()]) if (!live.has(id)) this.stood.delete(id);
-    this.caravans = (c.caravans ?? []).map((x) => walkerFor(c, x)); // the markets' caravans on their roads (caravandraw.ts)
+    this.caravans = [...(c.caravans ?? []).map((x) => walkerFor(c, x)), ...convoyWalkers(c)]; // the markets' caravans on their roads (caravandraw.ts), and the convoys on theirs (convoydraw.ts)
     for (const w of this.caravans) this.pieces.add(w.g);
   }
 
