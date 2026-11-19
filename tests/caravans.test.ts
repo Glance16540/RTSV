@@ -94,7 +94,7 @@ describe('caravans', () => {
       const band: Band = { id: 1, kind: 'highwaymen', name: 'the Night Road', at: b.id, to: z.id, strength: 4, since: 1, held: [] };
       c.bands = [band];
       const escorted = n % 2 === 1;
-      if (escorted) c.armies.push({ id: 77, owner: 0, at: b.id, units: { infantry: 4 }, hero: false, vet: 0, moved: false });
+      if (escorted) c.armies.push({ id: 77, owner: 0, at: b.id, units: { infantry: 8 }, hero: false, vet: 0, moved: false }); // an escort that beats the band: it is fought out now (roadclash.ts), and an even match may go either way
       const [x] = sendCaravans(c).filter((y) => y.to === a.id);
       const worth = x.worth, before = folkOf(c, a.id).stores.gold;
       next(c);

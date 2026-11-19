@@ -19,7 +19,7 @@
 // player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
-import { roadClash, roadTally, soldiersOf } from './roadclash';
+import { loseBy, roadClash, roadCost, roadTally, soldiersOf } from './roadclash';
 import { outOf } from './rim';
 import { peoplesArmy, sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
@@ -109,10 +109,17 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
   const day = (salt: number): number => 1 - FIGHT.day + 2 * FIGHT.day * chance(c, b.id * 97 + a.id, salt);
   const mine = armyStrength(a, c) * day(61) * (ambush ? exposure(c, a) : 1), theirs = b.strength * day(67), at = c.territories[b.at].name;
   a.moved = true;
-  roadTally(c, ambush ? 'ambush' : 'hunt', mine < theirs, roadClash(b.strength, theirs, soldiersOf(c, a, mine / Math.max(0.01, armyStrength(a, c))))); // stage one of the road fight: report only (roadclash.ts)
-  if (!ambush) marched(c, b.id, 'met', mine >= theirs); // an army went out against a band on its way in from the far wilds (bandmarch.ts)
-  if (mine >= theirs) {
-    const lost = lose(a, Math.round(armySize(a) * FIGHT.cost * Math.min(1, theirs / mine)));
+  // It is fought out (roadclash.ts): the army's own companies, at what they are worth there on the day (and caught out, if
+  // fallen on), against the band. Who breaks decides it, and each side loses what the fight took from it.
+  const f = roadClash(b.strength, theirs, soldiersOf(c, a, mine / Math.max(0.01, armyStrength(a, c))));
+  const won = f.broke === 'band' || (f.broke === 'neither' && mine >= theirs);
+  roadTally(c, ambush ? 'ambush' : 'hunt', mine < theirs, f); // beside the old rule (the stronger on the day), for the report
+  if (!ambush) marched(c, b.id, 'met', won); // an army went out against a band on its way in from the far wilds (bandmarch.ts)
+  const size = armySize(a), was = b.strength;
+  const lost = loseBy(a, f.lost);
+  // Report only: beside what the old shares took (a quarter of its companies beating its equal, four tenths routed; the band three tenths of the army's strength).
+  roadCost(c, `${ambush ? 'ambush' : 'hunt'} ${won ? 'won' : 'lost'}`, lost, won ? Math.min(size - 1, Math.round(size * 0.25 * Math.min(1, theirs / mine))) : Math.min(size - 1, Math.max(1, Math.round(size * FIGHT.rout))), won ? was : Math.min(was - 1, Math.max(1, f.bandLost)), won ? was : Math.min(was - 1, Math.max(1, Math.round(mine * 0.3))));
+  if (won) {
     note(c, out, 'broken', b, b.at, `${ambush ? `${cap(b.name)} fell on ${peoplesArmy(c, a.owner)} at ${at} and were broken` : `${whoseArmy(c, a)} has broken ${b.name} at ${at}`}${lost ? `, at the cost of ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner, ...b.held.map((h) => h.owner)]);
     const felled = b.strength * MEN.company;
     breakBand(c, b, out, a);
@@ -122,8 +129,7 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
     reckonArmies(c);
     return true;
   }
-  const lost = lose(a, Math.max(1, Math.round(armySize(a) * FIGHT.rout)));
-  b.strength = Math.max(1, b.strength - Math.max(1, Math.round(mine * FIGHT.bled)));
+  b.strength = Math.max(1, b.strength - Math.max(1, f.bandLost)); // it is the weaker for the fight, by a point at the least
   note(c, out, 'beaten', b, b.at, `${ambush ? `${cap(b.name)} fell on ${peoplesArmy(c, a.owner)} at ${at} and routed it` : `${whoseArmy(c, a)} went against ${b.name} at ${at} and was beaten off`}${lost ? `, ${ambush ? 'with the loss of' : 'losing'} ${lost === 1 ? 'a company' : `${lost} companies`}` : ''}.`, [a.owner]);
   leaderAfter(c, a, false, out, { band: b.name, fell: a.hero && chance(c, b.id * 131 + a.id, 71) < FIGHT.leaderFalls });
   reckonArmies(c);

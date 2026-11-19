@@ -193,6 +193,7 @@ interface Watch {
   grownGrowth: number[]; // the same, grown people alone
   townSeasons: TownSeason[];
   caravans?: Campaign['caravanTally']; // the markets' caravans (caravans.ts)
+  roadCosts?: Campaign['roadCost'];
   roads?: Campaign['roadTally']; // meetings on the road, by their rule and by the clash (roadclash.ts)
   stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
   townLives: number; diedOut: number; diedAfterAll: number;
@@ -540,6 +541,7 @@ if (churched[f.id] >= YEARS20 / 2 && townSeasonsOf[f.id] > 0 && hungryOf[f.id] /
   w.sieges = watched;
   w.caravans = c.caravanTally ? JSON.parse(JSON.stringify(c.caravanTally)) : undefined;
   w.roads = c.roadTally ? JSON.parse(JSON.stringify(c.roadTally)) : undefined;
+  w.roadCosts = c.roadCost ? JSON.parse(JSON.stringify(c.roadCost)) : undefined;
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
   w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0 && !it.claim).length; // a judgement after a claimant's rising is no plot begun (claimantjudged.ts)
   w.crimes = [...atLarge.values()];
@@ -986,6 +988,16 @@ add('Threats', 'Men a town loses to a strike, and what a battle with a nation wo
       ? kinds.map((k) => { const x = sum[k]; return `${k} (${num(x.n / ruled.length, 1)} a campaign): the band has the better of it ${pct(x.ruleBand / x.n)} by rule and ${pct(x.clashBand / x.n)} fought out (neither breaks ${pct(x.neither / x.n)}); the two agree ${pct(x.agree / x.n)}`; }).join('; ')
       : 'none', 'report',
       'Stage one of the road fight (roadclash.ts), which decides nothing yet. hunt: an army of a computer people, or the report\'s player unwatched, goes against a band; ambush: a band falls on an army; convoy and caravan: highwaymen or pirates stop one that has an army of its people on its road; camp on a caravan: raiders, slavers or marauders fall on one so escorted; road: highwaymen strike a road\'s end where an army stands. By rule the stronger on the day wins (an escort as strong as the band sees it off); fought out, either may break or neither.');
+  }
+  {
+    // Report only: what a fight of an army and a band costs each, fought out, beside the old shares.
+    const sum: Record<string, { n: number; army: number; armyOld: number; band: number; bandOld: number }> = {};
+    for (const w of ruled) for (const [k, t] of Object.entries(w.roadCosts ?? {})) { const x = (sum[k] ??= { n: 0, army: 0, armyOld: 0, band: 0, bandOld: 0 }); x.n += t.n; x.army += t.army; x.armyOld += t.armyOld; x.band += t.band; x.bandOld += t.bandOld; }
+    const keys = Object.keys(sum).sort();
+    add('Threats', 'What a fight of an army and a band costs each side: fought out, and by the old shares', 'report only', keys.length
+      ? keys.map((k) => { const x = sum[k]; return `${k} (${num(x.n / ruled.length, 1)} a campaign): the army loses ${num(x.army / x.n, 2)} companies (${num(x.armyOld / x.n, 2)} by the old share), the band ${num(x.band / x.n, 2)} points (${num(x.bandOld / x.n, 2)})`; }).join('; ')
+      : 'none', 'report',
+      'Every fight of an army and a band with nobody watching (bandfight.ts fightByMeans): hunt, an army went against a band; ambush, a band fell on an army; won or lost by the army. Fought out (roadclash.ts) each loses what the fight took; by the old shares an army lost a quarter of its companies beating its equal and four tenths routed, and a band that beat an army off lost three tenths of the army\'s strength. A band the army beats is broken either way.');
   }
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);

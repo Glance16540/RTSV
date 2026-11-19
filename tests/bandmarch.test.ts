@@ -149,7 +149,8 @@ describe('an army that is not what it looks', () => {
         if (!fightByMeans(w.c, aa, bb, [], true)) { if (tired) lostTired++; else lostFresh++; }
       }
     }
-    expect(lostFresh).toBe(0); // five against four is beyond the day's luck
+    expect(lostFresh).toBeLessThanOrEqual(4); // five fresh against four seldom lose, now that it is fought out and not summed (roadclash.ts)
+    expect(lostTired).toBeGreaterThan(lostFresh * 4);
     expect(lostTired).toBeGreaterThan(15); // five tired men count for three
   });
 });
