@@ -41,13 +41,21 @@ export interface Convoy { id: number; owner: number; from: number; to: number; r
 /** What happened to a convoy as the season turned. */
 export interface Arrival { convoy: Convoy; at: number; robbed?: { by: string; took: Stores }; lost?: boolean; /** Grown movers carried off on the road. */ taken?: number; /** Settlers founded a town where they came in (founding.ts). */ founded?: boolean; /** Who might have met it: a band lay in wait on its road (`danger`), and an Inn of its people's stood on it (`inn`, roads.ts). */ met?: { danger: boolean; inn: boolean } }
 
+/**
+ * One side of the report's tally of the player's convoys a band lay in wait for (`met`): those the band came on by the
+ * draw (`stopped`), those it would have come on had no Inn stood on the road (`would`: the same convoys, the same draw,
+ * the Inn's half left out, so `stopped` against `would` is the Inn's rule and nothing else), and those it robbed
+ * (`robbed`: fewer than `stopped`, since an army of the people's on the road may see the band off).
+ */
+export interface ConvoySide { met: number; robbed: number; stopped?: number; would?: number }
+
 declare module './campaign' {
   interface Campaign {
     /** Convoys on the road (convoys.ts). */
     convoys?: Convoy[];
     convoySeq?: number;
     /** The player's convoys a band lay in wait for, and how many of those it robbed, with an Inn on the road and without (for the health report). */
-    convoyTally?: { inn: { met: number; robbed: number }; none: { met: number; robbed: number } };
+    convoyTally?: { inn: ConvoySide; none: ConvoySide };
   }
 }
 
@@ -208,6 +216,16 @@ function waylaid(c: Campaign, x: Convoy): { name: string; strength: number; sea:
 }
 
 /**
+ * Does a band lying in wait for this convoy come on it? One draw for the convoy and the season, against CONVOYS.meet:
+ * less often for a people whose convoys rest behind walls (ownstudies.ts), where a Strategist stays in a town on the road
+ * (leaderstay.ts), and half as often where an Inn of its people's stands on the road (roads.ts `innRisk`). `inn: false`
+ * asks what the same draw would have come to with no Inn there, for the report (`ConvoySide.would`).
+ */
+export function comesOn(c: Campaign, x: Convoy, inn = true): boolean {
+  return hash(c, x.id, 3) < CONVOYS.meet * roadRisk(c, x.owner) * (inn ? innRisk(c, x.owner, x.road) : 1) * leaderRoads(c, x.owner, x.road);
+}
+
+/**
  * Highwaymen on the road, or pirates at sea, unless an escort of the people's own as strong as they are stands on it:
  * they take CONVOYS.rob of every store a convoy (or a caravan, caravans.ts) carries. Writes what was taken into `a`,
  * and returns who lay in wait and how strong an escort it had, or null if nobody met it. `what` names it in the log.
@@ -215,7 +233,7 @@ function waylaid(c: Campaign, x: Convoy): { name: string; strength: number; sea:
 export function waylay(c: Campaign, x: Convoy, a: { robbed?: Arrival['robbed'] }, what = 'convoy'): { band: ReturnType<typeof waylaid>; escort: number } | null {
   const mine = x.owner === 0;
   const band = waylaid(c, x);
-  if (!band || hash(c, x.id, 3) >= CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road) * leaderRoads(c, x.owner, x.road)) return null; // and a Strategist staying in a town on it (leaderstay.ts) // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
+  if (!band || !comesOn(c, x)) return null;
   const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
   // An army of its people on the road fights the band (roadclash.ts): it goes through unless the escort is broken, and then
   // the band takes its share by how long it had the road and the hands it has left; the escort pays for it in companies.
@@ -242,8 +260,9 @@ export function convoyArrives(c: Campaign, x: Convoy): Arrival {
   const a: Arrival = { convoy: x, at: x.to };
   const mine = x.owner === 0;
   a.met = { danger: !!waylaid(c, x), inn: innRisk(c, x.owner, x.road) < 1 }; // before the band is met: a band it breaks is still the band that lay in wait
+  const stopped = a.met.danger && comesOn(c, x), would = a.met.danger && comesOn(c, x, false); // read before the band is met, as the draw stands
   const met = waylay(c, x, a), band = met?.band ?? null, escort = met?.escort ?? 0;
-  if (mine && !x.movers && !x.found && a.met.danger) { const T = (c.convoyTally ??= { inn: { met: 0, robbed: 0 }, none: { met: 0, robbed: 0 } })[a.met.inn ? 'inn' : 'none']; T.met++; if (a.robbed) T.robbed++; }
+  if (mine && !x.movers && !x.found && a.met.danger) { const T = (c.convoyTally ??= { inn: { met: 0, robbed: 0 }, none: { met: 0, robbed: 0 } })[a.met.inn ? 'inn' : 'none']; T.met++; if (a.robbed) T.robbed++; if (stopped) T.stopped = (T.stopped ?? 0) + 1; if (would) T.would = (T.would ?? 0) + 1; }
   if (met && band) {
     // A family on the road (migration.ts) is met as a convoy is: the band carries off grown people, never a child. They are
     // held as any captives are (threats.ts), on the same clock, and come home if the band is broken in time.
