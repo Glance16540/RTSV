@@ -34,6 +34,8 @@ export const RAID = {
   easilyOut: 0.07,
   /** Of what a clash says a band lost, the share its strength is the weaker by: most of those who run find the camp again. Never less than one point where it broke. */
   rally: 0.3,
+  /** Of a town's stores, the share a band takes that has the town for the whole day (it broke at the first rush); less by `spoilsOf().time` for every round the town stood. By table it was a quarter from a town raided and four tenths from one taken. */
+  loot: 0.34,
   /** Of the men of a town's band lost to a band, the share who are dead (against a nation it is half, militiatoll.ts FELL.dead): a band has come to rob, not to hold the town, and most who break before it get home. Set so that a strike kills about what it did by rule (0.6 men a strike; at a half it would be 2.5). */
   dead: 0.13,
 };
@@ -108,6 +110,20 @@ export function raidOf(out: Outcome, strength: number, line: number = RAID.easil
     pressed: out.d.share, works: out.d.works, body: out.d.body ?? 0,
     garrisonLost: { ...out.d.lost },
   };
+}
+
+/**
+ * What a band that has broken a town comes away with follows the fight, not the outcome's name:
+ *   `time`: how much of the day it had the town, 1 where the town broke at the first rush and less for every round it
+ *     stood (of mapbattle.ts's CLASH.rounds). A town that held to the fifth round has had most of the day to hide its
+ *     goods and get its people out of the way.
+ *   `hands`: the share of the band still on its feet to carry and to lead (1 less what the fight cost it).
+ * threats.ts takes RAID.loot of a town's stores at a whole day, by `time`, and no more than the band's hands can carry;
+ * and of those it would carry off from a town taken, as many as `time` and `hands` allow.
+ */
+export function spoilsOf(f: { rounds: number; cost: number }): { time: number; hands: number } {
+  const clamp = (x: number): number => Math.max(0, Math.min(1, x));
+  return { time: clamp(1 - (Math.max(1, f.rounds) - 1) / CLASH.rounds), hands: clamp(1 - f.cost) };
 }
 
 /** A raid fought: `luckA`, `luckD` are the day's for each side, each 0 to 1 (0.5 an even day). */

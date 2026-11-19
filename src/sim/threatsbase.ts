@@ -19,8 +19,8 @@ export const THREATS = {
   wayfarers: 2.5,
   /** What counts toward a town's defence, in companies. */
   man: 0.45, fortress: 3, raising: 0.5, tower: 1, towers: 3, wall: 0.1, walls: 2, capital: 1, sick: 0.7,
-  /** The share of a town's men who die at the walls, by outcome; and of its stores lost. */
-  dead: { held: 0, raided: 0.1, taken: 0.2 }, loot: { held: 0, raided: 0.25, taken: 0.4 }, pirateLoot: 0.2, road: 0.2,
+  /** The share of a town's men who died at the walls by outcome, as it was before the dead followed the fight (raidclash.ts RAID.dead): read by nothing now, kept while the old fight is kept for the report. What pirates take over the rest; what is taken on a road. (A town's stores lost follow the fight: RAID.loot.) */
+  dead: { held: 0, raided: 0.1, taken: 0.2 }, pirateLoot: 0.2, road: 0.2,
   /**
    * And no more than they can carry: so many goods for each point of the band's force, by its kind. Pirates have
    * ships to fill; slavers come for people; the marauders come for women, and take little else. (A nation's
