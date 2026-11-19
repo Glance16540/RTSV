@@ -12,6 +12,7 @@
 // everything that follows an answer. Children are no units on the field (nursery.ts) and are never in this: the
 // daughter asked for is a grown woman of the house, named; she comes to the hall as a figure once asked (hallguests.ts). It reads the game and writes only these marks:
 // a villager shown as one of the great keeps their own name and house on the town's record.
+import { spyWatch } from './studiesintown';
 import type { Game, Unit } from './game';
 
 /** The answer's words in a sentence: its first letter lowered, the names in it as they are (PLAYTEST 5.5). */
@@ -125,7 +126,7 @@ export function courtTick(g: Game): void {
 }
 /** One plot's watch for a second: a soldier keeping by one of its great. */
 function watchOne(g: Game, owner: number, s: CourtOnField): void {
-  const need = FIELD_COURT.watch * (s.informers ? FIELD_COURT.informed : 1);
+  const need = FIELD_COURT.watch * (s.informers ? FIELD_COURT.informed : 1) * spyWatch(g, owner); // the sooner with Spymasters (studiesintown.ts)
   for (const u of g.units) {
     if (u.owner !== owner || u.dead || u.noble === undefined || plotOf(g, u) !== s) continue;
     const i = u.noble;
