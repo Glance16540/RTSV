@@ -66,6 +66,12 @@ const MAN = () => ico('villager_m', '👨‍🌾');
 const WOMAN = () => ico('villager_f', '👩‍🌾');
 const NODE_ICON: Record<string, string> = { tree: '🌲', berries: '🫐', gold: '🪙', stone: '🪨', carcass: '🍖', fish: '🐟' };
 
+/** A picture for each power a leader may choose, so the two offered at a rank can be told apart at a glance. */
+const POWER_ICON: Record<string, string> = {
+  'Battle cry': 'morale', 'The long banner': 'gateguard', 'Drinker of blood': 'weapons2', 'Shield high': 'armor2', Dread: 'wolf', Fury: 'berserker',
+  'Field surgeon': 'herbalism', 'Signal fires': 'watchhouse', 'Cold counsel': 'dilemma', 'Behind the mantlet': 'armor3', 'By example': 'morale', 'Master of the engines': 'trebuchet',
+};
+
 export class Hud {
   private btns: Btn[] = [];
   private cardSig = '';
@@ -318,7 +324,7 @@ export class Hud {
       // A rank has been earned that brings a power: the player chooses which of the two it is.
       const due = chief ? game.powerDue(pid) : -1;
       if (chief && due >= 0) {
-        POWERS[game.heroOf(pid).calling][due].forEach((p, k) => out.push({ id: `learn${k}`, icon: ico('warlord', '✦'), name: `Learn ${p.name}`, desc: `${p.desc}<br><span class="stat">Earned at ${RANK_NAMES[POWER_RANKS[due]]}. One or the other: it cannot be changed afterwards.</span>`, act: () => { game.cmdLearn(pid, k); } }));
+        POWERS[game.heroOf(pid).calling][due].forEach((p, k) => out.push({ id: `learn${k}`, icon: ico(POWER_ICON[p.name] ?? 'warlord', '✦'), name: `Learn ${p.name}`, desc: `${p.desc}<br><span class="stat">Earned at ${RANK_NAMES[POWER_RANKS[due]]}. One or the other: it cannot be changed afterwards.</span>`, act: () => { game.cmdLearn(pid, k); } }));
       }
       // The leader is dead: a soldier who has made a name can be raised in their place.
       if (units.length === 1 && game.canAcclaim(pid, units[0])) {
