@@ -887,7 +887,7 @@ body.looking-out #visit { display: none; }
 /* Battles on the map (src/client/talepanel.ts): each battle fought out on the map, told in full. */
 .tales { display: block; text-align: left; max-height: 60vh; overflow-y: auto; font-size: 14px; }
 .tale-fold { border-top: 1px solid rgba(36, 24, 15, 0.3); padding: 2px 0; }
-.tale-fold > summary { cursor: pointer; padding: 4px 0; font: 400 16px var(--caps); color: var(--rubric); }
+.tale-fold > summary { text-align: left; cursor: pointer; padding: 4px 0; font: 400 16px var(--caps); color: var(--rubric); }
 .tale-fold > summary small { color: var(--sepia); font: 13px var(--book); margin-left: 4px; }
 .tale { display: block; text-align: left; line-height: 1.35; padding: 2px 0 8px; }
 .tale > span { display: block; margin: 3px 0; }

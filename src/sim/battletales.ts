@@ -51,7 +51,7 @@ export function readTale(c: Campaign, t: BattleTale, f = 0): TaleRead {
     sides: [side(A, t.ledA, t.beganA, t.lostA, t.scattered === 'attacker', t.attackerWon), side(D, t.ledD, t.beganD, t.lostD, t.scattered === 'defender', !t.attackerWon)],
     ...(t.works !== undefined && t.works > 0 ? { walls: t.works >= 0.5 ? 'Its walls and towers were beaten down.' : 'Its walls were struck, but held.' } : {}),
     fell: t.fell,
-    ...(t.stood ? { stood: `${t.stood.name} of ${c.territories[t.stood.town]?.name ?? 'a town of theirs'} was named by the winners for how he stood.` } : {}),
+    ...(t.stood ? { stood: `${t.stood.name} of ${c.territories[t.stood.town]?.name ?? 'a town of theirs'} was named by the winners for standing fast.` } : {}),
     mine: t.attacker === f ? (t.attackerWon ? 'won' : 'lost') : t.defender === f ? (t.attackerWon ? 'lost' : 'won') : 'theirs',
   };
 }
