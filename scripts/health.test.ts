@@ -193,6 +193,7 @@ interface Watch {
   grownGrowth: number[]; // the same, grown people alone
   townSeasons: TownSeason[];
   caravans?: Campaign['caravanTally']; // the markets' caravans (caravans.ts)
+  roads?: Campaign['roadTally']; // meetings on the road, by their rule and by the clash (roadclash.ts)
   stories: number; storyYears: number; // stories inside the story begun for the player (intrigue.ts), and the years the player's nation lived
   townLives: number; diedOut: number; diedAfterAll: number;
   /** Every town that died out (tribes' too), with what emptied it: see `whyDead`. */
@@ -538,6 +539,7 @@ if (churched[f.id] >= YEARS20 / 2 && townSeasonsOf[f.id] > 0 && hungryOf[f.id] /
   }
   w.sieges = watched;
   w.caravans = c.caravanTally ? JSON.parse(JSON.stringify(c.caravanTally)) : undefined;
+  w.roads = c.roadTally ? JSON.parse(JSON.stringify(c.roadTally)) : undefined;
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
   w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0 && !it.claim).length; // a judgement after a claimant's rising is no plot begun (claimantjudged.ts)
   w.crimes = [...atLarge.values()];
@@ -974,6 +976,16 @@ add('Threats', 'Men a town loses to a strike, and what a battle with a nation wo
       ? `${mean(broke, (r) => r.goods ?? 0)} goods a strike that breaks the town (raided ${mean(raided, (r) => r.goods ?? 0)}, taken ${mean(taken, (r) => r.goods ?? 0)}); ${mean(taken, (r) => r.carried ?? 0)} people carried off a taking, ${num(taken.reduce((k, r) => k + (r.carried ?? 0), 0) / Math.max(1, ruled.length), 1)} a campaign. Goods by how long the town stood: ${byRounds}`
       : 'none', 'report',
       'Every strike on a town (not on a road) that broke it: the goods of all four kinds taken from its stores, and for a taking the women (and, by slavers, men) carried off. By the rounds the fight ran before the town broke, since what a band takes follows how long it had the town and what it had left (raidclash.ts).');
+  }
+  {
+    // Report only (stage one of the road fight): each meeting of a band with soldiers away from a town's walls, by the rule it goes by and by the clash.
+    const sum: Record<string, { n: number; ruleBand: number; clashBand: number; agree: number; neither: number }> = {};
+    for (const w of ruled) for (const [k, t] of Object.entries(w.roads ?? {})) { const x = (sum[k] ??= { n: 0, ruleBand: 0, clashBand: 0, agree: 0, neither: 0 }); x.n += t.n; x.ruleBand += t.ruleBand; x.clashBand += t.clashBand; x.agree += t.agree; x.neither += t.neither; }
+    const kinds = Object.keys(sum).sort((a, b) => sum[b].n - sum[a].n);
+    add('Threats', 'A band meets soldiers on the road: by the rule as it is, and fought out', 'report only', kinds.length
+      ? kinds.map((k) => { const x = sum[k]; return `${k} (${num(x.n / ruled.length, 1)} a campaign): the band has the better of it ${pct(x.ruleBand / x.n)} by rule and ${pct(x.clashBand / x.n)} fought out (neither breaks ${pct(x.neither / x.n)}); the two agree ${pct(x.agree / x.n)}`; }).join('; ')
+      : 'none', 'report',
+      'Stage one of the road fight (roadclash.ts), which decides nothing yet. hunt: an army of a computer people, or the report\'s player unwatched, goes against a band; ambush: a band falls on an army; convoy and caravan: highwaymen or pirates stop one that has an army of its people on its road; camp on a caravan: raiders, slavers or marauders fall on one so escorted; road: highwaymen strike a road\'s end where an army stands. By rule the stronger on the day wins (an escort as strong as the band sees it off); fought out, either may break or neither.');
   }
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);
