@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { rumourSeason } from './tavernrumour';
 import { pressClaims } from './bothhouses';
 import { seasonOfTurn } from './seasonsky';
 import type { Season } from './seasonsky';
@@ -1260,6 +1261,7 @@ export function continueAI(c: Campaign): void {
       for (const a of c.armies) { a.moved = resting(c, a); a.marched = false; } // an army that has just stormed a town rests (armytown.ts)
       courtTurn(c);
       for (const x of c.factions) x.angry = false;
+      rumourSeason(c); // what the player's taverns hear of rival towns (tavernrumour.ts)
       pressClaims(c); // a house refused its claim on your throne presses it by war (bothhouses.ts)
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
       c.truces = c.truces.filter((tr) => tr.until >= c.turn);
