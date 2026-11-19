@@ -13,6 +13,8 @@ import type { Campaign } from './campaign';
 import { callOn, callable } from './aftermath';
 import { Intrigue, choicesFor, choose, openIntrigues, suspected } from './intrigue';
 import { sensiblePetition } from './petitions';
+import { answerMarriage } from './royalmarriage';
+import { answerTrade } from './tradedeal';
 
 /** Answer every story of a people's that is waiting on them, by the policy above. Returns the choices made. */
 export function sensibleAnswers(c: Campaign, f = 0): string[] {
@@ -33,6 +35,8 @@ export function sensibleAnswers(c: Campaign, f = 0): string[] {
   }
   // A noble's petition: answered as a careful ruler would (petitions.ts).
   { const did = sensiblePetition(c, f); if (did) made.push(`petition:${did}`); }
+  // A rival's offer of a royal match or a trade deal: accepted, for the peace and the trade (royalmarriage.ts, tradedeal.ts).
+  if (f === 0 && c.pactOffer) { const k = c.pactOffer.kind; if (k === 'marriage' ? answerMarriage(c, true) : answerTrade(c, true)) made.push(`pact:${k}`); }
   // An alliance by marriage is called on as soon as there is one: its men are worth most early.
   if (f === 0) for (const m of callable(c, 0)) { const did = callOn(c, m.id); if (did) made.push(`alliance:${did}`); }
   return made;

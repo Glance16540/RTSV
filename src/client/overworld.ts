@@ -10,6 +10,7 @@ import { sendHome } from '../sim/armytown';
 import { bandPrompt, newsHtml } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
 import { petitionDo } from './petitionpanel';
+import { pactDo } from './pactpanel';
 import { attackBand } from '../sim/bandfight';
 import { meetBand, meetStory, storyToMeet } from './encounter';
 import { meetComing, tellStrikes } from './bandmeet';
@@ -148,6 +149,7 @@ export class Overworld {
       if (kind === 'lead') moveLeader(this.c, 0, this.sel);
       if (kind === 'story') intrigueDo(this.c, id);
       if (kind === 'petition') petitionDo(this.c, id); // a noble's petition answered (petitions.ts)
+      if (kind === 'marry' || kind === 'tradedeal' || kind === 'pactoffer') pactDo(this.c, kind, id); // royal marriages and trade deals (pactpanel.ts)
       if (kind === 'band') attackBand(this.c, Number(id.split('/')[0]), Number(id.split('/')[1]));
       if (kind === 'call') callArmies(this.c, 0);
       if (kind === 'endcall') endCall(this.c, 0);
