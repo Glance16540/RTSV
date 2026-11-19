@@ -1,4 +1,5 @@
 import { hullOf } from '../src/sim/fleets';
+import { TEMPER } from '../src/sim/churchtavern';
 import { militiaOf } from '../src/sim/militia';
 import { distinctColours } from '../src/sim/nationcolours';
 import { leanOf as townLean } from '../src/sim/townlean';
@@ -3494,9 +3495,9 @@ describe('faith on the campaign map', () => {
     expect(income(c, 0)).toBe(before + FAITH.decadent.tavern);
     c.factions[0].virtue = 80;
     expect(income(c, 0)).toBe(before);
-    // A church pulls the other way; one of each cancels out. Crossing into a new creed is told.
+    // A church pulls the other way, and tempers the tavern beside it (churchtavern.ts). Crossing into a new creed is told.
     expect(build(c, 0, home.id, 'church')).toBe(true);
-    expect(virtueDrift(c, 0)).toBe(CHURCH_VIRTUE - TAVERN_VIRTUE);
+    expect(virtueDrift(c, 0)).toBe(CHURCH_VIRTUE - TAVERN_VIRTUE + TEMPER.pull);
     home.buildings.splice(home.buildings.indexOf('tavern'), 1);
     c.factions[0].virtue = 28 - townLean(c, home.id); // the town's own lean (townlean.ts) moves it too
     c.log.length = 0;

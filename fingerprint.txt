@@ -110,5 +110,5 @@ camp drill 3 (steppe v forge) end: tick 9600 most held in the work camp 6, most 
 camp drill 4 (persia v england) at 2m: 5f23756af36a3ebd
 camp drill 4 (persia v england) at 4m: 362ea465d7ee6a78
 camp drill 4 (persia v england) at 6m: 654298c74b3a2aae
-camp drill 4 (persia v england) at 8m: bae989f411912691
-camp drill 4 (persia v england) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 8, got out by night 0 bae989f411912691
+camp drill 4 (persia v england) at 8m: 6c0f14910c63fc12
+camp drill 4 (persia v england) end: tick 9600 most held in the work camp 10, most in the marauders' camp 0, camps burnt 2, freed and home 7, got out by night 0 6c0f14910c63fc12
