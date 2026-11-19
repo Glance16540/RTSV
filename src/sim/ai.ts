@@ -12,6 +12,7 @@ import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
 import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
+import { fallBack, roomWork, studyReserve, styleWork } from './styleplay';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
 const AGE_VILLAGERS = [12, 18, 24, 30];
@@ -161,7 +162,8 @@ export class AIController {
     this.holdWood = p.age >= 1 && count('market') === 0 && !building.some((b) => b.type === 'market') && p.res.gold > 400 && (p.res.food < 100 || p.res.wood < 100);
     // Houses: keep population headroom, and fill them with couples.
     const housesBuilding = building.filter((b) => b.type === 'house').length;
-    if (p.popCap - p.pop < 5 && p.popCap < 150 && housesBuilding < (p.age > 0 ? 2 : 1)) this.build('house', home, villagers, 5, 12);
+    const styleTown = { villagers: villagers.length, age: p.age, peace: inPeace(g, pid), count };
+    if (p.popCap - p.pop < 5 && p.popCap < 150 && housesBuilding < (p.age > 0 ? 2 : 1)) { if (roomWork(g, pid, styleTown) === 'farm' && !building.some((b) => b.type === 'farm')) this.build('farm', home, villagers, 5, 26); else this.build('house', home, villagers, 5, 12); } // a farmer's farm is room too (styleplay.ts)
     // Where people come only by birth, a man and a woman with no roof are children never born: house them first.
     else if (g.bornOnly && housesBuilding < 2 && roomForCouples(g, pid) < unhousedCouples(g, pid)) this.build('house', home, villagers, 5, 12);
     const enough = villagers.length >= VILLAGER_TARGET[p.age];
@@ -183,6 +185,8 @@ export class AIController {
       const town = { villagers: villagers.length, peace, home };
       const need = marketFirst ? null : workNeeded(g, pid, town), needed = saving && need === 'fortress' ? null : need; // a town in need does not wait for the next age, but its stone does
       let ordered = !!needed && !!(this.build(needed, home, villagers, 7, 13) ?? this.build(needed, home, villagers, 13, 26));
+      const own = ordered || saving || marketFirst ? null : styleWork(g, pid, styleTown); // what its people's rule makes worth raising (styleplay.ts)
+      if (own) ordered = !!(this.build(own, home, villagers, 7, 13) ?? this.build(own, home, villagers, 13, 26));
       for (const step of ordered ? [] : BUILD_ORDER) {
         if (peace && MILITARY_WORKS.includes(step.type)) continue;
         if (marketFirst && step.type !== 'market') continue;
@@ -243,6 +247,7 @@ export class AIController {
 
     // Technologies.
     if (!saving) {
+      const reserve = studyReserve(g, pid); // scholars keep nothing back (styleplay.ts)
       for (const b of mine) {
         if (!b.complete) continue;
         const busy = b.queue.length > 0;
@@ -251,7 +256,7 @@ export class AIController {
           // teaches it is training villagers nearly all the time, and would otherwise never get to it.
           if (busy && !nationOf(id) && !queuesBehind(id, b.queue.length)) continue; // and so are the nation's studies taught at its other buildings (aiworks.ts)
           const t = TECHS[id];
-          if (g.techAvailable(p, id) && g.canAfford(p, { food: (t.cost.food ?? 0) + 150, wood: (t.cost.wood ?? 0) + 100, gold: t.cost.gold, stone: t.cost.stone })) {
+          if (g.techAvailable(p, id) && g.canAfford(p, { food: (t.cost.food ?? 0) + reserve.food, wood: (t.cost.wood ?? 0) + reserve.wood, gold: t.cost.gold, stone: t.cost.stone })) {
             g.cmdResearch(pid, b.id, id);
             break;
           }
@@ -302,6 +307,14 @@ export class AIController {
     if (underAttack && this.state === 'build') {
       const idle = army.filter((u) => !u.order || u.order.t === 'move');
       if (idle.length) g.cmdMove(pid, idle.map((u) => u.id), p.lastAttacked!.x, p.lastAttacked!.y, true);
+    }
+
+    // Those its people's rule sends out of the fight go, and are left there: the hurt to their church, a veteran home (styleplay.ts).
+    const back = new Set<number>();
+    for (const party of fallBack(g, pid, army, mine, home)) {
+      for (const id of party.ids) back.add(id);
+      const far = party.ids.filter((id) => { const u = g.entities.get(id) as Unit; return u.order?.t !== 'move' && Math.hypot(u.x - party.x, u.y - party.y) > 3; });
+      if (far.length) g.cmdMove(pid, far, party.x, party.y, false);
     }
 
     // ---- Fighting as a side ----
@@ -382,7 +395,7 @@ export class AIController {
         const mid = g.size / 2;
         const d = Math.hypot(mid - home.x, mid - home.y) || 1;
         const rx = home.x + ((mid - home.x) / d) * 9, ry = home.y + ((mid - home.y) / d) * 9;
-        const stray = army.filter((u) => !u.order && Math.hypot(u.x - rx, u.y - ry) > 6);
+        const stray = army.filter((u) => !u.order && !back.has(u.id) && Math.hypot(u.x - rx, u.y - ry) > 6);
         if (stray.length) g.cmdMove(pid, stray.map((u) => u.id), rx, ry, false);
       }
     } else {
@@ -397,7 +410,7 @@ export class AIController {
         g.cmdMove(pid, army.map((u) => u.id), home.x + ((mid - home.x) / d) * 9, home.y + ((mid - home.y) / d) * 9, false);
       } else if ((this.attackT -= 1) <= 0) {
         this.attackT = 5;
-        const idle = army.filter((u) => !u.order);
+        const idle = army.filter((u) => !u.order && !back.has(u.id));
         // Men fresh from the barracks wait until there are enough of them to go up together, not one by one.
         const fresh = idle.filter((u) => Math.hypot(u.x - home.x, u.y - home.y) < 16), afield = idle.filter((u) => !fresh.includes(u));
         const go = g.time >= 1800 || fresh.length >= Math.max(3, Math.floor(attackSize / 3)) || fresh.length === fighters.length ? idle : afield;

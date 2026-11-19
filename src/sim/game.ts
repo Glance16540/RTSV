@@ -7,6 +7,7 @@ import { oldOut, seatOld } from './oldmarks';
 import { setToWork, workChanged } from './atwork';
 import { nobodyLeft } from './lastperson';
 import { liftSieges } from './siegelift';
+import { dyingOut } from './dyingout';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -2253,6 +2254,8 @@ export class Game {
       for (const p of this.players) if (!p.neutral && !p.defeated && alive.has(p.id) && nobodyLeft(this, p.id)) { alive.delete(p.id); fallen.add(p.id); for (const q of this.players) if (!q.neutral && q.id !== p.id) this.msg(q.id, `Nobody is left alive among ${p.name}.`); }
       // A besieger whose army is spent, with nothing to raise more, lifts the siege and has lost it (siegelift.ts).
       for (const id of liftSieges(this)) { alive.delete(id); fallen.add(id); }
+      // A people with nobody left to bear or grow up has died out: its soldiers hold the field a while, not for ever (dyingout.ts).
+      for (const id of dyingOut(this)) { alive.delete(id); fallen.add(id); }
       // A raiding band has no town to lose: it is beaten when its last fighter or villager falls.
       for (const u of this.units) if (!alive.has(u.owner) && !fallen.has(u.owner) && this.warband(u.owner) && u.owner !== this.wild) alive.add(u.owner);
     }

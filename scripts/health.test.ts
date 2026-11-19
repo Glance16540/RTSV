@@ -211,7 +211,7 @@ interface Watch {
   grain: { buys: number; food: number; gold: number }; // the player's grain bought abroad by decree in twenty years (grain.ts), from the log
   halls: { rivals: number; with: number }; // at 20 years: rival nations alive, and those with a Hall of Judgement standing (townworks.ts)
   houses: { holy: number; with: number }; // at 20 years: Righteous towns, and those with a Monastery or Convent standing
-  raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean; /** Stage three, report only: what it would have come to with the town's men turned out as bands; the town's men; the share of its companies' weight it would have lost; the men it did lose. */ would?: string; men?: number; pressed?: number; killed?: number; /** The men who would have died of it by what the bands lost. */ dead?: number; /** Where it would have broken (and could be taken): what that cost the band, as a share of its weight. */ cost?: number }[]; raidTownYears: number;
+  raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean; /** What the band took of the town's stores, the people it carried off, and the rounds the fight ran. */ goods?: number; carried?: number; rounds?: number; /** Stage three, report only: what it would have come to with the town's men turned out as bands; the town's men; the share of its companies' weight it would have lost; the men it did lose. */ would?: string; men?: number; pressed?: number; killed?: number; /** The men who would have died of it by what the bands lost. */ dead?: number; /** Where it would have broken (and could be taken): what that cost the band, as a share of its weight. */ cost?: number }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
   strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean; /** What the sum made of it, and what a clash would have (raidclash.ts); not for a strike on the road. */ sum: string; clash: string; road: boolean; /** The sum's own line for a taking was crossed, whether or not the town could be taken again. */ low: boolean; /** The town's defence over the band's force, as the old lines read it. */ ratio: number }[];
   /** Unrest begun in a town (unrest.ts), with what weighed on it then; towns that rose and became free (freetown.ts), and what became of them. */
@@ -377,7 +377,7 @@ for (const e of c.events ?? []) {
   if (e.kind === 'plague' || e.kind === 'fever') strife[e.at].plague = now;
 }
 const raidsNow = (c.raids ?? []).filter((r) => r.turn === now);
-for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome, army: r.defence.army > 0 && r.kind !== 'highwaymen', road: r.kind === 'highwaymen', ...(r.would ? { would: r.would, men: r.men ?? 0, pressed: r.wouldLost ?? 0, killed: r.killed, dead: r.wouldDead ?? 0, ...(r.wouldCost !== undefined ? { cost: r.wouldCost } : {}) } : {}) }); if (r.outcome !== 'held') strife[r.at].war = now; }
+for (const r of raidsNow) { if (r.owner >= 0) w.raids.push({ outcome: r.outcome, army: r.defence.army > 0 && r.kind !== 'highwaymen', road: r.kind === 'highwaymen', goods: r.stores.food + r.stores.wood + r.stores.gold + r.stores.stone, carried: r.taken.men + r.taken.women, rounds: r.rounds ?? 0, ...(r.would ? { would: r.would, men: r.men ?? 0, pressed: r.wouldLost ?? 0, killed: r.killed, dead: r.wouldDead ?? 0, ...(r.wouldCost !== undefined ? { cost: r.wouldCost } : {}) } : {}) }); if (r.outcome !== 'held') strife[r.at].war = now; }
 for (const r of raidsNow) if (r.owner >= 0) w.strikes.push({ held: r.outcome === 'held', lost: r.killed + r.taken.men + r.taken.women, watch: hasStudy(c, r.owner, 'townwatch') && standsAt(c, r.at, 'watchhouse'), fort: hasFortress(c, r.at), mine: r.owner === 0, sum: r.outcome, clash: raidForeseen(r, faithAt(c, r.at)).outcome, road: r.kind === 'highwaymen', low: r.defence.total / Math.max(0.1, r.force) < THREATS.fall, ratio: r.defence.total / Math.max(0.1, r.force) });
 // Thieves and killers at large this season: begun, not ended, and (a thief) not yet standing for judgement.
 for (const x of c.intrigues ?? []) {
@@ -539,7 +539,7 @@ if (churched[f.id] >= YEARS20 / 2 && townSeasonsOf[f.id] > 0 && hungryOf[f.id] /
   w.sieges = watched;
   w.caravans = c.caravanTally ? JSON.parse(JSON.stringify(c.caravanTally)) : undefined;
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
-  w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0).length;
+  w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0 && !it.claim).length; // a judgement after a claimant's rising is no plot begun (claimantjudged.ts)
   w.crimes = [...atLarge.values()];
   w.free.still = c.territories.filter((t) => t.free && t.owner < 0).length;
   w.marches = [...(c.marches ?? [])]; w.bandsCame = c.bandSeq ?? 0;
@@ -964,6 +964,16 @@ add('Threats', 'Men a town loses to a strike, and what a battle with a nation wo
   ? `${per(both, (r) => r.killed ?? 0)} men killed a strike; at a nation's share dead it would be ${per(both, (r) => r.dead ?? 0)} (its side loses ${pct(meanPress)} of its weight a strike). By how it went: ${by('held')}; ${by('raided')}; ${by('taken')}`
   : 'none', 'report',
   'The men of a town killed in a strike are those its bands lost in the fight (militiatoll.ts: the men who stood, by the share of their strength lost in the fight and the rout), at a raid\'s own share dead (raidclash.ts RAID.dead): beside it, what the same losses would be at the share a battle with a nation goes by (FELL.dead, a half). By rule, before stage three, it was 0.6 a strike.');
+  }
+  {
+    // Report only: what a band comes away with from a town it breaks, and how that goes with the fight.
+    const town = raids.filter((r) => !r.road), mean = (xs: typeof town, f: (r: (typeof town)[number]) => number): string => num(xs.length ? xs.reduce((k, r) => k + f(r), 0) / xs.length : NaN, 1);
+    const raided = town.filter((r) => r.outcome === 'raided'), taken = town.filter((r) => r.outcome === 'taken'), broke = [...raided, ...taken];
+    const byRounds = [[1, 1], [2, 2], [3, 4], [5, 99]].map(([lo, hi]) => { const xs = broke.filter((r) => (r.rounds ?? 0) >= lo && (r.rounds ?? 0) <= hi); return `${lo === hi ? lo : hi > 8 ? `${lo} or more` : `${lo} to ${hi}`} rounds (${pct(xs.length / Math.max(1, broke.length))}): ${mean(xs, (r) => r.goods ?? 0)}`; }).join('; ');
+    add('Threats', 'What a band takes from a town it breaks', 'report only', broke.length
+      ? `${mean(broke, (r) => r.goods ?? 0)} goods a strike that breaks the town (raided ${mean(raided, (r) => r.goods ?? 0)}, taken ${mean(taken, (r) => r.goods ?? 0)}); ${mean(taken, (r) => r.carried ?? 0)} people carried off a taking, ${num(taken.reduce((k, r) => k + (r.carried ?? 0), 0) / Math.max(1, ruled.length), 1)} a campaign. Goods by how long the town stood: ${byRounds}`
+      : 'none', 'report',
+      'Every strike on a town (not on a road) that broke it: the goods of all four kinds taken from its stores, and for a taking the women (and, by slavers, men) carried off. By the rounds the fight ran before the town broke, since what a band takes follows how long it had the town and what it had left (raidclash.ts).');
   }
   add('Threats', 'Outcome of raids', 'held off 30 to 50%, raided 40 to 60%, taken under 15%', `held off ${pct(out('held'))}, raided ${pct(out('raided'))}, taken ${pct(out('taken'))}`, within(out('held'), 0.3, 0.5) && within(out('raided'), 0.4, 0.6) && out('taken') < 0.15);
   const caps = all('captives').filter((x) => x.near);

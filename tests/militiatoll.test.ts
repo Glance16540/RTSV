@@ -58,11 +58,14 @@ describe('the men a town loses in a battle nobody watched', () => {
     expect(militiaFell(c, town.id, fight({ body: 1, works: 0.5 }))).toBe(Math.round((bandMen() - 2) * 0.5 * FELL.dead));
   });
 
-  it('answers nothing for a battle that was not fought out, or for a tribe\'s land', () => {
+  it('answers nothing for a battle that was not fought out, or for the marauders\' land; a tribe\'s town is counted by its own bands (tests/tribetoll.test.ts)', () => {
     const { c, town, set } = world();
     set(2 * bandMen());
     expect(militiaFell(c, town.id, null)).toBeUndefined();
-    const tribe = c.territories.find((t) => t.owner < 0 && !t.horde)!;
+    const tribe = c.territories.find((t) => t.owner < 0 && !t.horde && !t.wild)!;
+    expect(militiaFell(c, tribe.id, null)).toBeUndefined();
+    expect(militiaFell(c, tribe.id, fight({ body: 1 }))).toBeGreaterThanOrEqual(0); // a number now, where it answered nothing
+    tribe.horde = true;
     expect(militiaFell(c, tribe.id, fight({ body: 1 }))).toBeUndefined();
   });
 
