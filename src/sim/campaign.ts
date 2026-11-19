@@ -72,7 +72,7 @@ export { answerTale, canAnswer, taleNow, taleText } from './storyturn'; // where
 export const HERO_COST = 8;
 import { leaderAsMade, leaderType } from './powers';
 import { Court, courtOf, courtTurn, leaderAt, marchesOut, seat } from './court';
-import { countryOf, countryYield, rivalOpens } from './country';
+import { countryOf, countryYield, openBorder, rivalOpens } from './country';
 import { gainAt, settleStores } from './stores';
 import { Names, houseName, nameNation, peopleName, possessive, sideName, whoseOf } from './naming';
 import { Orders, governTowns, keepOrders, shareOf } from './governor';
@@ -85,7 +85,8 @@ import { unrestSeason } from './unrest';
 import { freeStruck, freeTownsSeason, riseFree } from './freetown';
 import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
-import { canPayFor, payFor } from './prices';
+import { canPayFor, payFor, paysHere } from './prices';
+import { SentFor, sentForSeason } from './sentfor';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
 export { shiftVirtue } from './townfaith'; // where it was found before it was moved
@@ -757,7 +758,7 @@ export const canAdvance = (c: Campaign, f: number): boolean => ageOf(c, f) < AGE
 export function advanceAge(c: Campaign, f: number): boolean {
   if (!canAdvance(c, f)) return false;
   const fac = c.factions[f];
-  payFor(c, f, 'age', ageCost(c, f));
+  if (!payFor(c, f, 'age', ageCost(c, f), { act: { kind: 'age' } })) return false; // or it waits for goods sent for by road (sentfor.ts)
   fac.age = ageOf(c, f) + 1;
   c.log.push(`${f === 0 ? 'Your people have' : `${fac.name} have`} entered the ${AGES[fac.age].name}.`);
   if (f === 0) advise(c, 'p_ageup');
@@ -834,9 +835,14 @@ export function canSummonHero(c: Campaign, f: number, tid: number): boolean {
 
 // ---- Actions ----
 
+/** Do a thing that waited for its goods to come in by road (sentfor.ts), as it was ordered. */
+const doSentFor = (c: Campaign, s: SentFor): boolean =>
+  s.act.kind === 'build' ? build(c, s.f, s.at, String(s.act.arg)) : s.act.kind === 'hero' ? summonHero(c, s.f, s.at)
+    : s.act.kind === 'age' ? advanceAge(c, s.f) : s.act.kind === 'work' ? openBorder(c, s.f, s.at, Number(s.act.arg)) : false;
+
 export function build(c: Campaign, f: number, tid: number, site: string): boolean {
   if (!canBuild(c, f, tid, site)) return false;
-  payFor(c, f, site, siteCost(c.territories[tid], site, c.factions[f].civ), { at: tid });
+  if (!payFor(c, f, site, siteCost(c.territories[tid], site, c.factions[f].civ), { at: tid, act: { kind: 'build', arg: site } })) return false; // or it waits for goods sent for by road (sentfor.ts)
   c.territories[tid].buildings.push(site);
   return true;
 }
@@ -857,7 +863,7 @@ export function raise(c: Campaign, f: number, tid: number, type: string): boolea
 
 export function summonHero(c: Campaign, f: number, tid: number): boolean {
   if (!canSummonHero(c, f, tid)) return false;
-  payFor(c, f, 'hero', heroCost(c.factions[f].civ), { at: tid });
+  if (!payFor(c, f, 'hero', heroCost(c.factions[f].civ), { at: tid, act: { kind: 'hero' } })) return false; // or it waits (sentfor.ts)
   strangerLeads(c, f);
   c.factions[f].heroAlive = true;
   seat(c, f, tid);
@@ -1273,6 +1279,7 @@ export function continueAI(c: Campaign): void {
       governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
+      sentForSeason(c, (s) => paysHere(c, s.f, s.what, s.n, { at: s.at }) && doSentFor(c, s)); // what waited for goods sent for by road is done, if they came in (sentfor.ts)
       caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
