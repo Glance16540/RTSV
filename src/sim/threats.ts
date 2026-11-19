@@ -51,7 +51,7 @@ import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
 import { fortShelter, hasFortress } from './fortress';
 import { stoodTo } from './heralds';
-import { RAID, raidClash } from './raidclash';
+import { RAID, raidClash, spoilsOf } from './raidclash';
 import { reckonArmies } from './armytown';
 import { oldWeight } from './oldfolk';
 import { wrathAt } from './acts';
@@ -340,17 +340,19 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
     if (b.strength <= 0) raid.broken = true;
   } else {
     if (fight) raid.killed = fallen(fight.body); // by what its bands lost, not by rule
-    const share = road ? THREATS.road : THREATS.loot[outcome] + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
+    // What it takes follows the fight (raidclash.ts `spoilsOf`): how long it had the town, and the hands it has left to carry.
+    const spoils = fight ? spoilsOf(fight) : { time: 1, hands: 1 };
+    const share = road ? THREATS.road : RAID.loot * spoils.time + (b.kind === 'pirates' ? THREATS.pirateLoot : 0);
     // What they would take, and then no more of it than they can carry.
     // Of the food, only what the town holds beyond a couple of seasons of its own eating: a town robbed is poorer, not starved.
     const spare = Math.max(0, f.stores.food - THREATS.larder * needOf(c, tid));
     const want = STORE_KINDS.map((k) => Math.floor((k === 'food' ? Math.min(f.stores.food, spare / Math.max(share, 0.01)) : f.stores[k]) * (k === 'food' || k === 'gold' || !road ? share : 0)));
-    const all = want.reduce((n, v) => n + v, 0), load = Math.min(1, (force * (THREATS.carry[b.kind] ?? 30)) / Math.max(1, all));
+    const all = want.reduce((n, v) => n + v, 0), load = Math.min(1, (force * spoils.hands * (THREATS.carry[b.kind] ?? 30)) / Math.max(1, all));
     STORE_KINDS.forEach((k, i) => { const n = Math.floor(want[i] * load); f.stores[k] -= n; raid.stores[k] = n; });
     if ((b.kind === 'raiders' || b.kind === 'pirates') && t.buildings.includes('farm') && chance(c, b.id, 31) < THREATS.burn) { t.buildings.splice(t.buildings.indexOf('farm'), 1); raid.burnt = 'farm'; }
     if (outcome === 'taken') {
       // Never a town's last two women, nor its last two men.
-      const most = (n: number): number => Math.max(0, Math.min(n - THREATS.last * TOWN_SCALE, Math.floor(n * (1 - THREATS.left)), Math.ceil(n * THREATS.carried * fortShelter(c, tid))));
+      const most = (n: number): number => Math.max(0, Math.min(n - THREATS.last * TOWN_SCALE, Math.floor(n * (1 - THREATS.left)), Math.ceil(n * THREATS.carried * fortShelter(c, tid) * spoils.time * spoils.hands))); // and those it leads away, by the same
       const women = takeOut(c, tid, 'f', most(f.women));
       const men = b.kind === 'slavers' ? takeOut(c, tid, 'm', most(f.men)) : [];
       if (women.length + men.length) {
