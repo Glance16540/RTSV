@@ -40,6 +40,7 @@ import { playLine, speechHtml } from './voice';
 import { sfx } from './sfx';
 import { researchAt } from '../sim/ownstudies';
 import { questionCommand, robbedLine, suspectLine } from './fieldstoryui';
+import { roadCommands } from './roadtool';
 import { answerCommands, guestLine, nobleLine, nobleName } from './courtfieldui';
 
 export const SLOT_KEYS = 'QWERTASDFGZXCVB';
@@ -405,6 +406,7 @@ export class Hud {
         act: () => { game.cmdBell(pid, !p.bell); sfx.play('alert'); },
       });
       for (const x of answerCommands(game, pid, b)) out.push(x); // the answers the leader may give a guest in the hall (courtfield.ts)
+      for (const x of roadCommands(this.app, b.owner)) out.push(x); // lay or lift a road in the town (handroads.ts)
     }
     if (b.type === 'market') {
       for (const dir of ['sell', 'buy'] as const) {

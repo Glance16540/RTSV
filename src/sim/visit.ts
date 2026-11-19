@@ -12,6 +12,7 @@ import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { storyForVisit, storyFromVisit } from './storyvisit';
 import { courtForVisit, courtFromVisit } from './courtvisit';
+import { keepRoads, roadsFor } from './handroads';
 import { keepQueued } from './queueddrill';
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
@@ -81,6 +82,8 @@ export interface VisitAfter {
   story?: unknown;
   /** What came of a story of the leader's house (`courtOut`, courtfield.ts): an answer given at the hall, the great shown true. */
   court?: unknown;
+  /** The roads laid by hand in the town, by their tiles (`handRoadsOut`, handroads.ts). */
+  roads?: unknown;
 }
 
 /** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
@@ -200,6 +203,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
+        ...(roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // roads laid by hand there before (handroads.ts)
         ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)
         ...(courtForVisit(c, t.id) ? { court: courtForVisit(c, t.id) } : {}), // a rival's envoy, a suitor or a plot, where the court is kept (courtvisit.ts)
         ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
@@ -250,6 +254,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
       }).slice(0, MAX_TOWN);
     // An empty list would be a town with nothing standing: the land keeps what it had sooner than lose it to a bad report.
     if (b.length) land.town = { at: homeCorner(land), b };
+    if (b.length) keepRoads(c, land.id, after.roads); // and the roads laid by hand there (handroads.ts)
     for (const [site, type] of Object.entries(SITE_BUILDING)) {
       if (site === 'fortress' || land.buildings.includes(site) || land.buildings.length >= slots(land)) continue;
       if (site === 'harbour' && !onSea(c, land.id)) continue;
