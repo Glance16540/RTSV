@@ -19,6 +19,10 @@ import { NAMES_F, NAMES_M } from './data';
 import { HEIR_AGE } from './dynasty';
 import { BORN } from './bandborn';
 
+export const CLAIM = {
+  /** The chance a season, once the wait is over (bandborn.ts, `BORN.after`), that a child is born to the leader's wife where she is held. */
+  born: 0.7,
+};
 export interface Claim {
   id: number;
   /** The people whose throne it is, and the leader's wife who bore the child. */
@@ -30,7 +34,11 @@ export interface Claim {
   born: number;
   /** Given when the claimant is grown: a name, and the season they came of age. */
   name?: string; female?: boolean; grown?: number;
-  /** The towns that rose for them, the first their seat (claimantrising.ts). */
+  /** Who holds the child and may raise a rising in its name: the lord, by his key (nobles.ts), or the band, by its id. */
+  key?: string; band?: number;
+  /** A rising raised in the child's name while it is still a child (claimantrising.ts): when, and by whom, in words; and that it is over. */
+  raised?: number; regent?: string; over?: number;
+  /** The towns out for the claim now, the first its seat (claimantrising.ts). */
   towns?: number[];
   ended?: { turn: number; how: 'home' | 'gone' | 'nofollowing' | 'putdown' | 'swallowed' | 'lapsed' | 'crowned'; text: string };
 }
@@ -46,7 +54,7 @@ const hash = (a: number, b: number): number => { let h = (Math.imul(a ^ 0x2545f4
 export const claimChance = (c: Campaign, salt: number): number => hash(c.seed * 131 + salt, c.turn * 61 + 7);
 
 /** A child is written down. */
-export function recordChild(c: Campaign, o: Pick<Claim, 'owner' | 'mother' | 'parent' | 'by' | 'town'>): Claim {
+export function recordChild(c: Campaign, o: Pick<Claim, 'owner' | 'mother' | 'parent' | 'by' | 'town'> & Pick<Partial<Claim>, 'key' | 'band'>): Claim {
   const cl: Claim = { id: (c.claimSeq = (c.claimSeq ?? 0) + 1), ...o, born: c.turn };
   (c.claims ??= []).push(cl);
   return cl;
@@ -85,8 +93,8 @@ export function bandChildren(c: Campaign): Claim[] {
     const band = (c.bands ?? []).find((b) => b.id === s.lost!.band && b.held.some((h) => h.owner === f && (h.names ?? []).includes(s.name)));
     if (!band || c.turn - s.lost.turn < BORN.after) continue;
     if ((c.claims ?? []).some((x) => x.owner === f && x.mother === s.name && x.parent === 'band' && x.born >= s.lost!.turn)) continue; // one at most
-    if (claimChance(c, f * 37 + band.id * 11 + 3) >= BORN.chance) continue;
-    const cl = recordChild(c, { owner: f, mother: s.name, parent: 'band', by: band.name, town: band.at });
+    if (claimChance(c, f * 37 + band.id * 11 + 3) >= CLAIM.born) continue;
+    const cl = recordChild(c, { owner: f, mother: s.name, parent: 'band', by: band.name, town: band.at, band: band.id });
     tell(c, f, `Word comes that a child is born to ${s.name}, wife of ${s.of}, where ${band.name} hold her.`);
     out.push(cl);
   }

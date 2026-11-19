@@ -10,7 +10,7 @@ import { noblesOf } from '../src/sim/nobles';
 import { OTHER, leaderCreed, nobleCreed, otherFaith, plotterOf } from '../src/sim/noblefaith';
 import { WIFE, mayTake, takeWife } from '../src/sim/wifetaken';
 import { bandChildren, claimsOn, ofAgeNow, recordChild } from '../src/sim/claimants';
-import { RISING, claimantAt, claimantLine, claimantsSeason, comeOfAge, followers, seatFor, standing } from '../src/sim/claimantrising';
+import { RISING, claimantAt, claimantLine, claimantsSeason, comeOfAge, followers, proclaim, regentFor, seatFor, standing } from '../src/sim/claimantrising';
 import { FREE, isFree, treatCost } from '../src/sim/freetown';
 import { BORN } from '../src/sim/bandborn';
 import { judge } from '../src/sim/rivalstories';
@@ -111,7 +111,7 @@ describe('the leader\'s wife taken into a lord\'s house', () => {
     expect(k.spouse!.name).toBe('Maren');
     expect(k.spouse!.lost?.house).toBe(other.key);
   });
-  it('comes in the season the plot is two seasons old, by a chance a loyal marshal halves', () => {
+  it('comes no sooner than the plot is two seasons old, by a chance each season that a loyal marshal halves', () => {
     const count = (loyal: boolean): number => {
       let n = 0;
       for (let seed = 1; seed <= 120; seed++) {
@@ -121,13 +121,13 @@ describe('the leader\'s wife taken into a lord\'s house', () => {
         const x = beginPlot(c, other.key)!;
         x.cleared = []; // nothing comes out meanwhile
         for (let i = 0; i < WIFE.after; i++) { c.turn++; if (!x.found && !x.ended) intrigueSeason(c); }
-        if (x.wifeTaken !== undefined) { n++; expect(x.wifeTaken - x.since).toBe(WIFE.after); }
+        if (x.wifeTaken !== undefined) { n++; expect(x.wifeTaken - x.since).toBe(WIFE.after); } // never sooner
       }
       return n;
     };
     const plain = count(false), guarded = count(true);
-    expect(plain).toBeGreaterThan(15);
-    expect(plain).toBeLessThan(60);
+    expect(plain).toBeGreaterThan(120 * WIFE.chance * 0.5);
+    expect(plain).toBeLessThan(120 * WIFE.chance * 1.4);
     expect(guarded).toBeLessThan(plain);
   });
   it('she can be demanded back with gifts: he yields or he refuses, and will not hear it again at once', () => {
@@ -140,8 +140,8 @@ describe('the leader\'s wife taken into a lord\'s house', () => {
       if (x.ended) { home++; expect(x.ended.how).toBe('bought'); expect(spouseOf(c, 0)?.name).toBe('Maren'); expect(k.alone).toBeUndefined(); }
       else { refused++; expect(choicesFor(c, x)[0].bar).toContain('will not hear it again'); expect(choose(c, x.id, 'demand')).toBe(false); c.turn += WIFE.again; expect(choicesFor(c, x)[0].bar).toBeUndefined(); }
     }
-    expect(home).toBeGreaterThan(8);
-    expect(refused).toBeGreaterThan(8);
+    expect(home).toBeGreaterThan(40 * WIFE.yields * 0.5);
+    expect(refused).toBeGreaterThan(40 * (1 - WIFE.yields) * 0.5);
   });
   it('an army standing in his town takes him: she comes home, and he waits on judgement like any plotter found', () => {
     const { c, x, other } = taken();
@@ -321,5 +321,87 @@ describe('a claimant grown raises a rebellion', () => {
     houseOf(b.c, 0).heirs = [{ name: 'Elin', female: true, born: b.c.turn - HEIR_AGE - 4 }];
     b.c.turn++; claimantsSeason(b.c);
     expect(b.cl.ended).toBeUndefined();
+  });
+});
+
+describe('a rising raised in a child\'s name', () => {
+  const child = (seed = 5) => {
+    const w = world(seed);
+    w.other.mood = -80;
+    const cl = recordChild(w.c, { owner: 0, mother: 'Maren', parent: 'noble', by: 'Lord Aldric', town: w.other.town, key: w.other.key });
+    return { ...w, cl };
+  };
+  it('the lord who holds the child proclaims it heir and his town rises: the child stays a record with no name', () => {
+    const { c, cl, ring } = child();
+    expect(regentFor(c, cl)).toContain('Aldric');
+    expect(proclaim(c, cl)).toEqual([ring[0].id]);
+    expect(cl.raised).toBe(c.turn);
+    expect(cl.name).toBeUndefined();
+    expect(cl.grown).toBeUndefined();
+    expect(isFree(c, ring[0].id)).toBe(true);
+    expect(standing(c, 0)).toEqual([cl]);
+    expect(c.log[c.log.length - 1]).toMatch(new RegExp(`^${cl.regent![0].toUpperCase() + cl.regent!.slice(1)} has proclaimed the child of Maren heir to the throne of .+\\. ${ring[0].name} has risen in the child's name\\.$`));
+    expect(claimantLine(c, ring[0].id)).toContain('in the name of the child of Maren');
+    expect(proclaim(c, cl)).toEqual([]); // once
+  });
+  it('not before the child is half a year old, then by a chance each season; not by a lord who is gone', () => {
+    let risen = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const { c, cl } = child(seed);
+      for (let i = 0; i < RISING.proclaim - 1; i++) { c.turn++; claimantsSeason(c); }
+      expect(cl.raised).toBeUndefined();
+      for (let i = 0; i < 4; i++) { c.turn++; claimantsSeason(c); }
+      if (cl.raised !== undefined) { risen++; expect(cl.raised - cl.born).toBeGreaterThanOrEqual(RISING.proclaim); }
+    }
+    expect(risen).toBeGreaterThan(40 * (1 - (1 - RISING.chance) ** 4) * 0.6);
+    const a = child(); a.other.mood = 50; // pardoned or bought off, he holds the heir still
+    expect(regentFor(a.c, a.cl)).not.toBe('');
+    const b = child(); b.c.factions[0].nobles = noblesOf(b.c, 0).filter((n) => n !== b.other);
+    expect(proclaim(b.c, b.cl)).toEqual([]);
+  });
+  it('a seat held down does not rise, and they wait for a season when it will', () => {
+    const { c, cl, ring } = child();
+    c.armies.push({ id: 903, owner: 0, at: ring[0].id, units: { infantry: 2 }, hero: false, vet: 0, moved: false });
+    expect(proclaim(c, cl)).toEqual([]);
+    expect(cl.raised).toBeUndefined();
+    expect(cl.ended).toBeUndefined();
+    c.armies = c.armies.filter((a) => a.id !== 903);
+    expect(proclaim(c, cl)).toEqual([ring[0].id]);
+  });
+  it('a band that holds the mother raises the people\'s town nearest where it stands', () => {
+    const { c, far, ring } = world();
+    c.bands = [{ id: 7, kind: 'slavers', name: 'the Red Hand', at: far.id, strength: 5, since: c.turn, held: [] }];
+    const cl = recordChild(c, { owner: 0, mother: 'Maren', parent: 'band', by: 'the Red Hand', town: far.id, band: 7 });
+    expect(proclaim(c, cl)).toEqual([ring[1].id]);
+    expect(c.log[c.log.length - 1]).toContain('The Red Hand have proclaimed the child of Maren heir');
+    const b = world();
+    const gone = recordChild(b.c, { owner: 0, mother: 'Maren', parent: 'band', by: 'the Red Hand', town: b.far.id, band: 7 });
+    expect(proclaim(b.c, gone)).toEqual([]); // the band is broken: nobody holds the child to proclaim it
+  });
+  it('put down while the child is a child, the record stays: grown, the claimant may raise their own', () => {
+    const { c, cl, ring } = child();
+    proclaim(c, cl);
+    ring[0].owner = 0; delete ring[0].free;
+    c.turn++; claimantsSeason(c);
+    expect(cl.ended).toBeUndefined();
+    expect(cl.over).toBe(c.turn);
+    expect(cl.towns).toBeUndefined();
+    expect(c.log[c.log.length - 1]).toContain('The rising for the child of Maren is over');
+    for (let i = 0; i < 12; i++) { c.turn++; claimantsSeason(c); }
+    expect(isFree(c, ring[0].id)).toBe(false); // nobody proclaims it a second time
+    c.turn = cl.born + HEIR_AGE; claimantsSeason(c);
+    expect(cl.name).toBeTruthy();
+    expect(isFree(c, ring[0].id)).toBe(true);
+  });
+  it('still standing when the child is of age, the claimant is named and leads it', () => {
+    const { c, cl, ring } = child();
+    proclaim(c, cl);
+    cl.raised = cl.born + HEIR_AGE - 4; // raised late enough that it has not lapsed
+    c.turn = cl.born + HEIR_AGE; claimantsSeason(c);
+    expect(cl.name).toBeTruthy();
+    expect(cl.grown).toBe(c.turn);
+    expect(cl.towns).toEqual([ring[0].id]);
+    expect(c.log[c.log.length - 1]).toContain('has come of age and leads the rising');
+    expect(claimantLine(c, ring[0].id)).toContain('claims the throne');
   });
 });
