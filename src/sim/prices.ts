@@ -7,6 +7,8 @@
 // truce, an alliance, a gift, a tribute), a leader hired or a new age out of the chief town. What that town lacks of a
 // kind, the nation's other towns send it by road (convoys.ts roadBetween: through the people's own lands, or over a sea
 // lane from a Harbour), at a cost: CARRY.cost of what is sent (a tenth) is spent on the way (the carters' keep, the wagons' wear).
+// For a thing done at a town (payFor's `act`) it goes as convoys, a season on the road, and the thing waits for them
+// (sentfor.ts); a dealing, done at no town, is still paid at once.
 // A town with no road to it sends nothing. A town that sends keeps a floor of its own (plenty.ts PLENTY.floor in goods
 // other than bread, and two seasons of its own eating in food), so that its governor is not left unable to raise its own
 // Farmland and its people are not left without bread.
@@ -24,6 +26,8 @@ import { KEEP, SUPPLY_UNITS, settleStores } from './stores';
 import { roadBetween } from './convoys';
 import { PLENTY } from './plenty';
 import { needOf } from './larder';
+import { sendFor, waitingFor } from './sentfor';
+import type { Act, Sending } from './sentfor';
 
 export type StoreKind = keyof Stores;
 /**
@@ -71,7 +75,7 @@ const mine = (c: Campaign, f: number) => c.territories.filter((t) => t.owner ===
 const chiefOf = (c: Campaign, f: number): number => { const m = mine(c, f); return (m.find((t) => t.capital === f) ?? m[0])?.id ?? -1; };
 
 /** One draw on a town's stores to pay for a thing: so much of a kind, and whether it came by road. */
-interface Draw { tid: number; kind: StoreKind; take: number; carried: boolean }
+interface Draw { tid: number; kind: StoreKind; take: number; carried: boolean; /** What comes in of it, for one carried (the rest is the road's cost). */ arrive?: number }
 
 /** What a town can send of a kind to pay for a thing elsewhere: what it holds beyond its own floor. */
 function spareOf(c: Campaign, tid: number, k: StoreKind, given: Stores): number {
@@ -105,7 +109,7 @@ function planFor(c: Campaign, f: number, p: Stores, at?: number): { draws: Draw[
       if (spare <= 0 || !reach(tid)) continue;
       const arrive = Math.min(want, Math.floor(spare / (1 + CARRY.cost))), take = Math.ceil(arrive * (1 + CARRY.cost));
       if (arrive <= 0) continue;
-      draws.push({ tid, kind: k, take, carried: true }); gave(tid)[k] += take; want -= arrive;
+      draws.push({ tid, kind: k, take, carried: true, arrive }); gave(tid)[k] += take; want -= arrive;
     }
     short[k] = want;
   }
@@ -124,7 +128,7 @@ function planFor(c: Campaign, f: number, p: Stores, at?: number): { draws: Draw[
       const arrive = Math.min(left, Math.floor(spareOf(c, tid, k, gave(tid)) / (1 + CARRY.cost)));
       if (arrive <= 0) continue;
       const take = Math.ceil(arrive * (1 + CARRY.cost));
-      draws.push({ tid, kind: k, take, carried: true }); gave(tid)[k] += take; left -= arrive;
+      draws.push({ tid, kind: k, take, carried: true, arrive }); gave(tid)[k] += take; left -= arrive;
     }
   }
   if (left > 0) {
@@ -139,8 +143,20 @@ export function payBar(c: Campaign, f: number, what: string, n: number, opts: { 
   if (n <= 0) return '';
   const x = c.factions[f];
   if (!x || (x.supplies ?? 0) < n) return `It costs ${n} supplies.`;
+  const at = payingTown(c, f, opts.at);
+  if (at >= 0 && waitingFor(c, f, at, what)) return `The goods for it are on the road to ${c.territories[at].name}: it waits for them.`;
   const plan = planFor(c, f, priceOf(what, n), opts.at);
   return 'bar' in plan ? plan.bar : '';
+}
+/** The town a thing is paid for out of: `at` if it is this people's, else its chief town. */
+const payingTown = (c: Campaign, f: number, at?: number): number => (at !== undefined && c.territories[at]?.owner === f ? at : chiefOf(c, f));
+/** Can the town pay for this out of its own stores alone, with nothing to be sent for? */
+export function paysHere(c: Campaign, f: number, what: string, n: number, opts: { at?: number } = {}): boolean {
+  if (n <= 0) return true;
+  settleStores(c);
+  if ((c.factions[f]?.supplies ?? 0) < n) return false;
+  const plan = planFor(c, f, priceOf(what, n), opts.at);
+  return !('bar' in plan) && !plan.draws.some((d) => d.carried);
 }
 /** Can this people pay `n` supplies for this, in its kinds, from the town `at` and what its other towns can send by road? */
 export function canPayFor(c: Campaign, f: number, what: string, n: number, opts: { at?: number } = {}): boolean {
@@ -152,12 +168,29 @@ export function canPayFor(c: Campaign, f: number, what: string, n: number, opts:
  * the nation's other towns at CARRY.cost. Nothing is taken unless all of it can be. The nation's figure is set from its
  * towns after.
  */
-export function payFor(c: Campaign, f: number, what: string, n: number, opts: { at?: number } = {}): boolean {
+export function payFor(c: Campaign, f: number, what: string, n: number, opts: { at?: number; /** A thing done at a town: what the town lacks is sent for by road, and the thing waits for it (sentfor.ts); without it, as for a dealing, all is paid at once. */ act?: Act } = {}): boolean {
   if (n <= 0) return true;
   settleStores(c); // anything spent or earned since is in the towns first
   if ((c.factions[f]?.supplies ?? 0) < n) return false;
   const plan = planFor(c, f, priceOf(what, n), opts.at);
   if ('bar' in plan) return false;
+  const carried = plan.draws.filter((d) => d.carried);
+  if (opts.act && carried.length) {
+    // What the town lacks goes by road as convoys, a season on the way; the thing waits for it, and nothing is paid yet.
+    const at = payingTown(c, f, opts.at);
+    if (waitingFor(c, f, at, what)) return false;
+    const by = new Map<number, Sending>();
+    for (const d of carried) {
+      const s = by.get(d.tid) ?? { from: d.tid, take: { food: 0, wood: 0, gold: 0, stone: 0 }, arrive: { food: 0, wood: 0, gold: 0, stone: 0 } };
+      s.take[d.kind] += d.take; s.arrive[d.kind] += d.arrive ?? d.take;
+      by.set(d.tid, s);
+    }
+    const own: Stores = { food: 0, wood: 0, gold: 0, stone: 0 };
+    for (const d of plan.draws) if (!d.carried) own[d.kind] += d.take;
+    sendFor(c, f, at, what, n, opts.act, [...by.values()], own); // the town's own share is set aside while it waits
+    settleStores(c);
+    return false;
+  }
   for (const d of plan.draws) folkOf(c, d.tid).stores[d.kind] -= d.take;
   settleStores(c); // the figure, from the towns as they now are
   return true;

@@ -3575,7 +3575,7 @@ describe('faith on the campaign map', () => {
         c.factions[1].civ = civ;
         // Only what they raise themselves is counted: a church that stands on land they have taken was someone else's doing.
         const here = { church: 0, tavern: 0 };
-        for (let i = 0; i < 14 && c.phase !== 'over'; i++) {
+        for (let i = 0; i < 20 && c.phase !== 'over'; i++) { // long enough that a church built late, after waiting a season for its timber (sentfor.ts), has time to tell
           c.factions[1].supplies += 6;
           const had = new Map(c.territories.filter((t) => t.owner === 1).map((t) => [t.id, [...t.buildings]]));
           turn(c);
@@ -3725,7 +3725,7 @@ describe('the story of a campaign', () => {
     expect(hireOff(c, 0, forge.id)).toBe(1);
     expect(hireOff(c, 0, shrine.id)).toBe(0);
     forge.buildings = ['barracks'];
-    c.factions[0].supplies = companyCost(forge, 'infantry', 'steppe') - 1;
+    fundFor(c, 0, 'company', companyCost(forge, 'infantry', 'steppe') - 1, { at: forge.id }); // in the town itself: what it lacks would be sent for by road, and wait a season (sentfor.ts)
     expect(raise(c, 0, forge.id, 'infantry')).toBe(true);
     expect(c.factions[0].supplies).toBe(0);
     expect(placeAt(c, library.id)!.kind).toBe('library');
