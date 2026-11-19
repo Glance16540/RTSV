@@ -15,6 +15,7 @@ import type { Notable } from './township';
 import { BANDS, seasonsLeft } from './threats';
 import { houseName, peopleName } from './naming';
 import { POST_NAMES } from './kin';
+import { titleOf } from './nobles';
 import type { Post } from './kin';
 import type { Feeling } from './portrait';
 
@@ -31,7 +32,7 @@ export interface Roll {
   leader: { name: string; female: boolean; rank: string; alive: boolean; at?: string };
   heirs: { name: string; female: boolean; years: number; ofAge: boolean; /** Years of the calendar until of age. */ toAge?: number; parent?: string }[];
   /** The leader's husband or wife (kin.ts), with their age; `lost`: widowed, dead or taken, and when. */
-  spouse?: { name: string; female: boolean; years: number; lost?: { turn: number; how: string; final?: boolean; /** Taken into a lord's house (wifetaken.ts). */ house?: string } };
+  spouse?: { name: string; female: boolean; years: number; lost?: { turn: number; how: string; final?: boolean; /** Taken into a lord's house (wifetaken.ts), and his title. */ house?: string; by?: string } };
   /** The inner circle (kin.ts). */
   circle: { post: Post; postName: string; name: string; female: boolean; family?: string; kind?: string; unit?: string; town: number; townName: string; loyalty: number; feeling: Feeling; /** What a story has left on them (aftermath.ts). */ marks: string[] }[];
   towns: RollTown[];
@@ -56,7 +57,9 @@ export function rollOf(c: Campaign, f = 0): Roll {
   const heirs = (fac.house?.heirs ?? houseOf(c, f).heirs).map((h) => ({ name: h.name, female: h.female, years: Math.floor(yearsFromBirth(c.turn - h.born)), ofAge: c.turn - h.born >= HEIR_AGE, toAge: Math.ceil(Math.max(0, HEIR_AGE - (c.turn - h.born)) / SEASONS_A_YEAR), ...(h.parent ? { parent: h.parent } : {}) }));
   // The household as it stands on record (kin.ts makes it the first time a season turns): read, not made here.
   const kin = fac.kin, sp = kin?.spouse;
-  const spouse = sp ? { name: sp.name, female: sp.female, years: Math.floor((c.turn - sp.born) / SEASONS_A_YEAR), ...(sp.lost ? { lost: { ...sp.lost } } : {}) } : undefined;
+  // A wife taken into a lord's house (wifetaken.ts): by whom, by his title, while he is on the record.
+  const lordOf = (key?: string): { by?: string } => { const n = key ? fac.nobles?.find((x) => x.key === key) : undefined; return n ? { by: titleOf(c, n) } : {}; };
+  const spouse = sp ? { name: sp.name, female: sp.female, years: Math.floor((c.turn - sp.born) / SEASONS_A_YEAR), ...(sp.lost ? { lost: { ...sp.lost, ...lordOf(sp.lost.house) } } : {}) } : undefined;
   const circle = (kin?.circle ?? []).map((x) => ({ post: x.post, postName: POST_NAMES[x.post], name: x.name, female: x.female, ...(x.family ? { family: x.family } : {}), ...(x.kind ? { kind: x.kind } : {}), ...(x.unit ? { unit: x.unit } : {}), town: x.town, townName: c.territories[x.town]?.name ?? '', loyalty: x.loyalty, feeling: x.feeling , marks: marksOfNoble(c, `close:${x.post}:${x.name}`).map((m) => m.text) }));
   const towns: RollTown[] = [], lost: RollLost[] = [];
   for (const t of c.territories) {

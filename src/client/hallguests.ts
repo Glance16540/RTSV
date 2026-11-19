@@ -3,7 +3,7 @@
 // walking to the hall from a house of the town. Each has their name over them. They stand before the hall's door facing
 // it, and are taken away when the sim no longer has them there (the answer given). Figures only: nothing here is a unit.
 import * as THREE from 'three';
-import type { Game } from '../sim/game';
+import type { Building, Game } from '../sim/game';
 import { HallGuest, hallGuests } from '../sim/hallguests';
 import { lookOf, ofPeople } from './models';
 import { RealPerson, makePerson, outfitFor, peopleReady, play } from './person';
@@ -11,7 +11,7 @@ import { RealPerson, makePerson, outfitFor, peopleReady, play } from './person';
 interface Figure { g: THREE.Group; real: RealPerson; label: THREE.Sprite; walk?: { from: THREE.Vector3; to: THREE.Vector3; t: number; time: number } }
 
 /** Where each of them stands before the door, along the front of the hall, as a share of its width. */
-const PLACE: Record<HallGuest['role'], number> = { envoy: -0.55, suitor: -0.05, daughter: 0.45 };
+const PLACE: Record<HallGuest['role'], number> = { envoy: -0.55, suitor: -0.05, daughter: 0.45, captain: 0.15 };
 /** How fast the daughter walks to the hall, in tiles a second. */
 const WALK = 1.3;
 
@@ -37,19 +37,22 @@ export class HallFigures {
   private figs = new Map<string, Figure>();
   constructor(private scene: THREE.Scene) {}
 
-  /** Bring the figures at the hall of `pid`'s town up to date with the story, and move and breathe them. */
-  sync(game: Game, pid: number, dt: number, heightAt: (x: number, y: number) => number): void {
-    const hall = game.buildings.find((b) => b.owner === pid && !b.dead && b.type === 'towncenter');
-    const want = hall ? hallGuests(game, pid) : [];
-    for (const [key, f] of this.figs) if (!want.some((w) => w.key === key)) this.drop(key, f);
-    if (!hall || !peopleReady()) return;
-    const half = hall.size / 2, frontY = hall.y + half + 1.1;
-    for (const w of want) {
-      let f = this.figs.get(w.key);
+  /** Bring the figures at every side's hall up to date with what stands there (hallguests.ts), and move and breathe them. */
+  sync(game: Game, dt: number, heightAt: (x: number, y: number) => number): void {
+    const want: { key: string; w: HallGuest; hall: Building; pid: number }[] = [];
+    game.players.forEach((_, pid) => {
+      const hall = game.buildings.find((b) => b.owner === pid && !b.dead && b.type === 'towncenter');
+      if (hall) for (const w of hallGuests(game, pid)) want.push({ key: `${pid}:${w.key}`, w, hall, pid });
+    });
+    for (const [key, f] of this.figs) if (!want.some((x) => x.key === key)) this.drop(key, f);
+    if (!peopleReady()) return;
+    for (const { key, w, hall, pid } of want) {
+      let f = this.figs.get(key);
+      const half = hall.size / 2, frontY = hall.y + half + 1.1;
       const to = new THREE.Vector3(hall.x + PLACE[w.role] * hall.size, 0, frontY);
       to.y = heightAt(to.x, to.z);
       if (!f) {
-        const seed = hash(w.key), color = w.role === 'daughter' ? game.players[pid].color : 0x6a5a48;
+        const seed = hash(key), color = w.role === 'daughter' ? game.players[pid].color : 0x6a5a48;
         ofPeople(w.civ);
         const made = makePerson(outfitFor('villager', w.female, color, lookOf(w.civ, seed), seed, 0, { cls: 'villager', age: 0, civ: w.civ }));
         if (!made) continue;
@@ -69,7 +72,7 @@ export class HallFigures {
           play(f.real, 'Idle_Loop', 1);
         }
         this.scene.add(f.g);
-        this.figs.set(w.key, f);
+        this.figs.set(key, f);
       }
       if (f.walk) {
         const k = Math.min(1, (f.walk.t += dt) / f.walk.time);

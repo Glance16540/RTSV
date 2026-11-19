@@ -1417,7 +1417,7 @@ export class Renderer {
     if (!Renderer.noBake) this.batch.sync(this.buildingViews.values()); // a town's still buildings drawn together (townbatch.ts)
     if ((this.wallTick = (this.wallTick + 1) % 12) === 0) this.linkWalls();
     for (const r of game.resources) this.syncResource(r);
-    this.hallFigures.sync(game, game.humanId, dt, (x, y) => this.scenery.heightAt(x, y));
+    this.hallFigures.sync(game, dt, (x, y) => this.scenery.heightAt(x, y));
     if (!Renderer.noBake) this.resBatch.sync(this.resViews.values()); // made again when one is used up or a kill is left
     this.lightNight();
     this.campScenes.update(this.game, dt, {
