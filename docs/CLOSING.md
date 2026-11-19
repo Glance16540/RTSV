@@ -93,7 +93,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | A woman whose home produces most | A rival's notable homes on the map are named by rule, one to a town, not by which house did most (board, How a rival rules its towns). | small | Unity: port `notableweight.ts`, which already weighs a house's output, and let rivals read it. |
-| Their loss carries weight | A notable carried off by a nation is not marked as carried off; people a nation leads away are counted, not named. | small | Before: mark the known among them by name, as `plaguenamed.ts` now does for plague. |
+| Their loss carries weight | **Done** (`src/sim/carriednamed.ts`): a known person among those a nation leads away is marked carried off by name, mourned, and known again if got back. The rest are counted, as the town's record keeps them. | small | Built. |
 
 ## Captivity
 
@@ -259,7 +259,7 @@ All small, each in its own module with its own test, and none changes a rule's m
 3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town. **Done** (`settlersfrom.ts`).
 4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line. **Done:** a reserve's camp (`reservecamp.ts`).
 5. Men of no town sent home go to the army's chief town, or the last hired men are dropped. **Done** (`hiredhome.ts`).
-6. A known person carried off by a nation is marked carried off by name.
+6. A known person carried off by a nation is marked carried off by name. **Done** (`carriednamed.ts`).
 7. The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).
 8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map.
 9. A defied rival king may declare war.

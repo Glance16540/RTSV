@@ -21,6 +21,7 @@ import { creedOf } from './creed';
 import { Held, bringHome, mark } from './threats';
 import { TOWN_SCALE, folkOf } from './township';
 import { homeAgain } from './carriedhome';
+import { carriedNamed } from './carriednamed';
 
 /** People of one town carried off by a nation: who holds them, in which land, and the record of them. */
 export interface Carried { id: number; by: number; at: number; held: Held }
@@ -93,6 +94,7 @@ export function townFell(c: Campaign, tid: number, from: number, to: number, via
   countFrom(f, ages); // the children stay: none is ever taken
   const x: Carried = { id: (c.carriedSeq = (c.carriedSeq ?? 0) + 1), by: to, at: hold, held: { from: tid, owner: from, men, women, since: c.turn } };
   (c.carried ??= []).push(x);
+  carriedNamed(c, x, name(c, to)); // a known person among them is marked carried off by name (carriednamed.ts)
   mark(c, 'carried', tid);
   const line = `${who(x.held)[0].toUpperCase() + who(x.held).slice(1)} of ${c.territories[tid].name} ${men.length + women.length === 1 ? 'was' : 'were'} led away by ${name(c, to)} to ${c.territories[hold].name}. In ${n(CARRY.seasons, 'season', 'seasons')} they will be ${to === 0 ? 'yours' : 'theirs'} for good: take ${c.territories[hold].name} before then and they come home.`;
   say(c, [from], line);
