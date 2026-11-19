@@ -20,9 +20,9 @@
 // arrived, whether an army met it before it struck anyone. The health report reads it.
 import type { Campaign } from './campaign';
 import type { Band, BandKind } from './threats';
-import { chance, note, softest, reachOf } from './threats';
+import { chance, defenceOf, note, softest, reachOf } from './threats';
 import { MARCH, WILDS, farWilds, marched, townsThatSee, warnBound } from './bandmarch';
-import { wayTo } from './bandroam';
+import { marksFrom, wayTo } from './bandroam';
 
 /** The way in a camp born at this land would take: its mark's place, how far, and how soft; null if there is none. */
 export function wayIn(c: Campaign, at: number, kind: BandKind = 'raiders'): { bound: number; steps: number } | null {
@@ -31,24 +31,52 @@ export function wayIn(c: Campaign, at: number, kind: BandKind = 'raiders'): { bo
   return way && way.steps > 1 ? { bound: way.bound, steps: way.steps } : null;
 }
 
+/**
+ * The way in a host out of the wilds would take, weighing its marks as such a host does (WILDS.near, WILDS.deep): the
+ * softest and richest town it can come within reach of in MARCH.long lands, with no reckoning of the march; and of the
+ * places nearly as good, the farthest, some of the time. Never a place it need not march to (one land off). `salt`
+ * draws the chance.
+ */
+export function deepWay(c: Campaign, at: number, kind: BandKind = 'raiders', salt = 0): { bound: number; steps: number } | null {
+  const probe: Band = { id: -1, kind, name: '', at, strength: 1, since: c.turn, held: [] };
+  const all = marksFrom(c, probe, MARCH.long).filter((w) => w.steps > 1).sort((x, y) => y.lure - x.lure || x.steps - y.steps || x.bound - y.bound);
+  if (!all.length) return null;
+  const good = all.filter((w) => w.lure >= all[0].lure * WILDS.near);
+  const far = [...good].sort((x, y) => y.steps - x.steps || y.lure - x.lure || x.bound - y.bound)[0];
+  const pick = chance(c, salt, 67) < WILDS.deep ? far : all[0];
+  return { bound: pick.bound, steps: pick.steps };
+}
+
+/** For a march's record: how deep the town it means to strike lies from where it was born, and what that town has to meet it with. */
+export function markOf(c: Campaign, from: number, way: { bound: number; steps: number }, kind: BandKind): { depth: number; meets: number } {
+  const probe: Band = { id: -1, kind, name: '', at: way.bound, strength: 1, since: c.turn, held: [] };
+  const mark = softest(c, probe, reachOf(c, probe))?.id;
+  if (mark === undefined) return { depth: way.steps, meets: 0 };
+  return { depth: way.steps + (mark === way.bound ? 0 : 1), meets: defenceOf(c, mark).total };
+}
+
 /** Where in the far wilds a new camp of this kind is born this season, if it is to be: [land], or null for the common places. */
 export function farPlace(c: Campaign, kind: BandKind): [number] | null {
   if (kind !== 'raiders' && kind !== 'slavers') return null;
   const salt = 701 + (c.bandSeq ?? 0);
   if (chance(c, salt, 53) >= WILDS.share) return null;
-  const wilds = farWilds(c).filter((id) => wayIn(c, id, kind));
-  if (!wilds.length) return null;
+  // A host out of the wilds weighs its marks its own way (`deepWay`); the band about to be born will be the next in number.
+  const next = (c.bandSeq ?? 0) + 1, ways = farWilds(c).map((id) => ({ id, way: deepWay(c, id, kind, next) })).filter((x) => x.way);
+  if (!ways.length) return null;
+  // Those with a long way in are taken first (WILDS.far): there is the country, and a host should come out of the depth of it.
+  const far = ways.filter((x) => x.way!.steps >= WILDS.far), wilds = (far.length ? far : ways).map((x) => x.id);
   return [wilds[Math.floor(chance(c, salt, 59) * wilds.length)]];
 }
 
 /** A band just born: if it stands in the far wilds with a way in, it sets out. Returns whether it did. */
 export function setOutFromAfar(c: Campaign, b: Band): boolean {
   if ((b.kind !== 'raiders' && b.kind !== 'slavers') || c.territories[b.at].owner >= 0 || !c.territories[b.at].wild) return false;
-  const way = wayIn(c, b.at, b.kind);
+  const way = deepWay(c, b.at, b.kind, b.id); // drawn by the richest mark, not the nearest
   if (!way) return false;
   b.bound = way.bound; b.afar = true; b.moved = c.turn;
   if (c.territories[b.at].rim) b.gathers = c.turn + WILDS.gather; // in the rim it gathers a season first, and is seen (`seenGathering`)
-  (c.marches ??= []).push({ band: b.id, born: c.turn, from: b.at, bound: way.bound, lands: way.steps });
+  const deep = wayIn(c, b.at, b.kind); // report only, kept for a release: the march the old weighing (the nearest soft mark) would have made
+  (c.marches ??= []).push({ band: b.id, born: c.turn, from: b.at, bound: way.bound, lands: way.steps, ...markOf(c, b.at, way, b.kind), ...(deep ? { would: { lands: deep.steps, ...markOf(c, b.at, deep, b.kind) } } : {}) });
   return true;
 }
 

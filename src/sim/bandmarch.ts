@@ -41,10 +41,17 @@ export const WILDS = {
   share: 0.35,
   /** A camp born in the rim of wilderness gathers there this many seasons before it sets out, and the towns within two lands see its fires. */
   gather: 1,
+  /**
+   * A host out of the wilds is drawn by what is softest and richest, not what is nearest (bandwilds.ts `deepWay`): it
+   * weighs its marks with no reckoning of the march. Of those within `near` of the best it takes the FARTHEST `deep` of
+   * the time, by the world's seed, so that some come a long way and not all do. And when a camp is to be born there, a
+   * rim land with a way of `far` lands or more is taken before one without.
+   */
+  near: 0.8, deep: 0.5, far: 3,
 };
 
 /** One band's march in from the far wilds, for the season's telling and the health report. */
-export interface March { band: number; born: number; from: number; bound: number; lands: number; seen?: number; arrived?: number; struck?: number; met?: number; broken?: boolean; gone?: number }
+export interface March { band: number; born: number; from: number; bound: number; lands: number; /** How deep its mark lies: lands from where it was born to the town it means to strike. What it meets there (the town's defence against a band, threats.ts). */ depth?: number; meets?: number; /** Report only, kept for a release: the march the old weighing (the softest mark against the seasons of the march) would have made of it; absent where that had no march in at all. */ would?: { lands: number; depth: number; meets: number }; seen?: number; arrived?: number; struck?: number; met?: number; broken?: boolean; gone?: number }
 declare module './campaign' {
   interface Campaign { /** Every march in from the far wilds, begun and ended (bandmarch.ts). */ marches?: March[] }
 }
