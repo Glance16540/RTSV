@@ -5,7 +5,8 @@
 // On the map a Market earned nothing; only in a battle or a visit did the Traders' markets pay by rule (game.ts, which is
 // left as it is). Now a town with a Market standing on its record trades by road:
 //   - Its partner. The nearest other town with a Market, by road, within CARAVANS.reach lands: a town of its own people, or
-//     of a people at peace with it (a truce or an alliance with the player, campaignbase.ts atTruce). The road runs over
+//     of a people whose markets are open to it by a trade deal (tradedeal.ts, pacts.ts marketsOpen), which only peoples at
+//     peace make (a truce, an alliance or a royal marriage, campaignbase.ts atTruce). The road runs over
 //     the lands' borders and, where either end has a Harbour, the sea lanes, as a convoy's does (convoys.ts); it passes
 //     only lands of its own people, its partner's, or nobody's, and never the rim.
 //   - The caravan. Each season a market town with no caravan of its own on the road sends one to its partner, and it comes
@@ -32,6 +33,7 @@ import type { Band } from './threats';
 import { BUILDINGS, styleOf } from './data';
 import { MAX_STORE, STORE_KINDS, folkOf } from './township';
 import { armyStrength, atTruce } from './campaignbase';
+import { marketsOpen } from './pacts';
 import { standsAt } from './studies';
 import { begunAt, raiseWork } from './townworks';
 import { canSpare } from './plenty';
@@ -95,7 +97,7 @@ function nearest(c: Campaign, f: number, from: number, want: (tid: number) => bo
 export function partnerOf(c: Campaign, tid: number): { at: number; road: number[] } | null {
   const t = c.territories[tid];
   if (!trades(c, tid)) return null;
-  const road = nearest(c, t.owner, tid, (n) => trades(c, n));
+  const road = nearest(c, t.owner, tid, (n) => trades(c, n) && marketsOpen(c, t.owner, c.territories[n].owner)); // abroad only under a trade deal (tradedeal.ts)
   return road ? { at: road[road.length - 1], road } : null;
 }
 
