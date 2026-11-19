@@ -17,6 +17,7 @@
 // calling it to church; drift adds no rise of its own there, so as not to count the church twice. A strained town's men go to the mines and its women to its tavern, if it has one: gold
 // comes in, and a town with a tavern falls the faster. The nation's standing is its towns' (townfaith.ts), so it
 // follows them.
+import { tavernShare } from './churchtavern'; // fewer drift to a Tavern with a Church beside it
 import type { Campaign } from './campaign';
 import { faithAt, swayNation, swayTown } from './townfaith';
 import { isDecadent } from './creed';
@@ -102,7 +103,7 @@ export function driftTown(c: Campaign, tid: number): number {
   // under a mild strain nobody new goes and one comes back; with care and no strain, a few come back. A shut tavern
   // sends its women home; the women ordered into it stay.
   const d: Drifted = { ...(f.drifted ?? { tavern: 0, mines: 0 }) };
-  const capW = tavern ? Math.floor(f.women * SHARE) : 0, capM = Math.floor(f.men * SHARE);
+  const capW = tavern ? Math.floor(f.women * SHARE * tavernShare(c, tid)) : 0, capM = Math.floor(f.men * SHARE);
   if (!tavern) d.tavern = 0;
   let go = strain >= MILD ? Math.max(1, Math.round(strain * GO_MOST)) : 0;
   if (go > 0) {

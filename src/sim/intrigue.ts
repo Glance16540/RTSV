@@ -35,6 +35,7 @@ import { Choice, Clue, Intrigue, IntrigueKind, IntrigueNote, KEEP, Person, begin
 export * from './intriguebase'; // the record of a story and its plumbing, where they were found before they were moved
 import { governWatch, watchEdge } from './watchhouse';
 import { crimeEdge } from './townwatch';
+import { tallyWatch } from './watchtally';
 import { courtBegin, courtChoices, courtChoose, courtStanding, courtStep } from './courtstory';
 
 export const INTRIGUE = {
@@ -202,6 +203,7 @@ function thiefSeason(c: Campaign, it: Intrigue): void {
     else { it.watch = false; note(c, it, 'plain', `${land(c, it.at)} cannot pay its watch, and the watch is stood down.`); }
   }
   const odds = (it.watch ? T.catch + T.surer * (it.watched - 1) : T.luck) + watchEdge(c, it.at).thief; // a Watch House takes them sooner (watchhouse.ts)
+  { const edge = watchEdge(c, it.at).thief, draw = chance(c, it.id * 53 + 2); if (edge) tallyWatch(c, 'thief', draw < odds, draw < odds - edge); } // report only (watchtally.ts)
   if (chance(c, it.id * 53 + 2) < odds) { catchThief(c, it); return; }
   if (c.turn - it.since >= T.lasts) { end(c, it, 'unfound', `The thief of ${land(c, it.at)} was never taken. The robberies stopped, and ${it.taken} gold was never seen again.`, 'plain'); return; }
   rob(c, it);
@@ -266,6 +268,7 @@ function hang(c: Campaign, it: Intrigue, i: number, by: 'you' | 'town'): void {
 function killerSeason(c: Campaign, it: Intrigue): void {
   const K = INTRIGUE.killer, t = c.territories[it.at];
   const odds = K.clue + (seatAt(c, it.owner, it.at) ? K.court : 0) /* the court, or a Hall of Judgement there (hall.ts) */ + (c.armies.some((a) => a.owner === it.owner && a.at === it.at) ? K.army : 0) + watchEdge(c, it.at).clue; // and a Watch House in the town (watchhouse.ts)
+  { const edge = watchEdge(c, it.at), draw = chance(c, it.id * 59 + 4); if (edge.clue) tallyWatch(c, 'clue', draw < odds, draw < odds - edge.clue); } // report only (watchtally.ts)
   if (chance(c, it.id * 59 + 4) < odds) clue(c, it);
   const left = suspected(it);
   // Once only one is left the town will not wait for ever.
@@ -279,6 +282,7 @@ function killerSeason(c: Campaign, it: Intrigue): void {
     return;
   }
   if (it.watch) { const f = folkOf(c, it.at); if (f.stores.gold >= INTRIGUE.thief.cost) { f.stores.gold -= INTRIGUE.thief.cost; it.watched++; } else it.watch = false; }
+  { const edge = watchEdge(c, it.at).strike, draw = chance(c, it.id * 59 + 5), strike = K.strike * (it.watch ? 0.5 : 1); if (edge < 1) tallyWatch(c, 'kill', draw < strike * edge, draw < strike); } // report only (watchtally.ts)
   if (chance(c, it.id * 59 + 5) < K.strike * (it.watch ? 0.5 : 1) * watchEdge(c, it.at).strike) kill(c, it);
 }
 
@@ -362,8 +366,12 @@ export function intrigueSeason(c: Campaign): Intrigue[] {
   if (!towns.length) return began;
   const hard = towns.filter((t) => strained(c, t.id)), from = hard.length && chance(c, 5) < 0.7 ? hard : towns;
   const t = from[Math.floor(chance(c, 6) * from.length)], f = folkOf(c, t.id), k = strained(c, t.id);
-  if (grown(f) >= K.grown * TOWN_SCALE && chance(c, 7) < K.chance * (k ? K.strained : 1) * crimeEdge(c, 0)) began.push(beginKiller(c, t.id));
-  else if (f.stores.gold >= T.gold && grown(f) >= 4 * TOWN_SCALE && chance(c, 8) < T.chance * (k ? T.strained : 1) * crimeEdge(c, 0)) began.push(beginThief(c, t.id));
+  // Which begins, if either, at this much of the common chance (townwatch.ts crimeEdge: less among a people who keep a Town Watch).
+  const begins = (edge: number): '' | 'killer' | 'thief' => (grown(f) >= K.grown * TOWN_SCALE && chance(c, 7) < K.chance * (k ? K.strained : 1) * edge ? 'killer' : f.stores.gold >= T.gold && grown(f) >= 4 * TOWN_SCALE && chance(c, 8) < T.chance * (k ? T.strained : 1) * edge ? 'thief' : '');
+  const edge = crimeEdge(c, 0), what = begins(edge);
+  if (edge < 1) tallyWatch(c, 'begin', !!what, !!begins(1)); // report only (watchtally.ts)
+  if (what === 'killer') began.push(beginKiller(c, t.id));
+  else if (what === 'thief') began.push(beginThief(c, t.id));
   return began;
 }
 

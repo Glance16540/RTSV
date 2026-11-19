@@ -16,6 +16,7 @@
 //  - When the battle or visit ends, those marked at the tavern and the mine are the town's drifted from then on.
 //
 // A skirmish or a mission has none of this.
+import { keptFromTavern } from './churchtavern';
 import { feastCare } from './studiesintown';
 import type { Building, Game, Player, Unit } from './game';
 import type { Campaign } from './campaign';
@@ -128,6 +129,7 @@ export function driftSecond(g: Game): void {
     const law = decreesHere(g, p.id), { strain, care } = townStrain(g, p);
     const d = (p.drifted ??= { tavern: 0, mine: 0, church: 0, back: 0 });
     if (strain > 0 && g.rng() < strain * DRIFT_RATE * (1 - GUARDS_EASE * (law.guards ?? 0))) {
+      if (!law.closeTavern && keptFromTavern(g, p.id)) continue; // a Church near the Tavern keeps her at her work (churchtavern.ts)
       const woman = law.closeTavern ? null : sendWoman(g, p);
       if (woman) { d.tavern++; say(g, p, `${woman.name} has left her work for the tavern.`); continue; }
       const man = sendMan(g, p);

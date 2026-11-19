@@ -40,6 +40,11 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Crime | Seasons a thief or a killer is at large, with a Watch House in every town against as it is (read with CRIME=1) | 10 to 30% fewer |
 | Crime | Raids on the player's towns held off, with Town Watch learnt against without (read with CRIME=1) | 5 to 20 more in every 100 |
 | Crime | Of the player's convoys a band lay in wait for (highwaymen at an end of a stretch of its road, or pirates on its sea leg), stopped with an Inn on its own road against without; not sorted by the nation, since Inns are raised where the bands sit | fewer with an Inn |
+| Crime | Convoys of the player's with an Inn on the road that a band in wait came on, against the same convoys with no Inn (the same draw, the Inn's half left out: `src/sim/convoys.ts` `comesOn`). The rule is a half (`src/sim/roads.ts`) | 0.4 to 0.6 times as many |
+| Crime | Thieves taken in a season in a town with a Watch House, against the same seasons with none (the same draw: `src/sim/watchtally.ts`). The rule is 15 in a hundred (`src/sim/watchhouse.ts`) | 10 to 20 more in every 100 seasons |
+| Crime | Clues to a killer found in a season in a town with a Watch House, against the same seasons with none. The rule is 20 in a hundred; less where the court and an army in the town make a clue all but sure already | 15 to 25 more in every 100 seasons |
+| Crime | Killings in a season by a killer in a town with a Watch House, against the same seasons with none. The rule is three quarters | 0.65 to 0.85 times as many |
+| Crime | Thieves and killers beginning among the player's people with Town Watch learnt, against the same seasons without. The rule is seven in ten (`src/sim/townwatch.ts`) | 0.6 to 0.8 times as many |
 | Rule | Rival nations with a Hall of Judgement by 20 years | most (over half) |
 | Rule | Lords angry at 20 years, the player's and the rivals' each | 1 to 8% (some at the edge of anger, never a revolt of the great) |
 | Rule | Lords content at 20 years, the player's and the rivals' each | 5 to 20% |
