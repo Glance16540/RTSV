@@ -47,7 +47,7 @@ import type { WaterShape } from './waterlay';
 /** The land's water, carried on the town's side, with the corners anyone starts in kept dry (waterlay.ts). */
 const waterWith = (setups: PlayerSetup[]): WaterShape | undefined => { const w = setups.find((x) => x.water)?.water; const dry = setups.map((x) => x.start).filter((v): v is number => v !== undefined); return w ? { ...w, ...(dry.length ? { dry } : {}) } : undefined; };
 import { handRoadsTick } from './handroads';
-import { fleetKind } from './fleets';
+import { fleetKind, ramBlow } from './fleets';
 import { courtTick, type FieldCourt } from './courtfield';
 import { boughtIn } from './contagion';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
@@ -2923,6 +2923,8 @@ export class Game {
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
+    const ram = ramBlow(u, t); // a ram-ship rams a ship close by, at once, in place of a shot (fleets.ts)
+    if (ram > 1) { this.hit(u.owner, atk * ram, aura, u.def.cls, u.def.bonus, t, 1, u.id); return; }
     if (u.def.projectile) {
       this.projectiles.push({
         x: u.x, y: u.y, sx: u.x, sy: u.y, tx: t.x, ty: t.y, targetId: t.id,
