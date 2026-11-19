@@ -6,11 +6,14 @@
 //     buys food at its Market while its own people go hungry, whatever its usual reckoning of gold (famine.ts buyFood);
 //   - rescue: where its own people are held in a guarded camp (rescue.ts heldAt), nearest first, and it is neither
 //     under attack nor marching on a rival, it sends soldiers standing idle to the camp's gate: enough to beat the guard
-//     (rescueForce) and AICARE.spare more, or none at all, counting those already on their way or at the gate.
+//     (rescueForce) and AICARE.spare more, or none at all, counting those already on their way or at the gate. The camp
+//     where its people have least time left goes first, and in their last two minutes it goes whatever it is doing
+//     (aicaptives.ts); and a rescue at a camp of its own is met by its soldiers (keepCamps).
 // Plain rules over the game's own commands; it keeps nothing.
 import type { Building, Game, Unit } from './game';
 import { buyFood, succour } from './famine';
-import { heldAt, postGuards, rescueForce, rescuers } from './rescue';
+import { postGuards, rescueForce, rescuers } from './rescue';
+import { ableFighters, heldFirst, keepCamps } from './aicaptives';
 
 export const AICARE = {
   /** Soldiers sent to a camp over and above the force that beats its guard: these are the ones at work at the gate. */
@@ -33,12 +36,11 @@ function goneTo(g: Game, owner: number, camp: Building, army: Unit[]): number {
  * many were sent. `busy`: under attack or on the march, when nobody is spared.
  */
 export function mountRescue(g: Game, owner: number, army: Unit[], busy: boolean): number {
-  if (busy) return 0;
-  const held = heldAt(g, owner)[0];
-  if (!held) return 0;
+  const held = heldFirst(g, owner); // the camp where its people have least time left, and whether it presses (aicaptives.ts)
+  if (!held || (busy && !held.pressed)) return 0;
   const want = rescueForce(held.camp) + AICARE.spare, gone = goneTo(g, owner, held.camp, army);
   if (gone >= want) return 0;
-  const idle = idleFighters(g, army).sort((a, b) => Math.hypot(a.x - held.camp.x, a.y - held.camp.y) - Math.hypot(b.x - held.camp.x, b.y - held.camp.y));
+  const idle = (held.pressed ? ableFighters(g, army, true) : idleFighters(g, army)).sort((a, b) => Math.hypot(a.x - held.camp.x, a.y - held.camp.y) - Math.hypot(b.x - held.camp.x, b.y - held.camp.y));
   if (gone + idle.length < want) return 0; // too few to beat the guard: they would only be held off
   const go = idle.slice(0, want - gone);
   g.cmdMove(owner, go.map((u) => u.id), held.camp.x, held.camp.y);
@@ -46,9 +48,9 @@ export function mountRescue(g: Game, owner: number, army: Unit[], busy: boolean)
 }
 
 /** All of it, once a second: guards, food, a rescue. */
-export function aiCare(g: Game, owner: number, o: { army: Unit[]; busy: boolean }): { guards: number; sent: number; bought: boolean; rescuers: number } {
+export function aiCare(g: Game, owner: number, o: { army: Unit[]; busy: boolean }): { guards: number; sent: number; bought: boolean; rescuers: number; keepers: number } {
   const guards = postGuards(g, owner);
   const sent = succour(g, owner);
   const bought = buyFood(g, owner);
-  return { guards, sent, bought, rescuers: mountRescue(g, owner, o.army, o.busy) };
+  return { guards, sent, bought, rescuers: mountRescue(g, owner, o.army, o.busy), keepers: keepCamps(g, owner, o.army, o.busy) }; // a rescue at its own camp met (aicaptives.ts)
 }
