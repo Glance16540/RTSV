@@ -47,6 +47,19 @@ export function deepWay(c: Campaign, at: number, kind: BandKind = 'raiders', sal
   return { bound: pick.bound, steps: pick.steps };
 }
 
+/**
+ * The way a host born at this land would come in, or null if none is born there. A land is somewhere to come FROM where
+ * the host has a long way in (WILDS.far lands or more, by `deepWay`), or where even the nearest soft town is a march away
+ * (`wayIn`, as it always was). A rim land with a town to rob one land off and nothing deep worth the march breeds no
+ * host: a camp there would only step over the border. (Without this, every rim land with any town two lands off bred
+ * them: 6.5 a campaign at 384, and two marches in three still of two lands.)
+ */
+export function comesFrom(c: Campaign, at: number, kind: BandKind = 'raiders', salt = 0): { bound: number; steps: number } | null {
+  const deep = deepWay(c, at, kind, salt);
+  if (!deep) return null;
+  return deep.steps >= WILDS.far || wayIn(c, at, kind) ? deep : null;
+}
+
 /** For a march's record: how deep the town it means to strike lies from where it was born, and what that town has to meet it with. */
 export function markOf(c: Campaign, from: number, way: { bound: number; steps: number }, kind: BandKind): { depth: number; meets: number } {
   const probe: Band = { id: -1, kind, name: '', at: way.bound, strength: 1, since: c.turn, held: [] };
@@ -61,7 +74,7 @@ export function farPlace(c: Campaign, kind: BandKind): [number] | null {
   const salt = 701 + (c.bandSeq ?? 0);
   if (chance(c, salt, 53) >= WILDS.share) return null;
   // A host out of the wilds weighs its marks its own way (`deepWay`); the band about to be born will be the next in number.
-  const next = (c.bandSeq ?? 0) + 1, ways = farWilds(c).map((id) => ({ id, way: deepWay(c, id, kind, next) })).filter((x) => x.way);
+  const next = (c.bandSeq ?? 0) + 1, ways = farWilds(c).map((id) => ({ id, way: comesFrom(c, id, kind, next) })).filter((x) => x.way);
   if (!ways.length) return null;
   // Those with a long way in are taken first (WILDS.far): there is the country, and a host should come out of the depth of it.
   const far = ways.filter((x) => x.way!.steps >= WILDS.far), wilds = (far.length ? far : ways).map((x) => x.id);
@@ -71,7 +84,7 @@ export function farPlace(c: Campaign, kind: BandKind): [number] | null {
 /** A band just born: if it stands in the far wilds with a way in, it sets out. Returns whether it did. */
 export function setOutFromAfar(c: Campaign, b: Band): boolean {
   if ((b.kind !== 'raiders' && b.kind !== 'slavers') || c.territories[b.at].owner >= 0 || !c.territories[b.at].wild) return false;
-  const way = deepWay(c, b.at, b.kind, b.id); // drawn by the richest mark, not the nearest
+  const way = comesFrom(c, b.at, b.kind, b.id); // drawn by the richest mark, not the nearest
   if (!way) return false;
   b.bound = way.bound; b.afar = true; b.moved = c.turn;
   if (c.territories[b.at].rim) b.gathers = c.turn + WILDS.gather; // in the rim it gathers a season first, and is seen (`seenGathering`)
