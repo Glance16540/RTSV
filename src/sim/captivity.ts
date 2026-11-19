@@ -14,7 +14,8 @@
 // home with her and they are written into a roof of her town to grow up there. Lost, they are lost with her.
 // (A people that takes captives into itself, as raiders do, gains the person outright at once: that is in
 // game.ts, and holds no one long enough for any of this.)
-import { ELDER_AT, GROW_TIME, LIFESPAN, NAMES_F, NAMES_M, POP_LIMIT } from './data';
+import { givenNames } from './peoplenames';
+import { ELDER_AT, GROW_TIME, LIFESPAN, POP_LIMIT } from './data';
 import { GROWN_YEARS, OLD_YEARS } from './ageing';
 import type { Building, Captive, Entity, Game, Player, Unit } from './game';
 import { CAMP_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, ESCAPE_TIME, GUARD_DRIVE, GUARD_WATCH, REVOLT_MEN, REVOLT_TIME, isDecadent } from './creed';
@@ -53,7 +54,7 @@ const pick = (g: Game, salt: number): number => (((g.seed * 31 + Math.floor(g.ti
 /** A child is born to a woman held: written into her record. Returns it. */
 export function bearCaptive(g: Game, mother: Captive): Child {
   const n = (mother.born ?? 0) + 1, salt = mother.name.length * 131 + n * 17 + mother.from;
-  const gender = pick(g, salt) < 0.5 ? 'm' as const : 'f' as const, names = gender === 'm' ? NAMES_M : NAMES_F;
+  const gender = pick(g, salt) < 0.5 ? 'm' as const : 'f' as const, names = givenNames(mother.people ?? g.players[mother.from]?.civ, gender); // her own people's names (peoplenames.ts)
   const child: Child = {
     id: -Math.floor(g.time * 20) - n, name: names[Math.floor(pick(g, salt + 1) * names.length)], family: mother.family, gender, trait: '', trait2: '',
     lifespan: LIFESPAN[0] + pick(g, salt + 2) * (LIFESPAN[1] - LIFESPAN[0]), left: GROW_TIME, bornAt: 0,
@@ -89,17 +90,25 @@ export function tendCaptives(g: Game, b: Building): number {
       say(g, c.from, `⏳ ${c.name} has been held ${Math.round(heldFor(g, c) / 60)} minutes. In two more ${c.gender === 'f' ? 'she' : 'he'} will be ${lair ? 'dead' : 'sold on'}, and past getting back.`);
     }
     if (left > 0) continue;
-    b.captives.splice(i, 1);
+    if (lair) {
+      b.captives.splice(i, 1);
+      const kids = c.young?.length ?? 0, with_ = kids ? ` ${kids === 1 ? 'The child' : `The ${kids} children`} born there ${kids === 1 ? 'is' : 'are'} lost with ${c.gender === 'f' ? 'her' : 'him'}.` : '';
+      say(g, c.from, `🕯️ ${c.name}, held by the marauders, is dead.${with_}`);
+    } else sellOn(g, b, i);
     lost++;
-    const kids = c.young?.length ?? 0, with_ = kids ? ` ${kids === 1 ? 'The child' : `The ${kids} children`} born there ${kids === 1 ? 'is' : 'are'} lost with ${c.gender === 'f' ? 'her' : 'him'}.` : '';
-    if (lair) say(g, c.from, `🕯️ ${c.name}, held by the marauders, is dead.${with_}`);
-    else {
-      say(g, c.from, `🕯️ ${c.name} has been sold on from the work camp and is lost to you.${with_}`);
-      const keeper = g.players[b.owner];
-      if (keeper) { keeper.res.gold += SOLD_GOLD; say(g, b.owner, `⛓️ ${c.name} has been sold on for ${SOLD_GOLD} gold.`); }
-    }
   }
   return lost;
+}
+
+/** One held in a work camp is sold on: lost to their people, and SOLD_GOLD to the camp's keeper. */
+export function sellOn(g: Game, b: Building, i: number): void {
+  const c = b.captives?.[i];
+  if (!c) return;
+  b.captives!.splice(i, 1);
+  const kids = c.young?.length ?? 0, with_ = kids ? ` ${kids === 1 ? 'The child' : `The ${kids} children`} born there ${kids === 1 ? 'is' : 'are'} lost with ${c.gender === 'f' ? 'her' : 'him'}.` : '';
+  say(g, c.from, `🕯️ ${c.name} has been sold on from the work camp and is lost to you.${with_}`);
+  const keeper = g.players[b.owner];
+  if (keeper) { keeper.res.gold += SOLD_GOLD; say(g, b.owner, `⛓️ ${c.name} has been sold on for ${SOLD_GOLD} gold.`); }
 }
 
 /**

@@ -14,9 +14,9 @@
  *     is raised in the leader's house, and is no claimant.
  *   - `ofAgeNow`, `named`: a record comes of age and is given a name.
  */
+import { givenNames } from './peoplenames';
 import { toldIn } from './chroniclethreads';
 import type { Campaign } from './campaign';
-import { NAMES_F, NAMES_M } from './data';
 import { HEIR_AGE } from './dynasty';
 import { BORN } from './bandborn';
 
@@ -68,7 +68,7 @@ export const ofAgeNow = (c: Campaign, cl: Claim): boolean => !cl.ended && cl.gro
 export function named(c: Campaign, cl: Claim): Claim {
   if (cl.name) return cl;
   cl.female = hash(c.seed * 17 + cl.id, 91) < 0.25;
-  const names = cl.female ? NAMES_F : NAMES_M;
+  const names = givenNames(c.factions[cl.owner]?.civ, cl.female ? 'f' : 'm'); // the people's own names (peoplenames.ts)
   cl.name = names[Math.floor(hash(c.seed * 19 + cl.id, 93) * names.length)];
   return cl;
 }

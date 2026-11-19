@@ -7,6 +7,7 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { askedFor, keepAsked } from './askedhere';
 import { seasonOfTurn } from './seasonsky';
 import { companySoldiers, rollOf } from './soldiernames';
 import { furloughOf, homeOnLeave } from './furloughmap';
@@ -93,6 +94,8 @@ export interface VisitAfter {
   court?: unknown;
   /** The roads laid by hand in the town, by their tiles (`handRoadsOut`, handroads.ts). */
   roads?: unknown;
+  /** The dilemmas the town was asked (`askedOut`, askedhere.ts). */
+  asked?: unknown;
 }
 
 /** Soldiers in a visit by the company they belong to: those of the army brought in, and townsmen trained there. */
@@ -214,6 +217,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
         ...(roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // roads laid by hand there before (handroads.ts)
+        ...(askedFor(c, t.id) ? { asked: askedFor(c, t.id) } : {}), // the dilemmas it was asked before (askedhere.ts)
         ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)
         ...(courtForVisit(c, t.id) ? { court: courtForVisit(c, t.id) } : {}), // a rival's envoy, a suitor or a plot, where the court is kept (courtvisit.ts)
         ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
@@ -247,6 +251,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   hallFromSitting(c, land.id, after.hall); // and the rulings given at its Hall of Judgement (hallcases.ts)
   caravanFromField(c, land.id, after.caravan); // and its Market's caravan, home or caught (fieldcaravan.ts)
   if (after.studies) studiedHome(c, 0, after.studies); // what was learned there is the nation's (studies.ts)
+  keepAsked(c, land.id, after.asked); // and the dilemmas it was asked (askedhere.ts)
   settleStores(c); // what the town gathered or spent in the visit is its nation's gain or loss (stores.ts)
   // How the town was kept goes home as it does from a battle: half of how far it moved.
   // It is this town that was kept so, and this town that is moved (townfaith.ts).

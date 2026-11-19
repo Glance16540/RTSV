@@ -23,10 +23,10 @@
 //     noble is made an enemy), or send gifts to all the nobles to sweeten them, which may end it. Once the plotter
 //     is known the leader pardons them or has them put to death. If the plot ripens unfound there is a rising:
 //     it is put down, or the leader is killed in it.
+import { givenNames } from './peoplenames';
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
 import { MAX_FAVOR, atTruce, heroFor } from './campaignbase';
-import { NAMES_M } from './data';
 import { courtOf, leaderAt } from './court';
 import { seatAt } from './hall';
 import { otherFaith, plotterOf } from './noblefaith';
@@ -125,7 +125,7 @@ export function beginSuitor(c: Campaign, rival: number, o: { owner?: number } = 
   const f = o.owner ?? 0, d = daughterOfAge(c, f), seat = seatOf(c, f);
   if (!d || seat < 0 || !c.factions[rival]?.alive) return null;
   const it = begin(c, 'suitor', seat), king = rulerName(c, rival);
-  const suitor = NAMES_M[Math.floor(chance(c, it.id * 83 + 1) * NAMES_M.length)];
+  const men = givenNames(c.factions[rival]?.civ, 'm'), suitor = men[Math.floor(chance(c, it.id * 83 + 1) * men.length)]; // a man of the rival king's people (peoplenames.ts)
   it.rival = rival; it.stage = 0; it.due = c.turn + COURT.suitor.answer; it.cast = { daughter: d.name, suitor, king };
   it.willing = chance(c, it.id * 83 + 2) < COURT.suitor.willing;
   note(c, it, 'plain', `${suitor}, a son of the house of ${king} of the ${people(c, rival)}, has come to ask for your daughter ${d.name}. He waits on your answer.`);
