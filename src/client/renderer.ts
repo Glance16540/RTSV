@@ -17,6 +17,8 @@ import { STYLE_SIGN } from '../sim/stylesigns';
 import { swayable, swaying, swayingShadow, windNow } from './treesway';
 import { Life } from './life';
 import { Beast, BeastKind, beastReady, gait, loadBeasts, makeBeast } from './beast';
+import { beastHurt, fallLot, sideLot, fallMount, fallPerson, fallRider, limp, markBeast, unseat } from './falls';
+import type { Unseated } from './falls';
 import { Outfit, RealPerson, leaderOutfit, astride, bear, drawnReal, sprawl, wounds, hold, lasts, level, loadPeople, makePerson, outfitFor, peopleReady, play, roleOutfit } from './person';
 import { acacia, birch, fir, oak, palm } from './flora';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
@@ -39,7 +41,7 @@ interface UnitView { g: THREE.Group; phase: number; legs: THREE.Object3D[]; type
 /** A drop of blood in the air, or a chip of wood from an engine or a hull. */
 interface Drop { m: THREE.Mesh; vx: number; vy: number; vz: number; blood: boolean }
 interface Stain { m: THREE.Mesh; t: number; grow: number; life: number }
-interface Dying { g: THREE.Group; t: number; v: UnitView }
+interface Dying { g: THREE.Group; t: number; v: UnitView; /** The way they go down, drawn by lot, and to which side (falls.ts). */ way: number; side: number; /** A rider thrown from the saddle. */ rider?: Unseated }
 const BLOOD = 0x7a0c10;
 interface Floater { x: number; y: number; text: string; t: number }
 interface Ping { mesh: THREE.Mesh; t: number }
@@ -622,7 +624,7 @@ export class Renderer {
     let d = (gateMan ? gateMan.yaw : u.facing) - g.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     g.rotation.y += d * Math.min(1, dt * 12);
-    for (const b of v.beasts ?? []) this.poseBeast(u, b, dt);
+    for (const b of v.beasts ?? []) { this.poseBeast(u, b, dt); limp(b, beastHurt(u.hp, u.maxHp), u.moving, this.clock, u.id, !!v.wildlife); } // a lamed animal limps (falls.ts)
     for (const r of v.riders ?? []) this.poseReal(u, r.p, '', dt, 1, g.rotation.y, true, r.astride);
     if (v.real) {
       v.job = job;
@@ -766,7 +768,11 @@ export class Renderer {
     else this.spray(at.x, at.y + 0.4, at.z, 12, false);
     // The torch goes out with its bearer.
     for (const [id, by] of this.torchBy) if (by && (by === v.real || v.riders?.some((r) => r.p === by))) { dropTorch(by); this.torchBy.delete(id); }
-    this.dying.push({ g, t: 0, v });
+    // A mounted man is thrown, or struck from the saddle; anyone else falls one of the ways drawn by lot (falls.ts).
+    const side = sideLot(), horseman = v.beasts?.length === 1 && !!v.seat && !v.wildlife;
+    const way = fallLot(horseman ? 2 : undefined);
+    const rider = horseman ? unseat(this.scene, g, v.riders, way === 0, side, (x, z) => this.scenery.heightAt(x, z)) : undefined;
+    this.dying.push({ g, t: 0, v, way, side, ...(rider ? { rider } : {}) });
   }
 
   /** Drops of blood (or chips of wood) thrown up from a blow. */
@@ -836,6 +842,7 @@ export class Renderer {
   /** Bring the wounds drawn on a unit's people to a stage, throwing down whatever gear that knocks off. */
   private mark(v: UnitView, hurt: number): void {
     const g = v.g;
+    for (const b of v.beasts ?? []) markBeast(b, Math.min(2, hurt), this.gore); // a hurt animal is marked on the flank (falls.ts)
     for (const p of [v.real, ...(v.riders ?? []).map((r) => r.p)]) {
       if (!p || p.hurt === hurt) continue;
       const off = wounds(p, hurt, this.gore);
@@ -1514,19 +1521,14 @@ export class Renderer {
       d.t += dt;
       if (d.v.wildlife && d.v.beasts?.length) {
         // The animal's own fall.
-        gait(d.v.beasts[0], 'Death', 1, true);
+        gait(d.v.beasts[0], 'Death', 0.8 + (d.way % 3) * 0.2, true);
         d.v.beasts[0].mixer.update(dt);
         d.g.rotation.x = d.g.rotation.z = 0;
         if (d.t > 6) d.g.position.y -= dt * 0.12;
         if (d.t > 9) { this.scene.remove(d.g); this.dying.splice(i, 1); }
       } else if (d.v.real) {
-        // The recorded fall, then the body lies a while and sinks into the ground.
-        // One recorded fall, made several: quicker or slower, mirrored, and ending in one of three sprawls.
-        const way = Math.floor(d.v.phase * 100);
-        play(d.v.real, 'Death01', 0.85 + (way % 5) * 0.09, true);
-        d.v.real.mixer.update(dt);
-        sprawl(d.v.real, way % 3, Math.min(1, Math.max(0, (d.t - 0.5) / 0.9)));
-        d.g.rotation.x = d.g.rotation.z = 0;
+        // One of the ways of going down, drawn by lot (falls.ts); then the body lies a while and sinks into the ground.
+        fallPerson(d.g, d.v.real, d.way, d.t, dt, d.side);
         if (d.t > 7) d.g.position.y -= dt * 0.12;
         if (d.t > 10) { this.scene.remove(d.g); this.dying.splice(i, 1); }
       } else if (d.v.naval) {
@@ -1537,6 +1539,14 @@ export class Renderer {
         d.g.position.y -= dt * (0.03 + d.t * 0.055);
         if (d.t < 4.5 && Math.floor(d.t * 3) !== Math.floor((d.t - dt) * 3)) this.cloud(d.g.position.x + (Math.random() - 0.5) * 0.9, this.scenery.heightAt(d.g.position.x, d.g.position.z) + 0.08, d.g.position.z + (Math.random() - 0.5) * 0.9, 0xf4f8fa, 0);
         if (d.t > 6.5) { this.scene.remove(d.g); this.dying.splice(i, 1); }
+      } else if (d.v.beasts?.length === 1 && d.v.seat && !d.v.wildlife) {
+        // A mounted man: the mount goes down under him and he is pitched over its neck, or he is struck from the saddle
+        // and it stumbles down after him (falls.ts).
+        fallMount(d.v.beasts[0], d.t, dt, d.way === 0 ? 0 : 0.7);
+        d.g.rotation.x = d.g.rotation.z = 0;
+        if (d.rider) fallRider(d.rider, d.t, dt, d.side);
+        if (d.t > 6) { d.g.position.y -= dt * 0.12; if (d.rider) d.rider.g.position.y -= dt * 0.12; }
+        if (d.t > 9) { this.scene.remove(d.g); if (d.rider) this.scene.remove(d.rider.g); this.dying.splice(i, 1); }
       } else {
         // Beasts and riders go over on their side, kick once, and lie.
         d.g.rotation.x = 0;
