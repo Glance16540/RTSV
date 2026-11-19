@@ -8,7 +8,7 @@
 import { UNITS, UnitDef } from './data';
 import type { Entity, Game, Unit } from './game';
 import { CHAMPION_KILLS, Champion, canLead, championFemale, championName, championSpec, rankForKills } from './champion';
-import { HeroSpec, RANK_NAMES, RANK_XP, heroBonus, rankOf } from './hero';
+import { Calling, HeroSpec, RANK_NAMES, RANK_XP, heroBonus, rankOf } from './hero';
 import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, POWERS, leaderAsMade, leaderDef, leaderType, powerDue as powerDueOf, powersHeld } from './powers';
 
 /** The leader a player's nation follows: their own making of them, or the leader as written. */
@@ -74,8 +74,8 @@ export function cmdCall(g: Game, owner: number): boolean {
   g.msg(owner, `${l.name}: ${CALLS[g.heroOf(owner).calling].name}!`);
   return true;
 }
-/** Whose call, if any, is sounding over g spot for g player's people: a Warlord's or a Strategist's. */
-export function calledAt(g: Game, owner: number, x: number, y: number): 'warlord' | 'strategist' | null {
+/** Whose call, if any, is sounding over g spot for g player's people: a Warlord's, a Strategist's or a Steward's. */
+export function calledAt(g: Game, owner: number, x: number, y: number): Calling | null {
   const l = g.leaders[owner];
   if (!l || l.dead || !(l.hero!.call! > 0) || Math.hypot(l.x - x, l.y - y) > (l.def.auraRange ?? 0)) return null;
   return g.heroOf(owner).calling;

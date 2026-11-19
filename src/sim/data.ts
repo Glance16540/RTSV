@@ -604,7 +604,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'towncenter', name: 'Town Center', icon: '🏛️',
     desc: 'Heart of your settlement. Trains villagers, advances ages and accepts all resources. Houses built nearby raise the morale of defenders.',
     cost: { wood: 300, stone: 200 }, time: 90, age: 1, hp: 2200, size: 4, pop: 10, sight: 10,
-    trains: ['villager', 'warlord', 'strategist'], techs: [], dropoff: true, atk: 7, range: 7, cooldown: 2, shelter: 12,
+    trains: ['villager', 'warlord', 'strategist', 'steward'], techs: [], dropoff: true, atk: 7, range: 7, cooldown: 2, shelter: 12,
   }),
   house: B({
     id: 'house', name: 'House', icon: '🏠',
