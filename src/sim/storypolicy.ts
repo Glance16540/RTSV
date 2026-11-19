@@ -12,6 +12,7 @@
 import type { Campaign } from './campaign';
 import { callOn, callable } from './aftermath';
 import { Intrigue, choicesFor, choose, openIntrigues, suspected } from './intrigue';
+import { sensiblePetition } from './petitions';
 
 /** Answer every story of a people's that is waiting on them, by the policy above. Returns the choices made. */
 export function sensibleAnswers(c: Campaign, f = 0): string[] {
@@ -30,6 +31,8 @@ export function sensibleAnswers(c: Campaign, f = 0): string[] {
       if (!it.sweetened) take(it, 'gifts');
     }
   }
+  // A noble's petition: answered as a careful ruler would (petitions.ts).
+  { const did = sensiblePetition(c, f); if (did) made.push(`petition:${did}`); }
   // An alliance by marriage is called on as soon as there is one: its men are worth most early.
   if (f === 0) for (const m of callable(c, 0)) { const did = callOn(c, m.id); if (did) made.push(`alliance:${did}`); }
   return made;
