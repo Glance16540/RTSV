@@ -43,7 +43,7 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Ten women taken is ten women gone, and held somewhere real | Captives taken in a visit are counted and gone (`battlefolk.ts` taken). Those taken in a battle fought in person are held on the map (`battlecarried.ts`), but a visit's are not. | small | Before: the same hand-off `battlecarried.ts` already makes, and the record should be one rule. |
+| Ten women taken is ten women gone, and held somewhere real | **Checked: nothing to hand over.** A visit has only the player's side on the field, so the only ones who can take anyone there are the field's own marauders. A battle's marauder-held captives are already gone by `battlecarried.ts`'s rule, since the field's marauders are no band on the map to hold them. To hold them would mean giving them to a band of the map (the nearest marauders, or one made for it), which is a new rule, not a hand-off. | small | Unity: decide there whether the field's marauders are a band of the map. |
 | What is built in a town is kept on its record | A Church or Tavern built in a battle stands on the town's record but is not raised as the map site that moves the town's faith (`SITE_BUILDING` has neither). | small | Before: one table entry and a test, and it decides whether a played town's faith follows what was built there. |
 | What is built in a town is kept on its record | A road laid by hand in a siege is not kept; only a visit keeps roads. | small | Unity: roads are field work and the new engine lays its own. |
 | Nobody from nowhere (towns persist, a soldier costs a person) | **Done for the settlers** (`src/sim/settlersfrom.ts`): a town taken empty, in a battle or as a dead town, is settled by couples its taker's nearest towns can spare, by road; where none can be spared it stands empty. Still from nowhere: a tribe's town made up to its old strength the first time it is looked into. | small | Built. The tribe's one-time top-up stays, since it happens once per save. |
@@ -254,7 +254,7 @@ These are not single promises, but they stand against the whole of DESIGN.md:
 
 All small, each in its own module with its own test, and none changes a rule's meaning:
 
-1. Captives taken in a visit are held on the map, as a battle's are (`battlecarried.ts`).
+1. Captives taken in a visit are held on the map, as a battle's are (`battlecarried.ts`). **Checked, not built:** in a visit only the field's marauders take anyone, and a battle's marauder-held are gone by the same rule; there is no taker on the map to hold them (see Towns persist).
 2. A Church or Tavern built in a battle is raised as the map site that moves the town's faith.
 3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town. **Done** (`settlersfrom.ts`).
 4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line. **Done:** a reserve's camp (`reservecamp.ts`).
