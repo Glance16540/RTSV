@@ -136,7 +136,7 @@ describe('a band strikes a town', () => {
     expect(f.children).toBe(5 * S);
     expect(f.ages!.k.length).toBe(5 * S);
     expect(f.ages!.f.filter((s) => s < OLD_SEASON).length).toBe(f.women);
-    checkLoot(c, t.id, r, THREATS.loot.taken);
+    checkLoot(c, t.id, r, RAID.loot);
     expect(f.stores.food).toBe(400 - r.stores.food);
     expect(goods(nationStores(c, 0))).toBe(had - goods(r.stores)); // what was looted from the town is all the raid cost: the nation is not charged again
     expect(r.sway).toBe(THREATS.sway.taken);
@@ -165,12 +165,12 @@ describe('a band strikes a town', () => {
     const sea = world({ men: 2 });
     sea.t.trait = 'coast';
     const p = untilStrike(sea.c, band(sea.c, sea.t, 'pirates', 9));
-    checkLoot(sea.c, sea.t.id, p, THREATS.loot.taken + THREATS.pirateLoot);
+    checkLoot(sea.c, sea.t.id, p, RAID.loot + THREATS.pirateLoot);
     // Pirates have ships to fill, slavers come for people, and the marauders take least of all in goods.
     expect(THREATS.carry.pirates).toBeGreaterThan(THREATS.carry.raiders);
     expect(THREATS.carry.raiders).toBeGreaterThan(THREATS.carry.slavers);
     expect(THREATS.carry.slavers).toBeGreaterThan(THREATS.carry.marauders);
-    checkLoot(slave.c, slave.t.id, s, THREATS.loot.taken);
+    checkLoot(slave.c, slave.t.id, s, RAID.loot);
 
     const mid = world({ men: 8 });
     mid.t.buildings = ['farm', 'barracks'];
@@ -179,7 +179,7 @@ describe('a band strikes a town', () => {
     expect(m.outcome).toBe('raided');
     expect(m.taken).toEqual({ men: 0, women: 0 });
     expect(m.killed).toBeGreaterThan(0);
-    checkLoot(mid.c, mid.t.id, m, THREATS.loot.raided);
+    checkLoot(mid.c, mid.t.id, m, RAID.loot);
   });
 
   it('a sacked people loses heart by its creed: the Righteous least, the Decadent most', () => {

@@ -38,7 +38,7 @@ import { swayTown } from './townfaith';
 export type Post = 'right' | 'steward' | 'marshal' | 'priest' | 'confidant';
 export const POST_NAMES: Record<Post, string> = { right: 'Right hand', steward: 'Steward', marshal: 'Marshal', priest: 'Priest', confidant: 'Confidant' };
 /** The leader's husband or wife. `born`: the turn of their birth, in seasons. `lost`: how and when, if they are gone. */
-export interface Spouse { name: string; female: boolean; born: number; of: string; lost?: { turn: number; how: 'died' | 'taken' | 'widowed'; band?: number; final?: boolean } }
+export interface Spouse { name: string; female: boolean; born: number; of: string; lost?: { turn: number; how: 'died' | 'taken' | 'widowed'; band?: number; final?: boolean; /** Taken into the house of a noble of her own people, by his key (wifetaken.ts): held there, and no band's. */ house?: string } }
 /** One of the inner circle. `notable`: they are one of the nation's people known by name (township.ts), at `town`. */
 export interface Close { post: Post; name: string; female: boolean; family?: string; town: number; notable?: boolean; kind?: Notable['kind']; unit?: string; loyalty: number; feeling: Feeling; since: number }
 /** A change in the household, for the season's report. */
@@ -173,7 +173,7 @@ export function kinSeason(c: Campaign, f: number): void {
     }
   } else if (s && s.lost?.how === 'taken' && !s.lost.final) {
     // Still held, got back, or held too long.
-    const held = (c.bands ?? []).some((b) => b.held.some((h) => h.owner === f && (h.names ?? []).includes(s.name)));
+    const held = (c.bands ?? []).some((b) => b.held.some((h) => h.owner === f && (h.names ?? []).includes(s.name))) || !!s.lost.house; // or in a noble's house (wifetaken.ts settles that)
     if (!held) {
       if (c.turn - s.lost.turn < THREATS.holdFor) {
         delete s.lost; delete k.alone;
