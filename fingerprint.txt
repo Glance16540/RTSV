@@ -74,12 +74,12 @@ drill 3 (persia v arabs) at 6m: 7b1ef9dbf1796a43
 drill 3 (persia v arabs) at 8m: ddfcdd41e7e4fdd6
 drill 3 (persia v arabs) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 38 ddfcdd41e7e4fdd6
 drill 3 (persia v arabs) after the leaders fell: 6f7b96db992f70d6 acclaimed true/false/false a2892f9a1b16e198
-drill 4 (dawn v steppe) at 2m: e92b02cacd5f7d42
-drill 4 (dawn v steppe) at 4m: 4cc306ba9a7b4862
-drill 4 (dawn v steppe) at 6m: 1351cbf2b993a87c
-drill 4 (dawn v steppe) at 8m: c880c91b89ffb56e
-drill 4 (dawn v steppe) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 26 c880c91b89ffb56e
-drill 4 (dawn v steppe) after the leaders fell: 63693536cbb500aa acclaimed false/true/false a003e955ac04f478
+drill 4 (dawn v steppe) at 2m: ef6cdad73a1a8204
+drill 4 (dawn v steppe) at 4m: ee1d93b29301416a
+drill 4 (dawn v steppe) at 6m: 29002ac7d2008a97
+drill 4 (dawn v steppe) at 8m: 6a98dc32120d7ce7
+drill 4 (dawn v steppe) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 24 6a98dc32120d7ce7
+drill 4 (dawn v steppe) after the leaders fell: c4db2487d50d5f64 acclaimed true/true/false 2868aebad656cf67
 drill 5 (babylon v england) at 2m: 28b99f2e44dcf910
 drill 5 (babylon v england) at 4m: 4a98623e1e77fdaa
 drill 5 (babylon v england) at 6m: affd38105652ab58

@@ -1078,8 +1078,8 @@ export const CIVS: Record<string, CivDef> = {
 Object.assign(CIVS, {
   dawn: {
     id: 'dawn', name: 'Arameans', icon: '🌅', desc: 'A people of priests and prophets.', unique: 'zealot', unique2: 'templar',
-    bonuses: ['Priests, Prophets and other healers cost 25% less', 'Prophets regain faith 50% faster', 'Healers mend 30% faster', 'Villagers gather 5% faster'],
-    apply: (m: Mods) => { m.clergyCost = 0.75; m.faith = 1.5; m.heal += 0.3; m.gather *= 1.05; }, // the one gift of theirs that is not to their clergy: without it they won one decided game in nine against the other styles' computers
+    bonuses: ['Priests, Prophets and other healers cost 25% less', 'Prophets regain faith 50% faster', 'Healers mend 30% faster', 'Villagers gather 10% faster'],
+    apply: (m: Mods) => { m.clergyCost = 0.75; m.faith = 1.5; m.heal += 0.3; m.gather *= 1.1; }, // the one gift of theirs that is not to their clergy: without it they won one decided game in nine against the other styles' computers, and at 5% one in four against all fourteen other peoples'
   },
   wild: {
     id: 'wild', name: 'Norse', icon: '🪓', desc: 'Hunters and sea-raiders of the north.', unique: 'wolfrider', unique2: 'warbear',
