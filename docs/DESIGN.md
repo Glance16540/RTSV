@@ -260,6 +260,8 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **Before the move to Unity** (the owner's word, 19 November 2026): the ideas are finished here first, then every system is ported. The Greeks keep only the scholars' rule and their two units, as balance left them.
 
+**A Prophet's wrath goes by faith** (the owner's word, 19 November 2026). A Prophet's fire, blight and earthquake fall by the creed of those they strike, by the same measure as his plague and every act of God: lighter on the Righteous, heavier on the Decadent.
+
 ## The order of building
 
 Each step is to be playable by itself.
