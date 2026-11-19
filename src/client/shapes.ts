@@ -404,6 +404,7 @@ export function sign(p: THREE.Object3D, faith: Faith, m: THREE.Material, x: numb
   else if (faith === 'ankh') { bx(p, 0.05 * k, 0.26 * k, 0.05 * k, m, x, y + 0.13 * k, z); bx(p, 0.22 * k, 0.05 * k, 0.05 * k, m, x, y + 0.27 * k, z); mesh(p, new THREE.TorusGeometry(0.07 * k, 0.022 * k, 6, 12), m, x, y + 0.38 * k, z).scale.y = 1.3; }
   else if (faith === 'star') { bx(p, 0.03 * k, 0.16 * k, 0.03 * k, m, x, y + 0.08 * k, z); for (let i = 0; i < 4; i++) bx(p, 0.3 * k, 0.05 * k, 0.03 * k, m, x, y + 0.3 * k, z).rotation.z = (i * Math.PI) / 4; }
   else if (faith === 'flame') { mesh(p, new THREE.CylinderGeometry(0.1 * k, 0.07 * k, 0.1 * k, 10), m, x, y + 0.05 * k, z); mesh(p, new THREE.ConeGeometry(0.07 * k, 0.24 * k, 8), toon(0xff9030, '', 0xcc5010), x, y + 0.22 * k, z).castShadow = false; }
+  else if (faith === 'wreath') { bx(p, 0.03 * k, 0.16 * k, 0.03 * k, m, x, y + 0.08 * k, z); mesh(p, new THREE.TorusGeometry(0.12 * k, 0.03 * k, 6, 14, Math.PI * 1.7), m, x, y + 0.3 * k, z).rotation.z = Math.PI * 0.65; } // a laurel wreath, open at the top
   else if (faith === 'rings') { mesh(p, new THREE.CylinderGeometry(0.02 * k, 0.02 * k, 0.5 * k, 6), m, x, y + 0.25 * k, z); for (let i = 0; i < 5; i++) mesh(p, new THREE.CylinderGeometry((0.09 - i * 0.012) * k, (0.09 - i * 0.012) * k, 0.025 * k, 10), m, x, y + (0.1 + i * 0.07) * k, z); mesh(p, new THREE.SphereGeometry(0.05 * k, 8, 6), m, x, y + 0.52 * k, z); }
 }
 /** A church let go to ruin: roof fallen in, tower broken off short, ivy on stained walls, the cross askew. */
@@ -437,7 +438,7 @@ function ruin(o: Look): THREE.Group {
   for (const [x, z] of [[-1.0, 0.6], [-1.15, 0.0]]) bx(g, 0.16, 0.26, 0.05, toon(0x8a8478, 'stone'), x, 0.11, z).rotation.set(0.3, x * 2, 0.2);
   return g;
 }
-function church(o: Look): THREE.Group {
+export function church(o: Look): THREE.Group {
   if (o.leaning === 'low') return ruin(o);
   const g = new THREE.Group();
   const holy = o.leaning === 'holy';
@@ -1061,7 +1062,8 @@ function camp(o: Look, type: string): THREE.Group {
 
 /** Built to their plot exactly, since they stand shoulder to shoulder or lie flat: not resized to fit. */
 /** What a steppe people keeps under felt rather than behind walls. */
-const CAMPED = new Set(['towncenter', 'temple', 'tavern', 'storehouse', 'barracks', 'blacksmith', 'stable', 'range', 'workshop']);
+// (The house of faith is not a tent: the steppe keeps a sacred cairn, faithhouses.ts.)
+const CAMPED = new Set(['towncenter', 'tavern', 'storehouse', 'barracks', 'blacksmith', 'stable', 'range', 'workshop']);
 const AS_BUILT = new Set(['gate', 'farm', 'palisade', 'stonewall']);
 const MAKERS: Record<string, (o: Look, seed: number) => THREE.Group> = { farm, gate, palisade, stonewall, workcamp, wonder, towncenter: hall, house, temple: church, tavern, barracks, tower, storehouse, dock, range, stable, blacksmith, workshop, market };
 /** Makers kept in modules of their own (civic.ts: the buildings that answer the systems) add themselves here. */
