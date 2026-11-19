@@ -8,8 +8,9 @@
 // Pull. A town draws them when it has room to spare (MIGRATE.room places beyond its people and those already on the
 // road to it), bread in store for the newcomers too (MIGRATE.bread of what plenty.ts calls short, a head, with them
 // counted in), and none of those troubles.
-// Who goes. One family from a pushed town a season, by chance (MIGRATE.chance): its youngest man and woman of working
-// age, and up to MIGRATE.children of its children. A town never lets one go that would leave it under MIGRATE.keep
+// Who goes. One household from a pushed town a season, by chance (MIGRATE.chance): a couple of working age, their
+// children and one of the town's old, as householdmove.ts says (a known woman's house goes whole, her man staying with
+// the army if he is away). A town never lets one go that would leave it under MIGRATE.keep
 // grown people or without a couple, so a hamlet is not emptied by it. They go to the town that draws most (most room)
 // of those their people can reach by road (convoys.ts: a road through their own lands or a sea lane from a Harbour),
 // as a convoy does, a season on the way, and are of that town from then on. At most MIGRATE.season families a people
@@ -24,6 +25,7 @@ import { wilderness } from './wilds';
 import { roomOf } from './seasonfolk';
 import { PLENTY } from './plenty';
 import { folkOf, headcount, living } from './township';
+import { householdOf } from './householdmove';
 
 export const MIGRATE = {
   /** The chance a season that a pushed town sends a family. */
@@ -93,12 +95,6 @@ export function pullOf(c: Campaign, tid: number): number {
   return free >= MIGRATE.room ? free : 0;
 }
 
-/** A family that could leave a town: a man and a woman of working age and some children, if the town keeps enough. */
-function familyOf(c: Campaign, tid: number): { men: number; women: number; children: number } | null {
-  const f = folkOf(c, tid);
-  if (f.men < 2 || f.women < 2 || f.men + f.women + f.elders - 2 < MIGRATE.keep) return null;
-  return { men: 1, women: 1, children: Math.min(MIGRATE.children, f.children) };
-}
 
 /** One season of a people's families moving. Returns the moves. */
 export function migrateOf(c: Campaign, f: number): Move[] {
@@ -110,13 +106,13 @@ export function migrateOf(c: Campaign, f: number): Move[] {
     if (out.length >= MIGRATE.season) break;
     const why = pushOf(c, t.id);
     if (!why || !mayLeave(c, t.id, 'family') || roll(c, t.id, 31) >= MIGRATE.chance) continue; // unless the player's standing orders keep them (townorders.ts)
-    const who = familyOf(c, t.id);
+    // Now and then the family is a known one: a woman of the town's record and her household (or a veteran and his).
+    const known = roll(c, t.id, 47) < MIGRATE.named ? living(folkOf(c, t.id)).sort((a, b) => (a.kind === 'mother' ? 0 : 1) - (b.kind === 'mother' ? 0 : 1))[0] : undefined;
+    const who = householdOf(c, t.id, { known, keep: MIGRATE.keep }); // the couple, their children and an old one, and the house they go as (householdmove.ts)
     if (!who) continue;
     const to = mine.filter((x) => x.id !== t.id).map((x) => ({ id: x.id, pull: pullOf(c, x.id) })).filter((x) => x.pull > 0)
       .sort((a, b) => b.pull - a.pull || a.id - b.id).find((x) => roadBetween(c, f, t.id, x.id));
     if (!to) continue;
-    // Now and then the family is a known one: a woman of the town's record and her household (or a veteran and his).
-    const known = roll(c, t.id, 47) < MIGRATE.named ? living(folkOf(c, t.id)).sort((a, b) => (a.kind === 'mother' ? 0 : 1) - (b.kind === 'mother' ? 0 : 1))[0] : undefined;
     const convoy = sendFamily(c, f, t.id, to.id, { ...who, ...(known ? { notable: known } : {}) });
     if (!convoy) continue;
     const move: Move = { owner: f, from: t.id, to: to.id, why, people: convoy.cargo.men.length + convoy.cargo.women.length + (convoy.cargo.children?.length ?? 0), turn: c.turn, ...(convoy.cargo.notables?.length ? { name: [convoy.cargo.notables[0].name, convoy.cargo.notables[0].family].filter(Boolean).join(' '), female: convoy.cargo.notables[0].gender === 'f' } : {}) };
