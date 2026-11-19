@@ -46,7 +46,7 @@ export const RISING = {
   /** Seasons a rising stands unbeaten before the claim is heard no more. */
   lapse: 40,
   /** A rising in a child's name: the child's age in seasons before whoever holds it may proclaim it heir, and the chance each season from then that they do. */
-  proclaim: 2, chance: 0.5,
+  proclaim: 2, chance: 0.75,
 };
 
 const tell = (c: Campaign, f: number, text: string): void => { if (f === 0) c.log.push(text); (c.chronicle ??= []).push({ turn: c.turn, text }); };
