@@ -2,6 +2,7 @@
 
 import { highGroundNear, holdBack } from './aiground';
 import { bestSite, level, lookOn, wallRadius } from './aisiting';
+import { WardState, wardScout, wardWomen } from './aiward';
 import { assaultDue } from './besieger';
 import { T_MARSH } from './map';
 import { ABILITIES, AGES, BUILDINGS, CIVS, ResType, TECHS, TRADE, UNITS } from './data';
@@ -66,6 +67,8 @@ export class AIController {
   /** Marching on the marauders' camp, not on a rival. */
   private hunt = false;
   private knowsLair = false;
+  /** The women got in from a raiding party, and the rider looking for the camp (aiward.ts). */
+  private ward: WardState = {};
   /** A besieger's first assault has gone in (besieger.ts): from then on it attacks by the usual rules. */
   private stormed = false;
   /** Seconds before the first attack may launch. */
@@ -342,6 +345,7 @@ export class AIController {
 
     // ---- Marauders ----
     const lair = g.marauders ? g.buildings.find((b) => b.type === 'lair') : undefined;
+    if (g.marauders) wardWomen(g, pid, this.ward); // a party after its women: get them indoors, and out again when it has gone (aiward.ts)
     if (!lair) {
       // The camp is burnt (or was never there): the men who went after it come home.
       if (this.hunt) {
@@ -360,6 +364,8 @@ export class AIController {
       // It learns where the camp is by losing a woman to it, or by one of its own coming in sight of it.
       const lost = (lair.captives ?? []).some((c) => c.from === pid);
       if (!this.knowsLair) this.knowsLair = lost || g.units.some((u) => u.owner === pid && Math.hypot(u.x - lair.x, u.y - lair.y) < u.def.sight + 2);
+      // Until it knows, a rider looks for it where a camp could be (aiward.ts).
+      wardScout(g, pid, this.ward, fighters.filter((u) => !u.order && !u.inside), !this.knowsLair && this.state === 'build' && !underAttack);
       if (this.knowsLair && this.state === 'build' && !underAttack && fighters.length >= 4) {
         // It marches when it can beat the band: sooner if its own women are held there.
         const band = g.units.filter((u) => u.def.marauder).length;
@@ -501,7 +507,7 @@ export class AIController {
 
   /** State to store in a saved game. */
   save(): object {
-    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, hunt: this.hunt, knowsLair: this.knowsLair, raid: this.raid, raidT: this.raidT };
+    return { level: this.level, state: this.state, mixI: this.mixI, attackT: this.attackT, firstAttack: this.firstAttack, armyScale: this.armyScale, ring: this.ring, ringI: this.ringI, targetId: this.targetId, signalT: this.signalT, launched: this.launched, readyT: this.readyT, hunt: this.hunt, knowsLair: this.knowsLair, raid: this.raid, raidT: this.raidT, ward: { ...this.ward } };
   }
 
   load(s: Partial<AIController> & { state?: 'build' | 'attack'; mixI?: number; attackT?: number }): void {
