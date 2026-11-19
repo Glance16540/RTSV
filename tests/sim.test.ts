@@ -1476,7 +1476,12 @@ describe('field battles', () => {
     expect(armySize(army)).toBe(1); // a won battle never erases the army
     ({ c, army } = setup());
     finishBattle(c, false, { clubman: 9 });
-    expect(c.armies.includes(army)).toBe(false); // a lost attack still costs the army
+    // A lost attack falls back with the companies whose men lived, never more than marched (siegeretreat.ts) ...
+    expect(c.armies.includes(army)).toBe(true);
+    expect(army.units).toEqual({ infantry: 5 });
+    ({ c, army } = setup());
+    finishBattle(c, false, {});
+    expect(c.armies.includes(army)).toBe(false); // ... and one where nobody lived is gone
   });
 });
 

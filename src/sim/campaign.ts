@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { beatenBack } from './siegeretreat';
 import { finishWorks, scarTown } from './battlescars';
 import { rivalBattleHeard } from './chroniclethreads';
 import { noteStood } from './battletales';
@@ -1091,7 +1092,7 @@ export const BATTLE_ANSWERS = new BattleAnswers<BattleQuestions>()
 
 export const battleWatchers: ((c: Campaign, p: Pending, attackerWon: boolean, how: 'auto' | 'attacker' | 'defender') => void)[] = [];
 
-export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender'): boolean {
+export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender', opts: { /** A battle fought in person: the attacker's men still standing at the end, by unit type, and whether its leader lived (siegeretreat.ts). */ attackerLeft?: Record<string, number>; attackerLed?: boolean } = {}): boolean {
   const p = c.pending;
   if (!p) return false;
   if (p.band !== undefined) return settleBandFight(c, how); // against a band: no nation, and no land changes hands (bandfight.ts)
@@ -1162,7 +1163,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
     if (t.town) t.town.b = t.town.b.filter(([type]) => type !== 'tower' && !BUILDINGS[type]?.wall); // nor do the town's own
   } else {
     if (army && fought && leftWith(army, fought.a)) army.moved = true; // beaten, it keeps what is left where it marched from
-    else if (army) destroyArmy(c, army);
+    else if (army && !(!fought && beatenBack(c, army, opts.attackerLeft, p.from, opts.attackerLed ?? true))) destroyArmy(c, army); // fought in person, likewise (siegeretreat.ts)
     if (defArmy) { if (fought) leftWith(defArmy, fought.d); else casualties(defArmy, Math.ceil(p.aStr * 0.3)); defArmy.vet = Math.min(MAX_VETERAN, defArmy.vet + 1); if (defArmy.hero) seasonHero(c, defArmy.owner); }
     BATTLE_HOOKS.run('repulsed', c, p, note); // the attacker was thrown back
     c.log.push(`${fname(c, p.attacker, true)} attacked ${t.name} and were thrown back.`); // every side's name is plural: you, the Malians, the locals
@@ -1588,6 +1589,10 @@ export interface BattleAfter {
   downed?: unknown;
   /** Who of the town was drifted to the tavern and the mine as the battle ended (driftintown.ts). */
   drifted?: { tavern?: number; mines?: number };
+  /** The other side's men still standing as the battle ended, by unit type: what a rival thrown back keeps (siegeretreat.ts). */
+  foes?: Record<string, number>;
+  /** Whether the other side's leader was still standing as the battle ended (false: they fell). */
+  foesLed?: boolean;
 }
 export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record<string, number>, after: BattleAfter = {}): void {
   const { virtue, heroRank, town: standing, ground } = after;
@@ -1606,7 +1611,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const rankBefore = c.factions[0].heroRank ?? 0;
   const known = mine?.champion?.name;
   const camp = !!land.horde; // marauders hold no town
-  resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender');
+  resolvePending(c, playerWon === humanAttacks ? 'attacker' : 'defender', { attackerLeft: humanAttacks ? survivors : after.foes, attackerLed: humanAttacks ? !after.fell : after.foesLed !== false });
   const note: BattleNote = { playerWon, after };
   BATTLE_HOOKS.run('written', c, p, note); // the field is being read back
   noteDowned(c, after.downed); // the men of the rolls whose soldiers went down there: the map counts them first (soldiernames.ts)
