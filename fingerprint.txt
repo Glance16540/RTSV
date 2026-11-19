@@ -34,7 +34,7 @@ siege 1 at 6m: 8dd95869af9762d9
 siege 1 at 8m: 628f5f3bc6a32f15
 siege 1 end: tick 9600 winner -1 units 69 buildings 28 628f5f3bc6a32f15
 siege 1 census 0: f02a573dccdaf01a
-siege 1 census 1: e39371cc09c556e2
+siege 1 census 1: 97e95a29fc66b066
 siege 1 census 2: 4756d45081ea5674
 siege 2 at 2m: d37f01d119ef7eae
 siege 2 end: tick 3060 winner 0 units 60 buildings 29 d164b3eaedfb64f3

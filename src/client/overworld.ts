@@ -29,6 +29,7 @@ import { callArmies, endCall, holdCourt, moveLeader } from '../sim/court';
 import { openHeroCreator, savedHero } from './herocreator';
 import { MAX_NAME, Names, foundHouse, houseToName, ownLine, peopleName } from '../sim/naming';
 import { mountRoll, rollHtml } from './rollpanel';
+import { logLine, mountTales } from './talepanel';
 import { sendFromPanel } from './convoypanel';
 import { seasonCard, showPastSeasons } from './seasoncard';
 import { reportDue } from '../sim/seasonreport';
@@ -171,6 +172,7 @@ export class Overworld {
     $('ow-new').addEventListener('click', () => this.askNew());
     $('ow-chronicle').addEventListener('click', () => this.showChronicle());
     mountRoll(() => this.dialog('Your people', rollHtml(this.c), [['Past seasons', () => { $('ow-dialog').classList.add('hidden'); showPastSeasons(this.c, () => this.changed()); }], ['Close', () => this.changed()]])); // the roll of your nation (rollpanel.ts), and the seasons past (seasoncard.ts)
+    mountTales(() => this.c, (html) => this.dialog('Battles on the map', html, [['Close', () => this.changed()]])); // the battles fought out on the map, told in full (talepanel.ts)
     $('ow-speech').addEventListener('click', () => { this.speakT = 0; this.nextSpeech(); });
     $('overworld').classList.remove('hidden');
     this.changed();
@@ -687,6 +689,6 @@ export class Overworld {
     $('ow-sel').innerHTML = landHtml(c, this.sel, canMarch);
     $('ow-actions').innerHTML = actionsHtml(c, this.sel);
     ($('ow-end') as HTMLButtonElement).disabled = c.phase !== 'player' || !!c.pending || !!c.demand;
-    $('ow-log').innerHTML = newsHtml(c) + c.log.slice(-7).reverse().map((l) => `<div>${l}</div>`).join('');
+    $('ow-log').innerHTML = newsHtml(c) + c.log.slice(-7).reverse().map((l) => logLine(c, l)).join('');
   }
 }
