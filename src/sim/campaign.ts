@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { leavePlague, safeStep, sickLast } from './aiplague';
 import { beatenBack } from './siegeretreat';
 import { finishWorks, scarTown } from './battlescars';
 import { rivalBattleHeard } from './chroniclethreads';
@@ -1422,6 +1423,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     targets.sort((a, b) => foe(a) - foe(b));
   }
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
+  targets.splice(0, targets.length, ...sickLast(c, targets)); // a land with plague in it last (aiplague.ts)
   // Cautious leaders want better odds; a leader who has just been refused wants blood.
   const dares = (from: number, to: number): boolean => {
     const t = c.territories[to];
@@ -1436,14 +1438,17 @@ function aiStep(c: Campaign, f: Faction): boolean {
     moveArmy(c, army.id, dared);
     return false;
   }
+  // Nothing it dares, and plague where it stands: it goes to a healthy land of its own next door (aiplague.ts).
+  const away = leavePlague(c, army);
+  if (away >= 0 && moveArmy(c, army.id, away) === 'moved') { army.moved = true; return false; }
   if (!reach(c, here.id).some((id) => reckoned(c, f.id, id))) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
-    if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
+    if (next >= 0 && safeStep(c, next) && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
   } else {
     // On a border with nothing it dares: it goes by its own lands to a border where there is something (rivalaim.ts).
     const next = redeploy(c, f.id, army.at, (from) => reach(c, from).some((id) => dares(from, id)), (id) => reach(c, id));
-    if (next >= 0 && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
+    if (next >= 0 && safeStep(c, next) && moveArmy(c, army.id, next) === 'moved') { army.moved = true; return false; }
   }
   army.moved = true;
   return false;
