@@ -397,15 +397,15 @@ by name.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-263 modules, 34,680 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+266 modules, 34,784 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
-| 0 | 53 | 5,179 | `data` (1212; 66), `intriguebase` (89; 8), `ledger` (26; 7), `notableweight` (118; 7), `pacts` (43; 6), `bandborn` (60; 4), `besieger` (31; 4), `household` (103; 4), `leaders` (547; 4), `studiesintown` (52; 4), `temper` (127; 4), `threatsbase` (47; 4), `townrecord` (9; 4), `warrecord` (158; 4), `orphantown` (87; 3), `townorders` (93; 3), `wrath` (29; 3), `beaten` (52; 2), `bereft` (65; 2), `dilemmas` (138; 2), `dominion` (30; 2), `handroads` (134; 2), `path` (266; 2), `unlaid` (45; 2), `watchtally` (31; 2), `writeguard` (35; 2), `aiplague` (30; 1), `atwork` (77; 1), `battlehooks` (80; 1), `carriedhome` (37; 1), `clergywork` (43; 1), `daylight` (18; 1), `faces` (129; 1), `fieldwork` (28; 1), `formations` (78; 1), `givenorders` (43; 1), `hallfield` (65; 1), `keeper` (18; 1), `lastperson` (21; 1), `nationcolours` (26; 1), `raidertown` (28; 1), `seasongain` (31; 1), `slopes` (21; 1), `strengthwords` (19; 1), `stylesigns` (49; 1), `townlean` (37; 1), `tribenames` (18; 1), `waterlay` (93; 1), `encounter` (103), `faithhouse` (54), `folk` (145), `folkfaith` (197), `missionstory` (64) |
-| 1 | 22 | 2,256 | `ageing` (137; 32), `creed` (114; 27), `hero` (102; 12), `naming` (113; 11), `map` (316; 4), `courtfield` (178; 3), `siegecamp` (75; 3), `uniquecompany` (54; 3), `widowtown` (83; 3), `birthonly` (62; 2), `steward` (62; 2), `aiworks` (95; 1), `dyingout` (87; 1), `fieldstory` (145; 1), `firstlay` (71; 1), `fleets` (69; 1), `leavehome` (58; 1), `namesakes` (53; 1), `raiderguide` (44; 1), `siegelift` (86; 1), `styleplay` (120; 1), `battlecard` (132) |
-| 2 | 17 | 1,215 | `champion` (30; 8), `powers` (95; 8), `chroniclethreads` (81; 5), `rescue` (130; 5), `muster` (51; 3), `oldmarks` (145; 3), `nursery` (52; 2), `queuedmen` (54; 2), `seasonsky` (89; 2), `tavernfall` (24; 2), `aisiting` (101; 1), `carriedout` (32; 1), `fieldcap` (108; 1), `placebar` (50; 1), `roofs` (113; 1), `hallguests` (47), `inyears` (13) |
-| 3 | 8 | 1,672 | `township` (239; 73), `campaignbase` (356; 55), `captivity` (259; 4), `bothhouses` (112; 2), `battleleader` (119; 1), `pickman` (98; 1), `notable` (50), `scenario` (439) |
-| 4 | 25 | 2,161 | `court` (167; 14), `stores` (107; 12), `plenty` (80; 11), `rim` (114; 6), `soldiernames` (144; 6), `churchtavern` (54; 5), `infirmary` (52; 5), `wilds` (87; 5), `granary` (55; 4), `veteranhome` (117; 4), `well` (44; 4), `companyroll` (130; 3), `mill` (45; 3), `oldfolk` (73; 3), `householdmove` (73; 2), `marauders` (218; 2), `orphans` (77; 2), `sieges` (36; 2), `townwater` (77; 2), `aicaptives` (64; 1), `battlefolk` (99; 1), `battlescars` (109; 1), `battletales` (57; 1), `nextage` (30; 1), `plaguenamed` (52; 1) |
+| 0 | 53 | 5,181 | `data` (1212; 66), `intriguebase` (89; 8), `ledger` (26; 7), `notableweight` (118; 7), `pacts` (43; 6), `bandborn` (60; 4), `besieger` (31; 4), `household` (103; 4), `leaders` (547; 4), `studiesintown` (52; 4), `temper` (127; 4), `threatsbase` (47; 4), `townrecord` (9; 4), `warrecord` (158; 4), `orphantown` (87; 3), `townorders` (93; 3), `wrath` (29; 3), `atwork` (77; 2), `beaten` (52; 2), `bereft` (65; 2), `dilemmas` (140; 2), `dominion` (30; 2), `handroads` (134; 2), `path` (266; 2), `unlaid` (45; 2), `watchtally` (31; 2), `writeguard` (35; 2), `aiplague` (30; 1), `battlehooks` (80; 1), `carriedhome` (37; 1), `clergywork` (43; 1), `daylight` (18; 1), `faces` (129; 1), `fieldwork` (28; 1), `formations` (78; 1), `givenorders` (43; 1), `hallfield` (65; 1), `keeper` (18; 1), `lastperson` (21; 1), `nationcolours` (26; 1), `raidertown` (28; 1), `seasongain` (31; 1), `slopes` (21; 1), `strengthwords` (19; 1), `stylesigns` (49; 1), `townlean` (37; 1), `tribenames` (18; 1), `waterlay` (93; 1), `encounter` (103), `faithhouse` (54), `folk` (145), `folkfaith` (197), `missionstory` (64) |
+| 1 | 23 | 2,281 | `ageing` (137; 32), `creed` (114; 28), `hero` (102; 12), `naming` (113; 11), `map` (316; 4), `courtfield` (178; 3), `siegecamp` (75; 3), `uniquecompany` (54; 3), `widowtown` (83; 3), `birthonly` (62; 2), `steward` (62; 2), `aiworks` (95; 1), `dyingout` (87; 1), `fieldstory` (145; 1), `firstlay` (71; 1), `fleets` (69; 1), `leavehome` (58; 1), `namesakes` (53; 1), `raiderguide` (44; 1), `siegelift` (86; 1), `styleplay` (120; 1), `battlecard` (132), `visitguide` (25) |
+| 2 | 18 | 1,246 | `champion` (30; 8), `powers` (95; 8), `chroniclethreads` (81; 5), `rescue` (130; 5), `muster` (51; 3), `oldmarks` (145; 3), `askedhere` (31; 2), `nursery` (52; 2), `queuedmen` (54; 2), `seasonsky` (89; 2), `tavernfall` (24; 2), `aisiting` (101; 1), `carriedout` (32; 1), `fieldcap` (108; 1), `placebar` (50; 1), `roofs` (113; 1), `hallguests` (47), `inyears` (13) |
+| 3 | 8 | 1,680 | `township` (239; 73), `campaignbase` (356; 55), `captivity` (267; 5), `bothhouses` (112; 2), `battleleader` (119; 1), `pickman` (98; 1), `notable` (50), `scenario` (439) |
+| 4 | 26 | 2,187 | `court` (167; 14), `stores` (107; 12), `plenty` (80; 11), `rim` (114; 6), `soldiernames` (144; 6), `churchtavern` (54; 5), `infirmary` (52; 5), `wilds` (87; 5), `granary` (55; 4), `veteranhome` (117; 4), `well` (44; 4), `companyroll` (130; 3), `mill` (45; 3), `oldfolk` (73; 3), `householdmove` (73; 2), `marauders` (218; 2), `orphans` (77; 2), `sieges` (36; 2), `townwater` (77; 2), `aicaptives` (64; 1), `battlefolk` (99; 1), `battlescars` (109; 1), `battletales` (57; 1), `dilemmaacts` (26; 1), `nextage` (30; 1), `plaguenamed` (52; 1) |
 | 5 | 8 | 806 | `studies` (153; 26), `leaderstay` (84; 8), `founding` (117; 6), `grief` (73; 6), `ruin` (124; 3), `aiward` (61; 1), `furlough` (110; 1), `hazardlessons` (84; 1) |
 | 6 | 22 | 1,003 | `ownstudies` (109; 12), `warhouse` (317; 10), `hall` (28; 5), `story` (197; 4), `heralds` (30; 3), `manor` (29; 3), `townwatch` (30; 3), `croprotation` (18; 2), `midwifery` (18; 2), `quarantine` (20; 2), `reckon` (26; 2), `roads` (37; 2), `salting` (20; 2), `writtenlaw` (12; 2), `couriers` (8; 1), `fortress` (30; 1), `monastery` (26; 1), `oaths` (8; 1), `physicians` (17; 1), `pilgrimage` (8; 1), `spymasters` (7; 1), `stewardship` (8; 1) |
 | 7 | 6 | 978 | `armytown` (384; 20), `larder` (121; 13), `famine` (188; 5), `places` (58; 5), `contagion` (97; 2), `widowhood` (130; 1) |
@@ -428,17 +428,17 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 24 | 9 | 985 | `townworks` (58; 6), `bandroam` (219; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `rivalcaptives` (47; 2), `battlecarried` (109; 1), `rivalstock` (115; 1), `roll` (93) |
 | 25 | 8 | 1,153 | `bandfight` (312; 3), `caravans` (204; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `watchhouse` (80; 1) |
 | 26 | 4 | 677 | `intrigue` (387; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `bandmeet` (89) |
-| 27 | 7 | 3,687 | `game` (3270; 2), `hallcases` (70; 2), `bandseason` (38; 1), `courtvisit` (81; 1), `rivalstories` (130; 1), `storyvisit` (45; 1), `storypolicy` (53) |
-| 28 | 2 | 1,779 | `campaign` (1727; 2), `aiground` (52; 1) |
-| 29 | 2 | 1,291 | `visit` (281; 1), `ai` (1010) |
+| 27 | 7 | 3,690 | `game` (3273; 2), `hallcases` (70; 2), `bandseason` (38; 1), `courtvisit` (81; 1), `rivalstories` (130; 1), `storyvisit` (45; 1), `storypolicy` (53) |
+| 28 | 2 | 1,783 | `campaign` (1731; 2), `aiground` (52; 1) |
+| 29 | 2 | 1,296 | `visit` (286; 1), `ai` (1010) |
 | 30 | 1 | 117 | `primer` (117) |
 
 **Shapes to declare first.** A dependency of types alone does not hold a module back, but the C# side still needs the shape (the fields of the record) declared before the module that reads it. These are declared in a module of a later layer than a module that needs them, so write the record as plain data at the layer given, and the rules of its own module when its layer comes:
 
 | Shapes from | Needed by | From layer | Its own layer |
 | --- | --- | --- | --- |
-| `campaign` | 166 modules | 0 | 28 |
-| `game` | 75 modules | 0 | 27 |
+| `campaign` | 167 modules | 0 | 28 |
+| `game` | 78 modules | 0 | 27 |
 | `township` | 10 modules | 0 | 3 |
 | `mapbattle` | 4 modules | 0 | 12 |
 | `threats` | 4 modules | 0 | 22 |
@@ -462,7 +462,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 263 modules, 0 naming no test, 0 naming a test file that is missing; 3,655 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 266 modules, 0 naming no test, 0 naming a test file that is missing; 3,661 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -498,6 +498,7 @@ None.
 | `threatsbase` | 47 | 17 | threats.test.ts |
 | `carriedhome` | 37 | 8 | battlecarried.test.ts |
 | `writeguard` | 35 | 6 | writeguard.test.ts |
+| `dilemmaacts` | 26 | 3 | dilemmaacts.test.ts |
 | `townrecord` | 9 | 5 | granary.test.ts |
 <!-- /generated:tests -->
 
@@ -506,7 +507,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 508 of them in 201 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 509 of them in 202 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -577,6 +578,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `courtstory` | `COURT`, `PLOT_STAGES` |
 | `creed` | `CLERGY_VIRTUE`, `CLERGY_BIRTH`, `MAID_VIRTUE`, `MAID_GOLD`, `MAID_DISTRACTION`, `PATRON_FOOD`, `PATRON_MUSTER`, `MERC_PRICE`, `MERC_WAGE`, `MERC_TYPES`, `TAVERN_PLAGUE`, `TAVERN_BIRTH`, `CAPTURE_TIME`, `CAPTIVE_WORK`, `GUARD_WATCH`, `ESCAPE_TIME`, `REVOLT_MEN`, `REVOLT_TIME`, `GUARD_DRIVE`, `CAPTIVE_VIRTUE`, `CAMP_BIRTH`, `CAPTIVE_CAP`, `STAFF_CAP`, `CREEDS`, `DILEMMAS`, `LEANING` |
 | `dilemmas` | `MORE_DILEMMAS`, `FITS` |
+| `dilemmaacts` | `ACTS` |
 | `croprotation` | `ROTATION` |
 | `data` | `RES_TYPES`, `AGES`, `UNITS`, `BUILDINGS`, `BUILD_PAGES`, `TRADE`, `TECHS`, `CIVS`, `CIV_IDS`, `STYLES`, `CIV_STYLE`, `STYLE_RULES`, `BAND`, `CIV_COLOR`, `ABILITIES`, `CALAMITY`, `VILLAGER_TRAITS`, `NAMES_M`, `NAMES_F`, `FAMILY_NAMES`, `POP_LIMIT`, `WONDER_TIME`, `BIRTH_TIME`, `GROW_TIME`, `BIRTH_COST`, `LIFESPAN`, `ELDER_AT`, `RENOWN_CHILDREN`, `MORALE_RADIUS`, `MORALE_PER_HOUSE`, `MORALE_MAX_HOUSES`, `RESOURCE_AMOUNT`, `RESOURCE_KIND`, `GATHER_RATE`, `RES_ICON`, `LAIR_AT`, `LAIR_BIRTH`, `LAIR_RAID`, `LAIR_MAX` |
 | `daylight` | `DAY_LENGTHS`, `DUSK` |
