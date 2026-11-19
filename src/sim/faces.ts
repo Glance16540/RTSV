@@ -121,7 +121,8 @@ export function faceOf(w: Who): Face | null {
     skin: pick(s, 'skin', L.skin), hair: old ? pick(s, 'grey', GREY) : pick(s, 'hair', L.hair),
     garb: pick(s, 'garb', roll(s, 'own cloth') < 0.6 ? L.garb : CLOTH), trim: station === 'kin' ? '#c9a23a' : pick(s, 'trim', ['#3a2a1c', '#7a5a2a', '#5a3a2a']),
     hairStyle, beard, headgear,
-    jaw: broad ? 'round' : lean ? 'narrow' : pick(s, 'jaw', ['round', 'square', 'narrow'] as const),
+    // A man's jaw is squarer than a woman's, so that he reads as a man even beardless and long-haired, and small.
+    jaw: man ? (lean ? pick(s, 'jaw', ['square', 'narrow'] as const) : 'square') : broad ? 'round' : lean ? 'narrow' : pick(s, 'jaw', ['round', 'narrow'] as const),
     eyes: L.eyes, nose: pick(s, 'nose', ['small', 'long', 'broad'] as const), brows: man ? pick(s, 'brows', ['thin', 'thick', 'thick'] as const) : 'thin',
     lines, ruddy: roll(s, 'ruddy') < 0.35,
   };
