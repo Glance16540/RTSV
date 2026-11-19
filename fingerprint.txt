@@ -28,36 +28,36 @@ skirmish 6 (forge v england) at 4m: c19cf58bea615dd8
 skirmish 6 (forge v england) at 6m: eeac072ae5dd7958
 skirmish 6 (forge v england) at 8m: 529501389e762335
 skirmish 6 (forge v england) end: tick 9600 winner -1 units 94 buildings 37 529501389e762335
-siege 1 at 2m: 12db33b9a909206f
-siege 1 at 4m: 8b363b794c283dd9
-siege 1 at 6m: 8dd95869af9762d9
-siege 1 at 8m: 628f5f3bc6a32f15
-siege 1 end: tick 9600 winner -1 units 69 buildings 28 628f5f3bc6a32f15
+siege 1 at 2m: 5295046257a7077a
+siege 1 at 4m: b35ecc282ac2b38f
+siege 1 at 6m: e3d3e2492e293f64
+siege 1 at 8m: 9b5ba9a6c4fa3764
+siege 1 end: tick 9600 winner -1 units 69 buildings 28 9b5ba9a6c4fa3764
 siege 1 census 0: f02a573dccdaf01a
 siege 1 census 1: 97e95a29fc66b066
 siege 1 census 2: 4756d45081ea5674
-siege 2 at 2m: d37f01d119ef7eae
-siege 2 end: tick 3060 winner 0 units 60 buildings 29 d164b3eaedfb64f3
+siege 2 at 2m: 334bdb3b1de9e16a
+siege 2 end: tick 3060 winner 0 units 60 buildings 29 26956f732d2b172f
 siege 2 census 0: b794413a4500d2f7
 siege 2 census 1: a0836b87a62c87fc
 siege 2 census 2: 4756d45081ea5674
-siege 3 at 2m: 389ef2a91a107dee
-siege 3 end: tick 3760 winner 1 units 42 buildings 19 0e4398dadbdcc569
+siege 3 at 2m: cae04819eec76133
+siege 3 end: tick 3760 winner 1 units 42 buildings 19 e246f56efa8faaff
 siege 3 census 0: 9d297f81f8a1d376
 siege 3 census 1: 12488fb956e67e92
 siege 3 census 2: 4756d45081ea5674
-siege 4 at 2m: e17f09120ba99013
-siege 4 end: tick 4340 winner 0 units 83 buildings 30 180a4afc55c04e30
+siege 4 at 2m: fd3939fc3c3042db
+siege 4 end: tick 4340 winner 0 units 83 buildings 30 ca97d4f71f364778
 siege 4 census 0: 6dabbd651ba57a5f
 siege 4 census 1: 566155102ca0253f
 siege 4 census 2: 4756d45081ea5674
-siege 5 at 2m: 44b023c9d13aa0c6
-siege 5 end: tick 3640 winner 1 units 48 buildings 24 ea75faaf8744198d
+siege 5 at 2m: aca345ee39eef1d0
+siege 5 end: tick 3640 winner 1 units 48 buildings 24 a097c2a5cb500519
 siege 5 census 0: b8eab675aa39635e
 siege 5 census 1: c957b4b6b9913e22
 siege 5 census 2: 4756d45081ea5674
-siege 6 at 2m: f07e0826462df058
-siege 6 end: tick 3020 winner 0 units 79 buildings 22 8059c8238712c838
+siege 6 at 2m: 4a7dc4d5d7031b07
+siege 6 end: tick 3020 winner 0 units 79 buildings 22 7c062e8926c0856b
 siege 6 census 0: a8f91380b6ad88a1
 siege 6 census 1: 82e656854a37bb98
 siege 6 census 2: 4756d45081ea5674
