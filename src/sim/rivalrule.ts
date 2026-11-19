@@ -15,7 +15,8 @@
 import type { Army, Campaign, Territory } from './campaign';
 import { hireOff } from './places';
 import { HUB, reach } from './campaignbase';
-import { COMPANIES, MAX_ARMY, SITE_BUILDING, armyAt, armySize, armyStrength, atTruce, companyCost } from './campaignbase';
+import { COMPANIES, MAX_ARMY, SITE_BUILDING, ageOf, armyAt, armySize, armyStrength, atTruce, companyCost, soldierWord } from './campaignbase';
+import { mayRaiseKind } from './uniquecompany';
 import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS, TOWN_SCALE } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
@@ -118,7 +119,7 @@ export function nameVeterans(c: Campaign): { named: number; lost: number } {
       const female = hash(c.seed + a.id, 41) < 0.1, names = female ? NAMES_F : NAMES_M;
       const unit = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p])[0] ?? 'infantry';
       const man = manOfRoll(c, a.owner, a.id, 43); // a man of its roll, of his own house (veteranhome.ts), where it has one
-      a.champion = { name: man?.name ?? `${names[Math.floor(hash(c.seed + a.id, 43) * names.length)]} ${FAMILY_NAMES[Math.floor(hash(c.seed + a.id, 47) * FAMILY_NAMES.length)]}`, kills: a.vet * RIVAL.killsAWin, unit: unit === 'cavalry' ? 'Rider' : unit === 'archers' ? 'Archer' : 'Soldier', ...(female && !man ? { female: true } : {}), ...(man ? { town: man.town } : {}) };
+      a.champion = { name: man?.name ?? `${names[Math.floor(hash(c.seed + a.id, 43) * names.length)]} ${FAMILY_NAMES[Math.floor(hash(c.seed + a.id, 47) * FAMILY_NAMES.length)]}`, kills: a.vet * RIVAL.killsAWin, unit: soldierWord(unit), ...(female && !man ? { female: true } : {}), ...(man ? { town: man.town } : {}) };
       named++;
     }
     if (a.champion && !known[a.id]) {
@@ -323,7 +324,7 @@ export function rivalMoves(c: Campaign, f: number): number {
 export function poorMuster(c: Campaign, f: number): number {
   if (!rival(c, f) || warFooting(c, f) === 'peace') return -1;
   const own = towns(c, f);
-  const kinds = Object.keys(COMPANIES);
+  const kinds = Object.keys(COMPANIES).filter((k) => mayRaiseKind(COMPANIES[k], c.factions[f].civ, ageOf(c, f))); // a people's own soldiers, only theirs and in their age (uniquecompany.ts)
   if (own.some((t) => kinds.some((k) => HUB.canRaise(c, f, t.id, k)))) return -1; // it can pay in the ordinary way
   if (!own.some((t) => sparedMen(c, t.id) > 0)) return -1; // nobody to send
   const stock = (t: Territory): number => STORE_KINDS.reduce((n, k) => n + Math.max(0, folkOf(c, t.id).stores[k]), 0);
