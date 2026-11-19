@@ -24,7 +24,7 @@
 // The map draws them walking their roads (src/client/caravandraw.ts). One call a season (campaign.ts), after the convoys.
 // Decided by chances of its own (convoys.ts's hash, on caravan numbers of their own), so the rest of the campaign's luck
 // is left as it was.
-import { escortTally } from './roadclash';
+import { escortFight } from './roadclash';
 import type { Campaign } from './campaign';
 import type { Arrival, Convoy } from './convoys';
 import { CONVOYS, convoyLanes, waylay } from './convoys';
@@ -120,9 +120,10 @@ export function fallOnCaravan(c: Campaign, x: Caravan, b: Band): number {
   if (x.fallen) return 0;
   x.fallen = true;
   const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
-  escortTally(c, 'camp on a caravan', b, x.owner, x.road, escort); // stage one of the road fight, report only (roadclash.ts)
-  if (escort >= b.strength) return 0;
-  const took = Math.floor(x.cargo.gold * CONVOYS.rob * escortEdge(c, x.owner));
+  void escort;
+  const met = escortFight(c, 'camp on a caravan', b, x.owner, x.road); // an army of its people on the road fights the band (roadclash.ts)
+  if (!met.robbed) return 0;
+  const took = Math.floor(x.cargo.gold * CONVOYS.rob * met.share * escortEdge(c, x.owner));
   if (took <= 0) return 0;
   x.cargo.gold -= took;
   b.strength = Math.min(10, b.strength + 1);

@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { StyleSign, styleSign } from './stylesigns';
 import { layCoarse, layKept } from './firstlay';
 import { unlaidOf, unplaced } from './unlaid';
 import { RoofsIn, roofsOf, seatRoofs } from './roofs';
@@ -43,7 +44,11 @@ import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { storyTick, type FieldStory } from './fieldstory';
 import { placeBar } from './placebar';
+import type { WaterShape } from './waterlay';
+/** The land's water, carried on the town's side, with the corners anyone starts in kept dry (waterlay.ts). */
+const waterWith = (setups: PlayerSetup[]): WaterShape | undefined => { const w = setups.find((x) => x.water)?.water; const dry = setups.map((x) => x.start).filter((v): v is number => v !== undefined); return w ? { ...w, ...(dry.length ? { dry } : {}) } : undefined; };
 import { handRoadsTick } from './handroads';
+import { fleetKind, ramBlow } from './fleets';
 import { courtTick, type FieldCourt } from './courtfield';
 import { boughtIn } from './contagion';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
@@ -335,7 +340,8 @@ export type GameEvent =
   | { t: 'creed'; player: number; creed: string }
   | { t: 'oldage'; player: number; name: string }
   | { t: 'signal'; player: number; x: number; y: number }
-  | { t: 'gameover'; winner: number };
+  | { t: 'gameover'; winner: number }
+  | StyleSign; // a play style's rule at work, for a sign on the field (stylesigns.ts)
 
 /**
  * A building left standing after a battle: [type, cx, cy, health, built]. `health` is the share of its health
@@ -373,6 +379,8 @@ export interface PlayerSetup {
    * four, whoever is there, so the same ground is the same every time it is fought over.
    */
   start?: number;
+  /** The water of the land round the ground, on the side whose town it is (waterlay.ts, townwater.ts). */
+  water?: WaterShape;
 }
 
 /** How a raider's taking of someone is set down in their record. */
@@ -466,7 +474,7 @@ export class Game {
   constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false, public climate: Climate = '') {
     this.rngState = (seed ^ 0x9e3779b9) >>> 0;
     const placed = setups.some((s) => s.start !== undefined);
-    this.spec = generateMap(seed, size, placed ? 4 : setups.length, sea, relief, climate);
+    this.spec = generateMap(seed, size, placed ? 4 : setups.length, sea, relief, climate, { water: waterWith(setups) }); // the land's own water, carried on the town's side (waterlay.ts)
     if (placed) {
       // Corners named by the players are theirs; the rest take what is left, in order.
       const free = [0, 1, 2, 3].filter((k) => !setups.some((s) => s.start === k));
@@ -1765,6 +1773,7 @@ export class Game {
         for (const u of this.unitsNear(b.x, b.y, R.sanctuary, this.scratch)) {
           if (u.owner !== p.id || seen.has(u.id) || Math.hypot(u.x - b.x, u.y - b.y) > R.sanctuary) continue;
           seen.add(u.id); // two churches do not heal twice over
+          if (u.hp < u.maxHp || u.plagueT > 0) styleSign(this, p.id, 'faithful', u.x, u.y, u.id);
           u.plagueT = 0;
           if (u.hp < u.maxHp) u.hp = Math.min(u.maxHp, u.hp + heal);
         }
@@ -1780,6 +1789,7 @@ export class Game {
         const gold = Math.min(R.caravanMarkets, own) * R.caravan + abroad.size * R.caravanAbroad;
         p.res.gold += gold;
         p.stats.gathered += gold;
+        for (const b of this.buildings) if (b.owner === p.id && b.type === 'market' && b.complete) styleSign(this, p.id, 'trader', b.x, b.y);
       }
     }
   }
@@ -2559,6 +2569,7 @@ export class Game {
         const camp = raid ? hearthOf(this, u) : campWithRoom(this, u);
         // A band with no roof of its own takes them in where it stands.
         if (raid && !camp) { adopt(this, u.owner, u.captive, u.x, u.y); u.captive = null; }
+        if (raid && this.raider(u.owner)) styleSign(this, u.owner, 'raider', u.x, u.y);
         this.setOrder(u, camp ? { t: 'deliver', id: camp.id } : null);
         break;
       }
@@ -2723,6 +2734,7 @@ export class Game {
               b.complete = true;
               b.doneAt = this.time;
               if (b.type === 'wonder') this.events.push({ t: 'wonder', player: b.owner });
+              if (b.type === 'farm' && this.style(b.owner) === 'farmer') styleSign(this, b.owner, 'farmer', b.x, b.y);
               this.upkeep();
             }
           } else {
@@ -2917,6 +2929,8 @@ export class Game {
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
     const aura = (u.def.aura ? 1 : this.auraAt(u.owner, u.x, u.y)) * this.weakenAt(u.owner, u.x, u.y);
+    const ram = ramBlow(u, t); // a ram-ship rams a ship close by, at once, in place of a shot (fleets.ts)
+    if (ram > 1) { this.hit(u.owner, atk * ram, aura, u.def.cls, u.def.bonus, t, 1, u.id); return; }
     if (u.def.projectile) {
       this.projectiles.push({
         x: u.x, y: u.y, sx: u.x, sy: u.y, tx: t.x, ty: t.y, targetId: t.id,
@@ -2961,7 +2975,7 @@ export class Game {
     if (t.hp <= 0) {
       const s = this.players[owner].stats, ts = tp.stats;
       const killer = by ? this.entities.get(by) : undefined;
-      if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) { killer.kills = (killer.kills ?? 0) + 1; creditKill(this, killer); }
+      if (t.kind === 'unit' && killer && killer.kind === 'unit' && !killer.dead && t.owner !== this.wild) { killer.kills = (killer.kills ?? 0) + 1; creditKill(this, killer); if (this.style(killer.owner) === 'warrior' && this.isMilitary(killer) && killer.kills <= STYLE_RULES.veteranKills) styleSign(this, killer.owner, 'warrior', killer.x, killer.y); }
       // One who has felled enough is known by name from then on.
       if (killer && killer.kind === 'unit' && !killer.name && !killer.hero && !killer.merc && canLead(killer.def.cls) && (killer.kills ?? 0) >= CHAMPION_KILLS && killer.owner !== this.wild) killer.name = championName(killer.id);
       if (t.kind === 'unit') { s.kills++; ts.lost++; } else { s.razed++; ts.buildingsLost++; }
@@ -3036,7 +3050,7 @@ export class Game {
   trainedAs(owner: number, type: string): string {
     const up = this.players[owner].upgrades;
     while (up[type]) type = up[type];
-    return type;
+    return fleetKind(this.players[owner].civ, type); // a people's own kind of warship (fleets.ts)
   }
 
   /** Free cell next to a building, closest to a desired point. */
@@ -3083,8 +3097,10 @@ export class Game {
     if (!b.complete) return;
     const p = this.players[b.owner];
     // The Builders' walls and halls mend themselves when the town is left in peace.
-    if (b.hp < b.maxHp && b.burnT <= 0 && this.style(b.owner) === 'builder' && (!p.lastAttacked || this.time - p.lastAttacked.t > STYLE_RULES.peace))
+    if (b.hp < b.maxHp && b.burnT <= 0 && this.style(b.owner) === 'builder' && (!p.lastAttacked || this.time - p.lastAttacked.t > STYLE_RULES.peace)) {
       b.hp = Math.min(b.maxHp, b.hp + b.maxHp * STYLE_RULES.mend * DT);
+      styleSign(this, b.owner, 'builder', b.x, b.y, b.id);
+    }
 
     const q = b.queue[0];
     // Everyone called to this building is kept coming, not only whoever is next.
@@ -3113,10 +3129,13 @@ export class Game {
           p.pending.delete(q.id);
           p.techs.add(q.id);
           TECHS[q.id].apply(p.mods);
+          if (this.style(b.owner) === 'scholar') styleSign(this, b.owner, 'scholar', b.x, b.y);
           const up = TECHS[q.id].upgrade;
           if (up) {
+            const was = this.trainedAs(b.owner, up[0]); // a people's own kind of it (fleets.ts), or the type itself
             p.upgrades[up[0]] = up[1];
-            for (const u of this.units) if (u.owner === b.owner && u.type === up[0]) this.reequip(u, up[1]);
+            const now = this.trainedAs(b.owner, up[0]);
+            for (const u of this.units) if (u.owner === b.owner && (u.type === up[0] || u.type === was)) this.reequip(u, now);
           }
           this.msg(b.owner, `${TECHS[q.id].name} researched.`);
           this.upkeep();

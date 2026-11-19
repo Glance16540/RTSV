@@ -93,7 +93,9 @@ describe('a band and a caravan on the road', () => {
     const weak = band(two.c, two.b.id, 'marauders', 3), gold = y.cargo.gold;
     expect(until(two.c)).toBe(0);
     expect(y.cargo.gold).toBe(gold);
-    expect(weak.strength).toBe(3);
+    expect(weak.strength).toBeLessThan(3); // seen off, and the weaker for the fight (roadclash.ts)
+    expect(weak.strength).toBeGreaterThanOrEqual(1);
+    expect(two.c.armies[0].units.infantry).toBeGreaterThanOrEqual(4); // the escort paid a company at the most for each of the two caravans it saw through
   });
 
   it('one band falls on one caravan a season: the richest whose road it stands on', () => {
