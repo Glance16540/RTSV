@@ -4,6 +4,8 @@ import { armyAt, battleConfig, finishBattle, moveArmy, newCampaign } from '../sr
 import { Game } from '../src/sim/game';
 import { downedOf, rollOf, survivorsOf } from '../src/sim/soldiernames';
 import { folkOf } from '../src/sim/township';
+import { takeDowned } from '../src/sim/downedmap';
+import type { Campaign } from '../src/sim/campaign';
 
 /** The player's army marches on a tribe's town next door, as a battle fought in person. */
 function battle() {
@@ -58,5 +60,90 @@ describe('downedmap', () => {
     const before = rollOf(c, army.id);
     finishBattle(c, true, survivorsOf(g, 0), { downed: downedOf(g) });
     expect(rollOf(c, army.id)).toEqual(before);
+  });
+
+  // takeDowned on its own, on the map, with no battle fought: the first army of a new campaign is three companies of
+  // the capital's men, one man a company, each on his house's away list and on the army's roll.
+  const mapped = () => {
+    const c = newCampaign(4, 1, 1, 'hearth');
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const army = armyAt(c, home.id)!;
+    const men = rollOf(c, army.id);
+    return { c, home, army, men, size: () => Object.values(army.units).reduce((n, v) => n + v, 0) };
+  };
+  const down = (c: Campaign, men: ReturnType<typeof rollOf>, turn = c.turn) => { c.downed = { turn, men: men.map(({ army, town, name, family }) => ({ army, town, name, family })) }; };
+
+  it('takeDowned: with nobody seen to fall, or a list from another season, nothing changes', () => {
+    const { c, army, men, size } = mapped();
+    const was = JSON.stringify({ m: c.musters, a: c.armies, log: c.log.length });
+    expect(takeDowned(c)).toEqual([]);
+    down(c, men, c.turn - 1);
+    expect(takeDowned(c)).toEqual([]);
+    expect(JSON.stringify({ m: c.musters, a: c.armies, log: c.log.length })).toBe(was);
+    expect(rollOf(c, army.id)).toEqual(men);
+    expect(size()).toBe(3);
+  });
+
+  it('takeDowned: one man seen to fall is off the roll and his house\'s away list, among its fallen, counted, told, and his company struck', () => {
+    const { c, home, army, men, size } = mapped();
+    expect(men.length).toBe(3);
+    const man = men[0], ages = [...c.musters![army.id].men[home.id]];
+    down(c, [man]);
+    expect(takeDowned(c)).toEqual([`${man.name} ${man.family}`]);
+    expect(rollOf(c, army.id).map((m) => m.name)).not.toContain(man.name);
+    expect(c.musters![army.id].men[home.id].length).toBe(ages.length - 1);
+    expect(c.musters![army.id].men[home.id]).not.toContain(Math.max(...ages)); // the eldest age is the one taken off
+    expect(fate(c, home.id, man.name, man.family)).toBe('fell');
+    expect(folkOf(c, home.id).houses!.find((h) => h.family === man.family)!.fallen!.at(-1)!.how).toBe('fell with the army');
+    expect(size()).toBe(2);
+    expect(c.musters![army.id].size).toBe(2);
+    expect(c.ledger!.some((e) => e.kind === 'fell' && e.at === home.id && e.n === 1 && e.turn === c.turn)).toBe(true);
+    expect(c.log.at(-1)).toBe(`1 more man of ${home.name} fell with the army, seen to fall on the field. He was ${man.name} ${man.family}.`);
+  });
+
+  it('takeDowned: every man of the army seen to fall leaves it its last company, and an empty roll', () => {
+    const { c, home, army, men, size } = mapped();
+    down(c, men);
+    const out = takeDowned(c);
+    expect(out.sort()).toEqual(men.map((m) => `${m.name} ${m.family}`).sort());
+    expect(rollOf(c, army.id)).toEqual([]);
+    expect(c.musters![army.id].men[home.id]).toBeUndefined();
+    expect(size()).toBe(1);
+    expect(c.log.at(-1)).toMatch(new RegExp(`^3 more men of ${home.name} fell with the army, seen to fall on the field\\. They were `));
+  });
+
+  it('takeDowned: a man the reckoning already took, or one of an army with no roll, is left as he is', () => {
+    const { c, home, men, size } = mapped();
+    const gone = men[0];
+    const h = folkOf(c, home.id).houses!.find((x) => x.family === gone.family)!;
+    h.away = h.away.filter((s) => s.name !== gone.name); // taken already, home hurt
+    down(c, [gone]);
+    expect(takeDowned(c)).toEqual([]);
+    expect(size()).toBe(3);
+    const other = mapped();
+    delete other.c.musters![other.army.id];
+    down(other.c, [other.men[0]]);
+    expect(takeDowned(other.c)).toEqual([]);
+    expect(fate(other.c, other.home.id, other.men[0].name, other.men[0].family)).toBe('away');
+  });
+
+  it('takeDowned: a rival\'s man is taken off as well, without a word in the player\'s log', () => {
+    const { c } = mapped();
+    const rival = c.armies.find((a) => a.owner === 1)!;
+    const theirs = rollOf(c, rival.id);
+    expect(theirs.length).toBeGreaterThan(0);
+    const log = c.log.length;
+    down(c, [theirs[0]]);
+    expect(takeDowned(c)).toEqual([`${theirs[0].name} ${theirs[0].family}`]);
+    expect(rollOf(c, rival.id).map((m) => m.name)).not.toContain(theirs[0].name);
+    expect(c.log.length).toBe(log);
+  });
+
+  it('takeDowned: an army no longer on the map still has its roll put right', () => {
+    const { c, home, army, men } = mapped();
+    c.armies = c.armies.filter((a) => a.id !== army.id);
+    down(c, [men[1]]);
+    expect(takeDowned(c)).toEqual([`${men[1].name} ${men[1].family}`]);
+    expect(c.musters![army.id].men[home.id].length).toBe(2);
   });
 });
