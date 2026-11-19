@@ -85,6 +85,9 @@ function spareOf(c: Campaign, tid: number, k: StoreKind, given: Stores): number 
   return Math.max(0, Math.min(s[k] - given[k], others - PLENTY.floor));
 }
 
+/** What a town could send of a kind just now, to pay for a thing elsewhere: what it holds beyond its own floor (rivalstock.ts). */
+export const spareToSend = (c: Campaign, tid: number, k: StoreKind): number => spareOf(c, tid, k, { food: 0, wood: 0, gold: 0, stone: 0 });
+
 /**
  * How a price would be paid, town by town, or why it cannot be. The town `at` (else the chief town) first; then the
  * nation's other towns with a road to it, those with most of the kind first, each sending what it can spare and

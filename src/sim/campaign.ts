@@ -87,6 +87,7 @@ import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { canPayFor, payFor, paysHere } from './prices';
 import { SentFor, sentForSeason } from './sentfor';
+import { rivalForesight, spendIn } from './rivalstock';
 import { harvest } from './harvest';
 import { faithAt, seasonOfFaith, settleFaith, shiftVirtue } from './townfaith';
 export { shiftVirtue } from './townfaith'; // where it was found before it was moved
@@ -1385,19 +1386,21 @@ function aiStep(c: Campaign, f: Faction): boolean {
     if (!f.heroAlive) autoSucceed(c, f.id);
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
+    rivalForesight(c, f.id, { ageCost: ageCost(c, f.id), income: income(c, f.id), maxAge: AGE_COST.length }); // goods sent a season ahead of its next age and its chosen work (rivalstock.ts)
     // A people with stores to spare moves with the times.
     if (c.turn >= 5 && f.supplies >= ageCost(c, f.id) + 8 && mayAdvance(c, f.id)) advanceAge(c, f.id); // and has lived in this age long enough (rivalrule.ts)
     // A people shut in by the sea builds a harbour before anything else.
     const shut = !own.some((t) => reach(c, t.id).some((n) => c.territories[n].owner !== f.id));
-    if (shut) { const port = own.find((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')); if (port) build(c, f.id, port.id, 'harbour'); }
+    if (shut) { const port = spendIn(c, f.id, 'harbour', own.filter((t) => lanesOf(c, t.id).some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, 'harbour')).map((t) => ({ tid: t.id, n: siteCost(t, 'harbour', civ) }))); if (port !== undefined) build(c, f.id, port, 'harbour'); } // where it can pay (rivalstock.ts)
     // A people with stores to spare bridges a river or cuts a pass towards land that is not its own.
     if (c.turn >= 6) rivalOpens(c, f.id);
     // A people builds what it believes in: the pious a church, the worldly a tavern, each in its chief town first.
     const lean = leaningWith(civ, LEANING[civ] ?? 0.5);
     const house = lean >= 0.6 ? 'church' : lean <= 0.4 ? 'tavern' : '';
     if (house && c.turn >= 3 && f.supplies >= siteCost(own[0] ?? c.territories[0], house, civ) + 6 && own.filter((t) => t.buildings.includes(house)).length < 1 + Math.floor(own.length / 5)) {
-      const at = own.find((t) => t.capital === f.id && canBuild(c, f.id, t.id, house)) ?? own.find((t) => !t.adj.some((n) => c.territories[n].owner !== f.id) && canBuild(c, f.id, t.id, house));
-      if (at) build(c, f.id, at.id, house);
+      const cands = [...own.filter((t) => t.capital === f.id), ...own.filter((t) => t.capital !== f.id && !t.adj.some((n) => c.territories[n].owner !== f.id))].filter((t) => canBuild(c, f.id, t.id, house));
+      const at = spendIn(c, f.id, house, cands.map((t) => ({ tid: t.id, n: siteCost(t, house, civ) }))); // its chief town first, else a town within, where it can pay (rivalstock.ts)
+      if (at !== undefined) build(c, f.id, at, house);
     }
     for (const t of own) {
       const border = onFrontier(c, f.id, t.id); // beside somebody, not beside empty or wild land (reckon.ts)
