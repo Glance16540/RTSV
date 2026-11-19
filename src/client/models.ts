@@ -6,6 +6,7 @@ import { BUILDINGS } from '../sim/data';
 import { Gender } from '../sim/game';
 import { generatedModel } from './assets';
 import { banner, boxGeo, shapedBuilding, Surface, toon } from './shapes';
+import { greatWork } from './greatworks';
 import './civic'; // the buildings that answer the systems add their makers to shapedBuilding (civic.ts)
 
 /**
@@ -977,6 +978,8 @@ function flag(g: THREE.Object3D, color: number, x: number, y: number, z: number,
  */
 export function makeBuilding(type: string, color: number, age: number, civ = '', leaning: '' | 'holy' | 'low' = '', seed = Math.round(Math.random() * 8)): THREE.Group {
   const size = BUILDINGS[type].size;
+  const great = greatWork(type, civ, color); // Mali's and Kush's own (greatworks.ts)
+  if (great) return great;
   const gen = generatedModel(type, age, size * 0.94, 'footprint');
   if (gen) {
     flag(gen, color, size / 2 - 0.15, 0, size / 2 - 0.15, 1.6);
