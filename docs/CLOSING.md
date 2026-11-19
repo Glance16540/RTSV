@@ -1,6 +1,6 @@
 # Closing audit: the design against the game
 
-Written 19 November 2026, on main at 0c8468e, for the move to the Unity build. It goes through
+Written 19 November 2026, on main at b6e60f4, for the move to the Unity build. It goes through
 `docs/DESIGN.md` section by section and lists every promise that is not built, or is only half built.
 It includes the three "Not yet" lines of DESIGN.md's last table, and the gaps on the systems board
 (`scripts/systems.mjs`) that stand against the design.
