@@ -12,7 +12,7 @@
 
 /** The water of a battle's ground. Angles in radians on the ground (0 is towards +x, a quarter turn towards +y). */
 export interface WaterShape {
-  /** The start corner (0 to 3) that is the town's: the shore and the river are placed from it. */
+  /** The start corner (0 to 3) that is the town's: the shore and the river are placed from it; -1 for the ground's middle (a field battle). */
   corner: number;
   /** The sea: on which side, and how much of the land round it is sea (0 to 1). */
   shore?: { angle: number; share: number };
@@ -47,7 +47,7 @@ function rngOf(seed: number): () => number {
  * own; the dice are its own too. Returns how many tiles became water.
  */
 export function layWater(terrain: Uint8Array, N: number, seed: number, shape: WaterShape, starts: { x: number; y: number }[]): number {
-  const r = rngOf(seed ^ 0x3a7e2b1d), home = starts[Math.max(0, Math.min(starts.length - 1, shape.corner))] ?? { x: N / 2, y: N / 2 };
+  const r = rngOf(seed ^ 0x3a7e2b1d), home = shape.corner < 0 ? { x: N / 2, y: N / 2 } : starts[Math.max(0, Math.min(starts.length - 1, shape.corner))] ?? { x: N / 2, y: N / 2 };
   const homes = shape.dry?.length ? shape.dry.map((i) => starts[i]).filter(Boolean) : starts; // only the corners someone starts in
   const dry = (x: number, y: number): boolean => homes.some((s) => Math.hypot(x + 0.5 - s.x, y + 0.5 - s.y) < WATER_LAY.keep);
   const k = [r(), r(), r(), r()].map((v) => v * Math.PI * 2);

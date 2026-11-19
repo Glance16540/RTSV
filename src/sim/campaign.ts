@@ -1509,6 +1509,8 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const myReserve = reserves(c, 0, p.to, p.armyId)[0];
   const foeReserve = foe < 0 ? undefined : reserves(c, foe, p.to, p.armyId)[0];
   const allyReserve = c.ally < 0 ? undefined : reserves(c, c.ally, p.to, p.armyId)[0];
+  // The land's own water (townwater.ts); a field battle's is where the field lies, between the land it came from and this one.
+  const groundWater = waterOf(c, p.to, terrainOf(c), field && c.territories[p.from] ? { x: (c.territories[p.from].x + t.x) / 2, y: (c.territories[p.from].y + t.y) / 2 } : undefined);
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
     ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
@@ -1517,7 +1519,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(waterOf(c, p.to, terrainOf(c)) ? { water: waterOf(c, p.to, terrainOf(c)) } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
+      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))) }, // with what the nation has learned (studies.ts)
       {
         name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...(foe < 0 ? { tribe: true } : {}), ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: withStudies(c, foe, humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe))),
