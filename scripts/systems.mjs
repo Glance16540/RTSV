@@ -88,7 +88,7 @@ export const AREAS = [
           'The leader\'s buttons on the land panel (bring the leader here, call the armies, keep to the town) and the leader\'s line there were seen in a browser (docs/shots/sweep-leader-map.jpg); the crown over an ungarrisoned town was not found in view, and the turning map draws no figure for a leader without an army',
           'The leader\'s stay does nothing for the town\'s people themselves (births, health, a lord\'s mood), and its shares are first guesses, not tuned',
           'Calling the armies calls all of them, strips every garrison on the way, and will not cross land that is not their own or wait for a full army to make room',
-          'A battle settled on the map does not count a leader standing in an ungarrisoned town, and a rival attacked in a town its leader holds alone is settled without them',
+          'A leader holding an ungarrisoned town alone, the player\'s or a rival\'s, leads its defence when the battle is settled on the map (src/sim/seatedleader.ts): the side breaks later, at their rank, as an army with its leader does. What becomes of a leader in a town that falls on the map is still the court\'s rule (court.ts), not the fight\'s',
           'A leader travels one land a turn like an army, by road or sea lane, with no cost and no risk on the way',
           'Choosing a power on the field was seen in a browser (docs/shots/sweep-leader-power.jpg): its two buttons showed one and the same picture and now show one each; nothing but a line in the messages and on the panel tells the player a choice is waiting, and no person has chosen one',
           'A rival always has its powers chosen beforehand; a leader of yours fought by the computer (a reserve) takes the first of each pair',

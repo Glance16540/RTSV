@@ -177,7 +177,7 @@ and the church built in battle under "Towns persist".
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | He can call armies to meet him and move with them as one | Calling the armies calls all of them, strips every garrison on the way, and will not cross land not their own. A leader travels a land a turn with no cost or risk. | medium | Unity: this is the leader's movement on the new map. |
-| He is in a town or with an army | A battle settled on the map does not count a leader standing alone in an ungarrisoned town. | small | Before: one rule in `mapbattle.ts`, so that the leader's fate is right in what Unity inherits. |
+| He is in a town or with an army | **Done** (`src/sim/seatedleader.ts`): a leader holding an ungarrisoned town alone leads its defence when the battle is settled on the map, at their rank. | small | Built. |
 
 ## Grief
 
@@ -261,7 +261,7 @@ All small, each in its own module with its own test, and none changes a rule's m
 5. Men of no town sent home go to the army's chief town, or the last hired men are dropped. **Done** (`hiredhome.ts`).
 6. A known person carried off by a nation is marked carried off by name. **Done** (`carriednamed.ts`).
 7. The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).
-8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map.
+8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map. **Done** (`seatedleader.ts`).
 9. A defied rival king may declare war.
 
 Everything else ports as it is, and is built or decided in Unity.
