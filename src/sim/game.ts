@@ -1,5 +1,7 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { maidPull } from './churchtavern';
+import { monksTeach, nunsNurse } from './clergywork';
 import type { Season } from './seasonsky';
 import { formationPlan } from './formations';
 import type { Formation } from './formations';
@@ -1078,8 +1080,6 @@ export class Game {
     let bestD = Infinity;
     for (const v of buildingsOnly ? [] : this.unitsNear(x, y, radius, this.scratch)) {
       if (!this.hostile(v.owner, owner) || v.def.docile || (noShips && v.def.naval) || (noVillagers && v.type === 'villager')) continue;
-      // Wolves and the Norse leave each other alone.
-      if ((owner === this.wild && this.players[v.owner].civ === 'wild') || (v.owner === this.wild && this.players[owner].civ === 'wild')) continue;
       const d = Math.hypot(v.x - x, v.y - y);
       if (d > radius || d < minRange) continue;
       // Prefer things that fight back over villagers.
@@ -1867,7 +1867,7 @@ export class Game {
       updateCamps(this, p); // what holding people brings and costs (captivity.ts)
       this.styleUpkeep(p);
       const clergy = Math.min(STAFF_CAP, p.clergy), maids = Math.min(STAFF_CAP, p.maids);
-      const pull = (clergy * CLERGY_VIRTUE - maids * MAID_VIRTUE) / 60;
+      const pull = (clergy * CLERGY_VIRTUE - maids * MAID_VIRTUE * maidPull(this, p.id)) / 60; // a Church near the Tavern tempers it (churchtavern.ts)
       if (pull) this.shiftVirtue(p.id, pull);
       // Milkmaids earn the tavern's keep; patrons eat and drink their households' stores away.
       const women = Math.min(STAFF_CAP, p.maids - p.patrons);
@@ -2489,7 +2489,7 @@ export class Game {
     }
     if (u.plagueT > 0) {
       u.plagueT -= DT;
-      u.hp -= 2.5 * DT * sickCare(this, u.owner) * tendSick(this, u.owner); // nursed in an Infirmary, slower (infirmary.ts), and tended by the church by decree (tendintown.ts)
+      u.hp -= 2.5 * DT * sickCare(this, u.owner) * tendSick(this, u.owner) * nunsNurse(this, u.owner); // and nuns nurse them there (clergywork.ts) // nursed in an Infirmary, slower (infirmary.ts), and tended by the church by decree (tendintown.ts)
       if (u.hp <= 0) { this.kill(u); return; }
       if ((this.tick + u.id) % 20 === 0) {
         for (const v of this.unitsNear(u.x, u.y, 1.3, this.scratch)) {
@@ -3164,7 +3164,7 @@ export class Game {
     // Everyone called to this building is kept coming, not only whoever is next.
     if ((this.tick + b.id) % 20 === 0) for (let i = 1; i < b.queue.length; i++) if (b.queue[i].kind === 'unit') this.mustered(b, b.queue[i]);
     if (q && (q.kind !== 'unit' || q.in || ((this.tick + b.id) % 20 === 0 ? this.mustered(b, q) : q.who === undefined))) {
-      if (q.t < q.time) q.t += DT;
+      if (q.t < q.time) q.t += DT * (q.kind === 'tech' ? monksTeach(this, b.owner) : 1); // monks copy and teach (clergywork.ts)
       if (q.t >= q.time) {
         if (q.kind === 'unit') {
           const def = UNITS[q.id];

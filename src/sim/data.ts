@@ -1044,13 +1044,15 @@ export const CIVS: Record<string, CivDef> = {
   },
   greece: {
     id: 'greece', name: 'Greeks', icon: '🏺', desc: 'Free cities of citizen-soldiers and thinkers.', unique: 'hoplite', unique2: 'companion',
-    bonuses: ['Research costs 20% less', 'Soldiers have 1 more armour'],
-    apply: (m) => { m.techCost = 0.8; m.armor += 1; },
+    bonuses: ['Their Hoplites turn a third of every missile and break cavalry', 'Their Companion Cavalry strike hardest after a run-up'],
+    // Their two gifts beside their own units are gone (research a fifth cheaper, soldiers' one more armour): on the scholars' rule they won 60 decided
+    // games to 23 against the other fourteen peoples' computers; without the cheap research 62 to 31, and without the armour too 48 to 31.
+    apply: (_m) => { /* their gifts are their own two units and the scholars' rule */ },
   },
   england: {
     id: 'england', name: 'English', icon: '🌹', desc: 'Yeoman farmers and bowmen of a green island.', unique: 'longbowman', unique2: 'billman',
-    bonuses: ['Farms yield 10% more', 'Towers and Town Centers hit harder'],
-    apply: (m) => { m.farm = 1.1; m.towerAtk += 3; },
+    bonuses: ['Farms yield 10% more', 'Towers and Town Centers hit harder', 'Villagers gather 5% faster'],
+    apply: (m) => { m.farm = 1.1; m.towerAtk += 3; m.gather *= 1.05; }, // without the last they won 12 decided games and lost 36 against the other fourteen peoples' computers; with it 15 and 19
   },
   arabs: {
     id: 'arabs', name: 'Abbasids', icon: '🌙', desc: 'Traders, scholars and riders of the desert.', unique: 'camelrider', unique2: 'mameluke',
@@ -1081,8 +1083,9 @@ Object.assign(CIVS, {
   },
   wild: {
     id: 'wild', name: 'Norse', icon: '🪓', desc: 'Hunters and sea-raiders of the north.', unique: 'wolfrider', unique2: 'warbear',
-    bonuses: ['Raiders: start as a war band with no Town Center', 'Fighters carry off enemy villagers, who join the tribe', 'Game, berries and fish are gathered 50% faster', 'War Hounds and Mammoths cost 25% less', 'Wild wolves never attack them'],
-    apply: (m: Mods) => { m.hunt = 1.5; m.beastCost = 0.75; },
+    bonuses: ['Raiders: start as a war band with no Town Center', 'Fighters carry off enemy villagers, who join the tribe', 'Their Wolf Riders and War Bears cost food alone'],
+    // Their faster hunting, cheaper beasts and the wolves' peace are gone: with them they won four decided games in five of 224 against the other fourteen peoples' computers (103 to 22), and no one of the three did it alone.
+    apply: (_m: Mods) => { /* their gifts are their own two units and the raiders' rule */ },
   },
 } satisfies Record<string, CivDef>);
 export const CIV_IDS = Object.keys(CIVS);
