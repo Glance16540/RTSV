@@ -8,7 +8,7 @@ import { CHAMPION_KILLS, rankForKills } from '../src/sim/champion';
 import { UNITS } from '../src/sim/data';
 import { Game } from '../src/sim/game';
 import { HeroSpec, RANK_XP, cleanHero, heroBonus } from '../src/sim/hero';
-import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, leaderDef } from '../src/sim/powers';
+import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST, leaderDef, powersHeld } from '../src/sim/powers';
 
 const made = (over: Partial<HeroSpec>): HeroSpec => cleanHero({ name: 'Edric', might: 2, guard: 2, vigour: 2, ...over }, 'hearth');
 /** Two sides, the first led by a leader of the making given, standing in the open at rank `rank`. */
@@ -104,7 +104,7 @@ describe('deed', () => {
     expect(l.hero!.rank).toBe(1);
     expect(powerDue(g, 0)).toBe(-1);
     expect(heroOf(g, 0).powers![0]).toBe(0);
-    expect(msgs(g).at(-1)).toBe(`${l.name} is now Blooded.`); // the power is chosen after the words are made, so it is not named
+    expect(msgs(g).at(-1)).toBe(`${l.name} is now Blooded and has learnt ${powersHeld(heroOf(g, 0), 1).at(-1)!.name}.`); // named once it has chosen
   });
 });
 
