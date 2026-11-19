@@ -54,3 +54,111 @@ describe('a plain way of answering the stories', () => {
     }
   });
 });
+
+// The policy rule by rule, one story at a time.
+import { pactOf, wedPeace } from '../src/sim/pacts';
+import { openIntrigues } from '../src/sim/intrigue';
+
+describe('a plain way of answering the stories: rule by rule', () => {
+  it('with nothing waiting, it does nothing', () => {
+    const { c } = world(3);
+    expect(sensibleAnswers(c)).toEqual([]);
+    expect(sensibleAnswers(c, 1)).toEqual([]);
+  });
+
+  it('a thief: a watch is set first, and only once', () => {
+    const { c, at } = world(4);
+    const t = beginThief(c, at);
+    expect(sensibleAnswers(c)).toEqual(['thief:watch']);
+    expect(t.watch).toBe(true);
+    expect(sensibleAnswers(c)).toEqual([]); // the watch stands: it is not stood down
+    expect(t.watch).toBe(true);
+  });
+
+  it('a thief with no gold in the town to pay a watch: nothing is done', () => {
+    const { c, at } = world(4);
+    const t = beginThief(c, at);
+    folkOf(c, at).stores.gold = 0;
+    expect(sensibleAnswers(c)).toEqual([]);
+    expect(t.watch).toBeFalsy();
+  });
+
+  it('a thief taken is set to work it off: never hanged, banished or let go', () => {
+    const { c, at } = world(4);
+    const t = beginThief(c, at);
+    sensibleAnswers(c);
+    t.caught = c.turn; t.thief = t.people[0];
+    expect(sensibleAnswers(c)).toEqual(['thief:work']);
+    expect(t.ended?.how).toBe('worked');
+    expect(openIntrigues(c)).not.toContain(t);
+  });
+
+  it('a killer: a watch, and an accusation only when the clues have left one', () => {
+    const { c, at } = world(6);
+    const k = beginKiller(c, at);
+    expect(k.people.length).toBeGreaterThan(1);
+    k.cleared = [];
+    expect(sensibleAnswers(c)).toEqual(['killer:watch']);
+    // Two left: still nobody accused. (Honest clues never clear the culprit.)
+    const culprit = k.culprit!;
+    k.cleared = k.people.map((_, i) => i).filter((i) => i !== culprit).slice(1);
+    expect(sensibleAnswers(c).some((m) => m.startsWith('killer:accuse'))).toBe(false);
+    expect(k.ended).toBeUndefined();
+    // One left: that one.
+    k.cleared = k.people.map((_, i) => i).filter((i) => i !== culprit);
+    expect(sensibleAnswers(c)).toEqual([`killer:accuse:${culprit}`]);
+    expect(k.ended?.how).toBe('hanged');
+    expect(k.wronged ?? []).toHaveLength(0);
+  });
+
+  it('a rival\'s offer of trade is taken at peace; without a truce it cannot be, and nothing is claimed', () => {
+    const a = world(7);
+    a.c.truces.push({ with: a.rival, until: a.c.turn + 6 });
+    a.c.pactOffer = { kind: 'trade', from: a.rival, turn: a.c.turn };
+    expect(sensibleAnswers(a.c)).toEqual(['pact:trade']);
+    expect(pactOf(a.c, 'trade', 0, a.rival)).toBeTruthy();
+    expect(a.c.pactOffer).toBeUndefined();
+    const b = world(7);
+    b.c.pactOffer = { kind: 'trade', from: b.rival, turn: b.c.turn };
+    expect(sensibleAnswers(b.c)).toEqual([]);
+    expect(pactOf(b.c, 'trade', 0, b.rival)).toBeFalsy();
+    expect(b.c.pactOffer).toBeUndefined(); // answered all the same
+  });
+
+  it('a royal match: taken by the weaker player, who wants the peace; declined by the stronger', () => {
+    const offer = (weaker: boolean) => {
+      const w = world(8);
+      houseOf(w.c, w.rival).heirs = [{ name: 'Osric', female: false, born: w.c.turn - HEIR_AGE - 4 }];
+      w.c.armies = w.c.armies.filter((x) => x.owner === (weaker ? w.rival : 0));
+      w.c.pactOffer = { kind: 'marriage', from: w.rival, turn: w.c.turn, wed: ['Osric', 'Elin'] };
+      return w;
+    };
+    const weak = offer(true);
+    expect(sensibleAnswers(weak.c)).toEqual(['pact:marriage']);
+    expect(wedPeace(weak.c, 0, weak.rival)).toBe(true);
+    const strong = offer(false);
+    expect(sensibleAnswers(strong.c)).toEqual([]);
+    expect(wedPeace(strong.c, 0, strong.rival)).toBe(false);
+    expect(strong.c.pactOffer).toBeUndefined();
+    expect(strong.c.log.some((l) => /You decline .*offer of a match/.test(l))).toBe(true);
+  });
+
+  it('a match between peoples equally strong is declined: only the weaker side takes one', () => {
+    const w = world(8);
+    houseOf(w.c, w.rival).heirs = [{ name: 'Osric', female: false, born: w.c.turn - HEIR_AGE - 4 }];
+    w.c.armies = [];
+    w.c.pactOffer = { kind: 'marriage', from: w.rival, turn: w.c.turn, wed: ['Osric', 'Elin'] };
+    expect(sensibleAnswers(w.c)).toEqual([]);
+    expect(wedPeace(w.c, 0, w.rival)).toBe(false);
+  });
+
+  it('answering for a rival\'s people leaves the player\'s offers and stories alone', () => {
+    const { c, at, rival } = world(9);
+    const t = beginThief(c, at);
+    c.truces.push({ with: rival, until: c.turn + 6 });
+    c.pactOffer = { kind: 'trade', from: rival, turn: c.turn };
+    expect(sensibleAnswers(c, rival)).toEqual([]);
+    expect(t.watch).toBeFalsy();
+    expect(c.pactOffer).toBeDefined();
+  });
+});
