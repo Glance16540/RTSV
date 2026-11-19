@@ -33,8 +33,8 @@ siege 1 end: tick 4480 winner 0 units 48 buildings 19 e2bc6379e8d3d7f5
 siege 1 census 0: b0d5f1c08f6b7c4e
 siege 1 census 1: decb41f9ffcba71d
 siege 1 census 2: 4756d45081ea5674
-siege 2 end: tick 2180 winner 0 units 59 buildings 25 2df9bf8d93d948f5
-siege 2 census 0: 603cee8129e75855
+siege 2 end: tick 2160 winner 0 units 59 buildings 25 b54fc4dbd278f7bb
+siege 2 census 0: a5130d9ab2a75326
 siege 2 census 1: abee16ed8e8b5d69
 siege 2 census 2: 4756d45081ea5674
 siege 3 at 2m: 041fc3d78f2551fd
@@ -56,12 +56,12 @@ siege 6 end: tick 2040 winner 0 units 79 buildings 19 2aa0e71efe2ff02a
 siege 6 census 0: 684ebce4a4788e38
 siege 6 census 1: 8c3d3f66f219c9c1
 siege 6 census 2: 4756d45081ea5674
-drill 1 (greece v japan) at 2m: 8e705dea659430db
-drill 1 (greece v japan) at 4m: 7c67d39727b7aa7f
-drill 1 (greece v japan) at 6m: 4b3325a3f6c68b47
-drill 1 (greece v japan) at 8m: d6aa656677d56500
-drill 1 (greece v japan) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 37 d6aa656677d56500
-drill 1 (greece v japan) after the leaders fell: 4dfb5bb0316cd37b acclaimed true/true/false b8893119148c342a
+drill 1 (greece v japan) at 2m: 1be48ef98d83e724
+drill 1 (greece v japan) at 4m: 4e93163a9b42b92d
+drill 1 (greece v japan) at 6m: 8e6c922e6dc37319
+drill 1 (greece v japan) at 8m: dbdf40901ec790cd
+drill 1 (greece v japan) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 37 dbdf40901ec790cd
+drill 1 (greece v japan) after the leaders fell: 4dfb5bb0316cd37b acclaimed true/true/false 027d8cc76a1e6d18
 drill 2 (wild v hearth) at 2m: b08e2d50fcdb4274
 drill 2 (wild v hearth) at 4m: cda4c407473818ba
 drill 2 (wild v hearth) at 6m: 5e0259bded55f8fe
@@ -92,11 +92,11 @@ drill 6 (kush v stonekin) at 6m: fd88e40ad71544aa
 drill 6 (kush v stonekin) at 8m: 2fb7d954563f687a
 drill 6 (kush v stonekin) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 42 2fb7d954563f687a
 drill 6 (kush v stonekin) after the leaders fell: 5ddf36536d5d84fc acclaimed false/true/false 874dc9ca38afbceb
-camp drill 1 (babylon v greece) at 2m: 660f5f1c5e491d8e
-camp drill 1 (babylon v greece) at 4m: 38a57357bd9023f4
-camp drill 1 (babylon v greece) at 6m: 21d3bfb16cf3174a
-camp drill 1 (babylon v greece) at 8m: 7ad3239ebd16ff6a
-camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 7, most in the marauders' camp 0, camps burnt 2, freed and home 8, got out by night 1 7ad3239ebd16ff6a
+camp drill 1 (babylon v greece) at 2m: 51cc69f27282cdaf
+camp drill 1 (babylon v greece) at 4m: 4a325f7f0be1e6b1
+camp drill 1 (babylon v greece) at 6m: 88d2ae386065613e
+camp drill 1 (babylon v greece) at 8m: 0d8cfd9abebffc50
+camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 7, most in the marauders' camp 0, camps burnt 2, freed and home 8, got out by night 1 0d8cfd9abebffc50
 camp drill 2 (japan v kush) at 2m: 41df63ad3b98603a
 camp drill 2 (japan v kush) at 4m: 8839f77d7adc99ba
 camp drill 2 (japan v kush) at 6m: f13c6f92c8ed0205

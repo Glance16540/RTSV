@@ -2500,7 +2500,7 @@ describe('the thirteen nations', () => {
     expect(g.cmdTrain(0, range.id, 'longbowman')).toBe(true);
     expect(g.cmdTrain(0, range.id, 'ashigaru')).toBe(false); // Japanese only
     expect(UNITS.longbowman.range).toBeGreaterThan(UNITS.crossbowman.range);
-    expect(g.players[1].mods.armor).toBe(1); // Greek soldiers
+    expect(g.players[1].mods.armor).toBe(0); // Greek soldiers have no more armour than anyone's now (tests/peoplegifts.test.ts)
     // A billman beats a knight; a hoplite shrugs off arrows.
     const bill = g.spawnUnit('billman', 0, 48, 48), knight = g.spawnUnit('knight', 1, 49, 48);
     g.cmdTarget(0, [bill.id], knight.id); g.cmdTarget(1, [knight.id], bill.id);
