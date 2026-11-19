@@ -503,7 +503,8 @@ export class Hud {
     }
     const owner = game.players[e.owner];
     const mine = e.owner === pid;
-    const tag = mine ? '' : ` <span style="color:${hex(owner.color)}">(${owner.name}${owner.neutral || game.hostile(e.owner, pid) ? '' : ', ally'})</span>`;
+    const rising = e.kind === 'unit' && e.captain; // the one who leads a claimant's rising (claimantcaptain.ts)
+    const tag = mine ? '' : ` <span style="color:${hex(owner.color)}">(${rising ? 'leads the rising' : `${owner.name}${owner.neutral || game.hostile(e.owner, pid) ? '' : ', ally'}`})</span>`;
     const hp = `${this.bar(e.hp / e.maxHp, 'hp')}<small>${Math.ceil(e.hp)} / ${e.maxHp}</small>`;
     if (e.kind === 'unit') {
       const d = e.def;
