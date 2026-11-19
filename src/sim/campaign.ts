@@ -45,6 +45,7 @@ import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import { atWarWith, warUntil } from './feudwar';
 import { befalls, feverToll, hardCost } from './chancecreed';
 import { raiseFaithSites } from './faithsites';
 import { makeRim } from './rim';
@@ -968,6 +969,7 @@ export const homeEdge = (c: Campaign, attacker: number): number => (c.factions[a
 export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
   if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || !canPayFor(c, 0, 'dealing', truceCost(c.factions[0].civ)) || c.phase !== 'player' || fac.refused === c.turn) return false;
+  if (atWarWith(c, f)) { fac.refused = c.turn; say(c, f, 'refuse'); c.log.push(`${fac.name} are at war with you over their king's quarrel, and will hear of no truce before turn ${warUntil(c, f)! + 1}.`); return false; } // a defied king who declared war (feudwar.ts)
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
   const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0) + treatLean(c, f); // and readier to treat (nobleweigh.ts)
   if (c.honor < 0 || rand(c) > willing) {

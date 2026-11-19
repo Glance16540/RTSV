@@ -189,7 +189,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | The leader's household can be threatened, married off, lost or taken | A spouse cannot be married off or offered in a treaty or ransom (only a rival's threat and demand exist). Royal matches go through `royalmarriage.ts`, but not the spouse. | medium | Unity: port as is. The owner should say whether the spouse is ever offered. |
-| The inner circle: a mood and a loyalty that can turn | Built. The confidant does not warn of the knife, and a rival king's threats lead neither to war nor to a raid on the court. | small | Before for the war: the threat has a defied-king feud already (`aftermath.ts`), so letting it declare war is a small step. Unity for the warning, which is a scene. |
+| The inner circle: a mood and a loyalty that can turn | Built. The confidant does not warn of the knife. **The war is done (19 November 2026, `feudwar.ts`):** a defied rival king may declare war as his feud begins, which ends the truce or alliance between them and bars a new truce while the feud runs. A raid on the court is not built. | small | Done for the war. Unity for the warning, which is a scene. |
 | Nobles | Built (`nobles.ts`, `nobledeal.ts`, `nobleacts.ts`, `nobleweigh.ts`, `nobletemper.ts`). Only the plot story has a plot. | none | Unity: port as is. |
 | Stories inside the story | All five are built, for the player and for rivals. They come onto the field only in a visit, not in a battle, and a killer's suspects can be questioned there but not accused or seized. | medium | Unity: field work. |
 | Several campaigns | Built. Worlds are kept in this browser only, and a skirmish has one save. | small | Unity: saving is the engine's. |
@@ -262,6 +262,6 @@ All small, each in its own module with its own test, and none changes a rule's m
 6. A known person carried off by a nation is marked carried off by name.
 7. ~~The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).~~ Done: `wrath.ts` in `game.ts`, and `chancecreed.ts`.
 8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map.
-9. A defied rival king may declare war.
+9. ~~A defied rival king may declare war.~~ Done: `feudwar.ts`.
 
 Everything else ports as it is, and is built or decided in Unity.
