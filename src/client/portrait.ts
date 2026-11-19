@@ -1,9 +1,10 @@
-// Portraits drawn: the woodblock icon that src/sim/portrait.ts chose, with its marks of condition small over it.
+// Portraits drawn: a person's own face (src/sim/faces.ts, drawn by facedraw.ts), or the woodblock icon that src/sim/portrait.ts chose, with its marks of condition small over it.
 // When none of the chosen icons is there, the old picture or emoji the caller gives stands in.
 import type { Captive, Game, Unit, Building } from '../sim/game';
 import type { Campaign } from '../sim/campaign';
 import { MARK_WORDS, Portrait, STANDING_WORDS, captivePortrait, captorOf, markKey, nationOf, notablePortrait, pickKey, standingKeys, standingOf, townMarks, townMood, townStanding, unitPortrait } from '../sim/portrait';
 import { iconSrc } from './assets';
+import { faceSvg } from './facedraw';
 
 const has = (k: string): boolean => !!iconSrc(k);
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -13,12 +14,13 @@ const MARKS = 3;
 /** HTML for a portrait at one of three sizes; `fallback` when no icon of it is there. */
 export function portraitHtml(p: Portrait | null, fallback = '', size: 'sm' | 'md' | 'lg' = 'md'): string {
   if (!p) return fallback;
-  const key = pickKey(p.keys, has);
-  if (!key) return fallback;
+  const key = p.face ? '' : pickKey(p.keys, has);
+  if (!p.face && !key) return fallback;
   const marks = p.marks.map((m) => [m, markKey(m, p.sex)] as const).filter(([, k]) => has(k)).slice(0, MARKS)
     .map(([m, k], i) => `<img class="likeness-mark m${i}" src="${iconSrc(k)}" alt="" title="${esc(MARK_WORDS[m])}" draggable="false">`).join('');
   const title = p.words ? ` title="${esc(p.words[0].toUpperCase() + p.words.slice(1))}"` : '';
-  return `<span class="likeness ${size}"${title}><img class="ico" src="${iconSrc(key)}" alt="" draggable="false">${marks}</span>`;
+  const picture = p.face ? faceSvg(p.face) : `<img class="ico" src="${iconSrc(key!)}" alt="" draggable="false">`; // a person's own face (faces.ts), else their people's picture
+  return `<span class="likeness ${size}"${title}>${picture}${marks}</span>`;
 }
 
 /** Anyone on a battlefield. */
