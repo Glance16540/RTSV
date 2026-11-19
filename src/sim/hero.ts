@@ -1,12 +1,12 @@
 // A nation's leader on the field: who they are, how they were made, and what the battles they live through do for them.
 //
-// The leader is a hero unit (a Warlord or a Strategist, whichever their calling is) with a name, points spent in the
+// The leader is a hero unit (a Warlord, a Strategist or a Steward (steward.ts), whichever their calling is) with a name, points spent in the
 // creator, and veterancy earned in battle. Their town's piety gives them a power of its own. They are still men and
 // women: a blow always tells on them, and they fall.
 
 import { LEADERS, leaderOf } from './leaders';
 
-export type Calling = 'warlord' | 'strategist';
+export type Calling = 'warlord' | 'strategist' | 'steward';
 /** What each new rank of veterancy adds: strength of arm, armour, or the two by turns. */
 export type Bent = 'strength' | 'armour' | 'both';
 
@@ -74,7 +74,7 @@ export function cleanHero(h: Partial<HeroSpec> | null | undefined, civ: string):
   }
   return {
     name: text(h.name, 60) || d.name, female: h.female == null ? d.female : !!h.female,
-    calling: h.calling === 'strategist' ? 'strategist' : 'warlord', bent: h.bent === 'strength' || h.bent === 'armour' ? h.bent : 'both',
+    calling: h.calling === 'strategist' || h.calling === 'steward' ? h.calling : 'warlord', bent: h.bent === 'strength' || h.bent === 'armour' ? h.bent : 'both',
     might, guard, vigour, rank: int(h.rank, 0, MAX_RANK), powers: [0, 1, 2].map((t) => (Array.isArray(h.powers) && h.powers[t] === 1 ? 1 : Array.isArray(h.powers) && h.powers[t] === 0 ? 0 : -1)), look,
     ...(text(h.fights, 24) ? { fights: text(h.fights, 24) } : {}),
   };
