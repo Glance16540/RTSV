@@ -44,7 +44,7 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Ten women taken is ten women gone, and held somewhere real | Captives taken in a visit are counted and gone (`battlefolk.ts` taken). Those taken in a battle fought in person are held on the map (`battlecarried.ts`), but a visit's are not. | small | Before: the same hand-off `battlecarried.ts` already makes, and the record should be one rule. |
-| What is built in a town is kept on its record | A Church or Tavern built in a battle stands on the town's record but is not raised as the map site that moves the town's faith (`SITE_BUILDING` has neither). | small | Before: one table entry and a test, and it decides whether a played town's faith follows what was built there. |
+| What is built in a town is kept on its record | **Done (19 November 2026, `faithsites.ts`).** A Church or Tavern built in a battle or on a visit is raised as the map site that moves the town's faith, where the land has room and has none. | small | Done. |
 | What is built in a town is kept on its record | A road laid by hand in a siege is not kept; only a visit keeps roads. | small | Unity: roads are field work and the new engine lays its own. |
 | Nobody from nowhere (towns persist, a soldier costs a person) | The four who settle a town emptied in a battle fought in person, the settlers who follow a rival's army into a dead town, and a tribe's town made up to its old strength the first time it is looked into are all people from nowhere. | small | Before: take the settlers from the taker's nearest town as `founding.ts` already does. The tribe's one-time top-up can stay, since it happens once per save. |
 | An attacking camp has no people from nowhere | The board still says an attacking camp's villagers may come from nowhere (Towns that keep their people). `siegecamp.ts` now covers a besieging army's camp. Whether any other attacker's camp still gets villagers needs one check. | small | Before: check it, and either fix the case or strike the board line. |
@@ -255,7 +255,7 @@ These are not single promises, but they stand against the whole of DESIGN.md:
 All small, each in its own module with its own test, and none changes a rule's meaning:
 
 1. Captives taken in a visit are held on the map, as a battle's are (`battlecarried.ts`).
-2. A Church or Tavern built in a battle is raised as the map site that moves the town's faith.
+2. ~~A Church or Tavern built in a battle is raised as the map site that moves the town's faith.~~ Done: `faithsites.ts`.
 3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town.
 4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line.
 5. Men of no town sent home go to the army's chief town, or the last hired men are dropped.

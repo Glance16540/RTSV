@@ -45,6 +45,7 @@ import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import { raiseFaithSites } from './faithsites';
 import { makeRim } from './rim';
 import { nobodyThere } from './founding';
 import { seasonFolk } from './seasonfolk';
@@ -1683,6 +1684,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
         land.buildings.push(site);
         c.log.push(`The ${SITES[site].name} you built in the fighting stands in ${land.name}.`);
       }
+      raiseFaithSites(c, land.id, b, 'in the fighting'); // and a Church or a Tavern (faithsites.ts)
     }
   }
   if (!mine && sat && c.factions[0].heroAlive) {
