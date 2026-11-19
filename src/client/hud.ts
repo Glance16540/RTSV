@@ -1,5 +1,6 @@
 // DOM heads-up display: resources, selection info, command card, minimap and messages.
 
+import { onTheMove, raiderSteps } from '../sim/raiderguide';
 import { buildingLook, inFaith } from '../sim/faithhouse';
 import { mayGoHome, mayRejoin } from '../sim/furlough';
 import { endCard } from './briefing';
@@ -685,7 +686,8 @@ export class Hud {
     const p = game.players[pid];
     const mine = game.buildings.filter((b) => b.owner === pid);
     const units = game.units.filter((u) => u.owner === pid);
-    const steps: [string, string, boolean][] = [
+    const band = onTheMove(game, pid); // a war band in the open has steps of its own (raiderguide.ts)
+    const steps: [string, string, boolean][] = band ? raiderSteps(game, pid).map((s) => [s.title, s.how, s.done]) : [
       ['Put your villagers to work', 'Drag a box around them, then right-click berries or trees.', units.some((u) => u.order?.t === 'gather') || game.time > 240],
       ['Build a House', 'Select a villager, press Q, then click a spot near the Town Center.', mine.some((b) => b.type === 'house' && b.complete)],
       ['Start a family', 'Select the house and press Q, or right-click it with a man and a woman.', mine.some((b) => b.residents.m && b.residents.f)],
@@ -699,13 +701,13 @@ export class Hud {
     ];
     const i = steps.findIndex((s) => !s[2]);
     const show = !this.guideOff && i >= 0 && !this.app.paused;
-    const sig = show ? String(i) : '';
+    const sig = show ? (band ? 'b' : '') + String(i) : '';
     if (sig === this.guideSig) return;
     this.guideSig = sig;
     const el = $('guide');
     el.classList.toggle('hidden', !show);
     if (!show) return;
-    el.innerHTML = `<h4>First steps ${i + 1}/${steps.length}<button title="Hide these tips">✕</button></h4>` +
+    el.innerHTML = `<h4>${band ? 'A war band' : 'First steps'} ${i + 1}/${steps.length}<button title="Hide these tips">✕</button></h4>` +
       (i > 0 ? `<div class="done">✓ ${steps[i - 1][0]}</div>` : '') +
       `<div class="now"><b>${steps[i][0]}</b><small>${steps[i][1]}</small></div>`;
   }

@@ -6,6 +6,8 @@ import { FIRE } from './calamity';
 import { FAMINE, want } from './famine';
 import { isDecadent } from './creed';
 import type { Game } from './game';
+import { hazardLessons, hazardsDue } from './hazardlessons';
+import { CALLS } from './powers';
 
 export interface Lesson { id: string; title: string; text: string }
 
@@ -15,13 +17,14 @@ export const GLUT = 400, SHORT = 50;
 export const FRESH = 20;
 
 /** Every lesson there is, in the order they are told when several fall due together: the most pressing first. */
-export function lessons(): Lesson[] {
+export function lessons(g?: Game, pid = 0): Lesson[] {
   const wall = BUILDINGS.palisade, stone = BUILDINGS.stonewall, tower = BUILDINGS.tower, camp = BUILDINGS.workcamp;
   return [
     { id: 'fire', title: 'Fire in the town',
       text: `Select villagers and right-click the burning building: they beat the fire down before they mend anything, up to ${FIRE.hands} of them usefully at once. Idle villagers within ${FIRE.turnout} tiles go to it by themselves. A fire left alone can catch the building beside it; rain puts fires out.` },
     { id: 'hungry', title: 'The store is bare',
       text: `Your people are going hungry. If the store stays empty for another ${FAMINE.starving - FAMINE.hungry} seconds it is famine, and one of the town is lost every ${FAMINE.toll} seconds: the old first, then the children. One load of food carried home ends it, so send villagers to berries, game or a farm now.` },
+    ...hazardLessons(g?.foul || 'rain', g ? callName(g, pid) : undefined), // plague, a storm, marauders, a rival's Wonder, the leader's powers (hazardlessons.ts)
     { id: 'walls', title: 'They have come for your town',
       text: `A ${wall.name} keeps raiders out: select a villager, choose ${wall.name} and drag a line (${wall.cost.wood} wood a piece). It stops your own people too, so set a ${BUILDINGS.gate.name} in it. Ring the town bell at the Town Center to send villagers under cover.` },
     { id: 'tower', title: 'Stone for defence',
@@ -35,9 +38,9 @@ export function lessons(): Lesson[] {
 
 /** The lessons whose moment has come for this player, most pressing first. It does not know which were told before. */
 export function lessonsDue(g: Game, pid: number): string[] {
-  if (g.field) return [];
   const p = g.players[pid];
   if (!p || p.defeated) return [];
+  if (g.field) return hazardsDue(g, pid); // a field battle has no town to teach, but its weather, plague and leader
   const mine = g.buildings.filter((b) => b.owner === pid && !b.dead);
   const has = (type: string): boolean => mine.some((b) => b.type === type);
   const struck = !!p.lastAttacked && g.time - p.lastAttacked.t <= FRESH;
@@ -46,14 +49,20 @@ export function lessonsDue(g: Game, pid: number): string[] {
   if (mine.some((b) => b.complete && b.burnT > 0)) due.push('fire');
   if (want(p) !== '') due.push('hungry');
   if (struck && !mine.some((b) => b.def.wall)) due.push('walls');
+  due.push(...hazardsDue(g, pid));
   if (struck && p.age >= BUILDINGS.tower.age && !has('tower')) due.push('tower');
   if (p.age >= BUILDINGS.market.age && !has('market') && Math.max(...stocks) >= GLUT && Math.min(...all) < SHORT) due.push('market');
   if (isDecadent(p.virtue) && p.age >= BUILDINGS.workcamp.age && !has('workcamp')) due.push('camp');
   return due;
 }
 
+/** The name of the call this player's leader raises, for the lesson on powers. */
+function callName(g: Game, pid: number): string | undefined {
+  try { return CALLS[g.heroOf(pid).calling]?.name; } catch { return undefined; }
+}
+
 /** The next lesson to tell: the most pressing one that is due and has not been told. */
 export function nextLesson(g: Game, pid: number, told: string[]): Lesson | null {
   const id = lessonsDue(g, pid).find((d) => !told.includes(d));
-  return id ? lessons().find((l) => l.id === id) ?? null : null;
+  return id ? lessons(g, pid).find((l) => l.id === id) ?? null : null;
 }
