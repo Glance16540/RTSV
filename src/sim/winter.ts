@@ -21,7 +21,7 @@ declare module './campaign' {
 
 export const WINTER = {
   /** What a land yields in winter, against any other season. */
-  yield: 0.6,
+  yield: 0.85,
 };
 
 /** Is it winter on the map? */
