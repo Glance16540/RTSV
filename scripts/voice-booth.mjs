@@ -5,7 +5,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { CHARACTER_LIMITS, EVENT_NOTES, LEADERS, LEADER_EVENTS, lineKey, personaLines } from '../src/sim/leaders.ts';
 import { CIVS, CIV_COLOR } from '../src/sim/data.ts';
 import { TEMPER_AXES, TEMPER_QUESTIONS, TEMPER_WORDS } from '../src/sim/temper.ts';
-import { FOLK, FOLK_VOICES, LEANS, LEAN_NOTES, MOMENT_NOTES, folkAs, folkKey } from '../src/sim/folk.ts';
+import { FOLK, FOLK_VOICES, LEANS, LEAN_NOTES, MOMENT_NOTES, folkAs, folkKey, folkRole } from '../src/sim/folk.ts';
+import { BELIEF_NOTES, BELIEF_OF as FAITH_CIV, faithKey, faithVariants } from '../src/sim/folkfaith.ts';
 
 // The common people: villagers at every job and warriors of every arm, each line in three tempers, from a holy town
 // to a decadent one. Up to three people can voice each part; the game picks among them.
@@ -20,7 +21,13 @@ const folk = PARTS.flatMap((p) => FOLK_VOICES.map((v, n) => ({
   lines: FOLK.filter((r) => r.kind === p.kind).flatMap((r) => { const as = folkAs(r, p.sex); return Object.entries(as.lines).flatMap(([moment, three]) => three.map((text, li) => ({
     key: folkKey(r.id, LEANS[li], moment, p.sex, v), ev: r.id + '_' + moment + '_' + LEANS[li], i: 0, group: as.name + ': ' + as.about,
     when: as.name + ' · ' + MOMENT_NOTES[moment] + ' · ' + LEAN_NOTES[LEANS[li]], text,
-  }))); }),
+  }))); }).concat(
+    // The same lines in each people's own faith, where the script's speak of faith (folkfaith.ts).
+    faithVariants().filter((x) => folkRole(x.role)?.kind === p.kind && !(p.sex === 'f' && folkRole(x.role)?.her)).map((x) => {
+      const as = folkAs(folkRole(x.role), p.sex), civ = Object.entries(FAITH_CIV).find(([, b]) => b === x.belief)?.[0];
+      return { key: faithKey(folkKey(x.role, x.lean, x.moment, p.sex, v), x.role, x.moment, x.lean, civ), ev: x.role + '_' + x.moment + '_' + x.lean + '_' + x.belief, i: 0, group: 'In their own faith: ' + BELIEF_NOTES[x.belief],
+        when: as.name + ' · ' + MOMENT_NOTES[x.moment] + ' · ' + LEAN_NOTES[x.lean], text: x.text };
+    })),
 })));
 
 // Most nations can be led by a man or by a woman: both are offered, and the recordings say which was voiced.
