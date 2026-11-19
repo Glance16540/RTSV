@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/sim/game';
 import { CIV_IDS, TECHS, UNITS } from '../src/sim/data';
-import { FLEETS, hullOf } from '../src/sim/fleets';
+import { FLEETS, RAM, hullOf, ramBlow } from '../src/sim/fleets';
+import { T_WATER } from '../src/sim/map';
 import { spot } from './helpers';
 
 const sides = (civ: string) => [{ name: 'A', color: 0x3366ff, isAI: false, civ }, { name: 'B', color: 0xff3333, isAI: true, civ: 'hearth' }];
@@ -54,5 +55,37 @@ describe('each people\'s fleet', () => {
     expect(p.techs.has('up_frigate')).toBe(true);
     expect(junk.type).toBe('towership');
     expect(g.trainedAs(0, 'galley')).toBe('towership');
+  }, 60_000);
+});
+
+describe('ships fight by their kind', () => {
+  it('a ram-ship rams a ship close by: only the Trireme and the Galleass, only a ship, only close', () => {
+    const ship = (type: string, x: number) => ({ kind: 'unit', def: UNITS[type], x, y: 10 });
+    expect(ramBlow(ship('trireme', 10), ship('galley', 11.5))).toBe(RAM.mult);
+    expect(ramBlow(ship('galleass', 10), ship('dhow', 11.5))).toBe(RAM.mult);
+    expect(ramBlow(ship('trireme', 10), ship('galley', 16))).toBe(1); // too far: it shoots
+    expect(ramBlow(ship('trireme', 10), { kind: 'unit', def: UNITS.clubman, x: 11, y: 10 })).toBe(1); // not a ship
+    expect(ramBlow(ship('dhow', 10), ship('galley', 11))).toBe(1); // not a ram-ship
+    expect(UNITS.junk.armor).toBeGreaterThan(UNITS.galley.armor); // a junk's armour
+    expect(UNITS.dhow.range).toBeGreaterThan(UNITS.galley.range); // a dhow's reach
+  });
+
+  it('on the water a trireme close to an enemy ship rams it, hard and at once, where farther off it shoots', () => {
+    const g = new Game(5, sides('greece'), 96, false, true);
+    let at: { x: number; y: number } | null = null;
+    for (let y = 6; y < 90 && !at; y++) for (let x = 6; x < 84 && !at; x++) { let ok = true; for (let k = 0; k < 10 && ok; k++) for (const dy of [-1, 0, 1]) if (g.terrain[(y + dy) * 96 + x + k] !== T_WATER) ok = false; if (ok) at = { x: x + 0.5, y: y + 0.5 }; }
+    expect(at).not.toBeNull();
+    const tri = g.spawnUnit('trireme', 0, at!.x, at!.y), foe = g.spawnUnit('galley', 1, at!.x + 1.6, at!.y);
+    const hp = foe.hp;
+    g.cmdTarget(0, [tri.id], foe.id);
+    for (let i = 0; i < 20 && foe.hp === hp; i++) g.step();
+    expect(hp - foe.hp).toBeGreaterThan(UNITS.trireme.atk * RAM.mult - UNITS.galley.armor - 1);
+    expect(g.projectiles.some((p) => p.from === tri.id)).toBe(false);
+    // Farther off, it shoots.
+    const far = g.spawnUnit('galley', 1, at!.x + 7, at!.y);
+    foe.hp = 0; foe.dead = true;
+    g.cmdTarget(0, [tri.id], far.id);
+    for (let i = 0; i < 80 && !g.projectiles.some((p) => p.from === tri.id); i++) g.step();
+    expect(g.projectiles.some((p) => p.from === tri.id)).toBe(true);
   }, 60_000);
 });
