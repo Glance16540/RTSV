@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import type { Beast } from './beast';
 import { gait } from './beast';
-import { play, sprawl } from './person';
+import { play as playOn, sprawl } from './person';
 import type { RealPerson } from './person';
 
 /** The ways a person can go down. */
@@ -29,6 +29,8 @@ export const sideLot = (): number => (forced.length ? (forced.shift()! ? 1 : -1)
 
 /** Raise a falling figure by `by` above where it fell (it is moved by the change, so the sinking after still works). */
 const lift = (g: THREE.Object3D, by: number): void => { g.position.y += by - ((g.userData.fallLift as number | undefined) ?? 0); g.userData.fallLift = by; };
+/** Begin a motion once: a fall that has played through holds its last pose, and is not begun again. */
+const play = (p: RealPerson, name: string, speed: number, once: boolean): void => { if (p.now !== name) playOn(p, name, speed, once); };
 const ease = (k: number): number => { const t = Math.min(1, Math.max(0, k)); return t * t * (3 - 2 * t); };
 
 /**
@@ -116,7 +118,7 @@ export function fallRider(u: Unseated, t: number, dt: number, side: number): voi
 /** The mount going down: its own recorded fall, `delay` seconds after the blow. Returns whether it has begun. */
 export function fallMount(b: Beast, t: number, dt: number, delay: number): boolean {
   if (t < delay) { gait(b, 'Idle', 1); b.mixer.update(dt); return false; }
-  gait(b, 'Death', 1.1, true);
+  if (b.now !== 'Death') gait(b, 'Death', 1.1, true);
   b.mixer.update(dt);
   return true;
 }

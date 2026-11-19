@@ -1521,7 +1521,7 @@ export class Renderer {
       d.t += dt;
       if (d.v.wildlife && d.v.beasts?.length) {
         // The animal's own fall.
-        gait(d.v.beasts[0], 'Death', 0.8 + (d.way % 3) * 0.2, true);
+        if (d.v.beasts[0].now !== 'Death') gait(d.v.beasts[0], 'Death', 0.8 + (d.way % 3) * 0.2, true); // once: a fall played through is not begun again
         d.v.beasts[0].mixer.update(dt);
         d.g.rotation.x = d.g.rotation.z = 0;
         if (d.t > 6) d.g.position.y -= dt * 0.12;
