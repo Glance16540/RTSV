@@ -13,6 +13,8 @@ import { Job, lookOf, makeResource, makeShot, makeUnit, ofPeople, mat, RES_COLOR
 import { leaningOf } from './assets';
 import { Roads } from './roads';
 import { Weather } from './weather';
+import { StormSky } from './stormsky';
+import { seasonLook } from '../sim/seasonsky';
 import { STYLE_SIGN } from '../sim/stylesigns';
 import { swayable, swaying, swayingShadow, windNow } from './treesway';
 import { Life } from './life';
@@ -125,6 +127,9 @@ export class Renderer {
   private dropped = new WeakMap<THREE.Object3D, THREE.Object3D>();
   private roads!: Roads;
   private weather!: Weather;
+  private flashC = new THREE.Color(0xdfe8ff);
+  /** Thunder and the sound of the weather (stormsky.ts). */
+  private storm = new StormSky();
   private sky!: THREE.HemisphereLight;
   private tintC = new THREE.Color();
   private staffViews = new Map<number, { key: string; g: THREE.Group; figs: { g: THREE.Group; role: string; seed: number; real: RealPerson }[] }>();
@@ -177,7 +182,7 @@ export class Renderer {
     this.scene.add(this.sun, this.sun.target);
 
     this.fogAlpha = new Float32Array(game.size * game.size).fill(1);
-    this.scenery = buildScenery(game.size, game.terrain, game.spec.height, game.climate, game.resources.filter((r) => r.type === 'tree'));
+    this.scenery = buildScenery(game.size, game.terrain, game.spec.height, game.climate, game.resources.filter((r) => r.type === 'tree'), { look: seasonLook(game.season, game.climate) }); // the season the map is in (seasonsky.ts)
     this.scene.add(this.scenery.group);
     this.roads = new Roads(game, this.scenery, this.scene);
     this.weather = new Weather(this.scene, game.climate);
@@ -221,7 +226,7 @@ export class Renderer {
 
   private buildTrees(): void {
     const trees = this.game.resources.filter((r) => r.type === 'tree');
-    const cl = this.game.climate;
+    const cl = this.game.climate, look = seasonLook(this.game.season, cl); // the season the map is in (seasonsky.ts)
     const inked = (color: number, leaves = false): THREE.Material => { const mt = swaying(new THREE.MeshToonMaterial({ color, gradientMap: RAMP, vertexColors: true }), leaves); mt.userData.outlineParameters = INK; return mt; };
     const make = (g: THREE.BufferGeometry, mt: THREE.Material, n: number) => {
       const im = new THREE.InstancedMesh(swayable(g), mt, Math.max(1, n));
@@ -247,7 +252,7 @@ export class Renderer {
     // Each shape is drawn only as many times as there are trees of it.
     const tally: Record<string, number> = {};
     for (const t of trees) { const key = kindOf(t) + (t.id % 2); tally[key] = (tally[key] ?? 0) + 1; }
-    for (const [name, list] of Object.entries(kinds)) mesh[name] = list.map((t, v) => { const n = tally[name + v] ?? 0; return { trunk: make(t.trunk, inked(0x9a9a9a), n), leaf: make(t.leaf, name === 'palm' ? leafM : inked(0xa0a0a0, true), n), snow: t.snow && cl === 'snow' ? make(t.snow, inked(0xffffff), n) : undefined }; });
+    for (const [name, list] of Object.entries(kinds)) mesh[name] = list.map((t, v) => { const n = tally[name + v] ?? 0; return { trunk: make(t.trunk, inked(0x9a9a9a), n), leaf: make(t.leaf, name === 'palm' ? leafM : inked(0xa0a0a0, true), n), snow: t.snow && (cl === 'snow' || look.snow > 0.3) ? make(t.snow, inked(0xffffff), n) : undefined }; });
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color();
     const next: Record<string, number> = {};
     trees.forEach((t) => {
@@ -273,6 +278,14 @@ export class Renderer {
       else if (!dry && h4 > 0.95) col.setHSL(0.1 + h2 * 0.05, 0.75, 0.36); // turned gold
       else if (kind === 'birch') col.setHSL(0.24 - dry * 0.06 + h2 * 0.05, 0.6 - dry * 0.2, 0.3 + h * 0.08);
       else col.setHSL(0.29 - dry * 0.08 + h2 * 0.06, 0.6 - dry * 0.2, 0.2 + h * 0.08);
+      // The season: broad leaves bare in winter, turned gold and red in autumn, some in blossom in spring.
+      if ((kind === 'oak' || kind === 'birch') && look.season && cl !== 'snow') {
+        const hs = ((t.id * 7243) % 1000) / 1000;
+        if (hs < look.bare) part.leaf.setMatrixAt(i, m.clone().scale(new THREE.Vector3(0, 0, 0)));
+        else if (hs < look.bare + look.turned * (1 - look.bare)) col.setHSL([0.02, 0.06, 0.1, 0.12][Math.floor(h2 * 4)], 0.72, 0.36 + h * 0.06);
+        else if (hs > 1 - look.blossom * 2) col.setHSL(0.94, 0.4, 0.84);
+        else if (look.season === 'spring') col.offsetHSL(0.02, 0.04, 0.07);
+      }
       part.leaf.setColorAt(i, col);
       this.treeIndex.set(t.id, { ims: [part.trunk, part.leaf, ...(part.snow ? [part.snow] : [])], i });
     });
@@ -364,6 +377,9 @@ export class Renderer {
     this.sky.color.set(0xd6e6ff).lerp(this.duskC, warm * 0.45).lerp(this.moonC, n * 0.5);
     this.sky.intensity = 1.55 * (1 - w * 0.18) * (1 - n * 0.6);
     this.gl.toneMappingExposure = 1.02 - n * 0.2;
+    // A stroke of lightning lights the whole field for a moment (stormsky.ts).
+    const flash = this.storm.flash;
+    if (flash > 0) { this.sky.intensity += flash * 4.5; this.sky.color.lerp(this.flashC, flash); this.gl.toneMappingExposure += flash * 0.3; }
     // Seen from low down the land runs out to a horizon, so it is lost in mist there and the sky takes the mist's colour.
     this.haze.near += (this.dist * 0.9 - this.haze.near) * low;
     this.haze.far += (this.dist * 2.7 - this.haze.far) * low;
@@ -1564,6 +1580,7 @@ export class Renderer {
     this.stepHearts(dt);
     this.roads.update((b) => this.isVisible(b));
     this.weather.update(dt, this.clock, this.cx, this.cy, this.game);
+    this.storm.update(dt, this.game.time, this.game.seed, { weather: this.weather.kind === 'clear' ? '' : this.weather.kind, weatherAmt: this.weather.amount }); // thunder, rain and wind as the weather drawn is
     if (this.ink) {
       // Only what is made of the drawn materials takes an outline; the ground, water, rings and fog never do.
       if (this.inked++ % 12 === 0) this.scene.traverse((o) => {

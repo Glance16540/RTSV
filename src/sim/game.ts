@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import type { Season } from './seasonsky';
 import { formationPlan } from './formations';
 import type { Formation } from './formations';
 import { slopePace } from './slopes';
@@ -480,6 +481,8 @@ export class Game {
   weatherAmt = 0;
   weatherWant = 0;
   weatherT = 0;
+  /** The season the map is in, for the look of the land only: nothing in the rules reads it (seasonsky.ts). */
+  season: Season | '' = '';
   private wxSeed = 1;
 
   constructor(public seed: number, public setups: PlayerSetup[], size = 96, public field = false, public sea = false, public relief = false, public climate: Climate = '') {
@@ -1438,7 +1441,7 @@ export class Game {
   serialize(): string {
     return JSON.stringify({
       v: SAVE_VERSION, seed: this.seed, setups: this.setups, size: this.size, time: this.time, tick: this.tick,
-      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, bornOnly: this.bornOnly, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], roads: [...this.roadOf], vis: Array.from(this.vis),
+      winner: this.winner, nextId: this.nextId, rngState: this.rngState, aging: this.aging, fixedAge: this.fixedAge, bornOnly: this.bornOnly, marauders: this.marauders, band: this.band, lair: [this.lairT, this.lairRaid, this.lairSeen, this.lairMade], scenario: this.scenario, field: this.field, sea: this.sea, relief: this.relief, climate: this.climate, wx: [this.weather, this.weatherAmt, this.weatherWant, this.weatherT, this.wxSeed], ...(this.season ? { season: this.season } : {}), roads: [...this.roadOf], vis: Array.from(this.vis),
       players: this.players.map((p) => ({ ...p, techs: [...p.techs], pending: [...p.pending] })),
       units: this.units, buildings: this.buildings, resources: this.resources, projectiles: this.projectiles, quakes: this.quakes,
     }, (k, v) => (k === 'def' ? undefined : v));
@@ -1450,6 +1453,7 @@ export class Game {
     if (d.v !== SAVE_VERSION) throw new Error('Incompatible save');
     const g = new Game(d.seed, d.setups, d.size, d.field, d.sea, !!d.relief, d.climate ?? ''); // regenerates the same terrain from the seed
     if (d.wx) [g.weather, g.weatherAmt, g.weatherWant, g.weatherT, g.wxSeed] = d.wx;
+    if (d.season) g.season = d.season; // the season the map was in (seasonsky.ts)
     for (const cells of g.roadOf.values()) g.setRoad(cells, -1);
     g.roadOf = new Map(d.roads ?? []);
     for (const cells of g.roadOf.values()) g.setRoad(cells, 1);
