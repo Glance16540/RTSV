@@ -52,7 +52,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
       <div class="hm-form">
         <label class="hm-row">Name <input id="hm-name" type="text" maxlength="40" autocomplete="off" /></label>
         <div class="hm-row"><span>They are</span><div class="hm-pick" id="hm-sex"><button type="button" data-v="m">A man</button><button type="button" data-v="f">A woman</button></div></div>
-        <div class="hm-row"><span>Calling</span><div class="hm-pick" id="hm-calling"><button type="button" data-v="warlord">Warlord</button><button type="button" data-v="strategist">Strategist</button></div></div>
+        <div class="hm-row"><span>Calling</span><div class="hm-pick" id="hm-calling"><button type="button" data-v="warlord">Warlord</button><button type="button" data-v="strategist">Strategist</button><button type="button" data-v="steward">Steward</button></div></div>
         <p class="hm-note" id="hm-calling-note"></p>
         <h3>Their making <small id="hm-left"></small></h3>
         <div class="hm-points" id="hm-points"></div>
@@ -125,7 +125,9 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
     $('hm-powers').innerHTML = `<div class="hm-power"><span>${RANK_NAMES[CALL_RANK]}</span><div><b>${CALLS[h.calling].name}</b></div><small>${CALLS[h.calling].desc} Theirs to raise by hand, once every ${CALL_REST} seconds.</small></div>` + POWERS[h.calling].map((pair, t) => `<div class="hm-power"><span>${RANK_NAMES[POWER_RANKS[t]]}</span><div class="hm-pick">${pair.map((p, k) => `<button type="button" data-t="${t}" data-k="${k}" aria-pressed="${h.powers?.[t] === k}">${p.name}</button>`).join('')}<button type="button" data-t="${t}" data-k="-1" aria-pressed="${h.powers?.[t] !== 0 && h.powers?.[t] !== 1}">Choose then</button></div><small>${h.powers?.[t] === 0 || h.powers?.[t] === 1 ? pair[h.powers[t]].desc : `You choose between the two on the field, when they become ${RANK_NAMES[POWER_RANKS[t]]}.`}</small></div>`).join('');
     $('hm-calling-note').textContent = h.calling === 'warlord'
       ? 'Fights at the front with sword and shield. Everyone of yours fighting near them strikes a quarter harder. Raised at the Town Center from the Bronze Age.'
-      : 'Stands behind the line with a staff. Enemies fighting near them strike a fifth weaker, and your wounded nearby are slowly mended. Raised at the Town Center from the Iron Age.';
+      : h.calling === 'steward'
+        ? 'Keeps the town with a short blade at their side. Your villagers working near them gather and build a quarter faster, and their call mans the walls. Raised at the Town Center from the Bronze Age.'
+        : 'Stands behind the line with a staff. Enemies fighting near them strike a fifth weaker, and your wounded nearby are slowly mended. Raised at the Town Center from the Iron Age.';
     $('hm-left').textContent = left() ? `${left()} of ${HERO_POINTS} points still to spend` : `all ${HERO_POINTS} points spent`;
     $('hm-points').innerHTML = STATS.map(([k, name, what]) => `<div class="hm-stat"><b>${name}</b><small>${what}</small><button type="button" data-k="${k}" data-d="-1" ${h[k] <= 0 ? 'disabled' : ''} aria-label="Less ${name}">−</button><span class="hm-pips">${'●'.repeat(h[k])}${'○'.repeat(HERO_POINTS - h[k])}</span><button type="button" data-k="${k}" data-d="1" ${left() <= 0 ? 'disabled' : ''} aria-label="More ${name}">+</button></div>`).join('');
     swatches('hm-hair', HAIR, h.look!.hair); swatches('hm-cloak', CLOAK, h.look!.cloak); swatches('hm-skin', SKIN, h.look!.skin); pick('hm-face', h.look!.face == null ? '' : String(h.look!.face));
@@ -145,7 +147,7 @@ export function openHeroCreator(civ: string, done: (h: HeroSpec | null) => void)
     if (b) { set(b.dataset.v!); change(); }
   });
   onPick('hm-sex', (v) => { h.female = v === 'f'; });
-  onPick('hm-calling', (v) => { h.calling = v === 'strategist' ? 'strategist' : 'warlord'; });
+  onPick('hm-calling', (v) => { h.calling = v === 'strategist' || v === 'steward' ? v : 'warlord'; });
   onPick('hm-bent', (v) => { h.bent = v as HeroSpec['bent']; });
   $('hm-powers').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-t]');

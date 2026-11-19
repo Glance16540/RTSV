@@ -219,7 +219,7 @@ export function outfitFor(type: string, female: boolean, color: number, look: { 
   return info.civ && plainDress(type, NAMED.has(type)) ? nationDress(info.civ, type, o, color) : o;
 }
 /** Units with a dress of their own below. */
-const NAMED = new Set(['clubman', 'spearman', 'marauder', 'swordsman', 'pikeman', 'berserker', 'grenadier', 'slaver', 'slinger', 'javelineer', 'bowman', 'crossbowman', 'musketeer', 'shaman', 'priest', 'prophet', 'herbwife', 'warlord', 'strategist', 'hearthguard', 'zealot', 'shieldbearer', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai', 'firethrower', 'rider', 'knight', 'hussar', 'lancer', 'horsearcher', 'wolfrider', 'templar', 'companion', 'camelrider', 'mameluke', 'chariot', 'warchariot', 'longbowman', 'ashigaru']);
+const NAMED = new Set(['clubman', 'spearman', 'marauder', 'swordsman', 'pikeman', 'berserker', 'grenadier', 'slaver', 'slinger', 'javelineer', 'bowman', 'crossbowman', 'musketeer', 'shaman', 'priest', 'prophet', 'herbwife', 'warlord', 'strategist', 'steward', 'hearthguard', 'zealot', 'shieldbearer', 'khopesh', 'sapper', 'gateguard', 'immortal', 'hoplite', 'billman', 'samurai', 'firethrower', 'rider', 'knight', 'hussar', 'lancer', 'horsearcher', 'wolfrider', 'templar', 'companion', 'camelrider', 'mameluke', 'chariot', 'warchariot', 'longbowman', 'ashigaru']);
 function plainOutfit(type: string, female: boolean, color: number, look: { skin: number; hair: number }, seed: number, wear: number, info: { cls: string; age: number; naval?: boolean }): Outfit {
   const s = Math.abs(seed | 0);
   const pick = (k: number): 0 | 1 | 2 => ([1, 0, 1, 2, 1, 1, 2, 0, 1][(s >> k) % 9] as 0 | 1 | 2);
@@ -254,6 +254,7 @@ function plainOutfit(type: string, female: boolean, color: number, look: { skin:
     // ---- leaders ----
     warlord: { mail: true, sleeves: 'long', plate: true, helmet: 'iron', shield: color, weapon: 'sword', cloak: color, trim: 0xd8b040, girth: 2, beard: true },
     strategist: { skirt: 'long', sleeves: 'long', hat: 'cap', hatColor: 0x2a2a3a, cloak: 0x2a2a3a, trim: 0xd8b040, weapon: 'staff' },
+    steward: { top: leather, sleeves: 'long', mantle: true, cloak: color, trim: 0xd8b040, girth: 1, weapon: 'sword', beard: true }, // the town's keeper (steward.ts)
     // ---- each nation's own ----
     hearthguard: { top: leather, helmet: 'leather', shield: color, weapon: 'spear', mantle: s % 2 === 0 },
     zealot: { top: linen, skirt: 'long', skirtColor: linen, sleeves: 'long', hat: 'hood', hatColor: linen, trim: color, weapon: 'sword', beard: true },

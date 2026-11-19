@@ -37,7 +37,7 @@ export function notableOf(g: Game, u: Unit): Notable | null {
   }
   if (u.type === 'villager' && u.gender === 'f') {
     const h = houseOf(g, u), renown = h && h.residents.f === u.id ? g.renown(h) : 0;
-    if (h && renown > 0) return { id: u.id, name: full(u), kind: 'matron', rank: renown, known: `Mother of the ${h.family || 'house'}, which has raised ${h.children}` };
+    if (h && renown > 0) return { id: u.id, name: full(u), kind: 'matron', rank: renown, known: `Mother of the ${h.family ? `${h.family} house` : 'house'}, which has raised ${h.children} ${h.children === 1 ? 'child' : 'children'}` };
   }
   return null;
 }

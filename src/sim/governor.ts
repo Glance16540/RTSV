@@ -11,6 +11,7 @@
  * eats once, in larder.ts. The governor neither earns nor feeds: he sets the work, finishes and begins.
  */
 import { stewardPace } from './stewardship'; // a better governor (stewardship.ts)
+import { leaderBuild } from './leaderstay'; // a Steward staying in the town (leaderstay.ts)
 import { oldBuild } from './oldfolk';
 import type { Campaign, Territory } from './campaign';
 import { ageOf, siteCost, slots } from './campaignbase';
@@ -140,7 +141,7 @@ export function governTown(c: Campaign, tid: number): Governed | null {
   // What was left half built is taken further.
   if (t.town?.b) t.town.b = t.town.b.map((x) => {
     if (x[4] === undefined) return x;
-    const done = Math.round((x[4] + GOVERN.build * buildPace(c, tid) * stewardPace(c, tid) * oldBuild(c, tid)) * 100) / 100; // faster under governors chosen for merit (ownstudies.ts), slower where a taken town's old people resent it (oldfolk.ts)
+    const done = Math.round((x[4] + GOVERN.build * buildPace(c, tid) * stewardPace(c, tid) * oldBuild(c, tid) * leaderBuild(c, tid)) * 100) / 100; // faster under governors chosen for merit (ownstudies.ts), slower where a taken town's old people resent it (oldfolk.ts)
     if (done < 1) return [x[0], x[1], x[2], x[3] ?? 0.01, done] as typeof x;
     out.finished.push(x[0]);
     return (x[3] !== undefined && x[3] < 1 && x[3] > 0.01 ? [x[0], x[1], x[2], x[3]] : [x[0], x[1], x[2]]) as typeof x;
