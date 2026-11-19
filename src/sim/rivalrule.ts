@@ -12,12 +12,12 @@
  * (Its income is still scaled by difficulty, by the owner's word. Feeding a hungry town is convoys.ts's `relieve`,
  * and its decrees are decrees.ts's `sensibleDecrees`.)
  */
+import { givenNames, houseNames, townPeople } from './peoplenames';
 import type { Army, Campaign, Territory } from './campaign';
 import { hireOff } from './places';
 import { HUB, reach } from './campaignbase';
 import { COMPANIES, MAX_ARMY, SITE_BUILDING, ageOf, armyAt, armySize, armyStrength, atTruce, companyCost, soldierWord } from './campaignbase';
 import { mayRaiseKind } from './uniquecompany';
-import { NAMES_F, NAMES_M, FAMILY_NAMES } from './data';
 import { STORE_KINDS, Stores, folkOf, headcount, living, loseVeteran, rememberVeteran, MOTHER_KIDS, TOWN_SCALE } from './township';
 import { HALL_ROOM, HOUSE_ROOM } from './seasonfolk';
 import { awayFrom, canSendHome, homeOf, menMustered, menOf, sendCompaniesHome, sendHome, sendMenHome, sparedMen, MEN } from './armytown';
@@ -116,10 +116,10 @@ export function nameVeterans(c: Campaign): { named: number; lost: number } {
   for (const a of c.armies) {
     if (a.owner < 0 || !c.factions[a.owner]?.alive) continue;
     if (!a.champion && a.vet >= RIVAL.wins) {
-      const female = hash(c.seed + a.id, 41) < 0.1, names = female ? NAMES_F : NAMES_M;
+      const female = hash(c.seed + a.id, 41) < 0.1, names = givenNames(c.factions[a.owner]?.civ, female ? 'f' : 'm');
       const unit = Object.keys(a.units).sort((p, q) => a.units[q] - a.units[p])[0] ?? 'infantry';
       const man = manOfRoll(c, a.owner, a.id, 43); // a man of its roll, of his own house (veteranhome.ts), where it has one
-      a.champion = { name: man?.name ?? `${names[Math.floor(hash(c.seed + a.id, 43) * names.length)]} ${FAMILY_NAMES[Math.floor(hash(c.seed + a.id, 47) * FAMILY_NAMES.length)]}`, kills: a.vet * RIVAL.killsAWin, unit: soldierWord(unit), ...(female && !man ? { female: true } : {}), ...(man ? { town: man.town } : {}) };
+      a.champion = { name: man?.name ?? `${names[Math.floor(hash(c.seed + a.id, 43) * names.length)]} ${houseNames(c.factions[a.owner]?.civ)[Math.floor(hash(c.seed + a.id, 47) * houseNames(c.factions[a.owner]?.civ).length)]}`, kills: a.vet * RIVAL.killsAWin, unit: soldierWord(unit), ...(female && !man ? { female: true } : {}), ...(man ? { town: man.town } : {}) };
       named++;
     }
     if (a.champion && !known[a.id]) {
@@ -145,8 +145,8 @@ export function nameVeterans(c: Campaign): { named: number; lost: number } {
 export function notableHome(c: Campaign, tid: number): boolean {
   const t = c.territories[tid], f = folkOf(c, tid);
   if (!rival(c, t.owner) || f.women < 1 || f.children < MOTHER_KIDS || living(f).some((n) => n.kind === 'mother')) return false;
-  const family = FAMILY_NAMES[Math.floor(hash(c.seed * 13 + tid, 53) * FAMILY_NAMES.length)];
-  f.notables.push({ name: NAMES_F[Math.floor(hash(c.seed * 13 + tid, 59 + f.notables.length) * NAMES_F.length)], family, gender: 'f', kind: 'mother', kids: MOTHER_KIDS, deed: `raised ${MOTHER_KIDS} children`, turn: c.turn });
+  const houses = houseNames(townPeople(c, tid)), family = houses[Math.floor(hash(c.seed * 13 + tid, 53) * houses.length)];
+  f.notables.push({ name: givenNames(townPeople(c, tid), 'f')[Math.floor(hash(c.seed * 13 + tid, 59 + f.notables.length) * givenNames(townPeople(c, tid), 'f').length)], family, gender: 'f', kind: 'mother', kids: MOTHER_KIDS, deed: `raised ${MOTHER_KIDS} children`, turn: c.turn });
   return true;
 }
 

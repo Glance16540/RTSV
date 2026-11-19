@@ -17,8 +17,8 @@
 // else one named from the seed. The children stay the town's: only the record of whose house keeps them moves.
 //
 // Plain data on the town's record (`Folk.widowed`, `Folk.orphans`). No child is harmed, moved or shown.
+import { givenNames, houseNames, townPeople } from './peoplenames';
 import type { Campaign } from './campaign';
-import { FAMILY_NAMES, NAMES_F } from './data';
 import { agesOf, countFrom, OLD_SEASON } from './ageing';
 import { folkOf, living } from './township';
 import type { Folk } from './township';
@@ -82,7 +82,7 @@ export function widowsTown(c: Campaign, tid: number): void {
   for (const h of housesOf(f)) for (const x of h.fallen ?? []) {
     if (x.as !== 'husband' || x.turn <= seen) continue;
     const wife = living(f).find((n) => n.kind === 'mother' && n.family === h.family);
-    const name = wife?.name ?? pick(NAMES_F, hash(c.seed, tid * 131 + x.turn, x.name.length));
+    const name = wife?.name ?? pick(givenNames(townPeople(c, tid), 'f'), hash(c.seed, tid * 131 + x.turn, x.name.length));
     if (!list.some((w) => w.name === name && w.family === h.family)) list.push({ name, family: h.family, female: true, of: x.name, since: x.turn, kids: houseKids(f) });
   }
   for (const n of f.notables) {
@@ -96,7 +96,7 @@ export function widowsTown(c: Campaign, tid: number): void {
       list.splice(list.indexOf(w), 1);
       if (w.kids > 0 && f.children > 0) {
         const others = [...housesOf(f).map((h) => h.family), ...living(f).filter((n) => n.family).map((n) => n.family!)].filter((x) => x && x !== w.family);
-        const into = others.length ? pick(others, hash(c.seed, tid * 977 + c.turn, 7)) : pick(FAMILY_NAMES, hash(c.seed, tid * 983 + c.turn, 9));
+        const into = others.length ? pick(others, hash(c.seed, tid * 977 + c.turn, 7)) : pick(houseNames(townPeople(c, tid)), hash(c.seed, tid * 983 + c.turn, 9));
         (f.orphans ??= []).push({ family: w.family, into, since: c.turn, count: Math.min(w.kids, f.children) });
         say(c, t.owner, `The children of the house of ${w.family} in ${t.name}, ${w.female ? 'its widow' : 'its widower'} ${w.name} gone, are taken into the house of ${into}.`);
       }
