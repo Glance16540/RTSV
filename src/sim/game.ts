@@ -1,5 +1,6 @@
 // Core simulation. No rendering or DOM access in here so it can run headless.
 
+import { givenNames, houseNames } from './peoplenames';
 import { nextDilemma } from './dilemmas';
 import { maidPull } from './churchtavern';
 import { monksTeach, nunsNurse } from './clergywork';
@@ -36,7 +37,7 @@ import { coupleParted, creditKill, leaveForWar, settleHomes, warRenown } from '.
 import { carriedIn, madeRenown, restoreMade } from './notableweight';
 import { Census, PeopleIn, Stores } from './township';
 import {
-  ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, NAMES_M, NAMES_F, FAMILY_NAMES, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
+  ABILITIES, AGES, CIVS, CIV_IDS, ELDER_AT, LIFESPAN, RENOWN_CHILDREN, TRADE, WONDER_TIME, VILLAGER_TRAITS, BIRTH_COST, BIRTH_TIME, GROW_TIME, BUILDINGS, BuildingDef, Cost, GATHER_RATE, MORALE_MAX_HOUSES,
   MORALE_PER_HOUSE, MORALE_RADIUS, Mods, POP_LIMIT, BAND, styleOf, STYLE_RULES, StyleId, CALAMITY, RESOURCE_AMOUNT, RESOURCE_KIND, RES_TYPES,
   ResType, TECHS, UNITS, UnitDef, ArmorClass, baseMods,
 } from './data';
@@ -686,7 +687,7 @@ export class Game {
       mana: (def.mana ?? 0) / 2, homeX: x, homeY: y, inside: 0, resume: null,
     };
     if (type === 'villager') {
-      const names = u.gender === 'm' ? NAMES_M : NAMES_F, roll = this.rng();
+      const names = givenNames(this.players[owner]?.civ, u.gender), roll = this.rng(); // its own people's names (peoplenames.ts)
       u.name = this.setups[owner]?.tribe ? tribeName(u.gender ?? 'm', roll, new Set(this.units.filter((o) => o.owner === owner).map((o) => o.name))) : pickName(names, roll, namesIn(this, owner, u.gender)); // a tribe's people have their own names, no two alike (tribenames.ts); a town's too, where it can (namesakes.ts)
       if (this.tick === 0) u.drawn = u.name; // while the battle is being laid out (namesakes.ts)
       if (this.rng() < 0.3) this.setTrait(u, Object.keys(VILLAGER_TRAITS)[Math.floor(this.rng() * 4)]);
@@ -1728,7 +1729,7 @@ export class Game {
    * people from the day it is born, so a town has room for it when it is grown.
    */
   bear(b: Building, gender?: Gender): Child {
-    const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = g === 'm' ? NAMES_M : NAMES_F;
+    const g: Gender = gender ?? (this.rng() < 0.5 ? 'm' : 'f'), names = givenNames(this.players[b.owner]?.civ, g);
     const c: Child = { id: this.nextId++, name: names[Math.floor(this.rng() * names.length)], family: '', gender: g, trait: '', trait2: '', lifespan: LIFESPAN[0] + this.rng() * (LIFESPAN[1] - LIFESPAN[0]), left: GROW_TIME, bornAt: b.id };
     (b.young ??= []).push(c);
     this.players[b.owner].pop += UNITS.villager.pop;
@@ -3232,7 +3233,7 @@ export class Game {
             // One child in four of two gifted parents gets both gifts.
             const other = trait === mother.trait ? father.trait : mother.trait;
             const second = trait && other && other !== trait && this.rng() < 0.25 ? other : '';
-            if (!b.family) b.family = FAMILY_NAMES[Math.floor(this.rng() * FAMILY_NAMES.length)];
+            if (!b.family) { const hs = houseNames(this.players[b.owner]?.civ); b.family = hs[Math.floor(this.rng() * hs.length)]; } // a house of its own people's (peoplenames.ts)
             child.family = b.family;
             child.trait = trait; child.trait2 = second;
             p.stats.born++;

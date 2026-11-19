@@ -16,6 +16,7 @@
 // Every people's nobles petition by the same rules; a computer-led ruler answers as `sensiblePetition` does, which is
 // also how the computer answers for the player in the health report's attended course (storypolicy.ts).
 // Each is told in the season's report among the court's doings, by name. Nothing is drawn here.
+import { givenNames } from './peoplenames';
 import type { Campaign } from './campaign';
 import type { Noble } from './nobles';
 import { NOBLES, isAngry, noblesOf, titleOf } from './nobles';
@@ -27,7 +28,6 @@ import { needOf } from './larder';
 import { stock, SUPPLY_UNITS } from './stores';
 import { heed } from './nobletemper';
 import { ACTS } from './nobleacts';
-import { NAMES_F, NAMES_M } from './data';
 
 export type PetitionKind = 'post' | 'estate' | 'match' | 'help' | 'pardon';
 export interface Petition {
@@ -117,10 +117,10 @@ export function petitionSeason(c: Campaign, f: number): Petition | null {
   const kinds = asks(c, f, n), kind = kinds[Math.floor(chance(c, f * 53 + 7) * kinds.length)];
   const p: Petition = { id: (fac.petitionSeq = (fac.petitionSeq ?? 0) + 1), key: n.key, name: n.name, town: n.town, kind, since: c.turn };
   if (kind === 'match') {
-    const h = heirFree(c, f)!, female = !h.female, names = female ? NAMES_F : NAMES_M;
+    const h = heirFree(c, f)!, female = !h.female, names = givenNames(c.factions[f]?.civ, female ? 'f' : 'm');
     Object.assign(p, { who: names[Math.floor(chance(c, f * 7 + 3) * names.length)], female, heir: h.name });
   } else if (kind === 'pardon') {
-    Object.assign(p, { who: NAMES_M[Math.floor(chance(c, f * 13 + 1) * NAMES_M.length)], female: false, why: WHY[Math.floor(chance(c, f * 17 + 2) * WHY.length)] });
+    Object.assign(p, { who: givenNames(c.factions[f]?.civ, 'm')[Math.floor(chance(c, f * 13 + 1) * givenNames(c.factions[f]?.civ, 'm').length)], female: false, why: WHY[Math.floor(chance(c, f * 17 + 2) * WHY.length)] });
   }
   fac.petition = p;
   tell(c, f, n.town, 'plain', `${titleOf(c, n)} comes to you with a petition: ${petitionText(c, f, p)}`);

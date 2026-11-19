@@ -1,4 +1,5 @@
 // A tribe's people have names of their own, no two alike in one battle (src/sim/tribenames.ts; docs/PLAYTEST.md 2.4).
+import { givenNames } from '../src/sim/peoplenames';
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/sim/game';
 import { NAMES_F, NAMES_M } from '../src/sim/data';
@@ -25,14 +26,14 @@ describe('the names of a tribe', () => {
     expect(TRIBE_NAMES_F).toContain(tribeName('f', 0.3, new Set()));
   });
 
-  it('on the field a tribe\'s people are named so, without repeats; a settled people as before', () => {
+  it('on the field a tribe\'s people are named so, without repeats; a settled people by its own people\'s names', () => {
     const g = new Game(7, [setups[0], { ...setups[1], name: 'Local Tribe', tribe: true }]);
     for (let i = 0; i < 20; i++) g.spawnUnit('villager', 1, 60 + (i % 5), 60 + Math.floor(i / 5), i % 2 ? 'f' : 'm');
     const theirs = g.units.filter((u) => u.owner === 1 && u.type === 'villager'), mine = g.units.filter((u) => u.owner === 0 && u.type === 'villager');
     expect(theirs.length).toBeGreaterThan(20);
     for (const u of theirs) expect(u.gender === 'm' ? TRIBE_NAMES_M : TRIBE_NAMES_F).toContain(u.name);
     expect(new Set(theirs.map((u) => u.name)).size).toBe(theirs.length);
-    for (const u of mine) expect(u.gender === 'm' ? NAMES_M : NAMES_F).toContain(u.name);
+    for (const u of mine) expect(givenNames(g.players[0].civ, u.gender)).toContain(u.name); // each people names its own (peoplenames.ts)
   });
 
   it('the locals of a campaign battle are marked as a tribe, and a rival nation is not', () => {

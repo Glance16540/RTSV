@@ -2,7 +2,7 @@
 // the leader has fallen such a soldier can be raised on the shields to lead in their place. On the campaign map the
 // best of them who lives through a battle is remembered with the army, and is the captain a succession can turn to.
 
-import { NAMES_F, NAMES_M } from './data';
+import { givenNames } from './peoplenames';
 import { HeroSpec, MAX_RANK } from './hero';
 
 /** Foes a soldier must have felled to be known by name and fit to lead. */
@@ -16,8 +16,8 @@ export const canLead = (cls: string): boolean => cls === 'infantry' || cls === '
 export const rankForKills = (kills: number): number => Math.max(0, Math.min(MAX_RANK, Math.floor(kills / CHAMPION_KILLS)));
 /** One soldier in four who makes a name is a woman: fixed by who they are and not by chance. */
 export const championFemale = (id: number): boolean => Math.abs(id) % 4 === 3;
-/** The name a soldier is known by, fixed likewise. */
-export const championName = (id: number): string => (championFemale(id) ? NAMES_F : NAMES_M)[Math.abs(id) % (championFemale(id) ? NAMES_F : NAMES_M).length];
+/** The name a soldier is known by, fixed likewise: a name of their own people's (peoplenames.ts). */
+export const championName = (id: number, people?: string): string => { const list = givenNames(people, championFemale(id) ? 'f' : 'm'); return list[Math.abs(id) % list.length]; };
 /**
  * A soldier as a leader: strong in the arm, a Warlord in what they can do for those about them, still fighting as
  * what they were, with their powers yet to be chosen and no house behind them.
