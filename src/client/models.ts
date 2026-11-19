@@ -1,5 +1,6 @@
 // Procedural low-poly models for units, buildings and resources.
 
+import { hullOf } from '../sim/fleets';
 import * as THREE from 'three';
 import { bush } from './flora';
 import { BUILDINGS } from '../sim/data';
@@ -595,9 +596,12 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
       crewman(g, color, seed, 0.46, 0, -0.45, -0.3);
       return true;
     }
-    case 'fishboat': case 'galley': case 'frigate': case 'transport': {
-      const big = type === 'frigate', cog = type === 'transport', gal = type === 'galley', small = type === 'fishboat';
-      const L = big ? 1.9 : cog ? 1.6 : gal ? 1.75 : 1.05, W = big ? 0.6 : cog ? 0.66 : gal ? 0.42 : 0.4, H = big ? 0.36 : cog ? 0.34 : gal ? 0.24 : 0.22;
+    case 'fishboat': case 'galley': case 'frigate': case 'transport':
+    case 'longship': case 'trireme': case 'dhow': case 'junk': case 'galleon': case 'galleass': case 'ghurab': case 'towership': {
+      // Each people's own ships (fleets.ts) are drawn on the hull they stand for, with what marks their kind.
+      const kind = type, hull = hullOf(type), long = kind === 'longship', dhow = kind === 'dhow' || kind === 'ghurab', junk = kind === 'junk' || kind === 'towership';
+      const big = hull === 'frigate', cog = type === 'transport', gal = hull === 'galley', small = type === 'fishboat';
+      const L = big ? 1.9 : cog ? 1.6 : gal ? (long ? 1.95 : 1.75) : 1.05, W = big ? 0.6 : cog ? 0.66 : gal ? (long ? 0.38 : junk ? 0.5 : 0.42) : 0.4, H = big ? 0.36 : cog ? 0.34 : gal ? (junk ? 0.3 : long ? 0.2 : 0.24) : 0.22;
       const deckY = 0.02 + H * 0.62;
       /** How wide the hull is at z, as a share of its full beam: things on the rail must follow it in toward the ends. */
       const beamAt = (z: number): number => Math.max(0, Math.sin(Math.min(1, (z / L + 0.5) * 1.2 + 0.24) * Math.PI)) ** 0.6;
@@ -636,6 +640,22 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
         for (const x of [-1, 1]) line(g, [0, deckY + tall * 0.94, z], [x * W * 0.4, deckY, z - 0.12], 0x3a3028, 0.005);
         const pen = box(g, 0.012, 0.07, 0.24, color, 0, deckY + tall + 0.02, z - 0.12); pen.userData.pennant = true;
       };
+      /** A lateen sail on a slanting yard (the dhows' kind), at z, of this size. */
+      const lateen = (z: number, tall: number, k: number): void => {
+        cyl(g, 0.02, 0.03, tall, DARKWOOD, 0, deckY + tall / 2, z, 6);
+        const yard = cyl(g, 0.013, 0.013, 1.25 * k, DARKWOOD, 0, deckY + tall * 0.82, z - 0.04, 5); yard.rotation.x = Math.PI / 2 - 0.5;
+        const lat = canvas(g, geo(`lateen${k}`, () => { const s = new THREE.Shape(); s.moveTo(-0.55 * k, 0.32 * k); s.lineTo(0.58 * k, -0.26 * k); s.quadraticCurveTo(-0.07 * k, -0.29 * k, -0.52 * k, -0.4 * k); s.closePath(); return new THREE.ShapeGeometry(s, 5).rotateY(Math.PI / 2); }), 0xece0c4, 0.02, deckY + tall * 0.62, z);
+        lat.rotation.z = 0.06;
+        const pen = box(g, 0.012, 0.07, 0.22, color, 0, deckY + tall + 0.02, z - 0.08); pen.userData.pennant = true;
+      };
+      /** A battened sail (the junks' kind): a mat sail ribbed with battens, at z. */
+      const battened = (z: number, tall: number, sw: number, sh: number): void => {
+        cyl(g, 0.024, 0.036, tall, DARKWOOD, 0, deckY + tall / 2, z, 7);
+        const sy = deckY + tall * 0.55;
+        canvas(g, sailGeo(sw, sh), 0xb8704a, 0, sy, z + 0.03);
+        for (let k = 0; k < 5; k++) box(g, sw * 1.04, 0.012, 0.012, DARKWOOD, 0, sy - sh * 0.45 + k * sh * 0.225, z + 0.045);
+        const pen = box(g, 0.012, 0.07, 0.24, color, 0, deckY + tall + 0.02, z - 0.12); pen.userData.pennant = true;
+      };
       if (small) {
         // A lateen sail on a slanting yard, a net over the side, the catch in baskets, one man at his work.
         cyl(g, 0.018, 0.028, 0.8, DARKWOOD, 0, deckY + 0.4, 0.08, 6);
@@ -651,13 +671,14 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
       }
       if (gal) {
         // Long and low: a ram at the waterline, shields along the rail, a bank of oars a side, an awning aft.
-        const beak = add(g, geo('beak', () => new THREE.ConeGeometry(0.06, 0.34, 6)), 0x54585e, 0, 0.1, L * 0.55);
-        beak.rotation.x = Math.PI / 2;
+        if (!long && !dhow && !junk) { const beak = add(g, geo('beak', () => new THREE.ConeGeometry(0.06, 0.34, 6)), 0x54585e, 0, 0.1, L * 0.55); beak.rotation.x = Math.PI / 2; } // a ram: the Middle Sea's galleys
+        if (long) { const head = add(g, geo('dragon', () => new THREE.ConeGeometry(0.05, 0.22, 5)), color, 0, deckY + H * 1.6, L * 0.56); head.rotation.x = Math.PI / 2 - 0.9; } // a carved prow
+        const oarsOf = dhow ? 3 : 6;
         for (let i = 0; i < 6; i++) for (const x of [-1, 1]) {
           const z = -L * 0.3 + i * L * 0.11;
           const sh = add(g, geo('gshield', () => new THREE.CylinderGeometry(0.06, 0.06, 0.016, 8).rotateZ(Math.PI / 2)), i % 2 ? color : 0xb8a070, x * W * 0.5 * beamAt(z), deckY + 0.02, z);
           sh.castShadow = false;
-          if (i < 5) {
+          if (i < 5 && i < oarsOf) {
             const o = new THREE.Group();
             o.position.set(x * W * 0.46 * beamAt(z + L * 0.055), deckY - 0.02, z + L * 0.055);
             cyl(o, 0.011, 0.011, 0.56, PALE, x * 0.26, -0.085, 0, 5).rotation.z = x * (Math.PI / 2 - 0.32);
@@ -666,9 +687,14 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
             g.add(o);
           }
         }
-        mast(0.12, 1.15, 0.72, 0.56, true);
-        for (const x of [-0.15, 0.15]) for (const z of [-L * 0.3, -L * 0.42]) box(g, 0.02, 0.26, 0.02, DARKWOOD, x, deckY + 0.13, z);
-        canvas(g, geo('awning', () => new THREE.PlaneGeometry(0.36, 0.26).rotateX(-Math.PI / 2)), color, 0, deckY + 0.27, -L * 0.36);
+        if (dhow) lateen(0.18, 1.2, 1);
+        else if (junk) { battened(0.1, 1.15, 0.66, 0.62); box(g, W * 0.7, 0.2, L * 0.18, TIM, 0, deckY + 0.1, -L * 0.4); } // and a high stern
+        else mast(0.12, long ? 1.0 : 1.15, long ? 0.8 : 0.72, long ? 0.5 : 0.56, true);
+        if (kind === 'trireme') for (let i = 0; i < 5; i++) for (const x of [-1, 1]) { const z = -L * 0.27 + i * L * 0.11; const o = new THREE.Group(); o.position.set(x * W * 0.5 * beamAt(z), deckY - 0.08, z); cyl(o, 0.01, 0.01, 0.5, PALE, x * 0.24, -0.07, 0, 5).rotation.z = x * (Math.PI / 2 - 0.28); o.userData.oar = x; g.add(o); } // a second bank of oars
+        if (!long && !junk) {
+          for (const x of [-0.15, 0.15]) for (const z of [-L * 0.3, -L * 0.42]) box(g, 0.02, 0.26, 0.02, DARKWOOD, x, deckY + 0.13, z);
+          canvas(g, geo('awning', () => new THREE.PlaneGeometry(0.36, 0.26).rotateX(-Math.PI / 2)), color, 0, deckY + 0.27, -L * 0.36);
+        }
         crewman(g, color, seed, 0, deckY, -L * 0.36, 0, 0.42); crewman(g, dark, seed + 2, 0.05, deckY, L * 0.3, 0, 0.42);
         return true;
       }
@@ -686,8 +712,10 @@ function machine(g: THREE.Group, type: string, color: number, seed: number): boo
         // A warship: a bowsprit and jib, two masts with topsails, and a row of guns run out each side.
         const sprit = cyl(g, 0.014, 0.022, 0.6, DARKWOOD, 0, deckY + 0.3, L * 0.6, 5); sprit.rotation.x = Math.PI / 2 - 0.3;
         canvas(g, geo('jib', () => { const s = new THREE.Shape(); s.moveTo(0, 0.5); s.lineTo(0.5, -0.1); s.lineTo(0, -0.1); s.closePath(); return new THREE.ShapeGeometry(s).rotateY(-Math.PI / 2); }), 0xece4d0, 0, deckY + 0.36, L * 0.3);
-        mast(L * 0.14, 1.5, 0.78, 0.5, true, true);
-        mast(-L * 0.16, 1.3, 0.66, 0.44, false, true);
+        if (dhow) { lateen(L * 0.14, 1.5, 1.25); lateen(-L * 0.16, 1.25, 1.05); } // the Ghurab: lateen-rigged
+        else if (junk) { battened(L * 0.14, 1.5, 0.8, 0.8); battened(-L * 0.16, 1.25, 0.66, 0.62); box(g, W * 0.6, 0.34, L * 0.16, TIM, 0, deckY + 0.43, -L * 0.34); } // the Tower Ship: mat sails and a tower aft
+        else { mast(L * 0.14, 1.5, 0.78, 0.5, true, true); mast(-L * 0.16, 1.3, 0.66, 0.44, false, true); }
+        if (kind === 'galleass') for (let i = 0; i < 6; i++) for (const x of [-1, 1]) { const z = -L * 0.3 + i * L * 0.1; const o = new THREE.Group(); o.position.set(x * W * 0.46 * beamAt(z), deckY - H * 0.5, z); cyl(o, 0.012, 0.012, 0.6, PALE, x * 0.28, -0.09, 0, 5).rotation.z = x * (Math.PI / 2 - 0.3); o.userData.oar = x; g.add(o); } // oars below the guns
         cyl(g, 0.07, 0.05, 0.07, DARKWOOD, 0, deckY + 1.2, L * 0.14, 8); // the fighting top
         for (const x of [-1, 1]) for (let i = 0; i < 4; i++) {
           const z = -L * 0.2 + i * L * 0.12;

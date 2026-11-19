@@ -766,7 +766,7 @@ export class AIController {
     // Warships once there is something to protect, and the ships to match the age.
     if (this.level >= 1 && p.age >= 1 && boats.length) {
       if (p.age >= 4 && !p.techs.has('up_frigate') && !p.pending.has('up_frigate') && dock.queue.length === 0) g.cmdResearch(pid, dock.id, 'up_frigate');
-      const fleet = ships.filter((u) => u.def.atk > 0).length + queued('galley');
+      const fleet = ships.filter((u) => u.def.atk > 0).length + queued(g.trainedAs(pid, 'galley')); // its own kind of warship (fleets.ts)
       // Match whatever the enemy has put on the water, and one more.
       const theirs = g.units.filter((u) => u.def.naval && u.def.atk > 0 && g.hostile(u.owner, pid)).length;
       const want = Math.min(6, Math.max([0, 2, 3][this.level], theirs + 1));

@@ -47,6 +47,7 @@ import type { WaterShape } from './waterlay';
 /** The land's water, carried on the town's side, with the corners anyone starts in kept dry (waterlay.ts). */
 const waterWith = (setups: PlayerSetup[]): WaterShape | undefined => { const w = setups.find((x) => x.water)?.water; const dry = setups.map((x) => x.start).filter((v): v is number => v !== undefined); return w ? { ...w, ...(dry.length ? { dry } : {}) } : undefined; };
 import { handRoadsTick } from './handroads';
+import { fleetKind } from './fleets';
 import { courtTick, type FieldCourt } from './courtfield';
 import { boughtIn } from './contagion';
 import { CLERGY_BIRTH, CLERGY_VIRTUE, Creed, DILEMMAS, LEANING, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, TAVERN_BIRTH, CAPTIVE_CAP, CAPTIVE_WORK, CAPTURE_TIME, isDecadent, isHoly, MERC_PRICE, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, STAFF_CAP, TAVERN_PLAGUE, creedOf } from './creed';
@@ -3041,7 +3042,7 @@ export class Game {
   trainedAs(owner: number, type: string): string {
     const up = this.players[owner].upgrades;
     while (up[type]) type = up[type];
-    return type;
+    return fleetKind(this.players[owner].civ, type); // a people's own kind of warship (fleets.ts)
   }
 
   /** Free cell next to a building, closest to a desired point. */
@@ -3120,8 +3121,10 @@ export class Game {
           TECHS[q.id].apply(p.mods);
           const up = TECHS[q.id].upgrade;
           if (up) {
+            const was = this.trainedAs(b.owner, up[0]); // a people's own kind of it (fleets.ts), or the type itself
             p.upgrades[up[0]] = up[1];
-            for (const u of this.units) if (u.owner === b.owner && u.type === up[0]) this.reequip(u, up[1]);
+            const now = this.trainedAs(b.owner, up[0]);
+            for (const u of this.units) if (u.owner === b.owner && (u.type === up[0] || u.type === was)) this.reequip(u, now);
           }
           this.msg(b.owner, `${TECHS[q.id].name} researched.`);
           this.upkeep();
