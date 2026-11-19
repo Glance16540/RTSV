@@ -90,9 +90,14 @@ export function waysFrom(c: Campaign, b: Band, range = ROAM.range): { to: number
   return out;
 }
 
+/** Every place a camp could march to and rob from, within so many lands: where, how far, the first step, the seasons of the march, and how soft and rich the softest mark there is (not weighed against the march). */
+export function marksFrom(c: Campaign, b: Band, range = ROAM.range): { bound: number; next: number; steps: number; seasons: number; lure: number }[] {
+  return waysFrom(c, b, range).map((w) => ({ bound: w.to, next: w.next, steps: w.steps, seasons: w.seasons, lure: lureFrom(c, b, [w.to], true) })).filter((w) => w.lure > 0);
+}
+
 /** The softest mark a camp could get within reach of by a few lands' march: where it would go, how far, its first step, and how soft. */
 export function wayTo(c: Campaign, b: Band, range = ROAM.range): { bound: number; next: number; steps: number; seasons: number; lure: number } | null {
-  const all = waysFrom(c, b, range).map((w) => ({ bound: w.to, next: w.next, steps: w.steps, seasons: w.seasons, lure: lureFrom(c, b, [w.to], true) })).filter((w) => w.lure > 0)
+  const all = marksFrom(c, b, range)
     .sort((x, y) => y.lure / (1 + ROAM.far * (y.seasons - 1)) - x.lure / (1 + ROAM.far * (x.seasons - 1)) || x.steps - y.steps || x.bound - y.bound);
   return all[0] ?? null;
 }

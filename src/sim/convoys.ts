@@ -31,6 +31,7 @@ import { armyStrength, lanesOf } from './campaignbase';
 import { needOf } from './larder';
 import { roadRisk } from './ownstudies';
 import { escortEdge, innRisk, paved, pavedLoad } from './roads';
+import { leaderRoads } from './leaderstay';
 import type { Band } from './threats';
 import { claimLand, settleable, wayOut } from './founding';
 
@@ -214,7 +215,7 @@ function waylaid(c: Campaign, x: Convoy): { name: string; strength: number; sea:
 export function waylay(c: Campaign, x: Convoy, a: { robbed?: Arrival['robbed'] }, what = 'convoy'): { band: ReturnType<typeof waylaid>; escort: number } | null {
   const mine = x.owner === 0;
   const band = waylaid(c, x);
-  if (!band || hash(c, x.id, 3) >= CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road)) return null; // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
+  if (!band || hash(c, x.id, 3) >= CONVOYS.meet * roadRisk(c, x.owner) * innRisk(c, x.owner, x.road) * leaderRoads(c, x.owner, x.road)) return null; // and a Strategist staying in a town on it (leaderstay.ts) // and where an Inn stands on its road (roads.ts) // less often, for a people whose convoys rest behind walls (ownstudies.ts)
   const escort = Math.max(0, ...c.armies.filter((y) => y.owner === x.owner && x.road.includes(y.at)).map((y) => armyStrength(y)));
   // An army of its people on the road fights the band (roadclash.ts): it goes through unless the escort is broken, and then
   // the band takes its share by how long it had the road and the hands it has left; the escort pays for it in companies.
