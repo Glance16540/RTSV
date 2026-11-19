@@ -31,6 +31,7 @@
  * Nothing here is drawn or timed: a fight is a few rounds of arithmetic, quick enough for a thousand campaigns.
  */
 import type { Army, Campaign, Pending } from './campaign';
+import { seatLeader } from './seatedleader';
 import { BEATS, COMPANIES, FAITH, MAX_ARMY, armyAt, armySize, beatenIn, familyOf, rankWith, strengthVs, virtueOf } from './campaignbase';
 import { creedOf } from './creed';
 import { faithAt } from './townfaith';
@@ -250,6 +251,7 @@ export function fightPending(c: Campaign, p: Pending, home: number, rollA: numbe
   const army = c.armies.find((x) => x.id === p.armyId);
   if (!army) return null;
   const { a, d } = forcesOf(c, army, p.to, p.aStr, p.dStr * home, wallsEdge(c, p));
+  seatLeader(c, p, d); // a leader holding the town alone leads its defence (seatedleader.ts)
   return clash(a, d, 1 - CLASH.day + 2 * CLASH.day * rollA, 1 - CLASH.day + 2 * CLASH.day * rollD);
 }
 

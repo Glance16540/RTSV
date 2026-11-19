@@ -70,8 +70,14 @@ describe('a dead town', () => {
     expect(t.yoke).toBeUndefined(); // nobody is there to resent it
     expect(headcount(folkOf(c, t.id))).toBe(0);
     expect(deadTowns(c)).toEqual([]);
-    expect(folkOf(c, t.id)).toMatchObject({ men: DEAD.settlers, women: DEAD.settlers });
-    expect(c.log.join('\n')).toContain(`settled the empty town at ${t.name}`);
+    // Settled by the taker's own, by road from its town beside it, as many as it can spare (settlersfrom.ts): nobody from nowhere.
+    const going = (c.convoys ?? []).filter((x) => x.to === t.id && x.owner === 1 && x.movers);
+    expect(going.length).toBe(1);
+    expect(going[0].from).toBe(from.id);
+    expect(going[0].cargo.men.length).toBe(going[0].cargo.women.length);
+    expect(going[0].cargo.men.length).toBeGreaterThan(0);
+    expect(going[0].cargo.men.length).toBeLessThanOrEqual(DEAD.settlers);
+    expect(headcount(folkOf(c, t.id))).toBe(0); // they are on the road
     expect(isOpen(c, t.id)).toBe(false);
     // It does not march on a town of its own, on one it has a truce with, or on a town with people in it.
     const b = dead(9);

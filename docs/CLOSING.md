@@ -43,11 +43,11 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Ten women taken is ten women gone, and held somewhere real | Captives taken in a visit are counted and gone (`battlefolk.ts` taken). Those taken in a battle fought in person are held on the map (`battlecarried.ts`), but a visit's are not. | small | Before: the same hand-off `battlecarried.ts` already makes, and the record should be one rule. |
+| Ten women taken is ten women gone, and held somewhere real | **Checked: nothing to hand over.** A visit has only the player's side on the field, so the only ones who can take anyone there are the field's own marauders. A battle's marauder-held captives are already gone by `battlecarried.ts`'s rule, since the field's marauders are no band on the map to hold them. To hold them would mean giving them to a band of the map (the nearest marauders, or one made for it), which is a new rule, not a hand-off. | small | Unity: decide there whether the field's marauders are a band of the map. |
 | What is built in a town is kept on its record | A Church or Tavern built in a battle stands on the town's record but is not raised as the map site that moves the town's faith (`SITE_BUILDING` has neither). | small | Before: one table entry and a test, and it decides whether a played town's faith follows what was built there. |
 | What is built in a town is kept on its record | A road laid by hand in a siege is not kept; only a visit keeps roads. | small | Unity: roads are field work and the new engine lays its own. |
-| Nobody from nowhere (towns persist, a soldier costs a person) | The four who settle a town emptied in a battle fought in person, the settlers who follow a rival's army into a dead town, and a tribe's town made up to its old strength the first time it is looked into are all people from nowhere. | small | Before: take the settlers from the taker's nearest town as `founding.ts` already does. The tribe's one-time top-up can stay, since it happens once per save. |
-| An attacking camp has no people from nowhere | The board still says an attacking camp's villagers may come from nowhere (Towns that keep their people). `siegecamp.ts` now covers a besieging army's camp. Whether any other attacker's camp still gets villagers needs one check. | small | Before: check it, and either fix the case or strike the board line. |
+| Nobody from nowhere (towns persist, a soldier costs a person) | **Done for the settlers** (`src/sim/settlersfrom.ts`): a town taken empty, in a battle or as a dead town, is settled by couples its taker's nearest towns can spare, by road; where none can be spared it stands empty. Still from nowhere: a tribe's town made up to its old strength the first time it is looked into. | small | Built. The tribe's one-time top-up stays, since it happens once per save. |
+| An attacking camp has no people from nowhere | **Done.** The check found one more case: a reserve army joining a siege (either side, or an ally's) got a camp with two men and two women from nowhere. `src/sim/reservecamp.ts` marks it in its set-up, so its camp is laid with none (`siegecamp.ts`) and it is not counted as died out (`dyingout.ts`). | small | Built. |
 
 ## No auto-resolve; a town defends itself
 
@@ -63,7 +63,7 @@ Built as written (`muster.ts`, `birthonly.ts`; a woman fights at `WOMAN_ATK` 0.4
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A company is the men of its towns, never hired | Men of no town who are sent home vanish, and hired men of no town who fall are counted, not named (board, Armies belong to towns). | small | Before: say where they go (the army's chief town), or drop the last hired men. |
+| A company is the men of its towns, never hired | **Done for those sent home** (`src/sim/hiredhome.ts`): an army sent home settles its men of no town in its chief town as grown men. Still: hired men of no town who fall are counted, not named. | small | Built. The naming ports with the larger question of naming everyone (see No auto-resolve). |
 
 ## Children are never shown
 
@@ -93,7 +93,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | A woman whose home produces most | A rival's notable homes on the map are named by rule, one to a town, not by which house did most (board, How a rival rules its towns). | small | Unity: port `notableweight.ts`, which already weighs a house's output, and let rivals read it. |
-| Their loss carries weight | A notable carried off by a nation is not marked as carried off; people a nation leads away are counted, not named. | small | Before: mark the known among them by name, as `plaguenamed.ts` now does for plague. |
+| Their loss carries weight | **Done** (`src/sim/carriednamed.ts`): a known person among those a nation leads away is marked carried off by name, mourned, and known again if got back. The rest are counted, as the town's record keeps them. | small | Built. |
 
 ## Captivity
 
@@ -177,7 +177,7 @@ and the church built in battle under "Towns persist".
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | He can call armies to meet him and move with them as one | Calling the armies calls all of them, strips every garrison on the way, and will not cross land not their own. A leader travels a land a turn with no cost or risk. | medium | Unity: this is the leader's movement on the new map. |
-| He is in a town or with an army | A battle settled on the map does not count a leader standing alone in an ungarrisoned town. | small | Before: one rule in `mapbattle.ts`, so that the leader's fate is right in what Unity inherits. |
+| He is in a town or with an army | **Done** (`src/sim/seatedleader.ts`): a leader holding an ungarrisoned town alone leads its defence when the battle is settled on the map, at their rank. | small | Built. |
 
 ## Grief
 
@@ -254,14 +254,14 @@ These are not single promises, but they stand against the whole of DESIGN.md:
 
 All small, each in its own module with its own test, and none changes a rule's meaning:
 
-1. Captives taken in a visit are held on the map, as a battle's are (`battlecarried.ts`).
+1. Captives taken in a visit are held on the map, as a battle's are (`battlecarried.ts`). **Checked, not built:** in a visit only the field's marauders take anyone, and a battle's marauder-held are gone by the same rule; there is no taker on the map to hold them (see Towns persist).
 2. A Church or Tavern built in a battle is raised as the map site that moves the town's faith.
-3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town.
-4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line.
-5. Men of no town sent home go to the army's chief town, or the last hired men are dropped.
-6. A known person carried off by a nation is marked carried off by name.
+3. Settlers into a town emptied in battle, or behind a rival's army, come from the taker's nearest town. **Done** (`settlersfrom.ts`).
+4. Check whether any attacker's camp still has villagers from nowhere; fix it or strike the board line. **Done:** a reserve's camp (`reservecamp.ts`).
+5. Men of no town sent home go to the army's chief town, or the last hired men are dropped. **Done** (`hiredhome.ts`).
+6. A known person carried off by a nation is marked carried off by name. **Done** (`carriednamed.ts`).
 7. The Prophet's fire, blight and earthquake, and the older chance events, go by creed (`wrathAt`).
-8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map.
+8. A leader standing alone in an ungarrisoned town is counted when the battle is settled on the map. **Done** (`seatedleader.ts`).
 9. A defied rival king may declare war.
 
 Everything else ports as it is, and is built or decided in Unity.

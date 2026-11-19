@@ -32,8 +32,8 @@ export const CAMP = {
 /** A foot soldier of a besieging side: one who may build the camp's works, or crew an engine. */
 const footman = (g: Game, u: Unit): boolean => !u.dead && !u.hero && !u.inside && (u.def.cls === 'infantry' || u.def.cls === 'ranged') && besieging(g, u.owner) && !g.field;
 
-/** Does this people's camp have no villagers in it from the start: the attacking side of a campaign siege? */
-export const campWithoutPeople = (setup: { besieger?: boolean } | undefined): boolean => !!setup?.besieger;
+/** Does this people's camp have no villagers in it from the start: the attacking side of a campaign siege, or a reserve army joining one? */
+export const campWithoutPeople = (setup: { besieger?: boolean; reserve?: boolean } | undefined): boolean => !!setup?.besieger || !!setup?.reserve; // a reserve's camp too (reservecamp.ts)
 
 /** A besieging army is not housed: it raises nobody but engines out of its own men, so no roof limits it (game.ts training). */
 export const campUnhoused = (g: Game, pid: number): boolean => besieging(g, pid) && !g.field;

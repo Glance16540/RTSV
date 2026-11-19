@@ -195,8 +195,7 @@ export function settleFolk(c: Campaign, tid: number, census: Census, opts: { tak
   }
   for (const n of lost) { c.log.push(`${n.name} of ${t.name}, who ${n.deed}, is lost.`); chronicle(c, `${n.name} of ${t.name}, who ${n.deed}, was ${n.lost!.how} when the town was fought over.`); }
   for (const n of made) { c.log.push(`${n.name} of ${t.name} has ${n.deed}, and her name is known.`); chronicle(c, `${n.name} of ${t.name} ${n.deed}, and was known for it through the land.`); }
-  // An empty town does not stay empty: those who followed the army that took it make their homes there.
-  if (opts.taken && f.men + f.women === 0) { f.men = 2; f.women = 2; c.log.push(`Nobody was left alive in ${t.name}. Four who followed the army have settled there.`); }
+  // An empty town taken is settled by the taker's own people, by road (settlersfrom.ts, a battle hook in campaign.ts): nobody from nowhere.
   return { before, after, taken, lost, made };
 }
 
