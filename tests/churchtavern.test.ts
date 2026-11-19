@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPER, churchNear, churchTempers, keptFromTavern, maidPull, tavernPull, tavernShare } from '../src/sim/churchtavern';
 import { TAVERN_VIRTUE } from '../src/sim/campaignbase';
-import { newCampaign } from '../src/sim/campaign';
+import { newCampaign, virtueDrift } from '../src/sim/campaign';
+import { CHURCH_VIRTUE } from '../src/sim/campaignbase';
 import { driftTown } from '../src/sim/drift';
 import { folkOf } from '../src/sim/township';
 import { Game } from '../src/sim/game';
@@ -21,6 +22,10 @@ describe('a Church beside a Tavern, on the map', () => {
     expect(churchTempers(c, t.id)).toBe(true);
     expect(tavernPull(c, t.id)).toBe(TAVERN_VIRTUE - TEMPER.pull);
     expect(tavernShare(c, t.id)).toBe(1 - TEMPER.drift);
+    // The forecast of the nation's standing says the same.
+    const both = virtueDrift(c, 0);
+    t.buildings = t.buildings.filter((b) => b !== 'church');
+    expect(both - virtueDrift(c, 0)).toBe(CHURCH_VIRTUE + TEMPER.pull);
   });
 
   it('keeps more of a hungry town\'s women from the Tavern', () => {

@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { tavernPull } from './churchtavern';
 import { rumourSeason } from './tavernrumour';
 import { pressClaims } from './bothhouses';
 import { seasonOfTurn } from './seasonsky';
@@ -112,7 +113,7 @@ import { noteLost } from './companyroll';
 /** How far a people's churches and taverns will move it next turn. */
 export function virtueDrift(c: Campaign, f: number): number {
   let n = 0;
-  for (const t of c.territories) if (t.owner === f) n += (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - (t.buildings.includes('tavern') ? TAVERN_VIRTUE : 0);
+  for (const t of c.territories) if (t.owner === f) n += (t.buildings.includes('church') ? CHURCH_VIRTUE : 0) - tavernPull(c, t.id); // a Church beside the Tavern tempers it (churchtavern.ts)
   return n + placeGood(c, f, 'virtue');
 }
 const hash = (a: number, b: number): number => {
