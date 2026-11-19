@@ -22,6 +22,7 @@ import { nobleWork } from './nobles';
 import { GOVERN, shareOf } from './governor';
 import { millYield } from './mill';
 import { leaderWork } from './leaderstay';
+import { noteReaped } from './larderwatch';
 
 /** Grown men and women a town needs to work its land in full: six in the towns of today, TOWN_SCALE times as many in bigger towns. */
 export const HANDS_FULL = 6 * TOWN_SCALE;
@@ -85,10 +86,14 @@ export function harvest(c: Campaign, landYield: (f: number, t: Territory) => num
     for (const t of held) {
       // A land the marauders sit in yields what its own town's hands bring in, but into the chief town.
       const into = t.horde ? chief : t, n = Math.round(landYield(x.id, t) * k * SUPPLY_UNITS * handsShare(c, t.id) * nobleWork(c, t.id) * leaderWork(c, t.id)); // an angry noble's town works slacker (nobles.ts), the leader's harder (leaderstay.ts)
-      goods += n; lost += putIn(c, into.id, spread(n, yieldShares(c, into.id)));
+      const got = spread(n, yieldShares(c, into.id));
+      noteReaped(c, into.id, got.food); // for the reckoning ahead (larderwatch.ts)
+      goods += n; lost += putIn(c, into.id, got);
     }
     const extra = Math.round(whole(x.id) * k * SUPPLY_UNITS);
-    goods += extra; lost += putIn(c, chief.id, spread(extra, yieldShares(c, chief.id)));
+    const kept = spread(extra, yieldShares(c, chief.id));
+    noteReaped(c, chief.id, kept.food);
+    goods += extra; lost += putIn(c, chief.id, kept);
     out[x.id] = { goods, lost };
   }
   settleStores(c); // the figure, from the towns as they now are

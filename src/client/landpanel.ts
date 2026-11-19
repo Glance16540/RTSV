@@ -10,6 +10,7 @@ import { PLACES, WORLD_EVENTS } from '../sim/story';
 import { WORKS, canOpen, countryOf, countryYield } from '../sim/country';
 import { nationHtml, townHtml } from './townpanel';
 import { marketLine } from './caravandraw';
+import { emptyingText, emptyingTowns } from '../sim/larderwatch';
 import { canSendHome, menOf, noMenText } from '../sim/armytown';
 import { bandButtons, threatHtml } from './threatpanel';
 import { intrigueButtons, intrigueHtml } from './intriguepanel';
@@ -108,7 +109,8 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
       ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · <span title="What an army marching on this town would meet. Against a band the town musters differently: see below.">Defence against an army ${defence(c, t.id)}</span></div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
   const people = `${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div>${t.buildings.map((b) => { const l = siteLook(b, SITES[b], c.factions[t.owner]?.civ); return `${l.icon} ${l.name}`; }).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>`;
-  const danger = `${intrigueHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
+  const emptying = t.owner === 0 ? emptyingTowns(c, 0).filter((x) => x.at === t.id).map((x) => `<div class="bad">🌾 ${emptyingText(x)}</div>`).join('') : ''; // its granary emptying soon (larderwatch.ts)
+  const danger = `${emptying}${intrigueHtml(c, t.id)}${orderHtml(c, t.id)}${threatHtml(c, t.id)}
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}`;
   const fought = landTalesHtml(c, t.id); // the battles fought here (talepanel.ts)

@@ -23,6 +23,7 @@ import { actsOfGod } from './acts';
 import { threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
+import { battleCarried } from './battlecarried';
 import { bandBattle, settleBandFight } from './bandfight';
 import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
@@ -1048,6 +1049,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('written', 'studies', (c, _p, b) => { studiedHome(c, 0, b.after?.studies); }) // what the player's side researched in the fighting is the nation's, as from a visit
   .on('written', 'tribes', (c, p, b) => fieldReckoned(c, p, b.after?.folk)) // those of the town who marched out to a battle in the open and fell
   // housed: the town's people and stores are as that battle left them.
+  .on('housed', 'battlecarried', (c, p, b) => { if (b.census) battleCarried(c, p, (b.after?.folk as { carried?: unknown } | undefined)?.carried); }) // those carried off in it are held by their takers, to be got back (battlecarried.ts)
   .on('housed', 'driftintown', (c, p, b) => { if (b.census) driftBack(c, p.to, b.after?.drifted); }) // who was at the tavern and the mine stays there
   .on('housed', 'governor', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepOrders(c, p.to, b.after?.orders); }) // the player's town carries on with its last orders
   .on('housed', 'queuedmen', (c, p, b) => { if (c.territories[p.to].owner === 0 && p.mode !== 'field') keepQueued(c, p.to, b.after?.orders?.men); }) // and the men in its queues are remembered with them
