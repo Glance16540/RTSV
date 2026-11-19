@@ -10,6 +10,7 @@
 // What came of it is read back as the player leaves (`storyOut`) and written to the story on the map (storyvisit.ts).
 // Children are no units on the field (nursery.ts): they are never named here, suspected, questioned or harmed. Nobody is
 // struck or killed here: a story's dead are the map's. It reads the game and writes only these marks on it.
+import { lawGuard } from './studiesintown';
 import type { Building, Game, Unit } from './game';
 
 /** A grown person a story turns on, as the map keeps them (intriguebase.ts Person). */
@@ -104,7 +105,7 @@ export function storyTick(g: Game): void {
       const guard = g.units.some((u) => u.owner === owner && !u.dead && u.type !== 'villager' && Math.hypot(u.x - b.x, u.y - b.y) <= FIELD_STORY.near + b.size / 2);
       const g2 = (s.guarded ??= {});
       g2[b.id] = guard ? (g2[b.id] ?? 0) + 1 : 0;
-      if (g2[b.id] >= FIELD_STORY.guard * (s.watch ? FIELD_STORY.watched : 1)) {
+      if (g2[b.id] >= FIELD_STORY.guard * (s.watch ? FIELD_STORY.watched : 1) * lawGuard(g, owner)) { // the sooner under Written Law (studiesintown.ts)
         s.caught = true;
         g.msg(owner, `The guard where the ${b.robbed} household was robbed has taken the thief in the night. Judge them on the map.`);
         break;

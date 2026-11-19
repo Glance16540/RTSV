@@ -11,6 +11,7 @@ import { driftedIn } from '../sim/driftintown';
 import { storyOut } from '../sim/fieldstory';
 import { handRoadsOut } from '../sim/handroads';
 import { courtOut } from '../sim/courtfield';
+import { hallOut } from '../sim/hallfield';
 import type { App } from './main';
 
 const RESULT_KEY = 'rtsv-visit-result';
@@ -72,6 +73,7 @@ export function enterVisit(app: App, cfg: BattleConfig, resumed: boolean, back: 
       story: storyOut(app.game, app.pid), // and what came of a story afoot here (fieldstory.ts)
       roads: handRoadsOut(app.game, app.pid), // and the roads laid by hand here, which the town keeps (handroads.ts)
       court: courtOut(app.game, app.pid), // and of a story of the leader's house (courtfield.ts)
+      hall: hallOut(app.game, app.pid), // and the rulings given at the town's Hall (hallfield.ts)
     };
     try { localStorage.setItem(RESULT_KEY, JSON.stringify(after)); localStorage.removeItem(VISIT_SAVE_KEY); } catch { /* storage unavailable */ }
     back();
