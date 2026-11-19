@@ -1,6 +1,8 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { seasonOfTurn } from './seasonsky';
+import type { Season } from './seasonsky';
 import { leavePlague, safeStep, sickLast } from './aiplague';
 import { beatenBack } from './siegeretreat';
 import { finishWorks, scarTown } from './battlescars';
@@ -1493,7 +1495,7 @@ function stepToBorder(c: Campaign, f: number, from: number): number {
 
 // ---- Real-time battles ----
 
-export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky; /** The country it lies in. */ climate?: 'temperate' | 'desert' | 'steppe' | 'snow'; /** Wood and stone already taken from this ground in earlier sieges. */ ground?: Ground }
+export interface BattleConfig { seed: number; size: number; level: number; title: string; setups: PlayerSetup[]; humanAttacks: boolean; field: boolean; sea: boolean; /** The weather over the land being fought for. */ weather?: Sky; /** The country it lies in. */ climate?: 'temperate' | 'desert' | 'steppe' | 'snow'; /** The season the map is in, for the look of the land (seasonsky.ts). */ season?: Season; /** Wood and stone already taken from this ground in earlier sieges. */ ground?: Ground }
 
 /** Turn the pending battle into a real-time match: each side fields the troops it has on the map. */
 export function battleConfig(c: Campaign): BattleConfig | null {
@@ -1552,7 +1554,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
   return {
     ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
-    climate: BIOMES[biomeOf(c, p.to)].climate,
+    climate: BIOMES[biomeOf(c, p.to)].climate, season: seasonOfTurn(c.turn),
     ...(!field && t.ground ? { ground: t.ground } : {}),
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,

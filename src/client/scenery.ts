@@ -1,6 +1,7 @@
 // The land itself: painted ground with soft edges between grass, earth and sand, a lake bed that
 // falls away under moving water, scattered grass, stones and flowers, and cloud shadows drifting over.
 
+import type { SeasonLook } from '../sim/seasonsky';
 import * as THREE from 'three';
 import { bush } from './flora';
 import { Climate, T_DIRT, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../sim/map';
@@ -33,7 +34,8 @@ export interface Scenery {
   clearAt(x: number, y: number, r: number): void;
 }
 
-export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, climate: Climate = '', woods: { x: number; y: number }[] = []): Scenery {
+export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, climate: Climate = '', woods: { x: number; y: number }[] = [], opts: { /** The season the map is in (seasonsky.ts). */ look?: SeasonLook } = {}): Scenery {
+  const look = opts.look;
   const group = new THREE.Group();
   const tAt = (x: number, y: number): number => (x < 0 || y < 0 || x >= N || y >= N ? T_WATER : T[y * N + x]);
 
@@ -133,7 +135,9 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
     const x = Math.min(N - 1.001, Math.max(0, u - 0.5)), y = Math.min(N - 1.001, Math.max(0, v - 0.5)), xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, i = yi * N + xi;
     return (f[i] * (1 - fx) + f[i + 1] * fx) * (1 - fy) + (f[i + N] * (1 - fx) + f[i + N + 1] * fx) * fy;
   };
-  const MEADOW = [[244, 233, 176], [240, 200, 216], [216, 208, 255], [255, 208, 96], [255, 255, 255], [220, 70, 60]];
+  /** Fallen leaves, gold, red and brown, under the trees in autumn. */
+const FALLEN = [[196, 128, 40], [172, 70, 34], [140, 92, 44], [210, 160, 60]];
+const MEADOW = [[244, 233, 176], [240, 200, 216], [216, 208, 255], [255, 208, 96], [255, 255, 255], [220, 70, 60]];
 
   // ---- the painted ground ----
   const px = N * 16 <= 2048 ? 16 : Math.floor(2048 / N);
@@ -174,6 +178,13 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
         const meadow = smooth(0.55, 0.7, fbm(u * 0.22 + 40, v * 0.22 + 3)) * (1 - wood);
         if (meadow > 0 && hash(x, y + 31) > 1 - meadow * 0.03) { const c = MEADOW[Math.floor(hash(x >> 3, y >> 3) * MEADOW.length)]; r = c[0]; g = c[1]; b = c[2]; }
         else if (meadow > 0) { r += meadow * 6; g += meadow * 10; }
+      }
+      // The season (seasonsky.ts): fresh green in spring with blossom in the open, browner in autumn with fallen
+      // leaves thick under the trees, faded under winter.
+      if (look?.season) {
+        r += look.grass[0]; g += look.grass[1]; b += look.grass[2];
+        if (look.turned > 0 && hash(x >> 1, (y >> 1) + 313) > 1 - (0.03 + wood * 0.3) * look.turned) { const c = FALLEN[Math.floor(hash(x >> 2, (y >> 2) + 5) * FALLEN.length)]; r = c[0]; g = c[1]; b = c[2]; }
+        else if (look.blossom > 0 && hash(x, y + 57) > 1 - look.blossom * 0.25 * (1 - wood)) { r = 238; g = 226; b = 232; }
       }
       // Under trees: shade, moss and fallen leaves.
       r -= wood * 26; g -= wood * 22; b -= wood * 12;
@@ -219,6 +230,12 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
       r += (112 + band * 46 - r) * crag; g += (106 + band * 42 - g) * crag; b += (100 + band * 40 - b) * crag;
       const snow = smooth(3.7, 4.5, high + (mid - 0.5) * 1.4) * crag;
       r += (238 - r) * snow; g += (242 - g) * snow; b += (248 - b) * snow;
+      // Winter snow lying over grass, earth and rock in drifts, thinner under the trees and off the water's edge (seasonsky.ts).
+      if (look && look.snow > 0) {
+        const lie = smooth(1.05 - look.snow, 1.25 - look.snow, fbm(u * 0.5 + 21, v * 0.5 + 4) * 0.7 + mid * 0.3 + (fine - 0.5) * 0.15) * (1 - wood * 0.5) * (1 - smooth(0.05, 0.3, water));
+        const drift = Math.sin(u * 0.7 + v * 0.33 + broad * 6) * 6;
+        r += (228 + broad * 10 + drift - r) * lie; g += (234 + broad * 8 + drift - g) * lie; b += (244 + broad * 4 - b) * lie;
+      }
       // Sand along the shore, wet and darker at the waterline.
       const sand = smooth(0.14, 0.4, water);
       const wet = smooth(0.4, 0.55, water);
@@ -464,6 +481,9 @@ export function buildScenery(N: number, T: Uint8Array, hills: Float32Array, clim
   }
   tuft.setAttribute('position', new THREE.Float32BufferAttribute(bp, 3));
   tuft.setAttribute('normal', new THREE.Float32BufferAttribute(bn, 3));
+  // Grass goes tawny in autumn and dead straw in winter (seasonsky.ts).
+  const fade = look?.season === 'autumn' ? [0x9c7a3c, 0.45] as const : look?.season === 'winter' ? [0xaaa189, 0.6] as const : null;
+  if (fade) { const to = new THREE.Color(fade[0]); for (const c of tuftCol) c.lerp(to, fade[1]); }
   scatter(tuft, swaying(new THREE.MeshLambertMaterial({ color: 0xffffff }), 0.3), tufts, tuftCol);
   scatter(new THREE.IcosahedronGeometry(0.12, 0), new THREE.MeshLambertMaterial({ color: 0x9a968c, flatShading: true }), stones);
   scatter(new THREE.OctahedronGeometry(0.045, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), blooms, bloomCol);

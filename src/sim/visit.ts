@@ -7,6 +7,7 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { seasonOfTurn } from './seasonsky';
 import { companySoldiers, rollOf } from './soldiernames';
 import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
@@ -193,7 +194,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
   const town = record.town ?? (t.town?.coarse ? undefined : t.town?.b) ?? [];
   return {
     ...(weatherAt(c, t.id) ? { weather: weatherAt(c, t.id) as Sky } : {}),
-    climate: BIOMES[biomeOf(c, t.id)].climate,
+    climate: BIOMES[biomeOf(c, t.id)].climate, season: seasonOfTurn(c.turn),
     ...(t.ground ? { ground: t.ground } : {}),
     seed: t.seed, size: t.trait === 'coast' ? 96 : 72, level: 0, humanAttacks: false, field: false, sea: t.trait === 'coast',
     title: `A visit to ${t.name}`,
