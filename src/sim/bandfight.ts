@@ -19,6 +19,7 @@
 // player's is a battle put to the player, to enter or to leave to the army, and one that cannot be called off.
 //
 // The marauders are not fought this way: they hold a land, and are fought by marching into it (bandhorde.ts).
+import { roadClash, roadTally, soldiersOf } from './roadclash';
 import { outOf } from './rim';
 import { peoplesArmy, sideName } from './naming';
 import type { Army, BattleConfig, Campaign } from './campaign';
@@ -108,6 +109,7 @@ export function fightByMeans(c: Campaign, a: Army, b: Band, out: string[], ambus
   const day = (salt: number): number => 1 - FIGHT.day + 2 * FIGHT.day * chance(c, b.id * 97 + a.id, salt);
   const mine = armyStrength(a, c) * day(61) * (ambush ? exposure(c, a) : 1), theirs = b.strength * day(67), at = c.territories[b.at].name;
   a.moved = true;
+  roadTally(c, ambush ? 'ambush' : 'hunt', mine < theirs, roadClash(b.strength, theirs, soldiersOf(c, a, mine / Math.max(0.01, armyStrength(a, c))))); // stage one of the road fight: report only (roadclash.ts)
   if (!ambush) marched(c, b.id, 'met', mine >= theirs); // an army went out against a band on its way in from the far wilds (bandmarch.ts)
   if (mine >= theirs) {
     const lost = lose(a, Math.round(armySize(a) * FIGHT.cost * Math.min(1, theirs / mine)));
