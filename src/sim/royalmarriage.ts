@@ -15,11 +15,11 @@
 // for a ruler with a child of age to offer); an offer to the player waits two seasons for an answer (`c.pactOffer`).
 // A ruler's readiness to accept is their temper's openness to peace (HUB.peaceOf), more toward a stronger people and with
 // goodwill. Chances here are a run of their own. Nothing suggestive is told: who weds whom, and that is all.
+import { givenNames } from './peoplenames';
 import type { Campaign } from './campaign';
 import { HUB, reach } from './campaignbase';
 import { houseOf, ofAge, rulerName } from './dynasty';
 import type { Heir } from './dynasty';
-import { NAMES_F, NAMES_M } from './data';
 import { CHILD_SEASONS } from './ageing';
 import { pactOf, pactsSeason, wedPeace } from './pacts';
 import type { Pact } from './pacts';
@@ -142,7 +142,7 @@ export function royalSeason(c: Campaign): void {
   for (const p of c.pacts ?? []) {
     if (p.kind !== 'marriage') continue;
     if (!p.child && c.turn - p.since >= MARRY.childAfter && chance(c, p.a * 101 + p.b * 7 + p.since) < MARRY.childChance) {
-      const female = chance(c, p.since * 3 + p.a) < 0.5, names = female ? NAMES_F : NAMES_M;
+      const female = chance(c, p.since * 3 + p.a) < 0.5, names = givenNames(c.factions[p.a]?.civ, female ? 'f' : 'm'); // named in the first house's way (peoplenames.ts)
       p.child = { name: names[Math.floor(chance(c, p.since * 5 + p.b) * names.length)], female, born: c.turn };
     }
     if (p.child && !p.child.told && c.turn - p.child.born >= CHILD_SEASONS) {

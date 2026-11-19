@@ -17,9 +17,9 @@
  * - A man whose town is no longer his people's when he comes home settles where the army stands; his old house's
  *   record lets him go.
  */
+import { givenNames, houseNames, townPeople } from './peoplenames';
 import { cleanRecord } from './warrecord';
 import type { Campaign } from './campaign';
-import { FAMILY_NAMES, NAMES_M } from './data';
 import { GRIEF_SEASONS } from './grief';
 import { Folk, MAX_NOTABLES, Notable, folkOf } from './township';
 import { veteransFell } from './veteranhome';
@@ -93,16 +93,18 @@ const sonsAway = (h: WarHouse | undefined): number => h?.away.filter((s) => s.as
 /** A family name of this town not yet on the record, drawn by the town and how many it has. */
 function newFamily(c: Campaign, tid: number, f: Folk): string {
   const used = new Set([...housesOf(f).map((h) => h.family), ...f.notables.map((n) => n.family ?? '')]);
-  const start = Math.floor(hash(c.seed * 13 + tid, used.size + 1) * FAMILY_NAMES.length);
-  for (let i = 0; i < FAMILY_NAMES.length; i++) { const name = FAMILY_NAMES[(start + i) % FAMILY_NAMES.length]; if (!used.has(name)) return name; }
-  return `${FAMILY_NAMES[start]} the ${used.size}th`;
+  const FAMILIES = houseNames(townPeople(c, tid)); // the town's own people's houses (peoplenames.ts)
+  const start = Math.floor(hash(c.seed * 13 + tid, used.size + 1) * FAMILIES.length);
+  for (let i = 0; i < FAMILIES.length; i++) { const name = FAMILIES[(start + i) % FAMILIES.length]; if (!used.has(name)) return name; }
+  return `${FAMILIES[start]} the ${used.size}th`;
 }
 /** A man's name, not one his house already has away. */
 function newName(c: Campaign, tid: number, h: WarHouse, k: number): string {
   const used = new Set([...h.away.map((s) => s.name), ...(h.fallen ?? []).map((s) => s.name)]);
-  const start = Math.floor(hash(c.seed * 17 + tid * 53 + k, c.turn * 7 + h.away.length) * NAMES_M.length);
-  for (let i = 0; i < NAMES_M.length; i++) { const name = NAMES_M[(start + i) % NAMES_M.length]; if (!used.has(name)) return name; }
-  return NAMES_M[start];
+  const MEN = givenNames(townPeople(c, tid), 'm');
+  const start = Math.floor(hash(c.seed * 17 + tid * 53 + k, c.turn * 7 + h.away.length) * MEN.length);
+  for (let i = 0; i < MEN.length; i++) { const name = MEN[(start + i) % MEN.length]; if (!used.has(name)) return name; }
+  return MEN[start];
 }
 
 /**
