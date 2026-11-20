@@ -4,7 +4,7 @@
 // map a town the player is not in lives the same season run coarsely, and this is that: once a season, each held
 // land may be struck by one of the three. They come at random and spare nobody, but they go by the holder's creed,
 // by the same measure as in a battle (the creed's figure in creed.ts, as wrath.ts reads it): it scales both how
-// often a thing comes and how bad it is, so that a Righteous people has them a third as often and a third as
+// often a thing comes and how bad it is, so that a Virtuous people has them a third as often and a third as
 // hard, and is very rarely struck hard at all.
 //
 // They fall on the real town on the land: its stores and its people as township.ts keeps them (stores.ts).
@@ -52,7 +52,7 @@ export const ACTS = {
   hunger: 1.5,
   /** Fire and famine: this many times as likely where dust is over the land. Neither comes where it rains. */
   dry: 2,
-  /** A strike is a hard one with this chance, times the measure squared: one in forty for the Righteous. */
+  /** A strike is a hard one with this chance, times the measure squared: one in forty for the Virtuous. */
   hard: 0.25,
   /** Plague: seasons it lasts for an ordinary people, the share of the town's grown people it kills a season (one at least), and the chance each season of its passing next door. */
   seasons: 2, sick: 0.1, spread: 0.25,

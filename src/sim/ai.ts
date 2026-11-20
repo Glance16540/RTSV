@@ -584,7 +584,7 @@ export class AIController {
   }
 
   /**
-   * A town that has become Decadent is dying out and knows it: it builds a Work Camp, keeps a pair of Slavers, and
+   * A town that has become Depraved is dying out and knows it: it builds a Work Camp, keeps a pair of Slavers, and
    * sends them after the nearest rival villagers for as long as the camp has room.
    */
   private slaving(mine: Building[], villagers: Unit[], home: Building): void {
@@ -656,7 +656,7 @@ export class AIController {
     const pious = leaningWith(p.civ, LEANING[p.civ] ?? 0.5) >= 0.5;
     const type = pious ? 'temple' : 'tavern';
     if (!pious) {
-      // It likes the tavern's gold but knows where the road ends: a Decadent town's own people die out. Near the
+      // It likes the tavern's gold but knows where the road ends: a Depraved town's own people die out. Near the
       // edge it empties the tavern, and does not fill it again until it has drawn well back.
       if (p.virtue <= -60) { for (const b of mine) if (b.type === 'tavern' && b.staff?.length && !b.staff.some((id) => (g.entities.get(id) as Unit | undefined)?.drifted)) g.cmdUnstaff(pid, b.id, true); return; }
       if (p.virtue <= -45) return;

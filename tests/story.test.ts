@@ -214,9 +214,9 @@ describe('the chronicle of battles and the last page', () => {
     c.factions[1].alive = false;
     const won = epilogue(c);
     expect(won[0]).toBe('After 23 turns your people were the only ones left in the land.');
-    expect(won[1]).toMatch(/^They ended it Devout: a /);
+    expect(won[1]).toMatch(/^They ended it Upright: a /);
     expect(won[2]).toBe('They held the White Chapel.');
-    expect(won[3]).toBe('3 matters were brought before you. You gave the pious answer 2 times and the worldly one 1.');
+    expect(won[3]).toBe('3 matters were brought before you. You gave the upright answer 2 times and the dissolute one 1.');
     lands[1].owner = 0;
     expect(epilogue(c)[2]).toBe('Every place of note was theirs: the White Chapel and the Broken Keep.');
     c.winner = 1; c.factions[1].alive = true; lands[0].owner = 1; lands[1].owner = 1; c.answers = [];

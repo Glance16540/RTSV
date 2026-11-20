@@ -45,7 +45,7 @@ describe('pagan units', () => {
     expect(BUILDINGS.barracks.trains).toEqual(expect.arrayContaining(['swordsman', 'berserker']));
   });
 
-  it('a town refuses them from the moment it is Devout, and not a point before', () => {
+  it('a town refuses them from the moment it is Upright, and not a point before', () => {
     expect(isHoly(30)).toBe(true);
     expect(isHoly(29)).toBe(false);
     const below = town(29), holy = town(30);
@@ -60,10 +60,10 @@ describe('pagan units', () => {
     expect(holy.g.cmdTrain(0, holy.barracks.id, 'swordsman')).toBe(true); // honest soldiers are fine
   });
 
-  it('the Slaver is doubly barred: pagan to the faithful, and only the Decadent would have him at all', () => {
+  it('the Slaver is doubly barred: pagan to the faithful, and only the Depraved would have him at all', () => {
     const middling = town(0), fallen = town(-80);
     expect(isDecadent(-80)).toBe(true);
-    expect(middling.g.creedBar(0, UNITS.slaver)).toBe('Only a Decadent town would have a Slaver.');
+    expect(middling.g.creedBar(0, UNITS.slaver)).toBe('Only a Depraved town would have a Slaver.');
     expect(middling.g.cmdTrain(0, middling.tavern.id, 'slaver')).toBe(false);
     expect(fallen.g.creedBar(0, UNITS.slaver)).toBeNull();
     expect(fallen.g.cmdTrain(0, fallen.tavern.id, 'slaver')).toBe(true);

@@ -36,7 +36,7 @@ describe('a harvest that fails by chance', () => {
     expect(g.events.some((e) => e.t === 'blight')).toBe(true);
   });
 
-  it('a third as often, on fewer fields and for a third as long among the Righteous; more of each among the Decadent', () => {
+  it('a third as often, on fewer fields and for a third as long among the Virtuous; more of each among the Depraved', () => {
     const n = FAMINE.lean * 120;
     const holy = years(town(100).g, n, 100), plain = years(town().g, n, 0), fallen = years(town(-100).g, n, -100);
     expect(holy.fails).toBeGreaterThan(0); // nobody is spared

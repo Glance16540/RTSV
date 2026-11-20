@@ -1661,8 +1661,8 @@ export class Game {
   creedBar(owner: number, def: { name: string; pagan?: boolean; needs?: 'holy' | 'decadent' }): string | null {
     const v = this.players[owner].virtue;
     if (def.pagan && isHoly(v)) return `A town that keeps the faith will not have a ${def.name}.`;
-    if (def.needs === 'holy' && !isHoly(v)) return `Only a Devout town can call a ${def.name}.`;
-    if (def.needs === 'decadent' && !isDecadent(v)) return `Only a Decadent town would have a ${def.name}.`;
+    if (def.needs === 'holy' && !isHoly(v)) return `Only an Upright town can call a ${def.name}.`;
+    if (def.needs === 'decadent' && !isDecadent(v)) return `Only a Depraved town would have a ${def.name}.`;
     return null;
   }
 

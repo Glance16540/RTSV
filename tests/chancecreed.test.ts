@@ -21,7 +21,7 @@ const share = (virtue: number, f: (c: Campaign, at: number) => boolean, n = 4000
 };
 
 describe('fever and a hard season go by the town\'s creed', () => {
-  it('a hard season costs by the town\'s measure: 1 from the Righteous, 2 Devout, 3 ordinary, 4 Worldly, 5 Decadent', () => {
+  it('a hard season costs by the town\'s measure: 1 from the Virtuous, 2 Upright, 3 ordinary, 4 Dissolute, 5 Depraved', () => {
     expect([90, 50, 0, -50, -90].map((v) => { const { c, at } = world(v); return hardCost(c, at); })).toEqual([1, 2, 3, 4, 5]);
     expect(CHANCE_CREED.hard).toBe(3);
   });

@@ -331,12 +331,12 @@ export class Overworld {
     el.querySelectorAll<HTMLButtonElement>('.levels button').forEach((b, i) => { if (i < open.length) { const s = document.createElement('small'); s.textContent = open[i].detail; b.appendChild(s); } });
   }
 
-  /** A tale is put to the player: two answers, the pious and the worldly, each with its price. */
+  /** A tale is put to the player: two answers, the upright and the dissolute, each with its price. */
   private askTale(): void {
     const c = this.c, tale = taleNow(c)!;
     const price = (k: 'a' | 'b'): string => {
       const ch = tale[k];
-      return [ch.supplies ? `${ch.supplies > 0 ? '+' : ''}${ch.supplies} supplies` : '', ch.virtue > 0 ? `piety +${ch.virtue}` : `decadence +${-ch.virtue}`, ch.company ? 'a company of infantry' : ''].filter(Boolean).join(', ');
+      return [ch.supplies ? `${ch.supplies > 0 ? '+' : ''}${ch.supplies} supplies` : '', ch.virtue > 0 ? `standing +${ch.virtue}` : `standing −${-ch.virtue}`, ch.company ? 'a company of infantry' : ''].filter(Boolean).join(', ');
     };
     const answer = (k: 'a' | 'b') => { answerTale(c, k); this.changed(); };
     this.dialog(tale.title, taleText(c, tale.text) + (canAnswer(c, 'a') && canAnswer(c, 'b') ? '' : ' You have not the supplies for every answer.'),
