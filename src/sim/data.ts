@@ -1031,8 +1031,10 @@ export const CIVS: Record<string, CivDef> = {
   },
   forge: {
     id: 'forge', name: 'Chinese', icon: '🐉', desc: 'Scholars, makers and masters of fire and powder.', unique: 'firethrower', unique2: 'organgun',
-    bonuses: ['Research is 30% faster and 15% cheaper', 'Siege engines have 25% more health'],
-    apply: (m) => { m.techTime = 0.7; m.techCost = 0.85; m.siegeHp = 1.25; },
+    bonuses: ['Research is 30% faster and 15% cheaper', 'Siege engines have 25% more health', 'Villagers gather 5% faster'],
+    // The last is their one early gift: their others pay late, and against the other fourteen peoples' computers they won 49 decided games
+    // and lost 82 over 448 without it (losing most to the raiders, who come early), 59 and 73 with it.
+    apply: (m) => { m.techTime = 0.7; m.techCost = 0.85; m.siegeHp = 1.25; m.gather *= 1.05; },
   },
   egypt: {
     id: 'egypt', name: 'Egyptians', icon: '🔺', desc: 'A kingdom of the river, fed by its fields and famous for what it builds.', unique: 'khopesh', unique2: 'warchariot',
