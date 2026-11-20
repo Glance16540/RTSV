@@ -1,4 +1,4 @@
-// Acts of God fall harder on the decadent than on the holy (src/sim/wrath.ts, docs/DESIGN.md): a Righteous town
+// Acts of God fall harder on the decadent than on the holy (src/sim/wrath.ts, docs/DESIGN.md): a Virtuous town
 // has them at about a third of the rate and a third of the severity, and nobody is spared.
 import { describe, expect, it } from 'vitest';
 import { FIRE, accident, lightning } from '../src/sim/calamity';
@@ -19,7 +19,7 @@ const kill = (g: Game, e: unknown) => (g as unknown as { kill(e: unknown): void 
 const seconds = (g: Game, n: number, each: () => void) => { for (let s = 0; s < n; s++) { g.tick += 20; g.time += 1; each(); } };
 
 describe('how hard acts of God fall', () => {
-  it('a third for the Righteous, a half for the Devout, more for the Worldly and the Decadent, and 1 for what is nobody\'s', () => {
+  it('a third for the Virtuous, a half for the Upright, more for the Dissolute and the Depraved, and 1 for what is nobody\'s', () => {
     const of = (v: number) => { const g = town(v); return [g.creed(0).id, wrath(g, 0)] as const; };
     expect(of(HOLY)).toEqual(['zealous', 1 / 3]);
     expect(of(40)).toEqual(['devout', 0.5]);
@@ -31,7 +31,7 @@ describe('how hard acts of God fall', () => {
     expect(wrath(g, -1)).toBe(1);
   });
 
-  it('lightning finds a Righteous town a third as often as its ordinary neighbour, and its fire is a third as long', () => {
+  it('lightning finds a Virtuous town a third as often as its ordinary neighbour, and its fire is a third as long', () => {
     const g = town(HOLY, PLAIN);
     // One house each and nothing else standing, so that the two are equal marks but for their creed.
     for (const b of [...g.buildings]) kill(g, b);
@@ -49,7 +49,7 @@ describe('how hard acts of God fall', () => {
     expect(a / b).toBeLessThan(0.42);
   });
 
-  it('a smithy catches by accident a third as often among the Righteous and half again as often among the Decadent', () => {
+  it('a smithy catches by accident a third as often among the Virtuous and half again as often among the Depraved', () => {
     const fires = (virtue: number) => {
       const g = town(virtue);
       const at = spot(g, 'blacksmith', 0);
@@ -69,7 +69,7 @@ describe('how hard acts of God fall', () => {
     expect(fallen.long).toBeCloseTo(FIRE.spark * 1.5, 5);
   });
 
-  it('fire spreads less through a Righteous town than an ordinary one, and more through a Decadent one', () => {
+  it('fire spreads less through a Virtuous town than an ordinary one, and more through a Depraved one', () => {
     const burn = (virtue: number, seed: number) => {
       const g = new Game(seed, [{ name: 'A', color: 1, isAI: false, civ: 'hearth' }, { name: 'B', color: 2, isAI: false, civ: 'england' }]);
       g.weatherT = 1e6;
@@ -104,7 +104,7 @@ describe('how hard acts of God fall', () => {
     expect(fallen.longest).toBeGreaterThan(CALAMITY.caught);
   }, 120000);
 
-  it('a famine takes the Righteous a third as fast and the Decadent half again as fast', () => {
+  it('a famine takes the Virtuous a third as fast and the Depraved half again as fast', () => {
     const lost = (virtue: number) => {
       const g = town(virtue);
       const p = g.players[0], at = g.buildings.find((b) => b.owner === 0 && b.type === 'towncenter')!;

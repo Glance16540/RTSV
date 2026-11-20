@@ -2133,7 +2133,7 @@ describe('faith, plague and the home', () => {
     expect(lasts(80)).toBeGreaterThan(0);
     expect(lasts(80)).toBeLessThan(plain * 0.4);
     expect(lasts(-80)).toBeGreaterThan(plain * 1.3);
-    expect(creedOf(80).name).toBe('Righteous');
+    expect(creedOf(80).name).toBe('Virtuous');
   });
 
   it('a monk or nun leaves their house; a house with someone at the tavern raises no children', () => {
@@ -3500,7 +3500,7 @@ describe('faith on the campaign map', () => {
     c.log.length = 0;
     turn(c);
     expect(virtueOf(c, 0)).toBe(28 + CHURCH_VIRTUE);
-    expect(c.log.some((l) => l.includes('Your people are now Devout'))).toBe(true);
+    expect(c.log.some((l) => l.includes('Your people are now Upright'))).toBe(true);
     c.factions[0].virtue = 99;
     turn(c);
     expect(virtueOf(c, 0)).toBe(100);
@@ -3525,7 +3525,7 @@ describe('faith on the campaign map', () => {
     c.factions[0].virtue = 0;
     c.factions[0].supplies = companyCost(home, 'infantry', 'steppe') - 1;
     expect(canRaise(c, 0, home.id, 'infantry')).toBe(false);
-    // Unrest: the Righteous keep their land with no garrison; the Decadent lose it even with one company there.
+    // Unrest: the Virtuous keep their land with no garrison; the Depraved lose it even with one company there.
     const rising = (virtue: number, garrison: number) => {
       const d = newCampaign(7, 1, 1, 'steppe');
       const cap = d.territories.find((t) => t.capital === 0)!;
@@ -3563,7 +3563,7 @@ describe('faith on the campaign map', () => {
     expect(g.creed(1).id).toBe('decadent');
     // The player ran a tavern town in that battle: the people come home worldlier, by half of how far it went.
     finishBattle(c, true, undefined, { virtue: -20 });
-    // Faith is a town's now: their own town came home at 10, and the Decadent capital they took keeps its own standing.
+    // Faith is a town's now: their own town came home at 10, and the Depraved capital they took keeps its own standing.
     expect(faithAt(c, next.id)).toBe(40 + (-20 - 40) * BATTLE_VIRTUE);
     expect(faithAt(c, foeCap.id)).toBe(-75);
     expect(virtueOf(c, 0)).toBe(nationVirtue(c, 0));

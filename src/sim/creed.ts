@@ -1,4 +1,4 @@
-// Piety against decadence: one scale per people, moved by how they answer the dilemmas that come
+// Moral standing: one scale per people, moved by how they answer the dilemmas that come
 // up and by their habits. Each end of the scale has boons and banes.
 
 import { MORE_DILEMMAS } from './dilemmas';
@@ -27,7 +27,7 @@ export const TAVERN_PLAGUE = 0.0012;
  * more than two couples count.
  */
 export const TAVERN_BIRTH = 3000;
-/** A holy town is Devout or better; a town given over to decadence is Decadent. */
+/** A holy town is Upright or better; a town given over to decadence is Depraved. */
 export const isHoly = (virtue: number): boolean => virtue >= 30;
 export const isDecadent = (virtue: number): boolean => virtue <= -70;
 export const CAPTURE_TIME = 3; // seconds a Slaver needs to bind a villager
@@ -59,14 +59,14 @@ export interface Creed {
 
 const base = { faith: 1, heal: 1, morale: 1, research: 1, train: 1, gold: 1, trade: 1, birth: 1, plague: 1, work: 1, childLoss: 0.1, settle: 1 };
 export const CREEDS: Creed[] = [
-  { ...base, id: 'zealous', name: 'Righteous', icon: '🕯️', desc: 'A people who keep the faith in all they do.', plague: 1 / 3, childLoss: 0.02, faith: 1.6, heal: 1.4, morale: 1.3, birth: 1.3, research: 1.25, gold: 0.85, trade: 0.85,
+  { ...base, id: 'zealous', name: 'Virtuous', icon: '🕯️', desc: 'A people who keep the faith in all they do.', plague: 1 / 3, childLoss: 0.02, faith: 1.6, heal: 1.4, morale: 1.3, birth: 1.3, research: 1.25, gold: 0.85, trade: 0.85,
     boons: ['Almost every birth that is due comes (1 in 50 does not)', 'Famine, plague and fire come a third as often and fall a third as hard', 'Children come 30% sooner', 'Faith gathers 60% faster', 'Healing 40% stronger', 'Morale near the Town Center 30% stronger'], banes: ['Research takes 25% longer', 'Gold is mined 15% slower', 'The market pays 15% less'] },
-  { ...base, id: 'devout', name: 'Devout', icon: '🙏', desc: 'A god-fearing people.', plague: 0.5, childLoss: 0.05, faith: 1.3, heal: 1.2, morale: 1.15, birth: 1.15, research: 1.1, trade: 0.95,
+  { ...base, id: 'devout', name: 'Upright', icon: '🙏', desc: 'A god-fearing people.', plague: 0.5, childLoss: 0.05, faith: 1.3, heal: 1.2, morale: 1.15, birth: 1.15, research: 1.1, trade: 0.95,
     boons: ['Fewer births fail to come (1 in 20, against 1 in 10)', 'Famine, plague and fire come half as often and fall half as hard', 'Children come 15% sooner', 'Faith gathers 30% faster', 'Healing 20% stronger', 'Morale 15% stronger'], banes: ['Research takes 10% longer', 'The market pays 5% less'] },
-  { ...base, id: 'temperate', name: 'Temperate', icon: '⚖️', desc: 'Neither saints nor sinners.', boons: [], banes: [] },
-  { ...base, id: 'worldly', name: 'Worldly', icon: '🍷', desc: 'They like their comforts.', plague: 1.25, childLoss: 0.18, work: 0.95, train: 0.9, gold: 1.1, trade: 1.15, faith: 0.8, morale: 0.9, birth: 0.9,
+  { ...base, id: 'temperate', name: 'Common', icon: '⚖️', desc: 'Neither saints nor sinners.', boons: [], banes: [] },
+  { ...base, id: 'worldly', name: 'Dissolute', icon: '🍷', desc: 'They like their comforts.', plague: 1.25, childLoss: 0.18, work: 0.95, train: 0.9, gold: 1.1, trade: 1.15, faith: 0.8, morale: 0.9, birth: 0.9,
     boons: ['Soldiers are trained 10% faster', 'Gold is mined 10% faster', 'The market pays 15% more'], banes: ['Nearly 1 birth in 5 does not come, so fewer grow up', 'Villagers are distracted: gathering 5% slower', 'Famine, plague and fire come a quarter more often and fall a quarter harder', 'Children come 10% later', 'Faith gathers 20% slower', 'Morale 10% weaker'] },
-  { ...base, id: 'decadent', name: 'Decadent', icon: '🎭', desc: 'Anything can be bought here, and its own people are dying out: it grows by what it takes.', plague: 1.5, childLoss: 0.5, work: 0.9, train: 0.8, gold: 1.2, trade: 1.3, birth: 0.4, settle: 2, faith: 0.5, heal: 0.8, morale: 0.6,
+  { ...base, id: 'decadent', name: 'Depraved', icon: '🎭', desc: 'Anything can be bought here, and its own people are dying out: it grows by what it takes.', plague: 1.5, childLoss: 0.5, work: 0.9, train: 0.8, gold: 1.2, trade: 1.3, birth: 0.4, settle: 2, faith: 0.5, heal: 0.8, morale: 0.6,
     boons: ['Soldiers are trained 20% faster', 'Gold is mined 20% faster', 'The market pays 30% more', 'Can build a Work Camp and send Slavers: captives are how such a town grows'], banes: ['Its own households are dying out: children come less than half as often, and half of the births that are due do not come at all', 'Villagers take twice as long to raise at the Town Center', 'Villagers are distracted: gathering 10% slower', 'Plagues last half as long again', 'Faith gathers at half speed', 'Healing 20% weaker', 'Morale 40% weaker'] },
 ];
 

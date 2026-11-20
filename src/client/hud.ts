@@ -583,7 +583,7 @@ export class Hud {
           powersHeld(game.heroOf(e.owner), r).map((p) => `<div class="good">✦ ${p.name}: ${p.desc}</div>`).join('') +
           (e.owner === pid && game.powerDue(e.owner) >= 0 ? '<div class="warn">✦ A power is theirs to choose: see their commands</div>' : '') +
           (isHoly(virtue) ? `<div class="good">🕯️ Holy town: those near them wear ${HOLY_GUARD[virtue >= 70 ? 1 : 0]} more armour</div>` : '') +
-          (game.tyrant(e) ? '<div class="warn">🎭 Decadent town: right-click an enemy villager to bind them for the Work Camp; the women of the camp bear sooner while they are in the field</div>' : '') + extra;
+          (game.tyrant(e) ? '<div class="warn">🎭 Depraved town: right-click an enemy villager to bind them for the Work Camp; the women of the camp bear sooner while they are in the field</div>' : '') + extra;
       }
       const role = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = nobleName(game, e) || (e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role); // one of the great, at court (courtfield.ts)
@@ -655,7 +655,7 @@ export class Hud {
         const n = b.captives?.length ?? 0;
         const men = (b.captives ?? []).filter((c) => c.gender === 'm').length, women = n - men;
         body += `<div class="${n ? 'good' : 'hint'}">⛓️ Captives: ${men} ${men === 1 ? 'man' : 'men'}, ${women} ${women === 1 ? 'woman' : 'women'} <small>(${n}/${b.def.camp}${n ? ': ' + b.captives!.map((c) => c.name).join(', ') : ''})</small>${n ? '' : ' — send Slavers after enemy villagers'}</div>` +
-          `<div class="hint">Each man held makes the whole town gather ${(CAPTIVE_WORK * 100).toFixed(0)}% faster. The women held bear children there${women ? `, one about every ${Math.round(CAMP_BIRTH / women)} seconds now` : ` (one every ${CAMP_BIRTH} seconds for one woman)`}: they are the mother's, not yours, but each adds half a man's labour while she is held. Each captive adds ${CAPTIVE_VIRTUE} decadence a minute. If the camp falls, they go home.</div>`;
+          `<div class="hint">Each man held makes the whole town gather ${(CAPTIVE_WORK * 100).toFixed(0)}% faster. The women held bear children there${women ? `, one about every ${Math.round(CAMP_BIRTH / women)} seconds now` : ` (one every ${CAMP_BIRTH} seconds for one woman)`}: they are the mother's, not yours, but each adds half a man's labour while she is held. Each captive lowers the town's standing ${CAPTIVE_VIRTUE} a minute. If the camp falls, they go home.</div>`;
       }
       if (b.def.staff) {
         const tav = b.type === 'tavern';
@@ -667,8 +667,8 @@ export class Hud {
         const faces = tav ? tavernFace(owner.civ, owner.virtue).repeat(women) + who.filter((u) => u.gender === 'm').map((u) => unitPortraitHtml(game, u, ico('patron', ''), 'sm')).join('') : ico('monk', '').repeat(men) + ico('nun', '').repeat(women);
         body += `<div class="${who.length ? 'good' : 'hint'} staffrow">${faces || (tav ? ico('tavern', '🍺') : ico('temple', '🙏'))} ${roll} <small>(${who.length}/${b.def.staff})</small> — right-click with villagers to station them</div>` +
           `<div class="hint">${tav
-            ? `A milkmaid brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute. A patron eats and drinks ${(PATRON_FOOD * 60).toFixed(0)} food a minute, but soldiers are trained ${(PATRON_MUSTER * 100).toFixed(0)}% faster for each one. Each adds ${MAID_VIRTUE} decadence a minute and slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile. In a worldly town, plague can break out here.`
-            : `Each adds ${CLERGY_VIRTUE} piety a minute and brings the town's children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner. They leave their own house when they enter.`} Up to ${STAFF_CAP} count in all.</div>`;
+            ? `A milkmaid brings in ${(MAID_GOLD * 60).toFixed(0)} gold a minute. A patron eats and drinks ${(PATRON_FOOD * 60).toFixed(0)} food a minute, but soldiers are trained ${(PATRON_MUSTER * 100).toFixed(0)}% faster for each one. Each lowers the town's standing ${MAID_VIRTUE} a minute and slows all gathering by ${(MAID_DISTRACTION * 100).toFixed(1)}%, and their own house raises no children meanwhile. In a dissolute town, plague can break out here.`
+            : `Each raises the town's standing ${CLERGY_VIRTUE} a minute and brings the town's children ${(CLERGY_BIRTH * 100).toFixed(0)}% sooner. They leave their own house when they enter.`} Up to ${STAFF_CAP} count in all.</div>`;
       }
       if (b.type === 'tavern' && b.complete) { const w = (b.staff ?? []).map((id) => game.entities.get(id)).filter((u) => !!u && u.kind === 'unit' && u.gender === 'f').length; body += tavernPanel(owner.virtue ?? 0, game.field ? 0 : game.dayT, w); }
       if (b.type === 'farm') body += `<div class="hint">${b.workerId ? 'Being farmed' : 'Needs a farmer'}</div>`;
@@ -705,7 +705,7 @@ export class Hud {
       ...(game.sea ? [['Take to the water', 'Villager → Dock, set at the water\'s edge. Select it to build a fishing boat, and later warships and transports.', units.some((u) => u.def.naval)] as [string, string, boolean]] : []),
       ['Raise an army', 'Villager → Military buildings (V) → Barracks, then train three soldiers.', units.filter((u) => game.isMilitary(u)).length >= 3],
       ['Advance to the Bronze Age', 'Select the Town Center (H) and press T once you have the food and wood.', p.age >= 1],
-      ['Choose what your town believes', 'Villager → Church or Tavern, then right-click it with villagers to station them inside. A Church makes your people pious, a Tavern decadent, and each changes what your town is good at.', mine.some((b) => (b.type === 'temple' || b.type === 'tavern') && b.complete && (b.staff?.length ?? 0) > 0)],
+      ['Choose what your town believes', 'Villager → Church or Tavern, then right-click it with villagers to station them inside. A Church raises your people\'s moral standing, a Tavern lowers it, and each changes what your town is good at.', mine.some((b) => (b.type === 'temple' || b.type === 'tavern') && b.complete && (b.staff?.length ?? 0) > 0)],
       ['Bring down their Town Center', `Scout with soldiers, then select your army, press Q and click their Town Center. A people with none, who do not begin another within ${HALL_GRACE} seconds, are beaten: so guard your own.`, game.winner === pid],
     ];
     const i = steps.findIndex((s) => !s[2]);
@@ -858,12 +858,12 @@ export class Hud {
     const { game, pid } = this.app;
     const terms = (c: Choice) => {
       const parts = RES_TYPES.filter((r) => c.res[r]).map((r) => `${c.res[r]! > 0 ? '+' : '−'}${Math.abs(c.res[r]!)} ${RI(r)}`);
-      parts.push(c.virtue > 0 ? `🙏 piety +${c.virtue}` : `🎭 decadence +${-c.virtue}`);
+      parts.push(c.virtue > 0 ? `🙏 standing +${c.virtue}` : `🎭 standing −${-c.virtue}`);
       return parts.join(' · ');
     };
     el.innerHTML = `<h3>${d.title}</h3><p>${d.text}</p>` +
       (['a', 'b'] as const).map((k) => `<button data-k="${k}"><b>${d[k].label}</b><small>${terms(d[k])}</small></button>`).join('') +
-      `<p class="hint">How you answer moves your people towards piety or decadence. Each has its boons and banes: hover over ${creedOf(game.players[pid].virtue).icon} at the top.</p>`;
+      `<p class="hint">How you answer raises or lowers your people's moral standing. Each has its boons and banes: hover over ${creedOf(game.players[pid].virtue).icon} at the top.</p>`;
     el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
       game.cmdDecide(pid, (b as HTMLElement).dataset.k as 'a' | 'b');
       sfx.play('order');

@@ -16,10 +16,10 @@ function field(virtue: number) {
   p.hp = p.maxHp = 99999; p.mana = 1000;
   return { g, house, farm, p };
 }
-const STANDINGS: [string, number][] = [['Righteous', 90], ['Devout', 50], ['ordinary', 0], ['Worldly', -50], ['Decadent', -90]];
+const STANDINGS: [string, number][] = [['Virtuous', 90], ['Upright', 50], ['ordinary', 0], ['Dissolute', -50], ['Depraved', -90]];
 
 describe('what a Prophet calls down goes by the creed of those it falls on', () => {
-  it('the measure is the creed\'s: a third for the Righteous, one for an ordinary people, half again for the Decadent', () => {
+  it('the measure is the creed\'s: a third for the Virtuous, one for an ordinary people, half again for the Depraved', () => {
     expect(STANDINGS.map(([, v]) => wrath(field(v).g, 1))).toEqual([1 / 3, 0.5, 1, 1.25, 1.5]);
   });
   for (const [name, virtue] of STANDINGS) {
@@ -41,7 +41,7 @@ describe('what a Prophet calls down goes by the creed of those it falls on', () 
       expect(most).toBeLessThanOrEqual(CALAMITY.blight * w + 1e-9);
     });
   }
-  it('an Earthquake shakes a building of the Righteous a third as hard as an ordinary people\'s, and the Decadent\'s half again as hard', () => {
+  it('an Earthquake shakes a building of the Virtuous a third as hard as an ordinary people\'s, and the Depraved\'s half again as hard', () => {
     const shaken = (virtue: number): number => {
       const { g, house, p } = field(virtue);
       house.hp = house.maxHp = 100000; // so that it stands through the whole of it

@@ -31,8 +31,8 @@ export function lessons(g?: Game, pid = 0): Lesson[] {
       text: `From the Bronze Age a villager can build a ${stone.name} (${stone.cost.stone} stone a piece) in place of timber, and on the military page a ${tower.name} (${tower.cost.wood} wood, ${tower.cost.stone} stone): it shoots at enemies ${tower.range} tiles off and shelters ${tower.shelter} of your people, who make it shoot faster.` },
     { id: 'market', title: 'Too much of one thing',
       text: `A ${BUILDINGS.market.name} (${BUILDINGS.market.cost.wood} wood) turns what you have too much of into what you lack. It sells 100 food for ${TRADE.food!.sell} gold, wood for ${TRADE.wood!.sell} and stone for ${TRADE.stone!.sell}, and buys them back dearer.` },
-    { id: 'camp', title: 'A decadent town takes captives',
-      text: `Your town has turned Decadent, so it may build a ${camp.name} (military page, ${camp.cost.wood} wood) and train Slavers. A Slaver right-clicks an enemy villager to seize them and lead them to the camp. Every man held there makes the whole town gather faster. Post Slavers inside as guards, up to ${camp.guards}: by night the unwatched slip away.` },
+    { id: 'camp', title: 'A depraved town takes captives',
+      text: `Your town has turned Depraved, so it may build a ${camp.name} (military page, ${camp.cost.wood} wood) and train Slavers. A Slaver right-clicks an enemy villager to seize them and lead them to the camp. Every man held there makes the whole town gather faster. Post Slavers inside as guards, up to ${camp.guards}: by night the unwatched slip away.` },
   ];
 }
 

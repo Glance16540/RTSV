@@ -15,7 +15,7 @@ export interface PlaceDef {
 }
 export const PLACES: Record<PlaceKind, PlaceDef> = {
   shrine: {
-    kind: 'A holy place', icon: '🗿', virtue: 3, desc: 'Its holder\'s people grow more pious by 3 every turn.',
+    kind: 'A holy place', icon: '🗿', virtue: 3, desc: 'Its holder\'s people rise in standing by 3 every turn.',
     names: ['the Standing Stones', 'the Hermit\'s Well', 'the White Chapel', 'the Grove of Lamps'],
     legends: ['Older than any people now living; nobody will say who raised it.', 'The sick are carried here from four lands away.', 'A light is kept here that has not gone out in living memory.'],
   },
@@ -72,8 +72,8 @@ export const WORLD_EVENTS: Record<WorldKind, WorldDef> = {
   winter: { name: 'The Long Winter', icon: '❄️', turns: 3, desc: 'Every land yields 1 supply less.', tell: 'The snow came early and did not go. They called it the Long Winter.' },
   plenty: { name: 'Years of Plenty', icon: '🌾', turns: 3, desc: 'Every Farmland yields 1 supply more.', tell: 'The rains were kind and the barns were full: the Years of Plenty.' },
   iron: { name: 'The Season of Iron', icon: '⚔️', turns: 3, desc: 'Every company costs 1 supply less to raise.', tell: 'Every smith was at his forge and every idle hand found a spear: the Season of Iron.' },
-  comet: { name: 'A Comet', icon: '☄️', turns: 0, desc: 'Every people grows more pious by 5.', tell: 'A comet hung over the world for a month, and in every land the churches filled.' },
-  pestilence: { name: 'The Great Pestilence', icon: '☠️', turns: 0, desc: 'Every army of three companies or more loses one. The Righteous are spared.', tell: 'The Great Pestilence went from camp to camp and spared only those who kept the faith.' },
+  comet: { name: 'A Comet', icon: '☄️', turns: 0, desc: 'Every people rises in standing by 5.', tell: 'A comet hung over the world for a month, and in every land the churches filled.' },
+  pestilence: { name: 'The Great Pestilence', icon: '☠️', turns: 0, desc: 'Every army of three companies or more loses one. The Virtuous are spared.', tell: 'The Great Pestilence went from camp to camp and spared only those who kept the faith.' },
 };
 export const WORLD_FROM = 4; // no world event before this turn
 export const WORLD_REST = 3; // quiet turns after one is over
@@ -192,6 +192,6 @@ export function epilogue(c: Campaign): string[] {
   if (held.length) out.push(`${held.length === (c.places ?? []).length ? 'Every place of note was theirs' : 'They held'}${held.length === (c.places ?? []).length ? ': ' : ' '}${list(held)}.`);
   else if (c.places?.length) out.push('They held none of the places of note.');
   const ans = c.answers ?? [], pious = ans.filter((a) => a.choice === 'a').length;
-  if (ans.length) out.push(`${ans.length === 1 ? 'One matter was' : `${ans.length} matters were`} brought before you. You gave the pious answer ${pious === ans.length ? 'every time' : pious === 0 ? 'never' : `${pious} time${pious > 1 ? 's' : ''} and the worldly one ${ans.length - pious}`}.`);
+  if (ans.length) out.push(`${ans.length === 1 ? 'One matter was' : `${ans.length} matters were`} brought before you. You gave the upright answer ${pious === ans.length ? 'every time' : pious === 0 ? 'never' : `${pious} time${pious > 1 ? 's' : ''} and the dissolute one ${ans.length - pious}`}.`);
   return out;
 }

@@ -4,13 +4,13 @@
 // Before famine, plague and fire fell on a town by its own standing (acts.ts `wrathAt`), a turn had its own chance
 // events (campaign.ts `turnEvent`), and two of them are acts of God in all but name: fever in an army's camp, which costs
 // it a company, and a hard season, which costs its holder supplies. They fell the same on every creed. Here they go by
-// the same measure as the rest, the town's own (`wrathAt`: a third for the Righteous, a half for the Devout, 1 for an
-// ordinary town, a quarter more for the Worldly, half again for the Decadent), each way it can be applied to them:
-//   - How often. Below 1, the event passes the town by that share of the time: a Righteous town has it a third as often.
+// the same measure as the rest, the town's own (`wrathAt`: a third for the Virtuous, a half for the Upright, 1 for an
+// ordinary town, a quarter more for the Dissolute, half again for the Depraved), each way it can be applied to them:
+//   - How often. Below 1, the event passes the town by that share of the time: a Virtuous town has it a third as often.
 //     (Above 1 it cannot come oftener than the turn's one roll allows; the decadent have it harder instead.)
-//   - How hard. A hard season costs 3 supplies times the measure, rounded: 1 from the Righteous, 2 from the Devout, 3 from an
-//     ordinary town, 4 from the Worldly, 5 from the Decadent. A fever takes a second company from an army that can spare it,
-//     above 1, that share of the time over: one time in four among the Worldly, one in two among the Decadent.
+//   - How hard. A hard season costs 3 supplies times the measure, rounded: 1 from the Virtuous, 2 from the Upright, 3 from an
+//     ordinary town, 4 from the Dissolute, 5 from the Depraved. A fever takes a second company from an army that can spare it,
+//     above 1, that share of the time over: one time in four among the Dissolute, one in two among the Depraved.
 // An ordinary town is exactly as it was. The fine harvest, the volunteers and the raiders who burn a farm are not acts of
 // God and are as they were.
 //
