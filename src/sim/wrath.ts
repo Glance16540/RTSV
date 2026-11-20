@@ -1,10 +1,10 @@
 // How hard acts of God fall on a people (docs/DESIGN.md, "Acts of God").
 //
 // Famine, plague and fire spare nobody, but they fall harder on the decadent than on the holy. One number says
-// how hard: 1 for an ordinary town, a third for the Righteous, a half for the Devout, a quarter more for the
-// Worldly and half again for the Decadent. It is the creed's `plague` figure (src/sim/creed.ts), which used to
+// how hard: 1 for an ordinary town, a third for the Virtuous, a half for the Upright, a quarter more for the
+// Dissolute and half again for the Depraved. It is the creed's `plague` figure (src/sim/creed.ts), which used to
 // govern plague alone. Each rule applies it twice, to how often the thing comes and to how bad it is when it
-// does, so that a Righteous town is struck a third as often and a third as hard, and very rarely hard at all.
+// does, so that a Virtuous town is struck a third as often and a third as hard, and very rarely hard at all.
 //
 // What it governs: how readily plague is caught and how long it lasts (contagion.ts, and a Prophet's plague in
 // game.ts); how often lightning and accident find a people's buildings and how long those fires burn, and how

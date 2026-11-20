@@ -13,7 +13,7 @@
 //   - its building, OLD.build slower (governor.ts): what the governor raises there, and what stood half built.
 // (Tried at 192 campaigns and dropped: a share of its harvest and gold withheld, even 0.15 of it at the full weight, lifted
 // the share of farmed towns hungry over 2% and the ruined campaigns with it; fewer men answering a levy, 0.3 of them, lifted
-// the rivals' wins and a nation's men under arms; more drift, 0.05 strain at the full weight, cut the towns Righteous at
+// the rivals' wins and a nation's men under arms; more drift, 0.05 strain at the full weight, cut the towns Virtuous at
 // twenty years by a third. With building alone every band reads as main has it.)
 // The land's panel says how many of the old people there are and what they cost this season. Plain data on the town.
 import type { Campaign, Territory } from './campaign';

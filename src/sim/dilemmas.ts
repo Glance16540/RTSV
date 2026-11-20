@@ -1,4 +1,4 @@
-// More dilemmas, and which comes when (docs/systems-board, "Piety and decadence": only nine dilemmas, so they repeated).
+// More dilemmas, and which comes when (docs/systems-board, "Moral standing": only nine dilemmas, so they repeated).
 //
 // Each is a question put to a town (a battle or a visit), with a pious answer `a` and a worldly one `b`, whose
 // boons and banes are the same as the first nine's: a shift of the town's standing and goods given or taken

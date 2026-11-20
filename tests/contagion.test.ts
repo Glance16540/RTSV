@@ -38,7 +38,7 @@ describe('plague from outside', () => {
     expect(g.events.filter((e) => e.t === 'msg' && e.player === 1 && e.text.includes('Plague has come among your people from the A')).length).toBe(1);
   });
 
-  it('the Righteous take it too, but about a third as readily', () => {
+  it('the Virtuous take it too, but about a third as readily', () => {
     const crossed = (virtue: number) => {
       let n = 0;
       for (let i = 0; i < 60; i++) {
@@ -114,7 +114,7 @@ describe('plague from outside', () => {
     expect(boughtIn(g, m, true)).toBe(false);
     g.time += 100;
     expect(boughtIn(g, m, true)).toBe(true);
-    // Among the Righteous it can break out too, and lasts a third as long.
+    // Among the Virtuous it can break out too, and lasts a third as long.
     p.virtue = 100; g.time += 500;
     for (const u of g.units) u.plagueT = 0;
     expect(boughtIn(g, m, true)).toBe(true);

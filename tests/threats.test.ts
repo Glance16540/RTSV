@@ -182,7 +182,7 @@ describe('a band strikes a town', () => {
     checkLoot(mid.c, mid.t.id, m, RAID.loot);
   });
 
-  it('a sacked people loses heart by its creed: the Righteous least, the Decadent most', () => {
+  it('a sacked people loses heart by its creed: the Virtuous least, the Depraved most', () => {
     const sway = (virtue: number) => { const w = world({ men: 1, virtue }); return untilStrike(w.c, band(w.c, w.t, 'raiders', 9)).sway; };
     const holy = sway(100), plain = sway(0), fallen = sway(-100);
     expect(plain).toBe(THREATS.sway.taken);

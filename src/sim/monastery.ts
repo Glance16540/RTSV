@@ -1,7 +1,7 @@
-// The Monastery or Convent (docs/DESIGN.md, "Buildings and research that answer the systems": faith). The Righteous
-// town's great house, as the Work Camp is the Decadent one's.
+// The Monastery or Convent (docs/DESIGN.md, "Buildings and research that answer the systems": faith). The Virtuous
+// town's great house, as the Work Camp is the Depraved one's.
 //
-// Only a town that keeps the faith (Devout or better: BuildingDef `needs: 'holy'`) has one, on the map as in the
+// Only a town that keeps the faith (Upright or better: BuildingDef `needs: 'holy'`) has one, on the map as in the
 // town. It stands on the town's record (townworks.ts), raised from the map or built in the town; in the town it
 // takes up to six villagers as monks and nuns, who count as clergy as a church's do (game.ts), a Convent where
 // the women are the more. On the map, while it stands:

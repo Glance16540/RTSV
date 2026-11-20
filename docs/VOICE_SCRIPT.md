@@ -1404,7 +1404,7 @@ man's or a woman's voice (warriors are men), and `a`, `b` or `c` for up to three
 
 A villager with no task yet, waiting to be told.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | How can I help, friend? | What do you need? | What's it worth to you? |
 | `go` | When you send them to their work | Gladly. Many hands make light work. | On my way. | Fine. But you owe me. |
@@ -1414,7 +1414,7 @@ A villager with no task yet, waiting to be told.
 
 Fells trees and hauls timber.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | Strength for the axe, and thanks for the day. | Axe is sharp. What needs felling? | Trees, again? My head's still full of last night. |
 | `go` | When you send them to their work | I'll cut enough for the widow's hearth too. | Timber it is. | Fine. Wood. Then wine and women. |
@@ -1424,7 +1424,7 @@ Fells trees and hauls timber.
 
 Works the fields.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | He sends the rain; I bring the plough. | Fields won't tend themselves. | Sun's too high, and I'm too sore. |
 | `go` | When you send them to their work | A tenth for the poor, the rest for the barn. | Off to the furrows. | I'll plough it. Crooked, like everything here. |
@@ -1434,7 +1434,7 @@ Works the fields.
 
 Gathers berries and whatever grows wild.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | He feeds the sparrows. He'll feed us. | Basket's empty. Where to? | Berries make strong wine. Ask me how I know. |
 | `go` | When you send them to their work | The first basket goes to the sick house. | To the bushes. | Picking. Half for the basket, half for the still. |
@@ -1444,7 +1444,7 @@ Gathers berries and whatever grows wild.
 
 Brings down game for the pot.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | I take only what we need. | Bow's strung. | Something fat and slow. Like the magistrate. |
 | `go` | When you send them to their work | Bless the beast that feeds us. | On the trail. | Meat tonight. The good cuts are mine. |
@@ -1454,7 +1454,7 @@ Brings down game for the pot.
 
 Works the nets from the shore or a boat.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | The first fishers were holy men. | Nets are mended. | Fish don't mind if I'm late. Or drunk. |
 | `go` | When you send them to their work | Cast the net and trust. There's enough for all. | Out on the water. | I'll fish. Where it's shady, with a jug. |
@@ -1464,7 +1464,7 @@ Works the nets from the shore or a boat.
 
 Cuts stone and digs gold.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | Even the stones cry out His name. | Pick's ready. | Gold, is it? Now you have my ear. |
 | `go` | When you send them to their work | I dig for God's house and my neighbour's roof. | Down the pit. | Some for the town. More for my pocket. |
@@ -1474,7 +1474,7 @@ Cuts stone and digs gold.
 
 Raises houses, walls and everything else.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | Unless He builds the house, we toil for nothing. | Hammer and line. What's the job? | It'll stand. Long enough to get paid. |
 | `go` | When you send them to their work | A sound roof for every family. | I'll raise it. | Built by sundown. Don't lean on it. |
@@ -1482,9 +1482,9 @@ Raises houses, walls and everything else.
 
 ### Cleric (`cleric`)
 
-A villager who serves in the church. In a holy town a gentle shepherd; in a decadent one a seller of pardons.
+A villager who serves in the church. In a holy town a gentle shepherd; in a dissolute one a seller of pardons.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | Peace be on you, child. What troubles you? | The church doors are open. | Coin in the plate first, sinner. |
 | `go` | When you send them to their work | I go to sit with the sick and the dying. | To the altar. | Sins forgiven! Prices are on the door. |
@@ -1492,17 +1492,17 @@ A villager who serves in the church. In a holy town a gentle shepherd; in a deca
 
 ### Tavern-keeper (`taverner`)
 
-A man who keeps the tavern. In a holy town a kindly host; in a decadent one he owns half the town in debts.
+A man who keeps the tavern. In a holy town a kindly host; in a dissolute one he owns half the town in debts.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | Sit, friend. Bread and a warm fire, no charge. | What'll it be? | First cup's free. After that I own you. |
 | `go` | When you send them to their work | I'll keep an honest house. | Back to the taps. | More wine! More dice! More girls! |
 | `fear` | When the town is attacked | Down to the cellar! There's room for everyone! | Bar the door! | Hide the good barrels! |
 
-As a woman she is the **Barmaid**: A woman who serves in the tavern. In a holy town she is caring and kind, a mother to every traveller; in an ordinary one brisk and cheerful; in a decadent one flirtatious and downright salacious. Play that one broad and teasing. Same file names, with `f`.
+As a woman she is the **Barmaid**: A woman who serves in the tavern. In a holy town she is caring and kind, a mother to every traveller; in an ordinary one brisk and cheerful; in a dissolute one flirtatious and downright salacious. Play that one broad and teasing. Same file names, with `f`.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | Sit down, love, you look worn through. Let me fetch you some soup. | What'll it be, then? | Well, hello, handsome. See anything you like? |
 | `go` | When you send them to their work | I'll see every traveller fed and safe abed. | Back to the tables. | A coin, and I pour. Two, and I'll warm your lap. |
@@ -1510,9 +1510,9 @@ As a woman she is the **Barmaid**: A woman who serves in the tavern. In a holy t
 
 ### Foot soldier (`footman`)
 
-Club, spear or sword: the line of battle. Holy, he is a shield for the helpless; decadent, he lives for the killing.
+Club, spear or sword: the line of battle. Holy, he is a shield for the helpless; dissolute, he lives for the killing.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | I stand between harm and the helpless. | Ready. | My blade's thirsty. Who dies today? |
 | `march` | When you order them to move | We march so the children may sleep. | Moving out. | Find me something to kill. |
@@ -1521,9 +1521,9 @@ Club, spear or sword: the line of battle. Holy, he is a shield for the helpless;
 
 ### Archer (`archer`)
 
-Sling, bow, crossbow or gun: fights from a distance. Holy, he shoots to protect; decadent, for sport.
+Sling, bow, crossbow or gun: fights from a distance. Holy, he shoots to protect; dissolute, for sport.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | Guide my arrow, and keep it from the innocent. | String's dry. | I like it when they run. Better sport. |
 | `march` | When you order them to move | I watch over those who cannot fight. | On the move. | Show me something that bleeds. |
@@ -1532,9 +1532,9 @@ Sling, bow, crossbow or gun: fights from a distance. Holy, he shoots to protect;
 
 ### Rider (`rider`)
 
-Fights from horse, camel or elephant. Holy, he rides to the rescue; decadent, he rides men down for the joy of it.
+Fights from horse, camel or elephant. Holy, he rides to the rescue; dissolute, he rides men down for the joy of it.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | We ride to the aid of the weak. | In the saddle. | Let me ride them down. I love the crunch. |
 | `march` | When you order them to move | Hold on, good people. We are coming. | Riding. | The smell of blood is on the wind. |
@@ -1543,9 +1543,9 @@ Fights from horse, camel or elephant. Holy, he rides to the rescue; decadent, he
 
 ### Siege crew (`engineer`)
 
-Hauls and works the rams, catapults and guns. Holy, he breaks walls and spares homes; decadent, he wants the whole town to burn.
+Hauls and works the rams, catapults and guns. Holy, he breaks walls and spares homes; dissolute, he wants the whole town to burn.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | We break walls, not homes. | Engine's ready. | Let me burn something. Anything. |
 | `march` | When you order them to move | Haul, brothers. Mind the fields we cross. | Hauling. | Faster! I want to hear them scream. |
@@ -1554,9 +1554,9 @@ Hauls and works the rams, catapults and guns. Holy, he breaks walls and spares h
 
 ### Priest or shaman (`healer`)
 
-Marches with the army to heal, bless and curse. Holy, he tends friend and foe alike; decadent, he blesses the slaughter.
+Marches with the army to heal, bless and curse. Holy, he tends friend and foe alike; dissolute, he blesses the slaughter.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | Bring me the wounded, friend or foe. | I am here. | Death is hungry. Feed him. |
 | `march` | When you order them to move | I walk among the fallen, and leave none. | Coming. | I come to bless the killing. |
@@ -1565,9 +1565,9 @@ Marches with the army to heal, bless and curse. Holy, he tends friend and foe al
 
 ### Sailor (`sailor`)
 
-Crews the fishing boats, transports and warships. Holy, he pulls the drowning from the sea; decadent, he gives no quarter.
+Crews the fishing boats, transports and warships. Holy, he pulls the drowning from the sea; dissolute, he gives no quarter.
 
-| Moment | When | Holy town | Ordinary town | Decadent town |
+| Moment | When | Holy town | Ordinary town | Town of low standing |
 | --- | --- | --- | --- | --- |
 | `ready` | When you click on them | We guard the shore and all who live on it. | Decks are clear. | The sea wants bodies. So do I. |
 | `march` | When you order them to move | We sail to bring them safely home. | Making way. | Find me a ship to bleed. |

@@ -67,3 +67,15 @@ describe('the English', () => {
     expect(CIVS.england.bonuses).toContain('Villagers gather 5% faster');
   });
 });
+
+describe('the Chinese', () => {
+  it('gather 5% faster, beside their research and their engines', () => {
+    const plain = baseMods(), m = baseMods();
+    CIVS.forge.apply(m);
+    expect(m.gather).toBeCloseTo(plain.gather * 1.05, 10);
+    expect(m.techTime).toBe(0.7);
+    expect(m.techCost).toBe(0.85);
+    expect(m.siegeHp).toBe(1.25);
+    expect(CIVS.forge.bonuses).toContain('Villagers gather 5% faster');
+  });
+});

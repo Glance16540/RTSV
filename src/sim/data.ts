@@ -116,13 +116,14 @@ export interface UnitDef {
   /** A ship: moves on water only. */
   naval?: boolean;
   /**
-   * A pagan unit: a town that keeps the faith (Devout or Righteous) will not train it. The owner has settled which:
-   * the Shaman, the Slaver and the Berserker. The Prophet is not pagan
-   * (his power is the town's own faith), and no nation's own unit is. tests/pagan.test.ts holds the list.
+   * A pagan unit: a town that keeps the faith (Upright or Virtuous) will not train it. The owner has settled
+   * which: the Slaver and the Berserker. The Shaman was one, and is now trained only by a town of low standing
+   * (`needs: 'low'`, darkarts.ts). The Prophet is not pagan (his power is the town's own faith), and no nation's own
+   * unit is. tests/pagan.test.ts holds the list.
    */
   pagan?: boolean;
-  /** Only a holy town, or only a decadent one, can train it. */
-  needs?: 'holy' | 'decadent';
+  /** Only a town of good standing (the top two steps), only one of low standing (the bottom two), or only one on the lowest step, can train it. */
+  needs?: 'holy' | 'decadent' | 'low';
   /** Can seize enemy villagers and lead them to a Work Camp. */
   slaver?: boolean;
   /** One of the marauders: belongs to no people, and carries off women to the camp in the wilds. */
@@ -514,13 +515,19 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   shaman: U({
     id: 'shaman', name: 'Shaman', icon: '🪄',
-    desc: 'Heals wounded allies nearby and cures plague. Cannot attack. Pagan: a town that keeps the faith will not train him.', pagan: true,
+    desc: 'Only a Dissolute or Depraved town will train him. Heals wounded allies nearby and cures plague, and spends faith on dark calamities: a Curse makes enemy soldiers strike weaker, Blight empties fields, Sickness spreads among enemy troops. Cannot attack.', needs: 'low',
     cost: { food: 40, gold: 60 }, time: 22, age: 1, hp: 40, atk: 0, armor: 0, range: 5, speed: 2.0,
-    cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 5,
+    cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 5, mana: 80,
+  }),
+  healer: U({
+    id: 'healer', name: 'Healer', icon: '🩹',
+    desc: 'A town of any standing can call her. Binds the wounds of allies nearby, slower than a Shaman or a Priest. She has no faith and no calamities, and cannot cure plague. Cannot attack.',
+    cost: { food: 45, gold: 20 }, time: 18, age: 1, hp: 40, atk: 0, armor: 0, range: 5, speed: 2.0,
+    cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 3,
   }),
   priest: U({
     id: 'priest', name: 'Priest', icon: '✝️',
-    desc: 'Only a Devout or Righteous town can call him. Heals the wounded faster than a Shaman and cures plague. Cannot attack.',
+    desc: 'Only an Upright or Virtuous town can call him. Heals the wounded faster than a Shaman and cures plague. Cannot attack.',
     cost: { food: 50, gold: 40 }, time: 20, age: 1, hp: 50, atk: 0, armor: 0, range: 5.5, speed: 2.1,
     cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 7, needs: 'holy',
   }),
@@ -532,13 +539,13 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   slaver: U({
     id: 'slaver', name: 'Slaver', icon: '⛓️',
-    desc: 'Only a Decadent town will train him. Right-click an enemy villager to seize him and lead him back to a Work Camp. If the Slaver is killed on the way, the captive goes free. Pagan: a town that keeps the faith will not have him.', pagan: true,
+    desc: 'Only a Depraved town will train him. Right-click an enemy villager to seize him and lead him back to a Work Camp. If the Slaver is killed on the way, the captive goes free. Pagan: a town that keeps the faith will not have him.', pagan: true,
     cost: { food: 60, gold: 60 }, time: 20, age: 1, hp: 75, atk: 4, armor: 0, range: 0.5, speed: 2.6,
     cooldown: 1.5, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, needs: 'decadent', slaver: true,
   }),
   prophet: U({
     id: 'prophet', name: 'Prophet', icon: '🔮',
-    desc: 'Unique. Spends faith to call down calamities: Plague sickens enemy troops and spreads between them, Earthquake shatters buildings, Fire from Heaven sets a town alight, Blight empties its fields. Cannot attack.',
+    desc: 'Unique. Only an Upright or Virtuous town can call him. Spends faith to call down calamities: Plague sickens enemy troops and spreads between them, Earthquake shatters buildings, Fire from Heaven sets a town alight, Blight empties its fields. Cannot attack.', needs: 'holy',
     cost: { food: 100, gold: 150 }, time: 35, age: 2, hp: 50, atk: 0, armor: 0, range: 9, speed: 1.9,
     cooldown: 1, sight: 10, pop: 2, cls: 'support', radius: 0.3, limit: 2, mana: 100,
   }),
@@ -676,9 +683,9 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   temple: B({
     id: 'temple', name: 'Church', icon: '⛪',
-    desc: 'Station up to four villagers here as monks (men) and nuns (women): each makes your people more pious and brings the town\'s children sooner. Those who enter leave their own house. Also trains shamans and prophets and researches blessings.',
+    desc: 'Station up to four villagers here as monks (men) and nuns (women): each raises your people\'s moral standing and brings the town\'s children sooner. Those who enter leave their own house. Also trains shamans and prophets and researches blessings.',
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
-    trains: ['shaman', 'priest', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
+    trains: ['healer', 'shaman', 'priest', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
   }),
   // ---- Rule, law, nobles and faith (the people session; hall.ts, manor.ts, monastery.ts). Costs, ages and strengths are first guesses. ----
   hall: B({
@@ -695,7 +702,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   monastery: B({
     id: 'monastery', name: 'Monastery', icon: '🕍',
-    desc: 'Only a town that keeps the faith can build it: the Righteous town\'s great house (a Convent where its women are the more). Up to six villagers live here as monks and nuns, counted as clergy. The town is drawn toward the holy way each season, the drifted come back to it the sooner, and it takes in the sick and the bereaved, so sickness and grief weigh on the town half as much.',
+    desc: 'Only a town that keeps the faith can build it: the Virtuous town\'s great house (a Convent where its women are the more). Up to six villagers live here as monks and nuns, counted as clergy. The town is drawn toward the holy way each season, the drifted come back to it the sooner, and it takes in the sick and the bereaved, so sickness and grief weigh on the town half as much.',
     cost: { wood: 220, stone: 160, gold: 60 }, time: 46, age: 1, hp: 1300, size: 4, pop: 0, sight: 6,
     trains: [], techs: ['feastdays', 'pilgrimage'], staff: 6, needs: 'holy', onMap: true,
   }),
@@ -713,7 +720,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   workcamp: B({
     id: 'workcamp', name: 'Work Camp', icon: '⛓️',
-    desc: 'Only a Decadent town can build it. Holds up to twelve captives seized by Slavers, in two rooms: a workroom where the women are kept by day, and a bunkhouse the men go out to labour from and everyone is shut into at night. Every man held makes the whole town gather faster, and faster still for each Slaver posted as a guard (up to four). Each guard also watches three captives: by night the unwatched slip away, and enough men unwatched may rise and burn the camp. The women held bear children there: the children are theirs and are never yours, but each raises what the camp yields by half a man\'s labour. A captive can be got back for ten minutes from being seized; after that they are sold on and you are paid for them. Soldiers of the town they were taken from can let them out at the gate, one at a time; each guard holds off two such soldiers. If it falls, the captives go home.',
+    desc: 'Only a Depraved town can build it. Holds up to twelve captives seized by Slavers, in two rooms: a workroom where the women are kept by day, and a bunkhouse the men go out to labour from and everyone is shut into at night. Every man held makes the whole town gather faster, and faster still for each Slaver posted as a guard (up to four). Each guard also watches three captives: by night the unwatched slip away, and enough men unwatched may rise and burn the camp. The women held bear children there: the children are theirs and are never yours, but each raises what the camp yields by half a man\'s labour. A captive can be got back for ten minutes from being seized; after that they are sold on and you are paid for them. Soldiers of the town they were taken from can let them out at the gate, one at a time; each guard holds off two such soldiers. If it falls, the captives go home.',
     cost: { wood: 180 }, time: 34, age: 1, hp: 850, size: 4, pop: 0, sight: 5,
     trains: [], techs: [], needs: 'decadent', camp: 12, guards: 4,
   }),
@@ -1000,7 +1007,7 @@ export const TECHS: Record<string, TechDef> = {
   own_yeomen: T({ id: 'own_yeomen', civ: 'england', answers: 'raids', taughtAt: 'towncenter', name: 'Yeomanry', icon: '🎯', desc: 'A study of the English alone. On the map a town of theirs stands a quarter better against raiders, slavers and pirates; in a town towers and Town Centers hit harder.', cost: { food: 150, wood: 200 }, time: 40, age: 1, apply: (m) => { m.towerAtk += 2; } }),
   own_caravanserai: T({ id: 'own_caravanserai', civ: 'arabs', answers: 'raids', taughtAt: 'towncenter', name: 'Caravanserais', icon: '🕌', desc: 'A study of the Abbasids alone. On the map highwaymen meet their convoys far less often; in a town villagers carry 2 more.', cost: { wood: 200, gold: 100 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }),
   own_bond: T({ id: 'own_bond', civ: 'japan', answers: 'nobles', taughtAt: 'towncenter', name: 'The Bond of Service', icon: '⛩️', desc: 'A study of the Japanese alone. On the map an angry noble of theirs comes round half as fast again; in a town soldiers have 1 more attack.', cost: { food: 200, gold: 200 }, time: 45, age: 2, apply: (m) => { m.atk += 1; } }),
-  own_schools: T({ id: 'own_schools', civ: 'dawn', answers: 'faith', taughtAt: 'towncenter', name: 'Schools of the Prophets', icon: '🕯️', desc: 'A study of the Arameans alone. On the map a town of theirs with a church grows more pious each season; in a town prophets regain faith a quarter faster.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.faith *= 1.25; } }),
+  own_schools: T({ id: 'own_schools', civ: 'dawn', answers: 'faith', taughtAt: 'towncenter', name: 'Schools of the Prophets', icon: '🕯️', desc: 'A study of the Arameans alone. On the map a town of theirs with a church rises in standing each season; in a town prophets regain faith a quarter faster.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.faith *= 1.25; } }),
   own_winter: T({ id: 'own_winter', civ: 'wild', answers: 'hunger', taughtAt: 'towncenter', name: 'Winter Stores', icon: '❄️', desc: 'A study of the Norse alone. On the map snow and desert cost their towns nothing; in a town game, berries and fish are gathered 15% faster.', cost: { food: 150, wood: 100 }, time: 35, age: 0, apply: (m) => { m.hunt *= 1.15; } }),
 };
 
@@ -1024,8 +1031,10 @@ export const CIVS: Record<string, CivDef> = {
   },
   forge: {
     id: 'forge', name: 'Chinese', icon: '🐉', desc: 'Scholars, makers and masters of fire and powder.', unique: 'firethrower', unique2: 'organgun',
-    bonuses: ['Research is 30% faster and 15% cheaper', 'Siege engines have 25% more health'],
-    apply: (m) => { m.techTime = 0.7; m.techCost = 0.85; m.siegeHp = 1.25; },
+    bonuses: ['Research is 30% faster and 15% cheaper', 'Siege engines have 25% more health', 'Villagers gather 5% faster'],
+    // The last is their one early gift: their others pay late, and against the other fourteen peoples' computers they won 49 decided games
+    // and lost 82 over 448 without it (losing most to the raiders, who come early), 59 and 73 with it.
+    apply: (m) => { m.techTime = 0.7; m.techCost = 0.85; m.siegeHp = 1.25; m.gather *= 1.05; },
   },
   egypt: {
     id: 'egypt', name: 'Egyptians', icon: '🔺', desc: 'A kingdom of the river, fed by its fields and famous for what it builds.', unique: 'khopesh', unique2: 'warchariot',
@@ -1078,8 +1087,8 @@ export const CIVS: Record<string, CivDef> = {
 Object.assign(CIVS, {
   dawn: {
     id: 'dawn', name: 'Arameans', icon: '🌅', desc: 'A people of priests and prophets.', unique: 'zealot', unique2: 'templar',
-    bonuses: ['Priests, Prophets and other healers cost 25% less', 'Prophets regain faith 50% faster', 'Healers mend 30% faster', 'Villagers gather 5% faster'],
-    apply: (m: Mods) => { m.clergyCost = 0.75; m.faith = 1.5; m.heal += 0.3; m.gather *= 1.05; }, // the one gift of theirs that is not to their clergy: without it they won one decided game in nine against the other styles' computers
+    bonuses: ['Priests, Prophets and other healers cost 25% less', 'Prophets regain faith 50% faster', 'Healers mend 30% faster', 'Villagers gather 10% faster'],
+    apply: (m: Mods) => { m.clergyCost = 0.75; m.faith = 1.5; m.heal += 0.3; m.gather *= 1.1; }, // the one gift of theirs that is not to their clergy: without it they won one decided game in nine against the other styles' computers, and at 5% one in four against all fourteen other peoples'
   },
   wild: {
     id: 'wild', name: 'Norse', icon: '🪓', desc: 'Hunters and sea-raiders of the north.', unique: 'wolfrider', unique2: 'warbear',
@@ -1156,6 +1165,15 @@ export const ABILITIES: Record<string, AbilityDef> = {
   blight: {
     id: 'blight', name: 'Blight', icon: '🦗', cost: 50, radius: 4,
     desc: 'Enemy farms in the area yield nothing for a minute, and the berry bushes there are stripped of half their fruit.',
+  },
+  // The Shaman's own (darkarts.ts). Blight above is his too.
+  curse: {
+    id: 'curse', name: 'Curse', icon: '🕸️', cost: 50, radius: 3.5,
+    desc: 'Enemy soldiers in the area strike three tenths weaker for 25 seconds: less on a town of good standing, longer on one of low.',
+  },
+  sickness: {
+    id: 'sickness', name: 'Sickness', icon: '🤒', cost: 40, radius: 3,
+    desc: 'Enemy units in the area sicken for 12 seconds, lose health, and pass it to others standing close. Healers cure it.',
   },
 };
 /**

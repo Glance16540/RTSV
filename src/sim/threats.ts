@@ -8,7 +8,7 @@
 //   highwaymen  sit on the road between two held lands and rob what passes: stores, never people.
 //
 // HOW MANY. Threats of men never stop: there is meant to be one about for every six held lands and never fewer
-// than one, and one more while any living people is Worldly or Decadent. When there are fewer, a new band appears
+// than one, and one more while any living people is Dissolute or Depraved. When there are fewer, a new band appears
 // in a season as often as not. A band grows a little with time and with every raid that pays.
 //
 // THE MARK. Each season a band may strike one held land in its reach. It picks the softest: the town with the

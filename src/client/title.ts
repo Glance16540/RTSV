@@ -25,7 +25,7 @@ const TIPS = [
   'Open water is crossed from a Harbour.',
   'With several rivals on the map, they fight each other too.',
   'A child of two gifted parents sometimes inherits both gifts.',
-  'Any people can turn out pious or decadent. It is decided by how they are ruled.',
+  'Any people can turn out virtuous or depraved. It is decided by how they are ruled.',
   'Villagers grow old. A village lasts only as long as its families keep raising children.',
 ];
 

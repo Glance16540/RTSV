@@ -1,7 +1,7 @@
 // A rival nation that takes a town may carry people off (docs/DESIGN.md, "Captivity": a rival nation that
 // assimilates gains population outright; children born in captivity to such a nation are its own).
 //
-// Only a nation led by the computer whose creed is Worldly or Decadent does it. When it takes a town of another
+// Only a nation led by the computer whose creed is Dissolute or Depraved does it. When it takes a town of another
 // nation on the map, a share of the town's grown people (never a child) are led away and held in the land the
 // army came from, or failing that in a town of the taker's. They are a record there, the same held-people record
 // the bands keep (threats.ts `Held`): who, of what ages, from where, since when.
