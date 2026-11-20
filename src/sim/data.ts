@@ -519,6 +519,12 @@ export const UNITS: Record<string, UnitDef> = {
     cost: { food: 40, gold: 60 }, time: 22, age: 1, hp: 40, atk: 0, armor: 0, range: 5, speed: 2.0,
     cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 5, mana: 80,
   }),
+  healer: U({
+    id: 'healer', name: 'Healer', icon: '🩹',
+    desc: 'A town of any standing can call her. Binds the wounds of allies nearby, slower than a Shaman or a Priest. She has no faith and no calamities, and cannot cure plague. Cannot attack.',
+    cost: { food: 45, gold: 20 }, time: 18, age: 1, hp: 40, atk: 0, armor: 0, range: 5, speed: 2.0,
+    cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 3,
+  }),
   priest: U({
     id: 'priest', name: 'Priest', icon: '✝️',
     desc: 'Only an Upright or Virtuous town can call him. Heals the wounded faster than a Shaman and cures plague. Cannot attack.',
@@ -679,7 +685,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     id: 'temple', name: 'Church', icon: '⛪',
     desc: 'Station up to four villagers here as monks (men) and nuns (women): each raises your people\'s moral standing and brings the town\'s children sooner. Those who enter leave their own house. Also trains shamans and prophets and researches blessings.',
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
-    trains: ['shaman', 'priest', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
+    trains: ['healer', 'shaman', 'priest', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
   }),
   // ---- Rule, law, nobles and faith (the people session; hall.ts, manor.ts, monastery.ts). Costs, ages and strengths are first guesses. ----
   hall: B({

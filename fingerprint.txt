@@ -64,10 +64,10 @@ drill 1 (greece v japan) end: tick 9600 leaders rank 4, rank 4 calls 0 powers le
 drill 1 (greece v japan) after the leaders fell: 4dfb5bb0316cd37b acclaimed true/true/false 027d8cc76a1e6d18
 drill 2 (wild v hearth) at 2m: b08e2d50fcdb4274
 drill 2 (wild v hearth) at 4m: cda4c407473818ba
-drill 2 (wild v hearth) at 6m: cc0d089c3dcc8c1c
-drill 2 (wild v hearth) at 8m: 008042ecfffa77ab
-drill 2 (wild v hearth) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 60 008042ecfffa77ab
-drill 2 (wild v hearth) after the leaders fell: e6306d330d54075f acclaimed true/true/false 616ceff08c5cdc4c
+drill 2 (wild v hearth) at 6m: a2be805e6e350f5f
+drill 2 (wild v hearth) at 8m: c79ca39b2007638d
+drill 2 (wild v hearth) end: tick 9600 leaders rank 4, rank 4 calls 0 powers learnt 0 fires set 4, buildings standing 54 c79ca39b2007638d
+drill 2 (wild v hearth) after the leaders fell: e6306d330d54075f acclaimed true/true/false 52fcdf9ae8070589
 drill 3 (persia v arabs) at 2m: 372a598327320d57
 drill 3 (persia v arabs) at 4m: bb9d5bad806f72a9
 drill 3 (persia v arabs) at 6m: 7b1ef9dbf1796a43

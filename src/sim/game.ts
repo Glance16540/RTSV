@@ -60,6 +60,7 @@ import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { wrath } from './wrath';
 import { castDark, castsOf, cursed, darkFaith, isLow } from './darkarts';
+import { curesPlague } from './plainhealer';
 import { storyTick, type FieldStory } from './fieldstory';
 import { placeBar } from './placebar';
 import type { WaterShape } from './waterlay';
@@ -2928,6 +2929,7 @@ export class Game {
   }
 
   private updateHealer(u: Unit): void {
+    const cures = curesPlague(u.def);
     u.scanT -= DT;
     let t = this.entities.get(u.healTarget);
     if (u.scanT <= 0 || !t || t.dead) {
@@ -2935,9 +2937,9 @@ export class Game {
       let best: Unit | null = null;
       let worst = 1;
       for (const v of this.unitsNear(u.x, u.y, u.def.range, this.scratch)) {
-        if (v.owner !== u.owner || v === u || (v.hp >= v.maxHp && v.plagueT <= 0)) continue;
+        if (v.owner !== u.owner || v === u || (v.hp >= v.maxHp && (v.plagueT <= 0 || !cures))) continue; // the plain Healer binds wounds, and leaves plague to the Priest and the Shaman (plainhealer.ts)
         if (Math.hypot(v.x - u.x, v.y - u.y) > u.def.range) continue;
-        const f = v.hp / v.maxHp - (v.plagueT > 0 ? 1 : 0);
+        const f = v.hp / v.maxHp - (v.plagueT > 0 && cures ? 1 : 0);
         if (f < worst) { worst = f; best = v; }
       }
       if (!best && u.hp < u.maxHp) best = u;
@@ -2945,7 +2947,7 @@ export class Game {
       t = best ?? undefined;
     }
     if (t && t.kind === 'unit') {
-      t.plagueT = 0;
+      if (cures) t.plagueT = 0;
       t.hp = Math.min(t.maxHp, t.hp + u.def.heal! * this.players[u.owner].mods.heal * this.creed(u.owner).heal * DT);
       if (t.hp >= t.maxHp) u.healTarget = 0;
     }

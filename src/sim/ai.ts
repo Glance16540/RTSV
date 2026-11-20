@@ -17,6 +17,7 @@ import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
 import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
 import { darkChoice } from './darkarts';
+import { HEALERS, HEALERS_KEPT, healerFor } from './plainhealer';
 import { fallBack, fightStyle, roomWork, studyReserve, styleWork } from './styleplay';
 import { aiCare } from './aicare';
 
@@ -297,15 +298,15 @@ export class AIController {
       for (let k = 0; k < mix.length; k++) {
         let type = mix[(this.mixI + k) % mix.length];
         // A people that keeps the faith calls a priest where others would call a shaman, and has no berserkers.
-        // Its healer is the one its standing allows: a Shaman in a town of low standing, a Priest in one of good, and in the middle neither (darkarts.ts).
-        if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; if (g.creedBar(pid, UNITS.priest)) continue; }
+        if (type === 'shaman') type = healerFor(g, pid); // a Priest, a Shaman or the plain Healer, by its standing (plainhealer.ts)
+        else if (g.creedBar(pid, UNITS[type])) continue;
         const def = UNITS[type];
         // Yesterday's soldiers are only raised in need: an army of bowmen is no use against knights.
         if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && (fight.newest || army.length >= armyTarget / 2) && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
         if (needsPerson(def) && !this.spare) continue;
-        if ((type === 'shaman' || type === 'priest') && g.countUnits(pid, type) >= 2) continue;
+        if (HEALERS.includes(type) && HEALERS.reduce((n, t) => n + g.countUnits(pid, t), 0) >= HEALERS_KEPT) continue; // one or two healers in all
         if (type === 'prophet' && g.countUnits(pid, 'prophet') >= 1) continue;
         if (g.cmdTrain(pid, src.id, type)) { this.mixI = (this.mixI + k + 1) % mix.length; break; }
       }
