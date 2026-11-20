@@ -45,6 +45,7 @@ import { convoysTurn, relieve } from './convoys';
 import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
+import { rivalSettleSeason } from './rivalsettle';
 import { makeWilds } from './wilds';
 import { atWarWith, warUntil } from './feudwar';
 import { befalls, feverToll, hardCost } from './chancecreed';
@@ -1307,6 +1308,7 @@ export function continueAI(c: Campaign): void {
       caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
+      rivalSettleSeason(c); // and a rival sends settlers to its town that has too few people, as the player may (rivalsettle.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       marriageSeason(c); // the unmarried of a town marry, or go to a town beside to marry (marriage.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)

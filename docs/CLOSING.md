@@ -138,7 +138,7 @@ Built as written (`drift.ts`, `driftintown.ts`, `decrees.ts`, `tavernfall.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Towns send food, goods and people to one another by road | The computer sends food and goods by convoy, never people. | small | Unity: port `convoys.ts` and give rivals the player's rule for sending families. |
+| Towns send food, goods and people to one another by road | **Done** (`src/sim/rivalsettle.ts`): a rival sends settlers by road, by the player's own rule (migration.ts `settle`), from its fullest town to its town with too few people, now and then, one a season. | small | Built. |
 | A market's trade by caravan | In a battle or a visit the Traders' markets still earn by rule; caravans run only on the map. | small | Unity: field work. |
 
 ## Armies belong to towns
