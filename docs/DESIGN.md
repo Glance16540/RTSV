@@ -262,6 +262,10 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **A Prophet's wrath goes by faith** (the owner's word, 19 November 2026). A Prophet's fire, blight and earthquake fall by the creed of those they strike, by the same measure as his plague and every act of God: lighter on the Righteous, heavier on the Decadent.
 
+**Moral standing** (the owner's word, 20 November 2026). The scale a town and a people stand on is their moral standing, and its five steps are named Virtuous, Upright, Common, Dissolute and Depraved (they were Righteous, Devout, Temperate, Worldly and Decadent; the rules of each step are unchanged).
+
+**The Prophet and the Shaman are a mirror pair** (the owner's word, 20 November 2026). The Prophet is a town of good standing's caster, and only such a town trains him; the Shaman is a town of low standing's, with dark calamities of his own (a curse, blight, sickness), and only such a town trains him. Each one's calamities fall by the standing of those they strike, as every act of God does.
+
 ## The order of building
 
 Each step is to be playable by itself.
