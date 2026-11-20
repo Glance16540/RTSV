@@ -136,6 +136,7 @@ describe('a soldier costs a person', () => {
     p.age = 1;
     const at = spot(g, 'temple', 0);
     const temple = g.spawnBuilding('temple', 0, at.cx, at.cy, true);
+    p.virtue = -40; // a town of low standing: its healer is the Shaman (a middle town trains neither him nor the Priest: darkarts.ts)
     const type = g.creedBar(0, UNITS.shaman) ? 'priest' : 'shaman';
     expect(g.cmdTrain(0, temple.id, type)).toBe(true);
     const who = g.entities.get(temple.queue[0].who!) as Unit;

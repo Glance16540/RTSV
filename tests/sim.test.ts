@@ -2257,7 +2257,10 @@ describe('the holy town and the work camp', () => {
     const church = g.spawnBuilding('temple', 0, Math.floor(tc.x) + 6, Math.floor(tc.y) + 3, true);
     const barracks = g.spawnBuilding('barracks', 0, Math.floor(tc.x) - 9, Math.floor(tc.y) + 3, true);
     expect(g.cmdTrain(0, church.id, 'priest')).toBe(false); // not yet devout
+    expect(g.cmdTrain(0, church.id, 'shaman')).toBe(false); // nor of low standing: a middle town trains neither (tests/darkarts.test.ts)
+    p.virtue = -40;
     expect(g.cmdTrain(0, church.id, 'shaman')).toBe(true);
+    p.virtue = 0;
     expect(g.cmdTrain(0, barracks.id, 'berserker')).toBe(true);
     p.virtue = 40;
     expect(g.cmdTrain(0, church.id, 'shaman')).toBe(false);

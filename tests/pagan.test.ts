@@ -1,5 +1,6 @@
 // Which units are pagan, and what a town that keeps the faith does about them. The owner settled the list:
-// the Shaman, the Slaver and the Berserker.
+// the Slaver and the Berserker. The Shaman was one until he became the Prophet's mirror, trained only by a town
+// of low standing (tests/darkarts.test.ts).
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/sim/game';
 import { BUILDINGS, UNITS } from '../src/sim/data';
@@ -17,8 +18,9 @@ const town = (virtue: number) => {
 const pagan = Object.values(UNITS).filter((u) => u.pagan).map((u) => u.id).sort();
 
 describe('pagan units', () => {
-  it('are the Shaman, the Slaver and the Berserker; the Prophet and the Priest are not', () => {
-    expect(pagan).toEqual(['berserker', 'shaman', 'slaver']);
+  it('are the Slaver and the Berserker; the Shaman, the Prophet and the Priest are not', () => {
+    expect(pagan).toEqual(['berserker', 'slaver']);
+    expect(UNITS.shaman.pagan).toBeFalsy();
     expect(UNITS.prophet.pagan).toBeFalsy();
     expect(UNITS.priest.pagan).toBeFalsy();
     expect(UNITS.marauder.pagan).toBeFalsy(); // no town trains him: the mark would mean nothing
@@ -49,12 +51,9 @@ describe('pagan units', () => {
     expect(isHoly(30)).toBe(true);
     expect(isHoly(29)).toBe(false);
     const below = town(29), holy = town(30);
-    expect(below.g.creedBar(0, UNITS.shaman)).toBeNull();
     expect(below.g.creedBar(0, UNITS.berserker)).toBeNull();
-    expect(below.g.cmdTrain(0, below.church.id, 'shaman')).toBe(true);
     expect(below.g.cmdTrain(0, below.barracks.id, 'berserker')).toBe(true);
     for (const id of pagan) expect(holy.g.creedBar(0, UNITS[id])).toBe(`A town that keeps the faith will not have a ${UNITS[id].name}.`);
-    expect(holy.g.cmdTrain(0, holy.church.id, 'shaman')).toBe(false);
     expect(holy.g.cmdTrain(0, holy.barracks.id, 'berserker')).toBe(false);
     expect(holy.g.cmdTrain(0, holy.tavern.id, 'slaver')).toBe(false);
     expect(holy.g.cmdTrain(0, holy.barracks.id, 'swordsman')).toBe(true); // honest soldiers are fine
@@ -69,8 +68,11 @@ describe('pagan units', () => {
     expect(fallen.g.cmdTrain(0, fallen.tavern.id, 'slaver')).toBe(true);
   });
 
-  it('the Prophet is called by a faithful town and a worldly one alike', () => {
-    for (const v of [80, 0, -80]) expect(town(v).g.creedBar(0, UNITS.prophet)).toBeNull();
+  it('the Prophet is called only by a town of good standing, and the Shaman only by one of low (tests/darkarts.test.ts)', () => {
+    expect(town(80).g.creedBar(0, UNITS.prophet)).toBeNull();
+    for (const v of [0, -80]) expect(town(v).g.creedBar(0, UNITS.prophet)).toBeTruthy();
+    expect(town(-80).g.creedBar(0, UNITS.shaman)).toBeNull();
+    for (const v of [0, 80]) expect(town(v).g.creedBar(0, UNITS.shaman)).toBeTruthy();
   });
 
   it('pagans already in the town when it turns to the faith are not sent away', () => {

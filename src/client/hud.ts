@@ -38,6 +38,7 @@ import {
 import { PER_SCREEN, buildScreens, screenName } from './buildpages';
 import { CAMP_BIRTH, CAPTIVE_VIRTUE, CAPTIVE_WORK, GUARD_DRIVE, GUARD_WATCH, MERC_TYPES, MERC_WAGE, PATRON_FOOD, PATRON_MUSTER, CLERGY_BIRTH, CLERGY_VIRTUE, Choice, DILEMMAS, MAID_DISTRACTION, MAID_GOLD, MAID_VIRTUE, STAFF_CAP, creedOf } from '../sim/creed';
 import { Building, Entity, GameEvent, Stance, Unit } from '../sim/game';
+import { castsOf } from '../sim/darkarts';
 import { T_DIRT, T_MARSH, T_ROCK, T_SAND, T_SNOW, T_WATER } from '../sim/map';
 import { ico, setIconLeaning } from './assets';
 import { LOCALS } from '../sim/campaign';
@@ -317,7 +318,9 @@ export class Hud {
         const prophets = units.filter((u) => u.def.mana);
         if (prophets.length) {
           const faith = Math.max(...prophets.map((u) => u.mana));
+          const mine = new Set(prophets.flatMap((u) => castsOf(u.type))); // each caster his own: the Prophet's four, the Shaman's three (darkarts.ts)
           for (const a of Object.values(ABILITIES)) {
+            if (!mine.has(a.id)) continue;
             out.push({
               id: 'c:' + a.id, icon: ico(a.id, a.icon), name: a.name, desc: `${a.desc}<br><span class="stat">Costs ${a.cost} faith.</span>`,
               locked: faith < a.cost ? `Not enough faith (${Math.floor(faith)}/${a.cost}).` : undefined,
