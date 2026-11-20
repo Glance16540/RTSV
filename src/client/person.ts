@@ -250,6 +250,7 @@ function plainOutfit(type: string, female: boolean, color: number, look: { skin:
     shaman: { top: hide, sleeves: 'bare', neck: 2, mantle: true, hat: 'fur', hatColor: 0x5a4634, skirt: 'long', skirtColor: hide, weapon: 'staff', beard: true },
     priest: { top: 0x2e2a2a, skirtColor: 0x2e2a2a, skirt: 'long', sleeves: 'long', hat: 'cap', hatColor: 0x2e2a2a, trim: linen, weapon: 'staff' },
     prophet: { top: linen, skirtColor: linen, skirt: 'long', sleeves: 'long', hat: 'hood', hatColor: 0x8a7a5a, cloak: 0x8a7a5a, weapon: 'staff', beard: true, trim: color },
+    healer: { female: true, top: 0x8a7f6a, skirtColor: 0x8a7f6a, skirt: 'long', sleeves: 'long', hairStyle: 'covered', apron: 0xe2d8c0, legs: 0xd8cdb8 },
     herbwife: { female: true, top: 0x4a7a4a, skirtColor: 0x4a7a4a, skirt: 'long', sleeves: 'long', hairStyle: 'covered', apron: 0xe2d8c0, weapon: 'staff', legs: 0xd8cdb8 },
     // ---- leaders ----
     warlord: { mail: true, sleeves: 'long', plate: true, helmet: 'iron', shield: color, weapon: 'sword', cloak: color, trim: 0xd8b040, girth: 2, beard: true },
