@@ -89,7 +89,7 @@ describe('famine', () => {
     expect(n()).toBe(first - 2);
   });
 
-  it('sickness follows hunger; among the Righteous three times as late, and a third as long', () => {
+  it('sickness follows hunger; among the Virtuous three times as late, and a third as long', () => {
     const sick = (virtue: number, wait = FAMINE.plague + 3) => {
       const g = town();
       const p = g.players[0];

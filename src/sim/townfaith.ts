@@ -5,7 +5,7 @@
  * that reads a nation's standing goes on working and is now reading its towns.
  *
  * The nation's standing is the mean of its towns', by the owner's word ("use the average"). On a scale that ends
- * at 100 a total would make ten mildly pious towns a Righteous nation, and a nation would change creed by taking land.
+ * at 100 a total would make ten mildly pious towns a Virtuous nation, and a nation would change creed by taking land.
  *
  * Every season each town is also drawn some way toward its nation's standing (`PULL`).
  *

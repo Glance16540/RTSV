@@ -56,13 +56,13 @@ export const SITES: Record<string, SiteDef> = {
   range: { name: 'Archery Range', icon: '🏹', cost: 5, desc: 'Raise archers here.' },
   stable: { name: 'Stable', icon: '🐴', cost: 7, desc: 'Raise cavalry here.' },
   harbour: { name: 'Harbour', icon: '⚓', cost: 6, desc: 'On the sea only. An army here can make the sea crossings from this land, and from an open coast can sail to any other. Troops landing from the sea fight at four-fifths strength.' },
-  church: { name: 'Church', icon: '⛪', cost: 5, desc: 'Your people grow more pious every turn.' },
-  tavern: { name: 'Tavern', icon: '🍺', cost: 4, desc: '+1 supply each turn, more among a worldly people. Your people grow more decadent every turn.' },
+  church: { name: 'Church', icon: '⛪', cost: 5, desc: 'Your people rise in standing every turn.' },
+  tavern: { name: 'Tavern', icon: '🍺', cost: 4, desc: '+1 supply each turn, more among a dissolute people. Your people fall in standing every turn.' },
   fortress: { name: 'Fortress', icon: '🏰', cost: 9, desc: '+3 defence. In battle the defender starts in the Bronze Age with towers.' },
 };
 
 /**
- * Piety and decadence on the campaign map. A people's standing (`Faction.virtue`, the same scale as a town's in
+ * Moral standing on the campaign map. A people's standing (`Faction.virtue`, the same scale as a town's in
  * battle, -100 to 100) is moved each turn by its churches and taverns, sets the creed its towns begin every battle
  * in, and is moved in turn by how the player ruled the town in a battle fought in person.
  * `defence`: how hard its own land is to take. `tavern`: supplies a Tavern pays. `raise`: taken off the cost of a

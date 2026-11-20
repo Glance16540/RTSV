@@ -116,7 +116,7 @@ export interface UnitDef {
   /** A ship: moves on water only. */
   naval?: boolean;
   /**
-   * A pagan unit: a town that keeps the faith (the top two steps of standing) will not train it. The owner has settled
+   * A pagan unit: a town that keeps the faith (Upright or Virtuous) will not train it. The owner has settled
    * which: the Slaver and the Berserker. The Shaman was one, and is now trained only by a town of low standing
    * (`needs: 'low'`, darkarts.ts). The Prophet is not pagan (his power is the town's own faith), and no nation's own
    * unit is. tests/pagan.test.ts holds the list.
@@ -521,7 +521,7 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   priest: U({
     id: 'priest', name: 'Priest', icon: '✝️',
-    desc: 'Only a Devout or Righteous town can call him. Heals the wounded faster than a Shaman and cures plague. Cannot attack.',
+    desc: 'Only an Upright or Virtuous town can call him. Heals the wounded faster than a Shaman and cures plague. Cannot attack.',
     cost: { food: 50, gold: 40 }, time: 20, age: 1, hp: 50, atk: 0, armor: 0, range: 5.5, speed: 2.1,
     cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 7, needs: 'holy',
   }),
@@ -533,7 +533,7 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   slaver: U({
     id: 'slaver', name: 'Slaver', icon: '⛓️',
-    desc: 'Only a Decadent town will train him. Right-click an enemy villager to seize him and lead him back to a Work Camp. If the Slaver is killed on the way, the captive goes free. Pagan: a town that keeps the faith will not have him.', pagan: true,
+    desc: 'Only a Depraved town will train him. Right-click an enemy villager to seize him and lead him back to a Work Camp. If the Slaver is killed on the way, the captive goes free. Pagan: a town that keeps the faith will not have him.', pagan: true,
     cost: { food: 60, gold: 60 }, time: 20, age: 1, hp: 75, atk: 4, armor: 0, range: 0.5, speed: 2.6,
     cooldown: 1.5, sight: 8, pop: 1, cls: 'infantry', radius: 0.3, needs: 'decadent', slaver: true,
   }),
@@ -677,7 +677,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   temple: B({
     id: 'temple', name: 'Church', icon: '⛪',
-    desc: 'Station up to four villagers here as monks (men) and nuns (women): each makes your people more pious and brings the town\'s children sooner. Those who enter leave their own house. Also trains shamans and prophets and researches blessings.',
+    desc: 'Station up to four villagers here as monks (men) and nuns (women): each raises your people\'s moral standing and brings the town\'s children sooner. Those who enter leave their own house. Also trains shamans and prophets and researches blessings.',
     cost: { wood: 100, stone: 80 }, time: 32, age: 1, hp: 800, size: 3, pop: 0, sight: 6,
     trains: ['shaman', 'priest', 'prophet', 'herbwife'], techs: ['fertility', 'extendedfamily', 'herbalism'], staff: 4,
   }),
@@ -696,7 +696,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   monastery: B({
     id: 'monastery', name: 'Monastery', icon: '🕍',
-    desc: 'Only a town that keeps the faith can build it: the Righteous town\'s great house (a Convent where its women are the more). Up to six villagers live here as monks and nuns, counted as clergy. The town is drawn toward the holy way each season, the drifted come back to it the sooner, and it takes in the sick and the bereaved, so sickness and grief weigh on the town half as much.',
+    desc: 'Only a town that keeps the faith can build it: the Virtuous town\'s great house (a Convent where its women are the more). Up to six villagers live here as monks and nuns, counted as clergy. The town is drawn toward the holy way each season, the drifted come back to it the sooner, and it takes in the sick and the bereaved, so sickness and grief weigh on the town half as much.',
     cost: { wood: 220, stone: 160, gold: 60 }, time: 46, age: 1, hp: 1300, size: 4, pop: 0, sight: 6,
     trains: [], techs: ['feastdays', 'pilgrimage'], staff: 6, needs: 'holy', onMap: true,
   }),
@@ -714,7 +714,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   workcamp: B({
     id: 'workcamp', name: 'Work Camp', icon: '⛓️',
-    desc: 'Only a Decadent town can build it. Holds up to twelve captives seized by Slavers, in two rooms: a workroom where the women are kept by day, and a bunkhouse the men go out to labour from and everyone is shut into at night. Every man held makes the whole town gather faster, and faster still for each Slaver posted as a guard (up to four). Each guard also watches three captives: by night the unwatched slip away, and enough men unwatched may rise and burn the camp. The women held bear children there: the children are theirs and are never yours, but each raises what the camp yields by half a man\'s labour. A captive can be got back for ten minutes from being seized; after that they are sold on and you are paid for them. Soldiers of the town they were taken from can let them out at the gate, one at a time; each guard holds off two such soldiers. If it falls, the captives go home.',
+    desc: 'Only a Depraved town can build it. Holds up to twelve captives seized by Slavers, in two rooms: a workroom where the women are kept by day, and a bunkhouse the men go out to labour from and everyone is shut into at night. Every man held makes the whole town gather faster, and faster still for each Slaver posted as a guard (up to four). Each guard also watches three captives: by night the unwatched slip away, and enough men unwatched may rise and burn the camp. The women held bear children there: the children are theirs and are never yours, but each raises what the camp yields by half a man\'s labour. A captive can be got back for ten minutes from being seized; after that they are sold on and you are paid for them. Soldiers of the town they were taken from can let them out at the gate, one at a time; each guard holds off two such soldiers. If it falls, the captives go home.',
     cost: { wood: 180 }, time: 34, age: 1, hp: 850, size: 4, pop: 0, sight: 5,
     trains: [], techs: [], needs: 'decadent', camp: 12, guards: 4,
   }),
@@ -1001,7 +1001,7 @@ export const TECHS: Record<string, TechDef> = {
   own_yeomen: T({ id: 'own_yeomen', civ: 'england', answers: 'raids', taughtAt: 'towncenter', name: 'Yeomanry', icon: '🎯', desc: 'A study of the English alone. On the map a town of theirs stands a quarter better against raiders, slavers and pirates; in a town towers and Town Centers hit harder.', cost: { food: 150, wood: 200 }, time: 40, age: 1, apply: (m) => { m.towerAtk += 2; } }),
   own_caravanserai: T({ id: 'own_caravanserai', civ: 'arabs', answers: 'raids', taughtAt: 'towncenter', name: 'Caravanserais', icon: '🕌', desc: 'A study of the Abbasids alone. On the map highwaymen meet their convoys far less often; in a town villagers carry 2 more.', cost: { wood: 200, gold: 100 }, time: 40, age: 1, apply: (m) => { m.carry += 2; } }),
   own_bond: T({ id: 'own_bond', civ: 'japan', answers: 'nobles', taughtAt: 'towncenter', name: 'The Bond of Service', icon: '⛩️', desc: 'A study of the Japanese alone. On the map an angry noble of theirs comes round half as fast again; in a town soldiers have 1 more attack.', cost: { food: 200, gold: 200 }, time: 45, age: 2, apply: (m) => { m.atk += 1; } }),
-  own_schools: T({ id: 'own_schools', civ: 'dawn', answers: 'faith', taughtAt: 'towncenter', name: 'Schools of the Prophets', icon: '🕯️', desc: 'A study of the Arameans alone. On the map a town of theirs with a church grows more pious each season; in a town prophets regain faith a quarter faster.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.faith *= 1.25; } }),
+  own_schools: T({ id: 'own_schools', civ: 'dawn', answers: 'faith', taughtAt: 'towncenter', name: 'Schools of the Prophets', icon: '🕯️', desc: 'A study of the Arameans alone. On the map a town of theirs with a church rises in standing each season; in a town prophets regain faith a quarter faster.', cost: { food: 150, gold: 150 }, time: 40, age: 1, apply: (m) => { m.faith *= 1.25; } }),
   own_winter: T({ id: 'own_winter', civ: 'wild', answers: 'hunger', taughtAt: 'towncenter', name: 'Winter Stores', icon: '❄️', desc: 'A study of the Norse alone. On the map snow and desert cost their towns nothing; in a town game, berries and fish are gathered 15% faster.', cost: { food: 150, wood: 100 }, time: 35, age: 0, apply: (m) => { m.hunt *= 1.15; } }),
 };
 

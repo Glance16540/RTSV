@@ -87,7 +87,7 @@ export function nationBar(c: Campaign): string {
   const world = worldNow(c) ? WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS] : null;
   const rest = nationHtml(c) +
     `<div class="hint">${CIVS[me.civ].icon} ${CAMPAIGN_EDGE[me.civ]}</div>` +
-    `<div class="hint">${creed.icon} Your people are <b>${creed.name}</b> <small>(${virtueOf(c, 0) > 0 ? 'piety ' + virtueOf(c, 0) : virtueOf(c, 0) < 0 ? 'decadence ' + -virtueOf(c, 0) : 'in the middle'}${virtueDrift(c, 0) ? `, ${virtueDrift(c, 0) > 0 ? 'growing more pious' : 'growing more decadent'} by ${Math.abs(virtueDrift(c, 0))} a turn` : ''})</small>. ${FAITH[creed.id].desc} Your towns begin each battle as they stand here.</div>` +
+    `<div class="hint">${creed.icon} Your people are <b>${creed.name}</b> <small>(${virtueOf(c, 0) > 0 ? 'standing +' + virtueOf(c, 0) : virtueOf(c, 0) < 0 ? 'standing −' + -virtueOf(c, 0) : 'in the middle'}${virtueDrift(c, 0) ? `, ${virtueDrift(c, 0) > 0 ? 'rising in standing' : 'falling in standing'} by ${Math.abs(virtueDrift(c, 0))} a turn` : ''})</small>. ${FAITH[creed.id].desc} Your towns begin each battle as they stand here.</div>` +
     (world ? `<div class="hint">${world.icon} <b>${world.name}.</b> ${world.desc} <small>(${c.world!.until - c.turn + 1} turns left)</small></div>` : '') +
     `<div class="hint">🌍 ${WORLD_SHAPES[worldOf(c.seed).shape]}; ${worldOf(c.seed).temper}.</div>` +
     `<div class="hint">👑 Win by taking every land, or by holding ${dominionNeed(c)} of the lands with people on them for ${DOMINION_TURNS} turns <small>(you hold ${landOf(c, 0)}; a season under that takes two turns off the count)</small>.` +

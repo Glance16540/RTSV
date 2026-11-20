@@ -107,7 +107,7 @@ const MINUTES = +(process.env.MINUTES ?? 20);
 const AT60 = 60 * SEASONS_A_YEAR, AT70 = 70 * SEASONS_A_YEAR;
 /** Twenty years, in seasons. */
 const YEARS20 = 80;
-/** The Righteous town's great house, by whichever name it is built under. */
+/** The Virtuous town's great house, by whichever name it is built under. */
 const GREAT_HOUSES = ['monastery', 'convent'];
 /** Peace, for the stores figure: over the last PEACE_YEARS, a people fought for land in no more than PEACE_WAR_SEASONS seasons. */
 const PEACE_YEARS = 10, PEACE_WAR_SEASONS = 8;
@@ -243,7 +243,7 @@ interface Watch {
   gold20: number[]; // at 20 years, the player's gold in all its towns, if the player is alive
   grain: { buys: number; food: number; gold: number }; // the player's grain bought abroad by decree in twenty years (grain.ts), from the log
   halls: { rivals: number; with: number }; // at 20 years: rival nations alive, and those with a Hall of Judgement standing (townworks.ts)
-  houses: { holy: number; with: number }; // at 20 years: Righteous towns, and those with a Monastery or Convent standing
+  houses: { holy: number; with: number }; // at 20 years: Virtuous towns, and those with a Monastery or Convent standing
   raids: { outcome: string; /** An army of its people stood in the town; a strike on a road. */ army?: boolean; road?: boolean; /** What the band took of the town's stores, the people it carried off, and the rounds the fight ran. */ goods?: number; carried?: number; rounds?: number; /** Stage three, report only: what it would have come to with the town's men turned out as bands; the town's men; the share of its companies' weight it would have lost; the men it did lose. */ would?: string; men?: number; pressed?: number; killed?: number; /** The men who would have died of it by what the bands lost. */ dead?: number; /** Where it would have broken (and could be taken): what that cost the band, as a share of its weight. */ cost?: number }[]; raidTownYears: number;
   /** Every strike by a band on a held town: was it held off, what it cost in people, and whether the town kept a town watch (townwatch.ts) or had a Fortress (fortress.ts). */
   strikes: { held: boolean; lost: number; watch: boolean; fort: boolean; mine: boolean; /** What the sum made of it, and what a clash would have (raidclash.ts); not for a strike on the road. */ sum: string; clash: string; road: boolean; /** The sum's own line for a taking was crossed, whether or not the town could be taken again. */ low: boolean; /** The town's defence over the band's force, as the old lines read it. */ ratio: number }[];
@@ -819,8 +819,8 @@ add('People', 'A town visited every season vs left alone, after 20 years', 'visi
   add('Faith', 'A nation that builds churches and keeps its towns fed, over 20 years', 'toward the holy end by 15 to 40', holy.length ? `mean ${num(mean(holy), 1)} (${holy.length} nations)` : 'no such nation', holy.length ? within(mean(holy), 15, 40) : null,
 'A nation with a church standing for at least ten of the twenty years and hungry in under 5% of its town-seasons.');
   const holyTowns = ruled.reduce((n, w) => n + w.houses.holy, 0), housed = ruled.reduce((n, w) => n + w.houses.with, 0);
-  add('Faith', 'Holy towns with a Monastery or Convent by 20 years', 'some (5 to 30%)', holyTowns ? `${pct(housed / holyTowns)} (${housed} of ${holyTowns} Righteous towns in ${ruled.filter((w) => w.houses.holy).length} campaigns)` : 'no Righteous town at 20 years', holyTowns ? within(housed / holyTowns, 0.05, 0.3) : null,
-'A holy town is one whose own standing is Righteous at the end of the twentieth year, whoever holds it. The house counts when it stands finished on the town\'s record.');
+  add('Faith', 'Holy towns with a Monastery or Convent by 20 years', 'some (5 to 30%)', holyTowns ? `${pct(housed / holyTowns)} (${housed} of ${holyTowns} Virtuous towns in ${ruled.filter((w) => w.houses.holy).length} campaigns)` : 'no Virtuous town at 20 years', holyTowns ? within(housed / holyTowns, 0.05, 0.3) : null,
+'A holy town is one whose own standing is Virtuous at the end of the twentieth year, whoever holds it. The house counts when it stands finished on the town\'s record.');
   {
 const gold = all('gold20'), buys = ruled.reduce((n, w) => n + w.grain.buys, 0), food = ruled.reduce((n, w) => n + w.grain.food, 0), paid = ruled.reduce((n, w) => n + w.grain.gold, 0);
 add('Food', 'The player\'s gold at 20 years, and grain bought abroad by decree', 'report only', `median ${Math.round(median(gold))} gold (${gold.length} players alive; middle half ${Math.round(quart(gold, 0.25))} to ${Math.round(quart(gold, 0.75))}); ${num(buys / Math.max(1, ruled.length), 1)} buys a campaign in twenty years, ${Math.round(food / Math.max(1, buys))} food for ${Math.round(paid / Math.max(1, buys))} gold each`, 'report',
