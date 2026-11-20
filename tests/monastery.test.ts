@@ -1,4 +1,4 @@
-// The Monastery or Convent (src/sim/monastery.ts): the Righteous town's great house.
+// The Monastery or Convent (src/sim/monastery.ts): the Virtuous town's great house.
 import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';

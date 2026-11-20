@@ -1,5 +1,5 @@
 // The dilemmas a town has been asked, kept on its record from one visit or battle there to the next (docs/systems-
-// board, "Piety and decadence": a long campaign of visits could be asked the same one again in a later visit).
+// board, "Moral standing": a long campaign of visits could be asked the same one again in a later visit).
 //
 // A people in a town works through its dilemmas in an order of its own, each fitting one before any comes round
 // again (dilemmas.ts, `Player.asked`). In a campaign that list is the town's: it goes into a visit, or a battle the

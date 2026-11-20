@@ -54,7 +54,7 @@ describe('acts of God on the map', () => {
     expect(any).toBe(0);
   });
 
-  it('a third as often and a third as dear for the Righteous, half again for the Decadent, and nobody is spared', () => {
+  it('a third as often and a third as dear for the Virtuous, half again for the Depraved, and nobody is spared', () => {
     const turns = 4000;
     const holy = seasons(world(HOLY), turns), plain = seasons(world(PLAIN), turns), fallen = seasons(world(FALLEN), turns);
     const all = (x: typeof holy) => x.famine + x.plague + x.blaze;
@@ -68,7 +68,7 @@ describe('acts of God on the map', () => {
     const each = (x: typeof holy) => x.cost / (x.famine + x.blaze);
     expect(each(holy) / each(plain)).toBeLessThan(0.55);
     expect(each(fallen) / each(plain)).toBeGreaterThan(1.3);
-    // And the hard ones: very rare among the Righteous.
+    // And the hard ones: very rare among the Virtuous.
     expect(holy.hard / all(holy)).toBeLessThan(0.08);
     expect(plain.hard / all(plain)).toBeGreaterThan(0.15);
     expect(fallen.hard / all(fallen)).toBeGreaterThan(0.4);

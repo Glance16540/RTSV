@@ -242,7 +242,7 @@ export const MISSIONS: Mission[] = [
         { text: 'Build a Tavern', done: mine(g, 'tavern').length > 0 },
         { text: 'Send two villagers into the Tavern', done: !!(s.n & 2) },
         { text: 'Answer the question your people bring you', done: !!(s.n & 4) },
-        { text: `Become Devout or Worldly: hover over the creed in the top bar (now ${creed.name}, ${p.virtue > 0 ? 'piety ' + Math.round(p.virtue) : p.virtue < 0 ? 'decadence ' + Math.round(-p.virtue) : 'in the middle'})`, done: creed.id !== 'temperate' },
+        { text: `Become Upright or Dissolute: hover over the creed in the top bar (now ${creed.name}, ${p.virtue > 0 ? 'standing +' + Math.round(p.virtue) : p.virtue < 0 ? 'standing −' + Math.round(-p.virtue) : 'in the middle'})`, done: creed.id !== 'temperate' },
       ];
       return { objectives, result: objectives.every((o) => o.done) ? 'win' : mine(g, 'towncenter').length === 0 ? 'lose' : null };
     },

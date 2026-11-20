@@ -7,13 +7,13 @@
 //
 //   after FAMINE.hungry seconds  the people go hungry: a warning, nothing more.
 //   after FAMINE.starving        famine. One of the town is lost every FAMINE.toll seconds (an ordinary town:
-//                                a Righteous one every three times that, a Decadent one half again as fast): the old first, then soldiers
+//                                a Virtuous one every three times that, a Depraved one half again as fast): the old first, then soldiers
 //                                (who do not starve but walk away), then grown
 //                                villagers, though never the last FAMINE.spare of those, so that a town can
 //                                always work its way out. Leaders, ships and people inside buildings are let be.
 //   after FAMINE.plague          sickness follows hunger: plague breaks out around the Town Center, as soon and
 //                                as long as the people's creed makes it (three times as late and a third as
-//                                long among the Righteous).
+//                                long among the Virtuous).
 //
 // A famine can also come by chance: now and then a harvest fails (`leanYear`), and a town living from field to
 // mouth with nothing laid by goes hungry for it.

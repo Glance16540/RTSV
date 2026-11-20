@@ -42,7 +42,7 @@ export const RANK_ARMOR = 0.6; // armour for each rank given to armour
 export const RANK_HP = 0.05; // share of health per rank, whatever the bent
 /** However armoured, a leader takes at least this share of a blow. */
 export const HERO_MIN_HURT = 0.3;
-/** Armour a holy leader lends to everyone of theirs nearby: in a Devout town, and in a Righteous one. */
+/** Armour a holy leader lends to everyone of theirs nearby: in an Upright town, and in a Virtuous one. */
 export const HOLY_GUARD = [1, 2];
 /** A decadent leader binds a villager in this share of the time a Slaver takes, and their camps breed this many times as fast. */
 export const TYRANT_BIND = 0.5;

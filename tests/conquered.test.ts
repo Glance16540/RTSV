@@ -88,7 +88,7 @@ describe('a town taken', () => {
     expect(revoltChance(c, t.id)).toBeCloseTo(at(40) * YOKE.garrison, 6);
     expect(revoltChance(c, t.id, { bare: true })).toBeCloseTo(at(40), 6); // what it would be if the army left
     c.armies.pop();
-    c.factions[0].virtue = 90; // the Righteous are followed more willingly
+    c.factions[0].virtue = 90; // the Virtuous are followed more willingly
     expect(revoltChance(c, t.id)).toBeCloseTo(at(40) * 0.5, 6);
     c.factions[0].virtue = -90;
     expect(revoltChance(c, t.id)).toBeCloseTo(Math.min(1, at(40) * 1.5), 6);
