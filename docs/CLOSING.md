@@ -92,7 +92,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A woman whose home produces most | A rival's notable homes on the map are named by rule, one to a town, not by which house did most (board, How a rival rules its towns). | small | Unity: port `notableweight.ts`, which already weighs a house's output, and let rivals read it. |
+| A woman whose home produces most | **Done** (`src/sim/rivalhomes.ts`): a rival's town counts each season's harvest to its working houses by their share of the work, as notableweight.ts weighs a house's output; the house that has done most is the next known home, once it comes to a rank of standing, up to three to a town. | small | Built. |
 | Their loss carries weight | **Done** (`src/sim/carriednamed.ts`): a known person among those a nation leads away is marked carried off by name, mourned, and known again if got back. The rest are counted, as the town's record keeps them. | small | Built. |
 
 ## Captivity
