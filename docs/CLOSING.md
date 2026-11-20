@@ -108,7 +108,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Famine, plague, fire and the like | No flood. Rivers run on the map and are laid on a town's ground, but nothing lets ground go under water. A failed harvest strikes only fields, never a town that lives by hunting, fishing or herds. | medium | Unity: a flood is terrain work. Port `acts.ts` as it is. |
+| Famine, plague, fire and the like | **Done on the map and for the hunters** (`src/sim/floods.ts`, `src/sim/leanwild.ts`): a river land floods by its standing (food spoilt, the town worn, struck hard its farmland washed away, nobody drowned, halved by the Flood Calendar); and a town with no farm has a lean season by a failed harvest's chance, its hunters and fishers at half. Still: inside a town the ground never goes under water. | medium | Built on the map. Unity: water on the field. |
 | By creed, sparing nobody | **Done (19 November 2026).** A Prophet's fire, blight and earthquake go by the creed of those they fall on, as his plague does (`wrath.ts`, `game.ts`); fever in the camp and a hard season go by the town's own standing (`chancecreed.ts`, through `wrathAt`). An ordinary people is struck exactly as before. | small | Done. |
 | They carry over into a town | A battle in a land with plague on the map begins with nobody sick, and one after a failed harvest with nobody hungry. | small | Unity: the field's start-up reads the map's state, and that start-up is being rebuilt. |
 

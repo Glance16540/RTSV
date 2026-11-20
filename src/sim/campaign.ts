@@ -30,6 +30,7 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
+import { floodSeason, riverBy } from './floods';
 import { threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
@@ -337,7 +338,7 @@ export interface Campaign {
   chronicle?: { turn: number; text: string }[];
 }
 
-export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued' | 'founded';
+export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued' | 'founded' | 'flood';
 export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
   harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
@@ -355,6 +356,7 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
   overrun: { name: 'Overrun', icon: '🏴', desc: 'The marauders have taken this land for their own.' },
   famine: { name: 'Famine', icon: '🥀', desc: 'The harvest failed here: its holder paid from the stores what the land would have yielded. It falls harder on the depraved than the virtuous.' },
   plague: { name: 'Plague', icon: '☠️', desc: 'Sickness is in this land. While it lasts the land costs its holder a supply a season, an army of theirs kept here loses a company a season, and it may pass to the land next door.' },
+  flood: { name: 'Flood', icon: '🌊', desc: 'The river rose over its banks here: food in store was spoilt, and the town will be found worn by the water. It falls harder on the depraved than the virtuous.' },
   blaze: { name: 'Fire in the town', icon: '🔥', desc: 'The town here burned. Its holder paid to rebuild, and its buildings will be found damaged by whoever next fights here.' },
   band: { name: 'A band has its place here', icon: '⛺', desc: 'Men who belong to no nation: raiders, slavers, pirates or highwaymen. They strike the softest town in their reach. An army standing here when the season turns fights them, and breaking them frees whoever they hold.' },
   raid: { name: 'Raided', icon: '🔥', desc: 'A band broke into the town here: men died at the walls and stores were lost.' },
@@ -1291,7 +1293,7 @@ export function continueAI(c: Campaign): void {
         c.log.push(`${c.factions[c.ally].name} share 3 supplies with you.`);
       }
       mapTurn(c);
-      actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
+      floodSeason(c, (tid) => riverBy(c, tid, () => !!waterOf(c, tid, terrainOf(c))?.river), new Set(actsOfGod(c).map((x) => x.at))); // a season of famine, plague and fire in every held land (acts.ts), then floods where a river runs (floods.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
       tribesSeason(c); // a tribe's bands are counted from its town's men (tribes.ts)
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)

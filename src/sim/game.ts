@@ -25,6 +25,7 @@ import { sendMan } from './pickman';
 import { ruleAt, seatHall } from './hallfield';
 import { markBegun, studyBuild } from './studiesintown';
 import { campBuilds, campUnhoused, campWithoutPeople } from './siegecamp';
+import { wildPace } from './leanwild';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -2912,7 +2913,7 @@ export class Game {
     u.facing = Math.atan2(t.x - u.x, t.y - u.y);
     if (t.kind === 'building' && t.type === 'farm') intoField(u, t, DT); // in among the rows, not at the fence, working as they go (fieldwork.ts)
     u.attackAnim = 0.3;
-    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * stewardPace(this, u) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * millPace(this, u.owner) * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt : t.type === 'gold' ? this.creed(u.owner).gold : 1);
+    u.gatherT += DT * GATHER_RATE[t.type] * p.mods.gather * this.lore(u.owner) * this.creed(u.owner).work * (1 + CAPTIVE_WORK * Math.min(CAPTIVE_CAP, p.captiveMen)) * (1 - MAID_DISTRACTION * Math.min(STAFF_CAP, p.maids)) * (this.has(u, 'strong') ? 1.25 : 1) * (u.freed ? 1.25 : 1) * stewardPace(this, u) * (this.isElder(u) ? 0.75 : 1) * griefPace(this, u) * (t.type === 'farm' ? p.mods.farm * millPace(this, u.owner) * ((t as Building).blightT ? 0 : CALAMITY.harvest[this.foul] ?? 1) : t.type === 'carcass' || t.type === 'berries' || t.type === 'fish' ? p.mods.hunt * wildPace(this, u.owner, t.type) : t.type === 'gold' ? this.creed(u.owner).gold : 1);
     while (u.gatherT >= 1) {
       u.gatherT -= 1;
       u.carryAmt++;
