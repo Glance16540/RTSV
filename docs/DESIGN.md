@@ -266,6 +266,8 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **The Prophet and the Shaman are a mirror pair** (the owner's word, 20 November 2026). The Prophet is a town of good standing's caster, and only such a town trains him; the Shaman is a town of low standing's, with dark calamities of his own (a curse, blight, sickness), and only such a town trains him. Each one's calamities fall by the standing of those they strike, as every act of God does.
 
+**Every town has a plain healer** (the owner's word, 20 November 2026). A town of any standing can call a modest healer of no standing, slower than a Priest and with no calamities, so a Common town's army is not left without one; the Priest stays the healer of the good towns and the Shaman of the low, and both heal better.
+
 ## The order of building
 
 Each step is to be playable by itself.
