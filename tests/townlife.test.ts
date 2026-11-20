@@ -59,7 +59,7 @@ describe('a town\'s own life moves its faith', () => {
     expect(where(false) - where(true)).toBeGreaterThanOrEqual(5);
   });
 
-  it('its life alone never carries a town into the Decadent or the Righteous creed', () => {
+  it('its life alone never carries a town into the Depraved or the Virtuous creed', () => {
     const { c, a } = realm();
     const t = c.territories[a];
     folkOf(c, a).hungry = 1;

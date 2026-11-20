@@ -27,6 +27,7 @@ import { Census, cleanCensus, folkOf, musterFolk, settleFolk } from './township'
 import { bornOnVisit } from './seasonfolk';
 import { shiftVirtue } from './townfaith';
 import { weatherAt } from './campaignbase';
+import { raiseFaithSites } from './faithsites';
 import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, slots } from './campaignbase';
 import { faithAt } from './townfaith';
 import { settleStores } from './stores';
@@ -279,6 +280,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
       land.buildings.push(site);
       c.log.push(`The ${SITES[site].name} you built on your visit stands in ${land.name}.`);
     }
+    raiseFaithSites(c, land.id, b, 'on your visit'); // and a Church or a Tavern (faithsites.ts)
   }
   const mins = Math.max(1, Math.round((seconds ?? VISIT_SECONDS) / 60));
   c.log.push(`You spent ${mins} minute${mins === 1 ? '' : 's'} of the season in ${land.name}.`);

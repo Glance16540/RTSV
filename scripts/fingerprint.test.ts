@@ -112,7 +112,7 @@ it.skipIf(!process.env.FINGERPRINT)('the fingerprint of a fixed set of battles',
     for (let sec = 0; sec < 60 && g.winner < 0; sec++) { for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; } ais.forEach((a) => a.update()); }
     out.push(`${label} after the leaders fell: ${hash(raised.join('|'))} acclaimed ${g.players.map((p) => !!p.acclaimed).join('/')} ${hash(g.serialize())}`);
   }
-  // Camp drills: one people is made Decadent and given a work camp with one guard, and Slavers who are sent after the
+  // Camp drills: one people is made Depraved and given a work camp with one guard, and Slavers who are sent after the
   // other people's villagers, so that a work camp fills, is watched too thinly, loses people by night and has its
   // captives' children; and the marauders are about. Then, with people in them, the marauders' camp and the work camp
   // are burnt down, so that everyone held goes free. What happened is written with the hashes.
@@ -123,7 +123,7 @@ it.skipIf(!process.env.FINGERPRINT)('the fingerprint of a fixed set of battles',
     g.marauders = true;
     const ais = g.players.map((_, i) => { const a = new AIController(g, i); a.setLevel(1); return a; });
     const label = `camp drill ${seed} (${setups.map((x) => x.civ).join(' v ')})`;
-    g.players[0].virtue = -90; // a Decadent people may keep a work camp and Slavers
+    g.players[0].virtue = -90; // a Depraved people may keep a work camp and Slavers
     const one = g.units.find((u) => u.owner === 0)!, hall = { cx: Math.floor(one.x), cy: Math.floor(one.y) }; // beside their people, wherever they begin
     let camp = null as ReturnType<Game['spawnBuilding']> | null;
     for (let r = 6; r < 30 && !camp; r++) for (let dy = -r; dy <= r && !camp; dy += 2) for (let dx = -r; dx <= r && !camp; dx += 2)
@@ -134,7 +134,7 @@ it.skipIf(!process.env.FINGERPRINT)('the fingerprint of a fixed set of battles',
     for (let s = 0; s < MINUTES * 60 && g.winner < 0; s++) {
       for (let i = 0; i < 20; i++) { g.step(); g.events.length = 0; }
       ais.forEach((a) => a.update());
-      g.players[0].virtue = Math.min(g.players[0].virtue, -80); // kept Decadent, whatever the town does
+      g.players[0].virtue = Math.min(g.players[0].virtue, -80); // kept Depraved, whatever the town does
       // Every twenty seconds each Slaver with his hands free is sent after one of the other people's grown villagers.
       if (s % 20 === 5) {
         const prey = g.units.filter((u) => u.owner === 1 && u.type === 'villager' && !u.dead && u.growT <= 0 && !u.inside && !u.captive);

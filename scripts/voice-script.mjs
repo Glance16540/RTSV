@@ -37,9 +37,9 @@ out += `\n${total} lines in all.\n`;
 out += `\n## The people: villagers and warriors\n\nShort calls, one to three seconds, said when a villager or soldier is clicked on, sent to work or to war, or caught in\na raid. Each is written three ways: for a holy town, an ordinary one and a decadent one. Name a recording\n\`folk_<part>_<pious|plain|decadent>_<moment>_<m|f><a|b|c>\`, for example \`folk_farmer_pious_ready_fa.wav\`: \`m\` or \`f\` for a\nman's or a woman's voice (warriors are men), and \`a\`, \`b\` or \`c\` for up to three voices the game picks among.\n`;
 let folkTotal = 0;
 for (const r of FOLK) {
-  out += `\n### ${r.name} (\`${r.id}\`)\n\n${r.about}\n\n| Moment | When | Holy town | Ordinary town | Decadent town |\n| --- | --- | --- | --- | --- |\n`;
+  out += `\n### ${r.name} (\`${r.id}\`)\n\n${r.about}\n\n| Moment | When | Holy town | Ordinary town | Town of low standing |\n| --- | --- | --- | --- | --- |\n`;
   for (const [m, three] of Object.entries(r.lines)) { out += `| \`${m}\` | ${MOMENT_NOTES[m]} | ${three.join(' | ')} |\n`; folkTotal += LEANS.length; }
-  if (r.her) { out += `\nAs a woman she is the **${r.herName}**: ${r.herAbout} Same file names, with \`f\`.\n\n| Moment | When | Holy town | Ordinary town | Decadent town |\n| --- | --- | --- | --- | --- |\n`; for (const [m, three] of Object.entries(r.her)) out += `| \`${m}\` | ${MOMENT_NOTES[m]} | ${three.join(' | ')} |\n`; }
+  if (r.her) { out += `\nAs a woman she is the **${r.herName}**: ${r.herAbout} Same file names, with \`f\`.\n\n| Moment | When | Holy town | Ordinary town | Town of low standing |\n| --- | --- | --- | --- | --- |\n`; for (const [m, three] of Object.entries(r.her)) out += `| \`${m}\` | ${MOMENT_NOTES[m]} | ${three.join(' | ')} |\n`; }
 }
 // The lines that speak of faith, as each people says them in its own (folkfaith.ts): recorded under the script's name
 // with the faith after it, for example `folk_farmer_pious_ready_ma_muslim.wav`.

@@ -24,6 +24,7 @@ import { courtOf } from './court';
 import { beginPlot, beginRival } from './courtstory';
 import { ENDINGS, Intrigue, IntrigueKind, Person, chance, fullName } from './intriguebase';
 import { spouseOf } from './kin';
+import { mayDeclareWar } from './feudwar';
 import { noblesOf } from './nobles';
 import { MEN, levyFrom, sparedMen } from './armytown'; // men of a real town (armytown.ts)
 
@@ -99,7 +100,7 @@ export function remember(c: Campaign, it: Intrigue): Mark | undefined {
   if (it.kind === 'killer' && how === 'hanged' && !(it.wronged?.length)) return add(c, it, 'eased', A.eased.seasons, `${where} sleeps easier since its killer was found.`, { at: it.at });
   if (it.kind === 'rival' && it.rival !== undefined) {
     const king = it.cast?.king ?? 'the rival';
-    if (how === 'foiled' || how === 'wounded' || how === 'slain') return add(c, it, 'feud', A.feud.seasons, `${king} of the ${people(c, it.rival)} was defied, and has not forgiven it.`, { rival: it.rival, name: king });
+    if (how === 'foiled' || how === 'wounded' || how === 'slain') { const feud = add(c, it, 'feud', A.feud.seasons, `${king} of the ${people(c, it.rival)} was defied, and has not forgiven it.`, { rival: it.rival, name: king }); mayDeclareWar(c, feud); /* and he may declare war (feudwar.ts) */ return feud; }
     if (how === 'bought') return add(c, it, 'bought', A.bought.back + Math.floor(chance(c, it.id * 101 + 1) * A.bought.within), `${king} of the ${people(c, it.rival)} was paid to forget ${it.cast?.spouse}.`, { rival: it.rival, name: king });
   }
   if (it.kind === 'suitor' && how === 'wed' && it.rival !== undefined) return add(c, it, 'alliance', A.alliance.seasons, `${it.cast?.daughter} is married into the house of ${it.cast?.king} of the ${people(c, it.rival)}: they may be called on, once.`, { rival: it.rival, name: it.cast?.daughter });

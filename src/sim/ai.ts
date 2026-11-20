@@ -16,6 +16,8 @@ import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
 import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
+import { darkChoice } from './darkarts';
+import { HEALERS, HEALERS_KEPT, healerFor } from './plainhealer';
 import { fallBack, fightStyle, roomWork, studyReserve, styleWork } from './styleplay';
 import { aiCare } from './aicare';
 
@@ -296,14 +298,15 @@ export class AIController {
       for (let k = 0; k < mix.length; k++) {
         let type = mix[(this.mixI + k) % mix.length];
         // A people that keeps the faith calls a priest where others would call a shaman, and has no berserkers.
-        if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; }
+        if (type === 'shaman') type = healerFor(g, pid); // a Priest, a Shaman or the plain Healer, by its standing (plainhealer.ts)
+        else if (g.creedBar(pid, UNITS[type])) continue;
         const def = UNITS[type];
         // Yesterday's soldiers are only raised in need: an army of bowmen is no use against knights.
         if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && (fight.newest || army.length >= armyTarget / 2) && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
         const src = mine.find((b) => b.complete && b.def.trains.includes(type) && b.queue.length < 2);
         if (!src || !g.canAfford(p, def.cost)) continue;
         if (needsPerson(def) && !this.spare) continue;
-        if ((type === 'shaman' || type === 'priest') && g.countUnits(pid, type) >= 2) continue;
+        if (HEALERS.includes(type) && HEALERS.reduce((n, t) => n + g.countUnits(pid, t), 0) >= HEALERS_KEPT) continue; // one or two healers in all
         if (type === 'prophet' && g.countUnits(pid, 'prophet') >= 1) continue;
         if (g.cmdTrain(pid, src.id, type)) { this.mixI = (this.mixI + k + 1) % mix.length; break; }
       }
@@ -492,6 +495,7 @@ export class AIController {
     const g = this.game;
     for (const u of army) {
       if (!u.def.mana || u.order?.t === 'cast') continue;
+      if (u.type === 'shaman') { const dark = darkChoice(g, this.pid, u); if (dark) g.cmdCast(this.pid, [u.id], dark.ability, dark.x, dark.y); continue; } // his own calamities (darkarts.ts)
       if (u.mana >= ABILITIES.plague.cost) {
         const near = g.units.filter((v) => g.hostile(v.owner, this.pid) && v.owner !== g.wild && v.plagueT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
         if (near.length >= 3) { g.cmdCast(this.pid, [u.id], 'plague', near[0].x, near[0].y); continue; }
@@ -584,7 +588,7 @@ export class AIController {
   }
 
   /**
-   * A town that has become Decadent is dying out and knows it: it builds a Work Camp, keeps a pair of Slavers, and
+   * A town that has become Depraved is dying out and knows it: it builds a Work Camp, keeps a pair of Slavers, and
    * sends them after the nearest rival villagers for as long as the camp has room.
    */
   private slaving(mine: Building[], villagers: Unit[], home: Building): void {
@@ -656,7 +660,7 @@ export class AIController {
     const pious = leaningWith(p.civ, LEANING[p.civ] ?? 0.5) >= 0.5;
     const type = pious ? 'temple' : 'tavern';
     if (!pious) {
-      // It likes the tavern's gold but knows where the road ends: a Decadent town's own people die out. Near the
+      // It likes the tavern's gold but knows where the road ends: a Depraved town's own people die out. Near the
       // edge it empties the tavern, and does not fill it again until it has drawn well back.
       if (p.virtue <= -60) { for (const b of mine) if (b.type === 'tavern' && b.staff?.length && !b.staff.some((id) => (g.entities.get(id) as Unit | undefined)?.drifted)) g.cmdUnstaff(pid, b.id, true); return; }
       if (p.virtue <= -45) return;

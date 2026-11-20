@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { battleConfig, finishBattle, moveArmy, newCampaign } from '../src/sim/campaign';
 import { Game } from '../src/sim/game';
 import { Census, cleanCensus, folkOf, headcount, settleFolk } from '../src/sim/township';
+import { keptAsWas, unfieldedOf, unfieldedSide } from '../src/sim/writeguard';
+import { setups } from './helpers';
 
 /** A rival's army marches on the player's capital: the town's people take the field; the camp has none of a town's. */
 function siege() {
@@ -72,5 +74,52 @@ describe('writeguard', () => {
     settleFolk(c, home.id, nobody());
     expect(headcount(f)).toBe(0);
     expect(f.notables.find((n) => n.name === 'Aelfrun')?.lost).toBeDefined();
+  });
+
+  // The three functions on their own.
+  it('unfieldedSide: true for a side with no town\'s people in its setup, or no setup at all; false for one with them', () => {
+    const plain = new Game(7, setups);
+    expect(unfieldedSide(plain, 0)).toBe(true);
+    expect(unfieldedSide(plain, 1)).toBe(true);
+    expect(unfieldedSide(plain, 5)).toBe(true);
+    const g = new Game(7, [{ ...setups[0], bonus: { people: { men: 2, women: 2, elders: 0, children: 0 } } }, setups[1]]);
+    expect(unfieldedSide(g, 0)).toBe(false);
+    expect(unfieldedSide(g, 1)).toBe(true);
+  });
+
+  it('unfieldedOf: keeps the mark only when it is exactly true', () => {
+    expect(unfieldedOf({ unfielded: true })).toEqual({ unfielded: true });
+    for (const x of [{ unfielded: 'true' }, { unfielded: 1 }, { unfielded: false }, {}, null, undefined]) expect(unfieldedOf(x as never)).toEqual({});
+  });
+
+  it('keptAsWas: a marked count over a record with anyone in it keeps the record, drops the note of those held back, and logs it', () => {
+    const c = newCampaign(4, 1, 1, 'hearth');
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const f = folkOf(c, home.id);
+    f.fieldHome = { m: [100], f: [] } as never;
+    const log = c.log.length;
+    expect(keptAsWas(c, home.id, f, { ...nobody(), unfielded: true }, 5)).toBe(true);
+    expect(f.fieldHome).toBeUndefined();
+    expect(c.log.length).toBe(log + 1);
+    expect(c.log.at(-1)).toBe(`The people of ${home.name} were not on the field: their record is kept as it was.`);
+  });
+
+  it('keptAsWas: an unmarked count, or a record with nobody in it, is written as it stands and nothing is touched', () => {
+    const c = newCampaign(4, 1, 1, 'hearth');
+    const home = c.territories.find((t) => t.capital === 0)!;
+    const f = folkOf(c, home.id);
+    f.fieldHome = { m: [100], f: [] } as never;
+    const log = c.log.length;
+    expect(keptAsWas(c, home.id, f, nobody(), 5)).toBe(false);
+    expect(keptAsWas(c, home.id, f, { ...nobody(), unfielded: true }, 0)).toBe(false);
+    expect(f.fieldHome).toBeDefined();
+    expect(c.log.length).toBe(log);
+  });
+
+  it('keptAsWas: a land with no name on the map is spoken of as the town', () => {
+    const c = newCampaign(4, 1, 1, 'hearth');
+    const f = folkOf(c, c.territories.find((t) => t.capital === 0)!.id);
+    expect(keptAsWas(c, 9999, f, { ...nobody(), unfielded: true }, 3)).toBe(true);
+    expect(c.log.at(-1)).toBe('The people of the town were not on the field: their record is kept as it was.');
   });
 });

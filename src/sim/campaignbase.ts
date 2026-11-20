@@ -9,6 +9,7 @@
  * The campaign's record itself (the Campaign, Territory, Army and Faction interfaces) stays in campaign.ts: the
  * systems add their own fields to it there, and an import of types alone ties nothing.
  */
+import { iceBridges } from './winter';
 import type { Army, Campaign, Territory } from './campaign';
 import { creedOf } from './creed';
 import type { HeroSpec } from './hero';
@@ -55,13 +56,13 @@ export const SITES: Record<string, SiteDef> = {
   range: { name: 'Archery Range', icon: '🏹', cost: 5, desc: 'Raise archers here.' },
   stable: { name: 'Stable', icon: '🐴', cost: 7, desc: 'Raise cavalry here.' },
   harbour: { name: 'Harbour', icon: '⚓', cost: 6, desc: 'On the sea only. An army here can make the sea crossings from this land, and from an open coast can sail to any other. Troops landing from the sea fight at four-fifths strength.' },
-  church: { name: 'Church', icon: '⛪', cost: 5, desc: 'Your people grow more pious every turn.' },
-  tavern: { name: 'Tavern', icon: '🍺', cost: 4, desc: '+1 supply each turn, more among a worldly people. Your people grow more decadent every turn.' },
+  church: { name: 'Church', icon: '⛪', cost: 5, desc: 'Your people rise in standing every turn.' },
+  tavern: { name: 'Tavern', icon: '🍺', cost: 4, desc: '+1 supply each turn, more among a dissolute people. Your people fall in standing every turn.' },
   fortress: { name: 'Fortress', icon: '🏰', cost: 9, desc: '+3 defence. In battle the defender starts in the Bronze Age with towers.' },
 };
 
 /**
- * Piety and decadence on the campaign map. A people's standing (`Faction.virtue`, the same scale as a town's in
+ * Moral standing on the campaign map. A people's standing (`Faction.virtue`, the same scale as a town's in
  * battle, -100 to 100) is moved each turn by its churches and taverns, sets the creed its towns begin every battle
  * in, and is moved in turn by how the player ruled the town in a battle fought in person.
  * `defence`: how hard its own land is to take. `tavern`: supplies a Tavern pays. `raise`: taken off the cost of a
@@ -329,6 +330,13 @@ export function weatherAt(c: Campaign, tid: number): Sky | '' {
 
 /** Where an army in this territory can go in one march: next door, or from a harbour along its sea lanes and to any other open coast. */
 export function reach(c: Campaign, tid: number): number[] {
+  const t = c.territories[tid];
+  const ice = iceBridges(c, tid, biomeOf); // a river frozen in winter is crossed on foot (winter.ts)
+  if (ice.length) return [...new Set([...reachOpen(c, tid), ...ice])];
+  return reachOpen(c, tid);
+}
+/** The lands a land reaches by its open borders and its sea lanes, as in any season but winter's ice (reach). */
+function reachOpen(c: Campaign, tid: number): number[] {
   const t = c.territories[tid];
   if (!t.buildings.includes('harbour')) return t.adj;
   const lanes = lanesOf(c, tid);

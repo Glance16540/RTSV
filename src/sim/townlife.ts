@@ -8,7 +8,7 @@
 //   - plague in it: LIFE.plague toward decadence;
 //   - a long peace with full stores: after LIFE.calm seasons running with no hunger, plague, fire, raid, siege or rising
 //     in it, and with LIFE.full seasons of its own eating in store, LIFE.peace toward piety;
-//   - never, by its life alone, into the Decadent or the Righteous creed (LIFE.floor, LIFE.ceiling).
+//   - never, by its life alone, into the Depraved or the Virtuous creed (LIFE.floor, LIFE.ceiling).
 // A raid moves a town already, by how it went (threats.ts: held off, it is the better for it; sacked, it loses heart),
 // so here a raid only breaks the peace.
 //
@@ -42,7 +42,7 @@ export const LIFE = {
   /** Seasons of its own eating in store for its stores to count as full. */
   full: 3,
   /**
-   * How far its life alone carries a town: never into the Decadent (-70) nor the Righteous (70) creed (creed.ts). A
+   * How far its life alone carries a town: never into the Depraved (-70) nor the Virtuous (70) creed (creed.ts). A
    * hungry town slid toward decadence, and a decadent town's harvest fails the oftener (wrath.ts): unbounded, the two fed
    * each other.
    */
