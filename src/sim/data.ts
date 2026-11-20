@@ -116,13 +116,14 @@ export interface UnitDef {
   /** A ship: moves on water only. */
   naval?: boolean;
   /**
-   * A pagan unit: a town that keeps the faith (Upright or Virtuous) will not train it. The owner has settled which:
-   * the Shaman, the Slaver and the Berserker. The Prophet is not pagan
-   * (his power is the town's own faith), and no nation's own unit is. tests/pagan.test.ts holds the list.
+   * A pagan unit: a town that keeps the faith (Upright or Virtuous) will not train it. The owner has settled
+   * which: the Slaver and the Berserker. The Shaman was one, and is now trained only by a town of low standing
+   * (`needs: 'low'`, darkarts.ts). The Prophet is not pagan (his power is the town's own faith), and no nation's own
+   * unit is. tests/pagan.test.ts holds the list.
    */
   pagan?: boolean;
-  /** Only a holy town, or only a decadent one, can train it. */
-  needs?: 'holy' | 'decadent';
+  /** Only a town of good standing (the top two steps), only one of low standing (the bottom two), or only one on the lowest step, can train it. */
+  needs?: 'holy' | 'decadent' | 'low';
   /** Can seize enemy villagers and lead them to a Work Camp. */
   slaver?: boolean;
   /** One of the marauders: belongs to no people, and carries off women to the camp in the wilds. */
@@ -514,9 +515,9 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   shaman: U({
     id: 'shaman', name: 'Shaman', icon: '🪄',
-    desc: 'Heals wounded allies nearby and cures plague. Cannot attack. Pagan: a town that keeps the faith will not train him.', pagan: true,
+    desc: 'Only a Dissolute or Depraved town will train him. Heals wounded allies nearby and cures plague, and spends faith on dark calamities: a Curse makes enemy soldiers strike weaker, Blight empties fields, Sickness spreads among enemy troops. Cannot attack.', needs: 'low',
     cost: { food: 40, gold: 60 }, time: 22, age: 1, hp: 40, atk: 0, armor: 0, range: 5, speed: 2.0,
-    cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 5,
+    cooldown: 1, sight: 8, pop: 1, cls: 'support', radius: 0.28, heal: 5, mana: 80,
   }),
   priest: U({
     id: 'priest', name: 'Priest', icon: '✝️',
@@ -538,7 +539,7 @@ export const UNITS: Record<string, UnitDef> = {
   }),
   prophet: U({
     id: 'prophet', name: 'Prophet', icon: '🔮',
-    desc: 'Unique. Spends faith to call down calamities: Plague sickens enemy troops and spreads between them, Earthquake shatters buildings, Fire from Heaven sets a town alight, Blight empties its fields. Cannot attack.',
+    desc: 'Unique. Only an Upright or Virtuous town can call him. Spends faith to call down calamities: Plague sickens enemy troops and spreads between them, Earthquake shatters buildings, Fire from Heaven sets a town alight, Blight empties its fields. Cannot attack.', needs: 'holy',
     cost: { food: 100, gold: 150 }, time: 35, age: 2, hp: 50, atk: 0, armor: 0, range: 9, speed: 1.9,
     cooldown: 1, sight: 10, pop: 2, cls: 'support', radius: 0.3, limit: 2, mana: 100,
   }),
@@ -1156,6 +1157,15 @@ export const ABILITIES: Record<string, AbilityDef> = {
   blight: {
     id: 'blight', name: 'Blight', icon: '🦗', cost: 50, radius: 4,
     desc: 'Enemy farms in the area yield nothing for a minute, and the berry bushes there are stripped of half their fruit.',
+  },
+  // The Shaman's own (darkarts.ts). Blight above is his too.
+  curse: {
+    id: 'curse', name: 'Curse', icon: '🕸️', cost: 50, radius: 3.5,
+    desc: 'Enemy soldiers in the area strike three tenths weaker for 25 seconds: less on a town of good standing, longer on one of low.',
+  },
+  sickness: {
+    id: 'sickness', name: 'Sickness', icon: '🤒', cost: 40, radius: 3,
+    desc: 'Enemy units in the area sicken for 12 seconds, lose health, and pass it to others standing close. Healers cure it.',
   },
 };
 /**

@@ -16,6 +16,7 @@ import { LEANING, isDecadent } from './creed';
 import { battleHabits, leaningWith } from './temper';
 import { nationOf, researchAt } from './ownstudies';
 import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
+import { darkChoice } from './darkarts';
 import { fallBack, fightStyle, roomWork, studyReserve, styleWork } from './styleplay';
 import { aiCare } from './aicare';
 
@@ -296,7 +297,8 @@ export class AIController {
       for (let k = 0; k < mix.length; k++) {
         let type = mix[(this.mixI + k) % mix.length];
         // A people that keeps the faith calls a priest where others would call a shaman, and has no berserkers.
-        if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; }
+        // Its healer is the one its standing allows: a Shaman in a town of low standing, a Priest in one of good, and in the middle neither (darkarts.ts).
+        if (g.creedBar(pid, UNITS[type])) { if (type !== 'shaman') continue; type = 'priest'; if (g.creedBar(pid, UNITS.priest)) continue; }
         const def = UNITS[type];
         // Yesterday's soldiers are only raised in need: an army of bowmen is no use against knights.
         if (def.age <= p.age - 2 && type !== own && type !== own2 && !underAttack && (fight.newest || army.length >= armyTarget / 2) && def.atk > 0 && def.cls !== 'siege' && p.res.gold >= 150) continue;
@@ -492,6 +494,7 @@ export class AIController {
     const g = this.game;
     for (const u of army) {
       if (!u.def.mana || u.order?.t === 'cast') continue;
+      if (u.type === 'shaman') { const dark = darkChoice(g, this.pid, u); if (dark) g.cmdCast(this.pid, [u.id], dark.ability, dark.x, dark.y); continue; } // his own calamities (darkarts.ts)
       if (u.mana >= ABILITIES.plague.cost) {
         const near = g.units.filter((v) => g.hostile(v.owner, this.pid) && v.owner !== g.wild && v.plagueT <= 0 && Math.hypot(v.x - u.x, v.y - u.y) < 11);
         if (near.length >= 3) { g.cmdCast(this.pid, [u.id], 'plague', near[0].x, near[0].y); continue; }

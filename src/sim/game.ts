@@ -59,6 +59,7 @@ import { BandState, marauderEdge, stepLair } from './marauders';
 import { armMen } from './tribes';
 import { calamity, douse, spreadFire } from './calamity';
 import { wrath } from './wrath';
+import { castDark, castsOf, cursed, darkFaith, isLow } from './darkarts';
 import { storyTick, type FieldStory } from './fieldstory';
 import { placeBar } from './placebar';
 import type { WaterShape } from './waterlay';
@@ -350,6 +351,7 @@ export type GameEvent =
   | { t: 'grown'; player: number; x: number; y: number }
   | { t: 'quake'; x: number; y: number }
   | { t: 'plague'; x: number; y: number }
+  | { t: 'curse'; x: number; y: number }
   | { t: 'fire'; x: number; y: number }
   | { t: 'blight'; x: number; y: number }
   | { t: 'birth'; player: number; x: number; y: number }
@@ -1658,11 +1660,12 @@ export class Game {
   }
 
   /** Why this player's creed forbids a unit or building, or null if it does not. */
-  creedBar(owner: number, def: { name: string; pagan?: boolean; needs?: 'holy' | 'decadent' }): string | null {
+  creedBar(owner: number, def: { name: string; pagan?: boolean; needs?: 'holy' | 'decadent' | 'low' }): string | null {
     const v = this.players[owner].virtue;
     if (def.pagan && isHoly(v)) return `A town that keeps the faith will not have a ${def.name}.`;
     if (def.needs === 'holy' && !isHoly(v)) return `Only an Upright town can call a ${def.name}.`;
     if (def.needs === 'decadent' && !isDecadent(v)) return `Only a Depraved town would have a ${def.name}.`;
+    if (def.needs === 'low' && !isLow(v)) return `Only a Dissolute or Depraved town would have a ${def.name}.`; // the Shaman (darkarts.ts)
     return null;
   }
 
@@ -1982,7 +1985,7 @@ export class Game {
   cmdCast(owner: number, ids: number[], ability: string, x: number, y: number): boolean {
     const a = ABILITIES[ability];
     if (!a) return false;
-    const able = this.ownUnits(ids, owner).filter((u) => u.def.mana && u.mana >= a.cost)
+    const able = this.ownUnits(ids, owner).filter((u) => u.def.mana && u.mana >= a.cost && castsOf(u.type).includes(ability)) // each caster his own calamities (darkarts.ts)
       .sort((p, q) => Math.hypot(p.x - x, p.y - y) - Math.hypot(q.x - x, q.y - y));
     if (!able.length) { this.msg(owner, `Not enough faith for ${a.name}.`); return false; }
     this.setOrder(able[0], { t: 'cast', ability, x, y });
@@ -2486,7 +2489,7 @@ export class Game {
       // A rival's leader raises the call when they are in the thick of it.
       if (this.players[u.owner].isAI && u.attackAnim > 0) this.cmdCall(u.owner);
     }
-    if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith * this.creed(u.owner).faith);
+    if (u.def.mana && u.mana < u.def.mana) u.mana = Math.min(u.def.mana, u.mana + DT * this.players[u.owner].mods.faith * darkFaith(this, u)); // the Shaman's by the mirror of the creed's figure (darkarts.ts)
     if (agesHere(this) && u.lifespan > 0 && (u.age += DT) > u.lifespan) {
       this.events.push({ t: 'oldage', player: u.owner, name: `${u.name}${u.family ? ' ' + u.family : ''}` });
       this.kill(u);
@@ -2736,7 +2739,8 @@ export class Game {
             u.mana -= a.cost;
             u.attackAnim = 0.35;
             u.facing = Math.atan2(o.x - u.x, o.y - u.y);
-            if (o.ability === 'plague') {
+            if (castDark(this, u, o.ability, o.x, o.y)) { /* the Shaman's own: a curse, or sickness (darkarts.ts) */ }
+            else if (o.ability === 'plague') {
               for (const v of this.unitsNear(o.x, o.y, a.radius, this.scratch)) {
                 if (this.hostile(v.owner, u.owner) && Math.hypot(v.x - o.x, v.y - o.y) <= a.radius) {
                   // The faithful are spared, or get off lightly; the decadent suffer longer.
@@ -2988,7 +2992,7 @@ export class Game {
     let atk = u.def.atk + (this.isMilitary(u) ? p.mods.atk : 0) + (u.hero ? this.leaderBonus(u).atk : 0);
     if (u.def.charge) { if (u.chargeD >= 3) atk *= u.def.charge; u.chargeD = 0; }
     if (u.def.homeBonus && this.moraleAt(u.owner, u.x, u.y) > 0) atk *= u.def.homeBonus;
-    atk *= this.highGround(u.x, u.y, t) * this.veteran(u) * marauderEdge(this, u);
+    atk *= this.highGround(u.x, u.y, t) * this.veteran(u) * marauderEdge(this, u) * cursed(this, u); // a cursed soldier strikes weaker (darkarts.ts)
     if (u.gender === 'f' && !(t.kind === 'unit' && t.def.cls === 'prey')) atk *= WOMAN_ATK;
     if (u.def.burn && t.kind === 'building') t.burnT = 8;
     if (u.def.drain) u.hp = Math.min(u.maxHp, u.hp + u.def.drain);
