@@ -90,6 +90,7 @@ import { Orders, governTowns, keepOrders, shareOf } from './governor';
 import { drillWithQueued, keepQueued } from './queueddrill';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
+import { aimFirst, balk, planStep } from './rivalplan';
 import { heldFirst } from './rivalcaptives';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
@@ -1465,6 +1466,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     const foe = (id: number) => { const o = c.territories[id].owner; return o > 0 && c.territories.some((t) => t.owner === o && t.adj.some((n) => c.territories[n].owner === 0)) ? 0 : 1; };
     targets.sort((a, b) => foe(a) - foe(b));
   }
+  targets.splice(0, targets.length, ...aimFirst(c, f.id, here.id, targets)); // what brings it nearer its war aim first (rivalplan.ts)
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
   targets.splice(0, targets.length, ...sickLast(c, targets)); // a land with plague in it last (aiplague.ts)
   targets.splice(0, targets.length, ...heldFirst(c, f.id, targets)); // a land holding its carried-off in their last seasons first (rivalcaptives.ts)
@@ -1485,6 +1487,10 @@ function aiStep(c: Campaign, f: Faction): boolean {
   // Nothing it dares, and plague where it stands: it goes to a healthy land of its own next door (aiplague.ts).
   const away = leavePlague(c, army);
   if (away >= 0 && moveArmy(c, army.id, away) === 'moved') { army.moved = true; return false; }
+  // Nothing it dares: toward its war aim through its own lands; and its strongest, standing before the way to it, gives that aim up (rivalplan.ts).
+  const toAim = planStep(c, f.id, army.at);
+  if (toAim >= 0 && safeStep(c, toAim) && moveArmy(c, army.id, toAim) === 'moved') { army.moved = true; return false; }
+  balk(c, f.id, army);
   if (!reach(c, here.id).some((id) => reckoned(c, f.id, id))) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
