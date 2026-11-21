@@ -10,14 +10,17 @@
 //   An alliance by marriage: call on it.
 //   A plot: keep informers; send gifts once; pardon the plotter when found. Nobody is accused on a guess.
 //   A rival's offer of trade: accepted. Of a royal match: accepted only when the player is the weaker.
-//   A tale (story.ts): the upright answer when the supplies can be spared, the other when they cannot (STORE_LOW).
+//   A tale (story.ts): as the people lean, the way a rival people answers its own (storyturn.ts): the upright answer
+//   as often as its lean is upright, when the supplies can be spared (STORE_LOW); the other way otherwise.
 import type { Campaign } from './campaign';
 import { callOn, callable } from './aftermath';
 import { Intrigue, choicesFor, choose, openIntrigues, suspected } from './intrigue';
 import { sensiblePetition } from './petitions';
 import { answerMarriage } from './royalmarriage';
 import { answerTrade } from './tradedeal';
-import { armyStrength } from './campaignbase';
+import { armyStrength, luck } from './campaignbase';
+import { LEANING } from './creed';
+import { leaningWith } from './temper';
 import { answerTale, canAnswer } from './storyturn';
 
 /** Supplies in hand below which a careful ruler will not pay for the upright answer to a tale. */
@@ -52,9 +55,10 @@ export function sensibleAnswers(c: Campaign, f = 0): string[] {
     const o = c.pactOffer, weaker = strengthOf(c, 0) < strengthOf(c, o.from);
     if (o.kind === 'trade' ? answerTrade(c, true) : weaker ? answerMarriage(c, true) : answerMarriage(c, false)) made.push(`pact:${o.kind}`);
   }
-  // A tale before the player: upright if the supplies can be spared, else the other way (storyturn.ts, talethreads.ts).
+  // A tale before the player: as the people lean, if the supplies can be spared, else the other way (storyturn.ts, talethreads.ts).
   if (f === 0 && c.tale) {
-    const k = canAnswer(c, 'a') && (c.factions[0].supplies ?? 0) >= STORE_LOW ? 'a' : 'b';
+    const me = c.factions[0], upright = luck(c, 98) < leaningWith(me.civ, LEANING[me.civ] ?? 0.5);
+    const k = upright && canAnswer(c, 'a') && (me.supplies ?? 0) >= STORE_LOW ? 'a' : 'b';
     if (answerTale(c, k) || answerTale(c, k === 'a' ? 'b' : 'a')) made.push(`tale:${k}`);
   }
   // An alliance by marriage is called on as soon as there is one: its men are worth most early.

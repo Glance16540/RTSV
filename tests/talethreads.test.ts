@@ -115,14 +115,16 @@ describe('threads of tales', () => {
     expect(c.threadEnds?.[0]).toMatchObject({ how: 'dropped', steps: 2 });
   }, 60_000);
 
-  it('a careful ruler answers a tale upright when the supplies can be spared, and the other way when not', () => {
-    const { c } = put('pilgrims');
-    expect(sensibleAnswers(c, 0)).toContain('tale:a');
-    expect(c.answers!.at(-1)).toMatchObject({ id: 'pilgrims', choice: 'a' });
-    const low = put('pilgrims').c;
-    low.factions[0].supplies = 2;
-    sensibleAnswers(low, 0);
-    expect(low.answers!.at(-1)).toMatchObject({ id: 'pilgrims', choice: 'b' });
+  it('a careful ruler answers a tale as the people lean, and the other way when the supplies cannot be spared', () => {
+    const ways = new Set<string>();
+    for (let turn = 10; turn < 40; turn++) { const { c } = put('pilgrims'); c.turn = turn; sensibleAnswers(c, 0); ways.add(c.answers!.at(-1)!.choice); }
+    expect([...ways].sort()).toEqual(['a', 'b']); // both ways, as a people leans
+    for (let turn = 10; turn < 20; turn++) {
+      const low = put('pilgrims').c;
+      low.turn = turn; low.factions[0].supplies = 2;
+      sensibleAnswers(low, 0);
+      expect(low.answers!.at(-1)).toMatchObject({ id: 'pilgrims', choice: 'b' });
+    }
   });
 
   it('a thread\'s answers are kept with a saved campaign', () => {
