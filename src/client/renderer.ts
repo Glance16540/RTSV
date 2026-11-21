@@ -27,7 +27,8 @@ import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { INK, RAMP, WALL_DIRS } from './shapes';
 import { Sky } from './sky';
 import { Flame, NightLights, carriesTorch } from './nightlight';
-import { CampScenes } from './campscene';
+import { CampScenes, outLook } from './campscene';
+import { outScene } from '../sim/campout';
 import { tavernLight } from './tavernlook';
 import { tavernTier } from '../sim/tavernfall';
 import { canCarryTorch, carryTorch, dropTorch, torchTip } from './torch';
@@ -402,7 +403,8 @@ export class Renderer {
         lamps.push({ x: at.x, y: at.y + 0.25, z: at.z, id: b.id });
       }
       for (const u of this.game.units) {
-        if (u.inside || u.def.naval || !this.game.isMilitary(u) || !carriesTorch(u.id, !!u.hero) || (u.x - this.cx) ** 2 + (u.y - this.cy) ** 2 > far) continue;
+        const brand = outScene(this.game, u) === 'rise'; // out with a rising: the brand in their hand burns (campout.ts)
+        if (u.inside || u.def.naval || !(brand || (this.game.isMilitary(u) && carriesTorch(u.id, !!u.hero))) || (u.x - this.cx) ** 2 + (u.y - this.cy) ** 2 > far) continue;
         const v = this.unitViews.get(u.id);
         if (!v?.g.visible) continue;
         // The flame sits on the torch in the bearer's hand; a unit with no person drawn keeps it at the shoulder.
@@ -1130,6 +1132,7 @@ export class Renderer {
     const pace = u.def.speed / size;
     const move = (): void => (mounted ? play(p, 'Idle_Loop', 1.4) : pace < 1.25 ? play(p, 'Walk_Loop', Math.max(0.7, Math.min(1.7, pace / 0.78))) : play(p, 'Jog_Fwd_Loop', Math.max(0.75, Math.min(1.6, pace / 1.78))));
     p.flinch = Math.max(0, p.flinch - dt);
+    const out = outLook(outScene(this.game, u), u.moving); // just out of a Work Camp: how they came (campout.ts)
     let aim = 0;
     if (p.soldier) {
       const striking = u.attackAnim > 0;
@@ -1156,6 +1159,7 @@ export class Renderer {
         else if (job === 'farm' || job === 'forage' || job === 'hunt') play(p, 'PickUp_Table', 1);
         else play(p, mounted ? 'Interact' : 'Punch_Jab', 1.2); // a crew works its engine; a villager with nothing in hand uses his fists
       } else if (p.flinch > 0) play(p, 'Hit_Chest', 1.3, true);
+      else if (out?.clip) play(p, out.clip, out.rate); // slipped out of a camp: keeping low (campout.ts)
       else if (u.moving) move();
       // Standing about, some of them pass the time of day.
       else play(p, (Math.floor(this.clock / 7) + u.id) % 4 === 0 ? 'Idle_Talking_Loop' : 'Idle_Loop', 1);
@@ -1167,7 +1171,8 @@ export class Renderer {
     if (this.nightAmt > 0.02 || this.torchBy.has(u.id)) {
       let by = this.torchBy.get(u.id);
       if (by === undefined && this.game.isMilitary(u) && !u.def.naval && carriesTorch(u.id, !!u.hero)) this.torchBy.set(u.id, (by = canCarryTorch(p) && (!mounted || seated) ? p : null));
-      if (by === p) carryTorch(p, yaw, this.nightAmt > 0.02 ? 1 : 0, dt);
+      if (by === undefined && out?.brand) this.torchBy.set(u.id, (by = p)); // out with a rising: a brand from the fire they set
+      if (by === p) carryTorch(p, yaw, this.nightAmt > 0.02 && (out?.brand || this.game.isMilitary(u)) ? 1 : 0, dt); // a brand is put down when the rising's moment is over
     }
   }
 

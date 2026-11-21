@@ -175,7 +175,8 @@ by name.
 | `caravans` | 205 | Caravans on the roads: a town with a Market trades by road with the nearest market town in reach (`partnerOf`), sends a caravan each season (`sendCaravans`) that comes home with gold (`caravansHome`, met by highwaymen and pirates through convoys' `waylay`); a band may fall on one (`caravansThrough`, `fallOnCaravan`); governors raise Markets out of plenty (`governMarkets`). One call a season (`caravansSeason`). | campaign (types only), campaignbase, convoys, data, governor, ownstudies, pacts, plenty, roadclash, roads, studies, threats (types only), township, townworks | caravans.test.ts | not yet |
 | `fieldcaravan` | 149 | A Market's caravan on the field: in a campaign battle or visit at a town whose caravan is on the road this season, a trade cart walks from the Market to the field's edge on its partner's side, is away a while, and comes home with the gold the map's caravan brings; caught on the way home, its gold goes to whoever caught it. The battle hands back how it went and the campaign settles the season's caravan by it, so the map's figures stay the same. | campaign (types only), caravans, data, game (types only) | fieldcaravan.test.ts | not yet |
 | `campaignbase` | 378 | What the map's systems share, below all of them: the constants and small helpers they used to import from campaign.ts (an army's size and strength, a company's price, how a people stands, a land's country). It imports no system; campaign.ts re-exports it. | campaign (types only), creed, hero (types only), pacts, powers, uniquecompany, winter | campaignbase.test.ts | not yet |
-| `captivity` | 268 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, creed, data, game (types only), hero, nursery, peoplenames, rescue | captivity.test.ts | not yet |
+| `campout` | 32 | Getting out of a Work Camp as a scene (docs/DESIGN.md, "Captivity"): those who slip away or break out in a rising are marked for a few seconds with how they came out, for the drawing only; nothing is decided by it. | game (types only) | campout.test.ts | not yet |
+| `captivity` | 270 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, campout, creed, data, game (types only), hero, nursery, peoplenames, rescue | captivity.test.ts | not yet |
 | `carriedoff` | 136 | A dissolute or depraved rival nation that takes a town leads a share of its grown people away to a land of its own (the bands' `Held` record). Got back if that land is taken within four seasons; after that they are on the holding town's record as the taker's people. Children born meanwhile are the taker's. `townFell` where a town changes hands, `carriedSeason` once a season. | ageing, bandborn, campaign (types only), carriedhome, carriednamed, creed, nocarry (types only), threats, township | carriedoff.test.ts, playercarries.test.ts | not yet |
 | `carriednamed` | 51 | A known person among those a nation leads away from a town it takes is marked carried off by name (as likely as the known are among the grown of that sex), listed with the held, mourned, and known again if got back. | campaign (types only), carriedoff (types only), plaguenamed, township | carriednamed.test.ts | not yet |
 | `carriedout` | 32 | As a battle ends, a side's people held by those who seized them (a raider leading them, a work camp, the lair), by name, house, gender, age and children borne in the camp, for the census (`Census.carried`). | ageing, game (types only), township (types only) | battlecarried.test.ts | not yet |
@@ -474,14 +475,14 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-308 modules, 38,397 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+309 modules, 38,431 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
-| 0 | 59 | 5,735 | `data` (1249; 55), `peoplenames` (111; 17), `intriguebase` (91; 11), `notableweight` (118; 9), `ledger` (26; 7), `pacts` (46; 7), `threatsbase` (47; 6), `wrath` (33; 6), `temper` (127; 5), `bandborn` (60; 4), `besieger` (31; 4), `household` (103; 4), `leaders` (547; 4), `studiesintown` (52; 4), `townorders` (100; 4), `townrecord` (9; 4), `warrecord` (158; 4), `orphantown` (87; 3), `aiplague` (30; 2), `atwork` (77; 2), `beaten` (52; 2), `bereft` (65; 2), `dilemmas` (140; 2), `dominion` (30; 2), `handroads` (134; 2), `path` (266; 2), `threadtales` (106; 2), `unlaid` (45; 2), `watchtally` (31; 2), `worldtales` (192; 2), `writeguard` (35; 2), `battlehooks` (80; 1), `carriedhome` (37; 1), `clergywork` (43; 1), `daylight` (18; 1), `faces` (129; 1), `fieldwork` (28; 1), `formations` (78; 1), `givenorders` (43; 1), `hallfield` (65; 1), `housekeep` (33; 1), `keeper` (18; 1), `lastperson` (21; 1), `nationcolours` (26; 1), `raidertown` (28; 1), `reservecamp` (20; 1), `revival` (23; 1), `slopes` (21; 1), `strengthwords` (19; 1), `stylesigns` (49; 1), `townlean` (37; 1), `tribenames` (18; 1), `waterlay` (93; 1), `encounter` (104), `faithhouse` (54), `fieldaccuse` (46), `folk` (145), `folkfaith` (197), `missionstory` (64) |
+| 0 | 60 | 5,767 | `data` (1249; 55), `peoplenames` (111; 17), `intriguebase` (91; 11), `notableweight` (118; 9), `ledger` (26; 7), `pacts` (46; 7), `threatsbase` (47; 6), `wrath` (33; 6), `temper` (127; 5), `bandborn` (60; 4), `besieger` (31; 4), `household` (103; 4), `leaders` (547; 4), `studiesintown` (52; 4), `townorders` (100; 4), `townrecord` (9; 4), `warrecord` (158; 4), `orphantown` (87; 3), `aiplague` (30; 2), `atwork` (77; 2), `beaten` (52; 2), `bereft` (65; 2), `dilemmas` (140; 2), `dominion` (30; 2), `handroads` (134; 2), `path` (266; 2), `threadtales` (106; 2), `unlaid` (45; 2), `watchtally` (31; 2), `worldtales` (192; 2), `writeguard` (35; 2), `battlehooks` (80; 1), `campout` (32; 1), `carriedhome` (37; 1), `clergywork` (43; 1), `daylight` (18; 1), `faces` (129; 1), `fieldwork` (28; 1), `formations` (78; 1), `givenorders` (43; 1), `hallfield` (65; 1), `housekeep` (33; 1), `keeper` (18; 1), `lastperson` (21; 1), `nationcolours` (26; 1), `raidertown` (28; 1), `reservecamp` (20; 1), `revival` (23; 1), `slopes` (21; 1), `strengthwords` (19; 1), `stylesigns` (49; 1), `townlean` (37; 1), `tribenames` (18; 1), `waterlay` (93; 1), `encounter` (104), `faithhouse` (54), `fieldaccuse` (46), `folk` (145), `folkfaith` (197), `missionstory` (64) |
 | 1 | 26 | 2,464 | `ageing` (142; 33), `creed` (114; 30), `hero` (102; 13), `naming` (113; 11), `map` (316; 4), `courtfield` (178; 3), `feudwar` (55; 3), `siegecamp` (75; 3), `uniquecompany` (54; 3), `widowtown` (83; 3), `birthonly` (62; 2), `darkarts` (89; 2), `plainhealer` (32; 2), `steward` (62; 2), `aiworks` (95; 1), `dyingout` (88; 1), `fieldstory` (146; 1), `firstlay` (71; 1), `fleets` (69; 1), `leavehome` (58; 1), `namesakes` (53; 1), `raiderguide` (44; 1), `siegelift` (86; 1), `styleplay` (120; 1), `battlecard` (132), `visitguide` (25) |
 | 2 | 18 | 1,273 | `champion` (30; 8), `powers` (95; 8), `chroniclethreads` (81; 7), `rescue` (157; 6), `seasonsky` (89; 4), `muster` (51; 3), `oldmarks` (145; 3), `askedhere` (31; 2), `nursery` (52; 2), `queuedmen` (54; 2), `tavernfall` (24; 2), `aisiting` (101; 1), `carriedout` (32; 1), `fieldcap` (108; 1), `placebar` (50; 1), `roofs` (113; 1), `hallguests` (47), `inyears` (13) |
-| 3 | 8 | 1,385 | `township` (238; 85), `captivity` (268; 5), `winter` (61; 5), `bothhouses` (112; 2), `battleleader` (119; 1), `pickman` (98; 1), `notable` (50), `scenario` (439) |
+| 3 | 8 | 1,387 | `township` (238; 85), `captivity` (270; 5), `winter` (61; 5), `bothhouses` (112; 2), `battleleader` (119; 1), `pickman` (98; 1), `notable` (50), `scenario` (439) |
 | 4 | 20 | 1,756 | `campaignbase` (378; 67), `stores` (107; 13), `plenty` (80; 11), `infirmary` (52; 5), `granary` (55; 4), `well` (44; 4), `mill` (45; 3), `oldfolk` (73; 3), `householdmove` (73; 2), `marauders` (220; 2), `orphans` (77; 2), `plaguenamed` (52; 2), `sieges` (36; 2), `aicaptives` (64; 1), `battlefolk` (99; 1), `battlescars` (109; 1), `dilemmaacts` (26; 1), `hiredhome` (37; 1), `rivalhomes` (58; 1), `warspoils` (71; 1) |
 | 5 | 16 | 1,499 | `studies` (153; 26), `court` (228; 18), `rim` (114; 7), `grief` (73; 6), `soldiernames` (144; 6), `churchtavern` (54; 5), `wilds` (87; 5), `veteranhome` (117; 4), `companyroll` (130; 3), `faithsites` (39; 2), `townwater` (77; 2), `aiward` (61; 1), `battletales` (57; 1), `carriednamed` (51; 1), `hazardlessons` (84; 1), `nextage` (30; 1) |
 | 6 | 23 | 1,178 | `ownstudies` (165; 21), `warhouse` (322; 10), `leaderstay` (84; 8), `hall` (28; 5), `heralds` (30; 3), `manor` (29; 3), `ruin` (124; 3), `townwatch` (30; 3), `croprotation` (18; 2), `fortress` (30; 2), `midwifery` (18; 2), `quarantine` (20; 2), `roads` (37; 2), `salting` (20; 2), `writtenlaw` (12; 2), `furlough` (110; 1), `monastery` (26; 1), `oaths` (8; 1), `physicians` (17; 1), `pilgrimage` (8; 1), `seatedleader` (27; 1), `spymasters` (7; 1), `stewardship` (8; 1) |
@@ -516,7 +517,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | Shapes from | Needed by | From layer | Its own layer |
 | --- | --- | --- | --- |
 | `campaign` | 200 modules | 0 | 29 |
-| `game` | 84 modules | 0 | 27 |
+| `game` | 85 modules | 0 | 27 |
 | `township` | 11 modules | 0 | 3 |
 | `threats` | 5 modules | 0 | 22 |
 | `warhouse` | 5 modules | 0 | 6 |
@@ -543,7 +544,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 308 modules, 0 naming no test, 0 naming a test file that is missing; 4,159 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 309 modules, 0 naming no test, 0 naming a test file that is missing; 4,169 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -566,7 +567,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 557 of them in 238 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 558 of them in 239 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -604,6 +605,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `caravans` | `CARAVANS` |
 | `fieldcaravan` | `FIELD_CARAVAN` |
 | `campaignbase` | `MAP_W`, `MAP_H`, `CAMPAIGN_VERSION`, `MAX_ARMY`, `HERO_STRENGTH`, `HERO_RANK_STRENGTH`, `COMPANIES`, `SITES`, `CHURCH_VIRTUE`, `TAVERN_VIRTUE`, `BATTLE_VIRTUE`, `FAITH`, `BEATS`, `MAX_VETERAN`, `TRUCE_COST`, `TRUCE_TURNS`, `ALLIANCE_COST`, `MAX_FAVOR`, `DOMINION_SHARE`, `DOMINION_TURNS`, `SITE_BUILDING`, `HORDE_TURN`, `HORDE_MAX`, `HORDE_SPREAD`, `HORDE_PRIZE`, `BIOMES`, `SEA_LANDING`, `WEATHER`, `HUB` |
+| `campout` | `OUT` |
 | `captivity` | `CAPTIVE_HOLD`, `CAPTIVE_WARN`, `YEARS_MAN`, `YEARS_WOMAN`, `LIFE_YEARS`, `CHILD_WORK`, `SOLD_GOLD` |
 | `carriedoff` | `CARRY` |
 | `battlestory` | `BATTLE_COURT` |
