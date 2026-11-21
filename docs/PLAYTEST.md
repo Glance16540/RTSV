@@ -771,3 +771,51 @@ the great are spoken of."), with the whole errand as its tip. All three are seen
 their pictures and tips: which belongs to the envoy and which to the suitor could be clearer (the threats session's).
 
 ![Three stories of the house in one hall](shots/playtest5-court-all.jpg)
+
+# Played through, 21 November
+
+A fresh campaign played in Chromium (Playwright, 1440 × 900), from the start screen, as a new player would: two
+rivals, the English, Earl Godric of Wessex, the people named Ashfolk and the house Ashby, Normal. Eighteen turns,
+twice (the first time the driver let every tale settle itself; the second answered them). Along the way: an Archery
+Range and a Harbour built, a company raised every third season, a Granary, a Well and a Mill raised in the town, a
+decree given (Buy grain abroad, then Forgive the debts as a tale), a march on a tribe's land and the battle for it
+fought in person in the open (won in 40 seconds, four men lost, the land taken), a visit to a town of a minute with a
+villager trained, the tales answered the upright way, a rival queen's envoy met face to face and defied, a band's
+strike left to the town twice, and the leader's fall with an heir chosen. The march was made on the flat chart
+(`?map=2d`): a click on the 3D map is not driven by the script, so the 3D march was not played.
+
+## What is right
+
+- No page error in either run, and no dead end: every prompt had a way on, every dialog closed on its own button,
+  and the battle and the visit each came back to the map with their results (the land taken, the town's stores).
+- Turns are quick: the end of a turn to the next player's turn took 0.22 to 0.56 seconds, every one of the 36.
+- The new pieces read in play: the season on the turn ("Turn 4 · 🌱 Spring, year 2"), the exile's thread running
+  three tellings ("An exile at the gate", "The exile goes home", "The prince in his hall"), the First Orders guide
+  crossing its steps off as they are done, the victory sheet naming the fallen of both sides.
+- No button text cut off and no dialog off the screen, by a check of every button and sheet each turn.
+- "To spend" on the panel matched the supplies in the save every turn.
+
+![The start of the campaign: names given](shots/play-start-filled.jpg)
+![The battle won](shots/play-battle-end.jpg)
+![The rival queen's envoy](shots/play-prompt-an-envoy.jpg)
+
+## Fixed in this pass (client, and one line in dynasty.ts)
+
+- The land's panel gave "Defence against an army 7.3" (8.1, 2.2...) where everything else gives a town's strength
+  whole, as "Against a band this town can muster 8" does: it is rounded now (`landpanel.ts`).
+- In a visit the visit guide sat exactly over the lessons (both at the top left), hiding the first lines of the hunger
+  lesson (`play-visit-town.jpg` of the first run). The guide stands on the right now, under the visit's own box.
+- The succession dialog called an heir "67 turns old": it says "16 years old" now (`dynasty.ts`, one line).
+- The town panel's notable people said "Walter Bramley Bramley" where a name already carried its house: it is said
+  once (`townpanel.ts`).
+
+![The fallen leader and the heirs](shots/play-prompt-earl-godric-of-wessex-has-fallen.jpg)
+
+## Noted, not changed
+
+- Food in a visited town rose from 605 to 1615 in the first minute with nobody given orders. Some forty villagers at
+  the governor's work at the usual rate come to about that, so it is no fault, but a player seeing the counter leap
+  may wonder: the food session may want the visit's first minute to say where it came from.
+- The rival queen's envoy is drawn as a bearded man in the queen's colours. That is right (an envoy, not the queen),
+  but the sheet names only the queen; "her envoy" in the heading would say who stands there.
+- The 3D map's march by a click, the decree panel's other decrees, and a siege battle were not played this pass.
