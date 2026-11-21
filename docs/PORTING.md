@@ -140,7 +140,7 @@ by name.
 | `bandhorde` | 119 | The marauders, the band that holds a land: one kind of band among the others, with its raids as strikes on a town that defends itself. Was `hordeTurn` in campaign.ts. | campaign (types only), campaignbase, rim, stores, threats | bandhorde.test.ts | not yet |
 | `bandmarch` | 145 | Bands on the march and the armies they meet: farther along a road, drawn by riches, daring a tired or lonely army, seen by the armies they pass. | armytown, campaign (types only), founding, heralds, rim, township | bandmarch.test.ts | not yet |
 | `bandmeet` | 89 | A band coming for a town of the player's, put to them once when an army can meet it: go out, send the army, or let them come. | bandfight, campaign (types only), campaignbase, threats, threatsbase | bandmeet.test.ts | not yet |
-| `bandroam` | 223 | Bands move: they flee strong armies, plan a way of a few lands toward softer marks, settle as marauders and break up. | bandhorde, bandmarch, bandturn, campaign (types only), campaignbase, rim, threats | bandroam.test.ts | not yet |
+| `bandroam` | 237 | Bands move: they flee strong armies, plan a way of a few lands toward softer marks, settle as marauders and break up. On a map wider than today's a camp looks farther and minds the march less, by the map's breadth (`roamScale`, `roamRange`, `weighed`); at today's size they change nothing. | bandhorde, bandmarch, bandturn, campaign (types only), campaignbase, rim, threats | bandroam.test.ts | not yet |
 | `bandturn` | 34 | A roaming band turns aside for a dead town: a camp of raiders or slavers with an open, ungarrisoned town in reach is bound for a land beside it, and standing there walks in, the town overrun by deadtown.ts's rule. | campaign (types only), deadtown, threats (types only) | bandturn.test.ts | not yet |
 | `bandseason` | 69 | One season of the threats of men: the one call the campaign makes for all of it. | bandborn, bandcaravan, bandfight, bandhorde, bandmarch, bandroam, bandwilds, campaign (types only), carriedoff, feudraid, inn, nocarry, raidfought, raidnews, threats | threats.test.ts | not yet |
 | `battlecard` | 132 | What a campaign battle or a visit says of itself: the briefing before it (what it is, whom the player leads, what winning means, that no villager is bought), the count of both sides as it is fought, and words the size of what happened. | data, game (types only) | battlecard.test.ts | not yet |
@@ -474,7 +474,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-308 modules, 38,402 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+308 modules, 38,416 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -502,7 +502,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 21 | 3 | 448 | `acts` (204; 5), `drift` (175; 4), `claimantcaptain` (69; 2) |
 | 22 | 5 | 983 | `threats` (485; 15), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1), `floods` (82; 1) |
 | 23 | 11 | 1,429 | `rivalrule` (388; 7), `carriedoff` (136; 6), `townmuster` (114; 4), `bandhorde` (119; 2), `harvest` (107; 2), `raidfought` (161; 2), `feudraid` (91; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
-| 24 | 15 | 1,483 | `townworks` (58; 6), `rivalcaptives` (47; 3), `visitworth` (58; 3), `bandroam` (223; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `battlecarried` (109; 1), `nocarry` (70; 1), `rivaldrill` (55; 1), `rivalmass` (102; 1), `rivalstock` (115; 1), `rivalweary` (125; 1), `courtcall` (84), `roll` (93) |
+| 24 | 15 | 1,497 | `townworks` (58; 6), `rivalcaptives` (47; 3), `visitworth` (58; 3), `bandroam` (237; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `battlecarried` (109; 1), `nocarry` (70; 1), `rivaldrill` (55; 1), `rivalmass` (102; 1), `rivalstock` (115; 1), `rivalweary` (125; 1), `courtcall` (84), `roll` (93) |
 | 25 | 9 | 1,189 | `bandfight` (313; 4), `caravans` (205; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `seasongain` (34; 1), `watchhouse` (80; 1) |
 | 26 | 5 | 822 | `intrigue` (400; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `rivalhunt` (132; 1), `bandmeet` (89) |
 | 27 | 7 | 3,773 | `courtvisit` (81; 2), `game` (3297; 2), `hallcases` (77; 2), `storyvisit` (51; 2), `bandseason` (69; 1), `rivalstories` (130; 1), `storypolicy` (68) |

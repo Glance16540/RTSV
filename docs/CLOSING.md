@@ -117,7 +117,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | There is always something to fight | **Built here after all (20 November 2026, `rivalhunt.ts`).** A rival marches through its own lands for a band that holds its people, if it can be there in time, or that sits in its land; and it marches first on a camp of the marauders that holds its people or has struck its towns. Still missing: it never crosses another people's land or the wild to reach a band, and plans no march of several lands to a marauders' camp. | medium | Done as far as its own lands. The rest with the rival's mind, in Unity. |
-| Bands choose marks and strike | Bands seldom live long enough to roam, and long marches are rare: on maps this size a softer mark is nearly always one land away. The far wilds' hosts do march. | small | Unity: it depends on map size. Port as is. |
+| Bands choose marks and strike | **The rule for a wider map is built (21 November 2026, `bandroam.ts` `roamScale`, `roamRange`, `weighed`):** on a map with more than 32 lands inside the rim a camp looks farther for a softer mark and minds the march less, both by the map's breadth (the root of its lands), up to eight lands off. Every map made here has 25 to 29 lands, so in this game nothing changes: bands still seldom live long enough to roam, and a softer mark is nearly always one land away. The far wilds' hosts do march. | small | Unity: the scaling is ready for a wider map; here it has none to act on. |
 
 ## Drift, decrees, and the tavern as a town falls
 
