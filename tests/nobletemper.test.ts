@@ -30,7 +30,9 @@ describe('what a noble remembers', () => {
     const { c, tid, lord } = world();
     lord().heeded = c.turn + 100; // heeded, for this test
     for (let i = 0; i < 3; i++) season(c);
-    expect(temperAt(lord())).toBe(Math.round(TEMPER.quiet * (1 + (1 - TEMPER.fade) + (1 - TEMPER.fade) ** 2) * 10) / 10);
+    let kept = 0;
+    for (let i = 0; i < 3; i++) kept = Math.round((kept * (1 - TEMPER.fade) + TEMPER.quiet) * 10) / 10; // kept to a tenth each season, as the rule keeps it
+    expect(temperAt(lord())).toBe(kept);
     const warm = temperAt(lord());
     strike(c, tid);
     season(c);
