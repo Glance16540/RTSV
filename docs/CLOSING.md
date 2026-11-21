@@ -75,7 +75,7 @@ Built as written (`muster.ts`, `birthonly.ts`; a woman fights at `WOMAN_ATK` 0.4
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| What he earns and wins counts to the house's output | Men with the armies are not counted in a town's output. War counts by foes felled only: veterancy beyond kills and loot are not counted to a house. | small | Unity: it is the house's output figure, which `notableweight.ts` has. Port and extend. |
+| What he earns and wins counts to the house's output | **Done** (`src/sim/warspoils.ts`): the spoils of a town his army took and his share in each town taken or attack thrown back count to his house as goods carried in, on its record and its known mother's. Still: men with the armies are not counted in a town's output while away. | small | Built. |
 | He is not lost until he dies or is taken | A man taken captive is not handled apart from one who dies, because slavers take villagers, not soldiers. | small | Drop: nothing takes a soldier captive today. |
 | The case where his house falls while he is away | Settled without the owner's word, as asked: the house's record falls with it, he keeps his name, and he comes home unhoused. | none | Confirmed by the owner (19 November 2026): kept as built. |
 
