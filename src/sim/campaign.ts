@@ -126,6 +126,7 @@ import { companySoldiers, noteDowned, rollOf } from './soldiernames';
 import { takeDowned } from './downedmap';
 import { captainBonus } from './claimantcaptain';
 import { risingFigures } from './claimantfigures';
+import { feastFor, keepFeast } from './feastfield';
 import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
@@ -1621,7 +1622,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
       ...(army ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}),
-      ...(defending && !field ? captainBonus(c, t.id) : {}), ...(defending && !field && risingFigures(c, t.id).length ? { claims: risingFigures(c, t.id) } : {}), // and the lord behind a grown claimant (claimantfigures.ts) // a town risen for a claimant: its rising's leader on the field (claimantcaptain.ts) // its companies led by the men of its roll (soldiernames.ts)
+      ...(defending && !field ? captainBonus(c, t.id) : {}), ...(defending && !field && risingFigures(c, t.id).length ? { claims: risingFigures(c, t.id) } : {}), ...(defending && !field && feastFor(c, t.id) ? { feast: feastFor(c, t.id) } : {}), // its feast day, once a year (feastfield.ts) // and the lord behind a grown claimant (claimantfigures.ts) // a town risen for a claimant: its rising's leader on the field (claimantcaptain.ts) // its companies led by the men of its roll (soldiernames.ts)
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
@@ -1713,6 +1714,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   if (!p) return;
   if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors, { fell: after.fell, heroRank, acclaimed: after.acclaimed }); return; } // the leader fought beside the army, at the usual risk (bandfight.ts)
   if (p.raid !== undefined) { resolvePending(c, playerWon ? 'defender' : 'attacker', { survivors, attackerLeft: after.foes, leader: { fell: after.fell, heroRank, acclaimed: after.acclaimed } }); return; } // a band's strike fought in person is written back by the strike's own rule (raidfought.ts)
+  if (p.defender === 0 && p.mode !== 'field') keepFeast(c, p.to); // its feast day is kept for the year (feastfield.ts)
   if (p.defender === 0 && p.mode !== 'field') homeOnLeave(c, p.to, after.leave); // men of the town who went home from its army while it was fought for (furloughmap.ts): before the army is counted
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.
