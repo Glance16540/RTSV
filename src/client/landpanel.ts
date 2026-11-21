@@ -29,6 +29,7 @@ import {
 } from '../sim/campaign';
 import { comesOfAge, houseOf, ofAge, rulerName } from '../sim/dynasty';
 import { called, courtOf, leaderReach } from '../sim/court';
+import { callByName, roadWarning } from './callpanel';
 import { visitButton } from './visit';
 import { peopleName } from '../sim/naming';
 import { convoyHtml } from './convoypanel';
@@ -154,10 +155,11 @@ export function actionsHtml(c: Campaign, sel: number): string {
       const away = called(c, 0).length;
       leader += `<div class="hint">♛ ${heroFor(c, 0).name} is here${a ? ', at the head of this army' : ', in the town'}. No unrest rises where your leader is, and they fight only in battles fought here${a && !court.holds ? ' or where this army marches' : ''}.${court.rally ? ` The armies are called: ${away} still on the way.` : ''}</div>`;
       if (court.rally) leader += `<button data-act="endcall" ${c.phase === 'player' ? '' : 'disabled'} title="The armies stay where they have got to.">♛ End the call</button>`;
-      else leader += `<button data-act="call" ${c.phase === 'player' && away ? '' : 'disabled'} title="Every army of yours marches a land nearer each turn, through your own country, until all have come or you end the call. Lands they leave have no garrison.">♛ Call the armies here</button>`;
+      else leader += `<button data-act="call" ${c.phase === 'player' && away ? '' : 'disabled'} title="Every army of yours marches a land nearer each turn, through your own country, until all have come or you end the call. Lands they leave have no garrison.">♛ Call the armies here</button>` + callByName(c); // or name them (callpanel.ts)
       leader += `<button data-act="hold:${court.holds ? 0 : 1}" ${c.phase === 'player' ? '' : 'disabled'} title="${court.holds ? 'They ride with the army here when it marches.' : 'An army that marches out of this land goes without them.'}">♛ ${court.holds ? 'Ride with the army' : 'Keep to the town'}</button>`;
     } else if (court) {
       const can = leaderReach(c, 0).includes(t.id);
+      if (can) leader += roadWarning(c, court.at, t.id); // highwaymen on the road (callpanel.ts)
       leader += `<button data-act="lead" ${can && c.phase === 'player' ? '' : 'disabled'} title="${can ? 'They travel here alone, leaving any army where it is. Once a turn.' : court.moved ? 'They have travelled already this turn.' : `They are in ${c.territories[court.at]?.name ?? 'the field'}: only a neighbouring land of yours can be reached in a turn.`}">♛ Bring ${heroFor(c, 0).name} here</button>`;
     }
     if (!me.heroAlive) leader += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;
