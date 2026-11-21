@@ -9,6 +9,7 @@ import { townStanding } from '../sim/drift';
 import { folkOf } from '../sim/township';
 import { isAngry, noblesAt, sayOn, titleOf } from '../sim/nobles';
 import { bereftText } from '../sim/widowhood';
+import { forbidsCarrying, noCarryLine } from '../sim/nocarry';
 import { nobleDealPanel } from './nobledeals';
 import { standingPanel } from './townorders';
 
@@ -46,5 +47,9 @@ export function decreePanel(c: Campaign, tid: number): string {
     const price = deal ? `${deal.food} food for ${deal.gold} gold${famineYear(c, 0) ? ' (a famine year: dearer)' : ''}` : `${def.cost} supplies, ${def.seasons} season${def.seasons === 1 ? '' : 's'}`;
     html += `<button data-act="decree:${k}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(inFaith(bar || `${def.desc} ${price}.${heard}`, c.factions[0].civ))}">📜 ${esc(inFaith(def.name, c.factions[0].civ))}</button>`;
   }
+  // The nation's law on carrying people off (src/sim/nocarry.ts): one plain line, and the button to give it or lift it.
+  const forbidden = forbidsCarrying(c, 0);
+  html += `<div class="hint">${esc(noCarryLine(c, 0))}</div>`;
+  html += `<button data-act="nocarry:${forbidden ? '0' : '1'}" ${c.phase !== 'player' ? 'disabled' : ''} title="${esc(forbidden ? 'Lift the law: your armies do as a people of your standing does.' : 'A law of the whole nation, at no cost, until you lift it: your armies lead nobody away from a town they take.')}">📜 ${forbidden ? 'Lift the law against carrying people off' : 'Forbid carrying people off'}</button>`;
   return html;
 }

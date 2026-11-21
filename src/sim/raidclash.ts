@@ -41,7 +41,7 @@ export const RAID = {
 };
 
 /** What a town has, as the sum has it (threats.ts `Defence`), read here as plain data. */
-export interface TownStand { men: number; works: number; walls: number; army: number; guard: number; spirit: number; total: number }
+export interface TownStand { men: number; works: number; walls: number; army: number; guard: number; spirit: number; total: number; /** Its Fortress has someone to hold it (fortkeep.ts): the band may have the run of the town, never of the keep. */ stronghold?: boolean }
 export type RaidOutcome = 'held' | 'raided' | 'taken';
 export interface RaidFight {
   outcome: RaidOutcome;
@@ -130,7 +130,9 @@ export function spoilsOf(f: { rounds: number; cost: number }): { time: number; h
 export function raidClash(strength: number, force: number, stand: TownStand, garrison: Record<string, number> = {}, virtue = 0, luckA = 0.5, luckD = 0.5, militia?: Militia): RaidFight {
   const { a, d } = raidForces(strength, force, stand, garrison, virtue, militia);
   const day = (roll: number): number => 1 - CLASH.day + 2 * CLASH.day * Math.max(0, Math.min(1, roll));
-  return raidOf(clash(a, d, day(luckA), day(luckD)), strength, militia ? RAID.easilyOut : RAID.easily);
+  const fought = raidOf(clash(a, d, day(luckA), day(luckD)), strength, militia ? RAID.easilyOut : RAID.easily);
+  // A stronghold is raided and never taken: the band has the streets and the stores, and the people are in the keep.
+  return fought.outcome === 'taken' && stand.stronghold ? { ...fought, outcome: 'raided' } : fought;
 }
 
 /**

@@ -101,7 +101,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | --- | --- | --- | --- |
 | Slavers gain output from the children born in captivity | On the map a band holds captives but has no output to gain, so children born there do nothing for it, and nobody is paid for captives a band sells on. | small | Drop on the map: a band is not a town. It is built in a town (`captivity.ts`). |
 | Got back for a time | A captive in the marauders' camp cannot be let out at the gate as one in a Work Camp can; the camp must be burnt. | small | Unity: field work. |
-| The player's nation, if it assimilates | The player's nation never carries people off, whatever its creed: there is no order for it. | medium | Unity, if the owner wants it. DESIGN.md names only rival nations, so Drop is also defensible. |
+| The player's nation, if it assimilates | **Built here after all (20 November 2026, `carriedoff.ts`), by the rivals' rule reused:** at a Dissolute or Depraved standing the player's nation leads away a share of the grown people of a town it takes, held four seasons and then its own; never a child, nothing shown, told plainly. The player may forbid it by decree (`nocarry.ts`, the owner's word of 21 November 2026): a law of the nation, free to give, standing until lifted, resented a little by the worldly and martial lords of a people who would have carried off. | small | Done. |
 | What is shown of it | Escapes and risings are told and not drawn. The captives' daily round has not been watched. | medium | Unity: drawing. The content rules port as written. |
 
 ## Acts of God
@@ -116,7 +116,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| There is always something to fight | Rival peoples hunt a band only with an army already beside it, and never march to one, even to get their own back before the time runs out. Rival leaders ignore the marauders on the map. | medium | Unity: a rival's plan to march for a purpose (a band, a captive, a road) is the larger missing piece of the rivals' mind (see Rivals live by the same rules). |
+| There is always something to fight | **Built here after all (20 November 2026, `rivalhunt.ts`).** A rival marches through its own lands for a band that holds its people, if it can be there in time, or that sits in its land; and it marches first on a camp of the marauders that holds its people or has struck its towns. Still missing: it never crosses another people's land or the wild to reach a band, and plans no march of several lands to a marauders' camp. | medium | Done as far as its own lands. The rest with the rival's mind, in Unity. |
 | Bands choose marks and strike | Bands seldom live long enough to roam, and long marches are rare: on maps this size a softer mark is nearly always one land away. The far wilds' hosts do march. | small | Unity: it depends on map size. Port as is. |
 
 ## Drift, decrees, and the tavern as a town falls
@@ -176,7 +176,7 @@ and the church built in battle under "Towns persist".
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| He can call armies to meet him and move with them as one | Calling the armies calls all of them, strips every garrison on the way, and will not cross land not their own. A leader travels a land a turn with no cost or risk. | medium | Unity: this is the leader's movement on the new map. |
+| He can call armies to meet him and move with them as one | **Built here after all (20 November 2026, `courtcall.ts` with `court.ts`).** The leader may call armies by name; with none named, an army holding a town that needs it stays; a called army passes a garrison without joining it and crosses a sworn ally's land; and a leader travelling alone by a road highwaymen sit on may be set upon, turned back and wounded. Still missing: a control on the map for naming armies, and a warning of the road's risk before the journey. Travel still costs nothing. | medium | Done in the rules. The two controls are the map's, in Unity. |
 | He is in a town or with an army | **Done** (`src/sim/seatedleader.ts`): a leader holding an ungarrisoned town alone leads its defence when the battle is settled on the map, at their rank. | small | Built. |
 
 ## Grief
@@ -205,7 +205,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Each works on the map as well as in a town | The Noble's Manor is a building only in a town. Oaths of Fealty and Pilgrimage have no meaning in a town's streets (`studiesintown.ts`, by design). | small | Unity: port as is. The map is where they act. |
-| A Fortress stands in the town as a stronghold against bands | The Fortress does not shoot and holds no soldiers of its own in a town, and no garrison is kept in it between seasons. | medium | Unity: the field's battle code is being rebuilt. Port the map's Fortress (`threats.ts`, `mapbattle.ts`) as is. |
+| A Fortress stands in the town as a stronghold against bands | **The map's side built here after all (20 November 2026, `fortkeep.ts`):** a Fortress keeps a garrison of the town's own men between seasons, and one with anyone to hold it is a stronghold a band may raid but never take. Still missing, in a town's streets: the Fortress does not shoot and holds no soldiers of its own there. Against a nation's army it is as it was (three points of defence and walls). | medium | Done on the map. The field's side with the battle code, in Unity. |
 | Feast Days and Pilgrimage | Feast Days is only a nation's study on the map: a Church in a town keeps no feast day. | small | Unity: field. |
 | A Monastery or Convent | One building for both, a Convent only in its name and its people. On the map it keeps no count of who serves in it. | small | Unity: port as is. |
 | Each people its own: one or two studies each | Fifteen nations with one study each, not one or two. | medium | Unity: fifteen more studies is design work best done once on the new engine. `ownstudies.ts` ports as the pattern. |

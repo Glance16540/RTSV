@@ -15,9 +15,25 @@ export interface Court {
   holds?: boolean;
   /** The army that marched out without them this turn, while it still stands in their land (a battle not yet fought). */
   away?: number;
-  /** The armies are called: each turn every army not with the leader marches a land nearer, through their people's own country. */
+  /** The armies are called: each turn every army called and not with the leader marches a land nearer, through their people's own country. */
   rally?: boolean;
+  /** Which armies are called, by id, where the leader chose them; without it, every army but one holding a town that needs it (courtcall.ts). */
+  called?: number[];
 }
+
+/**
+ * What the call asks of rules that stand above this module (courtcall.ts fills these in; it reads who threatens a town,
+ * who is allied and where the bands are, none of which this module can import without a ring). Left as they are, every
+ * army is called, no land but the people's own is crossed, and a leader travels untroubled, as it always was.
+ */
+export const CALLING: {
+  /** Does this army hold a town that needs it, and so stay unless called by name? */
+  keeps: (c: Campaign, a: Army) => boolean;
+  /** May this people's armies cross this land, which is not theirs, without stopping in it? */
+  pass: (c: Campaign, f: number, tid: number) => boolean;
+  /** A leader travelling alone from one land to another: are they set upon on the road and turned back? (It says so in the log, and does what else befalls them.) */
+  waylaid: (c: Campaign, f: number, from: number, to: number) => boolean;
+} = { keeps: () => false, pass: () => false, waylaid: () => false };
 
 const armiesOf = (c: Campaign, f: number): Army[] => c.armies.filter((a) => a.owner === f);
 const flag = (c: Campaign, f: number, ct: Court): void => { for (const a of armiesOf(c, f)) a.hero = a.at === ct.at && a.id !== ct.away; };
@@ -64,7 +80,7 @@ export const leaderAt = (c: Campaign, f: number, tid: number): boolean => f >= 0
 export function seat(c: Campaign, f: number, at: number): void {
   const fac = c.factions[f];
   for (const a of armiesOf(c, f)) a.hero = false;
-  fac.court = { at, ...(fac.court?.holds ? { holds: true } : {}), ...(fac.court?.rally ? { rally: true } : {}) };
+  fac.court = { at, ...(fac.court?.holds ? { holds: true } : {}), ...(fac.court?.rally ? { rally: true } : {}), ...(fac.court?.called ? { called: fac.court.called } : {}) };
   flag(c, f, fac.court);
 }
 
@@ -87,6 +103,7 @@ export function leaderReach(c: Campaign, f: number): number[] {
 export function moveLeader(c: Campaign, f: number, to: number): boolean {
   if (!leaderReach(c, f).includes(to)) return false;
   const ct = courtOf(c, f)!;
+  if (CALLING.waylaid(c, f, ct.at, to)) { ct.moved = true; return true; } // set upon on the road and turned back: the season's travel is spent (courtcall.ts)
   for (const a of armiesOf(c, f)) a.hero = false;
   ct.at = to;
   ct.moved = true;
@@ -117,11 +134,51 @@ export function stepToward(c: Campaign, f: number, from: number, to: number): nu
   return best >= 0 && dist.get(best)! < (dist.get(from) ?? Infinity) ? best : -1;
 }
 
-/** Armies still on their way to the leader. */
+/** Armies still on their way to the leader: those called by name, or, where none were named, every army but one holding a town that needs it. */
 export const called = (c: Campaign, f: number): Army[] => {
   const ct = courtOf(c, f);
-  return ct ? armiesOf(c, f).filter((a) => a.at !== ct.at) : [];
+  if (!ct) return [];
+  const away = armiesOf(c, f).filter((a) => a.at !== ct.at);
+  return ct.called ? away.filter((a) => ct.called!.includes(a.id)) : away.filter((a) => !CALLING.keeps(c, a));
 };
+
+/**
+ * A called army's next march toward the leader: the land it goes to, and the land it crosses without stopping, if any.
+ * It stops only in a land of its people's, and not in one where an army of theirs that is not called stands (it would
+ * join it and go no farther): such a land, and a land its people may cross (`CALLING.pass`: an ally's), it goes through
+ * to the land beyond in the one march. Null if there is no way.
+ */
+export function marchToward(c: Campaign, f: number, a: Army, to: number): { to: number; via?: number } | null {
+  if (a.at === to) return null;
+  const going = new Set(called(c, f).map((x) => x.id));
+  const own = (id: number): boolean => c.territories[id]?.owner === f;
+  const stops = (id: number): boolean => own(id) && (id === to || !c.armies.some((x) => x.owner === f && x.at === id && x.id !== a.id && !going.has(x.id)));
+  const through = (id: number): boolean => (own(id) && !stops(id)) || (!own(id) && CALLING.pass(c, f, id));
+  // The marches from a land: to a land beside it, or across one to the land beyond.
+  const marches = (from: number): { to: number; via?: number }[] => {
+    const out: { to: number; via?: number }[] = [];
+    for (const n of reach(c, from)) {
+      if (stops(n)) out.push({ to: n });
+      else if (through(n)) for (const m of reach(c, n)) if (m !== from && stops(m) && !reach(c, from).includes(m)) out.push({ to: m, via: n });
+    }
+    return out;
+  };
+  const first = new Map<number, { to: number; via?: number }>(); // a land, and the first march of the way that reached it
+  let edge = [a.at];
+  const seen = new Set<number>([a.at]);
+  while (edge.length) {
+    const next: number[] = [];
+    for (const at of edge) for (const m of marches(at)) {
+      if (seen.has(m.to)) continue;
+      seen.add(m.to);
+      first.set(m.to, at === a.at ? m : first.get(at)!);
+      if (m.to === to) return first.get(m.to)!;
+      next.push(m.to);
+    }
+    edge = next;
+  }
+  return null;
+}
 
 function march(c: Campaign, f: number): number {
   const ct = courtOf(c, f);
@@ -130,30 +187,34 @@ function march(c: Campaign, f: number): number {
   // Nearest first, so that those behind can follow into the land they leave.
   for (const a of called(c, f)) {
     if (a.moved) continue;
-    const step = stepToward(c, f, a.at, ct.at);
-    if (step >= 0 && HUB.moveArmy(c, a.id, step) === 'moved') n++;
+    const step = marchToward(c, f, a, ct.at);
+    if (step && HUB.moveArmy(c, a.id, step.to, step.via === undefined ? undefined : { via: step.via }) === 'moved') n++;
   }
   if (!called(c, f).length) {
-    delete ct.rally;
+    delete ct.rally; delete ct.called;
     if (f === 0) c.log.push(`Your armies are gathered at ${c.territories[ct.at].name}.`);
   }
   return n;
 }
 
 /**
- * Call the armies to the leader. Every army that has not moved this turn marches one land nearer now, through their
- * people's own country, and goes on doing so each turn until all have come or the call is ended. Returns how many set out.
+ * Call the armies to the leader: those named (`ids`), or with none named every army but one holding a town that needs
+ * it (courtcall.ts). Each that has not moved this turn marches one land nearer now, through their people's own country
+ * (and across an ally's), and goes on doing so each turn until all have come or the call is ended. Returns how many set out.
  */
-export function callArmies(c: Campaign, f: number): number {
+export function callArmies(c: Campaign, f: number, ids?: readonly number[]): number {
   const ct = courtOf(c, f);
-  if (!ct || c.pending || c.demand || !called(c, f).length) return 0;
+  if (!ct || c.pending || c.demand) return 0;
+  // Called by name: those armies and no others, a garrison among them if the leader says so. Otherwise all but the garrisons a town needs.
+  if (ids) ct.called = armiesOf(c, f).filter((a) => ids.includes(a.id)).map((a) => a.id); else delete ct.called;
+  if (!called(c, f).length) { delete ct.called; return 0; }
   ct.rally = true;
   return march(c, f);
 }
 /** End the call: the armies stay where they have got to. */
 export function endCall(c: Campaign, f: number): void {
   const ct = courtOf(c, f);
-  if (ct) delete ct.rally;
+  if (ct) { delete ct.rally; delete ct.called; }
 }
 
 /** The turn of the year for every court: the leader may travel again, and armies that were called march on. */

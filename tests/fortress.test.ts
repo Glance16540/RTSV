@@ -46,7 +46,9 @@ describe('a Fortress', () => {
       for (let seed = 1; seed <= 12; seed++) {
         const { c, at } = world(seed);
         // The town is given the same defence either way (a Fortress would add three companies), so that only the shelter differs.
-        if (fort) { c.territories[at].town = { at: 2, b: [['towncenter', 40, 40], ['fortress', 46, 40]] }; Object.assign(folkOf(c, at), { men: 20 }); }
+        // An EMPTY Fortress: the town has no men to spare for its garrison (fortkeep.ts KEEP.atHome), so it is walls and a refuge and no stronghold.
+        // (With men to spare it keeps a garrison and is never taken at all: tests/fortkeep.test.ts.)
+        if (fort) { c.territories[at].town = { at: 2, b: [['towncenter', 40, 40], ['fortress', 46, 40]] }; Object.assign(folkOf(c, at), { men: 8 }); }
         const d = defenceOf(c, at).total, b = band(kind, at, Math.ceil(d * 4));
         c.bands = [b];
         const r = strike(c, b, at, []);
