@@ -250,7 +250,7 @@ by name.
 | `founding` | 118 | Settlers found a new town on an empty land: what an empty land is, and claiming it when the settlers come in. | campaign (types only), ownstudies, township, wilds | founding.test.ts | not yet |
 | `claimants` | 104 | The record of children who may one day claim a throne: born to the leader's wife in a lord's house or among a band that holds her, never named or shown until of age (HEIR_AGE); a child comes home with a wife got back from a band and claims nothing. | bandborn, campaign (types only), chroniclethreads, dynasty, peoplenames | claimants.test.ts | not yet |
 | `claimantjudged` | 94 | When the seat of a claimant's rising is retaken, whoever led it waits on the leader's judgement as a plotter found does, as a stage of a plot with one name in it: a grown claimant, or the lord who proclaimed a child (never the child, never a band); pardon, banishment or death, each with what it does to the lord, the creed and the other nobles. | campaign (types only), campaignbase, claimants (types only), courtstory, intriguebase, nobles, townfaith | claimants.test.ts | not yet |
-| `claimantrising` | 190 | Risings for a claimant to the throne: whoever holds a recorded child (the lord, or the band) proclaims it heir from half a year after the birth and raises the town it is in with the towns beside it of another creed that are not held down (a third of the people's towns at most, never the capital) as free towns marked the claim's; of age, the claimant is named and leads that rising or raises their own; a rising ends put down, fallen to others, lapsed after ten years, or with a grown claimant on the throne where the leader is dead with no heir of age. | campaign (types only), campaignbase, chroniclethreads, claimantjudged, claimants, court, creed, dynasty, freetown, noblefaith, nobles, townfaith | claimants.test.ts | not yet |
+| `claimantrising` | 194 | Risings for a claimant to the throne: whoever holds a recorded child (the lord, or the band) proclaims it heir from half a year after the birth and raises the town it is in with the towns beside it of another creed that are not held down (a third of the people's towns at most, never the capital) as free towns marked the claim's; of age, the claimant is named and leads that rising or raises their own; a rising ends put down, fallen to others, lapsed after ten years, or with a grown claimant on the throne where the leader is dead with no heir of age. | campaign (types only), campaignbase, chroniclethreads, claimantjudged, claimants, court, creed, dynasty, freetown, noblefaith, nobles, townfaith | claimants.test.ts | not yet |
 | `claimantcaptain` | 69 | The one who leads a claimant's rising on the field by name: a turned-out soldier of the risen town (or one more before its hall) is the grown claimant, the lord who proclaimed the child, or the band's chief; the child never. | campaign (types only), claimantrising, game (types only) | claimantcaptain.test.ts | not yet |
 | `freetown` | 137 | Free towns: a town that rises is nobody's with its people in it, can be taken by force, and may come back by treaty to the people it left. | campaign (types only), prices, township | freetown.test.ts | not yet |
 | `grain` | 78 | Grain bought abroad: the food decree's new food from outside the nation, paid in gold, dearer in a famine year; the computer buys only out of plenty. | campaign (types only), larder, plenty, township | grain.test.ts | not yet |
@@ -472,7 +472,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-306 modules, 38,130 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+306 modules, 38,134 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -496,7 +496,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 17 | 4 | 443 | `prices` (214; 9), `deadtown` (106; 4), `roofsmap` (70; 2), `rivalsettle` (53; 1) |
 | 18 | 7 | 1,057 | `courtstory` (438; 6), `country` (94; 4), `freetown` (137; 2), `nobledeal` (165; 2), `storyturn` (151; 2), `bandturn` (34; 1), `emptied` (38; 1) |
 | 19 | 6 | 763 | `aftermath` (209; 4), `nobleweigh` (55; 2), `rivalplan` (182; 2), `claimantjudged` (94; 1), `rivalaim` (71; 1), `wifetaken` (152) |
-| 20 | 3 | 400 | `decrees` (164; 4), `claimantrising` (190; 2), `killerseized` (46; 1) |
+| 20 | 3 | 404 | `decrees` (164; 4), `claimantrising` (194; 2), `killerseized` (46; 1) |
 | 21 | 3 | 448 | `acts` (204; 5), `drift` (175; 4), `claimantcaptain` (69; 2) |
 | 22 | 5 | 979 | `threats` (481; 14), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1), `floods` (82; 1) |
 | 23 | 10 | 1,333 | `rivalrule` (388; 7), `carriedoff` (136; 6), `townmuster` (114; 4), `bandhorde` (119; 2), `raidfought` (160; 2), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |

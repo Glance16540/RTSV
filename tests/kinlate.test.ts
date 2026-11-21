@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { newCampaign } from '../src/sim/campaign';
 import type { Campaign } from '../src/sim/campaign';
 import { KIN, kinOf, kinSeason } from '../src/sim/kin';
+import { THREATS } from '../src/sim/threats';
 
 const world = (turn: number): { c: Campaign; home: number } => {
   const c = newCampaign(7, 1, 1, 'japan');
@@ -66,6 +67,27 @@ describe('the household and a strike that waited', () => {
       expect(s.name).toBe(name);
       expect(s.lost.band).toBe(9);
       expect(c.bands![0].held[0].names).toContain(name);
+      return;
+    }
+    throw new Error('never taken in forty worlds');
+  });
+  it('taken in a late sack and held too long, she is gone for good, not come home', () => {
+    for (let i = 0; i < 40; i++) {
+      const { c, home } = world(20 + i);
+      kinSeason(c, 0);
+      sack(c, home);
+      const taken = c.turn;
+      c.bands = [{ id: 9, kind: 'raiders', name: 'the Red Hand', at: home, strength: 5, held: [{ from: home, owner: 0, since: taken, men: [], women: [30] }] } as never];
+      c.turn++;
+      kinSeason(c, 0);
+      const s = kinOf(c, 0).spouse!;
+      if (s.lost?.how !== 'taken') continue;
+      expect(s.lost.turn).toBe(taken); // dated from the sack, as her captors date it
+      c.turn = taken + THREATS.holdFor;
+      c.bands![0].held = []; // her time ran out (threats.ts captivesSeason)
+      kinSeason(c, 0);
+      expect(kinOf(c, 0).spouse?.name === s.name ? s.lost?.final : true).toBe(true);
+      expect(c.chronicle!.some((x) => x.text.includes('is free and has come home'))).toBe(false);
       return;
     }
     throw new Error('never taken in forty worlds');

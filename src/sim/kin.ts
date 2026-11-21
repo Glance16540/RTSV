@@ -182,7 +182,7 @@ export function kinSeason(c: Campaign, f: number): void {
       // Carried off: held among the band's captives (threats.ts), to be got back the same way.
       const band = carried ? (c.bands ?? []).find((b) => b.held.some((h) => h.from === seat && h.owner === f && h.since === sacked)) : undefined;
       if (band) { const h = band.held.find((x) => x.from === seat && x.owner === f && x.since === sacked)!; (h.names ??= []).push(s.name); }
-      s.lost = { turn: c.turn, how: carried ? 'taken' : 'died', ...(band ? { band: band.id } : carried ? { final: true } : {}) };
+      s.lost = { turn: carried ? sacked : c.turn, how: carried ? 'taken' : 'died', ...(band ? { band: band.id } : carried ? { final: true } : {}) }; // from the sack itself, so that her seasons are counted as her captors count them
       k.alone = c.turn;
       chronicle(c, carried ? `${s.name}, ${s.female ? 'wife' : 'husband'} of ${s.of}, was carried off when ${c.territories[seat].name} was sacked${band ? ` and is held by ${band.name}` : ''}.` : `${s.name}, ${s.female ? 'wife' : 'husband'} of ${s.of}, has died${sick ? ' of the plague' : ''}.`);
       tell(c, k, chronicleLast(c), 'bad');
