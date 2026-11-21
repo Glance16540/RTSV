@@ -3,8 +3,11 @@
 // their working stock (stores.ts), so a season's gain is the yield less what the towns ate, what spoiled, the upkeep,
 // what the governors raised out of the stores, a failed harvest and a raid. It is measured, not foretold: the figure
 // as the player ends the turn, against the figure as the next turn opens, so what the player spent in the turn is not
-// counted against the season. Two calls a season (campaign.ts endTurn and the turn's opening).
+// counted against the season. Two calls a season (campaign.ts endTurn and the turn's opening). A town visited in the
+// season brought its season's goods home in the visit, before the turn was ended: they are counted in (visitworth.ts).
 import type { Campaign } from './campaign';
+import { SUPPLY_UNITS } from './stores';
+import { carriedLastSeason } from './visitworth';
 
 declare module './campaign' {
   interface Campaign {
@@ -22,7 +25,7 @@ export function turnLeft(c: Campaign): void {
 export function turnOpened(c: Campaign): void {
   const g = c.seasonGain;
   if (g?.left === undefined) return;
-  g.gained = (c.factions[0]?.supplies ?? 0) - g.left;
+  g.gained = (c.factions[0]?.supplies ?? 0) - g.left + Math.floor(carriedLastSeason(c) / SUPPLY_UNITS); // a town visited brought its season home in the visit (visitworth.ts)
   g.turn = c.turn;
   delete g.left;
 }

@@ -828,3 +828,21 @@ strike left to the town twice, and the leader's fall with an heir chosen. The ma
 - The rival queen's envoy is drawn as a bearded man in the queen's colours. That is right (an envoy, not the queen),
   but the sheet names only the queen; "her envoy" in the heading would say who stands there.
 - The 3D map's march by a click, the decree panel's other decrees, and a siege battle were not played this pass.
+
+## The last pass, 21 November (main at ec6e2a4)
+
+Seen in Chromium before the final reference run (docs/shots/final-*.jpg):
+
+- **The marauders' camp gate.** The sign over the camp shows the band standing guard ("🏴 4"), but the camp's panel did
+  not say it: the panel showed a gate's line only for a building with guards of its own, and the camp's guard is the
+  band. Fixed (`hud.ts` asks `rescue.ts gated`): "4 marauders stand guard at the camp: beat them or draw them off, and the
+  4 soldiers at the gate will let your people out. Or burn the camp."
+- **A feuding king's raid on the court.** It came to the player as a plain band's strike ("The raiders of the Greeks come
+  against Amberfield!", "and may lead people away"), though the party has come for the court and leads nobody away.
+  Fixed (`threatpanel.ts`): "King Aron's raiders come against your court!", with who sent them, the court's town, and
+  that they come to burn and rob, not to lead people away.
+- **The named envoy** called a queen a king: "Piye, envoy of Kandake Amanirekh, king of the Kushites", over choices that
+  say "defy her". It reads the ruler as the court stories do now (`heroFor`): "Piye, the queen's envoy".
+- **Rounded figures.** The battle prompt: "Your strength of 6 against the Local Tribe's defence of 4"; the land's panel:
+  "Income 6 · Defence against an army 8". Right.
+- **The season on the map.** "Turn 1 · ☀️ Summer, year 1" at the panel's head and on the chart's scroll. Right.

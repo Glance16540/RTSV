@@ -1,0 +1,9 @@
+
+ RUN  v5.1.0 /home/user/RTSV
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  19:23:15
+   Duration  715ms (transform 50%, import 35%, tests 15%, worker 1%)
+

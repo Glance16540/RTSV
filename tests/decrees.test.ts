@@ -132,10 +132,10 @@ describe('a sensible ruler', () => {
     expect(c.territories.filter((t) => decreesAt(c, t.id).some((d) => d.kind === 'alms')).length).toBe(ALMS_A_SEASON);
   });
 
-  it('the church tends the sick and the mourning: it needs a church and gold, lightens sickness and grief, and spares some of plague\'s dead', () => {
+  it('the church tends the sick and the mourning: it needs gold, lightens sickness and grief, and spares some of plague\'s dead', () => {
     const { c, tid } = world(), t = c.territories[tid], f = folkOf(c, tid);
     t.buildings = t.buildings.filter((b) => b !== 'church');
-    expect(decreeBar(c, 0, tid, 'tend')).toMatch(/no church/);
+    expect(decreeBar(c, 0, tid, 'tend')).not.toMatch(/no church/); // a town without a church can still tend, at half strength (the owner's word, 21 November 2026; tests/tendbare.test.ts)
     t.buildings = [...t.buildings, 'church'];
     f.stores.gold = TEND_GOLD - 1;
     expect(decreeBar(c, 0, tid, 'tend')).toMatch(/gold/);
@@ -150,7 +150,7 @@ describe('a sensible ruler', () => {
     expect(f.drift!.strain).toBeCloseTo(grieving * (1 - TEND_EASE), 5);
     // The sensible ruler gives it where sickness or grief strain a town.
     t.decrees = [];
-    expect(sensibleDecrees(c, 0, () => ({ hungry: false, raided: false, moved: 0, standing: 0, grieving: true }))).toBe(1);
+    expect(sensibleDecrees(c, 0, (id) => ({ hungry: false, raided: false, moved: 0, standing: 0, grieving: id === tid }))).toBe(1); // this town alone: one with no church is tended now too (tests/tendbare.test.ts)
     expect(decreesAt(c, tid).map((d) => d.kind)).toEqual(['tend']);
   });
 
