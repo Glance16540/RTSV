@@ -2,6 +2,7 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { rollSeason } from './folkroll';
+import { cloisterSeason } from './cloister';
 import { askedFor, keepAsked } from './askedhere';
 import { tavernPull } from './churchtavern';
 import { rumourSeason } from './tavernrumour';
@@ -1373,6 +1374,7 @@ export function continueAI(c: Campaign): void {
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       rollSeason(c); // every town's grown are named on its record, level with its counts (folkroll.ts)
+      cloisterSeason(c); // who serves in each town's Monastery or Convent (cloister.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
       oldSeasons(c); // the old people of a town taken become the holder's (oldfolk.ts)

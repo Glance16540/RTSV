@@ -4,7 +4,7 @@ import type { Campaign } from '../sim/campaign';
 import { BUILDINGS, TECHS } from '../sim/data';
 import { STORE_KINDS } from '../sim/township';
 import { begunAt, mapWorks, raiseBar } from '../sim/townworks';
-import { allStudies, hasStudy, standsAt, studyBar, teacherOf } from '../sim/studies';
+import { allStudies, hasStudy, standsAt, studyBar, studyCost, teacherOf } from '../sim/studies';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 const costText = (cost: Partial<Record<string, number>>): string => STORE_KINDS.filter((k) => cost[k]).map((k) => `${cost[k]} ${k}`).join(', ');
@@ -33,7 +33,7 @@ export function studyPanel(c: Campaign, tid: number): string {
     const teacher = teacherOf(t.id);
     if (hasStudy(c, 0, t.id) || !teacher || !standsAt(c, tid, teacher) || (t.civ && t.civ !== c.factions[0].civ)) continue; // another people's own study is not offered (ownstudies.ts)
     const bar = studyBar(c, 0, t.id, tid);
-    html += `<button data-act="study:${t.id}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(bar || `${t.desc} ${costText(t.cost)}, from this town first.`)}">${t.icon} Study ${esc(TECHS[t.id].name)} <small>${priceText(t.cost)}</small></button>`;
+    html += `<button data-act="study:${t.id}" ${bar || c.phase !== 'player' ? 'disabled' : ''} title="${esc(bar || `${t.desc} ${costText(studyCost(c, t.id, tid))}, from this town first.`)}">${t.icon} Study ${esc(TECHS[t.id].name)} <small>${priceText(studyCost(c, t.id, tid))}</small></button>`;
   }
   return html;
 }
