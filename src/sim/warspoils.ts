@@ -12,7 +12,6 @@
 // renown only: the goods are not paid into any store. Houses with no man on the army's roll get nothing.
 import type { Campaign, Pending } from './campaign';
 import { STORE_KINDS, folkOf } from './township';
-import { levelArmies } from './warhouse';
 
 declare module './warhouse' {
   interface WarHouse { /** Goods' worth its men have won at war, in spoils and deeds (warspoils.ts). */ made?: number }
@@ -36,9 +35,8 @@ export function creditSpoils(c: Campaign, armyId: number, goods: number): number
   const houses: { tid: number; family: string; h: { made?: number }; men: number }[] = [];
   for (const tid of Object.keys(c.musters?.[armyId]?.men ?? {}).map(Number)) {
     const f = c.territories[tid]?.folk;
-    if (!f || !Array.isArray(f.houses)) continue;
-    levelArmies(c, tid);
-    for (const h of f.houses) { const men = h.away.filter((s) => s.army === armyId).length; if (men) houses.push({ tid, family: h.family, h, men }); }
+    if (!f || !Array.isArray(f.houses)) continue; // as the record stands: the rolls are levelled with it each season (warhouse.ts settleHouses)
+    for (const h of f.houses) { const men = (Array.isArray(h.away) ? h.away : []).filter((s) => s.army === armyId).length; if (men) houses.push({ tid, family: h.family, h, men }); }
   }
   const all = houses.reduce((n, x) => n + x.men, 0);
   if (!all) return 0;
