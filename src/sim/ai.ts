@@ -19,6 +19,7 @@ import { queuesBehind, workNeeded, workOfPlenty } from './aiworks';
 import { darkChoice } from './darkarts';
 import { HEALERS, HEALERS_KEPT, healerFor } from './plainhealer';
 import { fallBack, fightStyle, roomWork, studyReserve, styleWork } from './styleplay';
+import { defenceWorth, keepsClear } from './aiforts';
 import { aiCare } from './aicare';
 
 const VILLAGER_TARGET = [16, 26, 34, 40, 44];
@@ -626,7 +627,7 @@ export class AIController {
     const open = this.level >= 1 && foe >= 0 && this.weight(foe, false) < this.weight(pid, false) * 0.6;
     const able = army.filter((u) => g.canSeize(u) && !u.inside);
     const want = open ? Math.max(2, able.length - 1) : this.level === 0 ? 1 : this.level === 1 ? 2 : 3;
-    const towers = g.buildings.filter((b) => g.hostile(b.owner, pid) && b.complete && (b.type === 'tower' || (!open && b.type === 'towncenter')));
+    const towers = g.buildings.filter((b) => g.hostile(b.owner, pid) && keepsClear(b, open) > 0); // towers, a shooting Fortress, and a Town Center once the foe has soldiers (aiforts.ts)
     // A raider who is badly hurt gives it up and comes home: a live man raids again tomorrow.
     for (const u of army) if (u.order?.t === 'capture' && u.hp < u.maxHp * 0.45) g.cmdMove(pid, [u.id], home.x, home.y + 5, false);
     const marked = new Set<number>();
@@ -638,7 +639,7 @@ export class AIController {
       let best: Unit | null = null, bestD = open ? 110 : 60;
       for (const v of g.units) {
         if (v.type !== 'villager' || v.growT > 0 || v.inside || v.owner === g.wild || !g.hostile(v.owner, pid) || marked.has(v.id)) continue;
-        if (towers.some((b) => Math.hypot(b.x - v.x, b.y - v.y) < (b.type === 'tower' ? 9 : 10))) continue;
+        if (towers.some((b) => Math.hypot(b.x - v.x, b.y - v.y) < keepsClear(b, open))) continue;
         const d = open ? Math.hypot(v.x - s.x, v.y - s.y) : Math.hypot(v.x - home.x, v.y - home.y);
         if (d < bestD) { bestD = d; best = v; }
       }
@@ -830,7 +831,7 @@ export class AIController {
       const c = u.def.cost;
       w += ((c.food ?? 0) + (c.wood ?? 0) + (c.gold ?? 0)) * (u.hp / u.maxHp);
     }
-    if (defending) for (const b of this.game.buildings) if (b.owner === pid && b.complete && (b.type === 'tower' || b.type === 'towncenter')) w += b.type === 'tower' ? 200 : 300;
+    if (defending) for (const b of this.game.buildings) if (b.owner === pid) w += defenceWorth(b); // its towers, its Town Center and its Fortress (aiforts.ts)
     return w;
   }
 
