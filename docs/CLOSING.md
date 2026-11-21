@@ -101,7 +101,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | --- | --- | --- | --- |
 | Slavers gain output from the children born in captivity | On the map a band holds captives but has no output to gain, so children born there do nothing for it, and nobody is paid for captives a band sells on. | small | Drop on the map: a band is not a town. It is built in a town (`captivity.ts`). |
 | Got back for a time | A captive in the marauders' camp cannot be let out at the gate as one in a Work Camp can; the camp must be burnt. | small | Unity: field work. |
-| The player's nation, if it assimilates | The player's nation never carries people off, whatever its creed: there is no order for it. | medium | Unity, if the owner wants it. DESIGN.md names only rival nations, so Drop is also defensible. |
+| The player's nation, if it assimilates | **Built here after all (20 November 2026, `carriedoff.ts`), by the rivals' rule reused:** at a Dissolute or Depraved standing the player's nation leads away a share of the grown people of a town it takes, held four seasons and then its own; never a child, nothing shown, told plainly. There is still no order for it, and none to refuse it. | small | Done. Whether the player should be able to forbid it is the owner's to say. |
 | What is shown of it | Escapes and risings are told and not drawn. The captives' daily round has not been watched. | medium | Unity: drawing. The content rules port as written. |
 
 ## Acts of God

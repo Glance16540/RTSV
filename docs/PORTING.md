@@ -174,7 +174,7 @@ by name.
 | `fieldcaravan` | 149 | A Market's caravan on the field: in a campaign battle or visit at a town whose caravan is on the road this season, a trade cart walks from the Market to the field's edge on its partner's side, is away a while, and comes home with the gold the map's caravan brings; caught on the way home, its gold goes to whoever caught it. The battle hands back how it went and the campaign settles the season's caravan by it, so the map's figures stay the same. | campaign (types only), caravans, data, game (types only) | fieldcaravan.test.ts | not yet |
 | `campaignbase` | 364 | What the map's systems share, below all of them: the constants and small helpers they used to import from campaign.ts (an army's size and strength, a company's price, how a people stands, a land's country). It imports no system; campaign.ts re-exports it. | campaign (types only), creed, hero (types only), pacts, powers, uniquecompany, winter | campaignbase.test.ts | not yet |
 | `captivity` | 268 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, creed, data, game (types only), hero, nursery, peoplenames, rescue | captivity.test.ts | not yet |
-| `carriedoff` | 130 | A dissolute or depraved rival nation that takes a town leads a share of its grown people away to a land of its own (the bands' `Held` record). Got back if that land is taken within four seasons; after that they are on the holding town's record as the taker's people. Children born meanwhile are the taker's. `townFell` where a town changes hands, `carriedSeason` once a season. | ageing, bandborn, campaign (types only), carriedhome, carriednamed, creed, threats, township | carriedoff.test.ts | not yet |
+| `carriedoff` | 135 | A dissolute or depraved rival nation that takes a town leads a share of its grown people away to a land of its own (the bands' `Held` record). Got back if that land is taken within four seasons; after that they are on the holding town's record as the taker's people. Children born meanwhile are the taker's. `townFell` where a town changes hands, `carriedSeason` once a season. | ageing, bandborn, campaign (types only), carriedhome, carriednamed, creed, threats, township | carriedoff.test.ts, playercarries.test.ts | not yet |
 | `carriednamed` | 51 | A known person among those a nation leads away from a town it takes is marked carried off by name (as likely as the known are among the grown of that sex), listed with the held, mourned, and known again if got back. | campaign (types only), carriedoff (types only), plaguenamed, township | carriednamed.test.ts | not yet |
 | `carriedout` | 32 | As a battle ends, a side's people held by those who seized them (a raider leading them, a work camp, the lair), by name, house, gender, age and children borne in the camp, for the census (`Census.carried`). | ageing, game (types only), township (types only) | battlecarried.test.ts | not yet |
 | `battlecarried` | 109 | Those carried off in a battle fought in person are held on the map in a land of the attacker's, by name and house (`Held.who`), on carriedoff.ts's clock; a known person is marked carried off; the player is told. Also strikes from the written-back town those a nation led away as it fell (`retake`). | ageing, campaign (types only), carriedoff, carriedout (types only), threats, township | battlecarried.test.ts | not yet |
@@ -447,7 +447,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-281 modules, 35,823 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+281 modules, 35,828 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -474,7 +474,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 20 | 2 | 354 | `decrees` (164; 4), `claimantrising` (190; 2) |
 | 21 | 3 | 446 | `acts` (203; 4), `drift` (174; 3), `claimantcaptain` (69; 2) |
 | 22 | 4 | 894 | `threats` (478; 13), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1) |
-| 23 | 9 | 1,160 | `carriedoff` (130; 5), `rivalrule` (382; 5), `townmuster` (113; 3), `bandhorde` (119; 2), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
+| 23 | 9 | 1,165 | `carriedoff` (135; 5), `rivalrule` (382; 5), `townmuster` (113; 3), `bandhorde` (119; 2), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
 | 24 | 10 | 1,069 | `townworks` (58; 6), `rivalcaptives` (47; 3), `bandroam` (219; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `battlecarried` (109; 1), `rivalstock` (115; 1), `courtcall` (84), `roll` (93) |
 | 25 | 8 | 1,154 | `bandfight` (313; 4), `caravans` (204; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `watchhouse` (80; 1) |
 | 26 | 5 | 809 | `intrigue` (387; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `rivalhunt` (132; 1), `bandmeet` (89) |
@@ -513,7 +513,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 281 modules, 0 naming no test, 0 naming a test file that is missing; 3,978 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 281 modules, 0 naming no test, 0 naming a test file that is missing; 3,983 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 

@@ -1,7 +1,9 @@
 // A rival nation that takes a town may carry people off (docs/DESIGN.md, "Captivity": a rival nation that
 // assimilates gains population outright; children born in captivity to such a nation are its own).
 //
-// Only a nation led by the computer whose creed is Dissolute or Depraved does it. When it takes a town of another
+// Only a nation whose creed is Dissolute or Depraved does it: a rival's, and since 20 November 2026 the player's own by
+// the same rule (the owner's word, relayed; until then never the player's). No order is given or can be refused: it is
+// what such a people does. When it takes a town of another
 // nation on the map, a share of the town's grown people (never a child) are led away and held in the land the
 // army came from, or failing that in a town of the taker's. They are a record there, the same held-people record
 // the bands keep (threats.ts `Held`): who, of what ages, from where, since when.
@@ -49,7 +51,7 @@ const name = (c: Campaign, f: number): string => (f === 0 ? 'your people' : `the
 const say = (c: Campaign, owners: number[], text: string): void => { if (owners.includes(0)) c.log.push(text); };
 
 /** Does this people carry off the people of towns it takes? */
-export const carriesOff = (c: Campaign, f: number): boolean => { const fac = c.factions[f]; return !!fac && fac.alive && fac.isAI && CARRY.creeds.includes(creedOf(fac.virtue ?? 0).id); };
+export const carriesOff = (c: Campaign, f: number): boolean => { const fac = c.factions[f]; return !!fac && fac.alive && CARRY.creeds.includes(creedOf(fac.virtue ?? 0).id); };
 /** Those of a people now held by a nation, and those held in a land. */
 export const carriedOf = (c: Campaign, owner: number): Carried[] => (c.carried ?? []).filter((x) => x.held.owner === owner);
 export const carriedAt = (c: Campaign, at: number): Carried[] => (c.carried ?? []).filter((x) => x.at === at);
@@ -98,6 +100,8 @@ export function townFell(c: Campaign, tid: number, from: number, to: number, via
   mark(c, 'carried', tid);
   const line = `${who(x.held)[0].toUpperCase() + who(x.held).slice(1)} of ${c.territories[tid].name} ${men.length + women.length === 1 ? 'was' : 'were'} led away by ${name(c, to)} to ${c.territories[hold].name}. In ${n(CARRY.seasons, 'season', 'seasons')} they will be ${to === 0 ? 'yours' : 'theirs'} for good: take ${c.territories[hold].name} before then and they come home.`;
   say(c, [from], line);
+  // The taker, where it is the player, is told what its people did, as plainly: where they are held, and what follows.
+  if (to === 0) c.log.push(`Your people led away ${who(x.held)} of ${c.territories[tid].name} to ${c.territories[hold].name} when the town fell. Held ${n(CARRY.seasons, 'season', 'seasons')}, they are yours for good; if ${c.territories[hold].name} is lost before then they go home.`);
   if (from === 0) (c.chronicle ??= []).push({ turn: c.turn, text: `${who(x.held)[0].toUpperCase() + who(x.held).slice(1)} of ${c.territories[tid].name} ${men.length + women.length === 1 ? 'was' : 'were'} led away by ${name(c, to)} when the town fell.` });
   return x;
 }
@@ -122,6 +126,7 @@ export function carriedSeason(c: Campaign): { born: number; taken: number } {
       taken += h.men.length + h.women.length;
       c.carried = (c.carried ?? []).filter((y) => y !== x);
       say(c, [h.owner], `${who(h)[0].toUpperCase() + who(h).slice(1)} of ${c.territories[h.from].name}, led away by ${name(c, x.by)}, ${h.men.length + h.women.length === 1 ? 'is' : 'are'} ${x.by === 0 ? 'your' : 'their'} people now, at ${t.name}, and will not come home.`);
+      if (x.by === 0 && h.owner !== 0) c.log.push(`${who(h)[0].toUpperCase() + who(h).slice(1)} of ${c.territories[h.from].name}, led away when it fell, ${h.men.length + h.women.length === 1 ? 'is' : 'are'} of your people now, at ${t.name}.`);
       if (h.owner === 0) (c.chronicle ??= []).push({ turn: c.turn, text: `${who(h)[0].toUpperCase() + who(h).slice(1)} of ${c.territories[h.from].name}, led away by ${name(c, x.by)}, were never got back.` });
     } else if (carriedLeft(c, x) === 1 && h.owner === 0) c.log.push(`One season is left to get back the ${who(h)} ${name(c, x.by)} took from ${c.territories[h.from].name}: take ${t.name}.`);
     countFrom(f, ages);
