@@ -12,6 +12,8 @@
  * (Its income is still scaled by difficulty, by the owner's word. Feeding a hungry town is convoys.ts's `relieve`,
  * and its decrees are decrees.ts's `sensibleDecrees`.)
  */
+import { creditHouses, homeDue } from './rivalhomes';
+import { homeDeed } from './notableweight';
 import { givenNames, houseNames, townPeople } from './peoplenames';
 import type { Army, Campaign, Territory } from './campaign';
 import { hireOff } from './places';
@@ -139,14 +141,18 @@ export function nameVeterans(c: Campaign): { named: number; lost: number } {
 }
 
 /**
- * A notable home arises where nobody visits: in a rival's town with children enough on its record and no woman
- * known by name, the mother of the largest household is known from then on.
+ * A notable home arises where nobody visits: in a rival's town with children enough on its record, the woman of the house
+ * that has carried in most is known from then on, once it has done enough (rivalhomes.ts), up to a few to a town.
  */
 export function notableHome(c: Campaign, tid: number): boolean {
   const t = c.territories[tid], f = folkOf(c, tid);
-  if (!rival(c, t.owner) || f.women < 1 || f.children < MOTHER_KIDS || living(f).some((n) => n.kind === 'mother')) return false;
-  const houses = houseNames(townPeople(c, tid)), family = houses[Math.floor(hash(c.seed * 13 + tid, 53) * houses.length)];
-  f.notables.push({ name: givenNames(townPeople(c, tid), 'f')[Math.floor(hash(c.seed * 13 + tid, 59 + f.notables.length) * givenNames(townPeople(c, tid), 'f').length)], family, gender: 'f', kind: 'mother', kids: MOTHER_KIDS, deed: `raised ${MOTHER_KIDS} children`, turn: c.turn });
+  if (!rival(c, t.owner)) return false;
+  creditHouses(c, tid); // the season's harvest counted to the house that brought it in (rivalhomes.ts)
+  if (f.women < 1 || f.children < MOTHER_KIDS) return false;
+  const due = homeDue(c, tid); // the house that has done most, of those not known yet (rivalhomes.ts)
+  if (!due) return false;
+  const women = givenNames(townPeople(c, tid), 'f');
+  f.notables.push({ name: women[Math.floor(hash(c.seed * 13 + tid, 59 + f.notables.length) * women.length)], family: due.family, gender: 'f', kind: 'mother', kids: MOTHER_KIDS, made: due.made, deed: homeDeed(MOTHER_KIDS, 0, due.made), turn: c.turn });
   return true;
 }
 

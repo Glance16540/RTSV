@@ -16,6 +16,7 @@ import { MEN, menMustered } from './armytown';
 import { GOVERN, wantsOf } from './governor';
 import { SUPPLY_UNITS } from './stores';
 import { STORE_KINDS, Stores, folkOf } from './township';
+import { standingOf } from './townorders';
 
 export const DRILL = {
   /** The governor raises no more once the army standing in the town is this many companies. */
@@ -50,12 +51,12 @@ export const goodsFor = (c: Campaign, tid: number, kind: string): number =>
 export function drillOf(c: Campaign, tid: number): { kind?: string; why?: 'none' | 'yard' | 'army' | 'full' | 'food' | 'men' | 'stores' } {
   const t = c.territories[tid];
   const kinds = [...new Set((t?.orders?.train ?? []).map(companyOf).filter((k): k is string => !!k))];
-  if (!t || t.owner !== 0 || !kinds.length) return { why: 'none' };
+  if (!t || t.owner < 0 || !kinds.length) return { why: 'none' }; // the player's towns, and a rival's given orders to train (rivaldrill.ts)
   const yards = kinds.filter((k) => hasYard(t, k));
   if (!yards.length) return { why: 'yard' };
   const a = armyAt(c, tid);
   if ((a && a.owner !== t.owner) || c.pending?.to === tid) return { why: 'army' };
-  if (a && armySize(a) >= Math.min(DRILL.most, MAX_ARMY)) return { why: 'full' };
+  if (a && armySize(a) >= Math.min(standingOf(t).drillStop ?? DRILL.most, MAX_ARMY)) return { why: 'full' }; // where it was told to stop (townorders.ts), or at DRILL.most
   if (wantsOf(c, tid).food) return { why: 'food' };
   if (menToSpare(c, tid) < MEN.company) return { why: 'men' };
   const have = units(folkOf(c, tid).stores);
@@ -87,7 +88,7 @@ export function drillTown(c: Campaign, tid: number): Drilled | null {
   let left = goodsFor(c, tid, kind);
   for (const k of [...STORE_KINDS].filter((x) => x !== 'food').sort((x, y) => f.stores[y] - f.stores[x])) { const part = Math.min(Math.max(0, f.stores[k]), left); f.stores[k] -= part; left -= part; }
   if (left > 0) f.stores.food = Math.max(0, f.stores.food - left);
-  c.log.push(`${t.name} has raised a company of ${COMPANIES[kind].name.toLowerCase()}, as it was last ordered to: ${men} of its men have gone, paid for out of its own stores.`);
+  if (t.owner === 0) c.log.push(`${t.name} has raised a company of ${COMPANIES[kind].name.toLowerCase()}, as it was last ordered to: ${men} of its men have gone, paid for out of its own stores.`);
   return { at: tid, kind, men, army: a.id };
 }
 /** A season's training in every town of the player's that was left with an order to train. */
