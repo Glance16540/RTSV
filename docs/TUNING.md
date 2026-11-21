@@ -47,7 +47,7 @@ A season is three months; a campaign is meant to be won or lost over a few gener
 | Crime | Thieves and killers beginning among the player's people with Town Watch learnt, against the same seasons without. The rule is seven in ten (`src/sim/townwatch.ts`) | 0.6 to 0.8 times as many |
 | Rule | Rival nations with a Hall of Judgement by 20 years | most (over half) |
 | Rule | Lords angry at 20 years, the player's and the rivals' each | 1 to 8% (some at the edge of anger, never a revolt of the great) |
-| Rule | Lords content at 20 years, the player's and the rivals' each. Tuned by the quiet year (`src/sim/nobletemper.ts` `TEMPER.quiet`, 2.5 since 21 November 2026): since lords are only in big towns, the quiet year's +3 alone put the ordinary lord two thirds of the way to content, and the row sat at 19 to 20% | 5 to 20% |
+| Rule | Lords content at 20 years, the player's and the rivals' each. Tuned by the quiet year (`src/sim/nobletemper.ts` `TEMPER.quiet`, 2.5 since 21 November 2026): since lords are only in big towns, the quiet year's +3 alone put the ordinary lord two thirds of the way to content, and the row sat at 19 to 20%. And by how lords take tending (`src/sim/nobles.ts` `LIKES`, halved the same day): once a town without a church could tend, tending was given far more often and brought the row back to 20 | 5 to 20% |
 | Rule | A noble's plot against the player | about once in 30 to 150 years |
 | Rule | Risings for a claimant to the throne against the player's nation, proclaimed in a child's name or by one come of age (the owner's word, 18 November 2026) | 2 to 5 every 100 campaigns, some of them for a lord's son by the leader's wife, not only band-born |
 | Faith | Holy towns with a Monastery or Convent by 20 years | some (5 to 30%) |
