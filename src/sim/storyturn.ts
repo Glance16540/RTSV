@@ -5,6 +5,7 @@
 // campaign.ts calls `storyTurn(c)` once a season. Whoever puts a tale to the player uses `taleNow`, `taleText`,
 // `canAnswer` and `answerTale`.
 import { cameOf } from './chroniclethreads';
+import { threadDropped, threadTold } from './talethreads';
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
 import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, tell } from './campaignbase';
@@ -70,6 +71,7 @@ export function answerTale(c: Campaign, choice: 'a' | 'b'): boolean {
   }
   c.log.push(result);
   tell(c, `${tale.title}: ${result}${cameOf(c, tale.after, (id) => TALES.find((x) => x.id === id)?.title)}`); // a tale that came of an earlier answer says so (chroniclethreads.ts)
+  threadTold(c); // and the last answer of a thread tells it whole (talethreads.ts)
   shiftVirtue(c, 0, ch.virtue);
   return true;
 }
@@ -119,7 +121,7 @@ export function storyTurn(c: Campaign): void {
     const was = (c.answers ?? []).find((a) => a.id === x.after!.id && a.choice === x.after!.choice);
     if (!was) continue;
     const land = c.territories[was.land]?.owner === 0 ? was.land : mine[0].id;
-    if ((x.needs === 'rival' && !c.factions[was.rival]?.alive) || (x.needs === 'tribe' && (c.territories[was.tribe]?.owner !== -1 || c.territories[was.tribe].horde))) { asked.push(x.id); continue; } // the thread is dropped
+    if ((x.needs === 'rival' && !c.factions[was.rival]?.alive) || (x.needs === 'tribe' && (c.territories[was.tribe]?.owner !== -1 || c.territories[was.tribe].horde))) { asked.push(x.id); threadDropped(c, x, was); continue; } // the thread is dropped, and the chronicle says so (talethreads.ts)
     asked.push(x.id);
     c.lastTale = x.id;
     c.tale = { id: x.id, land, rival: was.rival, tribe: was.tribe };

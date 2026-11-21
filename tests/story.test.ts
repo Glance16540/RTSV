@@ -89,8 +89,7 @@ describe('tales that turn on what went before', () => {
     for (const t of TALES.filter((x) => x.after)) {
       const from = TALES.find((x) => x.id === t.after!.id);
       expect(from, t.id).toBeTruthy();
-      expect(from!.after, t.id).toBeUndefined(); // threads are one step long, so far
-      if (t.needs) expect(from!.needs, t.id).toBe(t.needs); // it speaks of the same rival or tribe
+      if (t.needs && !from!.after) expect(from!.needs, t.id).toBe(t.needs); // it speaks of the same rival or tribe (threads run longer now: tests/talethreads.test.ts)
     }
     const { c } = put('exile');
     expect(answerTale(c, 'a')).toBe(true);

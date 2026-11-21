@@ -30,6 +30,7 @@
 // the decrees' own. Skipped unless HEALTH is set.
 import { NAMED } from '../src/sim/veteranhome';
 import { sensibleAnswers } from '../src/sim/storypolicy';
+import '../src/sim/talethreads'; // threads of tales, for the Stories rows
 import { it } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
@@ -272,6 +273,7 @@ interface Watch {
   sieges: Siege[]; // settled on the map
   falling: number; // towns whose standing fell 10 or more over 20 years, held by one people throughout
   fallingTowns: number;
+  threads?: { ended: number; dropped: number; steps: number[] }; // threads of tales (talethreads.ts): told to their end, left unfinished, and the answers in each
   met: number; // the first season a story waited on the player's word face to face (encounter.ts), or -1
   driftSeasons: { lost: number; ts: number }; // drift's toll summed season by season over every town held by the one people it began with, and the town-seasons (the decrees row's second reading)
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
@@ -584,6 +586,7 @@ if (churched[f.id] >= YEARS20 / 2 && townSeasonsOf[f.id] > 0 && hungryOf[f.id] /
   w.watchRules = c.watchTally ? JSON.parse(JSON.stringify(c.watchTally)) : undefined;
   w.roads = c.roadTally ? JSON.parse(JSON.stringify(c.roadTally)) : undefined;
   w.roadCosts = c.roadCost ? JSON.parse(JSON.stringify(c.roadCost)) : undefined;
+  { const ends = c.threadEnds ?? []; w.threads = { ended: ends.filter((e) => e.how === 'ended').length, dropped: ends.filter((e) => e.how === 'dropped').length, steps: ends.map((e) => e.steps) }; } // threads of tales (talethreads.ts)
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
   w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0 && !it.claim).length; // a judgement after a claimant's rising is no plot begun (claimantjudged.ts)
   w.crimes = [...atLarge.values()];
@@ -868,6 +871,13 @@ add('Stories', 'A story met face to face within the first ten years', 'report on
   'A story waiting on the player\'s word face to face (encounter.ts): a thief caught, a suitor, a rival\'s envoy, a plotter found out. Read from the first season one waits.');
   }
   add('Stories', 'A story begins for the player\'s nation', 'about once in 3 to 6 years', stories ? `once in ${num(storyEvery, 1)} years (${stories} stories in ${ruled.length} campaigns)` : 'no stories', within(storyEvery, 3, 6), 'Every story inside the story begun for the player (a thief, a killer, a rival king, a suitor, a plot), over the years the campaign ran. ' + (STORIES === 'answer' ? 'The computer-played player answers them by a plain policy (STORIES=answer, src/sim/storypolicy.ts).' : 'The computer-played player answers none of them (STORIES=answer makes it answer).'));
+  // Threads of tales (talethreads.ts): how far a matter runs before it ends.
+  {
+const ths = ruled.map((w) => w.threads ?? { ended: 0, dropped: 0, steps: [] }), ended = ths.reduce((k, t) => k + t.ended, 0), dropped = ths.reduce((k, t) => k + t.dropped, 0);
+const steps = ths.flatMap((t) => t.steps), long = steps.filter((n) => n >= 3).length, within = ths.filter((t) => t.ended + t.dropped > 0).length;
+add('Stories', 'A thread of tales runs to its end', 'report only', ended + dropped ? `${ended} told to their end and ${dropped} left unfinished in ${ruled.length} campaigns (${pct(within / Math.max(1, ruled.length))} of campaigns end one); ${pct(long / Math.max(1, steps.length))} three answers or more, ${num(steps.reduce((a, b) => a + b, 0) / Math.max(1, steps.length), 1)} on the whole` : 'none ended', 'report',
+  'A thread is a tale that an earlier answer led to and the tales after it (threadtales.ts), ended when an answer leads nowhere further or dropped when its rival or tribe is gone. ' + (STORIES === 'answer' ? 'The computer-played player answers each tale the upright way when it can spare the supplies, the other way when it cannot (storypolicy.ts).' : 'The computer-played player answers no tales, so no thread is begun (STORIES=answer makes it answer).'));
+  }
   // Crime (watchhouse.ts): how long a thief or a killer is at large, in a town with a Watch House against one without.
   {
 const crimes = all('crimes'), mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
