@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { biomeOf, newCampaign } from '../src/sim/campaign';
 import { WORLD, creedGap, creedLean, worldMargin, worldText, worldWorth } from '../src/sim/rivalworld';
 import { aimWorth } from '../src/sim/rivalplan';
-import { WEARY, wouldAgree } from '../src/sim/rivalweary';
+import { WEARY, weariness, wouldAgree } from '../src/sim/rivalweary';
+import { tally } from '../src/sim/ledger';
+import { headcount } from '../src/sim/township';
 import { placesOf } from '../src/sim/places';
 import { nationVirtue } from '../src/sim/townfaith';
 import { isWinter } from '../src/sim/winter';
@@ -85,19 +87,21 @@ describe('its standing when it bargains', () => {
     expect(creedLean(c, 1, 2)).toBe(0);
     expect(nationVirtue(c, 1)).toBe(50);
   });
-  it('a rival sued for peace agrees at odds it would refuse a people of another faith', () => {
+  it('a rival sued for peace agrees with kin at a weariness it would refuse a people of another faith', () => {
     const { c } = world();
     c.turn = WEARY.from + 4;
-    c.armies = [];
-    const a1 = c.territories.find((t) => t.owner === 1)!, a2 = c.territories.find((t) => t.owner === 2)!;
-    // The sued is 1.4 times as strong: over what it yields to a stranger (1.3 less 15%), under what it yields to kin (1.3 and 15% more).
-    c.armies.push({ id: 1, owner: 1, at: a1.id, units: { infantry: 10 }, hero: false, vet: 0, moved: false }, { id: 2, owner: 2, at: a2.id, units: { infantry: 14 }, hero: false, vet: 0, moved: false });
-    for (const t of c.territories) if (t.owner === 2) delete t.yoke;
+    // It is weary by some amount; say that is exactly what it takes to agree: enough for kin (who ask 15% less), short for strangers (15% more).
+    const town = c.territories.find((t) => t.owner === 2)!;
+    const people = c.territories.filter((t) => t.owner === 2).reduce((n, t) => n + (t.folk ? headcount(t.folk) : 0), 0);
+    tally(c, town.id, 'fell', Math.ceil(people * 0.01));
+    const was = WEARY.agrees;
+    WEARY.agrees = weariness(c, 2);
+    expect(WEARY.agrees).toBeGreaterThan(0);
     stand(c, 1, 50); stand(c, 2, 50);
-    const kin = wouldAgree(c, 2, 1);
+    expect(wouldAgree(c, 2, 1)).toBe(true);
     stand(c, 2, -60);
     const strangers = wouldAgree(c, 2, 1);
-    expect(kin).toBe(true);
+    WEARY.agrees = was;
     expect(strangers).toBe(false);
   });
 });

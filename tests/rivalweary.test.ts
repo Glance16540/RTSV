@@ -77,11 +77,11 @@ describe('a weary rival sues for peace', () => {
     expect(suePeace(c, 1)).toEqual({ peace: [], offered: false });
     expect(c.pacts ?? []).toHaveLength(0);
   });
-  it('another rival agrees when it is not clearly the stronger, and neither marches on the other while it lasts', () => {
+  it('another rival agrees when it is weary itself, and neither marches on the other while it lasts', () => {
     const { c, cap, theirs } = world();
-    bleed(c, 1, 0.2);
+    bleed(c, 1, 0.2); bleed(c, 2, WEARY.losses);
     c.armies = c.armies.filter((a) => a.owner === 0);
-    army(c, 1, cap.id, 4); const foe = army(c, 2, theirs.id, 4);
+    army(c, 1, cap.id, 4); const foe = army(c, 2, theirs.id, 9);
     expect(wouldAgree(c, 2, 1)).toBe(true);
     const out = suePeace(c, 1);
     expect(out.peace).toEqual([2]);
@@ -92,27 +92,21 @@ describe('a weary rival sues for peace', () => {
     c.turn += WEARY.peace + 1;
     expect(atTruce(c, 1, 2)).toBe(false);
   });
-  it('one that is winning and whole refuses, and is not asked again for a while', () => {
+  it('one that is whole refuses, however weak, and is not asked again for a while', () => {
     const { c, cap, theirs } = world();
     bleed(c, 1, 0.2);
+    for (const t of c.territories) if (t.owner === 2) delete t.yoke;
     c.armies = c.armies.filter((a) => a.owner === 0);
-    army(c, 1, cap.id, 2); army(c, 2, theirs.id, 9);
-    expect(weariness(c, 2)).toBeLessThan(WEARY.agrees);
+    army(c, 1, cap.id, 9); army(c, 2, theirs.id, 1);
+    expect(weariness(c, 2)).toBeLessThan(WEARY.agrees * 0.85);
     expect(wouldAgree(c, 2, 1)).toBe(false);
     expect(suePeace(c, 1).peace).toEqual([]);
     expect(atTruce(c, 1, 2)).toBe(false);
-    c.armies = c.armies.filter((a) => a.owner !== 2); // it is beaten the season after
+    bleed(c, 2, WEARY.losses); // it bleeds the season after
     c.turn += 1;
     expect(suePeace(c, 1).peace).toEqual([]);
     c.turn += WEARY.again;
-    bleed(c, 1, 0.2);
-    expect(suePeace(c, 1).peace).toEqual([2]);
-  });
-  it('a winning rival that is weary itself agrees', () => {
-    const { c, cap, theirs } = world();
     bleed(c, 1, 0.2); bleed(c, 2, WEARY.losses);
-    c.armies = c.armies.filter((a) => a.owner === 0);
-    army(c, 1, cap.id, 2); army(c, 2, theirs.id, 9);
     expect(suePeace(c, 1).peace).toEqual([2]);
   });
   it('to the player it is an offer: a truce for the asking, at no price, while it stands', () => {

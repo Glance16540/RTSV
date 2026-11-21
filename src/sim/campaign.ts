@@ -1448,6 +1448,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     }
     // Spend what is left on troops, growing existing armies before starting new ones.
     suePeace(c, f.id); // weary of war, it sues for peace with the peoples it borders (rivalweary.ts)
+    if (f.id === 0) for (const g of c.factions) if (g.id > 0 && suesPlayer(c, g.id) && totalStrength(c, g.id) > totalStrength(c, 0)) offerTruce(c, g.id); // played by the computer, the player takes a truce offered by a rival stronger than it (rivalweary.ts)
     rivalMoves(c, f.id); // garrison what is resentful or beset, and keep that garrison there (rivalrule.ts)
     if (seizeOpen(c, f.id)) return false; // a dead town within reach is taken for the asking (deadtown.ts)
     const yards = own.filter((t) => maySpare(c, t.id) && Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))

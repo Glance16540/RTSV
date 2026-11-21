@@ -8,13 +8,13 @@
  * at 1 the people is weary of war.
  * - A people wants better odds the wearier it is (`wearyMargin`), so it begins fewer fights it might lose.
  * - A weary people sues for peace with the peoples it borders (`suePeace`). Another rival agrees if it is half
- *   as weary itself or is not clearly the stronger; the peace is a pact like a marriage's (pacts.ts), read by
- *   atTruce, and lasts `WEARY.peace` seasons. To the player it is an offer: for `WEARY.open` seasons a truce is
+ *   as weary itself; the peace is a pact like a marriage's (pacts.ts), read by atTruce, and lasts `WEARY.peace`
+ *   seasons. To the player it is an offer: for `WEARY.open` seasons a truce is
  *   theirs for the asking, at no price and sure (campaign.ts, offerTruce).
  * Plain data on the campaign. The computer plays by it for whoever it plays, but only a rival sues.
  */
 import type { Campaign } from './campaign';
-import { armyStrength, atTruce } from './campaignbase';
+import { atTruce } from './campaignbase';
 import { driftOf } from './drift';
 import { atWarWith } from './feudwar';
 import { swornPeace } from './pacts';
@@ -30,9 +30,9 @@ export const WEARY = {
   /** Points of odds a weary people wants over what it wanted, for each point of weariness, and at most. */
   margin: 2, most: 4,
   /** Seasons a peace between two rivals lasts; seasons an offer to the player stands; seasons before a people sues the same people again. */
-  peace: 8, open: 3, again: 10,
-  /** A rival sued for peace agrees if it is this weary itself, or is not this many times as strong as the one suing. */
-  agrees: 0.5, winning: 1.3,
+  peace: 4, open: 3, again: 10,
+  /** A rival sued for peace agrees if it is this weary itself. */
+  agrees: 0.5,
   /** No people is weary, or sues, before this season. */
   from: 8,
 };
@@ -70,7 +70,6 @@ export const wearyMargin = (c: Campaign, f: number): number => Math.min(WEARY.mo
 export const suedPeace = swornPeace;
 /** Does this rival stand ready to give the player a truce for the asking? */
 export const suesPlayer = (c: Campaign, f: number): boolean => { const at = c.sued?.[`${f}:0`]; return at !== undefined && c.turn - at <= WEARY.open && isWeary(c, f); };
-const strength = (c: Campaign, f: number): number => c.armies.filter((a) => a.owner === f).reduce((n, a) => n + armyStrength(a), 0);
 /** The peoples a people borders and is not at peace with. */
 export function foesOf(c: Campaign, f: number): number[] {
   const seen = new Set<number>();
@@ -80,10 +79,14 @@ export function foesOf(c: Campaign, f: number): number[] {
   }
   return [...seen].sort((a, b) => a - b);
 }
-/** Would a rival sued for peace by another agree: weary enough itself, or not clearly the stronger; and where the two stand in faith counts. */
+/**
+ * Would a rival sued for peace by another agree: only when it is weary enough itself, and where the two stand in
+ * faith counts. (Agreeing merely for being no stronger was tried: two rivals at peace both turned on the player,
+ * who was beaten in one campaign in five where it had been one in nine.)
+ */
 export function wouldAgree(c: Campaign, sued: number, suer: number): boolean {
   const lean = creedLean(c, sued, suer); // readier with a people of like standing, less ready with one far off (rivalworld.ts)
-  return weariness(c, sued) >= WEARY.agrees * (1 - lean) || strength(c, sued) < strength(c, suer) * WEARY.winning * (1 + lean);
+  return weariness(c, sued) >= WEARY.agrees * (1 - lean);
 }
 /**
  * A weary rival sues for peace with each people it borders, not oftener than every `WEARY.again` seasons each.
