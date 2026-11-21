@@ -4,6 +4,7 @@ import { Campaign, battleConfig, endTurn, finishBattle, newCampaign, resolvePend
 import { COMPANIES } from '../src/sim/campaignbase';
 import { CLASH } from '../src/sim/mapbattle';
 import { RAID } from '../src/sim/raidclash';
+import { seasonWaits, threatsOfMen } from '../src/sim/bandseason';
 import type { RaidFight } from '../src/sim/raidclash';
 import { foughtAs, offerRaid, raidBattle, raidCompanies, raidPending, raidUnits, settleRaid, waitsOnPlayer } from '../src/sim/raidfought';
 import { defenceOf, strike, strikeSeason } from '../src/sim/threats';
@@ -31,7 +32,7 @@ describe('a strike on a town of the player\'s waits on the player', () => {
     for (let seed = 1; seed <= 40 && !waited; seed++) {
       const { c, at } = world(12 * S, seed);
       band(c, at, 6);
-      const raids = strikeSeason(c, [], { waits: offerRaid });
+      const raids = strikeSeason(c, [], { waits: offerRaid, done: [] });
       if (!c.pending) continue;
       waited++;
       expect(c.pending).toMatchObject({ raid: 7, to: at, attacker: -1, defender: 0, armyId: -1 });
@@ -244,5 +245,53 @@ describe('what the field came to is written back by the strike\'s own rule', () 
     offerRaid(all.c, band(all.c, all.at, 8), all.at, []);
     finishBattle(all.c, false, {}, { foes: left(8, 0.5) });
     expect(all.c.armies.find((a) => a.id === 31)!.units).toEqual({ infantry: 1 });
+  });
+});
+
+describe('the season waits with the strike, and is taken up where it stopped', () => {
+  /** A world with several bands in reach of the player's towns and a rival's. */
+  const busy = (seed: number): Campaign => {
+    const c: Campaign = JSON.parse(base);
+    c.seed = seed * 7919; c.turn = 10 + seed; c.pending = null; c.demand = null;
+    const mine = c.territories.filter((t) => t.owner === 0), theirs = c.territories.filter((t) => t.owner > 0);
+    c.bands = [mine[0], theirs[0], mine[mine.length - 1], theirs[theirs.length - 1]].map((t, i) => ({ id: 20 + i, kind: i % 2 ? 'slavers' : 'raiders', name: `the band ${i}`, at: t.id, strength: 5 + i, since: 1, held: [] }) as Band);
+    c.bandSeq = 30;
+    return c;
+  };
+  it('left to the town each time, a season that waited comes out the same as one where nobody was asked', () => {
+    let waited = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const plain = busy(seed), asked = busy(seed);
+      threatsOfMen(plain);
+      threatsOfMen(asked, { waits: true });
+      for (let i = 0; i < 10 && seasonWaits(asked); i++) {
+        waited++;
+        expect(asked.pending?.raid).toBeDefined();
+        settleRaid(asked, 'auto');
+        threatsOfMen(asked, { waits: true });
+      }
+      expect(asked.seasonHeld).toBeUndefined();
+      expect(asked.log.filter((l) => !l.includes('are coming against')).sort()).toEqual([...plain.log].sort()); // the same lines; those of each part of the season are written as it ends
+      expect({ ...asked, log: [] }).toEqual({ ...plain, log: [] });
+    }
+    expect(waited).toBeGreaterThan(2);
+  });
+  it('in the campaign\'s own turn the season stops at the strike and goes on when it is settled', () => {
+    let seen = 0;
+    for (let seed = 1; seed <= 30 && seen < 2; seed++) {
+      const c = busy(seed);
+      c.turn = 10; c.phase = 'player';
+      c.truces = c.factions.slice(1).map((_, i) => ({ with: i + 1, until: 999 }));
+      endTurn(c);
+      if (!c.pending || c.pending.raid === undefined) continue;
+      seen++;
+      expect(seasonWaits(c)).toBe(true);
+      expect(c.phase).toBe('ai');
+      const turn = c.turn;
+      resolvePending(c, 'auto');
+      expect(c.turn).toBe(turn); // the same season, gone on with
+      if (!c.pending) { expect(seasonWaits(c)).toBe(false); expect(c.phase).toBe('player'); }
+    }
+    expect(seen).toBe(2);
   });
 });
