@@ -6,6 +6,7 @@ import { bodyOf, captiveKeys, nationOf } from '../sim/portrait';
 import type { Portrait } from '../sim/portrait';
 import { BANDS, Band, Raid, bandsAt, defenceOf, heldFrom, raidsAt, reportText, seasonsLeft } from '../sim/threats';
 import { armiesFor } from '../sim/bandfight';
+import { raidPending } from '../sim/raidfought';
 import { seasonNews } from '../sim/raidnews';
 import { portraitHtml } from './portrait';
 
@@ -84,6 +85,17 @@ export function bandPrompt(c: Campaign): { title: string; text: string; decline:
     title: `Fight ${b.name}?`,
     text: `${odds}Fight it yourself on open ground, or leave it to the army, which will do as well or as badly as its strength allows. No land changes hands.`,
     decline: true,
+  };
+}
+
+/** What to ask the player when a band is about to strike a town of theirs (raidfought.ts): fight for it in person, or leave it to the town. It cannot be called off. */
+export function raidPrompt(c: Campaign): { title: string; text: string } | null {
+  const p = c.pending, b = raidPending(c);
+  if (!p || !b) return null;
+  const t = c.territories[p.to];
+  return {
+    title: `${b.name[0].toUpperCase() + b.name.slice(1)} come against ${t.name}!`,
+    text: `${BANDS[b.kind].name} of ${strengthOf(b.strength)} against the town's defence of ${p.dStr}. Fight for the town yourself, with its own men and any army standing there, or leave it to the town, which will hold or fall by what it has. Beaten off, they are the weaker for it; if they get in they take what they can carry, and may lead people away.`,
   };
 }
 

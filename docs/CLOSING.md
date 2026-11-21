@@ -53,7 +53,7 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| The town defends itself, and the player may be there | A band's strike on a town is a clash on the map (`raidclash.ts`). Nobody can enter it, watch it or play it, unlike a nation's attack or a fight with a band in the open. | medium | Unity: the rule is done. What is missing is a real-time battle for a raid, which is the new engine's work. |
+| The town defends itself, and the player may be there | **Done for the player's towns (21 November 2026, `raidfought.ts`).** A band's strike on a town of the player's waits on the player, who may fight for it in person (the town as it defends, against the band's companies) or leave it to the town; the outcome is written back by the strike's own rule. Still missing: the town is not read back from the field (its dead, its houses and its stores change by the strike's rule only), and a strike on a road cannot be entered. | small | Unity: read the town back from the field as a nation's attack does. |
 | A report of who was killed and who was taken | The report counts them and ages them, but names only the notable. A town keeps counts and ages, not names. | large | Unity: naming everyone is a change to the town record's shape, the same decision as keeping every house by name. |
 | Which way the town's morals swayed | A raid's sway still reads the nation's standing, not the town's. Switching it moved campaigns ending in ruin out of band, so it was left. | small | Drop: left on measurement, and faith is otherwise the town's. |
 
@@ -165,7 +165,7 @@ The "Not yet" line is listed above.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | The same rules, the same losses | A rival's income is scaled by difficulty (the owner's choice: keep). The tales told every few turns are the player's only, and a rival is moved by a fixed step. | small | Unity: port as is. The scaling is the owner's choice. |
-| A rival that thinks as a people | It weighs only the land next to its army. It does not plan a road, mass two armies for one assault, or weigh its towns' losses in choosing war. It takes no account of world events, named places or creed when it bargains. | large | Unity: the rival's mind is the largest open piece of the design. The weights it already uses (`rivalaim.ts`, `rivalrule.ts`, `rivalcaptives.ts`) port as they are. |
+| A rival that thinks as a people | **Built (21 November 2026):** it sets its heart on a land and goes for it over seasons (`rivalplan.ts`), masses two armies for one assault (`rivalmass.ts`), weighs its towns' dead, hunger and unrest and sues for peace when they bleed (`rivalweary.ts`), and takes named places, plague, winter, the world's seasons and creed into account (`rivalworld.ts`). Its mind is not shown to the player, it never masses three armies, and it plans no road by sea beyond its harbours' reach. | small | Unity: port the four modules with `rivalaim.ts`, `rivalrule.ts` and `rivalcaptives.ts`; showing a rival's mind (the words are written: `planText`, `wearyText`, `worldText`) is a screen for the Unity side. |
 
 ## Faith is a town's; every town its own faith; a town's own life moves its faith
 
