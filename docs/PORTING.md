@@ -348,7 +348,7 @@ by name.
 | `rivalsettle` | 53 | A rival sends people by road: now and then, settlers from its fullest town to its town with too few grown people or no couple, by the player's own rule (migration.ts settle). | campaign (types only), migration, township | rivalsettle.test.ts | not yet |
 | `rivalhomes` | 58 | A rival's notable homes by which house did most: each season its town's harvest is counted to its working houses by their share of the work; the house that has done most is the next known home once it comes to a rank of standing, up to a few to a town. | campaign (types only), notableweight, peoplenames, township | rivalhomes.test.ts | not yet |
 | `rivaldrill` | 49 | A rival's towns train by standing orders, as the player's do: each season its frontier towns with a yard are told to train what their yards raise, to stop at a few companies, and train by townmuster.ts's rule. | campaign (types only), campaignbase, reckon, townmuster | rivaldrill.test.ts | not yet |
-| `rivalyoke` | 41 | A rival rules a resentful town with its resentment in mind: once a season, a Church for a devout people (else Farmland) in its most resentful town, when it can spare the price; building is lent by campaign.ts. | campaign (types only), campaignbase, conquered, creed, temper | rivalyoke.test.ts | not yet |
+| `rivalyoke` | 42 | A rival rules a resentful town with its resentment in mind: once a season, a Church for a devout people (else Farmland) in its most resentful town, when it can spare the price; building is lent by campaign.ts. | campaign (types only), campaignbase, conquered, creed, temper | rivalyoke.test.ts | not yet |
 | `revival` | 23 | A computer-led people counted out takes back a town that rises for it (conquered.ts) and lives again, the town its seat. | campaign (types only) | rivalyoke.test.ts | not yet |
 | `rivalstories` | 130 | Stories inside the story for rival rulers: the thief and the killer begin in their towns by the player's chances, are judged by the ruler's lights, and are told to the player only where he could hear of them. | campaign (types only), courtstory, creed, intrigue, intriguebase, townfaith, township, townwatch | rivalstories.test.ts | not yet |
 | `roadclash` | 132 | A band meets soldiers on the road, fought out with the map's clash: the band as in a raid, the soldiers as their own companies at the strength the map gives them (and, at a road's end, the wayfarers as the place); who broke, what each lost, and what the band comes away with. It decides an army's fight with a band (bandfight.ts), an escort's for a convoy or a caravan (`escortFight`, called by convoys.ts and caravans.ts) and a strike at a road's end (threats.ts); the old rule is tallied beside it for the report. | armytown, campaign (types only), campaignbase, mapbattle, raidclash | roadclash.test.ts | not yet |
@@ -450,7 +450,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-284 modules, 35,766 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+284 modules, 35,767 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -465,7 +465,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 8 | 12 | 1,160 | `places` (58; 5), `tribes` (217; 5), `bandmarch` (145; 4), `calamity` (202; 3), `larderwatch` (61; 2), `aicare` (56; 1), `downedmap` (64; 1), `grain` (78; 1), `siegeretreat` (63; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
 | 9 | 3 | 236 | `townfaith` (126; 25), `militia` (42; 4), `lessons` (68) |
 | 10 | 8 | 749 | `kin` (256; 8), `seasonfolk` (121; 5), `conquered` (126; 4), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1) |
-| 11 | 4 | 783 | `nobles` (253; 17), `dynasty` (232; 11), `portrait` (257; 1), `rivalyoke` (41; 1) |
+| 11 | 4 | 784 | `nobles` (253; 17), `dynasty` (232; 11), `portrait` (257; 1), `rivalyoke` (42; 1) |
 | 12 | 5 | 880 | `mapbattle` (378; 3), `nobletemper` (110; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `unrest` (128; 1) |
 | 13 | 2 | 229 | `raidclash` (143; 2), `tradedeal` (86; 2) |
 | 14 | 1 | 132 | `roadclash` (132; 4) |
