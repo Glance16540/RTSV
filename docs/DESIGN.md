@@ -274,6 +274,8 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **A town without a church can still tend** (the owner's word, 21 November 2026). The decree to tend the sick and the mourning may be given in a town with no church, at half its strength; with a church it is whole.
 
+**An empty land beside every chief town** (the owner's word, 21 November 2026). Every people, the player's and each rival's alike, begins with one empty land beside its chief town, so a young people has somewhere to send its first settlers. Leaving it to the player alone cost the player about one win in four (56% of campaigns to 43%), all of them to the rivals, so it is given to all.
+
 ## The order of building
 
 Each step is to be playable by itself.
