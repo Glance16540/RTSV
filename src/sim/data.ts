@@ -1026,8 +1026,10 @@ export const CIVS: Record<string, CivDef> = {
   },
   hearth: {
     id: 'hearth', name: 'Franks', icon: '⚜️', desc: 'Farmers and freeholders whose strength is their families.', unique: 'hearthguard', unique2: 'herbwife',
-    bonuses: ['Farms yield 25% more', 'Families raise children 25% faster', 'Houses hold 1 more person'],
-    apply: (m) => { m.farm = 1.25; m.birth += 0.25; m.housePop += 1; },
+    bonuses: ['Farms yield 25% more', 'Families raise children 25% faster', 'Houses hold 1 more person', 'Villagers gather 3% faster'],
+    // The last is their one early gift: farms, births and room all pay late. Against the other fourteen peoples' computers they won 42 decided
+    // games and lost 77 over 448 without it (35%), 54 and 68 with it (44%); at 5% it was 69 and 58 (54%), more than a small lift.
+    apply: (m) => { m.farm = 1.25; m.birth += 0.25; m.housePop += 1; m.gather *= 1.03; },
   },
   forge: {
     id: 'forge', name: 'Chinese', icon: '🐉', desc: 'Scholars, makers and masters of fire and powder.', unique: 'firethrower', unique2: 'organgun',
@@ -1043,8 +1045,10 @@ export const CIVS: Record<string, CivDef> = {
   },
   babylon: {
     id: 'babylon', name: 'Babylonians', icon: '🧱', desc: 'Lawgivers and star-readers behind great brick walls.', unique: 'sapper', unique2: 'gateguard',
-    bonuses: ['Research is 15% faster', 'Buildings have 15% more health'],
-    apply: (m) => { m.techTime = 0.85; m.buildingHp = 1.15; },
+    bonuses: ['Research is 15% faster', 'Buildings have 15% more health', 'Villagers gather 5% faster'],
+    // The last is their one early gift, over what every Builder has: against the other fourteen peoples' computers they won 43 decided games
+    // and lost 98 over 448 without it (30%), 62 and 68 with it (48%). Villagers building 15% faster instead read 53 and 97 (35%).
+    apply: (m) => { m.techTime = 0.85; m.buildingHp = 1.15; m.gather *= 1.05; },
   },
   persia: {
     id: 'persia', name: 'Persians', icon: '🦁', desc: 'An empire of many peoples, rich in goods and beasts of war.', unique: 'immortal', unique2: 'warelephant',
