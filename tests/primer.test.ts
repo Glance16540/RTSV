@@ -1,6 +1,6 @@
 // Teaching the campaign: the first orders follow what the player has done, and the page says what the rules say.
 import { describe, expect, it } from 'vitest';
-import { COMPANIES, DOMINION_TURNS, HERO_RANK_STRENGTH, SITES, advanceAge, armyAt, build, canBuild, canRaise, dominionNeed, endTurn, newCampaign, raise, reach, sendGift } from '../src/sim/campaign';
+import { COMPANIES, DOMINION_SHARE, DOMINION_TURNS, HERO_RANK_STRENGTH, SITES, advanceAge, armyAt, build, canBuild, canRaise, dominionNeed, endTurn, newCampaign, raise, reach, sendGift } from '../src/sim/campaign';
 import { HALL_GRACE } from '../src/sim/beaten';
 import { CHAMPION_KILLS } from '../src/sim/champion';
 import { primerBase, primerPage, primerSteps } from '../src/sim/primer';
@@ -79,6 +79,6 @@ describe('the page that explains the campaign', () => {
   it('gives the winning numbers of the world in hand, and a share of the map without one', () => {
     const c = world();
     expect(primerPage(c).at(-1)!.lines[0]).toContain(`${dominionNeed(c)} of this world's ${c.territories.length} lands`);
-    expect(primerPage().at(-1)!.lines[0]).toContain('60%');
+    expect(primerPage().at(-1)!.lines[0]).toContain(`${Math.round(DOMINION_SHARE * 100)}%`);
   });
 });
