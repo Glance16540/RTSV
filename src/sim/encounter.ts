@@ -85,10 +85,11 @@ export function awaitsWord(it: Intrigue): boolean {
   if (it.kind === 'rival') return it.stage === 1;
   if (it.kind === 'plot') return !!it.found;
   if (it.kind === 'thief') return it.caught !== undefined && !!it.thief;
+  if (it.kind === 'killer') return it.held !== undefined; // seized on the field, held for judgement (killerseized.ts)
   return false;
 }
 /** A mark for a story at the moment it waits on the leader: shown once, and again only if it comes to a new pass. */
-export const wordKey = (it: Intrigue): string => `${it.id}:${it.kind}:${it.stage ?? 0}:${it.found ? 1 : 0}:${it.caught ?? -1}`;
+export const wordKey = (it: Intrigue): string => `${it.id}:${it.kind}:${it.stage ?? 0}:${it.found ? 1 : 0}:${it.caught ?? -1}:${it.held ?? -1}`;
 
 /** The one who asks: the figure shown for a story that waits on the leader's word, or null. */
 export function askerOf(c: Campaign, it: Intrigue): Figure | null {
@@ -97,7 +98,7 @@ export function askerOf(c: Campaign, it: Intrigue): Figure | null {
   if (it.kind === 'suitor') return { role: 'asker', dress: 'noble', female: false, civ: civ(c, it.rival), seed, pose: 'stand' };
   if (it.kind === 'rival') return { role: 'asker', dress: 'envoy', female: false, civ: civ(c, it.rival), seed, pose: 'stand' };
   if (it.kind === 'plot') { const n = it.nobles?.[it.culprit]; return { role: 'asker', dress: 'noble', female: !!n?.female, civ: civ(c, 0), seed, pose: 'humble' }; }
-  return { role: 'asker', dress: 'villager', female: it.thief?.gender === 'f', civ: civ(c, 0), seed, pose: 'humble' };
+  return { role: 'asker', dress: 'villager', female: (it.kind === 'killer' && it.held !== undefined ? it.people[it.held] : it.thief)?.gender === 'f', civ: civ(c, 0), seed, pose: 'humble' };
 }
 /** The stories of the player's that wait on their word, oldest first. */
 export const awaiting = (c: Campaign): Intrigue[] => (c.intrigues ?? []).filter(awaitsWord);

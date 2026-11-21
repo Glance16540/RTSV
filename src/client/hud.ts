@@ -47,7 +47,7 @@ import type { App } from './main';
 import { playLine, speechHtml } from './voice';
 import { sfx } from './sfx';
 import { researchAt } from '../sim/ownstudies';
-import { questionCommand, robbedLine, suspectLine } from './fieldstoryui';
+import { accuseCommand, questionCommand, robbedLine, suspectLine } from './fieldstoryui';
 import { roadCommands } from './roadtool';
 import { answerCommands, guestLine, nobleLine, nobleName } from './courtfieldui';
 
@@ -364,6 +364,7 @@ export class Hud {
       const put = (b: (typeof out)[number]): void => { const free = out.length >= 14 ? out.findIndex((x) => !x.id) : -1; if (free >= 0) out[free] = b; else out.push(b); }; // in an empty place when the card is full, so that Stop keeps its own
       if (units.some((u) => mayGoHome(game, u))) put({ id: 'gohome', icon: '🏠', name: 'Go home', desc: `A man of this town with the army lays down his arms and is a villager again, in his own house; the rest of his company leave the field with him. ${away} of the town's men ${away === 1 ? 'is' : 'are'} still with the army.`, act: () => game.cmdGoHome(pid, ids) });
       const ask = questionCommand(game, pid, units); if (ask) put(ask); // a story afoot in the town (fieldstory.ts)
+      const seize = accuseCommand(game, pid, units); if (seize) put(seize); // and seizing one of those spoken of (fieldaccuse.ts)
       if (units.some((u) => mayRejoin(game, u))) put({ id: 'rejoin', icon: '🗡️', name: 'Take up arms', desc: 'This man is a soldier home on leave: he goes back to the army, and his company stands again.', act: () => game.cmdRejoin(pid, ids) });
       while (out.length < 14) out.push({ id: '', icon: '', name: '', desc: '', act: () => {} });
       out.push({ id: 'stop', icon: ico('stop', '✋'), name: 'Stop', desc: 'Halt and forget current orders.', act: () => game.cmdStop(pid, ids) });

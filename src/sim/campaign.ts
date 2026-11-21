@@ -71,6 +71,7 @@ import { breakPacts } from './pacts';
 import { royalSeason } from './royalmarriage';
 import { tradeSeason } from './tradedeal';
 import { hallCasesAt, hallFromSitting } from './hallcases';
+import { storiesForBattle, storiesFromBattle } from './battlestory';
 import { widowsSeason } from './widowhood';
 import { studiedHome, studiesSeason, withStudies } from './studies';
 import { rulesSeason } from './rule';
@@ -96,6 +97,10 @@ import { Orders, governTowns, keepOrders, shareOf } from './governor';
 import { drillWithQueued, keepQueued } from './queueddrill';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
+import { aimFirst, balk, planStep } from './rivalplan';
+import { HOLD, lent, massOrder } from './rivalmass';
+import { suePeace, suesPlayer, wearyMargin } from './rivalweary';
+import { creedLean, worldMargin } from './rivalworld';
 import { heldFirst } from './rivalcaptives';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
@@ -981,10 +986,16 @@ export const homeEdge = (c: Campaign, attacker: number): number => (c.factions[a
  */
 export function offerTruce(c: Campaign, f: number): boolean {
   const fac = c.factions[f];
+  if (fac?.isAI && fac.alive && !atTruce(c, 0, f) && c.phase === 'player' && suesPlayer(c, f)) { // weary of war, they asked first: it is given, and costs nothing (rivalweary.ts)
+    c.truces.push({ with: f, until: c.turn + TRUCE_TURNS });
+    say(c, f, 'truce');
+    c.log.push(`A truce with ${fac.name} until turn ${c.turn + TRUCE_TURNS}: they asked for it.`);
+    return true;
+  }
   if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || !canPayFor(c, 0, 'dealing', truceCost(c.factions[0].civ)) || c.phase !== 'player' || fac.refused === c.turn) return false;
   if (atWarWith(c, f)) { fac.refused = c.turn; say(c, f, 'refuse'); c.log.push(`${fac.name} are at war with you over their king's quarrel, and will hear of no truce before turn ${warUntil(c, f)! + 1}.`); return false; } // a defied king who declared war (feudwar.ts)
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
-  const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0) + treatLean(c, f); // and readier to treat (nobleweigh.ts)
+  const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0) + treatLean(c, f) + creedLean(c, f, 0); // and readier to treat (nobleweigh.ts); readier with a people of like standing, less with one far off (rivalworld.ts)
   if (c.honor < 0 || rand(c) > willing) {
     fac.refused = c.turn;
     say(c, f, 'refuse');
@@ -1099,6 +1110,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   // written: a battle fought in person has been settled and its field is being read back.
   .on('written', 'studies', (c, _p, b) => { studiedHome(c, 0, b.after?.studies); }) // what the player's side researched in the fighting is the nation's, as from a visit
   .on('written', 'hallcases', (c, p, b) => { if (p.defender === 0 && p.mode !== 'field') hallFromSitting(c, p.to, b.after?.hall); }) // the rulings given at the town's Hall in the battle (hallcases.ts)
+  .on('written', 'battlestory', (c, p, b) => { storiesFromBattle(c, p, b.playerWon === true, b.after); }) // a thief, a killer or a plot in the town fought for, come home if it held (battlestory.ts)
   .on('written', 'fieldcaravan', (c, p, b) => { if (p.defender === 0 && p.mode !== 'field') caravanFromField(c, p.to, b.after?.caravan); }) // the town's caravan, home or caught on the field (fieldcaravan.ts)
   .on('written', 'warrecord', (c, p, b) => { recordsBack(c, p, b.after?.records); }) // each named soldier who stood adds the battle to his record (warrecord.ts)
   .on('written', 'tribes', (c, p, b) => fieldReckoned(c, p, b.after?.folk)) // those of the town who marched out to a battle in the open and fell
@@ -1452,6 +1464,8 @@ function aiStep(c: Campaign, f: Faction): boolean {
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
     // Spend what is left on troops, growing existing armies before starting new ones.
+    suePeace(c, f.id); // weary of war, it sues for peace with the peoples it borders (rivalweary.ts)
+    if (f.id === 0) for (const g of c.factions) if (g.id > 0 && suesPlayer(c, g.id) && totalStrength(c, g.id) > totalStrength(c, 0)) offerTruce(c, g.id); // played by the computer, the player takes a truce offered by a rival stronger than it (rivalweary.ts)
     rivalMoves(c, f.id); // garrison what is resentful or beset, and keep that garrison there (rivalrule.ts)
     rivalHunts(c, f.id); // and an army marches for a band that holds its people or sits in its land (rivalhunt.ts)
     if (seizeOpen(c, f.id)) return false; // a dead town within reach is taken for the asking (deadtown.ts)
@@ -1481,17 +1495,19 @@ function aiStep(c: Campaign, f: Faction): boolean {
     const foe = (id: number) => { const o = c.territories[id].owner; return o > 0 && c.territories.some((t) => t.owner === o && t.adj.some((n) => c.territories[n].owner === 0)) ? 0 : 1; };
     targets.sort((a, b) => foe(a) - foe(b));
   }
+  targets.splice(0, targets.length, ...aimFirst(c, f.id, here.id, targets)); // what brings it nearer its war aim first (rivalplan.ts)
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
   targets.splice(0, targets.length, ...sickLast(c, targets)); // a land with plague in it last (aiplague.ts)
   targets.splice(0, targets.length, ...maraudersFirst(c, f.id, targets)); // a camp of the marauders that holds its people, or has struck its towns (rivalhunt.ts)
   targets.splice(0, targets.length, ...heldFirst(c, f.id, targets)); // a land holding its carried-off in their last seasons first (rivalcaptives.ts)
   // Cautious leaders want better odds; a leader who has just been refused wants blood.
+  const weary = wearyMargin(c, f.id);
   const dares = (from: number, to: number): boolean => {
     const t = c.territories[to];
     if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
-    const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id); // its angry lords make it wary (nobleweigh.ts)
+    const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id) + weary + worldMargin(c, to); // what its towns have borne (rivalweary.ts), and winter and the world's seasons (rivalworld.ts) // its angry lords make it wary (nobleweigh.ts)
     const bySea = !c.territories[from].adj.includes(to);
-    return wouldTake(c, army, to, strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * skyInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
+    return wouldTake(c, army, to, (strengthVs(army, defenders(c, to), rankWith(c, army)) + lent(c, f.id, to, army.id)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * skyInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
   };
   // It marches on the most wanted land it dares, not only the most wanted of all.
   const dared = targets.find((id) => dares(here.id, id));
@@ -1502,6 +1518,14 @@ function aiStep(c: Campaign, f: Faction): boolean {
   // Nothing it dares, and plague where it stands: it goes to a healthy land of its own next door (aiplague.ts).
   const away = leavePlague(c, army);
   if (away >= 0 && moveArmy(c, army.id, away) === 'moved') { army.moved = true; return false; }
+  // Nothing it dares: before the way to its war aim it sends for a second army and holds; the second comes to it (rivalmass.ts).
+  const mass = massOrder(c, f.id, army);
+  if (mass === HOLD) { army.moved = true; return false; }
+  if (mass >= 0 && safeStep(c, mass) && moveArmy(c, army.id, mass) === 'moved') { army.moved = true; return false; }
+  // Else toward its war aim through its own lands; and its strongest, standing before the way to it, gives that aim up (rivalplan.ts).
+  const toAim = planStep(c, f.id, army.at);
+  if (toAim >= 0 && safeStep(c, toAim) && moveArmy(c, army.id, toAim) === 'moved') { army.moved = true; return false; }
+  balk(c, f.id, army);
   if (!reach(c, here.id).some((id) => reckoned(c, f.id, id))) {
     // Deep in friendly land: walk towards the nearest border.
     const next = stepToBorder(c, f.id, army.at);
@@ -1603,7 +1627,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
     seed: t.seed, size: field ? 56 : t.trait === 'coast' ? 96 : 72, level: foe < 0 ? 0 : c.level, humanAttacks, field, sea: !field && t.trait === 'coast',
     title: humanAttacks ? `${p.sea ? 'The landing at' : 'The assault on'} ${t.name}` : `The defence of ${t.name}`,
     setups: [
-      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...(!humanAttacks && !field && hallCasesAt(c, p.to).length ? { hall: hallCasesAt(c, p.to) } : {}), /* the cases before the town's Hall (hallcases.ts) */ ...(!humanAttacks && !field && caravanAtField(c, p.to) ? { caravan: caravanAtField(c, p.to) } : {}), /* its Market's caravan on the road (fieldcaravan.ts) */ ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: { ...withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))), ...(!humanAttacks && !field && askedFor(c, p.to) ? { asked: askedFor(c, p.to) } : {}) } }, // with what the nation has learned (studies.ts)
+      { name: sideName(c, 0), color: c.factions[0].color, isAI: false, team: 0, civ: c.factions[0].civ, ...corner(true), ...(groundWater ? { water: groundWater } : {}), ...(humanAttacks && !field ? { besieger: true } : {}), ...(!humanAttacks && !field && hallCasesAt(c, p.to).length ? { hall: hallCasesAt(c, p.to) } : {}), /* the cases before the town's Hall (hallcases.ts) */ ...(!humanAttacks && !field && caravanAtField(c, p.to) ? { caravan: caravanAtField(c, p.to) } : {}), /* its Market's caravan on the road (fieldcaravan.ts) */ ...led(0, humanAttacks ? attackers : defenders), virtue: humanAttacks || field ? virtueOf(c, 0) : faithAt(c, p.to), bonus: { ...withStudies(c, 0, humanAttacks ? side(attackers, false, p.aStr, ageOf(c, 0)) : side(defenders, true, p.dStr, ageOf(c, 0))), ...(!humanAttacks && !field && askedFor(c, p.to) ? { asked: askedFor(c, p.to) } : {}), ...storiesForBattle(c, p) } }, /* a thief, a killer or a plot in the town (battlestory.ts) */ // with what the nation has learned (studies.ts)
       {
         name: foe < 0 ? LOCALS.name : c.factions[foe].name, color: foe < 0 ? LOCALS.color : c.factions[foe].color, isAI: true, team: 1, civ: foe < 0 ? localCiv : c.factions[foe].civ, ...(foe < 0 ? { tribe: true } : {}), ...corner(false), ...(!humanAttacks && !field ? { besieger: true } : {}), ...(foe < 0 ? {} : led(foe, humanAttacks ? defenders : attackers)), virtue: humanAttacks && !field ? faithAt(c, p.to) : virtueOf(c, foe),
         bonus: withStudies(c, foe, humanAttacks ? side(defenders, true, p.dStr, ageOf(c, foe)) : side(attackers, false, p.aStr, ageOf(c, foe))),
