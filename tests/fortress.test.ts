@@ -68,7 +68,7 @@ describe('a Fortress', () => {
   it('stands in the town, beside its towers, where the land has one; and takes people in', () => {
     const d = BUILDINGS.fortress;
     expect(d.shelter).toBe(12);
-    expect(d.atk).toBeUndefined(); // the towers do the shooting
+    expect(d.atk).toBe(BUILDINGS.tower.atk); // it shoots as a tower does now (the gathering session's batch, 21 November 2026; tests/fortfield.test.ts)
     const c: Campaign = JSON.parse(base);
     c.turn = 10; c.phase = 'player';
     const t = c.territories.find((x) => x.owner === 0 && x.capital === 0)!;

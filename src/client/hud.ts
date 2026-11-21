@@ -26,6 +26,7 @@ import { hireBar } from '../sim/birthonly';
 import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
+import { claimLine } from './claimfiguresui';
 import { gated } from '../sim/rescue';
 import { notableLine, notableList } from './notables';
 import { captivePortraitHtml, standingHtml, tavernFace, unitPortraitHtml } from './portrait';
@@ -609,6 +610,7 @@ export class Hud {
       body += `<div class="warn">🔥 On fire: it may spread to buildings close by. ${hands ? `${hands} ${hands === 1 ? 'villager is' : 'villagers are'} fighting it.` : b.owner === game.humanId ? 'Right-click it with villagers to fight the fire.' : ''}</div>`;
     }
     body += guestLine(game, b, pid); // a rival's envoy or a suitor in the hall, or a plot at court (courtfield.ts): first, so all of them are seen
+    body += claimLine(game, b); // a claimant to the throne and the lord behind them, at the hall (claimantfigures.ts)
     if (b.type === 'towncenter' && !game.hostile(b.owner, pid)) body += notableList(game, b.owner);
     if (b.type === 'towncenter' && b.owner === game.humanId) {
       const w = want(game.players[b.owner]);

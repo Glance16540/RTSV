@@ -935,3 +935,6 @@ body.looking-out #visit { display: none; }
 .ow-side .call-pick { text-align: left; font-size: 13px; padding: 4px 8px; }
 .ow-side .call-pick.on { border-color: #7a5a1c; background: rgba(214, 170, 80, 0.28); }
 .ow-side .warn { color: #9a3a1e; }
+
+/* The one met answers the choice (src/client/encounter.ts, sim encounter.ts reactionTo): the line said as they do. */
+.enc-answer { margin: 10px 0 0; font: italic 600 17px/1.35 var(--book); color: var(--rubric); }

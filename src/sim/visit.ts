@@ -15,6 +15,7 @@ import { furloughOf, homeOnLeave } from './furloughmap';
 import { keepRoofs, roofsFor } from './roofsmap';
 import { storyForVisit, storyFromVisit } from './storyvisit';
 import { courtForVisit, courtFromVisit } from './courtvisit';
+import { visitFigures } from './claimantfigures';
 import { caravanAtField, caravanFromField } from './fieldcaravan';
 import { hallCasesAt, hallFromSitting } from './hallcases';
 import { keepRoads, roadsFor } from './handroads';
@@ -223,7 +224,8 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         ...(roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // roads laid by hand there before (handroads.ts)
         ...(askedFor(c, t.id) ? { asked: askedFor(c, t.id) } : {}), // the dilemmas it was asked before (askedhere.ts)
         ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)
-        ...(courtForVisit(c, t.id) ? { court: courtForVisit(c, t.id) } : {}), // a rival's envoy, a suitor or a plot, where the court is kept (courtvisit.ts)
+        ...(courtForVisit(c, t.id) ? { court: courtForVisit(c, t.id) } : {}),
+        ...(visitFigures(c, t.id).length ? { claims: visitFigures(c, t.id) } : {}), // a grown claimant who lives here, and the lord behind them (claimantfigures.ts) // a rival's envoy, a suitor or a plot, where the court is kept (courtvisit.ts)
         ...(furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}), // its own men with the army there may go home while the player is in the town (furlough.ts)
         ...(army && army.owner === 0 ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}), // its companies led by the men of its roll, as in a battle (soldiernames.ts)
       },
