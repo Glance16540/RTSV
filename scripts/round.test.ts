@@ -90,6 +90,8 @@ it.skipIf(!process.env.ROUND)('the round of all fifteen', () => {
       play(flip ? civs[j] : civs[i], flip ? civs[i] : civs[j], 3000 + i * 131 + j * 17 + k * 7, ` #${i}.${j}.${k}`);
     }
   }
-  const asked = `${ONLY ? `${CIVS[ONLY]?.name ?? ONLY} against the others` : `${civs.length} peoples`}, k ${S0} to ${S1 - 1}, ${few ? 'seed k + 1 for every pair, both ways round' : 'a map of its own for every game'}, level ${LEVEL}, ${MIN} minutes`;
+  // The table tells of the whole file, which several processes may have filled between them: the run of k is read from it, not from this process's share.
+  const ks = existsSync(OUT) ? [...readFileSync(OUT, 'utf8').matchAll(/ #\d+\.\d+\.(\d+)/g)].map((m) => +m[1]) : [];
+  const asked = `${ONLY ? `${CIVS[ONLY]?.name ?? ONLY} against the others` : `${civs.length} peoples`}, k ${ks.length ? Math.min(...ks) : S0} to ${ks.length ? Math.max(...ks) : S1 - 1}, ${few ? 'seed k + 1 for every pair, both ways round' : 'a map of its own for every game'}, level ${LEVEL}, ${MIN} minutes`;
   if (existsSync(OUT)) writeFileSync(OUT + '.md', table(OUT, asked));
 }, 6 * 3600_000);
