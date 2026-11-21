@@ -110,8 +110,13 @@ export const ALLIANCE_COST = 6;
 
 export const MAX_FAVOR = 3;
 
-/** Hold this share of all the land for this many turns running and the campaign is won. */
-export const DOMINION_SHARE = 0.6;
+/**
+ * Hold this share of all the land for this many turns running and the campaign is won. It was 0.6; read at 384 campaigns
+ * on main 67711fd, the campaigns still undecided after 200 seasons in the answered course (9.1% and 10.4%) were close
+ * ones, two or three peoples left and most ending with four fifths or more of the land the share asked: at 0.57 (a land
+ * fewer on most maps) 7.0% and 8.6% were undecided, and 5.5% and 8.3% in the other course where 6.0% and 9.1% were.
+ */
+export const DOMINION_SHARE = 0.57;
 
 export const DOMINION_TURNS = 10;
 
