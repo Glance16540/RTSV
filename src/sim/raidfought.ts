@@ -26,7 +26,7 @@ import { CIV_IDS, TECHS } from './data';
 import { CLASH } from './mapbattle';
 import { RAID } from './raidclash';
 import type { RaidFight } from './raidclash';
-import { BANDS, STRIKES, breakBand, defenceOf, note, strike } from './threats';
+import { BANDS, breakBand, defenceOf, note, strike } from './threats';
 import type { Band, Defence, Raid } from './threats';
 import { marched } from './bandmarch';
 import { leaderAt } from './court';
@@ -64,7 +64,6 @@ export function offerRaid(c: Campaign, b: Band, tid: number, out: string[]): boo
   out.push(`${BANDS[b.kind].icon} ${cap(b.name)} are coming against ${c.territories[tid].name}.`);
   return true;
 }
-STRIKES.waits = offerRaid; // threats.ts `strikeSeason` asks before a strike falls
 
 /** The band's men as they come against a town: raidclash.ts's own count, bows in RAID.bows' share and the rest on foot, by company. */
 export function raidCompanies(strength: number): Record<string, number> {

@@ -6,7 +6,7 @@ import { CLASH } from '../src/sim/mapbattle';
 import { RAID } from '../src/sim/raidclash';
 import type { RaidFight } from '../src/sim/raidclash';
 import { foughtAs, offerRaid, raidBattle, raidCompanies, raidPending, raidUnits, settleRaid, waitsOnPlayer } from '../src/sim/raidfought';
-import { STRIKES, defenceOf, strike, strikeSeason } from '../src/sim/threats';
+import { defenceOf, strike, strikeSeason } from '../src/sim/threats';
 import type { Band, Defence } from '../src/sim/threats';
 import { TOWN_SCALE as S, folkOf } from '../src/sim/township';
 
@@ -27,12 +27,11 @@ const left = (strength: number, share: number): Record<string, number> => Object
 
 describe('a strike on a town of the player\'s waits on the player', () => {
   it('the season\'s strikes ask before one falls, and a strike that waits is not struck', () => {
-    expect(STRIKES.waits).toBe(offerRaid);
     let waited = 0;
     for (let seed = 1; seed <= 40 && !waited; seed++) {
       const { c, at } = world(12 * S, seed);
       band(c, at, 6);
-      const raids = strikeSeason(c, []);
+      const raids = strikeSeason(c, [], { waits: offerRaid });
       if (!c.pending) continue;
       waited++;
       expect(c.pending).toMatchObject({ raid: 7, to: at, attacker: -1, defender: 0, armyId: -1 });
@@ -59,6 +58,16 @@ describe('a strike on a town of the player\'s waits on the player', () => {
     offerRaid(c, b, at, out);
     expect(out[0]).toContain('are coming against');
     expect(c.pending!.dStr).toBe(defenceOf(c, at).total);
+  });
+  it('struck by hand, with nobody asked, a strike falls at once as it always did', () => {
+    let struck = 0;
+    for (let seed = 1; seed <= 40 && !struck; seed++) {
+      const { c, at } = world(12 * S, seed);
+      band(c, at, 6);
+      struck += strikeSeason(c, []).length;
+      expect(c.pending).toBeNull();
+    }
+    expect(struck).toBe(1);
   });
   it('a player the computer plays as a rival is not asked', () => {
     const { c, at } = world();

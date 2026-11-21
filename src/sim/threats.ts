@@ -394,9 +394,6 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[], opts: {
   return raid;
 }
 
-/** Whether a strike about to fall waits on someone instead (raidfought.ts fills it: the player may fight for a town of theirs in person). By itself nothing waits. */
-export const STRIKES: { waits: (c: Campaign, b: Band, tid: number, out: string[]) => boolean } = { waits: () => false };
-
 /** The report in one line, for the log. */
 export function reportLine(c: Campaign, r: Raid): string {
   const t = c.territories[r.at], icon = BANDS[r.kind].icon, who = r.name[0].toUpperCase() + r.name.slice(1);
@@ -458,7 +455,7 @@ export function softest(c: Campaign, b: Band, reach = reachOf(c, b)): { id: numb
 }
 
 /** Every band but the marauders grows a little with time, and may strike the softest town in its reach. */
-export function strikeSeason(c: Campaign, out: string[]): Raid[] {
+export function strikeSeason(c: Campaign, out: string[], opts: { /** Asked before a strike falls: true, and it waits on someone instead (the season's own turn passes raidfought.ts `offerRaid`: the player may fight for a town of theirs in person). */ waits?: (c: Campaign, b: Band, tid: number, out: string[]) => boolean } = {}): Raid[] {
   const raids: Raid[] = [];
   for (const b of [...(c.bands ?? [])]) {
     if (b.kind === 'marauders') continue; // they keep their own season (bandhorde.ts)
@@ -466,7 +463,7 @@ export function strikeSeason(c: Campaign, out: string[]): Raid[] {
     if (c.turn > b.since && (c.turn - b.since) % THREATS.grow === 0) b.strength = Math.min(THREATS.max, b.strength + 1);
     const m = softest(c, b);
     if (!m || chance(c, b.id, 41) >= THREATS.strike) continue;
-    if (STRIKES.waits(c, b, m.id, out)) continue; // it waits on the player, who may fight it in person (raidfought.ts)
+    if (opts.waits?.(c, b, m.id, out)) continue; // it waits on the player, who may fight it in person (raidfought.ts)
     const raid = strike(c, b, m.id, out);
     raids.push(raid);
     if (raid.broken) { note(c, out, 'broken', b, b.at, `${cap(b.name)} are broken and scattered.`, [raid.owner]); breakBand(c, b, out); }

@@ -141,7 +141,7 @@ by name.
 | `bandmarch` | 145 | Bands on the march and the armies they meet: farther along a road, drawn by riches, daring a tired or lonely army, seen by the armies they pass. | armytown, campaign (types only), founding, heralds, rim, township | bandmarch.test.ts | not yet |
 | `bandmeet` | 89 | A band coming for a town of the player's, put to them once when an army can meet it: go out, send the army, or let them come. | bandfight, campaign (types only), campaignbase, threats, threatsbase | bandmeet.test.ts | not yet |
 | `bandroam` | 219 | Bands move: they flee strong armies, plan a way of a few lands toward softer marks, settle as marauders and break up. | bandhorde, bandmarch, campaign (types only), campaignbase, rim, threats | bandroam.test.ts | not yet |
-| `bandseason` | 40 | One season of the threats of men: the one call the campaign makes for all of it. | bandborn, bandcaravan, bandfight, bandhorde, bandmarch, bandroam, bandwilds, campaign (types only), carriedoff, inn, nocarry, raidnews, threats | threats.test.ts | not yet |
+| `bandseason` | 41 | One season of the threats of men: the one call the campaign makes for all of it. | bandborn, bandcaravan, bandfight, bandhorde, bandmarch, bandroam, bandwilds, campaign (types only), carriedoff, inn, nocarry, raidfought, raidnews, threats | threats.test.ts | not yet |
 | `battlecard` | 132 | What a campaign battle or a visit says of itself: the briefing before it (what it is, whom the player leads, what winning means, that no villager is bought), the count of both sides as it is fought, and words the size of what happened. | data, game (types only) | battlecard.test.ts | not yet |
 | `battlefolk` | 99 | A town's people in a battle, out of the battle hub: its own people set down on the field at the ages its record has them (`peopled`), its children set on its roofs' records (`cradled`), and the count of a side's town a battle hands back to the campaign (`censusOf`, which `Game.census` is). | ageing, data, game (types only), household, notableweight, orphantown, township, widowtown, writeguard | battlefolk.test.ts, persistfolk.test.ts, ageing.test.ts | not yet |
 | `battleleader` | 119 | The leader in a battle, out of the battle hub: who a people's leader is, how their powers are fitted to the hero they are built on, the deeds that raise them through the ranks, the powers they learn, and the call they raise. Game keeps a one-line method of the same name for each. | champion, data, game (types only), hero, powers | battleleader.test.ts, leader-play.test.ts, leader-rise.test.ts, powers.test.ts | not yet |
@@ -344,7 +344,7 @@ by name.
 | `primer` | 117 | Teaching the campaign: what a new player is told to do first, and the page that explains the rest. | beaten, campaign, campaignbase, champion, creed, data, dominion, hero, nextage, powers, story, townworks, visit | primer.test.ts | not yet |
 | `quarantine` | 20 | Quarantine, a study: plague crosses between towns less on the map, and from strangers less in a town. | campaign (types only), game (types only), studies | foodstudies.test.ts | not yet |
 | `raidclash` | 145 | A raid fought out a round at a time with the map's clash: the band against the town as it turns out (its own men as militia bands beside any army, its works, walls and guard as the place), read as held, raided or taken by who broke and how cheaply. It decides a strike on a town (threats.ts), a garrison pressed in it loses companies, and the town's dead are what its bands lost. The fight as it was before (the town one weight) is kept for the report. | mapbattle | raidclash.test.ts | not yet |
-| `raidfought` | 161 | A band's strike on a town of the player's as a battle the player may enter: the strike waits as a pending battle (`Pending.raid`), left to the town it falls by threats' `strike` as always, and fought in person it is the town as battleConfig lays it against the band's companies alone, written back by the strike's own rule (held, raided or taken by what the fight cost the band; captives, spoils, the garrison's companies, the leader). Fills threats' `STRIKES.waits`; called by campaign (`battleConfig`, `resolvePending`, `finishBattle`). | bandmarch, campaign (types only), campaignbase, court, data, dynasty, hero, mapbattle, raidclash, threats | raidfought.test.ts | not yet |
+| `raidfought` | 160 | A band's strike on a town of the player's as a battle the player may enter: the strike waits as a pending battle (`Pending.raid`), left to the town it falls by threats' `strike` as always, and fought in person it is the town as battleConfig lays it against the band's companies alone, written back by the strike's own rule (held, raided or taken by what the fight cost the band; captives, spoils, the garrison's companies, the leader). Passed to threats' `strikeSeason` by bandseason; called by campaign (`battleConfig`, `resolvePending`, `finishBattle`). | bandmarch, campaign (types only), campaignbase, court, data, dynasty, hero, mapbattle, raidclash, threats | raidfought.test.ts | not yet |
 | `raidertown` | 28 | A raiding people at home: a side handed a town of the map begins as a town, with its hall and its people, and not as a war band. | none | raidertown.test.ts | not yet |
 | `raidnews` | 70 | The season's news of the bands as plain data, one entry point (`seasonNews`) for whatever shows it; and a campaign's tally. | campaign (types only), heralds, threats | raidnews.test.ts | not yet |
 | `rescue` | 130 | Getting captives back without burning the camp down, and what a camp's keeper should do about it. | creed, game (types only), path | rescue.test.ts | not yet |
@@ -390,7 +390,7 @@ by name.
 | `tavernfall` | 24 | The tavern as a town falls. As a town grows less moral its tavern keeps later hours and takes more gold; what is | creed | tavernfall.test.ts | not yet |
 | `temper` | 127 | A leader's temperament, as answered by whoever plays them in the voice booth. It steers how the | none | sim.test.ts (none of its own) | not yet |
 | `threatsbase` | 47 | The numbers of the threats of men, apart from the rules that use them, so that a system below those rules can read one without a ring of imports. | none | threatsbase.test.ts, threats.test.ts | not yet |
-| `threats` | 484 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it: who the bands are, how a town struck defends itself, the report, and captives held and got back. | acts, ageing, armytown, campaign (types only), campaignbase, creed, drift, fortkeep, fortress, heralds, larder, leaderstay, militia, militiatoll, naming, oldfolk, ownstudies, raidclash, rim, roadclash, stores, strengthwords, threatsbase, townfaith, township, townwatch, watchtally | threats.test.ts | not yet |
+| `threats` | 481 | Threats of men on the map (docs/DESIGN.md, step 4): bands that belong to no nation, choose a town and strike it: who the bands are, how a town struck defends itself, the report, and captives held and got back. | acts, ageing, armytown, campaign (types only), campaignbase, creed, drift, fortkeep, fortress, heralds, larder, leaderstay, militia, militiatoll, naming, oldfolk, ownstudies, raidclash, rim, roadclash, stores, strengthwords, threatsbase, townfaith, township, townwatch, watchtally | threats.test.ts | not yet |
 | `townfaith` | 126 | Faith is a town's (docs/DESIGN.md): every town's own moral standing, and the nation's as the mean of its towns'. | campaign (types only), campaignbase, churchtavern, creed, leaderstay, ownstudies, pilgrimage, places, story, townlean, townlife | townfaith.test.ts | not yet |
 | `townlife` | 78 | A town's own life moves its faith: hunger and plague down in standing, a long peace with full stores up (raids move it already, threats.ts). | campaign (types only), larder, township | townlife.test.ts | not yet |
 | `townorders` | 93 | A governor's standing orders from the player: what to put first, what not to build, how much to keep, whether people may leave; the governor and migration read them. | campaign (types only), township (types only) | townorders.test.ts | not yet |
@@ -459,7 +459,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-293 modules, 37,065 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+293 modules, 37,062 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -485,12 +485,12 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 19 | 5 | 576 | `aftermath` (204; 3), `nobleweigh` (55; 2), `claimantjudged` (94; 1), `rivalaim` (71; 1), `wifetaken` (152) |
 | 20 | 2 | 354 | `decrees` (164; 4), `claimantrising` (190; 2) |
 | 21 | 3 | 446 | `acts` (203; 5), `drift` (174; 3), `claimantcaptain` (69; 2) |
-| 22 | 5 | 982 | `threats` (484; 14), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1), `floods` (82; 1) |
-| 23 | 10 | 1,327 | `carriedoff` (136; 6), `rivalrule` (382; 5), `townmuster` (113; 3), `bandhorde` (119; 2), `harvest` (103; 1), `raidfought` (161; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
+| 22 | 5 | 979 | `threats` (481; 14), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1), `floods` (82; 1) |
+| 23 | 10 | 1,326 | `carriedoff` (136; 6), `rivalrule` (382; 5), `townmuster` (113; 3), `bandhorde` (119; 2), `raidfought` (160; 2), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
 | 24 | 11 | 1,139 | `townworks` (58; 6), `rivalcaptives` (47; 3), `bandroam` (219; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `battlecarried` (109; 1), `nocarry` (70; 1), `rivalstock` (115; 1), `courtcall` (84), `roll` (93) |
 | 25 | 8 | 1,154 | `bandfight` (313; 4), `caravans` (204; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `watchhouse` (80; 1) |
 | 26 | 5 | 809 | `intrigue` (387; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `rivalhunt` (132; 1), `bandmeet` (89) |
-| 27 | 7 | 3,719 | `game` (3286; 2), `hallcases` (70; 2), `bandseason` (40; 1), `courtvisit` (81; 1), `rivalstories` (130; 1), `storyvisit` (45; 1), `storypolicy` (67) |
+| 27 | 7 | 3,720 | `game` (3286; 2), `hallcases` (70; 2), `bandseason` (41; 1), `courtvisit` (81; 1), `rivalstories` (130; 1), `storyvisit` (45; 1), `storypolicy` (67) |
 | 28 | 2 | 1,815 | `campaign` (1763; 2), `aiground` (52; 1) |
 | 29 | 2 | 1,304 | `visit` (290; 1), `ai` (1014) |
 | 30 | 1 | 117 | `primer` (117) |
@@ -527,7 +527,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 293 modules, 0 naming no test, 0 naming a test file that is missing; 4,052 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 293 modules, 0 naming no test, 0 naming a test file that is missing; 4,053 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -550,7 +550,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 541 of them in 226 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 540 of them in 226 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -759,7 +759,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `tavernfall` | `TAVERN` |
 | `temper` | `TEMPER_AXES`, `TEMPER_QUESTIONS`, `TEMPER_WORDS` |
 | `threatsbase` | `THREATS` |
-| `threats` | `BANDS`, `STRIKES` |
+| `threats` | `BANDS` |
 | `townfaith` | `PULL` |
 | `townlife` | `LIFE` |
 | `townorders` | `FOCUS`, `FOCI`, `KEEP_TIMES`, `KEEP_WORDS`, `LEAVE_WORDS`, `NEVER_CHOICES` |
