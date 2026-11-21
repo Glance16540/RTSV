@@ -28,34 +28,34 @@ skirmish 6 (forge v england) at 4m: bfa2ff75f017ffaf
 skirmish 6 (forge v england) at 6m: 43c33315f1e76679
 skirmish 6 (forge v england) at 8m: 101f8eae9fc5344f
 skirmish 6 (forge v england) end: tick 9600 winner -1 units 87 buildings 41 101f8eae9fc5344f
-siege 1 at 2m: d94d64c4a0b5cb69
-siege 1 end: tick 4480 winner 0 units 48 buildings 19 e2bc6379e8d3d7f5
-siege 1 census 0: b0d5f1c08f6b7c4e
-siege 1 census 1: decb41f9ffcba71d
-siege 1 census 2: 4756d45081ea5674
-siege 2 end: tick 2140 winner 0 units 59 buildings 25 8de52fc5ed15a474
-siege 2 census 0: fe819a4566b289a3
-siege 2 census 1: abee16ed8e8b5d69
-siege 2 census 2: 4756d45081ea5674
-siege 3 at 2m: 4d259469609ac06b
-siege 3 end: tick 3760 winner 1 units 45 buildings 19 7d9942afdf621446
-siege 3 census 0: 9167fb88f44221c4
-siege 3 census 1: 91b2f23e84df9387
-siege 3 census 2: 4756d45081ea5674
-siege 4 at 2m: afd2104daf4ed479
-siege 4 end: tick 2420 winner 0 units 82 buildings 23 497c19b5c38d7fba
-siege 4 census 0: 3a21f268fb819e55
-siege 4 census 1: 20b9cbfbb5709c7f
-siege 4 census 2: 4756d45081ea5674
-siege 5 at 2m: b3f7b4b7b9a9212f
-siege 5 end: tick 3260 winner 1 units 56 buildings 20 079d576a722637e1
-siege 5 census 0: 7d5bf7110f57f436
-siege 5 census 1: cd6d47554e393593
-siege 5 census 2: 4756d45081ea5674
-siege 6 end: tick 2040 winner 0 units 79 buildings 19 2aa0e71efe2ff02a
-siege 6 census 0: 684ebce4a4788e38
-siege 6 census 1: 8c3d3f66f219c9c1
-siege 6 census 2: 4756d45081ea5674
+siege 1 at 2m: 3ab0ae99e2835249
+siege 1 end: tick 4480 winner 0 units 48 buildings 19 5d4e464ad2e0c8d4
+siege 1 census 0: 8ace0fea3806eb4c
+siege 1 census 1: e633f68ec31cccf5
+siege 1 census 2: 0da8fb2b2bf0c386
+siege 2 end: tick 2140 winner 0 units 59 buildings 25 14a4966a230bd295
+siege 2 census 0: 7f6f7b7b02878278
+siege 2 census 1: 84b2c5e4adcaf5cd
+siege 2 census 2: 0da8fb2b2bf0c386
+siege 3 at 2m: a72a945637aa0f09
+siege 3 end: tick 3760 winner 1 units 45 buildings 19 9e0ba70ba3c117e8
+siege 3 census 0: dfce7c83ca74e072
+siege 3 census 1: 6101e9f69a1f2bb0
+siege 3 census 2: 0da8fb2b2bf0c386
+siege 4 at 2m: ba2b92599028d8cc
+siege 4 end: tick 2420 winner 0 units 82 buildings 23 4dce95733a9dcdea
+siege 4 census 0: 2646d1873b4c3868
+siege 4 census 1: e366e911b175f1b4
+siege 4 census 2: 0da8fb2b2bf0c386
+siege 5 at 2m: 7284abcc6d8275c6
+siege 5 end: tick 3260 winner 1 units 56 buildings 20 156a05db401ab5bd
+siege 5 census 0: 1b954191e1a90af6
+siege 5 census 1: 91c52121396f0c13
+siege 5 census 2: 0da8fb2b2bf0c386
+siege 6 end: tick 2040 winner 0 units 79 buildings 19 25f48a60db6dfc41
+siege 6 census 0: 76be7e2083c9fc69
+siege 6 census 1: f977ff21ba6d1ad7
+siege 6 census 2: 0da8fb2b2bf0c386
 drill 1 (greece v japan) at 2m: 1be48ef98d83e724
 drill 1 (greece v japan) at 4m: 4e93163a9b42b92d
 drill 1 (greece v japan) at 6m: 8e6c922e6dc37319

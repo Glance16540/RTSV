@@ -40,9 +40,12 @@ export function peopled(g: Game, owner: number, people: PeopleIn, st: { x: numbe
     for (let j = 0; j < Math.max(men, women); j++) { if (j < men) folk.push(one('m', false)); if (j < women) folk.push(one('f', false)); }
     for (let j = 0; j < elders; j++) folk.push(one(j % 2 ? 'm' : 'f', true));
   }
+  // Each bears a name off the town's roll, by sex in the order sent (folkroll.ts).
+  const roll = { m: (people.roll ?? []).filter((p) => p.g === 'm'), f: (people.roll ?? []).filter((p) => p.g === 'f') }, at = { m: 0, f: 0 };
+  for (const u of folk) { const g = u.gender === 'f' ? 'f' : 'm', p = roll[g][at[g]++]; if (p) { u.name = p.n.slice(0, 40); if (p.h) u.family = p.h.slice(0, 40); } }
   // Those the nation knows by name are among them, with what they are known for.
   for (const n of named) {
-    const u = folk.find((x) => x.gender === n.gender && !x.story?.length && !(x.kids ?? 0) && !named.some((m) => m !== n && m.name === x.name)) ?? null;
+    const u = folk.find((x) => x.gender === n.gender && x.name === n.name && (x.family ?? '') === (n.family ?? '')) ?? folk.find((x) => x.gender === n.gender && !x.story?.length && !(x.kids ?? 0) && !named.some((m) => m !== n && m.name === x.name)) ?? null;
     if (!u || typeof n.name !== 'string' || !n.name) continue;
     u.name = n.name.slice(0, 40);
     if (typeof n.family === 'string' && n.family) u.family = n.family.slice(0, 40);
@@ -65,7 +68,7 @@ export function cradled(g: Game, owner: number, children: number, ages?: number[
  * its houses' records, its stores, those of its people held captive, and the women who have raised children, by name.
  */
 export function censusOf(g: Game, owner: number): Census {
-  const p = g.players[owner], out: Census = { men: 0, women: 0, elders: 0, children: p?.wards?.length ?? 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, taken: 0, named: [] };
+  const p = g.players[owner], out: Census = { men: 0, women: 0, elders: 0, children: p?.wards?.length ?? 0, stores: { food: 0, wood: 0, gold: 0, stone: 0 }, taken: 0, named: [], roll: [] };
   if (!p) return out;
   // Everyone's age as the town's record keeps it, in seasons (ageing.ts).
   const ages: Ages = { m: [], f: [], k: (p.wards ?? []).map((c) => childSeasons(c.left, GROW_TIME)) };
@@ -82,6 +85,7 @@ export function censusOf(g: Game, owner: number): Census {
     if (u.age >= u.lifespan * ELDER_AT) out.elders++; else if (woman) out.women++; else out.men++;
     const seasons = Math.round(yearsOf(u.age, u.lifespan) * SEASONS_A_YEAR), old = u.age >= u.lifespan * ELDER_AT;
     (woman ? ages.f : ages.m).push(old ? Math.max(OLD_SEASON, Math.min(LAST_SEASON, seasons)) : Math.max(GROWN_SEASON, Math.min(OLD_SEASON - 1, seasons)));
+    if (u.name) out.roll!.push({ n: u.name, h: u.family ?? '', g: woman ? 'f' : 'm' }); // by name (folkroll.ts)
     if (u.gender === 'f' && u.type === 'villager') { const home = { ...homeRecord(g, u), ...homeMade(g, u) }; if ((u.kids ?? 0) > 0 || home.war || home.made) out.named!.push({ name: u.name, gender: 'f', kids: u.kids ?? 0, ...(u.family ? { family: u.family } : {}), ...home }); }
   }
   { const w = widowsOut(g, owner); if (w) out.widowed = w; } // the widow or widower of each house (widowtown.ts)

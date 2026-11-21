@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { rollSeason } from './folkroll';
 import { askedFor, keepAsked } from './askedhere';
 import { tavernPull } from './churchtavern';
 import { rumourSeason } from './tavernrumour';
@@ -125,6 +126,7 @@ import { Yoke, seasonOfYoke, townTaken } from './conquered';
 import { companySoldiers, noteDowned, rollOf } from './soldiernames';
 import { takeDowned } from './downedmap';
 import { captainBonus } from './claimantcaptain';
+import { risingFigures } from './claimantfigures';
 import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
@@ -1368,6 +1370,7 @@ export function continueAI(c: Campaign): void {
       tradeSeason(c); // peoples at peace open their markets to each other (tradedeal.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
+      rollSeason(c); // every town's grown are named on its record, level with its counts (folkroll.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
       oldSeasons(c); // the old people of a town taken become the holder's (oldfolk.ts)
@@ -1619,7 +1622,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
       ...(army ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}),
-      ...(defending && !field ? captainBonus(c, t.id) : {}), // a town risen for a claimant: its rising's leader on the field (claimantcaptain.ts) // its companies led by the men of its roll (soldiernames.ts)
+      ...(defending && !field ? captainBonus(c, t.id) : {}), ...(defending && !field && risingFigures(c, t.id).length ? { claims: risingFigures(c, t.id) } : {}), // and the lord behind a grown claimant (claimantfigures.ts) // a town risen for a claimant: its rising's leader on the field (claimantcaptain.ts) // its companies led by the men of its roll (soldiernames.ts)
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)

@@ -19,7 +19,7 @@ import { courtsOf } from './courtfield';
 export interface HallGuest {
   /** The same for as long as they stand there: the story's number and what they are in it. */
   key: string;
-  role: 'envoy' | 'suitor' | 'daughter' | 'captain';
+  role: 'envoy' | 'suitor' | 'daughter' | 'captain' | 'claimant' | 'lord';
   name: string;
   female: boolean;
   /** Of which people they are, for their dress: the rival's for an envoy or a suitor, the town's for the daughter. */
@@ -34,6 +34,8 @@ export function hallGuests(g: Game, owner: number): HallGuest[] {
   // The leader of a claimant's rising, where no soldier on the field is them (claimantcaptain.ts).
   const leader = g.players[owner]?.captain;
   if (leader) out.push({ key: 'captain', role: 'captain', name: leader.name, female: leader.female, civ: home });
+  // A grown claimant to the throne and the lord behind them (claimantfigures.ts).
+  for (const f of g.players[owner]?.claimFigures ?? []) out.push({ key: `claim:${f.id}:${f.role}`, role: f.role, name: f.name, female: f.female, civ: home });
   for (const s of courtsOf(g, owner)) {
     if (s.answer || s.kind === 'plot') continue; // answered: the story is ended at the hall; a plot has nobody waiting there
     const theirs = s.civ ?? home;
