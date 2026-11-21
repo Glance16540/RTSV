@@ -140,7 +140,8 @@ by name.
 | `bandhorde` | 119 | The marauders, the band that holds a land: one kind of band among the others, with its raids as strikes on a town that defends itself. Was `hordeTurn` in campaign.ts. | campaign (types only), campaignbase, rim, stores, threats | bandhorde.test.ts | not yet |
 | `bandmarch` | 145 | Bands on the march and the armies they meet: farther along a road, drawn by riches, daring a tired or lonely army, seen by the armies they pass. | armytown, campaign (types only), founding, heralds, rim, township | bandmarch.test.ts | not yet |
 | `bandmeet` | 89 | A band coming for a town of the player's, put to them once when an army can meet it: go out, send the army, or let them come. | bandfight, campaign (types only), campaignbase, threats, threatsbase | bandmeet.test.ts | not yet |
-| `bandroam` | 219 | Bands move: they flee strong armies, plan a way of a few lands toward softer marks, settle as marauders and break up. | bandhorde, bandmarch, campaign (types only), campaignbase, rim, threats | bandroam.test.ts | not yet |
+| `bandroam` | 223 | Bands move: they flee strong armies, plan a way of a few lands toward softer marks, settle as marauders and break up. | bandhorde, bandmarch, bandturn, campaign (types only), campaignbase, rim, threats | bandroam.test.ts | not yet |
+| `bandturn` | 34 | A roaming band turns aside for a dead town: a camp of raiders or slavers with an open, ungarrisoned town in reach is bound for a land beside it, and standing there walks in, the town overrun by deadtown.ts's rule. | campaign (types only), deadtown, threats (types only) | bandturn.test.ts | not yet |
 | `bandseason` | 38 | One season of the threats of men: the one call the campaign makes for all of it. | bandborn, bandcaravan, bandfight, bandhorde, bandmarch, bandroam, bandwilds, campaign (types only), carriedoff, inn, raidnews, threats | threats.test.ts | not yet |
 | `battlecard` | 132 | What a campaign battle or a visit says of itself: the briefing before it (what it is, whom the player leads, what winning means, that no villager is bought), the count of both sides as it is fought, and words the size of what happened. | data, game (types only) | battlecard.test.ts | not yet |
 | `battlefolk` | 99 | A town's people in a battle, out of the battle hub: its own people set down on the field at the ages its record has them (`peopled`), its children set on its roofs' records (`cradled`), and the count of a side's town a battle hands back to the campaign (`censusOf`, which `Game.census` is). | ageing, data, game (types only), household, notableweight, orphantown, township, widowtown, writeguard | battlefolk.test.ts, persistfolk.test.ts, ageing.test.ts | not yet |
@@ -449,7 +450,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-283 modules, 35,728 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+284 modules, 35,766 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -470,14 +471,14 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 14 | 1 | 132 | `roadclash` (132; 4) |
 | 15 | 1 | 343 | `convoys` (343; 9) |
 | 16 | 5 | 589 | `migration` (233; 3), `marriage` (102; 2), `sentfor` (99; 2), `settlersfrom` (61; 2), `suitors` (94; 1) |
-| 17 | 4 | 443 | `prices` (214; 9), `deadtown` (106; 3), `roofsmap` (70; 2), `rivalsettle` (53; 1) |
-| 18 | 6 | 1,015 | `courtstory` (437; 6), `country` (94; 3), `freetown` (137; 2), `nobledeal` (165; 2), `emptied` (38; 1), `storyturn` (144; 1) |
+| 17 | 4 | 443 | `prices` (214; 9), `deadtown` (106; 4), `roofsmap` (70; 2), `rivalsettle` (53; 1) |
+| 18 | 7 | 1,049 | `courtstory` (437; 6), `country` (94; 3), `freetown` (137; 2), `nobledeal` (165; 2), `bandturn` (34; 1), `emptied` (38; 1), `storyturn` (144; 1) |
 | 19 | 5 | 576 | `aftermath` (204; 3), `nobleweigh` (55; 2), `claimantjudged` (94; 1), `rivalaim` (71; 1), `wifetaken` (152) |
 | 20 | 2 | 354 | `decrees` (164; 4), `claimantrising` (190; 2) |
 | 21 | 3 | 446 | `acts` (203; 4), `drift` (174; 3), `claimantcaptain` (69; 2) |
 | 22 | 4 | 892 | `threats` (476; 13), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1) |
 | 23 | 9 | 1,167 | `carriedoff` (130; 5), `rivalrule` (388; 4), `townmuster` (114; 4), `bandhorde` (119; 2), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
-| 24 | 10 | 1,034 | `townworks` (58; 6), `bandroam` (219; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `rivalcaptives` (47; 2), `battlecarried` (109; 1), `rivaldrill` (49; 1), `rivalstock` (115; 1), `roll` (93) |
+| 24 | 10 | 1,038 | `townworks` (58; 6), `bandroam` (223; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `rivalcaptives` (47; 2), `battlecarried` (109; 1), `rivaldrill` (49; 1), `rivalstock` (115; 1), `roll` (93) |
 | 25 | 8 | 1,154 | `bandfight` (313; 3), `caravans` (204; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `watchhouse` (80; 1) |
 | 26 | 4 | 677 | `intrigue` (387; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `bandmeet` (89) |
 | 27 | 7 | 3,699 | `game` (3282; 2), `hallcases` (70; 2), `bandseason` (38; 1), `courtvisit` (81; 1), `rivalstories` (130; 1), `storyvisit` (45; 1), `storypolicy` (53) |
@@ -489,11 +490,11 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 | Shapes from | Needed by | From layer | Its own layer |
 | --- | --- | --- | --- |
-| `campaign` | 180 modules | 0 | 28 |
+| `campaign` | 181 modules | 0 | 28 |
 | `game` | 81 modules | 0 | 27 |
 | `township` | 10 modules | 0 | 3 |
+| `threats` | 5 modules | 0 | 22 |
 | `mapbattle` | 4 modules | 0 | 12 |
-| `threats` | 4 modules | 0 | 22 |
 | `warhouse` | 3 modules | 0 | 6 |
 | `portrait` | 2 modules | 0 | 11 |
 | `widowhood` | 2 modules | 0 | 7 |
@@ -515,7 +516,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 283 modules, 0 naming no test, 0 naming a test file that is missing; 3,970 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 284 modules, 0 naming no test, 0 naming a test file that is missing; 3,973 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 

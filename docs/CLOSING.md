@@ -150,7 +150,7 @@ listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Any rival nation or marauders that come for it can take it | The marauders walk in only if they hold the land beside it; a roaming band does not turn aside for a dead town. | small | Unity: port as is. |
+| Any rival nation or marauders that come for it can take it | **Done** (`src/sim/bandturn.ts`): a camp of raiders or slavers with a dead town in reach sets out for a land beside it and, standing there, walks in: the town is overrun as deadtown.ts overruns one a wandering band finds, and the band is the camp. | small | Built. |
 
 ## A town taken
 
