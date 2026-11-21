@@ -79,3 +79,26 @@ describe('the Chinese', () => {
     expect(CIVS.forge.bonuses).toContain('Villagers gather 5% faster');
   });
 });
+
+describe('the Franks', () => {
+  it('gather 3% faster, beside their farms, their families and their houses', () => {
+    const plain = baseMods(), m = baseMods();
+    CIVS.hearth.apply(m);
+    expect(m.gather).toBeCloseTo(plain.gather * 1.03, 10);
+    expect(m.farm).toBe(1.25);
+    expect(m.birth).toBeCloseTo(plain.birth + 0.25, 10);
+    expect(m.housePop).toBe(plain.housePop + 1);
+    expect(CIVS.hearth.bonuses).toContain('Villagers gather 3% faster');
+  });
+});
+
+describe('the Babylonians', () => {
+  it('gather 5% faster, beside their research and their walls', () => {
+    const plain = baseMods(), m = baseMods();
+    CIVS.babylon.apply(m);
+    expect(m.gather).toBeCloseTo(plain.gather * 1.05, 10);
+    expect(m.techTime).toBe(0.85);
+    expect(m.buildingHp).toBe(1.15);
+    expect(CIVS.babylon.bonuses).toContain('Villagers gather 5% faster');
+  });
+});
