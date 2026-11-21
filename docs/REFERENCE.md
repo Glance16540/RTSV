@@ -78,3 +78,15 @@ So that a figure can be taken again, and on the Unity side the same way:
   its own (seed 3000 + 131 i + 17 j + 7 k), sides swapped on odd k, both sides the computer at level 1, 30 minutes of
   the battle's clock, the computer thinking once a second (20 steps).
 - **Fingerprint**: 6 skirmishes, 6 sieges, 6 leader drills and 4 camp drills, 8 minutes each (its defaults).
+
+## Known edges
+
+Rows that sit on the edge of their band in the game as it stands, so that a reading out of band is not a fault in the
+port. Each is a few lines; the finding behind it is in the commits and the board.
+
+- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). Over both seed sets on 21 November 2026 it
+  reads about 13.5% less with stories ignored and 9.5 to 10% with stories answered; the second set with stories
+  answered reads 6 to 7% while its first-set twin reads about 12.5%. One reading of 384 swings about 3.5 points either
+  side by the luck of the campaigns, and the row has read 6 to 16% since its bar was set. Posting guards does nearly
+  all of what decrees do; grief and sickness are over half of drift, and tending them needs a church the town
+  mostly lacks. Lifting the row needs a rule from the owner (tending without a church); nothing was tuned.
