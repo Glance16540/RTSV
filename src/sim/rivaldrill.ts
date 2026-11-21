@@ -6,7 +6,7 @@
 // from every frontier is told to stop. Then its towns train as the player's do. Its other raising (campaign.ts, out of the
 // nation's supplies) goes on as before.
 import type { Campaign } from './campaign';
-import { COMPANIES } from './campaignbase';
+import { atTruce, COMPANIES } from './campaignbase';
 import { onFrontier } from './reckon';
 import { drillTown } from './townmuster';
 import type { Drilled } from './townmuster';
@@ -22,12 +22,18 @@ const yardsOf = (c: Campaign, tid: number): string[] => {
   return Object.keys(COMPANIES).filter((k) => t.buildings.includes(COMPANIES[k].needs) || !!t.town?.b.some((x) => x[0] === COMPANIES[k].needs && x[4] === undefined));
 };
 
-/** A rival gives its towns their orders to train: a frontier town with a yard trains what it raises; any other, nothing. */
+/** Does an army of a people not at peace with `f` stand in this town or beside it? */
+export const menaced = (c: Campaign, f: number, tid: number): boolean => {
+  const t = c.territories[tid];
+  return c.armies.some((a) => a.owner !== f && (a.at === tid || t.adj.includes(a.at)) && !atTruce(c, f, a.owner));
+};
+
+/** A rival gives its towns their orders to train: a frontier town with a yard and an enemy beside it trains what it raises; any other, nothing. */
 export function rivalDrillOrders(c: Campaign, f: number): number {
   let n = 0;
   for (const t of c.territories) {
     if (t.owner !== f || t.horde) continue;
-    const kinds = onFrontier(c, f, t.id) ? yardsOf(c, t.id) : [];
+    const kinds = onFrontier(c, f, t.id) && menaced(c, f, t.id) ? yardsOf(c, t.id) : [];
     if (kinds.length) {
       t.orders = { ...(t.orders ?? { turn: c.turn }), train: kinds };
       t.standing = { ...(t.standing ?? {}), drillStop: RIVAL_DRILL.stop };

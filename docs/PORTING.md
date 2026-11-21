@@ -347,7 +347,7 @@ by name.
 | `rivalstock` | 115 | A rival's foresight with its stores: a season before it enters its next age or opens the border it has chosen, it sends what the paying town lacks of the price ahead by convoy from its towns with most to spare; and it raises a house of its faith or a harbour in the town that can pay out of its own stores. | campaign (types only), convoys, country, prices, rivalrule, township | rivalstock.test.ts | not yet |
 | `rivalsettle` | 53 | A rival sends people by road: now and then, settlers from its fullest town to its town with too few grown people or no couple, by the player's own rule (migration.ts settle). | campaign (types only), migration, township | rivalsettle.test.ts | not yet |
 | `rivalhomes` | 58 | A rival's notable homes by which house did most: each season its town's harvest is counted to its working houses by their share of the work; the house that has done most is the next known home once it comes to a rank of standing, up to a few to a town. | campaign (types only), notableweight, peoplenames, township | rivalhomes.test.ts | not yet |
-| `rivaldrill` | 49 | A rival's towns train by standing orders, as the player's do: each season its frontier towns with a yard are told to train what their yards raise, to stop at a few companies, and train by townmuster.ts's rule. | campaign (types only), campaignbase, reckon, townmuster | rivaldrill.test.ts | not yet |
+| `rivaldrill` | 55 | A rival's towns train by standing orders, as the player's do: each season its frontier towns with a yard and an enemy army beside them are told to train what their yards raise, to stop at a few companies, and train by townmuster.ts's rule. | campaign (types only), campaignbase, reckon, townmuster | rivaldrill.test.ts | not yet |
 | `rivalyoke` | 42 | A rival rules a resentful town with its resentment in mind: once a season, a Church for a devout people (else Farmland) in its most resentful town, when it can spare the price; building is lent by campaign.ts. | campaign (types only), campaignbase, conquered, creed, temper | rivalyoke.test.ts | not yet |
 | `revival` | 23 | A computer-led people counted out takes back a town that rises for it (conquered.ts) and lives again, the town its seat. | campaign (types only) | rivalyoke.test.ts | not yet |
 | `rivalstories` | 130 | Stories inside the story for rival rulers: the thief and the killer begin in their towns by the player's chances, are judged by the ruler's lights, and are told to the player only where he could hear of them. | campaign (types only), courtstory, creed, intrigue, intriguebase, townfaith, township, townwatch | rivalstories.test.ts | not yet |
@@ -450,7 +450,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-284 modules, 35,767 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+284 modules, 35,773 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -478,7 +478,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 21 | 3 | 446 | `acts` (203; 4), `drift` (174; 3), `claimantcaptain` (69; 2) |
 | 22 | 4 | 892 | `threats` (476; 13), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1) |
 | 23 | 9 | 1,167 | `carriedoff` (130; 5), `rivalrule` (388; 4), `townmuster` (114; 4), `bandhorde` (119; 2), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
-| 24 | 10 | 1,038 | `townworks` (58; 6), `bandroam` (223; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `rivalcaptives` (47; 2), `battlecarried` (109; 1), `rivaldrill` (49; 1), `rivalstock` (115; 1), `roll` (93) |
+| 24 | 10 | 1,044 | `townworks` (58; 6), `bandroam` (223; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `rivalcaptives` (47; 2), `battlecarried` (109; 1), `rivaldrill` (55; 1), `rivalstock` (115; 1), `roll` (93) |
 | 25 | 8 | 1,154 | `bandfight` (313; 3), `caravans` (204; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `watchhouse` (80; 1) |
 | 26 | 4 | 677 | `intrigue` (387; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `bandmeet` (89) |
 | 27 | 7 | 3,699 | `game` (3282; 2), `hallcases` (70; 2), `bandseason` (38; 1), `courtvisit` (81; 1), `rivalstories` (130; 1), `storyvisit` (45; 1), `storypolicy` (53) |
@@ -516,7 +516,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 284 modules, 0 naming no test, 0 naming a test file that is missing; 3,973 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 284 modules, 0 naming no test, 0 naming a test file that is missing; 3,974 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
