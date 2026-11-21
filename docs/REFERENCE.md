@@ -4,9 +4,8 @@ The Unity rebuild (docs/PORTING.md) is measured against figures taken from this 
 what each figure is, how the Unity side compares against it, and where the outputs are kept. The figures are taken
 in one go, on one commit, by `npm run reference` (scripts/reference.mjs), and written to `docs/reference/`.
 
-**State: draft.** The final reference is to be taken at the end of the run of work on main (21 November 2026), when
-main stops moving. What is in `docs/reference/` now is a dry run (`QUICK=1`, small), kept to show the layout. Its
-manifest says so in its title (`draft, main <hash>`). Do not compare against it.
+**State: final.** Taken on 21 November 2026 on main `f178f934`, when main stopped moving (manifest: commit `fc3bf615`,
+holding main at `f178f934`, 74 minutes). This is what the Unity side compares against.
 
 ## Taking it
 
