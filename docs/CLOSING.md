@@ -198,7 +198,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| The ones met shown as living 3D figures, the choices beside them | Built. The figures do not answer the choice (nobody bows, flees or is led away), and a band's men are dressed by kind, not as who they were. | small | Unity: the new engine's figures. |
+| The ones met shown as living 3D figures, the choices beside them | **Built, and they answer the choice (21 November 2026):** one pardoned or given what they asked bows, one set to work or taken is led away, one banished, refused or defied leaves, and a hanging or a death is told in a line, never shown (`encounter.ts` reactionTo, drawn in `src/client/encounter.ts`). A band's men are dressed by kind, not as who they were. | small | Unity: the new engine's figures. |
 
 ## Buildings and research that answer the systems
 

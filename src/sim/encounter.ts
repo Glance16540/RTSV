@@ -102,3 +102,27 @@ export function askerOf(c: Campaign, it: Intrigue): Figure | null {
 }
 /** The stories of the player's that wait on their word, oldest first. */
 export const awaiting = (c: Campaign): Intrigue[] => (c.intrigues ?? []).filter(awaitsWord);
+
+/**
+ * How the one met answers the choice made (docs/CLOSING.md, "Meeting them face to face": the figures did not answer
+ * it). By the choice's own id: one pardoned, or given what they asked, bows; one set to work it off, or taken, is led
+ * away; one banished, sent off, refused or defied leaves; a hanging or a death is told in words, never shown. A choice
+ * not here (asking, a watch, a demand) closes the meeting as before.
+ */
+export type Reaction = 'bow' | 'led' | 'leave' | 'told';
+export const REACTIONS: Record<string, Reaction> = {
+  pardon: 'bow', give: 'bow', buy: 'bow', gifts: 'bow',
+  work: 'led', march: 'led', seize: 'led',
+  banish: 'leave', exile: 'leave', spurn: 'leave', decline: 'leave', defy: 'leave', yield: 'leave',
+  hang: 'told', death: 'told',
+};
+/** The reaction to a choice, by its id ("accuse:2" reads as "accuse"), or undefined. */
+export const reactionTo = (id: string): Reaction | undefined => REACTIONS[id.split(':')[0]];
+/** The line the sheet says as the figure answers. `who` is the one met, by name or as "the envoy". */
+export function reactionWords(r: Reaction, who: string, female = false): string {
+  const they = female ? 'she' : 'he', W = who.charAt(0).toUpperCase() + who.slice(1);
+  if (r === 'bow') return `${W} bows low.`;
+  if (r === 'led') return `${W} is led away.`;
+  if (r === 'leave') return `${W} goes, and does not look back.`;
+  return `${W} is taken out. It is done before evening, and ${they} is not seen again.`;
+}

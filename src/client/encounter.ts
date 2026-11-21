@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import type { Campaign } from '../sim/campaign';
 import { CIV_COLOR, UNITS } from '../sim/data';
 import { BANDS } from '../sim/threats';
-import { Figure, askerOf, awaiting, bandLineup, heldOf, wordKey } from '../sim/encounter';
+import { Figure, Reaction, askerOf, awaiting, bandLineup, heldOf, reactionTo, reactionWords, wordKey } from '../sim/encounter';
 import { Intrigue, choicesFor, choose, fullName, standing } from '../sim/intrigue';
 import '../sim/courtstory';
 import { lookOf } from './models';
@@ -20,7 +20,7 @@ import { Outfit, loadPeople, makePerson, outfitFor, play, point, RealPerson } fr
 
 /** A choice beside the figures: its words, what it does, and why it cannot be taken now, if it cannot. */
 export type EncounterChoice = [label: string, act: () => void, bar?: string];
-export interface Meeting { title: string; text: string; figures: Figure[]; choices: EncounterChoice[] }
+export interface Meeting { title: string; text: string; figures: Figure[]; choices: EncounterChoice[]; /** How the one met answers each choice, by its place (sim encounter.ts reactionTo): shown a moment before the sheet closes. */ answers?: ({ r: Reaction; line: string } | undefined)[] }
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
 const W = 520, H = 400;
@@ -117,13 +117,23 @@ export function openEncounter(m: Meeting): boolean {
   let alive = true;
   const close = (): void => { if (!alive) return; alive = false; gl?.dispose(); root.remove(); if (open?.close === close) open = null; };
   open = { close };
-  for (const [label, act, bar] of m.choices) {
+  // The one met answers the choice (a bow, led away, leaving, or told in words) a moment before the sheet closes.
+  let answer: { r: Reaction; t: number } | null = null;
+  m.choices.forEach(([label, act, bar], i) => {
     const b = document.createElement('button');
     b.textContent = label;
     if (bar) { b.disabled = true; b.title = bar; }
-    b.addEventListener('click', () => { close(); act(); });
+    b.addEventListener('click', () => {
+      const a = m.answers?.[i];
+      if (!a || answer) { close(); act(); return; }
+      answer = { r: a.r, t: 0 };
+      row.querySelectorAll('button').forEach((x) => { (x as HTMLButtonElement).disabled = true; });
+      const said = document.createElement('p'); said.className = 'enc-answer'; said.textContent = a.line; row.before(said);
+      for (const p of people) if (a.r === 'led' || a.r === 'leave') play(p, 'Walk_Loop', a.r === 'led' ? 0.7 : 1);
+      window.setTimeout(() => { close(); act(); }, a.r === 'told' ? 2600 : 2200);
+    });
     row.appendChild(b);
-  }
+  });
 
   // ---- the figures, standing on a patch of ground in the evening light ----
   const scene = new THREE.Scene();
@@ -144,7 +154,7 @@ export function openEncounter(m: Meeting): boolean {
   // As sharp as the screen allows, and never less than twice over.
   gl.setPixelRatio(Math.min(3, Math.max(2, window.devicePixelRatio || 1))); gl.setSize(W, H, false); gl.toneMapping = THREE.NeutralToneMapping;
   gl.shadowMap.enabled = true; gl.shadowMap.type = THREE.PCFSoftShadowMap;
-  const people: RealPerson[] = [], turning: THREE.Object3D[] = [], humble: { p: RealPerson; g: THREE.Object3D; bow: boolean }[] = [];
+  const people: RealPerson[] = [], groups: THREE.Object3D[] = [], turning: THREE.Object3D[] = [], humble: { p: RealPerson; g: THREE.Object3D; bow: boolean }[] = [];
   const stand = (): void => {
     if (!alive) return;
     const at = place(m.figures);
@@ -154,7 +164,7 @@ export function openEncounter(m: Meeting): boolean {
       made.g.position.set(at[i].x, 0, at[i].z); made.g.rotation.y = at[i].yaw;
       made.g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; }); // on the ground only: a figure shading itself goes muddy
       scene.add(made.g);
-      people.push(made.real);
+      people.push(made.real); groups.push(made.g);
       if (!wide) turning.push(made.g);
       if (f.pose === 'humble' || f.pose === 'stand') humble.push({ p: made.real, g: made.g, bow: f.pose === 'humble' });
       play(made.real, f.pose === 'talk' ? 'Idle_Talking_Loop' : f.pose === 'ready' ? 'Idle_Loop' : f.pose === 'sit' ? 'Sitting_Idle_Loop' : 'Idle_Loop', 0.8 + ((f.seed % 7) / 30));
@@ -166,8 +176,14 @@ export function openEncounter(m: Meeting): boolean {
     if (!alive) return;
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     for (const p of people) p.mixer.update(dt);
-    for (const h of humble) stoop(h.p, h.g, h.bow);
-    for (const g of turning) g.rotation.y = 0.15 + Math.sin(now / 4000) * 0.45; // one alone turns slowly, to be seen from either side
+    if (answer) {
+      const k = Math.min(1, (answer.t += dt) / 0.8);
+      if (answer.r === 'bow') people.forEach((p, i) => { stoop(p, groups[i], true); p.bones.get('DEF-spine.003')?.rotateX(0.5 * k); p.bones.get('DEF-spine.002')?.rotateX(0.25 * k); });
+      if (answer.r === 'led' || answer.r === 'leave') for (const g of groups) { g.rotation.y += ((answer.r === 'led' ? Math.PI / 2 : Math.PI) - g.rotation.y) * Math.min(1, dt * 6); g.position.x += Math.sin(g.rotation.y) * dt * (answer.r === 'led' ? 0.45 : 0.6); g.position.z += Math.cos(g.rotation.y) * dt * (answer.r === 'led' ? 0.45 : 0.6); }
+    } else {
+      for (const h of humble) stoop(h.p, h.g, h.bow);
+      for (const g of turning) g.rotation.y = 0.15 + Math.sin(now / 4000) * 0.45; // one alone turns slowly, to be seen from either side
+    }
     gl!.render(scene, cam);
     requestAnimationFrame(frame);
   };
@@ -203,8 +219,10 @@ export function meetStory(c: Campaign, it: Intrigue, done: () => void): boolean 
     : it.kind === 'rival' ? `${envoyName(c, it)}, envoy of ${it.cast?.king ?? 'the rival'}, ${heroFor(c, it.rival ?? 0).female ? 'queen' : 'king'} of the ${c.factions[it.rival ?? 0]?.name ?? 'rival people'}`
     : it.kind === 'plot' ? it.nobles?.[it.culprit]?.title ?? 'A noble'
     : it.thief ? `${fullName(it.thief)} the ${it.thief.trade}` : 'The thief';
-  const choices: EncounterChoice[] = choicesFor(c, it).filter((k) => k.id !== 'watch' && k.id !== 'unwatch')
-    .map((k) => [k.label, () => { choose(c, it.id, k.id); done(); }, k.bar]);
+  const offered = choicesFor(c, it).filter((k) => k.id !== 'watch' && k.id !== 'unwatch');
+  const choices: EncounterChoice[] = offered.map((k) => [k.label, () => { choose(c, it.id, k.id); done(); }, k.bar]);
+  const named = it.kind === 'rival' ? `${envoyName(c, it)}` : who.split(',')[0];
+  const answers = offered.map((k) => { const r = reactionTo(k.id); return r ? { r, line: reactionWords(r, named, asker.female) } : undefined; }); // how the one met answers it (encounter.ts)
   choices.push(['Decide later', done]);
-  return openEncounter({ title: it.kind === 'rival' ? `${envoyName(c, it)}, ${heroFor(c, it.rival ?? 0).female ? 'the queen\'s' : 'the king\'s'} envoy` : ASKER[it.kind] ?? 'Someone to see you', text: `<span class="enc-who"><b>${esc(who)}</b></span>${esc(standing(c, it))}`, figures: [asker], choices });
+  return openEncounter({ answers, title: it.kind === 'rival' ? `${envoyName(c, it)}, ${heroFor(c, it.rival ?? 0).female ? 'the queen\'s' : 'the king\'s'} envoy` : ASKER[it.kind] ?? 'Someone to see you', text: `<span class="enc-who"><b>${esc(who)}</b></span>${esc(standing(c, it))}`, figures: [asker], choices });
 }
