@@ -53,9 +53,10 @@ import { THREATS } from './threatsbase';
 import { watchDefence } from './townwatch';
 import { tallyWatch } from './watchtally';
 import { fortShelter, hasFortress } from './fortress';
+import { isStronghold, keepOf, keepUnits } from './fortkeep';
 import { stoodTo } from './heralds';
 import { RAID, raidClash, spoilsOf } from './raidclash';
-import { reckonArmies } from './armytown';
+import { MEN, reckonArmies } from './armytown';
 import { oldWeight } from './oldfolk';
 import { wrathAt } from './acts';
 import { SUPPLY_UNITS, stock } from './stores';
@@ -89,7 +90,7 @@ export type Outcome = 'held' | 'raided' | 'taken';
 /** Something a band did or had done to it that is not a strike: it came, moved, fled, settled, broke up, was fought, lost its captives. */
 export interface BandNote { turn: number; kind: 'came' | 'moved' | 'fled' | 'settled' | 'gone' | 'broken' | 'beaten' | 'freed' | 'lost' | 'warned' | 'overran' | 'ambush' | 'seen' | 'robbed'; at: number; band: number; text: string; /** The peoples it concerns: whose captives, whose army, whose land. */ owners: number[] }
 /** What a town had to defend with, part by part, in the measure of companies. */
-export interface Defence { men: number; works: number; walls: number; army: number; guard: number; spirit: number; total: number }
+export interface Defence { men: number; works: number; walls: number; army: number; guard: number; spirit: number; total: number; /** Its Fortress has someone to hold it: the town may be raided but not taken (fortkeep.ts). */ stronghold?: boolean }
 /** The report of one strike. */
 export interface Raid {
   turn: number; band: number; kind: BandKind; name: string; at: number; owner: number;
@@ -175,7 +176,9 @@ export function defenceOf(c: Campaign, tid: number): Defence {
   const t = c.territories[tid], f = folkOf(c, tid);
   // Men gone to the mines are not at the walls (drift.ts): the walls are left thin.
   const watch = watchOf(c, tid);
-  const men = (f.men / TOWN_SCALE) * THREATS.man * watch * (1 - THREATS.grudge * oldWeight(c, tid)); // a town's men count as the same share of it however large towns are (township.ts TOWN_SCALE); the old people of a taken town watch grudgingly while they resent it (oldfolk.ts)
+  const a = c.armies.find((x) => x.at === tid && x.owner === t.owner);
+  const keep = a ? 0 : keepOf(c, tid); // a Fortress's own garrison, where no army holds it (fortkeep.ts): its men are counted there and not here
+  const men = (Math.max(0, f.men - keep * MEN.company) / TOWN_SCALE) * THREATS.man * watch * (1 - THREATS.grudge * oldWeight(c, tid)); // a town's men count as the same share of it however large towns are (township.ts TOWN_SCALE); the old people of a taken town watch grudgingly while they resent it (oldfolk.ts)
   const works = (hasFortress(c, tid) ? THREATS.fortress : 0) + t.buildings.filter((b) => b === 'barracks' || b === 'range' || b === 'stable').length * THREATS.raising + watchDefence(c, tid) + stoodTo(c, tid); // and its town watch (townwatch.ts), and its standing to on a herald's word (heralds.ts)
   let towers = 0, wall = 0;
   for (const b of t.town?.b ?? []) {
@@ -185,11 +188,10 @@ export function defenceOf(c: Campaign, tid: number): Defence {
     else if (b[0] === 'palisade' || b[0] === 'wall' || b[0] === 'gate') wall += whole * THREATS.wall;
   }
   const walls = (Math.min(THREATS.towers, towers) + Math.min(THREATS.walls, wall)) * (0.5 + 0.5 * watch);
-  const a = c.armies.find((x) => x.at === tid && x.owner === t.owner);
-  const army = a ? armyStrength(a) : 0;
+  const army = a ? armyStrength(a) : keep; // each company of the garrison a company of foot
   const guard = t.capital >= 0 ? THREATS.capital : 0;
   const spirit = (t.owner >= 0 ? creedOf(faithAt(c, tid)).morale : 1) * (sick(c, tid) ? THREATS.sick : 1); // the town's own standing (townfaith.ts)
-  return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit * bandStand(c, tid) * leaderWatch(c, tid)) }; // a people's own study may stiffen it (ownstudies.ts)
+  return { men: round1(men), works: round1(works), walls: round1(walls), army: round1(army), guard, spirit: round1(spirit), total: round1((men + works + walls + army + guard) * spirit * bandStand(c, tid) * leaderWatch(c, tid)), ...(isStronghold(c, tid) ? { stronghold: true } : {}) }; // a people's own study may stiffen it (ownstudies.ts)
 }
 
 /**
@@ -320,7 +322,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const garrison = road ? undefined : c.armies.find((a) => a.at === tid && a.owner === owner);
   // Stage three: the town turns out as against a nation, its own men as bands on foot beside any army, and only its works,
   // walls and guard as the place (raidclash.ts `turnedOut`, militia.ts).
-  const fight = road ? null : raidClash(b.strength, force, defence, garrison?.units ?? {}, faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence));
+  const fight = road ? null : raidClash(b.strength, force, defence, garrison?.units ?? keepUnits(c, tid), faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence));
   let outcome: Outcome = fight ? (fight.outcome === 'taken' && bled ? 'raided' : fight.outcome) : met ? (met.broke === 'soldiers' ? 'raided' : 'held') : r >= THREATS.hold ? 'held' : 'raided';
   const raid: Raid = {
     turn: c.turn, band: b.id, kind: b.kind, name: b.name, at: tid, owner, outcome, force, strength: b.strength, defence: road ? { ...defence, total: round1(guard) } : defence,
@@ -329,10 +331,10 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   };
   if (fight && watchDefence(c, tid) > 0) { // report only (watchtally.ts): the same strike on the town with its town watch's company left out
     const less = watchDefence(c, tid), parts = defence.men + defence.works + defence.walls + defence.army + defence.guard, bare: Defence = { ...defence, works: round1(defence.works - less), total: parts > 0 ? round1(defence.total * (parts - less) / parts) : defence.total };
-    tallyWatch(c, 'held', fight.outcome === 'held', raidClash(b.strength, force, bare, garrison?.units ?? {}, faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence)).outcome === 'held');
+    tallyWatch(c, 'held', fight.outcome === 'held', raidClash(b.strength, force, bare, garrison?.units ?? keepUnits(c, tid), faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence)).outcome === 'held');
   }
   if (fight) { // report only, kept for a release: the same strike by the fight as it was before stage three (the town a sum, its men part of the place); nothing is decided by it
-    const w = raidClash(b.strength, force, defence, garrison?.units ?? {}, faithAt(c, tid));
+    const w = raidClash(b.strength, force, defence, garrison?.units ?? keepUnits(c, tid), faithAt(c, tid));
     raid.would = w.outcome === 'taken' && bled ? 'raided' : w.outcome; raid.wouldLost = fight.pressed; raid.men = f.men; raid.wouldDead = bandsFell(c, tid, fight.body, FELL.dead); if (fight.broke === 'defender' && !bled) raid.wouldCost = fight.cost;
   }
   // An army standing in the town loses the companies the fight cost it, each a man of his town; never its last (it falls back inside).
