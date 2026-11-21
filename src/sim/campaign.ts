@@ -81,7 +81,8 @@ import { rulesSeason } from './rule';
 import { governWorksSeason } from './governworks';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
-import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
+import { House, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
+import { chooseSuccessor } from './succession';
 import { Champion, cleanChampion } from './champion';
 import { hireOff, placeAt, placeGood, placeWorth, placesOf, worldNow } from './places';
 export { hireOff } from './places'; // where it was found before it was moved
@@ -1456,7 +1457,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     c.spent = true;
     const own = c.territories.filter((t) => t.owner === f.id);
     // A people that has lost its leader looks first to the house, then to its captains, and only then hires one.
-    if (!f.heroAlive) autoSucceed(c, f.id);
+    if (!f.heroAlive) chooseSuccessor(c, f.id); // by the order of the throne, a claimant in arms before any captain (succession.ts)
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
     rivalForesight(c, f.id, { ageCost: ageCost(c, f.id), income: income(c, f.id), maxAge: AGE_COST.length }); // goods sent a season ahead of its next age and its chosen work (rivalstock.ts)
