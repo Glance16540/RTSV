@@ -37,7 +37,7 @@ export const DECREES: Record<DecreeKind, { name: string; cost: number; seasons: 
   alms: { name: 'Buy grain abroad', cost: 0, seasons: 1, desc: 'Grain bought from outside the nation with its gold fills the town\'s larder for this season and the next, and removes the cause: new food, not a neighbour\'s. Dearer in a famine year; by messenger, half of it comes.' },
   closeTavern: { name: 'Close the tavern', cost: 1, seasons: 4, needs: 'tavern', desc: 'Nobody drifts to the tavern and it makes no gold; a depraved town is angered by it.' },
   tavernWomen: { name: 'Order the women into the tavern', cost: 0, seasons: 4, needs: 'tavern', desc: 'Gold every season, and the town\'s standing falls.' },
-  tend: { name: 'Tend the sick and the mourning', cost: 0, seasons: 4, needs: 'church', desc: 'The church takes in the sick and sits with the bereaved: sickness and grief weigh on the town half as much, and plague kills fewer. Paid in gold from the town.' },
+  tend: { name: 'Tend the sick and the mourning', cost: 0, seasons: 4, desc: 'The sick are taken in and the bereaved sat with: sickness and grief weigh on the town half as much, and plague kills fewer. In a town with no church it is done at half strength. Paid in gold from the town.' },
 };
 export const DECREE_KINDS = Object.keys(DECREES) as DecreeKind[];
 
@@ -62,6 +62,10 @@ export const ALMS_A_SEASON = 2;
 export const TEND_GOLD = 40;
 export const TEND_EASE = 0.5;
 export const TEND_PLAGUE = 0.25;
+/** Tending in a town with no church (the owner's word, 21 November 2026: "a town without a church can still tend"): this share of its strength; with a church it is whole. */
+export const TEND_BARE = 0.5;
+/** How strong a decree of this kind is in this town, of the strength it is given at: tending is halved where no church stands. */
+export const givenAt = (c: Campaign, tid: number, kind: DecreeKind, strength: number): number => (kind === 'tend' && !c.territories[tid]?.buildings.includes('church') ? strength * TEND_BARE : strength);
 /** The share of plague's toll the church's tending spares in a town this season (acts.ts). */
 export const tendedPlague = (c: Campaign, tid: number): number => TEND_PLAGUE * decreesAt(c, tid).filter((d) => d.kind === 'tend').reduce((m, d) => Math.max(m, d.strength), 0);
 
@@ -96,7 +100,7 @@ export function issueDecree(c: Campaign, f: number, tid: number, kind: DecreeKin
   c.factions[f].supplies -= d.cost;
   // A decree given in the player's part of a season holds through the season's turn that follows, which is when
   // towns drift (drift.ts): it acts in the season it is given, as one given while the season turns does.
-  t.decrees = [...decreesAt(c, tid), { kind, until: c.turn + d.seasons - 1 + (c.phase === 'player' ? 1 : 0), strength }];
+  t.decrees = [...decreesAt(c, tid), { kind, until: c.turn + d.seasons - 1 + (c.phase === 'player' ? 1 : 0), strength: givenAt(c, tid, kind, strength) }]; // tending with no church is at half strength
   if (kind === 'alms') { const g = buyGrain(c, f, tid, strength); if (f === 0) c.log.push(`Grain bought abroad for ${t.name}: ${g.food} food for ${g.gold} gold.`); }
   if (kind === 'tend') folkOf(c, tid).stores.gold -= TEND_GOLD;
   heardDecree(c, f, tid, kind, strength); // it pleases some of the nobles and angers others (nobles.ts)

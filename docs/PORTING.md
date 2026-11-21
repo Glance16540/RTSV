@@ -245,7 +245,7 @@ by name.
 | `daylight` | 18 | How the hours run. A day is a set number of seconds, and the last three tenths of it are night; the player | none | daylight.test.ts | not yet |
 | `deadtown` | 106 | A dead town (docs/DESIGN.md): a town with nobody in it stands open to any rival or band of marauders that comes for it. | armytown, campaign (types only), campaignbase, settlersfrom, township | deadtown.test.ts | not yet |
 | `emptied` | 38 | A land a war or a band has emptied becomes an empty land: an open town nobody has come for, with no army of its people in it, is let go after a wait, and settlers of any people may found on it. A trial. | campaign (types only), deadtown | householdmove.test.ts | not yet |
-| `decrees` | 164 | Decrees (docs/DESIGN.md, "Decrees"). The leader rules a town by decree: a cost in supplies, some seasons, in person or half as strong by messenger; each bends how the town drifts. | campaign (types only), couriers, court, grain, hall, nobles, nobleweigh, township | decrees.test.ts | not yet |
+| `decrees` | 168 | Decrees (docs/DESIGN.md, "Decrees"). The leader rules a town by decree: a cost in supplies, some seasons, in person or half as strong by messenger; each bends how the town drifts. | campaign (types only), couriers, court, grain, hall, nobles, nobleweigh, township | decrees.test.ts | not yet |
 | `faithsites` | 39 | A Church or a Tavern built in a town (a battle fought in person, or a visit) is raised as the map's site of that kind, where the land has room and has none, so that it moves the town's faith. One table and one function, called where a battle's and a visit's buildings are kept. | campaign (types only), campaignbase | faithsites.test.ts | not yet |
 | `faithhouse` | 54 | A people's house of faith in its own faith, by name, sign and kind of building: a Church under the cross, a Mosque (domed, or mud-brick for Mali), a Temple of the gods under a laurel wreath for Greece and Rome, a Temple of the Nile, a Ziggurat Shrine, a Fire Temple, a Shrine, an Ancestral Hall, a Sacred Cairn, a Hof, the Judges' Temple; the church's site, decrees and field name told in the people's own words. Only the look: the rules' building is the church everywhere. | none | faithhouse.test.ts, faithhouses.test.ts | not yet |
 | `founding` | 118 | Settlers found a new town on an empty land: what an empty land is, and claiming it when the settlers come in. | campaign (types only), ownstudies, township, wilds | founding.test.ts | not yet |
@@ -473,7 +473,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-307 modules, 38,319 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+307 modules, 38,323 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -497,7 +497,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 17 | 4 | 443 | `prices` (214; 9), `deadtown` (106; 4), `roofsmap` (70; 2), `rivalsettle` (53; 1) |
 | 18 | 7 | 1,057 | `courtstory` (438; 6), `country` (94; 4), `freetown` (137; 2), `nobledeal` (165; 2), `storyturn` (151; 2), `bandturn` (34; 1), `emptied` (38; 1) |
 | 19 | 6 | 763 | `aftermath` (209; 4), `nobleweigh` (55; 2), `rivalplan` (182; 2), `claimantjudged` (94; 1), `rivalaim` (71; 1), `wifetaken` (152) |
-| 20 | 3 | 404 | `decrees` (164; 4), `claimantrising` (194; 2), `killerseized` (46; 1) |
+| 20 | 3 | 408 | `decrees` (168; 4), `claimantrising` (194; 2), `killerseized` (46; 1) |
 | 21 | 3 | 448 | `acts` (204; 5), `drift` (175; 4), `claimantcaptain` (69; 2) |
 | 22 | 5 | 983 | `threats` (485; 15), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1), `floods` (82; 1) |
 | 23 | 11 | 1,425 | `rivalrule` (388; 7), `carriedoff` (136; 6), `townmuster` (114; 4), `bandhorde` (119; 2), `raidfought` (161; 2), `feudraid` (91; 1), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
@@ -565,7 +565,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 556 of them in 238 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 557 of them in 238 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -653,7 +653,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `daylight` | `DAY_LENGTHS`, `DUSK` |
 | `deadtown` | `DEAD` |
 | `emptied` | `EMPTIED` |
-| `decrees` | `DECREES`, `DECREE_KINDS`, `MESSENGER`, `TAVERN_WOMEN_GOLD`, `CHURCH_CARE`, `GUARDS_EASE`, `TAVERN_WOMEN_SWAY`, `CLOSED_ANGER`, `ALMS_A_SEASON`, `TEND_GOLD`, `TEND_EASE`, `TEND_PLAGUE`, `FORESIGHT` |
+| `decrees` | `DECREES`, `DECREE_KINDS`, `MESSENGER`, `TAVERN_WOMEN_GOLD`, `CHURCH_CARE`, `GUARDS_EASE`, `TAVERN_WOMEN_SWAY`, `CLOSED_ANGER`, `ALMS_A_SEASON`, `TEND_GOLD`, `TEND_EASE`, `TEND_PLAGUE`, `TEND_BARE`, `FORESIGHT` |
 | `faithsites` | `FAITH_SITES` |
 | `faithhouse` | `FAITH_SIGN`, `HOUSE_OF`, `HOUSES` |
 | `founding` | `FOUNDING` |
