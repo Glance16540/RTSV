@@ -19,6 +19,7 @@
  * men were away: sieges held fell from 67% to 63% and campaigns undecided or ruined rose to one in ten.) The men who die of it are
  * those the bands lost in the fight (militiatoll.ts): this weighs them, and that counts their dead.
  */
+import { militiaEdge } from './ownstudies';
 import type { Campaign } from './campaign';
 import { bandMen } from './tribes';
 import { folkOf } from './township';
@@ -39,4 +40,4 @@ export function militiaBands(c: Campaign, tid: number): number {
   return Math.max(0, folkOf(c, tid).men) / bandMen();
 }
 /** What a town's own men add to its defence against a nation. */
-export const militiaOf = (c: Campaign, tid: number): number => { const b = militiaBands(c, tid); return b <= 0 ? 0 : Math.round(Math.max(MILITIA.least, Math.min(MILITIA.most, b * MILITIA.worth * leaderMilitia(c, tid))) * 10) / 10; };
+export const militiaOf = (c: Campaign, tid: number): number => { const b = militiaBands(c, tid); return b <= 0 ? 0 : Math.round(Math.max(MILITIA.least, Math.min(MILITIA.most, b * MILITIA.worth * leaderMilitia(c, tid) * militiaEdge(c, tid))) * 10) / 10; };

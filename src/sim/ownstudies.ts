@@ -16,7 +16,7 @@
 import type { Campaign } from './campaign';
 import { TECHS } from './data';
 import type { TechDef } from './data';
-import { hasStudy } from './studies';
+import { hasStudy, standsAt } from './studies';
 import { folkOf } from './township';
 
 export const OWN = {
@@ -44,6 +44,33 @@ export const OWN = {
   bond: 1.5,
   /** Arameans, Schools of the Prophets: piety a town of theirs with a church gains each season besides. */
   schools: 1,
+  // ---- The second study of each (docs/DESIGN.md: "one or two studies of its own that fit what it is"). ----
+  /** Egyptians, Dykes and Basins: the share of what a flood spoils, and it wears nothing and washes no farmland away. */
+  dykes: 0.5,
+  /** Franks, Hearth and Home: how much faster a town's grief passes. */
+  hearth: 2,
+  /** Babylonians, an Eye for an Eye: what it adds to the season's chance that a thief is taken. */
+  eye: 0.15,
+  /** Malians, the Griots: the share of the nation's dip in standing for its known people lost. */
+  griots: 0.5,
+  /** Kushites, the Iron of Meroë: how much more a town's own men count in its defence. */
+  iron: 1.25,
+  /** Romans, Aqueducts: how much plague a crowded town has, against a town without. */
+  aqueducts: 0.75,
+  /** Chinese, Ever-Normal Granaries: the share of a town's store a failed harvest eats. */
+  granaries: 0.67,
+  /** Persians, the King's Eyes and Ears: what it adds to the season's chance that a plot is laid bare. */
+  eyes: 0.1,
+  /** Greeks, Colonies: lands further settlers may go. */
+  colonies: 1,
+  /** English, the Wool Staple: gold a town of theirs with Farmland and a Market brings in a season. */
+  wool: 10,
+  /** Abbasids, Bimaristans: the share of plague's dead in their towns. */
+  bimaristan: 0.75,
+  /** Japanese, the Coast Watch: how much better a coastal town of theirs stands against a band. */
+  coast: 1.25,
+  /** Arameans, the Common Tongue: how much more gold their caravans bring home. */
+  tongue: 1.25,
 };
 
 /** Every study that is one nation's own. */
@@ -73,8 +100,8 @@ export function defenceAdd(c: Campaign, tid: number): number {
   const t = c.territories[tid];
   return (at(c, tid, 'own_bow') && folkOf(c, tid).men > 0 ? OWN.bow : 0) + (at(c, tid, 'own_walls') && t.buildings.includes('fortress') ? OWN.walls : 0);
 }
-/** threats.ts: how much better a town stands against a band. */
-export const bandStand = (c: Campaign, tid: number): number => (at(c, tid, 'own_yeomen') ? OWN.yeomen : 1);
+/** threats.ts: how much better a town stands against a band (the Coast Watch: a coastal town). */
+export const bandStand = (c: Campaign, tid: number): number => (at(c, tid, 'own_yeomen') ? OWN.yeomen : 1) * (at(c, tid, 'own_coast') && c.territories[tid].trait === 'coast' ? OWN.coast : 1);
 /** campaign.ts: seasons fewer an army of this people rests after storming a town. */
 export const restSpared = (c: Campaign, f: number): number => (knows(c, f, 'own_remounts') ? OWN.remounts : 0);
 /** governor.ts: how much faster what is building in a town is finished. */
@@ -89,10 +116,36 @@ export const floodWise = (c: Campaign, tid: number): boolean => at(c, tid, 'own_
 export const faithPull = (c: Campaign, tid: number): number => (at(c, tid, 'own_schools') && c.territories[tid].buildings.includes('church') ? OWN.schools : 0);
 /** country.ts: does thin country cost this town nothing? */
 export const thinCountrySpared = (c: Campaign, tid: number): boolean => at(c, tid, 'own_winter');
+/** floods.ts: does this town's people keep dykes, so that a flood spoils less and wears and washes away nothing? */
+export const dykesKept = (c: Campaign, tid: number): boolean => at(c, tid, 'own_dykes');
+/** drift.ts: how much faster a town's grief passes. */
+export const griefFaster = (c: Campaign, tid: number): number => (at(c, tid, 'own_hearth') ? OWN.hearth : 1);
+/** intrigue.ts: what is added to the season's chance that a thief in this town is taken. */
+export const thiefEdge = (c: Campaign, tid: number): number => (at(c, tid, 'own_eye') ? OWN.eye : 0);
+/** drift.ts: the share of the nation's dip in standing for its known people lost. */
+export const lossSpared = (c: Campaign, f: number): number => (knows(c, f, 'own_griots') ? OWN.griots : 1);
+/** militia.ts: how much more a town's own men count in its defence. */
+export const militiaEdge = (c: Campaign, tid: number): number => (at(c, tid, 'own_iron') ? OWN.iron : 1);
+/** acts.ts: how much plague a crowded town of this people has. */
+export const crowdEase = (c: Campaign, tid: number): number => (at(c, tid, 'own_aqueducts') ? OWN.aqueducts : 1);
+/** couriers.ts: does a decree of this people's reach any town at full strength? */
+export const yamRides = (c: Campaign, f: number): boolean => knows(c, f, 'own_yam');
+/** acts.ts: the share of a town's store a failed harvest eats. */
+export const faminePart = (c: Campaign, tid: number): number => (at(c, tid, 'own_granaries') ? OWN.granaries : 1);
+/** courtstory.ts: what is added to the season's chance that a plot against this people's leader is laid bare. */
+export const plotEdge = (c: Campaign, f: number): number => (knows(c, f, 'own_eyes') ? OWN.eyes : 0);
+/** founding.ts: lands further this people's settlers may go. */
+export const colonyReach = (c: Campaign, f: number): number => (knows(c, f, 'own_colonies') ? OWN.colonies : 0);
+/** acts.ts: the share of plague's dead in this town. */
+export const plagueSpared = (c: Campaign, tid: number): number => (at(c, tid, 'own_bimaristan') ? OWN.bimaristan : 1);
+/** caravans.ts: how much more gold this people's caravans bring home. */
+export const caravanGold = (c: Campaign, f: number): number => (knows(c, f, 'own_tongue') ? OWN.tongue : 1);
+/** campaign.ts: does an army of this people land from the sea at full strength? */
+export const landsBySea = (c: Campaign, f: number): boolean => knows(c, f, 'own_longships');
 
 /**
  * A season of what the studies bring in by themselves: the Malians' caravans, gold to every town; the
- * Egyptians' flood, food to every farmed town. Returns the goods brought in, all told.
+ * Egyptians' flood, food to every farmed town; the English wool, gold to every farmed town with a Market. Returns the goods brought in, all told.
  */
 export function ownStudiesSeason(c: Campaign): number {
   let n = 0;
@@ -100,6 +153,7 @@ export function ownStudiesSeason(c: Campaign): number {
     if (t.owner < 0 || t.horde || !c.factions[t.owner]?.alive) continue;
     if (at(c, t.id, 'own_caravans')) { folkOf(c, t.id).stores.gold += OWN.caravans; n += OWN.caravans; }
     if (at(c, t.id, 'own_flood') && t.buildings.includes('farm')) { folkOf(c, t.id).stores.food += OWN.flood; n += OWN.flood; }
+    if (at(c, t.id, 'own_wool') && t.buildings.includes('farm') && standsAt(c, t.id, 'market')) { folkOf(c, t.id).stores.gold += OWN.wool; n += OWN.wool; }
   }
   return n;
 }
