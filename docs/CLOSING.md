@@ -92,7 +92,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A woman whose home produces most | A rival's notable homes on the map are named by rule, one to a town, not by which house did most (board, How a rival rules its towns). | small | Unity: port `notableweight.ts`, which already weighs a house's output, and let rivals read it. |
+| A woman whose home produces most | **Done** (`src/sim/rivalhomes.ts`): a rival's town counts each season's harvest to its working houses by their share of the work, as notableweight.ts weighs a house's output; the house that has done most is the next known home, once it comes to a rank of standing, up to three to a town. | small | Built. |
 | Their loss carries weight | **Done** (`src/sim/carriednamed.ts`): a known person among those a nation leads away is marked carried off by name, mourned, and known again if got back. The rest are counted, as the town's record keeps them. | small | Built. |
 
 ## Captivity
@@ -132,13 +132,13 @@ Built as written (`drift.ts`, `driftintown.ts`, `decrees.ts`, `tavernfall.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | A visit is about ten minutes of its season | A visit costs nothing and the season does not move for it. It is not offered on a land the marauders hold. | small | Unity: port as is. "Each town once a season" is kept. |
-| It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. The four-company stop cannot be set. A rival's towns do not train by orders. | small | Unity: the map has five kinds of company by design. Port as is. |
+| It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. **Done**: the stop can be set by a standing order (townorders.ts `drillStop`, on the governor's orders: 2 to 12 companies, 4 the usual), and a rival's frontier towns with a yard and an enemy army beside them train by orders it gives them, to stop at 3 (`src/sim/rivaldrill.ts`). | small | Unity: the map has five kinds of company by design. Port as is. |
 
 ## Stores
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Towns send food, goods and people to one another by road | The computer sends food and goods by convoy, never people. | small | Unity: port `convoys.ts` and give rivals the player's rule for sending families. |
+| Towns send food, goods and people to one another by road | **Done** (`src/sim/rivalsettle.ts`): a rival sends settlers by road, by the player's own rule (migration.ts `settle`), from its fullest town to its town with too few people, now and then, one a season. | small | Built. |
 | A market's trade by caravan | In a battle or a visit the Traders' markets still earn by rule; caravans run only on the map. | small | Unity: field work. |
 
 ## Armies belong to towns
@@ -150,7 +150,7 @@ listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Any rival nation or marauders that come for it can take it | The marauders walk in only if they hold the land beside it; a roaming band does not turn aside for a dead town. | small | Unity: port as is. |
+| Any rival nation or marauders that come for it can take it | **Done** (`src/sim/bandturn.ts`): a camp of raiders or slavers with a dead town in reach sets out for a land beside it and, standing there, walks in: the town is overrun as deadtown.ts overruns one a wandering band finds, and the band is the camp. | small | Built. |
 
 ## A town taken
 
@@ -158,7 +158,7 @@ The "Not yet" line is listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Sooner settled where they are ruled well | Rivals garrison a resentful town and learn Written Law, but do not build a Church or Farmland with its resentment in mind. A nation given back its last town by a rising is not brought back to life. | small | Unity: port as is. |
+| Sooner settled where they are ruled well | **Done**: a rival builds in its most resentful town Farmland, and then a Church if it is a devout people, when it can spare the price (`src/sim/rivalyoke.ts`), and a computer-led people counted out takes back a town that rises for it and lives again, the town its seat (`src/sim/revival.ts`). | small | Built. |
 
 ## Rivals live by the same rules
 

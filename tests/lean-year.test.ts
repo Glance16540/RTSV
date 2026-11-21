@@ -76,6 +76,7 @@ describe('a harvest that fails by chance', () => {
       for (const u of hands.slice(2)) (g as unknown as { kill(e: unknown): void }).kill(u);
       run(g, 30);
       p.res.food = 0;
+      for (const u of hands.slice(0, 2)) u.carryAmt = 0; // and nothing in hand from before the harvest failed: what was picked earlier is not this year's yield
       let hungry = false;
       run(g, FAMINE.hungry + 20, () => { if (failed) for (const f of fields) f.blightT = 50; if (want(p)) hungry = true; });
       return { hungry, food: p.res.food };

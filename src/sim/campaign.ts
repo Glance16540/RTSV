@@ -49,6 +49,9 @@ import { convoysTurn, relieve } from './convoys';
 import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
+import { rivalSettleSeason } from './rivalsettle';
+import { rivalDrillSeason } from './rivaldrill';
+import { rivalEasesYoke } from './rivalyoke';
 import { makeWilds } from './wilds';
 import './courtcall'; // the call's rules that stand above court.ts: garrisons kept, an ally's land crossed, the road's risk
 import { maraudersFirst, rivalHunts } from './rivalhunt';
@@ -1332,11 +1335,13 @@ export function continueAI(c: Campaign): void {
       rulesSeason(c); // rival nations raise their works of rule and faith (rule.ts)
       governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
+      rivalDrillSeason(c); // and a rival's frontier towns, by the orders it gives them (rivaldrill.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       sentForSeason(c, (s) => paysHere(c, s.f, s.what, s.n, { at: s.at }) && doSentFor(c, s)); // what waited for goods sent for by road is done, if they came in (sentfor.ts)
       caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
+      rivalSettleSeason(c); // and a rival sends settlers to its town that has too few people, as the player may (rivalsettle.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       marriageSeason(c); // the unmarried of a town marry, or go to a town beside to marry (marriage.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
@@ -1466,6 +1471,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
       else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
+    rivalEasesYoke(c, f.id, { canBuild, build }); // a Church or Farmland where a taken town resents it most (rivalyoke.ts)
     // Spend what is left on troops, growing existing armies before starting new ones.
     suePeace(c, f.id); // weary of war, it sues for peace with the peoples it borders (rivalweary.ts)
     if (f.id === 0) for (const g of c.factions) if (g.id > 0 && suesPlayer(c, g.id) && totalStrength(c, g.id) > totalStrength(c, 0)) offerTruce(c, g.id); // played by the computer, the player takes a truce offered by a rival stronger than it (rivalweary.ts)

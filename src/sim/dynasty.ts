@@ -6,7 +6,7 @@
 import { givenNames } from './peoplenames';
 import { endHouse, houseName, houseTitle, ofHouse } from './naming';
 import { canBear, householdNames, parentFor } from './kin';
-import { CHILD_SEASONS } from './ageing';
+import { CHILD_SEASONS, SEASONS_A_YEAR } from './ageing';
 import type { Army, Campaign } from './campaign';
 import { HeroSpec, MAX_RANK, RANK_NAMES } from './hero';
 import { leaderOf } from './leaders';
@@ -122,7 +122,7 @@ export function claimants(c: Campaign, f: number): Claim[] {
   house.heirs.forEach((h, i) => {
     if (!ofAge(c, h)) return;
     // Raised at their parent's side, an heir has half the name their parent made.
-    out.push({ kind: 'heir', i, name: `${h.name}, ${h.female ? 'daughter' : 'son'} of ${fallen.name}`.slice(0, 60), female: h.female, rank: Math.floor((fac.heroRank ?? 0) / 2), what: `${h.female ? 'Daughter' : 'Son'} of ${fallen.name}, ${c.turn - h.born} turns old. Keeps their parent's gifts and ${houseName(c, f) ? `the House of ${houseName(c, f)}` : 'the house'}.` });
+    out.push({ kind: 'heir', i, name: `${h.name}, ${h.female ? 'daughter' : 'son'} of ${fallen.name}`.slice(0, 60), female: h.female, rank: Math.floor((fac.heroRank ?? 0) / 2), what: `${h.female ? 'Daughter' : 'Son'} of ${fallen.name}, ${Math.floor((c.turn - h.born) / SEASONS_A_YEAR)} years old. Keeps their parent's gifts and ${houseName(c, f) ? `the House of ${houseName(c, f)}` : 'the house'}.` });
   });
   out.sort((a, b) => house.heirs[a.i].born - house.heirs[b.i].born);
   // With no heir of age, a grown child of both houses by a royal marriage comes before any captain (bothhouses.ts).
