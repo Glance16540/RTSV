@@ -111,7 +111,7 @@ describe('threads the world begins', () => {
 
   it('is noticed in a whole campaign as it is played, and the watch is kept with a save', () => {
     const c = newCampaign(3, 3);
-    for (let i = 0; i < 60 && c.phase !== 'over'; i++) { turn(c); c.tale = null; }
+    for (let i = 0; i < 40 && c.phase !== 'over'; i++) { turn(c); c.tale = null; } // forty seasons: by sixty, in this seed, the player may be beaten (rivals ease their yoke, rivalyoke.ts), and a people beaten keeps no watch
     expect(c.threadWatch?.held).toEqual(c.territories.filter((t) => t.owner === 0).map((t) => t.id));
     const back = JSON.parse(JSON.stringify(c)) as Campaign;
     expect(back.threadWatch).toEqual(c.threadWatch);
