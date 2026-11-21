@@ -1,6 +1,7 @@
 // Conquest mode: a turn-based strategic map layered over the real-time battles.
 // Pure rules, no DOM, so it can be tested headless.
 
+import { rollSeason } from './folkroll';
 import { askedFor, keepAsked } from './askedhere';
 import { tavernPull } from './churchtavern';
 import { rumourSeason } from './tavernrumour';
@@ -1368,6 +1369,7 @@ export function continueAI(c: Campaign): void {
       tradeSeason(c); // peoples at peace open their markets to each other (tradedeal.ts)
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
+      rollSeason(c); // every town's grown are named on its record, level with its counts (folkroll.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
       oldSeasons(c); // the old people of a town taken become the holder's (oldfolk.ts)

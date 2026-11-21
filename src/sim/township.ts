@@ -6,6 +6,7 @@
  * what the town has from then on: who lived, who died, who was taken, what was gathered and spent.
  * A town is founded the first time it is asked for, so a campaign saved before this still loads.
  */
+import { Grown, cleanGrown, fallFromRoll, namesLine, rollBack, rollIn } from './folkroll';
 import type { Campaign } from './campaign';
 import { cleanWidows, widowsBack } from './widowtown';
 import { cleanOrphans, orphansBack } from './orphantown';
@@ -115,7 +116,7 @@ export function musterFolk(c: Campaign, tid: number, opts: { /** Men of the town
   if (split.home) f.fieldHome = split.home; else delete f.fieldHome;
   const ages = split.field, men = ages.m.filter((s) => s < OLD_SEASON).length, women = ages.f.filter((s) => s < OLD_SEASON).length;
   const fieldGrown = ages.m.length + ages.f.length, old = oldIn(c, tid, fieldGrown, grown(f) + f.children); // a taken town's old people on the field (oldmarks.ts)
-  return { people: { men, women, elders: fieldGrown - men - women, children: f.children, ...old, ...(named.length ? { named } : {}), ...(f.widowed?.length ? { widowed: f.widowed.map((w) => ({ ...w })) } : {}), ...(f.orphans?.length ? { orphans: f.orphans.map((o) => ({ ...o })) } : {}), ages: { m: [...ages.m], f: [...ages.f], k: [...ages.k] } }, stores: { ...f.stores } }; // its widowed go with it (widowtown.ts)
+  return { people: rollIn(c, tid, { men, women, elders: fieldGrown - men - women, children: f.children, ...old, ...(named.length ? { named } : {}), ...(f.widowed?.length ? { widowed: f.widowed.map((w) => ({ ...w })) } : {}), ...(f.orphans?.length ? { orphans: f.orphans.map((o) => ({ ...o })) } : {}), ages: { m: [...ages.m], f: [...ages.f], k: [...ages.k] } }), stores: { ...f.stores } }; // its widowed go with it (widowtown.ts); its grown by name (folkroll.ts)
 }
 
 /** Make safe a count of a town handed back from a battle. Nothing if it is not one. */
@@ -132,6 +133,7 @@ export function cleanCensus(x: Partial<Census> | null | undefined): Census | und
     ...(cleanAges(x.ages) ? { ages: cleanAges(x.ages) } : {}),
     ...(cleanOld(x.old) ? { old: cleanOld(x.old) } : {}), // a taken town's old people who live, by name (oldmarks.ts)
     ...unfieldedOf(x), // its people were never on the field (writeguard.ts)
+    ...(Array.isArray(x.roll) ? { roll: cleanGrown(x.roll) } : {}), // who lives, by name (folkroll.ts)
   };
 }
 
@@ -140,7 +142,7 @@ export const homeStanding = (kids = 0, war = 0): number => kids + Math.floor(war
 const remember = (f: Folk, n: Notable): void => { f.notables.push(n); if (f.notables.length > MAX_NOTABLES) f.notables.splice(f.notables.findIndex((x) => x.lost) >= 0 ? f.notables.findIndex((x) => x.lost) : 0, 1); };
 const chronicle = (c: Campaign, line: string): void => { (c.chronicle ??= []).push({ turn: c.turn, text: line }); };
 
-export interface Reckoning { before: number; after: number; taken: number; lost: Notable[]; made: Notable[] }
+export interface Reckoning { before: number; after: number; taken: number; lost: Notable[]; made: Notable[]; /** Its grown who died and who were carried off, by name (folkroll.ts). */ dead?: Grown[]; carried?: Grown[] }
 /**
  * A battle was fought in person over a town: write back what is left of it. `census` is the count of the side that
  * held the town as the battle ended. Those who are neither there nor held captive are dead. A notable woman who is
@@ -158,6 +160,7 @@ export function settleFolk(c: Campaign, tid: number, census: Census, opts: { tak
   const home = cleanHome(f.fieldHome);
   delete f.fieldHome;
   if (home) { if (f.ages) countFrom(f, joinAges(f.ages, home)); else { const h = homeCounts(home); f.men += h.men; f.women += h.women; f.elders += h.elders; } }
+  const named = rollBack(c, tid, census); // who of its grown died, and who was carried off, by name (folkroll.ts)
   oldBack(c, tid, census.old); // a taken town's old people: the marked who live, and those at home (oldmarks.ts)
   f.stores = { ...census.stores };
   if (census.widowed) f.widowed = widowsBack(f.widowed, census.widowed, c.turn); // the map's widowed are those the town had (widowtown.ts)
@@ -193,10 +196,11 @@ export function settleFolk(c: Campaign, tid: number, census: Census, opts: { tak
     const parts = [dead ? `${dead} died` : '', taken ? `${taken} ${taken === 1 ? 'was' : 'were'} carried off` : '', after > before ? `${after - before} more ${after - before === 1 ? 'was' : 'were'} born, came of age or came home` : ''].filter(Boolean);
     if (parts.length) c.log.push(`Of ${whose} at ${t.name}, ${parts.join(' and ')}: ${now(after)}.`);
   }
+  if (named.dead.length) c.log.push(`The dead of ${t.name}: ${namesLine(named.dead)}.`); // by name (folkroll.ts)
   for (const n of lost) { c.log.push(`${n.name} of ${t.name}, who ${n.deed}, is lost.`); chronicle(c, `${n.name} of ${t.name}, who ${n.deed}, was ${n.lost!.how} when the town was fought over.`); }
   for (const n of made) { c.log.push(`${n.name} of ${t.name} has ${n.deed}, and her name is known.`); chronicle(c, `${n.name} of ${t.name} ${n.deed}, and was known for it through the land.`); }
   // An empty town taken is settled by the taker's own people, by road (settlersfrom.ts, a battle hook in campaign.ts): nobody from nowhere.
-  return { before, after, taken, lost, made };
+  return { before, after, taken, lost, made, dead: named.dead, carried: named.carried };
 }
 
 /** A soldier who made a name in a battle is remembered in the town named: once, with the most they ever did. */
@@ -232,6 +236,7 @@ export function tollFolk(c: Campaign, tid: number, taken: boolean, by: { men?: n
   const f = folkOf(c, tid), dead = Math.min(Math.max(0, f.men - (f.women > 0 ? TOLL.last : 0)), by.men !== undefined ? Math.max(0, Math.round(by.men)) : Math.ceil(f.men * (taken ? TOLL.taken : TOLL.held)));
   f.men -= dead;
   if (dead && f.ages) agesOf(c, tid, f); // the record of ages loses them too
+  { const fell = fallFromRoll(c, tid, dead); if (fell.length && c.territories[tid].owner === 0) c.log.push(`The men of ${c.territories[tid].name} who fell: ${namesLine(fell)}.`); } // by name (folkroll.ts)
   tally(c, tid, 'fell', dead); // for the season's report (ledger.ts)
   if (taken) for (const k of STORE_KINDS) f.stores[k] = Math.floor(f.stores[k] * (1 - TOLL.looted));
   return dead;
