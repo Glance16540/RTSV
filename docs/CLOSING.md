@@ -24,7 +24,7 @@ modules or a new system, and **large** a new system that touches the field and t
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A man at war is still of his house | On the map a house is kept by name only while it has a man away, one fallen in the last forty seasons, or deeds to its name. An ordinary house with everyone home is a count again, so a man can come home to a house the record has forgotten (`warhouse.ts`). | medium | Unity: keeping every house by name on the map is a change to the town record's shape, best made once in the new save format. |
+| A man at war is still of his house | **Done for the houses that sent men** (`src/sim/housekeep.ts`): a house once named is kept by name with everyone home while the town has a home for it (one to each woman), so a man comes home to his own. The cost to the record, measured on two twenty-year campaigns: some 120 to 175 bytes a house, a few hundred houses more at most, 40 to 60 thousand bytes on saves of 70 to 230 thousand; old saves load as they are. Still a count: a house that never sent a man, between sittings (`roofsmap.ts` keeps the last sitting's). | medium | Built as far as the record allows without naming everyone. The rest goes with naming everyone (No auto-resolve). |
 | A town taken | Resentment costs no harvest, gold or levy. Each was tried and dropped, and it acts only through unrest, the governor's pace, drift and the walls. | small | Drop: tried three ways and dropped on measurement. Only the owner would reopen it. |
 | Claimants to the throne | The lord, the band and the grown claimant are names and a line on the land's panel, not figures on the field. The player's own succession is asked of the player before a claimant can take the throne. | medium | Unity: the claimant as a figure is field work (a person to meet, fight or judge in a town). The succession order is the owner's ruling as it stands. |
 
@@ -75,7 +75,7 @@ Built as written (`muster.ts`, `birthonly.ts`; a woman fights at `WOMAN_ATK` 0.4
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| What he earns and wins counts to the house's output | Men with the armies are not counted in a town's output. War counts by foes felled only: veterancy beyond kills and loot are not counted to a house. | small | Unity: it is the house's output figure, which `notableweight.ts` has. Port and extend. |
+| What he earns and wins counts to the house's output | **Done** (`src/sim/warspoils.ts`): the spoils of a town his army took and his share in each town taken or attack thrown back count to his house as goods carried in, on its record and its known mother's. Still: men with the armies are not counted in a town's output while away. | small | Built. |
 | He is not lost until he dies or is taken | A man taken captive is not handled apart from one who dies, because slavers take villagers, not soldiers. | small | Drop: nothing takes a soldier captive today. |
 | The case where his house falls while he is away | Settled without the owner's word, as asked: the house's record falls with it, he keeps his name, and he comes home unhoused. | none | Confirmed by the owner (19 November 2026): kept as built. |
 
@@ -108,9 +108,9 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Famine, plague, fire and the like | No flood. Rivers run on the map and are laid on a town's ground, but nothing lets ground go under water. A failed harvest strikes only fields, never a town that lives by hunting, fishing or herds. | medium | Unity: a flood is terrain work. Port `acts.ts` as it is. |
+| Famine, plague, fire and the like | **Done on the map and for the hunters** (`src/sim/floods.ts`, `src/sim/leanwild.ts`): a river land floods by its standing (food spoilt, the town worn, struck hard its farmland washed away, nobody drowned, halved by the Flood Calendar); and a town with no farm has a lean season by a failed harvest's chance, its hunters and fishers at half. Still: inside a town the ground never goes under water. | medium | Built on the map. Unity: water on the field. |
 | By creed, sparing nobody | **Done (19 November 2026).** A Prophet's fire, blight and earthquake go by the creed of those they fall on, as his plague does (`wrath.ts`, `game.ts`); fever in the camp and a hard season go by the town's own standing (`chancecreed.ts`, through `wrathAt`). An ordinary people is struck exactly as before. | small | Done. |
-| They carry over into a town | A battle in a land with plague on the map begins with nobody sick, and one after a failed harvest with nobody hungry. | small | Unity: the field's start-up reads the map's state, and that start-up is being rebuilt. |
+| They carry over into a town | **Done** (`src/sim/ailing.ts`, through the setup bag): a battle or visit in a land with plague begins with a few of the town sick, and one in a hungry town or after a failed harvest that season begins hungry. | small | Built. |
 
 ## Threats of men never stop
 

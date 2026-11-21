@@ -7,6 +7,7 @@
 // women by name). What it saves: the standing town, the worked ground, half the town's change of creed, any map
 // building (farm, barracks...) raised that has a place on the land, and the town's people and stores as the
 // visit leaves them, as a siege does: everyone born there, less the dead and the taken.
+import { ailingOf } from './ailing';
 import { askedFor, keepAsked } from './askedhere';
 import { seasonOfTurn } from './seasonsky';
 import { companySoldiers, rollOf } from './soldiernames';
@@ -217,6 +218,7 @@ export function visitConfig(c: Campaign, record: VisitRecord = {}): BattleConfig
         // The town's own people and stores (township.ts), in place of four founders and the usual stock.
         ...withDrift(c, t.id, musterFolk(c, t.id)),
         studies: studiesOf(c, 0), // the nation's studies are known in its towns (studies.ts)
+        ...(ailingOf(c, t.id) ? { ailing: ailingOf(c, t.id) } : {}), // the map's plague and hunger come with the town (ailing.ts)
         ...(roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // roads laid by hand there before (handroads.ts)
         ...(askedFor(c, t.id) ? { asked: askedFor(c, t.id) } : {}), // the dilemmas it was asked before (askedhere.ts)
         ...(storyForVisit(c, t.id) ? { story: storyForVisit(c, t.id) } : {}), // a thief or a killer afoot in the town (storyvisit.ts)

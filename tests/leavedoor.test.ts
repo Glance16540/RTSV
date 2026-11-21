@@ -82,7 +82,7 @@ describe('the door he came home to, on the map', () => {
     expect(c.log.join('\n')).toContain('left the army there and is home:');
   }, 60_000);
 
-  it('the house is kept on the record for his sake a while, and then forgotten', () => {
+  it('the door he came to is kept on the record a while, and then forgotten; the house is kept while the town has a home for it', () => {
     const { c, home } = world();
     const f = folkOf(c, home.id);
     const h = cameToDoor(c, home.id, 'Edric', 'Longhome', 'husband')!;
@@ -93,7 +93,11 @@ describe('the door he came home to, on the map', () => {
     expect(housesOf(f).some((x) => x.family === 'Longhome')).toBe(true);
     c.turn += WARHOUSE.remembered + 1;
     settleHouses(c);
-    expect(housesOf(f).some((x) => x.family === 'Longhome')).toBe(false);
+    const kept = housesOf(f).find((x) => x.family === 'Longhome');
+    expect(kept).toBeDefined(); // a house once named is kept with everyone home (housekeep.ts)
+    expect(kept!.home).toBeUndefined(); // but the door he came to is forgotten
     expect(cameToDoor(c, home.id, '', 'Longhome', 'own')).toBeUndefined();
+    f.women = 0; settleHouses(c); // a town with no home for it lets it go
+    expect(housesOf(f).some((x) => x.family === 'Longhome')).toBe(false);
   });
 });

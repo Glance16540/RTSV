@@ -81,7 +81,10 @@ describe('a man at war is still of his house, on the map', () => {
     expect(recordedAway(f)).toBe(0);
     expect(f.men).toBe(10);
     settleHouses(c);
-    expect(f.houses).toBeUndefined(); // nobody away and nobody fallen: nothing is kept
+    // Nobody away and nobody fallen: the houses are kept by name all the same, while the town has homes for them (housekeep.ts).
+    expect(f.houses!.length).toBeGreaterThan(0);
+    expect(f.houses!.length).toBeLessThanOrEqual(Math.max(1, f.women));
+    expect(f.houses!.every((h) => !h.away.length)).toBe(true);
   });
 
   it('a death in a battle on the map is his house\'s loss, and the town grieves', () => {
