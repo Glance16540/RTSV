@@ -22,6 +22,7 @@ import { CAMP_BIRTH, CAPTIVE_CAP, CAPTIVE_VIRTUE, ESCAPE_TIME, GUARD_DRIVE, GUAR
 import { TYRANT_BIRTH } from './hero';
 import { rescue } from './rescue';
 import { Child, wardFor } from './nursery';
+import { OutHow, cameOut } from './campout';
 
 /** Seconds from being seized during which a captive can still be got back. */
 export const CAPTIVE_HOLD = 600;
@@ -209,7 +210,7 @@ export function freeCaptive(g: Game, c: Captive, x: number, y: number): void {
 /** How many of a camp's captives its guards cannot keep an eye on. */
 export function unwatched(b: Building): number { return Math.max(0, (b.captives?.length ?? 0) - GUARD_WATCH * Math.min(b.def.guards ?? 0, b.staff?.length ?? 0)); }
 /** One captive gets out of a camp and makes for home on foot: they can be run down again on the way. */
-export function breakOut(g: Game, b: Building, i: number): void {
+export function breakOut(g: Game, b: Building, i: number, how?: OutHow): void {
   const c = b.captives!.splice(i, 1)[0], home = g.players[c.from];
   if (!home || home.defeated) return;
   const at = g.landPf.nearestFree(b.x, b.y + b.size / 2 + 0.8);
@@ -218,6 +219,7 @@ export function breakOut(g: Game, b: Building, i: number): void {
   v.kids = c.kids; v.captiveKids = c.born; v.story = [...(c.story ?? []), { t: g.time, s: 'Got out of the camp' }];
   if (c.people) v.people = c.people;
   comeHome(g, c, v);
+  if (how) cameOut(g, v, how); // slipped away, or out with a rising: how it is drawn for a little while (campout.ts)
   const tc = g.tcs[c.from]?.[0];
   if (tc) g.cmdMove(c.from, [v.id], tc.x, tc.y + tc.size / 2 + 1);
   g.msg(c.from, `${c.name} has got out of the camp and is running for home.`);
@@ -234,7 +236,7 @@ export function campNight(g: Game, p: Player, b: Building): void {
   const menLoose = Math.min(loose, b.captives!.filter((c) => c.gender === 'm').length);
   if (menLoose >= REVOLT_MEN && roll(1) < 1 / REVOLT_TIME) {
     const out = Math.ceil(b.captives!.length / 2);
-    for (let k = 0; k < out; k++) breakOut(g, b, b.captives!.length - 1);
+    for (let k = 0; k < out; k++) breakOut(g, b, b.captives!.length - 1, 'rise');
     b.burnT = Math.max(b.burnT, 10);
     b.hp = Math.max(1, b.hp - b.maxHp * 0.25);
     g.msg(p.id, `⛓️ The work camp has risen in the night! ${out} captives have broken out and the stockade is burning. Post more guards.`);
@@ -242,7 +244,7 @@ export function campNight(g: Game, p: Player, b: Building): void {
     return;
   }
   if (roll(2) < 1 / ESCAPE_TIME) { // one at a time, about one a night: a trickle, where a rising is a flood
-    breakOut(g, b, b.captives!.length - 1); // the last brought in is the least watched
+    breakOut(g, b, b.captives!.length - 1, 'slip'); // the last brought in is the least watched
     g.msg(p.id, '⛓️ A captive has slipped away from the work camp in the night. A guard would have seen it.');
   }
 }

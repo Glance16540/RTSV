@@ -2,6 +2,7 @@
 // nights in `game.ts`; until now they were told only in messages. Here: soldiers come for their people turn to the
 // gate and hack at it (or stand facing it, held off by the guards) with chips flying, and a rescue, a rising or a
 // night escape is marked by dust, flying chips and a sign over the gate. The bar over the camp is `gate.ts`.
+// Those who got out are drawn as they came (`outLook`): crouched and dark for one who slipped away, with brands for a rising.
 
 import type { Building, Game } from '../sim/game';
 import { gateWork, rescuers } from '../sim/rescue';
@@ -28,6 +29,16 @@ export function campChange(was: CampState | undefined, now: CampState): { what: 
   if (was.working) return { what: 'rescue', out };
   if (now.burning && !was.burning && out >= 2) return { what: 'rising', out };
   return { what: 'escape', out };
+}
+
+/**
+ * How someone who has just got out of a camp is drawn (the rule and its seconds are `src/sim/campout.ts`): one who
+ * slipped away goes crouched and carries no light; those who rose carry a brand from the fire they set, held up.
+ */
+export function outLook(how: 'slip' | 'rise' | '', moving: boolean): { clip: string; rate: number; brand: boolean } | null {
+  if (how === 'slip') return { clip: moving ? 'Crouch_Fwd_Loop' : 'Crouch_Idle_Loop', rate: 1, brand: false };
+  if (how === 'rise') return { clip: '', rate: 1, brand: true };
+  return null;
 }
 
 /** Where a camp's gate is: the middle of its south wall, where those let out are set down. */
