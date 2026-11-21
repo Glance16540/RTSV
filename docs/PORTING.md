@@ -368,6 +368,7 @@ by name.
 | `rivalyoke` | 41 | A rival rules a resentful town with its resentment in mind: once a season, Farmland in its most resentful town, when it can spare the price; building is lent by campaign.ts. | campaign (types only), campaignbase, conquered | rivalyoke.test.ts | not yet |
 | `revival` | 23 | A computer-led people counted out takes back a town that rises for it (conquered.ts) and lives again, the town its seat. | campaign (types only) | rivalyoke.test.ts | not yet |
 | `rivalstories` | 130 | Stories inside the story for rival rulers: the thief and the killer begin in their towns by the player's chances, are judged by the ruler's lights, and are told to the player only where he could hear of them. | campaign (types only), courtstory, creed, intrigue, intriguebase, townfaith, township, townwatch | rivalstories.test.ts | not yet |
+| `rivaltales` | 84 | Rivals have tales of their own: when a tale is due each rival the computer leads is brought one that could come to anybody, answers it as its people lean (the upright way when it can spare it), and the answer goes through the rules there are; the chronicle tells it in a line. | armytown, campaign (types only), campaignbase, creed, prices, stores, story, temper, townfaith, tribes | rivaltales.test.ts | not yet |
 | `rivalweary` | 125 | What war costs a rival's towns (docs/DESIGN.md, "Rivals live by the same rules"): its weariness from its dead, its hungry towns and its restless ones; the better odds a weary people wants; and the peace it sues for, a pact between two rivals and an open offer of truce to the player. | campaign (types only), campaignbase, drift, feudwar, pacts, rivalrule, rivalworld, township | rivalweary.test.ts | not yet |
 | `rivalworld` | 61 | The world as a rival weighs it (docs/DESIGN.md, "Rivals live by the same rules"): what a named place, plague and a far faith add to or take from a war aim; the odds wanted to march in winter, in the Long Winter and in the Season of Iron; and how much readier two peoples of like standing are to treat. Figures only. | aiplague, campaign (types only), campaignbase, places, townfaith, winter | rivalworld.test.ts | not yet |
 | `roadclash` | 132 | A band meets soldiers on the road, fought out with the map's clash: the band as in a raid, the soldiers as their own companies at the strength the map gives them (and, at a road's end, the wayfarers as the place); who broke, what each lost, and what the band comes away with. It decides an army's fight with a band (bandfight.ts), an escort's for a convoy or a caravan (`escortFight`, called by convoys.ts and caravans.ts) and a strike at a road's end (threats.ts); the old rule is tallied beside it for the report. | armytown, campaign (types only), campaignbase, mapbattle, raidclash | roadclash.test.ts | not yet |
@@ -388,12 +389,12 @@ by name.
 | `spymasters` | 7 | Spymasters, a study: a plot against the leader is found the sooner. | campaign (types only), studies | spymasters.test.ts | not yet |
 | `stewardship` | 8 | Stewardship, a study: a better governor, who finishes what he has begun half again as fast. | campaign (types only), studies | stewardship.test.ts | not yet |
 | `styleplay` | 120 | The battle's computer player plays to its people's rule: what the rule makes worth building ahead of the common order (traders' markets, the Faithful's church, builders' towers), a farm for room where others raise a house (farmers), nothing kept back for a technology (scholars), who is sent out of the fight and where (the Faithful's hurt to their church, a warrior people's hurt veterans home), and how the rule shapes the war (builders sit out a siege, scholars time an attack to an age, warriors field fewer and better men). Answers only; ai.ts gives the orders. | data, game (types only) | styleplay.test.ts | not yet |
-| `storypolicy` | 68 | A plain way of answering the stories inside the story for a player the computer plays (`sensibleAnswers`): watch, accuse only when one is left, defy and guard, ask the daughter, informers and a pardon; a tale as the people lean, when the supplies can be spared. Never reads who the culprit is. Used by the health report (STORIES=answer). | aftermath, campaign (types only), campaignbase, creed, intrigue, petitions, royalmarriage, storyturn, temper, tradedeal | storypolicy.test.ts | not yet |
+| `storypolicy` | 69 | A plain way of answering the stories inside the story for a player the computer plays (`sensibleAnswers`): watch, accuse only when one is left, defy and guard, ask the daughter, informers and a pardon; a tale as the people lean, when the supplies can be spared. Never reads who the culprit is. Used by the health report (STORIES=answer). | aftermath, campaign (types only), campaignbase, creed, intrigue, petitions, rivaltales, royalmarriage, storyturn, temper, tradedeal | storypolicy.test.ts | not yet |
 | `stores` | 107 | Stores replace supplies (docs/DESIGN.md, "Stores"): a nation's supplies are what its towns hold above their working stock, and every gain or loss on the map is carried into the towns. | campaign (types only), township | stores.test.ts | not yet |
 | `steward` | 62 | The Steward, a third calling for the leader: a hero whose presence makes villagers near them gather and build faster, whose call (Man the walls) spares buildings near them harm, and their three pairs of powers. Read by powers.ts (calls and powers) and game.ts (work and harm). | data, game (types only) | steward.test.ts | not yet |
 | `epilogues` | 144 | A campaign's own ending, on the last page once it is over: how each thread of tales ended (its fate), was left unfinished or was still open; what became of the people of note (the ruler and the line, the husband or wife, grown heirs, the circle, lords and any plotter, grown claimants, the most renowned of the towns, living and lost); and the houses (the ruling house, the houses it married into, the great houses of the towns). Only the grown are named. Puts itself on `story.LAST_PAGE`. | campaign (types only), chroniclethreads, dynasty, kin, nobles, story, talethreads | epilogues.test.ts | not yet |
-| `story` | 213 | The story of a campaign: places with names and a past, things that happen to the whole world, tales that are | campaign (types only), creed, ruin, threadtales, worldtales | story.test.ts | not yet |
-| `storyturn` | 151 | The story's turn, out of the campaign hub: what befalls the whole world, the tales put before the player and how an answer is carried out (`taleNow`, `taleText`, `canAnswer`, `answerTale`), and how each rival answers its own. One call a season (`storyTurn`). | armytown, campaign (types only), campaignbase, chroniclethreads, creed, epilogues (types only), places, prices, stores, story, talethreads, temper, threadstarts, townfaith, tribes | storyturn.test.ts, story.test.ts, sim.test.ts | not yet |
+| `story` | 211 | The story of a campaign: places with names and a past, things that happen to the whole world, tales that are | campaign (types only), creed, ruin, threadtales, worldtales | story.test.ts | not yet |
+| `storyturn` | 147 | The story's turn, out of the campaign hub: what befalls the whole world, the tales put before the player and how an answer is carried out (`taleNow`, `taleText`, `canAnswer`, `answerTale`), and how each rival answers its own. One call a season (`storyTurn`). | armytown, campaign (types only), campaignbase, chroniclethreads, epilogues (types only), places, prices, rivaltales, stores, story, talethreads, threadstarts, townfaith, tribes | storyturn.test.ts, story.test.ts, sim.test.ts | not yet |
 | `talethreads` | 105 | A thread of tales told whole: when an answer leads nowhere further, the chronicle tells the thread from the year it began (what was done at each step, and how it ended for those in it); a thread dropped for a fallen rival or a tribe no longer free is told as left unfinished. Every end is kept (`threadEnds`) for the last page. Words only. | campaign (types only), chroniclethreads, places, story, threadtales, worldtales | talethreads.test.ts | not yet |
 | `threadtales` | 106 | The longer threads of the tales as data: tales that later answers lead to, so each thread runs three to five tellings and every answer picks the road; each answer's few words (`told`) and an ending answer's `fate`. | story (types only) | talethreads.test.ts | not yet |
 | `threadstarts` | 101 | What befalls the player that begins a thread of tales, noticed each season from the campaign as it stands: a land lost to a rival, a leader's fall, a plague, a royal marriage, a hungry winter, a claimant's rising. Each waits for the next telling behind any thread under way (`threadSeeds`), begins once a campaign, and is let go after `STARTS.wait` seasons. | campaign (types only), campaignbase, seasonsky, story | threadstarts.test.ts | not yet |
@@ -476,7 +477,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-310 modules, 38,539 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+311 modules, 38,618 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -484,12 +485,12 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 1 | 26 | 2,464 | `ageing` (142; 33), `creed` (114; 30), `hero` (102; 13), `naming` (113; 11), `map` (316; 4), `courtfield` (178; 3), `feudwar` (55; 3), `siegecamp` (75; 3), `uniquecompany` (54; 3), `widowtown` (83; 3), `birthonly` (62; 2), `darkarts` (89; 2), `plainhealer` (32; 2), `steward` (62; 2), `aiworks` (95; 1), `dyingout` (88; 1), `fieldstory` (146; 1), `firstlay` (71; 1), `fleets` (69; 1), `leavehome` (58; 1), `namesakes` (53; 1), `raiderguide` (44; 1), `siegelift` (86; 1), `styleplay` (120; 1), `battlecard` (132), `visitguide` (25) |
 | 2 | 18 | 1,273 | `champion` (30; 8), `powers` (95; 8), `chroniclethreads` (81; 7), `rescue` (157; 6), `seasonsky` (89; 4), `muster` (51; 3), `oldmarks` (145; 3), `askedhere` (31; 2), `nursery` (52; 2), `queuedmen` (54; 2), `tavernfall` (24; 2), `aisiting` (101; 1), `carriedout` (32; 1), `fieldcap` (108; 1), `placebar` (50; 1), `roofs` (113; 1), `hallguests` (47), `inyears` (13) |
 | 3 | 8 | 1,385 | `township` (238; 85), `captivity` (268; 5), `winter` (61; 5), `bothhouses` (112; 3), `battleleader` (119; 1), `pickman` (98; 1), `notable` (50), `scenario` (439) |
-| 4 | 20 | 1,756 | `campaignbase` (378; 67), `stores` (107; 13), `plenty` (80; 11), `infirmary` (52; 5), `granary` (55; 4), `well` (44; 4), `mill` (45; 3), `oldfolk` (73; 3), `householdmove` (73; 2), `marauders` (220; 2), `orphans` (77; 2), `plaguenamed` (52; 2), `sieges` (36; 2), `aicaptives` (64; 1), `battlefolk` (99; 1), `battlescars` (109; 1), `dilemmaacts` (26; 1), `hiredhome` (37; 1), `rivalhomes` (58; 1), `warspoils` (71; 1) |
+| 4 | 20 | 1,756 | `campaignbase` (378; 68), `stores` (107; 14), `plenty` (80; 11), `infirmary` (52; 5), `granary` (55; 4), `well` (44; 4), `mill` (45; 3), `oldfolk` (73; 3), `householdmove` (73; 2), `marauders` (220; 2), `orphans` (77; 2), `plaguenamed` (52; 2), `sieges` (36; 2), `aicaptives` (64; 1), `battlefolk` (99; 1), `battlescars` (109; 1), `dilemmaacts` (26; 1), `hiredhome` (37; 1), `rivalhomes` (58; 1), `warspoils` (71; 1) |
 | 5 | 16 | 1,499 | `studies` (153; 26), `court` (228; 18), `rim` (114; 7), `grief` (73; 6), `soldiernames` (144; 6), `churchtavern` (54; 5), `wilds` (87; 5), `veteranhome` (117; 4), `companyroll` (130; 3), `faithsites` (39; 2), `townwater` (77; 2), `aiward` (61; 1), `battletales` (57; 1), `carriednamed` (51; 1), `hazardlessons` (84; 1), `nextage` (30; 1) |
 | 6 | 23 | 1,178 | `ownstudies` (165; 21), `warhouse` (322; 10), `leaderstay` (84; 8), `hall` (28; 5), `heralds` (30; 3), `manor` (29; 3), `ruin` (124; 3), `townwatch` (30; 3), `croprotation` (18; 2), `fortress` (30; 2), `midwifery` (18; 2), `quarantine` (20; 2), `roads` (37; 2), `salting` (20; 2), `writtenlaw` (12; 2), `furlough` (110; 1), `monastery` (26; 1), `oaths` (8; 1), `physicians` (17; 1), `pilgrimage` (8; 1), `seatedleader` (27; 1), `spymasters` (7; 1), `stewardship` (8; 1) |
-| 7 | 8 | 1,263 | `armytown` (387; 21), `larder` (121; 13), `famine` (188; 7), `founding` (118; 7), `story` (213; 7), `contagion` (97; 3), `couriers` (9; 1), `widowhood` (130; 1) |
-| 8 | 16 | 1,238 | `places` (58; 7), `bandmarch` (145; 5), `tribes` (217; 5), `reckon` (26; 4), `ailing` (53; 3), `larderwatch` (61; 2), `leanwild` (48; 2), `aicare` (56; 1), `downedmap` (64; 1), `fortkeep` (52; 1), `grain` (78; 1), `siegeretreat` (63; 1), `threadstarts` (101; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
-| 9 | 4 | 478 | `townfaith` (126; 27), `militia` (43; 4), `calamity` (204; 3), `talethreads` (105; 2) |
+| 7 | 8 | 1,261 | `armytown` (387; 22), `larder` (121; 13), `story` (211; 8), `famine` (188; 7), `founding` (118; 7), `contagion` (97; 3), `couriers` (9; 1), `widowhood` (130; 1) |
+| 8 | 16 | 1,238 | `places` (58; 7), `tribes` (217; 6), `bandmarch` (145; 5), `reckon` (26; 4), `ailing` (53; 3), `larderwatch` (61; 2), `leanwild` (48; 2), `aicare` (56; 1), `downedmap` (64; 1), `fortkeep` (52; 1), `grain` (78; 1), `siegeretreat` (63; 1), `threadstarts` (101; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
+| 9 | 4 | 478 | `townfaith` (126; 28), `militia` (43; 4), `calamity` (204; 3), `talethreads` (105; 2) |
 | 10 | 10 | 878 | `kin` (256; 9), `seasonfolk` (121; 5), `conquered` (126; 4), `rivalworld` (61; 3), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1), `lessons` (68) |
 | 11 | 4 | 789 | `nobles` (259; 20), `dynasty` (232; 14), `portrait` (257; 1), `rivalyoke` (41; 1) |
 | 12 | 7 | 1,072 | `mapbattle` (386; 4), `nobletemper` (110; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `thronemoods` (40; 2), `unrest` (128; 1), `epilogues` (144) |
@@ -497,9 +498,9 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 14 | 1 | 132 | `roadclash` (132; 4) |
 | 15 | 1 | 343 | `convoys` (343; 9) |
 | 16 | 5 | 589 | `migration` (233; 3), `marriage` (102; 2), `sentfor` (99; 2), `settlersfrom` (61; 2), `suitors` (94; 1) |
-| 17 | 4 | 443 | `prices` (214; 9), `deadtown` (106; 4), `roofsmap` (70; 2), `rivalsettle` (53; 1) |
-| 18 | 7 | 1,057 | `courtstory` (438; 6), `country` (94; 4), `freetown` (137; 2), `nobledeal` (165; 2), `storyturn` (151; 2), `bandturn` (34; 1), `emptied` (38; 1) |
-| 19 | 6 | 763 | `aftermath` (209; 4), `nobleweigh` (55; 2), `rivalplan` (182; 2), `claimantjudged` (94; 1), `rivalaim` (71; 1), `wifetaken` (152) |
+| 17 | 4 | 443 | `prices` (214; 10), `deadtown` (106; 4), `roofsmap` (70; 2), `rivalsettle` (53; 1) |
+| 18 | 7 | 990 | `courtstory` (438; 6), `country` (94; 4), `freetown` (137; 2), `nobledeal` (165; 2), `rivaltales` (84; 2), `bandturn` (34; 1), `emptied` (38; 1) |
+| 19 | 7 | 910 | `aftermath` (209; 4), `nobleweigh` (55; 2), `rivalplan` (182; 2), `storyturn` (147; 2), `claimantjudged` (94; 1), `rivalaim` (71; 1), `wifetaken` (152) |
 | 20 | 3 | 410 | `decrees` (168; 4), `claimantrising` (196; 3), `killerseized` (46; 1) |
 | 21 | 4 | 547 | `acts` (204; 5), `drift` (175; 4), `claimantcaptain` (69; 2), `succession` (99; 1) |
 | 22 | 5 | 983 | `threats` (485; 15), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1), `floods` (82; 1) |
@@ -507,7 +508,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 24 | 15 | 1,483 | `townworks` (58; 6), `rivalcaptives` (47; 3), `visitworth` (58; 3), `bandroam` (223; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `battlecarried` (109; 1), `nocarry` (70; 1), `rivaldrill` (55; 1), `rivalmass` (102; 1), `rivalstock` (115; 1), `rivalweary` (125; 1), `courtcall` (84), `roll` (93) |
 | 25 | 9 | 1,189 | `bandfight` (313; 4), `caravans` (205; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `seasongain` (34; 1), `watchhouse` (80; 1) |
 | 26 | 5 | 822 | `intrigue` (400; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `rivalhunt` (132; 1), `bandmeet` (89) |
-| 27 | 7 | 3,773 | `courtvisit` (81; 2), `game` (3297; 2), `hallcases` (77; 2), `storyvisit` (51; 2), `bandseason` (69; 1), `rivalstories` (130; 1), `storypolicy` (68) |
+| 27 | 7 | 3,774 | `courtvisit` (81; 2), `game` (3297; 2), `hallcases` (77; 2), `storyvisit` (51; 2), `bandseason` (69; 1), `rivalstories` (130; 1), `storypolicy` (69) |
 | 28 | 2 | 105 | `aiground` (52; 1), `battlestory` (53; 1) |
 | 29 | 2 | 2,823 | `campaign` (1809; 2), `ai` (1014) |
 | 30 | 1 | 292 | `visit` (292; 1) |
@@ -517,7 +518,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 | Shapes from | Needed by | From layer | Its own layer |
 | --- | --- | --- | --- |
-| `campaign` | 202 modules | 0 | 29 |
+| `campaign` | 203 modules | 0 | 29 |
 | `game` | 84 modules | 0 | 27 |
 | `township` | 11 modules | 0 | 3 |
 | `threats` | 5 modules | 0 | 22 |
@@ -545,7 +546,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 310 modules, 0 naming no test, 0 naming a test file that is missing; 4,179 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 311 modules, 0 naming no test, 0 naming a test file that is missing; 4,185 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -568,7 +569,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 558 of them in 239 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 558 of them in 240 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -758,6 +759,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `rivaldrill` | `RIVAL_DRILL` |
 | `rivalyoke` | `RIVAL_YOKE` |
 | `rivalstories` | `RIVAL_STORIES` |
+| `rivaltales` | `TALE_LOW` |
 | `rivalweary` | `WEARY` |
 | `rivalworld` | `WORLD` |
 | `roadclash` | `ROAD` |
@@ -780,7 +782,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `stores` | `SUPPLY`, `SUPPLY_UNITS`, `KEEP` |
 | `steward` | `STEWARD`, `STEWARD_CALL`, `STEWARD_POWERS` |
 | `epilogues` | `EPILOGUE` |
-| `story` | `PLACES`, `LEGENDS`, `WORLD_EVENTS`, `WORLD_FROM`, `WORLD_REST`, `WORLD_CHANCE`, `COMET_VIRTUE`, `TALES`, `TALE_FROM`, `TALE_EVERY`, `TALE_SPREAD`, `TALE_RIVAL`, `LAST_PAGE` |
+| `story` | `PLACES`, `LEGENDS`, `WORLD_EVENTS`, `WORLD_FROM`, `WORLD_REST`, `WORLD_CHANCE`, `COMET_VIRTUE`, `TALES`, `TALE_FROM`, `TALE_EVERY`, `TALE_SPREAD`, `LAST_PAGE` |
 | `threadtales` | `THREAD_NAMES`, `THREAD_TALES` |
 | `threadstarts` | `STARTS` |
 | `worldtales` | `WORLD_THREAD_NAMES`, `WORLD_TALES` |
