@@ -92,7 +92,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A woman whose home produces most | A rival's notable homes on the map are named by rule, one to a town, not by which house did most (board, How a rival rules its towns). | small | Unity: port `notableweight.ts`, which already weighs a house's output, and let rivals read it. |
+| A woman whose home produces most | **Done** (`src/sim/rivalhomes.ts`): a rival's town counts each season's harvest to its working houses by their share of the work, as notableweight.ts weighs a house's output; the house that has done most is the next known home, once it comes to a rank of standing, up to three to a town. | small | Built. |
 | Their loss carries weight | **Done** (`src/sim/carriednamed.ts`): a known person among those a nation leads away is marked carried off by name, mourned, and known again if got back. The rest are counted, as the town's record keeps them. | small | Built. |
 
 ## Captivity
@@ -100,7 +100,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Slavers gain output from the children born in captivity | On the map a band holds captives but has no output to gain, so children born there do nothing for it, and nobody is paid for captives a band sells on. | small | Drop on the map: a band is not a town. It is built in a town (`captivity.ts`). |
-| Got back for a time | A captive in the marauders' camp cannot be let out at the gate as one in a Work Camp can; the camp must be burnt. | small | Unity: field work. |
+| Got back for a time | **Done (21 November 2026, `rescue.ts`).** Those held in the marauders' camp are let out at its gate by soldiers of their own people or its allies, one at a time as at a Work Camp, once the band standing at the camp is beaten or drawn off; burning it still frees everyone at once. | small | Done. |
 | The player's nation, if it assimilates | **Built here after all (20 November 2026, `carriedoff.ts`), by the rivals' rule reused:** at a Dissolute or Depraved standing the player's nation leads away a share of the grown people of a town it takes, held four seasons and then its own; never a child, nothing shown, told plainly. The player may forbid it by decree (`nocarry.ts`, the owner's word of 21 November 2026): a law of the nation, free to give, standing until lifted, resented a little by the worldly and martial lords of a people who would have carried off. | small | Done. |
 | What is shown of it | Escapes and risings are told and not drawn. The captives' daily round has not been watched. | medium | Unity: drawing. The content rules port as written. |
 
@@ -132,13 +132,13 @@ Built as written (`drift.ts`, `driftintown.ts`, `decrees.ts`, `tavernfall.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | A visit is about ten minutes of its season | A visit costs nothing and the season does not move for it. It is not offered on a land the marauders hold. | small | Unity: port as is. "Each town once a season" is kept. |
-| It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. The four-company stop cannot be set. A rival's towns do not train by orders. | small | Unity: the map has five kinds of company by design. Port as is. |
+| It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. **Done**: the stop can be set by a standing order (townorders.ts `drillStop`, on the governor's orders: 2 to 12 companies, 4 the usual), and a rival's frontier towns with a yard and an enemy army beside them train by orders it gives them, to stop at 3 (`src/sim/rivaldrill.ts`). | small | Unity: the map has five kinds of company by design. Port as is. |
 
 ## Stores
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Towns send food, goods and people to one another by road | The computer sends food and goods by convoy, never people. | small | Unity: port `convoys.ts` and give rivals the player's rule for sending families. |
+| Towns send food, goods and people to one another by road | **Done** (`src/sim/rivalsettle.ts`): a rival sends settlers by road, by the player's own rule (migration.ts `settle`), from its fullest town to its town with too few people, now and then, one a season. | small | Built. |
 | A market's trade by caravan | In a battle or a visit the Traders' markets still earn by rule; caravans run only on the map. | small | Unity: field work. |
 
 ## Armies belong to towns
@@ -150,7 +150,7 @@ listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Any rival nation or marauders that come for it can take it | The marauders walk in only if they hold the land beside it; a roaming band does not turn aside for a dead town. | small | Unity: port as is. |
+| Any rival nation or marauders that come for it can take it | **Done** (`src/sim/bandturn.ts`): a camp of raiders or slavers with a dead town in reach sets out for a land beside it and, standing there, walks in: the town is overrun as deadtown.ts overruns one a wandering band finds, and the band is the camp. | small | Built. |
 
 ## A town taken
 
@@ -158,7 +158,7 @@ The "Not yet" line is listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Sooner settled where they are ruled well | Rivals garrison a resentful town and learn Written Law, but do not build a Church or Farmland with its resentment in mind. A nation given back its last town by a rising is not brought back to life. | small | Unity: port as is. |
+| Sooner settled where they are ruled well | **Done**: a rival builds in its most resentful town Farmland, and then a Church if it is a devout people, when it can spare the price (`src/sim/rivalyoke.ts`), and a computer-led people counted out takes back a town that rises for it and lives again, the town its seat (`src/sim/revival.ts`). | small | Built. |
 
 ## Rivals live by the same rules
 
@@ -189,7 +189,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | The leader's household can be threatened, married off, lost or taken | A spouse cannot be married off or offered in a treaty or ransom (only a rival's threat and demand exist). Royal matches go through `royalmarriage.ts`, but not the spouse. | medium | Unity: port as is. Asked 19 November 2026, the owner had no preference, so it stays as built: the player never offers the spouse. |
-| The inner circle: a mood and a loyalty that can turn | Built. The confidant does not warn of the knife. **The war is done (19 November 2026, `feudwar.ts`):** a defied rival king may declare war as his feud begins, which ends the truce or alliance between them and bars a new truce while the feud runs. A raid on the court is not built. | small | Done for the war. Unity for the warning, which is a scene. |
+| The inner circle: a mood and a loyalty that can turn | Built. The confidant does not warn of the knife. **The war is done (19 November 2026, `feudwar.ts`):** a defied rival king may declare war as his feud begins, which ends the truce or alliance between them and bars a new truce while the feud runs. **The raid on the court is done (21 November 2026, `feudraid.ts`):** while that war runs he may once send a raiding party against the town where the court sits, a band's strike by every rule but that it carries nobody off and goes home when it has struck; the player may fight it in person as any strike. | small | Done for the war. Unity for the warning, which is a scene. |
 | Nobles | Built (`nobles.ts`, `nobledeal.ts`, `nobleacts.ts`, `nobleweigh.ts`, `nobletemper.ts`). Only the plot story has a plot. | none | Unity: port as is. |
 | Stories inside the story | **Done (21 November 2026).** A killer's suspect may be accused and seized on the field, by the map's rule for an accusation: the guilty held for judgement at the Hall, an innocent let go with the town's grudge and its standing down (`fieldaccuse.ts`, `killerseized.ts`). A battle for the player's own town brings in the thief, the killer and a plot as a visit does (`battlestory.ts`). Left out of a battle: a rival ruler's envoy and a suitor at the hall, whose answers wait for the map or a visit. | medium | Done; the rest is Unity field work. |
 | Several campaigns | Built. Worlds are kept in this browser only, and a skirmish has one save. | small | Unity: saving is the engine's. |

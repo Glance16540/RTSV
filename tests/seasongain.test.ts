@@ -1,6 +1,6 @@
 // What a season truly added to what the player has to spend, for the bar (src/sim/seasongain.ts).
 import { describe, expect, it } from 'vitest';
-import { endTurn, income, newCampaign } from '../src/sim/campaign';
+import { endTurn, income, newCampaign, resolvePending } from '../src/sim/campaign';
 import { lastGain } from '../src/sim/seasongain';
 import { settleStores } from '../src/sim/stores';
 import { setStanding } from '../src/sim/townorders';
@@ -22,6 +22,7 @@ describe('the season\'s gain', () => {
       settleStores(c);
       const before = c.factions[0].supplies;
       endTurn(c);
+      while (c.pending) resolvePending(c, 'auto'); // a band's strike on a town of the player's waits on the player, and the season with it (raidfought.ts): left to the town
       settleStores(c);
       expect(lastGain(c)).toBe(c.factions[0].supplies - before);
     }

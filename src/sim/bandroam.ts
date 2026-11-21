@@ -19,6 +19,7 @@ import { Band, mark, note, reachOf, softest } from './threats';
 import { campsBorne } from './bandhorde';
 import { outOf } from './rim';
 import { MARCH, marched, onRoad, richLure, townsThatSee, warnBound, watchers } from './bandmarch';
+import { turnAside } from './bandturn';
 
 export const ROAM = {
   /** A band flees an army at its place that is at least this many times its strength. */
@@ -174,6 +175,9 @@ export function roamSeason(c: Campaign, out: string[]): number {
       if (b.afar) { delete b.afar; marched(c, b.id, 'arrived'); } // their march in ends where the army turned them
       continue; // cornered, they stay and are fought
     }
+    // A dead town in reach: they turn aside for it, and standing beside it walk in (bandturn.ts).
+    const aside = turnAside(c, b, (cc, bb) => waysFrom(cc, bb));
+    if (aside === 'in') { note(c, out, 'moved', b, b.at, `${cap(b.name)} have found a town standing empty beside them, and made it their camp.`, owners); moved++; continue; }
     // On their way somewhere: one land nearer each season, while there is still a way.
     if (b.bound !== undefined) {
       if ((b.gathers ?? 0) > c.turn) continue; // still gathering in the rim of wilderness (bandwilds.ts)

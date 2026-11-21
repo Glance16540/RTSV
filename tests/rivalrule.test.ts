@@ -1,4 +1,6 @@
 // What a computer-led nation needs to live by the same rules (docs/DESIGN.md; src/sim/rivalrule.ts).
+import { workingHouses } from '../src/sim/rivalhomes';
+import { FIELD_WEIGHT, MADE_RENOWN } from '../src/sim/notableweight';
 import { smallTownRules } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { Campaign, battleConfig, finishBattle, moveArmy, newCampaign, raise } from '../src/sim/campaign';
@@ -155,9 +157,16 @@ describe('names arise on the map', () => {
     Object.assign(f, { men: 3, women: 3, children: 2 });
     expect(notableHome(c, mid.id)).toBe(false);
     f.children = 4;
-    expect(notableHome(c, mid.id)).toBe(true);
-    expect(living(f)).toEqual([expect.objectContaining({ kind: 'mother', gender: 'f', kids: 3 })]);
-    expect(notableHome(c, mid.id)).toBe(false);
+    expect(notableHome(c, mid.id)).toBe(false); // no house has carried in enough yet (rivalhomes.ts)
+    // A season's harvest just enough for the house with the most of the work to come to a rank of standing (rivalhomes.ts).
+    const shares = workingHouses(c, mid.id).map((h) => h.share).sort((a, b) => b - a);
+    const food = Math.ceil(MADE_RENOWN / (FIELD_WEIGHT * shares[0])) + 1;
+    expect(food * FIELD_WEIGHT * shares[1]).toBeLessThan(MADE_RENOWN); // and no other house
+    f.reaped = { turn: c.turn, food }; delete f.madeAt;
+    expect(notableHome(c, mid.id)).toBe(true); // the house that did most is known
+    const top = Object.entries(f.made!).sort((a, b) => b[1] - a[1])[0][0];
+    expect(living(f)).toEqual([expect.objectContaining({ kind: 'mother', gender: 'f', kids: 3, family: top })]);
+    expect(notableHome(c, mid.id)).toBe(false); // and only once: no other house has done enough
     const home = c.territories.find((t) => t.capital === 0)!;
     folkOf(c, home.id).children = 9;
     expect(notableHome(c, home.id)).toBe(false); // the player's arise from what the player does

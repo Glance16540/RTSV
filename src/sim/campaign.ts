@@ -33,7 +33,7 @@ import { actsOfGod } from './acts';
 import { floodSeason, riverBy } from './floods';
 import { ailingOf } from './ailing';
 import { spoilsBefore, spoilsHeld, spoilsTaken } from './warspoils';
-import { threatsOfMen } from './bandseason';
+import { seasonWaits, threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
 import { battleCarried } from './battlecarried';
@@ -49,6 +49,9 @@ import { convoysTurn, relieve } from './convoys';
 import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
+import { rivalSettleSeason } from './rivalsettle';
+import { rivalDrillSeason } from './rivaldrill';
+import { rivalEasesYoke } from './rivalyoke';
 import { makeWilds } from './wilds';
 import './courtcall'; // the call's rules that stand above court.ts: garrisons kept, an ally's land crossed, the road's risk
 import { maraudersFirst, rivalHunts } from './rivalhunt';
@@ -391,6 +394,8 @@ export const WORLD_SHAPES: Record<WorldShape, string> = {
 export const LAND_STEP = 3;
 export interface Terrain { gw: number; gh: number; /** Height at every few points: at or under 0 is water. */ H: Float32Array; /** Each river, as the points it runs through from spring to mouth. */ rivers: number[][]; /** 1 where a river runs. */ wet: Uint8Array }
 const terrains = new Map<string, Terrain>();
+/** The terrain last found for a campaign, by the campaign itself (a quick way to the same answer as `terrains`). */
+const lastTerrain = new WeakMap<Campaign, { seed: number; mark: number; terrain: Terrain }>();
 const ease = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
 /**
  * The lie of a world's land, grown from its seed: a ragged coast with bays, lakes between the lands, mountain
@@ -398,9 +403,16 @@ const ease = (a: number, b: number, v: number): number => { const t = Math.min(1
  * looks at the same world; the map draws it, and it decides where an army cannot march.
  */
 export function terrainOf(c: Campaign): Terrain {
+  // Asked many times a season of the same campaign: remembered by the campaign itself, as long as its seed and its lands
+  // (how many, where, of what kind, by a sum) are as they were; else found by the whole key as before.
+  const ts0 = c.territories;
+  let mark = ts0.length;
+  for (let i = 0; i < ts0.length; i++) mark = (mark * 31 + Math.round(ts0[i].x) * 7 + Math.round(ts0[i].y) * 13 + (ts0[i].trait ? ts0[i].trait.length + ts0[i].trait.charCodeAt(0) : 0)) % 2147483647;
+  const mine = lastTerrain.get(c);
+  if (mine && mine.seed === c.seed && mine.mark === mark) return mine.terrain;
   const key = c.seed + ':' + c.territories.map((t) => `${Math.round(t.x)},${Math.round(t.y)},${t.trait}`).join(';');
   const had = terrains.get(key);
-  if (had) return had;
+  if (had) { lastTerrain.set(c, { seed: c.seed, mark, terrain: had }); return had; }
   const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
   const gw = Math.floor(MAP_W / LAND_STEP) + 1, gh = Math.floor(MAP_H / LAND_STEP) + 1, ts = c.territories;
   const H = new Float32Array(gw * gh), W = worldOf(c.seed), ca = Math.cos(W.turn), sa = Math.sin(W.turn), sq = new Float64Array(ts.length);
@@ -499,6 +511,7 @@ export function terrainOf(c: Campaign): Terrain {
   const made = { gw, gh, H, rivers, wet };
   if (terrains.size > 12) terrains.delete(terrains.keys().next().value as string);
   terrains.set(key, made);
+  lastTerrain.set(c, { seed: c.seed, mark, terrain: made });
   return made;
 }
 
@@ -1149,7 +1162,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   const p = c.pending;
   if (!p) return false;
   if (p.band !== undefined) return settleBandFight(c, how); // against a band: no nation, and no land changes hands (bandfight.ts)
-  if (p.raid !== undefined) return settleRaid(c, how, { survivors: opts.survivors, foes: opts.attackerLeft, ...opts.leader })?.outcome !== 'held'; // a band's strike on a town of the player's (raidfought.ts)
+  if (p.raid !== undefined) { const got = settleRaid(c, how, { survivors: opts.survivors, foes: opts.attackerLeft, ...opts.leader })?.outcome !== 'held'; continueAI(c); return got; } // a band's strike on a town of the player's (raidfought.ts); the season that waited on it goes on
   let attackerWon = how === 'attacker';
   let fought: Outcome | null = null;
   if (how === 'auto') {
@@ -1280,7 +1293,7 @@ function checkDominion(c: Campaign): void {
 
 /** Finish the player's turn and play the rivals' turns. Stops early if one of them attacks the player. */
 export function endTurn(c: Campaign): void {
-  if (c.phase === 'player' && c.pending?.raid !== undefined) resolvePending(c, 'auto'); // a band's strike nobody answered is left to the town (raidfought.ts)
+  while (c.pending?.raid !== undefined) resolvePending(c, 'auto'); // a band's strike nobody answered is left to the town (raidfought.ts)
   if (c.phase !== 'player' || c.pending) return;
   if (c.tale) { c.tale = null; c.log.push('The matter before you was left to settle itself.'); }
   turnLeft(c); // what there is to spend as the turn ends, to measure the season by (seasongain.ts)
@@ -1295,6 +1308,7 @@ export function continueAI(c: Campaign): void {
   while (c.phase === 'ai' && !c.pending && !c.demand) {
     const f = c.factions[c.cursor];
     if (!f) {
+      if (seasonWaits(c)) c.phase = 'player'; else { // a season that waited on a band's strike is taken up where it stopped (bandseason.ts)
       // Everyone has moved: a new turn begins.
       c.turn++;
       c.phase = 'player';
@@ -1319,7 +1333,9 @@ export function continueAI(c: Campaign): void {
       }
       mapTurn(c);
       floodSeason(c, (tid) => riverBy(c, tid, () => !!waterOf(c, tid, terrainOf(c))?.river), new Set(actsOfGod(c).map((x) => x.at))); // a season of famine, plague and fire in every held land (acts.ts), then floods where a river runs (floods.ts)
-      threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      }
+      threatsOfMen(c, { waits: true }); // bands that belong to no nation choose a town and strike it (threats.ts)
+      if (seasonWaits(c)) { c.phase = 'ai'; return; } // a strike on a town of the player's waits on the player, and the season with it (raidfought.ts)
       tribesSeason(c); // a tribe's bands are counted from its town's men (tribes.ts)
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
       if (letGoSeason(c).length) checkElimination(c); // and one nobody comes for is let go, an empty land for settlers (emptied.ts)
@@ -1329,11 +1345,13 @@ export function continueAI(c: Campaign): void {
       rulesSeason(c); // rival nations raise their works of rule and faith (rule.ts)
       governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
+      rivalDrillSeason(c); // and a rival's frontier towns, by the orders it gives them (rivaldrill.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       sentForSeason(c, (s) => paysHere(c, s.f, s.what, s.n, { at: s.at }) && doSentFor(c, s)); // what waited for goods sent for by road is done, if they came in (sentfor.ts)
       caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
+      rivalSettleSeason(c); // and a rival sends settlers to its town that has too few people, as the player may (rivalsettle.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       marriageSeason(c); // the unmarried of a town marry, or go to a town beside to marry (marriage.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
@@ -1463,6 +1481,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
       else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
+    rivalEasesYoke(c, f.id, { canBuild, build }); // a Church or Farmland where a taken town resents it most (rivalyoke.ts)
     // Spend what is left on troops, growing existing armies before starting new ones.
     suePeace(c, f.id); // weary of war, it sues for peace with the peoples it borders (rivalweary.ts)
     if (f.id === 0) for (const g of c.factions) if (g.id > 0 && suesPlayer(c, g.id) && totalStrength(c, g.id) > totalStrength(c, 0)) offerTruce(c, g.id); // played by the computer, the player takes a truce offered by a rival stronger than it (rivalweary.ts)
