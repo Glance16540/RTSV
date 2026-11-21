@@ -3,8 +3,8 @@
 //   They flee strong armies. A band with an army at least its match standing at its place moves off before the
 //     season's fighting, to the best place it can reach that has no such army; with nowhere to go it stays.
 //   They roam toward softer marks. Every few seasons a band looks about. A camp of raiders or slavers plans a way:
-//     it looks ROAM.range lands off over ground a camp could stand on, a mark counting for less the farther it
-//     is, and if a clearly softer town could be got within reach it sets out, a land a season over wild country and
+//     it looks ROAM.range lands off (farther on a map wider than today's: `roamRange`) over ground a camp could stand on,
+//     a mark counting for less the farther it is, and if a clearly softer town could be got within reach it sets out, a land a season over wild country and
 //     farther along a road (bandmarch.ts), until it is there. Armies it passes see it, and their peoples are told.
 //     Pirates sail to any coast and highwaymen shift to a road that meets theirs. Those a band holds go with it.
 //   They break up. A band that has grown old and stayed weak, holding nobody, drifts apart. So does one with
@@ -17,7 +17,7 @@ import type { Campaign, Territory } from './campaign';
 import { armyStrength } from './campaignbase';
 import { Band, mark, note, reachOf, softest } from './threats';
 import { campsBorne } from './bandhorde';
-import { outOf } from './rim';
+import { landsWithin, outOf } from './rim';
 import { MARCH, marched, onRoad, richLure, townsThatSee, warnBound, watchers } from './bandmarch';
 import { turnAside } from './bandturn';
 
@@ -32,7 +32,21 @@ export const ROAM = {
   settle: 9, settled: 10,
   /** A camp looks this many lands off for a softer mark, and a mark counts for less by `far` for each season's march to it beyond the first. */
   range: 4, far: 0.2,
+  /**
+   * The lands of a map up to which a camp looks and weighs as above. On a wider map it looks farther and minds the march
+   * less, both by the root of how many times wider the map is (so by its breadth, not its area), and never farther than
+   * `widest` lands. Every map made today has 25 to 29 lands inside the rim, so today this changes nothing: it is here so
+   * that a wider map, when there is one, has bands that wander and do not only strike next door.
+   */
+  lands: 32, widest: 8,
 };
+
+/** How many times as broad as today's maps this one is, never under 1 (rim.ts counts the lands inside the rim of wilderness). */
+export const roamScale = (c: Campaign): number => Math.max(1, Math.sqrt(landsWithin(c) / ROAM.lands));
+/** How many lands off a camp looks for a softer mark on this map. */
+export const roamRange = (c: Campaign): number => Math.min(ROAM.widest, Math.max(ROAM.range, Math.round(ROAM.range * roamScale(c))));
+/** A mark's lure weighed against the seasons of the march to it: less for each season beyond the first, and less sharply on a wider map. */
+export const weighed = (c: Campaign, lure: number, seasons: number): number => lure / (1 + (ROAM.far / roamScale(c)) * (seasons - 1));
 
 const cap = (name: string): string => name[0].toUpperCase() + name.slice(1);
 const held = (c: Campaign, t: Territory): boolean => t.owner >= 0 && !!c.factions[t.owner]?.alive;
@@ -71,7 +85,7 @@ function campable(c: Campaign, b: Band, t: Territory): boolean {
  * every land it could reach, how many lands off, and the first step toward it. Short and cheap: a breadth-first
  * walk of a few dozen lands at most.
  */
-export function waysFrom(c: Campaign, b: Band, range = ROAM.range): { to: number; steps: number; next: number; seasons: number }[] {
+export function waysFrom(c: Campaign, b: Band, range = roamRange(c)): { to: number; steps: number; next: number; seasons: number }[] {
   if (b.kind !== 'raiders' && b.kind !== 'slavers') return [];
   const out: { to: number; steps: number; next: number; seasons: number }[] = [], seen = new Set([b.at]);
   // `seasons`: how long the march there takes, a land a season and farther along a road (bandmarch.ts); `legs`: lands gone in the last of them.
@@ -92,14 +106,14 @@ export function waysFrom(c: Campaign, b: Band, range = ROAM.range): { to: number
 }
 
 /** Every place a camp could march to and rob from, within so many lands: where, how far, the first step, the seasons of the march, and how soft and rich the softest mark there is (not weighed against the march). */
-export function marksFrom(c: Campaign, b: Band, range = ROAM.range): { bound: number; next: number; steps: number; seasons: number; lure: number }[] {
+export function marksFrom(c: Campaign, b: Band, range = roamRange(c)): { bound: number; next: number; steps: number; seasons: number; lure: number }[] {
   return waysFrom(c, b, range).map((w) => ({ bound: w.to, next: w.next, steps: w.steps, seasons: w.seasons, lure: lureFrom(c, b, [w.to], true) })).filter((w) => w.lure > 0);
 }
 
 /** The softest mark a camp could get within reach of by a few lands' march: where it would go, how far, its first step, and how soft. */
-export function wayTo(c: Campaign, b: Band, range = ROAM.range): { bound: number; next: number; steps: number; seasons: number; lure: number } | null {
+export function wayTo(c: Campaign, b: Band, range = roamRange(c)): { bound: number; next: number; steps: number; seasons: number; lure: number } | null {
   const all = marksFrom(c, b, range)
-    .sort((x, y) => y.lure / (1 + ROAM.far * (y.seasons - 1)) - x.lure / (1 + ROAM.far * (x.seasons - 1)) || x.steps - y.steps || x.bound - y.bound);
+    .sort((x, y) => weighed(c, y.lure, y.seasons) - weighed(c, x.lure, x.seasons) || x.steps - y.steps || x.bound - y.bound);
   return all[0] ?? null;
 }
 
@@ -206,7 +220,7 @@ export function roamSeason(c: Campaign, out: string[]): number {
     if (c.turn - (b.moved ?? b.since) < ROAM.restless) continue;
     // A camp plans a way of a few lands toward the softest mark about; pirates and highwaymen look one move off.
     const way = wayTo(c, b);
-    if (way && way.lure / (1 + ROAM.far * (way.seasons - 1)) >= now.lure * ROAM.softer) {
+    if (way && weighed(c, way.lure, way.seasons) >= now.lure * ROAM.softer) {
       const where = c.territories[way.bound].name;
       if (way.steps > 1) b.bound = way.bound;
       const from = b.at;

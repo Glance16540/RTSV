@@ -2,6 +2,7 @@
 // Pure rules, no DOM, so it can be tested headless.
 
 import { rollSeason } from './folkroll';
+import { cloisterSeason } from './cloister';
 import { askedFor, keepAsked } from './askedhere';
 import { tavernPull } from './churchtavern';
 import { rumourSeason } from './tavernrumour';
@@ -41,6 +42,8 @@ import { battleCarried } from './battlecarried';
 import { settleTaken } from './settlersfrom';
 import { foughtOnMap, recordsBack } from './warrecord';
 import { mayRaiseKind } from './uniquecompany';
+import { keepRoads, roadsFor } from './handroads';
+import { fieldArms } from './fortkeep';
 import { bandBattle, settleBandFight } from './bandfight';
 import { raidBattle, settleRaid } from './raidfought';
 import { wallsEdge } from './sieges';
@@ -127,6 +130,7 @@ import { companySoldiers, noteDowned, rollOf } from './soldiernames';
 import { takeDowned } from './downedmap';
 import { captainBonus } from './claimantcaptain';
 import { risingFigures } from './claimantfigures';
+import { feastFor, keepFeast } from './feastfield';
 import { ARMY_REST, MEN, Muster, armiesJoined, foundArmies, menToRaise, homeOf, menMustered, reckonArmies, resting, seasonOfArmies } from './armytown';
 import { creditArmy } from './warhouse';
 import { BattleAnswers, BattleHooks, BattleNote } from './battlehooks';
@@ -1371,6 +1375,7 @@ export function continueAI(c: Campaign): void {
       orphansSeason(c); // children of a town with nobody grown are taken in by the nearest town of their people (orphans.ts)
       seasonOfArmies(c); // the men with the armies age, and the dead are struck from their towns (armytown.ts)
       rollSeason(c); // every town's grown are named on its record, level with its counts (folkroll.ts)
+      cloisterSeason(c); // who serves in each town's Monastery or Convent (cloister.ts)
       widowsSeason(c); // the widowed marry again or are mourned, and orphans are taken into another house (widowhood.ts)
       seasonOfYoke(c); // towns taken by force settle or rise (conquered.ts)
       oldSeasons(c); // the old people of a town taken become the holder's (oldfolk.ts)
@@ -1614,6 +1619,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       if (army.hero) add(calling, 1);
     } else if (defending && t.owner >= 0 && BATTLE_ANSWERS.ask('leaderAt', c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
     const out = defending ? BATTLE_ANSWERS.ask('turnOut', c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere
+    if (out && defending && !field) out.warriors = fieldArms(c, t.id, { army: !!army, arms: out.warriors }); // and a Fortress's garrison of the town's own men stands to arms with them (fortkeep.ts)
     if (out?.clubmen) add('clubman', out.clubmen);
     const fort = defending && t.buildings.includes('fortress');
     // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
@@ -1622,13 +1628,14 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       units, res: 30 * str + (defending && t.buildings.includes('farm') ? 150 : 0),
       age: Math.max(fort ? 1 : 0, age), armed: true, buildings: [...(fort ? ['tower', 'tower', 'fortress'] : []), ...works], atk: army ? army.vet : 0,
       ...(army ? { roll: { men: rollOf(c, army.id), perCompany: MEN.company, per: companySoldiers() } } : {}),
-      ...(defending && !field ? captainBonus(c, t.id) : {}), ...(defending && !field && risingFigures(c, t.id).length ? { claims: risingFigures(c, t.id) } : {}), // and the lord behind a grown claimant (claimantfigures.ts) // a town risen for a claimant: its rising's leader on the field (claimantcaptain.ts) // its companies led by the men of its roll (soldiernames.ts)
+      ...(defending && !field ? captainBonus(c, t.id) : {}), ...(defending && !field && risingFigures(c, t.id).length ? { claims: risingFigures(c, t.id) } : {}), ...(defending && !field && feastFor(c, t.id) ? { feast: feastFor(c, t.id) } : {}), // its feast day, once a year (feastfield.ts) // and the lord behind a grown claimant (claimantfigures.ts) // a town risen for a claimant: its rising's leader on the field (claimantcaptain.ts) // its companies led by the men of its roll (soldiernames.ts)
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
       ...(defending && !field && ailingOf(c, t.id) ? { ailing: ailingOf(c, t.id) } : {}), // the map's plague and hunger come with the town (ailing.ts)
       ...(defending && !field && !t.horde && roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // every household under its roof (roofs.ts)
       ...(defending && !field && t.owner === 0 ? { work: shareOf(c, t.id).share } : {}), // and the player's town at its work (atwork.ts)
+      ...(defending && !field && t.owner === 0 && roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // with the roads laid by hand there before (handroads.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id, { arms: out?.warriors ?? 0 })) : {}), // its men in arms go to the field whatever its cap (fieldcap.ts)
     };
@@ -1703,6 +1710,8 @@ export interface BattleAfter {
   downed?: unknown;
   /** Who of the town was drifted to the tavern and the mine as the battle ended (driftintown.ts). */
   drifted?: { tavern?: number; mines?: number };
+  /** The roads the player laid by hand in the town that was fought over (`handRoadsOut`, handroads.ts): kept on its record if it is the player's after. */
+  roads?: unknown;
   /** The other side's men still standing as the battle ended, by unit type: what a rival thrown back keeps (siegeretreat.ts). */
   foes?: Record<string, number>;
   /** Whether the other side's leader was still standing as the battle ended (false: they fell). */
@@ -1714,6 +1723,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   if (!p) return;
   if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors, { fell: after.fell, heroRank, acclaimed: after.acclaimed }); return; } // the leader fought beside the army, at the usual risk (bandfight.ts)
   if (p.raid !== undefined) { resolvePending(c, playerWon ? 'defender' : 'attacker', { survivors, attackerLeft: after.foes, leader: { fell: after.fell, heroRank, acclaimed: after.acclaimed } }); return; } // a band's strike fought in person is written back by the strike's own rule (raidfought.ts)
+  if (p.defender === 0 && p.mode !== 'field') keepFeast(c, p.to); // its feast day is kept for the year (feastfield.ts)
   if (p.defender === 0 && p.mode !== 'field') homeOnLeave(c, p.to, after.leave); // men of the town who went home from its army while it was fought for (furloughmap.ts): before the army is counted
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.
@@ -1754,6 +1764,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
         return health === undefined ? [x[0], x[1], x[2]] : [x[0], x[1], x[2], health];
       }).slice(0, MAX_TOWN);
     land.town = { at: playerWon === humanAttacks ? (home + 2) % 4 : home, b };
+    if (playerWon && land.owner === 0) keepRoads(c, land.id, after.roads); // and the roads laid by hand in the fighting, as a visit's are kept (handroads.ts)
     // What the player built in the fighting stands on the map as well, where the land has room for it.
     if (playerWon && land.owner === 0) {
       for (const [site, type] of Object.entries(SITE_BUILDING)) {

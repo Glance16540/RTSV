@@ -31,6 +31,7 @@ import type { Ailing } from './ailing';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { ClaimFigure, setClaimFigures } from './claimantfigures';
+import { FeastIn, holdFeast } from './feastfield';
 import { namesIn, pickName, unlikeNames } from './namesakes';
 import { Furlough, goHome, rejoin } from './furlough';
 import { QueuedMan, queuedOf } from './queuedmen';
@@ -94,6 +95,8 @@ export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
 const HASH = 4; // spatial hash bucket size in tiles
+/** The most people sheltered in a building who speed its fire: a Watch Tower's four. */
+export const SHOOT_HELP = 4;
 const REACH = 0.8; // interaction distance for gathering / building
 
 export type Gender = 'm' | 'f';
@@ -401,7 +404,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** The leader of the claimant's rising the town stands in (claimantcaptain.ts). */ captain?: Captain; /** A claimant and the lord behind them, standing at the hall (claimantfigures.ts). */ claims?: ClaimFigure[]; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][]; /** The dilemmas the town has been asked in the round now going (askedhere.ts). */ asked?: string[]; /** The map's plague and hunger in the town (ailing.ts). */ ailing?: Ailing };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** The leader of the claimant's rising the town stands in (claimantcaptain.ts). */ captain?: Captain; /** A claimant and the lord behind them, standing at the hall (claimantfigures.ts). */ claims?: ClaimFigure[]; /** The town's feast day, kept as the field begins (feastfield.ts). */ feast?: FeastIn; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][]; /** The dilemmas the town has been asked in the round now going (askedhere.ts). */ asked?: string[]; /** The map's plague and hunger in the town (ailing.ts). */ ailing?: Ailing };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -654,6 +657,7 @@ export class Game {
         if (field && s.bonus.people) peopled(this, i, s.bonus.people, st, dir);
         if (s.bonus.warriors) armMen(this, i, s.bonus.warriors);
         if (s.bonus.captain) setCaptain(this, i, s.bonus.captain); // the leader of a claimant's rising, by name (claimantcaptain.ts)
+        if (s.bonus.feast) holdFeast(this, i, s.bonus.feast); // the town's feast day (feastfield.ts)
         if (s.bonus.claims) setClaimFigures(this, i, s.bonus.claims); // and a claimant and the lord behind them, at the hall (claimantfigures.ts)
       }
     });
@@ -3287,7 +3291,7 @@ export class Game {
           if (this.hostile(v.owner, b.owner) && !v.def.docile && d < bestD) { bestD = d; best = v; }
         }
         if (best) {
-          b.cooldown = b.def.cooldown! / (1 + 0.3 * b.sheltered.length); // sheltered villagers help shoot
+          b.cooldown = b.def.cooldown! / (1 + 0.3 * Math.min(b.sheltered.length, SHOOT_HELP)); // sheltered villagers help shoot: as many as a tower holds, so a Fortress full of people shoots as a full tower does
           this.projectiles.push({
             x: b.x, y: b.y, sx: b.x, sy: b.y, tx: best.x, ty: best.y, targetId: best.id, speed: 13, owner: b.owner,
             atk: b.def.atk + p.mods.towerAtk, aura: 1, cls: 'building', splash: 0, kind: 'arrow', done: false,
