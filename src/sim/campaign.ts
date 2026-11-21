@@ -1280,7 +1280,7 @@ function checkDominion(c: Campaign): void {
 
 /** Finish the player's turn and play the rivals' turns. Stops early if one of them attacks the player. */
 export function endTurn(c: Campaign): void {
-  if (c.pending?.raid !== undefined) resolvePending(c, 'auto'); // a band's strike nobody answered is left to the town (raidfought.ts)
+  while (c.pending?.raid !== undefined) resolvePending(c, 'auto'); // a band's strike nobody answered is left to the town (raidfought.ts)
   if (c.phase !== 'player' || c.pending) return;
   if (c.tale) { c.tale = null; c.log.push('The matter before you was left to settle itself.'); }
   turnLeft(c); // what there is to spend as the turn ends, to measure the season by (seasongain.ts)
