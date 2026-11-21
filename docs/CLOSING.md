@@ -165,7 +165,7 @@ The "Not yet" line is listed above.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | The same rules, the same losses | A rival's income is scaled by difficulty (the owner's choice: keep). The tales told every few turns are the player's only, and a rival is moved by a fixed step. | small | Unity: port as is. The scaling is the owner's choice. |
-| A rival that thinks as a people | It weighs only the land next to its army. It does not plan a road, mass two armies for one assault, or weigh its towns' losses in choosing war. It takes no account of world events, named places or creed when it bargains. | large | Unity: the rival's mind is the largest open piece of the design. The weights it already uses (`rivalaim.ts`, `rivalrule.ts`, `rivalcaptives.ts`) port as they are. |
+| A rival that thinks as a people | **Built (21 November 2026):** it sets its heart on a land and goes for it over seasons (`rivalplan.ts`), masses two armies for one assault (`rivalmass.ts`), weighs its towns' dead, hunger and unrest and sues for peace when they bleed (`rivalweary.ts`), and takes named places, plague, winter, the world's seasons and creed into account (`rivalworld.ts`). Its mind is not shown to the player, it never masses three armies, and it plans no road by sea beyond its harbours' reach. | small | Unity: port the four modules with `rivalaim.ts`, `rivalrule.ts` and `rivalcaptives.ts`; showing a rival's mind (the words are written: `planText`, `wearyText`, `worldText`) is a screen for the Unity side. |
 
 ## Faith is a town's; every town its own faith; a town's own life moves its faith
 
