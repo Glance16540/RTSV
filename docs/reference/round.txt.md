@@ -1,21 +1,21 @@
 # A round of the peoples
 
-15 peoples, k 0 to 3, a map of its own for every game, level 1, 30 minutes. 420 games, 125 decided.
+15 peoples, k 0 to 15, a map of its own for every game, level 1, 30 minutes. 1680 games, 494 decided.
 
 | People | Style | Won | Lost | Undecided | Share of decided |
 | --- | --- | --- | --- | --- | --- |
-| Mongols | raider | 17 | 5 | 34 | 77% |
-| Malians | trader | 10 | 5 | 41 | 67% |
-| Arameans | faithful | 7 | 4 | 45 | 64% |
-| Norse | raider | 16 | 11 | 29 | 59% |
-| English | farmer | 7 | 6 | 43 | 54% |
-| Chinese | scholar | 11 | 11 | 34 | 50% |
-| Greeks | scholar | 9 | 9 | 38 | 50% |
-| Kushites | warrior | 8 | 9 | 39 | 47% |
-| Persians | trader | 6 | 7 | 43 | 46% |
-| Egyptians | builder | 7 | 9 | 40 | 44% |
-| Babylonians | builder | 6 | 9 | 41 | 40% |
-| Romans | builder | 5 | 8 | 43 | 38% |
-| Japanese | warrior | 7 | 12 | 37 | 37% |
-| Abbasids | trader | 4 | 8 | 44 | 33% |
-| Franks | farmer | 5 | 12 | 39 | 29% |
+| Norse | raider | 57 | 33 | 134 | 63% |
+| Mongols | raider | 58 | 36 | 130 | 62% |
+| Malians | trader | 37 | 27 | 160 | 58% |
+| Persians | trader | 38 | 30 | 156 | 56% |
+| Egyptians | builder | 35 | 34 | 155 | 51% |
+| Babylonians | builder | 28 | 28 | 168 | 50% |
+| Greeks | scholar | 37 | 37 | 150 | 50% |
+| Arameans | faithful | 24 | 25 | 175 | 49% |
+| Franks | farmer | 30 | 32 | 162 | 48% |
+| Chinese | scholar | 33 | 40 | 151 | 45% |
+| Kushites | warrior | 30 | 39 | 155 | 43% |
+| Japanese | warrior | 28 | 38 | 158 | 42% |
+| Romans | builder | 23 | 32 | 169 | 42% |
+| English | farmer | 17 | 27 | 180 | 39% |
+| Abbasids | trader | 19 | 36 | 169 | 35% |

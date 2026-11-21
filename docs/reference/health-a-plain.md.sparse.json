@@ -2,9 +2,9 @@
  "course": "ignore",
  "player": "computer",
  "first": 1,
- "campaigns": 16,
+ "campaigns": 384,
  "claimants": {
-  "risen": 0,
-  "noble": 0
+  "risen": 9,
+  "noble": 1
  }
 }

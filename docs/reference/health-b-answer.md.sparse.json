@@ -1,10 +1,10 @@
 {
  "course": "answer",
  "player": "computer",
- "first": 17,
- "campaigns": 16,
+ "first": 385,
+ "campaigns": 384,
  "claimants": {
-  "risen": 0,
-  "noble": 0
+  "risen": 14,
+  "noble": 4
  }
 }
