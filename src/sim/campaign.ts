@@ -91,6 +91,7 @@ import { drillWithQueued, keepQueued } from './queueddrill';
 import { mayAdvance, maySpare, poorMuster, rivalMoves, rivalSeason } from './rivalrule';
 import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
 import { aimFirst, balk, planStep } from './rivalplan';
+import { HOLD, lent, massOrder } from './rivalmass';
 import { heldFirst } from './rivalcaptives';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
@@ -1476,7 +1477,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id); // its angry lords make it wary (nobleweigh.ts)
     const bySea = !c.territories[from].adj.includes(to);
-    return wouldTake(c, army, to, strengthVs(army, defenders(c, to), rankWith(c, army)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * skyInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
+    return wouldTake(c, army, to, (strengthVs(army, defenders(c, to), rankWith(c, army)) + lent(c, f.id, to, army.id)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * skyInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
   };
   // It marches on the most wanted land it dares, not only the most wanted of all.
   const dared = targets.find((id) => dares(here.id, id));
@@ -1487,7 +1488,11 @@ function aiStep(c: Campaign, f: Faction): boolean {
   // Nothing it dares, and plague where it stands: it goes to a healthy land of its own next door (aiplague.ts).
   const away = leavePlague(c, army);
   if (away >= 0 && moveArmy(c, army.id, away) === 'moved') { army.moved = true; return false; }
-  // Nothing it dares: toward its war aim through its own lands; and its strongest, standing before the way to it, gives that aim up (rivalplan.ts).
+  // Nothing it dares: before the way to its war aim it sends for a second army and holds; the second comes to it (rivalmass.ts).
+  const mass = massOrder(c, f.id, army);
+  if (mass === HOLD) { army.moved = true; return false; }
+  if (mass >= 0 && safeStep(c, mass) && moveArmy(c, army.id, mass) === 'moved') { army.moved = true; return false; }
+  // Else toward its war aim through its own lands; and its strongest, standing before the way to it, gives that aim up (rivalplan.ts).
   const toAim = planStep(c, f.id, army.at);
   if (toAim >= 0 && safeStep(c, toAim) && moveArmy(c, army.id, toAim) === 'moved') { army.moved = true; return false; }
   balk(c, f.id, army);

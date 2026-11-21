@@ -150,11 +150,25 @@ export function balk(c: Campaign, f: number, army: Army): boolean {
   const p = c.plans?.[f];
   if (!p || p.aim < 0 || !beforeAim(c, f, army.at)) return false;
   if (c.armies.some((a) => a.owner === f && a.id !== army.id && armyStrength(a, c) > armyStrength(army, c))) return false;
+  giveUp(c, f);
+  return true;
+}
+/** A people gives its aim up, and leaves it alone a while: the next asking chooses another. */
+export function giveUp(c: Campaign, f: number): void {
+  const p = c.plans?.[f];
+  if (!p || p.aim < 0) return;
   (p.balked ??= {})[p.aim] = c.turn;
   for (const k of Object.keys(p.balked)) if (c.turn - p.balked[k] > PLAN.rest) delete p.balked[k];
   p.aim = -1;
-  p.since = c.turn - PLAN.keep - 1; // nothing stands: the next asking chooses again
-  return true;
+  p.since = c.turn - PLAN.keep - 1; // nothing stands
+}
+/** The lands on the way to the aim that an army standing here would have to take next: foreign, and nearer the aim. */
+export function gatesOf(c: Campaign, f: number, from: number): number[] {
+  const aim = c.plans?.[f]?.aim ?? -1;
+  if (aim < 0 || !foreign(c, f, aim)) return [];
+  const d = marchesTo(c, f, aim), here = d.get(from);
+  if (here === undefined) return [];
+  return reach(c, from).filter((n) => foreign(c, f, n) && (d.get(n) ?? Infinity) < here).sort((a, b) => d.get(a)! - d.get(b)! || a - b);
 }
 /** The aim in words, for whoever shows a rival's mind. */
 export function planText(c: Campaign, f: number): string {
