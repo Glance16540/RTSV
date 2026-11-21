@@ -26,7 +26,7 @@ modules or a new system, and **large** a new system that touches the field and t
 | --- | --- | --- | --- |
 | A man at war is still of his house | **Done for the houses that sent men** (`src/sim/housekeep.ts`): a house once named is kept by name with everyone home while the town has a home for it (one to each woman), so a man comes home to his own. The cost to the record, measured on two twenty-year campaigns: some 120 to 175 bytes a house, a few hundred houses more at most, 40 to 60 thousand bytes on saves of 70 to 230 thousand; old saves load as they are. Still a count: a house that never sent a man, between sittings (`roofsmap.ts` keeps the last sitting's). | medium | Built as far as the record allows without naming everyone. The rest goes with naming everyone (No auto-resolve). |
 | A town taken | Resentment costs no harvest, gold or levy. Each was tried and dropped, and it acts only through unrest, the governor's pace, drift and the walls. | small | Drop: tried three ways and dropped on measurement. Only the owner would reopen it. |
-| Claimants to the throne | The lord, the band and the grown claimant are names and a line on the land's panel, not figures on the field. The player's own succession is asked of the player before a claimant can take the throne. | medium | Unity: the claimant as a figure is field work (a person to meet, fight or judge in a town). The succession order is the owner's ruling as it stands. |
+| Claimants to the throne | **Figures done (21 November 2026, `claimantfigures.ts`).** The grown claimant leads a rising on the field by name (`claimantcaptain.ts`), and the lord who raised them stands at its hall beside them; in a visit to the town a grown claimant lives in, both stand at the hall, named with faces. A child claimant is never shown. Still: a band's chief is the captain's name only, and the figures at the hall are not met or judged there. The player's own succession is asked of the player before a claimant can take the throne. | medium | Unity: the claimant as a figure is field work (a person to meet, fight or judge in a town). The succession order is the owner's ruling as it stands. |
 
 ## What the game is
 
@@ -131,7 +131,7 @@ Built as written (`drift.ts`, `driftintown.ts`, `decrees.ts`, `tavernfall.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A visit is about ten minutes of its season | A visit costs nothing and the season does not move for it. It is not offered on a land the marauders hold. | small | Unity: port as is. "Each town once a season" is kept. |
+| A visit is about ten minutes of its season | A visit costs nothing and the season does not move for it. **Not a gap (checked 21 November 2026):** it is not offered on a land the marauders hold, but they hold only land nobody holds (`bandhorde.ts`: they camp in and overrun unheld land, and a camp that gets an owner has fallen), so no town of the player's is ever on such a land; a town they raid or sack stays the player's and can be visited. | small | Unity: port as is. "Each town once a season" is kept. |
 | It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. **Done**: the stop can be set by a standing order (townorders.ts `drillStop`, on the governor's orders: 2 to 12 companies, 4 the usual), and a rival's frontier towns with a yard and an enemy army beside them train by orders it gives them, to stop at 3 (`src/sim/rivaldrill.ts`). | small | Unity: the map has five kinds of company by design. Port as is. |
 
 ## Stores
@@ -139,7 +139,7 @@ Built as written (`drift.ts`, `driftintown.ts`, `decrees.ts`, `tavernfall.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Towns send food, goods and people to one another by road | **Done** (`src/sim/rivalsettle.ts`): a rival sends settlers by road, by the player's own rule (migration.ts `settle`), from its fullest town to its town with too few people, now and then, one a season. | small | Built. |
-| A market's trade by caravan | In a battle or a visit the Traders' markets still earn by rule; caravans run only on the map. | small | Unity: field work. |
+| A market's trade by caravan | **Done** (`src/sim/fieldcaravan.ts`): in a battle or a visit at a town of the player's whose caravan is on the road that season, a trade cart leaves the Market, goes off at the field's edge toward its partner town and comes back with the gold the map's caravan brings; an enemy can catch it, and the map's caravan is settled by how it went. For a Traders' town it stands in for the Traders' rule. | small | Built. Unity: field work. |
 
 ## Armies belong to towns
 
