@@ -149,6 +149,7 @@ import { HeroSpec, cleanHero, MAX_RANK } from './hero';
 import { seasonTurned } from './seasonreport';
 import { rivalStoriesSeason } from './rivalstories';
 import { claimantsSeason } from './claimantrising';
+import { visitStands } from './visitworth'; // a visit stands in place of its town's season (visitworth.ts)
 import './wifetaken'; // a plot may go this way (it puts itself among courtstory.ts's stages)
 
 /** Some land is special. */
@@ -1321,7 +1322,7 @@ export function continueAI(c: Campaign): void {
       for (const tr of c.truces) if (tr.until < c.turn && c.factions[tr.with].alive) c.log.push(`Your truce with ${c.factions[tr.with].name} has run out.`);
       c.truces = c.truces.filter((tr) => tr.until >= c.turn);
       seasonOfFaith(c, (f, by, at) => shiftVirtue(c, f, by, { at })); // every town moves by its own church, tavern and holy place (townfaith.ts)
-      harvest(c, (f, t) => landIncome(c, f, t), (f) => wholeIncome(c, f), (f) => (c.factions[f].isAI ? [0.8, 1, 1.25][c.level] : 1)); // each land's yield into its own town (harvest.ts)
+      harvest(c, (f, t) => (visitStands(c, f, t.id) ? 0 : landIncome(c, f, t)), (f) => wholeIncome(c, f), (f) => (c.factions[f].isAI ? [0.8, 1, 1.25][c.level] : 1)); // each land's yield into its own town (harvest.ts), but a town visited this season has had it (visitworth.ts)
       ownStudiesSeason(c); // what a people's own study brings in by itself: caravans, the flood (ownstudies.ts)
       c.log.push(`Turn ${c.turn}.`);
       if (c.request && (c.request.until < c.turn || c.ally < 0 || !c.factions[c.request.foe].alive)) c.request = null;
