@@ -94,6 +94,7 @@ export function standingText(t: Territory, names: (type: string) => string): str
     s.keep ? `to keep ${KEEP_WORDS[s.keep]}` : '',
     s.leave ? LEAVE_WORDS[s.leave] : '',
     s.learn ? 'to learn the studies taught in the town when it has the means' : '',
+    s.drillStop !== undefined ? `to train until the army in the town is ${s.drillStop} companies strong` : '', // the "Train up to" order, said too (a town with only it said nothing)
   ].filter(Boolean);
   return `The governor's standing orders: ${parts.join('; ')}.`;
 }
