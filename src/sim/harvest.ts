@@ -68,6 +68,10 @@ export function putIn(c: Campaign, tid: number, goods: Stores): number {
   return over;
 }
 
+/** What a land brings into its town in a season, in goods: its yield in supplies (campaign.ts's measure), as far as its hands, its noble, its leader, its grief and the winter let it (`times`: a people's multiplier). */
+export const landGoods = (c: Campaign, t: Territory, supplies: number, times = 1): number =>
+  Math.round(supplies * times * SUPPLY_UNITS * handsShare(c, t.id) * nobleWork(c, t.id) * leaderWork(c, t.id) * griefWork(c, t.id) * winterYield(c, biomeOf(c, t.id))); // an angry noble's town works slacker (nobles.ts), the leader's harder (leaderstay.ts), its grieving homes slower (mapgrief.ts), and less in winter, where the land has one (winter.ts)
+
 /** What one season's yield came to, people by people: goods into towns, and goods lost to full stores. */
 export interface Harvest { [people: number]: { goods: number; lost: number } }
 
@@ -87,7 +91,7 @@ export function harvest(c: Campaign, landYield: (f: number, t: Territory) => num
     // A land the marauders still sit in has no town of its people's to keep its yield: that goes to the chief town.
     for (const t of held) {
       // A land the marauders sit in yields what its own town's hands bring in, but into the chief town.
-      const into = t.horde ? chief : t, n = Math.round(landYield(x.id, t) * k * SUPPLY_UNITS * handsShare(c, t.id) * nobleWork(c, t.id) * leaderWork(c, t.id) * griefWork(c, t.id) * winterYield(c, biomeOf(c, t.id))); // and less in winter, where the land has one (winter.ts) // an angry noble's town works slacker (nobles.ts), the leader's harder (leaderstay.ts), its grieving homes slower (mapgrief.ts)
+      const into = t.horde ? chief : t, n = landGoods(c, t, landYield(x.id, t), k);
       const got = spread(n, yieldShares(c, into.id));
       noteReaped(c, into.id, got.food); // for the reckoning ahead (larderwatch.ts)
       goods += n; lost += putIn(c, into.id, got);

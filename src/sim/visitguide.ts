@@ -19,7 +19,7 @@ export function visitSteps(g: Game, pid: number, minutes: number): GuideStep[] {
   return [
     { title: 'A visit to your own town', how: 'No enemy is here. Build, train and set your people to work: select villagers and right-click trees, fields or a place to build.', done: working || begun || g.time > 45 },
     { title: 'The season waits for you', how: `The map does not move while you are here. You have ${minutes} minutes in the town, and the season is the one you came in.`, done: g.time > 60 },
-    { title: 'What goes home', how: 'What you build stays. The town\'s people and stores, the roads you lay, what is learned here and the soldiers you train all go back to the map with it.', done: begun || g.time > 180 },
+    { title: 'What goes home', how: 'What you build stays. The town\'s people, the roads you lay, what is learned here and the soldiers you train all go back to the map with it. What it gathers goes home up to a season\'s worth: the visit is the town\'s season, and it brings in nothing more when the season turns.', done: begun || g.time > 180 },
     { title: 'Leaving the town', how: 'When you are done, press Leave the town on the slip at the top. When the clock runs out you leave of yourself.', done: false },
   ];
 }
