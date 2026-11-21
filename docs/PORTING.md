@@ -474,11 +474,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-<<<<<<< HEAD
-307 modules, 38,323 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
-=======
-308 modules, 38,387 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
->>>>>>> origin/main
+308 modules, 38,391 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
