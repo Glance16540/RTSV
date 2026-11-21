@@ -89,3 +89,11 @@ port. Each is a few lines; the finding behind it is in the commits and the board
   side by the luck of the campaigns, and the row has read 6 to 16% since its bar was set. Posting guards does nearly
   all of what decrees do; grief and sickness are over half of drift, and tending them needs a church the town
   mostly lacks. Lifting the row needs a rule from the owner (tending without a church); nothing was tuned.
+- **Crime, "thieves taken in a season in a town with a Watch House"** (band: 10 to 20 more in every 100 seasons). The
+  row is counted like for like (the same draw with the Watch House's 0.15 and without), so its true value is the rule's
+  15 and nothing else; a reading has only 300 to 480 thief-seasons and swings about 1.8 points either side. A draw is
+  fixed by the campaign's seed, the season and the thief's number, so the reference seeds give the same draws until a
+  change moves the thieves about: on main 2cd376b (21 November 2026) seeds 1 to 768 read 20.3 and 19.6 with stories
+  ignored and 11.0 and 16.3 with stories answered, where the reference read 16.1. Four fresh sets of 384 on the same
+  main (seeds 769 to 2304) read 17.3, 14.7, 15.0 and 15.1, and 16.0 over their 3,485 draws; the chance function is even
+  (15.01% over 720,000 draws). Nothing to tune; the band is as it was.

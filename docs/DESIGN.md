@@ -270,6 +270,10 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **The player chooses whether to carry people off** (the owner's word, 21 November 2026). A nation of low standing carries people off from a town it takes, the player's as a rival's; the player may forbid it by decree, and then none are taken. Grown only, never a child, nothing shown.
 
+**A visit brings home a season's worth** (the owner's word, 21 November 2026). What a town gathers in a visit is scaled so that a full visit brings about what that town makes in a season on the map, and it stands in place of that town's season gain, not on top of it. The visit plays as before; only what carries home is weighed to the season.
+
+**A town without a church can still tend** (the owner's word, 21 November 2026). The decree to tend the sick and the mourning may be given in a town with no church, at half its strength; with a church it is whole.
+
 ## The order of building
 
 Each step is to be playable by itself.
