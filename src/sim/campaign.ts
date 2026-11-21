@@ -46,6 +46,7 @@ import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { rivalSettleSeason } from './rivalsettle';
+import { rivalDrillSeason } from './rivaldrill';
 import { makeWilds } from './wilds';
 import { atWarWith, warUntil } from './feudwar';
 import { befalls, feverToll, hardCost } from './chancecreed';
@@ -1303,6 +1304,7 @@ export function continueAI(c: Campaign): void {
       rulesSeason(c); // rival nations raise their works of rule and faith (rule.ts)
       governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
+      rivalDrillSeason(c); // and a rival's frontier towns, by the orders it gives them (rivaldrill.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       sentForSeason(c, (s) => paysHere(c, s.f, s.what, s.n, { at: s.at }) && doSentFor(c, s)); // what waited for goods sent for by road is done, if they came in (sentfor.ts)
       caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)

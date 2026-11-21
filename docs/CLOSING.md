@@ -132,7 +132,7 @@ Built as written (`drift.ts`, `driftintown.ts`, `decrees.ts`, `tavernfall.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | A visit is about ten minutes of its season | A visit costs nothing and the season does not move for it. It is not offered on a land the marauders hold. | small | Unity: port as is. "Each town once a season" is kept. |
-| It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. The four-company stop cannot be set. A rival's towns do not train by orders. | small | Unity: the map has five kinds of company by design. Port as is. |
+| It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. **Done**: the stop can be set by a standing order (townorders.ts `drillStop`, on the governor's orders: 2 to 12 companies, 4 the usual), and a rival's frontier towns with a yard train by orders it gives them, to stop at 3 (`src/sim/rivaldrill.ts`). | small | Unity: the map has five kinds of company by design. Port as is. |
 
 ## Stores
 
