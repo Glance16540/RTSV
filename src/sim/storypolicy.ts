@@ -22,10 +22,9 @@ import { armyStrength, luck } from './campaignbase';
 import { LEANING } from './creed';
 import { leaningWith } from './temper';
 import { answerTale, canAnswer } from './storyturn';
-import { TALE_LOW } from './rivaltales';
 
 /** Supplies in hand below which a careful ruler will not pay for the upright answer to a tale. */
-export const STORE_LOW = TALE_LOW; // as a rival answers its own (rivaltales.ts)
+export const STORE_LOW = 10;
 
 /** A people's strength under arms, as a careful ruler reckons it. */
 const strengthOf = (c: Campaign, f: number): number => c.armies.filter((a) => a.owner === f).reduce((n, a) => n + armyStrength(a), 0);

@@ -2,8 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Campaign, newCampaign } from '../src/sim/campaign';
 import { TALES } from '../src/sim/story';
-import { TALE_LOW, rivalAnswer, rivalTales } from '../src/sim/rivaltales';
-import { STORE_LOW } from '../src/sim/storypolicy';
+import { rivalAnswer, rivalTales } from '../src/sim/rivaltales';
 import { storyTurn, taleDueNow } from '../src/sim/storyturn';
 import { nationVirtue } from '../src/sim/townfaith';
 
@@ -30,10 +29,9 @@ describe('a rival\'s tale', () => {
     }
   });
 
-  it('is answered as the test player answers: the upright way when it leans so and can spare it, else the other', () => {
-    expect(STORE_LOW).toBe(TALE_LOW);
+  it('is answered by its lean: the upright way when it leans so and can pay for it, else the other', () => {
     const c = world(), f = 1, land = landOf(c, f), x = tale('pilgrims');
-    c.factions[f].supplies = 0; // it cannot spare the upright answer
+    c.factions[f].supplies = 0; // it cannot pay for the upright answer
     expect(rivalAnswer(c, f, x, land)).toBe('b');
     let upright = 0, other = 0;
     for (let t = 20; t < 220; t++) { c.turn = t; c.factions[f].supplies = 999; if (rivalAnswer(c, f, x, land) === 'a') upright++; else other++; }

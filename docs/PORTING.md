@@ -370,7 +370,7 @@ by name.
 | `rivalyoke` | 41 | A rival rules a resentful town with its resentment in mind: once a season, Farmland in its most resentful town, when it can spare the price; building is lent by campaign.ts. | campaign (types only), campaignbase, conquered | rivalyoke.test.ts | not yet |
 | `revival` | 23 | A computer-led people counted out takes back a town that rises for it (conquered.ts) and lives again, the town its seat. | campaign (types only) | rivalyoke.test.ts | not yet |
 | `rivalstories` | 130 | Stories inside the story for rival rulers: the thief and the killer begin in their towns by the player's chances, are judged by the ruler's lights, and are told to the player only where he could hear of them. | campaign (types only), courtstory, creed, intrigue, intriguebase, townfaith, township, townwatch | rivalstories.test.ts | not yet |
-| `rivaltales` | 84 | Rivals have tales of their own: when a tale is due each rival the computer leads is brought one that could come to anybody, answers it as its people lean (the upright way when it can spare it), and the answer goes through the rules there are; the chronicle tells it in a line. | armytown, campaign (types only), campaignbase, creed, prices, stores, story, temper, townfaith, tribes | rivaltales.test.ts | not yet |
+| `rivaltales` | 82 | Rivals have tales of their own: when a tale is due each rival the computer leads is brought one that could come to anybody, answers it as its people lean (the upright way when it can spare it), and the answer goes through the rules there are; the chronicle tells it in a line. | armytown, campaign (types only), campaignbase, creed, prices, stores, story, temper, townfaith, tribes | rivaltales.test.ts | not yet |
 | `rivalweary` | 125 | What war costs a rival's towns (docs/DESIGN.md, "Rivals live by the same rules"): its weariness from its dead, its hungry towns and its restless ones; the better odds a weary people wants; and the peace it sues for, a pact between two rivals and an open offer of truce to the player. | campaign (types only), campaignbase, drift, feudwar, pacts, rivalrule, rivalworld, township | rivalweary.test.ts | not yet |
 | `rivalworld` | 61 | The world as a rival weighs it (docs/DESIGN.md, "Rivals live by the same rules"): what a named place, plague and a far faith add to or take from a war aim; the odds wanted to march in winter, in the Long Winter and in the Season of Iron; and how much readier two peoples of like standing are to treat. Figures only. | aiplague, campaign (types only), campaignbase, places, townfaith, winter | rivalworld.test.ts | not yet |
 | `roadclash` | 132 | A band meets soldiers on the road, fought out with the map's clash: the band as in a raid, the soldiers as their own companies at the strength the map gives them (and, at a road's end, the wayfarers as the place); who broke, what each lost, and what the band comes away with. It decides an army's fight with a band (bandfight.ts), an escort's for a convoy or a caravan (`escortFight`, called by convoys.ts and caravans.ts) and a strike at a road's end (threats.ts); the old rule is tallied beside it for the report. | armytown, campaign (types only), campaignbase, mapbattle, raidclash | roadclash.test.ts | not yet |
@@ -391,7 +391,7 @@ by name.
 | `spymasters` | 7 | Spymasters, a study: a plot against the leader is found the sooner. | campaign (types only), studies | spymasters.test.ts | not yet |
 | `stewardship` | 8 | Stewardship, a study: a better governor, who finishes what he has begun half again as fast. | campaign (types only), studies | stewardship.test.ts | not yet |
 | `styleplay` | 120 | The battle's computer player plays to its people's rule: what the rule makes worth building ahead of the common order (traders' markets, the Faithful's church, builders' towers), a farm for room where others raise a house (farmers), nothing kept back for a technology (scholars), who is sent out of the fight and where (the Faithful's hurt to their church, a warrior people's hurt veterans home), and how the rule shapes the war (builders sit out a siege, scholars time an attack to an age, warriors field fewer and better men). Answers only; ai.ts gives the orders. | data, game (types only) | styleplay.test.ts | not yet |
-| `storypolicy` | 69 | A plain way of answering the stories inside the story for a player the computer plays (`sensibleAnswers`): watch, accuse only when one is left, defy and guard, ask the daughter, informers and a pardon; a tale as the people lean, when the supplies can be spared. Never reads who the culprit is. Used by the health report (STORIES=answer). | aftermath, campaign (types only), campaignbase, creed, intrigue, petitions, rivaltales, royalmarriage, storyturn, temper, tradedeal | storypolicy.test.ts | not yet |
+| `storypolicy` | 68 | A plain way of answering the stories inside the story for a player the computer plays (`sensibleAnswers`): watch, accuse only when one is left, defy and guard, ask the daughter, informers and a pardon; a tale as the people lean, when the supplies can be spared. Never reads who the culprit is. Used by the health report (STORIES=answer). | aftermath, campaign (types only), campaignbase, creed, intrigue, petitions, royalmarriage, storyturn, temper, tradedeal | storypolicy.test.ts | not yet |
 | `stores` | 107 | Stores replace supplies (docs/DESIGN.md, "Stores"): a nation's supplies are what its towns hold above their working stock, and every gain or loss on the map is carried into the towns. | campaign (types only), township | stores.test.ts | not yet |
 | `steward` | 62 | The Steward, a third calling for the leader: a hero whose presence makes villagers near them gather and build faster, whose call (Man the walls) spares buildings near them harm, and their three pairs of powers. Read by powers.ts (calls and powers) and game.ts (work and harm). | data, game (types only) | steward.test.ts | not yet |
 | `epilogues` | 144 | A campaign's own ending, on the last page once it is over: how each thread of tales ended (its fate), was left unfinished or was still open; what became of the people of note (the ruler and the line, the husband or wife, grown heirs, the circle, lords and any plotter, grown claimants, the most renowned of the towns, living and lost); and the houses (the ruling house, the houses it married into, the great houses of the towns). Only the grown are named. Puts itself on `story.LAST_PAGE`. | campaign (types only), chroniclethreads, dynasty, kin, nobles, story, talethreads | epilogues.test.ts | not yet |
@@ -479,7 +479,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-313 modules, 38,879 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+313 modules, 38,876 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -501,7 +501,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 15 | 1 | 343 | `convoys` (343; 9) |
 | 16 | 5 | 589 | `migration` (233; 3), `marriage` (102; 2), `sentfor` (99; 2), `settlersfrom` (61; 2), `suitors` (94; 1) |
 | 17 | 4 | 443 | `prices` (214; 10), `deadtown` (106; 4), `roofsmap` (70; 2), `rivalsettle` (53; 1) |
-| 18 | 7 | 990 | `courtstory` (438; 6), `country` (94; 4), `freetown` (137; 2), `nobledeal` (165; 2), `rivaltales` (84; 2), `bandturn` (34; 1), `emptied` (38; 1) |
+| 18 | 7 | 988 | `courtstory` (438; 6), `country` (94; 4), `freetown` (137; 2), `nobledeal` (165; 2), `bandturn` (34; 1), `emptied` (38; 1), `rivaltales` (82; 1) |
 | 19 | 7 | 910 | `aftermath` (209; 4), `nobleweigh` (55; 2), `rivalplan` (182; 2), `storyturn` (147; 2), `claimantjudged` (94; 1), `rivalaim` (71; 1), `wifetaken` (152) |
 | 20 | 3 | 410 | `claimantrising` (196; 4), `decrees` (168; 4), `killerseized` (46; 1) |
 | 21 | 5 | 597 | `acts` (204; 5), `drift` (175; 4), `claimantfigures` (50; 3), `claimantcaptain` (69; 2), `succession` (99; 1) |
@@ -510,7 +510,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 24 | 15 | 1,483 | `townworks` (58; 6), `rivalcaptives` (47; 3), `visitworth` (58; 3), `bandroam` (223; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `battlecarried` (109; 1), `nocarry` (70; 1), `rivaldrill` (55; 1), `rivalmass` (102; 1), `rivalstock` (115; 1), `rivalweary` (125; 1), `courtcall` (84), `roll` (93) |
 | 25 | 9 | 1,189 | `bandfight` (313; 4), `caravans` (205; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `seasongain` (34; 1), `watchhouse` (80; 1) |
 | 26 | 5 | 822 | `intrigue` (400; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `rivalhunt` (132; 1), `bandmeet` (89) |
-| 27 | 7 | 3,776 | `courtvisit` (81; 2), `game` (3299; 2), `hallcases` (77; 2), `storyvisit` (51; 2), `bandseason` (69; 1), `rivalstories` (130; 1), `storypolicy` (69) |
+| 27 | 7 | 3,775 | `courtvisit` (81; 2), `game` (3299; 2), `hallcases` (77; 2), `storyvisit` (51; 2), `bandseason` (69; 1), `rivalstories` (130; 1), `storypolicy` (68) |
 | 28 | 2 | 105 | `aiground` (52; 1), `battlestory` (53; 1) |
 | 29 | 2 | 2,826 | `campaign` (1812; 2), `ai` (1014) |
 | 30 | 1 | 294 | `visit` (294; 1) |
@@ -571,7 +571,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 559 of them in 241 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 558 of them in 240 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -762,7 +762,6 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `rivaldrill` | `RIVAL_DRILL` |
 | `rivalyoke` | `RIVAL_YOKE` |
 | `rivalstories` | `RIVAL_STORIES` |
-| `rivaltales` | `TALE_LOW` |
 | `rivalweary` | `WEARY` |
 | `rivalworld` | `WORLD` |
 | `roadclash` | `ROAD` |
