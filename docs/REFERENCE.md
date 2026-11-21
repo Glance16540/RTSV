@@ -86,10 +86,10 @@ port. Each is a few lines; the finding behind it is in the commits and the board
 - **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). No longer on its edge since a town without
   a church can tend at half strength (the owner's word, 21 November 2026; `decrees.ts` `TEND_BARE`): at 384 on both seed
   sets it reads 16.4% and 19.3% less with stories ignored (12.5 and 14.8 before) and 14.2% and 12.2% with stories
-  answered (12.9 and 7.5 before). One reading of 384 still swings about 3.5 points either side. Its knock-on is the
-  edge now: tending pleases lords, and "lords content at 20 years" rose three to five points with it (the player's
-  15.6 / 19.7 / 15.0 / 20.5%, the rivals' 18.8 / 19.9 / 18.6 / 20.1% over the four readings, against a top of 20), so
-  that row will cross its band on some readings. Nothing was tuned for it.
+  answered (12.9 and 7.5 before). One reading of 384 still swings about 3.5 points either side. Tending pleases lords and is
+  given far more often now, which took "lords content at 20 years" back to its top (20.5% and 20.1% on one reading);
+  lords take tending at half what they did since (`nobles.ts` `LIKES`), and four readings of 384 give 13.7 to 18.1%
+  of the player's and 16.1 to 19.2% of the rivals' content, 3.5 to 6.5% angry, and this row 13.3 to 17.2% less.
 - **Crime, "thieves taken in a season in a town with a Watch House"** (band: 10 to 20 more in every 100 seasons). The
   row is counted like for like (the same draw with the Watch House's 0.15 and without), so its true value is the rule's
   15 and nothing else; a reading has only 300 to 480 thief-seasons and swings about 1.8 points either side. A draw is
