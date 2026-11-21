@@ -28,7 +28,8 @@ import {
   continueAI, endTurn, moveArmy, raise, resolvePending, slots, summonHero, territoryAt, battleConfig, winChance,
 } from '../sim/campaign';
 
-import { Claim, canSucceed, claimants, comesOfAge, houseOf, ofAge, rulerName, succeed } from '../sim/dynasty';
+import { canSucceed, claimants, comesOfAge, houseOf, ofAge, rulerName } from '../sim/dynasty';
+import { Choice, successionChoices, takeUp } from '../sim/succession';
 import { RANK_NAMES } from '../sim/hero';
 import { heroFor } from '../sim/campaign';
 import { callArmies, endCall, holdCourt, moveLeader } from '../sim/court';
@@ -378,20 +379,21 @@ export class Overworld {
       [...(canPay ? [[`Pay ${d.amount} supplies`, () => answer(true)] as [string, () => void]] : []), ['Refuse', () => answer(false)]]);
   }
 
-  /** Your leader has fallen: who follows them? An heir of age, a captain from the armies, or nobody yet. */
+  /** Your leader has fallen: who follows them? Everyone who could, in the order of the throne, with what each costs (succession.ts). */
   private askSuccession(): void {
     const c = this.c, house = houseOf(c, 0), fallen = heroFor(c, 0).name;
-    const claims = claimants(c, 0);
-    const open = claims.filter((x) => canSucceed(c, 0, x));
+    const all = claimants(c, 0), open = successionChoices(c, 0);
     const young = house.heirs.filter((h) => !ofAge(c, h)).map((h) => `${h.name} comes of age ${inTime(comesOfAge(c, h))}`);
-    const line = (x: Claim) => `<br><b>${x.name}</b> <small>(${RANK_NAMES[x.rank]})</small>: ${x.what}`;
-    const text = (claims.length ? 'Who will lead your people now?' + claims.map(line).join('') : 'There is no heir of age, and no captain has yet made a name in your armies.') +
-      (claims.length > open.length ? '<br><small>An heir needs an army of yours to ride to.</small>' : '') +
+    const rank = (x: Choice) => (x.claim ? ` <small>(${RANK_NAMES[x.claim.rank]})</small>` : '');
+    const line = (x: Choice) => `<br><b>${x.name}</b>${rank(x)}: ${x.who} <i>${x.cost}</i>`;
+    const text = (open.length ? 'Who will lead your people now?' + open.map(line).join('') : 'There is no heir of age, and no captain has yet made a name in your armies.') +
+      (all.filter((x) => !canSucceed(c, 0, x)).length ? '<br><small>An heir needs an army of yours to ride to.</small>' : '') +
       (young.length ? `<br><small>${young.join('; ')}.</small>` : '') +
+      (open.some((x) => x.kind === 'rising') ? '<br><small>Put it off, and the claimant in arms takes the throne as the season turns.</small>' : '') +
       '<br><small>Until someone leads, your armies fight without a leader. A stranger can also be hired at your capital.</small>';
     house.asked = true;
     this.dialog(`${fallen} has fallen`, text, [
-      ...open.map((x): [string, () => void] => [`${x.kind === 'captain' ? '⚔' : '♛'} ${x.name.split(',')[0]}`, () => { succeed(c, 0, x); this.changed(); }]),
+      ...open.map((x): [string, () => void] => [`${x.kind === 'captain' ? '⚔' : '♛'} ${x.name.split(',')[0]}`, () => { takeUp(c, 0, x); this.changed(); }]),
       ['Decide later', () => this.changed()],
     ]);
   }

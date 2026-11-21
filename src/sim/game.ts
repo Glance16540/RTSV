@@ -95,6 +95,8 @@ export const SAVE_VERSION = 12;
 /** A difference in height, in tiles, that counts as holding the high ground. */
 export const HIGH_GROUND = 0.45;
 const HASH = 4; // spatial hash bucket size in tiles
+/** The most people sheltered in a building who speed its fire: a Watch Tower's four. */
+export const SHOOT_HELP = 4;
 const REACH = 0.8; // interaction distance for gathering / building
 
 export type Gender = 'm' | 'f';
@@ -3289,7 +3291,7 @@ export class Game {
           if (this.hostile(v.owner, b.owner) && !v.def.docile && d < bestD) { bestD = d; best = v; }
         }
         if (best) {
-          b.cooldown = b.def.cooldown! / (1 + 0.3 * b.sheltered.length); // sheltered villagers help shoot
+          b.cooldown = b.def.cooldown! / (1 + 0.3 * Math.min(b.sheltered.length, SHOOT_HELP)); // sheltered villagers help shoot: as many as a tower holds, so a Fortress full of people shoots as a full tower does
           this.projectiles.push({
             x: b.x, y: b.y, sx: b.x, sy: b.y, tx: best.x, ty: best.y, targetId: best.id, speed: 13, owner: b.owner,
             atk: b.def.atk + p.mods.towerAtk, aura: 1, cls: 'building', splash: 0, kind: 'arrow', done: false,
