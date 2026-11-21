@@ -7,6 +7,8 @@ import type { Portrait } from '../sim/portrait';
 import { BANDS, Band, Raid, bandsAt, defenceOf, heldFrom, raidsAt, reportText, seasonsLeft } from '../sim/threats';
 import { armiesFor } from '../sim/bandfight';
 import { raidPending } from '../sim/raidfought';
+import { isParty } from '../sim/feudraid';
+import { heroFor } from '../sim/campaignbase';
 import { fig } from './mapfigures';
 import { seasonNews } from '../sim/raidnews';
 import { portraitHtml } from './portrait';
@@ -94,6 +96,13 @@ export function raidPrompt(c: Campaign): { title: string; text: string } | null 
   const p = c.pending, b = raidPending(c);
   if (!p || !b) return null;
   const t = c.territories[p.to];
+  if (isParty(b)) { // a feuding king's raiding party (feudraid.ts): it has come for the court, and leads nobody away
+    const r = c.factions[b.party!], king = (c.marks ?? []).find((m) => m.kind === 'feud' && m.rival === b.party && m.raided === c.turn)?.name ?? `The king of the ${r?.name ?? 'rival people'}`;
+    return {
+      title: `${king}'s raiders come against your court!`,
+      text: `${king} of the ${r?.name ?? 'rival people'}, at war with you by ${heroFor(c, b.party!).female ? 'her' : 'his'} feud, has sent raiders of ${strengthOf(b.strength)} against the court at ${t.name}, against the town's defence of ${fig(p.dStr)}. Fight for the town yourself, with its own men and any army standing there, or leave it to the town, which will hold or fall by what it has. They have come to burn and rob the court, not to lead people away; they go home once they have struck.`,
+    };
+  }
   return {
     title: `${b.name[0].toUpperCase() + b.name.slice(1)} come against ${t.name}!`,
     text: `${BANDS[b.kind].name} of ${strengthOf(b.strength)} against the town's defence of ${fig(p.dStr)}. Fight for the town yourself, with its own men and any army standing there, or leave it to the town, which will hold or fall by what it has. Beaten off, they are the weaker for it; if they get in they take what they can carry, and may lead people away.`,
