@@ -6,8 +6,9 @@
 //   The map: CAMPAIGNS campaigns (seeds 1..n, a player the computer plays and two rivals) played SEASONS seasons as the
 //   health report plays them, with the time of each season's turn (the player's orders, the rivals', the turn-over),
 //   and the time to make each world.
-//   A battle: a skirmish between two peoples the computer leads, each made up to UNITS/2 soldiers on the field, stepped
-//   TICKS ticks, with the time of a tick while 200 or more are still standing.
+//   A battle: a skirmish between two peoples the computer leads, each with UNITS/2 soldiers drawn up in the middle of
+//   the field and sent at the other, stepped TICKS ticks, with the time of a tick while 200 or more people of the two
+//   sides are still standing (the fighting thins them: UNITS=300 keeps it above 200 for longer).
 //   PROFILE=1 adds where the time went, by function and by source file (V8's sampling profiler), for each.
 //
 // Times are this machine's and are to be read against another run on it. Skipped unless SPEED is set.
@@ -30,7 +31,8 @@ function spread(times: number[]): string {
   return `median ${ms(at(s, 0.5))} ms, 90th ${ms(at(s, 0.9))} ms, worst ${ms(s[s.length - 1] ?? 0)} ms, mean ${ms(sum / Math.max(1, s.length))} ms (${s.length} measured, ${ms(sum / 1000)} s in all)`;
 }
 
-interface Node { id: number; callFrame: { functionName: string; url: string; lineNumber: number }; children?: number[] }
+interface Node { id: number; callFrame: { functionName: string; url: string; lineNumber: number; scriptId: string }; children?: number[]; positionTicks?: { line: number; ticks: number }[] }
+const LINES = process.env.LINES ?? '';
 /** Run `work` under V8's sampling profiler and say where its own time went: the functions and the files that cost most. */
 function profiled(work: () => void, top = 25): string[] {
   if (!PROFILE) { work(); return []; }
@@ -42,6 +44,18 @@ function profiled(work: () => void, top = 25): string[] {
   session.post('Profiler.start');
   work();
   session.post('Profiler.stop', (_e: unknown, r: { profile: typeof profile }) => { profile = r.profile; });
+  // LINES=<function>: the lines of that function the samples fell on, as the engine ran them (the code after it is made ready to run).
+  const lines: string[] = [];
+  if (LINES && profile) {
+    const ticks = new Map<string, number>();
+    let scriptId = '';
+    for (const n of profile.nodes) if (n.callFrame.functionName === LINES) { scriptId = n.callFrame.scriptId; for (const t of n.positionTicks ?? []) ticks.set(String(t.line), (ticks.get(String(t.line)) ?? 0) + t.ticks); }
+    let src: string[] = [];
+    session.post('Debugger.enable');
+    session.post('Debugger.getScriptSource', { scriptId }, (_e: unknown, r: { scriptSource?: string }) => { src = (r?.scriptSource ?? '').split('\n'); });
+    const sum = [...ticks.values()].reduce((n, v) => n + v, 0);
+    lines.push(`  the lines of ${LINES} (${sum} samples):`, ...[...ticks.entries()].sort((x, y) => y[1] - x[1]).slice(0, 14).map(([l, t]) => `  ${(t / Math.max(1, sum) * 100).toFixed(1).padStart(5)}%  ${l}: ${(src[+l - 1] ?? '').trim().slice(0, 150)}`));
+  }
   session.disconnect();
   if (!profile) return ['(no profile)'];
   const byId = new Map(profile.nodes.map((n) => [n.id, n]));
@@ -56,7 +70,7 @@ function profiled(work: () => void, top = 25): string[] {
     fn.set(name, (fn.get(name) ?? 0) + dt); file.set(src, (file.get(src) ?? 0) + dt);
   });
   const list = (m: Map<string, number>, n: number): string[] => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => `  ${(v / all * 100).toFixed(1).padStart(5)}%  ${k}`);
-  return ['  by function (its own time):', ...list(fn, top), '  by file:', ...list(file, 18)];
+  return ['  by function (its own time):', ...list(fn, top), '  by file:', ...list(file, 18), ...lines];
 }
 
 /** One season as the health report plays it: the player's turn played by the computer, then everyone else's. */
@@ -92,9 +106,12 @@ it.skipIf(!process.env.SPEED)('how long the rules take', () => {
     const civs = CIV_IDS.filter((id) => id !== 'wild');
     const g = new Game(7, [0, 1].map((i) => ({ name: 'AB'[i], color: [0x3366ff, 0xff3333][i], isAI: true, civ: civs[(3 + i * 5) % civs.length] })));
     const ais = g.players.map((_, i) => { const a = new AIController(g, i); a.setLevel(1); return a; });
+    // The two forces drawn up either side of the middle of the field, and sent at each other.
+    const mid = g.size / 2;
     for (const i of [0, 1]) {
-      const home = g.units.find((u) => u.owner === i)!;
-      for (let k = 0; k < UNITS / 2; k++) g.spawnUnit(k % 3 === 0 ? 'slinger' : 'clubman', i, home.x + (k % 12) - 6, home.y + Math.floor(k / 12) - 5, 'm');
+      const ids: number[] = [];
+      for (let k = 0; k < UNITS / 2; k++) ids.push(g.spawnUnit(k % 3 === 0 ? 'slinger' : 'clubman', i, mid + (i ? 9 : -9) + (i ? 1 : -1) * Math.floor(k / 16), mid - 8 + (k % 16), 'm').id);
+      g.cmdMove(i, ids, mid, mid, true);
     }
     const soldiers = (): number => g.units.reduce((n, u) => n + (!u.dead && u.owner >= 0 && u.owner < 2 ? 1 : 0), 0);
     for (let s = 0; s < TICKS && g.winner < 0; s++) {
