@@ -930,3 +930,8 @@ body.looking-out #visit { display: none; }
 /* The ending told whole (src/sim/epilogues.ts): the last page runs longer now, so the ending dialog scrolls it. */
 .ow-epilogue { max-height: 45vh; overflow-y: auto; }
 .ow-epilogue .ow-line { display: block; margin: 0 0 6px; }
+
+/* The leader's call by name, and the road's risk (src/client/callpanel.ts). */
+.ow-side .call-pick { text-align: left; font-size: 13px; padding: 4px 8px; }
+.ow-side .call-pick.on { border-color: #7a5a1c; background: rgba(214, 170, 80, 0.28); }
+.ow-side .warn { color: #9a3a1e; }
