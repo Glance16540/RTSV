@@ -7,7 +7,7 @@ import { inRuin, ruinWords } from '../sim/ruin';
 import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
-import { bandPrompt, newsHtml } from './threatpanel';
+import { bandPrompt, newsHtml, raidPrompt } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
 import { petitionDo } from './petitionpanel';
 import { pactDo } from './pactpanel';
@@ -279,6 +279,8 @@ export class Overworld {
       if (c.phase === 'ai') continueAI(c);
       this.changed();
     };
+    const raid = raidPrompt(c);
+    if (raid) { this.dialog(raid.title, raid.text, [['Fight for the town', () => this.hooks.fight()], ['Leave it to the town', settle]]); return; }
     const band = bandPrompt(c);
     if (band) {
       const choices: [string, () => void][] = [['Fight it', () => this.hooks.fight()], ['Leave it to the army', settle], ...(band.decline ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])];

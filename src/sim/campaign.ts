@@ -41,6 +41,7 @@ import { settleTaken } from './settlersfrom';
 import { foughtOnMap, recordsBack } from './warrecord';
 import { mayRaiseKind } from './uniquecompany';
 import { bandBattle, settleBandFight } from './bandfight';
+import { raidBattle, settleRaid } from './raidfought';
 import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
 import { fieldReckoned, tollByFight, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
@@ -1132,10 +1133,11 @@ export const BATTLE_ANSWERS = new BattleAnswers<BattleQuestions>()
 
 export const battleWatchers: ((c: Campaign, p: Pending, attackerWon: boolean, how: 'auto' | 'attacker' | 'defender') => void)[] = [];
 
-export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender', opts: { /** A battle fought in person: the attacker's men still standing at the end, by unit type, and whether its leader lived (siegeretreat.ts). */ attackerLeft?: Record<string, number>; attackerLed?: boolean } = {}): boolean {
+export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender', opts: { /** A battle fought in person: the attacker's men still standing at the end, by unit type, and whether its leader lived (siegeretreat.ts). */ attackerLeft?: Record<string, number>; attackerLed?: boolean; /** A band's strike fought in person (raidfought.ts): the player's units left, and how the leader came out of it. */ survivors?: Record<string, number>; leader?: { fell?: boolean; heroRank?: number; acclaimed?: Partial<HeroSpec> } } = {}): boolean {
   const p = c.pending;
   if (!p) return false;
   if (p.band !== undefined) return settleBandFight(c, how); // against a band: no nation, and no land changes hands (bandfight.ts)
+  if (p.raid !== undefined) return settleRaid(c, how, { survivors: opts.survivors, foes: opts.attackerLeft, ...opts.leader })?.outcome !== 'held'; // a band's strike on a town of the player's (raidfought.ts)
   let attackerWon = how === 'attacker';
   let fought: Outcome | null = null;
   if (how === 'auto') {
@@ -1593,7 +1595,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   // The land's own water (townwater.ts); a field battle's is where the field lies, between the land it came from and this one.
   const groundWater = waterOf(c, p.to, terrainOf(c), field && c.territories[p.from] ? { x: (c.territories[p.from].x + t.x) / 2, y: (c.territories[p.from].y + t.y) / 2 } : undefined);
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
-  return {
+  const laid: BattleConfig = {
     ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
     climate: BIOMES[biomeOf(c, p.to)].climate, season: seasonOfTurn(c.turn),
     ...(!field && t.ground ? { ground: t.ground } : {}),
@@ -1611,6 +1613,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, reserve: true, civ: c.factions[c.ally].civ, ...led(c.ally, allyReserve), virtue: virtueOf(c, c.ally), bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
     ].slice(0, 4),
   };
+  return p.raid !== undefined ? raidBattle(c, laid) : laid; // a band's strike: the town as laid, against the band alone (raidfought.ts)
 }
 
 /** Units that fight in person for each company type, e.g. two clubmen for an infantry company. */
@@ -1661,6 +1664,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const p = c.pending;
   if (!p) return;
   if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors, { fell: after.fell, heroRank, acclaimed: after.acclaimed }); return; } // the leader fought beside the army, at the usual risk (bandfight.ts)
+  if (p.raid !== undefined) { resolvePending(c, playerWon ? 'defender' : 'attacker', { survivors, attackerLeft: after.foes, leader: { fell: after.fell, heroRank, acclaimed: after.acclaimed } }); return; } // a band's strike fought in person is written back by the strike's own rule (raidfought.ts)
   if (p.defender === 0 && p.mode !== 'field') homeOnLeave(c, p.to, after.leave); // men of the town who went home from its army while it was fought for (furloughmap.ts): before the army is counted
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.

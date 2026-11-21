@@ -53,7 +53,7 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| The town defends itself, and the player may be there | A band's strike on a town is a clash on the map (`raidclash.ts`). Nobody can enter it, watch it or play it, unlike a nation's attack or a fight with a band in the open. | medium | Unity: the rule is done. What is missing is a real-time battle for a raid, which is the new engine's work. |
+| The town defends itself, and the player may be there | **Done for the player's towns (21 November 2026, `raidfought.ts`).** A band's strike on a town of the player's waits on the player, who may fight for it in person (the town as it defends, against the band's companies) or leave it to the town; the outcome is written back by the strike's own rule. Still missing: the town is not read back from the field (its dead, its houses and its stores change by the strike's rule only), and a strike on a road cannot be entered. | small | Unity: read the town back from the field as a nation's attack does. |
 | A report of who was killed and who was taken | The report counts them and ages them, but names only the notable. A town keeps counts and ages, not names. | large | Unity: naming everyone is a change to the town record's shape, the same decision as keeping every house by name. |
 | Which way the town's morals swayed | A raid's sway still reads the nation's standing, not the town's. Switching it moved campaigns ending in ruin out of band, so it was left. | small | Drop: left on measurement, and faith is otherwise the town's. |
 

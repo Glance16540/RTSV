@@ -56,6 +56,7 @@ import { fortShelter, hasFortress } from './fortress';
 import { isStronghold, keepOf, keepUnits } from './fortkeep';
 import { stoodTo } from './heralds';
 import { RAID, raidClash, spoilsOf } from './raidclash';
+import type { RaidFight } from './raidclash';
 import { MEN, reckonArmies } from './armytown';
 import { oldWeight } from './oldfolk';
 import { wrathAt } from './acts';
@@ -302,7 +303,7 @@ export function breakBand(c: Campaign, b: Band, out: string[], by?: Army): void 
 }
 
 /** One strike on one town. */
-export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
+export function strike(c: Campaign, b: Band, tid: number, out: string[], opts: { /** The strike on a town was fought in person (raidfought.ts): the map's own fight of it, rewritten by what the field came to. Everything after follows the fight as it always does. */ fought?: (clashed: RaidFight, defence: Defence) => RaidFight } = {}): Raid {
   const t = c.territories[tid], owner = t.owner, f = folkOf(c, tid);
   const road = b.kind === 'highwaymen';
   const defence = defenceOf(c, tid);
@@ -322,18 +323,19 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   const garrison = road ? undefined : c.armies.find((a) => a.at === tid && a.owner === owner);
   // Stage three: the town turns out as against a nation, its own men as bands on foot beside any army, and only its works,
   // walls and guard as the place (raidclash.ts `turnedOut`, militia.ts).
-  const fight = road ? null : raidClash(b.strength, force, defence, garrison?.units ?? keepUnits(c, tid), faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence));
+  const clashed = road ? null : raidClash(b.strength, force, defence, garrison?.units ?? keepUnits(c, tid), faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence));
+  const fight = clashed && opts.fought ? opts.fought(clashed, defence) : clashed;
   let outcome: Outcome = fight ? (fight.outcome === 'taken' && bled ? 'raided' : fight.outcome) : met ? (met.broke === 'soldiers' ? 'raided' : 'held') : r >= THREATS.hold ? 'held' : 'raided';
   const raid: Raid = {
     turn: c.turn, band: b.id, kind: b.kind, name: b.name, at: tid, owner, outcome, force, strength: b.strength, defence: road ? { ...defence, total: round1(guard) } : defence,
     killed: 0, taken: { men: 0, women: 0 }, names: [], stores: { food: 0, wood: 0, gold: 0, stone: 0 }, sway: 0,
     ...(fight ? { rounds: fight.rounds, broke: fight.broke } : {}),
   };
-  if (fight && watchDefence(c, tid) > 0) { // report only (watchtally.ts): the same strike on the town with its town watch's company left out
+  if (fight && !opts.fought && watchDefence(c, tid) > 0) { // report only (watchtally.ts): the same strike on the town with its town watch's company left out
     const less = watchDefence(c, tid), parts = defence.men + defence.works + defence.walls + defence.army + defence.guard, bare: Defence = { ...defence, works: round1(defence.works - less), total: parts > 0 ? round1(defence.total * (parts - less) / parts) : defence.total };
     tallyWatch(c, 'held', fight.outcome === 'held', raidClash(b.strength, force, bare, garrison?.units ?? keepUnits(c, tid), faithAt(c, tid), 0.5, 0.5, townMilitia(c, tid, defence)).outcome === 'held');
   }
-  if (fight) { // report only, kept for a release: the same strike by the fight as it was before stage three (the town a sum, its men part of the place); nothing is decided by it
+  if (fight && !opts.fought) { // report only, kept for a release: the same strike by the fight as it was before stage three (the town a sum, its men part of the place); nothing is decided by it
     const w = raidClash(b.strength, force, defence, garrison?.units ?? keepUnits(c, tid), faithAt(c, tid));
     raid.would = w.outcome === 'taken' && bled ? 'raided' : w.outcome; raid.wouldLost = fight.pressed; raid.men = f.men; raid.wouldDead = bandsFell(c, tid, fight.body, FELL.dead); if (fight.broke === 'defender' && !bled) raid.wouldCost = fight.cost;
   }
@@ -391,6 +393,9 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[]): Raid {
   out.push(reportLine(c, raid));
   return raid;
 }
+
+/** Whether a strike about to fall waits on someone instead (raidfought.ts fills it: the player may fight for a town of theirs in person). By itself nothing waits. */
+export const STRIKES: { waits: (c: Campaign, b: Band, tid: number, out: string[]) => boolean } = { waits: () => false };
 
 /** The report in one line, for the log. */
 export function reportLine(c: Campaign, r: Raid): string {
@@ -461,6 +466,7 @@ export function strikeSeason(c: Campaign, out: string[]): Raid[] {
     if (c.turn > b.since && (c.turn - b.since) % THREATS.grow === 0) b.strength = Math.min(THREATS.max, b.strength + 1);
     const m = softest(c, b);
     if (!m || chance(c, b.id, 41) >= THREATS.strike) continue;
+    if (STRIKES.waits(c, b, m.id, out)) continue; // it waits on the player, who may fight it in person (raidfought.ts)
     const raid = strike(c, b, m.id, out);
     raids.push(raid);
     if (raid.broken) { note(c, out, 'broken', b, b.at, `${cap(b.name)} are broken and scattered.`, [raid.owner]); breakBand(c, b, out); }
