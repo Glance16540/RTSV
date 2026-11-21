@@ -32,7 +32,7 @@ modules or a new system, and **large** a new system that touches the field and t
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Systems deep enough that stories fall out of them | Story threads are one step long: an answer leads to one later tale and stops, and a world event, a land lost or a leader's fall starts none. No campaign has an ending of its own beyond the summing-up page (board, Story and events). | medium | Unity: this is narrative design across the systems, and the systems it would read are all here to port. |
+| Systems deep enough that stories fall out of them | **Done (21 November 2026).** Threads of tales run three to five tellings, every answer picking the road, and the chronicle tells each whole when it ends (`threadtales.ts`, `talethreads.ts`); a land lost, a leader's fall, a plague, a royal marriage, a hungry winter and a claimant's rising each begin a thread of their own (`threadstarts.ts`, `worldtales.ts`); and the last page ends the campaign with what became of every thread, person of note and house (`epilogues.ts`). Still open: rivals' own threads, and the stories inside the story (`intrigue.ts`) do not yet lead into the tales. | medium | Done; the rest is narrative design for Unity, and every system it reads is here to port. |
 
 ## Time, and age belonging to the nation
 

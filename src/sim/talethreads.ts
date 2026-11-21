@@ -60,7 +60,12 @@ export function fillIn(c: Campaign, text: string, a: Pick<Answer, 'land' | 'riva
     .replace(/(^|[.!?] )the /g, (_, lead: string) => `${lead}The `);
 }
 
-const list = (xs: string[]): string => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+/** A list read aloud: "a, b and c"; with semicolons where one of them has an "and" of its own. */
+export const list = (xs: string[]): string => {
+  if (xs.length < 2) return xs.join('');
+  const sep = xs.some((x) => / and /.test(x)) ? ['; ', '; and '] : [', ', ' and '];
+  return `${xs.slice(0, -1).join(sep[0])}${sep[1]}${xs[xs.length - 1]}`;
+};
 const told = (c: Campaign, thread: Answer[]): string => list(thread.map((a) => fillIn(c, taleOf(a.id)?.[a.choice].told ?? `settled "${taleOf(a.id)?.title ?? 'a matter'}"`, a)));
 const years = (thread: Answer[], to: number): string => (yearOf(thread[0].turn) === yearOf(to) ? `in year ${yearOf(to)}` : `from year ${yearOf(thread[0].turn)} to year ${yearOf(to)}`);
 const keep = (c: Campaign, thread: Answer[], how: ThreadEnd['how'], to: number): void => {

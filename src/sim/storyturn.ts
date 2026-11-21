@@ -7,6 +7,7 @@
 import { cameOf } from './chroniclethreads';
 import { threadDropped, threadTold } from './talethreads';
 import { noteStarts, startThread } from './threadstarts';
+import './epilogues'; // the ending told whole on the last page (it puts itself there)
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
 import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, tell } from './campaignbase';
@@ -136,7 +137,7 @@ export function storyTurn(c: Campaign): void {
   const held = placesOf(c).filter((p) => c.territories[p.at].owner === 0);
   const fits = TALES.filter((x) => !x.after && !x.opens && x.id !== c.lastTale && (x.needs !== 'rival' || rivals.length) && (x.needs !== 'tribe' || tribes.length) && (!x.place || held.some((p) => p.kind === x.place)));
   const fresh = fits.filter((x) => !asked.includes(x.id));
-  const open = fresh.length ? fresh : fits;
+  const open = fresh.length ? fresh : fits.filter((x) => !TALES.some((y) => y.after?.id === x.id)); // a tale that begins a thread is told once: its thread runs once (talethreads.ts)
   const tale = open[Math.floor(luck(c, 90) * open.length)];
   if (!tale) return;
   c.lastTale = tale.id;

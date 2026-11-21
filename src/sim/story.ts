@@ -185,6 +185,9 @@ export const TALE_SPREAD = 2;
 /** How far a rival people moves along the scale each time it answers a tale of its own. */
 export const TALE_RIVAL = 6;
 
+/** Whoever tells more of the ending, once a campaign is over (epilogues.ts puts itself here as it loads). */
+export const LAST_PAGE: ((c: Campaign) => string[])[] = [];
+
 const list = (xs: string[]): string => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 /**
  * The last page of the chronicle, written when a campaign is over: how it ended and how long it took, what kind
@@ -205,5 +208,6 @@ export function epilogue(c: Campaign): string[] {
   else if (c.places?.length) out.push('They held none of the places of note.');
   const ans = c.answers ?? [], pious = ans.filter((a) => a.choice === 'a').length;
   if (ans.length) out.push(`${ans.length === 1 ? 'One matter was' : `${ans.length} matters were`} brought before you. You gave the upright answer ${pious === ans.length ? 'every time' : pious === 0 ? 'never' : `${pious} time${pious > 1 ? 's' : ''} and the dissolute one ${ans.length - pious}`}.`);
+  for (const more of LAST_PAGE) out.push(...more(c)); // and what became of everyone in it (epilogues.ts)
   return out;
 }
