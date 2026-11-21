@@ -21,7 +21,8 @@ import { givenNames, houseNames, townPeople } from './peoplenames';
 import { cleanRecord } from './warrecord';
 import type { Campaign } from './campaign';
 import { GRIEF_SEASONS } from './grief';
-import { Folk, MAX_NOTABLES, Notable, folkOf } from './township';
+import { Folk, MAX_KIND, MAX_NOTABLES, Notable, folkOf } from './township';
+import { keepIdle } from './housekeep';
 import { veteransFell } from './veteranhome';
 import { downRank } from './soldiernames';
 import { levelKinds, lostRank, standWeight } from './companyroll';
@@ -51,8 +52,8 @@ export const WARHOUSE = {
   sons: 2,
   /** Fallen a house keeps the names of, and seasons a house with nobody away is kept on record for their sake. */
   fallen: 4, remembered: 40,
-  /** Houses a town keeps on this record. */
-  most: 40,
+  /** Houses a town keeps on this record: one for each of as many women as a town's record holds (township.ts MAX_KIND). */
+  most: MAX_KIND,
   /** Seasons a town grieves for men fallen with its armies, over and above one for each man. */
   mourn: 1,
 };
@@ -276,7 +277,9 @@ export function creditArmy(c: Campaign, armyId: number, felled: number): number 
 function prune(c: Campaign, f: Folk, hard = false): void {
   const all = housesOf(f);
   for (const h of all) if (h.home) { h.home = h.home.filter((x) => c.turn - x.turn <= WARHOUSE.remembered); if (!h.home.length) delete h.home; }
-  f.houses = all.filter((h) => h.away.length || (h.fallen ?? []).some((x) => c.turn - x.turn <= WARHOUSE.remembered) || !!h.home?.length || (h.war ?? 0) > 0); // a house with deeds to its name is kept
+  const busy = all.filter((h) => h.away.length || (h.fallen ?? []).some((x) => c.turn - x.turn <= WARHOUSE.remembered) || !!h.home?.length || (h.war ?? 0) > 0); // a house with deeds to its name is kept
+  const kept = new Set([...busy, ...keepIdle(f, busy, all.filter((h) => !busy.includes(h)), c.turn)]); // and one with everyone home, while the town has a home for it (housekeep.ts)
+  f.houses = all.filter((h) => kept.has(h));
   if (hard && f.houses.length > WARHOUSE.most) f.houses = [...f.houses.filter((h) => h.away.length), ...f.houses.filter((h) => !h.away.length)].slice(0, WARHOUSE.most);
   if (!f.houses.length) delete f.houses;
 }

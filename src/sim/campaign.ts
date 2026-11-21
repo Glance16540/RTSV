@@ -30,6 +30,9 @@ import { LEADERS, LeaderEvent, Speech } from './leaders';
 import { habitsWith, leaningWith } from './temper';
 import { LEANING, creedOf } from './creed';
 import { actsOfGod } from './acts';
+import { floodSeason, riverBy } from './floods';
+import { ailingOf } from './ailing';
+import { spoilsBefore, spoilsHeld, spoilsTaken } from './warspoils';
 import { threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
@@ -339,7 +342,7 @@ export interface Campaign {
   chronicle?: { turn: number; text: string }[];
 }
 
-export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued' | 'founded';
+export type EventKind = 'harvest' | 'volunteers' | 'fever' | 'raiders' | 'hard' | 'unrest' | 'revolt' | 'calm' | 'hoard' | 'found' | 'horde' | 'taken' | 'overrun' | 'freed' | 'famine' | 'plague' | 'blaze' | 'band' | 'raid' | 'heldoff' | 'carried' | 'rescued' | 'founded' | 'flood';
 export interface MapEvent { kind: EventKind; at: number; turn: number; until: number }
 export const EVENTS: Record<EventKind, { name: string; icon: string; desc: string }> = {
   harvest: { name: 'A fine harvest', icon: '🌾', desc: 'Its holder gained 4 supplies.' },
@@ -357,6 +360,7 @@ export const EVENTS: Record<EventKind, { name: string; icon: string; desc: strin
   overrun: { name: 'Overrun', icon: '🏴', desc: 'The marauders have taken this land for their own.' },
   famine: { name: 'Famine', icon: '🥀', desc: 'The harvest failed here: its holder paid from the stores what the land would have yielded. It falls harder on the depraved than the virtuous.' },
   plague: { name: 'Plague', icon: '☠️', desc: 'Sickness is in this land. While it lasts the land costs its holder a supply a season, an army of theirs kept here loses a company a season, and it may pass to the land next door.' },
+  flood: { name: 'Flood', icon: '🌊', desc: 'The river rose over its banks here: food in store was spoilt, and the town will be found worn by the water. It falls harder on the depraved than the virtuous.' },
   blaze: { name: 'Fire in the town', icon: '🔥', desc: 'The town here burned. Its holder paid to rebuild, and its buildings will be found damaged by whoever next fights here.' },
   band: { name: 'A band has its place here', icon: '⛺', desc: 'Men who belong to no nation: raiders, slavers, pirates or highwaymen. They strike the softest town in their reach. An army standing here when the season turns fights them, and breaking them frees whoever they hold.' },
   raid: { name: 'Raided', icon: '🔥', desc: 'A band broke into the town here: men died at the walls and stores were lost.' },
@@ -1064,6 +1068,7 @@ export const BATTLE_HOOKS = new BattleHooks()
   .on('settling', 'townfaith', (c) => settleFaith(c)) // every town's own standing is written down before any changes hands
   .on('settling', 'stores', (c) => settleStores(c)) // and what each people has spent or earned is in its towns before any is lost
   .on('settling', 'mapbattle', (c, p, b) => { if (b.fought) { b.fallenBefore = fallenBefore(c, p); b.led = whoLed(c, p, p.defender >= 0 && leaderAt(c, p.defender, p.to)); } }) // who leads, and who had fallen before it
+  .on('settling', 'warspoils', (c, p) => spoilsBefore(c, p)) // what the town held, so that what is looted from it can be told (warspoils.ts)
   // counted: the armies are known and the town's toll is taken.
   .on('counted', 'companyroll', (c, _p, b) => { if (b.fought) { noteLost(c, b.army?.id, b.fought.a.lost); noteLost(c, b.defArmy?.id, b.fought.d.lost); } }) // which companies each side lost, so their men are the dead and the rest are credited (companyroll.ts)
   .on('counted', 'warhouse', (c, _p, b) => { // what the victor felled is counted to the houses of its men: the companies it broke, and the town's dead
@@ -1074,9 +1079,11 @@ export const BATTLE_HOOKS = new BattleHooks()
   // taken: the attacker has won and the town is about to change hands.
   .on('taken', 'conquered', (c, p) => townTaken(c, p.to, p.defender, p.attacker)) // its people stay, and resent it
   .on('taken', 'carriedoff', (c, p) => townFell(c, p.to, p.defender, p.attacker, p.from)) // those held in it go free, and a worldly taker leads some of its people away
+  .on('taken', 'warspoils', (c, p) => spoilsTaken(c, p, p.armyId)) // the spoils and the deed count to the houses of the army's men (warspoils.ts)
   // repulsed: the attacker was thrown back.
   .on('repulsed', 'tribes', (c, p, b) => { if (!b.defArmy && c.territories[p.to].owner < 0) tribeBeaten(c, p.to, tollByFight(c, p, b) ? 0 : Math.floor(p.aStr * 0.3)); }) // the bands a tribe lost are men of its town: by the fight where it was fought out (militiatoll.ts tribeFell, in the toll), else by a share of the attacker's strength
   .on('repulsed', 'freetown', (c, p) => freeStruck(c, p.to, p.attacker)) // a free town marched on by the people it left will not treat with them for a while
+  .on('repulsed', 'warspoils', (c, p, b) => spoilsHeld(c, p, b.defArmy?.id)) // the deed of the army that held the town (warspoils.ts)
   // settled: all of it is done, and whoever is beaten is gone from the map.
   .on('settled', 'stores', (c) => settleStores(c))
   .on('settled', 'armytown', (c, _p, b) => { if (b.how === 'auto') reckonArmies(c); }) // the dead are their towns' dead; a battle fought in person counts its own
@@ -1296,7 +1303,7 @@ export function continueAI(c: Campaign): void {
         c.log.push(`${c.factions[c.ally].name} share 3 supplies with you.`);
       }
       mapTurn(c);
-      actsOfGod(c); // a season of famine, plague and fire in every held land (acts.ts)
+      floodSeason(c, (tid) => riverBy(c, tid, () => !!waterOf(c, tid, terrainOf(c))?.river), new Set(actsOfGod(c).map((x) => x.at))); // a season of famine, plague and fire in every held land (acts.ts), then floods where a river runs (floods.ts)
       threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
       tribesSeason(c); // a tribe's bands are counted from its town's men (tribes.ts)
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
@@ -1568,6 +1575,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       ...(out?.warriors ? { warriors: out.warriors } : {}), ...(out?.people ? { people: out.people } : {}), ...(defending && furloughOf(c, t.id) ? { furlough: furloughOf(c, t.id) } : {}),
       ...(defending && !field && t.town?.b.length && !t.town.coarse ? { town: t.town.b } : {}),
       ...(defending && !field && t.town?.coarse ? { coarse: t.town.b } : {}), // met for the first time: laid as its record counts it (firstlay.ts)
+      ...(defending && !field && ailingOf(c, t.id) ? { ailing: ailingOf(c, t.id) } : {}), // the map's plague and hunger come with the town (ailing.ts)
       ...(defending && !field && !t.horde && roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // every household under its roof (roofs.ts)
       ...(defending && !field && t.owner === 0 ? { work: shareOf(c, t.id).share } : {}), // and the player's town at its work (atwork.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
