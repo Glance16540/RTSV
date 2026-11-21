@@ -245,7 +245,7 @@ by name.
 | `daylight` | 18 | How the hours run. A day is a set number of seconds, and the last three tenths of it are night; the player | none | daylight.test.ts | not yet |
 | `deadtown` | 106 | A dead town (docs/DESIGN.md): a town with nobody in it stands open to any rival or band of marauders that comes for it. | armytown, campaign (types only), campaignbase, settlersfrom, township | deadtown.test.ts | not yet |
 | `emptied` | 38 | A land a war or a band has emptied becomes an empty land: an open town nobody has come for, with no army of its people in it, is let go after a wait, and settlers of any people may found on it. A trial. | campaign (types only), deadtown | householdmove.test.ts | not yet |
-| `decrees` | 164 | Decrees (docs/DESIGN.md, "Decrees"). The leader rules a town by decree: a cost in supplies, some seasons, in person or half as strong by messenger; each bends how the town drifts. | campaign (types only), couriers, court, grain, hall, nobles, nobleweigh, township | decrees.test.ts | not yet |
+| `decrees` | 168 | Decrees (docs/DESIGN.md, "Decrees"). The leader rules a town by decree: a cost in supplies, some seasons, in person or half as strong by messenger; each bends how the town drifts. | campaign (types only), couriers, court, grain, hall, nobles, nobleweigh, township | decrees.test.ts | not yet |
 | `faithsites` | 39 | A Church or a Tavern built in a town (a battle fought in person, or a visit) is raised as the map's site of that kind, where the land has room and has none, so that it moves the town's faith. One table and one function, called where a battle's and a visit's buildings are kept. | campaign (types only), campaignbase | faithsites.test.ts | not yet |
 | `faithhouse` | 54 | A people's house of faith in its own faith, by name, sign and kind of building: a Church under the cross, a Mosque (domed, or mud-brick for Mali), a Temple of the gods under a laurel wreath for Greece and Rome, a Temple of the Nile, a Ziggurat Shrine, a Fire Temple, a Shrine, an Ancestral Hall, a Sacred Cairn, a Hof, the Judges' Temple; the church's site, decrees and field name told in the people's own words. Only the look: the rules' building is the church everywhere. | none | faithhouse.test.ts, faithhouses.test.ts | not yet |
 | `founding` | 118 | Settlers found a new town on an empty land: what an empty land is, and claiming it when the settlers come in. | campaign (types only), ownstudies, township, wilds | founding.test.ts | not yet |
@@ -322,7 +322,7 @@ by name.
 | `peoplenames` | 111 | Each people names its own: forty given names a sex and thirty houses for each of the fifteen peoples, and the band folk's. | none | peoplenames.test.ts | not yet |
 | `nationcolours` | 26 | The colour each people wears: its own, unless another in the same world wears one too like it, when it takes a spare colour clear of all. | none | nationcolours.test.ts | not yet |
 | `nextage` | 30 | What the next age opens: the works raised on the map and the studies a nation may learn in it, told beside the age button so that saving for it is a choice the player can see. | campaign (types only), campaignbase, data | nextage.test.ts | not yet |
-| `nobles` | 253 | Nobles (docs/DESIGN.md, "Relationships"): the inner circle, each town's famous captain and matron, and a lord for a town of a size, each with a leaning and a mood; a decree pleases or angers them, and an angry noble's town works slacker, drifts readier and keeps a thinner watch while the leader is away. | campaign (types only), court, decrees (types only), hall, kin, manor, oaths, ownstudies, peoplenames, township | nobles.test.ts | not yet |
+| `nobles` | 259 | Nobles (docs/DESIGN.md, "Relationships"): the inner circle, each town's famous captain and matron, and a lord for a town of a size, each with a leaning and a mood; a decree pleases or angers them, and an angry noble's town works slacker, drifts readier and keeps a thinner watch while the leader is away. | campaign (types only), court, decrees (types only), hall, kin, manor, oaths, ownstudies, peoplenames, township | nobles.test.ts | not yet |
 | `nocarry` | 70 | The decree that forbids carrying people off: a law of the whole nation, given once and standing until lifted, under which its armies lead nobody away from a town they take (carriedoff reads `Faction.noCarry`). Over a people whose standing would have them carry off, the worldly and martial lords resent it a little each season and the pious and kindly warm to it. | campaign (types only), carriedoff, creed, nobles | nocarry.test.ts | not yet |
 | `nobledeal` | 165 | The leader's dealings with a noble: summon, gift, post, marriage into the house, stripping of lands; each costs, moves the mood and lasts. | campaign (types only), dynasty, nobles, nobletemper, prices, township | nobledeal.test.ts | not yet |
 | `nobleacts` | 122 | Nobles who act: a content lord sends men to a struck town or gold for a war, an angry one withholds his due or joins a plot afoot. | ageing, campaign (types only), nobles, rivalrule, township | nobleacts.test.ts | not yet |
@@ -474,7 +474,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-308 modules, 38,387 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+308 modules, 38,397 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -489,7 +489,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 8 | 16 | 1,238 | `places` (58; 7), `bandmarch` (145; 5), `tribes` (217; 5), `reckon` (26; 4), `ailing` (53; 3), `larderwatch` (61; 2), `leanwild` (48; 2), `aicare` (56; 1), `downedmap` (64; 1), `fortkeep` (52; 1), `grain` (78; 1), `siegeretreat` (63; 1), `threadstarts` (101; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
 | 9 | 4 | 478 | `townfaith` (126; 27), `militia` (43; 4), `calamity` (204; 3), `talethreads` (105; 2) |
 | 10 | 10 | 878 | `kin` (256; 9), `seasonfolk` (121; 5), `conquered` (126; 4), `rivalworld` (61; 3), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1), `lessons` (68) |
-| 11 | 4 | 783 | `nobles` (253; 19), `dynasty` (232; 13), `portrait` (257; 1), `rivalyoke` (41; 1) |
+| 11 | 4 | 789 | `nobles` (259; 19), `dynasty` (232; 13), `portrait` (257; 1), `rivalyoke` (41; 1) |
 | 12 | 6 | 1,032 | `mapbattle` (386; 4), `nobletemper` (110; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `unrest` (128; 1), `epilogues` (144) |
 | 13 | 2 | 231 | `raidclash` (145; 3), `tradedeal` (86; 2) |
 | 14 | 1 | 132 | `roadclash` (132; 4) |
@@ -498,7 +498,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 17 | 4 | 443 | `prices` (214; 9), `deadtown` (106; 4), `roofsmap` (70; 2), `rivalsettle` (53; 1) |
 | 18 | 7 | 1,057 | `courtstory` (438; 6), `country` (94; 4), `freetown` (137; 2), `nobledeal` (165; 2), `storyturn` (151; 2), `bandturn` (34; 1), `emptied` (38; 1) |
 | 19 | 6 | 763 | `aftermath` (209; 4), `nobleweigh` (55; 2), `rivalplan` (182; 2), `claimantjudged` (94; 1), `rivalaim` (71; 1), `wifetaken` (152) |
-| 20 | 3 | 404 | `decrees` (164; 4), `claimantrising` (194; 2), `killerseized` (46; 1) |
+| 20 | 3 | 408 | `decrees` (168; 4), `claimantrising` (194; 2), `killerseized` (46; 1) |
 | 21 | 3 | 448 | `acts` (204; 5), `drift` (175; 4), `claimantcaptain` (69; 2) |
 | 22 | 5 | 983 | `threats` (485; 15), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1), `floods` (82; 1) |
 | 23 | 11 | 1,429 | `rivalrule` (388; 7), `carriedoff` (136; 6), `townmuster` (114; 4), `bandhorde` (119; 2), `harvest` (107; 2), `raidfought` (161; 2), `feudraid` (91; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
@@ -566,7 +566,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 556 of them in 238 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 557 of them in 238 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -654,7 +654,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `daylight` | `DAY_LENGTHS`, `DUSK` |
 | `deadtown` | `DEAD` |
 | `emptied` | `EMPTIED` |
-| `decrees` | `DECREES`, `DECREE_KINDS`, `MESSENGER`, `TAVERN_WOMEN_GOLD`, `CHURCH_CARE`, `GUARDS_EASE`, `TAVERN_WOMEN_SWAY`, `CLOSED_ANGER`, `ALMS_A_SEASON`, `TEND_GOLD`, `TEND_EASE`, `TEND_PLAGUE`, `FORESIGHT` |
+| `decrees` | `DECREES`, `DECREE_KINDS`, `MESSENGER`, `TAVERN_WOMEN_GOLD`, `CHURCH_CARE`, `GUARDS_EASE`, `TAVERN_WOMEN_SWAY`, `CLOSED_ANGER`, `ALMS_A_SEASON`, `TEND_GOLD`, `TEND_EASE`, `TEND_PLAGUE`, `TEND_BARE`, `FORESIGHT` |
 | `faithsites` | `FAITH_SITES` |
 | `faithhouse` | `FAITH_SIGN`, `HOUSE_OF`, `HOUSES` |
 | `founding` | `FOUNDING` |

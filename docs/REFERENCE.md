@@ -4,8 +4,9 @@ The Unity rebuild (docs/PORTING.md) is measured against figures taken from this 
 what each figure is, how the Unity side compares against it, and where the outputs are kept. The figures are taken
 in one go, on one commit, by `npm run reference` (scripts/reference.mjs), and written to `docs/reference/`.
 
-**State: final.** Taken on 21 November 2026 on main `f178f934`, when main stopped moving (manifest: commit `fc3bf615`,
-holding main at `f178f934`, 74 minutes). This is what the Unity side compares against.
+**State: final.** Taken again on 21 November 2026 on main `39210a51`, frozen for it (manifest: commit `38ee3761`,
+holding main at `39210a51`, 71 minutes). It replaces the first final (main `f178f934`). The battles did not change
+between the two, so the round and the fingerprint hash the same. This is what the Unity side compares against.
 
 ## Taking it
 
@@ -83,17 +84,9 @@ So that a figure can be taken again, and on the Unity side the same way:
 Rows that sit on the edge of their band in the game as it stands, so that a reading out of band is not a fault in the
 port. Each is a few lines; the finding behind it is in the commits and the board.
 
-- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). Over both seed sets on 21 November 2026 it
-  reads about 13.5% less with stories ignored and 9.5 to 10% with stories answered; the second set with stories
-  answered reads 6 to 7% while its first-set twin reads about 12.5%. One reading of 384 swings about 3.5 points either
-  side by the luck of the campaigns, and the row has read 6 to 16% since its bar was set. Posting guards does nearly
-  all of what decrees do; grief and sickness are over half of drift, and tending them needs a church the town
-  mostly lacks. Lifting the row needs a rule from the owner (tending without a church); nothing was tuned.
-- **Crime, "thieves taken in a season in a town with a Watch House"** (band: 10 to 20 more in every 100 seasons). The
-  row is counted like for like (the same draw with the Watch House's 0.15 and without), so its true value is the rule's
-  15 and nothing else; a reading has only 300 to 480 thief-seasons and swings about 1.8 points either side. A draw is
-  fixed by the campaign's seed, the season and the thief's number, so the reference seeds give the same draws until a
-  change moves the thieves about: on main 2cd376b (21 November 2026) seeds 1 to 768 read 20.3 and 19.6 with stories
-  ignored and 11.0 and 16.3 with stories answered, where the reference read 16.1. Four fresh sets of 384 on the same
-  main (seeds 769 to 2304) read 17.3, 14.7, 15.0 and 15.1, and 16.0 over their 3,485 draws; the chance function is even
-  (15.01% over 720,000 draws). Nothing to tune; the band is as it was.
+- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). Since tending without a church, it reads 13.3
+  to 17.2% less over the four reports, all in band. Before that change it sat on the edge (6 to 14%). One reading of
+  384 swings about 3.5 points either side by the luck of the campaigns.
+- **Crime, "convoys stopped with an Inn on the road"** (bar: fewer with an Inn). It rests on a few hundred convoys
+  with an Inn against ten thousand without, and reads either side of the bar by luck. It is OUT in `health-a-answer`
+  (18.7% of 262 against 16.3%) and in band in the other three. Pool the four before reading it.
