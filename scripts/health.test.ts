@@ -31,6 +31,7 @@
 import { NAMED } from '../src/sim/veteranhome';
 import { sensibleAnswers } from '../src/sim/storypolicy';
 import '../src/sim/talethreads'; // threads of tales, for the Stories rows
+import { TALES } from '../src/sim/story';
 import { it } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { AIController } from '../src/sim/ai';
@@ -273,7 +274,7 @@ interface Watch {
   sieges: Siege[]; // settled on the map
   falling: number; // towns whose standing fell 10 or more over 20 years, held by one people throughout
   fallingTowns: number;
-  threads?: { ended: number; dropped: number; steps: number[] }; // threads of tales (talethreads.ts): told to their end, left unfinished, and the answers in each
+  threads?: { ended: number; dropped: number; steps: number[]; world?: Record<string, number> }; // threads of tales (talethreads.ts): told to their end, left unfinished, the answers in each, and those the world began (threadstarts.ts) by kind
   met: number; // the first season a story waited on the player's word face to face (encounter.ts), or -1
   driftSeasons: { lost: number; ts: number }; // drift's toll summed season by season over every town held by the one people it began with, and the town-seasons (the decrees row's second reading)
   driftLost: number[]; // standing each such town lost to drift alone over the 20 years (drift.ts, `drift.lost`)
@@ -586,7 +587,7 @@ if (churched[f.id] >= YEARS20 / 2 && townSeasonsOf[f.id] > 0 && hungryOf[f.id] /
   w.watchRules = c.watchTally ? JSON.parse(JSON.stringify(c.watchTally)) : undefined;
   w.roads = c.roadTally ? JSON.parse(JSON.stringify(c.roadTally)) : undefined;
   w.roadCosts = c.roadCost ? JSON.parse(JSON.stringify(c.roadCost)) : undefined;
-  { const ends = c.threadEnds ?? []; w.threads = { ended: ends.filter((e) => e.how === 'ended').length, dropped: ends.filter((e) => e.how === 'dropped').length, steps: ends.map((e) => e.steps) }; } // threads of tales (talethreads.ts)
+  { const ends = c.threadEnds ?? []; w.threads = { ended: ends.filter((e) => e.how === 'ended').length, dropped: ends.filter((e) => e.how === 'dropped').length, steps: ends.map((e) => e.steps), world: Object.fromEntries(TALES.filter((x) => x.opens && (c.asked ?? []).includes(x.id)).map((x) => [x.opens!, 1])) }; } // threads of tales (talethreads.ts)
   w.stories = (c.intrigueSeq ?? 0) - (c.rivalStoriesBegun ?? 0); w.storyYears = c.turn / 4; // the player's stories: the rivals' are counted apart (rivalstories.ts)
   w.lords20.plots = (c.intrigues ?? []).filter((it) => it.kind === 'plot' && it.owner === 0 && !it.claim).length; // a judgement after a claimant's rising is no plot begun (claimantjudged.ts)
   w.crimes = [...atLarge.values()];
@@ -877,6 +878,12 @@ const ths = ruled.map((w) => w.threads ?? { ended: 0, dropped: 0, steps: [] }), 
 const steps = ths.flatMap((t) => t.steps), long = steps.filter((n) => n >= 3).length, within = ths.filter((t) => t.ended + t.dropped > 0).length;
 add('Stories', 'A thread of tales runs to its end', 'report only', ended + dropped ? `${ended} told to their end and ${dropped} left unfinished in ${ruled.length} campaigns (${pct(within / Math.max(1, ruled.length))} of campaigns end one); ${pct(long / Math.max(1, steps.length))} three answers or more, ${num(steps.reduce((a, b) => a + b, 0) / Math.max(1, steps.length), 1)} on the whole` : 'none ended', 'report',
   'A thread is a tale that an earlier answer led to and the tales after it (threadtales.ts), ended when an answer leads nowhere further or dropped when its rival or tribe is gone. ' + (STORIES === 'answer' ? 'The computer-played player answers each tale the upright way when it can spare the supplies, the other way when it cannot (storypolicy.ts).' : 'The computer-played player answers no tales, so no thread is begun (STORIES=answer makes it answer).'));
+  }
+  // Threads the world begins (threadstarts.ts): how often each kind of thing befalls the player and begins one.
+  {
+const kinds = ['landlost', 'leaderfall', 'plague', 'marriage', 'famine', 'rising'], begun = (k: string) => ruled.filter((w) => w.threads?.world?.[k]).length;
+add('Stories', 'A thread begun by the world', 'report only', kinds.map((k) => `${k} ${pct(begun(k) / Math.max(1, ruled.length))}`).join(', '), 'report',
+  'The share of campaigns in which each kind of thing befell the player\'s people and its thread was begun at a telling (threadstarts.ts, worldtales.ts): a land lost to a rival, a leader\'s fall, a plague, a royal marriage, a hungry winter, a claimant\'s rising. Each begins once in a campaign at most.');
   }
   // Crime (watchhouse.ts): how long a thief or a killer is at large, in a town with a Watch House against one without.
   {

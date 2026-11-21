@@ -6,6 +6,7 @@
 // `canAnswer` and `answerTale`.
 import { cameOf } from './chroniclethreads';
 import { threadDropped, threadTold } from './talethreads';
+import { noteStarts, startThread } from './threadstarts';
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
 import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, tell } from './campaignbase';
@@ -90,6 +91,7 @@ export function taleDueNow(c: Campaign): boolean {
 }
 
 export function storyTurn(c: Campaign): void {
+  noteStarts(c); // what has befallen the player's people this season, that may begin a thread (threadstarts.ts)
   // Something that befalls everyone.
   if (c.world && c.world.until < c.turn) { c.log.push(`${WORLD_EVENTS[c.world.kind].name} is over.`); c.world = null; c.worldRest = c.turn + WORLD_REST; }
   if (!c.world && c.turn >= Math.max(WORLD_FROM, c.worldRest ?? 0) && luck(c, 70) < WORLD_CHANCE) {
@@ -128,9 +130,11 @@ export function storyTurn(c: Campaign): void {
     c.log.push(`${x.title}: a matter is brought before you.`);
     return;
   }
+  // Then a thread the world has begun: a land lost, a leader's fall, a plague, a marriage, a hungry winter, a rising (threadstarts.ts).
+  if (startThread(c)) return;
   // Otherwise a new matter: one about a named place the player holds, or one that could come to anybody.
   const held = placesOf(c).filter((p) => c.territories[p.at].owner === 0);
-  const fits = TALES.filter((x) => !x.after && x.id !== c.lastTale && (x.needs !== 'rival' || rivals.length) && (x.needs !== 'tribe' || tribes.length) && (!x.place || held.some((p) => p.kind === x.place)));
+  const fits = TALES.filter((x) => !x.after && !x.opens && x.id !== c.lastTale && (x.needs !== 'rival' || rivals.length) && (x.needs !== 'tribe' || tribes.length) && (!x.place || held.some((p) => p.kind === x.place)));
   const fresh = fits.filter((x) => !asked.includes(x.id));
   const open = fresh.length ? fresh : fits;
   const tale = open[Math.floor(luck(c, 90) * open.length)];

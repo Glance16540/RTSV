@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Campaign, answerDemand, answerTale, continueAI, endTurn, newCampaign, resolvePending, taleNow, taleText } from '../src/sim/campaign';
 import { TALES, Tale } from '../src/sim/story';
 import { THREAD_NAMES, THREAD_TALES } from '../src/sim/threadtales';
+import { WORLD_THREAD_NAMES } from '../src/sim/worldtales';
 import { leadsOn, rootOf, threadOf } from '../src/sim/talethreads';
 import { sensibleAnswers } from '../src/sim/storypolicy';
 
@@ -41,7 +42,7 @@ const roots = TALES.filter((t) => !t.after && TALES.some((x) => x.after?.id === 
 
 describe('threads of tales', () => {
   it('each thread, once begun, runs three to five tellings whichever way it is answered', () => {
-    expect(roots.map((t) => t.id).sort()).toEqual(Object.keys(THREAD_NAMES).sort());
+    expect(roots.map((t) => t.id).sort()).toEqual([...Object.keys(THREAD_NAMES), ...Object.keys(WORLD_THREAD_NAMES)].sort());
     for (const t of THREAD_TALES) expect(TALES, t.id).toContain(t);
     for (const root of roots) for (const road of roads(root.id)) {
       if (road.length === 1) continue; // an answer that begins nothing

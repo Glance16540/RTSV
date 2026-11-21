@@ -6,6 +6,7 @@ import { inRuin } from './ruin';
 import type { Campaign } from './campaign';
 import { creedOf } from './creed';
 import { THREAD_TALES } from './threadtales';
+import { WORLD_TALES } from './worldtales';
 
 /** A place with a name of its own, standing in one land of the map. Whoever holds the land has the good of it. */
 export type PlaceKind = 'shrine' | 'fair' | 'keep' | 'forge' | 'library';
@@ -110,7 +111,11 @@ export interface Tale {
    * land, rival and tribe. If that rival has fallen or the tribe's land has been taken, the thread is dropped.
    */
   after?: { id: string; choice: 'a' | 'b' };
+  /** A thread the world begins: told only when this has happened to the player (worldtales.ts, threadstarts.ts). */
+  opens?: ThreadStart;
 }
+/** What may happen to the player that begins a thread of tales (threadstarts.ts). */
+export type ThreadStart = 'landlost' | 'leaderfall' | 'plague' | 'marriage' | 'famine' | 'rising';
 export const TALES: Tale[] = [
   { id: 'pilgrims', title: 'Pilgrims on the road', text: 'A long column of pilgrims asks leave to cross {land}. They have little, and they are many.',
     a: { label: 'Feed them and see them safely through', virtue: 10, supplies: -2, result: 'They go on singing, and speak well of you in every land they pass.' },
@@ -169,6 +174,7 @@ export const TALES: Tale[] = [
     a: { label: 'Keep the door open to all', told: 'kept the shrine door open to all', virtue: 8, supplies: -1, result: 'Nobody is turned from the shrine in {land}, and nobody is charged.' },
     b: { label: 'Charge at the door', told: 'charged at the shrine door', virtue: -10, supplies: 4, result: 'A price is set at the shrine door. The rich are cured first.' } },
   ...THREAD_TALES, // the longer threads: what the answers above led to, three to five tellings long (threadtales.ts)
+  ...WORLD_TALES, // and threads the world begins: a land lost, a leader's fall, a plague, a marriage, a hungry winter, a rising (worldtales.ts)
 ];
 /** How many matters the player has settled each way, for the telling at the end. */
 export interface Answer { id: string; choice: 'a' | 'b'; turn: number; land: number; rival: number; tribe: number }

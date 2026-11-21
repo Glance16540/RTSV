@@ -13,6 +13,7 @@ import type { Campaign } from './campaign';
 import { TALES } from './story';
 import type { Answer, Tale } from './story';
 import { THREAD_NAMES } from './threadtales';
+import { WORLD_THREAD_NAMES } from './worldtales';
 import { placeAt } from './places';
 import { yearOf } from './chroniclethreads';
 
@@ -36,7 +37,7 @@ export function rootOf(id: string): string {
   return t?.id ?? id;
 }
 /** What a thread is called. */
-export const threadName = (id: string): string => THREAD_NAMES[rootOf(id)] ?? `"${taleOf(rootOf(id))?.title ?? 'an old matter'}"`;
+export const threadName = (id: string): string => THREAD_NAMES[rootOf(id)] ?? WORLD_THREAD_NAMES[rootOf(id)] ?? `"${taleOf(rootOf(id))?.title ?? 'an old matter'}"`;
 
 /** The answers of a thread, first to last, ending with this one. */
 export function threadOf(c: Campaign, last: Answer): Answer[] {
@@ -78,7 +79,7 @@ export function threadTold(c: Campaign): string {
   if (thread.length < 2) return '';
   const fate = taleOf(last.id)?.[last.choice].fate;
   const name = threadName(last.id);
-  const text = `So ended the matter of ${name}, ${years(thread, last.turn)}: you ${told(c, thread)}.${fate ? ` ${fillIn(c, fate, last)}` : ''}`;
+  const text = fillIn(c, `So ended the matter of ${name}, ${years(thread, last.turn)}: you ${told(c, thread)}.${fate ? ` ${fate}` : ''}`, last);
   (c.chronicle ??= []).push({ turn: c.turn, text });
   keep(c, thread, 'ended', last.turn);
   return text;
