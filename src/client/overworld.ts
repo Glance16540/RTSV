@@ -209,7 +209,7 @@ export class Overworld {
     const c = this.c;
     if (c.phase === 'over') {
       this.dialog(inRuin(c) ? ruinWords(c).title : c.winner === 0 ? 'The land is yours' : 'Your people are conquered',
-        (inRuin(c) ? ruinWords(c).line : c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`) + `<span class="ow-chronicle ow-epilogue">${epilogue(c).slice(1).map((l) => `<div><i>${l}</i></div>`).join('')}</span>`,
+        (inRuin(c) ? ruinWords(c).line : c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`) + `<span class="ow-chronicle ow-epilogue">${epilogue(c).slice(1).map((l) => `<span class="ow-line"><i>${l}</i></span>`).join('')}</span>`,
         [['Read the chronicle', () => this.showChronicle()], ['New campaign', () => this.askNew()], ['Main menu', () => this.hooks.exit()]]);
     } else if (c.demand) this.askDemand();
     else if (c.pending) this.askBattle();

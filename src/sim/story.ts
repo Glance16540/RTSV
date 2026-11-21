@@ -5,6 +5,8 @@
 import { inRuin } from './ruin';
 import type { Campaign } from './campaign';
 import { creedOf } from './creed';
+import { THREAD_TALES } from './threadtales';
+import { WORLD_TALES } from './worldtales';
 
 /** A place with a name of its own, standing in one land of the map. Whoever holds the land has the good of it. */
 export type PlaceKind = 'shrine' | 'fair' | 'keep' | 'forge' | 'library';
@@ -95,6 +97,10 @@ export interface TaleChoice {
   militia?: number;
   /** The tribe's land comes under the player's rule without a blow. */
   join?: boolean;
+  /** What was done, in a few words after "you", for the chronicle's telling of a thread (talethreads.ts). */
+  told?: string;
+  /** An answer that ends a thread: how it ended for those in it, for the last page (talethreads.ts). */
+  fate?: string;
 }
 export interface Tale {
   id: string; title: string; text: string; needs?: 'rival' | 'tribe'; a: TaleChoice; b: TaleChoice;
@@ -105,23 +111,27 @@ export interface Tale {
    * land, rival and tribe. If that rival has fallen or the tribe's land has been taken, the thread is dropped.
    */
   after?: { id: string; choice: 'a' | 'b' };
+  /** A thread the world begins: told only when this has happened to the player (worldtales.ts, threadstarts.ts). */
+  opens?: ThreadStart;
 }
+/** What may happen to the player that begins a thread of tales (threadstarts.ts). */
+export type ThreadStart = 'landlost' | 'leaderfall' | 'plague' | 'marriage' | 'famine' | 'rising';
 export const TALES: Tale[] = [
   { id: 'pilgrims', title: 'Pilgrims on the road', text: 'A long column of pilgrims asks leave to cross {land}. They have little, and they are many.',
     a: { label: 'Feed them and see them safely through', virtue: 10, supplies: -2, result: 'They go on singing, and speak well of you in every land they pass.' },
     b: { label: 'Charge a toll at every bridge', virtue: -10, supplies: 3, result: 'They pay, because they must. The bridges do well out of it.' } },
   { id: 'exile', title: 'An exile at the gate', needs: 'rival', text: 'A prince driven out by {rival} begs shelter in {land}. Their envoys are a day behind him, with gold.',
-    a: { label: 'Give him shelter', virtue: 10, supplies: 0, favor: -1, result: 'He is given a house and a guard. {rival} will not forget it.' },
-    b: { label: 'Hand him over for the gold', virtue: -12, supplies: 4, favor: 1, result: 'He is led away in the morning. {rival} pay as they promised.' } },
+    a: { label: 'Give him shelter', told: 'gave the prince shelter', virtue: 10, supplies: 0, favor: -1, result: 'He is given a house and a guard. {rival} will not forget it.' },
+    b: { label: 'Hand him over for the gold', told: 'handed the prince over for the gold', virtue: -12, supplies: 4, favor: 1, result: 'He is led away in the morning. {rival} pay as they promised.' } },
   { id: 'hunger', title: 'Hunger over the border', needs: 'tribe', text: 'The harvest has failed in {tribe}, and its people are at your border asking for grain.',
-    a: { label: 'Send them grain', virtue: 10, supplies: -3, militia: -1, result: 'The carts go over the border. In {tribe} fewer men will take up a spear against you.' },
-    b: { label: 'Sell it to them, at a hungry man\'s price', virtue: -12, supplies: 4, result: 'They pay with everything they have. They will remember the price.' } },
+    a: { label: 'Send them grain', told: 'sent them grain', virtue: 10, supplies: -3, militia: -1, result: 'The carts go over the border. In {tribe} fewer men will take up a spear against you.' },
+    b: { label: 'Sell it to them, at a hungry man\'s price', told: 'sold them grain at a hungry man\'s price', virtue: -12, supplies: 4, result: 'They pay with everything they have. They will remember the price.' } },
   { id: 'sellswords', title: 'Swords for hire', text: 'A company of sellswords, lately in someone else\'s pay and not particular, offers to winter in {land}.',
-    a: { label: 'Send them on their way', virtue: 6, supplies: 0, result: 'They ride on, looking for a master with fewer scruples.' },
-    b: { label: 'Take them on', virtue: -8, supplies: -2, company: true, result: 'They take your coin and their place in the line.' } },
+    a: { label: 'Send them on their way', told: 'sent them on their way', virtue: 6, supplies: 0, result: 'They ride on, looking for a master with fewer scruples.' },
+    b: { label: 'Take them on', told: 'took them on', virtue: -8, supplies: -2, company: true, result: 'They take your coin and their place in the line.' } },
   { id: 'relics', title: 'The saint\'s bones', text: 'The priests of {land} have found what they say are the bones of a saint, and want a shrine built over them. A merchant offers a good price for the lot.',
-    a: { label: 'Build the shrine', virtue: 12, supplies: -3, result: 'The shrine is raised, and the sick begin to come.' },
-    b: { label: 'Sell them', virtue: -12, supplies: 4, result: 'The bones go south in a locked chest. The priests say nothing in your hearing.' } },
+    a: { label: 'Build the shrine', told: 'built a shrine over the bones', virtue: 12, supplies: -3, result: 'The shrine is raised, and the sick begin to come.' },
+    b: { label: 'Sell them', told: 'sold the bones', virtue: -12, supplies: 4, result: 'The bones go south in a locked chest. The priests say nothing in your hearing.' } },
   { id: 'spy', title: 'A spy is taken', needs: 'rival', text: 'A man of {rival} is caught counting your spears in {land}. Your captains want him hanged; his masters would pay to have him back.',
     a: { label: 'Send him home unharmed', virtue: 8, supplies: 0, favor: 1, result: 'He is put over the border with his boots and his life. {rival} take note of it.' },
     b: { label: 'Ransom him', virtue: -8, supplies: 3, result: 'The price is paid at the border. Nobody shakes hands.' } },
@@ -146,23 +156,25 @@ export const TALES: Tale[] = [
     b: { label: 'Have it copied and sold', virtue: -8, supplies: 3, result: 'The copyists of {place} work through the winter. The copies sell.' } },
   // ---- What an earlier answer led to. ----
   { id: 'exile_home', title: 'The exile goes home', after: { id: 'exile', choice: 'a' }, needs: 'rival', text: 'The prince you sheltered in {land} has gathered those who still love him. He asks your blessing to go home and take back what {rival} took, or your spears to help him do it.',
-    a: { label: 'Bless him, and let him go with his own', virtue: 6, supplies: 0, result: 'He goes over the border with forty men of his own. Whatever comes of it, he will speak your name kindly.' },
-    b: { label: 'Send your spears with him, for a share', virtue: -8, supplies: 3, favor: -1, result: 'Your men come back with carts. {rival} know whose spears they were.' } },
+    a: { label: 'Bless him, and let him go with his own', told: 'blessed his going home with his own', virtue: 6, supplies: 0, result: 'He goes over the border with forty men of his own. Whatever comes of it, he will speak your name kindly.' },
+    b: { label: 'Send your spears with him, for a share', told: 'sent your spears home with him, for a share', virtue: -8, supplies: 3, favor: -1, result: 'Your men come back with carts. {rival} know whose spears they were.' } },
   { id: 'exile_debt', title: 'A name cut in the door', after: { id: 'exile', choice: 'b' }, text: 'Followers of the prince you sold have burned a barn in {land} and left his name cut in the door.',
-    a: { label: 'Pay his kin the blood price', virtue: 8, supplies: -3, result: 'The price is paid to his sister. The burnings stop.' },
-    b: { label: 'Hunt them down', virtue: -8, supplies: 0, result: 'Six men hang at the crossroads of {land}. The name is planed off the door.' } },
+    a: { label: 'Pay his kin the blood price', told: 'paid his kin the blood price', virtue: 8, supplies: -3, result: 'The price is paid to his sister. The burnings stop.' },
+    b: { label: 'Hunt them down', told: 'hunted down his followers', virtue: -8, supplies: 0, result: 'Six men hang at the crossroads of {land}. The name is planed off the door.' } },
   { id: 'tribe_comes', title: 'The grain remembered', after: { id: 'hunger', choice: 'a' }, needs: 'tribe', text: 'The elders of {tribe} have not forgotten the grain. They come to ask whether their people may live under your law.',
-    a: { label: 'Take them in as your own', virtue: 6, supplies: 0, join: true, result: 'The elders of {tribe} put their hands between yours. No spear is lifted.' },
-    b: { label: 'Take them in, and a tithe for it', virtue: -8, supplies: 3, join: true, result: '{tribe} comes under your rule and pays for the privilege.' } },
+    a: { label: 'Take them in as your own', told: 'took them in as your own', virtue: 6, supplies: 0, join: true, result: 'The elders of {tribe} put their hands between yours. No spear is lifted.' },
+    b: { label: 'Take them in, and a tithe for it', told: 'took them in for a tithe', virtue: -8, supplies: 3, join: true, result: '{tribe} comes under your rule and pays for the privilege.' } },
   { id: 'tribe_grudge', title: 'Cattle in the night', after: { id: 'hunger', choice: 'b' }, needs: 'tribe', text: 'Men of {tribe}, who paid your price for grain, have driven off cattle from {land} in the night.',
-    a: { label: 'Let it lie: they were owed something', virtue: 8, supplies: -2, result: 'The cattle are written off. In {tribe} they say the account is square.' },
-    b: { label: 'Burn their huts for it', virtue: -10, supplies: 2, militia: -1, result: 'Your riders come back with the cattle and more. {tribe} has fewer men to send next time.' } },
+    a: { label: 'Let it lie: they were owed something', told: 'let the cattle lie', virtue: 8, supplies: -2, result: 'The cattle are written off. In {tribe} they say the account is square.' },
+    b: { label: 'Burn their huts for it', told: 'burned their huts for it', virtue: -10, supplies: 2, militia: -1, result: 'Your riders come back with the cattle and more. {tribe} has fewer men to send next time.' } },
   { id: 'wages', title: 'Winter pay', after: { id: 'sellswords', choice: 'b' }, text: 'The sellswords you took on want their winter pay doubled, and remark that a village in {land} would cover it nicely.',
-    a: { label: 'Pay them from your own stores', virtue: 6, supplies: -3, result: 'They are paid, and the village in {land} never knows how near it came.' },
-    b: { label: 'Let them collect it', virtue: -10, supplies: 2, result: 'They collect, and bring you a share. The village in {land} is quieter now.' } },
-  { id: 'cure', title: 'A child walks', after: { id: 'relics', choice: 'a' }, text: 'A child was carried into the shrine you built in {land} and walked out of it. Now the roads are full of the sick and those who sell to them.',
-    a: { label: 'Keep the door open to all', virtue: 8, supplies: -1, result: 'Nobody is turned from the shrine in {land}, and nobody is charged.' },
-    b: { label: 'Charge at the door', virtue: -10, supplies: 4, result: 'A price is set at the shrine door. The rich are cured first.' } },
+    a: { label: 'Pay them from your own stores', told: 'paid their winter pay from your own stores', virtue: 6, supplies: -3, result: 'They are paid, and the village in {land} never knows how near it came.' },
+    b: { label: 'Let them collect it', told: 'let them collect their pay from a village', virtue: -10, supplies: 2, result: 'They collect, and bring you a share. The village in {land} is quieter now.' } },
+  { id: 'cure', title: 'A lame man walks', after: { id: 'relics', choice: 'a' }, text: 'A lame man was carried into the shrine you built in {land} and walked out of it. Now the roads are full of the sick and those who sell to them.',
+    a: { label: 'Keep the door open to all', told: 'kept the shrine door open to all', virtue: 8, supplies: -1, result: 'Nobody is turned from the shrine in {land}, and nobody is charged.' },
+    b: { label: 'Charge at the door', told: 'charged at the shrine door', virtue: -10, supplies: 4, result: 'A price is set at the shrine door. The rich are cured first.' } },
+  ...THREAD_TALES, // the longer threads: what the answers above led to, three to five tellings long (threadtales.ts)
+  ...WORLD_TALES, // and threads the world begins: a land lost, a leader's fall, a plague, a marriage, a hungry winter, a rising (worldtales.ts)
 ];
 /** How many matters the player has settled each way, for the telling at the end. */
 export interface Answer { id: string; choice: 'a' | 'b'; turn: number; land: number; rival: number; tribe: number }
@@ -172,6 +184,9 @@ export const TALE_EVERY = 4; // and another every so many turns after, on the wh
 export const TALE_SPREAD = 2;
 /** How far a rival people moves along the scale each time it answers a tale of its own. */
 export const TALE_RIVAL = 6;
+
+/** Whoever tells more of the ending, once a campaign is over (epilogues.ts puts itself here as it loads). */
+export const LAST_PAGE: ((c: Campaign) => string[])[] = [];
 
 const list = (xs: string[]): string => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 /**
@@ -193,5 +208,6 @@ export function epilogue(c: Campaign): string[] {
   else if (c.places?.length) out.push('They held none of the places of note.');
   const ans = c.answers ?? [], pious = ans.filter((a) => a.choice === 'a').length;
   if (ans.length) out.push(`${ans.length === 1 ? 'One matter was' : `${ans.length} matters were`} brought before you. You gave the upright answer ${pious === ans.length ? 'every time' : pious === 0 ? 'never' : `${pious} time${pious > 1 ? 's' : ''} and the dissolute one ${ans.length - pious}`}.`);
+  for (const more of LAST_PAGE) out.push(...more(c)); // and what became of everyone in it (epilogues.ts)
   return out;
 }
