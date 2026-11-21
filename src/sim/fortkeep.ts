@@ -19,6 +19,9 @@
 //     town has the run of its streets and stores, but not of the keep, where its people are. Such a town is raided and
 //     never taken (raidclash.ts reads `stronghold`): nobody is carried off from it. An empty Fortress is no stronghold.
 //
+// In a town's streets the garrison stands to arms when the town is fought for (`fieldArms`), and the Fortress itself
+// shoots as a Watch Tower does (data.ts).
+//
 // What the garrison loses in a fight is counted with the town's men, by the share of its side that fell (threats.ts):
 // they are the same men. It reads the town's record and the land's works, and changes nothing.
 import type { Campaign } from './campaign';
@@ -49,4 +52,15 @@ export function isStronghold(c: Campaign, tid: number): boolean {
   const t = c.territories[tid];
   if (!t || t.owner < 0 || !hasFortress(c, tid)) return false;
   return keepOf(c, tid) > 0 || c.armies.some((a) => a.at === tid && a.owner === t.owner);
+}
+
+/**
+ * On the field (campaign.ts battleConfig): the men of the town who stand to arms as a battle for it begins. To those
+ * who turn out anyway (tribes.ts turnOut) the Fortress adds its garrison, the same men the map counts (`keepMen`),
+ * where no army of the town's people stands in it; with an army there the garrison is that army, as on the map.
+ * Never more than the town has men.
+ */
+export function fieldArms(c: Campaign, tid: number, opts: { army: boolean; arms: number }): number {
+  if (opts.army) return opts.arms;
+  return Math.min(Math.max(opts.arms, Math.floor(folkOf(c, tid).men)), opts.arms + keepMen(c, tid));
 }

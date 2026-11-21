@@ -42,6 +42,8 @@ import { battleCarried } from './battlecarried';
 import { settleTaken } from './settlersfrom';
 import { foughtOnMap, recordsBack } from './warrecord';
 import { mayRaiseKind } from './uniquecompany';
+import { keepRoads, roadsFor } from './handroads';
+import { fieldArms } from './fortkeep';
 import { bandBattle, settleBandFight } from './bandfight';
 import { raidBattle, settleRaid } from './raidfought';
 import { wallsEdge } from './sieges';
@@ -83,7 +85,8 @@ import { rulesSeason } from './rule';
 import { governWorksSeason } from './governworks';
 import { seasonDrift } from './drift';
 import { driftBack, withDrift } from './driftintown';
-import { House, autoSucceed, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
+import { House, raisedInBattle, strangerLeads, tickHouses } from './dynasty';
+import { chooseSuccessor } from './succession';
 import { Champion, cleanChampion } from './champion';
 import { hireOff, placeAt, placeGood, placeWorth, placesOf, worldNow } from './places';
 export { hireOff } from './places'; // where it was found before it was moved
@@ -1461,7 +1464,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     c.spent = true;
     const own = c.territories.filter((t) => t.owner === f.id);
     // A people that has lost its leader looks first to the house, then to its captains, and only then hires one.
-    if (!f.heroAlive) autoSucceed(c, f.id);
+    if (!f.heroAlive) chooseSuccessor(c, f.id); // by the order of the throne, a claimant in arms before any captain (succession.ts)
     for (const t of own) if (canSummonHero(c, f.id, t.id)) summonHero(c, f.id, t.id);
     relieve(c, f.id); // a hungry town is sent food by road (convoys.ts)
     rivalForesight(c, f.id, { ageCost: ageCost(c, f.id), income: income(c, f.id), maxAge: AGE_COST.length }); // goods sent a season ahead of its next age and its chosen work (rivalstock.ts)
@@ -1615,6 +1618,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       if (army.hero) add(calling, 1);
     } else if (defending && t.owner >= 0 && BATTLE_ANSWERS.ask('leaderAt', c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
     const out = defending ? BATTLE_ANSWERS.ask('turnOut', c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere
+    if (out && defending && !field) out.warriors = fieldArms(c, t.id, { army: !!army, arms: out.warriors }); // and a Fortress's garrison of the town's own men stands to arms with them (fortkeep.ts)
     if (out?.clubmen) add('clubman', out.clubmen);
     const fort = defending && t.buildings.includes('fortress');
     // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
@@ -1630,6 +1634,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       ...(defending && !field && ailingOf(c, t.id) ? { ailing: ailingOf(c, t.id) } : {}), // the map's plague and hunger come with the town (ailing.ts)
       ...(defending && !field && !t.horde && roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // every household under its roof (roofs.ts)
       ...(defending && !field && t.owner === 0 ? { work: shareOf(c, t.id).share } : {}), // and the player's town at its work (atwork.ts)
+      ...(defending && !field && t.owner === 0 && roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // with the roads laid by hand there before (handroads.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id, { arms: out?.warriors ?? 0 })) : {}), // its men in arms go to the field whatever its cap (fieldcap.ts)
     };
@@ -1704,6 +1709,8 @@ export interface BattleAfter {
   downed?: unknown;
   /** Who of the town was drifted to the tavern and the mine as the battle ended (driftintown.ts). */
   drifted?: { tavern?: number; mines?: number };
+  /** The roads the player laid by hand in the town that was fought over (`handRoadsOut`, handroads.ts): kept on its record if it is the player's after. */
+  roads?: unknown;
   /** The other side's men still standing as the battle ended, by unit type: what a rival thrown back keeps (siegeretreat.ts). */
   foes?: Record<string, number>;
   /** Whether the other side's leader was still standing as the battle ended (false: they fell). */
@@ -1755,6 +1762,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
         return health === undefined ? [x[0], x[1], x[2]] : [x[0], x[1], x[2], health];
       }).slice(0, MAX_TOWN);
     land.town = { at: playerWon === humanAttacks ? (home + 2) % 4 : home, b };
+    if (playerWon && land.owner === 0) keepRoads(c, land.id, after.roads); // and the roads laid by hand in the fighting, as a visit's are kept (handroads.ts)
     // What the player built in the fighting stands on the map as well, where the land has room for it.
     if (playerWon && land.owner === 0) {
       for (const [site, type] of Object.entries(SITE_BUILDING)) {
