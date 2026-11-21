@@ -40,6 +40,7 @@ import { battleCarried } from './battlecarried';
 import { settleTaken } from './settlersfrom';
 import { foughtOnMap, recordsBack } from './warrecord';
 import { mayRaiseKind } from './uniquecompany';
+import { keepRoads, roadsFor } from './handroads';
 import { bandBattle, settleBandFight } from './bandfight';
 import { raidBattle, settleRaid } from './raidfought';
 import { wallsEdge } from './sieges';
@@ -1625,6 +1626,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       ...(defending && !field && ailingOf(c, t.id) ? { ailing: ailingOf(c, t.id) } : {}), // the map's plague and hunger come with the town (ailing.ts)
       ...(defending && !field && !t.horde && roofsFor(c, t.id) ? { roofs: roofsFor(c, t.id) } : {}), // every household under its roof (roofs.ts)
       ...(defending && !field && t.owner === 0 ? { work: shareOf(c, t.id).share } : {}), // and the player's town at its work (atwork.ts)
+      ...(defending && !field && t.owner === 0 && roadsFor(c, t.id) ? { roads: roadsFor(c, t.id) } : {}), // with the roads laid by hand there before (handroads.ts)
       // The town itself turns out: its own people, living off its own stores (township.ts).
       ...(defending && !field && !t.horde ? withDrift(c, t.id, musterFolk(c, t.id, { arms: out?.warriors ?? 0 })) : {}), // its men in arms go to the field whatever its cap (fieldcap.ts)
     };
@@ -1699,6 +1701,8 @@ export interface BattleAfter {
   downed?: unknown;
   /** Who of the town was drifted to the tavern and the mine as the battle ended (driftintown.ts). */
   drifted?: { tavern?: number; mines?: number };
+  /** The roads the player laid by hand in the town that was fought over (`handRoadsOut`, handroads.ts): kept on its record if it is the player's after. */
+  roads?: unknown;
   /** The other side's men still standing as the battle ended, by unit type: what a rival thrown back keeps (siegeretreat.ts). */
   foes?: Record<string, number>;
   /** Whether the other side's leader was still standing as the battle ended (false: they fell). */
@@ -1750,6 +1754,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
         return health === undefined ? [x[0], x[1], x[2]] : [x[0], x[1], x[2], health];
       }).slice(0, MAX_TOWN);
     land.town = { at: playerWon === humanAttacks ? (home + 2) % 4 : home, b };
+    if (playerWon && land.owner === 0) keepRoads(c, land.id, after.roads); // and the roads laid by hand in the fighting, as a visit's are kept (handroads.ts)
     // What the player built in the fighting stands on the map as well, where the land has room for it.
     if (playerWon && land.owner === 0) {
       for (const [site, type] of Object.entries(SITE_BUILDING)) {
