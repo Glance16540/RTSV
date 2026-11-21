@@ -6,10 +6,11 @@
 // caravans. Until now only the player could be at peace with anyone (a truce, an alliance: campaignbase.ts atTruce);
 // two rivals were always at war. A marriage between two rivals' houses is the first peace between them, read by
 // atTruce like any other, so neither marches on the other while it holds.
+// A peace is the third kind: one a rival weary of war sued another for (rivalweary.ts), read by atTruce the same way.
 // Plain data on the campaign: this module imports nothing but types.
 import type { Campaign } from './campaign';
 
-export type PactKind = 'marriage' | 'trade';
+export type PactKind = 'marriage' | 'trade' | 'peace';
 export interface Pact {
   kind: PactKind; a: number; b: number; since: number; until: number;
   /** A marriage: the two of the houses wed, a's and b's. */
@@ -26,6 +27,8 @@ const pair = (p: Pact, a: number, b: number): boolean => (p.a === a && p.b === b
 export const pactOf = (c: Campaign, kind: PactKind, a: number, b: number): Pact | undefined => (c.pacts ?? []).find((p) => p.kind === kind && pair(p, a, b) && p.until >= c.turn);
 /** Are two peoples bound in peace by a royal marriage? */
 export const wedPeace = (c: Campaign, a: number, b: number): boolean => a !== b && a >= 0 && b >= 0 && !!pactOf(c, 'marriage', a, b);
+/** Are two peoples at peace by a peace one of them sued for (rivalweary.ts)? */
+export const swornPeace = (c: Campaign, a: number, b: number): boolean => a !== b && a >= 0 && b >= 0 && !!pactOf(c, 'peace', a, b);
 /** Are two peoples' markets open to each other's caravans? A people's own always are. */
 export const marketsOpen = (c: Campaign, a: number, b: number): boolean => a === b || (a >= 0 && b >= 0 && !!pactOf(c, 'trade', a, b));
 /** Break every pact between two peoples (one has marched on the other). Returns how many were broken. */
