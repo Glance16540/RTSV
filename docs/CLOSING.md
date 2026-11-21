@@ -158,7 +158,7 @@ The "Not yet" line is listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Sooner settled where they are ruled well | Rivals garrison a resentful town and learn Written Law, but do not build a Church or Farmland with its resentment in mind. A nation given back its last town by a rising is not brought back to life. | small | Unity: port as is. |
+| Sooner settled where they are ruled well | **Done**: a rival builds a Church (or, if its people lean to the tavern, Farmland) in its most resentful town when it can spare the price (`src/sim/rivalyoke.ts`), and a computer-led people counted out takes back a town that rises for it and lives again, the town its seat (`src/sim/revival.ts`). | small | Built. |
 
 ## Rivals live by the same rules
 

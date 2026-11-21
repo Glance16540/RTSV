@@ -47,6 +47,7 @@ import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { rivalSettleSeason } from './rivalsettle';
 import { rivalDrillSeason } from './rivaldrill';
+import { rivalEasesYoke } from './rivalyoke';
 import { makeWilds } from './wilds';
 import { atWarWith, warUntil } from './feudwar';
 import { befalls, feverToll, hardCost } from './chancecreed';
@@ -1440,6 +1441,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
       else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
+    rivalEasesYoke(c, f.id, { canBuild, build }); // a Church or Farmland where a taken town resents it most (rivalyoke.ts)
     // Spend what is left on troops, growing existing armies before starting new ones.
     rivalMoves(c, f.id); // garrison what is resentful or beset, and keep that garrison there (rivalrule.ts)
     if (seizeOpen(c, f.id)) return false; // a dead town within reach is taken for the asking (deadtown.ts)

@@ -125,16 +125,18 @@ describe('a town taken', () => {
     expect(c.log.join('\n')).toMatch(/has risen and thrown off your rule, and gone back to the/);
     expect(c.chronicle!.some((x) => x.text.includes(t.name) && x.text.includes('rose'))).toBe(true);
     expect((c.events ?? []).some((e) => e.kind === 'revolt' && e.at === t.id)).toBe(true);
-    // Taken from a tribe, or from a people who are no more, it is its own again.
+    // Taken from a tribe, it is its own again.
     const b = held(9);
     b.t.yoke!.from = -1;
     sure(100, () => seasonOfYoke(b.c));
     expect(b.t.owner).toBe(-1);
     expect(b.t.militia).toBeGreaterThanOrEqual(2);
+    // Taken from a computer-led people who are no more, it goes back to them, and they live again (revival.ts).
     const d = held(11);
     d.c.factions[1].alive = false;
     sure(100, () => seasonOfYoke(d.c));
-    expect(d.t.owner).toBe(-1);
+    expect(d.t.owner).toBe(1);
+    expect(d.c.factions[1].alive).toBe(true);
   }, LONG);
 
   it('a rising with an army there is put down, at a cost, and is not forgotten', () => {
