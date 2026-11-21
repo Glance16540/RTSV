@@ -10,7 +10,7 @@
 //   An alliance by marriage: call on it.
 //   A plot: keep informers; send gifts once; pardon the plotter when found. Nobody is accused on a guess.
 //   A rival's offer of trade: accepted. Of a royal match: accepted only when the player is the weaker.
-//   A tale (story.ts): as the people lean, the way a rival people answers its own (storyturn.ts): the upright answer
+//   A tale (story.ts): as the people lean, the way a rival people answers its own (rivaltales.ts): the upright answer
 //   as often as its lean is upright, when the supplies can be spared (STORE_LOW); the other way otherwise.
 import type { Campaign } from './campaign';
 import { callOn, callable } from './aftermath';
