@@ -1079,13 +1079,17 @@ export const CIVS: Record<string, CivDef> = {
   },
   england: {
     id: 'england', name: 'English', icon: '🌹', desc: 'Yeoman farmers and bowmen of a green island.', unique: 'longbowman', unique2: 'billman',
-    bonuses: ['Farms yield 10% more', 'Towers and Town Centers hit harder', 'Villagers gather 5% faster'],
-    apply: (m) => { m.farm = 1.1; m.towerAtk += 3; m.gather *= 1.05; }, // without the last they won 12 decided games and lost 36 against the other fourteen peoples' computers; with it 15 and 19
+    bonuses: ['Farms yield 10% more', 'Towers and Town Centers hit harder', 'Villagers gather 6.5% faster'],
+    // Without the last they won 12 decided games and lost 36 against the other fourteen peoples' computers; with 5% 15 and 19. On later rules, over 448
+    // games (scripts/round.test.ts): 38 won and 59 lost (39%) at 5%; 49 and 45 (52%) with 1.5% more, as here; 65 and 37 (64%) with 3% more, which was too much.
+    apply: (m) => { m.farm = 1.1; m.towerAtk += 3; m.gather *= 1.05 * 1.015; },
   },
   arabs: {
     id: 'arabs', name: 'Abbasids', icon: '🌙', desc: 'Traders, scholars and riders of the desert.', unique: 'camelrider', unique2: 'mameluke',
-    bonuses: ['Cavalry moves 10% faster', 'Research costs 10% less'],
-    apply: (m) => { m.cavSpeed = 1.1; m.techCost = 0.9; },
+    bonuses: ['Cavalry moves 10% faster', 'Research costs 10% less', 'Villagers gather 2% faster'],
+    // The last is their one early gift: riders and cheap research pay late. Against the other fourteen peoples' computers over 448 games
+    // (scripts/round.test.ts) they won 49 decided games and lost 80 (38%) without it, 62 and 68 (48%) with it; 3% read 79 and 68 (54%), 5% 87 and 52 (63%).
+    apply: (m) => { m.cavSpeed = 1.1; m.techCost = 0.9; m.gather *= 1.02; },
   },
   japan: {
     id: 'japan', name: 'Japanese', icon: '⛩️', desc: 'An island realm of disciplined warriors and careful craft.', unique: 'samurai', unique2: 'ashigaru',

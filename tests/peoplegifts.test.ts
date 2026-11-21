@@ -58,13 +58,13 @@ describe('the Greeks', () => {
 });
 
 describe('the English', () => {
-  it('gather 5% faster, beside their farms and their towers', () => {
+  it('gather 6.5% faster, beside their farms and their towers', () => {
     const plain = baseMods(), m = baseMods();
     CIVS.england.apply(m);
-    expect(m.gather).toBeCloseTo(plain.gather * 1.05, 10);
+    expect(m.gather).toBeCloseTo(plain.gather * 1.05 * 1.015, 10);
     expect(m.farm).toBe(1.1);
     expect(m.towerAtk).toBe(plain.towerAtk + 3);
-    expect(CIVS.england.bonuses).toContain('Villagers gather 5% faster');
+    expect(CIVS.england.bonuses).toContain('Villagers gather 6.5% faster');
   });
 });
 
@@ -100,5 +100,16 @@ describe('the Babylonians', () => {
     expect(m.techTime).toBe(0.85);
     expect(m.buildingHp).toBe(1.15);
     expect(CIVS.babylon.bonuses).toContain('Villagers gather 5% faster');
+  });
+});
+
+describe('the Abbasids', () => {
+  it('gather 2% faster, beside their riders and their cheap research', () => {
+    const plain = baseMods(), m = baseMods();
+    CIVS.arabs.apply(m);
+    expect(m.gather).toBeCloseTo(plain.gather * 1.02, 10);
+    expect(m.cavSpeed).toBe(1.1);
+    expect(m.techCost).toBe(0.9);
+    expect(CIVS.arabs.bonuses).toContain('Villagers gather 2% faster');
   });
 });
