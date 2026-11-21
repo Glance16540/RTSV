@@ -2,8 +2,8 @@
 // assimilates gains population outright; children born in captivity to such a nation are its own).
 //
 // Only a nation whose creed is Dissolute or Depraved does it: a rival's, and since 20 November 2026 the player's own by
-// the same rule (the owner's word, relayed; until then never the player's). No order is given or can be refused: it is
-// what such a people does. When it takes a town of another
+// the same rule (the owner's word; until then never the player's). No order is given for it: it is what such a people does,
+// unless their leader has forbidden it by decree (nocarry.ts). When it takes a town of another
 // nation on the map, a share of the town's grown people (never a child) are led away and held in the land the
 // army came from, or failing that in a town of the taker's. They are a record there, the same held-people record
 // the bands keep (threats.ts `Held`): who, of what ages, from where, since when.
@@ -24,6 +24,7 @@ import { Held, bringHome, mark } from './threats';
 import { TOWN_SCALE, folkOf } from './township';
 import { homeAgain } from './carriedhome';
 import { carriedNamed } from './carriednamed';
+import type {} from './nocarry'; // Faction.noCarry, the law that forbids it
 
 /** People of one town carried off by a nation: who holds them, in which land, and the record of them. */
 export interface Carried { id: number; by: number; at: number; held: Held }
@@ -50,8 +51,8 @@ const who = (h: Held): string => [h.women.length ? n(h.women.length, 'woman', 'w
 const name = (c: Campaign, f: number): string => (f === 0 ? 'your people' : `the ${c.factions[f]?.name ?? 'others'}`);
 const say = (c: Campaign, owners: number[], text: string): void => { if (owners.includes(0)) c.log.push(text); };
 
-/** Does this people carry off the people of towns it takes? */
-export const carriesOff = (c: Campaign, f: number): boolean => { const fac = c.factions[f]; return !!fac && fac.alive && CARRY.creeds.includes(creedOf(fac.virtue ?? 0).id); };
+/** Does this people carry off the people of towns it takes? By their standing, unless their leader has forbidden it (nocarry.ts). */
+export const carriesOff = (c: Campaign, f: number): boolean => { const fac = c.factions[f]; return !!fac && fac.alive && !fac.noCarry && CARRY.creeds.includes(creedOf(fac.virtue ?? 0).id); };
 /** Those of a people now held by a nation, and those held in a land. */
 export const carriedOf = (c: Campaign, owner: number): Carried[] => (c.carried ?? []).filter((x) => x.held.owner === owner);
 export const carriedAt = (c: Campaign, at: number): Carried[] => (c.carried ?? []).filter((x) => x.at === at);

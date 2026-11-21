@@ -38,6 +38,7 @@ import { seasonCard, showPastSeasons } from './seasoncard';
 import { reportDue } from '../sim/seasonreport';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
+import { forbidCarrying } from '../sim/nocarry';
 import { dealChoices, dealFromPanel } from './nobledeals';
 import { standingRows } from './townorders';
 import { setStanding } from '../sim/townorders';
@@ -161,6 +162,7 @@ export class Overworld {
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
       if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
+      if (kind === 'nocarry') forbidCarrying(this.c, 0, id === '1'); // the law that forbids carrying people off (nocarry.ts)
       if (kind === 'nobledeal') { this.askDeal(decodeURIComponent(id)); return; } // the dealings with a noble (nobledeal.ts)
       if (kind === 'standing') { this.askStanding(Number(id)); return; } // the governor's standing orders (townorders.ts)
       if (kind === 'treat') treat(this.c, 0, this.sel); // a free town brought back by treaty (freetown.ts)

@@ -141,7 +141,7 @@ by name.
 | `bandmarch` | 145 | Bands on the march and the armies they meet: farther along a road, drawn by riches, daring a tired or lonely army, seen by the armies they pass. | armytown, campaign (types only), founding, heralds, rim, township | bandmarch.test.ts | not yet |
 | `bandmeet` | 89 | A band coming for a town of the player's, put to them once when an army can meet it: go out, send the army, or let them come. | bandfight, campaign (types only), campaignbase, threats, threatsbase | bandmeet.test.ts | not yet |
 | `bandroam` | 219 | Bands move: they flee strong armies, plan a way of a few lands toward softer marks, settle as marauders and break up. | bandhorde, bandmarch, campaign (types only), campaignbase, rim, threats | bandroam.test.ts | not yet |
-| `bandseason` | 38 | One season of the threats of men: the one call the campaign makes for all of it. | bandborn, bandcaravan, bandfight, bandhorde, bandmarch, bandroam, bandwilds, campaign (types only), carriedoff, inn, raidnews, threats | threats.test.ts | not yet |
+| `bandseason` | 40 | One season of the threats of men: the one call the campaign makes for all of it. | bandborn, bandcaravan, bandfight, bandhorde, bandmarch, bandroam, bandwilds, campaign (types only), carriedoff, inn, nocarry, raidnews, threats | threats.test.ts | not yet |
 | `battlecard` | 132 | What a campaign battle or a visit says of itself: the briefing before it (what it is, whom the player leads, what winning means, that no villager is bought), the count of both sides as it is fought, and words the size of what happened. | data, game (types only) | battlecard.test.ts | not yet |
 | `battlefolk` | 99 | A town's people in a battle, out of the battle hub: its own people set down on the field at the ages its record has them (`peopled`), its children set on its roofs' records (`cradled`), and the count of a side's town a battle hands back to the campaign (`censusOf`, which `Game.census` is). | ageing, data, game (types only), household, notableweight, orphantown, township, widowtown, writeguard | battlefolk.test.ts, persistfolk.test.ts, ageing.test.ts | not yet |
 | `battleleader` | 119 | The leader in a battle, out of the battle hub: who a people's leader is, how their powers are fitted to the hero they are built on, the deeds that raise them through the ranks, the powers they learn, and the call they raise. Game keeps a one-line method of the same name for each. | champion, data, game (types only), hero, powers | battleleader.test.ts, leader-play.test.ts, leader-rise.test.ts, powers.test.ts | not yet |
@@ -174,7 +174,7 @@ by name.
 | `fieldcaravan` | 149 | A Market's caravan on the field: in a campaign battle or visit at a town whose caravan is on the road this season, a trade cart walks from the Market to the field's edge on its partner's side, is away a while, and comes home with the gold the map's caravan brings; caught on the way home, its gold goes to whoever caught it. The battle hands back how it went and the campaign settles the season's caravan by it, so the map's figures stay the same. | campaign (types only), caravans, data, game (types only) | fieldcaravan.test.ts | not yet |
 | `campaignbase` | 364 | What the map's systems share, below all of them: the constants and small helpers they used to import from campaign.ts (an army's size and strength, a company's price, how a people stands, a land's country). It imports no system; campaign.ts re-exports it. | campaign (types only), creed, hero (types only), pacts, powers, uniquecompany, winter | campaignbase.test.ts | not yet |
 | `captivity` | 268 | What being held costs, by the owner's design (docs/DESIGN.md, "Captivity"). | ageing, creed, data, game (types only), hero, nursery, peoplenames, rescue | captivity.test.ts | not yet |
-| `carriedoff` | 135 | A dissolute or depraved rival nation that takes a town leads a share of its grown people away to a land of its own (the bands' `Held` record). Got back if that land is taken within four seasons; after that they are on the holding town's record as the taker's people. Children born meanwhile are the taker's. `townFell` where a town changes hands, `carriedSeason` once a season. | ageing, bandborn, campaign (types only), carriedhome, carriednamed, creed, threats, township | carriedoff.test.ts, playercarries.test.ts | not yet |
+| `carriedoff` | 136 | A dissolute or depraved rival nation that takes a town leads a share of its grown people away to a land of its own (the bands' `Held` record). Got back if that land is taken within four seasons; after that they are on the holding town's record as the taker's people. Children born meanwhile are the taker's. `townFell` where a town changes hands, `carriedSeason` once a season. | ageing, bandborn, campaign (types only), carriedhome, carriednamed, creed, nocarry (types only), threats, township | carriedoff.test.ts, playercarries.test.ts | not yet |
 | `carriednamed` | 51 | A known person among those a nation leads away from a town it takes is marked carried off by name (as likely as the known are among the grown of that sex), listed with the held, mourned, and known again if got back. | campaign (types only), carriedoff (types only), plaguenamed, township | carriednamed.test.ts | not yet |
 | `carriedout` | 32 | As a battle ends, a side's people held by those who seized them (a raider leading them, a work camp, the lair), by name, house, gender, age and children borne in the camp, for the census (`Census.carried`). | ageing, game (types only), township (types only) | battlecarried.test.ts | not yet |
 | `battlecarried` | 109 | Those carried off in a battle fought in person are held on the map in a land of the attacker's, by name and house (`Held.who`), on carriedoff.ts's clock; a known person is marked carried off; the player is told. Also strikes from the written-back town those a nation led away as it fell (`retake`). | ageing, campaign (types only), carriedoff, carriedout (types only), threats, township | battlecarried.test.ts | not yet |
@@ -314,6 +314,7 @@ by name.
 | `nationcolours` | 26 | The colour each people wears: its own, unless another in the same world wears one too like it, when it takes a spare colour clear of all. | none | nationcolours.test.ts | not yet |
 | `nextage` | 30 | What the next age opens: the works raised on the map and the studies a nation may learn in it, told beside the age button so that saving for it is a choice the player can see. | campaign (types only), campaignbase, data | nextage.test.ts | not yet |
 | `nobles` | 253 | Nobles (docs/DESIGN.md, "Relationships"): the inner circle, each town's famous captain and matron, and a lord for a town of a size, each with a leaning and a mood; a decree pleases or angers them, and an angry noble's town works slacker, drifts readier and keeps a thinner watch while the leader is away. | campaign (types only), court, decrees (types only), hall, kin, manor, oaths, ownstudies, peoplenames, township | nobles.test.ts | not yet |
+| `nocarry` | 70 | The decree that forbids carrying people off: a law of the whole nation, given once and standing until lifted, under which its armies lead nobody away from a town they take (carriedoff reads `Faction.noCarry`). Over a people whose standing would have them carry off, the worldly and martial lords resent it a little each season and the pious and kindly warm to it. | campaign (types only), carriedoff, creed, nobles | nocarry.test.ts | not yet |
 | `nobledeal` | 165 | The leader's dealings with a noble: summon, gift, post, marriage into the house, stripping of lands; each costs, moves the mood and lasts. | campaign (types only), dynasty, nobles, nobletemper, prices, township | nobledeal.test.ts | not yet |
 | `nobleacts` | 122 | Nobles who act: a content lord sends men to a struck town or gold for a war, an angry one withholds his due or joins a plot afoot. | ageing, campaign (types only), nobles, rivalrule, township | nobleacts.test.ts | not yet |
 | `nobleweigh` | 55 | Rulers who weigh their nobles: angry lords make a computer-led ruler warier of marching and readier for a truce; it leaves out decrees that would anger a lord, and deals with its angriest. | campaign (types only), decrees (types only), nobledeal, nobles, plenty, stores | nobleweigh.test.ts | not yet |
@@ -447,12 +448,12 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-281 modules, 35,828 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+282 modules, 35,901 lines, in 31 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
 | 0 | 55 | 5,334 | `data` (1230; 54), `peoplenames` (111; 16), `intriguebase` (89; 9), `ledger` (26; 7), `notableweight` (118; 7), `pacts` (43; 6), `threatsbase` (47; 5), `wrath` (33; 5), `bandborn` (60; 4), `besieger` (31; 4), `household` (103; 4), `leaders` (547; 4), `studiesintown` (52; 4), `temper` (127; 4), `townrecord` (9; 4), `warrecord` (158; 4), `orphantown` (87; 3), `townorders` (93; 3), `atwork` (77; 2), `beaten` (52; 2), `bereft` (65; 2), `dilemmas` (140; 2), `dominion` (30; 2), `handroads` (134; 2), `path` (266; 2), `unlaid` (45; 2), `watchtally` (31; 2), `writeguard` (35; 2), `aiplague` (30; 1), `battlehooks` (80; 1), `carriedhome` (37; 1), `clergywork` (43; 1), `daylight` (18; 1), `faces` (129; 1), `fieldwork` (28; 1), `formations` (78; 1), `givenorders` (43; 1), `hallfield` (65; 1), `keeper` (18; 1), `lastperson` (21; 1), `nationcolours` (26; 1), `raidertown` (28; 1), `reservecamp` (20; 1), `seasongain` (31; 1), `slopes` (21; 1), `strengthwords` (19; 1), `stylesigns` (49; 1), `townlean` (37; 1), `tribenames` (18; 1), `waterlay` (93; 1), `encounter` (103), `faithhouse` (54), `folk` (145), `folkfaith` (197), `missionstory` (64) |
-| 1 | 26 | 2,458 | `ageing` (137; 33), `creed` (114; 28), `hero` (102; 12), `naming` (113; 11), `map` (316; 4), `courtfield` (178; 3), `siegecamp` (75; 3), `uniquecompany` (54; 3), `widowtown` (83; 3), `birthonly` (62; 2), `darkarts` (89; 2), `feudwar` (55; 2), `plainhealer` (32; 2), `steward` (62; 2), `aiworks` (95; 1), `dyingout` (88; 1), `fieldstory` (145; 1), `firstlay` (71; 1), `fleets` (69; 1), `leavehome` (58; 1), `namesakes` (53; 1), `raiderguide` (44; 1), `siegelift` (86; 1), `styleplay` (120; 1), `battlecard` (132), `visitguide` (25) |
+| 1 | 26 | 2,458 | `ageing` (137; 33), `creed` (114; 29), `hero` (102; 12), `naming` (113; 11), `map` (316; 4), `courtfield` (178; 3), `siegecamp` (75; 3), `uniquecompany` (54; 3), `widowtown` (83; 3), `birthonly` (62; 2), `darkarts` (89; 2), `feudwar` (55; 2), `plainhealer` (32; 2), `steward` (62; 2), `aiworks` (95; 1), `dyingout` (88; 1), `fieldstory` (145; 1), `firstlay` (71; 1), `fleets` (69; 1), `leavehome` (58; 1), `namesakes` (53; 1), `raiderguide` (44; 1), `siegelift` (86; 1), `styleplay` (120; 1), `battlecard` (132), `visitguide` (25) |
 | 2 | 18 | 1,246 | `champion` (30; 8), `powers` (95; 8), `chroniclethreads` (81; 5), `rescue` (130; 5), `muster` (51; 3), `oldmarks` (145; 3), `seasonsky` (89; 3), `askedhere` (31; 2), `nursery` (52; 2), `queuedmen` (54; 2), `tavernfall` (24; 2), `aisiting` (101; 1), `carriedout` (32; 1), `fieldcap` (108; 1), `placebar` (50; 1), `roofs` (113; 1), `hallguests` (47), `inyears` (13) |
 | 3 | 8 | 1,385 | `township` (238; 77), `captivity` (268; 5), `winter` (61; 4), `bothhouses` (112; 2), `battleleader` (119; 1), `pickman` (98; 1), `notable` (50), `scenario` (439) |
 | 4 | 18 | 1,611 | `campaignbase` (364; 57), `stores` (107; 12), `plenty` (80; 11), `infirmary` (52; 5), `granary` (55; 4), `well` (44; 4), `mill` (45; 3), `oldfolk` (73; 3), `householdmove` (73; 2), `marauders` (218; 2), `orphans` (77; 2), `plaguenamed` (52; 2), `sieges` (36; 2), `aicaptives` (64; 1), `battlefolk` (99; 1), `battlescars` (109; 1), `dilemmaacts` (26; 1), `hiredhome` (37; 1) |
@@ -462,7 +463,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 8 | 13 | 1,212 | `places` (58; 5), `tribes` (217; 5), `bandmarch` (145; 4), `calamity` (202; 3), `larderwatch` (61; 2), `aicare` (56; 1), `downedmap` (64; 1), `fortkeep` (52; 1), `grain` (78; 1), `siegeretreat` (63; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
 | 9 | 3 | 236 | `townfaith` (126; 25), `militia` (42; 4), `lessons` (68) |
 | 10 | 8 | 747 | `kin` (256; 8), `seasonfolk` (121; 5), `conquered` (124; 3), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1) |
-| 11 | 3 | 742 | `nobles` (253; 17), `dynasty` (232; 11), `portrait` (257; 1) |
+| 11 | 3 | 742 | `nobles` (253; 18), `dynasty` (232; 11), `portrait` (257; 1) |
 | 12 | 5 | 880 | `mapbattle` (378; 3), `nobletemper` (110; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `unrest` (128; 1) |
 | 13 | 2 | 231 | `raidclash` (145; 2), `tradedeal` (86; 2) |
 | 14 | 1 | 132 | `roadclash` (132; 4) |
@@ -474,11 +475,11 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 20 | 2 | 354 | `decrees` (164; 4), `claimantrising` (190; 2) |
 | 21 | 3 | 446 | `acts` (203; 4), `drift` (174; 3), `claimantcaptain` (69; 2) |
 | 22 | 4 | 894 | `threats` (478; 13), `governor` (196; 9), `driftintown` (174; 4), `chancecreed` (46; 1) |
-| 23 | 9 | 1,165 | `carriedoff` (135; 5), `rivalrule` (382; 5), `townmuster` (113; 3), `bandhorde` (119; 2), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
-| 24 | 10 | 1,069 | `townworks` (58; 6), `rivalcaptives` (47; 3), `bandroam` (219; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `battlecarried` (109; 1), `rivalstock` (115; 1), `courtcall` (84), `roll` (93) |
+| 23 | 9 | 1,166 | `carriedoff` (136; 6), `rivalrule` (382; 5), `townmuster` (113; 3), `bandhorde` (119; 2), `harvest` (103; 1), `raidnews` (70; 1), `seasonreport` (191; 1), `tendintown` (21; 1), `workwords` (31) |
+| 24 | 11 | 1,139 | `townworks` (58; 6), `rivalcaptives` (47; 3), `bandroam` (219; 2), `furloughmap` (83; 2), `nobleacts` (122; 2), `queueddrill` (139; 2), `battlecarried` (109; 1), `nocarry` (70; 1), `rivalstock` (115; 1), `courtcall` (84), `roll` (93) |
 | 25 | 8 | 1,154 | `bandfight` (313; 4), `caravans` (204; 3), `petitions` (227; 3), `bandwilds` (109; 1), `governworks` (80; 1), `inn` (46; 1), `rule` (95; 1), `watchhouse` (80; 1) |
 | 26 | 5 | 809 | `intrigue` (387; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `rivalhunt` (132; 1), `bandmeet` (89) |
-| 27 | 7 | 3,699 | `game` (3282; 2), `hallcases` (70; 2), `bandseason` (38; 1), `courtvisit` (81; 1), `rivalstories` (130; 1), `storyvisit` (45; 1), `storypolicy` (53) |
+| 27 | 7 | 3,701 | `game` (3282; 2), `hallcases` (70; 2), `bandseason` (40; 1), `courtvisit` (81; 1), `rivalstories` (130; 1), `storyvisit` (45; 1), `storypolicy` (53) |
 | 28 | 2 | 1,803 | `campaign` (1751; 2), `aiground` (52; 1) |
 | 29 | 2 | 1,302 | `visit` (288; 1), `ai` (1014) |
 | 30 | 1 | 117 | `primer` (117) |
@@ -487,7 +488,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 | Shapes from | Needed by | From layer | Its own layer |
 | --- | --- | --- | --- |
-| `campaign` | 178 modules | 0 | 28 |
+| `campaign` | 179 modules | 0 | 28 |
 | `game` | 81 modules | 0 | 27 |
 | `township` | 10 modules | 0 | 3 |
 | `mapbattle` | 4 modules | 0 | 12 |
@@ -507,13 +508,14 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | `nobles` | 1 module | 10 | 11 |
 | `decrees` | 2 modules | 11 | 20 |
 | `intrigue` | 1 module | 23 | 26 |
+| `nocarry` | 1 module | 23 | 24 |
 <!-- /generated:order -->
 <!-- generated:tests -->
 ## The tests (generated)
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 281 modules, 0 naming no test, 0 naming a test file that is missing; 3,983 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 282 modules, 0 naming no test, 0 naming a test file that is missing; 3,989 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -536,7 +538,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 526 of them in 215 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 527 of them in 216 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -686,6 +688,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `peoplenames` | `PEOPLE_NAMES`, `BAND_NAMES` |
 | `nationcolours` | `SPARE_COLOURS`, `TOO_ALIKE` |
 | `nobles` | `LEANINGS`, `RANK_NAMES`, `NOBLES`, `LIKES` |
+| `nocarry` | `NOCARRY` |
 | `nobledeal` | `DEAL_KINDS`, `DEALS`, `TITLES` |
 | `nobleacts` | `ACTS` |
 | `nobleweigh` | `WEIGH` |
