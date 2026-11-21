@@ -11,6 +11,7 @@
 // If the land is no longer empty when they arrive, they go to their people's chief town as any convoy does.
 //
 // It reads and writes only the land and its town, so that convoys.ts can ask it without a ring of imports.
+import { colonyReach } from './ownstudies';
 import type { Campaign } from './campaign';
 import { headcount } from './township';
 import { wilderness } from './wilds';
@@ -81,7 +82,7 @@ export function emptyWords(c: Campaign, tid: number): { name: string; icon: stri
  * (true wilderness among them), never through a tribe's, a nation's or a camp's; at most FOUNDING.reach of them. The
  * shortest, or null if there is none.
  */
-export function wayOut(c: Campaign, f: number, to: number, most = FOUNDING.reach): { gate: number; through: number[] } | null {
+export function wayOut(c: Campaign, f: number, to: number, most = FOUNDING.reach + colonyReach(c, f)): { gate: number; through: number[] } | null {
   const back = new Map<number, number>([[to, -1]]);
   let edge = [to];
   for (let d = 1; d <= most && edge.length; d++) {

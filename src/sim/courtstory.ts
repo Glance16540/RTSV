@@ -23,6 +23,7 @@
 //     noble is made an enemy), or send gifts to all the nobles to sweeten them, which may end it. Once the plotter
 //     is known the leader pardons them or has them put to death. If the plot ripens unfound there is a rising:
 //     it is put down, or the leader is killed in it.
+import { plotEdge } from './ownstudies';
 import { givenNames } from './peoplenames';
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
@@ -359,7 +360,7 @@ function plotStep(c: Campaign, it: Intrigue): void {
   if (!n) { end(c, it, 'nothing', `The whispers at court have stopped: ${p.title}, who was spoken of, is no longer among the great.`, 'plain'); return; }
   if (it.found) return; // waits on judgement
   if (n.mood > P.cooled) { end(c, it, 'nothing', `The whispers at court came to nothing. Whoever was sour has been sweetened.`, 'good'); return; }
-  const odds = P.out + P.warned * plotWarning(c, f) + (it.watch ? P.informers : 0) + (seatAt(c, f, n.town) ? P.court : 0) + spyOdds(c, f); // the court, or a Hall of Judgement in the town (hall.ts)
+  const odds = P.out + P.warned * plotWarning(c, f) + (it.watch ? P.informers : 0) + (seatAt(c, f, n.town) ? P.court : 0) + spyOdds(c, f) + plotEdge(c, f); // the Persians' eyes and ears (ownstudies.ts); the court, or a Hall of Judgement in the town (hall.ts)
   if (chance(c, it.id * 97 + 1) < odds) {
     const left = spoken(it).filter((i) => i !== it.culprit);
     if (left.length <= 1) { laidBare(c, it, it.watch ? 'Your informers have it.' : plotWarning(c, f) > 0 ? 'Your confidant has it.' : 'A letter has been found.'); return; }

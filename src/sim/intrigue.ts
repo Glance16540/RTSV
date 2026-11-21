@@ -22,6 +22,7 @@
 // Plain data: an `Intrigue` on the campaign, `intrigueSeason(c)` once a season, `choicesFor` / `choose` for whoever
 // puts it to the player, `intrigueNews` for whoever reports it. Chances are a run of their own, so the rest of a
 // campaign's luck is left as it was. `culprit` is the sim's own knowledge: a client must not show it.
+import { thiefEdge } from './ownstudies';
 import { givenNames, houseNames, townPeople } from './peoplenames';
 import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
@@ -202,7 +203,7 @@ function thiefSeason(c: Campaign, it: Intrigue): void {
     if (f.stores.gold >= T.cost) { f.stores.gold -= T.cost; it.watched++; }
     else { it.watch = false; note(c, it, 'plain', `${land(c, it.at)} cannot pay its watch, and the watch is stood down.`); }
   }
-  const odds = (it.watch ? T.catch + T.surer * (it.watched - 1) : T.luck) + watchEdge(c, it.at).thief; // a Watch House takes them sooner (watchhouse.ts)
+  const odds = (it.watch ? T.catch + T.surer * (it.watched - 1) : T.luck) + watchEdge(c, it.at).thief + thiefEdge(c, it.at); // a Watch House takes them sooner (watchhouse.ts), and the Babylonians' law (ownstudies.ts)
   { const edge = watchEdge(c, it.at).thief, draw = chance(c, it.id * 53 + 2); if (edge) tallyWatch(c, 'thief', draw < odds, draw < odds - edge); } // report only (watchtally.ts)
   if (chance(c, it.id * 53 + 2) < odds) { catchThief(c, it); return; }
   if (c.turn - it.since >= T.lasts) { end(c, it, 'unfound', `The thief of ${land(c, it.at)} was never taken. The robberies stopped, and ${it.taken} gold was never seen again.`, 'plain'); return; }
