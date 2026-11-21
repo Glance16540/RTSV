@@ -6,6 +6,7 @@
 // No child is ever shown. A captive is shown seated and covered, in plain long clothes.
 
 import { strengthOf } from '../sim/strengthwords';
+import { givenNames } from '../sim/peoplenames';
 import * as THREE from 'three';
 import type { Campaign } from '../sim/campaign';
 import { CIV_COLOR, UNITS } from '../sim/data';
@@ -189,6 +190,8 @@ const met = new Set<string>();
 /** A story that waits on the player's word and has not yet been put to them face to face. */
 export const storyToMeet = (c: Campaign): Intrigue | undefined => (c.phase === 'player' ? awaiting(c).find((it) => !met.has(wordKey(it) + (it.asked ? ':asked' : ''))) : undefined);
 
+/** The envoy a rival ruler sends, by a name of his own people's: the same envoy for the same story (playthrough of 21 November: the sheet named only the ruler who sent him). */
+const envoyName = (c: Campaign, it: Intrigue): string => { const names = givenNames(c.factions[it.rival ?? 0]?.civ, 'm'); return names.length ? names[(it.id * 7919 + 13) % names.length] : 'An envoy'; };
 const ASKER: Record<string, string> = { suitor: 'A suitor', rival: 'An envoy', plot: 'A plotter found out', thief: 'A thief brought for judgement' };
 /** Put a story to the player face to face: the one asking, what it stands at, and its choices; or decide later on the land's panel. */
 export function meetStory(c: Campaign, it: Intrigue, done: () => void): boolean {
@@ -196,11 +199,11 @@ export function meetStory(c: Campaign, it: Intrigue, done: () => void): boolean 
   if (!asker) return false;
   met.add(wordKey(it) + (it.asked ? ':asked' : ''));
   const who = it.kind === 'suitor' ? `${it.cast?.suitor ?? 'A son of a rival house'}, of the house of ${it.cast?.king ?? 'a rival'}`
-    : it.kind === 'rival' ? `An envoy of ${it.cast?.king ?? 'the rival'}, of the ${c.factions[it.rival ?? 0]?.name ?? 'rival people'}`
+    : it.kind === 'rival' ? `${envoyName(c, it)}, envoy of ${it.cast?.king ?? 'the rival'}, ${c.factions[it.rival ?? 0]?.hero?.female ? 'queen' : 'king'} of the ${c.factions[it.rival ?? 0]?.name ?? 'rival people'}`
     : it.kind === 'plot' ? it.nobles?.[it.culprit]?.title ?? 'A noble'
     : it.thief ? `${fullName(it.thief)} the ${it.thief.trade}` : 'The thief';
   const choices: EncounterChoice[] = choicesFor(c, it).filter((k) => k.id !== 'watch' && k.id !== 'unwatch')
     .map((k) => [k.label, () => { choose(c, it.id, k.id); done(); }, k.bar]);
   choices.push(['Decide later', done]);
-  return openEncounter({ title: ASKER[it.kind] ?? 'Someone to see you', text: `<span class="enc-who"><b>${esc(who)}</b></span>${esc(standing(c, it))}`, figures: [asker], choices });
+  return openEncounter({ title: it.kind === 'rival' ? `${envoyName(c, it)}, ${c.factions[it.rival ?? 0]?.hero?.female ? 'the queen\'s' : 'the king\'s'} envoy` : ASKER[it.kind] ?? 'Someone to see you', text: `<span class="enc-who"><b>${esc(who)}</b></span>${esc(standing(c, it))}`, figures: [asker], choices });
 }
