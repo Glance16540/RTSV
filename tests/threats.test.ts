@@ -1,6 +1,7 @@
 // Threats of men on the map: bands that choose a town and strike it (src/sim/threats.ts).
 import { RAID } from '../src/sim/raidclash';
 import { bareCampaign } from './helpers';
+import { settleRaid } from '../src/sim/raidfought';
 import { describe, expect, it } from 'vitest';
 import { endTurn, continueAI, eventsAt } from '../src/sim/campaign';
 import type { Campaign, Territory } from '../src/sim/campaign';
@@ -46,7 +47,7 @@ function untilStrike(c: Campaign, b: Band): Raid {
   for (let i = 0; i < 60; i++) {
     c.turn++; b.since = c.turn; b.strength = strength;
     for (const h of b.held) h.since = c.turn;
-    const r = threatsOfMen(c).find((x) => x.band === b.id);
+    const r = threatsOfMen(c).find((x) => x.band === b.id) ?? (c.pending?.raid === b.id ? settleRaid(c, 'auto') : null); // a strike on a town of the player's waits on the player now: left to the town, it falls as it did (raidfought.ts)
     if (r) return r;
   }
   throw new Error('the band never struck');
