@@ -2958,15 +2958,25 @@ export class Game {
   }
 
   private separate(): void {
-    const near: Unit[] = [];
-    const N = this.size;
+    const N = this.size, R = 1.5, hashN = this.hashN, hash = this.hash;
     for (const u of this.units) {
       if (u.anchored || u.inside) continue;
       let px = 0, py = 0;
-      for (const v of this.unitsNear(u.x, u.y, 1.5, near)) {
+      // Those near it, bucket by bucket in the order `unitsNear` gives them (it is that scan, without the list made of it).
+      const ux = u.x, uy = u.y, ur = u.def.radius;
+      const x0 = Math.max(0, Math.floor((ux - R) / HASH)), x1 = Math.min(hashN - 1, Math.floor((ux + R) / HASH));
+      const y0 = Math.max(0, Math.floor((uy - R) / HASH)), y1 = Math.min(hashN - 1, Math.floor((uy + R) / HASH));
+      for (let hy = y0; hy <= y1; hy++) for (let hx = x0; hx <= x1; hx++) {
+        const bucket = hash[hy * hashN + hx];
+        for (let i = 0; i < bucket.length; i++) {
+        const v = bucket[i];
+        if (v.dead || Math.abs(v.x - ux) > R || Math.abs(v.y - uy) > R) continue;
         if (v === u) continue;
-        const min = u.def.radius + v.def.radius;
-        let dx = u.x - v.x, dy = u.y - v.y;
+        const min = ur + v.def.radius;
+        let dx = ux - v.x, dy = uy - v.y;
+        // The distance proper is slow, and most of those near are plainly too far to touch: by the squares first, with a hair
+        // to spare (far more than the two reckonings can differ by), so that who touches whom comes out the very same.
+        if (dx * dx + dy * dy > min * min * 1.000001) continue;
         const d = Math.hypot(dx, dy);
         if (d >= min) continue;
         if (d < 1e-3) { const a = (u.id * 2.399) % 6.283; dx = Math.cos(a); dy = Math.sin(a); }
@@ -2974,6 +2984,7 @@ export class Game {
         const w = (min - d) * (v.anchored ? 1 : 0.5);
         px += dx * w;
         py += dy * w;
+        }
       }
       if (px === 0 && py === 0) continue;
       const m = Math.hypot(px, py);

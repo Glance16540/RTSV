@@ -394,6 +394,8 @@ export const WORLD_SHAPES: Record<WorldShape, string> = {
 export const LAND_STEP = 3;
 export interface Terrain { gw: number; gh: number; /** Height at every few points: at or under 0 is water. */ H: Float32Array; /** Each river, as the points it runs through from spring to mouth. */ rivers: number[][]; /** 1 where a river runs. */ wet: Uint8Array }
 const terrains = new Map<string, Terrain>();
+/** The terrain last found for a campaign, by the campaign itself (a quick way to the same answer as `terrains`). */
+const lastTerrain = new WeakMap<Campaign, { seed: number; mark: number; terrain: Terrain }>();
 const ease = (a: number, b: number, v: number): number => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
 /**
  * The lie of a world's land, grown from its seed: a ragged coast with bays, lakes between the lands, mountain
@@ -401,9 +403,16 @@ const ease = (a: number, b: number, v: number): number => { const t = Math.min(1
  * looks at the same world; the map draws it, and it decides where an army cannot march.
  */
 export function terrainOf(c: Campaign): Terrain {
+  // Asked many times a season of the same campaign: remembered by the campaign itself, as long as its seed and its lands
+  // (how many, where, of what kind, by a sum) are as they were; else found by the whole key as before.
+  const ts0 = c.territories;
+  let mark = ts0.length;
+  for (let i = 0; i < ts0.length; i++) mark = (mark * 31 + Math.round(ts0[i].x) * 7 + Math.round(ts0[i].y) * 13 + (ts0[i].trait ? ts0[i].trait.length + ts0[i].trait.charCodeAt(0) : 0)) % 2147483647;
+  const mine = lastTerrain.get(c);
+  if (mine && mine.seed === c.seed && mine.mark === mark) return mine.terrain;
   const key = c.seed + ':' + c.territories.map((t) => `${Math.round(t.x)},${Math.round(t.y)},${t.trait}`).join(';');
   const had = terrains.get(key);
-  if (had) return had;
+  if (had) { lastTerrain.set(c, { seed: c.seed, mark, terrain: had }); return had; }
   const sd = c.seed % 100000, N = (x: number, y: number, k: number): number => landNoise(x, y, sd + k);
   const gw = Math.floor(MAP_W / LAND_STEP) + 1, gh = Math.floor(MAP_H / LAND_STEP) + 1, ts = c.territories;
   const H = new Float32Array(gw * gh), W = worldOf(c.seed), ca = Math.cos(W.turn), sa = Math.sin(W.turn), sq = new Float64Array(ts.length);
@@ -502,6 +511,7 @@ export function terrainOf(c: Campaign): Terrain {
   const made = { gw, gh, H, rivers, wet };
   if (terrains.size > 12) terrains.delete(terrains.keys().next().value as string);
   terrains.set(key, made);
+  lastTerrain.set(c, { seed: c.seed, mark, terrain: made });
   return made;
 }
 

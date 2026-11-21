@@ -1,0 +1,10 @@
+{
+ "course": "answer",
+ "player": "computer",
+ "first": 1,
+ "campaigns": 16,
+ "claimants": {
+  "risen": 0,
+  "noble": 0
+ }
+}

@@ -5,6 +5,11 @@
 // and run for home. A camp with no guard is emptied by a single soldier; a full guard of four holds off eight.
 // (Razing the camp still frees everyone at once, and killing a Slaver on the road still frees the one he leads.)
 //
+// The marauders' camp has a gate too (the owner's design: those taken can be got back for a time). It has no posted
+// guards: its guard is the band itself. While any marauder stands at the camp (within LAIR_WATCH tiles of it) nobody
+// is let out, however many soldiers have come; once the band there is beaten or drawn off, soldiers at the gate let the
+// people out one at a time as at a Work Camp. (Burning the camp still frees everyone at once.)
+//
 // The second half is for whoever plays the keeper: `postGuards` sends idle Slavers to stand guard where captives
 // are unwatched, and `guardsShort` and `heldAt` say how many more are wanted and where a town's own people are held.
 import type { Building, Game, Unit } from './game';
@@ -18,7 +23,21 @@ export const RESCUE_GUARD = 2;
 /** Seconds one soldier, over and above those the guards hold off, takes to let one captive out. */
 export const RESCUE_TIME = 6;
 
+/** How near the marauders' camp one of the band must stand to be its guard, in tiles from its middle. */
+export const LAIR_WATCH = 7;
+
 const guards = (b: Building): number => Math.min(b.def.guards ?? 0, b.staff?.length ?? 0);
+/** Is this a camp with a gate soldiers can work at: a Work Camp, or the marauders' camp? */
+export const gated = (b: Building): boolean => !!b.def.guards || b.type === 'lair';
+/** The marauders standing guard at their camp: those of the band at it, not leading anyone in. None at any other building. */
+export function bandAtCamp(g: Game, b: Building): number {
+  if (b.type !== 'lair') return 0;
+  let n = 0;
+  for (const u of g.units) if (u.def.marauder && !u.dead && !u.inside && !u.captive && Math.hypot(u.x - b.x, u.y - b.y) <= LAIR_WATCH) n++;
+  return n;
+}
+/** Soldiers this camp's guard holds off: two for each guard posted at a Work Camp; at the marauders' camp everyone, while any of the band stands there. */
+const heldOffBy = (g: Game, b: Building): number => (b.type === 'lair' ? (bandAtCamp(g, b) ? Infinity : 0) : RESCUE_GUARD * guards(b));
 const atGate = (b: Building, u: Unit): boolean => rectDist(u.x, u.y, b.cx, b.cy, b.cx + b.size, b.cy + b.size) <= RESCUE_REACH;
 
 /** The soldiers standing at a camp who have come for the people taken from `from`: its own and its allies'. */
@@ -42,6 +61,8 @@ export interface GateWork {
   spare: number;
   /** How far along the next captive is, from 0 to 1, and the seconds until they are out (null if no one is working). */
   progress: number; nextIn: number | null;
+  /** At the marauders' camp: how many of the band stand guard there still. While any does, `force` is past counting. */
+  band?: number;
 }
 
 /**
@@ -49,30 +70,34 @@ export interface GateWork {
  * be rescued or no soldier has come for them. Changes nothing.
  */
 export function gateWork(g: Game, b: Building): GateWork | null {
-  if (!b.def.guards || !b.captives?.length) return null;
-  const off = RESCUE_GUARD * guards(b);
+  if (!gated(b) || !b.captives?.length) return null;
+  const off = heldOffBy(g, b), band = bandAtCamp(g, b);
   let best: GateWork | null = null;
   for (const from of new Set(b.captives.map((c) => c.from))) {
     if (!g.hostile(from, b.owner)) continue;
     const soldiers = rescuers(g, b, from).length;
     if (!soldiers || (best && soldiers <= best.soldiers)) continue;
     const spare = Math.max(0, soldiers - off), progress = spare ? Math.min(1, b.rescueT ?? 0) : 0;
-    best = { from, soldiers, heldOff: Math.min(soldiers, off), force: off + 1, spare, progress, nextIn: spare ? Math.max(1, Math.ceil((1 - progress) * RESCUE_TIME / spare)) : null };
+    best = { from, soldiers, heldOff: Math.min(soldiers, off), force: off + 1, spare, progress, nextIn: spare ? Math.max(1, Math.ceil((1 - progress) * RESCUE_TIME / spare)) : null, ...(b.type === 'lair' ? { band } : {}) };
   }
   return best;
 }
 
 /**
- * One second at a guarded camp (a Work Camp; the marauders' camp has to be burned). Returns how many were let out.
+ * One second at a camp with a gate (a Work Camp, by captivity.ts; the marauders' camp, by marauders.ts). Returns how many were let out.
  * The count towards the next one is kept on the camp, and is lost if the soldiers are driven off.
  */
-export function rescue(g: Game, b: Building): number {
-  if (!b.def.guards || !b.captives?.length) { b.rescueT = 0; return 0; }
+export function rescue(g: Game, b: Building, opts: { /** The marauders' own second (marauders.ts): theirs is the one call that works their camp's gate. */ lair?: boolean } = {}): number {
+  const lair = b.type === 'lair';
+  if (lair && !opts.lair) { b.rescueT = 0; return 0; } // the keeper's second is not the band's
+  const rest = (): number => { if (!lair || b.rescueT) b.rescueT = 0; return 0; }; // (a camp of the band's with nobody at it is left as it was)
+  if (!gated(b) || !b.captives?.length) return rest();
   let spare = 0;
+  const off = heldOffBy(g, b);
   const peoples = [...new Set(b.captives.map((c) => c.from))].filter((from) => g.hostile(from, b.owner));
-  const working = peoples.filter((from) => rescuers(g, b, from).length >= rescueForce(b));
-  for (const from of working) spare = Math.max(spare, rescuers(g, b, from).length - RESCUE_GUARD * guards(b));
-  if (!spare) { b.rescueT = 0; return 0; }
+  const working = peoples.filter((from) => rescuers(g, b, from).length >= off + 1);
+  for (const from of working) spare = Math.max(spare, rescuers(g, b, from).length - off);
+  if (!spare) return rest();
   b.rescueT = (b.rescueT ?? 0) + spare / RESCUE_TIME;
   let out = 0;
   while (b.rescueT >= 1) {
@@ -84,7 +109,9 @@ export function rescue(g: Game, b: Building): number {
     g.breakOut(b, i);
     out++;
   }
-  if (out) {
+  if (out && b.type === 'lair') { // nobody keeps this camp: the word goes to those whose soldiers did it
+    for (const from of working) g.events.push({ t: 'msg', player: from, text: `🔓 Soldiers at the marauders' camp have let ${out === 1 ? 'one of those held' : `${out} of those held`} out.` });
+  } else if (out) {
     g.events.push({ t: 'msg', player: b.owner, text: `⛓️ Soldiers at the work camp have let ${out === 1 ? 'a captive' : `${out} captives`} out. ${guards(b) < (b.def.guards ?? 0) ? 'More guards would hold them off.' : 'Drive them from the gate.'}` });
     g.events.push({ t: 'alert', player: b.owner, x: b.x, y: b.y });
   }

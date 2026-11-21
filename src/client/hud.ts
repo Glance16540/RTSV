@@ -26,6 +26,7 @@ import { hireBar } from '../sim/birthonly';
 import { updateHallClock } from './hallclock';
 import { updateLessons } from './lessons';
 import { gatePanel } from './gate';
+import { gated } from '../sim/rescue';
 import { notableLine, notableList } from './notables';
 import { captivePortraitHtml, standingHtml, tavernFace, unitPortraitHtml } from './portrait';
 import { tavernPanel } from './tavernlook';
@@ -613,7 +614,7 @@ export class Hud {
       const w = want(game.players[b.owner]);
       if (w) body += `<div class="${w === 'famine' ? 'bad' : 'warn'}">${w === 'famine' ? '💀 Famine: someone is lost every half minute until there is food in the store' : '🍞 Going hungry: the store is bare and nothing is coming in'}</div>`;
     }
-    if (b.def.guards) body += gatePanel(game, b, pid);
+    if (gated(b)) body += gatePanel(game, b, pid); // a Work Camp's gate, and the marauders' camp's, whose guard is the band (rescue.ts)
     if (b.def.camp) body += heldPanel(game, b, pid);
     if (b.type === 'towncenter' && b.owner === pid) body += takenPanel(game, pid);
     body += robbedLine(game, b); // robbed by a thief afoot in the town (fieldstory.ts)

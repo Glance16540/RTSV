@@ -58,7 +58,7 @@ const townOf = (c: Campaign, f: number, t: Territory | undefined): boolean => !!
 /** Held down: the leader is there, or an army of the people stands in it. */
 const heldDown = (c: Campaign, f: number, tid: number): boolean => c.factions[f].court?.at === tid || c.armies.some((a) => a.owner === f && a.at === tid);
 
-/** The town a claimant would raise first: where they grew up, or the people's town nearest it. -1 if there is none. */
+/** The town a claimant would raise first: where they grew up, or the people's town nearest it by its borders, or failing any border by distance. -1 if they have no town but their capital. */
 export function seatFor(c: Campaign, cl: Claim): number {
   const f = cl.owner;
   if (cl.parent === 'noble') return townOf(c, f, c.territories[cl.town]) ? cl.town : -1;
@@ -71,7 +71,11 @@ export function seatFor(c: Campaign, cl: Claim): number {
     for (const id of ring) for (const n of c.territories[id]?.adj ?? []) if (!seen.has(n)) { seen.add(n); next.push(n); }
     ring = next;
   }
-  return -1;
+  // No border joins where it stands to any town of theirs (a band out in the wilds beyond the rim): the town nearest as the crow flies.
+  const from = c.territories[cl.town];
+  if (!from) return -1;
+  const far = (t: Territory): number => (t.x - from.x) ** 2 + (t.y - from.y) ** 2;
+  return c.territories.filter((t) => townOf(c, f, t)).sort((a, b) => far(a) - far(b) || a.id - b.id)[0]?.id ?? -1;
 }
 /** The towns that would rise for this claimant now, the seat first: none if the seat will not rise. */
 export function followers(c: Campaign, cl: Claim): number[] {

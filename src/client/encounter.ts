@@ -7,6 +7,7 @@
 
 import { strengthOf } from '../sim/strengthwords';
 import { givenNames } from '../sim/peoplenames';
+import { heroFor } from '../sim/campaignbase';
 import * as THREE from 'three';
 import type { Campaign } from '../sim/campaign';
 import { CIV_COLOR, UNITS } from '../sim/data';
@@ -199,11 +200,11 @@ export function meetStory(c: Campaign, it: Intrigue, done: () => void): boolean 
   if (!asker) return false;
   met.add(wordKey(it) + (it.asked ? ':asked' : ''));
   const who = it.kind === 'suitor' ? `${it.cast?.suitor ?? 'A son of a rival house'}, of the house of ${it.cast?.king ?? 'a rival'}`
-    : it.kind === 'rival' ? `${envoyName(c, it)}, envoy of ${it.cast?.king ?? 'the rival'}, ${c.factions[it.rival ?? 0]?.hero?.female ? 'queen' : 'king'} of the ${c.factions[it.rival ?? 0]?.name ?? 'rival people'}`
+    : it.kind === 'rival' ? `${envoyName(c, it)}, envoy of ${it.cast?.king ?? 'the rival'}, ${heroFor(c, it.rival ?? 0).female ? 'queen' : 'king'} of the ${c.factions[it.rival ?? 0]?.name ?? 'rival people'}`
     : it.kind === 'plot' ? it.nobles?.[it.culprit]?.title ?? 'A noble'
     : it.thief ? `${fullName(it.thief)} the ${it.thief.trade}` : 'The thief';
   const choices: EncounterChoice[] = choicesFor(c, it).filter((k) => k.id !== 'watch' && k.id !== 'unwatch')
     .map((k) => [k.label, () => { choose(c, it.id, k.id); done(); }, k.bar]);
   choices.push(['Decide later', done]);
-  return openEncounter({ title: it.kind === 'rival' ? `${envoyName(c, it)}, ${c.factions[it.rival ?? 0]?.hero?.female ? 'the queen\'s' : 'the king\'s'} envoy` : ASKER[it.kind] ?? 'Someone to see you', text: `<span class="enc-who"><b>${esc(who)}</b></span>${esc(standing(c, it))}`, figures: [asker], choices });
+  return openEncounter({ title: it.kind === 'rival' ? `${envoyName(c, it)}, ${heroFor(c, it.rival ?? 0).female ? 'the queen\'s' : 'the king\'s'} envoy` : ASKER[it.kind] ?? 'Someone to see you', text: `<span class="enc-who"><b>${esc(who)}</b></span>${esc(standing(c, it))}`, figures: [asker], choices });
 }
