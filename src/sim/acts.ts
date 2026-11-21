@@ -23,6 +23,7 @@
 // Decided by a run of chances of its own, so the rest of a campaign's luck is left as it was. How often they
 // fall is by the town's own standing (townfaith.ts; `wrathAt`), not its people's; and the dead of plague are
 // counted, a known person among them lost by name (plaguenamed.ts).
+import { crowdEase, faminePart, plagueSpared } from './ownstudies';
 import type { Army, Campaign, EventKind, Territory } from './campaign';
 import { weatherAt } from './campaignbase';
 import { armySize } from './campaignbase';
@@ -103,13 +104,13 @@ function thin(a: Army | undefined): boolean {
  * most 1. A hamlet of a few people is seldom struck, seldom passed to, and loses fewer; a town of ACTS.crowd or
  * more is as it ever was. The holder's creed is measured apart (wrathAt) and is not changed by it.
  */
-export const crowding = (c: Campaign, tid: number): number => Math.min(1, headcount(folkOf(c, tid)) / ACTS.crowd) * wellEase(c, tid); // a Well eases it (well.ts)
+export const crowding = (c: Campaign, tid: number): number => Math.min(1, headcount(folkOf(c, tid)) / ACTS.crowd) * wellEase(c, tid) * crowdEase(c, tid); // a Well eases it (well.ts), and the Romans' aqueducts (ownstudies.ts)
 /** A season of plague in a town: a share of its grown people die, the old first, then men and women in turn. Never a child. */
 export function sicken(c: Campaign, t: Territory): number {
   const k = folkOf(c, t.id), grownNow = k.men + k.women + k.elders;
   // The share it kills, less in a small town; what is less than one whole person is a chance of one.
   // The church tending the sick spares some (decrees.ts), and so does an Infirmary (infirmary.ts).
-  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)) * infirmaryCare(c, t.id) * physicianCare(c, t.owner), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
+  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)) * infirmaryCare(c, t.id) * physicianCare(c, t.owner) * plagueSpared(c, t.id), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
   let n = Math.min(grownNow, crowding(c, t.id) >= 1 ? Math.max(1, Math.round(due)) : whole), dead = 0, man = chance(c, t.id, 53) < 0.5;
   while (n-- > 0) {
     if (k.elders > 0) k.elders--;
@@ -125,7 +126,7 @@ export function sicken(c: Campaign, t: Territory): number {
 function famine(c: Campaign, t: Territory, w: number, hard: boolean): Struck {
   const f = t.owner;
   // The town eats from its own granary for as long as the harvest failed: ACTS.hunger seasons of its own eating, by the measure.
-  const due = Math.max(1, Math.round(ACTS.hunger * needOf(c, t.id) * w * famineShare(c, t.id))); // less from a Granary's store (granary.ts)
+  const due = Math.max(1, Math.round(ACTS.hunger * needOf(c, t.id) * w * famineShare(c, t.id) * faminePart(c, t.id))); // less from a Granary's store (granary.ts), and the Chinese granaries (ownstudies.ts)
   const store = folkOf(c, t.id).stores, food = Math.min(store.food, due);
   store.food -= food;
   const short = food < due, paid = Math.round(food / SUPPLY_UNITS);
