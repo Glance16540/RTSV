@@ -36,6 +36,7 @@ export function sensibleAnswers(c: Campaign, f = 0): string[] {
   const take = (it: Intrigue, id: string): boolean => { if (!can(it, id) || !choose(c, it.id, id)) return false; made.push(`${it.kind}:${id}`); return true; };
   for (const it of openIntrigues(c, f)) {
     if (it.kind === 'thief') { if (it.caught !== undefined) take(it, 'work'); else take(it, 'watch'); }
+    else if (it.kind === 'killer' && it.held !== undefined) take(it, 'hang'); // seized on the field: judged as an accusation would be
     else if (it.kind === 'killer') { take(it, 'watch'); const left = suspected(it); if (left.length === 1) take(it, `accuse:${left[0]}`); }
     else if (it.kind === 'rival') { if (it.stage === 1) take(it, 'defy'); if ((it.stage ?? 0) >= 1) take(it, 'watch'); }
     else if (it.kind === 'suitor') { if (!it.asked) take(it, 'ask'); if (it.asked) { if (it.willing) take(it, 'give'); else take(it, 'decline'); } }
