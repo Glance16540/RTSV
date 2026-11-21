@@ -811,6 +811,15 @@ strike left to the town twice, and the leader's fall with an heir chosen. The ma
 
 ![The fallen leader and the heirs](shots/play-prompt-earl-godric-of-wessex-has-fallen.jpg)
 
+- The food session's "Train up to" row (`townorders.ts`, on main at 67711fd), staged on a campaign of 31 turns: the
+  governor's orders open from the land's panel, the row reads "Train up to: 4 companies", its five choices each say what
+  they do, and choosing 2 companies sets it. But the line on the land's panel that says the governor's orders left it out:
+  a town with only that order read "The governor's standing orders: ." It now says "to train until the army in the town
+  is 2 companies strong" (`townorders.ts` standingText, one line; `tests/trainsaid.test.ts`).
+
+![The Train up to row](shots/play-train-up-to.jpg)
+![The order said on the panel](shots/play-train-up-to-said.jpg)
+
 ## Noted, not changed
 
 - Food in a visited town rose from 605 to 1615 in the first minute with nobody given orders. Some forty villagers at
