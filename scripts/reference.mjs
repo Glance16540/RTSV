@@ -1,7 +1,7 @@
 // The reference figures for the port (docs/REFERENCE.md): everything the Unity side is measured against, taken in one go.
 //
-//   npm run reference                       the full reference into docs/reference/ (about two hours on four cores)
-//   QUICK=1 REF_OUT=/tmp/ref npm run reference   a dry run: the same steps, small (about 20 minutes), to check the layout
+//   npm run reference                       the full reference into docs/reference/ (about 90 minutes on four cores)
+//   QUICK=1 REF_OUT=/tmp/ref npm run reference   a dry run: the same steps, small (about 17 minutes), to check the layout
 //
 // What it runs, in order (four processes at a time; the machine is assumed to have four cores):
 //   1. The shared health report (scripts/health.test.ts), 384 campaigns, on both sets of seeds (1..384 and 385..768),
@@ -94,6 +94,15 @@ await step('Round of fifteen', Array.from({ length: parts }, (_, i) => ({ i, a: 
 // Each part writes the table only for what it asked; once all are in, one asking of the whole writes the whole table
 // (every game is in round.txt already, so none is played again).
 await step('Round table', [{ file: 'scripts/round.test.ts', log: 'round-table.txt', env: { ROUND: '1', SEED0: '0', SEED1: String(ROUND_SEED1), OUT: roundOut } }]);
+
+// The four parts append as their games end, so the file's order is the order they finished in: sorted by each game's
+// tag (#i.j.k), the same round gives the same file, and the same sha256.
+{
+  const key = (l) => (l.split('#')[1] ?? '').split('.').map(Number);
+  const lines = readFileSync(roundOut, 'utf8').split('\n').filter(Boolean);
+  lines.sort((x, y) => { const a = key(x), b = key(y); for (let i = 0; i < 3; i++) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) - (b[i] ?? 0); return 0; });
+  writeFileSync(roundOut, lines.join('\n') + '\n');
+}
 
 await step('Fingerprint', [{ file: 'scripts/fingerprint.test.ts', log: 'fingerprint.txt', env: { FINGERPRINT: '1', OUT: join(OUT, 'fingerprint.txt') } }]);
 
