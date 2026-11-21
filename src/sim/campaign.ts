@@ -93,6 +93,7 @@ import { aimOrder, marchInto, redeploy, skyInto } from './rivalaim';
 import { aimFirst, balk, planStep } from './rivalplan';
 import { HOLD, lent, massOrder } from './rivalmass';
 import { suePeace, suesPlayer, wearyMargin } from './rivalweary';
+import { creedLean, worldMargin } from './rivalworld';
 import { heldFirst } from './rivalcaptives';
 import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
@@ -983,7 +984,7 @@ export function offerTruce(c: Campaign, f: number): boolean {
   if (!fac || !fac.isAI || !fac.alive || atTruce(c, 0, f) || !canPayFor(c, 0, 'dealing', truceCost(c.factions[0].civ)) || c.phase !== 'player' || fac.refused === c.turn) return false;
   if (atWarWith(c, f)) { fac.refused = c.turn; say(c, f, 'refuse'); c.log.push(`${fac.name} are at war with you over their king's quarrel, and will hear of no truce before turn ${warUntil(c, f)! + 1}.`); return false; } // a defied king who declared war (feudwar.ts)
   const mine = totalStrength(c, 0), theirs = totalStrength(c, f);
-  const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0) + treatLean(c, f); // and readier to treat (nobleweigh.ts)
+  const willing = habitsWith(fac.civ, PERSONA[fac.civ]).peace + (mine >= theirs ? 0.25 : -0.15) + 0.1 * (fac.favor ?? 0) + treatLean(c, f) + creedLean(c, f, 0); // and readier to treat (nobleweigh.ts); readier with a people of like standing, less with one far off (rivalworld.ts)
   if (c.honor < 0 || rand(c) > willing) {
     fac.refused = c.turn;
     say(c, f, 'refuse');
@@ -1484,7 +1485,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
   const dares = (from: number, to: number): boolean => {
     const t = c.territories[to];
     if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
-    const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id) + weary; // and what its towns have borne (rivalweary.ts) // its angry lords make it wary (nobleweigh.ts)
+    const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id) + weary + worldMargin(c, to); // what its towns have borne (rivalweary.ts), and winter and the world's seasons (rivalworld.ts) // its angry lords make it wary (nobleweigh.ts)
     const bySea = !c.territories[from].adj.includes(to);
     return wouldTake(c, army, to, (strengthVs(army, defenders(c, to), rankWith(c, army)) + lent(c, f.id, to, army.id)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * skyInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
   };

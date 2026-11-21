@@ -19,6 +19,7 @@ import { driftOf } from './drift';
 import { atWarWith } from './feudwar';
 import { swornPeace } from './pacts';
 import { threatened } from './rivalrule';
+import { creedLean } from './rivalworld';
 import { headcount } from './township';
 
 export const WEARY = {
@@ -79,8 +80,11 @@ export function foesOf(c: Campaign, f: number): number[] {
   }
   return [...seen].sort((a, b) => a - b);
 }
-/** Would a rival sued for peace by another agree: weary enough itself, or not clearly the stronger. */
-export const wouldAgree = (c: Campaign, sued: number, suer: number): boolean => weariness(c, sued) >= WEARY.agrees || strength(c, sued) < strength(c, suer) * WEARY.winning;
+/** Would a rival sued for peace by another agree: weary enough itself, or not clearly the stronger; and where the two stand in faith counts. */
+export function wouldAgree(c: Campaign, sued: number, suer: number): boolean {
+  const lean = creedLean(c, sued, suer); // readier with a people of like standing, less ready with one far off (rivalworld.ts)
+  return weariness(c, sued) >= WEARY.agrees * (1 - lean) || strength(c, sued) < strength(c, suer) * WEARY.winning * (1 + lean);
+}
 /**
  * A weary rival sues for peace with each people it borders, not oftener than every `WEARY.again` seasons each.
  * Returns the peoples it is now at peace with, and whether it made the player its offer.

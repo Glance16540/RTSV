@@ -5,6 +5,8 @@
  * - a chief town (another people's capital), a rich town (many people, many works, good country), or a town that
  *   was taken from it, which it wants back (conquered.ts keeps whom a town was taken from);
  * - the further off, the less it is wanted: every land between must be taken or crossed first.
+ * - the world counts (rivalworld.ts): a named place makes a land worth more, plague in it far less, and the towns
+ *   of a people far from its own faith are the more readily warred on.
  * The aim steers the marches it already makes and decides none of them. Of the lands an army dares, one that
  * brings it nearer the aim goes first (`aimFirst`); an army with nothing to dare walks through its own lands to
  * the border nearest the aim (`planStep`). An aim is kept for `PLAN.keep` seasons, or until it is taken, or a
@@ -16,6 +18,7 @@ import type { Army, Campaign } from './campaign';
 import { armyStrength, atTruce, reach } from './campaignbase';
 import { countryYield } from './country';
 import { nobodyThere } from './founding';
+import { worldWorth } from './rivalworld';
 import { headcount } from './township';
 
 export const PLAN = {
@@ -73,7 +76,7 @@ export function whyAim(c: Campaign, f: number, tid: number): AimWhy {
 /** What a land is worth to a people as a war aim, `away` marches from its nearest land. The higher, the more wanted. */
 export function aimWorth(c: Campaign, f: number, tid: number, away: number): number {
   const why = whyAim(c, f, tid);
-  return PLAN.rich * riches(c, tid) + (why === 'revenge' ? PLAN.revenge : why === 'chief' ? PLAN.chief : 0) - PLAN.step * Math.max(0, away - 1);
+  return PLAN.rich * riches(c, tid) + (why === 'revenge' ? PLAN.revenge : why === 'chief' ? PLAN.chief : 0) - PLAN.step * Math.max(0, away - 1) + worldWorth(c, f, tid); // and a named place, plague, and a faith far from its own (rivalworld.ts)
 }
 /** The lands a people might aim at, the most wanted first: within `PLAN.far` marches of its own, and not lately given up. */
 export function aimsOf(c: Campaign, f: number): { id: number; worth: number; away: number }[] {
