@@ -776,9 +776,9 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   }),
   fortress: B({
     id: 'fortress', name: 'Fortress', icon: '🏰',
-    desc: 'A stronghold. It does not shoot, but takes in twelve people when the bell rings and stands a long time. On the map a town with one stands three companies stronger against a band, and loses half as many people to one.',
+    desc: 'A stronghold. It shoots as a Watch Tower does, takes in twelve people when the bell rings (four of them speed its fire, as in a tower) and stands a long time. Its garrison of the town\'s own men stands to arms when the town is fought for. On the map a town with one stands three companies stronger against a band, and loses half as many people to one.',
     cost: { wood: 100, stone: 350 }, time: 70, age: 1, hp: 1600, size: 3, pop: 0, sight: 12,
-    trains: [], techs: [], shelter: 12,
+    trains: [], techs: [], atk: 9, range: 8, cooldown: 1.8, shelter: 12, // it shoots as the tower does (the tower's own figures)
   }),
   inn: B({
     id: 'inn', name: 'Inn', icon: '🛏️',

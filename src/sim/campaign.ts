@@ -41,6 +41,7 @@ import { settleTaken } from './settlersfrom';
 import { foughtOnMap, recordsBack } from './warrecord';
 import { mayRaiseKind } from './uniquecompany';
 import { keepRoads, roadsFor } from './handroads';
+import { fieldArms } from './fortkeep';
 import { bandBattle, settleBandFight } from './bandfight';
 import { raidBattle, settleRaid } from './raidfought';
 import { wallsEdge } from './sieges';
@@ -1611,6 +1612,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       if (army.hero) add(calling, 1);
     } else if (defending && t.owner >= 0 && BATTLE_ANSWERS.ask('leaderAt', c, t.owner, t.id)) add(leaderType(heroFor(c, t.owner)), 1); // the leader in an ungarrisoned town
     const out = defending ? BATTLE_ANSWERS.ask('turnOut', c, t.id, field, p) : null; // the people of the land turn out too: its own men, nobody from nowhere
+    if (out && defending && !field) out.warriors = fieldArms(c, t.id, { army: !!army, arms: out.warriors }); // and a Fortress's garrison of the town's own men stands to arms with them (fortkeep.ts)
     if (out?.clubmen) add('clubman', out.clubmen);
     const fort = defending && t.buildings.includes('fortress');
     // The holder fights from the town that stands there: what the land has on the map, and what the last battle left.
