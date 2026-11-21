@@ -11,7 +11,7 @@ import { RealPerson, makePerson, outfitFor, peopleReady, play } from './person';
 interface Figure { g: THREE.Group; real: RealPerson; label: THREE.Sprite; walk?: { from: THREE.Vector3; to: THREE.Vector3; t: number; time: number } }
 
 /** Where each of them stands before the door, along the front of the hall, as a share of its width. */
-const PLACE: Record<HallGuest['role'], number> = { envoy: -0.55, suitor: -0.05, daughter: 0.45, captain: 0.15 };
+const PLACE: Record<HallGuest['role'], number> = { envoy: -0.55, suitor: -0.05, daughter: 0.45, captain: 0.15, claimant: -0.3, lord: 0.55 };
 /** How fast the daughter walks to the hall, in tiles a second. */
 const WALK = 1.3;
 
