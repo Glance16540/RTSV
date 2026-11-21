@@ -86,6 +86,8 @@ export interface Band {
   gathers?: number;
   /** It was born in the far wilds and is still on its march in (bandwilds.ts). */
   afar?: boolean;
+  /** A rival king's raiding party, sent by this people for one strike (feudraid.ts): it carries nobody off and goes home when it has struck. */
+  party?: number;
 }
 export type Outcome = 'held' | 'raided' | 'taken';
 /** Something a band did or had done to it that is not a strike: it came, moved, fled, settled, broke up, was fought, lost its captives. */
@@ -318,7 +320,7 @@ export function strike(c: Campaign, b: Band, tid: number, out: string[], opts: {
   const met = escort ? roadClash(b.strength, force, { ...soldiersOf(c, escort), place: THREATS.wayfarers }) : null;
   if (met) roadTally(c, 'road', r < THREATS.hold, met); // beside the old rule, for the report
   // A town that already has people in some band's hands has no more to give: it is raided, not taken again.
-  const bled = (c.bands ?? []).some((k) => k.held.some((h) => h.from === tid));
+  const bled = b.party !== undefined || (c.bands ?? []).some((k) => k.held.some((h) => h.from === tid)); // nor does a king's raiding party lead anyone away (feudraid.ts)
   // A strike on a town is fought out a round at a time (raidclash.ts); on a road it is an escort or nothing, by the old lines.
   const garrison = road ? undefined : c.armies.find((a) => a.at === tid && a.owner === owner);
   // Stage three: the town turns out as against a nation, its own men as bands on foot beside any army, and only its works,
