@@ -120,8 +120,11 @@ export const MAX_FAVOR = 3;
  * on main 67711fd, the campaigns still undecided after 200 seasons in the answered course (9.1% and 10.4%) were close
  * ones, two or three peoples left and most ending with four fifths or more of the land the share asked: at 0.57 (a land
  * fewer on most maps) 7.0% and 8.6% were undecided, and 5.5% and 8.3% in the other course where 6.0% and 9.1% were.
+ * Then 0.55, on main fbee5c2 once the rivals eased their yoke with Farmland only (rivalyoke.ts): at 0.57 the answered
+ * course left 8.9% undecided and 1.8% in ruin, the two together 10.7 where under 10 is wanted; at 0.55, 6.5% and 1.6%,
+ * and 6.0% undecided in the other course where 8.1% was. At 0.53 claimants rose too seldom (1.3 every 100 campaigns).
  */
-export const DOMINION_SHARE = 0.57;
+export const DOMINION_SHARE = 0.55;
 
 export const DOMINION_TURNS = 10;
 
