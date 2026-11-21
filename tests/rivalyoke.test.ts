@@ -31,18 +31,14 @@ describe('a rival builds for a resentful town', () => {
     expect(resentful(c, 1)).toEqual([]);
   });
 
-  it('Farmland first; then a devout people a Church; any other people nothing more', () => {
+  it('Farmland, and nothing more once it stands, for any people', () => {
     const { c, t } = taken();
-    c.factions[1].civ = 'dawn'; // the devout
-    expect(easeWith(c, 1, t.id)).toBe('farm');
-    t.buildings.push('farm');
-    expect(easeWith(c, 1, t.id)).toBe('church');
-    t.buildings.push('church');
-    expect(easeWith(c, 1, t.id)).toBeNull();
-    c.factions[1].civ = 'steppe'; t.buildings = []; // worldly
-    expect(easeWith(c, 1, t.id)).toBe('farm');
-    c.factions[1].civ = 'greece'; // in the middle: it builds no church it does not believe in
-    expect(easeWith(c, 1, t.id)).toBe('farm');
+    for (const civ of ['dawn', 'steppe', 'greece']) { // devout, worldly, in the middle: no Church for any
+      c.factions[1].civ = civ; t.buildings = [];
+      expect(easeWith(c, 1, t.id)).toBe('farm');
+      t.buildings.push('farm');
+      expect(easeWith(c, 1, t.id)).toBeNull();
+    }
   });
 
   it('builds it, when it can spare the price; not without, and not for the player', () => {
