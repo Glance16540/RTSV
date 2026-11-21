@@ -4,7 +4,7 @@ import type { Building, Game } from '../sim/game';
 import { casesBefore } from '../sim/hallfield';
 
 const esc = (s: string): string => s.replace(/[<>&"]/g, '');
-const ICON = { thief: '⛓️', plotter: '🗡️', petition: '📜' } as const;
+const ICON = { thief: '⛓️', killer: '⚖️', plotter: '🗡️', petition: '📜' } as const;
 
 /** The Hall's panel: each case waiting, with the answers as buttons (data-rule="case|answer"). */
 export function hallPanelHtml(game: Game, b: Building, pid: number): string {
