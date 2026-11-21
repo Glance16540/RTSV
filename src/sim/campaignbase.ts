@@ -43,7 +43,12 @@ export const COMPANIES: Record<string, CompanyDef> = { ...PLAIN, ...uniqueCompan
 /** The plain kind a company fights as: itself, or for a people's own soldiers the kind they are of. */
 export const familyOf = (kind: string): string => COMPANIES[kind]?.base ?? kind;
 /** How many of these companies are of the family this kind beats (`BEATS`). */
-export const beatenIn = (kind: string, foe: Record<string, number>): number => Object.entries(foe).reduce((n, [k, v]) => n + (familyOf(k) === BEATS[familyOf(kind)] ? v : 0), 0);
+export function beatenIn(kind: string, foe: Record<string, number>): number {
+  const beaten = BEATS[familyOf(kind)];
+  let n = 0;
+  for (const k in foe) if (familyOf(k) === beaten) n += foe[k]; // in the record's own order, as before
+  return n;
+}
 /** A soldier of this kind of company, as the map names one who made a name. */
 export const soldierWord = (kind: string): string => (COMPANIES[kind]?.civ ? COMPANIES[kind].name : familyOf(kind) === 'cavalry' ? 'Rider' : familyOf(kind) === 'archers' ? 'Archer' : 'Soldier');
 

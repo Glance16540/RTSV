@@ -63,7 +63,12 @@ export const childSeasons = (left: number, grow: number): number => Math.max(0, 
 // so that a visit hands back the same age and a child visited every season still comes of age.
 export const leftFor = (seasons: number, grow: number): number => Math.max(grow / (4 * CHILD_SEASONS), grow * (1 - seasons / CHILD_SEASONS));
 
-const clean = (a: unknown, lo: number, hi: number): number[] => (Array.isArray(a) ? a : []).filter((x) => Number.isFinite(x)).map((x) => Math.max(lo, Math.min(hi, Math.round(Number(x))))).slice(0, 200);
+function clean(a: unknown, lo: number, hi: number): number[] {
+  const out: number[] = [];
+  if (!Array.isArray(a)) return out;
+  for (let i = 0; i < a.length && out.length < 200; i++) { const x = a[i]; if (Number.isFinite(x)) out.push(Math.max(lo, Math.min(hi, Math.round(x)))); } // the first two hundred that are numbers
+  return out;
+}
 /** Make safe a record of ages handed back from a battle. Nothing if it is not one. */
 export function cleanAges(x: unknown): Ages | undefined {
   if (!x || typeof x !== 'object') return undefined;

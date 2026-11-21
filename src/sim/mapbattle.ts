@@ -32,7 +32,7 @@
  */
 import type { Army, Campaign, Pending } from './campaign';
 import { seatLeader } from './seatedleader';
-import { BEATS, COMPANIES, FAITH, MAX_ARMY, armyAt, armySize, beatenIn, familyOf, rankWith, strengthVs, virtueOf } from './campaignbase';
+import { BEATS, COMPANIES, FAITH, MAX_ARMY, armyAt, armySize, familyOf, rankWith, strengthVs, virtueOf } from './campaignbase';
 import { creedOf } from './creed';
 import { faithAt } from './townfaith';
 import { wallsEdge } from './sieges';
@@ -107,6 +107,14 @@ export interface Outcome {
 }
 
 const KINDS = Object.keys(COMPANIES);
+/** For each kind, the kinds it beats and the kinds that beat it, in KINDS' own order (worked out once: the companies are fixed). */
+const BEATEN: Record<string, string[]> = {}, BEATERS: Record<string, string[]> = {};
+for (const k of KINDS) {
+  BEATEN[k] = KINDS.filter((x) => familyOf(x) === BEATS[familyOf(k)]);
+  BEATERS[k] = KINDS.filter((x) => BEATS[familyOf(x)] === familyOf(k));
+}
+/** The companies of a line's record that these kinds have, summed in KINDS' order. */
+function sumOf(hp: Record<string, number>, kinds: string[]): number { let n = 0; for (let i = 0; i < kinds.length; i++) n += hp[kinds[i]]; return n; }
 const count = (u: Record<string, number>): number => KINDS.reduce((n, k) => n + Math.max(0, u[k] ?? 0), 0);
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
@@ -132,9 +140,9 @@ function line(f: Force): Line {
 }
 /** What a side strikes with this round: each kind harder against the kind it beats, by that kind's share of the companies facing it. */
 function strike(me: Line, foe: Line): number {
-  const facing = KINDS.reduce((n, k) => n + foe.hp[k], 0);
+  const facing = sumOf(foe.hp, KINDS);
   let s = 0;
-  for (const k of KINDS) s += me.hp[k] * COMPANIES[k].str * (1 + (facing > 0 ? (CLASH.counter * beatenIn(k, foe.hp)) / facing : 0)); // a people's own company beats what its plain kind beats (uniquecompany.ts)
+  for (const k of KINDS) s += me.hp[k] * COMPANIES[k].str * (1 + (facing > 0 ? (CLASH.counter * sumOf(foe.hp, BEATEN[k])) / facing : 0)); // a people's own company beats what its plain kind beats (uniquecompany.ts)
   return s * me.scale + me.works;
 }
 /** What lands on a side: on its works and its companies by their weight, and more on a kind the other side beats. */
@@ -143,8 +151,8 @@ function suffer(me: Line, foe: Line, landed: number): void {
   if (all <= 0 || landed <= 0) return;
   const onWorks = Math.min(me.works, (landed * me.works) / all);
   me.works -= onWorks;
-  const facing = KINDS.reduce((n, k) => n + foe.hp[k], 0);
-  const beaters = (k: string): number => (facing > 0 ? KINDS.filter((x) => BEATS[familyOf(x)] === familyOf(k)).reduce((n, x) => n + foe.hp[x], 0) / facing : 0);
+  const facing = sumOf(foe.hp, KINDS);
+  const beaters = (k: string): number => (facing > 0 ? sumOf(foe.hp, BEATERS[k]) / facing : 0);
   const open: Record<string, number> = {};
   let sum = 0;
   for (const k of KINDS) { open[k] = me.hp[k] * COMPANIES[k].str * (1 + CLASH.exposed * beaters(k)); sum += open[k]; }
