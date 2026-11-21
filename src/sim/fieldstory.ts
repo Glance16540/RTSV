@@ -18,12 +18,12 @@ export interface StoryPerson { name: string; family: string; gender: 'm' | 'f'; 
 /** A story as it comes into the field. `culprit`: a killer's, which is not for showing; `robbed`: how often each house was. */
 export interface FieldStory { id: number; kind: 'thief' | 'killer'; people: StoryPerson[]; robbed: number[]; culprit: number; cleared: number[]; watch?: boolean }
 /** What came of it on the field, for the map. */
-export interface FieldStoryOut { id: number; caught?: boolean; cleared: number[] }
+export interface FieldStoryOut { id: number; caught?: boolean; cleared: number[]; /** One of a killer's suspects seized by a soldier (fieldaccuse.ts). */ seized?: number }
 
 declare module './game' {
   interface Player {
     /** A story afoot in the town, as it stands on the field (fieldstory.ts). */
-    story?: FieldStory & { laid?: boolean; guarded?: Record<number, number>; caught?: boolean; asked?: number[]; out?: number[] };
+    story?: FieldStory & { laid?: boolean; guarded?: Record<number, number>; caught?: boolean; asked?: number[]; out?: number[]; /** One of a killer's suspects seized by a soldier (fieldaccuse.ts). */ seized?: number };
   }
   interface Building {
     /** The household robbed by the thief, whose house (or goods) this is (fieldstory.ts). */
@@ -119,6 +119,7 @@ export function questionBar(g: Game, owner: number, u: Unit | undefined): string
   const s = g.players[owner]?.story;
   if (!s || s.kind !== 'killer' || !u || u.owner !== owner || u.dead || u.suspect === undefined) return 'Nobody here is spoken of.';
   if (s.cleared.includes(u.suspect) || (s.out ?? []).includes(u.suspect)) return `${u.name} is spoken of no longer.`;
+  if (s.seized === s.culprit) return 'The killer is seized and held for your judgement.'; // fieldaccuse.ts
   if ((s.asked ?? []).includes(u.suspect)) return `${u.name} has been questioned already.`;
   if ((s.asked ?? []).length >= FIELD_STORY.questions) return 'You have questioned one of them this visit. The others must wait until you come again.';
   return '';
@@ -141,5 +142,5 @@ export function cmdQuestion(g: Game, owner: number, uid: number): boolean {
 export function storyOut(g: Game, owner: number): FieldStoryOut | undefined {
   const s = g.players[owner]?.story;
   if (!s) return undefined;
-  return { id: s.id, ...(s.caught ? { caught: true } : {}), cleared: [...(s.out ?? [])] };
+  return { id: s.id, ...(s.caught ? { caught: true } : {}), cleared: [...(s.out ?? [])], ...(s.seized !== undefined ? { seized: s.seized } : {}) };
 }

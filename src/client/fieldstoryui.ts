@@ -2,6 +2,7 @@
 // those spoken of named, and the Question command for one of them. Kept small: the rules are all in the sim.
 import type { Building, Game, Unit } from '../sim/game';
 import { cmdQuestion, questionBar } from '../sim/fieldstory';
+import { accuseBar, cmdAccuse } from '../sim/fieldaccuse';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => `&#${ch.charCodeAt(0)};`);
 
@@ -17,6 +18,7 @@ export function robbedLine(g: Game, b: Building): string {
 export function suspectLine(g: Game, u: Unit): string {
   const s = g.players[u.owner]?.story;
   if (!s || u.suspect === undefined) return '';
+  if (s.seized === u.suspect) return s.seized === s.culprit ? '<div class="warn">⛓️ Seized, and has confessed: held for your judgement</div>' : '<div class="good">⚖️ Seized and let go: spoken of no longer</div>'; // fieldaccuse.ts
   const done = s.cleared.includes(u.suspect) || (s.out ?? []).includes(u.suspect);
   return done ? '<div class="good">⚖️ Spoken of no longer</div>' : `<div class="warn">⚖️ Spoken of in the killing, as the ${esc(s.people[u.suspect]?.trade ?? 'villager')}</div>`;
 }
@@ -27,6 +29,14 @@ export function questionCommand(g: Game, pid: number, units: Unit[]): { id: stri
   if (!u || u.suspect === undefined || !g.players[pid]?.story) return null;
   const bar = questionBar(g, pid, u);
   return { id: 'question', icon: '⚖️', name: 'Question', desc: `Ask ${esc(u.name)} where they were that night. One who did no wrong may be cleared by it. You may question one of those spoken of each time you come to the town.`, ...(bar ? { locked: bar } : {}), act: () => { cmdQuestion(g, pid, u.id); } };
+}
+
+/** The Seize command for one villager a story speaks of, or null (fieldaccuse.ts). */
+export function accuseCommand(g: Game, pid: number, units: Unit[]): { id: string; icon: string; name: string; desc: string; locked?: string; act: () => void } | null {
+  const u = units.length === 1 ? units[0] : undefined;
+  if (!u || u.suspect === undefined || g.players[pid]?.story?.kind !== 'killer') return null;
+  const bar = accuseBar(g, pid, u);
+  return { id: 'accuse', icon: '⛓️', name: 'Seize', desc: `Accuse ${esc(u.name)} of the killings and have a soldier beside ${u.gender === 'f' ? 'her' : 'him'} seize ${u.gender === 'f' ? 'her' : 'him'}. The guilty confess and are held for your judgement; an innocent is let go, and the town and their household remember it. One may be seized each time you come to the town.`, ...(bar ? { locked: bar } : {}), act: () => { cmdAccuse(g, pid, u.id); } };
 }
 
 /**
@@ -52,7 +62,7 @@ export function drawStoryMarks(ctx: CanvasRenderingContext2D, g: Game, pid: numb
       mark('🗝️', p.x, p.y, Math.max(14, ppt * 0.55));
     }
   }
-  if (s.kind === 'killer') {
+  if (s.kind === 'killer' && s.seized !== s.culprit) { // none once the killer is seized (fieldaccuse.ts)
     for (const u of g.units) {
       if (u.owner !== pid || u.dead || u.inside || u.suspect === undefined || !seen(u)) continue;
       if (s.cleared.includes(u.suspect) || (s.out ?? []).includes(u.suspect)) continue;

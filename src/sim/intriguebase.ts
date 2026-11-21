@@ -36,6 +36,8 @@ export interface Intrigue {
   watch?: boolean; watched: number;
   /** A thief stands before the leader for judgement since this turn. */
   caught?: number;
+  /** A killer seized on the field and held for judgement (killerseized.ts): which of `people` (the guilty one), since `caught`. */
+  held?: number;
   /** A pardoned thief the lesson did not take with: the town may have another story at once. */
   again?: boolean;
   /** An innocent was hanged for it. */

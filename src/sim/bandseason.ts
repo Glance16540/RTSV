@@ -6,6 +6,7 @@ import { caravanSeason } from './bandcaravan';
 import { heraldSeason } from './raidnews';
 import { governInns } from './inn';
 import { carriedSeason } from './carriedoff';
+import { noCarrySeason } from './nocarry';
 import { bornSeason } from './bandborn';
 import type { Campaign } from './campaign';
 import { Raid, appearSeason, captivesSeason, strikeSeason } from './threats';
@@ -23,6 +24,7 @@ export function threatsOfMen(c: Campaign): Raid[] {
   bornSeason(c); // a woman held may bear a child there: a record, nothing more (bandborn.ts)
   governInns(c); // a town with highwaymen on its road begins an Inn (inn.ts)
   carriedSeason(c); // those a nation led away become its people, unless they were got back (carriedoff.ts)
+  noCarrySeason(c); // and where a leader has forbidden the taking, the lords take it as they are (nocarry.ts)
   huntBands(c, out); // the computer's peoples go after the bands in their lands
   roamSeason(c, out); // bands flee, roam, settle and break up
   const raids = [...strikeSeason(c, out), ...hordeSeason(c, out)];

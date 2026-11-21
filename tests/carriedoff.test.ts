@@ -20,16 +20,19 @@ const world = (virtue: number, seed = 5): { c: Campaign; town: number; hold: num
 const seasons = (c: Campaign, k: number): { born: number; taken: number } => { const sum = { born: 0, taken: 0 }; for (let i = 0; i < k; i++) { c.turn++; const r = carriedSeason(c); sum.born += r.born; sum.taken += r.taken; } return sum; };
 
 describe('people carried off by a nation', () => {
-  it('only a worldly or decadent rival does it, and never the player', () => {
+  it('only a worldly or decadent people does it: a rival, and by the same rule the player (tests/playercarries.test.ts)', () => {
     for (const [virtue, does] of [[90, false], [40, false], [0, false], [-40, true], [-90, true]] as [number, boolean][]) {
       const { c, town, hold, rival } = world(virtue);
       expect(carriesOff(c, rival)).toBe(does);
       expect(!!townFell(c, town, 0, rival, hold)).toBe(does);
     }
+    // The player's people by the same rule since 20 November 2026 (it was: never the player): not at an ordinary standing, and at a depraved one.
     const me = world(-90);
-    me.c.factions[0].virtue = -90;
+    me.c.factions[0].virtue = 0;
     expect(carriesOff(me.c, 0)).toBe(false);
     expect(townFell(me.c, me.hold, me.rival, 0, me.town)).toBeNull();
+    me.c.factions[0].virtue = -90;
+    expect(carriesOff(me.c, 0)).toBe(true);
     const tribe = world(-90);
     expect(townFell(tribe.c, tribe.town, -1, tribe.rival, tribe.hold)).toBeNull(); // a nation's town only
   });

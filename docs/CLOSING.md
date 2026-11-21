@@ -24,7 +24,7 @@ modules or a new system, and **large** a new system that touches the field and t
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A man at war is still of his house | On the map a house is kept by name only while it has a man away, one fallen in the last forty seasons, or deeds to its name. An ordinary house with everyone home is a count again, so a man can come home to a house the record has forgotten (`warhouse.ts`). | medium | Unity: keeping every house by name on the map is a change to the town record's shape, best made once in the new save format. |
+| A man at war is still of his house | **Done for the houses that sent men** (`src/sim/housekeep.ts`): a house once named is kept by name with everyone home while the town has a home for it (one to each woman), so a man comes home to his own. The cost to the record, measured on two twenty-year campaigns: some 120 to 175 bytes a house, a few hundred houses more at most, 40 to 60 thousand bytes on saves of 70 to 230 thousand; old saves load as they are. Still a count: a house that never sent a man, between sittings (`roofsmap.ts` keeps the last sitting's). | medium | Built as far as the record allows without naming everyone. The rest goes with naming everyone (No auto-resolve). |
 | A town taken | Resentment costs no harvest, gold or levy. Each was tried and dropped, and it acts only through unrest, the governor's pace, drift and the walls. | small | Drop: tried three ways and dropped on measurement. Only the owner would reopen it. |
 | Claimants to the throne | The lord, the band and the grown claimant are names and a line on the land's panel, not figures on the field. The player's own succession is asked of the player before a claimant can take the throne. | medium | Unity: the claimant as a figure is field work (a person to meet, fight or judge in a town). The succession order is the owner's ruling as it stands. |
 
@@ -32,7 +32,7 @@ modules or a new system, and **large** a new system that touches the field and t
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Systems deep enough that stories fall out of them | Story threads are one step long: an answer leads to one later tale and stops, and a world event, a land lost or a leader's fall starts none. No campaign has an ending of its own beyond the summing-up page (board, Story and events). | medium | Unity: this is narrative design across the systems, and the systems it would read are all here to port. |
+| Systems deep enough that stories fall out of them | **Done (21 November 2026).** Threads of tales run three to five tellings, every answer picking the road, and the chronicle tells each whole when it ends (`threadtales.ts`, `talethreads.ts`); a land lost, a leader's fall, a plague, a royal marriage, a hungry winter and a claimant's rising each begin a thread of their own (`threadstarts.ts`, `worldtales.ts`); and the last page ends the campaign with what became of every thread, person of note and house (`epilogues.ts`). Still open: rivals' own threads, and the stories inside the story (`intrigue.ts`) do not yet lead into the tales. | medium | Done; the rest is narrative design for Unity, and every system it reads is here to port. |
 
 ## Time, and age belonging to the nation
 
@@ -75,7 +75,7 @@ Built as written (`muster.ts`, `birthonly.ts`; a woman fights at `WOMAN_ATK` 0.4
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| What he earns and wins counts to the house's output | Men with the armies are not counted in a town's output. War counts by foes felled only: veterancy beyond kills and loot are not counted to a house. | small | Unity: it is the house's output figure, which `notableweight.ts` has. Port and extend. |
+| What he earns and wins counts to the house's output | **Done** (`src/sim/warspoils.ts`): the spoils of a town his army took and his share in each town taken or attack thrown back count to his house as goods carried in, on its record and its known mother's. Still: men with the armies are not counted in a town's output while away. | small | Built. |
 | He is not lost until he dies or is taken | A man taken captive is not handled apart from one who dies, because slavers take villagers, not soldiers. | small | Drop: nothing takes a soldier captive today. |
 | The case where his house falls while he is away | Settled without the owner's word, as asked: the house's record falls with it, he keeps his name, and he comes home unhoused. | none | Confirmed by the owner (19 November 2026): kept as built. |
 
@@ -101,22 +101,22 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | --- | --- | --- | --- |
 | Slavers gain output from the children born in captivity | On the map a band holds captives but has no output to gain, so children born there do nothing for it, and nobody is paid for captives a band sells on. | small | Drop on the map: a band is not a town. It is built in a town (`captivity.ts`). |
 | Got back for a time | A captive in the marauders' camp cannot be let out at the gate as one in a Work Camp can; the camp must be burnt. | small | Unity: field work. |
-| The player's nation, if it assimilates | The player's nation never carries people off, whatever its creed: there is no order for it. | medium | Unity, if the owner wants it. DESIGN.md names only rival nations, so Drop is also defensible. |
+| The player's nation, if it assimilates | **Built here after all (20 November 2026, `carriedoff.ts`), by the rivals' rule reused:** at a Dissolute or Depraved standing the player's nation leads away a share of the grown people of a town it takes, held four seasons and then its own; never a child, nothing shown, told plainly. The player may forbid it by decree (`nocarry.ts`, the owner's word of 21 November 2026): a law of the nation, free to give, standing until lifted, resented a little by the worldly and martial lords of a people who would have carried off. | small | Done. |
 | What is shown of it | Escapes and risings are told and not drawn. The captives' daily round has not been watched. | medium | Unity: drawing. The content rules port as written. |
 
 ## Acts of God
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Famine, plague, fire and the like | No flood. Rivers run on the map and are laid on a town's ground, but nothing lets ground go under water. A failed harvest strikes only fields, never a town that lives by hunting, fishing or herds. | medium | Unity: a flood is terrain work. Port `acts.ts` as it is. |
+| Famine, plague, fire and the like | **Done on the map and for the hunters** (`src/sim/floods.ts`, `src/sim/leanwild.ts`): a river land floods by its standing (food spoilt, the town worn, struck hard its farmland washed away, nobody drowned, halved by the Flood Calendar); and a town with no farm has a lean season by a failed harvest's chance, its hunters and fishers at half. Still: inside a town the ground never goes under water. | medium | Built on the map. Unity: water on the field. |
 | By creed, sparing nobody | **Done (19 November 2026).** A Prophet's fire, blight and earthquake go by the creed of those they fall on, as his plague does (`wrath.ts`, `game.ts`); fever in the camp and a hard season go by the town's own standing (`chancecreed.ts`, through `wrathAt`). An ordinary people is struck exactly as before. | small | Done. |
-| They carry over into a town | A battle in a land with plague on the map begins with nobody sick, and one after a failed harvest with nobody hungry. | small | Unity: the field's start-up reads the map's state, and that start-up is being rebuilt. |
+| They carry over into a town | **Done** (`src/sim/ailing.ts`, through the setup bag): a battle or visit in a land with plague begins with a few of the town sick, and one in a hungry town or after a failed harvest that season begins hungry. | small | Built. |
 
 ## Threats of men never stop
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| There is always something to fight | Rival peoples hunt a band only with an army already beside it, and never march to one, even to get their own back before the time runs out. Rival leaders ignore the marauders on the map. | medium | Unity: a rival's plan to march for a purpose (a band, a captive, a road) is the larger missing piece of the rivals' mind (see Rivals live by the same rules). |
+| There is always something to fight | **Built here after all (20 November 2026, `rivalhunt.ts`).** A rival marches through its own lands for a band that holds its people, if it can be there in time, or that sits in its land; and it marches first on a camp of the marauders that holds its people or has struck its towns. Still missing: it never crosses another people's land or the wild to reach a band, and plans no march of several lands to a marauders' camp. | medium | Done as far as its own lands. The rest with the rival's mind, in Unity. |
 | Bands choose marks and strike | Bands seldom live long enough to roam, and long marches are rare: on maps this size a softer mark is nearly always one land away. The far wilds' hosts do march. | small | Unity: it depends on map size. Port as is. |
 
 ## Drift, decrees, and the tavern as a town falls
@@ -176,7 +176,7 @@ and the church built in battle under "Towns persist".
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| He can call armies to meet him and move with them as one | Calling the armies calls all of them, strips every garrison on the way, and will not cross land not their own. A leader travels a land a turn with no cost or risk. | medium | Unity: this is the leader's movement on the new map. |
+| He can call armies to meet him and move with them as one | **Built here after all (20 November 2026, `courtcall.ts` with `court.ts`).** The leader may call armies by name; with none named, an army holding a town that needs it stays; a called army passes a garrison without joining it and crosses a sworn ally's land; and a leader travelling alone by a road highwaymen sit on may be set upon, turned back and wounded. Still missing: a control on the map for naming armies, and a warning of the road's risk before the journey. Travel still costs nothing. | medium | Done in the rules. The two controls are the map's, in Unity. |
 | He is in a town or with an army | **Done** (`src/sim/seatedleader.ts`): a leader holding an ungarrisoned town alone leads its defence when the battle is settled on the map, at their rank. | small | Built. |
 
 ## Grief
@@ -191,7 +191,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | The leader's household can be threatened, married off, lost or taken | A spouse cannot be married off or offered in a treaty or ransom (only a rival's threat and demand exist). Royal matches go through `royalmarriage.ts`, but not the spouse. | medium | Unity: port as is. Asked 19 November 2026, the owner had no preference, so it stays as built: the player never offers the spouse. |
 | The inner circle: a mood and a loyalty that can turn | Built. The confidant does not warn of the knife. **The war is done (19 November 2026, `feudwar.ts`):** a defied rival king may declare war as his feud begins, which ends the truce or alliance between them and bars a new truce while the feud runs. A raid on the court is not built. | small | Done for the war. Unity for the warning, which is a scene. |
 | Nobles | Built (`nobles.ts`, `nobledeal.ts`, `nobleacts.ts`, `nobleweigh.ts`, `nobletemper.ts`). Only the plot story has a plot. | none | Unity: port as is. |
-| Stories inside the story | All five are built, for the player and for rivals. They come onto the field only in a visit, not in a battle, and a killer's suspects can be questioned there but not accused or seized. | medium | Unity: field work. |
+| Stories inside the story | **Done (21 November 2026).** A killer's suspect may be accused and seized on the field, by the map's rule for an accusation: the guilty held for judgement at the Hall, an innocent let go with the town's grudge and its standing down (`fieldaccuse.ts`, `killerseized.ts`). A battle for the player's own town brings in the thief, the killer and a plot as a visit does (`battlestory.ts`). Left out of a battle: a rival ruler's envoy and a suitor at the hall, whose answers wait for the map or a visit. | medium | Done; the rest is Unity field work. |
 | Several campaigns | Built. Worlds are kept in this browser only, and a skirmish has one save. | small | Unity: saving is the engine's. |
 
 ## Meeting them face to face
@@ -205,7 +205,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Each works on the map as well as in a town | The Noble's Manor is a building only in a town. Oaths of Fealty and Pilgrimage have no meaning in a town's streets (`studiesintown.ts`, by design). | small | Unity: port as is. The map is where they act. |
-| A Fortress stands in the town as a stronghold against bands | The Fortress does not shoot and holds no soldiers of its own in a town, and no garrison is kept in it between seasons. | medium | Unity: the field's battle code is being rebuilt. Port the map's Fortress (`threats.ts`, `mapbattle.ts`) as is. |
+| A Fortress stands in the town as a stronghold against bands | **The map's side built here after all (20 November 2026, `fortkeep.ts`):** a Fortress keeps a garrison of the town's own men between seasons, and one with anyone to hold it is a stronghold a band may raid but never take. Still missing, in a town's streets: the Fortress does not shoot and holds no soldiers of its own there. Against a nation's army it is as it was (three points of defence and walls). | medium | Done on the map. The field's side with the battle code, in Unity. |
 | Feast Days and Pilgrimage | Feast Days is only a nation's study on the map: a Church in a town keeps no feast day. | small | Unity: field. |
 | A Monastery or Convent | One building for both, a Convent only in its name and its people. On the map it keeps no count of who serves in it. | small | Unity: port as is. |
 | Each people its own: one or two studies each | Fifteen nations with one study each, not one or two. | medium | Unity: fifteen more studies is design work best done once on the new engine. `ownstudies.ts` ports as the pattern. |

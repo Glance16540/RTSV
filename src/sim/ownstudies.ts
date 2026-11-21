@@ -83,6 +83,8 @@ export const buildPace = (c: Campaign, tid: number): number => (at(c, tid, 'own_
 export const roadRisk = (c: Campaign, f: number): number => (knows(c, f, 'own_caravanserai') ? OWN.caravanserai : 1);
 /** nobles.ts: how much faster this people's nobles' moods ease. */
 export const moodEase = (c: Campaign, f: number): number => (knows(c, f, 'own_bond') ? OWN.bond : 1);
+/** floods.ts: does this town's people keep the Flood Calendar, and read the river? */
+export const floodWise = (c: Campaign, tid: number): boolean => at(c, tid, 'own_flood');
 /** townfaith.ts: piety a town gains each season besides. */
 export const faithPull = (c: Campaign, tid: number): number => (at(c, tid, 'own_schools') && c.territories[tid].buildings.includes('church') ? OWN.schools : 0);
 /** country.ts: does thin country cost this town nothing? */
