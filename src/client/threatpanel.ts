@@ -7,6 +7,7 @@ import type { Portrait } from '../sim/portrait';
 import { BANDS, Band, Raid, bandsAt, defenceOf, heldFrom, raidsAt, reportText, seasonsLeft } from '../sim/threats';
 import { armiesFor } from '../sim/bandfight';
 import { raidPending } from '../sim/raidfought';
+import { fig } from './mapfigures';
 import { seasonNews } from '../sim/raidnews';
 import { portraitHtml } from './portrait';
 
@@ -74,7 +75,7 @@ export function bandPrompt(c: Campaign): { title: string; text: string; decline:
   const p = c.pending, b = (c.bands ?? []).find((x) => x.id === p?.band);
   if (!p || !b) return null;
   const held = b.held.reduce((n, h) => n + h.men.length + h.women.length, 0);
-  const odds = `Your army's strength of ${p.aStr} against ${BANDS[b.kind].name.toLowerCase()} of ${strengthOf(b.strength)}, at ${esc(c.territories[p.from].name)}. ` +
+  const odds = `Your army's strength of ${fig(p.aStr)} against ${BANDS[b.kind].name.toLowerCase()} of ${strengthOf(b.strength)}, at ${esc(c.territories[p.from].name)}. ` +
     (held ? `They hold ${plural(held, 'person', 'people')}, who go free if the band is broken. ` : '');
   if (p.ambush) return {
     title: `${b.name[0].toUpperCase() + b.name.slice(1)} fall on your army!`,
@@ -95,7 +96,7 @@ export function raidPrompt(c: Campaign): { title: string; text: string } | null 
   const t = c.territories[p.to];
   return {
     title: `${b.name[0].toUpperCase() + b.name.slice(1)} come against ${t.name}!`,
-    text: `${BANDS[b.kind].name} of ${strengthOf(b.strength)} against the town's defence of ${Math.round(p.dStr)}. Fight for the town yourself, with its own men and any army standing there, or leave it to the town, which will hold or fall by what it has. Beaten off, they are the weaker for it; if they get in they take what they can carry, and may lead people away.`,
+    text: `${BANDS[b.kind].name} of ${strengthOf(b.strength)} against the town's defence of ${fig(p.dStr)}. Fight for the town yourself, with its own men and any army standing there, or leave it to the town, which will hold or fall by what it has. Beaten off, they are the weaker for it; if they get in they take what they can carry, and may lead people away.`,
   };
 }
 
