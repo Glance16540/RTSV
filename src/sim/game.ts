@@ -26,6 +26,8 @@ import { ruleAt, seatHall } from './hallfield';
 import { markBegun, studyBuild } from './studiesintown';
 import { campBuilds, campUnhoused, campWithoutPeople } from './siegecamp';
 import { wildPace } from './leanwild';
+import { ailingIn } from './ailing';
+import type { Ailing } from './ailing';
 import { Roll, nameSoldiers } from './soldiernames';
 import { Captain, setCaptain } from './claimantcaptain';
 import { namesIn, pickName, unlikeNames } from './namesakes';
@@ -398,7 +400,7 @@ export interface PlayerSetup {
   /** `buildings`: works the side must start with, raised if they do not already stand in its `town`. */
   /** `town`: buildings left standing from an earlier battle on this ground, each as [type, cx, cy]. */
   /** `people`, `stores`: the town's own people and stores (township.ts), in place of four founders and the usual stock. */
-  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** The leader of the claimant's rising the town stands in (claimantcaptain.ts). */ captain?: Captain; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][]; /** The dilemmas the town has been asked in the round now going (askedhere.ts). */ asked?: string[] };
+  bonus?: { /** So many of the town's own men take up arms as the battle begins (tribes.ts). */ warriors?: number; units?: Record<string, number>; res?: number; age?: number; buildings?: string[]; atk?: number; armed?: boolean; town?: Standing[]; /** A town met in person for the first time, on record only coarsely: laid around the hall (firstlay.ts). */ coarse?: Standing[]; /** The town's households: who lives where, its couples, its men away (roofs.ts). */ roofs?: RoofsIn; /** The shares the town's people work by on the map: they are set to them as the sitting begins (atwork.ts). */ work?: Partial<Stores>; people?: PeopleIn; stores?: Partial<Stores>; /** The town's own men with the army standing in it, who may go home while the player is there (furlough.ts). */ furlough?: Furlough; /** The nation's studies (studies.ts): known in the town from the start. */ studies?: string[]; /** A story afoot in the town (fieldstory.ts). */ story?: FieldStory; /** The army's roll, to name its soldiers (soldiernames.ts). */ roll?: Roll; /** The leader of the claimant's rising the town stands in (claimantcaptain.ts). */ captain?: Captain; /** A story of the leader's house, where the court is kept (courtfield.ts). */ court?: FieldCourt; /** Roads laid by hand in the town before (handroads.ts). */ roads?: [number, number][]; /** The dilemmas the town has been asked in the round now going (askedhere.ts). */ asked?: string[]; /** The map's plague and hunger in the town (ailing.ts). */ ailing?: Ailing };
   /**
    * Which corner of the map this player starts in, 0 to 3. When any player names one the land is laid out for
    * four, whoever is there, so the same ground is the same every time it is fought over.
@@ -638,6 +640,7 @@ export class Game {
         if (s.bonus.people?.old && !field) seatOld(this, i, s.bonus.people.old); // a taken town's old people, by name and the rest by lot (oldmarks.ts)
         if (s.bonus.people?.children && !field) cradledOf(this, i, s.bonus.people);
         if (s.bonus.people?.orphans?.length && !field) seatOrphans(this, i, s.bonus.people.orphans); // the map's orphans, the same children in the town (orphantown.ts)
+        if (s.bonus.ailing && !field) ailingIn(this, i, s.bonus.ailing); // the map's plague and hunger come with the town (ailing.ts)
         if (s.bonus.work && !field && !s.isAI) setToWork(this, i, s.bonus.work, st); // the player's town is at work from its first second, by its shares (atwork.ts)
         let k = 0;
         const laid = new Map<string, Unit[]>();
