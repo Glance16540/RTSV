@@ -322,7 +322,7 @@ by name.
 | `peoplenames` | 111 | Each people names its own: forty given names a sex and thirty houses for each of the fifteen peoples, and the band folk's. | none | peoplenames.test.ts | not yet |
 | `nationcolours` | 26 | The colour each people wears: its own, unless another in the same world wears one too like it, when it takes a spare colour clear of all. | none | nationcolours.test.ts | not yet |
 | `nextage` | 30 | What the next age opens: the works raised on the map and the studies a nation may learn in it, told beside the age button so that saving for it is a choice the player can see. | campaign (types only), campaignbase, data | nextage.test.ts | not yet |
-| `nobles` | 253 | Nobles (docs/DESIGN.md, "Relationships"): the inner circle, each town's famous captain and matron, and a lord for a town of a size, each with a leaning and a mood; a decree pleases or angers them, and an angry noble's town works slacker, drifts readier and keeps a thinner watch while the leader is away. | campaign (types only), court, decrees (types only), hall, kin, manor, oaths, ownstudies, peoplenames, township | nobles.test.ts | not yet |
+| `nobles` | 259 | Nobles (docs/DESIGN.md, "Relationships"): the inner circle, each town's famous captain and matron, and a lord for a town of a size, each with a leaning and a mood; a decree pleases or angers them, and an angry noble's town works slacker, drifts readier and keeps a thinner watch while the leader is away. | campaign (types only), court, decrees (types only), hall, kin, manor, oaths, ownstudies, peoplenames, township | nobles.test.ts | not yet |
 | `nocarry` | 70 | The decree that forbids carrying people off: a law of the whole nation, given once and standing until lifted, under which its armies lead nobody away from a town they take (carriedoff reads `Faction.noCarry`). Over a people whose standing would have them carry off, the worldly and martial lords resent it a little each season and the pious and kindly warm to it. | campaign (types only), carriedoff, creed, nobles | nocarry.test.ts | not yet |
 | `nobledeal` | 165 | The leader's dealings with a noble: summon, gift, post, marriage into the house, stripping of lands; each costs, moves the mood and lasts. | campaign (types only), dynasty, nobles, nobletemper, prices, township | nobledeal.test.ts | not yet |
 | `nobleacts` | 122 | Nobles who act: a content lord sends men to a struck town or gold for a war, an angry one withholds his due or joins a plot afoot. | ageing, campaign (types only), nobles, rivalrule, township | nobleacts.test.ts | not yet |
@@ -474,7 +474,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-308 modules, 38,391 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+308 modules, 38,397 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -489,7 +489,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 8 | 16 | 1,238 | `places` (58; 7), `bandmarch` (145; 5), `tribes` (217; 5), `reckon` (26; 4), `ailing` (53; 3), `larderwatch` (61; 2), `leanwild` (48; 2), `aicare` (56; 1), `downedmap` (64; 1), `fortkeep` (52; 1), `grain` (78; 1), `siegeretreat` (63; 1), `threadstarts` (101; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
 | 9 | 4 | 478 | `townfaith` (126; 27), `militia` (43; 4), `calamity` (204; 3), `talethreads` (105; 2) |
 | 10 | 10 | 878 | `kin` (256; 9), `seasonfolk` (121; 5), `conquered` (126; 4), `rivalworld` (61; 3), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1), `lessons` (68) |
-| 11 | 4 | 783 | `nobles` (253; 19), `dynasty` (232; 13), `portrait` (257; 1), `rivalyoke` (41; 1) |
+| 11 | 4 | 789 | `nobles` (259; 19), `dynasty` (232; 13), `portrait` (257; 1), `rivalyoke` (41; 1) |
 | 12 | 6 | 1,032 | `mapbattle` (386; 4), `nobletemper` (110; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `unrest` (128; 1), `epilogues` (144) |
 | 13 | 2 | 231 | `raidclash` (145; 3), `tradedeal` (86; 2) |
 | 14 | 1 | 132 | `roadclash` (132; 4) |
