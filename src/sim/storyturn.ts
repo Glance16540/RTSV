@@ -1,6 +1,6 @@
 // The story's turn (docs/PORTING.md: the hubs keep to an import and a call or two). The rules that use story.ts's
 // words and numbers: what befalls the whole world, the tales put before the player and how an answer is carried
-// out, and how each rival people answers its own. Moved out of campaign.ts as it stood, with nothing changed.
+// out; each rival people's own tales are rivaltales.ts. Moved out of campaign.ts as it stood, with nothing changed.
 //
 // campaign.ts calls `storyTurn(c)` once a season. Whoever puts a tale to the player uses `taleNow`, `taleText`,
 // `canAnswer` and `answerTale`.
@@ -12,10 +12,9 @@ import type { Campaign } from './campaign';
 import { shiftVirtue } from './townfaith';
 import { MAX_ARMY, MAX_FAVOR, armyAt, armySize, casualties, faithOf, luck, tell } from './campaignbase';
 import { placeAt, placesOf } from './places';
-import { LEANING } from './creed';
 import { canPayFor, payFor } from './prices';
-import { Answer, COMET_VIRTUE, TALES, TALE_EVERY, TALE_FROM, TALE_RIVAL, TALE_SPREAD, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
-import { leaningWith } from './temper';
+import { Answer, COMET_VIRTUE, TALES, TALE_EVERY, TALE_FROM, TALE_SPREAD, Tale, TaleChoice, WORLD_CHANCE, WORLD_EVENTS, WORLD_FROM, WORLD_REST, WorldKind } from './story';
+import { rivalTales } from './rivaltales';
 import { tribeArms } from './tribes';
 import { gainAt } from './stores';
 import { MEN, levyFrom, sparedMen } from './armytown'; // men of a real town (armytown.ts)
@@ -109,10 +108,7 @@ export function storyTurn(c: Campaign): void {
   }
   // A tale for the player, and each rival answers one of its own as its people lean.
   if (!taleDueNow(c)) return;
-  c.factions.forEach((f) => {
-    if (!f.alive || !f.isAI) return;
-    shiftVirtue(c, f.id, luck(c, 80 + f.id) < leaningWith(f.civ, LEANING[f.civ] ?? 0.5) ? TALE_RIVAL : -TALE_RIVAL);
-  });
+  rivalTales(c); // each rival is brought a tale of its own, and answers it as its people lean (rivaltales.ts)
   const mine = c.territories.filter((t) => t.owner === 0);
   if (!mine.length || c.phase === 'over') return;
   const rivals = c.factions.filter((f) => f.alive && f.id > 0);
