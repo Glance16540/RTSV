@@ -12,7 +12,7 @@
 //   - Passed over (a captain raised, a stranger hired, one raised on the field instead): the peace is broken, and
 //     where it is the player's throne the other house presses the claim, a war of succession: for SUCCESSION.war seasons
 //     it marches on the player at worse odds, as a people refused does (campaign.ts `angry`).
-// Rivals settle their own succession by the same order (dynasty.ts autoSucceed), so a rival never passes over a
+// Rivals settle their own succession by the same order (succession.ts chooseSuccessor), so a rival never passes over a
 // claimant who could rule. A rival whose throne a child of the player's house takes is at peace with the player for it.
 import type { Campaign } from './campaign';
 import type { Pact } from './pacts';
