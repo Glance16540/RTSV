@@ -1,0 +1,10 @@
+{
+ "course": "ignore",
+ "player": "computer",
+ "first": 17,
+ "campaigns": 16,
+ "claimants": {
+  "risen": 0,
+  "noble": 0
+ }
+}
