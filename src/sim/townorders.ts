@@ -19,7 +19,7 @@ import type { Stores } from './township';
 export type Focus = 'food' | 'walls' | 'faith' | 'trade' | 'arms' | 'rule';
 export type KeepLevel = 'little' | 'usual' | 'much';
 export type Leave = 'both' | 'families' | 'settlers' | 'none';
-export interface Standing { first?: Focus; never?: string[]; keep?: KeepLevel; leave?: Leave; /** He may learn the studies taught in the town (governworks.ts). */ learn?: boolean }
+export interface Standing { first?: Focus; never?: string[]; keep?: KeepLevel; leave?: Leave; /** He may learn the studies taught in the town (governworks.ts). */ learn?: boolean; /** The army standing in the town at which it stops training, in companies (townmuster.ts; DRILL.most if not set). */ drillStop?: number }
 
 declare module './campaign' {
   interface Territory {
@@ -45,6 +45,11 @@ export const LEAVE_WORDS: Record<Leave, string> = { both: 'families may move on 
 /** What a governor may be told not to build: what he raises himself. */
 export const NEVER_CHOICES = ['farm', 'house', 'fortress', 'mill', 'well', 'infirmary', 'granary', 'church', 'barracks', 'hall', 'manor', 'monastery'];
 
+/** The most companies a town may be told to train up to: a full army (campaignbase.ts MAX_ARMY). */
+export const DRILL_MOST_ARMY = 12;
+/** Where a town may be told to stop training: the army standing in it, in companies. */
+export const DRILL_STOPS = [2, 4, 6, 8, 12];
+
 /** A town's standing orders, or none. */
 export const standingOf = (t: Territory | undefined): Standing => t?.standing ?? {};
 /** Where its people work by what comes first, where the player has not set its work: or null. */
@@ -62,7 +67,7 @@ export function mayLeave(c: Campaign, tid: number, who: 'family' | 'settlers'): 
 }
 
 /** Give a town's governor a standing order: only the player's own towns. Returns '' when given, or why not. */
-export function setStanding(c: Campaign, tid: number, order: Partial<{ first: Focus | null; never: string[]; keep: KeepLevel; leave: Leave; learn: boolean }>): string {
+export function setStanding(c: Campaign, tid: number, order: Partial<{ first: Focus | null; never: string[]; keep: KeepLevel; leave: Leave; learn: boolean; drillStop: number | null }>): string {
   const t = c.territories[tid];
   if (!t || t.owner !== 0 || t.horde) return 'Only a town of your own.';
   const s: Standing = { ...standingOf(t) };
@@ -71,6 +76,7 @@ export function setStanding(c: Campaign, tid: number, order: Partial<{ first: Fo
   if (order.keep !== undefined) { if (!(order.keep in KEEP_TIMES)) return 'No such order.'; s.keep = order.keep; }
   if (order.leave !== undefined) { if (!(order.leave in LEAVE_WORDS)) return 'No such order.'; s.leave = order.leave; }
   if (order.learn !== undefined) { if (order.learn) s.learn = true; else delete s.learn; }
+  if (order.drillStop !== undefined) { if (order.drillStop === null) delete s.drillStop; else if (Number.isInteger(order.drillStop) && order.drillStop >= 1 && order.drillStop <= DRILL_MOST_ARMY) s.drillStop = order.drillStop; else return 'No such order.'; }
   if (!s.never?.length) delete s.never;
   if (s.keep === 'usual') delete s.keep;
   if (s.leave === 'both') delete s.leave;
@@ -88,6 +94,7 @@ export function standingText(t: Territory, names: (type: string) => string): str
     s.keep ? `to keep ${KEEP_WORDS[s.keep]}` : '',
     s.leave ? LEAVE_WORDS[s.leave] : '',
     s.learn ? 'to learn the studies taught in the town when it has the means' : '',
+    s.drillStop !== undefined ? `to train until the army in the town is ${s.drillStop} companies strong` : '', // the "Train up to" order, said too (a town with only it said nothing)
   ].filter(Boolean);
   return `The governor's standing orders: ${parts.join('; ')}.`;
 }

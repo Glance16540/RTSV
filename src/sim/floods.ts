@@ -13,7 +13,7 @@
 import type { Campaign } from './campaign';
 import { ACTS, wrathAt } from './acts';
 import { weatherAt } from './campaignbase';
-import { floodWise } from './ownstudies';
+import { OWN, dykesKept, floodWise } from './ownstudies';
 import { folkOf } from './township';
 
 export const FLOOD = {
@@ -52,11 +52,11 @@ const draw = (c: Campaign, tid: number, salt: number): number => {
 
 /** The flood falls on a town: what it spoils and carries away. `w` is the town's standing's measure (wrathAt). */
 export function flood(c: Campaign, tid: number, w: number, hard: boolean): Flooded {
-  const t = c.territories[tid], k = floodWise(c, tid) ? FLOOD.wise : 1;
+  const t = c.territories[tid], dykes = dykesKept(c, tid), k = (floodWise(c, tid) ? FLOOD.wise : 1) * (dykes ? OWN.dykes : 1); // the Flood Calendar, and the Egyptians' dykes (ownstudies.ts)
   const store = folkOf(c, tid).stores, food = Math.floor(store.food * Math.min(0.8, FLOOD.food * w * k));
   store.food -= food;
-  if (t.town) for (const b of t.town.b) b[3] = Math.max(0.1, Math.round((b[3] ?? 1) * (1 - Math.min(0.6, FLOOD.worn * w * k)) * 100) / 100);
-  const farm = hard && t.buildings.includes('farm');
+  if (t.town && !dykes) for (const b of t.town.b) b[3] = Math.max(0.1, Math.round((b[3] ?? 1) * (1 - Math.min(0.6, FLOOD.worn * w * k)) * 100) / 100);
+  const farm = hard && !dykes && t.buildings.includes('farm');
   if (farm) t.buildings.splice(t.buildings.indexOf('farm'), 1);
   (c.events ??= []).push({ kind: 'flood', at: tid, turn: c.turn, until: c.turn });
   c.log.push(`The river has risen over its banks at ${t.name}${food ? `: ${food} food spoilt in store` : ''}${farm ? ', and the farmland is washed away' : ''}. Its people took to high ground, and nobody drowned.`);

@@ -3,7 +3,8 @@
 import type { Campaign } from '../sim/campaign';
 import { BUILDINGS } from '../sim/data';
 import { SITES } from '../sim/campaignbase';
-import { FOCI, FOCUS, KEEP_WORDS, LEAVE_WORDS, NEVER_CHOICES, standingOf, standingText } from '../sim/townorders';
+import { DRILL_STOPS, FOCI, FOCUS, KEEP_WORDS, LEAVE_WORDS, NEVER_CHOICES, standingOf, standingText } from '../sim/townorders';
+import { DRILL } from '../sim/townmuster';
 import type { Focus, KeepLevel, Leave } from '../sim/townorders';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
@@ -38,5 +39,6 @@ export function standingRows(c: Campaign, tid: number): { label: string; choices
       { label: 'Learn them', says: 'He learns the study taught in the town that answers what presses most on your nation, when the town has the means and your towns keep their stores after paying.', order: { learn: true } },
       { label: 'Leave them to me', says: 'He learns nothing of himself: studies are yours to choose.', order: { learn: false } },
     ] },
+    { label: `Train up to: ${s.drillStop ?? DRILL.most} companies`, choices: DRILL_STOPS.map((n): Choice => ({ label: `${n} companies${n === DRILL.most ? ' (the usual)' : ''}`, says: `A town left training raises a company a season until the army standing in it is ${n} companies strong.`, order: { drillStop: n === DRILL.most ? null : n } })) },
   ];
 }

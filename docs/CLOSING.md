@@ -53,7 +53,7 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| The town defends itself, and the player may be there | A band's strike on a town is a clash on the map (`raidclash.ts`). Nobody can enter it, watch it or play it, unlike a nation's attack or a fight with a band in the open. | medium | Unity: the rule is done. What is missing is a real-time battle for a raid, which is the new engine's work. |
+| The town defends itself, and the player may be there | **Done for the player's towns (21 November 2026, `raidfought.ts`).** A band's strike on a town of the player's waits on the player, who may fight for it in person (the town as it defends, against the band's companies) or leave it to the town; the outcome is written back by the strike's own rule. Still missing: the town is not read back from the field (its dead, its houses and its stores change by the strike's rule only), and a strike on a road cannot be entered. | small | Unity: read the town back from the field as a nation's attack does. |
 | A report of who was killed and who was taken | The report counts them and ages them, but names only the notable. A town keeps counts and ages, not names. | large | Unity: naming everyone is a change to the town record's shape, the same decision as keeping every house by name. |
 | Which way the town's morals swayed | A raid's sway still reads the nation's standing, not the town's. Switching it moved campaigns ending in ruin out of band, so it was left. | small | Drop: left on measurement, and faith is otherwise the town's. |
 
@@ -92,7 +92,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A woman whose home produces most | A rival's notable homes on the map are named by rule, one to a town, not by which house did most (board, How a rival rules its towns). | small | Unity: port `notableweight.ts`, which already weighs a house's output, and let rivals read it. |
+| A woman whose home produces most | **Done** (`src/sim/rivalhomes.ts`): a rival's town counts each season's harvest to its working houses by their share of the work, as notableweight.ts weighs a house's output; the house that has done most is the next known home, once it comes to a rank of standing, up to three to a town. | small | Built. |
 | Their loss carries weight | **Done** (`src/sim/carriednamed.ts`): a known person among those a nation leads away is marked carried off by name, mourned, and known again if got back. The rest are counted, as the town's record keeps them. | small | Built. |
 
 ## Captivity
@@ -132,13 +132,13 @@ Built as written (`drift.ts`, `driftintown.ts`, `decrees.ts`, `tavernfall.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | A visit is about ten minutes of its season | A visit costs nothing and the season does not move for it. It is not offered on a land the marauders hold. | small | Unity: port as is. "Each town once a season" is kept. |
-| It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. The four-company stop cannot be set. A rival's towns do not train by orders. | small | Unity: the map has five kinds of company by design. Port as is. |
+| It carries on with its last orders | The men in a town's queues go out as companies of the map's kinds, so a queue of swordsmen and one of clubmen both raise infantry. **Done**: the stop can be set by a standing order (townorders.ts `drillStop`, on the governor's orders: 2 to 12 companies, 4 the usual), and a rival's frontier towns with a yard and an enemy army beside them train by orders it gives them, to stop at 3 (`src/sim/rivaldrill.ts`). | small | Unity: the map has five kinds of company by design. Port as is. |
 
 ## Stores
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Towns send food, goods and people to one another by road | The computer sends food and goods by convoy, never people. | small | Unity: port `convoys.ts` and give rivals the player's rule for sending families. |
+| Towns send food, goods and people to one another by road | **Done** (`src/sim/rivalsettle.ts`): a rival sends settlers by road, by the player's own rule (migration.ts `settle`), from its fullest town to its town with too few people, now and then, one a season. | small | Built. |
 | A market's trade by caravan | In a battle or a visit the Traders' markets still earn by rule; caravans run only on the map. | small | Unity: field work. |
 
 ## Armies belong to towns
@@ -150,7 +150,7 @@ listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Any rival nation or marauders that come for it can take it | The marauders walk in only if they hold the land beside it; a roaming band does not turn aside for a dead town. | small | Unity: port as is. |
+| Any rival nation or marauders that come for it can take it | **Done** (`src/sim/bandturn.ts`): a camp of raiders or slavers with a dead town in reach sets out for a land beside it and, standing there, walks in: the town is overrun as deadtown.ts overruns one a wandering band finds, and the band is the camp. | small | Built. |
 
 ## A town taken
 
@@ -158,7 +158,7 @@ The "Not yet" line is listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Sooner settled where they are ruled well | Rivals garrison a resentful town and learn Written Law, but do not build a Church or Farmland with its resentment in mind. A nation given back its last town by a rising is not brought back to life. | small | Unity: port as is. |
+| Sooner settled where they are ruled well | **Done**: a rival builds in its most resentful town Farmland, and then a Church if it is a devout people, when it can spare the price (`src/sim/rivalyoke.ts`), and a computer-led people counted out takes back a town that rises for it and lives again, the town its seat (`src/sim/revival.ts`). | small | Built. |
 
 ## Rivals live by the same rules
 
@@ -208,7 +208,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | A Fortress stands in the town as a stronghold against bands | **The map's side built here after all (20 November 2026, `fortkeep.ts`):** a Fortress keeps a garrison of the town's own men between seasons, and one with anyone to hold it is a stronghold a band may raid but never take. Still missing, in a town's streets: the Fortress does not shoot and holds no soldiers of its own there. Against a nation's army it is as it was (three points of defence and walls). | medium | Done on the map. The field's side with the battle code, in Unity. |
 | Feast Days and Pilgrimage | Feast Days is only a nation's study on the map: a Church in a town keeps no feast day. | small | Unity: field. |
 | A Monastery or Convent | One building for both, a Convent only in its name and its people. On the map it keeps no count of who serves in it. | small | Unity: port as is. |
-| Each people its own: one or two studies each | Fifteen nations with one study each, not one or two. | medium | Unity: fifteen more studies is design work best done once on the new engine. `ownstudies.ts` ports as the pattern. |
+| Each people its own: one or two studies each | **Done** (`src/sim/ownstudies.ts`): every one of the fifteen has a second study, each with a job in a system that already runs (floods, grief, crime, the nation's loss, the militia, plague, decrees, famine, plots, settlers, trade, caravans, the coast, the sea), learned by rivals by the shared rule. | medium | Built; the figures are first guesses. |
 | A Well (or Bathhouse), an Infirmary (or Almshouse) | Built as the Well and the Infirmary. The second names were alternatives, not both. | none | Drop the alternatives. |
 
 ## The food decree; settlers and the far wilds; a rim of true wilderness

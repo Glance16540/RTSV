@@ -124,11 +124,11 @@ describe('a town left training goes on raising', () => {
     expect(drillOf(c, t.id).kind).toBe('infantry');
   });
 
-  it('only the player\'s towns are kept so; a rival raises by its own rule', () => {
+  it('the player\'s season trains only the player\'s towns; a rival\'s town with an order trains by its own pass (rivaldrill.ts)', () => {
     const { c, t, f } = town();
     t.owner = 1;
-    expect(drillOf(c, t.id).why).toBe('none');
-    expect(drillTowns(c)).toEqual([]);
+    expect(drillOf(c, t.id).kind).toBe('infantry'); // a rival's town given an order to train may
+    expect(drillTowns(c)).toEqual([]); // but not in the player's season
     expect(f.men).toBe(10);
   });
 

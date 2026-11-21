@@ -48,6 +48,7 @@ import { playLine, speechHtml } from './voice';
 import { sfx } from './sfx';
 import { researchAt } from '../sim/ownstudies';
 import { accuseCommand, questionCommand, robbedLine, suspectLine } from './fieldstoryui';
+import { caravanLine } from './fieldcaravanui';
 import { roadCommands } from './roadtool';
 import { answerCommands, guestLine, nobleLine, nobleName } from './courtfieldui';
 
@@ -591,7 +592,7 @@ export class Hud {
       }
       const role = d.name + (e.gender ? ` ${GENDER[e.gender]}` : '');
       const name = nobleName(game, e) || (e.name ? `${e.name}${e.family ? ' ' + e.family : ''} <small>${role}</small>` : role); // one of the great, at court (courtfield.ts)
-      return `<div class="head"><span class="icon">${unitPortraitHtml(game, e, e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon))}</span><div><b>${name}</b>${tag}${hp}</div></div>${notableLine(game, e)}${suspectLine(game, e)}${nobleLine(game, e)}
+      return `<div class="head"><span class="icon">${d.cart ? ico(e.type, d.icon) /* a mule train, not a face (fieldcaravanui.ts) */ : unitPortraitHtml(game, e, e.gender === 'f' ? WOMAN() : e.gender === 'm' ? MAN() : ico(e.type, d.icon))}</span><div><b>${name}</b>${tag}${hp}</div></div>${notableLine(game, e)}${suspectLine(game, e)}${caravanLine(game, e)}${nobleLine(game, e)}
         <div class="stat">⚔ ${Math.round((d.atk + (mil ? mods.atk : 0) + (lead?.atk ?? 0)) * 10) / 10} · 🛡 ${Math.round((d.armor + (mil ? mods.armor : 0) + (lead?.armor ?? 0) + game.guardAt(e.owner, e.x, e.y)) * 10) / 10}${d.range > 1 ? ` · range ${d.range}` : ''}${d.heal ? ` · heals ${d.heal}/s` : ''}</div>${extra}`;
     }
     const b = e;

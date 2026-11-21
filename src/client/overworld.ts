@@ -1,5 +1,7 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
+import { turnLabel } from './seasonlabel';
+import { callAct } from './callpanel';
 import { whenOf } from '../sim/chroniclethreads';
 import { inTime } from '../sim/inyears';
 import { nobodyThere } from '../sim/founding'; // a land with nobody on it is not marched on
@@ -7,7 +9,7 @@ import { inRuin, ruinWords } from '../sim/ruin';
 import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
-import { bandPrompt, newsHtml } from './threatpanel';
+import { bandPrompt, newsHtml, raidPrompt } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
 import { petitionDo } from './petitionpanel';
 import { pactDo } from './pactpanel';
@@ -153,6 +155,7 @@ export class Overworld {
       if (kind === 'marry' || kind === 'tradedeal' || kind === 'pactoffer') pactDo(this.c, kind, id); // royal marriages and trade deals (pactpanel.ts)
       if (kind === 'band') attackBand(this.c, Number(id.split('/')[0]), Number(id.split('/')[1]));
       if (kind === 'call') callArmies(this.c, 0);
+      callAct(this.c, kind, id); // the armies named one by one (callpanel.ts)
       if (kind === 'endcall') endCall(this.c, 0);
       if (kind === 'hold') holdCourt(this.c, 0, id === '1');
       if (kind === 'truce') offerTruce(this.c, Number(id));
@@ -279,6 +282,8 @@ export class Overworld {
       if (c.phase === 'ai') continueAI(c);
       this.changed();
     };
+    const raid = raidPrompt(c);
+    if (raid) { this.dialog(raid.title, raid.text, [['Fight for the town', () => this.hooks.fight()], ['Leave it to the town', settle]]); return; }
     const band = bandPrompt(c);
     if (band) {
       const choices: [string, () => void][] = [['Fight it', () => this.hooks.fight()], ['Leave it to the army', settle], ...(band.decline ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])];
@@ -547,7 +552,7 @@ export class Overworld {
     }
     // The year, on a scroll at the head of the sheet.
     ctx.font = "italic 600 15px Georgia, 'Times New Roman', serif";
-    const label = `Turn ${c.turn}`;
+    const label = turnLabel(c.turn, false); // with its season and year (seasonlabel.ts)
     const lw = ctx.measureText(label).width + 26;
     ctx.fillStyle = 'rgba(232,216,176,0.92)'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(24, 22, lw, 26, 6); ctx.fill(); ctx.stroke();

@@ -2,6 +2,7 @@
 // then the land selected, leading with what matters (its name and holder, its people and stores, what threatens it,
 // the army there), then what can be done there in groups, and last the lie of the land folded under "The land".
 // Nothing here decides anything: overworld.ts keeps the logic and the clicks (every button keeps its `data-act`).
+import { turnLabel } from './seasonlabel';
 import { unfinishedWords } from '../sim/battlescars';
 import { levyLine } from '../sim/levynext'; // who a levy would take (levynext.ts)
 import { landTalesHtml } from './talepanel';
@@ -28,6 +29,7 @@ import {
 } from '../sim/campaign';
 import { comesOfAge, houseOf, ofAge, rulerName } from '../sim/dynasty';
 import { called, courtOf, leaderReach } from '../sim/court';
+import { callByName, roadWarning } from './callpanel';
 import { visitButton } from './visit';
 import { peopleName } from '../sim/naming';
 import { convoyHtml } from './convoypanel';
@@ -81,7 +83,7 @@ export function nationBar(c: Campaign): string {
   const peoples = '<div class="ow-factions">' + c.factions.map((f) => `<span style="color:${css(f.color)}${f.alive ? '' : ';text-decoration:line-through'}">■ ${f.id === 0 ? peopleName(c, 0) + ' (you)' : f.name} ${c.territories.filter((x) => x.owner === f.id).length}${ageOf(c, f.id) ? ` <small>${AGES[ageOf(c, f.id)].name}</small>` : ''}${f.alive && creedOf(virtueOf(c, f.id)).id !== 'temperate' ? ` <small title="${creedOf(virtueOf(c, f.id)).name}. ${FAITH[creedOf(virtueOf(c, f.id)).id].desc}">${creedOf(virtueOf(c, f.id)).icon}</small>` : ''}${f.isAI ? ` <small>${rulerName(c, f.id)}${c.ally === f.id ? ' 🤝' : atTruce(c, 0, f.id) ? ' 🕊️' : ''}</small>` : ''}</span>`).join('') + '</div>';
   const under = c.dominion.f >= 0 && landOf(c, c.dominion.f) < dominionNeed(c); // under the share this season: the count is falling, not gone (dominion.ts)
   const hold = c.dominion.f >= 0 ? ` <b class="${c.dominion.f === 0 ? 'good' : 'bad'}" title="Held for ${c.dominion.turns} of the ${DOMINION_TURNS} turns that decide it. A season under that share takes two turns off the count.">👑 ${c.dominion.f === 0 ? (under ? 'You held' : 'You hold') : c.factions[c.dominion.f].name + (under ? ' held' : ' hold')} most of the land: ${c.dominion.turns}/${DOMINION_TURNS}${under ? ' and falling' : ''}</b>` : '';
-  const top = `<div class="lp-bar"><b>Turn ${c.turn}</b><span title="What your towns hold in store above their working stock, counted in supplies (a hundred of goods each). What a season adds is the lands' yield (${income(c, 0)}) less what the towns eat, what spoils, the upkeep and what the governors build out of the stores.">To spend <b>${me.supplies}</b> <small>supplies (${gainWords(c)})</small></span>${hold}</div>` + peoples +
+  const top = `<div class="lp-bar"><b>${turnLabel(c.turn)}</b><span title="What your towns hold in store above their working stock, counted in supplies (a hundred of goods each). What a season adds is the lands' yield (${income(c, 0)}) less what the towns eat, what spoils, the upkeep and what the governors build out of the stores.">To spend <b>${me.supplies}</b> <small>supplies (${gainWords(c)})</small></span>${hold}</div>` + peoples +
     (ruinWarning(c) ? `<div class="hint bad lp-ruin">🏚️ ${ruinWarning(c)}</div>` : '') +
     (c.request && c.ally >= 0 ? `<div class="hint">📣 ${c.factions[c.ally].name} ask you to take land from ${c.factions[c.request.foe].name} before turn ${c.request.until}.</div>` : '');
   const world = worldNow(c) ? WORLD_EVENTS[worldNow(c) as keyof typeof WORLD_EVENTS] : null;
@@ -110,7 +112,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
   const signs = [...(weather ? [`<span title="${WEATHER[weather as 'rain'].name}">${WEATHER[weather as 'rain'].icon}</span>`] : []), ...events.map((e) => `<span title="${EVENTS[e.kind].name}">${EVENTS[e.kind].icon}</span>`)].join('');
   const head = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}${signs ? ` <small class="lp-signs">${signs}</small>` : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
-      ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · <span title="What an army marching on this town would meet. Against a band the town musters differently: see below.">Defence against an army ${defence(c, t.id)}</span></div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
+      ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · <span title="What an army marching on this town would meet. Against a band the town musters differently: see below.">Defence against an army ${Math.round(defence(c, t.id))}</span></div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
   const people = `${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div>${t.buildings.map((b) => { const l = siteLook(b, SITES[b], c.factions[t.owner]?.civ); return `${l.icon} ${l.name}`; }).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>`;
   const emptying = t.owner === 0 ? emptyingTowns(c, 0).filter((x) => x.at === t.id).map((x) => `<div class="bad">🌾 ${emptyingText(x)}</div>`).join('') : ''; // its granary emptying soon (larderwatch.ts)
@@ -153,10 +155,11 @@ export function actionsHtml(c: Campaign, sel: number): string {
       const away = called(c, 0).length;
       leader += `<div class="hint">♛ ${heroFor(c, 0).name} is here${a ? ', at the head of this army' : ', in the town'}. No unrest rises where your leader is, and they fight only in battles fought here${a && !court.holds ? ' or where this army marches' : ''}.${court.rally ? ` The armies are called: ${away} still on the way.` : ''}</div>`;
       if (court.rally) leader += `<button data-act="endcall" ${c.phase === 'player' ? '' : 'disabled'} title="The armies stay where they have got to.">♛ End the call</button>`;
-      else leader += `<button data-act="call" ${c.phase === 'player' && away ? '' : 'disabled'} title="Every army of yours marches a land nearer each turn, through your own country, until all have come or you end the call. Lands they leave have no garrison.">♛ Call the armies here</button>`;
+      else leader += `<button data-act="call" ${c.phase === 'player' && away ? '' : 'disabled'} title="Every army of yours marches a land nearer each turn, through your own country, until all have come or you end the call. Lands they leave have no garrison.">♛ Call the armies here</button>` + callByName(c); // or name them (callpanel.ts)
       leader += `<button data-act="hold:${court.holds ? 0 : 1}" ${c.phase === 'player' ? '' : 'disabled'} title="${court.holds ? 'They ride with the army here when it marches.' : 'An army that marches out of this land goes without them.'}">♛ ${court.holds ? 'Ride with the army' : 'Keep to the town'}</button>`;
     } else if (court) {
       const can = leaderReach(c, 0).includes(t.id);
+      if (can) leader += roadWarning(c, court.at, t.id); // highwaymen on the road (callpanel.ts)
       leader += `<button data-act="lead" ${can && c.phase === 'player' ? '' : 'disabled'} title="${can ? 'They travel here alone, leaving any army where it is. Once a turn.' : court.moved ? 'They have travelled already this turn.' : `They are in ${c.territories[court.at]?.name ?? 'the field'}: only a neighbouring land of yours can be reached in a turn.`}">♛ Bring ${heroFor(c, 0).name} here</button>`;
     }
     if (!me.heroAlive) leader += `<button data-act="succession" ${c.phase === 'player' ? '' : 'disabled'}>♛ Choose who leads</button>`;

@@ -41,6 +41,7 @@ import { settleTaken } from './settlersfrom';
 import { foughtOnMap, recordsBack } from './warrecord';
 import { mayRaiseKind } from './uniquecompany';
 import { bandBattle, settleBandFight } from './bandfight';
+import { raidBattle, settleRaid } from './raidfought';
 import { wallsEdge } from './sieges';
 import { Outcome, fallBack, fallenBefore, felledOf, fightPending, leftWith, tellBattle, whoLed, wouldTake } from './mapbattle';
 import { fieldReckoned, tollByFight, tribeBeaten, tribesSeason, turnOut, warriorsOf } from './tribes';
@@ -48,6 +49,9 @@ import { convoysTurn, relieve } from './convoys';
 import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
+import { rivalSettleSeason } from './rivalsettle';
+import { rivalDrillSeason } from './rivaldrill';
+import { rivalEasesYoke } from './rivalyoke';
 import { makeWilds } from './wilds';
 import './courtcall'; // the call's rules that stand above court.ts: garrisons kept, an ally's land crossed, the road's risk
 import { maraudersFirst, rivalHunts } from './rivalhunt';
@@ -105,7 +109,7 @@ import { suitorsSeason } from './suitors';
 import { ruinSeason } from './ruin';
 import { unrestSeason } from './unrest';
 import { freeStruck, freeTownsSeason, riseFree } from './freetown';
-import { defenceAdd, ownStudiesSeason, restSpared } from './ownstudies';
+import { defenceAdd, landsBySea, ownStudiesSeason, restSpared } from './ownstudies';
 import { deadTowns, openDefence, seizeOpen } from './deadtown';
 import { letGoSeason } from './emptied';
 import { marchedIn, snowbound } from './winter';
@@ -961,7 +965,7 @@ export function moveArmy(c: Campaign, armyId: number, to: number, opts: { /** A 
   const round = (v: number) => Math.round(v * 10) / 10;
   c.pending = {
     armyId, from: a.at, to, attacker: a.owner, defender: t.owner,
-    aStr: round((strengthVs(a, defenders(c, to), rankWith(c, a)) + support(a.owner, a.id)) * (sea ? SEA_LANDING : 1) * ageEdge(c, a.owner) * (weatherAt(c, to) ? WEATHER[weatherAt(c, to) as Sky].march : 1) * countryOf(c, to).march), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
+    aStr: round((strengthVs(a, defenders(c, to), rankWith(c, a)) + support(a.owner, a.id)) * (sea && !landsBySea(c, a.owner) ? SEA_LANDING : 1) * ageEdge(c, a.owner) * (weatherAt(c, to) ? WEATHER[weatherAt(c, to) as Sky].march : 1) * countryOf(c, to).march), ...(sea ? { sea: true } : {}), dStr: round((defence(c, to, a.units, civ) + support(t.owner, -1)) * ageEdge(c, t.owner)),
   };
   const human = (f: number) => f >= 0 && !c.factions[f].isAI;
   if (!human(a.owner) && !human(t.owner)) resolvePending(c, 'auto');
@@ -1144,10 +1148,11 @@ export const BATTLE_ANSWERS = new BattleAnswers<BattleQuestions>()
 
 export const battleWatchers: ((c: Campaign, p: Pending, attackerWon: boolean, how: 'auto' | 'attacker' | 'defender') => void)[] = [];
 
-export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender', opts: { /** A battle fought in person: the attacker's men still standing at the end, by unit type, and whether its leader lived (siegeretreat.ts). */ attackerLeft?: Record<string, number>; attackerLed?: boolean } = {}): boolean {
+export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender', opts: { /** A battle fought in person: the attacker's men still standing at the end, by unit type, and whether its leader lived (siegeretreat.ts). */ attackerLeft?: Record<string, number>; attackerLed?: boolean; /** A band's strike fought in person (raidfought.ts): the player's units left, and how the leader came out of it. */ survivors?: Record<string, number>; leader?: { fell?: boolean; heroRank?: number; acclaimed?: Partial<HeroSpec> } } = {}): boolean {
   const p = c.pending;
   if (!p) return false;
   if (p.band !== undefined) return settleBandFight(c, how); // against a band: no nation, and no land changes hands (bandfight.ts)
+  if (p.raid !== undefined) return settleRaid(c, how, { survivors: opts.survivors, foes: opts.attackerLeft, ...opts.leader })?.outcome !== 'held'; // a band's strike on a town of the player's (raidfought.ts)
   let attackerWon = how === 'attacker';
   let fought: Outcome | null = null;
   if (how === 'auto') {
@@ -1278,6 +1283,7 @@ function checkDominion(c: Campaign): void {
 
 /** Finish the player's turn and play the rivals' turns. Stops early if one of them attacks the player. */
 export function endTurn(c: Campaign): void {
+  if (c.phase === 'player' && c.pending?.raid !== undefined) resolvePending(c, 'auto'); // a band's strike nobody answered is left to the town (raidfought.ts)
   if (c.phase !== 'player' || c.pending) return;
   if (c.tale) { c.tale = null; c.log.push('The matter before you was left to settle itself.'); }
   turnLeft(c); // what there is to spend as the turn ends, to measure the season by (seasongain.ts)
@@ -1326,11 +1332,13 @@ export function continueAI(c: Campaign): void {
       rulesSeason(c); // rival nations raise their works of rule and faith (rule.ts)
       governWorksSeason(c); // and the player's governors, by their standing orders (governworks.ts)
       drillWithQueued(c); // a town of the player's left training goes on raising: the very men in its queues first (queuedmen.ts), then from its own men and stores (townmuster.ts)
+      rivalDrillSeason(c); // and a rival's frontier towns, by the orders it gives them (rivaldrill.ts)
       convoysTurn(c); // convoys on the road come in, or are robbed on the way (convoys.ts)
       sentForSeason(c, (s) => paysHere(c, s.f, s.what, s.n, { at: s.at }) && doSentFor(c, s)); // what waited for goods sent for by road is done, if they came in (sentfor.ts)
       caravansSeason(c); // the markets' caravans come home with their trade, and set out again (caravans.ts)
       suitorsSeason(c); // the unmarried go by road to a town of their people with none of their sex, to marry (suitors.ts)
       migrationSeason(c); // families leave a crowded, hungry, sick, raided or grieving town for a better one of their people (migration.ts)
+      rivalSettleSeason(c); // and a rival sends settlers to its town that has too few people, as the player may (rivalsettle.ts)
       larderSeason(c); // every town eats from its own food store, and goes hungry if it cannot (larder.ts)
       marriageSeason(c); // the unmarried of a town marry, or go to a town beside to marry (marriage.ts)
       seasonFolk(c); // a season of births and coming of age in every town (seasonfolk.ts)
@@ -1460,6 +1468,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
       else if (rand(c) < me.farm) build(c, f.id, t.id, 'farm');
       else if (border && f.supplies > siteCost(t, 'fortress', civ) + 5 && rand(c) < me.fort) build(c, f.id, t.id, 'fortress');
     }
+    rivalEasesYoke(c, f.id, { canBuild, build }); // a Church or Farmland where a taken town resents it most (rivalyoke.ts)
     // Spend what is left on troops, growing existing armies before starting new ones.
     suePeace(c, f.id); // weary of war, it sues for peace with the peoples it borders (rivalweary.ts)
     if (f.id === 0) for (const g of c.factions) if (g.id > 0 && suesPlayer(c, g.id) && totalStrength(c, g.id) > totalStrength(c, 0)) offerTruce(c, g.id); // played by the computer, the player takes a truce offered by a rival stronger than it (rivalweary.ts)
@@ -1504,7 +1513,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     if (t.owner === f.id || atTruce(c, f.id, t.owner)) return false;
     const margin = [3, 2, 1][c.level] + me.margin - (f.angry && t.owner === 0 ? 2 : 0) + marchMargin(c, f.id) + weary + worldMargin(c, to); // what its towns have borne (rivalweary.ts), and winter and the world's seasons (rivalworld.ts) // its angry lords make it wary (nobleweigh.ts)
     const bySea = !c.territories[from].adj.includes(to);
-    return wouldTake(c, army, to, (strengthVs(army, defenders(c, to), rankWith(c, army)) + lent(c, f.id, to, army.id)) * (bySea ? SEA_LANDING : 1) * marchInto(c, to) * skyInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
+    return wouldTake(c, army, to, (strengthVs(army, defenders(c, to), rankWith(c, army)) + lent(c, f.id, to, army.id)) * (bySea && !landsBySea(c, f.id) ? SEA_LANDING : 1) * marchInto(c, to) * skyInto(c, to) * ageEdge(c, f.id), defence(c, to, army.units, civ) * ageEdge(c, t.owner) + margin); // it judges by the fight itself, on an even day (mapbattle.ts)
   };
   // It marches on the most wanted land it dares, not only the most wanted of all.
   const dared = targets.find((id) => dares(here.id, id));
@@ -1617,7 +1626,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
   // The land's own water (townwater.ts); a field battle's is where the field lies, between the land it came from and this one.
   const groundWater = waterOf(c, p.to, terrainOf(c), field && c.territories[p.from] ? { x: (c.territories[p.from].x + t.x) / 2, y: (c.territories[p.from].y + t.y) / 2 } : undefined);
   const shade = (col: number, k: number) => [16, 8, 0].reduce((n, sh) => n | (Math.min(255, Math.round(((col >> sh) & 255) * k)) << sh), 0);
-  return {
+  const laid: BattleConfig = {
     ...(weatherAt(c, p.to) ? { weather: weatherAt(c, p.to) as Sky } : {}),
     climate: BIOMES[biomeOf(c, p.to)].climate, season: seasonOfTurn(c.turn),
     ...(!field && t.ground ? { ground: t.ground } : {}),
@@ -1635,6 +1644,7 @@ export function battleConfig(c: Campaign): BattleConfig | null {
       ...(allyReserve ? [{ name: `${c.factions[c.ally].name} (ally)`, color: c.factions[c.ally].color, isAI: true, team: 0, reserve: true, civ: c.factions[c.ally].civ, ...led(c.ally, allyReserve), virtue: virtueOf(c, c.ally), bonus: side(allyReserve, false, armyStrength(allyReserve), ageOf(c, c.ally)) }] : []),
     ].slice(0, 4),
   };
+  return p.raid !== undefined ? raidBattle(c, laid) : laid; // a band's strike: the town as laid, against the band alone (raidfought.ts)
 }
 
 /** Units that fight in person for each company type, e.g. two clubmen for an infantry company. */
@@ -1685,6 +1695,7 @@ export function finishBattle(c: Campaign, playerWon: boolean, survivors?: Record
   const p = c.pending;
   if (!p) return;
   if (p.band !== undefined) { settleBandFight(c, playerWon ? 'attacker' : 'defender', survivors, { fell: after.fell, heroRank, acclaimed: after.acclaimed }); return; } // the leader fought beside the army, at the usual risk (bandfight.ts)
+  if (p.raid !== undefined) { resolvePending(c, playerWon ? 'defender' : 'attacker', { survivors, attackerLeft: after.foes, leader: { fell: after.fell, heroRank, acclaimed: after.acclaimed } }); return; } // a band's strike fought in person is written back by the strike's own rule (raidfought.ts)
   if (p.defender === 0 && p.mode !== 'field') homeOnLeave(c, p.to, after.leave); // men of the town who went home from its army while it was fought for (furloughmap.ts): before the army is counted
   // What the town became under the player's hand goes home with the army: half of how far it moved.
   // Defending, it was that town the player ruled, and it is that town that is moved; attacking, the army takes it home to all.

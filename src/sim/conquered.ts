@@ -15,6 +15,7 @@ import { leaderAt } from './court';
 import { folkOf, headcount } from './township';
 import { agesOf } from './ageing';
 import { yokeEase, yokeSpared } from './ownstudies';
+import { bringBack, mayReturn } from './revival';
 
 /** `from`: whose it was (-1 for a tribe). `since`: the turn it was taken. `resent`: how its people take it, 0 to 100. */
 export interface Yoke { from: number; since: number; resent: number; /** The last turn an army of its holder stood in it. */ held?: number; /** It has settled: it resents nothing more, and is remembered as taken until `YOKE.memory` seasons are up. */ settled?: boolean }
@@ -101,11 +102,12 @@ export function seasonOfYoke(c: Campaign): YokeNews[] {
         news.push({ at: t.id, kind: 'put down', owner });
         continue;
       }
-      const back = y.from >= 0 && y.from !== owner && c.factions[y.from]?.alive ? y.from : -1;
+      const back = y.from >= 0 && y.from !== owner && (c.factions[y.from]?.alive || mayReturn(c, y.from)) ? y.from : -1; // a people counted out may take it back, and live again (revival.ts)
       c.log.push(`${t.name} has risen and thrown off ${ruleOf(c, owner)}${back >= 0 ? `, and gone back to ${nameOf(c, back)}` : ''}.`);
       (c.chronicle ??= []).push({ turn: c.turn, text: `${t.name}, taken ${c.turn - y.since} seasons before, rose and threw off ${ruleOf(c, owner)}${back >= 0 ? ` and went back to ${nameOf(c, back)}` : ''}.` });
       (c.events ??= []).push({ kind: 'revolt', at: t.id, turn: c.turn, until: c.turn });
       t.owner = back;
+      if (back >= 0 && !c.factions[back].alive) bringBack(c, back, t.id);
       if (back < 0) t.militia = Math.max(2, Math.min(4, Math.ceil(f.men / 2)));
       delete t.yoke;
       news.push({ at: t.id, kind: 'rose', owner, to: back });

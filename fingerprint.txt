@@ -99,9 +99,9 @@ camp drill 1 (babylon v greece) at 8m: aa2f38625a5c5ca6
 camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 7, most in the marauders' camp 0, camps burnt 2, freed and home 7, got out by night 1 aa2f38625a5c5ca6
 camp drill 2 (japan v kush) at 2m: 41df63ad3b98603a
 camp drill 2 (japan v kush) at 4m: 8839f77d7adc99ba
-camp drill 2 (japan v kush) at 6m: f13c6f92c8ed0205
-camp drill 2 (japan v kush) at 8m: 9807ce617e34fa3e
-camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 9, most in the marauders' camp 0, camps burnt 2, freed and home 5, got out by night 0 9807ce617e34fa3e
+camp drill 2 (japan v kush) at 6m: d41c2d4bb3f4a22c
+camp drill 2 (japan v kush) at 8m: 3f87c6835c226726
+camp drill 2 (japan v kush) end: tick 9600 most held in the work camp 9, most in the marauders' camp 0, camps burnt 2, freed and home 9, got out by night 0 3f87c6835c226726
 camp drill 3 (steppe v forge) at 2m: 56a7d064acc8c694
 camp drill 3 (steppe v forge) at 4m: addcdf33307080a6
 camp drill 3 (steppe v forge) at 6m: d389e4181e23ba67
