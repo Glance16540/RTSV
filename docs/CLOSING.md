@@ -176,7 +176,7 @@ and the church built in battle under "Towns persist".
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| He can call armies to meet him and move with them as one | Calling the armies calls all of them, strips every garrison on the way, and will not cross land not their own. A leader travels a land a turn with no cost or risk. | medium | Unity: this is the leader's movement on the new map. |
+| He can call armies to meet him and move with them as one | **Built here after all (20 November 2026, `courtcall.ts` with `court.ts`).** The leader may call armies by name; with none named, an army holding a town that needs it stays; a called army passes a garrison without joining it and crosses a sworn ally's land; and a leader travelling alone by a road highwaymen sit on may be set upon, turned back and wounded. Still missing: a control on the map for naming armies, and a warning of the road's risk before the journey. Travel still costs nothing. | medium | Done in the rules. The two controls are the map's, in Unity. |
 | He is in a town or with an army | **Done** (`src/sim/seatedleader.ts`): a leader holding an ungarrisoned town alone leads its defence when the battle is settled on the map, at their rank. | small | Built. |
 
 ## Grief

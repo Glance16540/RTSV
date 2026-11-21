@@ -46,6 +46,7 @@ import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import './courtcall'; // the call's rules that stand above court.ts: garrisons kept, an ally's land crossed, the road's risk
 import { maraudersFirst, rivalHunts } from './rivalhunt';
 import { atWarWith, warUntil } from './feudwar';
 import { befalls, feverToll, hardCost } from './chancecreed';
@@ -902,9 +903,12 @@ const fname = (c: Campaign, f: number, start = false) =>
  * Entering anyone else's starts a battle: it is returned as `c.pending` for the caller to fight
  * or to settle with `resolvePending`. Battles with no human involved are settled at once.
  */
-export function moveArmy(c: Campaign, armyId: number, to: number): 'moved' | 'battle' | 'invalid' {
+export function moveArmy(c: Campaign, armyId: number, to: number, opts: { /** A land crossed without stopping, to a land of the army's own people beyond it: their own, or their sworn ally's (court.ts marchToward). */ via?: number } = {}): 'moved' | 'battle' | 'invalid' {
   const a = c.armies.find((x) => x.id === armyId);
-  if (!a || a.moved || c.pending || c.demand || !reach(c, a.at).includes(to) || snowbound(c, a)) return 'invalid'; // an army that marched in winter rests a season (winter.ts)
+  // Across a land to the one beyond: only into its own people's land, by a land that is theirs or their ally's, each a march from the last.
+  const across = a && opts.via !== undefined && c.territories[to]?.owner === a.owner && reach(c, a.at).includes(opts.via) && reach(c, opts.via).includes(to)
+    && (c.territories[opts.via].owner === a.owner || (c.territories[opts.via].owner >= 0 && allyOf(c, a.owner) === c.territories[opts.via].owner));
+  if (!a || a.moved || c.pending || c.demand || !(reach(c, a.at).includes(to) || across) || snowbound(c, a)) return 'invalid'; // an army that marched in winter rests a season (winter.ts)
   if (nobodyThere(c, to)) return 'invalid'; // nobody there to conquer: such a land is settled, not taken (founding.ts)
   const sea = !c.territories[a.at].adj.includes(to);
   const t = c.territories[to];
