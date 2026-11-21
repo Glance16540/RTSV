@@ -40,6 +40,7 @@ import { riseFree } from './freetown';
 import { heroFor } from './campaignbase';
 import { houseOf, ofAge } from './dynasty';
 import { seat } from './court';
+import { crownedMoods } from './thronemoods';
 
 export const RISING = {
   /** Of a people's towns, the most that rise for a claimant: one in so many. */
@@ -129,14 +130,15 @@ export function comeOfAge(c: Campaign, cl: Claim): number[] {
 const out = (c: Campaign, cl: Claim): Territory[] => c.territories.filter((t) => t.free?.claimant === cl.id && t.owner < 0 && !t.horde);
 const unmark = (c: Campaign, cl: Claim): void => { for (const t of c.territories) if (t.free?.claimant === cl.id) delete t.free.claimant; };
 
-/** The leader is dead with no heir of the house of age, and a claimant stands: the claimant takes the throne. */
-function crown(c: Campaign, cl: Claim): void {
+/** The leader is dead with no heir of the house of age, and a claimant stands: the claimant takes the throne, and the lords take it as they do (thronemoods.ts). */
+export function crown(c: Campaign, cl: Claim): void {
   const f = cl.owner, fac = c.factions[f], old = heroFor(c, f), house = houseOf(c, f), at = cl.towns![0];
   for (const t of out(c, cl)) { t.owner = f; t.militia = 0; delete t.free; }
   fac.hero = { ...old, name: cl.name!, female: !!cl.female, look: { ...old.look, beard: cl.female ? false : old.look?.beard } };
   fac.heroAlive = true; fac.heroRank = 0;
   house.line++; house.births = 0; house.asked = false;
   seat(c, f, c.territories[at].owner === f ? at : (c.territories.find((t) => t.owner === f)?.id ?? at));
+  crownedMoods(c, f, cl.key); // the lord who held the claimant is pleased, the others not (thronemoods.ts)
   endClaim(c, cl, 'crowned', `${old.name} is dead and no child of the house is of age. ${cl.name}, ${child(cl)} of ${cl.mother}, has taken the throne${f === 0 ? '' : ` of the ${fac.name}`}, and the towns that rose for ${cl.female ? 'her' : 'him'} have come back.`);
   tell(c, f, cl.ended!.text, cl.born);
 }
