@@ -2,9 +2,12 @@
 // rivals garrisoned a resentful town and learned Written Law, but did not build a Church or Farmland with its resentment
 // in mind). A town taken eases its resentment the faster with a Church (YOKE.church) and Farmland (YOKE.farm) in it
 // (conquered.ts). Each season a rival led by the computer, with supplies to spare, builds in its most resentful town
-// that has not settled the one of those it lacks that eases it most: a Church for a devout people (temper.ts, as its own
-// houses of faith are chosen in campaign.ts: a people builds what it believes in), then Farmland; for any other people,
-// Farmland. One a season a people.
+// that has not settled Farmland, and then, for a devout people only (temper.ts, as its own houses of faith are chosen
+// in campaign.ts: a people builds what it believes in), a Church. One a season a people.
+// Farmland first, though a Church eases more: read at 384 campaigns in each course, a Church first left more of the
+// rivals' lords content at twenty years than the 5 to 20% they should be (19.4 to 21.9% where 16 to 18.6% were, 19.0%
+// with no building at all), a church in every resentful town being one more to call the people to and tend the sick
+// from, which pleases pious and kindly lords (nobles.ts).
 // Building is the hub's (campaign.ts canBuild, build): it lends them, so this imports nothing of it.
 import type { Campaign } from './campaign';
 import { siteCost } from './campaignbase';
@@ -25,7 +28,7 @@ export const resentful = (c: Campaign, f: number): number[] => c.territories
 /** What a rival would build for a resentful town: what eases its resentment most of what it lacks. */
 export function easeWith(c: Campaign, f: number, tid: number): 'church' | 'farm' | null {
   const t = c.territories[tid], civ = c.factions[f].civ, devout = leaningWith(civ, LEANING[civ] ?? 0.5) >= 0.6; // as its own houses of faith are chosen (campaign.ts)
-  const order: ('church' | 'farm')[] = devout ? ['church', 'farm'] : ['farm'];
+  const order: ('church' | 'farm')[] = devout ? ['farm', 'church'] : ['farm'];
   return order.find((s) => !t.buildings.includes(s)) ?? null;
 }
 

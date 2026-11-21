@@ -31,12 +31,14 @@ describe('a rival builds for a resentful town', () => {
     expect(resentful(c, 1)).toEqual([]);
   });
 
-  it('a devout people a Church first, which eases it most, then Farmland; any other people Farmland', () => {
+  it('Farmland first; then a devout people a Church; any other people nothing more', () => {
     const { c, t } = taken();
     c.factions[1].civ = 'dawn'; // the devout
+    expect(easeWith(c, 1, t.id)).toBe('farm');
+    t.buildings.push('farm');
     expect(easeWith(c, 1, t.id)).toBe('church');
     t.buildings.push('church');
-    expect(easeWith(c, 1, t.id)).toBe('farm');
+    expect(easeWith(c, 1, t.id)).toBeNull();
     c.factions[1].civ = 'steppe'; t.buildings = []; // worldly
     expect(easeWith(c, 1, t.id)).toBe('farm');
     c.factions[1].civ = 'greece'; // in the middle: it builds no church it does not believe in
@@ -47,10 +49,10 @@ describe('a rival builds for a resentful town', () => {
     const { c, t } = taken();
     c.factions[1].civ = 'dawn';
     const got = rivalEasesYoke(c, 1, lend);
-    if (got) { expect(got).toEqual({ at: t.id, site: 'church' }); expect(t.buildings).toContain('church'); }
-    else expect(canBuild(c, 1, t.id, 'church')).toBe(false); // the town had no room, or the price waits for goods by road (sentfor.ts)
+    if (got) { expect(got).toEqual({ at: t.id, site: 'farm' }); expect(t.buildings).toContain('farm'); }
+    else expect(canBuild(c, 1, t.id, 'farm')).toBe(false); // the town had no room, or the price waits for goods by road (sentfor.ts)
     const poor = taken(); poor.c.factions[1].civ = 'dawn';
-    poor.c.factions[1].supplies = siteCost(poor.t, 'church', 'dawn') + RIVAL_YOKE.spare - 1;
+    poor.c.factions[1].supplies = siteCost(poor.t, 'farm', 'dawn') + RIVAL_YOKE.spare - 1;
     expect(rivalEasesYoke(poor.c, 1, lend)).toBeNull();
     expect(rivalEasesYoke(c, 0, lend)).toBeNull();
   });
