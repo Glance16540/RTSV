@@ -354,7 +354,7 @@ function reachOpen(c: Campaign, tid: number): number[] {
  */
 export interface HubActs {
   /** March an army to a land: it moves, or a battle begins, or it cannot go (campaign.ts, moveArmy). */
-  moveArmy: (c: Campaign, armyId: number, to: number) => 'moved' | 'battle' | 'invalid';
+  moveArmy: (c: Campaign, armyId: number, to: number, opts?: { /** A land crossed without stopping on the way to a land of its own: its people's, or an ally's (court.ts marchToward). */ via?: number }) => 'moved' | 'battle' | 'invalid';
   /** How hard a land is to take, against these companies and this people (campaign.ts, defence). */
   defence: (c: Campaign, tid: number, vs?: Record<string, number>, attackerCiv?: string) => number;
   /** Can this people raise this company in this land now? (campaign.ts, canRaise) */

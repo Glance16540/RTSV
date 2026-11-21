@@ -268,6 +268,8 @@ houses, not fuller ones: a house holds five people on the map as in a battle.
 
 **Every town has a plain healer** (the owner's word, 20 November 2026). A town of any standing can call a modest healer of no standing, slower than a Priest and with no calamities, so a Common town's army is not left without one; the Priest stays the healer of the good towns and the Shaman of the low, and both heal better.
 
+**The player chooses whether to carry people off** (the owner's word, 21 November 2026). A nation of low standing carries people off from a town it takes, the player's as a rival's; the player may forbid it by decree, and then none are taken. Grown only, never a child, nothing shown.
+
 ## The order of building
 
 Each step is to be playable by itself.

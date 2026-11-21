@@ -12,6 +12,7 @@
 // their jobs to a fire that is short of hands, and they go back to what they were doing when it is out.
 //
 // Decided without the game's dice, like the spreading of fire, so nothing else in a match is disturbed.
+import { leanWild } from './leanwild';
 import { CALAMITY } from './data';
 import type { Building, Game, Unit } from './game';
 import { famine } from './famine';
@@ -163,6 +164,7 @@ export function turnOut(g: Game, owner: number, reach = FIRE.call, crew = FIRE.c
 /** Once a second: hunger (famine.ts), plague crossing between peoples (contagion.ts), fire by accident, lightning while a storm is heavy, and idle villagers turning out to fires near them. */
 export function calamity(g: Game): void {
   famine(g);
+  leanWild(g); // a lean season for a town that lives by hunting, fishing or herds (leanwild.ts)
   contagion(g);
   accident(g);
   // Where a Watch House stands, or the people keep a Town Watch, the watch raises the town: villagers are called off their work to a fire (watchhouse.ts, townwatch.ts).

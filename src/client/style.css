@@ -926,3 +926,7 @@ body.looking-out #visit { display: none; }
 #visit-guide .now { margin-top: 4px; }
 #visit-guide .now b::before { content: '¶ '; color: var(--rubric); font-weight: 400; }
 #visit-guide .now small { display: block; color: var(--muted); }
+
+/* The ending told whole (src/sim/epilogues.ts): the last page runs longer now, so the ending dialog scrolls it. */
+.ow-epilogue { max-height: 45vh; overflow-y: auto; }
+.ow-epilogue .ow-line { display: block; margin: 0 0 6px; }
