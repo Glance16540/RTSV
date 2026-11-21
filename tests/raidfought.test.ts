@@ -1,6 +1,6 @@
 // A band's strike on a town of the player's waits on the player, who may fight it in person (src/sim/raidfought.ts).
 import { describe, expect, it } from 'vitest';
-import { Campaign, battleConfig, finishBattle, newCampaign, resolvePending } from '../src/sim/campaign';
+import { Campaign, battleConfig, endTurn, finishBattle, newCampaign, resolvePending } from '../src/sim/campaign';
 import { COMPANIES } from '../src/sim/campaignbase';
 import { CLASH } from '../src/sim/mapbattle';
 import { RAID } from '../src/sim/raidclash';
@@ -91,6 +91,14 @@ describe('left to the town, it is the strike as it always was', () => {
       if (!now.broken) expect(two.c.bands![0].strength).toBe(b1.strength);
       expect(two.c.territories[two.at].owner).toBe(0);
     }
+  });
+  it('a turn ended with the strike unanswered leaves it to the town', () => {
+    const { c, at } = world();
+    offerRaid(c, band(c, at, 6), at, []);
+    const turn = c.turn;
+    endTurn(c);
+    expect(c.raids!.some((r) => r.at === at && r.turn === turn)).toBe(true);
+    expect(c.turn).toBe(turn + 1); // and the turn ended (the band may come again the season after)
   });
   it('a band broken in the attempt is gone, and a band that is gone before it is settled strikes nobody', () => {
     const { c, at } = world(40 * S);
