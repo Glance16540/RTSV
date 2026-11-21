@@ -49,6 +49,20 @@ describe('a rival\'s tale', () => {
     }
   });
 
+  it('brings a rival nothing it would bring in: no supplies, no company, no land; what it costs is paid', () => {
+    for (let t = 20; t < 120; t++) {
+      const c = world(); c.turn = t;
+      const lands = c.territories.map((x) => x.owner), armies = c.armies.map((a) => `${a.id}:${JSON.stringify(a.units)}`).join(), had = c.factions.map((f) => f.supplies);
+      const got = rivalTales(c);
+      expect(c.territories.map((x) => x.owner)).toEqual(lands);
+      expect(c.armies.map((a) => `${a.id}:${JSON.stringify(a.units)}`).join()).toBe(armies);
+      for (const x of got) {
+        const ch = tale(x.id)[x.choice];
+        if (ch.supplies >= 0) expect(c.factions[x.f].supplies).toBeLessThanOrEqual(had[x.f]);
+      }
+    }
+  });
+
   it('comes with the player\'s, as a tale is due, and not between', () => {
     const c = world();
     c.taleDue = c.turn + 1;
