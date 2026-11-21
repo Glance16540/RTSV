@@ -39,6 +39,7 @@ import { tendedPlague } from './decrees';
 import { famineShare } from './granary';
 import { wellEase } from './well';
 import { infirmaryCare } from './infirmary';
+import { nunsNurseMap } from './cloister';
 import { rotationFail } from './croprotation'; // food and health studies
 import { quarantinePass } from './quarantine';
 import { physicianCare } from './physicians';
@@ -109,8 +110,8 @@ export const crowding = (c: Campaign, tid: number): number => Math.min(1, headco
 export function sicken(c: Campaign, t: Territory): number {
   const k = folkOf(c, t.id), grownNow = k.men + k.women + k.elders;
   // The share it kills, less in a small town; what is less than one whole person is a chance of one.
-  // The church tending the sick spares some (decrees.ts), and so does an Infirmary (infirmary.ts).
-  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)) * infirmaryCare(c, t.id) * physicianCare(c, t.owner) * plagueSpared(c, t.id), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
+  // The church tending the sick spares some (decrees.ts), and so does an Infirmary (infirmary.ts), the more for nuns of a Monastery to nurse in it (cloister.ts).
+  const due = grownNow * ACTS.sick * crowding(c, t.id) * (1 - tendedPlague(c, t.id)) * infirmaryCare(c, t.id) * nunsNurseMap(c, t.id) * physicianCare(c, t.owner) * plagueSpared(c, t.id), whole = Math.floor(due) + (chance(c, t.id, 59) < due - Math.floor(due) ? 1 : 0);
   let n = Math.min(grownNow, crowding(c, t.id) >= 1 ? Math.max(1, Math.round(due)) : whole), dead = 0, man = chance(c, t.id, 53) < 0.5;
   while (n-- > 0) {
     if (k.elders > 0) k.elders--;

@@ -18,6 +18,7 @@
 // A skirmish or a mission has none of this.
 import { keptFromTavern } from './churchtavern';
 import { feastCare } from './studiesintown';
+import { feastHolds, feastLift, feastPull } from './feastfield';
 import type { Building, Game, Player, Unit } from './game';
 import type { Campaign } from './campaign';
 import type { PeopleIn } from './township';
@@ -126,15 +127,16 @@ export function driftSecond(g: Game): void {
     if (!p.turnedOut) turnOut(g, p);
     // A villager drifted to the tavern who is out of it again (sent home, or the tavern gone) is drifted no longer.
     for (const u of g.units) if (u.owner === p.id && u.drifted === 'tavern' && !u.inside && u.order?.t !== 'staff') u.drifted = undefined;
-    const law = decreesHere(g, p.id), { strain, care } = townStrain(g, p);
+    const law = decreesHere(g, p.id), { strain, care: cared } = townStrain(g, p);
+    const held = feastHolds(g, p), care = feastLift(g, p, cared); // a town's feast day holds its drift back (feastfield.ts)
     const d = (p.drifted ??= { tavern: 0, mine: 0, church: 0, back: 0 });
-    if (strain > 0 && g.rng() < strain * DRIFT_RATE * (1 - GUARDS_EASE * (law.guards ?? 0))) {
+    if (strain > 0 && !held && g.rng() < strain * DRIFT_RATE * (1 - GUARDS_EASE * (law.guards ?? 0))) {
       if (!law.closeTavern && keptFromTavern(g, p.id)) continue; // a Church near the Tavern keeps her at her work (churchtavern.ts)
       const woman = law.closeTavern ? null : sendWoman(g, p);
       if (woman) { d.tavern++; say(g, p, `${woman.name} has left her work for the tavern.`); continue; }
       const man = sendMan(g, p);
       if (man) { d.mine++; say(g, p, `${man.name} has left his work for the gold mine.`); }
-    } else if (care > 0 && g.rng() < care * HOLY_RATE * (1 + 2 * CHURCH_CARE * (law.church ?? 0)) * feastCare(g, p.id)) { // the more readily with Feast Days (studiesintown.ts)
+    } else if (care > 0 && g.rng() < care * HOLY_RATE * (1 + 2 * CHURCH_CARE * (law.church ?? 0)) * feastCare(g, p.id) * feastPull(g, p)) { // the more readily with Feast Days (studiesintown.ts)
       // Care brings them back: a woman out of the tavern (unless the women were ordered there), a man off the gold.
       const tavern = law.tavernWomen ? undefined : g.buildings.find((b) => b.owner === p.id && b.type === 'tavern' && (b.staff ?? []).some((id) => (g.entities.get(id) as Unit | undefined)?.drifted === 'tavern'));
       if (tavern && g.cmdUnstaff(p.id, tavern.id) > 0) { d.back++; say(g, p, 'One of the tavern\'s women has come back to honest work.'); continue; }

@@ -20,6 +20,7 @@ import type { TechDef } from './data';
 import { STORE_KINDS, folkOf } from './township';
 import { ageOf } from './campaignbase';
 import { nationCanSpare } from './plenty';
+import { taughtCost } from './cloister';
 
 declare module './campaign' {
   interface Faction {
@@ -59,6 +60,8 @@ function held(c: Campaign, f: number): Record<string, number> {
   return out;
 }
 
+/** What a study costs learned in this town: the less for the monks of its Monastery (cloister.ts). */
+export const studyCost = (c: Campaign, id: string, at: number) => taughtCost(c, at, TECHS[id].cost);
 /** Why the nation cannot learn this study in this town now, or '' if it can. */
 export function studyBar(c: Campaign, f: number, id: string, at: number): string {
   const t = TECHS[id], land = c.territories[at];
@@ -70,8 +73,8 @@ export function studyBar(c: Campaign, f: number, id: string, at: number): string
   if (t.requires && !hasStudy(c, f, t.requires) && isStudy(t.requires)) return `It needs ${TECHS[t.requires].name} first.`;
   const teacher = teacherOf(id);
   if (!teacher || !standsAt(c, at, teacher)) return `It is taught at a ${BUILDINGS[teacher ?? '']?.name ?? 'building'} standing in the town.`;
-  const have = held(c, f);
-  for (const k of STORE_KINDS) if ((t.cost[k] ?? 0) > have[k]) return `It costs ${STORE_KINDS.filter((x) => t.cost[x]).map((x) => `${t.cost[x]} ${x}`).join(', ')}.`;
+  const have = held(c, f), cost = studyCost(c, id, at);
+  for (const k of STORE_KINDS) if ((cost[k] ?? 0) > have[k]) return `It costs ${STORE_KINDS.filter((x) => cost[x]).map((x) => `${cost[x]} ${x}`).join(', ')}.`;
   return '';
 }
 
@@ -88,7 +91,7 @@ function pay(c: Campaign, f: number, cost: Partial<Record<string, number>>, firs
 export function learn(c: Campaign, f: number, id: string, at: number): string {
   const bar = studyBar(c, f, id, at);
   if (bar) return bar;
-  pay(c, f, TECHS[id].cost, at);
+  pay(c, f, studyCost(c, id, at), at);
   (c.factions[f].studies ??= []).push(id);
   if (f === 0) c.log.push(`${TECHS[id].name} is learned in ${c.territories[at].name}: ${TECHS[id].desc}`);
   return '';
@@ -141,7 +144,7 @@ export function studySeason(c: Campaign, f: number): string | null {
     if (need <= 0 || (best && need <= best.need)) continue;
     const at = towns(c, f).find((tid) => studyBar(c, f, t.id, tid) === '');
     if (at === undefined) continue;
-    if (!nationCanSpare(c, f, at, t.cost)) continue; // plenty.ts, one rule for every purchase
+    if (!nationCanSpare(c, f, at, studyCost(c, t.id, at))) continue; // plenty.ts, one rule for every purchase
     best = { id: t.id, at, need };
   }
   if (!best) return null;

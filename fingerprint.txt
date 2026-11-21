@@ -97,7 +97,7 @@ drill 6 (kush v stonekin) end: tick 9600 leaders rank 4, rank 4 calls 0 powers l
 drill 6 (kush v stonekin) after the leaders fell: 5ddf36536d5d84fc acclaimed false/true/false 874dc9ca38afbceb
 camp drill 1 (babylon v greece) at 2m: 0eb6125a17354b5c
 camp drill 1 (babylon v greece) at 4m: ab196722cad14cbc
-camp drill 1 (babylon v greece) at 6m: 1dc6f2c99db08313
+camp drill 1 (babylon v greece) at 6m: 30886656491d9945
 camp drill 1 (babylon v greece) at 8m: 091db9e337a27c07
 camp drill 1 (babylon v greece) end: tick 9600 most held in the work camp 8, most in the marauders' camp 0, camps burnt 2, freed and home 0, got out by night 0 091db9e337a27c07
 camp drill 2 (japan v kush) at 2m: 41df63ad3b98603a
