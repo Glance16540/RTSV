@@ -929,3 +929,4 @@ body.looking-out #visit { display: none; }
 
 /* The ending told whole (src/sim/epilogues.ts): the last page runs longer now, so the ending dialog scrolls it. */
 .ow-epilogue { max-height: 45vh; overflow-y: auto; }
+.ow-epilogue .ow-line { display: block; margin: 0 0 6px; }
