@@ -46,6 +46,7 @@ import { caravansSeason } from './caravans';
 import { waterOf } from './townwater';
 import { migrationSeason } from './migration';
 import { makeWilds } from './wilds';
+import { maraudersFirst, rivalHunts } from './rivalhunt';
 import { atWarWith, warUntil } from './feudwar';
 import { befalls, feverToll, hardCost } from './chancecreed';
 import { raiseFaithSites } from './faithsites';
@@ -1438,6 +1439,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
     }
     // Spend what is left on troops, growing existing armies before starting new ones.
     rivalMoves(c, f.id); // garrison what is resentful or beset, and keep that garrison there (rivalrule.ts)
+    rivalHunts(c, f.id); // and an army marches for a band that holds its people or sits in its land (rivalhunt.ts)
     if (seizeOpen(c, f.id)) return false; // a dead town within reach is taken for the asking (deadtown.ts)
     const yards = own.filter((t) => maySpare(c, t.id) && Object.values(COMPANIES).some((d) => t.buildings.includes(d.needs)))
       .sort((a, b) => (armyAt(c, b.id) ? 1 : 0) - (armyAt(c, a.id) ? 1 : 0));
@@ -1467,6 +1469,7 @@ function aiStep(c: Campaign, f: Faction): boolean {
   }
   if (f.angry) targets.sort((a, b) => (c.territories[a].owner === 0 ? 0 : 1) - (c.territories[b].owner === 0 ? 0 : 1));
   targets.splice(0, targets.length, ...sickLast(c, targets)); // a land with plague in it last (aiplague.ts)
+  targets.splice(0, targets.length, ...maraudersFirst(c, f.id, targets)); // a camp of the marauders that holds its people, or has struck its towns (rivalhunt.ts)
   targets.splice(0, targets.length, ...heldFirst(c, f.id, targets)); // a land holding its carried-off in their last seasons first (rivalcaptives.ts)
   // Cautious leaders want better odds; a leader who has just been refused wants blood.
   const dares = (from: number, to: number): boolean => {

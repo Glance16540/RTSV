@@ -116,7 +116,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| There is always something to fight | Rival peoples hunt a band only with an army already beside it, and never march to one, even to get their own back before the time runs out. Rival leaders ignore the marauders on the map. | medium | Unity: a rival's plan to march for a purpose (a band, a captive, a road) is the larger missing piece of the rivals' mind (see Rivals live by the same rules). |
+| There is always something to fight | **Built here after all (20 November 2026, `rivalhunt.ts`).** A rival marches through its own lands for a band that holds its people, if it can be there in time, or that sits in its land; and it marches first on a camp of the marauders that holds its people or has struck its towns. Still missing: it never crosses another people's land or the wild to reach a band, and plans no march of several lands to a marauders' camp. | medium | Done as far as its own lands. The rest with the rival's mind, in Unity. |
 | Bands choose marks and strike | Bands seldom live long enough to roam, and long marches are rare: on maps this size a softer mark is nearly always one land away. The far wilds' hosts do march. | small | Unity: it depends on map size. Port as is. |
 
 ## Drift, decrees, and the tavern as a town falls
