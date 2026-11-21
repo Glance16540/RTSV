@@ -158,7 +158,7 @@ The "Not yet" line is listed above.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Sooner settled where they are ruled well | **Done**: a rival builds a Church (or, if its people lean to the tavern, Farmland) in its most resentful town when it can spare the price (`src/sim/rivalyoke.ts`), and a computer-led people counted out takes back a town that rises for it and lives again, the town its seat (`src/sim/revival.ts`). | small | Built. |
+| Sooner settled where they are ruled well | **Done**: a rival builds in its most resentful town a Church if it is a devout people, else Farmland, when it can spare the price (`src/sim/rivalyoke.ts`), and a computer-led people counted out takes back a town that rises for it and lives again, the town its seat (`src/sim/revival.ts`). | small | Built. |
 
 ## Rivals live by the same rules
 

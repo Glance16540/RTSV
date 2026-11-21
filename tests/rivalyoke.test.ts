@@ -31,13 +31,15 @@ describe('a rival builds for a resentful town', () => {
     expect(resentful(c, 1)).toEqual([]);
   });
 
-  it('a Church first, which eases it most, unless its people lean to the tavern; then Farmland', () => {
+  it('a devout people a Church first, which eases it most, then Farmland; any other people Farmland', () => {
     const { c, t } = taken();
     c.factions[1].civ = 'dawn'; // the devout
     expect(easeWith(c, 1, t.id)).toBe('church');
     t.buildings.push('church');
     expect(easeWith(c, 1, t.id)).toBe('farm');
     c.factions[1].civ = 'steppe'; t.buildings = []; // worldly
+    expect(easeWith(c, 1, t.id)).toBe('farm');
+    c.factions[1].civ = 'greece'; // in the middle: it builds no church it does not believe in
     expect(easeWith(c, 1, t.id)).toBe('farm');
   });
 
