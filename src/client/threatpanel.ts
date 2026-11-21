@@ -95,7 +95,7 @@ export function raidPrompt(c: Campaign): { title: string; text: string } | null 
   const t = c.territories[p.to];
   return {
     title: `${b.name[0].toUpperCase() + b.name.slice(1)} come against ${t.name}!`,
-    text: `${BANDS[b.kind].name} of ${strengthOf(b.strength)} against the town's defence of ${p.dStr}. Fight for the town yourself, with its own men and any army standing there, or leave it to the town, which will hold or fall by what it has. Beaten off, they are the weaker for it; if they get in they take what they can carry, and may lead people away.`,
+    text: `${BANDS[b.kind].name} of ${strengthOf(b.strength)} against the town's defence of ${Math.round(p.dStr)}. Fight for the town yourself, with its own men and any army standing there, or leave it to the town, which will hold or fall by what it has. Beaten off, they are the weaker for it; if they get in they take what they can carry, and may lead people away.`,
   };
 }
 
