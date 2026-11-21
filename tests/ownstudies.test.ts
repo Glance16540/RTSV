@@ -34,7 +34,7 @@ const taught = (civ: string, id: string) => { const w = world(civ); expect(natio
 describe('each people has a study of its own', () => {
   it('every nation has one: a study kept on the map, taught at the Town Center, marked as that nation\'s', () => {
     for (const civ of CIV_IDS) expect(studiesOf(civ).length, civ).toBeGreaterThanOrEqual(1);
-    expect(ownStudies().length).toBe(CIV_IDS.length);
+    expect(ownStudies().length).toBe(2 * CIV_IDS.length); // two each (docs/DESIGN.md: "one or two studies of its own")
     for (const t of ownStudies()) {
       expect(CIVS[t.civ!], t.id).toBeDefined();
       expect(isStudy(t.id), t.id).toBe(true); // studies.ts keeps it for the nation
@@ -61,8 +61,8 @@ describe('each people has a study of its own', () => {
     expect(knows(c, 0, 'own_kinship')).toBe(true);
     expect(c.log.at(-1)).toContain('Kinship');
     // In a town: listed at the Town Center for its nation alone, and refused to anyone else.
-    expect(researchAt(STUDY_HALL, 'hearth', ['a'])).toEqual(['a', 'own_kinship']);
-    expect(researchAt(STUDY_HALL, 'babylon', [])).toEqual(['own_code']);
+    expect(researchAt(STUDY_HALL, 'hearth', ['a'])).toEqual(['a', 'own_kinship', 'own_hearth']);
+    expect(researchAt(STUDY_HALL, 'babylon', [])).toEqual(['own_code', 'own_eye']);
     expect(researchAt('barracks', 'hearth', ['a'])).toEqual(['a']);
     const g = new Game(5, [{ ...setups[0], civ: 'hearth' }, { ...setups[1], civ: 'babylon' }]);
     for (const p of g.players) p.age = 2;

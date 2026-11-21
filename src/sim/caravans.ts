@@ -25,6 +25,7 @@
 // The map draws them walking their roads (src/client/caravandraw.ts). One call a season (campaign.ts), after the convoys.
 // Decided by chances of its own (convoys.ts's hash, on caravan numbers of their own), so the rest of the campaign's luck
 // is left as it was.
+import { caravanGold } from './ownstudies';
 import { escortFight } from './roadclash';
 import type { Campaign } from './campaign';
 import type { Arrival, Convoy } from './convoys';
@@ -105,7 +106,7 @@ export function partnerOf(c: Campaign, tid: number): { at: number; road: number[
 export function caravanWorth(c: Campaign, from: number, to: number, road: number[]): number {
   const f = c.territories[from].owner, g = c.territories[to].owner, C = CARAVANS;
   const traders = styleOf(c.factions[f]?.civ ?? '').id === 'trader';
-  return Math.round((C.gold + C.perLand * Math.max(0, road.length - 1)) * (g !== f ? C.abroad : 1) * (traders ? C.traders : 1));
+  return Math.round((C.gold + C.perLand * Math.max(0, road.length - 1)) * (g !== f ? C.abroad : 1) * (traders ? C.traders : 1) * caravanGold(c, f)); // the Arameans' Common Tongue (ownstudies.ts)
 }
 
 /** Caravans of a people on the road. */

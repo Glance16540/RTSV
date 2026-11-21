@@ -17,6 +17,7 @@
 // calling it to church; drift adds no rise of its own there, so as not to count the church twice. A strained town's men go to the mines and its women to its tavern, if it has one: gold
 // comes in, and a town with a tavern falls the faster. The nation's standing is its towns' (townfaith.ts), so it
 // follows them.
+import { griefFaster, lossSpared } from './ownstudies';
 import { tavernShare } from './churchtavern'; // fewer drift to a Tavern with a Church beside it
 import type { Campaign } from './campaign';
 import { faithAt, swayNation, swayTown } from './townfaith';
@@ -83,7 +84,7 @@ export function driftTown(c: Campaign, tid: number): number {
   // A band's raid (threats.ts marks it 'raid', or 'carried' when it took people) is a raid, and people carried off are mourned.
   const struck = (kinds: string[]): boolean => (c.events ?? []).some((x) => x.at === tid && kinds.includes(x.kind) && x.until >= c.turn - 1);
   const raided = !!mood.raided || struck(['raid', 'carried']);
-  griefSeason(f, !!mood.bereaved || struck(['carried']), { ease: infirmaryEase(c, tid) * leaderGrief(c, tid) }); // the faster with an Infirmary, and with the leader there (leaderstay.ts)
+  griefSeason(f, !!mood.bereaved || struck(['carried']), { ease: infirmaryEase(c, tid) * leaderGrief(c, tid) * griefFaster(c, tid) }); // the faster with an Infirmary, and with the leader there (leaderstay.ts)
   const people = Math.max(1, grown(f) + f.children), food = f.stores.food / people;
   // Hunger is the town's own larder (larder.ts: it could not feed everyone this season, or it is bare), or a famine on
   // its land (acts.ts); a lean larder that still feeds everyone is no hunger. A hard season on the map costs supplies, not food.
@@ -147,7 +148,7 @@ export function driftSeason(c: Campaign): void {
   for (const t of c.territories) if (!t.horde) driftTown(c, t.id);
   for (const x of c.factions) {
     if (!x.alive) continue;
-    const loss = nationLoss(c.territories.filter((t) => t.owner === x.id && t.folk).map((t) => t.folk!.notables), c.turn);
+    const loss = nationLoss(c.territories.filter((t) => t.owner === x.id && t.folk).map((t) => t.folk!.notables), c.turn) * lossSpared(c, x.id); // the Malians' griots (ownstudies.ts)
     if (loss > 0) swayNation(c, x.id, -Math.round(loss * NATION_DIP));
   }
 }
