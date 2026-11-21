@@ -19,7 +19,7 @@ import { caravanAtField, caravanFromField } from './fieldcaravan';
 import { hallCasesAt, hallFromSitting } from './hallcases';
 import { keepRoads, roadsFor } from './handroads';
 import { waterOf } from './townwater';
-import { terrainOf } from './campaign';
+import { landIncome, terrainOf } from './campaign';
 import { keepQueued } from './queueddrill';
 import { BUILDINGS } from './data';
 import type { Ground, Standing } from './game';
@@ -32,6 +32,7 @@ import { raiseFaithSites } from './faithsites';
 import { BATTLE_VIRTUE, BIOMES, COMPANIES, SITES, SITE_BUILDING, ageOf, armyAt, biomeOf, heroFor, homeCorner, onSea, slots } from './campaignbase';
 import { faithAt } from './townfaith';
 import { settleStores } from './stores';
+import { weighCarried } from './visitworth';
 import { sideName } from './naming';
 import { Orders, keepOrders, shareOf } from './governor';
 import type { Sky } from './campaign';
@@ -242,6 +243,7 @@ export function finishVisit(c: Campaign, after: VisitAfter = {}): boolean {
   const before = folkOf(c, land.id).children;
   homeOnLeave(c, land.id, after.leave); // men of the town who went home from the army while the player was there: before its soldiers are counted back
   const had = armyAt(c, land.id)?.owner === 0 ? { ...armyAt(c, land.id)!.units } : undefined;
+  if (census) weighCarried(c, land.id, { ...folkOf(c, land.id).stores }, census, { share: (seconds ?? VISIT_SECONDS) / VISIT_SECONDS, supplies: landIncome(c, 0, land) }); // what it gathered, weighed to the season it stands for (visitworth.ts)
   if (census) settleFolk(c, land.id, census);
   if (census) bornOnVisit(c, land.id, folkOf(c, land.id).children - before);
   if (census) driftBack(c, land.id, after.drifted);

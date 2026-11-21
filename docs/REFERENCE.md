@@ -83,12 +83,13 @@ So that a figure can be taken again, and on the Unity side the same way:
 Rows that sit on the edge of their band in the game as it stands, so that a reading out of band is not a fault in the
 port. Each is a few lines; the finding behind it is in the commits and the board.
 
-- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). Over both seed sets on 21 November 2026 it
-  reads about 13.5% less with stories ignored and 9.5 to 10% with stories answered; the second set with stories
-  answered reads 6 to 7% while its first-set twin reads about 12.5%. One reading of 384 swings about 3.5 points either
-  side by the luck of the campaigns, and the row has read 6 to 16% since its bar was set. Posting guards does nearly
-  all of what decrees do; grief and sickness are over half of drift, and tending them needs a church the town
-  mostly lacks. Lifting the row needs a rule from the owner (tending without a church); nothing was tuned.
+- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). No longer on its edge since a town without
+  a church can tend at half strength (the owner's word, 21 November 2026; `decrees.ts` `TEND_BARE`): at 384 on both seed
+  sets it reads 16.4% and 19.3% less with stories ignored (12.5 and 14.8 before) and 14.2% and 12.2% with stories
+  answered (12.9 and 7.5 before). One reading of 384 still swings about 3.5 points either side. Its knock-on is the
+  edge now: tending pleases lords, and "lords content at 20 years" rose three to five points with it (the player's
+  15.6 / 19.7 / 15.0 / 20.5%, the rivals' 18.8 / 19.9 / 18.6 / 20.1% over the four readings, against a top of 20), so
+  that row will cross its band on some readings. Nothing was tuned for it.
 - **Crime, "thieves taken in a season in a town with a Watch House"** (band: 10 to 20 more in every 100 seasons). The
   row is counted like for like (the same draw with the Watch House's 0.15 and without), so its true value is the rule's
   15 and nothing else; a reading has only 300 to 480 thief-seasons and swings about 1.8 points either side. A draw is
