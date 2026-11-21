@@ -25,7 +25,7 @@ describe('when the king sends his party', () => {
     const { c, seat } = world();
     expect(c.territories[seat].owner).toBe(0);
     const cap = c.territories.find((t) => t.capital === 0)!.id;
-    c.court = undefined as never;
+    c.factions[0].heroAlive = false; // nobody leads them: no court
     expect(seatOf(c)).toBe(cap);
   });
   it('only in a feud at war, a season in, not yet raided, with his people alive and armed', () => {
@@ -75,7 +75,7 @@ describe('the raid on the court', () => {
       const { c, seat } = world(seed);
       c.armies = c.armies.filter((a) => a.at !== seat);
       c.territories[seat].buildings = []; c.territories[seat].capital = -1;
-      c.court = undefined as never;
+      c.factions[0].heroAlive = false; // nobody leads them: no court
       c.territories[seat].capital = 0;
       Object.assign(folkOf(c, seat), { men: 2 * S });
       c.armies.push({ id: 71, owner: 1, at: c.territories.find((t) => t.owner === 1)!.id, units: { infantry: 40 }, vet: 0, moved: false, hero: false } as Campaign['armies'][number]);
