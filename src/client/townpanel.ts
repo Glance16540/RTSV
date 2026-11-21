@@ -41,7 +41,7 @@ export function townHtml(c: Campaign, tid: number, mine: boolean): string {
   const people = `<div class="town-folk" title="The people of this town. They are who turns out when it is fought over, and whoever is lost then is gone.">👥 <b>${headcount(f)}</b> <small>${plural(f.men, 'man', 'men')} · ${plural(f.women, 'woman', 'women')} · ${f.elders} old · ${plural(f.children, 'child', 'children')}</small>${standing}${faces.marks}</div>`;
   const state = stateHtml(c, tid, mine);
   if (!mine) return people + state;
-  const names = living(f).map((n) => `<div class="town-notable likeness-row">${faces.notable(n)}<span>${n.kind === 'veteran' ? '⚔️' : '🏠'} <b>${esc(n.name)}</b>${n.family ? ' ' + esc(n.family) : ''}, who ${esc(n.deed)}</span></div>`).join('');
+  const names = living(f).map((n) => `<div class="town-notable likeness-row">${faces.notable(n)}<span>${n.kind === 'veteran' ? '⚔️' : '🏠'} <b>${esc(n.name)}</b>${n.family && !n.name.endsWith(n.family) ? ' ' + esc(n.family) : ''}, who ${esc(n.deed)}</span></div>`).join('');
   const gone = f.notables.filter((n) => n.lost).slice(-2).map((n) => `<div class="town-notable gone">✝ ${esc(n.name)}, who ${esc(n.deed)}: ${esc(n.lost!.how)}, turn ${n.lost!.turn}</div>`).join('');
   const grief = townGrief(f.notables, c.turn), dead = mourned(f.notables, c.turn);
   const mourning = grief > 0 ? `<div class="town-notable gone" title="A town grieves its known people for some seasons after they are lost.">🕯 The town mourns ${dead.slice(0, 2).map((n) => esc(n.name)).join(' and ')}${dead.length > 2 ? ' and others' : ''}</div>` : '';
