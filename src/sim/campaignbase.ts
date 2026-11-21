@@ -43,7 +43,12 @@ export const COMPANIES: Record<string, CompanyDef> = { ...PLAIN, ...uniqueCompan
 /** The plain kind a company fights as: itself, or for a people's own soldiers the kind they are of. */
 export const familyOf = (kind: string): string => COMPANIES[kind]?.base ?? kind;
 /** How many of these companies are of the family this kind beats (`BEATS`). */
-export const beatenIn = (kind: string, foe: Record<string, number>): number => Object.entries(foe).reduce((n, [k, v]) => n + (familyOf(k) === BEATS[familyOf(kind)] ? v : 0), 0);
+export function beatenIn(kind: string, foe: Record<string, number>): number {
+  const beaten = BEATS[familyOf(kind)];
+  let n = 0;
+  for (const k in foe) if (familyOf(k) === beaten) n += foe[k]; // in the record's own order, as before
+  return n;
+}
 /** A soldier of this kind of company, as the map names one who made a name. */
 export const soldierWord = (kind: string): string => (COMPANIES[kind]?.civ ? COMPANIES[kind].name : familyOf(kind) === 'cavalry' ? 'Rider' : familyOf(kind) === 'archers' ? 'Archer' : 'Soldier');
 
@@ -110,8 +115,13 @@ export const ALLIANCE_COST = 6;
 
 export const MAX_FAVOR = 3;
 
-/** Hold this share of all the land for this many turns running and the campaign is won. */
-export const DOMINION_SHARE = 0.6;
+/**
+ * Hold this share of all the land for this many turns running and the campaign is won. It was 0.6; read at 384 campaigns
+ * on main 67711fd, the campaigns still undecided after 200 seasons in the answered course (9.1% and 10.4%) were close
+ * ones, two or three peoples left and most ending with four fifths or more of the land the share asked: at 0.57 (a land
+ * fewer on most maps) 7.0% and 8.6% were undecided, and 5.5% and 8.3% in the other course where 6.0% and 9.1% were.
+ */
+export const DOMINION_SHARE = 0.57;
 
 export const DOMINION_TURNS = 10;
 

@@ -10,6 +10,7 @@ import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
 import { bandPrompt, newsHtml, raidPrompt } from './threatpanel';
+import { oddsLine, sidesLine } from './mapfigures';
 import { intrigueDo } from './intriguepanel';
 import { petitionDo } from './petitionpanel';
 import { pactDo } from './pactpanel';
@@ -276,7 +277,6 @@ export class Overworld {
     const t = c.territories[p.to];
     const attacking = p.attacker === 0;
     const foe = attacking ? p.defender : p.attacker;
-    const foeName = foe < 0 ? LOCALS.name : c.factions[foe].name;
     const settle = () => {
       resolvePending(c, 'auto');
       if (c.phase === 'ai') continueAI(c);
@@ -292,9 +292,9 @@ export class Overworld {
       return;
     }
     this.dialog(attacking ? `Attack ${t.name}?` : `${t.name} is under attack!`,
-      (attacking ? `Your strength of ${p.aStr} against ${foeName}'s defence of ${p.dStr}.` : `${foeName} ${foe < 0 ? 'marches' : 'march'} with a strength of ${p.aStr} against your defence of ${p.dStr}.`) +
+      sidesLine(c, p, foe, attacking) +
         (p.sea ? ` ${attacking ? 'Your troops land' : 'They land'} from the sea, at ${Math.round(SEA_LANDING * 100)}% of their strength.` : '') +
-        (battleConfig(c)!.setups.length > 2 ? ' Armies from neighbouring land will join the battle.' : '') + ' A field battle is the two armies alone and is over in minutes; a siege battle has towns to build and takes much longer.' + ` Auto-resolving, you would win about ${Math.round((attacking ? winChance(p.aStr, p.dStr, homeEdge(c, p.attacker)) : 1 - winChance(p.aStr, p.dStr, homeEdge(c, p.attacker))) * 100)} times in 100.`,
+        (battleConfig(c)!.setups.length > 2 ? ' Armies from neighbouring land will join the battle.' : '') + ' A field battle is the two armies alone and is over in minutes; a siege battle has towns to build and takes much longer.' + ' ' + oddsLine(attacking ? winChance(p.aStr, p.dStr, homeEdge(c, p.attacker)) : 1 - winChance(p.aStr, p.dStr, homeEdge(c, p.attacker))),
       [['Field battle', () => { p.mode = 'field'; this.hooks.fight(); }], ['Siege battle', () => { p.mode = 'siege'; this.hooks.fight(); }], ['Auto-resolve', settle],
         // An attack can still be called off; a defence cannot be declined.
         ...(attacking ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])]);

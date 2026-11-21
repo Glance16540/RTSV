@@ -455,15 +455,17 @@ export function softest(c: Campaign, b: Band, reach = reachOf(c, b)): { id: numb
 }
 
 /** Every band but the marauders grows a little with time, and may strike the softest town in its reach. */
-export function strikeSeason(c: Campaign, out: string[], opts: { /** Asked before a strike falls: true, and it waits on someone instead (the season's own turn passes raidfought.ts `offerRaid`: the player may fight for a town of theirs in person). */ waits?: (c: Campaign, b: Band, tid: number, out: string[]) => boolean } = {}): Raid[] {
+export function strikeSeason(c: Campaign, out: string[], opts: { /** Asked before a strike falls: true, and it waits on someone instead (the season's own turn passes raidfought.ts `offerRaid`: the player may fight for a town of theirs in person). The season's strikes stop there, to be taken up again with `done`. */ waits?: (c: Campaign, b: Band, tid: number, out: string[]) => boolean; /** The bands already seen to this season, the one that waits among them: each band seen to is added, and a band in it is passed over. */ done?: number[] } = {}): Raid[] {
   const raids: Raid[] = [];
   for (const b of [...(c.bands ?? [])]) {
     if (b.kind === 'marauders') continue; // they keep their own season (bandhorde.ts)
+    if (opts.done?.includes(b.id)) continue; // seen to before the season waited
+    opts.done?.push(b.id);
     mark(c, 'band', b.at);
     if (c.turn > b.since && (c.turn - b.since) % THREATS.grow === 0) b.strength = Math.min(THREATS.max, b.strength + 1);
     const m = softest(c, b);
     if (!m || chance(c, b.id, 41) >= THREATS.strike) continue;
-    if (opts.waits?.(c, b, m.id, out)) continue; // it waits on the player, who may fight it in person (raidfought.ts)
+    if (opts.waits?.(c, b, m.id, out)) break; // it waits on the player, and the season with it (raidfought.ts)
     const raid = strike(c, b, m.id, out);
     raids.push(raid);
     if (raid.broken) { note(c, out, 'broken', b, b.at, `${cap(b.name)} are broken and scattered.`, [raid.owner]); breakBand(c, b, out); }
