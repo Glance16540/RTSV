@@ -43,7 +43,7 @@ export interface Spouse { name: string; female: boolean; born: number; of: strin
 export interface Close { post: Post; name: string; female: boolean; family?: string; town: number; notable?: boolean; kind?: Notable['kind']; unit?: string; loyalty: number; feeling: Feeling; since: number }
 /** A change in the household, for the season's report. */
 export interface KinNews { turn: number; text: string; tone: 'good' | 'bad' | 'plain' }
-export interface Kin { leader: string; spouse?: Spouse; alone?: number; circle: Close[]; seen: { lands: number }; news?: KinNews[] }
+export interface Kin { leader: string; spouse?: Spouse; alone?: number; circle: Close[]; seen: { lands: number }; news?: KinNews[]; /** How many strikes of the turn it had seen when it last looked: one that falls after is weighed the season after (`unweighed`). */ saw?: { turn: number; n: number } }
 declare module './campaign' {
   interface Faction {
     /** The leader's household and inner circle (kin.ts). */
@@ -141,12 +141,25 @@ const chronicle = (c: Campaign, text: string): void => { (c.chronicle ??= []).pu
 const tell = (c: Campaign, k: Kin, text: string, tone: KinNews['tone']): void => { (k.news ??= []).push({ turn: c.turn, text, tone }); if (k.news.length > KIN.news) k.news.splice(0, k.news.length - KIN.news); };
 const sickAt = (c: Campaign, tid: number): boolean => (c.events ?? []).some((e) => e.kind === 'plague' && e.at === tid && e.until >= c.turn);
 const struck = (c: Campaign, tid: number, kinds: string[]): boolean => (c.events ?? []).some((e) => e.at === tid && e.turn === c.turn && kinds.includes(e.kind));
+const STRIKES = ['raid', 'carried'];
+/**
+ * Strikes of last season that fell after the household had looked. A band's strike on a town of the player's waits
+ * on the player and falls once the season has turned (raidfought.ts), so the household, which looks during the
+ * season, never saw it: the leader's wife was not carried off, and nobody close was shaken, by a strike that waited.
+ */
+function unweighed(c: Campaign, k: Kin): { kind: string; at: number }[] {
+  const was = (c.events ?? []).filter((e) => e.turn === c.turn - 1 && STRIKES.includes(e.kind));
+  const late = k.saw?.turn === c.turn - 1 ? was.slice(k.saw.n) : [];
+  k.saw = { turn: c.turn, n: (c.events ?? []).filter((e) => e.turn === c.turn && STRIKES.includes(e.kind)).length };
+  return late;
+}
 
 /** One season for one people's household and circle. */
 export function kinSeason(c: Campaign, f: number): void {
   const fac = c.factions[f];
   if (!fac?.alive) return;
   const k = kinOf(c, f), mine = f === 0, seat = seatOf(c, f);
+  const late = unweighed(c, k), lateAt = (tid: number, kinds: string[]): boolean => late.some((e) => e.at === tid && kinds.includes(e.kind));
   // A household kept under a placeholder for its leader (games saved before the leader's own name was used) takes the name, and nobody is widowed for it.
   if (/^leader\d+$/.test(k.leader ?? '')) { const was = k.leader; k.leader = leaderName(c, f); if (k.spouse?.of === was) k.spouse.of = k.leader; }
   // A new leader comes with a household of their own; the old leader's spouse is remembered.
@@ -163,11 +176,12 @@ export function kinSeason(c: Campaign, f: number): void {
     const age = (c.turn - s.born) / 4;
     const dies = age >= 60 && rand(c, f, 21) < 0.01 + 0.005 * (age - 60);
     const sick = seat >= 0 && sickAt(c, seat) && rand(c, f, 23) < 0.1;
-    const carried = seat >= 0 && struck(c, seat, ['carried']) && rand(c, f, 25) < KIN.carried;
+    const sacked = seat < 0 ? -1 : struck(c, seat, ['carried']) ? c.turn : lateAt(seat, ['carried']) ? c.turn - 1 : -1; // the turn its seat was sacked, this season or after it last looked
+    const carried = sacked >= 0 && rand(c, f, 25) < KIN.carried;
     if (dies || sick || carried) {
       // Carried off: held among the band's captives (threats.ts), to be got back the same way.
-      const band = carried ? (c.bands ?? []).find((b) => b.held.some((h) => h.from === seat && h.owner === f && h.since === c.turn)) : undefined;
-      if (band) { const h = band.held.find((x) => x.from === seat && x.owner === f && x.since === c.turn)!; (h.names ??= []).push(s.name); }
+      const band = carried ? (c.bands ?? []).find((b) => b.held.some((h) => h.from === seat && h.owner === f && h.since === sacked)) : undefined;
+      if (band) { const h = band.held.find((x) => x.from === seat && x.owner === f && x.since === sacked)!; (h.names ??= []).push(s.name); }
       s.lost = { turn: c.turn, how: carried ? 'taken' : 'died', ...(band ? { band: band.id } : carried ? { final: true } : {}) };
       k.alone = c.turn;
       chronicle(c, carried ? `${s.name}, ${s.female ? 'wife' : 'husband'} of ${s.of}, was carried off when ${c.territories[seat].name} was sacked${band ? ` and is held by ${band.name}` : ''}.` : `${s.name}, ${s.female ? 'wife' : 'husband'} of ${s.of}, has died${sick ? ' of the plague' : ''}.`);
@@ -206,7 +220,7 @@ export function kinSeason(c: Campaign, f: number): void {
     return true;
   });
   for (const x of k.circle) {
-    const f2 = folkOf(c, x.town), raided = struck(c, x.town, ['raid', 'carried']), hungry = !!f2.hungry, sick = sickAt(c, x.town);
+    const f2 = folkOf(c, x.town), raided = struck(c, x.town, STRIKES) || lateAt(x.town, STRIKES), hungry = !!f2.hungry, sick = sickAt(c, x.town);
     x.loyalty = Math.max(0, Math.min(100, Math.round(x.loyalty + fared + (raided ? KIN.raided : 0) + (hungry ? KIN.hungry : 0) + (sick ? KIN.sick : 0))));
     x.feeling = x.loyalty < KIN.angry ? 'angry' : raided || hungry || sick ? 'afraid' : x.loyalty < KIN.uneasy ? 'grief' : 'content';
   }

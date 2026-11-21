@@ -287,7 +287,7 @@ by name.
 | `inyears` | 13 | How long until something, said as a person would: "in 14 years", "next season". | ageing | inyears.test.ts | not yet |
 | `keeper` | 18 | A town kept in peace: a campaign town kept by the computer with nobody hostile about raises no works of war (docs/DESIGN.md, "A visit"). | game (types only) | keeper.test.ts | not yet |
 | `intriguebase` | 91 | What every story inside the story is made of: the record of a story, its people and notes, and the four things every kind does (take its own chance, begin, say something, end, with those who must be told of an ending). Below the stories, so that they do not import one another in a ring. | campaign (types only) | intrigue.test.ts, courtstory.test.ts, aftermath.test.ts | not yet |
-| `kin` | 256 | The leader's household and inner circle: a husband or wife (the heirs' other parent, held like any captive when carried off), and up to four close to the leader with loyalty and mood, each post doing a little by loyalty (docs/DESIGN.md, "Relationships"). | campaign (types only), campaignbase, larder, peoplenames, portrait (types only), threatsbase, townfaith, township | kin.test.ts, kinposts.test.ts | not yet |
+| `kin` | 270 | The leader's household and inner circle: a husband or wife (the heirs' other parent, held like any captive when carried off), and up to four close to the leader with loyalty and mood, each post doing a little by loyalty (docs/DESIGN.md, "Relationships"). | campaign (types only), campaignbase, larder, peoplenames, portrait (types only), threatsbase, townfaith, township | kin.test.ts, kinposts.test.ts | not yet |
 | `larder` | 121 | Towns eat their food on the map: each season a town's people eat from its food store, a town that cannot goes hungry, and one hungry long enough loses its grown people, never a child (docs/DESIGN.md, "Stores"). | campaign (types only), granary, ledger, salting, township | larder.test.ts | not yet |
 | `larderwatch` | 61 | A warning before a town's granary empties: what the town eats against what its land brought in at the last harvest (noted by harvest.ts), with food on the road to it counted, gives the seasons until it cannot eat in full; the towns within two seasons of it, and the warning in words for the season's report and the land's panel. | campaign (types only), larder, township | larderwatch.test.ts | not yet |
 | `leaderstay` | 84 | The leader's stay in a town, by calling: every leader draws it toward its nation's standing; a Steward's work, building and grief, a Warlord's strain, unrest beside it and the town's men, a Strategist's roads and readiness against a band, each the same weight. Readers for townfaith.ts, harvest.ts, governor.ts, drift.ts, unrest.ts, militia.ts, threats.ts and convoys.ts. | campaign (types only), campaignbase, court, hero (types only) | leaderstay.test.ts | not yet |
@@ -472,7 +472,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-306 modules, 38,116 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+306 modules, 38,130 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -486,7 +486,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 7 | 8 | 1,263 | `armytown` (387; 21), `larder` (121; 13), `famine` (188; 7), `founding` (118; 7), `story` (213; 7), `contagion` (97; 3), `couriers` (9; 1), `widowhood` (130; 1) |
 | 8 | 16 | 1,238 | `places` (58; 7), `bandmarch` (145; 5), `tribes` (217; 5), `reckon` (26; 4), `ailing` (53; 3), `larderwatch` (61; 2), `leanwild` (48; 2), `aicare` (56; 1), `downedmap` (64; 1), `fortkeep` (52; 1), `grain` (78; 1), `siegeretreat` (63; 1), `threadstarts` (101; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
 | 9 | 4 | 478 | `townfaith` (126; 27), `militia` (43; 4), `calamity` (204; 3), `talethreads` (105; 2) |
-| 10 | 10 | 878 | `kin` (256; 9), `seasonfolk` (121; 5), `conquered` (126; 4), `rivalworld` (61; 3), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1), `lessons` (68) |
+| 10 | 10 | 892 | `kin` (270; 9), `seasonfolk` (121; 5), `conquered` (126; 4), `rivalworld` (61; 3), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1), `lessons` (68) |
 | 11 | 4 | 787 | `nobles` (253; 19), `dynasty` (232; 13), `portrait` (257; 1), `rivalyoke` (45; 1) |
 | 12 | 6 | 1,024 | `mapbattle` (378; 4), `nobletemper` (110; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `unrest` (128; 1), `epilogues` (144) |
 | 13 | 2 | 231 | `raidclash` (145; 3), `tradedeal` (86; 2) |
