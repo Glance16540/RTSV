@@ -75,12 +75,18 @@ export const NOBLES = {
   loyal: 0.4, pull: 0.05,
 };
 
-/** How each leaning takes each decree, -1 to 1. */
+/**
+ * How each leaning takes each decree, -1 to 1. Tending is taken at half what it was (pious and kindly 1, worldly -0.5,
+ * until 21 November 2026): since a town without a church can tend, it is given far more often, and at the old liking
+ * lords content at twenty years went back over its band (20.5% and 20.1% on one reading of four, against a top of 20).
+ * At a half, four readings of 384 give 13.7 to 18.1% of the player's and 16.1 to 19.2% of the rivals', with 3.5 to
+ * 6.5% angry and drift with decrees 13.3 to 17.2% less than without.
+ */
 export const LIKES: Record<Leaning, Record<DecreeKind, number>> = {
-  pious: { church: 1, guards: 0, alms: 0.5, closeTavern: 1, tavernWomen: -1, tend: 1 },
+  pious: { church: 1, guards: 0, alms: 0.5, closeTavern: 1, tavernWomen: -1, tend: 0.5 },
   martial: { church: 0, guards: 1, alms: -0.5, closeTavern: 0, tavernWomen: 0, tend: 0 },
-  worldly: { church: -0.5, guards: 0, alms: -0.5, closeTavern: -1, tavernWomen: 1, tend: -0.5 },
-  kindly: { church: 0.5, guards: -0.5, alms: 1, closeTavern: 0, tavernWomen: -1, tend: 1 },
+  worldly: { church: -0.5, guards: 0, alms: -0.5, closeTavern: -1, tavernWomen: 1, tend: -0.25 },
+  kindly: { church: 0.5, guards: -0.5, alms: 1, closeTavern: 0, tavernWomen: -1, tend: 0.5 },
 };
 
 const hash = (a: number, b: number, k: number): number => {
