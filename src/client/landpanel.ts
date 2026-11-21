@@ -2,6 +2,7 @@
 // then the land selected, leading with what matters (its name and holder, its people and stores, what threatens it,
 // the army there), then what can be done there in groups, and last the lie of the land folded under "The land".
 // Nothing here decides anything: overworld.ts keeps the logic and the clicks (every button keeps its `data-act`).
+import { armyHeading } from './mapfigures';
 import { turnLabel } from './seasonlabel';
 import { unfinishedWords } from '../sim/battlescars';
 import { levyLine } from '../sim/levynext'; // who a levy would take (levynext.ts)
@@ -112,7 +113,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
   const signs = [...(weather ? [`<span title="${WEATHER[weather as 'rain'].name}">${WEATHER[weather as 'rain'].icon}</span>`] : []), ...events.map((e) => `<span title="${EVENTS[e.kind].name}">${EVENTS[e.kind].icon}</span>`)].join('');
   const head = `<h3>${t.name}${t.capital >= 0 ? ' ★' : ''}${signs ? ` <small class="lp-signs">${signs}</small>` : ''}</h3>
       <div style="color:${css(owner.color)}">${owner.name}</div>
-      ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · <span title="What an army marching on this town would meet. Against a band the town musters differently: see below.">Defence against an army ${defence(c, t.id)}</span></div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
+      ${empty ? '' : `<div>Income ${territoryIncome(t, t.owner >= 0 ? c.factions[t.owner].civ : '') + countryYield(c, t.id) + (t.owner >= 0 && t.buildings.includes('tavern') ? faithOf(c, t.owner).tavern : 0)} · <span title="What an army marching on this town would meet. Against a band the town musters differently: see below.">Defence against an army ${Math.round(defence(c, t.id))}</span></div>`}${empty ? `<div class="hint">${empty.desc}${settleReach(c, 0, t.id) ? ` ${settleReach(c, 0, t.id)}` : ''}</div>` : ''}`;
   const people = `${t.horde && t.owner < 0 ? '' : townHtml(c, t.id, t.owner === 0)}
       <div>${t.buildings.map((b) => { const l = siteLook(b, SITES[b], c.factions[t.owner]?.civ); return `${l.icon} ${l.name}`; }).join(' · ') || 'No buildings'} <small>(${t.buildings.length}/${slots(t)})</small></div>`;
   const emptying = t.owner === 0 ? emptyingTowns(c, 0).filter((x) => x.at === t.id).map((x) => `<div class="bad">🌾 ${emptyingText(x)}</div>`).join('') : ''; // its granary emptying soon (larderwatch.ts)
@@ -120,7 +121,7 @@ export function landHtml(c: Campaign, sel: number, canMarch: boolean): string {
       ${t.horde && t.owner < 0 ? `<div class="bad">🏴 <b>Marauders hold this land.</b> ${EVENTS.horde.desc}</div>` : ''}
       ${t.trait === 'coast' && t.owner === 0 && c.territories.some((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)) ? `<div class="bad">⚓ Within reach of ${[...new Set(c.territories.filter((x) => x.owner > 0 && x.buildings.includes('harbour') && !atTruce(c, 0, x.owner)).map((x) => c.factions[x.owner].name))].join(' and ')} by sea.</div>` : ''}`;
   const fought = landTalesHtml(c, t.id); // the battles fought here (talepanel.ts)
-  const army = `${a ? `<div class="ow-army"><b>Army, strength ${armyStrength(a, c)}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 && !empty ? `<div>${t.militia} bands of local warriors</div>` : ''}
+  const army = `${a ? `<div class="ow-army"><b>${armyHeading(armyStrength(a, c))}</b>${a.moved && a.owner === 0 ? ' <small>has moved</small>' : ''}<br>${troops(a)}</div>` : t.owner < 0 && !empty ? `<div>${t.militia} bands of local warriors</div>` : ''}
       <div class="hint">${canMarch ? 'Click a neighbouring territory to march there.' : t.owner === 0 || empty ? '' : 'Select one of your armies to march on this land.'}</div>`;
   const land = `<div class="hint">${BIOMES[biomeOf(c, t.id)].icon} ${BIOMES[biomeOf(c, t.id)].name}: ${BIOMES[biomeOf(c, t.id)].desc} <i>${countryOf(c, t.id).rule}</i></div>
       ${lanesOf(c, t.id).map((n) => `<div class="hint">⛵ Sea crossing to ${c.territories[n].name}${t.buildings.includes('harbour') ? '' : t.owner === 0 ? ': build a Harbour here to make it' : ': made from a Harbour'}.</div>`).join('')}

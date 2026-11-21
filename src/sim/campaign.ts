@@ -33,7 +33,7 @@ import { actsOfGod } from './acts';
 import { floodSeason, riverBy } from './floods';
 import { ailingOf } from './ailing';
 import { spoilsBefore, spoilsHeld, spoilsTaken } from './warspoils';
-import { threatsOfMen } from './bandseason';
+import { seasonWaits, threatsOfMen } from './bandseason';
 import { intrigueSeason } from './intrigue';
 import { townFell } from './carriedoff';
 import { battleCarried } from './battlecarried';
@@ -1152,7 +1152,7 @@ export function resolvePending(c: Campaign, how: 'auto' | 'attacker' | 'defender
   const p = c.pending;
   if (!p) return false;
   if (p.band !== undefined) return settleBandFight(c, how); // against a band: no nation, and no land changes hands (bandfight.ts)
-  if (p.raid !== undefined) return settleRaid(c, how, { survivors: opts.survivors, foes: opts.attackerLeft, ...opts.leader })?.outcome !== 'held'; // a band's strike on a town of the player's (raidfought.ts)
+  if (p.raid !== undefined) { const got = settleRaid(c, how, { survivors: opts.survivors, foes: opts.attackerLeft, ...opts.leader })?.outcome !== 'held'; continueAI(c); return got; } // a band's strike on a town of the player's (raidfought.ts); the season that waited on it goes on
   let attackerWon = how === 'attacker';
   let fought: Outcome | null = null;
   if (how === 'auto') {
@@ -1283,7 +1283,7 @@ function checkDominion(c: Campaign): void {
 
 /** Finish the player's turn and play the rivals' turns. Stops early if one of them attacks the player. */
 export function endTurn(c: Campaign): void {
-  if (c.phase === 'player' && c.pending?.raid !== undefined) resolvePending(c, 'auto'); // a band's strike nobody answered is left to the town (raidfought.ts)
+  while (c.pending?.raid !== undefined) resolvePending(c, 'auto'); // a band's strike nobody answered is left to the town (raidfought.ts)
   if (c.phase !== 'player' || c.pending) return;
   if (c.tale) { c.tale = null; c.log.push('The matter before you was left to settle itself.'); }
   turnLeft(c); // what there is to spend as the turn ends, to measure the season by (seasongain.ts)
@@ -1298,6 +1298,7 @@ export function continueAI(c: Campaign): void {
   while (c.phase === 'ai' && !c.pending && !c.demand) {
     const f = c.factions[c.cursor];
     if (!f) {
+      if (seasonWaits(c)) c.phase = 'player'; else { // a season that waited on a band's strike is taken up where it stopped (bandseason.ts)
       // Everyone has moved: a new turn begins.
       c.turn++;
       c.phase = 'player';
@@ -1322,7 +1323,9 @@ export function continueAI(c: Campaign): void {
       }
       mapTurn(c);
       floodSeason(c, (tid) => riverBy(c, tid, () => !!waterOf(c, tid, terrainOf(c))?.river), new Set(actsOfGod(c).map((x) => x.at))); // a season of famine, plague and fire in every held land (acts.ts), then floods where a river runs (floods.ts)
-      threatsOfMen(c); // bands that belong to no nation choose a town and strike it (threats.ts)
+      }
+      threatsOfMen(c, { waits: true }); // bands that belong to no nation choose a town and strike it (threats.ts)
+      if (seasonWaits(c)) { c.phase = 'ai'; return; } // a strike on a town of the player's waits on the player, and the season with it (raidfought.ts)
       tribesSeason(c); // a tribe's bands are counted from its town's men (tribes.ts)
       if (deadTowns(c).length) checkElimination(c); // a town with nobody in it stands open to whoever comes; a people with no town is gone (deadtown.ts)
       if (letGoSeason(c).length) checkElimination(c); // and one nobody comes for is let go, an empty land for settlers (emptied.ts)

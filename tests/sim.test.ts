@@ -1558,7 +1558,7 @@ describe('alliances and dominion', () => {
     let turns = 0;
     // (The lands were handed over with no army in them, and dominion is now held for longer than unrest takes to come to a head:
     // nothing is to rise while we count, as nothing had time to when this was written for three turns.)
-    while (c.phase !== 'over' && turns < DOMINION_TURNS + 4) { c.events = (c.events ?? []).filter((e) => e.kind !== 'unrest'); endTurn(c); turns++; }
+    while (c.phase !== 'over' && turns < DOMINION_TURNS + 4) { c.events = (c.events ?? []).filter((e) => e.kind !== 'unrest'); endTurn(c); while (c.pending?.raid !== undefined) resolvePending(c, 'auto'); /* a band's strike on a town of the player's waits on the player, and the season with it (raidfought.ts): left to the town */ turns++; }
     expect(c.territories.filter((t) => t.owner === 0).length).toBeGreaterThanOrEqual(need);
     expect(c.winner).toBe(0);
     expect(turns).toBe(DOMINION_TURNS);

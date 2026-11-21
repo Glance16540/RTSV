@@ -4,7 +4,8 @@
 // A band's strike on a town is a clash on the map (raidclash.ts), and until now nobody could be there. When a band
 // is about to strike a town of the player's, the strike waits on the player as a nation's attack does: a pending
 // battle (`Pending.raid`), to be fought in person or left to the town.
-//   - Left to the town, it is the strike as it always was (threats.ts `strike`), a little later in the season.
+//   - Left to the town, it is the strike as it always was (threats.ts `strike`). The season waits with the strike
+//     (bandseason.ts `seasonWaits`) and is taken up where it stopped, so the strike falls in the same place in it.
 //   - Fought in person, the field is the town as it stands (campaign.ts `battleConfig` lays the town, its own men
 //     turned out and any army standing there, as against a nation) with the band's companies come against it
 //     (`raidBattle`: raidclash.ts's own count of them, foot and bows), and nobody else: no army from next door.
@@ -19,7 +20,7 @@
 // cost the band. The town's houses, stores and ground are not read back from the field; a raid changes them only
 // by the strike's rule.
 //
-// One strike waits at a time, and only on a town: a strike on a road is still an escort or nothing.
+// Only a strike on a town waits: a strike on a road is still an escort or nothing.
 import type { BattleConfig, Campaign } from './campaign';
 import { COMPANIES, ageOf, armyAt, heroFor } from './campaignbase';
 import { CIV_IDS, TECHS } from './data';
@@ -144,7 +145,7 @@ export function settleRaid(c: Campaign, how: 'auto' | 'attacker' | 'defender', f
   const result: RaidField = { ...field, won: how === 'defender' };
   const raid = how === 'auto' ? strike(c, b, tid, out) : strike(c, b, tid, out, { fought: (clashed, defence) => foughtAs(clashed, defence, strength, result, garrison ? { ...garrison.units } : undefined) });
   if (raid.broken) { note(c, out, 'broken', b, b.at, `${cap(b.name)} are broken and scattered.`, [raid.owner]); breakBand(c, b, out); }
-  marched(c, raid.band, 'struck');
+  if (c.seasonHeld) c.seasonHeld.struck.push(raid.band); else marched(c, raid.band, 'struck'); // in a season that waited on it, counted in its turn when the season is taken up (bandseason.ts)
   // The leader who stood there, with the army or with the townsfolk, at the usual risk (as campaign.ts's finishBattle has it).
   if (how !== 'auto' && (led || sat) && c.factions[0].heroAlive) {
     const fac = c.factions[0], hero = heroFor(c, 0), rank = fac.heroRank ?? 0, alive = field.survivors;
