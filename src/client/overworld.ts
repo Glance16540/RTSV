@@ -1,5 +1,7 @@
 // Conquest map screen: draws the territories and lets the player run their turn.
 
+import { turnLabel } from './seasonlabel';
+import { callAct } from './callpanel';
 import { whenOf } from '../sim/chroniclethreads';
 import { inTime } from '../sim/inyears';
 import { nobodyThere } from '../sim/founding'; // a land with nobody on it is not marched on
@@ -7,7 +9,7 @@ import { inRuin, ruinWords } from '../sim/ruin';
 import { PLACES, epilogue } from '../sim/story';
 import { openBorder } from '../sim/country';
 import { sendHome } from '../sim/armytown';
-import { bandPrompt, newsHtml } from './threatpanel';
+import { bandPrompt, newsHtml, raidPrompt } from './threatpanel';
 import { intrigueDo } from './intriguepanel';
 import { petitionDo } from './petitionpanel';
 import { pactDo } from './pactpanel';
@@ -38,6 +40,7 @@ import { seasonCard, showPastSeasons } from './seasoncard';
 import { reportDue } from '../sim/seasonreport';
 import { actionsHtml, landHtml, nationBar } from './landpanel';
 import { DecreeKind, issueDecree } from '../sim/decrees';
+import { forbidCarrying } from '../sim/nocarry';
 import { dealChoices, dealFromPanel } from './nobledeals';
 import { standingRows } from './townorders';
 import { setStanding } from '../sim/townorders';
@@ -152,6 +155,7 @@ export class Overworld {
       if (kind === 'marry' || kind === 'tradedeal' || kind === 'pactoffer') pactDo(this.c, kind, id); // royal marriages and trade deals (pactpanel.ts)
       if (kind === 'band') attackBand(this.c, Number(id.split('/')[0]), Number(id.split('/')[1]));
       if (kind === 'call') callArmies(this.c, 0);
+      callAct(this.c, kind, id); // the armies named one by one (callpanel.ts)
       if (kind === 'endcall') endCall(this.c, 0);
       if (kind === 'hold') holdCourt(this.c, 0, id === '1');
       if (kind === 'truce') offerTruce(this.c, Number(id));
@@ -161,6 +165,7 @@ export class Overworld {
       if (kind === 'open') openBorder(this.c, 0, this.sel, Number(id));
       if (kind === 'convoy') sendFromPanel(this.c, this.sel, id);
       if (kind === 'decree') issueDecree(this.c, 0, this.sel, id as DecreeKind);
+      if (kind === 'nocarry') forbidCarrying(this.c, 0, id === '1'); // the law that forbids carrying people off (nocarry.ts)
       if (kind === 'nobledeal') { this.askDeal(decodeURIComponent(id)); return; } // the dealings with a noble (nobledeal.ts)
       if (kind === 'standing') { this.askStanding(Number(id)); return; } // the governor's standing orders (townorders.ts)
       if (kind === 'treat') treat(this.c, 0, this.sel); // a free town brought back by treaty (freetown.ts)
@@ -207,7 +212,7 @@ export class Overworld {
     const c = this.c;
     if (c.phase === 'over') {
       this.dialog(inRuin(c) ? ruinWords(c).title : c.winner === 0 ? 'The land is yours' : 'Your people are conquered',
-        (inRuin(c) ? ruinWords(c).line : c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`) + `<span class="ow-chronicle ow-epilogue">${epilogue(c).slice(1).map((l) => `<div><i>${l}</i></div>`).join('')}</span>`,
+        (inRuin(c) ? ruinWords(c).line : c.winner === 0 ? (c.factions.filter((f) => f.alive).length > 1 ? `You hold most of the land and no one can challenge you. It took ${c.turn} turns.` : `Every rival has fallen. It took ${c.turn} turns.`) : `${c.factions[c.winner]?.name ?? 'Your rivals'} now rule the map.`) + `<span class="ow-chronicle ow-epilogue">${epilogue(c).slice(1).map((l) => `<span class="ow-line"><i>${l}</i></span>`).join('')}</span>`,
         [['Read the chronicle', () => this.showChronicle()], ['New campaign', () => this.askNew()], ['Main menu', () => this.hooks.exit()]]);
     } else if (c.demand) this.askDemand();
     else if (c.pending) this.askBattle();
@@ -277,6 +282,8 @@ export class Overworld {
       if (c.phase === 'ai') continueAI(c);
       this.changed();
     };
+    const raid = raidPrompt(c);
+    if (raid) { this.dialog(raid.title, raid.text, [['Fight for the town', () => this.hooks.fight()], ['Leave it to the town', settle]]); return; }
     const band = bandPrompt(c);
     if (band) {
       const choices: [string, () => void][] = [['Fight it', () => this.hooks.fight()], ['Leave it to the army', settle], ...(band.decline ? [['Call it off', () => { c.pending = null; this.changed(); }] as [string, () => void]] : [])];
@@ -545,7 +552,7 @@ export class Overworld {
     }
     // The year, on a scroll at the head of the sheet.
     ctx.font = "italic 600 15px Georgia, 'Times New Roman', serif";
-    const label = `Turn ${c.turn}`;
+    const label = turnLabel(c.turn, false); // with its season and year (seasonlabel.ts)
     const lw = ctx.measureText(label).width + 26;
     ctx.fillStyle = 'rgba(232,216,176,0.92)'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(24, 22, lw, 26, 6); ctx.fill(); ctx.stroke();

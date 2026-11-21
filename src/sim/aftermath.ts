@@ -118,6 +118,11 @@ export function rememberWronged(c: Campaign, it: Intrigue, p: Person): Mark {
   return add(c, it, 'resentful', AFTER.resentful.seasons, `${land(c, it.at)} remembers that ${fullName(p)} was hanged for killings ${p.gender === 'f' ? 'she' : 'he'} did not do.`, { at: it.at, name: fullName(p) });
 }
 
+/** An innocent seized for a killing on the field and let go (killerseized.ts): the town, and their house, remember it. */
+export function rememberSeized(c: Campaign, it: Intrigue, p: Person): Mark {
+  return add(c, it, 'resentful', AFTER.resentful.seasons, `${land(c, it.at)} remembers that ${fullName(p)} was seized before the whole town for killings ${p.gender === 'f' ? 'she' : 'he'} did not do, and the ${p.family || fullName(p)} household has not forgiven it.`, { at: it.at, name: fullName(p) });
+}
+
 /** An alliance by marriage that can be called on now: with whom, and the mark. */
 export const callable = (c: Campaign, f = 0): Mark[] => (c.marks ?? []).filter((m) => m.kind === 'alliance' && m.owner === f && !m.used && live(c, m) && m.rival !== undefined && !!c.factions[m.rival]?.alive);
 /**

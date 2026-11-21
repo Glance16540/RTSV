@@ -15,7 +15,7 @@ import { creedOf } from './creed';
 import type { HeroSpec } from './hero';
 import { leaderAsMade } from './powers';
 import { uniqueCompanies } from './uniquecompany';
-import { wedPeace } from './pacts';
+import { swornPeace, wedPeace } from './pacts';
 
 export const MAP_W = 1300;
 
@@ -273,6 +273,7 @@ export const rankWith = (c: Campaign, a: Army): number => (a.hero ? c.factions[a
 /** True while two peoples are bound in peace: the player and a rival by a truce or an alliance, any two by a royal marriage. */
 export function atTruce(c: Campaign, a: number, b: number): boolean {
   if (wedPeace(c, a, b)) return true; // two houses bound by a royal marriage, the player's or two rivals' (pacts.ts)
+  if (swornPeace(c, a, b)) return true; // or two rivals at a peace one of them sued for (rivalweary.ts)
   const other = a === 0 ? b : b === 0 ? a : -1;
   return other > 0 && (other === c.ally || c.truces.some((t) => t.with === other && t.until >= c.turn));
 }
@@ -353,7 +354,7 @@ function reachOpen(c: Campaign, tid: number): number[] {
  */
 export interface HubActs {
   /** March an army to a land: it moves, or a battle begins, or it cannot go (campaign.ts, moveArmy). */
-  moveArmy: (c: Campaign, armyId: number, to: number) => 'moved' | 'battle' | 'invalid';
+  moveArmy: (c: Campaign, armyId: number, to: number, opts?: { /** A land crossed without stopping on the way to a land of its own: its people's, or an ally's (court.ts marchToward). */ via?: number }) => 'moved' | 'battle' | 'invalid';
   /** How hard a land is to take, against these companies and this people (campaign.ts, defence). */
   defence: (c: Campaign, tid: number, vs?: Record<string, number>, attackerCiv?: string) => number;
   /** Can this people raise this company in this land now? (campaign.ts, canRaise) */

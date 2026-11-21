@@ -76,7 +76,7 @@ export const INTRIGUE = {
     sex: 0.3,
     /** Seasons until the killer is gone unfound; seasons the town waits once only one is left before it acts itself. */
     lasts: 10, patience: 2,
-    virtue: { found: 4, wrong: -8, unfound: -4 },
+    virtue: { found: 4, wrong: -8, unfound: -4, banished: 2 },
   },
 };
 
@@ -268,6 +268,8 @@ function hang(c: Campaign, it: Intrigue, i: number, by: 'you' | 'town'): void {
 }
 function killerSeason(c: Campaign, it: Intrigue): void {
   const K = INTRIGUE.killer, t = c.territories[it.at];
+  // Seized on the field and held (killerseized.ts): no more killing, and the town waits on the leader's judgement, but not for ever.
+  if (it.held !== undefined) { if (c.turn - (it.caught ?? c.turn) >= K.patience) hang(c, it, it.held, 'town'); return; }
   const odds = K.clue + (seatAt(c, it.owner, it.at) ? K.court : 0) /* the court, or a Hall of Judgement there (hall.ts) */ + (c.armies.some((a) => a.owner === it.owner && a.at === it.at) ? K.army : 0) + watchEdge(c, it.at).clue; // and a Watch House in the town (watchhouse.ts)
   { const edge = watchEdge(c, it.at), draw = chance(c, it.id * 59 + 4); if (edge.clue) tallyWatch(c, 'clue', draw < odds, draw < odds - edge.clue); } // report only (watchtally.ts)
   if (chance(c, it.id * 59 + 4) < odds) clue(c, it);
@@ -303,6 +305,7 @@ export function choicesFor(c: Campaign, it: Intrigue): Choice[] {
       { id: 'hang', label: `Hang ${p.gender === 'f' ? 'her' : 'him'}`, who: p },
     ];
   }
+  if (it.held !== undefined) { const p = it.people[it.held], him = p.gender === 'f' ? 'her' : 'him'; return [{ id: 'hang', label: `Hang ${him}`, who: p }, { id: 'banish', label: `Banish ${him}`, who: p }]; } // seized on the field, held for judgement (killerseized.ts)
   return [...suspected(it).map((i): Choice => ({ id: `accuse:${i}`, label: `Accuse ${fullName(it.people[i])}`, who: it.people[i] })), watch];
 }
 /** The leader settles something in a story. False if it could not be done. */
@@ -315,6 +318,14 @@ export function choose(c: Campaign, id: number, choice: string): boolean {
   const f = folkOf(c, it.at), where = land(c, it.at);
   if (choice === 'watch') { it.watch = true; note(c, it, 'plain', it.kind === 'thief' ? `A watch is set on the robbed houses of ${where}.` : `A watch walks ${where} by night.`); return true; }
   if (choice === 'unwatch') { it.watch = false; note(c, it, 'plain', `The watch in ${where} is stood down.`); return true; }
+  if (it.kind === 'killer' && it.held !== undefined) { // seized on the field and held (killerseized.ts): judged here
+    const p = it.people[it.held];
+    if (choice === 'hang') { hang(c, it, it.held, 'you'); return true; }
+    strike(c, it.at, p, 'was banished for a killer');
+    shiftVirtue(c, it.owner, INTRIGUE.killer.virtue.banished, { at: it.at });
+    end(c, it, 'banished', `${fullName(p)} the ${p.trade}, who confessed to the ${it.victims.length === 1 ? 'death' : `${it.victims.length} deaths`} in ${where}, was put out of the town with nothing. The town sleeps again, and some of it says ${they(p)} should have hanged.`, 'plain', p);
+    return true;
+  }
   if (it.kind === 'killer') { hang(c, it, Number(choice.split(':')[1]), 'you'); return true; }
   const p = it.thief!, why = it.why ?? 'greed', n = fullName(p);
   const back = (share: number): number => { const g = Math.round(it.taken * share); f.stores.gold += g; return g; };
@@ -383,6 +394,7 @@ export function standing(c: Campaign, it: Intrigue): string {
   if (it.kind === 'thief') return it.caught !== undefined && it.thief
     ? `${fullName(it.thief)} the ${it.thief.trade} is held for the robberies in ${land(c, it.at)}. ${WHY[it.why ?? 'greed'](it.thief)}.`
     : `A thief has robbed the same ${it.people.length} houses of ${land(c, it.at)} ${((n) => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`))(it.robbed.reduce((a, b) => a + b, 0))}; ${it.taken} gold is gone.${it.watch ? ' A watch is kept.' : ''}`;
+  if (it.held !== undefined) { const p = it.people[it.held]; return `${fullName(p)} the ${p.trade}, seized by your soldiers, has confessed to the ${it.victims.length === 1 ? 'death' : `${it.victims.length} deaths`} in ${land(c, it.at)}, and waits on your judgement.`; }
   const left = suspected(it);
   return `${it.victims.length} dead in ${land(c, it.at)}. ${left.length === 1 ? `Only ${fullName(it.people[left[0]])} is still spoken of.` : `${left.length} are spoken of.`}${it.watch ? ' A watch walks by night.' : ''}`;
 }

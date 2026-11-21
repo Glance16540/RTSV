@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Campaign, answerDemand, answerTale, armyAt, armySize, canAnswer, continueAI, endTurn, moveArmy, newCampaign, placeAt, placesOf, resolvePending, taleNow, taleText } from '../src/sim/campaign';
 import { LEGENDS, PLACES, PlaceKind, TALES, TALE_EVERY, TALE_FROM, epilogue } from '../src/sim/story';
+import { ending } from '../src/sim/epilogues';
 
 const still = new WeakSet<Campaign>();
 /** End the turn, paying any demand and settling any battle without fighting it. */
@@ -89,8 +90,7 @@ describe('tales that turn on what went before', () => {
     for (const t of TALES.filter((x) => x.after)) {
       const from = TALES.find((x) => x.id === t.after!.id);
       expect(from, t.id).toBeTruthy();
-      expect(from!.after, t.id).toBeUndefined(); // threads are one step long, so far
-      if (t.needs) expect(from!.needs, t.id).toBe(t.needs); // it speaks of the same rival or tribe
+      if (t.needs && !from!.after) expect(from!.needs, t.id).toBe(t.needs); // it speaks of the same rival or tribe (threads run longer now: tests/talethreads.test.ts)
     }
     const { c } = put('exile');
     expect(answerTale(c, 'a')).toBe(true);
@@ -223,6 +223,6 @@ describe('the chronicle of battles and the last page', () => {
     const lost = epilogue(c);
     expect(lost[0]).toBe(`After 23 turns the ${c.factions[1].name} ruled, and your people did not.`);
     expect(lost[2]).toBe('They held none of the places of note.');
-    expect(lost.length).toBe(3);
+    expect(lost.length).toBe(3 + ending(c).length); // and then what became of everyone in it (tests/epilogues.test.ts)
   });
 });

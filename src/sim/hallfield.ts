@@ -12,7 +12,7 @@
 import type { Game } from './game';
 
 /** One case before the Hall: what it is, in words, and the answers the map would give. */
-export interface HallCase { id: string; kind: 'thief' | 'plotter' | 'petition'; who: string; text: string; answers: { id: string; label: string; bar?: string }[] }
+export interface HallCase { id: string; kind: 'thief' | 'killer' | 'plotter' | 'petition'; who: string; text: string; answers: { id: string; label: string; bar?: string }[] }
 
 declare module './game' {
   interface PlayerSetup { /** Cases waiting on the leader's judgement in this town, for its Hall (hallfield.ts). */ hall?: HallCase[] }
@@ -26,7 +26,7 @@ export function cleanCases(x: unknown): HallCase[] {
   if (!Array.isArray(x)) return [];
   const out: HallCase[] = [];
   for (const c of x.slice(0, 12) as Partial<HallCase>[]) {
-    const id = text(c?.id, 40), kind = c?.kind === 'thief' || c?.kind === 'plotter' || c?.kind === 'petition' ? c.kind : undefined;
+    const id = text(c?.id, 40), kind = c?.kind === 'thief' || c?.kind === 'killer' || c?.kind === 'plotter' || c?.kind === 'petition' ? c.kind : undefined;
     const answers = (Array.isArray(c?.answers) ? c.answers : []).slice(0, 8).map((a) => ({ id: text(a?.id, 40), label: text(a?.label, 80), ...(text(a?.bar, 80) ? { bar: text(a?.bar, 80) } : {}) })).filter((a) => a.id && a.label);
     if (id && kind && answers.length) out.push({ id, kind, who: text(c.who, 60), text: text(c.text), answers });
   }

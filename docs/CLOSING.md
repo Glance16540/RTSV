@@ -32,7 +32,7 @@ modules or a new system, and **large** a new system that touches the field and t
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| Systems deep enough that stories fall out of them | Story threads are one step long: an answer leads to one later tale and stops, and a world event, a land lost or a leader's fall starts none. No campaign has an ending of its own beyond the summing-up page (board, Story and events). | medium | Unity: this is narrative design across the systems, and the systems it would read are all here to port. |
+| Systems deep enough that stories fall out of them | **Done (21 November 2026).** Threads of tales run three to five tellings, every answer picking the road, and the chronicle tells each whole when it ends (`threadtales.ts`, `talethreads.ts`); a land lost, a leader's fall, a plague, a royal marriage, a hungry winter and a claimant's rising each begin a thread of their own (`threadstarts.ts`, `worldtales.ts`); and the last page ends the campaign with what became of every thread, person of note and house (`epilogues.ts`). Still open: rivals' own threads, and the stories inside the story (`intrigue.ts`) do not yet lead into the tales. | medium | Done; the rest is narrative design for Unity, and every system it reads is here to port. |
 
 ## Time, and age belonging to the nation
 
@@ -53,7 +53,7 @@ buy villagers, which DESIGN.md allows. Nothing to list.
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| The town defends itself, and the player may be there | A band's strike on a town is a clash on the map (`raidclash.ts`). Nobody can enter it, watch it or play it, unlike a nation's attack or a fight with a band in the open. | medium | Unity: the rule is done. What is missing is a real-time battle for a raid, which is the new engine's work. |
+| The town defends itself, and the player may be there | **Done for the player's towns (21 November 2026, `raidfought.ts`).** A band's strike on a town of the player's waits on the player, who may fight for it in person (the town as it defends, against the band's companies) or leave it to the town; the outcome is written back by the strike's own rule. Still missing: the town is not read back from the field (its dead, its houses and its stores change by the strike's rule only), and a strike on a road cannot be entered. | small | Unity: read the town back from the field as a nation's attack does. |
 | A report of who was killed and who was taken | The report counts them and ages them, but names only the notable. A town keeps counts and ages, not names. | large | Unity: naming everyone is a change to the town record's shape, the same decision as keeping every house by name. |
 | Which way the town's morals swayed | A raid's sway still reads the nation's standing, not the town's. Switching it moved campaigns ending in ruin out of band, so it was left. | small | Drop: left on measurement, and faith is otherwise the town's. |
 
@@ -101,7 +101,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | --- | --- | --- | --- |
 | Slavers gain output from the children born in captivity | On the map a band holds captives but has no output to gain, so children born there do nothing for it, and nobody is paid for captives a band sells on. | small | Drop on the map: a band is not a town. It is built in a town (`captivity.ts`). |
 | Got back for a time | A captive in the marauders' camp cannot be let out at the gate as one in a Work Camp can; the camp must be burnt. | small | Unity: field work. |
-| The player's nation, if it assimilates | The player's nation never carries people off, whatever its creed: there is no order for it. | medium | Unity, if the owner wants it. DESIGN.md names only rival nations, so Drop is also defensible. |
+| The player's nation, if it assimilates | **Built here after all (20 November 2026, `carriedoff.ts`), by the rivals' rule reused:** at a Dissolute or Depraved standing the player's nation leads away a share of the grown people of a town it takes, held four seasons and then its own; never a child, nothing shown, told plainly. The player may forbid it by decree (`nocarry.ts`, the owner's word of 21 November 2026): a law of the nation, free to give, standing until lifted, resented a little by the worldly and martial lords of a people who would have carried off. | small | Done. |
 | What is shown of it | Escapes and risings are told and not drawn. The captives' daily round has not been watched. | medium | Unity: drawing. The content rules port as written. |
 
 ## Acts of God
@@ -116,7 +116,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| There is always something to fight | Rival peoples hunt a band only with an army already beside it, and never march to one, even to get their own back before the time runs out. Rival leaders ignore the marauders on the map. | medium | Unity: a rival's plan to march for a purpose (a band, a captive, a road) is the larger missing piece of the rivals' mind (see Rivals live by the same rules). |
+| There is always something to fight | **Built here after all (20 November 2026, `rivalhunt.ts`).** A rival marches through its own lands for a band that holds its people, if it can be there in time, or that sits in its land; and it marches first on a camp of the marauders that holds its people or has struck its towns. Still missing: it never crosses another people's land or the wild to reach a band, and plans no march of several lands to a marauders' camp. | medium | Done as far as its own lands. The rest with the rival's mind, in Unity. |
 | Bands choose marks and strike | Bands seldom live long enough to roam, and long marches are rare: on maps this size a softer mark is nearly always one land away. The far wilds' hosts do march. | small | Unity: it depends on map size. Port as is. |
 
 ## Drift, decrees, and the tavern as a town falls
@@ -165,7 +165,7 @@ The "Not yet" line is listed above.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | The same rules, the same losses | A rival's income is scaled by difficulty (the owner's choice: keep). The tales told every few turns are the player's only, and a rival is moved by a fixed step. | small | Unity: port as is. The scaling is the owner's choice. |
-| A rival that thinks as a people | It weighs only the land next to its army. It does not plan a road, mass two armies for one assault, or weigh its towns' losses in choosing war. It takes no account of world events, named places or creed when it bargains. | large | Unity: the rival's mind is the largest open piece of the design. The weights it already uses (`rivalaim.ts`, `rivalrule.ts`, `rivalcaptives.ts`) port as they are. |
+| A rival that thinks as a people | **Built (21 November 2026):** it sets its heart on a land and goes for it over seasons (`rivalplan.ts`), masses two armies for one assault (`rivalmass.ts`), weighs its towns' dead, hunger and unrest and sues for peace when they bleed (`rivalweary.ts`), and takes named places, plague, winter, the world's seasons and creed into account (`rivalworld.ts`). Its mind is not shown to the player, it never masses three armies, and it plans no road by sea beyond its harbours' reach. | small | Unity: port the four modules with `rivalaim.ts`, `rivalrule.ts` and `rivalcaptives.ts`; showing a rival's mind (the words are written: `planText`, `wearyText`, `worldText`) is a screen for the Unity side. |
 
 ## Faith is a town's; every town its own faith; a town's own life moves its faith
 
@@ -176,7 +176,7 @@ and the church built in battle under "Towns persist".
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| He can call armies to meet him and move with them as one | Calling the armies calls all of them, strips every garrison on the way, and will not cross land not their own. A leader travels a land a turn with no cost or risk. | medium | Unity: this is the leader's movement on the new map. |
+| He can call armies to meet him and move with them as one | **Built here after all (20 November 2026, `courtcall.ts` with `court.ts`).** The leader may call armies by name; with none named, an army holding a town that needs it stays; a called army passes a garrison without joining it and crosses a sworn ally's land; and a leader travelling alone by a road highwaymen sit on may be set upon, turned back and wounded. Still missing: a control on the map for naming armies, and a warning of the road's risk before the journey. Travel still costs nothing. | medium | Done in the rules. The two controls are the map's, in Unity. |
 | He is in a town or with an army | **Done** (`src/sim/seatedleader.ts`): a leader holding an ungarrisoned town alone leads its defence when the battle is settled on the map, at their rank. | small | Built. |
 
 ## Grief
@@ -191,7 +191,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | The leader's household can be threatened, married off, lost or taken | A spouse cannot be married off or offered in a treaty or ransom (only a rival's threat and demand exist). Royal matches go through `royalmarriage.ts`, but not the spouse. | medium | Unity: port as is. Asked 19 November 2026, the owner had no preference, so it stays as built: the player never offers the spouse. |
 | The inner circle: a mood and a loyalty that can turn | Built. The confidant does not warn of the knife. **The war is done (19 November 2026, `feudwar.ts`):** a defied rival king may declare war as his feud begins, which ends the truce or alliance between them and bars a new truce while the feud runs. A raid on the court is not built. | small | Done for the war. Unity for the warning, which is a scene. |
 | Nobles | Built (`nobles.ts`, `nobledeal.ts`, `nobleacts.ts`, `nobleweigh.ts`, `nobletemper.ts`). Only the plot story has a plot. | none | Unity: port as is. |
-| Stories inside the story | All five are built, for the player and for rivals. They come onto the field only in a visit, not in a battle, and a killer's suspects can be questioned there but not accused or seized. | medium | Unity: field work. |
+| Stories inside the story | **Done (21 November 2026).** A killer's suspect may be accused and seized on the field, by the map's rule for an accusation: the guilty held for judgement at the Hall, an innocent let go with the town's grudge and its standing down (`fieldaccuse.ts`, `killerseized.ts`). A battle for the player's own town brings in the thief, the killer and a plot as a visit does (`battlestory.ts`). Left out of a battle: a rival ruler's envoy and a suitor at the hall, whose answers wait for the map or a visit. | medium | Done; the rest is Unity field work. |
 | Several campaigns | Built. Worlds are kept in this browser only, and a skirmish has one save. | small | Unity: saving is the engine's. |
 
 ## Meeting them face to face
@@ -205,7 +205,7 @@ and the sons, so a father lost is not grieved. Nothing to list.
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Each works on the map as well as in a town | The Noble's Manor is a building only in a town. Oaths of Fealty and Pilgrimage have no meaning in a town's streets (`studiesintown.ts`, by design). | small | Unity: port as is. The map is where they act. |
-| A Fortress stands in the town as a stronghold against bands | The Fortress does not shoot and holds no soldiers of its own in a town, and no garrison is kept in it between seasons. | medium | Unity: the field's battle code is being rebuilt. Port the map's Fortress (`threats.ts`, `mapbattle.ts`) as is. |
+| A Fortress stands in the town as a stronghold against bands | **The map's side built here after all (20 November 2026, `fortkeep.ts`):** a Fortress keeps a garrison of the town's own men between seasons, and one with anyone to hold it is a stronghold a band may raid but never take. Still missing, in a town's streets: the Fortress does not shoot and holds no soldiers of its own there. Against a nation's army it is as it was (three points of defence and walls). | medium | Done on the map. The field's side with the battle code, in Unity. |
 | Feast Days and Pilgrimage | Feast Days is only a nation's study on the map: a Church in a town keeps no feast day. | small | Unity: field. |
 | A Monastery or Convent | One building for both, a Convent only in its name and its people. On the map it keeps no count of who serves in it. | small | Unity: port as is. |
 | Each people its own: one or two studies each | **Done** (`src/sim/ownstudies.ts`): every one of the fifteen has a second study, each with a job in a system that already runs (floods, grief, crime, the nation's loss, the militia, plague, decrees, famine, plots, settlers, trade, caravans, the coast, the sea), learned by rivals by the shared rule. | medium | Built; the figures are first guesses. |
