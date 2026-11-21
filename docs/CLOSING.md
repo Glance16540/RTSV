@@ -100,7 +100,7 @@ for life, and a face that shows content, afraid, grief or anger (`faces.ts`).
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
 | Slavers gain output from the children born in captivity | On the map a band holds captives but has no output to gain, so children born there do nothing for it, and nobody is paid for captives a band sells on. | small | Drop on the map: a band is not a town. It is built in a town (`captivity.ts`). |
-| Got back for a time | A captive in the marauders' camp cannot be let out at the gate as one in a Work Camp can; the camp must be burnt. | small | Unity: field work. |
+| Got back for a time | **Done (21 November 2026, `rescue.ts`).** Those held in the marauders' camp are let out at its gate by soldiers of their own people or its allies, one at a time as at a Work Camp, once the band standing at the camp is beaten or drawn off; burning it still frees everyone at once. | small | Done. |
 | The player's nation, if it assimilates | **Built here after all (20 November 2026, `carriedoff.ts`), by the rivals' rule reused:** at a Dissolute or Depraved standing the player's nation leads away a share of the grown people of a town it takes, held four seasons and then its own; never a child, nothing shown, told plainly. The player may forbid it by decree (`nocarry.ts`, the owner's word of 21 November 2026): a law of the nation, free to give, standing until lifted, resented a little by the worldly and martial lords of a people who would have carried off. | small | Done. |
 | What is shown of it | Escapes and risings are told and not drawn. The captives' daily round has not been watched. | medium | Unity: drawing. The content rules port as written. |
 

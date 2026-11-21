@@ -13,6 +13,7 @@
 import type { Building, Game, Unit } from './game';
 import { LAIR_AT, LAIR_BIRTH, LAIR_MAX, LAIR_RAID } from './data';
 import { bearCaptive, tendCaptives } from './captivity';
+import { rescue } from './rescue';
 
 /** More health for a marauder, and for the camp's stockade, per age of the most advanced people. */
 export const MARAUDER_HP = 0.3;
@@ -190,6 +191,7 @@ export function stepLair(g: Game): void {
   }
   tendBand(g, lair);
   tendCaptives(g, lair);
+  rescue(g, lair, { lair: true }); // soldiers at its gate let those held out, once the band there is beaten (rescue.ts)
   const band = g.units.filter((u) => u.def.marauder), held = lair.captives ?? [], women = held.filter((c) => c.gender === 'f');
   // Every woman held bears the band children, who are raised to it; and men drift in to a camp that prospers.
   g.lairT += women.length / LAIR_BIRTH + 1 / 110;

@@ -3,7 +3,7 @@
 // draws it over the camp on the 2D overlay: a bar that fills as the next captive is got out, or the count of
 // soldiers against the number needed while the guards are holding. The same is said in words on the camp's panel.
 import type { Building, Game } from '../sim/game';
-import { gateWork } from '../sim/rescue';
+import { gated, gateWork } from '../sim/rescue';
 
 /** What to show over a camp for this viewer; null when there is nothing at its gate. */
 export interface GateSign { keeper: boolean; working: boolean; fill: number; text: string }
@@ -13,6 +13,7 @@ export function gateSign(game: Game, b: Building, pid: number): GateSign | null 
   if (!w) return null;
   const keeper = !game.hostile(b.owner, pid);
   if (w.spare) return { keeper, working: true, fill: w.progress, text: `${keeper ? '⚠' : '🔓'} ${w.nextIn}s` };
+  if (w.band) return { keeper, working: false, fill: 0, text: `🏴 ${w.band}` }; // the marauders' camp: the band there to be beaten first
   return { keeper, working: false, fill: 0, text: `🗡 ${w.soldiers}/${w.force}` };
 }
 
@@ -27,6 +28,7 @@ export function gatePanel(game: Game, b: Building, pid: number): string {
       ? `<div class="bad">⚠️ ${n(w.soldiers, 'soldier is', 'soldiers are')} at the gate letting ${whose} people out: the next in about ${w.nextIn}s. ${w.heldOff ? `Your guards hold off ${w.heldOff}; ` : ''}drive them away or post more guards.</div>`
       : `<div class="good">🔓 ${n(w.spare, 'soldier is', 'soldiers are')} working at the gate${w.heldOff ? ` (the guards hold off ${w.heldOff} more)` : ''}: the next of ${whose} people is out in about ${w.nextIn}s. Stay by the stockade.</div>`;
   }
+  if (w.band) return `<div class="warn">🏴 ${n(w.band, 'marauder stands', 'marauders stand')} guard at the camp: beat them or draw them off, and the ${n(w.soldiers, 'soldier', 'soldiers')} at the gate will let ${whose} people out. Or burn the camp.</div>`;
   return keeper
     ? `<div class="good">🗡️ Your guards are holding off ${n(w.soldiers, 'soldier', 'soldiers')} at the gate. ${n(w.force - w.soldiers, 'more', 'more')} and they will start getting people out.</div>`
     : `<div class="warn">🗡️ The guards are holding off ${n(w.soldiers, 'soldier', 'soldiers')} at the gate: ${w.force} are needed before anyone gets out, or the camp must be burnt.</div>`;
@@ -36,7 +38,7 @@ export function gatePanel(game: Game, b: Building, pid: number): string {
 export function drawGates(ctx: CanvasRenderingContext2D, game: Game, pid: number, ppt: number,
   project: (x: number, y: number, h: number) => { x: number; y: number }, visible: (b: Building) => boolean): void {
   for (const b of game.buildings) {
-    if (!b.def.guards || !b.captives?.length || !visible(b)) continue;
+    if (!gated(b) || !b.captives?.length || !visible(b)) continue;
     const sign = gateSign(game, b, pid);
     if (!sign) continue;
     const s = project(b.x, b.y, b.size * 0.5 + 2.1), w = Math.max(54, ppt * b.size * 0.7), h = 7;
