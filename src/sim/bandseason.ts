@@ -15,7 +15,8 @@ import { roamSeason } from './bandroam';
 import { hordeSeason } from './bandhorde';
 import { farPlace, seenGathering, setOutFromAfar } from './bandwilds';
 import { marched } from './bandmarch';
-import { offerRaid } from './raidfought';
+import { offerRaid, raidPending } from './raidfought';
+import { feudRaidSeason, isParty } from './feudraid';
 
 declare module './campaign' {
   interface Campaign {
@@ -47,7 +48,9 @@ export function threatsOfMen(c: Campaign, opts: { waits?: boolean } = {}): Raid[
   }
   const done = held?.done ?? [], before = held?.struck ?? [];
   const struck = strikeSeason(c, out, opts.waits ? { waits: offerRaid, done } : {}); // a strike on a town of the player's waits on the player (raidfought.ts)
+  if (c.pending?.raid === undefined) struck.push(...feudRaidSeason(c, out, opts.waits ? { waits: offerRaid } : {})); // a rival king at war by a feud may send his raiding party against the court (feudraid.ts)
   if (c.pending?.raid !== undefined) { // the season waits with it
+    if (raidPending(c) && isParty(raidPending(c)!)) done.push(c.pending.raid); // the party is no band of the season's strikes
     c.seasonHeld = { done, struck: [...before, ...struck.map((r) => r.band)] };
     c.log.push(...out);
     return struck;
