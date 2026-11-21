@@ -128,7 +128,7 @@ by name.
 | `acts` | 205 | Acts of God on the map: a season of famine, plague and fire in every land that is held, falling on that land's town: its food, its people and its stores (docs/DESIGN.md). | campaign (types only), campaignbase, cloister, creed, croprotation, decrees, granary, infirmary, larder, ledger, naming, ownstudies, physicians, plaguenamed, quarantine, stores, townfaith, township, well | acts.test.ts | not yet |
 | `aftermath` | 209 | What a story inside the story leaves behind for years: a town warmed, soured, eased or resentful (its nobles' moods and its own faith), a feud with a defied rival, a bought-off rival who comes back, a marriage alliance that can be called on once, a pardoned plotter who turns loyal or plots again. `Mark`s on the campaign with the town, noble or people each is about; `marksAt`/`marksOfNoble`/`marksWith` for whoever shows them; `callOn`. Run from intrigue's season. | armytown, campaign (types only), campaignbase, chroniclethreads, court, courtstory, feudwar, intriguebase, kin, nobles, townfaith | aftermath.test.ts | not yet |
 | `ageing` | 142 | A person ages only on the map, a season at a time (docs/DESIGN.md, "Time"). | campaign (types only), data, township (types only) | ageing.test.ts | not yet |
-| `ai` | 1014 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | aicare, aiground, aisiting, aiward, aiworks, besieger, birthonly, calamity, creed, darkarts, data, game, keeper, map, muster, ownstudies, plainhealer, siegecamp, styleplay, temper | ai.test.ts, ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
+| `ai` | 1015 | Computer opponent. Plays by the same rules and commands as a human (but ignores fog of war). | aicare, aiforts, aiground, aisiting, aiward, aiworks, besieger, birthonly, calamity, creed, darkarts, data, game, keeper, map, muster, ownstudies, plainhealer, siegecamp, styleplay, temper | ai.test.ts, ai-refounds.test.ts, ai-crowded.test.ts, ai-fires.test.ts | not yet |
 | `aicare` | 56 | What the computer player does for its own people and its allies': posts its idle Slavers as guards over unwatched captives, feeds an ally going hungry and buys food when its own go hungry, and sends idle soldiers to free its people held in a rival's camp when it has enough to beat the guard. Called once a second from ai.ts. | aicaptives, famine, game (types only), rescue | aicare.test.ts | not yet |
 | `aicaptives` | 64 | The computer knows captivity is on a clock, in a town: its rescue goes first to the camp where its people have least time left and, in their last two minutes, whatever it is doing; a rescue at a camp of its own is met by its idle soldiers. No sale is made: the sale comes by itself. | captivity, game (types only), rescue | aicaptives.test.ts | not yet |
 | `aiward` | 61 | What a computer-played town does about the marauders in a battle: gets its women indoors while a raiding party is near (marauders' `partyNear`, `hideWomen`) and lets them out when it is gone, and sends its fastest idle soldier round the places a camp could be (`scoutSpots`) while the camp is unfound, the town is at peace and it has soldiers to spare. Called once a second from ai.ts. | game (types only), marauders | aiward.test.ts | not yet |
@@ -242,7 +242,7 @@ by name.
 | `askedhere` | 31 | The dilemmas a town has been asked, kept on its record from visit to visit and battle to battle. | campaign (types only), creed, game (types only) | askedhere.test.ts | not yet |
 | `dilemmaacts` | 26 | What an answer to a dilemma does beyond goods and standing, through rules that exist: those held in a camp freed or sold on. | captivity, game (types only) | dilemmaacts.test.ts | not yet |
 | `croprotation` | 18 | Crop Rotation, a study: harvests fail less often, on the map and in a town. | campaign (types only), game (types only), studies | foodstudies.test.ts | not yet |
-| `data` | 1249 | Static game data: ages, units, buildings and technologies. | none | sim.test.ts (tables: none of its own) | not yet |
+| `data` | 1253 | Static game data: ages, units, buildings and technologies. | none | sim.test.ts (tables: none of its own) | not yet |
 | `daylight` | 18 | How the hours run. A day is a set number of seconds, and the last three tenths of it are night; the player | none | daylight.test.ts | not yet |
 | `deadtown` | 106 | A dead town (docs/DESIGN.md): a town with nobody in it stands open to any rival or band of marauders that comes for it. | armytown, campaign (types only), campaignbase, settlersfrom, township | deadtown.test.ts | not yet |
 | `emptied` | 38 | A land a war or a band has emptied becomes an empty land: an open town nobody has come for, with no army of its people in it, is let go after a wait, and settlers of any people may found on it. A trial. | campaign (types only), deadtown | householdmove.test.ts | not yet |
@@ -302,6 +302,7 @@ by name.
 | `leaders` | 547 | The leader of each civilisation and everything they say. | none | powers.test.ts, sim.test.ts | not yet |
 | `ledger` | 26 | The season's ledger: born, came of age, died of age or hunger, fell with the army, noted by town as the season's systems do it, for the season's report. | campaign (types only) | seasonreport.test.ts | not yet |
 | `lessons` | 68 | Lessons for the moment they are needed: things a first battle's list of steps cannot teach in order, because | calamity, creed, data, famine, game (types only), hazardlessons, powers | lessons.test.ts | not yet |
+| `aiforts` | 28 | What the computer knows of works that shoot (docs/DESIGN.md, "the Fortress on the field"): which shoot from their walls by themselves (a Watch Tower, a Fortress), how far a raiding party keeps its marks from each, and what each is worth to a town's defence. | game (types only) | aiforts.test.ts | not yet |
 | `aiground` | 52 | The computer and the ground, the night and the weather in a battle: high ground to gather on, holding back while weaker. | game | aiground.test.ts | not yet |
 | `aisiting` | 101 | Where the computer sets its buildings down: off its roads, fields on good level ground, towers and its palisade on rising ground, nothing on steep ground. | game (types only), map | aisiting.test.ts | not yet |
 | `ailing` | 53 | A town comes to a battle or a visit as sick and as hungry as the map has it, through the setup bag: plague in the land sends a few of its grown in sick, hunger or a failed harvest that season sends its people in hungry. | campaign (types only), contagion, famine, game (types only), township | ailing.test.ts | not yet |
@@ -481,11 +482,11 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-315 modules, 39,080 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+316 modules, 39,113 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
-| 0 | 60 | 5,791 | `data` (1249; 55), `peoplenames` (111; 18), `intriguebase` (91; 11), `notableweight` (118; 9), `ledger` (26; 7), `pacts` (46; 7), `threatsbase` (47; 6), `wrath` (33; 6), `temper` (127; 5), `townrecord` (9; 5), `bandborn` (60; 4), `besieger` (31; 4), `household` (103; 4), `leaders` (547; 4), `studiesintown` (52; 4), `townorders` (100; 4), `warrecord` (158; 4), `handroads` (134; 3), `orphantown` (87; 3), `aiplague` (30; 2), `atwork` (77; 2), `beaten` (52; 2), `bereft` (65; 2), `clergywork` (43; 2), `dilemmas` (140; 2), `dominion` (30; 2), `path` (266; 2), `threadtales` (106; 2), `unlaid` (45; 2), `watchtally` (31; 2), `worldtales` (192; 2), `writeguard` (35; 2), `battlehooks` (80; 1), `campout` (32; 1), `carriedhome` (37; 1), `daylight` (18; 1), `faces` (129; 1), `fieldwork` (28; 1), `formations` (78; 1), `givenorders` (43; 1), `hallfield` (65; 1), `housekeep` (33; 1), `keeper` (18; 1), `lastperson` (21; 1), `nationcolours` (26; 1), `raidertown` (28; 1), `reservecamp` (20; 1), `revival` (23; 1), `slopes` (21; 1), `strengthwords` (19; 1), `stylesigns` (49; 1), `townlean` (37; 1), `tribenames` (18; 1), `waterlay` (93; 1), `encounter` (128), `faithhouse` (54), `fieldaccuse` (46), `folk` (145), `folkfaith` (197), `missionstory` (64) |
+| 0 | 61 | 5,823 | `data` (1253; 55), `peoplenames` (111; 18), `intriguebase` (91; 11), `notableweight` (118; 9), `ledger` (26; 7), `pacts` (46; 7), `threatsbase` (47; 6), `wrath` (33; 6), `temper` (127; 5), `townrecord` (9; 5), `bandborn` (60; 4), `besieger` (31; 4), `household` (103; 4), `leaders` (547; 4), `studiesintown` (52; 4), `townorders` (100; 4), `warrecord` (158; 4), `handroads` (134; 3), `orphantown` (87; 3), `aiplague` (30; 2), `atwork` (77; 2), `beaten` (52; 2), `bereft` (65; 2), `clergywork` (43; 2), `dilemmas` (140; 2), `dominion` (30; 2), `path` (266; 2), `threadtales` (106; 2), `unlaid` (45; 2), `watchtally` (31; 2), `worldtales` (192; 2), `writeguard` (35; 2), `aiforts` (28; 1), `battlehooks` (80; 1), `campout` (32; 1), `carriedhome` (37; 1), `daylight` (18; 1), `faces` (129; 1), `fieldwork` (28; 1), `formations` (78; 1), `givenorders` (43; 1), `hallfield` (65; 1), `housekeep` (33; 1), `keeper` (18; 1), `lastperson` (21; 1), `nationcolours` (26; 1), `raidertown` (28; 1), `reservecamp` (20; 1), `revival` (23; 1), `slopes` (21; 1), `strengthwords` (19; 1), `stylesigns` (49; 1), `townlean` (37; 1), `tribenames` (18; 1), `waterlay` (93; 1), `encounter` (128), `faithhouse` (54), `fieldaccuse` (46), `folk` (145), `folkfaith` (197), `missionstory` (64) |
 | 1 | 28 | 2,731 | `ageing` (142; 33), `creed` (114; 30), `hero` (102; 13), `naming` (113; 11), `map` (316; 4), `cloister` (74; 3), `courtfield` (178; 3), `feudwar` (55; 3), `siegecamp` (75; 3), `uniquecompany` (54; 3), `widowtown` (83; 3), `birthonly` (62; 2), `darkarts` (89; 2), `folkroll` (193; 2), `plainhealer` (32; 2), `steward` (62; 2), `aiworks` (95; 1), `dyingout` (88; 1), `fieldstory` (146; 1), `firstlay` (71; 1), `fleets` (69; 1), `leavehome` (58; 1), `namesakes` (53; 1), `raiderguide` (44; 1), `siegelift` (86; 1), `styleplay` (120; 1), `battlecard` (132), `visitguide` (25) |
 | 2 | 18 | 1,275 | `champion` (30; 8), `chroniclethreads` (81; 8), `powers` (95; 8), `rescue` (157; 6), `seasonsky` (89; 4), `muster` (51; 3), `oldmarks` (145; 3), `askedhere` (31; 2), `nursery` (52; 2), `queuedmen` (54; 2), `tavernfall` (24; 2), `aisiting` (101; 1), `carriedout` (32; 1), `fieldcap` (108; 1), `placebar` (50; 1), `roofs` (113; 1), `hallguests` (49), `inyears` (13) |
 | 3 | 9 | 1,488 | `township` (243; 85), `captivity` (270; 5), `winter` (61; 5), `feastfield` (96; 4), `bothhouses` (112; 3), `battleleader` (119; 1), `pickman` (98; 1), `notable` (50), `scenario` (439) |
@@ -514,7 +515,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 26 | 5 | 822 | `intrigue` (400; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `rivalhunt` (132; 1), `bandmeet` (89) |
 | 27 | 7 | 3,779 | `courtvisit` (81; 2), `game` (3303; 2), `hallcases` (77; 2), `storyvisit` (51; 2), `bandseason` (69; 1), `rivalstories` (130; 1), `storypolicy` (68) |
 | 28 | 2 | 105 | `aiground` (52; 1), `battlestory` (53; 1) |
-| 29 | 2 | 2,837 | `campaign` (1823; 2), `ai` (1014) |
+| 29 | 2 | 2,838 | `campaign` (1823; 2), `ai` (1015) |
 | 30 | 1 | 297 | `visit` (297; 1) |
 | 31 | 1 | 117 | `primer` (117) |
 
@@ -523,7 +524,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | Shapes from | Needed by | From layer | Its own layer |
 | --- | --- | --- | --- |
 | `campaign` | 206 modules | 0 | 29 |
-| `game` | 87 modules | 0 | 27 |
+| `game` | 88 modules | 0 | 27 |
 | `township` | 13 modules | 0 | 3 |
 | `threats` | 5 modules | 0 | 22 |
 | `warhouse` | 5 modules | 0 | 6 |
@@ -550,7 +551,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 315 modules, 0 naming no test, 0 naming a test file that is missing; 4,208 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 316 modules, 0 naming no test, 0 naming a test file that is missing; 4,213 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -573,7 +574,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 564 of them in 243 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 565 of them in 244 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -712,6 +713,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `leaders` | `LEADER_EVENTS`, `EVENT_NOTES`, `LEADERS`, `CHARACTER_LIMITS` |
 | `ledger` | `LEDGER_SEASONS` |
 | `lessons` | `GLUT`, `FRESH` |
+| `aiforts` | `AIFORTS` |
 | `aiground` | `AIGROUND` |
 | `aisiting` | `SITING` |
 | `ailing` | `AILING` |
