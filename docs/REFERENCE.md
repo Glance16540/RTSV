@@ -4,11 +4,14 @@ The Unity rebuild (docs/PORTING.md) is measured against figures taken from this 
 what each figure is, how the Unity side compares against it, and where the outputs are kept. The figures are taken
 in one go, on one commit, by `npm run reference` (scripts/reference.mjs), and written to `docs/reference/`.
 
-**State: final.** Taken again on 22 November 2026 on main `f717de56`, frozen for it (manifest: commit `4a67117d`,
-holding main at `f717de56`, 69 minutes). It replaces the take on main `01b69fcc` (and before it `39210a51` and the
-first final, `f178f934`). Since then every people begins with an empty land beside its chief town (emptybeside.ts),
-which changes the map, so the health rows, the round and the fingerprint all differ from the takes before. This is
-what the Unity side compares against.
+**State: final.** Taken again on 22 November 2026 on main `423d4e38`, frozen for it (manifest: commit `8b18dc9a`,
+holding main at `423d4e38`, 71 minutes). It replaces the take on main `f717de56` (and before it `01b69fcc`,
+`39210a51` and the first final, `f178f934`). Every people begins with an empty land beside its chief town
+(emptybeside.ts), which changes the map. In this take the share of the map that wins a campaign by dominion,
+`DOMINION_SHARE`, is 0.52 where it was 0.55: with the empty land fewer campaigns were decided in 200 seasons, and ruin
+with undecided read 10.0% pooled against a bar of under 10. It now reads 7.4% pooled. The share changes only the
+campaign's end, so the round and the fingerprint hash as in the take before (`c8e178c951258e02`,
+`510f9ad0ba66fa39`). This is what the Unity side compares against.
 
 ## Taking it
 
@@ -91,11 +94,12 @@ port. Each is a few lines; the finding behind it is in the commits and the board
   384 swings about 3.5 points either side by the luck of the campaigns.
 - **Crime, "convoys stopped with an Inn on the road"** (bar: fewer with an Inn). It rests on a few hundred convoys
   with an Inn against ten thousand without, and reads either side of the bar by luck. It is OUT in `health-b-answer`
-  (17.8% of 247 against 17.6%) and in band in the other three (6.7 to 14.8% with an Inn against 14.8 to 19.6%
+  (18.5% of 205 against 17.7%) and in band in the other three (5.9 to 14.2% with an Inn against 14.7 to 20.0%
   without). Pool the four before reading it.
 - **Threats, "raids on a given town"** (bar: about once in 3 to 5 years). A row the map moves. Since every people
-  begins with an empty land beside its chief town (`emptybeside.ts`, 22 November 2026) it reads once in 2.7 to 3.0
-  years, OUT in all four, where it read 3.1 and 3.3 before. The raids are not more: 51 to 57 thousand a reading of 384, with the empty
+  begins with an empty land beside its chief town (`emptybeside.ts`, 22 November 2026) it reads once in 2.7 to 2.9
+  years, OUT in all four, where it read 3.1 and 3.3 before; with the shorter campaigns of a dominion share of 0.52 it
+  reads 2.7 on the second seed set (`health-b-*`). The raids are not more: 48 to 55 thousand a reading of 384, with the empty
   land or without. The towns are fewer: three tribal towns a world are empty land until settlers fill them, about 9%
   fewer town-years for the same raids to fall on, and bands come two of a kind however many towns there are. A new
   town's grace (`newtown.ts`: no band marks a founded town for eight seasons) does not move it, since a band with
@@ -108,12 +112,12 @@ port. Each is a few lines; the finding behind it is in the commits and the board
   `health-b-plain`) and in band in the other six. The row moves about two points between like readings (the same cell
   read 26.0, 21.8, 21.5 and 20.8 over four trees), so it is an edge.
 - **Rule, "risings for a claimant to the throne"** (bar: 2 to 5 every 100 campaigns, some for a lord's son by the
-  leader's wife). The rate is in band (2.9 to 4.2 every 100 campaigns), but children born in a lord's house are
+  leader's wife). The rate is in band (2.6 to 3.9 every 100 campaigns), but children born in a lord's house are
   rare, so the "some of them for a child born in a lord's house" part can read 0 by luck. In the final take it is in
-  band in all four (2 to 5 of 11 to 16 risings); in the take before it read 0 of 15 in `health-a-answer`, OUT on that
+  band in all four (2 or 3 of 10 to 15 risings); in the take before it read 0 of 15 in `health-a-answer`, OUT on that
   alone. Pool the sparse counts (`*.sparse.json`) before reading it.
 - **Pace, "campaigns ending in ruin, and with those undecided under 10 in 100"** (bar: ruin under 6, ruin and
-  undecided together under 10). Ruin alone is rare (1.3 to 2.6%). Together they read 7.0% (`health-a-plain`), 10.4%
-  (`health-a-answer`), 9.9% (`health-b-answer`) and 12.8% (`health-b-plain`, where undecided alone is 10.2%, OUT
-  too): 10.0% pooled over the 1,536, on the bar. With the empty land fewer campaigns are decided in 200 seasons
-  (undecided 5.5 to 10.2%). The two OUT readings are luck of the seed set more than of the course.
+  undecided together under 10). Ruin alone is rare (1.3 to 2.6%). With the empty land fewer campaigns were decided in
+  200 seasons, and at a dominion share of 0.55 the two together read 7.0 to 12.8%, 10.0% pooled, on the bar. At 0.52
+  they read 7.0% (`health-a-answer`), 4.9% (`health-a-plain`), 8.1% (`health-b-answer`) and 9.4% (`health-b-plain`),
+  7.4% pooled, all in band; undecided alone is 3.4 to 6.8%. `health-b-plain` is the nearest the bar.
