@@ -64,6 +64,7 @@ import { SUPPLY_UNITS, stock } from './stores';
 import { watchOf } from './drift';
 import { needOf } from './larder';
 import { bandStand } from './ownstudies';
+import { tooNewToRaid } from './newtown';
 
 export type BandKind = 'raiders' | 'slavers' | 'pirates' | 'highwaymen' | 'marauders';
 /** People a band is holding: where they were taken from, whose they are, their ages when seized, and since when. */
@@ -452,7 +453,8 @@ export function captivesSeason(c: Campaign, out: string[]): void {
 
 /** The softest mark in a band's reach: least defence for what draws it, and the decadent draw it more. */
 export function softest(c: Campaign, b: Band, reach = reachOf(c, b)): { id: number; lure: number } | null {
-  const marks = reach.map((id) => ({ id, lure: wrathAt(c, id) / Math.max(0.5, defenceOf(c, id).total), tie: chance(c, b.id * 53 + id, 43) })).sort((x, y) => y.lure - x.lure || x.tie - y.tie);
+  const marks = reach.filter((id) => !tooNewToRaid(c, id)) // a town settlers have just founded is no mark yet (newtown.ts)
+    .map((id) => ({ id, lure: wrathAt(c, id) / Math.max(0.5, defenceOf(c, id).total), tie: chance(c, b.id * 53 + id, 43) })).sort((x, y) => y.lure - x.lure || x.tie - y.tie);
   return marks[0] ?? null;
 }
 

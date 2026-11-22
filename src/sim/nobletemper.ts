@@ -35,6 +35,8 @@ declare module './campaign' {
   interface Faction {
     /** The nation's towns as the last season ended (nobletemper.ts). */
     landWas?: number;
+    /** The towns its own settlers founded that its lords have already counted as founded, not won (nobletemper.ts). */
+    foundedSeen?: number[];
   }
 }
 
@@ -60,11 +62,16 @@ const warlike = (l: Leaning): number => (l === 'martial' ? 2 : 1);
 /** The leader has heeded this noble: come to their town, or dealt with them (nobledeal.ts calls it). */
 export const heed = (c: Campaign, n: Noble): void => { n.heeded = c.turn; };
 
-/** The nation's land this season against last: -1 lost, 1 won, 0 neither. Reads and then remembers it. */
+/** The nation's land this season against last: -1 lost, 1 won, 0 neither; a town founded by its own settlers is not won. Reads and then remembers it. */
 export function warTurn(c: Campaign, f: number): number {
   const fac = c.factions[f], now = towns(c, f), was = fac?.landWas ?? now;
-  if (fac) fac.landWas = now;
-  return now < was ? -1 : now > was ? 1 : 0;
+  // A town its own settlers founded (founding.ts) is not a town won in war: land gained by founding alone cheers no lord as a victory does.
+  // Each founded town is counted so once, when it is new: taken back after it was lost, it is won like any other.
+  const seen = fac?.foundedSeen ?? [];
+  const fresh = c.territories.filter((t) => t.owner === f && !t.horde && !!t.foundedBy && c.turn - t.foundedBy.turn <= 1 && !seen.includes(t.id)).map((t) => t.id); // founded since they last looked: a town another people founded long ago and this one took is won
+  if (fac) { fac.landWas = now; if (fresh.length) fac.foundedSeen = [...seen, ...fresh]; }
+  if (now < was) return -1;
+  return now - was > fresh.length ? 1 : 0;
 }
 
 /** What a noble takes into their temper this season. `war` from warTurn. */
