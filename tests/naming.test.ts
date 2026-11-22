@@ -4,6 +4,9 @@ import { Campaign, armyAt, battleConfig, finishBattle, moveArmy, newCampaign, ra
 import { CIVS } from '../src/sim/data';
 import { HEIR_AGE, claimants, houseOf, strangerLeads, succeed } from '../src/sim/dynasty';
 import { MAX_NAME, cleanName, foundHouse, houseName, houseToName, nameNation, ownLine, ownWords, peopleName, renameOwn } from '../src/sim/naming';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 /** A named campaign whose leader has just fallen with their army. */
 const bereft = (names = { people: 'Ashfolk', house: 'Varn' }): { c: Campaign; home: number } => {

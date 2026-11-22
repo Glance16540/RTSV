@@ -8,6 +8,9 @@ import { KEEP_SEASONS, needOf } from '../src/sim/larder';
 import { SUPPLY_UNITS, settleStores } from '../src/sim/stores';
 import { MAX_STORE, STORE_KINDS, folkOf } from '../src/sim/township';
 import type { Stores } from '../src/sim/township';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 const units = (s: Stores) => STORE_KINDS.reduce((n, k) => n + s[k], 0);
 const world = (seed = 7) => {

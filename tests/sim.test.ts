@@ -25,6 +25,9 @@ import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, ans
 import { menAt, run, setups, spot, villagers } from './helpers';
 import { fundFor } from '../src/sim/prices';
 import { SUPPLY } from '../src/sim/stores';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 describe('map', () => {
   it('always connects both bases by land', () => {

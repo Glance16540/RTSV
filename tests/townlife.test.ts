@@ -7,6 +7,9 @@ import { faithAt, seasonOfFaith, shiftVirtue, townDrift } from '../src/sim/townf
 import { leanOf } from '../src/sim/townlean';
 import { needOf } from '../src/sim/larder';
 import { folkOf } from '../src/sim/township';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 /** The player's capital and a second town, nothing standing in either that moves faith, and no unrest to come. */
 function realm(): { c: Campaign; a: number; b: number } {

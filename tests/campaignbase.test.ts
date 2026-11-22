@@ -5,6 +5,9 @@ import * as hub from '../src/sim/campaign';
 import type { Army, Campaign, Territory } from '../src/sim/campaign';
 import * as base from '../src/sim/campaignbase';
 import { headcount } from '../src/sim/township';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 describe('the campaign\'s base', () => {
   it('everything in it is still found in the hub, the same thing and not a copy', () => {

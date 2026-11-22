@@ -10,6 +10,9 @@ import { AIController } from '../src/sim/ai';
 import { RANK_XP } from '../src/sim/hero';
 import { CALLS, CALL_LASTS, CALL_RANK, CALL_REST } from '../src/sim/powers';
 import { menAt, run } from './helpers';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 const LONG = 120_000;
 const two = (hero = {}) => {

@@ -9,6 +9,9 @@ import { Game } from '../src/sim/game';
 import { HeroSpec, RANK_XP, cleanHero } from '../src/sim/hero';
 import { POWERS, leaderDef, leaderType, powerDue, powersHeld, rivalHero } from '../src/sim/powers';
 import { run } from './helpers';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 const made = (over: Partial<HeroSpec>): HeroSpec => cleanHero({ name: 'Edric', might: 2, guard: 2, vigour: 2, ...over }, 'hearth');
 const game = (hero: Partial<HeroSpec>, ai = false) => {
