@@ -4,9 +4,10 @@ The Unity rebuild (docs/PORTING.md) is measured against figures taken from this 
 what each figure is, how the Unity side compares against it, and where the outputs are kept. The figures are taken
 in one go, on one commit, by `npm run reference` (scripts/reference.mjs), and written to `docs/reference/`.
 
-**State: final.** Taken again on 21 November 2026 on main `39210a51`, frozen for it (manifest: commit `38ee3761`,
-holding main at `39210a51`, 71 minutes). It replaces the first final (main `f178f934`). The battles did not change
-between the two, so the round and the fingerprint hash the same. This is what the Unity side compares against.
+**State: final.** Taken again on 21 November 2026 on main `01b69fcc`, frozen for it (manifest: commit `b1699ae4`,
+holding main at `01b69fcc`, 67 minutes). It replaces the take on main `39210a51`, which replaced the first final
+(main `f178f934`). Since then the town's grown are kept by name (folkroll.ts), and the names seed a few draws, so the
+round and the fingerprint no longer hash as before. This is what the Unity side compares against.
 
 ## Taking it
 
@@ -84,9 +85,13 @@ So that a figure can be taken again, and on the Unity side the same way:
 Rows that sit on the edge of their band in the game as it stands, so that a reading out of band is not a fault in the
 port. Each is a few lines; the finding behind it is in the commits and the board.
 
-- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). Since tending without a church, it reads 13.3
-  to 17.2% less over the four reports, all in band. Before that change it sat on the edge (6 to 14%). One reading of
+- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). Since tending without a church, it reads 12.2
+  to 16.5% less over the four reports (12.1 to 15.3% read season by season), all in band. Before that change it sat on the edge (6 to 14%). One reading of
   384 swings about 3.5 points either side by the luck of the campaigns.
 - **Crime, "convoys stopped with an Inn on the road"** (bar: fewer with an Inn). It rests on a few hundred convoys
   with an Inn against ten thousand without, and reads either side of the bar by luck. It is OUT in `health-a-answer`
-  (18.7% of 262 against 16.3%) and in band in the other three. Pool the four before reading it.
+  (19.9% of 418 against 17.0%) and in band in the other three. Pool the four before reading it.
+- **Rule, "risings for a claimant to the throne"** (bar: 2 to 5 every 100 campaigns, some for a lord's son by the
+  leader's wife). The rate is in band (3.9 in `health-a-answer`), but children born in a lord's house are rare (2 of
+  66 written down), so the "some of them for a child born in a lord's house" part can read 0 by luck, and does in
+  `health-a-answer` (0 of 15), OUT on that alone. Pool the sparse counts (`*.sparse.json`) before reading it.
