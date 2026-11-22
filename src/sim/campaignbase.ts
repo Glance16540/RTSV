@@ -123,8 +123,15 @@ export const MAX_FAVOR = 3;
  * Then 0.55, on main fbee5c2 once the rivals eased their yoke with Farmland only (rivalyoke.ts): at 0.57 the answered
  * course left 8.9% undecided and 1.8% in ruin, the two together 10.7 where under 10 is wanted; at 0.55, 6.5% and 1.6%,
  * and 6.0% undecided in the other course where 8.1% was. At 0.53 claimants rose too seldom (1.3 every 100 campaigns).
+ * Then 0.52 (22 November 2026), once every people had an empty land beside its chief town (emptybeside.ts) and the
+ * median campaign ran ten seasons longer: over two sets of 384 in both courses, ruin and undecided together read 10.4%,
+ * 7.0%, 9.9% and 12.8% at 0.55 (10.0% pooled, where under 10 is wanted); 8.1%, 5.8%, 9.2% and 10.4% at 0.53; 7.0%, 5.0%,
+ * 8.1% and 9.4% at 0.52 (7.4% pooled); 5.7%, 3.9%, 5.7% and 7.2% at 0.5, where rivals won 22 more campaigns in 384.
+ * At 0.52 the player won 223, 227, 228 and 219 (223, 220, 228, 216 at 0.55), a rival 112, 118, 108 and 108 (96, 116, 98,
+ * 95), and claimants rose 2.6 to 3.9 times every 100 campaigns: the empty lands are not counted in what must be held
+ * (dominionNeed below), so the bar itself was not raised by them; the campaigns are only slower.
  */
-export const DOMINION_SHARE = 0.55;
+export const DOMINION_SHARE = 0.52;
 
 export const DOMINION_TURNS = 10;
 
