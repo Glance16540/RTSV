@@ -217,7 +217,7 @@ Built (`grain.ts`, `founding.ts`, `wilds.ts`, `bandwilds.ts`, `rim.ts`).
 
 | Promise | What is missing | Size | Recommendation |
 | --- | --- | --- | --- |
-| A people may send settlers to an empty land beside its own | A young people seldom has an empty land in reach. Leaving one beside every chief town was tried and cost the player wins badly, and it was left for a decision. | small | Owner's call: it is a map-making choice, best made in Unity's map generator. |
+| A people may send settlers to an empty land beside its own | A young people seldom has an empty land in reach. Leaving one beside every chief town was tried and cost the player wins badly, and it was left for a decision. **Measured again on the game as it stands (21 November 2026, 384 campaigns, both courses, nothing changed):** with one land beside the player's chief town standing empty from the first, the player won 165 and 166 campaigns where it won 213 and 216 without, and a rival won 152 and 141 where one won 109 and 100; the player was beaten in 38 and 43 against 32 and 42, and no pace row left its band. So it still costs the player about one win in four (56% to 43%), where at first it cost more than half (126 to 51 of 192): its armies still cannot take that land, and the settlers it sends there make a weak town early. | small | Owner's call: it is a map-making choice, best made in Unity's map generator. On these figures it should not be given to the player alone. |
 
 ## Towns big enough to raise armies; a garrison pays; one rule for who defends a town
 
