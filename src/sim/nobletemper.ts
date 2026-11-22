@@ -46,7 +46,9 @@ export const TEMPER = {
   /** A town lost or won this season, and a martial noble's again as much. */
   lost: -16, won: 10,
   /** Their town struck in the last season; quiet and fed for a year. (The quiet year was 3: with lords only in big towns that alone settled the ordinary lord near +24, two thirds of the way to content, and 19 to 20% of lords were content at twenty years over 768 campaigns against a band of 5 to 20. At 2.5 four readings of 384 give 14.5 to 17.1% of the player's and 15.9 to 19.2% of the rivals', with 3.6 to 6.1% angry.) */
-  struck: -10, quiet: 2.5,
+  // 2 since 22 November 2026 (it was 2.5): with an empty land beside every chief town (emptybeside.ts) towns are less crowded and quiet more often, and
+  // contented lords read 21 to 23% at twenty years; at 2 they read 19.3% and 18.7% of the rivals' and 20.8% and 14.5% of the player's.
+  struck: -10, quiet: 2,
   /** The leader at their town, each season. */
   present: 6,
   /** Seasons without the leader's heed before neglect sours a lord; how much a season, growing by `grows` each year after, up to `most`. */

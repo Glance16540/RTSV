@@ -91,6 +91,19 @@ port. Each is a few lines; the finding behind it is in the commits and the board
 - **Crime, "convoys stopped with an Inn on the road"** (bar: fewer with an Inn). It rests on a few hundred convoys
   with an Inn against ten thousand without, and reads either side of the bar by luck. It is OUT in `health-a-answer`
   (19.9% of 418 against 17.0%) and in band in the other three. Pool the four before reading it.
+- **Threats, "raids on a given town"** (bar: about once in 3 to 5 years). A row the map moves. Since every people
+  begins with an empty land beside its chief town (`emptybeside.ts`, 22 November 2026) it reads once in 2.8 to 3.0
+  years, where it read 3.1 and 3.3 before. The raids are not more: 50 to 54 thousand a reading of 384, with the empty
+  land or without. The towns are fewer: three tribal towns a world are empty land until settlers fill them, about 9%
+  fewer town-years for the same raids to fall on, and bands come two of a kind however many towns there are. A new
+  town's grace (`newtown.ts`: no band marks a founded town for eight seasons) does not move it, since a band with
+  another town in reach strikes that. Raiding was not cut for it and the bar was not moved.
+- **Rule, "lords content at twenty years"** (bar: 5 to 20%, the player's and the rivals' each). With the empty land,
+  towns are less crowded and quiet more often, and it read 21 to 24%. Two things were done: a town founded by a
+  people's own settlers no longer counts to its lords as a town won in war (`nobletemper.ts` warTurn), and a quiet,
+  fed year is worth 2 to a lord where it was 2.5. It now reads 19.3% and 18.7% of the rivals' and 14.5% of the
+  player's in band, and 20.8% of the player's in the attended course, OUT by 0.8. The row moves about two points
+  between like readings (the same cell read 26.0, 21.8, 21.5 and 20.8 over four trees), so that cell is an edge.
 - **Rule, "risings for a claimant to the throne"** (bar: 2 to 5 every 100 campaigns, some for a lord's son by the
   leader's wife). The rate is in band (3.9 in `health-a-answer`), but children born in a lord's house are rare (2 of
   66 written down), so the "some of them for a child born in a lord's house" part can read 0 by luck, and does in
