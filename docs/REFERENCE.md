@@ -4,10 +4,11 @@ The Unity rebuild (docs/PORTING.md) is measured against figures taken from this 
 what each figure is, how the Unity side compares against it, and where the outputs are kept. The figures are taken
 in one go, on one commit, by `npm run reference` (scripts/reference.mjs), and written to `docs/reference/`.
 
-**State: final.** Taken again on 21 November 2026 on main `01b69fcc`, frozen for it (manifest: commit `b1699ae4`,
-holding main at `01b69fcc`, 67 minutes). It replaces the take on main `39210a51`, which replaced the first final
-(main `f178f934`). Since then the town's grown are kept by name (folkroll.ts), and the names seed a few draws, so the
-round and the fingerprint no longer hash as before. This is what the Unity side compares against.
+**State: final.** Taken again on 22 November 2026 on main `f717de56`, frozen for it (manifest: commit `4a67117d`,
+holding main at `f717de56`, 69 minutes). It replaces the take on main `01b69fcc` (and before it `39210a51` and the
+first final, `f178f934`). Since then every people begins with an empty land beside its chief town (emptybeside.ts),
+which changes the map, so the health rows, the round and the fingerprint all differ from the takes before. This is
+what the Unity side compares against.
 
 ## Taking it
 
@@ -85,15 +86,16 @@ So that a figure can be taken again, and on the Unity side the same way:
 Rows that sit on the edge of their band in the game as it stands, so that a reading out of band is not a fault in the
 port. Each is a few lines; the finding behind it is in the commits and the board.
 
-- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). Since tending without a church, it reads 12.2
-  to 16.5% less over the four reports (12.1 to 15.3% read season by season), all in band. Before that change it sat on the edge (6 to 14%). One reading of
+- **Drift, "with sensible decrees vs none"** (bar: at least a tenth less). Since tending without a church, it reads 12.1
+  to 15.0% less over the four reports (12.9 to 15.7% read season by season), all in band. Before that change it sat on the edge (6 to 14%). One reading of
   384 swings about 3.5 points either side by the luck of the campaigns.
 - **Crime, "convoys stopped with an Inn on the road"** (bar: fewer with an Inn). It rests on a few hundred convoys
-  with an Inn against ten thousand without, and reads either side of the bar by luck. It is OUT in `health-a-answer`
-  (19.9% of 418 against 17.0%) and in band in the other three. Pool the four before reading it.
+  with an Inn against ten thousand without, and reads either side of the bar by luck. It is OUT in `health-b-answer`
+  (17.8% of 247 against 17.6%) and in band in the other three (6.7 to 14.8% with an Inn against 14.8 to 19.6%
+  without). Pool the four before reading it.
 - **Threats, "raids on a given town"** (bar: about once in 3 to 5 years). A row the map moves. Since every people
-  begins with an empty land beside its chief town (`emptybeside.ts`, 22 November 2026) it reads once in 2.8 to 3.0
-  years, where it read 3.1 and 3.3 before. The raids are not more: 50 to 54 thousand a reading of 384, with the empty
+  begins with an empty land beside its chief town (`emptybeside.ts`, 22 November 2026) it reads once in 2.7 to 3.0
+  years, OUT in all four, where it read 3.1 and 3.3 before. The raids are not more: 51 to 57 thousand a reading of 384, with the empty
   land or without. The towns are fewer: three tribal towns a world are empty land until settlers fill them, about 9%
   fewer town-years for the same raids to fall on, and bands come two of a kind however many towns there are. A new
   town's grace (`newtown.ts`: no band marks a founded town for eight seasons) does not move it, since a band with
@@ -101,10 +103,17 @@ port. Each is a few lines; the finding behind it is in the commits and the board
 - **Rule, "lords content at twenty years"** (bar: 5 to 20%, the player's and the rivals' each). With the empty land,
   towns are less crowded and quiet more often, and it read 21 to 24%. Two things were done: a town founded by a
   people's own settlers no longer counts to its lords as a town won in war (`nobletemper.ts` warTurn), and a quiet,
-  fed year is worth 2 to a lord where it was 2.5. It now reads 19.3% and 18.7% of the rivals' and 14.5% of the
-  player's in band, and 20.8% of the player's in the attended course, OUT by 0.8. The row moves about two points
-  between like readings (the same cell read 26.0, 21.8, 21.5 and 20.8 over four trees), so that cell is an edge.
+  fed year is worth 2 to a lord where it was 2.5. In the final take it reads 14.5 to 20.8% of the player's and
+  18.7 to 20.8% of the rivals', OUT by 0.8 in two cells (the player's in `health-a-answer`, the rivals' in
+  `health-b-plain`) and in band in the other six. The row moves about two points between like readings (the same cell
+  read 26.0, 21.8, 21.5 and 20.8 over four trees), so it is an edge.
 - **Rule, "risings for a claimant to the throne"** (bar: 2 to 5 every 100 campaigns, some for a lord's son by the
-  leader's wife). The rate is in band (3.9 in `health-a-answer`), but children born in a lord's house are rare (2 of
-  66 written down), so the "some of them for a child born in a lord's house" part can read 0 by luck, and does in
-  `health-a-answer` (0 of 15), OUT on that alone. Pool the sparse counts (`*.sparse.json`) before reading it.
+  leader's wife). The rate is in band (2.9 to 4.2 every 100 campaigns), but children born in a lord's house are
+  rare, so the "some of them for a child born in a lord's house" part can read 0 by luck. In the final take it is in
+  band in all four (2 to 5 of 11 to 16 risings); in the take before it read 0 of 15 in `health-a-answer`, OUT on that
+  alone. Pool the sparse counts (`*.sparse.json`) before reading it.
+- **Pace, "campaigns ending in ruin, and with those undecided under 10 in 100"** (bar: ruin under 6, ruin and
+  undecided together under 10). Ruin alone is rare (1.3 to 2.6%). Together they read 7.0% (`health-a-plain`), 10.4%
+  (`health-a-answer`), 9.9% (`health-b-answer`) and 12.8% (`health-b-plain`, where undecided alone is 10.2%, OUT
+  too): 10.0% pooled over the 1,536, on the bar. With the empty land fewer campaigns are decided in 200 seasons
+  (undecided 5.5 to 10.2%). The two OUT readings are luck of the seed set more than of the course.
