@@ -4,6 +4,9 @@ import { Campaign, endTurn, newCampaign, playForPlayer, reach, resolvePending } 
 import { PLAN, aimFirst, aimOf, aimWorth, aimsOf, balk, beforeAim, marchesTo, planOf, planStep, planText, riches, whyAim } from '../src/sim/rivalplan';
 import { townTaken } from '../src/sim/conquered';
 import { folkOf } from '../src/sim/township';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 /**
  * A rival with its capital, a land beside it (`mid`) and one beyond that (`far`), which the capital does not

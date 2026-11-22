@@ -63,6 +63,7 @@ import { atWarWith, warUntil } from './feudwar';
 import { befalls, feverToll, hardCost } from './chancecreed';
 import { raiseFaithSites } from './faithsites';
 import { makeRim } from './rim';
+import { makeEmptyBeside } from './emptybeside';
 import { nobodyThere } from './founding';
 import { seasonFolk } from './seasonfolk';
 import { larderSeason } from './larder';
@@ -788,6 +789,7 @@ export function newCampaign(seed: number, rivals = 1, level = 1, playerCiv?: str
   c.log.push(`Turn 1. You lead the ${peopleName(c, 0)}${houseName(c, 0) ? `, under the House of ${houseName(c, 0)}` : ''}. ${c.factions.slice(1).map((f) => f.name).join(', ')} ${count > 1 ? 'share' : 'shares'} this land with you.`);
   tell(c, `The ${[peopleName(c, 0), ...c.factions.slice(1).map((f) => `the ${f.name}`)].join(', ').replace(/, ([^,]*)$/, ' and $1')} came into a country of ${c.territories.length} lands, and each meant to have all of it.`);
   placesOf(c);
+  makeEmptyBeside(c); // and every people has one empty land beside its chief town, for its settlers (emptybeside.ts)
   advise(c, 'p_start');
   for (let f = 1; f <= count; f++) say(c, f, 'intro');
   settleStores(c); // each people's supplies are goods in its chief town from the first (stores.ts)

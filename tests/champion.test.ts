@@ -6,6 +6,9 @@ import { HEIR_AGE, claimants, houseOf, succeed } from '../src/sim/dynasty';
 import { Game } from '../src/sim/game';
 import { RANK_XP } from '../src/sim/hero';
 import { run } from './helpers';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 const two = () => {
   const g = new Game(7, [{ name: 'A', color: 1, isAI: false, civ: 'hearth', hero: { name: 'Edric' } }, { name: 'B', color: 2, isAI: false, civ: 'forge' }]);

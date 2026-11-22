@@ -35,6 +35,8 @@ declare module './campaign' {
   interface Faction {
     /** The nation's towns as the last season ended (nobletemper.ts). */
     landWas?: number;
+    /** The towns its own settlers founded that its lords have already counted as founded, not won (nobletemper.ts). */
+    foundedSeen?: number[];
   }
 }
 
@@ -44,7 +46,9 @@ export const TEMPER = {
   /** A town lost or won this season, and a martial noble's again as much. */
   lost: -16, won: 10,
   /** Their town struck in the last season; quiet and fed for a year. (The quiet year was 3: with lords only in big towns that alone settled the ordinary lord near +24, two thirds of the way to content, and 19 to 20% of lords were content at twenty years over 768 campaigns against a band of 5 to 20. At 2.5 four readings of 384 give 14.5 to 17.1% of the player's and 15.9 to 19.2% of the rivals', with 3.6 to 6.1% angry.) */
-  struck: -10, quiet: 2.5,
+  // 2 since 22 November 2026 (it was 2.5): with an empty land beside every chief town (emptybeside.ts) towns are less crowded and quiet more often, and
+  // contented lords read 21 to 23% at twenty years; at 2 they read 19.3% and 18.7% of the rivals' and 20.8% and 14.5% of the player's.
+  struck: -10, quiet: 2,
   /** The leader at their town, each season. */
   present: 6,
   /** Seasons without the leader's heed before neglect sours a lord; how much a season, growing by `grows` each year after, up to `most`. */
@@ -60,11 +64,16 @@ const warlike = (l: Leaning): number => (l === 'martial' ? 2 : 1);
 /** The leader has heeded this noble: come to their town, or dealt with them (nobledeal.ts calls it). */
 export const heed = (c: Campaign, n: Noble): void => { n.heeded = c.turn; };
 
-/** The nation's land this season against last: -1 lost, 1 won, 0 neither. Reads and then remembers it. */
+/** The nation's land this season against last: -1 lost, 1 won, 0 neither; a town founded by its own settlers is not won. Reads and then remembers it. */
 export function warTurn(c: Campaign, f: number): number {
   const fac = c.factions[f], now = towns(c, f), was = fac?.landWas ?? now;
-  if (fac) fac.landWas = now;
-  return now < was ? -1 : now > was ? 1 : 0;
+  // A town its own settlers founded (founding.ts) is not a town won in war: land gained by founding alone cheers no lord as a victory does.
+  // Each founded town is counted so once, when it is new: taken back after it was lost, it is won like any other.
+  const seen = fac?.foundedSeen ?? [];
+  const fresh = c.territories.filter((t) => t.owner === f && !t.horde && !!t.foundedBy && c.turn - t.foundedBy.turn <= 1 && !seen.includes(t.id)).map((t) => t.id); // founded since they last looked: a town another people founded long ago and this one took is won
+  if (fac) { fac.landWas = now; if (fresh.length) fac.foundedSeen = [...seen, ...fresh]; }
+  if (now < was) return -1;
+  return now - was > fresh.length ? 1 : 0;
 }
 
 /** What a noble takes into their temper this season. `war` from warTurn. */

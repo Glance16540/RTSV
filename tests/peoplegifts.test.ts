@@ -18,7 +18,7 @@ describe('the Norse', () => {
     expect(styleOf('wild').raid).toBe(true);
     expect(CIVS.wild.unique).toBe('wolfrider');
     expect(CIVS.wild.unique2).toBe('warbear');
-    expect(UNITS.wolfrider.cost).toEqual({ food: 75 });
+    expect(UNITS.wolfrider.cost).toEqual({ food: 90 }); // 75 until they stood over the top of the round
     expect(UNITS.warbear.cost).toEqual({ food: 130 });
     expect(CIVS.wild.bonuses).toContain('Their Wolf Riders and War Bears cost food alone');
   });
@@ -111,5 +111,28 @@ describe('the Abbasids', () => {
     expect(m.cavSpeed).toBe(1.1);
     expect(m.techCost).toBe(0.9);
     expect(CIVS.arabs.bonuses).toContain('Villagers gather 2% faster');
+  });
+});
+
+describe('the Romans', () => {
+  it('gather 2% faster, beside their walls, their builders and their towers', () => {
+    const plain = baseMods(), m = baseMods();
+    CIVS.stonekin.apply(m);
+    expect(m.gather).toBeCloseTo(plain.gather * 1.02, 10);
+    expect(m.buildingHp).toBe(1.25);
+    expect(m.build).toBe(1.25);
+    expect(m.towerRange).toBe(1);
+    expect(CIVS.stonekin.bonuses).toContain('Villagers gather 2% faster');
+  });
+});
+
+describe('the Kushites', () => {
+  it('gather 1% faster, beside their towers and their hunting', () => {
+    const plain = baseMods(), m = baseMods();
+    CIVS.kush.apply(m);
+    expect(m.gather).toBeCloseTo(plain.gather * 1.01, 10);
+    expect(m.towerRange).toBe(plain.towerRange + 1);
+    expect(m.hunt).toBe(1.2);
+    expect(CIVS.kush.bonuses).toContain('Villagers gather 1% faster');
   });
 });

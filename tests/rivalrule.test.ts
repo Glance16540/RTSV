@@ -10,6 +10,9 @@ import { townTaken } from '../src/sim/conquered';
 import { governTown } from '../src/sim/governor';
 import { couplesOf, housesOf, roomOf } from '../src/sim/seasonfolk';
 import { folkOf, headcount, living } from '../src/sim/township';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 smallTownRules(); // these tests are about how men go to an army and come home, written with towns of ten men: the figures they were written with
 

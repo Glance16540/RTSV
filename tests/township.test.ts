@@ -5,6 +5,9 @@ import { ELDER_AT } from '../src/sim/data';
 import { Census, MAX_KIND, MOTHER_KIDS, TOLL, TOWN_SCALE, cleanCensus, folkOf, foundFolk, headcount, living, musterFolk, nationNotables, nationPeople, nationStores, rememberVeteran, settleFolk, tollFolk } from '../src/sim/township';
 import { run, bareCampaign } from './helpers';
 import { FIELD_CAP } from '../src/sim/fieldcap';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 const LONG = 60_000;
 const world = (seed = 5): Campaign => bareCampaign(seed, 1, 1, 'hearth');

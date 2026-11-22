@@ -25,6 +25,9 @@ import { placesOf, placeAt, worldNow, hireOff, taleNow, taleText, canAnswer, ans
 import { menAt, run, setups, spot, villagers } from './helpers';
 import { fundFor } from '../src/sim/prices';
 import { SUPPLY } from '../src/sim/stores';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 describe('map', () => {
   it('always connects both bases by land', () => {
@@ -283,9 +286,10 @@ describe('ai', () => {
     ais[0].setLevel(0);
     ais[1].setLevel(2);
     // An hour, not 45 minutes: since a soldier is made of a villager, armies are smaller and this war ends at minute 53.
-    run(g, 60 * 60, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
+    // Seventy, since the Romans (the Easy side here) gather 2% faster: on this map it ends at minute 61, and on the next three seeds at 23 to 38.
+    run(g, 70 * 60, () => { if (g.winner < 0) ais.forEach((a) => a.update()); });
     expect(g.winner).toBe(1);
-  }, 180000);
+  }, 240000);
 });
 
 describe('wildlife and shelter', () => {

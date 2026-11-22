@@ -1,6 +1,7 @@
 // What every test file needs to set a battle going. New tests go in a file of their own beside this one
 // (tests/<feature>.test.ts) and take these from here, so that two branches never add to the same file.
 import { Building, Game } from '../src/sim/game';
+import { BESIDE } from '../src/sim/emptybeside';
 
 export const setups = [
   { name: 'A', color: 0x3366ff, isAI: false },
@@ -57,3 +58,10 @@ export const everyManSent = (): void => { MEN.share = 1; };
  * written with. Call it once at the top of the file (each test file has its own copy of the rules).
  */
 export const smallTownRules = (): void => { MEN.company = 2; MEN.floor = 2; MEN.couples = 0.5; MEN.least = 0; MEN.share = 1; };
+
+/**
+ * For tests written before every people had an empty land beside its chief town (emptybeside.ts): the worlds they
+ * were written with, where every land beside a chief town holds a tribe to march on.
+ * Call it once at the top of the file (each test file has its own copy of the rules).
+ */
+export const worldsBeforeEmptyBeside = (): void => { BESIDE.each = 0; };

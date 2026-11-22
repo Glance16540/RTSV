@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Campaign, answerDemand, answerTale, armyAt, armySize, canAnswer, continueAI, endTurn, moveArmy, newCampaign, placeAt, placesOf, resolvePending, taleNow, taleText } from '../src/sim/campaign';
 import { LEGENDS, PLACES, PlaceKind, TALES, TALE_EVERY, TALE_FROM, epilogue } from '../src/sim/story';
 import { ending } from '../src/sim/epilogues';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 const still = new WeakSet<Campaign>();
 /** End the turn, paying any demand and settling any battle without fighting it. */
