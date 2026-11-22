@@ -337,7 +337,7 @@ by name.
 | `nobledeal` | 165 | The leader's dealings with a noble: summon, gift, post, marriage into the house, stripping of lands; each costs, moves the mood and lasts. | campaign (types only), dynasty, nobles, nobletemper, prices, township | nobledeal.test.ts | not yet |
 | `nobleacts` | 122 | Nobles who act: a content lord sends men to a struck town or gold for a war, an angry one withholds his due or joins a plot afoot. | ageing, campaign (types only), nobles, rivalrule, township | nobleacts.test.ts | not yet |
 | `nobleweigh` | 55 | Rulers who weigh their nobles: angry lords make a computer-led ruler warier of marching and readier for a truce; it leaves out decrees that would anger a lord, and deals with its angriest. | campaign (types only), decrees (types only), nobledeal, nobles, plenty, stores | nobleweigh.test.ts | not yet |
-| `nobletemper` | 117 | What a noble remembers: war, their town struck or quiet, the leader's heed or neglect, taxes; a temper that sets where their mood settles and fades over years. | campaign (types only), court, nobles, township | nobletemper.test.ts | not yet |
+| `nobletemper` | 119 | What a noble remembers: war, their town struck or quiet, the leader's heed or neglect, taxes; a temper that sets where their mood settles and fades over years. | campaign (types only), court, nobles, township | nobletemper.test.ts | not yet |
 | `notable` | 50 | Notable people: the few a nation knows by name. Nothing here decides who they are; it reads what the rules | champion, game (types only), hero | notable.test.ts | not yet |
 | `notableweight` | 118 | The weight of notable people: a home known for what it carries in, a veteran of their own town, and the grief and dip in standing a loss leaves (plain numbers for drift.ts to read). | game (types only), township (types only) | notable-weight.test.ts | not yet |
 | `nursery` | 52 | Children. A child is never a unit on the map: it is an entry in the record of the house it was born to (its | ageing, data | nursery.test.ts | not yet |
@@ -485,7 +485,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-319 modules, 39,300 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+319 modules, 39,302 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -501,7 +501,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 9 | 5 | 555 | `townfaith` (126; 28), `militia` (43; 4), `calamity` (204; 3), `talethreads` (105; 2), `emptybeside` (77; 1) |
 | 10 | 10 | 878 | `kin` (256; 9), `seasonfolk` (121; 5), `conquered` (126; 4), `rivalworld` (61; 3), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1), `lessons` (68) |
 | 11 | 4 | 789 | `nobles` (259; 20), `dynasty` (232; 14), `portrait` (257; 1), `rivalyoke` (41; 1) |
-| 12 | 7 | 1,079 | `mapbattle` (386; 4), `nobletemper` (117; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `thronemoods` (40; 2), `unrest` (128; 1), `epilogues` (144) |
+| 12 | 7 | 1,081 | `mapbattle` (386; 4), `nobletemper` (119; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `thronemoods` (40; 2), `unrest` (128; 1), `epilogues` (144) |
 | 13 | 2 | 231 | `raidclash` (145; 3), `tradedeal` (86; 2) |
 | 14 | 1 | 132 | `roadclash` (132; 4) |
 | 15 | 1 | 343 | `convoys` (343; 9) |
