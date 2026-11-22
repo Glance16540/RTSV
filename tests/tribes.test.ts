@@ -7,6 +7,9 @@ import { TRIBE, armMen, bandMen, fieldReckoned, setTribe, tribeArms, tribeBeaten
 import { finishBattle } from '../src/sim/campaign';
 import { TOWN_SCALE, folkOf } from '../src/sim/township';
 import { FIELD_CAP, homeCounts } from '../src/sim/fieldcap';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 function world(seed = 11) {
   const c = newCampaign(seed, 2);

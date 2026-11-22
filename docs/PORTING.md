@@ -171,7 +171,7 @@ by name.
 | `birthonly` | 62 | People come only by birth (docs/DESIGN.md). | data, game (types only) | birthonly.test.ts | not yet |
 | `calamity` | 204 | Fire that begins without an enemy, and a town that turns out to fight it. | contagion, data, famine, game (types only), leanwild, wrath | fire-fighting.test.ts, town-burns.test.ts, ai-fires.test.ts | not yet |
 | `bandwilds` | 109 | Bands from the far wilds: where a new camp is born far from any town (a rim land with a long way in first, `comesFrom`), the way it takes in, drawn by the richest mark within eight lands and not the nearest (`deepWay`), its gathering in sight of the towns below, and its setting out. | bandmarch, bandroam, campaign (types only), threats | bandwilds.test.ts | not yet |
-| `campaign` | 1823 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, ailing, aiplague, armytown, askedhere, bandfight, bandseason, battlecarried, battlehooks, battlescars, battlestory, battletales, bothhouses, campaignbase, caravans, carriedoff, champion, chancecreed, chroniclethreads, churchtavern, claimantcaptain, claimantfigures, claimantrising, cloister, companyroll, conquered, convoys, country, court, courtcall (types only), creed, data, deadtown, dominion, downedmap, drift, driftintown, dynasty, emptied, faithsites, feastfield, feudwar, fieldcaravan, floods, folkroll, fortkeep, founding, freetown, furloughmap, game (types only), governor, governworks, hallcases, handroads, harvest, hero, intrigue, kin, larder, leaders, mapbattle, marriage, migration, militia, militiatoll, naming, nationcolours, nobleacts, nobles, nobletemper, nobleweigh, notableweight, oldfolk, orphans, ownstudies, pacts, petitions, places, powers, prices, queueddrill, raidfought, reckon, rim, rivalaim, rivalcaptives, rivaldrill, rivalhunt, rivalmass, rivalplan, rivalrule, rivalsettle, rivalstock, rivalstories, rivalweary, rivalworld, rivalyoke, roofsmap, royalmarriage, ruin, rule, seasonfolk, seasongain, seasonreport, seasonsky, sentfor, settlersfrom, siegeretreat, sieges, soldiernames, stores, storyturn, studies, succession, suitors, tavernrumour, temper, townfaith, township, townwater, tradedeal, tribes, uniquecompany, unrest, veteranhome, visitworth, warhouse, warrecord, warspoils, widowhood, wifetaken (types only), wilds, winter | sim.test.ts (the hub: none of its own; each system it calls has its own) | not yet |
+| `campaign` | 1825 | Conquest mode: a turn-based strategic map layered over the real-time battles. | acts, ailing, aiplague, armytown, askedhere, bandfight, bandseason, battlecarried, battlehooks, battlescars, battlestory, battletales, bothhouses, campaignbase, caravans, carriedoff, champion, chancecreed, chroniclethreads, churchtavern, claimantcaptain, claimantfigures, claimantrising, cloister, companyroll, conquered, convoys, country, court, courtcall (types only), creed, data, deadtown, dominion, downedmap, drift, driftintown, dynasty, emptied, emptybeside, faithsites, feastfield, feudwar, fieldcaravan, floods, folkroll, fortkeep, founding, freetown, furloughmap, game (types only), governor, governworks, hallcases, handroads, harvest, hero, intrigue, kin, larder, leaders, mapbattle, marriage, migration, militia, militiatoll, naming, nationcolours, nobleacts, nobles, nobletemper, nobleweigh, notableweight, oldfolk, orphans, ownstudies, pacts, petitions, places, powers, prices, queueddrill, raidfought, reckon, rim, rivalaim, rivalcaptives, rivaldrill, rivalhunt, rivalmass, rivalplan, rivalrule, rivalsettle, rivalstock, rivalstories, rivalweary, rivalworld, rivalyoke, roofsmap, royalmarriage, ruin, rule, seasonfolk, seasongain, seasonreport, seasonsky, sentfor, settlersfrom, siegeretreat, sieges, soldiernames, stores, storyturn, studies, succession, suitors, tavernrumour, temper, townfaith, township, townwater, tradedeal, tribes, uniquecompany, unrest, veteranhome, visitworth, warhouse, warrecord, warspoils, widowhood, wifetaken (types only), wilds, winter | sim.test.ts (the hub: none of its own; each system it calls has its own) | not yet |
 | `caravans` | 205 | Caravans on the roads: a town with a Market trades by road with the nearest market town in reach (`partnerOf`), sends a caravan each season (`sendCaravans`) that comes home with gold (`caravansHome`, met by highwaymen and pirates through convoys' `waylay`); a band may fall on one (`caravansThrough`, `fallOnCaravan`); governors raise Markets out of plenty (`governMarkets`). One call a season (`caravansSeason`). | campaign (types only), campaignbase, convoys, data, governor, ownstudies, pacts, plenty, roadclash, roads, studies, threats (types only), township, townworks | caravans.test.ts | not yet |
 | `fieldcaravan` | 149 | A Market's caravan on the field: in a campaign battle or visit at a town whose caravan is on the road this season, a trade cart walks from the Market to the field's edge on its partner's side, is away a while, and comes home with the gold the map's caravan brings; caught on the way home, its gold goes to whoever caught it. The battle hands back how it went and the campaign settles the season's caravan by it, so the map's figures stay the same. | campaign (types only), caravans, data, game (types only) | fieldcaravan.test.ts | not yet |
 | `campaignbase` | 378 | What the map's systems share, below all of them: the constants and small helpers they used to import from campaign.ts (an army's size and strength, a company's price, how a people stands, a land's country). It imports no system; campaign.ts re-exports it. | campaign (types only), creed, hero (types only), pacts, powers, uniquecompany, winter | campaignbase.test.ts | not yet |
@@ -245,6 +245,7 @@ by name.
 | `data` | 1253 | Static game data: ages, units, buildings and technologies. | none | sim.test.ts (tables: none of its own) | not yet |
 | `daylight` | 18 | How the hours run. A day is a set number of seconds, and the last three tenths of it are night; the player | none | daylight.test.ts | not yet |
 | `deadtown` | 106 | A dead town (docs/DESIGN.md): a town with nobody in it stands open to any rival or band of marauders that comes for it. | armytown, campaign (types only), campaignbase, settlersfrom, township | deadtown.test.ts | not yet |
+| `emptybeside` | 77 | An empty land beside every chief town (docs/DESIGN.md, the owner's word of 21 November 2026): when the world is made each people, the player and every rival alike, is left one land beside its chief town with nobody on it, for its settlers; which land, and that no land serves two. | campaign (types only), places | emptybeside.test.ts | not yet |
 | `emptied` | 38 | A land a war or a band has emptied becomes an empty land: an open town nobody has come for, with no army of its people in it, is let go after a wait, and settlers of any people may found on it. A trial. | campaign (types only), deadtown | householdmove.test.ts | not yet |
 | `decrees` | 168 | Decrees (docs/DESIGN.md, "Decrees"). The leader rules a town by decree: a cost in supplies, some seasons, in person or half as strong by messenger; each bends how the town drifts. | campaign (types only), couriers, court, grain, hall, nobles, nobleweigh, township | decrees.test.ts | not yet |
 | `faithsites` | 39 | A Church or a Tavern built in a town (a battle fought in person, or a visit) is raised as the map's site of that kind, where the land has room and has none, so that it moves the town's faith. One table and one function, called where a battle's and a visit's buildings are kept. | campaign (types only), campaignbase | faithsites.test.ts | not yet |
@@ -436,7 +437,7 @@ by name.
 | `orphantown` | 87 | The map's orphans are the town's taken-in children: carried in with the town's people onto the house that keeps them, carried back with its census. | game (types only), township (types only), widowhood (types only) | orphantown.test.ts | not yet |
 | `bereft` | 65 | Widows, widowers and orphans in a town: a widow keeps her house; a fallen couple's children are taken in by a named house. | game (types only), nursery (types only) | bereft.test.ts | not yet |
 | `marriage` | 102 | Marriages on the map: a town's married couples (births come of them); the unmarried marry, or go to a town beside to marry. | ageing, campaign (types only), convoys, township | marriage.test.ts | not yet |
-| `wilds` | 87 | The wild lands: a share of the far and poor lands (snow, desert, the map's edge) start with no tribe and no town, for settlers and the far-wilds bands. | campaign (types only), campaignbase | wilds.test.ts | not yet |
+| `wilds` | 89 | The wild lands: a share of the far and poor lands (snow, desert, the map's edge) start with no tribe and no town, for settlers and the far-wilds bands. | campaign (types only), campaignbase | wilds.test.ts | not yet |
 | `warhouse` | 322 | A man at war is still of his house, on the map (docs/DESIGN.md): every man a town has with the armies has a name and a house on the town's record; an unmarried son goes before a husband, a man who falls is his house's loss and the town's grief, and he is home again when the army is. | campaign (types only), companyroll, grief, housekeep, peoplenames, soldiernames, township, veteranhome, warrecord | warhouse.test.ts, warhousearmy.test.ts | not yet |
 | `plainhealer` | 32 | Every town has a plain healer: which healer a people's standing gives its army (a Priest in a town of good standing, a Shaman in one of low, the plain Healer in the middle), how many the computer keeps, and that the plain one binds wounds but does not cure plague. | data, game (types only) | plainhealer.test.ts | not yet |
 | `darkarts` | 89 | The Shaman's dark calamities and his mirror with the Prophet: who casts what (the Prophet's four, the Shaman's curse, blight and sickness), the bottom two steps of standing that train a Shaman, a curse that makes soldiers strike weaker for a time and a sickness shorter than plague, each by the standing of those struck (wrath), faith that returns faster the lower his town, and what the computer's Shaman casts and where. | data, game (types only), wrath | darkarts.test.ts | not yet |
@@ -483,7 +484,7 @@ themself, at once".
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-317 modules, 39,182 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
+318 modules, 39,263 lines, in 32 layers. A module can be ported once every module in the layers above its own has been; within a layer the order is free, and the modules most others wait on are named first. "Ported" is the Unity column of the table: 0 so far.
 
 | Layer | Modules | Lines | Which (lines; how many modules call it) |
 | --- | --- | --- | --- |
@@ -492,11 +493,11 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 2 | 18 | 1,275 | `champion` (30; 8), `chroniclethreads` (81; 8), `powers` (95; 8), `rescue` (157; 6), `seasonsky` (89; 4), `muster` (51; 3), `oldmarks` (145; 3), `askedhere` (31; 2), `nursery` (52; 2), `queuedmen` (54; 2), `tavernfall` (24; 2), `aisiting` (101; 1), `carriedout` (32; 1), `fieldcap` (108; 1), `placebar` (50; 1), `roofs` (113; 1), `hallguests` (49), `inyears` (13) |
 | 3 | 9 | 1,488 | `township` (243; 85), `captivity` (270; 5), `winter` (61; 5), `feastfield` (96; 4), `bothhouses` (112; 3), `battleleader` (119; 1), `pickman` (98; 1), `notable` (50), `scenario` (439) |
 | 4 | 20 | 1,760 | `campaignbase` (378; 68), `stores` (107; 13), `plenty` (80; 11), `infirmary` (52; 5), `granary` (55; 4), `well` (44; 4), `mill` (45; 3), `oldfolk` (73; 3), `householdmove` (73; 2), `marauders` (220; 2), `orphans` (77; 2), `plaguenamed` (52; 2), `sieges` (36; 2), `aicaptives` (64; 1), `battlefolk` (103; 1), `battlescars` (109; 1), `dilemmaacts` (26; 1), `hiredhome` (37; 1), `rivalhomes` (58; 1), `warspoils` (71; 1) |
-| 5 | 16 | 1,502 | `studies` (156; 26), `court` (228; 18), `rim` (114; 7), `grief` (73; 6), `soldiernames` (144; 6), `churchtavern` (54; 5), `wilds` (87; 5), `veteranhome` (117; 4), `companyroll` (130; 3), `faithsites` (39; 2), `townwater` (77; 2), `aiward` (61; 1), `battletales` (57; 1), `carriednamed` (51; 1), `hazardlessons` (84; 1), `nextage` (30; 1) |
+| 5 | 16 | 1,504 | `studies` (156; 26), `court` (228; 18), `rim` (114; 7), `grief` (73; 6), `soldiernames` (144; 6), `churchtavern` (54; 5), `wilds` (89; 5), `veteranhome` (117; 4), `companyroll` (130; 3), `faithsites` (39; 2), `townwater` (77; 2), `aiward` (61; 1), `battletales` (57; 1), `carriednamed` (51; 1), `hazardlessons` (84; 1), `nextage` (30; 1) |
 | 6 | 23 | 1,178 | `ownstudies` (165; 21), `warhouse` (322; 10), `leaderstay` (84; 8), `hall` (28; 5), `heralds` (30; 3), `manor` (29; 3), `ruin` (124; 3), `townwatch` (30; 3), `croprotation` (18; 2), `fortress` (30; 2), `midwifery` (18; 2), `quarantine` (20; 2), `roads` (37; 2), `salting` (20; 2), `writtenlaw` (12; 2), `furlough` (110; 1), `monastery` (26; 1), `oaths` (8; 1), `physicians` (17; 1), `pilgrimage` (8; 1), `seatedleader` (27; 1), `spymasters` (7; 1), `stewardship` (8; 1) |
 | 7 | 8 | 1,261 | `armytown` (387; 21), `larder` (121; 13), `story` (211; 8), `famine` (188; 7), `founding` (118; 7), `contagion` (97; 3), `couriers` (9; 1), `widowhood` (130; 1) |
-| 8 | 16 | 1,252 | `places` (58; 7), `tribes` (217; 6), `bandmarch` (145; 5), `reckon` (26; 4), `ailing` (53; 3), `fortkeep` (66; 2), `larderwatch` (61; 2), `leanwild` (48; 2), `aicare` (56; 1), `downedmap` (64; 1), `grain` (78; 1), `siegeretreat` (63; 1), `threadstarts` (101; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
-| 9 | 4 | 478 | `townfaith` (126; 28), `militia` (43; 4), `calamity` (204; 3), `talethreads` (105; 2) |
+| 8 | 16 | 1,252 | `places` (58; 8), `tribes` (217; 6), `bandmarch` (145; 5), `reckon` (26; 4), `ailing` (53; 3), `fortkeep` (66; 2), `larderwatch` (61; 2), `leanwild` (48; 2), `aicare` (56; 1), `downedmap` (64; 1), `grain` (78; 1), `siegeretreat` (63; 1), `threadstarts` (101; 1), `townlife` (78; 1), `levynext` (31), `slots` (107) |
+| 9 | 5 | 555 | `townfaith` (126; 28), `militia` (43; 4), `calamity` (204; 3), `talethreads` (105; 2), `emptybeside` (77; 1) |
 | 10 | 10 | 878 | `kin` (256; 9), `seasonfolk` (121; 5), `conquered` (126; 4), `rivalworld` (61; 3), `militiatoll` (75; 2), `noblefaith` (40; 2), `feastdays` (19; 1), `mapgrief` (33; 1), `tavernrumour` (79; 1), `lessons` (68) |
 | 11 | 4 | 789 | `nobles` (259; 20), `dynasty` (232; 14), `portrait` (257; 1), `rivalyoke` (41; 1) |
 | 12 | 7 | 1,072 | `mapbattle` (386; 4), `nobletemper` (110; 3), `royalmarriage` (160; 3), `claimants` (104; 2), `thronemoods` (40; 2), `unrest` (128; 1), `epilogues` (144) |
@@ -516,7 +517,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 | 26 | 5 | 822 | `intrigue` (400; 6), `fieldcaravan` (149; 3), `bandcaravan` (52; 1), `rivalhunt` (132; 1), `bandmeet` (89) |
 | 27 | 7 | 3,779 | `courtvisit` (81; 2), `game` (3303; 2), `hallcases` (77; 2), `storyvisit` (51; 2), `bandseason` (69; 1), `rivalstories` (130; 1), `storypolicy` (68) |
 | 28 | 2 | 105 | `aiground` (52; 1), `battlestory` (53; 1) |
-| 29 | 2 | 2,838 | `campaign` (1823; 2), `ai` (1015) |
+| 29 | 2 | 2,840 | `campaign` (1825; 2), `ai` (1015) |
 | 30 | 1 | 297 | `visit` (297; 1) |
 | 31 | 1 | 117 | `primer` (117) |
 
@@ -524,7 +525,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 | Shapes from | Needed by | From layer | Its own layer |
 | --- | --- | --- | --- |
-| `campaign` | 207 modules | 0 | 29 |
+| `campaign` | 208 modules | 0 | 29 |
 | `game` | 88 modules | 0 | 27 |
 | `township` | 13 modules | 0 | 3 |
 | `threats` | 5 modules | 0 | 22 |
@@ -552,7 +553,7 @@ Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 317 modules, 0 naming no test, 0 naming a test file that is missing; 4,220 cases in the files named (a file named by two modules is counted for each).
+Every module names its tests in the table, and `npm run check` fails if one named is not there. As this was written: 318 modules, 0 naming no test, 0 naming a test file that is missing; 4,228 cases in the files named (a file named by two modules is counted for each).
 
 **Thin: a module of 150 lines or more with 2 cases or fewer in the tests it names.** Port these with more care than their tests ask: a C# version can pass them and still be wrong.
 
@@ -575,7 +576,7 @@ None.
 
 Written by `scripts/porting-order.mjs` (`npm run porting`). Do not edit by hand.
 
-The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 564 of them in 244 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
+The numbers a rule goes by are kept in named constants at the top of the module that owns the rule (`export const NAME`), each with a comment saying what it does. 565 of them in 245 modules. Port each with its module, under the same name, so that a number tuned here can be found there. The hubs (`game`, `campaign`) hold few: most of what was theirs is in `data`, `campaignbase` and the systems' own modules.
 
 | Module | Constants |
 | --- | --- |
@@ -663,6 +664,7 @@ The numbers a rule goes by are kept in named constants at the top of the module 
 | `data` | `RES_TYPES`, `AGES`, `UNITS`, `BUILDINGS`, `BUILD_PAGES`, `TRADE`, `TECHS`, `CIVS`, `CIV_IDS`, `STYLES`, `CIV_STYLE`, `STYLE_RULES`, `BAND`, `CIV_COLOR`, `ABILITIES`, `CALAMITY`, `VILLAGER_TRAITS`, `NAMES_M`, `NAMES_F`, `FAMILY_NAMES`, `POP_LIMIT`, `WONDER_TIME`, `BIRTH_TIME`, `GROW_TIME`, `BIRTH_COST`, `LIFESPAN`, `ELDER_AT`, `RENOWN_CHILDREN`, `MORALE_RADIUS`, `MORALE_PER_HOUSE`, `MORALE_MAX_HOUSES`, `RESOURCE_AMOUNT`, `RESOURCE_KIND`, `GATHER_RATE`, `RES_ICON`, `LAIR_AT`, `LAIR_BIRTH`, `LAIR_RAID`, `LAIR_MAX` |
 | `daylight` | `DAY_LENGTHS`, `DUSK` |
 | `deadtown` | `DEAD` |
+| `emptybeside` | `BESIDE` |
 | `emptied` | `EMPTIED` |
 | `decrees` | `DECREES`, `DECREE_KINDS`, `MESSENGER`, `TAVERN_WOMEN_GOLD`, `CHURCH_CARE`, `GUARDS_EASE`, `TAVERN_WOMEN_SWAY`, `CLOSED_ANGER`, `ALMS_A_SEASON`, `TEND_GOLD`, `TEND_EASE`, `TEND_PLAGUE`, `TEND_BARE`, `FORESIGHT` |
 | `faithsites` | `FAITH_SITES` |

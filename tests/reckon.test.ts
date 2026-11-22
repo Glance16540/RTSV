@@ -5,6 +5,9 @@ import { folkOf } from '../src/sim/township';
 import { nobodyThere } from '../src/sim/founding';
 import { onFrontier, reckoned } from '../src/sim/reckon';
 import { RIVAL, homeIdle } from '../src/sim/rivalrule';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 /** A world, the player's capital, and one land beside it. */
 const world = (): { c: Campaign; home: number; next: number } => {

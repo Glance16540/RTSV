@@ -6,6 +6,9 @@ import { NAMES_F, NAMES_M } from '../src/sim/data';
 import { armyAt, battleConfig, moveArmy, newCampaign } from '../src/sim/campaign';
 import { TRIBE_NAMES_F, TRIBE_NAMES_M, freeName, tribeName } from '../src/sim/tribenames';
 import { setups } from './helpers';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 describe('the names of a tribe', () => {
   it('are their own: none is a name of the settled peoples, and none is said twice in a list', () => {

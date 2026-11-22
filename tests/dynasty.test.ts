@@ -5,6 +5,9 @@ import { Game } from '../src/sim/game';
 import { heirName } from '../src/sim/hero';
 import { leaderAt } from '../src/sim/court';
 import { run } from './helpers';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 /** A campaign whose leader has just died with their army. */
 const bereft = (): { c: Campaign; home: number } => {

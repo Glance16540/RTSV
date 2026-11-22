@@ -5,6 +5,9 @@ import { Campaign, newCampaign } from '../src/sim/campaign';
 import { MAX_FAVOR, armyAt, armySize, virtueOf } from '../src/sim/campaignbase';
 import { answerTale, canAnswer, storyTurn, taleDueNow, taleNow, taleText } from '../src/sim/storyturn';
 import { TALES, TALE_EVERY, TALE_FROM, TALE_SPREAD, WORLD_EVENTS, WORLD_REST } from '../src/sim/story';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 /** A campaign with a tale put by hand: about the capital, rival 1 and a tribe next door. */
 const put = (id: string, supplies = 30) => {

@@ -5,6 +5,9 @@ import { YOKE, goodRule, resentOf, resentful, revoltChance, seasonOfYoke, townTa
 import { seat } from '../src/sim/court';
 import { townMood } from '../src/sim/portrait';
 import { folkOf } from '../src/sim/township';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 const LONG = 60_000;
 /** The player holds a town taken from the rival, with nothing built in it and no army there. */

@@ -9,6 +9,9 @@ import { menaced, RIVAL_DRILL, rivalDrillOrders, rivalDrillSeason } from '../src
 import { DRILL, drillOf, drillTown } from '../src/sim/townmuster';
 import { DRILL_STOPS, setStanding } from '../src/sim/townorders';
 import { folkOf } from '../src/sim/township';
+import { worldsBeforeEmptyBeside } from './helpers';
+
+worldsBeforeEmptyBeside(); // written before every people had an empty land beside its chief town: the worlds these tests were written with
 
 const playerTown = () => {
   const c = newCampaign(7, 1, 1, 'hearth');

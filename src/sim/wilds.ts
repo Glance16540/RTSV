@@ -6,7 +6,9 @@
 //   - a land may start wild if nobody holds it, it is nobody's chief town, it lies beside no people's chief town, and it
 //     is far or poor: snow or desert, or on the map's edge (within WILD.edge of a side);
 //   - of those, WILD.share are made wild, chosen by the world's seed, so the same seed makes the same wilds.
-// No empty land is left beside a chief town (docs/PLAYTEST.md 3.7 asked for one): it took one of a young people's few
+// No WILD land is left beside a chief town; since 21 November 2026 each people has one empty land there by a rule of
+// its own (emptybeside.ts, the owner's word), which is not wild. What was found when wild lands were tried there
+// (docs/PLAYTEST.md 3.7 asked for one): it took one of a young people's few
 // neighbours out of the reach of its armies, and every people founding small towns from the first drew raids and ruin
 // (192 campaigns: ruin 9 to 18%, a farmed town hungry 3 to 6%; for the player alone, its wins fell from 126 to 51).
 // A wild land is an empty land (founding.ts): nobody lives there, no warriors, no works. A wild land of snow or desert is
