@@ -120,6 +120,15 @@ Any number of towns may be visited in a season, each once.
 **A town left to itself** carries on with the last orders it was given (what to build, what to
 train, where its people work), and a governor fills the gaps sensibly.
 
+**The map gives orders; the town does the building** (the owner's word, 22 November 2026; so far in
+the Unity remake only, `Assets/Sim/Campaign/OrderedWork.cs`). Nothing is built at a click on the
+map. From the map the player names one work for a town, and its governor raises it out of the
+town's own stores when it can spare them, one work a season, after whatever the town wants for.
+Built by the town's own people on a visit, it stands that season: playing the town in person is the
+quick way, and the reason to go. The rivals wait too: what a rival builds is paid for at once and
+stands two seasons later, and is lost if the land changes hands first. Two seasons is what the
+player's own governor was measured to take from a fresh campaign (twelve trials, 23 November 2026).
+
 **Stores.** The four resources replace the map's supplies. Every town has its own stores of food,
 wood, gold and stone, and the nation's stores on the map are the sum of its towns'. Towns send
 food, goods and people to one another by road, a season on the way, and a convoy can be robbed.
